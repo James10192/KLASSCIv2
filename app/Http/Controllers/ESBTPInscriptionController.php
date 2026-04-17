@@ -1154,6 +1154,14 @@ class ESBTPInscriptionController extends Controller
 
             DB::commit();
 
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    "success" => true,
+                    "message" => "Inscription validée avec succès.",
+                    "inscription_id" => $inscription->id,
+                ]);
+            }
+
             // Rediriger vers la fiche étudiant si on vient de etudiants.show
             if ($request->input('redirect_to') === 'etudiant' && $inscription->etudiant_id) {
                 return redirect()
@@ -1166,6 +1174,13 @@ class ESBTPInscriptionController extends Controller
                 ->with("success", "Inscription validée avec succès.");
         } catch (\Exception $e) {
             DB::rollBack();
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    "success" => false,
+                    "message" => "Erreur lors de la validation: " . $e->getMessage(),
+                ], 422);
+            }
 
             return redirect()
                 ->back()
