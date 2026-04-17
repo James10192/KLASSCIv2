@@ -367,7 +367,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     $queryParams = request()->query();
                     // Retirer le paramètre 'classe' si présent
                     unset($queryParams['classe']);
-                    $returnToIndexUrl = route('esbtp.student.classes.index', $queryParams);
+                    $returnToIndexUrl = route('esbtp.classes.index', $queryParams);
                 @endphp
                 <a href="{{ $returnToIndexUrl }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour à la liste
