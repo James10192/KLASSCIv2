@@ -177,15 +177,16 @@
         $directorName  = $settings['director_name']  ?? '';
         $directorTitle = $settings['director_title'] ?? 'Directeur';
 
-        // KPIs derives
-        $nbMatieres     = $emploiTemps->seances->pluck('matiere_id')->filter()->unique()->count();
-        $nbIntervenants = $emploiTemps->seances->pluck('teacher_id')->filter()->unique()->count();
-
-        // Periode
+        // Periode / Semaine
         $periode = $emploiTemps->semestre ?? 'Annee complete';
-        if ($emploiTemps->date_debut && $emploiTemps->date_fin) {
-            $periode .= ' · ' . \Carbon\Carbon::parse($emploiTemps->date_debut)->format('d/m/Y')
-                     . ' - ' . \Carbon\Carbon::parse($emploiTemps->date_fin)->format('d/m/Y');
+
+        // Extraction semaine depuis titre (pattern "(Semaine DD/MM-DD/MM)") ou fallback dates
+        $semaineLabel = null;
+        if ($emploiTemps->titre && preg_match('/Semaine\s+([\d\/\-\s]+)/i', $emploiTemps->titre, $matches)) {
+            $semaineLabel = 'Semaine ' . trim($matches[1]);
+        } elseif ($emploiTemps->date_debut && $emploiTemps->date_fin) {
+            $semaineLabel = 'Semaine du ' . \Carbon\Carbon::parse($emploiTemps->date_debut)->format('d/m')
+                . ' au ' . \Carbon\Carbon::parse($emploiTemps->date_fin)->format('d/m/Y');
         }
     @endphp
 
@@ -231,8 +232,13 @@
 
                         {{-- Separateur + titre document + infos classe --}}
                         <div style="border-top: 1px solid rgba(255,255,255,0.35); padding-top: 6px;">
-                            <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 5px;">
-                                EMPLOI DU TEMPS HEBDOMADAIRE
+                            <div style="font-size: 11px; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 5px; display: flex; justify-content: space-between; align-items: center;">
+                                <span>EMPLOI DU TEMPS HEBDOMADAIRE</span>
+                                @if($semaineLabel)
+                                    <span style="font-size: 9.5px; font-weight: 600; background: rgba(255,255,255,0.18); border: 1px solid rgba(255,255,255,0.3); padding: 2px 9px; border-radius: 99px; letter-spacing: 0.2px;">
+                                        <i>&#128197;</i> {{ $semaineLabel }}
+                                    </span>
+                                @endif
                             </div>
                             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                                 <tr>
@@ -255,34 +261,6 @@
                 </tr>
             </table>
         </div>
-
-        {{-- ═══════════════════════════════════════════════
-             KPIs — 4 cellules fond primary plein
-             ═══════════════════════════════════════════════ --}}
-        <table class="kpi-section" width="100%" border="0" cellspacing="0" cellpadding="0" style="border-radius: 6px; overflow: hidden;">
-            <tr>
-                <td width="25%" style="background-color: {{ $primary }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">Séances</div>
-                    <div style="font-size: 18px; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 4px;">{{ $totalSeances }}</div>
-                    <div style="font-size: 7px; color: white; opacity: 0.65;">programmées</div>
-                </td>
-                <td width="25%" style="background-color: {{ $primary }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">Volume horaire</div>
-                    <div style="font-size: 18px; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 4px;">{{ $totalHoursFormatted }}</div>
-                    <div style="font-size: 7px; color: white; opacity: 0.65;">{{ $daysCovered }} jour{{ $daysCovered > 1 ? 's' : '' }} couverts</div>
-                </td>
-                <td width="25%" style="background-color: {{ $primary }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">Matières</div>
-                    <div style="font-size: 18px; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 4px;">{{ $nbMatieres }}</div>
-                    <div style="font-size: 7px; color: white; opacity: 0.65;">enseignées</div>
-                </td>
-                <td width="25%" style="background-color: {{ $primary }}; padding: 9px 8px; text-align: center; vertical-align: middle;">
-                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">Intervenants</div>
-                    <div style="font-size: 18px; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 4px;">{{ $nbIntervenants }}</div>
-                    <div style="font-size: 7px; color: white; opacity: 0.65;">enseignants</div>
-                </td>
-            </tr>
-        </table>
 
         {{-- ═══════════════════════════════════════════════
              GRILLE HORAIRE (engine preserve via partial)

@@ -154,7 +154,8 @@
         ];
     }
 
-    $segmentHeight = $variant === 'pdf' ? 13 : 26;
+    // PDF: segments plus compacts pour tenir sur une seule page A4 landscape
+    $segmentHeight = $variant === 'pdf' ? 9 : 26;
 
     $defaultLabels = [
         ESBTPSeanceCours::TYPE_COURSE => 'Cours',
