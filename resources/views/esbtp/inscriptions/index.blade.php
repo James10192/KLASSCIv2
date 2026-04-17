@@ -8,8 +8,10 @@
 /* =====================================================================
    INSCRIPTIONS INDEX — namespace ii-*
    Design premium monochrome bleu KLASSCI
+   Variables sur :root pour etre accessibles aussi bien dans
+   .dashboard-acasi que dans les modals et la bulk-bar (hors wrapper).
    ===================================================================== */
-.dashboard-acasi {
+:root {
     --ii-primary: #0453cb;
     --ii-primary-dark: #033a8e;
     --ii-accent: #3b7ddb;
