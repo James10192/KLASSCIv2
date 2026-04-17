@@ -1,39 +1,62 @@
+{{--
+    Table des étudiants de la classe (vue admin/secrétaire/coordinateur).
+    Design cs-* monochrome + photos avec fallback HSL.
+    Pattern identique à resources/views/esbtp/attendances/partials/student-list.blade.php
+--}}
 @if($classe->etudiants->count() > 0)
     <div class="table-responsive">
-        <table class="table str-table align-middle mb-0" id="studentsDataTable">
+        <table class="table cs-table align-middle mb-0" id="studentsDataTable">
             <thead>
                 <tr>
-                    <th style="width: 50px;"></th>
+                    <th>Étudiant</th>
                     <th>Matricule</th>
-                    <th>Nom complet</th>
                     <th>Genre</th>
-                    <th>Date de naissance</th>
+                    <th>Naissance</th>
                     <th>Contact</th>
-                    <th style="width: 60px; text-align: center;">Actions</th>
+                    <th style="width:60px;text-align:center;">Actions</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach($classe->etudiants as $etudiant)
                     @php
-                        $initials = mb_strtoupper(mb_substr($etudiant->nom, 0, 1) . mb_substr($etudiant->prenoms, 0, 1));
-                        $isMale = $etudiant->genre == 'M';
+                        $nomComplet = trim(($etudiant->nom ?? '').' '.($etudiant->prenoms ?? ''));
+                        $initials = mb_strtoupper(mb_substr($etudiant->nom ?? '', 0, 1).mb_substr($etudiant->prenoms ?? '', 0, 1));
+                        $avatarHue = hexdec(substr(md5($nomComplet ?: (string)$etudiant->id), 0, 4)) % 360;
+                        $isMale = $etudiant->genre === 'M';
                     @endphp
-                    <tr data-etudiant-id="{{ $etudiant->id }}">
+                    <tr data-etudiant-id="{{ $etudiant->id }}"
+                        data-matricule="{{ $etudiant->matricule }}"
+                        data-nom="{{ $nomComplet }}">
                         <td>
-                            <div class="str-avatar {{ $isMale ? 'str-avatar--m' : 'str-avatar--f' }}">
-                                {{ $initials }}
+                            <div class="cs-etu-cell">
+                                <span class="cs-etu-avatar"
+                                      @if($etudiant->photo_url)
+                                          style="background:transparent;padding:0;overflow:hidden;"
+                                      @else
+                                          style="background: hsl({{ $avatarHue }}, 55%, 92%); color: hsl({{ $avatarHue }}, 50%, 35%);"
+                                      @endif>
+                                    @if($etudiant->photo_url)
+                                        <img src="{{ $etudiant->photo_url }}"
+                                             alt="{{ $nomComplet }}"
+                                             width="36" height="36"
+                                             loading="lazy"
+                                             style="width:100%;height:100%;object-fit:cover;border-radius:50%;"
+                                             onerror="this.onerror=null;this.parentElement.style.background='hsl({{ $avatarHue }}, 55%, 92%)';this.parentElement.style.color='hsl({{ $avatarHue }}, 50%, 35%)';this.outerHTML='{{ $initials ?: '?' }}';">
+                                    @else
+                                        {{ $initials ?: '?' }}
+                                    @endif
+                                </span>
+                                <div>
+                                    <div class="cs-etu-name">{{ $etudiant->nom }} <span class="cs-etu-prenom">{{ $etudiant->prenoms }}</span></div>
+                                </div>
                             </div>
                         </td>
                         <td>
-                            <span class="str-matricule">{{ $etudiant->matricule }}</span>
+                            <span class="cs-matricule">{{ $etudiant->matricule }}</span>
                         </td>
                         <td>
-                            <span class="str-name">{{ $etudiant->nom }}</span>
-                            <span class="str-prenom">{{ $etudiant->prenoms }}</span>
-                        </td>
-                        <td>
-                            <span class="str-gender-badge">
-                                <i class="fas {{ $isMale ? 'fa-mars' : 'fa-venus' }}" style="color: var({{ $isMale ? '--primary, #0453cb' : '--success, #10b981' }});"></i>
+                            <span class="cs-gender">
+                                <i class="fas {{ $isMale ? 'fa-mars' : 'fa-venus' }}" style="color: var({{ $isMale ? '--cs-primary' : '--cs-accent' }});"></i>
                                 {{ $isMale ? 'Masculin' : 'Féminin' }}
                             </span>
                         </td>
@@ -42,24 +65,24 @@
                         </td>
                         <td>
                             @if($etudiant->telephone)
-                            <div class="str-contact-line">
-                                <i class="fas fa-phone"></i>
-                                {{ $etudiant->telephone }}
-                            </div>
+                                <div class="cs-contact-line">
+                                    <i class="fas fa-phone"></i>
+                                    {{ $etudiant->telephone }}
+                                </div>
                             @endif
                             @if($etudiant->email)
-                            <div class="str-contact-line">
-                                <i class="fas fa-envelope"></i>
-                                {{ $etudiant->email }}
-                            </div>
+                                <div class="cs-contact-line">
+                                    <i class="fas fa-envelope"></i>
+                                    {{ $etudiant->email }}
+                                </div>
                             @endif
                             @if(!$etudiant->telephone && !$etudiant->email)
-                                <span style="color: var(--text-muted, #94a3b8); font-size: 0.8125rem;">—</span>
+                                <span style="color: var(--cs-muted);font-size:.8rem;">—</span>
                             @endif
                         </td>
-                        <td style="text-align: center;">
+                        <td style="text-align:center;">
                             <a href="{{ route('esbtp.etudiants.show', ['etudiant' => $etudiant->id]) }}"
-                               class="str-btn-view"
+                               class="cs-btn-view"
                                title="Voir la fiche">
                                 <i class="fas fa-eye"></i>
                             </a>
@@ -70,11 +93,11 @@
         </table>
     </div>
 @else
-    <div class="str-empty">
-        <div class="str-empty-icon">
+    <div class="cs-empty">
+        <div class="cs-empty-icon">
             <i class="fas fa-user-graduate"></i>
         </div>
-        <div class="str-empty-title">Aucun étudiant inscrit</div>
-        <div class="str-empty-text">Cette classe n'a pas encore d'étudiants pour l'année courante.</div>
+        <div class="cs-empty-title">Aucun étudiant inscrit</div>
+        <div class="cs-empty-text">Cette classe n'a pas encore d'étudiants pour l'année courante.</div>
     </div>
 @endif

@@ -1,145 +1,184 @@
 {{--
-    Partial pour afficher UNE SEULE carte de classe
-    Utilisé par items.blade.php (liste) et par refreshLigne (AJAX update)
+    Carte d'UNE classe — design premium namespace ci-*
+    - Card cliquable via Bootstrap 5 .stretched-link (pas de JS stopPropagation)
+    - Menu kebab BS5 dropdown pour actions secondaires
+    - 1 seul CTA visible (btn edit) si access_admin, sinon la card entière = CTA view
 
-    Paramètres requis:
-    - $classe : instance de ESBTPClasse avec relations chargées (filiere, niveau, annee)
+    Paramètres requis :
+    - $classe : ESBTPClasse avec relations (filiere, niveau, annee)
 --}}
+@php
+    $occupation = $classe->places_totales > 0
+        ? min(100, round(($classe->nombre_etudiants / $classe->places_totales) * 100))
+        : 0;
+    $occLevel = $occupation >= 95 ? 'full' : ($occupation >= 75 ? 'high' : ($occupation >= 40 ? 'mid' : 'low'));
+    $canAdmin = auth()->user()->can('access_admin');
+    $canManageSchool = auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_coordinate_academics']);
+    $canTeach = auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_teach', 'can_coordinate_academics']);
+    $showUrl = route('esbtp.classes.show', array_merge(['classe' => $classe->id], request()->query()));
+@endphp
 
-<div class="card-moderne resultat-card animate-slide-up" data-classe-id="{{ $classe->id }}" style="border-left: 4px solid {{ $classe->is_active ? 'var(--success)' : 'var(--neutral)' }};">
-    <!-- En-tête classe -->
-    <div style="display: flex; justify-content: between; align-items: start; margin-bottom: var(--space-md);">
-        <div style="flex: 1;">
-            <div style="display: flex; align-items: center; margin-bottom: var(--space-sm);">
-                <div style="width: 40px; height: 40px; background: {{ $classe->is_active ? 'var(--success)' : 'var(--neutral)' }}; border-radius: var(--radius-circle); display: flex; align-items: center; justify-content: center; margin-right: var(--space-sm);">
-                    <i class="fas fa-graduation-cap" style="color: white; font-size: 16px;"></i>
-                </div>
-                <div>
-                    <div class="font-bold color-primary" style="font-size: var(--text-normal);">{{ $classe->name }}</div>
-                    <div style="font-size: var(--text-small); color: var(--text-secondary);">Code: {{ $classe->code }}</div>
-                </div>
+<article class="ci-card {{ $classe->is_active ? '' : 'ci-card--inactive' }}" data-classe-id="{{ $classe->id }}">
+    {{-- Ribbon statut --}}
+    <span class="ci-card-ribbon ci-card-ribbon--{{ $classe->is_active ? 'active' : 'inactive' }}" aria-hidden="true"></span>
+
+    {{-- Header carte --}}
+    <header class="ci-card-header">
+        <div class="ci-card-identity">
+            <div class="ci-card-icon">
+                <i class="fas fa-chalkboard-teacher"></i>
             </div>
-
-            <!-- Filière et niveau -->
-            <div style="margin-bottom: var(--space-md);">
-                @if ($classe->filiere)
-                    <div style="font-size: var(--text-small); color: var(--text-primary); margin-bottom: var(--space-xs);">
-                        <i class="fas fa-layer-group me-1"></i><strong>{{ $classe->filiere->name }}</strong>
-                        @if ($classe->filiere->parent)
-                            <br><span style="color: var(--text-muted); margin-left: 16px;">Option de {{ $classe->filiere->parent->name }}</span>
-                        @endif
-                    </div>
-                @endif
-                @if ($classe->niveau)
-                    <div style="font-size: var(--text-small); color: var(--text-secondary);">
-                        <i class="fas fa-level-up-alt me-1"></i>{{ $classe->niveau->name }}
-                    </div>
-                @endif
+            <div class="ci-card-titles">
+                <h3 class="ci-card-title">
+                    {{-- Stretched-link : toute la card devient cliquable, les boutons internes avec position:relative + z-index prennent le dessus --}}
+                    <a href="{{ $showUrl }}" class="stretched-link ci-card-link" title="Voir les détails">{{ $classe->name }}</a>
+                </h3>
+                <span class="ci-card-code">{{ $classe->code }}</span>
             </div>
         </div>
 
-        <!-- Statut -->
-        <div>
-            <span class="badge {{ $classe->is_active ? 'success' : 'danger' }}">
+        {{-- Badge statut + menu kebab --}}
+        <div class="ci-card-header-right">
+            <span class="ci-card-status ci-card-status--{{ $classe->is_active ? 'active' : 'inactive' }}">
                 {{ $classe->is_active ? 'Active' : 'Inactive' }}
             </span>
-        </div>
-    </div>
-
-    <!-- Statistiques -->
-    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-md); margin-bottom: var(--space-md); padding: var(--space-sm); background: rgba(248, 250, 252, 0.5); border-radius: var(--radius-small);">
-        <div class="text-center">
-            <div style="font-size: var(--text-small); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Capacité</div>
-            <div class="font-bold color-primary">{{ $classe->places_totales }}</div>
-        </div>
-        <div class="text-center">
-            <div style="font-size: var(--text-small); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Inscrits</div>
-            <div class="font-bold color-accent">{{ $classe->nombre_etudiants }}</div>
-        </div>
-        <div class="text-center">
-            <div style="font-size: var(--text-small); color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px;">Disponibles</div>
-            <div class="font-bold color-{{ $classe->places_disponibles > 0 ? 'success' : 'danger' }}">{{ $classe->places_disponibles }}</div>
-        </div>
-    </div>
-
-    <!-- Actions -->
-    <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f3f4f6; padding-top: var(--space-md);">
-        <div style="font-size: var(--text-small); color: var(--text-muted);">
-            @if ($classe->annee)
-                <i class="fas fa-calendar me-1"></i>{{ $classe->annee->name }}
-            @endif
-        </div>
-        <div style="display: flex; gap: var(--space-xs);">
-            {{-- Lien "Voir détails" avec filtres préservés dans l'URL --}}
-            <a href="{{ route('esbtp.classes.show', array_merge(['classe' => $classe->id], request()->query())) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Voir les détails">
-                <i class="fas fa-eye"></i>
-            </a>
-
-            @if(auth()->user()->can('access_admin'))
-            {{-- Bouton "Modifier" ouvre modal AJAX --}}
-            <button type="button" class="btn-acasi primary btn-open-edit-modal" style="padding: var(--space-xs);" data-classe-id="{{ $classe->id }}" title="Modifier">
-                <i class="fas fa-edit"></i>
-            </button>
-            @endif
-
-            @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_coordinate_academics']))
-            <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Gérer les matières">
-                <i class="fas fa-book"></i>
-            </a>
-            @endif
-
-            @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_teach', 'can_coordinate_academics']))
-            <a href="{{ route('esbtp.classes.liste-appel', ['classe' => $classe->id]) }}" class="btn-acasi primary" style="padding: var(--space-xs);" title="Liste d'appel" target="_blank">
-                <i class="fas fa-clipboard-list"></i>
-            </a>
-            <a href="{{ route('esbtp.classes.liste-complete', ['classe' => $classe->id]) }}" class="btn-acasi secondary" style="padding: var(--space-xs);" title="Liste complète des étudiants" target="_blank">
-                <i class="fas fa-users"></i>
-            </a>
-            @endif
-
-            @if(auth()->user()->can('access_admin'))
-                @if($classe->nombre_etudiants == 0)
-                <button type="button" class="btn-acasi danger" style="padding: var(--space-xs);" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $classe->id }}" title="Supprimer">
-                    <i class="fas fa-trash"></i>
-                </button>
-                @else
-                <button type="button" class="btn-acasi secondary" style="padding: var(--space-xs); opacity: 0.5; cursor: not-allowed;" title="Suppression impossible - Classe avec historique d'inscriptions préservé" disabled>
-                    <i class="fas fa-lock"></i>
-                </button>
-                @endif
-            @endif
-        </div>
-    </div>
-</div>
-
-{{-- Modal de suppression --}}
-@if(auth()->user()->can('access_admin') && $classe->nombre_etudiants == 0)
-<div class="modal fade" id="deleteModal{{ $classe->id }}" tabindex="-1" role="dialog" aria-labelledby="deleteModalLabel{{ $classe->id }}" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="deleteModalLabel{{ $classe->id }}">Archivage de la classe</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <p>Êtes-vous sûr de vouloir archiver la classe <strong>{{ $classe->name }}</strong> ?</p>
-                <div class="alert alert-info">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Note:</strong> La classe sera archivée mais l'historique des inscriptions sera préservé pour les rapports et statistiques des années universitaires passées.
-                </div>
-                <p class="text-warning"><strong>Important:</strong> Cette classe ne sera plus visible dans la liste active mais restera accessible dans l'historique.</p>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <form action="{{ route('esbtp.classes.destroy', $classe->id) }}" method="POST" class="d-inline">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="btn btn-warning">
-                        <i class="fas fa-archive me-1"></i>Archiver la classe
+            @if($canAdmin || $canManageSchool || $canTeach)
+                <div class="dropdown ci-card-menu">
+                    <button type="button"
+                            class="ci-card-kebab"
+                            data-bs-toggle="dropdown"
+                            aria-expanded="false"
+                            aria-label="Actions supplémentaires">
+                        <i class="fas fa-ellipsis-v"></i>
                     </button>
-                </form>
+                    <ul class="dropdown-menu dropdown-menu-end ci-dropdown">
+                        @if($canManageSchool)
+                            <li>
+                                <a class="dropdown-item" href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}">
+                                    <i class="fas fa-book"></i>Gérer les matières
+                                </a>
+                            </li>
+                        @endif
+                        @if($canTeach)
+                            <li>
+                                <a class="dropdown-item" href="{{ route('esbtp.classes.liste-appel', ['classe' => $classe->id]) }}" target="_blank">
+                                    <i class="fas fa-clipboard-list"></i>Liste d'appel
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ route('esbtp.classes.liste-complete', ['classe' => $classe->id]) }}" target="_blank">
+                                    <i class="fas fa-users"></i>Liste complète
+                                </a>
+                            </li>
+                        @endif
+                        @if($canAdmin)
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <button type="button"
+                                        class="dropdown-item btn-open-edit-modal"
+                                        data-classe-id="{{ $classe->id }}">
+                                    <i class="fas fa-edit"></i>Modifier
+                                </button>
+                            </li>
+                            <li>
+                                @if($classe->nombre_etudiants == 0)
+                                    <button type="button"
+                                            class="dropdown-item ci-dropdown-item--danger"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#deleteModal{{ $classe->id }}">
+                                        <i class="fas fa-archive"></i>Archiver la classe
+                                    </button>
+                                @else
+                                    <button type="button" class="dropdown-item" disabled title="Classe avec historique d'inscriptions — archivage désactivé">
+                                        <i class="fas fa-lock"></i>Archivage désactivé
+                                    </button>
+                                @endif
+                            </li>
+                        @endif
+                    </ul>
+                </div>
+            @endif
+        </div>
+    </header>
+
+    {{-- Meta : filière + niveau --}}
+    <div class="ci-card-meta">
+        @if($classe->filiere)
+            <div class="ci-card-meta-line">
+                <i class="fas fa-layer-group"></i>
+                <span><strong>{{ $classe->filiere->name }}</strong>@if($classe->filiere->parent)<span class="ci-card-meta-parent"> · Option de {{ $classe->filiere->parent->name }}</span>@endif</span>
+            </div>
+        @endif
+        @if($classe->niveau)
+            <div class="ci-card-meta-line">
+                <i class="fas fa-level-up-alt"></i>
+                <span>{{ $classe->niveau->name }}</span>
+            </div>
+        @endif
+    </div>
+
+    {{-- Stats : capacité + barre d'occupation --}}
+    <div class="ci-card-stats">
+        <div class="ci-card-stat">
+            <span class="ci-card-stat-value">{{ $classe->nombre_etudiants }}</span>
+            <span class="ci-card-stat-label">Inscrits</span>
+        </div>
+        <div class="ci-card-stat ci-card-stat--separator"></div>
+        <div class="ci-card-stat">
+            <span class="ci-card-stat-value">{{ $classe->places_totales }}</span>
+            <span class="ci-card-stat-label">Capacité</span>
+        </div>
+        <div class="ci-card-stat ci-card-stat--separator"></div>
+        <div class="ci-card-stat">
+            <span class="ci-card-stat-value ci-card-stat-value--{{ $classe->places_disponibles > 0 ? 'ok' : 'warn' }}">{{ $classe->places_disponibles }}</span>
+            <span class="ci-card-stat-label">Disponibles</span>
+        </div>
+    </div>
+
+    <div class="ci-card-bar" aria-label="Taux d'occupation : {{ $occupation }}%">
+        <div class="ci-card-bar-fill ci-card-bar-fill--{{ $occLevel }}" style="width: {{ $occupation }}%"></div>
+        <span class="ci-card-bar-pct">{{ $occupation }}%</span>
+    </div>
+
+    {{-- Footer : année --}}
+    @if($classe->annee)
+        <footer class="ci-card-footer">
+            <i class="fas fa-calendar"></i>{{ $classe->annee->name }}
+        </footer>
+    @endif
+</article>
+
+{{-- Modal suppression/archivage (monochrome avec bouton rouge outline pour confirmation Q3a) --}}
+@if($canAdmin && $classe->nombre_etudiants == 0)
+    <div class="modal fade" id="deleteModal{{ $classe->id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ $classe->id }}" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header ci-modal-header">
+                    <h5 class="modal-title" id="deleteModalLabel{{ $classe->id }}">
+                        <i class="fas fa-archive me-2"></i>Archiver la classe
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Êtes-vous sûr de vouloir archiver la classe <strong>{{ $classe->name }}</strong> ?</p>
+                    <div class="ci-info-box">
+                        <i class="fas fa-info-circle"></i>
+                        <div>
+                            <strong>L'historique des inscriptions est préservé</strong> pour les rapports et statistiques des années passées. La classe ne sera simplement plus visible dans la liste active.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <form action="{{ route('esbtp.classes.destroy', $classe->id) }}" method="POST" class="d-inline">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn btn-outline-danger">
+                            <i class="fas fa-archive me-1"></i>Archiver
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
-</div>
 @endif

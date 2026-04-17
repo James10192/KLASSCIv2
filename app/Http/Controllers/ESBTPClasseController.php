@@ -2032,7 +2032,7 @@ class ESBTPClasseController extends Controller
         try {
             $result = $this->studentService->searchAvailableStudents(
                 $classe,
-                $request->input('q', ''),
+                (string) $request->input('q', ''),
             );
 
             return response()->json([

@@ -1,281 +1,1035 @@
 @extends('layouts.app')
 
-@section('title', 'Liste des classes - KLASSCI')
+@section('title', 'Gestion des classes - KLASSCI')
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+/* =====================================================================
+   CLASSES INDEX — namespace ci-*
+   Design premium monochrome bleu KLASSCI
+   ===================================================================== */
+
+/* -------- Variables locales -------- */
+.dashboard-acasi {
+    --ci-primary: #0453cb;
+    --ci-primary-dark: #033a8e;
+    --ci-accent: #3b7ddb;
+    --ci-text: #1e293b;
+    --ci-muted: #64748b;
+    --ci-surface: #f8fafc;
+    --ci-border: #e2e8f0;
+    --ci-success: #10b981;
+    --ci-warn: #f59e0b;
+    --ci-danger: #ef4444;
+}
+
+/* =========================================
+   HERO
+   ========================================= */
+.ci-hero {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 2rem 2.5rem 1.5rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
+    position: relative;
+    overflow: hidden;
+}
+.ci-hero::before {
+    content: '';
+    position: absolute;
+    top: -40px; right: -40px;
+    width: 220px; height: 220px;
+    border-radius: 50%;
+    background: rgba(255,255,255,.06);
+    pointer-events: none;
+}
+
+.ci-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
+}
+
+.ci-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.ci-hero-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+    color: #fff;
+}
+
+.ci-hero h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 .2rem;
+}
+.ci-hero p {
+    color: rgba(255,255,255,.75);
+    font-size: .88rem;
+    margin: 0 0 .5rem;
+}
+
+.ci-hero-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .3rem .7rem;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 99px;
+    color: #fff;
+    font-size: .78rem;
+    font-weight: 500;
+}
+.ci-hero-chip-btn {
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,.7);
+    padding: 0 .1rem;
+    cursor: pointer;
+    transition: color .15s;
+    font-size: .82rem;
+}
+.ci-hero-chip-btn:hover { color: #fff; }
+
+.ci-hero-actions {
+    display: flex;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+
+/* Boutons hero */
+.ci-btn--glass,
+.ci-btn--white {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .55rem 1.1rem;
+    border-radius: 10px;
+    font-size: .83rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: all .2s ease;
+    border: 1px solid transparent;
+}
+.ci-btn--glass {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    border-color: rgba(255,255,255,.18);
+}
+.ci-btn--glass:hover {
+    background: rgba(255,255,255,.2);
+    color: #fff;
+    transform: translateY(-1px);
+}
+.ci-btn--white {
+    background: #fff;
+    color: var(--ci-primary);
+}
+.ci-btn--white:hover {
+    background: #f1f5f9;
+    color: var(--ci-primary-dark);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(0,0,0,.12);
+}
+
+/* KPIs hero */
+.ci-kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: .75rem;
+    margin-top: 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+.ci-kpi {
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 12px;
+    padding: .9rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    transition: background .2s;
+}
+.ci-kpi:hover { background: rgba(255,255,255,.15); }
+.ci-kpi-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.14);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+.ci-kpi-body { flex: 1; min-width: 0; }
+.ci-kpi-value {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+}
+.ci-kpi-label {
+    font-size: .72rem;
+    color: rgba(255,255,255,.7);
+    margin-top: .25rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-weight: 500;
+}
+.ci-kpi-bar {
+    height: 4px;
+    background: rgba(255,255,255,.2);
+    border-radius: 99px;
+    margin-top: .5rem;
+    overflow: hidden;
+}
+.ci-kpi-bar-fill {
+    height: 100%;
+    background: #fff;
+    border-radius: 99px;
+    transition: width .6s ease;
+}
+
+/* =========================================
+   ALERTS (flash messages)
+   ========================================= */
+.ci-alert {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    padding: .85rem 1.1rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    font-weight: 500;
+    font-size: .9rem;
+}
+.ci-alert--success {
+    background: #ecfdf5;
+    border: 1px solid #a7f3d0;
+    color: #065f46;
+}
+.ci-alert--danger {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    color: #991b1b;
+}
+
+/* =========================================
+   OVERCAPACITY BANNER (monochrome)
+   ========================================= */
+.ci-banner {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-left: 4px solid var(--ci-warn);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: .9rem;
+}
+.ci-banner-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: #fef3c7;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--ci-warn);
+    flex-shrink: 0;
+    font-size: 1rem;
+}
+.ci-banner-body { flex: 1; min-width: 0; }
+.ci-banner-title {
+    font-weight: 700;
+    color: #92400e;
+    margin-bottom: .2rem;
+    font-size: .92rem;
+}
+.ci-banner-text {
+    color: #78350f;
+    font-size: .82rem;
+    line-height: 1.45;
+}
+.ci-banner-actions {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    flex-shrink: 0;
+}
+.ci-btn--outline {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .4rem .8rem;
+    border-radius: 8px;
+    border: 1px solid #92400e;
+    background: transparent;
+    color: #92400e;
+    font-size: .78rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+}
+.ci-btn--outline:hover {
+    background: #92400e;
+    color: #fff;
+}
+.ci-banner-close {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: none;
+    background: transparent;
+    color: #92400e;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s;
+}
+.ci-banner-close:hover { background: rgba(146,64,14,.1); }
+
+/* =========================================
+   TOOLBAR FILTRES
+   ========================================= */
+.ci-toolbar {
+    background: #fff;
+    border: 1px solid var(--ci-border);
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04);
+}
+.ci-toolbar-row {
+    display: flex;
+    gap: .6rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+.ci-search {
+    position: relative;
+    flex: 1 1 280px;
+    min-width: 240px;
+}
+.ci-search i {
+    position: absolute;
+    left: .9rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--ci-muted);
+    font-size: .88rem;
+    pointer-events: none;
+}
+.ci-search input {
+    width: 100%;
+    padding: .6rem .9rem .6rem 2.3rem;
+    border: 1px solid var(--ci-border);
+    border-radius: 10px;
+    font-size: .88rem;
+    background: var(--ci-surface);
+    transition: all .2s;
+}
+.ci-search input:focus {
+    outline: none;
+    background: #fff;
+    border-color: var(--ci-primary);
+    box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+}
+.ci-filter-select {
+    padding: .6rem .9rem;
+    border: 1px solid var(--ci-border);
+    border-radius: 10px;
+    font-size: .85rem;
+    background: var(--ci-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%2364748b' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E") no-repeat right .75rem center;
+    padding-right: 2rem;
+    cursor: pointer;
+    appearance: none;
+    color: var(--ci-text);
+    transition: all .2s;
+    min-width: 150px;
+}
+.ci-filter-select:focus {
+    outline: none;
+    border-color: var(--ci-primary);
+    box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+}
+.ci-btn--ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .55rem .85rem;
+    border: 1px solid var(--ci-border);
+    border-radius: 10px;
+    background: #fff;
+    color: var(--ci-text);
+    font-size: .83rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .2s;
+    text-decoration: none;
+}
+.ci-btn--ghost:hover {
+    border-color: var(--ci-primary);
+    color: var(--ci-primary);
+    background: rgba(4,83,203,.04);
+}
+
+.ci-toolbar-meta {
+    margin-top: .75rem;
+    padding-top: .75rem;
+    border-top: 1px dashed var(--ci-border);
+    font-size: .78rem;
+    color: var(--ci-muted);
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+.ci-count i {
+    margin-right: .35rem;
+    color: var(--ci-primary);
+}
+
+/* Dropdown menu premium */
+.ci-dropdown {
+    border-radius: 12px;
+    border: 1px solid var(--ci-border);
+    box-shadow: 0 10px 30px rgba(15,23,42,.1);
+    padding: .4rem;
+    min-width: 200px;
+}
+.ci-dropdown .dropdown-item {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    padding: .55rem .75rem;
+    border-radius: 8px;
+    font-size: .85rem;
+    color: var(--ci-text);
+    cursor: pointer;
+}
+.ci-dropdown .dropdown-item i {
+    width: 18px;
+    text-align: center;
+    color: var(--ci-muted);
+    font-size: .88rem;
+}
+.ci-dropdown .dropdown-item:hover {
+    background: rgba(4,83,203,.08);
+    color: var(--ci-primary);
+}
+.ci-dropdown .dropdown-item:hover i { color: var(--ci-primary); }
+.ci-dropdown-item--danger:hover,
+.ci-dropdown-item--danger:hover i {
+    color: #991b1b !important;
+    background: rgba(239,68,68,.08) !important;
+}
+
+/* =========================================
+   GRID RESULTATS
+   ========================================= */
+.ci-results {
+    margin-bottom: 1.5rem;
+}
+.ci-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.1rem;
+}
+
+/* =========================================
+   CARD CLASSE (classe-card.blade.php)
+   ========================================= */
+.ci-card {
+    background: #fff;
+    border: 1px solid var(--ci-border);
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    position: relative;
+    transition: all .2s ease;
+    display: flex;
+    flex-direction: column;
+    gap: .85rem;
+}
+.ci-card:hover {
+    border-color: #c7d4e5;
+    box-shadow: 0 8px 26px rgba(4,83,203,.08), 0 2px 6px rgba(15,23,42,.04);
+    transform: translateY(-2px);
+}
+.ci-card--inactive {
+    background: #f8fafc;
+    opacity: .72;
+}
+.ci-card-ribbon {
+    position: absolute;
+    top: 0; left: 0;
+    width: 3px;
+    height: 100%;
+    border-radius: 14px 0 0 14px;
+}
+.ci-card-ribbon--active { background: linear-gradient(180deg, var(--ci-primary), var(--ci-accent)); }
+.ci-card-ribbon--inactive { background: #cbd5e1; }
+
+.ci-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: .75rem;
+}
+.ci-card-identity {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex: 1;
+    min-width: 0;
+}
+.ci-card-icon {
+    width: 42px; height: 42px;
+    border-radius: 11px;
+    background: linear-gradient(135deg, rgba(4,83,203,.1), rgba(59,125,219,.1));
+    color: var(--ci-primary);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.ci-card-titles { min-width: 0; }
+.ci-card-title {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 0 0 .15rem;
+    color: var(--ci-text);
+    line-height: 1.25;
+}
+.ci-card-link {
+    color: inherit;
+    text-decoration: none;
+}
+.ci-card-link:hover { color: var(--ci-primary); }
+.ci-card-code {
+    display: inline-block;
+    background: var(--ci-surface);
+    color: var(--ci-muted);
+    font-family: 'Courier New', monospace;
+    font-size: .72rem;
+    font-weight: 600;
+    padding: .15rem .5rem;
+    border-radius: 6px;
+    letter-spacing: .03em;
+}
+
+.ci-card-header-right {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    position: relative;
+    z-index: 2;
+}
+
+.ci-card-status {
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: .25rem .55rem;
+    border-radius: 99px;
+}
+.ci-card-status--active {
+    background: rgba(16,185,129,.12);
+    color: #065f46;
+}
+.ci-card-status--inactive {
+    background: rgba(148,163,184,.2);
+    color: #475569;
+}
+
+.ci-card-menu { position: relative; }
+.ci-card-kebab {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--ci-muted);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .85rem;
+    transition: all .15s;
+}
+.ci-card-kebab:hover,
+.ci-card-kebab[aria-expanded="true"] {
+    background: var(--ci-surface);
+    color: var(--ci-primary);
+    border-color: var(--ci-border);
+}
+
+.ci-card-meta {
+    display: flex;
+    flex-direction: column;
+    gap: .3rem;
+}
+.ci-card-meta-line {
+    font-size: .82rem;
+    color: var(--ci-text);
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+}
+.ci-card-meta-line i {
+    color: var(--ci-muted);
+    width: 14px;
+    text-align: center;
+    font-size: .78rem;
+}
+.ci-card-meta-parent {
+    color: var(--ci-muted);
+    font-size: .76rem;
+    font-weight: 400;
+}
+
+.ci-card-stats {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    padding: .6rem 0;
+    background: var(--ci-surface);
+    border-radius: 10px;
+    gap: .5rem;
+}
+.ci-card-stat {
+    flex: 1;
+    text-align: center;
+}
+.ci-card-stat-value {
+    display: block;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--ci-primary);
+    line-height: 1;
+}
+.ci-card-stat-value--warn { color: var(--ci-warn); }
+.ci-card-stat-value--ok { color: var(--ci-success); }
+.ci-card-stat-label {
+    font-size: .68rem;
+    color: var(--ci-muted);
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-weight: 500;
+    margin-top: .15rem;
+    display: block;
+}
+.ci-card-stat--separator {
+    flex: 0 0 1px;
+    background: var(--ci-border);
+    align-self: stretch;
+    margin: .2rem 0;
+}
+
+.ci-card-bar {
+    position: relative;
+    height: 8px;
+    background: var(--ci-surface);
+    border-radius: 99px;
+    overflow: hidden;
+}
+.ci-card-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width .6s ease;
+}
+.ci-card-bar-fill--low { background: linear-gradient(90deg, #a7d4ff, #5e91de); }
+.ci-card-bar-fill--mid { background: linear-gradient(90deg, #5e91de, var(--ci-primary)); }
+.ci-card-bar-fill--high { background: linear-gradient(90deg, var(--ci-primary), var(--ci-primary-dark)); }
+.ci-card-bar-fill--full { background: linear-gradient(90deg, #fcd34d, var(--ci-warn)); }
+.ci-card-bar-pct {
+    position: absolute;
+    right: .3rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: .62rem;
+    font-weight: 700;
+    color: var(--ci-text);
+    background: #fff;
+    padding: 0 .3rem;
+    border-radius: 4px;
+}
+
+.ci-card-footer {
+    font-size: .75rem;
+    color: var(--ci-muted);
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    padding-top: .5rem;
+    border-top: 1px solid var(--ci-surface);
+}
+.ci-card-footer i { font-size: .72rem; }
+
+/* =========================================
+   LOAD MORE (restylé)
+   ========================================= */
+.ci-load-more-container {
+    text-align: center;
+    margin-top: 1.75rem;
+}
+.ci-load-more-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .75rem 1.75rem;
+    background: #fff;
+    border: 1px solid var(--ci-border);
+    border-radius: 99px;
+    color: var(--ci-primary);
+    font-size: .88rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s;
+    box-shadow: 0 1px 3px rgba(15,23,42,.05);
+}
+.ci-load-more-btn:hover {
+    background: var(--ci-primary);
+    color: #fff;
+    border-color: var(--ci-primary);
+    box-shadow: 0 6px 18px rgba(4,83,203,.25);
+    transform: translateY(-1px);
+}
+.ci-load-more-spinner {
+    padding: 1rem;
+}
+
+/* Empty state */
+.ci-empty {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    background: #fff;
+    border: 2px dashed var(--ci-border);
+    border-radius: 14px;
+}
+.ci-empty-icon {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: var(--ci-surface);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--ci-muted);
+    font-size: 1.75rem;
+    margin-bottom: 1rem;
+}
+.ci-empty-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--ci-text);
+    margin-bottom: .35rem;
+}
+.ci-empty-text {
+    font-size: .88rem;
+    color: var(--ci-muted);
+    margin-bottom: 1rem;
+}
+
+/* =========================================
+   MODALS monochrome
+   ========================================= */
+.ci-modal-header {
+    background: linear-gradient(135deg, #0a3d8f 0%, var(--ci-primary) 100%);
+    color: #fff;
+    border-bottom: none;
+    padding: 1rem 1.5rem;
+    border-top-left-radius: calc(0.5rem - 1px);
+    border-top-right-radius: calc(0.5rem - 1px);
+}
+.ci-modal-header .modal-title {
+    color: #fff;
+    font-weight: 700;
+    font-size: 1rem;
+}
+.ci-modal-header .btn-close-white { filter: brightness(2); }
+
+.ci-info-box {
+    display: flex;
+    gap: .6rem;
+    padding: .8rem 1rem;
+    background: rgba(4,83,203,.06);
+    border-left: 3px solid var(--ci-primary);
+    border-radius: 8px;
+    color: var(--ci-text);
+    font-size: .85rem;
+    line-height: 1.5;
+    margin-top: .75rem;
+}
+.ci-info-box i {
+    color: var(--ci-primary);
+    font-size: 1rem;
+    flex-shrink: 0;
+    margin-top: .15rem;
+}
+
+.ci-steps {
+    padding-left: 1.2rem;
+    line-height: 1.8;
+    color: var(--ci-text);
+    font-size: .88rem;
+}
+
+/* Overcapacity modal table (monochrome) */
+.ci-overcapacity-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: .85rem;
+}
+.ci-overcapacity-table th {
+    background: var(--ci-surface);
+    color: var(--ci-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: .6rem .8rem;
+    border-bottom: 1px solid var(--ci-border);
+    text-align: left;
+}
+.ci-overcapacity-table td {
+    padding: .7rem .8rem;
+    border-bottom: 1px solid var(--ci-surface);
+    vertical-align: middle;
+}
+.ci-badge {
+    display: inline-block;
+    padding: .2rem .55rem;
+    border-radius: 6px;
+    font-size: .75rem;
+    font-weight: 600;
+}
+.ci-badge--muted { background: var(--ci-surface); color: var(--ci-muted); }
+.ci-badge--primary { background: rgba(4,83,203,.12); color: var(--ci-primary); }
+.ci-badge--warn { background: #fef3c7; color: #92400e; }
+.ci-badge--danger { background: #fee2e2; color: #991b1b; }
+.ci-badge--success { background: rgba(16,185,129,.12); color: #065f46; }
+
+/* =========================================
+   RESPONSIVE
+   ========================================= */
+@media (max-width: 992px) {
+    .ci-hero { padding: 1.5rem 1.5rem 1.25rem; }
+    .ci-hero h1 { font-size: 1.3rem; }
+}
+@media (max-width: 768px) {
+    .ci-hero-top { flex-direction: column; align-items: stretch; }
+    .ci-hero-actions { justify-content: flex-start; }
+    .ci-kpis { grid-template-columns: repeat(2, 1fr); }
+    .ci-grid { grid-template-columns: 1fr; }
+    .ci-search { flex: 1 1 100%; }
+    .ci-filter-select { flex: 1 1 calc(50% - .3rem); min-width: 0; }
+}
+@media (max-width: 480px) {
+    .ci-hero { padding: 1.25rem; }
+    .ci-hero h1 { font-size: 1.15rem; }
+    .ci-kpis { grid-template-columns: 1fr; }
+    .ci-hero-icon { width: 44px; height: 44px; font-size: 1.1rem; }
+}
+</style>
 @endpush
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header moderne -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1>Gestion des Classes</h1>
-                <p class="header-subtitle">Organisation et suivi des classes par filière et niveau</p>
-            </div>
-            <div class="header-actions">
-                @if(auth()->user()->can('access_admin'))
-                <form action="{{ route('esbtp.classes.sync-systeme-academique') }}" method="POST" style="display:inline;">
-                    @csrf
-                    <button type="submit" class="btn-acasi secondary" title="Synchroniser BTS/LMD depuis les niveaux d'études">
-                        <i class="fas fa-sync-alt"></i>Sync BTS/LMD
-                    </button>
-                </form>
-                <button type="button" class="btn-acasi primary" id="btn-open-create-modal">
-                    <i class="fas fa-plus-circle"></i>Nouvelle Classe
-                </button>
-                @endif
-            </div>
-        </div>
-        <!-- Messages d'état -->
-        @if(session('success'))
-            <div class="card-moderne" style="background: rgba(16, 185, 129, 0.1); border-left: 4px solid var(--success); margin-bottom: var(--space-lg);">
-                <div style="padding: var(--space-md);">
-                    <div class="color-success font-semibold">
-                        <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
+
+        {{-- =========================
+             HERO + KPIs
+             ========================= --}}
+        <div class="ci-hero">
+            <div class="ci-hero-top">
+                <div class="ci-hero-left">
+                    <div class="ci-hero-icon">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <div>
+                        <h1>Gestion des classes</h1>
+                        <p>Organisation et suivi par filière et niveau</p>
+                        <span class="ci-hero-chip">
+                            <i class="fas fa-calendar-alt"></i>
+                            Année {{ $anneeAcademique }}
+                            <button type="button" class="ci-hero-chip-btn" data-bs-toggle="modal" data-bs-target="#yearChangeModal" title="Comment changer d'année ?">
+                                <i class="fas fa-info-circle"></i>
+                            </button>
+                        </span>
                     </div>
                 </div>
+                <div class="ci-hero-actions">
+                    @if(auth()->user()->can('access_admin'))
+                        <form action="{{ route('esbtp.classes.sync-systeme-academique') }}" method="POST" style="display:inline;">
+                            @csrf
+                            <button type="submit" class="ci-btn--glass" title="Synchroniser BTS/LMD depuis les niveaux d'études">
+                                <i class="fas fa-sync-alt"></i>Sync BTS/LMD
+                            </button>
+                        </form>
+                        <button type="button" class="ci-btn--white" id="btn-open-create-modal">
+                            <i class="fas fa-plus-circle"></i>Nouvelle classe
+                        </button>
+                    @endif
+                </div>
+            </div>
+
+            <div class="ci-kpis">
+                <div class="ci-kpi">
+                    <div class="ci-kpi-icon"><i class="fas fa-graduation-cap"></i></div>
+                    <div class="ci-kpi-body">
+                        <div class="ci-kpi-value">{{ $kpiStats['totalClasses'] }}</div>
+                        <div class="ci-kpi-label">{{ $kpiStats['classesActives'] }} actives</div>
+                    </div>
+                </div>
+                <div class="ci-kpi">
+                    <div class="ci-kpi-icon"><i class="fas fa-users"></i></div>
+                    <div class="ci-kpi-body">
+                        <div class="ci-kpi-value">{{ $kpiStats['totalEtudiants'] }}</div>
+                        <div class="ci-kpi-label">Étudiants inscrits</div>
+                    </div>
+                </div>
+                <div class="ci-kpi">
+                    <div class="ci-kpi-icon"><i class="fas fa-chair"></i></div>
+                    <div class="ci-kpi-body">
+                        <div class="ci-kpi-value">{{ $kpiStats['placesDisponibles'] }}</div>
+                        <div class="ci-kpi-label">sur {{ $kpiStats['totalPlaces'] }} places</div>
+                        <div class="ci-kpi-bar"><div class="ci-kpi-bar-fill" style="width: {{ $kpiStats['tauxOccupation'] }}%"></div></div>
+                    </div>
+                </div>
+                <div class="ci-kpi">
+                    <div class="ci-kpi-icon"><i class="fas fa-chart-pie"></i></div>
+                    <div class="ci-kpi-body">
+                        <div class="ci-kpi-value">{{ $kpiStats['tauxOccupation'] }}%</div>
+                        <div class="ci-kpi-label">Taux d'occupation</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {{-- Messages flash --}}
+        @if(session('success'))
+            <div class="ci-alert ci-alert--success">
+                <i class="fas fa-check-circle"></i>{{ session('success') }}
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="ci-alert ci-alert--danger">
+                <i class="fas fa-exclamation-triangle"></i>{{ session('error') }}
             </div>
         @endif
 
-        @if(session('error'))
-            <div class="card-moderne" style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid var(--danger); margin-bottom: var(--space-lg);">
-                <div style="padding: var(--space-md);">
-                    <div class="color-danger font-semibold">
-                        <i class="fas fa-exclamation-triangle me-2"></i>{{ session('error') }}
-                    </div>
-                </div>
+        {{-- Bannière overcapacité (chargée en JS, masquée par défaut) --}}
+        <div id="overcapacity-warning" class="ci-banner" style="display: none;">
+            <div class="ci-banner-icon"><i class="fas fa-triangle-exclamation"></i></div>
+            <div class="ci-banner-body">
+                <div class="ci-banner-title" id="overcapacity-title">Classes en surcapacité détectées</div>
+                <div class="ci-banner-text" id="overcapacity-message">Certaines classes ont dépassé leur capacité maximale autorisée.</div>
             </div>
-@endif
+            <div class="ci-banner-actions">
+                <button type="button" class="ci-btn--outline" onclick="showOvercapacityModal()">
+                    <i class="fas fa-list"></i>Voir les détails
+                </button>
+                <button type="button" class="ci-banner-close" onclick="dismissOvercapacityWarning()" title="Ignorer">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
 
-        <!-- Avertissement Classes en Surcapacité -->
-        <div id="overcapacity-warning" class="card-moderne" style="background: rgba(251, 146, 60, 0.1); border-left: 4px solid var(--warning); margin-bottom: var(--space-lg); display: none;">
-            <div style="padding: var(--space-md);">
-                <div class="d-flex align-items-start justify-content-between">
-                    <div class="flex-grow-1">
-                        <div class="color-warning font-semibold mb-2">
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            <span id="overcapacity-title">Classes en surcapacité détectées</span>
-                        </div>
-                        <div id="overcapacity-message" class="text-muted small mb-3">
-                            Certaines classes ont dépassé leur capacité maximale autorisée.
-                        </div>
-                        <button type="button" class="btn btn-sm btn-outline-warning" onclick="showOvercapacityModal()">
-                            <i class="fas fa-list me-1"></i>Voir les détails
-                        </button>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline-secondary ms-3" onclick="dismissOvercapacityWarning()">
-                        <i class="fas fa-times"></i>
+        {{-- =========================
+             TOOLBAR (filtres + export)
+             ========================= --}}
+        <form method="GET" action="{{ route('esbtp.classes.index') }}" id="filtersForm" class="ci-toolbar">
+            <div class="ci-toolbar-row">
+                <div class="ci-search">
+                    <i class="fas fa-search"></i>
+                    <input type="text" name="search" id="search" value="{{ request('search') }}" placeholder="Rechercher une classe (nom ou code)..." autocomplete="off">
+                </div>
+
+                <select name="filiere_id" id="filiere_id" class="ci-filter-select">
+                    <option value="">Toutes les filières</option>
+                    @foreach($filieres as $filiere)
+                        <option value="{{ $filiere->id }}" @selected(request('filiere_id') == $filiere->id)>{{ $filiere->name }}</option>
+                    @endforeach
+                </select>
+
+                <select name="niveau_id" id="niveau_id" class="ci-filter-select">
+                    <option value="">Tous les niveaux</option>
+                    @foreach($niveaux as $niveau)
+                        <option value="{{ $niveau->id }}" @selected(request('niveau_id') == $niveau->id)>{{ $niveau->name }}</option>
+                    @endforeach
+                </select>
+
+                <select name="statut" id="statut" class="ci-filter-select">
+                    <option value="">Tous les statuts</option>
+                    <option value="active" @selected(request('statut') == 'active')>Actives</option>
+                    <option value="inactive" @selected(request('statut') == 'inactive')>Inactives</option>
+                </select>
+
+                <select name="capacite" id="capacite" class="ci-filter-select">
+                    <option value="">Toutes capacités</option>
+                    <option value="disponible" @selected(request('capacite') == 'disponible')>Places disponibles</option>
+                    <option value="pleine" @selected(request('capacite') == 'pleine')>Classes pleines</option>
+                </select>
+
+                <button type="button" id="reset-filters-btn" class="ci-btn--ghost" title="Réinitialiser les filtres">
+                    <i class="fas fa-rotate-left"></i>
+                </button>
+
+                <div class="dropdown">
+                    <button type="button" class="ci-btn--ghost" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="fas fa-download"></i>Exporter
                     </button>
+                    <ul class="dropdown-menu dropdown-menu-end ci-dropdown">
+                        <li><button type="button" class="dropdown-item" onclick="exportClasses('excel')"><i class="fas fa-file-excel"></i>Excel (.xlsx)</button></li>
+                        <li><button type="button" class="dropdown-item" onclick="exportClasses('csv')"><i class="fas fa-file-csv"></i>CSV</button></li>
+                        <li><button type="button" class="dropdown-item" onclick="exportClasses('pdf')"><i class="fas fa-file-pdf"></i>PDF</button></li>
+                    </ul>
                 </div>
-            </div>
-        </div>
 
-        <!-- Information année académique courante -->
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <div class="section-title mb-md">
-                    <i class="fas fa-calendar me-2"></i>Contexte d'affichage
-                </div>
-                <div style="display: flex; gap: var(--space-md); align-items: end;">
-                    <div style="flex: 1; max-width: 300px;">
-                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
-                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
-                            <option value="{{ $anneeAcademique }}" selected>
-                                {{ $anneeAcademique }} (Année en cours)
-                            </option>
-                        </select>
-                    </div>
-                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
-                        <i class="fas fa-info-circle"></i>Changer d'année
-                    </button>
-                </div>
-                <div class="mt-3">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Les classes sont visibles pour toutes les années, mais les étudiants affichés correspondent à l'année courante.
-                    </small>
-                </div>
-            </div>
-        </div>
-
-        <!-- Filtres avancés -->
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <div class="section-title mb-md">
-                    <i class="fas fa-filter me-2"></i>Filtres de recherche
-                </div>
-                <form method="GET" action="{{ route('esbtp.classes.index') }}" id="filtersForm">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-md);">
-                        <!-- Recherche générale -->
-                        <div>
-                            <label for="search" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Recherche</label>
-                            <input type="text" name="search" id="search" value="{{ request('search') }}" placeholder="Nom ou code de classe..." class="form-control" style="width: 100%;">
-                        </div>
-                        
-                        <!-- Filière -->
-                        <div>
-                            <label for="filiere_id" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Filière</label>
-                            <select name="filiere_id" id="filiere_id" class="form-control" style="width: 100%;">
-                                <option value="">Toutes les filières</option>
-                                @foreach($filieres as $filiere)
-                                    <option value="{{ $filiere->id }}" {{ request('filiere_id') == $filiere->id ? 'selected' : '' }}>
-                                        {{ $filiere->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        
-                        <!-- Niveau -->
-                        <div>
-                            <label for="niveau_id" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Niveau</label>
-                            <select name="niveau_id" id="niveau_id" class="form-control" style="width: 100%;">
-                                <option value="">Tous les niveaux</option>
-                                @foreach($niveaux as $niveau)
-                                    <option value="{{ $niveau->id }}" {{ request('niveau_id') == $niveau->id ? 'selected' : '' }}>
-                                        {{ $niveau->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        
-                        
-                        <!-- Statut -->
-                        <div>
-                            <label for="statut" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Statut</label>
-                            <select name="statut" id="statut" class="form-control" style="width: 100%;">
-                                <option value="">Tous les statuts</option>
-                                <option value="active" {{ request('statut') == 'active' ? 'selected' : '' }}>Actives</option>
-                                <option value="inactive" {{ request('statut') == 'inactive' ? 'selected' : '' }}>Inactives</option>
-                            </select>
-                        </div>
-                        
-                        <!-- Capacité -->
-                        <div>
-                            <label for="capacite" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Capacité</label>
-                            <select name="capacite" id="capacite" class="form-control" style="width: 100%;">
-                                <option value="">Toutes</option>
-                                <option value="disponible" {{ request('capacite') == 'disponible' ? 'selected' : '' }}>Disponibles</option>
-                                <option value="pleine" {{ request('capacite') == 'pleine' ? 'selected' : '' }}>Pleines</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: var(--space-md); align-items: center; flex-wrap: wrap;">
-                        <button type="submit" class="btn-acasi primary">
-                            <i class="fas fa-search me-1"></i>Filtrer
-                        </button>
-                        <button type="button" id="reset-filters-btn" class="btn-acasi secondary">
-                            <i class="fas fa-times me-1"></i>Réinitialiser
-                        </button>
-
-                        <!-- Boutons d'export -->
-                        <div class="dropup" style="display: inline-block;">
-                            <button type="button" class="btn-acasi secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                                <i class="fas fa-download"></i>Exporter
-                            </button>
-                            <ul class="dropdown-menu">
-                                <li>
-                                    <a class="dropdown-item" href="#" onclick="exportClasses('excel'); return false;">
-                                        <i class="fas fa-file-excel text-success me-2"></i>Excel (.xlsx)
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="#" onclick="exportClasses('csv'); return false;">
-                                        <i class="fas fa-file-csv text-info me-2"></i>CSV
-                                    </a>
-                                </li>
-                                <li>
-                                    <a class="dropdown-item" href="#" onclick="exportClasses('pdf'); return false;">
-                                        <i class="fas fa-file-pdf text-danger me-2"></i>PDF
-                                    </a>
-                                </li>
-                            </ul>
-                        </div>
-
-                        <div style="margin-left: auto; font-size: var(--text-small); color: var(--text-muted);">
-                            <i class="fas fa-list me-1"></i><span id="classes-count">{{ $classes->count() }}</span> classe(s) trouvée(s)
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-        <!-- Statistiques KPI -->
-        <div class="kpi-grid">
-            <div class="card-moderne kpi-card animate-slide-up">
-                <div class="kpi-title">
-                    <i class="fas fa-graduation-cap me-1"></i>Total Classes Actives
-                </div>
-                <div class="kpi-value color-primary">{{ $kpiStats['totalClasses'] }}</div>
-                <div class="kpi-trend {{ $kpiStats['classesActives'] == $kpiStats['totalClasses'] ? 'positive' : 'negative' }}">
-                    <i class="fas fa-{{ $kpiStats['classesActives'] == $kpiStats['totalClasses'] ? 'check' : 'exclamation' }}-circle"></i>
-                    {{ $kpiStats['classesActives'] }} actives
-                </div>
+                {{-- Bouton submit caché pour maintenir compatibilité form AJAX --}}
+                <button type="submit" style="display:none;" aria-hidden="true">Filtrer</button>
             </div>
 
-            <div class="card-moderne kpi-card animate-slide-up">
-                <div class="kpi-title">
-                    <i class="fas fa-users me-1"></i>Étudiants Inscrits
-                </div>
-                <div class="kpi-value color-accent">{{ $kpiStats['totalEtudiants'] }}</div>
-                <div class="kpi-trend positive">
-                    <i class="fas fa-chart-line"></i>
-                    Année {{ $anneeAcademique }}
-                </div>
+            <div class="ci-toolbar-meta">
+                <span class="ci-count"><i class="fas fa-list"></i><span id="classes-count">{{ $classes->count() }}</span> classe(s) trouvée(s)</span>
             </div>
+        </form>
 
-            <div class="card-moderne kpi-card animate-slide-up">
-                <div class="kpi-title">
-                    <i class="fas fa-chair me-1"></i>Places Disponibles
-                </div>
-                <div class="kpi-value color-{{ $kpiStats['placesDisponibles'] > 0 ? 'success' : 'danger' }}">{{ $kpiStats['placesDisponibles'] }}</div>
-                <div class="kpi-trend {{ $kpiStats['placesDisponibles'] > 0 ? 'positive' : 'negative' }}">
-                    <i class="fas fa-{{ $kpiStats['placesDisponibles'] > 0 ? 'arrow-up' : 'arrow-down' }}"></i>
-                    sur {{ $kpiStats['totalPlaces'] }} places
-                </div>
-            </div>
-
-            <div class="card-moderne kpi-card animate-slide-up">
-                <div class="kpi-title">
-                    <i class="fas fa-percentage me-1"></i>Taux Occupation
-                </div>
-                <div class="kpi-value color-{{ $kpiStats['tauxOccupation'] > 90 ? 'danger' : ($kpiStats['tauxOccupation'] > 70 ? 'warning' : 'success') }}">{{ $kpiStats['tauxOccupation'] }}%</div>
-                <div class="kpi-trend {{ $kpiStats['tauxOccupation'] < 100 ? 'positive' : 'negative' }}">
-                    <i class="fas fa-chart-pie"></i>
-                    Occupation globale
-                </div>
-            </div>
-        </div>
-
-        <!-- Liste des classes en grid moderne -->
-        <div class="card-moderne" style="padding: var(--space-lg);">
-            <div class="section-title">
-                <i class="fas fa-list me-2"></i>Classes par Filière et Niveau
-            </div>
-
-            <div id="classes-results">
-                @include('esbtp.classes.partials.results', ['classes' => $classes])
-            </div>
+        {{-- =========================
+             GRID RÉSULTATS
+             ========================= --}}
+        <div id="classes-results" class="ci-results">
+            @include('esbtp.classes.partials.results', ['classes' => $classes])
         </div>
 
     </div>
 </div>
 
-{{-- Modal Création Classe AJAX --}}
+{{-- ========================================
+     MODAL CRÉATION CLASSE (AJAX)
+     ======================================== --}}
 <div class="modal fade" id="createClasseModal" tabindex="-1" aria-labelledby="createClasseModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header ci-modal-header">
                 <h5 class="modal-title" id="createClasseModalLabel">
-                    <i class="fas fa-plus-circle me-2"></i>Nouvelle Classe
+                    <i class="fas fa-plus-circle me-2"></i>Nouvelle classe
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <div class="modal-body" id="modal-create-body">
-                {{-- Chargé via AJAX --}}
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Chargement...</span>
@@ -284,28 +1038,29 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times"></i> Annuler
+                    <i class="fas fa-times me-1"></i>Annuler
                 </button>
                 <button type="button" class="btn btn-primary" id="modal-create-submit-btn" disabled>
-                    <i class="fas fa-save"></i> Enregistrer la classe
+                    <i class="fas fa-save me-1"></i>Enregistrer la classe
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-{{-- Modal Édition Classe AJAX --}}
+{{-- ========================================
+     MODAL ÉDITION CLASSE (AJAX)
+     ======================================== --}}
 <div class="modal fade" id="editClasseModal" tabindex="-1" aria-labelledby="editClasseModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header">
+            <div class="modal-header ci-modal-header">
                 <h5 class="modal-title" id="editClasseModalLabel">
-                    <i class="fas fa-edit me-2"></i>Modifier la Classe
+                    <i class="fas fa-edit me-2"></i>Modifier la classe
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <div class="modal-body" id="modal-edit-body">
-                {{-- Chargé via AJAX --}}
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
                         <span class="visually-hidden">Chargement...</span>
@@ -314,36 +1069,36 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times"></i> Annuler
+                    <i class="fas fa-times me-1"></i>Annuler
                 </button>
                 <button type="button" class="btn btn-primary" id="modal-edit-submit-btn" disabled>
-                    <i class="fas fa-save"></i> Mettre à jour la classe
+                    <i class="fas fa-save me-1"></i>Mettre à jour la classe
                 </button>
             </div>
-</div>
+        </div>
     </div>
 </div>
 
-{{-- Modal Classes en Surcapacité --}}
+{{-- ========================================
+     MODAL OVERCAPACITY (détails surcapacité)
+     ======================================== --}}
 <div class="modal fade" id="overcapacityModal" tabindex="-1" aria-labelledby="overcapacityModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-warning bg-opacity-10">
+            <div class="modal-header ci-modal-header">
                 <h5 class="modal-title" id="overcapacityModalLabel">
-                    <i class="fas fa-exclamation-triangle text-warning me-2"></i>
-                    Classes en Surcapacité
+                    <i class="fas fa-triangle-exclamation me-2"></i>Classes en surcapacité
                 </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <div class="modal-body">
-                <div class="alert alert-warning mb-3">
-                    <i class="fas fa-info-circle me-2"></i>
-                    <strong>Attention :</strong> Les classes ci-dessous ont dépassé leur capacité maximale autorisée.
+                <div class="ci-info-box mb-3" style="margin-top:0;">
+                    <i class="fas fa-info-circle"></i>
+                    <div><strong>Attention :</strong> les classes ci-dessous ont dépassé leur capacité maximale autorisée.</div>
                 </div>
-                
                 <div id="overcapacity-content">
                     <div class="text-center py-4">
-                        <div class="spinner-border text-warning" role="status">
+                        <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Chargement...</span>
                         </div>
                         <div class="mt-2 text-muted">Chargement des classes en surcapacité...</div>
@@ -352,530 +1107,385 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times"></i> Fermer
+                    <i class="fas fa-times me-1"></i>Fermer
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-@section('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    loadOvercapacityClasses();
-});
-
-// Charger les classes en surcapacité
-function loadOvercapacityClasses() {
-    fetch('{{ route("esbtp.classes.overcapacity") }}')
-        .then(response => response.json())
-        .then(data => {
-            if (data.success && data.classes.length > 0) {
-                // Afficher l'avertissement dans la page
-                const warning = document.getElementById('overcapacity-warning');
-                warning.style.display = 'block';
-                
-                // Mettre à jour le titre et message
-                document.getElementById('overcapacity-title').textContent = 
-                    `${data.classes.length} classe(s) en surcapacité (${data.annee_universitaire})`;
-                document.getElementById('overcapacity-message').textContent = 
-                    data.message;
-                
-                // Charger les détails dans le modal
-                loadOvercapacityModalContent(data.classes);
-            }
-        })
-        .catch(error => {
-            console.error('Erreur lors du chargement des classes en surcapacité:', error);
-        });
-}
-
-// Charger le contenu du modal
-function loadOvercapacityModalContent(classes) {
-    const content = document.getElementById('overcapacity-content');
-    
-    if (classes.length === 0) {
-        content.innerHTML = `
-            <div class="text-center py-4">
-                <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
-                <h5 class="text-success">Aucune classe en surcapacité</h5>
-                <p class="text-muted">Toutes les classes respectent leur capacité maximale.</p>
-            </div>
-        `;
-        return;
-    }
-    
-    let html = `
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead class="table-warning">
-                    <tr>
-                        <th>Classe</th>
-                        <th>Filière</th>
-                        <th>Niveau</th>
-                        <th>Capacité</th>
-                        <th>Inscrits</th>
-                        <th>Taux Occupation</th>
-                        <th>Dépassement</th>
-                        <th>Statut</th>
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    classes.forEach(classe => {
-        const tauxClass = classe.taux_occupation >= 150 ? 'danger' : 
-                           classe.taux_occupation >= 120 ? 'warning' : 'warning';
-        
-        html += `
-            <tr>
-                <td>
-                    <strong>${classe.nom}</strong>
-                    <br><small class="text-muted">ID: ${classe.id}</small>
-                </td>
-                <td>${classe.filiere}</td>
-                <td>${classe.niveau}</td>
-                <td>
-                    <span class="badge bg-secondary">${classe.places_totales}</span>
-                </td>
-                <td>
-                    <span class="badge bg-info">${classe.inscriptions_actives}</span>
-                </td>
-                <td>
-                    <span class="badge bg-${tauxClass}">${classe.taux_occupation}%</span>
-                </td>
-                <td>
-                    <span class="badge bg-danger">+${classe.depassement}</span>
-                </td>
-                <td>
-                    <span class="badge bg-${classe.statut === 'Actif' ? 'success' : 'secondary'}">
-                        ${classe.statut}
-                    </span>
-                </td>
-            </tr>
-        `;
-    });
-    
-    html += `
-                </tbody>
-            </table>
-        </div>
-        
-        <div class="alert alert-info mt-3">
-            <i class="fas fa-lightbulb me-2"></i>
-            <strong>Recommandation :</strong> 
-            <ul class="mb-0 mt-2">
-                <li>Envisagez d'augmenter la capacité des classes concernées</li>
-                <li>Créez des classes supplémentaires si nécessaire</li>
-                <li>Les superadmins et secrétaires peuvent contourner cette limite en cas de nécessité</li>
-            </ul>
-        </div>
-    `;
-    
-    content.innerHTML = html;
-}
-
-// Afficher le modal des classes en surcapacité
-function showOvercapacityModal() {
-    const modal = new bootstrap.Modal(document.getElementById('overcapacityModal'));
-    modal.show();
-}
-
-// Masquer l'avertissement
-function dismissOvercapacityWarning() {
-    const warning = document.getElementById('overcapacity-warning');
-    warning.style.display = 'none';
-}
-</script>
-@endsection
+{{-- Modal "Changer d'année" (partial partagé) --}}
+@include('esbtp.classes.partials.year-change-modal')
 
 @endsection
-
-@push('styles')
-<style>
-/* Styles spécifiques pour améliorer l'intégration avec dashboard-moderne.css */
-.me-1 {
-    margin-right: 0.25rem;
-}
-
-.me-2 {
-    margin-right: 0.5rem;
-}
-
-/* Amélioration responsive pour les grilles */
-@media (max-width: 768px) {
-    .resultats-grid {
-        grid-template-columns: 1fr !important;
-    }
-    
-    .kpi-grid {
-        grid-template-columns: repeat(2, 1fr) !important;
-    }
-}
-
-@media (max-width: 480px) {
-    .kpi-grid {
-        grid-template-columns: 1fr !important;
-    }
-}
-
-/* Effets hover pour les cards de classe */
-.resultat-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-hover);
-}
-</style>
-@endpush
-
-<!-- Modal pour les instructions de changement d'année -->
-<div class="modal fade" id="yearChangeModal" tabindex="-1" role="dialog" aria-labelledby="yearChangeModalLabel" aria-hidden="true">
-    <div class="modal-dialog" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="yearChangeModalLabel">Comment changer l'année académique ?</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close" style="background: none; border: none; font-size: 1.5rem; font-weight: bold; color: #999; cursor: pointer;">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p><strong>Pour consulter les données d'une autre année :</strong></p>
-                <ol style="padding-left: 20px; line-height: 1.6; margin: 15px 0;">
-                    <li><strong>Aller dans</strong> : Menu → Années Universitaires</li>
-                    <li><strong>Trouver l'année souhaitée</strong> (ex: 2023-2024)</li>
-                    <li><strong>Cliquer sur "Activer"</strong> pour la définir comme année courante</li>
-                    <li><strong>Revenir ici</strong> : Les étudiants affichés dans chaque classe se mettront à jour automatiquement</li>
-                </ol>
-                <hr style="margin: 15px 0;">
-                <p style="color: #6b7280; font-size: 14px;">
-                    <i class="fas fa-info-circle"></i> 
-                    <strong>Note :</strong> Seule une année peut être "courante" à la fois. 
-                    Changer l'année courante affecte l'affichage des étudiants dans toute l'application.
-                </p>
-                <div style="background: #f3f4f6; padding: 12px; border-radius: 6px; margin-top: 15px;">
-                    <strong>Exemple :</strong><br>
-                    • Année courante = 2024-2025 → Voir les étudiants inscrits en 2024-2025<br>
-                    • Année courante = 2023-2024 → Voir les étudiants inscrits en 2023-2024
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#yearChangeModal').modal('hide');">Fermer</button>
-                <a href="{{ route('esbtp.annees-universitaires.index') }}" target="_blank" class="btn btn-primary">
-                    <i class="fas fa-external-link-alt"></i> Aller aux Années
-                </a>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.2/dist/js/bootstrap.bundle.min.js"></script>
-
-<script>
-function showYearChangeInfo() {
-    $('#yearChangeModal').modal('show');
-}
-
-// Gérer la fermeture de la modal d'info année
-$(document).ready(function() {
-    // Gérer la fermeture avec le bouton X
-    $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
-        $('#yearChangeModal').modal('hide');
-    });
-
-    // Gérer la fermeture avec le bouton Fermer
-    $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
-        $('#yearChangeModal').modal('hide');
-    });
-});
-</script>
 
 @push('scripts')
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const form = document.getElementById('filtersForm');
-        const resultsContainer = document.getElementById('classes-results');
-        const classesGrid = document.getElementById('classes-grid');
-        const submitButton = form.querySelector('button[type="submit"]');
-        const filterInputs = form.querySelectorAll('select, input[name="search"]');
-        const resetBtn = document.getElementById('reset-filters-btn');
-        const classesCountSpan = document.getElementById('classes-count');
+document.addEventListener('DOMContentLoaded', function() {
+    // =============================================
+    // Chargement initial des classes en surcapacité
+    // =============================================
+    loadOvercapacityClasses();
 
-        let currentPage = 1;
-        let hasMorePages = false;
-        let isLoading = false;
-        let currentFilters = {};
-
-        // Fonctions helper pour récupérer les éléments dynamiques
-        function getLoadMoreBtn() {
-            return document.getElementById('load-more-btn');
-        }
-
-        function getLoadMoreSpinner() {
-            return document.getElementById('load-more-spinner');
-        }
-
-        // Initialiser Select2 si disponible
-        if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
-            $('#filiere_id, #niveau_id, #statut, #capacite').select2({
-                theme: 'bootstrap4',
-                placeholder: 'Sélectionner une option',
-                allowClear: true
-            });
-        }
-
-        function setLoading(loading) {
-            isLoading = loading;
-            if (submitButton) {
-                submitButton.disabled = loading;
-            }
-        }
-
-        function updateLoadMoreButton(hasMore) {
-            hasMorePages = hasMore;
-            const btn = getLoadMoreBtn();
-            const spinner = getLoadMoreSpinner();
-
-            if (btn && spinner) {
-                if (hasMore) {
-                    btn.style.display = 'inline-flex';
-                    spinner.classList.add('d-none');
-                } else {
-                    btn.style.display = 'none';
-                    spinner.classList.add('d-none');
-                }
-            }
-        }
-
-        function fetchResults(reset = true) {
-            if (isLoading) return;
-
-            setLoading(true);
-
-            if (reset) {
-                currentPage = 1;
-                if (classesGrid) {
-                    classesGrid.innerHTML = '';
-                }
-            }
-
-            const formData = new FormData(form);
-            formData.set('page', currentPage);
-            const params = new URLSearchParams(formData);
-            const targetUrl = `${form.action}?${params.toString()}`;
-
-            // Sauvegarder les filtres courants
-            currentFilters = Object.fromEntries(formData);
-
-            fetch(targetUrl, {
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json'
-                },
-                credentials: 'same-origin'
-            })
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error('Erreur lors du chargement des classes.');
-                }
-                return response.json();
-            })
+    function loadOvercapacityClasses() {
+        fetch('{{ route("esbtp.classes.overcapacity") }}')
+            .then(response => response.json())
             .then(data => {
-                if (reset) {
-                    // Remplacer tout le contenu
-                    resultsContainer.innerHTML = `
-                        <div class="resultats-grid" id="classes-grid" style="margin-top: var(--space-lg);">
-                            ${data.html}
-                        </div>
-                        <div id="load-more-container" class="text-center" style="margin-top: var(--space-lg);">
-                            <button type="button" id="load-more-btn" class="btn-acasi primary" style="display: none;">
-                                <i class="fas fa-angle-down me-2"></i>Charger plus de classes
-                            </button>
-                            <div id="load-more-spinner" class="d-none" style="padding: var(--space-md);">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Chargement...</span>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                } else {
-                    // Ajouter à la fin
-                    const grid = document.getElementById('classes-grid');
-                    if (grid) {
-                        grid.insertAdjacentHTML('beforeend', data.html);
-                    }
+                if (data.success && data.classes.length > 0) {
+                    const warning = document.getElementById('overcapacity-warning');
+                    warning.style.display = 'flex';
+
+                    document.getElementById('overcapacity-title').textContent =
+                        `${data.classes.length} classe(s) en surcapacité (${data.annee_universitaire})`;
+                    document.getElementById('overcapacity-message').textContent = data.message;
+
+                    loadOvercapacityModalContent(data.classes);
                 }
-
-                // Toujours rebinder et mettre à jour après chargement
-                bindLoadMore();
-                updateLoadMoreButton(data.hasMore);
-
-                // Mettre à jour le compteur si disponible
-                if (data.total && classesCountSpan) {
-                    classesCountSpan.textContent = data.total;
-                }
-
-                setLoading(false);
             })
             .catch(error => {
-                debugError(error);
-                alert('Impossible de charger les classes. Veuillez réessayer.');
-                setLoading(false);
+                console.error('Erreur chargement classes surcapacité:', error);
             });
+    }
+
+    function loadOvercapacityModalContent(classes) {
+        const content = document.getElementById('overcapacity-content');
+
+        if (classes.length === 0) {
+            content.innerHTML = `
+                <div class="text-center py-4">
+                    <i class="fas fa-check-circle" style="font-size:2.5rem;color:#10b981;margin-bottom:.75rem;"></i>
+                    <h5 style="color:#065f46;">Aucune classe en surcapacité</h5>
+                    <p class="text-muted">Toutes les classes respectent leur capacité maximale.</p>
+                </div>
+            `;
+            return;
         }
 
-        function bindLoadMore() {
-            const btn = getLoadMoreBtn();
-            const spinner = getLoadMoreSpinner();
+        let html = `
+            <div class="table-responsive">
+                <table class="ci-overcapacity-table">
+                    <thead>
+                        <tr>
+                            <th>Classe</th>
+                            <th>Filière</th>
+                            <th>Niveau</th>
+                            <th class="text-center">Capacité</th>
+                            <th class="text-center">Inscrits</th>
+                            <th class="text-center">Taux</th>
+                            <th class="text-center">Dépassement</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+        `;
 
-            if (btn && spinner) {
-                // Supprimer ancien listener si existe
-                const newBtn = btn.cloneNode(true);
-                btn.parentNode.replaceChild(newBtn, btn);
+        classes.forEach(classe => {
+            const tauxClass = classe.taux_occupation >= 150 ? 'danger' : 'warn';
+            html += `
+                <tr>
+                    <td><strong>${classe.nom}</strong></td>
+                    <td>${classe.filiere}</td>
+                    <td>${classe.niveau}</td>
+                    <td class="text-center"><span class="ci-badge ci-badge--muted">${classe.places_totales}</span></td>
+                    <td class="text-center"><span class="ci-badge ci-badge--primary">${classe.inscriptions_actives}</span></td>
+                    <td class="text-center"><span class="ci-badge ci-badge--${tauxClass}">${classe.taux_occupation}%</span></td>
+                    <td class="text-center"><span class="ci-badge ci-badge--danger">+${classe.depassement}</span></td>
+                </tr>
+            `;
+        });
 
-                newBtn.addEventListener('click', function() {
-                    if (isLoading || !hasMorePages) return;
+        html += `
+                    </tbody>
+                </table>
+            </div>
+            <div class="ci-info-box">
+                <i class="fas fa-lightbulb"></i>
+                <div>
+                    <strong>Recommandation :</strong>
+                    <ul class="mb-0 mt-2" style="padding-left:1.1rem;line-height:1.6;">
+                        <li>Envisager d'augmenter la capacité des classes concernées</li>
+                        <li>Créer des classes supplémentaires si nécessaire</li>
+                        <li>Les superAdmins et secrétaires peuvent contourner cette limite</li>
+                    </ul>
+                </div>
+            </div>
+        `;
 
-                    newBtn.style.display = 'none';
-                    spinner.classList.remove('d-none');
+        content.innerHTML = html;
+    }
 
-                    currentPage++;
-                    fetchResults(false); // false = ne pas reset, juste ajouter
-                });
+    // Expose pour appels inline
+    window.showOvercapacityModal = function() {
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('overcapacityModal'));
+        modal.show();
+    };
+    window.dismissOvercapacityWarning = function() {
+        document.getElementById('overcapacity-warning').style.display = 'none';
+    };
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const form = document.getElementById('filtersForm');
+    const resultsContainer = document.getElementById('classes-results');
+    const submitButton = form.querySelector('button[type="submit"]');
+    const filterInputs = form.querySelectorAll('select, input[name="search"]');
+    const resetBtn = document.getElementById('reset-filters-btn');
+    const classesCountSpan = document.getElementById('classes-count');
+
+    let currentPage = 1;
+    let hasMorePages = false;
+    let isLoading = false;
+
+    // Debounce recherche
+    let searchDebounce = null;
+
+    function getLoadMoreBtn() { return document.getElementById('load-more-btn'); }
+    function getLoadMoreSpinner() { return document.getElementById('load-more-spinner'); }
+
+    // Select2 si disponible (guardé — fonctionne sans)
+    if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+        $('#filiere_id, #niveau_id, #statut, #capacite').select2({
+            theme: 'bootstrap4',
+            placeholder: 'Sélectionner une option',
+            allowClear: true,
+            minimumResultsForSearch: Infinity
+        });
+    }
+
+    function setLoading(loading) {
+        isLoading = loading;
+    }
+
+    function updateLoadMoreButton(hasMore) {
+        hasMorePages = hasMore;
+        const btn = getLoadMoreBtn();
+        const spinner = getLoadMoreSpinner();
+        if (btn && spinner) {
+            btn.style.display = hasMore ? 'inline-flex' : 'none';
+            spinner.classList.add('d-none');
+        }
+    }
+
+    function fetchResults(reset = true) {
+        if (isLoading) return;
+        setLoading(true);
+
+        if (reset) {
+            currentPage = 1;
+            const grid = document.getElementById('classes-grid');
+            if (grid) grid.innerHTML = '';
+        }
+
+        const formData = new FormData(form);
+        formData.set('page', currentPage);
+        const params = new URLSearchParams(formData);
+        const targetUrl = `${form.action}?${params.toString()}`;
+
+        fetch(targetUrl, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            credentials: 'same-origin'
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Erreur chargement classes.');
+            return response.json();
+        })
+        .then(data => {
+            if (reset) {
+                resultsContainer.innerHTML = `
+                    <div class="ci-grid" id="classes-grid">
+                        ${data.html}
+                    </div>
+                    <div id="load-more-container" class="ci-load-more-container">
+                        <button type="button" id="load-more-btn" class="ci-load-more-btn" style="display: none;">
+                            <i class="fas fa-angle-down"></i>Charger plus de classes
+                        </button>
+                        <div id="load-more-spinner" class="ci-load-more-spinner d-none">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Chargement...</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else {
+                const grid = document.getElementById('classes-grid');
+                if (grid) grid.insertAdjacentHTML('beforeend', data.html);
             }
-        }
 
-        // Event listeners
-        form.addEventListener('submit', function (event) {
-            event.preventDefault();
-            event.stopPropagation();
-            fetchResults(true); // true = reset
-            return false;
+            bindLoadMore();
+            updateLoadMoreButton(data.hasMore);
+
+            if (typeof data.total !== 'undefined' && classesCountSpan) {
+                classesCountSpan.textContent = data.total;
+            }
+
+            setLoading(false);
+        })
+        .catch(error => {
+            console.error('Erreur chargement classes:', error);
+            setLoading(false);
         });
+    }
 
-        filterInputs.forEach((input) => {
-            input.addEventListener('change', () => {
-                fetchResults(true); // true = reset
-            });
+    function bindLoadMore() {
+        const btn = getLoadMoreBtn();
+        const spinner = getLoadMoreSpinner();
+        if (!btn || !spinner) return;
+
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+
+        newBtn.addEventListener('click', function() {
+            if (isLoading || !hasMorePages) return;
+            newBtn.style.display = 'none';
+            spinner.classList.remove('d-none');
+            currentPage++;
+            fetchResults(false);
         });
+    }
 
-        // Bouton Réinitialiser
-        if (resetBtn) {
-            resetBtn.addEventListener('click', function(e) {
-                e.preventDefault();
+    // Submit form intercepté
+    form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        fetchResults(true);
+        return false;
+    });
 
-                // Réinitialiser le formulaire
-                form.reset();
-
-                // Réinitialiser les Select2 si présents
-                if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
-                    $('#filiere_id, #niveau_id, #statut, #capacite').val(null).trigger('change');
-                }
-
-                // Recharger les résultats
-                fetchResults(true);
+    // Change sur filtres → fetch immédiat
+    // Input recherche → debounce 400ms
+    filterInputs.forEach((input) => {
+        if (input.tagName === 'INPUT' && input.name === 'search') {
+            input.addEventListener('input', () => {
+                clearTimeout(searchDebounce);
+                searchDebounce = setTimeout(() => fetchResults(true), 400);
             });
-        }
-
-        // Bind initial load more button
-        bindLoadMore();
-
-        // Initialiser hasMorePages depuis l'attribut data du bouton
-        const initialBtn = getLoadMoreBtn();
-        if (initialBtn) {
-            const initialHasMore = initialBtn.getAttribute('data-has-more') === 'true';
-            updateLoadMoreButton(initialHasMore);
+        } else {
+            input.addEventListener('change', () => fetchResults(true));
         }
     });
 
-    /**
-     * Fonction pour exporter les classes selon le format choisi
-     * @param {string} format - 'excel', 'csv' ou 'pdf'
-     */
-    function exportClasses(format) {
-        // Récupérer les paramètres de filtrage actuels depuis l'URL
-        const urlParams = new URLSearchParams(window.location.search);
-
-        // Construction de l'URL d'export selon le format
-        let exportUrl = '';
-        switch(format) {
-            case 'excel':
-                exportUrl = '{{ route("esbtp.classes.export.excel") }}';
-                break;
-            case 'csv':
-                exportUrl = '{{ route("esbtp.classes.export.csv") }}';
-                break;
-            case 'pdf':
-                exportUrl = '{{ route("esbtp.classes.export.pdf") }}';
-                break;
-            default:
-                debugError('Format d\'export non reconnu:', format);
-                return;
-        }
-
-        // Ajouter les paramètres de filtrage à l'URL d'export
-        const exportParams = new URLSearchParams();
-        if (urlParams.has('filiere_id')) exportParams.set('filiere_id', urlParams.get('filiere_id'));
-        if (urlParams.has('niveau_id')) exportParams.set('niveau_id', urlParams.get('niveau_id'));
-        if (urlParams.has('statut')) exportParams.set('statut', urlParams.get('statut'));
-        if (urlParams.has('capacite')) exportParams.set('capacite', urlParams.get('capacite'));
-        if (urlParams.has('search')) exportParams.set('search', urlParams.get('search'));
-
-        // Construire l'URL finale avec les paramètres
-        const finalUrl = exportParams.toString() ? `${exportUrl}?${exportParams.toString()}` : exportUrl;
-
-        // Rediriger vers l'URL d'export (déclenche le téléchargement)
-        window.location.href = finalUrl;
-    }
-
-    // ========================================
-    // GESTION DES MODALS AJAX (Création + Édition)
-    // ========================================
-
-    /**
-     * Initialise Select2 sur les selects du formulaire chargé en AJAX
-     * @param {string} formId - ID du formulaire
-     */
-    function initClasseFormScripts(formId) {
-        // Initialiser Select2 si disponible
-        if (typeof $.fn.select2 !== 'undefined') {
-            $(`#${formId}_filiere_id, #${formId}_niveau_etude_id, #${formId}_annee_universitaire_id`).select2({
-                theme: 'bootstrap4',
-                placeholder: 'Sélectionner une option',
-                allowClear: true,
-                dropdownParent: formId.includes('modal') ? $(`#${formId}`).closest('.modal') : undefined
-            });
-        }
-
-        // Auto-génération du code de classe basé sur le nom (seulement si vide)
-        $(`#${formId}_name`).on('blur', function() {
-            const codeInput = $(`#${formId}_code`);
-            if (codeInput.val() === '') {
-                const name = $(this).val();
-                if (name) {
-                    // Extraire les premières lettres de chaque mot et les convertir en majuscules
-                    const code = name.split(' ')
-                        .map(word => word.charAt(0).toUpperCase())
-                        .join('');
-                    codeInput.val(code);
-                }
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function(e) {
+            e.preventDefault();
+            form.reset();
+            if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+                $('#filiere_id, #niveau_id, #statut, #capacite').val(null).trigger('change');
             }
+            fetchResults(true);
         });
     }
 
-    // ========================================
-    // MODAL CRÉATION - Ouverture et chargement
-    // ========================================
+    bindLoadMore();
+    const initialBtn = getLoadMoreBtn();
+    if (initialBtn) {
+        const initialHasMore = initialBtn.getAttribute('data-has-more') === 'true';
+        updateLoadMoreButton(initialHasMore);
+    }
+});
 
+// =============================================
+// Export (déclaré globalement pour onclick inline)
+// =============================================
+function exportClasses(format) {
+    const urlParams = new URLSearchParams(window.location.search);
+    const urls = {
+        excel: '{{ route("esbtp.classes.export.excel") }}',
+        csv: '{{ route("esbtp.classes.export.csv") }}',
+        pdf: '{{ route("esbtp.classes.export.pdf") }}'
+    };
+    const exportUrl = urls[format];
+    if (!exportUrl) {
+        console.error('Format export inconnu:', format);
+        return;
+    }
+
+    const exportParams = new URLSearchParams();
+    ['filiere_id', 'niveau_id', 'statut', 'capacite', 'search'].forEach(key => {
+        if (urlParams.has(key)) exportParams.set(key, urlParams.get(key));
+    });
+
+    const finalUrl = exportParams.toString() ? `${exportUrl}?${exportParams.toString()}` : exportUrl;
+    window.location.href = finalUrl;
+}
+</script>
+
+<script>
+// ============================================================
+// GESTION DES MODALS AJAX (Création + Édition) — BS5 natif
+// ============================================================
+
+function initClasseFormScripts(formId) {
+    if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
+        $(`#${formId}_filiere_id, #${formId}_niveau_etude_id, #${formId}_annee_universitaire_id`).select2({
+            theme: 'bootstrap4',
+            placeholder: 'Sélectionner une option',
+            allowClear: true,
+            dropdownParent: formId.includes('modal') ? $(`#${formId}`).closest('.modal') : undefined
+        });
+    }
+
+    $(`#${formId}_name`).on('blur', function() {
+        const codeInput = $(`#${formId}_code`);
+        if (codeInput.val() === '') {
+            const name = $(this).val();
+            if (name) {
+                const code = name.split(' ').map(w => w.charAt(0).toUpperCase()).join('');
+                codeInput.val(code);
+            }
+        }
+    });
+}
+
+function displayValidationErrors(errors, formId) {
+    $(`#${formId} .is-invalid`).removeClass('is-invalid');
+    $(`#${formId} .invalid-feedback`).remove();
+    for (const [field, messages] of Object.entries(errors)) {
+        const input = document.getElementById(`${formId}_${field}`);
+        if (input) {
+            input.classList.add('is-invalid');
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'invalid-feedback';
+            errorDiv.textContent = messages[0];
+            input.parentNode.appendChild(errorDiv);
+        }
+    }
+}
+
+function showSuccessMessage(message) {
+    const alertHtml = `
+        <div class="ci-alert ci-alert--success" role="alert">
+            <i class="fas fa-check-circle"></i>${message}
+        </div>
+    `;
+    const mainContent = document.querySelector('.main-content');
+    if (mainContent) {
+        mainContent.insertAdjacentHTML('afterbegin', alertHtml);
+        setTimeout(() => {
+            const alert = mainContent.querySelector('.ci-alert');
+            if (alert) alert.remove();
+        }, 5000);
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
     const btnOpenCreateModal = document.getElementById('btn-open-create-modal');
-    const createClasseModal = new bootstrap.Modal(document.getElementById('createClasseModal'));
+    const createModalEl = document.getElementById('createClasseModal');
+    if (!createModalEl) return;
+
+    const createClasseModal = new bootstrap.Modal(createModalEl);
     const modalCreateBody = document.getElementById('modal-create-body');
     const modalCreateSubmitBtn = document.getElementById('modal-create-submit-btn');
 
+    const editModalEl = document.getElementById('editClasseModal');
+    const editClasseModal = new bootstrap.Modal(editModalEl);
+    const modalEditBody = document.getElementById('modal-edit-body');
+    const modalEditSubmitBtn = document.getElementById('modal-edit-submit-btn');
+
     if (btnOpenCreateModal) {
         btnOpenCreateModal.addEventListener('click', function() {
-            console.log('🟢 Ouverture modal création classe');
-
-            // Afficher le spinner
             modalCreateBody.innerHTML = `
                 <div class="text-center py-5">
                     <div class="spinner-border text-primary" role="status">
@@ -883,98 +1493,50 @@ $(document).ready(function() {
                     </div>
                 </div>
             `;
-
-            // Désactiver le bouton submit pendant le chargement
             modalCreateSubmitBtn.disabled = true;
 
-            // Charger le formulaire via AJAX
             fetch('{{ route("esbtp.classes.create") }}?ajax=1', {
                 method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'text/html'
-                }
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' }
             })
             .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
                 return response.text();
             })
             .then(html => {
-                console.log('✅ Formulaire création chargé');
-
-                // Charger le formulaire partial dans le modal
                 modalCreateBody.innerHTML = html;
-
-                // Initialiser Select2 et scripts du formulaire
                 initClasseFormScripts('modal-create-classe-form');
-
-                // Activer le bouton submit
                 modalCreateSubmitBtn.disabled = false;
-
-                // Ouvrir le modal
                 createClasseModal.show();
             })
             .catch(error => {
-                console.error('❌ Erreur chargement formulaire création:', error);
+                console.error('Erreur chargement formulaire création:', error);
                 modalCreateBody.innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Erreur lors du chargement du formulaire. Veuillez réessayer.
+                    <div class="ci-alert ci-alert--danger">
+                        <i class="fas fa-exclamation-triangle"></i>Erreur lors du chargement du formulaire. Veuillez réessayer.
                     </div>
                 `;
             });
         });
     }
 
-    // ========================================
-    // MODAL CRÉATION - Soumission AJAX
-    // ========================================
-
-    // Click sur le bouton submit du modal → déclenche le submit du formulaire
     if (modalCreateSubmitBtn) {
         modalCreateSubmitBtn.addEventListener('click', function() {
-            console.log('🔵 Click sur bouton submit création');
             const form = document.getElementById('modal-create-classe-form');
-            if (form) {
-                console.log('🔵 Déclenchement submit manuel du formulaire');
-                form.requestSubmit(); // Déclenche l'événement submit du formulaire
-            } else {
-                console.error('❌ Formulaire création introuvable');
-            }
+            if (form) form.requestSubmit();
         });
     }
 
-    // Délégation d'événements pour intercepter le submit du formulaire création
-    // IMPORTANT: Phase de CAPTURE (true en 3ème paramètre) pour intercepter AVANT tous les autres handlers
+    // Intercept submit create form (capture phase)
     document.addEventListener('submit', function(e) {
-        // Vérifier si c'est le formulaire de création qui est soumis
         if (e.target && e.target.id === 'modal-create-classe-form') {
-            // BLOQUER IMMÉDIATEMENT la soumission normale
             e.preventDefault();
             e.stopPropagation();
-            e.stopImmediatePropagation(); // Empêche même les autres listeners sur le même élément
-
-            console.log('📤 Submit formulaire création intercepté');
-            console.log('🛑 preventDefault() appelé - la page NE DEVRAIT PAS se recharger');
+            e.stopImmediatePropagation();
 
             const form = e.target;
-
-            // Désactiver le bouton pour éviter les doubles clics
             modalCreateSubmitBtn.disabled = true;
-            modalCreateSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement...';
-
-            // Collecter les données du formulaire
-            const formData = new FormData(form);
-
-            // Soumettre via AJAX
-            console.log('🌐 Envoi requête AJAX vers:', form.action);
-            console.log('📋 Headers:', {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json'
-            });
+            modalCreateSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Enregistrement...';
 
             fetch(form.action, {
                 method: 'POST',
@@ -983,87 +1545,47 @@ $(document).ready(function() {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'Accept': 'application/json'
                 },
-                body: formData
+                body: new FormData(form)
             })
             .then(response => {
-                console.log('📥 Réponse création reçue');
-                console.log('  Status:', response.status);
-                console.log('  Content-Type:', response.headers.get('content-type'));
-                console.log('  Redirected:', response.redirected);
-                console.log('  URL:', response.url);
-
-                // Vérifier si c'est vraiment du JSON
-                const contentType = response.headers.get('content-type');
-                if (!contentType || !contentType.includes('application/json')) {
-                    console.error('❌ La réponse n\'est pas du JSON! Content-Type:', contentType);
-                    throw new Error('La réponse n\'est pas du JSON');
+                const contentType = response.headers.get('content-type') || '';
+                if (!contentType.includes('application/json')) {
+                    throw new Error('Réponse non-JSON');
                 }
-
                 return response.json();
             })
             .then(data => {
-                console.log('📊 Données création reçues:', data);
-
                 if (data.success) {
-                    console.log('✅ Classe créée avec succès:', data.classe);
-
-                    // Réactiver le bouton
                     modalCreateSubmitBtn.disabled = false;
-                    modalCreateSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer la classe';
-
-                    // Fermer le modal
+                    modalCreateSubmitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer la classe';
                     createClasseModal.hide();
-
-                    // Ajouter la nouvelle carte directement sans recharger la page
                     addNewClasseCard(data.classe, data.message || 'La classe a été créée avec succès.');
                 } else {
-                    // Afficher les erreurs de validation
-                    console.warn('⚠️ Erreurs de validation:', data.errors);
                     displayValidationErrors(data.errors, 'modal-create-classe-form');
-
-                    // Réactiver le bouton
                     modalCreateSubmitBtn.disabled = false;
-                    modalCreateSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer la classe';
+                    modalCreateSubmitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer la classe';
                 }
             })
             .catch(error => {
-                console.error('❌ Erreur soumission formulaire:', error);
-                alert('Une erreur est survenue lors de l\'enregistrement. Veuillez réessayer.');
-
-                // Réactiver le bouton
+                console.error('Erreur soumission formulaire:', error);
+                alert('Une erreur est survenue lors de l\'enregistrement.');
                 modalCreateSubmitBtn.disabled = false;
-                modalCreateSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Enregistrer la classe';
+                modalCreateSubmitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Enregistrer la classe';
             });
 
-            // IMPORTANT: Retourner false pour garantir qu'aucun submit ne se produise
             return false;
         }
-    }, true); // ← Phase de CAPTURE (3ème paramètre = true) pour intercepter AVANT bubbling
+    }, true);
 
-    // ========================================
-    // MODAL ÉDITION - Ouverture et chargement
-    // ========================================
-
-    const editClasseModal = new bootstrap.Modal(document.getElementById('editClasseModal'));
-    const modalEditBody = document.getElementById('modal-edit-body');
-    const modalEditSubmitBtn = document.getElementById('modal-edit-submit-btn');
-
-    // Délégation d'événement pour les boutons "Modifier" (car générés dynamiquement)
+    // Click handler délégation pour .btn-open-edit-modal
     document.addEventListener('click', function(e) {
         const btnEdit = e.target.closest('.btn-open-edit-modal');
         if (!btnEdit) return;
 
         e.preventDefault();
-
         const classeId = btnEdit.getAttribute('data-classe-id');
-        if (!classeId) {
-            console.error('❌ ID classe manquant sur le bouton');
-            return;
-        }
+        if (!classeId) return;
 
-        console.log('🟠 Ouverture modal édition classe:', classeId);
-
-        // Afficher le spinner
         modalEditBody.innerHTML = `
             <div class="text-center py-5">
                 <div class="spinner-border text-primary" role="status">
@@ -1071,96 +1593,50 @@ $(document).ready(function() {
                 </div>
             </div>
         `;
-
-        // Désactiver le bouton submit pendant le chargement
         modalEditSubmitBtn.disabled = true;
-
-        // Stocker l'ID de la classe en cours d'édition
         modalEditSubmitBtn.setAttribute('data-classe-id', classeId);
 
-        // Charger le formulaire d'édition via AJAX
         fetch(`/esbtp/classes/${classeId}/edit?ajax=1`, {
             method: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'text/html'
-            }
+            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' }
         })
         .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
             return response.text();
         })
         .then(html => {
-            console.log('✅ Formulaire édition chargé pour classe:', classeId);
-
-            // Charger le formulaire partial dans le modal
             modalEditBody.innerHTML = html;
-
-            // Initialiser Select2 et scripts du formulaire
             initClasseFormScripts('modal-edit-classe-form');
-
-            // Activer le bouton submit
             modalEditSubmitBtn.disabled = false;
-
-            // Ouvrir le modal
             editClasseModal.show();
         })
         .catch(error => {
-            console.error('❌ Erreur chargement formulaire édition:', error);
+            console.error('Erreur chargement formulaire édition:', error);
             modalEditBody.innerHTML = `
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-triangle me-2"></i>
-                    Erreur lors du chargement du formulaire. Veuillez réessayer.
+                <div class="ci-alert ci-alert--danger">
+                    <i class="fas fa-exclamation-triangle"></i>Erreur lors du chargement du formulaire.
                 </div>
             `;
         });
     });
 
-    // ========================================
-    // MODAL ÉDITION - Soumission AJAX
-    // ========================================
-
-    // Click sur le bouton submit du modal édition → déclenche le submit du formulaire
     if (modalEditSubmitBtn) {
         modalEditSubmitBtn.addEventListener('click', function() {
-            console.log('🔵 Click sur bouton submit édition');
             const form = document.getElementById('modal-edit-classe-form');
-            if (form) {
-                console.log('🔵 Déclenchement submit manuel du formulaire édition');
-                form.requestSubmit(); // Déclenche l'événement submit du formulaire
-            } else {
-                console.error('❌ Formulaire édition introuvable');
-            }
+            if (form) form.requestSubmit();
         });
     }
 
-    // Délégation d'événements pour intercepter le submit du formulaire édition
-    // IMPORTANT: Phase de CAPTURE (true en 3ème paramètre) pour intercepter AVANT tous les autres handlers
     document.addEventListener('submit', function(e) {
-        // Vérifier si c'est le formulaire d'édition qui est soumis
         if (e.target && e.target.id === 'modal-edit-classe-form') {
-            // BLOQUER IMMÉDIATEMENT la soumission normale
             e.preventDefault();
             e.stopPropagation();
-            e.stopImmediatePropagation(); // Empêche même les autres listeners sur le même élément
-
-            console.log('📤 Submit formulaire édition intercepté');
-            console.log('🛑 preventDefault() appelé - la page NE DEVRAIT PAS se recharger');
+            e.stopImmediatePropagation();
 
             const form = e.target;
-            const classeId = modalEditSubmitBtn.getAttribute('data-classe-id');
-            console.log('📤 Soumission formulaire édition pour classe:', classeId);
-
-            // Désactiver le bouton pour éviter les doubles clics
             modalEditSubmitBtn.disabled = true;
-            modalEditSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Mise à jour...';
+            modalEditSubmitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Mise à jour...';
 
-            // Collecter les données du formulaire
-            const formData = new FormData(form);
-
-            // Soumettre via AJAX
             fetch(form.action, {
                 method: 'POST',
                 headers: {
@@ -1168,308 +1644,135 @@ $(document).ready(function() {
                     'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     'Accept': 'application/json'
                 },
-                body: formData
+                body: new FormData(form)
             })
-            .then(response => {
-                console.log('📥 Réponse reçue, status:', response.status);
-                return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-                console.log('📊 Données reçues:', data);
-
                 if (data.success) {
-                    console.log('✅ Classe mise à jour avec succès:', data.classe);
-
-                    // Réactiver le bouton IMMÉDIATEMENT
                     modalEditSubmitBtn.disabled = false;
-                    modalEditSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Mettre à jour la classe';
-
-                    // Fermer le modal
+                    modalEditSubmitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Mettre à jour la classe';
                     editClasseModal.hide();
-
-                    // Mettre à jour uniquement la carte de la classe modifiée
-                    // Le message de succès sera affiché APRÈS le refresh de la carte
-                    updateClasseCard(data.classe, data.message || 'La classe a été mise à jour avec succès.');
+                    updateClasseCard(data.classe, data.message || 'La classe a été mise à jour.');
                 } else {
-                    console.warn('⚠️ Erreurs de validation:', data.errors);
-
-                    // Afficher les erreurs de validation
                     displayValidationErrors(data.errors, 'modal-edit-classe-form');
-
-                    // Réactiver le bouton
                     modalEditSubmitBtn.disabled = false;
-                    modalEditSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Mettre à jour la classe';
+                    modalEditSubmitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Mettre à jour la classe';
                 }
             })
             .catch(error => {
-                console.error('❌ Erreur soumission formulaire:', error);
-                alert('Une erreur est survenue lors de la mise à jour. Veuillez réessayer.');
-
-                // Réactiver le bouton
+                console.error('Erreur soumission formulaire:', error);
+                alert('Une erreur est survenue lors de la mise à jour.');
                 modalEditSubmitBtn.disabled = false;
-                modalEditSubmitBtn.innerHTML = '<i class="fas fa-save"></i> Mettre à jour la classe';
+                modalEditSubmitBtn.innerHTML = '<i class="fas fa-save me-1"></i>Mettre à jour la classe';
             });
 
-            // IMPORTANT: Retourner false pour garantir qu'aucun submit ne se produise
             return false;
         }
-    }, true); // ← Phase de CAPTURE (3ème paramètre = true) pour intercepter AVANT bubbling
+    }, true);
+});
 
-    // ========================================
-    // FONCTIONS UTILITAIRES
-    // ========================================
+// ============================================================
+// Fonctions refresh card (création + édition)
+// ============================================================
 
-    /**
-     * Affiche les erreurs de validation dans le formulaire
-     * @param {Object} errors - Objet des erreurs retourné par Laravel
-     * @param {string} formId - ID du formulaire
-     */
-    function displayValidationErrors(errors, formId) {
-        // Réinitialiser les erreurs précédentes
-        $(`#${formId} .is-invalid`).removeClass('is-invalid');
-        $(`#${formId} .invalid-feedback`).remove();
+function addNewClasseCard(classe, successMessage = null) {
+    const classeId = classe.id;
+    const refreshUrl = `/esbtp/classes/${classeId}/refresh-ligne`;
+    const resultsContainer = document.querySelector('#classes-grid');
 
-        // Afficher les nouvelles erreurs
-        for (const [field, messages] of Object.entries(errors)) {
-            const input = document.getElementById(`${formId}_${field}`);
-            if (input) {
-                input.classList.add('is-invalid');
-                const errorDiv = document.createElement('div');
-                errorDiv.className = 'invalid-feedback';
-                errorDiv.textContent = messages[0]; // Première erreur seulement
-                input.parentNode.appendChild(errorDiv);
-            }
-        }
+    if (!resultsContainer) {
+        window.location.reload();
+        return;
     }
 
-    /**
-     * Affiche un message de succès en haut de la page
-     * @param {string} message - Message à afficher
-     */
-    function showSuccessMessage(message) {
-        const alertHtml = `
-            <div class="alert alert-success alert-dismissible fade show" role="alert" style="margin-bottom: 1rem;">
-                <i class="fas fa-check-circle me-2"></i>${message}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        `;
+    fetch(refreshUrl, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    })
+    .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+    .then(data => {
+        if (!data.success || !data.html) throw new Error(data.message || 'Réponse invalide');
 
-        // Insérer au début de .main-content
-        const mainContent = document.querySelector('.main-content');
-        if (mainContent) {
-            mainContent.insertAdjacentHTML('afterbegin', alertHtml);
+        const template = document.createElement('template');
+        template.innerHTML = data.html.trim();
 
-            // Auto-dismiss après 5 secondes
-            setTimeout(() => {
-                const alert = mainContent.querySelector('.alert');
-                if (alert) {
-                    alert.remove();
-                }
-            }, 5000);
-        }
-    }
+        let newCardFragment = template.content.querySelector(`[data-classe-id="${classeId}"]`);
+        if (!newCardFragment) newCardFragment = template.content.querySelector('.ci-card');
+        if (!newCardFragment) throw new Error('HTML sans carte valide');
 
-    /**
-     * Ajoute une nouvelle carte de classe après création
-     * Pattern identique à updateClasseCard mais pour insertion au début de la liste
-     * @param {Object} classe - Données de la nouvelle classe
-     * @param {String} successMessage - Message de succès à afficher après l'ajout
-     */
-    function addNewClasseCard(classe, successMessage = null) {
-        console.log('➕ Ajout nouvelle carte classe:', classe.id);
+        const newCard = newCardFragment.cloneNode(true);
 
-        const classeId = classe.id;
-        const refreshUrl = `/esbtp/classes/${classeId}/refresh-ligne`;
-
-        // Trouver le conteneur de la liste des classes
-        const resultsContainer = document.querySelector('#classes-grid');
-        console.log('📦 Conteneur trouvé:', resultsContainer ? 'OUI ✅' : 'NON ❌');
-
-        if (!resultsContainer) {
-            console.error('❌ Conteneur #classes-grid non trouvé - rechargement complet');
-            window.location.reload();
-            return;
+        const modalFragment = template.content.querySelector(`#deleteModal${classeId}`);
+        if (modalFragment) {
+            document.body.appendChild(modalFragment.cloneNode(true));
         }
 
-        // Fetch la nouvelle carte HTML depuis le serveur
-        fetch(refreshUrl, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (!data.success || !data.html) {
-                throw new Error(data.message || 'Réponse serveur invalide');
-            }
+        resultsContainer.insertBefore(newCard, resultsContainer.firstChild);
 
-            console.log('✅ HTML reçu du serveur pour nouvelle classe:', classeId);
+        // Animation insertion
+        newCard.style.opacity = '0';
+        newCard.style.transform = 'translateY(-20px)';
+        newCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease, background-color 0.3s ease';
+        newCard.offsetHeight;
+        newCard.style.opacity = '1';
+        newCard.style.transform = 'translateY(0)';
+        newCard.style.backgroundColor = 'rgba(16, 185, 129, 0.08)';
+        setTimeout(() => { newCard.style.backgroundColor = ''; }, 1000);
 
-            // Créer un élément temporaire pour parser le HTML
-            const template = document.createElement('template');
-            template.innerHTML = data.html.trim();
+        if (successMessage) showSuccessMessage(successMessage);
+        newCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    })
+    .catch(error => {
+        console.error('Erreur ajout carte:', error);
+        window.location.reload();
+    });
+}
 
-            // Récupérer la nouvelle carte depuis le template
-            let newCardFragment = template.content.querySelector(`[data-classe-id="${classeId}"]`);
+function updateClasseCard(classe, successMessage = null) {
+    const classeId = classe.id;
+    const refreshUrl = `/esbtp/classes/${classeId}/refresh-ligne`;
+    const existingCard = document.querySelector(`[data-classe-id="${classeId}"]`);
 
-            if (!newCardFragment) {
-                // Si pas de data-classe-id, prendre le premier élément
-                newCardFragment = template.content.querySelector('.card-moderne');
-            }
-
-            if (!newCardFragment) {
-                console.error('❌ HTML retourné sans carte valide:', data.html);
-                throw new Error('HTML retourné sans carte de classe valide');
-            }
-
-            // Cloner la nouvelle carte
-            const newCard = newCardFragment.cloneNode(true);
-
-            // Récupérer le modal de suppression si présent
-            const modalFragment = template.content.querySelector(`#deleteModal${classeId}`);
-            if (modalFragment) {
-                const newModal = modalFragment.cloneNode(true);
-                document.body.appendChild(newModal);
-            }
-
-            // Insérer la nouvelle carte AU DÉBUT de la liste (prepend)
-            resultsContainer.insertBefore(newCard, resultsContainer.firstChild);
-
-            console.log('✅ Nouvelle carte classe ajoutée avec succès:', classeId);
-
-            // Animation visuelle (flash vert + slide down)
-            newCard.style.opacity = '0';
-            newCard.style.transform = 'translateY(-20px)';
-            newCard.style.transition = 'opacity 0.3s ease, transform 0.3s ease, background-color 0.3s ease';
-
-            // Forcer le reflow pour que la transition fonctionne
-            newCard.offsetHeight;
-
-            newCard.style.opacity = '1';
-            newCard.style.transform = 'translateY(0)';
-            newCard.style.backgroundColor = 'rgba(16, 185, 129, 0.1)'; // Vert léger
-
-            setTimeout(() => {
-                newCard.style.backgroundColor = '';
-            }, 1000);
-
-            // Afficher le message de succès APRÈS l'ajout de la carte
-            if (successMessage) {
-                showSuccessMessage(successMessage);
-            }
-
-            // Scroll vers la nouvelle carte
-            newCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-
-        })
-        .catch(error => {
-            console.error('❌ Erreur ajout nouvelle carte classe:', error);
-            // En cas d'erreur, on reload la page
-            console.log('🔄 Rechargement de la page suite à l\'erreur...');
-            window.location.reload();
-        });
+    if (!existingCard) {
+        window.location.reload();
+        return;
     }
 
-    /**
-     * Met à jour la carte d'une classe après édition
-     * @param {Object} classe - Données de la classe mise à jour
-     * @param {String} successMessage - Message de succès à afficher après le refresh
-     */
-    function updateClasseCard(classe, successMessage = null) {
-        console.log('🔄 Refresh carte classe:', classe.id);
+    fetch(refreshUrl, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+    })
+    .then(response => response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`)))
+    .then(data => {
+        if (!data.success || !data.html) throw new Error(data.message || 'Réponse invalide');
 
-        const classeId = classe.id;
-        const refreshUrl = `/esbtp/classes/${classeId}/refresh-ligne`;
-        const existingCard = document.querySelector(`[data-classe-id="${classeId}"]`);
+        const template = document.createElement('template');
+        template.innerHTML = data.html.trim();
 
-        if (!existingCard) {
-            console.warn('⚠️ Carte non trouvée pour ID:', classeId, '- rechargement complet');
-            window.location.reload();
-            return;
+        let newCardFragment = template.content.querySelector(`[data-classe-id="${classeId}"]`);
+        if (!newCardFragment) newCardFragment = template.content.querySelector('.ci-card');
+        if (!newCardFragment) throw new Error('HTML sans carte valide');
+
+        const newCard = newCardFragment.cloneNode(true);
+
+        const modalFragment = template.content.querySelector(`#deleteModal${classeId}`);
+        if (modalFragment) {
+            const newModal = modalFragment.cloneNode(true);
+            const existingModal = document.getElementById(`deleteModal${classeId}`);
+            if (existingModal) existingModal.replaceWith(newModal);
+            else document.body.appendChild(newModal);
         }
 
-        // Fetch la nouvelle carte HTML depuis le serveur
-        fetch(refreshUrl, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (!data.success || !data.html) {
-                throw new Error(data.message || 'Réponse serveur invalide');
-            }
+        existingCard.replaceWith(newCard);
 
-            console.log('✅ HTML reçu du serveur pour classe:', classeId);
+        newCard.style.transition = 'background-color 0.3s ease';
+        newCard.style.backgroundColor = 'rgba(16, 185, 129, 0.08)';
+        setTimeout(() => { newCard.style.backgroundColor = ''; }, 500);
 
-            // Créer un élément temporaire pour parser le HTML
-            const template = document.createElement('template');
-            template.innerHTML = data.html.trim();
-
-            // Récupérer la nouvelle carte depuis le template
-            let newCardFragment = template.content.querySelector(`[data-classe-id="${classeId}"]`);
-
-            if (!newCardFragment) {
-                // Si pas de data-classe-id, prendre le premier élément
-                newCardFragment = template.content.querySelector('.card-moderne');
-            }
-
-            if (!newCardFragment) {
-                console.error('❌ HTML retourné sans carte valide:', data.html);
-                throw new Error('HTML retourné sans carte de classe valide');
-            }
-
-            // Cloner la nouvelle carte
-            const newCard = newCardFragment.cloneNode(true);
-
-            // Récupérer le modal de suppression si présent
-            const modalFragment = template.content.querySelector(`#deleteModal${classeId}`);
-            if (modalFragment) {
-                const newModal = modalFragment.cloneNode(true);
-                const existingModal = document.getElementById(`deleteModal${classeId}`);
-                if (existingModal) {
-                    existingModal.replaceWith(newModal);
-                } else {
-                    document.body.appendChild(newModal);
-                }
-            }
-
-            // Remplacer l'ancienne carte par la nouvelle
-            existingCard.replaceWith(newCard);
-
-            console.log('✅ Carte classe rafraîchie avec succès:', classeId);
-
-            // Animation visuelle rapide (flash vert)
-            newCard.style.transition = 'background-color 0.3s ease';
-            newCard.style.backgroundColor = 'rgba(16, 185, 129, 0.1)'; // Vert léger
-            setTimeout(() => {
-                newCard.style.backgroundColor = '';
-            }, 500);
-
-            // Afficher le message de succès APRÈS le refresh de la carte
-            if (successMessage) {
-                showSuccessMessage(successMessage);
-            }
-
-        })
-        .catch(error => {
-            console.error('❌ Erreur refresh carte classe:', error);
-            // En cas d'erreur, on reload la page
-            console.log('🔄 Rechargement de la page suite à l\'erreur...');
-            window.location.reload();
-        });
-    }
+        if (successMessage) showSuccessMessage(successMessage);
+    })
+    .catch(error => {
+        console.error('Erreur refresh carte:', error);
+        window.location.reload();
+    });
+}
 </script>
 @endpush
