@@ -929,7 +929,7 @@
         <div class="ets-tabs-wrap"
              x-data="{
                 tab: (window.location.hash.replace('#','') || 'infos'),
-                switch(t) {
+                setTab(t) {
                     this.tab = t;
                     history.replaceState({}, '', '#' + t);
                 }
@@ -944,7 +944,7 @@
                         role="tab"
                         :aria-selected="tab === 'infos' ? 'true' : 'false'"
                         :class="{ 'is-active': tab === 'infos' }"
-                        @click="switch('infos')"
+                        @click="setTab('infos')"
                         id="ets-tab-infos">
                     <i class="fas fa-info-circle"></i> Informations
                 </button>
@@ -953,7 +953,7 @@
                         role="tab"
                         :aria-selected="tab === 'planif' ? 'true' : 'false'"
                         :class="{ 'is-active': tab === 'planif' }"
-                        @click="switch('planif')"
+                        @click="setTab('planif')"
                         id="ets-tab-planif">
                     <i class="fas fa-calendar-check"></i> Planification académique
                 </button>
@@ -962,7 +962,7 @@
                         role="tab"
                         :aria-selected="tab === 'liste' ? 'true' : 'false'"
                         :class="{ 'is-active': tab === 'liste' }"
-                        @click="switch('liste')"
+                        @click="setTab('liste')"
                         id="ets-tab-liste">
                     <i class="fas fa-list-ul"></i> Liste des séances
                     <span class="ets-tab-count">{{ $emploiTemps->seances->count() }}</span>
