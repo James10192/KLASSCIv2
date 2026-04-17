@@ -187,37 +187,52 @@
         color: #374151;
     }
 
-    /* Styles pour les modaux KLASSCI */
+    /* ==================================================================
+       Modaux KLASSCI — monochrome bleu (aligne sur design system ii-*)
+       ================================================================== */
     .klassci-payment-modal .modal-content {
-        border: 2px solid rgba(99, 102, 241, 0.25);
+        border: none;
         border-radius: 16px;
-        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.3), 0 8px 16px rgba(99, 102, 241, 0.15);
+        box-shadow: 0 24px 60px rgba(15, 23, 42, 0.25), 0 8px 20px rgba(4, 83, 203, 0.12);
         overflow: hidden;
     }
 
     .klassci-payment-modal .modal-header {
-        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+        background: linear-gradient(135deg, #0453cb 0%, #3b7ddb 100%);
         color: #ffffff;
         border-bottom: none;
-        padding: 20px 24px;
-        border-radius: 14px 14px 0 0;
+        padding: 1rem 1.5rem;
     }
 
     .klassci-payment-modal .modal-header .modal-title {
-        font-weight: 600;
-        font-size: 1.125rem;
-        display: flex;
+        font-weight: 700;
+        font-size: 1rem;
+        display: inline-flex;
         align-items: center;
+        gap: 0.6rem;
+        letter-spacing: -0.01em;
     }
 
     .klassci-payment-modal .modal-header .modal-title i {
-        font-size: 1.25rem;
+        width: 32px;
+        height: 32px;
+        border-radius: 9px;
+        background: rgba(255, 255, 255, 0.16);
+        border: 1px solid rgba(255, 255, 255, 0.22);
+        backdrop-filter: blur(6px);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.88rem;
+        color: #fff;
+        flex-shrink: 0;
+        margin: 0 !important;
     }
 
     .klassci-payment-modal .btn-close {
         filter: invert(1) brightness(2);
-        opacity: 0.9;
-        transition: opacity 0.2s;
+        opacity: 0.85;
+        transition: opacity 0.15s ease;
     }
 
     .klassci-payment-modal .btn-close:hover {
@@ -226,54 +241,162 @@
 
     .klassci-payment-modal .modal-body {
         background: #ffffff;
-        padding: 24px;
+        padding: 1.5rem;
     }
 
     .klassci-payment-modal .modal-footer {
         background: #f8fafc;
-        border-top: 1px solid rgba(99, 102, 241, 0.15);
-        padding: 16px 24px;
+        border-top: 1px solid #e2e8f0;
+        padding: 1rem 1.5rem;
+        gap: 0.5rem;
     }
 
     .klassci-payment-modal .modal-footer .btn {
-        border-radius: 8px;
+        border-radius: 10px;
         font-weight: 600;
-        padding: 10px 20px;
+        padding: 0.6rem 1.25rem;
+        font-size: 0.88rem;
+        border: 1px solid transparent;
+        transition: all 0.15s ease;
+    }
+
+    .klassci-payment-modal .modal-footer .btn-secondary,
+    .klassci-payment-modal .modal-footer .btn-light {
+        background: #ffffff;
+        color: #475569;
+        border-color: #cbd5e1;
+    }
+
+    .klassci-payment-modal .modal-footer .btn-secondary:hover,
+    .klassci-payment-modal .modal-footer .btn-light:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+        color: #1e293b;
     }
 
     .klassci-payment-modal .modal-footer .btn-primary {
-        background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-        border: none;
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+        background: #0453cb;
+        border-color: #0453cb;
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(4, 83, 203, 0.2);
     }
 
     .klassci-payment-modal .modal-footer .btn-primary:hover {
+        background: #033a8e;
+        border-color: #033a8e;
         transform: translateY(-1px);
-        box-shadow: 0 6px 16px rgba(99, 102, 241, 0.4);
+        box-shadow: 0 4px 12px rgba(4, 83, 203, 0.3);
+    }
+
+    .klassci-payment-modal .modal-footer .btn-success {
+        background: #10b981;
+        border-color: #10b981;
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(16, 185, 129, 0.2);
+    }
+
+    .klassci-payment-modal .modal-footer .btn-success:hover {
+        background: #059669;
+        border-color: #059669;
+        transform: translateY(-1px);
+    }
+
+    .klassci-payment-modal .modal-footer .btn-danger {
+        background: #dc2626;
+        border-color: #dc2626;
+        color: #fff;
+        box-shadow: 0 2px 6px rgba(220, 38, 38, 0.2);
+    }
+
+    .klassci-payment-modal .modal-footer .btn-danger:hover {
+        background: #b91c1c;
+        border-color: #b91c1c;
+        transform: translateY(-1px);
+    }
+
+    .klassci-payment-modal .form-label {
+        font-weight: 600;
+        font-size: 0.82rem;
+        color: #334155;
+        margin-bottom: 0.35rem;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .klassci-payment-modal .form-label i {
+        color: #0453cb;
+        font-size: 0.85rem;
+    }
+
+    .klassci-payment-modal .form-control,
+    .klassci-payment-modal .form-select {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 9px;
+        padding: 0.55rem 0.85rem;
+        font-size: 0.88rem;
+        transition: all 0.15s ease;
+        background: #ffffff;
     }
 
     .klassci-payment-modal .form-control:focus,
     .klassci-payment-modal .form-select:focus {
-        border-color: #6366f1;
-        box-shadow: 0 0 0 0.2rem rgba(99, 102, 241, 0.15);
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
+        outline: none;
     }
 
-    .klassci-payment-modal .alert {
-        border-radius: 10px;
-        border: none;
-    }
-
-    .klassci-payment-modal .form-label.fw-bold {
-        color: #334155;
-        font-size: 0.9rem;
-        margin-bottom: 0.5rem;
+    .klassci-payment-modal .form-control::placeholder {
+        color: #94a3b8;
     }
 
     .klassci-payment-modal .form-control[readonly] {
         background: #f8fafc;
-        border-radius: 8px;
-        border: 1px solid #e2e8f0;
+        color: #475569;
+        border-color: #e2e8f0;
     }
+
+    .klassci-payment-modal .alert {
+        border-radius: 10px;
+        border: 1px solid transparent;
+        padding: 0.75rem 1rem;
+        font-size: 0.86rem;
+    }
+
+    .klassci-payment-modal .alert-info {
+        background: rgba(4, 83, 203, 0.06);
+        border-color: rgba(4, 83, 203, 0.15);
+        color: #033a8e;
+    }
+
+    .klassci-payment-modal .alert-warning {
+        background: rgba(245, 158, 11, 0.08);
+        border-color: rgba(245, 158, 11, 0.2);
+        color: #92400e;
+    }
+
+    .klassci-payment-modal .alert-success {
+        background: rgba(16, 185, 129, 0.08);
+        border-color: rgba(16, 185, 129, 0.2);
+        color: #065f46;
+    }
+
+    .klassci-payment-modal .form-check-input:checked {
+        background-color: #0453cb;
+        border-color: #0453cb;
+    }
+
+    .klassci-payment-modal .form-check-input:focus {
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.12);
+    }
+
+    .klassci-payment-modal .form-check-label {
+        font-size: 0.88rem;
+        color: #1e293b;
+        font-weight: 500;
+    }
+
 </style>
 @endsection
 
