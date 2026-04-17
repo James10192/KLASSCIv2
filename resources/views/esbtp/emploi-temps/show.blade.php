@@ -5,6 +5,302 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
+    /* ═════════════════════════════════════════════════════════════════
+       Emploi du temps — show premium v1 (PR #221)
+       Namespace: ets-* (emploi-temps-show)
+       Pattern inspire de planning-header (ph-*)
+       ═════════════════════════════════════════════════════════════════ */
+
+    .ets-hero {
+        position: relative;
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+        border-radius: 18px;
+        padding: 1.75rem 2rem 1.25rem;
+        color: #fff;
+        margin-bottom: 1.25rem;
+        overflow: hidden;
+    }
+    .ets-hero::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at 80% 20%, rgba(255,255,255,.12), transparent 60%);
+        pointer-events: none;
+    }
+
+    .ets-hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+        position: relative;
+        z-index: 2;
+    }
+    .ets-hero-left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        min-width: 0;
+    }
+    .ets-hero-icon {
+        width: 52px; height: 52px;
+        border-radius: 14px;
+        background: rgba(255,255,255,.14);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,.2);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.35rem; flex-shrink: 0; color: #fff;
+    }
+    .ets-hero-info { min-width: 0; }
+    .ets-hero-info h1 {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #fff;
+        margin: 0;
+        letter-spacing: -.01em;
+    }
+    .ets-hero-info p {
+        margin: .15rem 0 0;
+        opacity: .78;
+        font-size: .85rem;
+    }
+    .ets-hero-chips {
+        display: flex;
+        gap: .4rem;
+        flex-wrap: wrap;
+        margin-top: .55rem;
+    }
+    .ets-hero-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .25rem .65rem;
+        background: rgba(255,255,255,.14);
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 99px;
+        font-size: .72rem;
+        color: rgba(255,255,255,.92);
+        font-weight: 500;
+    }
+    .ets-hero-chip--success { background: rgba(16,185,129,.22); border-color: rgba(16,185,129,.35); color: #a7f3d0; }
+    .ets-hero-chip--muted   { background: rgba(148,163,184,.22); border-color: rgba(148,163,184,.3); color: #cbd5e1; }
+    .ets-hero-chip i { font-size: .65rem; }
+
+    .ets-hero-actions {
+        display: flex;
+        gap: .5rem;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        position: relative;
+        z-index: 3;
+    }
+    .ets-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        padding: .5rem 1rem;
+        border-radius: 10px;
+        font-size: .82rem;
+        font-weight: 600;
+        text-decoration: none;
+        transition: all .2s ease;
+        border: 1px solid transparent;
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .ets-btn--glass {
+        background: rgba(255,255,255,.15);
+        color: #fff;
+        border-color: rgba(255,255,255,.22);
+    }
+    .ets-btn--glass:hover { background: rgba(255,255,255,.25); color: #fff; }
+    .ets-btn--white {
+        background: #fff;
+        color: #0453cb;
+    }
+    .ets-btn--white:hover { background: #eef3ff; color: #033a8e; }
+
+    .ets-dropdown-menu {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 12px 32px rgba(15,23,42,.15);
+        padding: .35rem;
+        min-width: 240px;
+        z-index: 1050;
+    }
+    .ets-dropdown-menu .dropdown-item {
+        color: #1e293b;
+        padding: .55rem .85rem;
+        border-radius: 8px;
+        font-size: .85rem;
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        transition: all .15s ease;
+    }
+    .ets-dropdown-menu .dropdown-item:hover { background: #f1f5f9; color: #0453cb; }
+    .ets-dropdown-menu .dropdown-item i { width: 16px; text-align: center; color: #0453cb; }
+    .ets-dropdown-menu .dropdown-item.text-danger i { color: #dc2626; }
+    .ets-dropdown-menu .dropdown-item.text-danger:hover { background: rgba(220,38,38,.06); color: #b91c1c; }
+    .ets-dropdown-divider {
+        height: 1px;
+        background: #e2e8f0;
+        margin: .3rem 0;
+    }
+
+    /* KPIs dans hero */
+    .ets-kpis {
+        display: flex;
+        gap: .65rem;
+        margin-top: 1.2rem;
+        flex-wrap: wrap;
+        position: relative;
+        z-index: 2;
+    }
+    .ets-kpi {
+        flex: 1;
+        min-width: 160px;
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.18);
+        border-radius: 12px;
+        padding: .75rem .9rem;
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+    }
+    .ets-kpi-icon {
+        width: 36px; height: 36px;
+        border-radius: 9px;
+        background: rgba(255,255,255,.15);
+        display: flex; align-items: center; justify-content: center;
+        color: #fff;
+        font-size: .95rem;
+        flex-shrink: 0;
+    }
+    .ets-kpi-value {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1;
+    }
+    .ets-kpi-label {
+        font-size: .72rem;
+        color: rgba(255,255,255,.72);
+        margin-top: .2rem;
+        text-transform: uppercase;
+        letter-spacing: .3px;
+    }
+
+    @media (max-width: 768px) {
+        .ets-hero { padding: 1.25rem 1.25rem 1rem; }
+        .ets-hero-info h1 { font-size: 1.15rem; }
+        .ets-hero-top { flex-direction: column; }
+        .ets-kpi { min-width: calc(50% - .35rem); }
+    }
+    @media (max-width: 480px) {
+        .ets-kpi { min-width: 100%; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       Modal config volumes — gradient bleu KLASSCI (pattern PR #220)
+       ═══════════════════════════════════════════════════════════ */
+    .ets-config-modal .modal-content {
+        border: none;
+        border-radius: 16px;
+        box-shadow: 0 24px 60px rgba(15,23,42,.25), 0 8px 20px rgba(4,83,203,.12);
+        overflow: hidden;
+    }
+    .ets-config-modal .modal-header {
+        background: linear-gradient(135deg, #0453cb 0%, #3b7ddb 100%);
+        color: #fff;
+        border-bottom: none;
+        padding: 1rem 1.5rem;
+    }
+    .ets-config-modal .modal-title {
+        font-weight: 700;
+        font-size: 1rem;
+        display: inline-flex;
+        align-items: center;
+        gap: .6rem;
+    }
+    .ets-config-modal .modal-title i {
+        width: 32px; height: 32px;
+        border-radius: 9px;
+        background: rgba(255,255,255,.16);
+        border: 1px solid rgba(255,255,255,.22);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .88rem;
+        color: #fff;
+    }
+    .ets-config-modal .btn-close {
+        filter: invert(1) brightness(2);
+        opacity: .85;
+    }
+    .ets-config-modal .btn-close:hover { opacity: 1; }
+    .ets-config-modal .modal-body {
+        background: #fff;
+        padding: 1.5rem;
+    }
+    .ets-config-modal .modal-footer {
+        background: #f8fafc;
+        border-top: 1px solid #e2e8f0;
+        padding: 1rem 1.5rem;
+        gap: .5rem;
+    }
+    .ets-config-modal .modal-footer .btn {
+        border-radius: 10px;
+        font-weight: 600;
+        padding: .55rem 1.25rem;
+        font-size: .88rem;
+    }
+    .ets-config-modal .modal-footer .btn-light {
+        background: #fff;
+        color: #475569;
+        border: 1px solid #cbd5e1;
+    }
+    .ets-config-modal .modal-footer .btn-light:hover {
+        background: #f1f5f9;
+        border-color: #94a3b8;
+        color: #1e293b;
+    }
+    .ets-config-modal .modal-footer .btn-primary {
+        background: #0453cb;
+        border-color: #0453cb;
+        box-shadow: 0 2px 6px rgba(4,83,203,.2);
+    }
+    .ets-config-modal .modal-footer .btn-primary:hover {
+        background: #033a8e;
+        border-color: #033a8e;
+        transform: translateY(-1px);
+    }
+    .ets-config-modal .alert-info {
+        background: rgba(4,83,203,.06);
+        border: 1px solid rgba(4,83,203,.15);
+        color: #033a8e;
+        border-radius: 10px;
+        padding: .75rem 1rem;
+        font-size: .86rem;
+    }
+    .ets-config-modal .form-control,
+    .ets-config-modal .form-select {
+        border: 1.5px solid #e2e8f0;
+        border-radius: 9px;
+        font-size: .88rem;
+        transition: all .15s ease;
+    }
+    .ets-config-modal .form-control:focus,
+    .ets-config-modal .form-select:focus {
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+        outline: none;
+    }
+
+    /* ═══════════════════════════════════════════════════════════ */
+
     .timetable-container {
         overflow-x: auto;
     }
@@ -331,39 +627,139 @@
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header Section -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1><i class="fas fa-calendar-alt me-2"></i>{{ $emploiTemps->titre ?? 'Emploi du Temps' }}</h1>
-                <p class="header-subtitle">
-                    Emploi du temps de {{ $emploiTemps->classe->name ?? 'Non défini' }}
-                    @if($emploiTemps->date_debut && $emploiTemps->date_fin)
-                        <br>
-                        <small class="text-muted">
-                            <i class="fas fa-calendar-day"></i> Du {{ \Carbon\Carbon::parse($emploiTemps->date_debut)->format('d/m/Y') }}
-                            au {{ \Carbon\Carbon::parse($emploiTemps->date_fin)->format('d/m/Y') }}
-                        </small>
-                    @endif
-                </p>
+
+        {{-- ═════════════════════════════════════════════════════════
+             HERO PREMIUM (ets-*)
+             ═════════════════════════════════════════════════════════ --}}
+        <div class="ets-hero">
+            <div class="ets-hero-top">
+                <div class="ets-hero-left">
+                    <div class="ets-hero-icon">
+                        <i class="fas fa-calendar-week"></i>
+                    </div>
+                    <div class="ets-hero-info">
+                        <h1>{{ $emploiTemps->titre ?: ('Emploi du temps — ' . ($emploiTemps->classe->name ?? 'Non défini')) }}</h1>
+                        <p>
+                            {{ $emploiTemps->classe->filiere->name ?? 'Filière' }} ·
+                            {{ $emploiTemps->classe->niveau->name ?? 'Niveau' }} ·
+                            {{ $emploiTemps->annee->name ?? 'Année' }}
+                        </p>
+                        <div class="ets-hero-chips">
+                            @if($emploiTemps->is_active ?? true)
+                                <span class="ets-hero-chip ets-hero-chip--success">
+                                    <i class="fas fa-circle"></i> Actif
+                                </span>
+                            @else
+                                <span class="ets-hero-chip ets-hero-chip--muted">
+                                    <i class="fas fa-circle"></i> Inactif
+                                </span>
+                            @endif
+                            @if($emploiTemps->is_current ?? false)
+                                <span class="ets-hero-chip">
+                                    <i class="fas fa-star"></i> Courant
+                                </span>
+                            @endif
+                            @if(isset($emploiTemps->semestre) && in_array($emploiTemps->semestre, ['Semestre 1', 'Semestre 2'], true))
+                                <span class="ets-hero-chip">
+                                    <i class="fas fa-calendar"></i> {{ $emploiTemps->semestre }}
+                                </span>
+                            @endif
+                            @if($emploiTemps->date_debut && $emploiTemps->date_fin)
+                                <span class="ets-hero-chip">
+                                    <i class="fas fa-calendar-day"></i>
+                                    {{ \Carbon\Carbon::parse($emploiTemps->date_debut)->format('d/m') }}
+                                    →
+                                    {{ \Carbon\Carbon::parse($emploiTemps->date_fin)->format('d/m/Y') }}
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
+                <div class="ets-hero-actions">
+                    <a href="{{ route('esbtp.emploi-temps.index') }}" class="ets-btn ets-btn--glass">
+                        <i class="fas fa-arrow-left"></i> Retour
+                    </a>
+                    <div class="dropdown">
+                        <button type="button" class="ets-btn ets-btn--glass" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Actions">
+                            <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end ets-dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="{{ route('esbtp.emploi-temps.preview', ['emploi_temp' => $emploiTemps->id]) }}" target="_blank">
+                                    <i class="fas fa-eye"></i> Prévisualiser PDF
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ route('esbtp.emploi-temps.export-pdf', ['emploi_temp' => $emploiTemps->id]) }}" target="_blank">
+                                    <i class="fas fa-file-pdf"></i> Télécharger PDF
+                                </a>
+                            </li>
+                            <li><div class="ets-dropdown-divider"></div></li>
+                            @can('edit_timetables')
+                            <li>
+                                <a class="dropdown-item" href="{{ route('esbtp.emploi-temps.edit', ['emploi_temp' => $emploiTemps->id]) }}">
+                                    <i class="fas fa-edit"></i> Modifier l'emploi
+                                </a>
+                            </li>
+                            @endcan
+                            @can('delete_timetables')
+                            <li>
+                                <button type="button" class="dropdown-item text-danger" onclick="etsDeleteEmploi()">
+                                    <i class="fas fa-trash"></i> Supprimer l'emploi
+                                </button>
+                            </li>
+                            @endcan
+                        </ul>
+                    </div>
+                    @can('create_timetable')
+                    <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}" class="ets-btn ets-btn--white">
+                        <i class="fas fa-plus"></i> Séance
+                    </a>
+                    @endcan
+                </div>
             </div>
-            <div class="header-actions">
-                <a href="{{ route('esbtp.emploi-temps.index') }}" class="btn-acasi secondary">
-                    <i class="fas fa-arrow-left"></i>Retour à la liste
-                </a>
-                <a href="{{ route('esbtp.emploi-temps.preview', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-acasi info" target="_blank">
-                    <i class="fas fa-eye"></i>Prévisualiser PDF
-                </a>
-                <a href="{{ route('esbtp.emploi-temps.export-pdf', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-acasi danger" target="_blank">
-                    <i class="fas fa-file-pdf"></i>Générer PDF
-                </a>
-                <a href="{{ route('esbtp.emploi-temps.edit', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-acasi warning">
-                    <i class="fas fa-edit"></i>Modifier
-                </a>
-                <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}" class="btn-acasi primary">
-                    <i class="fas fa-plus"></i>Ajouter une séance
-                </a>
+
+            {{-- KPIs --}}
+            <div class="ets-kpis">
+                <div class="ets-kpi">
+                    <div class="ets-kpi-icon"><i class="fas fa-clock"></i></div>
+                    <div>
+                        <div class="ets-kpi-value">{{ $heroKpis['total_seances'] }}</div>
+                        <div class="ets-kpi-label">Séances programmées</div>
+                    </div>
+                </div>
+                <div class="ets-kpi">
+                    <div class="ets-kpi-icon"><i class="fas fa-hourglass-half"></i></div>
+                    <div>
+                        <div class="ets-kpi-value">{{ number_format($heroKpis['heures_planifiees'], 0) }}h</div>
+                        <div class="ets-kpi-label">Heures planifiées</div>
+                    </div>
+                </div>
+                <div class="ets-kpi">
+                    <div class="ets-kpi-icon"><i class="fas fa-chart-line"></i></div>
+                    <div>
+                        <div class="ets-kpi-value">{{ $heroKpis['pourcentage_restant'] }}%</div>
+                        <div class="ets-kpi-label">Volume restant</div>
+                    </div>
+                </div>
+                <div class="ets-kpi">
+                    <div class="ets-kpi-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                    <div>
+                        <div class="ets-kpi-value">{{ $heroKpis['enseignants'] }}</div>
+                        <div class="ets-kpi-label">Enseignants</div>
+                    </div>
+                </div>
             </div>
         </div>
+
+        {{-- Form cache suppression emploi (declenche via kebab menu) --}}
+        @can('delete_timetables')
+        <form id="ets-delete-emploi-form" method="POST" action="{{ route('esbtp.emploi-temps.destroy', ['emploi_temp' => $emploiTemps->id]) }}" style="display:none;">
+            @csrf
+            @method('DELETE')
+        </form>
+        @endcan
 
         @if (session('success'))
             <div class="alert alert-success border-start border-success border-4 mb-4">
@@ -448,39 +844,40 @@
 </div>
 
 <!-- Modal de Configuration des Volumes Horaires -->
-<div class="modal fade" id="volumeConfigModal" tabindex="-1" aria-labelledby="volumeConfigModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+<div class="modal fade ets-config-modal" id="volumeConfigModal" tabindex="-1" aria-labelledby="volumeConfigModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
-            <div class="modal-header bg-primary text-white">
+            <div class="modal-header">
                 <h5 class="modal-title" id="volumeConfigModalLabel">
-                    <i class="fas fa-cog me-2"></i>
-                    Configuration des Volumes Horaires
+                    <i class="fas fa-cog"></i>
+                    <span>Configuration des volumes horaires</span>
                 </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <div class="modal-body">
-                <div class="config-header mb-4">
-                    <h6 class="mb-1">Combinaison sélectionnée</h6>
-                    <p class="text-muted mb-0" id="config-combination-name">{{ $emploiTemps->classe->filiere->name ?? 'Filière' }} - {{ $emploiTemps->classe->niveau->name ?? 'Niveau' }}</p>
+                <div class="alert alert-info mb-3">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Combinaison :</strong>
+                    <span id="config-combination-name">{{ $emploiTemps->classe->filiere->name ?? 'Filière' }} · {{ $emploiTemps->classe->niveau->name ?? 'Niveau' }}</span>
                 </div>
-                
+
                 <form id="volume-config-form">
                     <input type="hidden" id="config-filiere-id" name="filiere_id" value="{{ $emploiTemps->classe->filiere_id ?? '' }}">
                     <input type="hidden" id="config-niveau-id" name="niveau_id" value="{{ $emploiTemps->classe->niveau_etude_id ?? '' }}">
                     <input type="hidden" id="config-annee-id" name="annee_id" value="{{ $emploiTemps->annee->id ?? '' }}">
-                    
+
                     <div class="config-loading text-center py-4" id="config-loading" style="display: none;">
                         <i class="fas fa-spinner fa-spin fa-2x mb-3"></i>
-                        <p>Chargement des matières...</p>
+                        <p class="text-muted">Chargement des matières...</p>
                     </div>
-                    
+
                     <div id="matieres-container">
                         <!-- Les matières seront chargées ici via AJAX -->
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i>Annuler
                 </button>
                 <button type="button" class="btn btn-primary" id="save-volume-config">
@@ -493,7 +890,47 @@
 @endsection
 
 @section('scripts')
+<script src="{{ asset('js/inscriptions/common.js') }}"></script>
 <script>
+    // ═════════════════════════════════════════════════════════════════
+    // Emploi-temps show — actions premium (delete emploi, delete seance)
+    // ═════════════════════════════════════════════════════════════════
+
+    window.etsDeleteEmploi = async function () {
+        const ok = await window.iiConfirm({
+            title: "Supprimer l'emploi du temps",
+            message: "Cette action supprimera l'emploi du temps et toutes ses séances. Les données ne pourront pas être récupérées. Confirmer ?",
+            confirmLabel: 'Supprimer',
+            cancelLabel: 'Annuler',
+            danger: true,
+        });
+        if (!ok) return;
+        const form = document.getElementById('ets-delete-emploi-form');
+        if (form) form.submit();
+    };
+
+    window.etsDeleteSeance = async function (seanceId, matiereName) {
+        const ok = await window.iiConfirm({
+            title: "Supprimer la séance",
+            message: `Confirmer la suppression de la séance « ${matiereName || 'Séance'} » ? Cette action est irréversible.`,
+            confirmLabel: 'Supprimer',
+            cancelLabel: 'Annuler',
+            danger: true,
+        });
+        if (!ok) return;
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/esbtp/seances-cours/${seanceId}`;
+        form.style.display = 'none';
+        form.innerHTML = `
+            <input type="hidden" name="_token" value="{{ csrf_token() }}">
+            <input type="hidden" name="_method" value="DELETE">
+        `;
+        document.body.appendChild(form);
+        form.submit();
+    };
+
     // Variables globales pour le modal de configuration
     let currentFiliereId = null;
     let currentNiveauId = null;

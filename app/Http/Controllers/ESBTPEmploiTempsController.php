@@ -820,6 +820,9 @@ class ESBTPEmploiTempsController extends Controller
         // Grouper les séances par jour
         $seancesParJour = $emploi_temp->getSeancesParJour();
 
+        // Setting configurable : afficher le dimanche ou non (default false)
+        $showSunday = (bool) \App\Models\ESBTPSystemSetting::getValue('emploi_temps.show_sunday', false);
+
         // Noms des jours pour l'affichage
         $joursNoms = [
             1 => 'Lundi',
@@ -829,6 +832,9 @@ class ESBTPEmploiTempsController extends Controller
             5 => 'Vendredi',
             6 => 'Samedi',
         ];
+        if ($showSunday) {
+            $joursNoms[7] = 'Dimanche';
+        }
 
         // Générer dynamiquement les créneaux horaires (pas de 15 minutes pour couvrir 08:30, 09:15, etc.)
         $timeSlots = $this->generateTimeSlots($seances);
@@ -856,12 +862,33 @@ class ESBTPEmploiTempsController extends Controller
             );
         }
 
+        // KPIs pour le hero premium
+        $totalSeances = $emploi_temp->seances->count();
+        $totalHeuresPlanifiees = $planificationData['heures_totales'] ?? 0;
+        $heuresRestantes = $planificationData['heures_restantes'] ?? 0;
+        $pourcentageRestant = $totalHeuresPlanifiees > 0
+            ? round(($heuresRestantes / $totalHeuresPlanifiees) * 100)
+            : 0;
+        $enseignantsIds = $emploi_temp->seances
+            ->pluck('teacher_id')
+            ->filter()
+            ->unique()
+            ->count();
+
+        $heroKpis = [
+            'total_seances' => $totalSeances,
+            'heures_planifiees' => $totalHeuresPlanifiees,
+            'pourcentage_restant' => $pourcentageRestant,
+            'enseignants' => $enseignantsIds,
+        ];
+
         // Renommer la variable pour la vue
         $emploiTemps = $emploi_temp;
 
         return view('esbtp.emploi-temps.show', compact(
             'emploiTemps', 'seances', 'seancesParJour',
-            'joursNoms', 'matiereStats', 'timeSlots', 'days', 'planificationData'
+            'joursNoms', 'matiereStats', 'timeSlots', 'days', 'planificationData',
+            'heroKpis', 'showSunday'
         ));
     }
 
