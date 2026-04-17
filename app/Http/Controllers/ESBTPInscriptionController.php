@@ -243,6 +243,8 @@ class ESBTPInscriptionController extends Controller
                     "perPage" => $perPage,
                 ])->render(),
                 "url" => $request->fullUrl(),
+                "stats" => $stats,
+                "total" => $inscriptions->total(),
             ]);
         }
 
@@ -1658,10 +1660,38 @@ class ESBTPInscriptionController extends Controller
                 "inscription" => $inscription,
             ])->render();
 
+            // Recalculer stats pour l'annee courante (meme scope que index())
+            $anneeEnCours = ESBTPAnneeUniversitaire::where("is_current", true)->first();
+            $statsQuery = ESBTPInscription::query();
+            if ($anneeEnCours) {
+                $statsQuery->where("annee_universitaire_id", $anneeEnCours->id);
+            }
+            $stats = [
+                "total" => $statsQuery->count(),
+                "actives" => (clone $statsQuery)
+                    ->where("status", "active")
+                    ->where("workflow_step", "etudiant_cree")
+                    ->count(),
+                "en_attente" => (clone $statsQuery)->where("status", "en_attente")->count(),
+                "non_validees" => (clone $statsQuery)
+                    ->where(function ($q) {
+                        $q->where("status", "en_attente")->orWhere(function ($subQ) {
+                            $subQ->where("status", "active")->where(function ($wq) {
+                                $wq->whereIn("workflow_step", ["prospect", "documents_complets", "en_validation"])
+                                    ->orWhereNull("workflow_step");
+                            });
+                        });
+                    })
+                    ->count(),
+                "annulees" => (clone $statsQuery)->where("status", "annulée")->count(),
+                "terminees" => (clone $statsQuery)->where("status", "terminée")->count(),
+            ];
+
             return response()->json([
                 "success" => true,
                 "html" => $html,
                 "inscription_id" => $inscription->id,
+                "stats" => $stats,
             ]);
         } catch (\Exception $e) {
             Log::error("Erreur refreshLigne: " . $e->getMessage(), [

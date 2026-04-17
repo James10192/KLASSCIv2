@@ -377,38 +377,28 @@
 .inscription-actions-wrapper.is-loading .inscription-actions-buttons { display: none !important; }
 .inscription-actions-wrapper.is-loading .inscription-actions-spinner { display: flex !important; }
 
-/* Row highlight animations (preserved) */
-tr[data-inscription-id] { position: relative; overflow: hidden; }
-.inscription-row-highlight {
-    position: absolute; top: 0; left: -80%;
-    width: 160%; height: 100%;
-    opacity: 0; pointer-events: none;
-    transform: translateX(-65%) skewX(-12deg);
-    background: linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.7) 50%, rgba(16,185,129,0) 100%);
-    transition: opacity .2s ease; z-index: 5;
+/* Row highlight animations — flash full-row couleur (pas d'overlay qui overflow) */
+tr[data-inscription-id] { position: relative; }
+tr[data-inscription-id] > td { transition: background .15s ease; }
+
+.inscription-row-flash > td {
+    animation: ii-flash 2.2s ease-in-out;
 }
-.inscription-row-highlight.reject {
-    background: linear-gradient(90deg, rgba(239,68,68,0) 0%, rgba(239,68,68,.7) 50%, rgba(239,68,68,0) 100%);
-}
-.inscription-row-highlight.animate {
-    animation: ii-highlight-move 3.2s ease-out forwards;
-}
-.inscription-row-flash { animation: ii-flash .8s ease-in-out; }
-.inscription-row-flash.reject { animation-name: ii-flash-reject; }
-@keyframes ii-highlight-move {
-    0% { opacity: 0; transform: translateX(-65%) skewX(-12deg); }
-    18% { opacity: .9; }
-    55% { opacity: .65; }
-    100% { opacity: 0; transform: translateX(115%) skewX(-12deg); }
+.inscription-row-flash.reject > td {
+    animation-name: ii-flash-reject;
 }
 @keyframes ii-flash {
     0% { background: transparent; }
-    25% { background: rgba(16,185,129,.1); }
+    10% { background: rgba(16,185,129,.25); }
+    35% { background: rgba(16,185,129,.35); }
+    70% { background: rgba(16,185,129,.18); }
     100% { background: transparent; }
 }
 @keyframes ii-flash-reject {
     0% { background: transparent; }
-    25% { background: rgba(239,68,68,.1); }
+    10% { background: rgba(239,68,68,.25); }
+    35% { background: rgba(239,68,68,.35); }
+    70% { background: rgba(239,68,68,.18); }
     100% { background: transparent; }
 }
 

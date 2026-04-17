@@ -148,24 +148,18 @@
         const isReject = ['reject', 'cancel', 'danger', 'delete'].includes(actionType);
         const onStatusPassed = typeof options.onStatusPassed === 'function' ? options.onStatusPassed : null;
 
+        // Reset pour redéclencher l'animation
         row.classList.remove('inscription-row-flash', 'reject');
         void row.offsetWidth;
 
-        const highlight = document.createElement('div');
-        highlight.className = 'inscription-row-highlight';
-        if (isReject) highlight.classList.add('reject');
-        row.appendChild(highlight);
-
-        requestAnimationFrame(() => highlight.classList.add('animate'));
-
-        if (onStatusPassed) {
-            setTimeout(() => onStatusPassed(highlight), HIGHLIGHT_DURATION * HIGHLIGHT_STATUS_PASS_RATIO);
-        }
-
-        highlight.addEventListener('animationend', () => highlight.remove(), { once: true });
         row.classList.add('inscription-row-flash');
         if (isReject) row.classList.add('reject');
-        setTimeout(() => row.classList.remove('inscription-row-flash', 'reject'), 1200);
+
+        if (onStatusPassed) {
+            setTimeout(() => onStatusPassed(null), HIGHLIGHT_DURATION * HIGHLIGHT_STATUS_PASS_RATIO);
+        }
+
+        setTimeout(() => row.classList.remove('inscription-row-flash', 'reject'), HIGHLIGHT_DURATION);
     }
 
     function getFormURL(form, extraParams = {}) {
@@ -188,9 +182,44 @@
         if (resultsContainer) resultsContainer.style.opacity = isLoading ? '0.5' : '1';
     }
 
+    function updateKpisFromStats(stats) {
+        if (!stats) return;
+        const map = {
+            all: stats.total,
+            active: stats.actives,
+            non_validee: stats.non_validees,
+            en_attente: stats.en_attente,
+            'annulée': stats.annulees,
+        };
+        document.querySelectorAll('#ii-kpis .ii-kpi').forEach((kpi) => {
+            const f = kpi.dataset.kpiFilter;
+            if (f in map) {
+                const valueEl = kpi.querySelector('.ii-kpi-value');
+                if (valueEl) valueEl.textContent = map[f] ?? 0;
+            }
+            // Badge warning si non_validees > 0
+            if (f === 'non_validee') {
+                const existing = kpi.querySelector('.ii-kpi-badge');
+                if ((map[f] ?? 0) > 0) {
+                    if (!existing) {
+                        const badge = document.createElement('span');
+                        badge.className = 'ii-kpi-badge';
+                        kpi.style.position = 'relative';
+                        kpi.appendChild(badge);
+                    }
+                } else if (existing) {
+                    existing.remove();
+                }
+            }
+        });
+    }
+    window.updateKpisFromStats = updateKpisFromStats;
+
     function fetchResults(url, options = {}) {
         if (!url) return Promise.resolve();
         setLoading(true);
+        // Loading visual sur KPIs
+        document.querySelectorAll('#ii-kpis .ii-kpi').forEach(k => k.style.opacity = '.6');
         return fetch(url, {
             headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
             credentials: 'same-origin',
@@ -211,20 +240,20 @@
                 updateActiveFilterChips();
                 updateKpiActiveState();
                 clearSelection();
-                if (countSpan) {
-                    const totalSpan = resultsContainer.querySelector('.ii-per-page-hint');
-                    if (totalSpan) {
-                        // "par page · N inscription(s) au total"
-                        const match = totalSpan.textContent.match(/(\d+)\s+inscription/);
-                        if (match) countSpan.textContent = match[1];
-                    }
+                // Update KPIs si stats renvoyées
+                if (data.stats) updateKpisFromStats(data.stats);
+                if (countSpan && typeof data.total !== 'undefined') {
+                    countSpan.textContent = data.total;
                 }
             })
             .catch((err) => {
                 debugError('[inscriptions] fetchResults error:', err);
                 showToast('Impossible de charger les inscriptions. Veuillez réessayer.', 'error');
             })
-            .finally(() => setLoading(false));
+            .finally(() => {
+                setLoading(false);
+                document.querySelectorAll('#ii-kpis .ii-kpi').forEach(k => k.style.opacity = '');
+            });
     }
 
     function submitFilterForm() {
@@ -539,6 +568,8 @@
             })
             .then((data) => {
                 if (!data.success || !data.html) throw new Error('Réponse invalide');
+                // Update KPIs si stats fournies
+                if (data.stats) updateKpisFromStats(data.stats);
                 const template = document.createElement('template');
                 template.innerHTML = data.html.trim();
                 const newRow = template.content.querySelector(`tr[data-inscription-id="${inscriptionId}"]`)
@@ -819,11 +850,16 @@
                 } else {
                     setRowLoading(id, false);
                     showToast(data.message || 'Erreur validation.', 'error');
+                    // Red highlight sur erreur pour feedback visuel
+                    const row = document.querySelector(`tr[data-inscription-id="${id}"]`);
+                    if (row) triggerRowHighlight(row, 'reject');
                 }
             })
             .catch(() => {
                 setRowLoading(id, false);
                 showToast('Erreur validation.', 'error');
+                const row = document.querySelector(`tr[data-inscription-id="${id}"]`);
+                if (row) triggerRowHighlight(row, 'reject');
             });
     });
 

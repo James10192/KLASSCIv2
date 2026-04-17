@@ -82,8 +82,10 @@
                 <div class="ii-etu-name">{{ $nomComplet }}</div>
                 <div class="ii-etu-meta">
                     <span class="ii-matricule">{{ $etudiant->matricule ?? 'N/A' }}</span>
-                    <span class="ii-separator">·</span>
-                    <span class="ii-numero">{{ $inscription->numero_inscription ?? '—' }}</span>
+                    @if(!empty($inscription->numero_inscription))
+                        <span class="ii-separator">·</span>
+                        <span class="ii-numero">{{ $inscription->numero_inscription }}</span>
+                    @endif
                 </div>
             </div>
         </div>
