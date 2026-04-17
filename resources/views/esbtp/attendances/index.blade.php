@@ -449,6 +449,10 @@
         width: 36px; height: 36px; border-radius: 10px;
         display: flex; align-items: center; justify-content: center;
         font-size: 0.75rem; font-weight: 700; color: #fff; flex-shrink: 0;
+        overflow: hidden;
+    }
+    .att-avatar img {
+        width: 100%; height: 100%; object-fit: cover;
     }
 
     .att-student-name { font-weight: 600; font-size: 0.875rem; color: var(--text-primary); }
@@ -1029,8 +1033,12 @@
                             </td>
                             <td>
                                 <div style="display:flex;align-items:center;gap:.6rem;">
-                                    <div class="att-avatar" style="background:{{ $avatarBg }};">
-                                        {{ strtoupper(substr($attendance->etudiant->nom_complet, 0, 2)) }}
+                                    <div class="att-avatar" style="background:{{ $attendance->etudiant->photo_url ? 'transparent' : $avatarBg }};">
+                                        @if($attendance->etudiant->photo_url)
+                                            <img src="{{ $attendance->etudiant->photo_url }}" alt="{{ $attendance->etudiant->nom_complet }}" onerror="this.parentElement.style.background='{{ $avatarBg }}';this.outerHTML='{{ strtoupper(substr($attendance->etudiant->nom_complet, 0, 2)) }}';">
+                                        @else
+                                            {{ strtoupper(substr($attendance->etudiant->nom_complet, 0, 2)) }}
+                                        @endif
                                     </div>
                                     <div>
                                         <div class="att-student-name">{{ $attendance->etudiant->nom_complet }}</div>

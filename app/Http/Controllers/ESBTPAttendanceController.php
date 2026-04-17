@@ -3,13 +3,17 @@
 namespace App\Http\Controllers;
 
 use App\Models\ESBTPAttendance;
+use App\Models\ESBTPAttendanceManualHours;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPAcademicYear;
 use App\Models\ESBTPTeacherAttendance;
+use App\Http\Requests\Attendance\StoreManualAttendanceHoursRequest;
+use App\Services\ESBTP\ManualAttendanceHoursService;
 use App\Models\Notification;
 use App\Notifications\AbsenceNotification;
 use App\Services\MatiereService;
@@ -610,7 +614,28 @@ class ESBTPAttendanceController extends Controller
         // Enregistrer les informations de débogage dans le journal
         \Log::info('Débogage marquage présences', $debug);
 
-        return view('esbtp.attendances.create', compact('classes', 'seances', 'etudiants', 'dateSeance', 'messageErreur', 'classeSelectionnee', 'existingAttendances', 'debug'));
+        // Matières de la classe pour l'onglet "Saisie manuelle"
+        // Source canonique : planifications académiques (filière + niveau), comme ClassPlanningService.
+        // Fallback : pivot esbtp_classe_matiere (BTS pré-attachées) si planifications absentes.
+        $matieresClasse = collect();
+        if ($classeSelectionnee && isset($classe)) {
+            $matieresClasse = $this->getMatieresClasse($classe);
+        }
+
+        $anneeUniversitaireCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        return view('esbtp.attendances.create', compact(
+            'classes',
+            'seances',
+            'etudiants',
+            'dateSeance',
+            'messageErreur',
+            'classeSelectionnee',
+            'existingAttendances',
+            'debug',
+            'matieresClasse',
+            'anneeUniversitaireCourante'
+        ));
     }
 
     /**
@@ -693,7 +718,21 @@ class ESBTPAttendanceController extends Controller
                 );
             }
 
-            return response()->json(['success' => true, 'options' => $options, 'nbSeances' => $seances->count()]);
+            // Matières de la classe pour l'onglet "Saisie manuelle" (via planifications académiques)
+            $classe = ESBTPClasse::find($request->classe_id);
+            $matieres = $classe
+                ? $this->getMatieresClasse($classe)
+                    ->map(fn ($m) => ['id' => $m->id, 'name' => $m->name])
+                    ->values()
+                    ->all()
+                : [];
+
+            return response()->json([
+                'success' => true,
+                'options' => $options,
+                'nbSeances' => $seances->count(),
+                'matieres' => $matieres,
+            ]);
 
         } catch (\Exception $e) {
             \Log::error('❌ [AJAX] Erreur loadSeances: ' . $e->getMessage());
@@ -1742,5 +1781,165 @@ class ESBTPAttendanceController extends Controller
             \Log::error('Erreur calcul classes forte absentéisme: ' . $e->getMessage());
             return 0;
         }
+    }
+
+    /**
+     * Récupère les matières d'une classe via planifications académiques (filière + niveau).
+     * Fallback : pivot esbtp_classe_matiere si aucune planification n'existe (classes BTS legacy).
+     * C'est la source canonique utilisée par ClassPlanningService pour la cohérence
+     * planning / emploi-temps / notes / saisie manuelle.
+     */
+    private function getMatieresClasse(ESBTPClasse $classe): \Illuminate\Support\Collection
+    {
+        if (!$classe->filiere_id || !$classe->niveau_etude_id) {
+            return collect();
+        }
+
+        $matieres = ESBTPPlanificationAcademique::query()
+            ->where('filiere_id', $classe->filiere_id)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->whereNotNull('matiere_id')
+            ->with('matiere:id,name')
+            ->get()
+            ->pluck('matiere')
+            ->filter()
+            ->unique('id')
+            ->sortBy('name')
+            ->values();
+
+        if ($matieres->isEmpty()) {
+            // Fallback classes BTS historiques attachées directement via pivot
+            $matieres = $classe->matieres()
+                ->orderBy('name')
+                ->get(['esbtp_matieres.id', 'esbtp_matieres.name']);
+        }
+
+        return $matieres;
+    }
+
+    public function loadManualTab(Request $request, ManualAttendanceHoursService $service)
+    {
+        $request->validate([
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'matiere_id' => 'required|exists:esbtp_matieres,id',
+            'periode' => 'required|in:semestre1,semestre2,annuel',
+            'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
+        ]);
+
+        try {
+            $classe = ESBTPClasse::with('filiere', 'niveau')->findOrFail($request->classe_id);
+            $matiere = ESBTPMatiere::findOrFail($request->matiere_id);
+            $periode = $request->periode;
+
+            $anneeUniversitaire = $request->annee_universitaire_id
+                ? ESBTPAnneeUniversitaire::findOrFail($request->annee_universitaire_id)
+                : ESBTPAnneeUniversitaire::where('is_current', true)->firstOrFail();
+
+            $etudiants = $classe->etudiants()
+                ->whereHas('inscriptions', function ($q) use ($anneeUniversitaire, $classe) {
+                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+                        ->where('status', 'active')
+                        ->where('classe_id', $classe->id);
+                })
+                ->orderBy('nom')
+                ->orderBy('prenoms')
+                ->get();
+
+            $existing = $service->getForClasseMatiere(
+                $classe->id,
+                $matiere->id,
+                $anneeUniversitaire->id,
+                $periode
+            );
+
+            $existingSessionsCount = ESBTPAttendance::where('classe_id', $classe->id)
+                ->where('matiere_id', $matiere->id)
+                ->where('annee_universitaire_id', $anneeUniversitaire->id)
+                ->where(function ($q) {
+                    $q->where('call_type', 'merged')->orWhereNull('call_type');
+                })
+                ->count();
+
+            $html = view('esbtp.attendances.partials.manual-hours-tab', [
+                'classe' => $classe,
+                'matiere' => $matiere,
+                'periode' => $periode,
+                'anneeUniversitaire' => $anneeUniversitaire,
+                'etudiants' => $etudiants,
+                'existing' => $existing,
+                'existingSessionsCount' => $existingSessionsCount,
+            ])->render();
+
+            return response()->json([
+                'success' => true,
+                'html' => $html,
+                'nbEtudiants' => $etudiants->count(),
+                'nbExisting' => $existing->count(),
+                'existingSessionsCount' => $existingSessionsCount,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Erreur loadManualTab: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Une erreur est survenue lors du chargement.',
+            ], 500);
+        }
+    }
+
+    public function storeManualHours(StoreManualAttendanceHoursRequest $request, ManualAttendanceHoursService $service)
+    {
+        $classe = ESBTPClasse::findOrFail($request->classe_id);
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($request->annee_universitaire_id);
+
+        $validIds = $classe->etudiants()
+            ->whereHas('inscriptions', function ($q) use ($anneeUniversitaire, $classe) {
+                $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+                    ->where('status', 'active')
+                    ->where('classe_id', $classe->id);
+            })
+            ->pluck('esbtp_etudiants.id')
+            ->all();
+
+        $entries = collect($request->input('entries', []))
+            ->filter(fn ($e) => in_array((int) ($e['etudiant_id'] ?? 0), $validIds, true))
+            ->values()
+            ->all();
+
+        if (empty($entries)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun étudiant valide dans la saisie.',
+            ], 422);
+        }
+
+        $count = $service->upsertBatch(
+            $entries,
+            [
+                'classe_id' => (int) $request->classe_id,
+                'matiere_id' => (int) $request->matiere_id,
+                'annee_universitaire_id' => $anneeUniversitaire->id,
+                'periode' => $request->periode,
+            ],
+            Auth::id()
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => "{$count} ligne(s) enregistrée(s) avec succès.",
+            'count' => $count,
+        ]);
+    }
+
+    public function deleteManualHours($id, ManualAttendanceHoursService $service)
+    {
+        // Autorisation déjà gérée par le middleware `permission:create_attendance` sur la route.
+        $row = ESBTPAttendanceManualHours::findOrFail((int) $id);
+
+        $service->delete($row->id, Auth::id());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Entrée supprimée. Le bulletin utilisera à nouveau les séances.',
+        ]);
     }
 }

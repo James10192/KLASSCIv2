@@ -203,11 +203,14 @@ class BulletinService
         $moyenneGlobale = $this->calculerMoyennePonderee(collect($resultatsParMatiere));
 
         // Calcul des absences et note d'assiduité
+        // (priorité à la saisie manuelle par matière si disponible pour cette année/période)
         $absences = $this->absenceService->calculerDetailAbsences(
             $etudiant->id,
             $classe->id,
             $anneeUniversitaire->date_debut,
-            $anneeUniversitaire->date_fin
+            $anneeUniversitaire->date_fin,
+            $anneeUniversitaire->id,
+            $periode
         );
         // Calculer la note d'assiduité seulement si l'affichage est activé
         $afficherNoteAssiduite = SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
@@ -331,7 +334,9 @@ class BulletinService
                 $etudiant->id,
                 $classe->id,
                 $anneeUniversitaire->date_debut,
-                $anneeUniversitaire->date_fin
+                $anneeUniversitaire->date_fin,
+                $anneeUniversitaire->id,
+                $periode
             );
             $absencesParMatiere = $absencesParMatiereData['par_matiere'] ?? [];
             $totalHeuresAbsencesParMatiere = $absencesParMatiereData['total_heures'] ?? 0;
@@ -553,7 +558,9 @@ class BulletinService
                         $etudiant->id,
                         $classeId,
                         $anneeUniv->date_debut ?? null,
-                        $anneeUniv->date_fin ?? null
+                        $anneeUniv->date_fin ?? null,
+                        $anneeUniversitaireId,
+                        $periode
                     );
                     $noteAssiduite = $this->calculerNoteAssiduite($absencesEtudiant['justifiees'], $absencesEtudiant['non_justifiees']);
                     $moyenneEtudiant += $noteAssiduite;
@@ -1385,7 +1392,9 @@ class BulletinService
                 $bulletin->etudiant_id,
                 $bulletin->classe_id,
                 $bulletin->anneeUniversitaire->date_debut,
-                $bulletin->anneeUniversitaire->date_fin
+                $bulletin->anneeUniversitaire->date_fin,
+                $bulletin->annee_universitaire_id,
+                $bulletin->periode
             );
 
             \Log::info('Absences détaillées calculées avec succès pour le bulletin #'.$bulletin->id, $absences);

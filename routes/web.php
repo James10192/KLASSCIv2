@@ -709,6 +709,20 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->name('load-students')
                     ->middleware('permission:create_attendance');
 
+                // Saisie manuelle des heures par matière
+                Route::get('/attendances/manual/load', [ESBTPAttendanceController::class, 'loadManualTab'])
+                    ->name('manual.load')
+                    ->middleware('permission:create_attendance');
+
+                Route::post('/attendances/manual', [ESBTPAttendanceController::class, 'storeManualHours'])
+                    ->name('manual.store')
+                    ->middleware('permission:create_attendance');
+
+                Route::delete('/attendances/manual/{id}', [ESBTPAttendanceController::class, 'deleteManualHours'])
+                    ->whereNumber('id')
+                    ->name('manual.destroy')
+                    ->middleware('permission:create_attendance');
+
                 // Then parameter routes
                 Route::get('/attendances/{attendance}', [ESBTPAttendanceController::class, 'show'])
                     ->name('show')
