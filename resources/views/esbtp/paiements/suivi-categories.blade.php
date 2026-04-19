@@ -387,7 +387,59 @@
         color: #fff;
         margin-bottom: 1.25rem;
         position: relative;
-        overflow: hidden;
+        /* overflow visible : dropdowns ne sont pas clipes */
+    }
+
+    /* Hero KPIs (row 2 glass) */
+    .sc-hero-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: .75rem;
+        margin-top: 1.5rem;
+    }
+    .sc-hero-kpi {
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.18);
+        border-radius: 12px;
+        padding: .9rem 1rem;
+        color: #fff;
+        transition: background .2s, border-color .2s;
+    }
+    .sc-hero-kpi:hover {
+        background: rgba(255,255,255,.14);
+        border-color: rgba(255,255,255,.24);
+    }
+    .sc-hero-kpi-head {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        margin-bottom: .35rem;
+        color: rgba(255,255,255,.8);
+        font-size: .7rem;
+        font-weight: 600;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .sc-hero-kpi-head i { font-size: .72rem; }
+    .sc-hero-kpi-label { flex: 1; }
+    .sc-hero-kpi-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -.01em;
+        line-height: 1.1;
+    }
+    .sc-hero-kpi-unit {
+        font-size: .72rem;
+        font-weight: 600;
+        color: rgba(255,255,255,.65);
+        margin-left: .25rem;
+    }
+    .sc-hero-kpi-meta {
+        margin-top: .2rem;
+        font-size: .72rem;
+        color: rgba(255,255,255,.65);
+        font-weight: 500;
     }
     .sc-hero-top {
         display: flex;
@@ -751,6 +803,11 @@
                     </a>
                 </div>
             </div>
+
+            {{-- Row 2 : KPIs glass (AJAX-refreshable via #suivi-metrics-container) --}}
+            <div id="suivi-metrics-container">
+                @include('esbtp.paiements.partials.suivi-metrics')
+            </div>
         </div>
 
         {{-- Filter bar groupee --}}
@@ -810,11 +867,6 @@
                     </button>
                 </div>
             </form>
-        </div>
-
-        {{-- KPI Cards (AJAX-refreshable) --}}
-        <div id="suivi-metrics-container">
-            @include('esbtp.paiements.partials.suivi-metrics')
         </div>
 
         {{-- Content Section (AJAX-refreshable) --}}
