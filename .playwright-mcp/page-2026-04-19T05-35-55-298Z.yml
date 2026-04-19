@@ -1,0 +1,866 @@
+- generic [active] [ref=e1]:
+  - text:      
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e5]:
+        - img "Logo KLASSCI" [ref=e7]
+        - generic [ref=e8]: KLASSCI
+      - generic [ref=e9]:
+        - generic [ref=e10]: Tableau de bord
+        - link " Accueil" [ref=e12] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/dashboard
+          - generic [ref=e14]: 
+          - generic [ref=e15]: Accueil
+        - generic [ref=e16]: Gestion académique
+        - generic [ref=e17]:
+          - button " Filières & Classes " [ref=e18] [cursor=pointer]:
+            - generic [ref=e20]: 
+            - generic [ref=e21]: Filières & Classes
+            - generic [ref=e23]: 
+          - generic:
+            - link "Filières" [ref=e24] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/filieres
+              - generic [ref=e25]: Filières
+            - link "Classes" [ref=e26] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/classes
+              - generic [ref=e27]: Classes
+            - link "Niveaux d'études" [ref=e28] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/niveaux-etudes
+              - generic [ref=e29]: Niveaux d'études
+            - link "Années universitaires" [ref=e30] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/annees-universitaires
+              - generic [ref=e31]: Années universitaires
+        - generic [ref=e32]: Étudiants
+        - generic [ref=e33]:
+          - button " Étudiants " [ref=e34] [cursor=pointer]:
+            - generic [ref=e36]: 
+            - generic [ref=e37]: Étudiants
+            - generic [ref=e39]: 
+          - generic:
+            - link " Liste des Étudiants" [ref=e40] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/etudiants
+              - generic [ref=e42]: 
+              - generic [ref=e43]: Liste des Étudiants
+            - link " Inscriptions" [ref=e44] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/inscriptions
+              - generic [ref=e46]: 
+              - generic [ref=e47]: Inscriptions
+            - link " Nouvelle Inscription" [ref=e48] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/inscriptions/create
+              - generic [ref=e50]: 
+              - generic [ref=e51]: Nouvelle Inscription
+            - link " Réinscriptions" [ref=e52] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/reinscription
+              - generic [ref=e54]: 
+              - generic [ref=e55]: Réinscriptions
+            - link " Sous réserve" [ref=e56] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/inscriptions/sous-reserve
+              - generic [ref=e58]: 
+              - generic [ref=e59]: Sous réserve
+        - generic [ref=e60]: Enseignement
+        - link " Emplois du temps" [ref=e62] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/emploi-temps
+          - generic [ref=e64]: 
+          - generic [ref=e65]: Emplois du temps
+        - link " Matières" [ref=e67] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/matieres
+          - generic [ref=e69]: 
+          - generic [ref=e70]: Matières
+        - link " Planning Général" [ref=e72] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/planning-general
+          - generic [ref=e74]: 
+          - generic [ref=e75]: Planning Général
+        - generic [ref=e76]: Notes & Rapports
+        - generic [ref=e77]:
+          - button " Notes & Bulletins " [ref=e78] [cursor=pointer]:
+            - generic [ref=e80]: 
+            - generic [ref=e81]: Notes & Bulletins
+            - generic [ref=e83]: 
+          - generic:
+            - link "Gestion des notes" [ref=e84] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/notes
+              - generic [ref=e85]: Gestion des notes
+            - link "Résultats & Classements" [ref=e86] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/resultats
+              - generic [ref=e87]: Résultats & Classements
+        - link " Examens & Évaluations" [ref=e89] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/evaluations
+          - generic [ref=e91]: 
+          - generic [ref=e92]: Examens & Évaluations
+        - generic [ref=e93]: Système LMD
+        - generic [ref=e94]:
+          - button " LMD " [ref=e95] [cursor=pointer]:
+            - generic [ref=e97]: 
+            - generic [ref=e98]: LMD
+            - generic [ref=e100]: 
+          - generic:
+            - link "Domaines & Parcours" [ref=e101] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/parcours-domain
+              - generic [ref=e102]: Domaines & Parcours
+            - link "Unités d'Enseignement" [ref=e103] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/ue
+              - generic [ref=e104]: Unités d'Enseignement
+            - link "Notes LMD" [ref=e105] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/notes
+              - generic [ref=e106]: Notes LMD
+            - link "Résultats LMD" [ref=e107] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/resultats
+              - generic [ref=e108]: Résultats LMD
+            - link "Bulletins LMD" [ref=e109] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/bulletins
+              - generic [ref=e110]: Bulletins LMD
+        - generic [ref=e111]: Administration
+        - generic [ref=e112]:
+          - button " Personnel " [ref=e113] [cursor=pointer]:
+            - generic [ref=e115]: 
+            - generic [ref=e116]: Personnel
+            - generic [ref=e118]: 
+          - generic:
+            - link "Gestion du personnel" [ref=e119] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/personnel/unified
+              - generic [ref=e120]: Gestion du personnel
+            - link "Départements" [ref=e121] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/departments
+              - generic [ref=e122]: Départements
+        - generic [ref=e123]: Présence & Absences
+        - generic [ref=e124]:
+          - button " Gestion des présences " [ref=e125] [cursor=pointer]:
+            - generic [ref=e127]: 
+            - generic [ref=e128]: Gestion des présences
+            - generic [ref=e130]: 
+          - generic:
+            - link "Présences étudiants" [ref=e131] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/attendances
+              - generic [ref=e132]: Présences étudiants
+            - link "Rapports de présence" [ref=e133] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/attendances/rapport-form
+              - generic [ref=e134]: Rapports de présence
+            - link "Codes d'émargement" [ref=e135] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/attendance-codes
+              - generic [ref=e136]: Codes d'émargement
+            - link "Tableau de Bord Présences" [ref=e137] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/coordinateur/attendance-dashboard
+              - generic [ref=e138]: Tableau de Bord Présences
+        - generic [ref=e139]: Caisse
+        - link " Pré-inscription" [ref=e141] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/inscriptions/pre-inscription
+          - generic [ref=e143]: 
+          - generic [ref=e144]: Pré-inscription
+        - generic [ref=e145]: Communication
+        - link " Messages" [ref=e147] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/mes-messages
+          - generic [ref=e149]: 
+          - generic [ref=e150]: Messages
+        - link " Mes notifications" [ref=e152] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/mes-notifications
+          - generic [ref=e154]: 
+          - generic [ref=e155]: Mes notifications
+        - generic [ref=e156]: Gestion financière
+        - link " Dashboard Comptable" [ref=e158] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/comptabilite/dashboard
+          - generic [ref=e160]: 
+          - generic [ref=e161]: Dashboard Comptable
+        - generic [ref=e162]:
+          - button " Comptabilité " [ref=e163] [cursor=pointer]:
+            - generic [ref=e165]: 
+            - generic [ref=e166]: Comptabilité
+            - generic [ref=e168]: 
+          - generic:
+            - link "Gestion des Frais" [ref=e169] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/frais
+              - generic [ref=e170]: Gestion des Frais
+            - link "Configuration Frais" [ref=e171] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/frais/configure
+              - generic [ref=e172]: Configuration Frais
+            - link "Liste des Paiements" [ref=e173] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/paiements
+              - generic [ref=e174]: Liste des Paiements
+            - link "Suivi par Catégorie" [ref=e175] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/paiements/suivi-categories
+              - generic [ref=e176]: Suivi par Catégorie
+            - link "Relances" [ref=e177] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/comptabilite/relances
+              - generic [ref=e178]: Relances
+        - generic [ref=e179]: Communication
+        - link " Annonces" [ref=e181] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/annonces
+          - generic [ref=e183]: 
+          - generic [ref=e184]: Annonces
+        - link " Créer une annonce" [ref=e186] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/annonces/create
+          - generic [ref=e188]: 
+          - generic [ref=e189]: Créer une annonce
+        - generic [ref=e190]: Système
+        - generic [ref=e191]:
+          - button " Paramètres " [ref=e192] [cursor=pointer]:
+            - generic [ref=e194]: 
+            - generic [ref=e195]: Paramètres
+            - generic [ref=e197]: 
+          - link "Configuration" [ref=e198] [cursor=pointer]:
+            - /url: http://127.0.0.1:8000/esbtp/settings
+            - generic [ref=e199]: Configuration
+        - generic [ref=e200]: Mon compte
+        - link " Profil" [ref=e202] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/teacher/profile
+          - generic [ref=e204]: 
+          - generic [ref=e205]: Profil
+    - main [ref=e206]:
+      - navigation [ref=e207]:
+        - generic [ref=e208]:
+          - generic: 
+          - searchbox "Rechercher dans l'application..." [ref=e211]
+          - generic [ref=e212]:
+            - button "" [ref=e214] [cursor=pointer]:
+              - generic [ref=e215]: 
+            - generic [ref=e216]:
+              - button "" [ref=e217] [cursor=pointer]:
+                - generic [ref=e218]: 
+              - text: 
+            - generic [ref=e219]:
+              - button "" [ref=e220] [cursor=pointer]:
+                - generic [ref=e221]: 
+              - text:    
+            - generic [ref=e222]:
+              - button " N’GUESSAN Marcel Jacques Patrick" [ref=e223] [cursor=pointer]:
+                - generic [ref=e226]: 
+                - generic [ref=e228]: N’GUESSAN Marcel Jacques Patrick
+              - text:    
+      - generic [ref=e229]:
+        - text:   
+        - generic [ref=e231]:
+          - generic [ref=e233]:
+            - generic [ref=e234]:
+              - generic [ref=e236]: 
+              - generic [ref=e237]:
+                - heading "Suivi des Paiements" [level=1] [ref=e238]
+                - paragraph [ref=e239]: Monitoring des paiements étudiants et relances automatiques
+                - generic [ref=e241]:
+                  - generic [ref=e242]: 
+                  - text: 2025-2026
+                  - button "Information changement d'année" [ref=e243] [cursor=pointer]:
+                    - generic [ref=e244]: 
+            - generic [ref=e245]:
+              - button " Rafraîchir" [ref=e246] [cursor=pointer]:
+                - generic [ref=e247]: 
+                - generic [ref=e248]: Rafraîchir
+              - generic [ref=e249]:
+                - button " Exporter" [ref=e250] [cursor=pointer]:
+                  - generic [ref=e251]: 
+                  - generic [ref=e252]: Exporter
+                - text:   
+              - link " Suivi par Catégorie" [ref=e253] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/paiements/suivi-categories
+                - generic [ref=e254]: 
+                - generic [ref=e255]: Suivi par Catégorie
+          - generic [ref=e256]:
+            - generic [ref=e257]:
+              - link "Filtrer les paiements validés" [ref=e258] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/paiements?status=valid%C3%A9
+                - generic [ref=e259]:
+                  - generic [ref=e260]: Paiements Validés
+                  - generic [ref=e261]: 826 500 FCFA
+                  - generic [ref=e262]:
+                    - generic [ref=e263]: 
+                    - text: 13 paiement(s)
+              - link "Filtrer les paiements en attente" [ref=e264] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/paiements?status=en_attente
+                - generic [ref=e265]:
+                  - generic [ref=e266]: En Attente de Validation
+                  - generic [ref=e267]: 0 FCFA
+                  - generic [ref=e268]:
+                    - generic [ref=e269]: 
+                    - text: 0 paiement(s)
+              - link "Filtrer les paiements rejetés" [ref=e270] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/paiements?status=rejet%C3%A9
+                - generic [ref=e271]:
+                  - generic [ref=e272]: Paiements Rejetés
+                  - generic [ref=e273]: 0 FCFA
+                  - generic [ref=e274]:
+                    - generic [ref=e275]: 
+                    - text: 0 paiement(s)
+              - link "Afficher tous les paiements" [ref=e276] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/paiements
+                - generic [ref=e277]:
+                  - generic [ref=e278]: Total Paiements
+                  - generic [ref=e279]: 826 500 FCFA
+                  - generic [ref=e280]:
+                    - generic [ref=e281]: 
+                    - text: 13 paiement(s)
+            - generic [ref=e282]:
+              - generic [ref=e283]: 
+              - strong [ref=e284]: "Note :"
+              - text: Ces chiffres représentent les paiements enregistrés dans le système selon leur statut de validation. Pour voir les montants attendus vs payés par catégorie de frais, consultez le
+              - link "Suivi par Catégorie" [ref=e285] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/paiements/suivi-categories
+              - text: .
+          - generic [ref=e286]:
+            - generic [ref=e287]:
+              - generic [ref=e288]:
+                - generic [ref=e289]: 
+                - generic [ref=e290]: Filtres
+              - text:  
+            - generic [ref=e292]:
+              - generic [ref=e293]:
+                - generic [ref=e294]: Recherche
+                - textbox "Recherche" [ref=e295]:
+                  - /placeholder: Matricule, nom, n° reçu...
+              - generic [ref=e296]:
+                - generic [ref=e297]: Statut
+                - combobox "Statut" [ref=e298] [cursor=pointer]:
+                  - option "Tous" [selected]
+                  - option "En attente"
+                  - option "Validé"
+                  - option "Rejeté"
+              - generic [ref=e299]:
+                - generic [ref=e300]: Date début
+                - textbox "Date début" [ref=e301]
+              - generic [ref=e302]:
+                - generic [ref=e303]: Date fin
+                - textbox "Date fin" [ref=e304]
+              - button " Rechercher" [ref=e305] [cursor=pointer]:
+                - generic [ref=e306]: 
+                - text: Rechercher
+          - toolbar "Actions groupées sur paiements sélectionnés":
+            - generic:
+              - generic: 
+              - strong: "0"
+              - generic: paiement(s) sélectionné(s)
+            - generic:
+              - button " Valider" [ref=e307] [cursor=pointer]:
+                - generic [ref=e308]: 
+                - generic [ref=e309]: Valider
+              - button " Rejeter" [ref=e310] [cursor=pointer]:
+                - generic [ref=e311]: 
+                - generic [ref=e312]: Rejeter
+              - button " Annuler" [ref=e313] [cursor=pointer]:
+                - generic [ref=e314]: 
+                - generic [ref=e315]: Annuler
+          - generic [ref=e318]:
+            - generic [ref=e319]:
+              - generic [ref=e320]:
+                - generic [ref=e321]: 
+                - text: Liste des Paiements
+              - generic [ref=e322]: 13 résultat(s)
+            - table [ref=e324]:
+              - rowgroup [ref=e325]:
+                - row "Tout sélectionner N° Reçu Étudiant Catégorie Date Montant Mode Statut Actions" [ref=e326]:
+                  - columnheader "Tout sélectionner" [ref=e327]:
+                    - checkbox "Tout sélectionner" [ref=e328] [cursor=pointer]
+                  - columnheader "N° Reçu" [ref=e329]
+                  - columnheader "Étudiant" [ref=e330]
+                  - columnheader "Catégorie" [ref=e331]
+                  - columnheader "Date" [ref=e332]
+                  - columnheader "Montant" [ref=e333]
+                  - columnheader "Mode" [ref=e334]
+                  - columnheader "Statut" [ref=e335]
+                  - columnheader "Actions" [ref=e336]
+              - rowgroup [ref=e337]:
+                - row "REC-00012 Ma Marc Domy IDH1AB-EHD  FRais d'inscription Academic 17/04/2026 5 000 FCFA Espèces Validé   " [ref=e338]:
+                  - cell [ref=e339]
+                  - cell "REC-00012" [ref=e340]:
+                    - strong [ref=e341]: REC-00012
+                  - cell "Ma Marc Domy IDH1AB-EHD" [ref=e342]:
+                    - generic [ref=e343]:
+                      - generic [ref=e344]: Ma
+                      - generic [ref=e345]:
+                        - link "Marc Domy" [ref=e346] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/11/situation-financiere/preview
+                          - strong [ref=e347]: Marc Domy
+                        - generic [ref=e348]: IDH1AB-EHD
+                  - cell " FRais d'inscription Academic" [ref=e349]:
+                    - generic [ref=e350]:
+                      - generic [ref=e351]: 
+                      - generic [ref=e352]: FRais d'inscription
+                    - generic [ref=e353]: Academic
+                  - cell "17/04/2026" [ref=e354]
+                  - cell "5 000 FCFA" [ref=e355]:
+                    - strong [ref=e356]: 5 000 FCFA
+                  - cell "Espèces" [ref=e357]:
+                    - generic [ref=e358]: Espèces
+                  - cell "Validé" [ref=e359]:
+                    - generic [ref=e360]: Validé
+                  - cell "  " [ref=e361]:
+                    - generic [ref=e363]:
+                      - link "" [ref=e364] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/15
+                        - generic [ref=e365]: 
+                      - generic [ref=e366]:
+                        - button "" [ref=e367] [cursor=pointer]:
+                          - generic [ref=e368]: 
+                        - text:  
+                      - link "" [ref=e369] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/15/edit
+                        - generic [ref=e370]: 
+                - row "REC-00011 N' N'guessan Djedje-li MESBTP23-0458  Frais de scolarité Academic 17/04/2026 15 000 FCFA Espèces Validé   " [ref=e371]:
+                  - cell [ref=e372]
+                  - cell "REC-00011" [ref=e373]:
+                    - strong [ref=e374]: REC-00011
+                  - cell "N' N'guessan Djedje-li MESBTP23-0458" [ref=e375]:
+                    - generic [ref=e376]:
+                      - generic [ref=e377]: N'
+                      - generic [ref=e378]:
+                        - link "N'guessan Djedje-li" [ref=e379] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/10/situation-financiere/preview
+                          - strong [ref=e380]: N'guessan Djedje-li
+                        - generic [ref=e381]: MESBTP23-0458
+                  - cell " Frais de scolarité Academic" [ref=e382]:
+                    - generic [ref=e383]:
+                      - generic [ref=e384]: 
+                      - generic [ref=e385]: Frais de scolarité
+                    - generic [ref=e386]: Academic
+                  - cell "17/04/2026" [ref=e387]
+                  - cell "15 000 FCFA" [ref=e388]:
+                    - strong [ref=e389]: 15 000 FCFA
+                  - cell "Espèces" [ref=e390]:
+                    - generic [ref=e391]: Espèces
+                  - cell "Validé" [ref=e392]:
+                    - generic [ref=e393]: Validé
+                  - cell "  " [ref=e394]:
+                    - generic [ref=e396]:
+                      - link "" [ref=e397] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/14
+                        - generic [ref=e398]: 
+                      - generic [ref=e399]:
+                        - button "" [ref=e400] [cursor=pointer]:
+                          - generic [ref=e401]: 
+                        - text:  
+                      - link "" [ref=e402] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/14/edit
+                        - generic [ref=e403]: 
+                - row "REC-00010 JA JACQUES KOUAKOU MKLASSCI001  Frais de scolarité Academic 17/04/2026 1 500 FCFA Espèces Validé   " [ref=e404]:
+                  - cell [ref=e405]
+                  - cell "REC-00010" [ref=e406]:
+                    - strong [ref=e407]: REC-00010
+                  - cell "JA JACQUES KOUAKOU MKLASSCI001" [ref=e408]:
+                    - generic [ref=e409]:
+                      - generic [ref=e410]: JA
+                      - generic [ref=e411]:
+                        - link "JACQUES KOUAKOU" [ref=e412] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/12/situation-financiere/preview
+                          - strong [ref=e413]: JACQUES KOUAKOU
+                        - generic [ref=e414]: MKLASSCI001
+                  - cell " Frais de scolarité Academic" [ref=e415]:
+                    - generic [ref=e416]:
+                      - generic [ref=e417]: 
+                      - generic [ref=e418]: Frais de scolarité
+                    - generic [ref=e419]: Academic
+                  - cell "17/04/2026" [ref=e420]
+                  - cell "1 500 FCFA" [ref=e421]:
+                    - strong [ref=e422]: 1 500 FCFA
+                  - cell "Espèces" [ref=e423]:
+                    - generic [ref=e424]: Espèces
+                  - cell "Validé" [ref=e425]:
+                    - generic [ref=e426]: Validé
+                  - cell "  " [ref=e427]:
+                    - generic [ref=e429]:
+                      - link "" [ref=e430] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/13
+                        - generic [ref=e431]: 
+                      - generic [ref=e432]:
+                        - button "" [ref=e433] [cursor=pointer]:
+                          - generic [ref=e434]: 
+                        - text:  
+                      - link "" [ref=e435] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/13/edit
+                        - generic [ref=e436]: 
+                - row "REC-D33C2QDK Je Jean-Marc KOUAKOU PRE-CUWD66TZ  Frais de scolarité Academic 25/03/2026 45 000 FCFA especes Validé   " [ref=e437]:
+                  - cell [ref=e438]
+                  - cell "REC-D33C2QDK" [ref=e439]:
+                    - strong [ref=e440]: REC-D33C2QDK
+                  - cell "Je Jean-Marc KOUAKOU PRE-CUWD66TZ" [ref=e441]:
+                    - generic [ref=e442]:
+                      - generic [ref=e443]: Je
+                      - generic [ref=e444]:
+                        - link "Jean-Marc KOUAKOU" [ref=e445] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/16/situation-financiere/preview
+                          - strong [ref=e446]: Jean-Marc KOUAKOU
+                        - generic [ref=e447]: PRE-CUWD66TZ
+                  - cell " Frais de scolarité Academic" [ref=e448]:
+                    - generic [ref=e449]:
+                      - generic [ref=e450]: 
+                      - generic [ref=e451]: Frais de scolarité
+                    - generic [ref=e452]: Academic
+                  - cell "25/03/2026" [ref=e453]
+                  - cell "45 000 FCFA" [ref=e454]:
+                    - strong [ref=e455]: 45 000 FCFA
+                  - cell "especes" [ref=e456]:
+                    - generic [ref=e457]: especes
+                  - cell "Validé" [ref=e458]:
+                    - generic [ref=e459]: Validé
+                  - cell "  " [ref=e460]:
+                    - generic [ref=e462]:
+                      - link "" [ref=e463] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/12
+                        - generic [ref=e464]: 
+                      - generic [ref=e465]:
+                        - button "" [ref=e466] [cursor=pointer]:
+                          - generic [ref=e467]: 
+                        - text:  
+                      - link "" [ref=e468] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/12/edit
+                        - generic [ref=e469]: 
+                - row "REC-00009 Ke Ken Ignis hududhouhd&é  Frais de scolarité Academic 11/02/2026 200 000 FCFA Espèces Validé   " [ref=e470]:
+                  - cell [ref=e471]
+                  - cell "REC-00009" [ref=e472]:
+                    - strong [ref=e473]: REC-00009
+                  - cell "Ke Ken Ignis hududhouhd&é" [ref=e474]:
+                    - generic [ref=e475]:
+                      - generic [ref=e476]: Ke
+                      - generic [ref=e477]:
+                        - link "Ken Ignis" [ref=e478] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/8/situation-financiere/preview
+                          - strong [ref=e479]: Ken Ignis
+                        - generic [ref=e480]: hududhouhd&é
+                  - cell " Frais de scolarité Academic" [ref=e481]:
+                    - generic [ref=e482]:
+                      - generic [ref=e483]: 
+                      - generic [ref=e484]: Frais de scolarité
+                    - generic [ref=e485]: Academic
+                  - cell "11/02/2026" [ref=e486]
+                  - cell "200 000 FCFA" [ref=e487]:
+                    - strong [ref=e488]: 200 000 FCFA
+                  - cell "Espèces" [ref=e489]:
+                    - generic [ref=e490]: Espèces
+                  - cell "Validé" [ref=e491]:
+                    - generic [ref=e492]: Validé
+                  - cell "  " [ref=e493]:
+                    - generic [ref=e495]:
+                      - link "" [ref=e496] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/11
+                        - generic [ref=e497]: 
+                      - generic [ref=e498]:
+                        - button "" [ref=e499] [cursor=pointer]:
+                          - generic [ref=e500]: 
+                        - text:  
+                      - link "" [ref=e501] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/11/edit
+                        - generic [ref=e502]: 
+                - row "REC-00008 Ke Ken Ignis hududhouhd&é  Frais de scolarité Academic 11/02/2026 50 000 FCFA Espèces Validé   " [ref=e503]:
+                  - cell [ref=e504]
+                  - cell "REC-00008" [ref=e505]:
+                    - strong [ref=e506]: REC-00008
+                  - cell "Ke Ken Ignis hududhouhd&é" [ref=e507]:
+                    - generic [ref=e508]:
+                      - generic [ref=e509]: Ke
+                      - generic [ref=e510]:
+                        - link "Ken Ignis" [ref=e511] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/8/situation-financiere/preview
+                          - strong [ref=e512]: Ken Ignis
+                        - generic [ref=e513]: hududhouhd&é
+                  - cell " Frais de scolarité Academic" [ref=e514]:
+                    - generic [ref=e515]:
+                      - generic [ref=e516]: 
+                      - generic [ref=e517]: Frais de scolarité
+                    - generic [ref=e518]: Academic
+                  - cell "11/02/2026" [ref=e519]
+                  - cell "50 000 FCFA" [ref=e520]:
+                    - strong [ref=e521]: 50 000 FCFA
+                  - cell "Espèces" [ref=e522]:
+                    - generic [ref=e523]: Espèces
+                  - cell "Validé" [ref=e524]:
+                    - generic [ref=e525]: Validé
+                  - cell "  " [ref=e526]:
+                    - generic [ref=e528]:
+                      - link "" [ref=e529] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/10
+                        - generic [ref=e530]: 
+                      - generic [ref=e531]:
+                        - button "" [ref=e532] [cursor=pointer]:
+                          - generic [ref=e533]: 
+                        - text:  
+                      - link "" [ref=e534] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/10/edit
+                        - generic [ref=e535]: 
+                - row "REC-00007 IB IBRAHIMA DOSSO 0140848084  Frais de scolarité Academic 08/01/2026 10 000 FCFA Espèces Validé   " [ref=e536]:
+                  - cell [ref=e537]
+                  - cell "REC-00007" [ref=e538]:
+                    - strong [ref=e539]: REC-00007
+                  - cell "IB IBRAHIMA DOSSO 0140848084" [ref=e540]:
+                    - generic [ref=e541]:
+                      - generic [ref=e542]: IB
+                      - generic [ref=e543]:
+                        - link "IBRAHIMA DOSSO" [ref=e544] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/6/situation-financiere/preview
+                          - strong [ref=e545]: IBRAHIMA DOSSO
+                        - generic [ref=e546]: "0140848084"
+                  - cell " Frais de scolarité Academic" [ref=e547]:
+                    - generic [ref=e548]:
+                      - generic [ref=e549]: 
+                      - generic [ref=e550]: Frais de scolarité
+                    - generic [ref=e551]: Academic
+                  - cell "08/01/2026" [ref=e552]
+                  - cell "10 000 FCFA" [ref=e553]:
+                    - strong [ref=e554]: 10 000 FCFA
+                  - cell "Espèces" [ref=e555]:
+                    - generic [ref=e556]: Espèces
+                  - cell "Validé" [ref=e557]:
+                    - generic [ref=e558]: Validé
+                  - cell "  " [ref=e559]:
+                    - generic [ref=e561]:
+                      - link "" [ref=e562] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/9
+                        - generic [ref=e563]: 
+                      - generic [ref=e564]:
+                        - button "" [ref=e565] [cursor=pointer]:
+                          - generic [ref=e566]: 
+                        - text:  
+                      - link "" [ref=e567] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/9/edit
+                        - generic [ref=e568]: 
+                - row "REC-00006 IB IBRAHIMA DOSSO 0140848084  Frais de scolarité Academic 08/01/2026 50 000 FCFA Espèces Validé   " [ref=e569]:
+                  - cell [ref=e570]
+                  - cell "REC-00006" [ref=e571]:
+                    - strong [ref=e572]: REC-00006
+                  - cell "IB IBRAHIMA DOSSO 0140848084" [ref=e573]:
+                    - generic [ref=e574]:
+                      - generic [ref=e575]: IB
+                      - generic [ref=e576]:
+                        - link "IBRAHIMA DOSSO" [ref=e577] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/6/situation-financiere/preview
+                          - strong [ref=e578]: IBRAHIMA DOSSO
+                        - generic [ref=e579]: "0140848084"
+                  - cell " Frais de scolarité Academic" [ref=e580]:
+                    - generic [ref=e581]:
+                      - generic [ref=e582]: 
+                      - generic [ref=e583]: Frais de scolarité
+                    - generic [ref=e584]: Academic
+                  - cell "08/01/2026" [ref=e585]
+                  - cell "50 000 FCFA" [ref=e586]:
+                    - strong [ref=e587]: 50 000 FCFA
+                  - cell "Espèces" [ref=e588]:
+                    - generic [ref=e589]: Espèces
+                  - cell "Validé" [ref=e590]:
+                    - generic [ref=e591]: Validé
+                  - cell "  " [ref=e592]:
+                    - generic [ref=e594]:
+                      - link "" [ref=e595] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/8
+                        - generic [ref=e596]: 
+                      - generic [ref=e597]:
+                        - button "" [ref=e598] [cursor=pointer]:
+                          - generic [ref=e599]: 
+                        - text:  
+                      - link "" [ref=e600] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/8/edit
+                        - generic [ref=e601]: 
+                - row "REC-00005 Dr Drissa PARE 122EDFT5  Frais de scolarité Academic 19/11/2025 100 000 FCFA Espèces Validé   " [ref=e602]:
+                  - cell [ref=e603]
+                  - cell "REC-00005" [ref=e604]:
+                    - strong [ref=e605]: REC-00005
+                  - cell "Dr Drissa PARE 122EDFT5" [ref=e606]:
+                    - generic [ref=e607]:
+                      - generic [ref=e608]: Dr
+                      - generic [ref=e609]:
+                        - link "Drissa PARE" [ref=e610] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/5/situation-financiere/preview
+                          - strong [ref=e611]: Drissa PARE
+                        - generic [ref=e612]: 122EDFT5
+                  - cell " Frais de scolarité Academic" [ref=e613]:
+                    - generic [ref=e614]:
+                      - generic [ref=e615]: 
+                      - generic [ref=e616]: Frais de scolarité
+                    - generic [ref=e617]: Academic
+                  - cell "19/11/2025" [ref=e618]
+                  - cell "100 000 FCFA" [ref=e619]:
+                    - strong [ref=e620]: 100 000 FCFA
+                  - cell "Espèces" [ref=e621]:
+                    - generic [ref=e622]: Espèces
+                  - cell "Validé" [ref=e623]:
+                    - generic [ref=e624]: Validé
+                  - cell "  " [ref=e625]:
+                    - generic [ref=e627]:
+                      - link "" [ref=e628] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/7
+                        - generic [ref=e629]: 
+                      - generic [ref=e630]:
+                        - button "" [ref=e631] [cursor=pointer]:
+                          - generic [ref=e632]: 
+                        - text:  
+                      - link "" [ref=e633] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/7/edit
+                        - generic [ref=e634]: 
+                - row "REC-00004 Is Issouf TRAORE 122EDFT  Frais de scolarité Academic 19/11/2025 100 000 FCFA Espèces Validé   " [ref=e635]:
+                  - cell [ref=e636]
+                  - cell "REC-00004" [ref=e637]:
+                    - strong [ref=e638]: REC-00004
+                  - cell "Is Issouf TRAORE 122EDFT" [ref=e639]:
+                    - generic [ref=e640]:
+                      - generic [ref=e641]: Is
+                      - generic [ref=e642]:
+                        - link "Issouf TRAORE" [ref=e643] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/4/situation-financiere/preview
+                          - strong [ref=e644]: Issouf TRAORE
+                        - generic [ref=e645]: 122EDFT
+                  - cell " Frais de scolarité Academic" [ref=e646]:
+                    - generic [ref=e647]:
+                      - generic [ref=e648]: 
+                      - generic [ref=e649]: Frais de scolarité
+                    - generic [ref=e650]: Academic
+                  - cell "19/11/2025" [ref=e651]
+                  - cell "100 000 FCFA" [ref=e652]:
+                    - strong [ref=e653]: 100 000 FCFA
+                  - cell "Espèces" [ref=e654]:
+                    - generic [ref=e655]: Espèces
+                  - cell "Validé" [ref=e656]:
+                    - generic [ref=e657]: Validé
+                  - cell "  " [ref=e658]:
+                    - generic [ref=e660]:
+                      - link "" [ref=e661] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/6
+                        - generic [ref=e662]: 
+                      - generic [ref=e663]:
+                        - button "" [ref=e664] [cursor=pointer]:
+                          - generic [ref=e665]: 
+                        - text:  
+                      - link "" [ref=e666] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/6/edit
+                        - generic [ref=e667]: 
+                - row "REC-00003 MA MARCEL OUEDRAOGO 12047923AB  Frais de scolarité Academic 16/10/2025 50 000 FCFA especes Validé   " [ref=e668]:
+                  - cell [ref=e669]
+                  - cell "REC-00003" [ref=e670]:
+                    - strong [ref=e671]: REC-00003
+                  - cell "MA MARCEL OUEDRAOGO 12047923AB" [ref=e672]:
+                    - generic [ref=e673]:
+                      - generic [ref=e674]: MA
+                      - generic [ref=e675]:
+                        - link "MARCEL OUEDRAOGO" [ref=e676] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/3/situation-financiere/preview
+                          - strong [ref=e677]: MARCEL OUEDRAOGO
+                        - generic [ref=e678]: 12047923AB
+                  - cell " Frais de scolarité Academic" [ref=e679]:
+                    - generic [ref=e680]:
+                      - generic [ref=e681]: 
+                      - generic [ref=e682]: Frais de scolarité
+                    - generic [ref=e683]: Academic
+                  - cell "16/10/2025" [ref=e684]
+                  - cell "50 000 FCFA" [ref=e685]:
+                    - strong [ref=e686]: 50 000 FCFA
+                  - cell "especes" [ref=e687]:
+                    - generic [ref=e688]: especes
+                  - cell "Validé" [ref=e689]:
+                    - generic [ref=e690]: Validé
+                  - cell "  " [ref=e691]:
+                    - generic [ref=e693]:
+                      - link "" [ref=e694] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/5
+                        - generic [ref=e695]: 
+                      - generic [ref=e696]:
+                        - button "" [ref=e697] [cursor=pointer]:
+                          - generic [ref=e698]: 
+                        - text:  
+                      - link "" [ref=e699] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/5/edit
+                        - generic [ref=e700]: 
+                - row "REC-00002 N' N'da konan Koffi GH25I23BZ1  Frais de scolarité Academic 14/10/2025 100 000 FCFA especes Validé   " [ref=e701]:
+                  - cell [ref=e702]
+                  - cell "REC-00002" [ref=e703]:
+                    - strong [ref=e704]: REC-00002
+                  - cell "N' N'da konan Koffi GH25I23BZ1" [ref=e705]:
+                    - generic [ref=e706]:
+                      - generic [ref=e707]: N'
+                      - generic [ref=e708]:
+                        - link "N'da konan Koffi" [ref=e709] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/1/situation-financiere/preview
+                          - strong [ref=e710]: N'da konan Koffi
+                        - generic [ref=e711]: GH25I23BZ1
+                  - cell " Frais de scolarité Academic" [ref=e712]:
+                    - generic [ref=e713]:
+                      - generic [ref=e714]: 
+                      - generic [ref=e715]: Frais de scolarité
+                    - generic [ref=e716]: Academic
+                  - cell "14/10/2025" [ref=e717]
+                  - cell "100 000 FCFA" [ref=e718]:
+                    - strong [ref=e719]: 100 000 FCFA
+                  - cell "especes" [ref=e720]:
+                    - generic [ref=e721]: especes
+                  - cell "Validé" [ref=e722]:
+                    - generic [ref=e723]: Validé
+                  - cell "  " [ref=e724]:
+                    - generic [ref=e726]:
+                      - link "" [ref=e727] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/4
+                        - generic [ref=e728]: 
+                      - generic [ref=e729]:
+                        - button "" [ref=e730] [cursor=pointer]:
+                          - generic [ref=e731]: 
+                        - text:  
+                      - link "" [ref=e732] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/4/edit
+                        - generic [ref=e733]: 
+                - row "REC-202509-0001 Is Issouf Ouedraogo tugj2233  Frais de scolarité Academic 16/09/2025 100 000 FCFA especes Validé   " [ref=e734]:
+                  - cell [ref=e735]
+                  - cell "REC-202509-0001" [ref=e736]:
+                    - strong [ref=e737]: REC-202509-0001
+                  - cell "Is Issouf Ouedraogo tugj2233" [ref=e738]:
+                    - generic [ref=e739]:
+                      - generic [ref=e740]: Is
+                      - generic [ref=e741]:
+                        - link "Issouf Ouedraogo" [ref=e742] [cursor=pointer]:
+                          - /url: http://127.0.0.1:8000/esbtp/inscriptions/2/situation-financiere/preview
+                          - strong [ref=e743]: Issouf Ouedraogo
+                        - generic [ref=e744]: tugj2233
+                  - cell " Frais de scolarité Academic" [ref=e745]:
+                    - generic [ref=e746]:
+                      - generic [ref=e747]: 
+                      - generic [ref=e748]: Frais de scolarité
+                    - generic [ref=e749]: Academic
+                  - cell "16/09/2025" [ref=e750]
+                  - cell "100 000 FCFA" [ref=e751]:
+                    - strong [ref=e752]: 100 000 FCFA
+                  - cell "especes" [ref=e753]:
+                    - generic [ref=e754]: especes
+                  - cell "Validé" [ref=e755]:
+                    - generic [ref=e756]: Validé
+                  - cell "  " [ref=e757]:
+                    - generic [ref=e759]:
+                      - link "" [ref=e760] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/3
+                        - generic [ref=e761]: 
+                      - generic [ref=e762]:
+                        - button "" [ref=e763] [cursor=pointer]:
+                          - generic [ref=e764]: 
+                        - text:  
+                      - link "" [ref=e765] [cursor=pointer]:
+                        - /url: http://127.0.0.1:8000/esbtp/paiements/3/edit
+                        - generic [ref=e766]: 
+  - generic [ref=e767]:
+    - button "Ouvrir l'assistant KLASSCI" [ref=e768] [cursor=pointer]:
+      - generic [ref=e769]: 
+    - dialog:
+      - generic:
+        - generic:
+          - generic: Assistant KLASSCI
+          - generic: Vos données, vos permissions, en temps réel.
+        - generic:
+          - button:
+            - generic: +
+          - button:
+            - generic: 
+          - button:
+            - generic: 
+          - button [disabled]:
+            - generic: 
+          - button:
+            - generic: 
+      - generic:
+        - complementary:
+          - generic: Conversations
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic: 
+              - heading [level=5]: Assistant KLASSCI
+              - paragraph: Posez une question sur vos paiements, étudiants, classes ou inscriptions.
+              - generic:
+                - button: Mes paiements
+                - button: Liste étudiants
+                - button: Classes disponibles
+          - generic:
+            - textbox:
+              - /placeholder: Écrivez votre question…
+            - button:
+              - generic: 
+      - generic:
+        - generic: 
+    - status

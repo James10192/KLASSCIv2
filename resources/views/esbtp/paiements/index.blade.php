@@ -16,7 +16,7 @@
         color: #fff;
         margin-bottom: 1.25rem;
         position: relative;
-        overflow: hidden;
+        /* overflow visible : dropdowns (Exporter) ne sont pas clipes par le hero */
     }
     .pi-hero-top {
         display: flex;
@@ -125,18 +125,83 @@
         transform: translateY(-1px);
     }
     .pi-btn i { font-size: .78rem; }
+    .pi-hero-actions .dropdown { position: relative; }
     .pi-hero-actions .dropdown-menu {
         font-size: .85rem;
         border-radius: 10px;
-        box-shadow: 0 8px 24px rgba(15,23,42,.12);
+        box-shadow: 0 8px 24px rgba(15,23,42,.2);
         border: 1px solid #e2e8f0;
         padding: .35rem;
         margin-top: .35rem;
+        z-index: 1055;
     }
     .pi-hero-actions .dropdown-menu .dropdown-item {
         border-radius: 6px;
         padding: .45rem .65rem;
         font-size: .85rem;
+    }
+
+    /* ═══════ Hero KPIs (row 2 — glass cards semi-transparentes) ═══════ */
+    .pi-hero-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: .75rem;
+        margin-top: 1.5rem;
+    }
+    .pi-hero-kpi {
+        display: block;
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.18);
+        border-radius: 12px;
+        padding: .9rem 1rem;
+        color: #fff;
+        text-decoration: none;
+        transition: background .2s, border-color .2s, transform .15s;
+    }
+    .pi-hero-kpi:hover {
+        background: rgba(255,255,255,.16);
+        border-color: rgba(255,255,255,.3);
+        color: #fff;
+        transform: translateY(-2px);
+        text-decoration: none;
+    }
+    .pi-hero-kpi.is-active {
+        background: rgba(255,255,255,.2);
+        border-color: rgba(255,255,255,.45);
+        box-shadow: 0 4px 14px rgba(0,0,0,.15);
+    }
+    .pi-hero-kpi-head {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        margin-bottom: .35rem;
+        color: rgba(255,255,255,.8);
+        font-size: .7rem;
+        font-weight: 600;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .pi-hero-kpi-head i { font-size: .72rem; }
+    .pi-hero-kpi-label { flex: 1; }
+    .pi-hero-kpi-value {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -.01em;
+        line-height: 1.1;
+    }
+    .pi-hero-kpi-unit {
+        font-size: .66rem;
+        font-weight: 600;
+        color: rgba(255,255,255,.65);
+        margin-left: .35rem;
+        letter-spacing: .05em;
+    }
+    .pi-hero-kpi-meta {
+        margin-top: .15rem;
+        font-size: .72rem;
+        color: rgba(255,255,255,.65);
+        font-weight: 500;
     }
 
     /* ═══════ Alert session ═══════ */
@@ -273,18 +338,184 @@
     }
     .pi-filter-submit i { margin-right: .3rem; }
 
+    /* ═══════ Bulk subheader sticky ═══════ */
+    .pi-bulk-bar {
+        position: sticky;
+        top: 70px;
+        z-index: 1020;
+        background: linear-gradient(135deg, #0453cb 0%, #3b7ddb 100%);
+        color: #fff;
+        border-radius: 12px;
+        padding-left: 1.25rem;
+        padding-right: 1.25rem;
+        padding-top: 0;
+        padding-bottom: 0;
+        margin-bottom: 0;
+        overflow: hidden;
+        max-height: 0;
+        opacity: 0;
+        transform: translateY(-8px);
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        flex-wrap: wrap;
+        transition: max-height .25s ease, opacity .2s ease, transform .2s ease, margin .25s ease, padding .25s ease, box-shadow .2s ease;
+    }
+    .pi-bulk-bar.is-visible {
+        max-height: 220px;
+        margin-bottom: 1rem;
+        padding-top: .9rem;
+        padding-bottom: .9rem;
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+        box-shadow: 0 8px 24px rgba(4,83,203,.25);
+    }
+    .pi-bulk-info {
+        display: inline-flex;
+        align-items: center;
+        gap: .55rem;
+        font-size: .9rem;
+        font-weight: 500;
+    }
+    .pi-bulk-info i { font-size: 1.05rem; }
+    .pi-bulk-info strong { font-size: 1.1rem; font-weight: 700; }
+    .pi-bulk-actions {
+        display: inline-flex;
+        gap: .45rem;
+        flex-wrap: wrap;
+    }
+    .pi-bulk-actions .pi-btn { font-size: .82rem; padding: .45rem .9rem; }
+    .pi-btn--outline-white {
+        background: transparent;
+        color: #fff;
+        border-color: rgba(255,255,255,.4);
+    }
+    .pi-btn--outline-white:hover {
+        background: rgba(255,255,255,.12);
+        color: #fff;
+        border-color: rgba(255,255,255,.6);
+    }
+    .pi-btn--ghost-white {
+        background: transparent;
+        color: rgba(255,255,255,.82);
+        border-color: transparent;
+    }
+    .pi-btn--ghost-white:hover {
+        background: rgba(255,255,255,.1);
+        color: #fff;
+    }
+
+    /* ═══════ Filter breadcrumb chip (hero) ═══════ */
+    .pi-chip--filter {
+        background: rgba(251,191,36,.2);
+        border-color: rgba(251,191,36,.5);
+        color: #fef3c7;
+    }
+    .pi-chip--filter .pi-chip-btn { color: #fef3c7; opacity: .85; }
+
+    /* ═══════ KPI drill-down indicators (metrics partial) ═══════ */
+    .pi-kpi-link {
+        display: block;
+        text-decoration: none;
+        color: inherit;
+        cursor: pointer;
+        transition: transform .15s ease, box-shadow .2s ease;
+    }
+    .pi-kpi-link:hover {
+        color: inherit;
+        text-decoration: none;
+        transform: translateY(-2px);
+    }
+    .pi-kpi-link:hover .kpi-card {
+        box-shadow: 0 8px 20px rgba(4,83,203,.1);
+        border-color: #cbd5e1;
+    }
+    .pi-kpi-link.is-active .kpi-card {
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+    }
+
+    /* ═══════ Toast ═══════ */
+    .pi-toast-container {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 1080;
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        max-width: 360px;
+        pointer-events: none;
+    }
+    .pi-toast {
+        background: #fff;
+        border-radius: 12px;
+        padding: .85rem 1rem;
+        box-shadow: 0 8px 24px rgba(15,23,42,.15);
+        display: flex;
+        align-items: flex-start;
+        gap: .6rem;
+        border-left: 4px solid #10b981;
+        pointer-events: auto;
+        animation: pi-toast-in .25s ease forwards;
+        font-size: .86rem;
+    }
+    .pi-toast.is-leaving { animation: pi-toast-out .2s ease forwards; }
+    .pi-toast--error { border-left-color: #dc2626; }
+    .pi-toast--warning { border-left-color: #f59e0b; }
+    .pi-toast--info { border-left-color: #0453cb; }
+    .pi-toast-icon {
+        font-size: 1rem;
+        color: #10b981;
+        flex-shrink: 0;
+        margin-top: .15rem;
+    }
+    .pi-toast--error .pi-toast-icon { color: #dc2626; }
+    .pi-toast--warning .pi-toast-icon { color: #f59e0b; }
+    .pi-toast--info .pi-toast-icon { color: #0453cb; }
+    .pi-toast-body { flex: 1; color: #1e293b; line-height: 1.4; }
+    .pi-toast-title { font-weight: 700; color: #0f172a; margin-bottom: .1rem; font-size: .88rem; }
+    .pi-toast-close {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        font-size: 1.1rem;
+        cursor: pointer;
+        padding: 0 .15rem;
+        line-height: 1;
+        margin-left: .15rem;
+        transition: color .2s;
+    }
+    .pi-toast-close:hover { color: #475569; }
+
+    @keyframes pi-toast-in {
+        from { opacity: 0; transform: translateX(20px); }
+        to { opacity: 1; transform: translateX(0); }
+    }
+    @keyframes pi-toast-out {
+        to { opacity: 0; transform: translateX(20px); }
+    }
+
     /* ═══════ Responsive ═══════ */
     @media (max-width: 992px) {
         .pi-hero-top { flex-direction: column; align-items: stretch; }
         .pi-hero-actions { justify-content: flex-start; }
+        .pi-hero-kpis { grid-template-columns: repeat(2, 1fr); }
         .pi-filters-row { grid-template-columns: 1fr 1fr; }
         .pi-filters-row .pi-field:first-child { grid-column: span 2; }
         .pi-filter-submit { grid-column: span 2; }
+        .pi-bulk-bar { top: 60px; }
+        .pi-bulk-actions { width: 100%; }
     }
     @media (max-width: 576px) {
         .pi-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 14px; }
         .pi-hero h1 { font-size: 1.2rem; }
         .pi-hero p { font-size: .82rem; }
+        .pi-hero-kpis { grid-template-columns: 1fr; gap: .5rem; }
+        .pi-hero-kpi-value { font-size: 1.15rem; }
         .pi-filters-row { grid-template-columns: 1fr; }
         .pi-filters-row .pi-field:first-child,
         .pi-filters-row .pi-filter-submit { grid-column: span 1; }
@@ -338,6 +569,20 @@
                                     <i class="fas fa-info-circle"></i>
                                 </button>
                             </span>
+                            @if(request('status'))
+                                @php
+                                    $statusLabels = ['en_attente' => 'En attente', 'validé' => 'Validés', 'rejeté' => 'Rejetés'];
+                                    $statusLabel = $statusLabels[request('status')] ?? request('status');
+                                    $removeStatusUrl = route('esbtp.paiements.index') . '?' . http_build_query(request()->except('status'));
+                                @endphp
+                                <span class="pi-chip pi-chip--filter" role="status">
+                                    <i class="fas fa-filter"></i>
+                                    Statut : {{ $statusLabel }}
+                                    <a href="{{ $removeStatusUrl }}" class="pi-chip-btn" title="Retirer ce filtre" aria-label="Retirer le filtre statut">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            @endif
                         </div>
                     </div>
                 </div>
@@ -381,6 +626,11 @@
                     @endcan
                 </div>
             </div>
+
+            {{-- Row 2 : KPIs glass — refresh AJAX via #paiements-metrics-kpis --}}
+            <div id="paiements-metrics-kpis">
+                @include('esbtp.paiements.partials.metrics-kpis', ['stats' => $stats])
+            </div>
         </div>
 
         @if(session('success'))
@@ -391,9 +641,17 @@
             </div>
         @endif
 
-        {{-- KPI Cards (partial AJAX-refreshable) --}}
-        <div id="paiements-metrics-container">
-            @include('esbtp.paiements.partials.metrics', ['stats' => $stats])
+        {{-- Alerte note (statique, pas AJAX) --}}
+        <div class="alert alert-info alert-sm mb-lg">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Note :</strong> Ces chiffres représentent les paiements <u>enregistrés dans le système</u> selon leur statut de validation.
+            Pour voir les montants attendus vs payés par catégorie de frais, consultez le
+            <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="alert-link">Suivi par Catégorie</a>.
+        </div>
+
+        {{-- Répartition par type (partial AJAX-refreshable via #paiements-metrics-details) --}}
+        <div id="paiements-metrics-details">
+            @include('esbtp.paiements.partials.metrics-details', ['stats' => $stats])
         </div>
 
         {{-- Filter bar groupée --}}
@@ -444,43 +702,42 @@
             </form>
         </div>
 
-        <!-- Tableau des Paiements -->
+        {{-- Sticky bulk subheader (remplace fixed-bottom bar) --}}
+        @if(auth()->user()->can('access_admin'))
+        <div id="bulk-actions-bar" class="pi-bulk-bar" role="toolbar" aria-label="Actions groupées sur paiements sélectionnés">
+            <div class="pi-bulk-info">
+                <i class="fas fa-check-circle"></i>
+                <strong id="selected-count">0</strong>
+                <span>paiement(s) sélectionné(s)</span>
+            </div>
+            <div class="pi-bulk-actions">
+                <button type="button" class="pi-btn pi-btn--white" onclick="bulkValider()">
+                    <i class="fas fa-check-double"></i>
+                    <span>Valider</span>
+                </button>
+                <button type="button" class="pi-btn pi-btn--outline-white" onclick="openBulkRejetModal()">
+                    <i class="fas fa-times"></i>
+                    <span>Rejeter</span>
+                </button>
+                <button type="button" class="pi-btn pi-btn--ghost-white" onclick="clearSelection()">
+                    <i class="fas fa-times-circle"></i>
+                    <span>Annuler</span>
+                </button>
+            </div>
+        </div>
+        @endif
+
+        {{-- Tableau des Paiements --}}
         <div id="paiements-table-container"
              data-refresh-url="{{ route('esbtp.paiements.refresh') }}"
              data-last-updated="{{ optional($lastUpdatedAt)->toIso8601String() }}">
             @include('esbtp.paiements.partials.table', ['paiements' => $paiements])
         </div>
-
-        @if(auth()->user()->can('access_admin'))
-        <div id="bulk-actions-bar" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-             background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%); color: white; padding: 15px 30px;
-             border-radius: 50px; box-shadow: 0 10px 40px rgba(4, 83, 203, 0.4); z-index: 1050;
-             animation: slideUp 0.3s ease-out;">
-            <div style="display: flex; align-items: center; gap: 20px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-check-circle" style="font-size: 1.2rem;"></i>
-                    <span id="selected-count" style="font-weight: 600; font-size: 1.1rem;">0</span>
-                    <span style="opacity: 0.9;">paiement(s) sélectionné(s)</span>
-                </div>
-                <div style="display: flex; gap: 10px;">
-                    <button type="button" class="btn btn-light btn-sm" onclick="bulkValider()"
-                            style="padding: 8px 20px; border-radius: 25px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.1);">
-                        <i class="fas fa-check-double me-1"></i>Valider la sélection
-                    </button>
-                    <button type="button" class="btn btn-outline-light btn-sm" onclick="openBulkRejetModal()"
-                            style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
-                        <i class="fas fa-times me-1"></i>Rejeter la sélection
-                    </button>
-                    <button type="button" class="btn btn-outline-light btn-sm" onclick="clearSelection()"
-                            style="padding: 8px 20px; border-radius: 25px; font-weight: 600;">
-                        <i class="fas fa-times-circle me-1"></i>Annuler
-                    </button>
-                </div>
-            </div>
-        </div>
-        @endif
     </div>
 </div>
+
+{{-- Toast container (feedback post-action) --}}
+<div id="pi-toast-container" class="pi-toast-container" aria-live="polite" aria-atomic="true"></div>
 @endsection
 
 @push('scripts')
@@ -666,7 +923,7 @@ function showYearChangeInfo() {
     let currentUrl = window.location.href;
 
     /**
-     * Met à jour l'affichage de la barre d'actions groupées
+     * Met à jour l'affichage de la barre d'actions groupées (sticky subheader)
      * et le compteur de paiements sélectionnés
      */
     window.updateBulkActionsBar = function() {
@@ -677,12 +934,10 @@ function showYearChangeInfo() {
         debugLog('📊 updateBulkActionsBar appelée, checkboxes cochées:', checkedCount);
 
         if (checkedCount > 0) {
-            debugLog('✅ Affichage de la barre d\'actions groupées');
-            $bulkActionsBar.show();  // Utiliser .show() au lieu de .addClass('show')
+            $bulkActionsBar.addClass('is-visible');
             $selectedCountSpan.text(checkedCount);
         } else {
-            debugLog('❌ Masquage de la barre d\'actions groupées');
-            $bulkActionsBar.hide();  // Utiliser .hide() au lieu de .removeClass('show')
+            $bulkActionsBar.removeClass('is-visible');
         }
 
         // Mettre à jour l'état de la checkbox "Tout sélectionner"
@@ -791,6 +1046,57 @@ function showYearChangeInfo() {
     window.setPaiementRowLoadingState = setPaiementRowLoadingState;
 
     /**
+     * Affiche un toast de feedback (success / error / warning / info).
+     * Auto-dismiss après 5s, dismissable manuellement.
+     */
+    window.showToast = window.showToast || function(message, type = 'success', title = null) {
+        const container = document.getElementById('pi-toast-container');
+        if (!container) {
+            return;
+        }
+
+        const ICONS = { success: 'check-circle', error: 'times-circle', warning: 'exclamation-triangle', info: 'info-circle' };
+        const TITLES = { success: 'Succès', error: 'Erreur', warning: 'Attention', info: 'Information' };
+
+        const toast = document.createElement('div');
+        toast.className = 'pi-toast pi-toast--' + type;
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+
+        const icon = document.createElement('i');
+        icon.className = 'fas fa-' + (ICONS[type] || 'info-circle') + ' pi-toast-icon';
+
+        const body = document.createElement('div');
+        body.className = 'pi-toast-body';
+        const titleEl = document.createElement('div');
+        titleEl.className = 'pi-toast-title';
+        titleEl.textContent = title || TITLES[type] || '';
+        const msgEl = document.createElement('div');
+        msgEl.textContent = message;
+        body.appendChild(titleEl);
+        body.appendChild(msgEl);
+
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.className = 'pi-toast-close';
+        closeBtn.setAttribute('aria-label', 'Fermer');
+        closeBtn.innerHTML = '&times;';
+
+        toast.appendChild(icon);
+        toast.appendChild(body);
+        toast.appendChild(closeBtn);
+        container.appendChild(toast);
+
+        let dismissTimer = null;
+        const removeToast = () => {
+            if (dismissTimer) clearTimeout(dismissTimer);
+            toast.classList.add('is-leaving');
+            setTimeout(() => toast.remove(), 220);
+        };
+        closeBtn.addEventListener('click', removeToast);
+        dismissTimer = setTimeout(removeToast, 5000);
+    };
+
+    /**
      * Fetch les données depuis le serveur et met à jour le DOM
      * @param {boolean} showLog - Afficher les logs dans la console
      * @param {boolean} showOverlay - Afficher l'overlay de chargement (true pour refresh manuel, false pour polling)
@@ -843,11 +1149,15 @@ function showYearChangeInfo() {
             return response.json();
         })
         .then(data => {
-            // Vérifier si on a reçu les données attendues
-            if (data.table && data.metrics) {
-                // Mettre à jour les KPI metrics
-                if (data.metrics) {
-                    document.getElementById('paiements-metrics-container').innerHTML = data.metrics;
+            // Verifier si on a recu les donnees attendues (nouvelle signature : metrics_kpis + metrics_details)
+            if (data.table && (data.metrics_kpis || data.metrics_details)) {
+                if (data.metrics_kpis) {
+                    const kpisEl = document.getElementById('paiements-metrics-kpis');
+                    if (kpisEl) kpisEl.innerHTML = data.metrics_kpis;
+                }
+                if (data.metrics_details) {
+                    const detailsEl = document.getElementById('paiements-metrics-details');
+                    if (detailsEl) detailsEl.innerHTML = data.metrics_details;
                 }
 
                 // Mettre à jour le tableau
@@ -1188,7 +1498,7 @@ function showYearChangeInfo() {
         .catch(error => {
             debugError('❌ Erreur refresh ligne:', error);
             setPaiementRowLoadingState(paiementId, false);
-            alert('Erreur lors de la mise à jour: ' + error.message);
+            window.showToast('Erreur lors de la mise à jour : ' + error.message, 'error');
         });
     };
 
@@ -1327,13 +1637,13 @@ function showYearChangeInfo() {
                         window.refreshPaiementLigne(paiementId, 'validate');
                     } else {
                         setPaiementRowLoadingState(paiementId, false);
-                        alert('Erreur: ' + (data.message || 'Erreur inconnue'));
+                        window.showToast(data.message || 'Erreur inconnue lors de la validation.', 'error');
                     }
                 })
                 .catch(error => {
                     debugError('❌ Erreur validation:', error);
                     setPaiementRowLoadingState(paiementId, false);
-                    alert('Erreur lors de la validation du paiement: ' + error.message);
+                    window.showToast('Erreur lors de la validation : ' + error.message, 'error');
                 });
 
                 return false;
@@ -1368,7 +1678,7 @@ function bulkValider() {
     const selectedIds = getSelectedPaiementIds();
 
     if (selectedIds.length === 0) {
-        alert('Veuillez sélectionner au moins un paiement.');
+        window.showToast('Veuillez sélectionner au moins un paiement.', 'warning');
         return;
     }
 
@@ -1411,20 +1721,17 @@ function bulkValider() {
                 }, index * 100); // Décalage de 100ms entre chaque ligne
             });
 
-            // Message de succès
-            alert(data.message || 'Paiements validés avec succès !');
-
-            // Masquer la barre d'actions
-            $('#bulk-actions-bar').hide();
+            window.showToast(data.message || 'Paiements validés avec succès.', 'success');
+            clearSelection();
         } else {
             toggleRowsLoadingState(selectedIds, false);
-            alert(data.message || 'Erreur lors de la validation.');
+            window.showToast(data.message || 'Erreur lors de la validation.', 'error');
         }
     })
     .catch(error => {
         debugError('❌ Erreur bulk validation:', error);
         toggleRowsLoadingState(selectedIds, false);
-        alert('Erreur lors de la validation. Veuillez réessayer.');
+        window.showToast('Erreur lors de la validation. Veuillez réessayer.', 'error');
     });
 }
 
@@ -1432,7 +1739,7 @@ function openBulkRejetModal() {
     const selectedIds = getSelectedPaiementIds();
 
     if (selectedIds.length === 0) {
-        alert('Veuillez sélectionner au moins un paiement.');
+        window.showToast('Veuillez sélectionner au moins un paiement.', 'warning');
         return;
     }
 
@@ -1481,19 +1788,19 @@ $(document).ready(function() {
         const selectedIds = getSelectedPaiementIds();
 
         if (!motifRejet.trim()) {
-            alert('Veuillez saisir un motif de rejet.');
+            window.showToast('Veuillez saisir un motif de rejet.', 'warning');
             return;
         }
 
         if (!$('#bulk_confirmer_rejet').is(':checked')) {
-            alert('Veuillez confirmer le rejet.');
+            window.showToast('Veuillez cocher la case de confirmation.', 'warning');
             return;
         }
 
         debugLog('🔄 Rejet en masse de', selectedIds.length, 'paiements:', selectedIds);
 
         if (selectedIds.length === 0) {
-            alert('Veuillez sélectionner au moins un paiement.');
+            window.showToast('Veuillez sélectionner au moins un paiement.', 'warning');
             return;
         }
 
@@ -1534,20 +1841,17 @@ $(document).ready(function() {
                     }, index * 100); // Décalage de 100ms
                 });
 
-                // Message de succès
-                alert(data.message || 'Paiements rejetés avec succès !');
-
-                // Masquer la barre d'actions
-                $('#bulk-actions-bar').hide();
+                window.showToast(data.message || 'Paiements rejetés avec succès.', 'success');
+                clearSelection();
             } else {
                 toggleRowsLoadingState(selectedIds, false);
-                alert(data.message || 'Erreur lors du rejet.');
+                window.showToast(data.message || 'Erreur lors du rejet.', 'error');
             }
         })
         .catch(error => {
             debugError('❌ Erreur bulk rejet:', error);
             toggleRowsLoadingState(selectedIds, false);
-            alert('Erreur lors du rejet. Veuillez réessayer.');
+            window.showToast('Erreur lors du rejet. Veuillez réessayer.', 'error');
         });
     });
 
@@ -1580,12 +1884,12 @@ $(document).ready(function() {
         });
 
         if (!motifRejet || !motifRejet.trim()) {
-            alert('Veuillez saisir un motif de rejet.');
+            window.showToast('Veuillez saisir un motif de rejet.', 'warning');
             return;
         }
 
         if (!confirmerRejet) {
-            alert('Veuillez confirmer le rejet.');
+            window.showToast('Veuillez cocher la case de confirmation.', 'warning');
             return;
         }
 
@@ -1631,14 +1935,13 @@ $(document).ready(function() {
                     window.refreshPaiementLigne(paiementId, 'reject');
                 }
 
-                // Message de succès
-                alert(data.message || 'Paiement rejeté avec succès !');
+                window.showToast(data.message || 'Paiement rejeté avec succès.', 'success');
             } else {
                 if (typeof window.setPaiementRowLoadingState === 'function') {
                     window.setPaiementRowLoadingState(paiementId, false);
                 }
                 button.prop('disabled', false);
-                alert(data.message || 'Erreur lors du rejet.');
+                window.showToast(data.message || 'Erreur lors du rejet.', 'error');
             }
         })
         .catch(error => {
@@ -1647,7 +1950,7 @@ $(document).ready(function() {
                 window.setPaiementRowLoadingState(paiementId, false);
             }
             button.prop('disabled', false);
-            alert('Erreur lors du rejet. Veuillez réessayer.');
+            window.showToast('Erreur lors du rejet. Veuillez réessayer.', 'error');
         });
     });
 });
