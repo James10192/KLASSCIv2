@@ -213,39 +213,25 @@
         letter-spacing: 0.5px;
     }
     
-    /* Barre de progression moderne */
+    /* Barre de progression flat (WCAG 2.2 — icone + libelle obligatoires a cote) */
     .progress-bar-modern {
-        height: 12px;
-        background: linear-gradient(90deg, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0.08) 100%);
+        height: 10px;
+        background: #f1f5f9;
         border-radius: 8px;
         overflow: hidden;
-        margin: var(--space-lg) 0;
+        margin: var(--space-md) 0;
         position: relative;
-        box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
     }
-    
+
     .progress-fill-modern {
         height: 100%;
         border-radius: 8px;
-        transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
+        transition: width .6s cubic-bezier(0.4, 0, 0.2, 1);
     }
-    
-    .progress-fill-modern.success { 
-        background: linear-gradient(135deg, #10b981, #34d399, #6ee7b7);
-        box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
-    }
-    
-    .progress-fill-modern.warning { 
-        background: linear-gradient(135deg, #f59e0b, #fbbf24, #fcd34d);
-        box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
-    }
-    
-    .progress-fill-modern.danger {
-        background: linear-gradient(135deg, #ef4444, #f87171, #fca5a5);
-        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
-    }
+
+    .progress-fill-modern.success { background: #10b981; }
+    .progress-fill-modern.warning { background: #f59e0b; }
+    .progress-fill-modern.danger  { background: #dc2626; }
 
     /* Styles pour les onglets étudiants avec lazy loading */
     /* Tabs avec ombres et positionnement amélioré */
@@ -390,120 +376,636 @@
         0% { transform: rotate(0deg); }
         100% { transform: rotate(360deg); }
     }
+
+    /* ═══════════════════════════════════════════════
+       Namespace sc-* (suivi-categories premium)
+       ═══════════════════════════════════════════════ */
+    .sc-hero {
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+        border-radius: 18px;
+        padding: 1.75rem 2rem 1.5rem;
+        color: #fff;
+        margin-bottom: 1.25rem;
+        position: relative;
+        /* overflow visible : dropdowns ne sont pas clipes */
+    }
+
+    /* KPIs categorie selectionnee (suivi-content partial) — premium cards avec top-border accent */
+    .sc-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: .75rem;
+        margin-bottom: 1.25rem;
+    }
+    .sc-stat {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem 1.1rem;
+        position: relative;
+        overflow: hidden;
+        transition: box-shadow .2s, transform .15s;
+    }
+    .sc-stat:hover {
+        box-shadow: 0 4px 16px rgba(15,23,42,.06);
+        transform: translateY(-2px);
+    }
+    .sc-stat::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        border-radius: 12px 12px 0 0;
+    }
+    .sc-stat.is-success::before { background: #10b981; }
+    .sc-stat.is-warning::before { background: #f59e0b; }
+    .sc-stat.is-danger::before  { background: #dc2626; }
+    .sc-stat.is-primary::before { background: #0453cb; }
+    .sc-stat-head {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        margin-bottom: .3rem;
+        color: #64748b;
+        font-size: .7rem;
+        font-weight: 600;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .sc-stat.is-success .sc-stat-head i { color: #10b981; }
+    .sc-stat.is-warning .sc-stat-head i { color: #f59e0b; }
+    .sc-stat.is-danger  .sc-stat-head i { color: #dc2626; }
+    .sc-stat.is-primary .sc-stat-head i { color: #0453cb; }
+    .sc-stat-value {
+        font-size: 1.65rem;
+        font-weight: 700;
+        line-height: 1;
+        color: #0f172a;
+        letter-spacing: -.01em;
+    }
+    .sc-stat.is-success .sc-stat-value { color: #047857; }
+    .sc-stat.is-warning .sc-stat-value { color: #b45309; }
+    .sc-stat.is-danger  .sc-stat-value { color: #b91c1c; }
+    .sc-stat.is-primary .sc-stat-value { color: #0453cb; }
+    .sc-stat-label {
+        margin-top: .2rem;
+        font-size: .75rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+    @media (max-width: 992px) {
+        .sc-stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 576px) {
+        .sc-stats-grid { grid-template-columns: 1fr; gap: .5rem; }
+    }
+
+    /* Hero KPIs (row 2 glass) */
+    .sc-hero-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: .75rem;
+        margin-top: 1.5rem;
+    }
+    .sc-hero-kpi {
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.18);
+        border-radius: 12px;
+        padding: .9rem 1rem;
+        color: #fff;
+        transition: background .2s, border-color .2s;
+    }
+    .sc-hero-kpi:hover {
+        background: rgba(255,255,255,.14);
+        border-color: rgba(255,255,255,.24);
+    }
+    .sc-hero-kpi-head {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        margin-bottom: .35rem;
+        color: rgba(255,255,255,.8);
+        font-size: .7rem;
+        font-weight: 600;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .sc-hero-kpi-head i { font-size: .72rem; }
+    .sc-hero-kpi-label { flex: 1; }
+    .sc-hero-kpi-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -.01em;
+        line-height: 1.1;
+    }
+    .sc-hero-kpi-unit {
+        font-size: .72rem;
+        font-weight: 600;
+        color: rgba(255,255,255,.65);
+        margin-left: .25rem;
+    }
+    .sc-hero-kpi-meta {
+        margin-top: .2rem;
+        font-size: .72rem;
+        color: rgba(255,255,255,.65);
+        font-weight: 500;
+    }
+    .sc-hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .sc-hero-left {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        flex: 1;
+        min-width: 0;
+    }
+    .sc-hero-icon {
+        width: 52px; height: 52px;
+        border-radius: 14px;
+        background: rgba(255,255,255,.12);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,.15);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.35rem; flex-shrink: 0; color: #fff;
+    }
+    .sc-hero h1 {
+        font-size: 1.45rem;
+        font-weight: 700;
+        color: #fff;
+        margin: 0 0 .2rem;
+        letter-spacing: -.01em;
+    }
+    .sc-hero p {
+        color: rgba(255,255,255,.72);
+        font-size: .88rem;
+        margin: 0 0 .55rem;
+    }
+    .sc-hero-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .4rem;
+    }
+    .sc-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .25rem .65rem;
+        background: rgba(255,255,255,.14);
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 99px;
+        font-size: .74rem;
+        font-weight: 600;
+        color: rgba(255,255,255,.94);
+    }
+    .sc-chip i { font-size: .7rem; }
+    .sc-chip .sc-chip-btn {
+        background: none; border: none; color: inherit;
+        padding: 0 0 0 .25rem; margin-left: .1rem;
+        cursor: pointer; opacity: .75; transition: opacity .2s;
+        font-size: .72rem; text-decoration: none;
+    }
+    .sc-chip .sc-chip-btn:hover { opacity: 1; }
+    .sc-chip--filter {
+        background: rgba(251,191,36,.2);
+        border-color: rgba(251,191,36,.5);
+        color: #fef3c7;
+    }
+    .sc-chip--filter .sc-chip-btn { color: #fef3c7; opacity: .85; }
+
+    .sc-hero-actions {
+        display: flex;
+        gap: .5rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .sc-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .5rem 1rem;
+        font-size: .82rem;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all .2s ease;
+        text-decoration: none;
+        white-space: nowrap;
+        font-family: inherit;
+    }
+    .sc-btn--glass {
+        background: rgba(255,255,255,.15);
+        color: #fff;
+        border-color: rgba(255,255,255,.2);
+    }
+    .sc-btn--glass:hover { background: rgba(255,255,255,.22); color: #fff; }
+    .sc-btn--white {
+        background: #fff;
+        color: #0453cb;
+        border-color: transparent;
+    }
+    .sc-btn--white:hover { background: #f8fafc; color: #0453cb; transform: translateY(-1px); }
+    .sc-btn i { font-size: .78rem; }
+
+    /* Filter bar groupee */
+    .sc-filters {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 1rem 1.25rem 1.1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(15,23,42,.04);
+    }
+    .sc-filters-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: .85rem;
+        flex-wrap: wrap;
+    }
+    .sc-filters-title {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        color: #0f172a;
+        font-weight: 700;
+        font-size: .88rem;
+    }
+    .sc-filters-title i {
+        width: 28px; height: 28px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .72rem;
+    }
+    .sc-filters-active {
+        display: none;
+        align-items: center;
+        gap: .5rem;
+    }
+    .sc-filters-active.is-visible { display: inline-flex; }
+    .sc-filter-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .25rem .65rem;
+        background: rgba(4,83,203,.08);
+        color: #0453cb;
+        border: 1px solid rgba(4,83,203,.18);
+        border-radius: 99px;
+        font-size: .72rem;
+        font-weight: 600;
+    }
+    .sc-filter-clear {
+        background: none; border: none;
+        color: #94a3b8;
+        font-size: .76rem;
+        font-weight: 600;
+        cursor: pointer;
+        padding: .25rem .55rem;
+        border-radius: 6px;
+        transition: all .2s;
+    }
+    .sc-filter-clear:hover { background: #fee2e2; color: #dc2626; }
+    .sc-filters-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1.3fr auto;
+        gap: .75rem;
+        align-items: end;
+    }
+    .sc-field label {
+        display: block;
+        font-size: .72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        margin-bottom: .3rem;
+    }
+    .sc-field .form-control,
+    .sc-field .form-select {
+        font-size: .88rem;
+        border-radius: 10px;
+        border: 1.5px solid #e2e8f0;
+        padding: .5rem .75rem;
+        background-color: #fff;
+        transition: border-color .2s, box-shadow .2s;
+    }
+    .sc-field .form-control:focus,
+    .sc-field .form-select:focus {
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4,83,203,.08);
+    }
+    .sc-filter-submit {
+        padding: .55rem 1rem;
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .2s;
+        font-size: .85rem;
+        white-space: nowrap;
+        height: 41px;
+    }
+    .sc-filter-submit:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(4,83,203,.25); }
+    .sc-filter-submit i { margin-right: .3rem; }
+
+    /* Toast (reuse same styles as pi-*) */
+    .sc-toast-container {
+        position: fixed;
+        top: 80px;
+        right: 20px;
+        z-index: 1080;
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        max-width: 360px;
+        pointer-events: none;
+    }
+    .sc-toast {
+        background: #fff;
+        border-radius: 12px;
+        padding: .85rem 1rem;
+        box-shadow: 0 8px 24px rgba(15,23,42,.15);
+        display: flex;
+        align-items: flex-start;
+        gap: .6rem;
+        border-left: 4px solid #10b981;
+        pointer-events: auto;
+        animation: sc-toast-in .25s ease forwards;
+        font-size: .86rem;
+    }
+    .sc-toast.is-leaving { animation: sc-toast-out .2s ease forwards; }
+    .sc-toast--error { border-left-color: #dc2626; }
+    .sc-toast--warning { border-left-color: #f59e0b; }
+    .sc-toast--info { border-left-color: #0453cb; }
+    .sc-toast-icon {
+        font-size: 1rem;
+        color: #10b981;
+        flex-shrink: 0;
+        margin-top: .15rem;
+    }
+    .sc-toast--error .sc-toast-icon { color: #dc2626; }
+    .sc-toast--warning .sc-toast-icon { color: #f59e0b; }
+    .sc-toast--info .sc-toast-icon { color: #0453cb; }
+    .sc-toast-body { flex: 1; color: #1e293b; line-height: 1.4; }
+    .sc-toast-title { font-weight: 700; color: #0f172a; margin-bottom: .1rem; font-size: .88rem; }
+    .sc-toast-close {
+        background: none; border: none;
+        color: #94a3b8;
+        font-size: 1.1rem;
+        cursor: pointer;
+        padding: 0 .15rem;
+        line-height: 1;
+        margin-left: .15rem;
+        transition: color .2s;
+    }
+    .sc-toast-close:hover { color: #475569; }
+
+    @keyframes sc-toast-in  { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+    @keyframes sc-toast-out { to { opacity: 0; transform: translateX(20px); } }
+
+    /* Responsive */
+    @media (max-width: 992px) {
+        .sc-hero-top { flex-direction: column; align-items: stretch; }
+        .sc-hero-actions { justify-content: flex-start; }
+        .sc-filters-row { grid-template-columns: 1fr 1fr; }
+        .sc-filters-row .sc-field:nth-child(3) { grid-column: span 2; }
+        .sc-filter-submit { grid-column: span 2; }
+    }
+    @media (max-width: 576px) {
+        .sc-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 14px; }
+        .sc-hero h1 { font-size: 1.2rem; }
+        .sc-hero p { font-size: .82rem; }
+        .sc-filters-row { grid-template-columns: 1fr; }
+        .sc-filters-row .sc-field:nth-child(3),
+        .sc-filters-row .sc-filter-submit { grid-column: span 1; }
+    }
 </style>
 @endsection
 
 @section('content')
+@php
+    $anneeNom = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('name') ?? (date('Y').'-'.(date('Y')+1));
+    $activeFilters = collect(['filiere_id', 'niveau_id', 'category_id'])
+        ->filter(fn($k) => filled(request($k)))
+        ->count();
+
+    // Labels for breadcrumb chips
+    $selectedFiliere = $filiereId ? $filieres->firstWhere('id', $filiereId) : null;
+    $selectedNiveau = $niveauId ? $niveaux->firstWhere('id', $niveauId) : null;
+    $selectedCategory = $categoryId ? $categories->firstWhere('id', $categoryId) : null;
+
+    $removeParamUrl = function ($key) {
+        $params = request()->query();
+        unset($params[$key]);
+        return route('esbtp.paiements.suivi-categories') . (!empty($params) ? '?' . http_build_query($params) : '');
+    };
+@endphp
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header moderne -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1>Suivi des Paiements par Catégorie</h1>
-                <p class="header-subtitle">Vue d'ensemble des frais académiques et de leur recouvrement</p>
+        {{-- Hero premium sc-* --}}
+        <div class="sc-hero">
+            <div class="sc-hero-top">
+                <div class="sc-hero-left">
+                    <span class="sc-hero-icon"><i class="fas fa-chart-bar"></i></span>
+                    <div>
+                        <h1>Suivi des Paiements par Catégorie</h1>
+                        <p>Vue d'ensemble des frais et de leur recouvrement</p>
+                        <div class="sc-hero-chips">
+                            <span class="sc-chip">
+                                <i class="fas fa-calendar"></i>
+                                {{ $anneeNom }}
+                                <button type="button" class="sc-chip-btn" onclick="showYearChangeInfo()" title="Comment changer d'année ?" aria-label="Information changement d'année">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </span>
+                            @if($selectedFiliere)
+                                <span class="sc-chip sc-chip--filter" role="status">
+                                    <i class="fas fa-filter"></i>
+                                    Filière : {{ $selectedFiliere->name }}
+                                    <a href="{{ $removeParamUrl('filiere_id') }}" class="sc-chip-btn" title="Retirer ce filtre" aria-label="Retirer le filtre filière">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            @endif
+                            @if($selectedNiveau)
+                                <span class="sc-chip sc-chip--filter" role="status">
+                                    <i class="fas fa-filter"></i>
+                                    Niveau : {{ $selectedNiveau->name }}
+                                    <a href="{{ $removeParamUrl('niveau_id') }}" class="sc-chip-btn" title="Retirer ce filtre" aria-label="Retirer le filtre niveau">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            @endif
+                            @if($selectedCategory)
+                                <span class="sc-chip sc-chip--filter" role="status">
+                                    <i class="fas fa-filter"></i>
+                                    Catégorie : {{ $selectedCategory->name }}
+                                    <a href="{{ $removeParamUrl('category_id') }}" class="sc-chip-btn" title="Retirer ce filtre" aria-label="Retirer le filtre catégorie">
+                                        <i class="fas fa-times"></i>
+                                    </a>
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+                <div class="sc-hero-actions">
+                    <a href="{{ route('esbtp.paiements.index') }}" class="sc-btn sc-btn--glass">
+                        <i class="fas fa-list"></i>
+                        <span>Liste des paiements</span>
+                    </a>
+                    <a href="{{ route('esbtp.paiements.create') }}" class="sc-btn sc-btn--white">
+                        <i class="fas fa-plus"></i>
+                        <span>Nouveau paiement</span>
+                    </a>
+                </div>
             </div>
-            <div class="header-actions">
-                <a href="{{ route('esbtp.paiements.index') }}" class="btn-acasi secondary">
-                    <i class="fas fa-list"></i>Liste des paiements
-                </a>
-                <a href="{{ route('esbtp.paiements.create') }}" class="btn-acasi primary">
-                    <i class="fas fa-plus"></i>Nouveau paiement
-                </a>
+
+            {{-- Row 2 : KPIs glass (AJAX-refreshable via #suivi-metrics-container) --}}
+            <div id="suivi-metrics-container">
+                @include('esbtp.paiements.partials.suivi-metrics')
             </div>
         </div>
 
-        <!-- Information année académique courante -->
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <div class="section-title mb-md">
-                    <i class="fas fa-calendar me-2"></i>Contexte d'affichage
+        {{-- Filter bar groupee --}}
+        <div class="sc-filters">
+            <div class="sc-filters-head">
+                <div class="sc-filters-title">
+                    <i class="fas fa-filter"></i>
+                    <span>Filtres</span>
                 </div>
-                <div style="display: flex; gap: var(--space-md); align-items: end;">
-                    <div style="flex: 1; max-width: 300px;">
-                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
-                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
-                            @php $anneeNom = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('name') ?? (date('Y').'-'.(date('Y')+1)); @endphp
-                            <option value="{{ $anneeNom }}" selected>
-                                {{ $anneeNom }} (Année en cours)
-                            </option>
-                        </select>
-                    </div>
-                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
-                        <i class="fas fa-info-circle"></i>Changer d'année
+                <div class="sc-filters-active {{ $activeFilters > 0 ? 'is-visible' : '' }}">
+                    <span class="sc-filter-badge">
+                        <i class="fas fa-check-circle"></i>
+                        {{ $activeFilters }} filtre{{ $activeFilters > 1 ? 's' : '' }} actif{{ $activeFilters > 1 ? 's' : '' }}
+                    </span>
+                    <button type="button" class="sc-filter-clear" onclick="scClearAllFilters()">
+                        <i class="fas fa-times me-1"></i>Effacer tout
                     </button>
                 </div>
-                <div class="mt-3">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Les paiements par catégorie affichés correspondent à l'année académique courante.
-                    </small>
-                </div>
             </div>
-        </div>
-
-        <!-- Filtres et Actions -->
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <form id="suivi-filter-form" method="GET">
-                    <div class="row align-items-end">
-                        <div class="col-md-2">
-                            <label for="filiere_id" class="form-label">Filière</label>
-                            <select name="filiere_id" id="filiere_id" class="form-select">
-                                <option value="">Toutes les filières</option>
-                                @foreach($filieres as $filiere)
-                                    <option value="{{ $filiere->id }}" {{ $filiereId == $filiere->id ? 'selected' : '' }}>
-                                        {{ $filiere->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="niveau_id" class="form-label">Niveau d'étude</label>
-                            <select name="niveau_id" id="niveau_id" class="form-select">
-                                <option value="">Tous les niveaux</option>
-                                @foreach($niveaux as $niveau)
-                                    <option value="{{ $niveau->id }}" {{ $niveauId == $niveau->id ? 'selected' : '' }}>
-                                        {{ $niveau->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-3">
-                            <label for="category_id" class="form-label">Catégorie détaillée</label>
-                            <select name="category_id" id="category_id" class="form-select">
-                                <option value="">Vue d'ensemble</option>
-                                @foreach($categories as $category)
-                                    <option value="{{ $category->id }}" {{ $categoryId == $category->id ? 'selected' : '' }}>
-                                        {{ $category->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <button type="submit" class="btn-acasi primary w-100">
-                                <i class="fas fa-filter"></i>
-                            </button>
-                        </div>
+            <form id="suivi-filter-form" method="GET">
+                <div class="sc-filters-row">
+                    <div class="sc-field">
+                        <label for="filiere_id">Filière</label>
+                        <select name="filiere_id" id="filiere_id" class="form-select">
+                            <option value="">Toutes les filières</option>
+                            @foreach($filieres as $filiere)
+                                <option value="{{ $filiere->id }}" {{ $filiereId == $filiere->id ? 'selected' : '' }}>
+                                    {{ $filiere->name }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
-                </form>
-            </div>
+                    <div class="sc-field">
+                        <label for="niveau_id">Niveau d'étude</label>
+                        <select name="niveau_id" id="niveau_id" class="form-select">
+                            <option value="">Tous les niveaux</option>
+                            @foreach($niveaux as $niveau)
+                                <option value="{{ $niveau->id }}" {{ $niveauId == $niveau->id ? 'selected' : '' }}>
+                                    {{ $niveau->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="sc-field">
+                        <label for="category_id">Catégorie détaillée</label>
+                        <select name="category_id" id="category_id" class="form-select">
+                            <option value="">Vue d'ensemble</option>
+                            @foreach($categories as $category)
+                                <option value="{{ $category->id }}" {{ $categoryId == $category->id ? 'selected' : '' }}>
+                                    {{ $category->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <button type="submit" class="sc-filter-submit">
+                        <i class="fas fa-filter"></i>Filtrer
+                    </button>
+                </div>
+            </form>
         </div>
 
-        <!-- KPI Cards -->
-        <div id="suivi-metrics-container">
-            @include('esbtp.paiements.partials.suivi-metrics')
-        </div>
-
-        <!-- Content Section -->
+        {{-- Content Section (AJAX-refreshable) --}}
         <div id="suivi-content-container">
             @include('esbtp.paiements.partials.suivi-content')
         </div>
     </div>
 </div>
+
+{{-- Toast container (feedback post-action) --}}
+<div id="sc-toast-container" class="sc-toast-container" aria-live="polite" aria-atomic="true"></div>
 @endsection
 
 @push('scripts')
 <script>
+// ===== TOAST HELPER (sc-*) =====
+window.showToast = window.showToast || function(message, type = 'success', title = null) {
+    const container = document.getElementById('sc-toast-container');
+    if (!container) return;
+
+    const ICONS = { success: 'check-circle', error: 'times-circle', warning: 'exclamation-triangle', info: 'info-circle' };
+    const TITLES = { success: 'Succès', error: 'Erreur', warning: 'Attention', info: 'Information' };
+
+    const toast = document.createElement('div');
+    toast.className = 'sc-toast sc-toast--' + type;
+    toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+
+    const icon = document.createElement('i');
+    icon.className = 'fas fa-' + (ICONS[type] || 'info-circle') + ' sc-toast-icon';
+
+    const body = document.createElement('div');
+    body.className = 'sc-toast-body';
+    const titleEl = document.createElement('div');
+    titleEl.className = 'sc-toast-title';
+    titleEl.textContent = title || TITLES[type] || '';
+    const msgEl = document.createElement('div');
+    msgEl.textContent = message;
+    body.appendChild(titleEl);
+    body.appendChild(msgEl);
+
+    const closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'sc-toast-close';
+    closeBtn.setAttribute('aria-label', 'Fermer');
+    closeBtn.innerHTML = '&times;';
+
+    toast.appendChild(icon);
+    toast.appendChild(body);
+    toast.appendChild(closeBtn);
+    container.appendChild(toast);
+
+    let dismissTimer = null;
+    const removeToast = () => {
+        if (dismissTimer) clearTimeout(dismissTimer);
+        toast.classList.add('is-leaving');
+        setTimeout(() => toast.remove(), 220);
+    };
+    closeBtn.addEventListener('click', removeToast);
+    dismissTimer = setTimeout(removeToast, 5000);
+};
+
+// ===== CLEAR ALL FILTERS =====
+window.scClearAllFilters = function() {
+    const form = document.getElementById('suivi-filter-form');
+    if (!form) return;
+    form.querySelectorAll('select').forEach(s => s.value = '');
+    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+};
+
 // ===== AJAX FILTERING SYSTEM =====
 (function() {
     'use strict';
@@ -583,7 +1085,7 @@
         })
         .catch(error => {
             debugError(error);
-            alert(error.message || 'Impossible de charger les données pour le moment.');
+            window.showToast(error.message || 'Impossible de charger les données pour le moment.', 'error');
         })
         .finally(() => {
             // Remove loading state
@@ -1314,7 +1816,7 @@ window.loadMore = function(statut, nextPage) {
                 errorMessage = `Erreur ${xhr.status}: ${xhr.statusText}`;
             }
 
-            alert(errorMessage);
+            window.showToast(errorMessage, 'error');
         }
     });
 };
