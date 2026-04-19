@@ -1,0 +1,754 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e5]:
+        - img "Logo KLASSCI" [ref=e7]
+        - generic [ref=e8]: KLASSCI
+      - generic [ref=e9]:
+        - generic [ref=e10]: Tableau de bord
+        - link " Accueil" [ref=e12] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/dashboard
+          - generic [ref=e14]: 
+          - generic [ref=e15]: Accueil
+        - generic [ref=e16]: Gestion académique
+        - generic [ref=e17]:
+          - button " Filières & Classes " [ref=e18] [cursor=pointer]:
+            - generic [ref=e20]: 
+            - generic [ref=e21]: Filières & Classes
+            - generic [ref=e23]: 
+          - generic:
+            - link "Filières" [ref=e24] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/filieres
+              - generic [ref=e25]: Filières
+            - link "Classes" [ref=e26] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/classes
+              - generic [ref=e27]: Classes
+            - link "Niveaux d'études" [ref=e28] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/niveaux-etudes
+              - generic [ref=e29]: Niveaux d'études
+            - link "Années universitaires" [ref=e30] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/annees-universitaires
+              - generic [ref=e31]: Années universitaires
+        - generic [ref=e32]: Étudiants
+        - generic [ref=e33]:
+          - button " Étudiants " [ref=e34] [cursor=pointer]:
+            - generic [ref=e36]: 
+            - generic [ref=e37]: Étudiants
+            - generic [ref=e39]: 
+          - generic:
+            - link " Liste des Étudiants" [ref=e40] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/etudiants
+              - generic [ref=e42]: 
+              - generic [ref=e43]: Liste des Étudiants
+            - link " Inscriptions" [ref=e44] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/inscriptions
+              - generic [ref=e46]: 
+              - generic [ref=e47]: Inscriptions
+            - link " Nouvelle Inscription" [ref=e48] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/inscriptions/create
+              - generic [ref=e50]: 
+              - generic [ref=e51]: Nouvelle Inscription
+            - link " Réinscriptions" [ref=e52] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/reinscription
+              - generic [ref=e54]: 
+              - generic [ref=e55]: Réinscriptions
+            - link " Sous réserve" [ref=e56] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/inscriptions/sous-reserve
+              - generic [ref=e58]: 
+              - generic [ref=e59]: Sous réserve
+        - generic [ref=e60]: Enseignement
+        - link " Emplois du temps" [ref=e62] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/emploi-temps
+          - generic [ref=e64]: 
+          - generic [ref=e65]: Emplois du temps
+        - link " Matières" [ref=e67] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/matieres
+          - generic [ref=e69]: 
+          - generic [ref=e70]: Matières
+        - link " Planning Général" [ref=e72] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/planning-general
+          - generic [ref=e74]: 
+          - generic [ref=e75]: Planning Général
+        - generic [ref=e76]: Notes & Rapports
+        - generic [ref=e77]:
+          - button " Notes & Bulletins " [ref=e78] [cursor=pointer]:
+            - generic [ref=e80]: 
+            - generic [ref=e81]: Notes & Bulletins
+            - generic [ref=e83]: 
+          - generic:
+            - link "Gestion des notes" [ref=e84] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/notes
+              - generic [ref=e85]: Gestion des notes
+            - link "Résultats & Classements" [ref=e86] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/resultats
+              - generic [ref=e87]: Résultats & Classements
+        - link " Examens & Évaluations" [ref=e89] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/evaluations
+          - generic [ref=e91]: 
+          - generic [ref=e92]: Examens & Évaluations
+        - generic [ref=e93]: Système LMD
+        - generic [ref=e94]:
+          - button " LMD " [ref=e95] [cursor=pointer]:
+            - generic [ref=e97]: 
+            - generic [ref=e98]: LMD
+            - generic [ref=e100]: 
+          - generic:
+            - link "Domaines & Parcours" [ref=e101] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/parcours-domain
+              - generic [ref=e102]: Domaines & Parcours
+            - link "Unités d'Enseignement" [ref=e103] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/ue
+              - generic [ref=e104]: Unités d'Enseignement
+            - link "Notes LMD" [ref=e105] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/notes
+              - generic [ref=e106]: Notes LMD
+            - link "Résultats LMD" [ref=e107] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/resultats
+              - generic [ref=e108]: Résultats LMD
+            - link "Bulletins LMD" [ref=e109] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/lmd/bulletins
+              - generic [ref=e110]: Bulletins LMD
+        - generic [ref=e111]: Administration
+        - generic [ref=e112]:
+          - button " Personnel " [ref=e113] [cursor=pointer]:
+            - generic [ref=e115]: 
+            - generic [ref=e116]: Personnel
+            - generic [ref=e118]: 
+          - generic:
+            - link "Gestion du personnel" [ref=e119] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/personnel/unified
+              - generic [ref=e120]: Gestion du personnel
+            - link "Départements" [ref=e121] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/departments
+              - generic [ref=e122]: Départements
+        - generic [ref=e123]: Présence & Absences
+        - generic [ref=e124]:
+          - button " Gestion des présences " [ref=e125] [cursor=pointer]:
+            - generic [ref=e127]: 
+            - generic [ref=e128]: Gestion des présences
+            - generic [ref=e130]: 
+          - generic:
+            - link "Présences étudiants" [ref=e131] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/attendances
+              - generic [ref=e132]: Présences étudiants
+            - link "Rapports de présence" [ref=e133] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/attendances/rapport-form
+              - generic [ref=e134]: Rapports de présence
+            - link "Codes d'émargement" [ref=e135] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/attendance-codes
+              - generic [ref=e136]: Codes d'émargement
+            - link "Tableau de Bord Présences" [ref=e137] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/coordinateur/attendance-dashboard
+              - generic [ref=e138]: Tableau de Bord Présences
+        - generic [ref=e139]: Caisse
+        - link " Pré-inscription" [ref=e141] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/inscriptions/pre-inscription
+          - generic [ref=e143]: 
+          - generic [ref=e144]: Pré-inscription
+        - generic [ref=e145]: Communication
+        - link " Messages" [ref=e147] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/mes-messages
+          - generic [ref=e149]: 
+          - generic [ref=e150]: Messages
+        - link " Mes notifications" [ref=e152] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/mes-notifications
+          - generic [ref=e154]: 
+          - generic [ref=e155]: Mes notifications
+        - generic [ref=e156]: Gestion financière
+        - link " Dashboard Comptable" [ref=e158] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/comptabilite/dashboard
+          - generic [ref=e160]: 
+          - generic [ref=e161]: Dashboard Comptable
+        - generic [ref=e162]:
+          - button " Comptabilité " [ref=e163] [cursor=pointer]:
+            - generic [ref=e165]: 
+            - generic [ref=e166]: Comptabilité
+            - generic [ref=e168]: 
+          - generic:
+            - link "Gestion des Frais" [ref=e169] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/frais
+              - generic [ref=e170]: Gestion des Frais
+            - link "Configuration Frais" [ref=e171] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/frais/configure
+              - generic [ref=e172]: Configuration Frais
+            - link "Liste des Paiements" [ref=e173] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/paiements
+              - generic [ref=e174]: Liste des Paiements
+            - link "Suivi par Catégorie" [ref=e175] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/paiements/suivi-categories
+              - generic [ref=e176]: Suivi par Catégorie
+            - link "Relances" [ref=e177] [cursor=pointer]:
+              - /url: http://127.0.0.1:8000/esbtp/comptabilite/relances
+              - generic [ref=e178]: Relances
+        - generic [ref=e179]: Communication
+        - link " Annonces" [ref=e181] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/annonces
+          - generic [ref=e183]: 
+          - generic [ref=e184]: Annonces
+        - link " Créer une annonce" [ref=e186] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/esbtp/annonces/create
+          - generic [ref=e188]: 
+          - generic [ref=e189]: Créer une annonce
+        - generic [ref=e190]: Système
+        - generic [ref=e191]:
+          - button " Paramètres " [ref=e192] [cursor=pointer]:
+            - generic [ref=e194]: 
+            - generic [ref=e195]: Paramètres
+            - generic [ref=e197]: 
+          - link "Configuration" [ref=e198] [cursor=pointer]:
+            - /url: http://127.0.0.1:8000/esbtp/settings
+            - generic [ref=e199]: Configuration
+        - generic [ref=e200]: Mon compte
+        - link " Profil" [ref=e202] [cursor=pointer]:
+          - /url: http://127.0.0.1:8000/teacher/profile
+          - generic [ref=e204]: 
+          - generic [ref=e205]: Profil
+    - main [ref=e206]:
+      - navigation [ref=e207]:
+        - generic [ref=e208]:
+          - generic: 
+          - searchbox "Rechercher dans l'application..." [ref=e211]
+          - generic [ref=e212]:
+            - generic [ref=e213]:
+              - button "" [ref=e214] [cursor=pointer]:
+                - generic [ref=e215]: 
+              - text:  
+            - generic [ref=e216]:
+              - button "" [ref=e217] [cursor=pointer]:
+                - generic [ref=e218]: 
+              - text:  
+            - generic [ref=e219]:
+              - button "" [ref=e220] [cursor=pointer]:
+                - generic [ref=e221]: 
+              - text:      
+            - generic [ref=e222]:
+              - button " N’GUESSAN Marcel Jacques Patrick" [ref=e223] [cursor=pointer]:
+                - generic [ref=e226]: 
+                - generic [ref=e228]: N’GUESSAN Marcel Jacques Patrick
+              - text:    
+      - generic [ref=e229]:
+        - dialog "Emplois du temps a renouveler" [ref=e230]:
+          - document [ref=e231]:
+            - generic [ref=e232]:
+              - generic [ref=e233]:
+                - heading "Emplois du temps a renouveler" [level=5] [ref=e234]
+                - button "Close" [ref=e235] [cursor=pointer]
+              - generic [ref=e236]:
+                - paragraph [ref=e237]: Certaines classes n'ont pas d'emploi du temps valide pour la periode courante.
+                - list [ref=e238]:
+                  - listitem [ref=e239]:
+                    - strong [ref=e240]: "3"
+                    - text: classe(s) sans emploi du temps
+                  - listitem [ref=e241]:
+                    - strong [ref=e242]: "4"
+                    - text: emploi(s) expire(s)
+                - generic [ref=e243]:
+                  - strong [ref=e244]: "Astuce :"
+                  - text: utilisez la generation rapide pour creer ou dupliquer les emplois du temps manquants.
+              - generic [ref=e245]:
+                - button "Rappeler plus tard" [ref=e246] [cursor=pointer]
+                - button "Fermer" [ref=e247] [cursor=pointer]
+                - link " Aller aux emplois du temps" [ref=e248] [cursor=pointer]:
+                  - /url: http://127.0.0.1:8000/esbtp/emploi-temps?quick_generate=1
+                  - generic [ref=e249]: 
+                  - text: Aller aux emplois du temps
+        - dialog "Notes a saisir" [ref=e250]:
+          - document [ref=e251]:
+            - generic [ref=e252]:
+              - generic [ref=e253]:
+                - heading "Notes a saisir" [level=5] [ref=e254]
+                - button "Close" [active] [ref=e255] [cursor=pointer]
+              - generic [ref=e256]:
+                - paragraph [ref=e257]:
+                  - strong [ref=e258]: "13"
+                  - text: evaluation(s) sont passees et attendent la saisie des notes.
+                - list [ref=e259]:
+                  - listitem [ref=e260]:
+                    - strong [ref=e261]: "9"
+                    - text: sans notes saisies
+                  - listitem [ref=e262]:
+                    - strong [ref=e263]: "4"
+                    - text: notes saisies mais non publiees
+                - table [ref=e265]:
+                  - rowgroup [ref=e266]:
+                    - row "Evaluation Classe Date" [ref=e267]:
+                      - columnheader "Evaluation" [ref=e268]
+                      - columnheader "Classe" [ref=e269]
+                      - columnheader "Date" [ref=e270]
+                  - rowgroup [ref=e271]:
+                    - row "Devoi Algorithme B3 COM 10/10/2025" [ref=e272]:
+                      - cell "Devoi Algorithme" [ref=e273]:
+                        - generic [ref=e274]: Devoi
+                        - text: Algorithme
+                      - cell "B3 COM" [ref=e275]
+                      - cell "10/10/2025" [ref=e276]
+                    - row "DST Algorithme B3 COM 10/10/2025" [ref=e277]:
+                      - cell "DST Algorithme" [ref=e278]:
+                        - generic [ref=e279]: DST
+                        - text: Algorithme
+                      - cell "B3 COM" [ref=e280]
+                      - cell "10/10/2025" [ref=e281]
+                    - row "DST Algorithme B3 COM 10/10/2025" [ref=e282]:
+                      - cell "DST Algorithme" [ref=e283]:
+                        - generic [ref=e284]: DST
+                        - text: Algorithme
+                      - cell "B3 COM" [ref=e285]
+                      - cell "10/10/2025" [ref=e286]
+                    - row "QUiz de math Algorithme B3 COM 10/12/2025" [ref=e287]:
+                      - cell "QUiz de math Algorithme" [ref=e288]:
+                        - generic [ref=e289]: QUiz de math
+                        - text: Algorithme
+                      - cell "B3 COM" [ref=e290]
+                      - cell "10/12/2025" [ref=e291]
+                    - row "QUiz de math Anglais B3 COM 10/12/2025" [ref=e292]:
+                      - cell "QUiz de math Anglais" [ref=e293]:
+                        - generic [ref=e294]: QUiz de math
+                        - text: Anglais
+                      - cell "B3 COM" [ref=e295]
+                      - cell "10/12/2025" [ref=e296]
+              - generic [ref=e297]:
+                - button "Rappeler plus tard" [ref=e298] [cursor=pointer]
+                - button "Fermer" [ref=e299] [cursor=pointer]
+                - link " Aller a la saisie" [ref=e300] [cursor=pointer]:
+                  - /url: http://127.0.0.1:8000/esbtp/evaluations
+                  - generic [ref=e301]: 
+                  - text: Aller a la saisie
+        - dialog "Evaluations a activer" [ref=e302]:
+          - document [ref=e303]:
+            - generic [ref=e304]:
+              - generic [ref=e305]:
+                - heading "Evaluations a activer" [level=5] [ref=e306]
+                - button "Close" [ref=e307] [cursor=pointer]
+              - generic [ref=e308]:
+                - paragraph [ref=e309]:
+                  - strong [ref=e310]: "7"
+                  - text: evaluation(s) sont encore en brouillon.
+                - list [ref=e311]:
+                  - listitem [ref=e312]:
+                    - strong [ref=e313]: "7"
+                    - text: en retard (date depassee)
+                - generic [ref=e314]:
+                  - strong [ref=e315]: "Action :"
+                  - text: publiez les evaluations pour activer la saisie des notes.
+              - generic [ref=e316]:
+                - button "Rappeler plus tard" [ref=e317] [cursor=pointer]
+                - button "Fermer" [ref=e318] [cursor=pointer]
+                - link " Aller aux evaluations" [ref=e319] [cursor=pointer]:
+                  - /url: http://127.0.0.1:8000/esbtp/evaluations
+                  - generic [ref=e320]: 
+                  - text: Aller aux evaluations
+        - generic [ref=e322]:
+          - generic [ref=e323]:
+            - generic [ref=e324]:
+              - generic [ref=e325]:
+                - generic [ref=e327]: 
+                - generic [ref=e328]:
+                  - heading "Emploi du temps - ROSTAN BTS BATIMENT (Semaine 09/02-15/02)" [level=1] [ref=e329]
+                  - paragraph [ref=e330]: BATIMENT · BTS 1ere ANNEE · 2025-2026
+                  - generic [ref=e331]:
+                    - generic [ref=e332]:
+                      - generic [ref=e333]: 
+                      - text: Actif
+                    - generic [ref=e334]:
+                      - generic [ref=e335]: 
+                      - text: Semestre 2
+                    - generic [ref=e336]:
+                      - generic [ref=e337]: 
+                      - text: 09/02 → 15/02/2026
+              - generic [ref=e338]:
+                - link " Retour" [ref=e339] [cursor=pointer]:
+                  - /url: http://127.0.0.1:8000/esbtp/emploi-temps
+                  - generic [ref=e340]: 
+                  - text: Retour
+                - link "+ Séance" [ref=e341] [cursor=pointer]:
+                  - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38
+                  - generic [ref=e342]: +
+                  - text: Séance
+                - generic [ref=e343]:
+                  - button "Actions" [ref=e344] [cursor=pointer]:
+                    - generic [ref=e345]: 
+                  - text:    
+            - generic [ref=e346]:
+              - generic [ref=e347]:
+                - generic [ref=e349]: 
+                - generic [ref=e350]:
+                  - generic [ref=e351]: "1"
+                  - generic [ref=e352]: Séances programmées
+              - generic [ref=e353]:
+                - generic [ref=e355]: 
+                - generic [ref=e356]:
+                  - generic [ref=e357]: 130h
+                  - generic [ref=e358]: Heures planifiées
+              - generic [ref=e359]:
+                - generic [ref=e361]: 
+                - generic [ref=e362]:
+                  - generic [ref=e363]: 98%
+                  - generic [ref=e364]: Volume restant
+              - generic [ref=e365]:
+                - generic [ref=e367]: 
+                - generic [ref=e368]:
+                  - generic [ref=e369]: "1"
+                  - generic [ref=e370]: Enseignants
+          - generic [ref=e371]:
+            - generic [ref=e372]:
+              - generic [ref=e373]:
+                - generic [ref=e374]: 
+                - text: Grille horaire
+              - group "Filtrer les types de séance" [ref=e375]:
+                - button " Cours" [pressed] [ref=e376] [cursor=pointer]:
+                  - generic [ref=e377]: 
+                  - generic [ref=e378]: Cours
+                - button " Devoir" [pressed] [ref=e379] [cursor=pointer]:
+                  - generic [ref=e380]: 
+                  - generic [ref=e381]: Devoir
+                - button " Récréation" [pressed] [ref=e382] [cursor=pointer]:
+                  - generic [ref=e383]: 
+                  - generic [ref=e384]: Récréation
+                - button " Pause déjeuner" [pressed] [ref=e385] [cursor=pointer]:
+                  - generic [ref=e386]: 
+                  - generic [ref=e387]: Pause déjeuner
+            - generic [ref=e389]:
+              - generic [ref=e390]:
+                - generic [ref=e391]: Heure
+                - generic [ref=e392]: Lundi
+                - generic [ref=e393]: Mardi
+                - generic [ref=e394]: Mercredi
+                - generic [ref=e395]: Jeudi
+                - generic [ref=e396]: Vendredi
+                - generic [ref=e397]: Samedi
+              - generic [ref=e398]: 07:00
+              - generic [ref=e402]: 08:00
+              - generic [ref=e406]: 09:00
+              - generic [ref=e410]: 10:00
+              - generic [ref=e414]: 11:00
+              - generic [ref=e418]: 12:00
+              - generic [ref=e422]: 13:00
+              - generic [ref=e426]: 14:00
+              - generic [ref=e430]: 15:00
+              - generic [ref=e434]: 16:00
+              - generic [ref=e438]: 17:00
+              - generic [ref=e442]: 18:00
+              - link "+" [ref=e444] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=1&heure_debut=07%3A00
+                - generic [ref=e445]: +
+              - link "+" [ref=e446] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=1&heure_debut=08%3A00
+                - generic [ref=e447]: +
+              - link "+" [ref=e448] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=1&heure_debut=09%3A00
+                - generic [ref=e449]: +
+              - link "+" [ref=e450] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=1&heure_debut=10%3A00
+                - generic [ref=e451]: +
+              - link "+" [ref=e452] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=1&heure_debut=11%3A00
+                - generic [ref=e453]: +
+              - link "+" [ref=e454] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=1&heure_debut=12%3A00
+                - generic [ref=e455]: +
+              - link "+" [ref=e456] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=1&heure_debut=13%3A00
+                - generic [ref=e457]: +
+              - link "+" [ref=e458] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=1&heure_debut=14%3A00
+                - generic [ref=e459]: +
+              - link "+" [ref=e460] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=1&heure_debut=15%3A00
+                - generic [ref=e461]: +
+              - link "+" [ref=e462] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=1&heure_debut=16%3A00
+                - generic [ref=e463]: +
+              - link "+" [ref=e464] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=1&heure_debut=17%3A00
+                - generic [ref=e465]: +
+              - link "+" [ref=e467] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=2&heure_debut=07%3A00
+                - generic [ref=e468]: +
+              - link "+" [ref=e469] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=2&heure_debut=08%3A00
+                - generic [ref=e470]: +
+              - link "+" [ref=e471] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=2&heure_debut=09%3A00
+                - generic [ref=e472]: +
+              - link "+" [ref=e473] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=2&heure_debut=10%3A00
+                - generic [ref=e474]: +
+              - link "+" [ref=e475] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=2&heure_debut=11%3A00
+                - generic [ref=e476]: +
+              - link "+" [ref=e477] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=2&heure_debut=12%3A00
+                - generic [ref=e478]: +
+              - link "+" [ref=e479] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=2&heure_debut=13%3A00
+                - generic [ref=e480]: +
+              - link "+" [ref=e481] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=2&heure_debut=14%3A00
+                - generic [ref=e482]: +
+              - link "+" [ref=e483] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=2&heure_debut=15%3A00
+                - generic [ref=e484]: +
+              - link "+" [ref=e485] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=2&heure_debut=16%3A00
+                - generic [ref=e486]: +
+              - link "+" [ref=e487] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=2&heure_debut=17%3A00
+                - generic [ref=e488]: +
+              - link "+" [ref=e490] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=3&heure_debut=07%3A00
+                - generic [ref=e491]: +
+              - link "+" [ref=e492] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=3&heure_debut=11%3A00
+                - generic [ref=e493]: +
+              - link "+" [ref=e494] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=3&heure_debut=12%3A00
+                - generic [ref=e495]: +
+              - link "+" [ref=e496] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=3&heure_debut=13%3A00
+                - generic [ref=e497]: +
+              - link "+" [ref=e498] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=3&heure_debut=14%3A00
+                - generic [ref=e499]: +
+              - link "+" [ref=e500] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=3&heure_debut=15%3A00
+                - generic [ref=e501]: +
+              - link "+" [ref=e502] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=3&heure_debut=16%3A00
+                - generic [ref=e503]: +
+              - link "+" [ref=e504] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=3&heure_debut=17%3A00
+                - generic [ref=e505]: +
+              - generic [ref=e506]:
+                - generic [ref=e507]: COURS
+                - generic [ref=e508]: Algorithme
+                - generic [ref=e509]:
+                  - generic [ref=e510]:
+                    - generic [ref=e511]: 
+                    - text: BEDE ABEL TEST•
+                  - generic [ref=e512]:
+                    - generic [ref=e513]: 
+                    - text: 1•
+                  - generic [ref=e514]:
+                    - generic [ref=e515]: 
+                    - text: 08:00 - 11:00
+                - generic [ref=e517]:
+                  - link "" [ref=e518] [cursor=pointer]:
+                    - /url: http://127.0.0.1:8000/esbtp/seances-cours/106/edit
+                    - generic [ref=e519]: 
+                  - button "" [ref=e521] [cursor=pointer]:
+                    - generic [ref=e522]: 
+              - link "+" [ref=e524] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=4&heure_debut=07%3A00
+                - generic [ref=e525]: +
+              - link "+" [ref=e526] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=4&heure_debut=08%3A00
+                - generic [ref=e527]: +
+              - link "+" [ref=e528] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=4&heure_debut=09%3A00
+                - generic [ref=e529]: +
+              - link "+" [ref=e530] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=4&heure_debut=10%3A00
+                - generic [ref=e531]: +
+              - link "+" [ref=e532] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=4&heure_debut=11%3A00
+                - generic [ref=e533]: +
+              - link "+" [ref=e534] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=4&heure_debut=12%3A00
+                - generic [ref=e535]: +
+              - link "+" [ref=e536] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=4&heure_debut=13%3A00
+                - generic [ref=e537]: +
+              - link "+" [ref=e538] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=4&heure_debut=14%3A00
+                - generic [ref=e539]: +
+              - link "+" [ref=e540] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=4&heure_debut=15%3A00
+                - generic [ref=e541]: +
+              - link "+" [ref=e542] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=4&heure_debut=16%3A00
+                - generic [ref=e543]: +
+              - link "+" [ref=e544] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=4&heure_debut=17%3A00
+                - generic [ref=e545]: +
+              - link "+" [ref=e547] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=5&heure_debut=07%3A00
+                - generic [ref=e548]: +
+              - link "+" [ref=e549] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=5&heure_debut=08%3A00
+                - generic [ref=e550]: +
+              - link "+" [ref=e551] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=5&heure_debut=09%3A00
+                - generic [ref=e552]: +
+              - link "+" [ref=e553] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=5&heure_debut=10%3A00
+                - generic [ref=e554]: +
+              - link "+" [ref=e555] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=5&heure_debut=11%3A00
+                - generic [ref=e556]: +
+              - link "+" [ref=e557] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=5&heure_debut=12%3A00
+                - generic [ref=e558]: +
+              - link "+" [ref=e559] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=5&heure_debut=13%3A00
+                - generic [ref=e560]: +
+              - link "+" [ref=e561] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=5&heure_debut=14%3A00
+                - generic [ref=e562]: +
+              - link "+" [ref=e563] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=5&heure_debut=15%3A00
+                - generic [ref=e564]: +
+              - link "+" [ref=e565] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=5&heure_debut=16%3A00
+                - generic [ref=e566]: +
+              - link "+" [ref=e567] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=5&heure_debut=17%3A00
+                - generic [ref=e568]: +
+              - link "+" [ref=e570] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=6&heure_debut=07%3A00
+                - generic [ref=e571]: +
+              - link "+" [ref=e572] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=6&heure_debut=08%3A00
+                - generic [ref=e573]: +
+              - link "+" [ref=e574] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=6&heure_debut=09%3A00
+                - generic [ref=e575]: +
+              - link "+" [ref=e576] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=6&heure_debut=10%3A00
+                - generic [ref=e577]: +
+              - link "+" [ref=e578] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=6&heure_debut=11%3A00
+                - generic [ref=e579]: +
+              - link "+" [ref=e580] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=6&heure_debut=12%3A00
+                - generic [ref=e581]: +
+              - link "+" [ref=e582] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=6&heure_debut=13%3A00
+                - generic [ref=e583]: +
+              - link "+" [ref=e584] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=6&heure_debut=14%3A00
+                - generic [ref=e585]: +
+              - link "+" [ref=e586] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=6&heure_debut=15%3A00
+                - generic [ref=e587]: +
+              - link "+" [ref=e588] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=6&heure_debut=16%3A00
+                - generic [ref=e589]: +
+              - link "+" [ref=e590] [cursor=pointer]:
+                - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38&jour=6&heure_debut=17%3A00
+                - generic [ref=e591]: +
+          - generic [ref=e592]:
+            - tablist "Sections emploi du temps" [ref=e593]:
+              - tab " Informations" [ref=e594] [cursor=pointer]:
+                - generic [ref=e595]: 
+                - text: Informations
+              - tab " Planification académique" [ref=e596] [cursor=pointer]:
+                - generic [ref=e597]: 
+                - text: Planification académique
+              - tab " Liste des séances 1" [selected] [ref=e598] [cursor=pointer]:
+                - generic [ref=e599]: 
+                - text: Liste des séances
+                - generic [ref=e600]: "1"
+            - text:               
+            - tabpanel " Liste des séances 1" [ref=e667]:
+              - generic [ref=e668]:
+                - generic [ref=e669]:
+                  - generic [ref=e670]:
+                    - generic [ref=e671]: 
+                    - text: 1 séance(s) programmée(s)
+                  - link "+ Ajouter" [ref=e672] [cursor=pointer]:
+                    - /url: http://127.0.0.1:8000/esbtp/seances-cours/create?emploi_temps_id=38
+                    - generic [ref=e673]: +
+                    - text: Ajouter
+                - generic [ref=e674]:
+                  - table [ref=e676]:
+                    - rowgroup [ref=e677]:
+                      - row "# Matière Enseignant Type Jour Heure Durée Statut Actions" [ref=e678]:
+                        - columnheader "#" [ref=e679]
+                        - columnheader "Matière" [ref=e680]
+                        - columnheader "Enseignant" [ref=e681]
+                        - columnheader "Type" [ref=e682]
+                        - columnheader "Jour" [ref=e683]
+                        - columnheader "Heure" [ref=e684]
+                        - columnheader "Durée" [ref=e685]
+                        - columnheader "Statut" [ref=e686]
+                        - columnheader "Actions" [ref=e687]
+                    - rowgroup [ref=e688]:
+                      - row "1  Algorithme  BEDE ABEL TEST COURS Mercredi  08:00 - 11:00 3h  Actif Actions séance" [ref=e689]:
+                        - cell "1" [ref=e690]
+                        - cell " Algorithme" [ref=e691]:
+                          - generic [ref=e692]:
+                            - generic [ref=e694]: 
+                            - strong [ref=e695]: Algorithme
+                        - cell " BEDE ABEL TEST" [ref=e696]:
+                          - generic [ref=e697]:
+                            - generic [ref=e698]: 
+                            - generic [ref=e699]: BEDE ABEL TEST
+                        - cell "COURS" [ref=e700]:
+                          - generic [ref=e701]: COURS
+                        - cell "Mercredi" [ref=e702]
+                        - cell " 08:00 - 11:00" [ref=e703]:
+                          - generic [ref=e704]:
+                            - generic [ref=e705]: 
+                            - text: 08:00 - 11:00
+                        - cell "3h" [ref=e706]
+                        - cell " Actif" [ref=e707]:
+                          - generic [ref=e708]:
+                            - generic [ref=e709]: 
+                            - text: Actif
+                        - cell "Actions séance" [ref=e710]:
+                          - group "Actions séance" [ref=e711]:
+                            - link "" [ref=e712] [cursor=pointer]:
+                              - /url: http://127.0.0.1:8000/esbtp/seances-cours/106/edit
+                              - generic [ref=e713]: 
+                            - button "" [ref=e714] [cursor=pointer]:
+                              - generic [ref=e715]: 
+                  - generic [ref=e716]:
+                    - heading " Répartition par type de séance" [level=6] [ref=e717]:
+                      - generic [ref=e718]: 
+                      - text: Répartition par type de séance
+                    - generic [ref=e721]:
+                      - generic [ref=e722]: "1"
+                      - generic [ref=e723]: COURS
+                      - generic [ref=e724]: 100%
+        - text:     
+  - generic [ref=e661]:
+    - button "Ouvrir l'assistant KLASSCI" [ref=e662] [cursor=pointer]:
+      - generic [ref=e663]: 
+    - dialog:
+      - generic:
+        - generic:
+          - generic: Assistant KLASSCI
+          - generic: Vos données, vos permissions, en temps réel.
+        - generic:
+          - button:
+            - generic: +
+          - button:
+            - generic: 
+          - button:
+            - generic: 
+          - button [disabled]:
+            - generic: 
+          - button:
+            - generic: 
+      - generic:
+        - complementary:
+          - generic: Conversations
+        - generic:
+          - generic:
+            - generic:
+              - generic:
+                - generic: 
+              - heading [level=5]: Assistant KLASSCI
+              - paragraph: Posez une question sur vos paiements, étudiants, classes ou inscriptions.
+              - generic:
+                - button: Mes paiements
+                - button: Liste étudiants
+                - button: Classes disponibles
+          - generic:
+            - textbox:
+              - /placeholder: Écrivez votre question…
+            - button:
+              - generic: 
+      - generic:
+        - generic: 
+    - status

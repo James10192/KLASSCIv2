@@ -1049,7 +1049,7 @@ function showYearChangeInfo() {
      * Affiche un toast de feedback (success / error / warning / info).
      * Auto-dismiss après 5s, dismissable manuellement.
      */
-    window.showToast = function(message, type = 'success', title = null) {
+    window.showToast = window.showToast || function(message, type = 'success', title = null) {
         const container = document.getElementById('pi-toast-container');
         if (!container) {
             return;
@@ -1150,21 +1150,14 @@ function showYearChangeInfo() {
         })
         .then(data => {
             // Verifier si on a recu les donnees attendues (nouvelle signature : metrics_kpis + metrics_details)
-            if (data.table && (data.metrics_kpis || data.metrics_details || data.metrics)) {
-                // Mettre a jour les KPI glass dans le hero
+            if (data.table && (data.metrics_kpis || data.metrics_details)) {
                 if (data.metrics_kpis) {
                     const kpisEl = document.getElementById('paiements-metrics-kpis');
                     if (kpisEl) kpisEl.innerHTML = data.metrics_kpis;
                 }
-                // Mettre a jour la section repartition (details) sous le hero
                 if (data.metrics_details) {
                     const detailsEl = document.getElementById('paiements-metrics-details');
                     if (detailsEl) detailsEl.innerHTML = data.metrics_details;
-                }
-                // Backward-compat : ancienne cle 'metrics' (container unique)
-                if (data.metrics && !data.metrics_kpis) {
-                    const legacyEl = document.getElementById('paiements-metrics-container');
-                    if (legacyEl) legacyEl.innerHTML = data.metrics;
                 }
 
                 // Mettre à jour le tableau

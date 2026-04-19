@@ -1,0 +1,61 @@
+- generic [ref=e1]:
+  - generic:
+    - generic:
+      - generic: 
+    - generic:
+      - generic: 
+    - generic:
+      - generic: 
+    - generic:
+      - generic: 
+    - generic:
+      - generic: 
+    - generic:
+      - generic: 
+  - generic [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - img "KLASSCI" [ref=e6]
+        - generic [ref=e7]: KLASSCI
+      - heading "Gérez votre établissement en toute simplicité." [level=2] [ref=e8]
+      - paragraph [ref=e9]: Notes, bulletins, paiements, emplois du temps — un seul outil pour tout piloter.
+      - generic [ref=e10]:
+        - generic [ref=e11]:
+          - generic [ref=e12]: 5+
+          - generic [ref=e13]: Établissements
+        - generic [ref=e14]:
+          - generic [ref=e15]: 5k+
+          - generic [ref=e16]: Étudiants
+        - generic [ref=e17]:
+          - generic [ref=e18]: 98%
+          - generic [ref=e19]: Satisfaction
+    - generic [ref=e20]:
+      - generic [ref=e21]:
+        - heading "Connexion" [level=1] [ref=e22]
+        - paragraph [ref=e23]: Accédez à votre espace KLASSCI
+      - generic [ref=e24]:
+        - generic [ref=e25]:
+          - generic [ref=e26]: Nom d'utilisateur
+          - generic [ref=e27]:
+            - textbox "Nom d'utilisateur" [active] [ref=e28]:
+              - /placeholder: Votre identifiant
+              - text: superadmin
+            - generic: 
+        - generic [ref=e29]:
+          - generic [ref=e30]: Mot de passe
+          - generic [ref=e31]:
+            - textbox "Mot de passe" [ref=e32]:
+              - /placeholder: Votre mot de passe
+              - text: password123
+            - generic: 
+            - generic "Afficher le mot de passe" [ref=e33] [cursor=pointer]: 
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - checkbox "Se souvenir de moi" [ref=e36] [cursor=pointer]
+            - generic [ref=e37] [cursor=pointer]: Se souvenir de moi
+          - link "Mot de passe oublié ?" [ref=e38] [cursor=pointer]:
+            - /url: http://127.0.0.1:8000/password/reset
+        - button " Se connecter" [ref=e39] [cursor=pointer]:
+          - generic [ref=e40]: 
+          - text: Se connecter
+      - generic [ref=e41]: © 2026 KLASSCI — African Digital Consulting
