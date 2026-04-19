@@ -6,10 +6,288 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <link rel="stylesheet" href="{{ asset('css/cursor-fix.css') }}">
 <style>
-    .btn-acasi.small {
-        padding: var(--space-xs) var(--space-sm);
-        font-size: var(--text-small);
-        border-radius: var(--radius-small);
+    /* ═══════════════════════════════════════════════
+       Namespace pi-* (paiements.index premium)
+       ═══════════════════════════════════════════════ */
+    .pi-hero {
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+        border-radius: 18px;
+        padding: 1.75rem 2rem 1.5rem;
+        color: #fff;
+        margin-bottom: 1.25rem;
+        position: relative;
+        overflow: hidden;
+    }
+    .pi-hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .pi-hero-left {
+        display: flex;
+        align-items: flex-start;
+        gap: 1rem;
+        flex: 1;
+        min-width: 0;
+    }
+    .pi-hero-icon {
+        width: 52px; height: 52px;
+        border-radius: 14px;
+        background: rgba(255,255,255,.12);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,.15);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.35rem; flex-shrink: 0; color: #fff;
+    }
+    .pi-hero h1 {
+        font-size: 1.45rem;
+        font-weight: 700;
+        color: #fff;
+        margin: 0 0 .2rem;
+        letter-spacing: -.01em;
+    }
+    .pi-hero p {
+        color: rgba(255,255,255,.72);
+        font-size: .88rem;
+        margin: 0 0 .55rem;
+    }
+    .pi-hero-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .4rem;
+    }
+    .pi-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+        padding: .25rem .65rem;
+        background: rgba(255,255,255,.14);
+        border: 1px solid rgba(255,255,255,.2);
+        border-radius: 99px;
+        font-size: .74rem;
+        font-weight: 600;
+        color: rgba(255,255,255,.94);
+    }
+    .pi-chip i { font-size: .7rem; }
+    .pi-chip .pi-chip-btn {
+        background: none;
+        border: none;
+        color: inherit;
+        padding: 0 0 0 .25rem;
+        margin-left: .1rem;
+        cursor: pointer;
+        opacity: .75;
+        transition: opacity .2s;
+        font-size: .72rem;
+    }
+    .pi-chip .pi-chip-btn:hover { opacity: 1; }
+
+    .pi-hero-actions {
+        display: flex;
+        gap: .5rem;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .pi-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: .45rem;
+        padding: .5rem 1rem;
+        font-size: .82rem;
+        font-weight: 600;
+        border-radius: 10px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        transition: all .2s ease;
+        text-decoration: none;
+        white-space: nowrap;
+        font-family: inherit;
+    }
+    .pi-btn--glass {
+        background: rgba(255,255,255,.15);
+        color: #fff;
+        border-color: rgba(255,255,255,.2);
+    }
+    .pi-btn--glass:hover {
+        background: rgba(255,255,255,.22);
+        color: #fff;
+    }
+    .pi-btn--white {
+        background: #fff;
+        color: #0453cb;
+        border-color: transparent;
+    }
+    .pi-btn--white:hover {
+        background: #f8fafc;
+        color: #0453cb;
+        transform: translateY(-1px);
+    }
+    .pi-btn i { font-size: .78rem; }
+    .pi-hero-actions .dropdown-menu {
+        font-size: .85rem;
+        border-radius: 10px;
+        box-shadow: 0 8px 24px rgba(15,23,42,.12);
+        border: 1px solid #e2e8f0;
+        padding: .35rem;
+        margin-top: .35rem;
+    }
+    .pi-hero-actions .dropdown-menu .dropdown-item {
+        border-radius: 6px;
+        padding: .45rem .65rem;
+        font-size: .85rem;
+    }
+
+    /* ═══════ Alert session ═══════ */
+    .pi-alert--success {
+        background: #ecfdf5;
+        border: 1px solid #a7f3d0;
+        color: #065f46;
+        border-radius: 12px;
+        padding: .75rem 1rem;
+        display: flex;
+        align-items: center;
+        gap: .6rem;
+        margin-bottom: 1rem;
+        font-size: .88rem;
+        font-weight: 500;
+    }
+    .pi-alert--success > i { color: #10b981; font-size: 1rem; }
+    .pi-alert--success .btn-close { margin-left: auto; opacity: .6; }
+
+    /* ═══════ Filter bar ═══════ */
+    .pi-filters {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        padding: 1rem 1.25rem 1.1rem;
+        margin-bottom: 1rem;
+        box-shadow: 0 1px 3px rgba(15,23,42,.04);
+    }
+    .pi-filters-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        margin-bottom: .85rem;
+        flex-wrap: wrap;
+    }
+    .pi-filters-title {
+        display: inline-flex;
+        align-items: center;
+        gap: .5rem;
+        color: #0f172a;
+        font-weight: 700;
+        font-size: .88rem;
+    }
+    .pi-filters-title i {
+        width: 28px;
+        height: 28px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        color: #fff;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: .72rem;
+    }
+    .pi-filters-active {
+        display: none;
+        align-items: center;
+        gap: .5rem;
+    }
+    .pi-filters-active.is-visible { display: inline-flex; }
+    .pi-filter-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: .3rem;
+        padding: .25rem .65rem;
+        background: rgba(4,83,203,.08);
+        color: #0453cb;
+        border: 1px solid rgba(4,83,203,.18);
+        border-radius: 99px;
+        font-size: .72rem;
+        font-weight: 600;
+    }
+    .pi-filter-clear {
+        background: none;
+        border: none;
+        color: #94a3b8;
+        font-size: .76rem;
+        font-weight: 600;
+        cursor: pointer;
+        padding: .25rem .55rem;
+        border-radius: 6px;
+        transition: all .2s;
+    }
+    .pi-filter-clear:hover {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+    .pi-filters-row {
+        display: grid;
+        grid-template-columns: 2fr 1fr 1fr 1fr auto;
+        gap: .75rem;
+        align-items: end;
+    }
+    .pi-field label {
+        display: block;
+        font-size: .72rem;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #64748b;
+        margin-bottom: .3rem;
+    }
+    .pi-field .form-control,
+    .pi-field .form-select {
+        font-size: .88rem;
+        border-radius: 10px;
+        border: 1.5px solid #e2e8f0;
+        padding: .5rem .75rem;
+        background-color: #fff;
+        transition: border-color .2s, box-shadow .2s;
+    }
+    .pi-field .form-control:focus,
+    .pi-field .form-select:focus {
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4,83,203,.08);
+    }
+    .pi-filter-submit {
+        padding: .55rem 1rem;
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        color: #fff;
+        border: none;
+        border-radius: 10px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all .2s;
+        font-size: .85rem;
+        white-space: nowrap;
+        height: 41px;
+    }
+    .pi-filter-submit:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(4,83,203,.25);
+    }
+    .pi-filter-submit i { margin-right: .3rem; }
+
+    /* ═══════ Responsive ═══════ */
+    @media (max-width: 992px) {
+        .pi-hero-top { flex-direction: column; align-items: stretch; }
+        .pi-hero-actions { justify-content: flex-start; }
+        .pi-filters-row { grid-template-columns: 1fr 1fr; }
+        .pi-filters-row .pi-field:first-child { grid-column: span 2; }
+        .pi-filter-submit { grid-column: span 2; }
+    }
+    @media (max-width: 576px) {
+        .pi-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 14px; }
+        .pi-hero h1 { font-size: 1.2rem; }
+        .pi-hero p { font-size: .82rem; }
+        .pi-filters-row { grid-template-columns: 1fr; }
+        .pi-filters-row .pi-field:first-child,
+        .pi-filters-row .pi-filter-submit { grid-column: span 1; }
     }
 
     /* Fix cursor pour les éléments du modal de rejet */
@@ -36,127 +314,134 @@
 @endsection
 
 @section('content')
+@php
+    $anneeNom = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('name') ?? (date('Y').'-'.(date('Y')+1));
+    $activeFilters = collect(['search', 'status', 'date_debut', 'date_fin'])
+        ->filter(fn($k) => filled(request($k)))
+        ->count();
+@endphp
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header moderne -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1>Suivi des Paiements</h1>
-                <p class="header-subtitle">Monitoring des paiements étudiants et relances automatiques</p>
-            </div>
-            <div class="header-actions">
-                <button type="button" class="btn-acasi secondary" id="paiements-refresh-btn" title="Rafraîchir les données">
-                    <i class="fas fa-sync-alt"></i>Rafraîchir
-                </button>
-                <div class="dropdown" style="display: inline-block;">
-                    <button type="button" class="btn-acasi secondary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="fas fa-download"></i>Exporter
-                    </button>
-                    <ul class="dropdown-menu">
-                        <li>
-                            <a class="dropdown-item" href="#" onclick="exportPaiements('excel'); return false;">
-                                <i class="fas fa-file-excel text-success me-2"></i>Excel (.xlsx)
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="#" onclick="exportPaiements('csv'); return false;">
-                                <i class="fas fa-file-csv text-info me-2"></i>CSV
-                            </a>
-                        </li>
-                        <li>
-                            <a class="dropdown-item" href="#" onclick="exportPaiements('pdf'); return false;">
-                                <i class="fas fa-file-pdf text-danger me-2"></i>PDF
-                            </a>
-                        </li>
-                    </ul>
+        {{-- Hero premium pi-* --}}
+        <div class="pi-hero">
+            <div class="pi-hero-top">
+                <div class="pi-hero-left">
+                    <span class="pi-hero-icon"><i class="fas fa-wallet"></i></span>
+                    <div>
+                        <h1>Suivi des Paiements</h1>
+                        <p>Monitoring des paiements étudiants et relances automatiques</p>
+                        <div class="pi-hero-chips">
+                            <span class="pi-chip">
+                                <i class="fas fa-calendar"></i>
+                                {{ $anneeNom }}
+                                <button type="button" class="pi-chip-btn" onclick="showYearChangeInfo()" title="Comment changer d'année ?" aria-label="Information changement d'année">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </span>
+                        </div>
+                    </div>
                 </div>
-                <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="btn-acasi secondary">
-                    <i class="fas fa-chart-bar"></i>Suivi par Catégorie
-                </a>
-                @can('create-paiements')
-                <a href="{{ route('esbtp.paiements.create') }}" class="btn-acasi primary">
-                    <i class="fas fa-plus"></i>Nouveau Paiement
-                </a>
-                @endcan
+                <div class="pi-hero-actions">
+                    <button type="button" class="pi-btn pi-btn--glass" id="paiements-refresh-btn" title="Rafraîchir les données">
+                        <i class="fas fa-sync-alt"></i>
+                        <span>Rafraîchir</span>
+                    </button>
+                    <div class="dropdown">
+                        <button type="button" class="pi-btn pi-btn--glass dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="fas fa-download"></i>
+                            <span>Exporter</span>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="exportPaiements('excel'); return false;">
+                                    <i class="fas fa-file-excel text-success me-2"></i>Excel (.xlsx)
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="exportPaiements('csv'); return false;">
+                                    <i class="fas fa-file-csv text-info me-2"></i>CSV
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="exportPaiements('pdf'); return false;">
+                                    <i class="fas fa-file-pdf text-danger me-2"></i>PDF
+                                </a>
+                            </li>
+                        </ul>
+                    </div>
+                    <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="pi-btn pi-btn--glass">
+                        <i class="fas fa-chart-bar"></i>
+                        <span>Suivi par Catégorie</span>
+                    </a>
+                    @can('create-paiements')
+                    <a href="{{ route('esbtp.paiements.create') }}" class="pi-btn pi-btn--white">
+                        <i class="fas fa-plus"></i>
+                        <span>Nouveau paiement</span>
+                    </a>
+                    @endcan
+                </div>
             </div>
         </div>
 
         @if(session('success'))
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{ session('success') }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            <div class="pi-alert--success alert-dismissible fade show" role="alert">
+                <i class="fas fa-check-circle"></i>
+                <span>{{ session('success') }}</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
             </div>
         @endif
 
-        <!-- Information année académique courante -->
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <div class="section-title mb-md">
-                    <i class="fas fa-calendar me-2"></i>Contexte d'affichage
-                </div>
-                <div style="display: flex; gap: var(--space-md); align-items: end;">
-                    <div style="flex: 1; max-width: 300px;">
-                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
-                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
-                            @php $anneeNom = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('name') ?? (date('Y').'-'.(date('Y')+1)); @endphp
-                            <option value="{{ $anneeNom }}" selected>
-                                {{ $anneeNom }} (Année en cours)
-                            </option>
-                        </select>
-                    </div>
-                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
-                        <i class="fas fa-info-circle"></i>Changer d'année
-                    </button>
-                </div>
-                <div class="mt-3">
-                    <small class="text-muted">
-                        <i class="fas fa-info-circle me-1"></i>
-                        Les paiements affichés correspondent à l'année académique courante.
-                    </small>
-                </div>
-            </div>
-        </div>
-
-        <!-- KPI Cards Harmonisées avec le Système de Catégories -->
+        {{-- KPI Cards (partial AJAX-refreshable) --}}
         <div id="paiements-metrics-container">
             @include('esbtp.paiements.partials.metrics', ['stats' => $stats])
         </div>
 
-        <!-- Filtres et Actions -->
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <form action="{{ route('esbtp.paiements.index') }}" method="GET" id="paiements-filter-form">
-                    <div class="row align-items-end">
-                        <div class="col-md-3">
-                            <label for="search" class="form-label">Recherche</label>
-                            <input type="text" name="search" id="search" class="form-control" 
-                                   placeholder="Matricule, nom, n° reçu..." value="{{ request('search') }}">
-                        </div>
-                        <div class="col-md-2">
-                            <label for="status" class="form-label">Statut</label>
-                            <select name="status" id="status" class="form-select">
-                                <option value="">Tous</option>
-                                <option value="en_attente" {{ request('status') == 'en_attente' ? 'selected' : '' }}>En attente</option>
-                                <option value="validé" {{ request('status') == 'validé' ? 'selected' : '' }}>Validé</option>
-                                <option value="rejeté" {{ request('status') == 'rejeté' ? 'selected' : '' }}>Rejeté</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label for="date_debut" class="form-label">Date début</label>
-                            <input type="date" name="date_debut" id="date_debut" class="form-control" value="{{ request('date_debut') }}">
-                        </div>
-                        <div class="col-md-2">
-                            <label for="date_fin" class="form-label">Date fin</label>
-                            <input type="date" name="date_fin" id="date_fin" class="form-control" value="{{ request('date_fin') }}">
-                        </div>
-                        <div class="col-md-1">
-                            <button type="submit" class="btn-acasi primary w-100">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
-                    </div>
-                </form>
+        {{-- Filter bar groupée --}}
+        <div class="pi-filters">
+            <div class="pi-filters-head">
+                <div class="pi-filters-title">
+                    <i class="fas fa-filter"></i>
+                    <span>Filtres</span>
+                </div>
+                <div class="pi-filters-active {{ $activeFilters > 0 ? 'is-visible' : '' }}" id="pi-filters-active">
+                    <span class="pi-filter-badge">
+                        <i class="fas fa-check-circle"></i>
+                        <span id="pi-filters-count">{{ $activeFilters }}</span> filtre{{ $activeFilters > 1 ? 's' : '' }} actif{{ $activeFilters > 1 ? 's' : '' }}
+                    </span>
+                    <button type="button" class="pi-filter-clear" onclick="clearAllFilters()">
+                        <i class="fas fa-times me-1"></i>Effacer tout
+                    </button>
+                </div>
             </div>
+            <form action="{{ route('esbtp.paiements.index') }}" method="GET" id="paiements-filter-form">
+                <div class="pi-filters-row">
+                    <div class="pi-field">
+                        <label for="search">Recherche</label>
+                        <input type="text" name="search" id="search" class="form-control"
+                               placeholder="Matricule, nom, n° reçu..." value="{{ request('search') }}">
+                    </div>
+                    <div class="pi-field">
+                        <label for="status">Statut</label>
+                        <select name="status" id="status" class="form-select">
+                            <option value="">Tous</option>
+                            <option value="en_attente" {{ request('status') == 'en_attente' ? 'selected' : '' }}>En attente</option>
+                            <option value="validé" {{ request('status') == 'validé' ? 'selected' : '' }}>Validé</option>
+                            <option value="rejeté" {{ request('status') == 'rejeté' ? 'selected' : '' }}>Rejeté</option>
+                        </select>
+                    </div>
+                    <div class="pi-field">
+                        <label for="date_debut">Date début</label>
+                        <input type="date" name="date_debut" id="date_debut" class="form-control" value="{{ request('date_debut') }}">
+                    </div>
+                    <div class="pi-field">
+                        <label for="date_fin">Date fin</label>
+                        <input type="date" name="date_fin" id="date_fin" class="form-control" value="{{ request('date_fin') }}">
+                    </div>
+                    <button type="submit" class="pi-filter-submit">
+                        <i class="fas fa-search"></i>Rechercher
+                    </button>
+                </div>
+            </form>
         </div>
 
         <!-- Tableau des Paiements -->
@@ -1070,6 +1355,13 @@ function toggleRowsLoadingState(ids, isLoading) {
         return;
     }
     ids.forEach(id => window.setPaiementRowLoadingState(id, isLoading));
+}
+
+function clearAllFilters() {
+    const $form = $('#paiements-filter-form');
+    $form.find('input[type="text"], input[type="date"]').val('');
+    $form.find('select').val('');
+    $form.submit();
 }
 
 function bulkValider() {
