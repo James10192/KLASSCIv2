@@ -27,40 +27,94 @@
     --fc-radius:     14px;
 }
 
-/* ── HERO ── */
+/* ── HERO (conforme rule premium-redesign KLASSCI) ── */
 .fc-hero {
-    background: linear-gradient(135deg, #071631 0%, #0a2d6e 35%, #0453cb 70%, #3674d1 100%);
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 1.75rem 2rem 1.5rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
     position: relative;
     overflow: hidden;
-    padding: 2rem 2rem 1.75rem;
-    border-radius: 18px;
-    margin-bottom: 1.75rem;
-    box-shadow: 0 8px 32px rgba(4,83,203,.18), 0 2px 8px rgba(15,23,42,.1), inset 0 1px 0 rgba(255,255,255,.08);
 }
-.fc-hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse 50% 70% at 90% 30%, rgba(94,145,222,.15) 0%, transparent 70%);
-    pointer-events: none;
+.fc-hero-inner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
-.fc-hero-inner { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-.fc-hero-label {
+.fc-hero-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    flex: 1;
+    min-width: 0;
+}
+.fc-hero-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; flex-shrink: 0; color: #fff;
+}
+.fc-hero-title {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 .2rem;
+    letter-spacing: -.01em;
+}
+.fc-hero-sub {
+    color: rgba(255,255,255,.72);
+    font-size: .88rem;
+    margin: 0 0 .55rem;
+}
+.fc-hero-chips {
+    display: flex; flex-wrap: wrap; gap: .4rem;
+}
+.fc-hero-chip {
     display: inline-flex; align-items: center; gap: .35rem;
-    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
-    border-radius: 6px; padding: .2rem .6rem;
-    font-size: .65rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.55);
-    margin-bottom: .5rem;
+    padding: .25rem .65rem;
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 99px;
+    font-size: .74rem; font-weight: 600;
+    color: rgba(255,255,255,.94);
 }
-.fc-hero-title { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; letter-spacing: -.3px; }
-.fc-hero-sub { color: rgba(255,255,255,.5); font-size: .82rem; margin: .3rem 0 0; }
-.fc-hero-actions { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
-.fc-btn-ghost {
-    background: rgba(255,255,255,.07); color: rgba(255,255,255,.85); border: 1px solid rgba(255,255,255,.15);
-    padding: .5rem 1.1rem; border-radius: 9px; font-weight: 500; font-size: .8rem; text-decoration: none;
-    transition: all .2s ease; display: inline-flex; align-items: center; gap: .4rem;
+.fc-hero-chip i { font-size: .7rem; }
+.fc-hero-actions { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.fc-btn-ghost,
+.fc-btn-glass {
+    display: inline-flex; align-items: center; gap: .45rem;
+    padding: .5rem 1rem;
+    font-size: .82rem; font-weight: 600;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    text-decoration: none;
+    transition: all .2s ease;
+    white-space: nowrap;
 }
-.fc-btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.fc-btn-ghost:hover,
+.fc-btn-glass:hover {
+    background: rgba(255,255,255,.22);
+    color: #fff;
+}
+.fc-btn-ghost i { font-size: .78rem; }
+
+@media (max-width: 992px) {
+    .fc-hero-inner { flex-direction: column; align-items: stretch; }
+    .fc-hero-actions { justify-content: flex-start; }
+}
+@media (max-width: 576px) {
+    .fc-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 14px; }
+    .fc-hero-title { font-size: 1.2rem; }
+    .fc-hero-sub { font-size: .82rem; }
+}
 
 /* ── INFO BAR ── */
 .fc-info-bar {
@@ -179,7 +233,7 @@
 .fc-ring circle { transition: stroke-dashoffset .6s ease; transform: rotate(-90deg); transform-origin: 50% 50%; }
 .fc-ring-pct {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    font-size: .7rem; font-weight: 800; color: var(--fc-text);
+    font-size: .8rem; font-weight: 700; color: var(--fc-text);
 }
 
 /* Status badge */
@@ -275,6 +329,236 @@
 }
 .fc-modal-info i { color: var(--fc-primary); font-size: .9rem; }
 
+/* ── MODAL CATEGORY ROW (premium — loaded via AJAX) ── */
+.fc-cat-row {
+    background: var(--fc-white);
+    border: 1px solid var(--fc-border);
+    border-radius: 14px;
+    padding: 1.25rem 1.3rem;
+    margin-bottom: 1rem;
+    transition: box-shadow .2s ease;
+}
+.fc-cat-row:last-child { margin-bottom: 0; }
+.fc-cat-row:hover { box-shadow: var(--fc-shadow-sm); }
+
+.fc-cat-head {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: 1rem;
+    padding-bottom: .85rem;
+    border-bottom: 1px solid var(--fc-border);
+}
+.fc-cat-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--fc-primary), var(--fc-secondary));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .85rem; flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(4,83,203,.2);
+}
+.fc-cat-meta { flex: 1; min-width: 0; }
+.fc-cat-name {
+    font-weight: 700;
+    color: var(--fc-text);
+    font-size: .92rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+    line-height: 1.2;
+}
+.fc-cat-pill {
+    display: inline-flex; align-items: center; gap: .25rem;
+    padding: .15rem .55rem;
+    border-radius: 6px;
+    font-size: .62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    background: rgba(4,83,203,.08);
+    color: var(--fc-primary);
+    border: 1px solid rgba(4,83,203,.15);
+}
+.fc-cat-desc {
+    font-size: .74rem;
+    color: var(--fc-muted);
+    margin-top: .25rem;
+    line-height: 1.35;
+}
+
+.fc-cat-section {
+    margin-bottom: 1rem;
+}
+.fc-cat-section:last-child { margin-bottom: 0; }
+.fc-cat-section-label {
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--fc-text);
+    margin-bottom: .2rem;
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+}
+.fc-cat-section-label i { color: var(--fc-primary); font-size: .68rem; }
+.fc-cat-section-hint {
+    font-size: .72rem;
+    color: var(--fc-muted);
+    margin-bottom: .7rem;
+    display: flex;
+    align-items: center;
+    gap: .3rem;
+    line-height: 1.35;
+}
+.fc-cat-section-hint i { color: var(--fc-muted); font-size: .68rem; }
+
+/* 3 statut cards (semantic colors : functional differentiation per rule) */
+.fc-statuts {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .6rem;
+    margin-bottom: .75rem;
+}
+.fc-statut {
+    background: var(--fc-white);
+    border: 1.5px solid var(--fc-border);
+    border-radius: 10px;
+    padding: .75rem;
+    transition: border-color .2s, box-shadow .2s;
+    position: relative;
+}
+.fc-statut:hover { box-shadow: 0 2px 8px rgba(15,23,42,.05); }
+.fc-statut.is-affecte     { border-top: 3px solid var(--fc-success); }
+.fc-statut.is-reaffecte   { border-top: 3px solid var(--fc-warning); }
+.fc-statut.is-non-affecte { border-top: 3px solid var(--fc-danger); }
+
+.fc-statut-head {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin-bottom: .55rem;
+}
+.fc-statut-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .55rem;
+    color: #fff;
+    flex-shrink: 0;
+}
+.fc-statut.is-affecte     .fc-statut-dot { background: var(--fc-success); }
+.fc-statut.is-reaffecte   .fc-statut-dot { background: var(--fc-warning); }
+.fc-statut.is-non-affecte .fc-statut-dot { background: var(--fc-danger); }
+.fc-statut-label {
+    font-size: .65rem;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.fc-statut.is-affecte     .fc-statut-label { color: #047857; }
+.fc-statut.is-reaffecte   .fc-statut-label { color: #b45309; }
+.fc-statut.is-non-affecte .fc-statut-label { color: #b91c1c; }
+
+.fc-input-wrap {
+    position: relative;
+    margin-bottom: .4rem;
+}
+.fc-input {
+    width: 100%;
+    padding: .5rem 2.75rem .5rem .65rem;
+    font-size: .84rem;
+    font-weight: 600;
+    border: 1.5px solid var(--fc-border);
+    border-radius: 8px;
+    background: var(--fc-white);
+    color: var(--fc-text);
+    transition: border-color .2s, box-shadow .2s;
+    font-family: inherit;
+}
+.fc-input::placeholder { color: #cbd5e1; font-weight: 500; }
+.fc-input:focus {
+    outline: none;
+    border-color: var(--fc-primary);
+    box-shadow: 0 0 0 3px rgba(4,83,203,.08);
+}
+.fc-input-suffix {
+    position: absolute;
+    right: .5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: .6rem;
+    font-weight: 700;
+    color: var(--fc-muted);
+    letter-spacing: .04em;
+    pointer-events: none;
+}
+.fc-statut-hint {
+    font-size: .65rem;
+    color: var(--fc-muted);
+    line-height: 1.35;
+}
+
+/* Copy actions — monochrome ghost buttons */
+.fc-copy-actions {
+    display: flex;
+    gap: .4rem;
+    flex-wrap: wrap;
+}
+.fc-copy-btn {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .3rem .65rem;
+    background: transparent;
+    border: 1.5px solid var(--fc-border);
+    border-radius: 7px;
+    font-size: .7rem;
+    font-weight: 600;
+    color: var(--fc-muted);
+    cursor: pointer;
+    transition: all .15s;
+    font-family: inherit;
+}
+.fc-copy-btn:hover {
+    background: var(--fc-surface);
+    color: var(--fc-primary);
+    border-color: rgba(4,83,203,.25);
+}
+.fc-copy-btn i { font-size: .62rem; }
+
+/* Deadline input group */
+.fc-deadline {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: .5rem;
+    align-items: center;
+}
+.fc-deadline-suffix {
+    font-size: .78rem;
+    color: var(--fc-muted);
+    white-space: nowrap;
+    padding: 0 .4rem;
+}
+
+/* Status bar at bottom */
+.fc-cat-status {
+    margin-top: 1rem;
+    padding: .5rem .75rem;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    font-size: .72rem;
+    font-weight: 600;
+}
+.fc-cat-status.is-done {
+    background: rgba(16,185,129,.08);
+    color: #047857;
+}
+.fc-cat-status.is-todo {
+    background: rgba(245,158,11,.08);
+    color: #b45309;
+}
+.fc-cat-status i { font-size: .72rem; }
+
 /* ── EMPTY STATE ── */
 .fc-empty {
     text-align: center; padding: 3rem 2rem; color: var(--fc-muted);
@@ -291,6 +575,7 @@
 @media (max-width: 576px) {
     #configurationModal.modal.show { padding: .5rem !important; }
     #configurationModal.modal.show .modal-dialog { max-width: 95vw !important; width: 95vw !important; }
+    .fc-statuts { grid-template-columns: 1fr; }
 }
 </style>
 @endpush
@@ -299,26 +584,30 @@
 <div class="dashboard-acasi">
     <div class="main-content">
 
-        {{-- ── HERO ── --}}
+        {{-- ── HERO (conforme rule premium-redesign) ── --}}
         <div class="fc-hero">
             <div class="fc-hero-inner">
-                <div>
-                    <div class="fc-hero-label">
-                        <i class="fas fa-coins" style="font-size:.6rem;"></i>
-                        Gestion des frais
+                <div class="fc-hero-left">
+                    <span class="fc-hero-icon"><i class="fas fa-sliders-h"></i></span>
+                    <div>
+                        <h1 class="fc-hero-title">Configuration des Frais par Classe</h1>
+                        <p class="fc-hero-sub">Configurez les tarifs obligatoires pour chaque combinaison filière et niveau</p>
+                        <div class="fc-hero-chips">
+                            <span class="fc-hero-chip">
+                                <i class="fas fa-coins"></i>
+                                Gestion des frais
+                            </span>
+                        </div>
                     </div>
-                    <h1 class="fc-hero-title">
-                        <i class="fas fa-sliders-h" style="margin-right:.4rem;opacity:.75;font-size:.85em;"></i>
-                        Configuration des Frais par Classe
-                    </h1>
-                    <p class="fc-hero-sub">Configurez les tarifs obligatoires pour chaque combinaison filière et niveau</p>
                 </div>
                 <div class="fc-hero-actions">
                     <a href="{{ route('esbtp.frais.optional-config') }}" class="fc-btn-ghost">
-                        <i class="fas fa-puzzle-piece"></i> Frais Optionnels
+                        <i class="fas fa-puzzle-piece"></i>
+                        <span>Frais Optionnels</span>
                     </a>
                     <a href="{{ route('esbtp.frais.index') }}" class="fc-btn-ghost">
-                        <i class="fas fa-arrow-left"></i> Retour
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Retour</span>
                     </a>
                 </div>
             </div>
@@ -412,8 +701,10 @@
 
                         <div class="fc-ring" style="position:relative;display:inline-block;width:100%;">
                             <div style="display:flex;align-items:center;justify-content:center;">
-                                <div style="position:relative;width:52px;height:52px;">
-                                    <svg width="52" height="52">
+                                <div style="position:relative;width:52px;height:52px;"
+                                     role="img"
+                                     aria-label="Configuration {{ number_format($percentage, 0) }}% complète">
+                                    <svg width="52" height="52" aria-hidden="true">
                                         <circle cx="26" cy="26" r="22" stroke="#e9eef5" stroke-width="4" fill="transparent"/>
                                         <circle cx="26" cy="26" r="22"
                                                 stroke="{{ $ringColor }}"
