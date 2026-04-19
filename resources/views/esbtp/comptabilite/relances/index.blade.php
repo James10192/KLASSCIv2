@@ -64,21 +64,6 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 1.35rem; flex-shrink: 0; color: #fff;
 }
-.rl-hero-label {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    background: rgba(255,255,255,.08);
-    border: 1px solid rgba(255,255,255,.12);
-    border-radius: 6px;
-    padding: .2rem .6rem;
-    font-size: .65rem;
-    font-weight: 600;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,.6);
-    margin-bottom: .6rem;
-}
 .rl-hero-title {
     font-size: 1.55rem;
     font-weight: 700;
@@ -258,94 +243,6 @@
     color: #fff;
     transform: translateY(-1px);
 }
-
-/* ── KPI STRIP ── */
-.rl-kpi-strip {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.75rem;
-}
-.rl-kpi {
-    background: var(--rl-white);
-    border: 1px solid var(--rl-border);
-    border-radius: var(--rl-radius);
-    padding: 1.15rem 1.25rem;
-    position: relative;
-    overflow: hidden;
-    transition: all .25s ease;
-    cursor: default;
-    box-shadow: var(--rl-shadow-sm);
-}
-.rl-kpi[data-risk] { cursor: pointer; }
-.rl-kpi:hover {
-    box-shadow: var(--rl-shadow-lg);
-    transform: translateY(-2px);
-}
-/* Left accent bar */
-.rl-kpi::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 4px;
-}
-.rl-kpi.is-impaye::before   { background: linear-gradient(180deg, var(--rl-primary), var(--rl-secondary)); }
-.rl-kpi.is-pending::before  { background: linear-gradient(180deg, #f59e0b, #fbbf24); }
-.rl-kpi.is-critical::before { background: linear-gradient(180deg, var(--rl-dark), #334155); }
-.rl-kpi.is-high::before     { background: linear-gradient(180deg, var(--rl-primary), var(--rl-accent)); }
-.rl-kpi.is-medium::before   { background: linear-gradient(180deg, var(--rl-secondary), #93b8e8); }
-.rl-kpi.is-low::before      { background: linear-gradient(180deg, var(--rl-success), #34d399); }
-
-/* Icon circle */
-.rl-kpi-icon {
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: .85rem;
-    margin-bottom: .75rem;
-    flex-shrink: 0;
-}
-.rl-kpi.is-impaye .rl-kpi-icon   { background: rgba(4,83,203,.08); color: var(--rl-primary); }
-.rl-kpi.is-pending .rl-kpi-icon  { background: rgba(245,158,11,.08); color: #d97706; }
-.rl-kpi.is-critical .rl-kpi-icon { background: rgba(15,23,42,.06); color: var(--rl-dark); }
-.rl-kpi.is-high .rl-kpi-icon     { background: rgba(4,83,203,.08); color: var(--rl-primary); }
-.rl-kpi.is-medium .rl-kpi-icon   { background: rgba(94,145,222,.1); color: var(--rl-secondary); }
-.rl-kpi.is-low .rl-kpi-icon      { background: rgba(16,185,129,.08); color: var(--rl-success); }
-
-.rl-kpi-label {
-    font-size: .68rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .07em;
-    color: var(--rl-muted);
-    margin-bottom: .3rem;
-}
-.rl-kpi-value {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--rl-text);
-    line-height: 1;
-    letter-spacing: -.3px;
-}
-.rl-kpi-value.is-amount { font-size: 1.1rem; }
-.rl-kpi-unit {
-    font-size: .6em;
-    font-weight: 400;
-    color: var(--rl-muted);
-    margin-left: .15em;
-}
-.rl-kpi-hint {
-    font-size: .68rem;
-    color: var(--rl-muted);
-    margin-top: .4rem;
-    display: flex;
-    align-items: center;
-    gap: .3rem;
-    line-height: 1.3;
-}
-.rl-kpi-hint.is-warning { color: #b45309; }
 
 /* ── FILTERS BAR ── */
 .rl-filters {
@@ -757,7 +654,6 @@
     .rel-table td:nth-child(3) { display: none; }
 }
 @media (max-width: 768px) {
-    .rl-kpi-strip { grid-template-columns: repeat(2, 1fr); }
     .rel-table th:nth-child(5),
     .rel-table td:nth-child(5) { display: none; }
     .rl-hero { padding: 1.5rem; border-radius: 14px; }
@@ -767,7 +663,6 @@
 @media (max-width: 576px) {
     .rl-filters { flex-direction: column; }
     .rl-filter-group { min-width: 100%; }
-    .rl-kpi-strip { grid-template-columns: 1fr; }
     .rl-hero-actions { width: 100%; }
     .rl-btn-ghost { flex: 1; justify-content: center; font-size: .75rem; }
 }
