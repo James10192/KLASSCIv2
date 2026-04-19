@@ -19,22 +19,24 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
     letter-spacing: -.02em;
 }
 
-/* ── Animations d'entrée staggerées ── */
-@keyframes fp-slide-up {
-    from { opacity: 0; transform: translateY(18px); }
+/* ── Animations d'entrée réduites (dc-*) ── */
+@keyframes dc-fade-in {
+    from { opacity: 0; transform: translateY(6px); }
     to   { opacity: 1; transform: translateY(0); }
 }
-@keyframes fp-fade-in {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-}
 
-.dash-hero          { animation: fp-slide-up .45s cubic-bezier(.22,.68,0,1.2) both; }
-.filters-bar        { animation: fp-slide-up .45s cubic-bezier(.22,.68,0,1.2) .08s both; }
-.kpi-strip .kpi-card:nth-child(1) { animation: fp-slide-up .4s cubic-bezier(.22,.68,0,1.2) .12s both; }
-.kpi-strip .kpi-card:nth-child(2) { animation: fp-slide-up .4s cubic-bezier(.22,.68,0,1.2) .19s both; }
-.kpi-strip .kpi-card:nth-child(3) { animation: fp-slide-up .4s cubic-bezier(.22,.68,0,1.2) .26s both; }
-.kpi-strip .kpi-card:nth-child(4) { animation: fp-slide-up .4s cubic-bezier(.22,.68,0,1.2) .33s both; }
+.dash-hero   { animation: dc-fade-in .2s ease both; }
+.filters-bar { animation: dc-fade-in .2s ease .05s both; }
+.kpi-strip .kpi-card { animation: dc-fade-in .2s ease .1s both; }
+
+/* Respect motion preferences (WCAG 2.2) */
+@media (prefers-reduced-motion: reduce) {
+    .dash-hero, .filters-bar, .kpi-strip .kpi-card,
+    .chart-card, .bottom-row {
+        animation: none !important;
+    }
+    .aging-seg { transition: none !important; }
+}
 
 /* ── KPI cards — precision touch ── */
 .kpi-card {
@@ -46,21 +48,6 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
 .kpi-card:nth-child(3) { border-top-color: #ef4444; }
 .kpi-card:nth-child(4) { border-top-color: #3b82f6; }
 .kpi-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.10); }
-
-/* ── Hero — grain overlay + richer orbs ── */
-.dash-hero {
-    background: linear-gradient(135deg, #071828 0%, #0b2a5c 50%, #0f2038 100%);
-}
-.dash-hero::before {
-    width: 280px; height: 280px;
-    background: radial-gradient(circle, rgba(94,145,222,.18) 0%, transparent 70%);
-    top: -80px; right: -80px;
-}
-.dash-hero::after {
-    width: 200px; height: 200px;
-    background: radial-gradient(circle, rgba(16,185,129,.12) 0%, transparent 70%);
-    bottom: -60px; left: 25%;
-}
 
 /* ── Chart cards ── */
 .chart-card {
@@ -91,34 +78,16 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
 .aging-seg-critical{ background: #ef4444; }
 
 /* ── Bottom section fade-in ── */
-.bottom-row { animation: fp-fade-in .5s ease .5s both; }
+.bottom-row { animation: dc-fade-in .25s ease .15s both; }
 
-/* ── Hero premium ── */
+/* ── Hero premium (dc-*) — monochrome bleu, pas d'orbs décoratives ── */
 .dash-hero {
-    background: linear-gradient(135deg, #0f172a 0%, #0c2460 55%, #1e293b 100%);
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
     border-radius: 16px;
     padding: 32px 36px;
     margin-bottom: 28px;
     position: relative;
     overflow: hidden;
-}
-.dash-hero::before {
-    content: '';
-    position: absolute;
-    top: -60px; right: -60px;
-    width: 220px; height: 220px;
-    border-radius: 50%;
-    background: rgba(94,145,222,.12);
-    pointer-events: none;
-}
-.dash-hero::after {
-    content: '';
-    position: absolute;
-    bottom: -40px; left: 30%;
-    width: 160px; height: 160px;
-    border-radius: 50%;
-    background: rgba(4,83,203,.10);
-    pointer-events: none;
 }
 .dash-hero-title {
     font-size: 1.6rem;
@@ -1503,44 +1472,9 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
         // Render initial chart with server data
         renderChart(initialData.labels, initialData.datasets);
 
-        // ── Count-up animation on page load ──────────────────────────────
-        (function () {
-            function parseFormatted(str) {
-                // Strip spaces (fr-FR thousands separator) and commas, keep digits and dots
-                return parseFloat((str || '0').replace(/[\s\u00a0]/g, '').replace(',', '.')) || 0;
-            }
-            function animateCountUp(el, duration) {
-                if (!el) return;
-                const rawText = el.textContent.trim();
-                // Only animate numeric-ish content (contains digits)
-                if (!/\d/.test(rawText)) return;
-                const target = parseFormatted(rawText);
-                if (target === 0) return;
-                const start = performance.now();
-                const isPercent = rawText.includes('%');
-                function step(now) {
-                    const elapsed = now - start;
-                    const progress = Math.min(elapsed / duration, 1);
-                    // Ease out cubic
-                    const eased = 1 - Math.pow(1 - progress, 3);
-                    const current = target * eased;
-                    if (isPercent) {
-                        el.textContent = current.toFixed(1) + '%';
-                    } else {
-                        el.textContent = new Intl.NumberFormat('fr-FR').format(Math.round(current));
-                    }
-                    if (progress < 1) requestAnimationFrame(step);
-                    else el.textContent = rawText; // restore exact original
-                }
-                requestAnimationFrame(step);
-            }
-            const KPI_IDS = ['kpi-total-due', 'kpi-total-paid', 'kpi-overdue', 'kpi-pending'];
-            KPI_IDS.forEach(function(id, i) {
-                setTimeout(function() {
-                    animateCountUp(document.getElementById(id), 900);
-                }, 120 + i * 80); // stagger slightly after CSS entrance
-            });
-        })();
+        // Count-up animation supprimée : chiffres financiers s'affichent direct
+        // (fade-in CSS géré par .dash-hero / .kpi-strip animations, respect
+        // prefers-reduced-motion pour vestibular disorders).
 
         // Filter change → AJAX
         ['f-annee', 'f-filiere', 'f-classe'].forEach(function(id) {
