@@ -16,7 +16,7 @@
         color: #fff;
         margin-bottom: 1.25rem;
         position: relative;
-        overflow: hidden;
+        /* overflow visible : dropdowns (Exporter) ne sont pas clipes par le hero */
     }
     .pi-hero-top {
         display: flex;
@@ -125,18 +125,83 @@
         transform: translateY(-1px);
     }
     .pi-btn i { font-size: .78rem; }
+    .pi-hero-actions .dropdown { position: relative; }
     .pi-hero-actions .dropdown-menu {
         font-size: .85rem;
         border-radius: 10px;
-        box-shadow: 0 8px 24px rgba(15,23,42,.12);
+        box-shadow: 0 8px 24px rgba(15,23,42,.2);
         border: 1px solid #e2e8f0;
         padding: .35rem;
         margin-top: .35rem;
+        z-index: 1055;
     }
     .pi-hero-actions .dropdown-menu .dropdown-item {
         border-radius: 6px;
         padding: .45rem .65rem;
         font-size: .85rem;
+    }
+
+    /* ═══════ Hero KPIs (row 2 — glass cards semi-transparentes) ═══════ */
+    .pi-hero-kpis {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: .75rem;
+        margin-top: 1.5rem;
+    }
+    .pi-hero-kpi {
+        display: block;
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.18);
+        border-radius: 12px;
+        padding: .9rem 1rem;
+        color: #fff;
+        text-decoration: none;
+        transition: background .2s, border-color .2s, transform .15s;
+    }
+    .pi-hero-kpi:hover {
+        background: rgba(255,255,255,.16);
+        border-color: rgba(255,255,255,.3);
+        color: #fff;
+        transform: translateY(-2px);
+        text-decoration: none;
+    }
+    .pi-hero-kpi.is-active {
+        background: rgba(255,255,255,.2);
+        border-color: rgba(255,255,255,.45);
+        box-shadow: 0 4px 14px rgba(0,0,0,.15);
+    }
+    .pi-hero-kpi-head {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        margin-bottom: .35rem;
+        color: rgba(255,255,255,.8);
+        font-size: .7rem;
+        font-weight: 600;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .pi-hero-kpi-head i { font-size: .72rem; }
+    .pi-hero-kpi-label { flex: 1; }
+    .pi-hero-kpi-value {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #fff;
+        letter-spacing: -.01em;
+        line-height: 1.1;
+    }
+    .pi-hero-kpi-unit {
+        font-size: .66rem;
+        font-weight: 600;
+        color: rgba(255,255,255,.65);
+        margin-left: .35rem;
+        letter-spacing: .05em;
+    }
+    .pi-hero-kpi-meta {
+        margin-top: .15rem;
+        font-size: .72rem;
+        color: rgba(255,255,255,.65);
+        font-weight: 500;
     }
 
     /* ═══════ Alert session ═══════ */
@@ -438,6 +503,7 @@
     @media (max-width: 992px) {
         .pi-hero-top { flex-direction: column; align-items: stretch; }
         .pi-hero-actions { justify-content: flex-start; }
+        .pi-hero-kpis { grid-template-columns: repeat(2, 1fr); }
         .pi-filters-row { grid-template-columns: 1fr 1fr; }
         .pi-filters-row .pi-field:first-child { grid-column: span 2; }
         .pi-filter-submit { grid-column: span 2; }
@@ -448,6 +514,8 @@
         .pi-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 14px; }
         .pi-hero h1 { font-size: 1.2rem; }
         .pi-hero p { font-size: .82rem; }
+        .pi-hero-kpis { grid-template-columns: 1fr; gap: .5rem; }
+        .pi-hero-kpi-value { font-size: 1.15rem; }
         .pi-filters-row { grid-template-columns: 1fr; }
         .pi-filters-row .pi-field:first-child,
         .pi-filters-row .pi-filter-submit { grid-column: span 1; }
@@ -558,6 +626,11 @@
                     @endcan
                 </div>
             </div>
+
+            {{-- Row 2 : KPIs glass — refresh AJAX via #paiements-metrics-kpis --}}
+            <div id="paiements-metrics-kpis">
+                @include('esbtp.paiements.partials.metrics-kpis', ['stats' => $stats])
+            </div>
         </div>
 
         @if(session('success'))
@@ -568,9 +641,17 @@
             </div>
         @endif
 
-        {{-- KPI Cards (partial AJAX-refreshable) --}}
-        <div id="paiements-metrics-container">
-            @include('esbtp.paiements.partials.metrics', ['stats' => $stats])
+        {{-- Alerte note (statique, pas AJAX) --}}
+        <div class="alert alert-info alert-sm mb-lg">
+            <i class="fas fa-info-circle me-2"></i>
+            <strong>Note :</strong> Ces chiffres représentent les paiements <u>enregistrés dans le système</u> selon leur statut de validation.
+            Pour voir les montants attendus vs payés par catégorie de frais, consultez le
+            <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="alert-link">Suivi par Catégorie</a>.
+        </div>
+
+        {{-- Répartition par type (partial AJAX-refreshable via #paiements-metrics-details) --}}
+        <div id="paiements-metrics-details">
+            @include('esbtp.paiements.partials.metrics-details', ['stats' => $stats])
         </div>
 
         {{-- Filter bar groupée --}}
@@ -1068,11 +1149,22 @@ function showYearChangeInfo() {
             return response.json();
         })
         .then(data => {
-            // Vérifier si on a reçu les données attendues
-            if (data.table && data.metrics) {
-                // Mettre à jour les KPI metrics
-                if (data.metrics) {
-                    document.getElementById('paiements-metrics-container').innerHTML = data.metrics;
+            // Verifier si on a recu les donnees attendues (nouvelle signature : metrics_kpis + metrics_details)
+            if (data.table && (data.metrics_kpis || data.metrics_details || data.metrics)) {
+                // Mettre a jour les KPI glass dans le hero
+                if (data.metrics_kpis) {
+                    const kpisEl = document.getElementById('paiements-metrics-kpis');
+                    if (kpisEl) kpisEl.innerHTML = data.metrics_kpis;
+                }
+                // Mettre a jour la section repartition (details) sous le hero
+                if (data.metrics_details) {
+                    const detailsEl = document.getElementById('paiements-metrics-details');
+                    if (detailsEl) detailsEl.innerHTML = data.metrics_details;
+                }
+                // Backward-compat : ancienne cle 'metrics' (container unique)
+                if (data.metrics && !data.metrics_kpis) {
+                    const legacyEl = document.getElementById('paiements-metrics-container');
+                    if (legacyEl) legacyEl.innerHTML = data.metrics;
                 }
 
                 // Mettre à jour le tableau

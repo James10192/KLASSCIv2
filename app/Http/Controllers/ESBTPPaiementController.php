@@ -82,7 +82,10 @@ class ESBTPPaiementController extends Controller
                 'table' => view('esbtp.paiements.partials.table', [
                     'paiements' => $data['paiements'],
                 ])->render(),
-                'metrics' => view('esbtp.paiements.partials.metrics', [
+                'metrics_kpis' => view('esbtp.paiements.partials.metrics-kpis', [
+                    'stats' => $data['stats'],
+                ])->render(),
+                'metrics_details' => view('esbtp.paiements.partials.metrics-details', [
                     'stats' => $data['stats'],
                 ])->render(),
                 'url' => $navUrl,  // URL navigable
@@ -132,7 +135,10 @@ class ESBTPPaiementController extends Controller
             'table' => view('esbtp.paiements.partials.table', [
                 'paiements' => $data['paiements'],
             ])->render(),
-            'metrics' => view('esbtp.paiements.partials.metrics', [
+            'metrics_kpis' => view('esbtp.paiements.partials.metrics-kpis', [
+                'stats' => $data['stats'],
+            ])->render(),
+            'metrics_details' => view('esbtp.paiements.partials.metrics-details', [
                 'stats' => $data['stats'],
             ])->render(),
             'url' => $navUrl,  // URL navigable (pas /refresh)
