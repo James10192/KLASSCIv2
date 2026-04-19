@@ -31,34 +31,13 @@
 
 /* ── HERO ── */
 .rl-hero {
-    background: linear-gradient(135deg, #071631 0%, #0a2d6e 35%, #0453cb 70%, #3674d1 100%);
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
     position: relative;
-    overflow: hidden;
-    padding: 2.25rem 2.25rem 2rem;
+    padding: 1.75rem 2rem 1.5rem;
     border-radius: 18px;
-    margin-bottom: 1.75rem;
-    box-shadow:
-        0 8px 32px rgba(4,83,203,.18),
-        0 2px 8px rgba(15,23,42,.1),
-        inset 0 1px 0 rgba(255,255,255,.08);
-}
-.rl-hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background:
-        radial-gradient(ellipse 50% 70% at 90% 30%, rgba(94,145,222,.15) 0%, transparent 70%),
-        radial-gradient(circle at 10% 80%, rgba(255,255,255,.03) 0%, transparent 50%);
-    pointer-events: none;
-}
-.rl-hero::after {
-    content: '';
-    position: absolute;
-    right: -40px; top: -40px;
-    width: 200px; height: 200px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(94,145,222,.12) 0%, transparent 70%);
-    pointer-events: none;
+    margin-bottom: 1.25rem;
+    color: #fff;
+    /* overflow visible pour ne pas cliper les dropdowns */
 }
 .rl-hero-inner {
     position: relative;
@@ -69,20 +48,21 @@
     flex-wrap: wrap;
     gap: 1rem;
 }
-.rl-hero-label {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    background: rgba(255,255,255,.08);
-    border: 1px solid rgba(255,255,255,.12);
-    border-radius: 6px;
-    padding: .2rem .6rem;
-    font-size: .65rem;
-    font-weight: 600;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-    color: rgba(255,255,255,.6);
-    margin-bottom: .6rem;
+.rl-hero-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    flex: 1;
+    min-width: 0;
+}
+.rl-hero-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; flex-shrink: 0; color: #fff;
 }
 .rl-hero-title {
     font-size: 1.55rem;
@@ -96,16 +76,99 @@
     display: inline-flex;
     align-items: center;
     gap: .25rem;
-    background: rgba(16,185,129,.15);
-    color: #34d399;
-    border: 1px solid rgba(16,185,129,.3);
-    border-radius: 20px;
-    padding: .15rem .6rem;
-    font-size: .6rem;
+    background: rgba(255,255,255,.14);
+    color: rgba(255,255,255,.94);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 99px;
+    padding: .2rem .65rem;
+    font-size: .7rem;
     font-weight: 600;
     letter-spacing: .04em;
     vertical-align: middle;
     margin-left: .5rem;
+}
+.rl-hero-chips {
+    display: flex; flex-wrap: wrap; gap: .4rem;
+    margin-top: .55rem;
+}
+
+/* Row 2 : Hero KPIs glass */
+.rl-hero-kpis {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: .6rem;
+    margin-top: 1.5rem;
+}
+.rl-hero-kpi {
+    display: block;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 12px;
+    padding: .75rem .85rem;
+    color: #fff;
+    text-decoration: none;
+    transition: background .2s, border-color .2s, transform .15s;
+    cursor: default;
+}
+.rl-hero-kpi[data-risk] { cursor: pointer; }
+.rl-hero-kpi[data-risk]:hover,
+.rl-hero-kpi.is-clickable:hover {
+    background: rgba(255,255,255,.16);
+    border-color: rgba(255,255,255,.3);
+    transform: translateY(-2px);
+    text-decoration: none;
+    color: #fff;
+}
+.rl-hero-kpi.is-active {
+    background: rgba(255,255,255,.2);
+    border-color: rgba(255,255,255,.45);
+    box-shadow: 0 4px 14px rgba(0,0,0,.15);
+}
+.rl-hero-kpi-head {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    margin-bottom: .3rem;
+    color: rgba(255,255,255,.8);
+    font-size: .65rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.rl-hero-kpi-head i { font-size: .7rem; }
+.rl-hero-kpi-label { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.rl-hero-kpi-value {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.1;
+    letter-spacing: -.01em;
+}
+.rl-hero-kpi-value.is-amount {
+    font-size: 1rem;
+}
+.rl-hero-kpi-unit {
+    font-size: .58rem;
+    font-weight: 600;
+    color: rgba(255,255,255,.6);
+    margin-left: .2rem;
+    letter-spacing: .05em;
+}
+.rl-hero-kpi-hint {
+    margin-top: .15rem;
+    font-size: .62rem;
+    color: rgba(255,255,255,.6);
+    font-weight: 500;
+    line-height: 1.25;
+}
+@media (max-width: 1280px) {
+    .rl-hero-kpis { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+    .rl-hero-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 480px) {
+    .rl-hero-kpis { grid-template-columns: 1fr; }
 }
 .rl-hero-sub {
     color: rgba(255,255,255,.5);
@@ -180,94 +243,6 @@
     color: #fff;
     transform: translateY(-1px);
 }
-
-/* ── KPI STRIP ── */
-.rl-kpi-strip {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
-    gap: 1rem;
-    margin-bottom: 1.75rem;
-}
-.rl-kpi {
-    background: var(--rl-white);
-    border: 1px solid var(--rl-border);
-    border-radius: var(--rl-radius);
-    padding: 1.15rem 1.25rem;
-    position: relative;
-    overflow: hidden;
-    transition: all .25s ease;
-    cursor: default;
-    box-shadow: var(--rl-shadow-sm);
-}
-.rl-kpi[data-risk] { cursor: pointer; }
-.rl-kpi:hover {
-    box-shadow: var(--rl-shadow-lg);
-    transform: translateY(-2px);
-}
-/* Left accent bar */
-.rl-kpi::before {
-    content: '';
-    position: absolute;
-    left: 0; top: 0; bottom: 0;
-    width: 4px;
-}
-.rl-kpi.is-impaye::before   { background: linear-gradient(180deg, var(--rl-primary), var(--rl-secondary)); }
-.rl-kpi.is-pending::before  { background: linear-gradient(180deg, #f59e0b, #fbbf24); }
-.rl-kpi.is-critical::before { background: linear-gradient(180deg, var(--rl-dark), #334155); }
-.rl-kpi.is-high::before     { background: linear-gradient(180deg, var(--rl-primary), var(--rl-accent)); }
-.rl-kpi.is-medium::before   { background: linear-gradient(180deg, var(--rl-secondary), #93b8e8); }
-.rl-kpi.is-low::before      { background: linear-gradient(180deg, var(--rl-success), #34d399); }
-
-/* Icon circle */
-.rl-kpi-icon {
-    width: 36px; height: 36px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: .85rem;
-    margin-bottom: .75rem;
-    flex-shrink: 0;
-}
-.rl-kpi.is-impaye .rl-kpi-icon   { background: rgba(4,83,203,.08); color: var(--rl-primary); }
-.rl-kpi.is-pending .rl-kpi-icon  { background: rgba(245,158,11,.08); color: #d97706; }
-.rl-kpi.is-critical .rl-kpi-icon { background: rgba(15,23,42,.06); color: var(--rl-dark); }
-.rl-kpi.is-high .rl-kpi-icon     { background: rgba(4,83,203,.08); color: var(--rl-primary); }
-.rl-kpi.is-medium .rl-kpi-icon   { background: rgba(94,145,222,.1); color: var(--rl-secondary); }
-.rl-kpi.is-low .rl-kpi-icon      { background: rgba(16,185,129,.08); color: var(--rl-success); }
-
-.rl-kpi-label {
-    font-size: .68rem;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .07em;
-    color: var(--rl-muted);
-    margin-bottom: .3rem;
-}
-.rl-kpi-value {
-    font-size: 1.5rem;
-    font-weight: 800;
-    color: var(--rl-text);
-    line-height: 1;
-    letter-spacing: -.3px;
-}
-.rl-kpi-value.is-amount { font-size: 1.1rem; }
-.rl-kpi-unit {
-    font-size: .6em;
-    font-weight: 400;
-    color: var(--rl-muted);
-    margin-left: .15em;
-}
-.rl-kpi-hint {
-    font-size: .68rem;
-    color: var(--rl-muted);
-    margin-top: .4rem;
-    display: flex;
-    align-items: center;
-    gap: .3rem;
-    line-height: 1.3;
-}
-.rl-kpi-hint.is-warning { color: #b45309; }
 
 /* ── FILTERS BAR ── */
 .rl-filters {
@@ -679,7 +654,6 @@
     .rel-table td:nth-child(3) { display: none; }
 }
 @media (max-width: 768px) {
-    .rl-kpi-strip { grid-template-columns: repeat(2, 1fr); }
     .rel-table th:nth-child(5),
     .rel-table td:nth-child(5) { display: none; }
     .rl-hero { padding: 1.5rem; border-radius: 14px; }
@@ -689,7 +663,6 @@
 @media (max-width: 576px) {
     .rl-filters { flex-direction: column; }
     .rl-filter-group { min-width: 100%; }
-    .rl-kpi-strip { grid-template-columns: 1fr; }
     .rl-hero-actions { width: 100%; }
     .rl-btn-ghost { flex: 1; justify-content: center; font-size: .75rem; }
 }
@@ -700,25 +673,23 @@
 <div class="dashboard-acasi">
 <div class="main-content">
 
-    {{-- ── HERO ── --}}
+    {{-- ── HERO (pattern planning-header : row 1 titre+actions / row 2 KPIs glass) ── --}}
     <div class="rl-hero">
         <div class="rl-hero-inner">
-            <div>
-                <div class="rl-hero-label">
-                    <i class="fas fa-chart-line" style="font-size:.6rem;"></i>
-                    Comptabilité
+            <div class="rl-hero-left">
+                <span class="rl-hero-icon"><i class="fas fa-bell"></i></span>
+                <div>
+                    <h1 class="rl-hero-title">
+                        Gestion des Relances
+                        @if($anneeActive)
+                            <span class="rl-year-badge">
+                                <i class="fas fa-circle" style="font-size:.35rem;"></i>
+                                {{ $anneeActive->name }}
+                            </span>
+                        @endif
+                    </h1>
+                    <p class="rl-hero-sub">Suivi des soldes impayés et relances de paiement</p>
                 </div>
-                <h1 class="rl-hero-title">
-                    <i class="fas fa-bell" style="margin-right:.4rem;opacity:.75;font-size:.9em;"></i>
-                    Gestion des Relances
-                    @if($anneeActive)
-                        <span class="rl-year-badge">
-                            <i class="fas fa-circle" style="font-size:.35rem;"></i>
-                            {{ $anneeActive->name }}
-                        </span>
-                    @endif
-                </h1>
-                <p class="rl-hero-sub">Suivi des soldes impayés et relances de paiement</p>
             </div>
             <div class="rl-hero-actions">
                 @can('comptabilite.reports.export')
@@ -737,6 +708,65 @@
                 </a>
             </div>
         </div>
+
+        {{-- Row 2 : KPIs glass (IDs preserves pour compat JS) --}}
+        <div class="rl-hero-kpis">
+            <div class="rl-hero-kpi" title="Total impaye (paiements valides uniquement)">
+                <div class="rl-hero-kpi-head">
+                    <i class="fas fa-coins"></i>
+                    <span class="rl-hero-kpi-label">Total impayé</span>
+                </div>
+                <div class="rl-hero-kpi-value is-amount">
+                    <span id="kpi-total-impaye">{{ number_format($kpis['total_impaye'], 0, ',', ' ') }}</span>
+                    <span class="rl-hero-kpi-unit">FCFA</span>
+                </div>
+                <div class="rl-hero-kpi-hint">Paiements validés uniquement</div>
+            </div>
+
+            <div class="rl-hero-kpi" title="Paiements enregistrés mais non encore validés">
+                <div class="rl-hero-kpi-head">
+                    <i class="fas fa-clock"></i>
+                    <span class="rl-hero-kpi-label">En attente validation</span>
+                </div>
+                <div class="rl-hero-kpi-value is-amount">
+                    <span id="kpi-total-en-attente">{{ number_format($kpis['total_en_attente'] ?? 0, 0, ',', ' ') }}</span>
+                    <span class="rl-hero-kpi-unit">FCFA</span>
+                </div>
+                <div class="rl-hero-kpi-hint">Non déduits du solde</div>
+            </div>
+
+            <div class="rl-hero-kpi" data-risk="critical" title="Cliquer pour filtrer">
+                <div class="rl-hero-kpi-head">
+                    <i class="fas fa-ban"></i>
+                    <span class="rl-hero-kpi-label">Impayés (0% réglé)</span>
+                </div>
+                <div class="rl-hero-kpi-value" id="kpi-count-critical">{{ $kpis['count_critical'] }}</div>
+            </div>
+
+            <div class="rl-hero-kpi" data-risk="high" title="Cliquer pour filtrer">
+                <div class="rl-hero-kpi-head">
+                    <i class="fas fa-hourglass-half"></i>
+                    <span class="rl-hero-kpi-label">En cours (partiel)</span>
+                </div>
+                <div class="rl-hero-kpi-value" id="kpi-count-high">{{ $kpis['count_high'] }}</div>
+            </div>
+
+            <div class="rl-hero-kpi" data-risk="medium" title="Cliquer pour filtrer">
+                <div class="rl-hero-kpi-head">
+                    <i class="fas fa-tasks"></i>
+                    <span class="rl-hero-kpi-label">Presque soldés</span>
+                </div>
+                <div class="rl-hero-kpi-value" id="kpi-count-medium">{{ $kpis['count_medium'] }}</div>
+            </div>
+
+            <div class="rl-hero-kpi">
+                <div class="rl-hero-kpi-head">
+                    <i class="fas fa-check-circle"></i>
+                    <span class="rl-hero-kpi-label">À jour</span>
+                </div>
+                <div class="rl-hero-kpi-value" id="kpi-count-low">{{ $kpis['count_low'] }}</div>
+            </div>
+        </div>
     </div>
 
     {{-- ── BANNER CONFIG MANQUANTE ── --}}
@@ -751,62 +781,6 @@
         </a>
     </div>
     @endif
-
-    {{-- ── KPI STRIP ── --}}
-    <div class="rl-kpi-strip">
-
-        {{-- Total impayé --}}
-        <div class="rl-kpi is-impaye">
-            <div class="rl-kpi-icon"><i class="fas fa-coins"></i></div>
-            <div class="rl-kpi-label">Total impayé</div>
-            <div class="rl-kpi-value is-amount">
-                <span id="kpi-total-impaye">{{ number_format($kpis['total_impaye'], 0, ',', ' ') }}</span>
-                <span class="rl-kpi-unit">FCFA</span>
-            </div>
-            <div class="rl-kpi-hint">
-                <i class="fas fa-shield-alt" style="font-size:.65em;"></i>
-                Paiements validés uniquement
-            </div>
-        </div>
-
-        {{-- En attente --}}
-        <div class="rl-kpi is-pending" title="Paiements enregistrés mais non encore validés">
-            <div class="rl-kpi-icon"><i class="fas fa-clock"></i></div>
-            <div class="rl-kpi-label">En attente de validation</div>
-            <div class="rl-kpi-value is-amount">
-                <span id="kpi-total-en-attente">{{ number_format($kpis['total_en_attente'] ?? 0, 0, ',', ' ') }}</span>
-                <span class="rl-kpi-unit">FCFA</span>
-            </div>
-            <div class="rl-kpi-hint is-warning">
-                <i class="fas fa-info-circle" style="font-size:.65em;"></i>
-                Non déduits du solde
-            </div>
-        </div>
-
-        <div class="rl-kpi is-critical" data-risk="critical" title="Cliquer pour filtrer">
-            <div class="rl-kpi-icon"><i class="fas fa-ban"></i></div>
-            <div class="rl-kpi-label">Impayés (0% réglé)</div>
-            <div class="rl-kpi-value" id="kpi-count-critical">{{ $kpis['count_critical'] }}</div>
-        </div>
-
-        <div class="rl-kpi is-high" data-risk="high" title="Cliquer pour filtrer">
-            <div class="rl-kpi-icon"><i class="fas fa-hourglass-half"></i></div>
-            <div class="rl-kpi-label">En cours (partiel)</div>
-            <div class="rl-kpi-value" id="kpi-count-high">{{ $kpis['count_high'] }}</div>
-        </div>
-
-        <div class="rl-kpi is-medium" data-risk="medium" title="Cliquer pour filtrer">
-            <div class="rl-kpi-icon"><i class="fas fa-tasks"></i></div>
-            <div class="rl-kpi-label">Presque soldés (≥ 75%)</div>
-            <div class="rl-kpi-value" id="kpi-count-medium">{{ $kpis['count_medium'] }}</div>
-        </div>
-
-        <div class="rl-kpi is-low">
-            <div class="rl-kpi-icon"><i class="fas fa-check-circle"></i></div>
-            <div class="rl-kpi-label">À jour</div>
-            <div class="rl-kpi-value" id="kpi-count-low">{{ $kpis['count_low'] }}</div>
-        </div>
-    </div>
 
     {{-- ── FILTERS ── --}}
     <form id="relances-filters-form" method="GET" action="{{ route('esbtp.comptabilite.relances.index') }}">
@@ -993,7 +967,7 @@
     });
 
     /* KPI card click */
-    document.querySelectorAll('.rl-kpi[data-risk]').forEach(card => {
+    document.querySelectorAll('.rl-hero-kpi[data-risk]').forEach(card => {
         card.addEventListener('click', function () {
             const risk = this.dataset.risk;
             riskHidden.value = risk;
