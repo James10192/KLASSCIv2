@@ -19,10 +19,10 @@
                         </th>
                         <th>N° Reçu</th>
                         <th>Étudiant</th>
-                        <th>Catégorie</th>
+                        <th class="d-none d-md-table-cell">Catégorie</th>
                         <th>Date</th>
                         <th>Montant</th>
-                        <th>Mode</th>
+                        <th class="d-none d-md-table-cell">Mode</th>
                         <th>Statut</th>
                         <th>Actions</th>
                     </tr>

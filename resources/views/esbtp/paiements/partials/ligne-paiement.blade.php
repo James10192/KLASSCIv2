@@ -25,7 +25,7 @@
             </div>
         </div>
     </td>
-    <td>
+    <td class="d-none d-md-table-cell">
         @php
             $categoryInfo = null;
             $categoryColors = [
@@ -86,7 +86,7 @@
     <td>
         <strong class="color-success">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</strong>
     </td>
-    <td>
+    <td class="d-none d-md-table-cell">
         <span class="badge bg-info">{{ $paiement->mode_paiement }}</span>
     </td>
     <td>
