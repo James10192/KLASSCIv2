@@ -149,33 +149,44 @@
                 Détails : {{ $detailsCategorie['category']->name }}
             </div>
 
-            {{-- Statistiques de la catégorie --}}
-            <div class="stats-overview">
-                <div class="card-moderne stat-card success">
-                    <div class="p-lg">
-                        <div class="stat-value color-success">{{ $detailsCategorie['etudiants_a_jour']->count() }}</div>
-                        <div class="stat-label">Étudiants à jour</div>
+            {{-- Statistiques de la catégorie — premium cards sc-stat* --}}
+            @php
+                $tauxCatRecouvrement = $detailsCategorie['montant_total_attendu'] > 0
+                    ? round(($detailsCategorie['montant_total_recu'] / $detailsCategorie['montant_total_attendu']) * 100, 1)
+                    : 0;
+            @endphp
+            <div class="sc-stats-grid">
+                <div class="sc-stat is-success">
+                    <div class="sc-stat-head">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Étudiants à jour</span>
                     </div>
+                    <div class="sc-stat-value">{{ $detailsCategorie['etudiants_a_jour']->count() }}</div>
+                    <div class="sc-stat-label">Paiement complet</div>
                 </div>
-                <div class="card-moderne stat-card warning">
-                    <div class="p-lg">
-                        <div class="stat-value color-warning">{{ $detailsCategorie['etudiants_en_retard']->count() }}</div>
-                        <div class="stat-label">Paiements partiels</div>
+                <div class="sc-stat is-warning">
+                    <div class="sc-stat-head">
+                        <i class="fas fa-clock"></i>
+                        <span>Paiements partiels</span>
                     </div>
+                    <div class="sc-stat-value">{{ $detailsCategorie['etudiants_en_retard']->count() }}</div>
+                    <div class="sc-stat-label">Solde restant</div>
                 </div>
-                <div class="card-moderne stat-card danger">
-                    <div class="p-lg">
-                        <div class="stat-value color-danger">{{ $detailsCategorie['etudiants_non_payes']->count() }}</div>
-                        <div class="stat-label">Aucun paiement</div>
+                <div class="sc-stat is-danger">
+                    <div class="sc-stat-head">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <span>Aucun paiement</span>
                     </div>
+                    <div class="sc-stat-value">{{ $detailsCategorie['etudiants_non_payes']->count() }}</div>
+                    <div class="sc-stat-label">À relancer</div>
                 </div>
-                <div class="card-moderne stat-card primary">
-                    <div class="p-lg">
-                        <div class="stat-value color-primary">
-                            {{ $detailsCategorie['montant_total_attendu'] > 0 ? round(($detailsCategorie['montant_total_recu'] / $detailsCategorie['montant_total_attendu']) * 100, 1) : 0 }}%
-                        </div>
-                        <div class="stat-label">Taux de recouvrement</div>
+                <div class="sc-stat is-primary">
+                    <div class="sc-stat-head">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Taux de recouvrement</span>
                     </div>
+                    <div class="sc-stat-value">{{ $tauxCatRecouvrement }}%</div>
+                    <div class="sc-stat-label">{{ number_format($detailsCategorie['montant_total_recu'], 0, ',', ' ') }} / {{ number_format($detailsCategorie['montant_total_attendu'], 0, ',', ' ') }} FCFA</div>
                 </div>
             </div>
 

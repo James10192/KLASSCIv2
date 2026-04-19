@@ -390,6 +390,76 @@
         /* overflow visible : dropdowns ne sont pas clipes */
     }
 
+    /* KPIs categorie selectionnee (suivi-content partial) — premium cards avec top-border accent */
+    .sc-stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: .75rem;
+        margin-bottom: 1.25rem;
+    }
+    .sc-stat {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 1rem 1.1rem;
+        position: relative;
+        overflow: hidden;
+        transition: box-shadow .2s, transform .15s;
+    }
+    .sc-stat:hover {
+        box-shadow: 0 4px 16px rgba(15,23,42,.06);
+        transform: translateY(-2px);
+    }
+    .sc-stat::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        border-radius: 12px 12px 0 0;
+    }
+    .sc-stat.is-success::before { background: #10b981; }
+    .sc-stat.is-warning::before { background: #f59e0b; }
+    .sc-stat.is-danger::before  { background: #dc2626; }
+    .sc-stat.is-primary::before { background: #0453cb; }
+    .sc-stat-head {
+        display: flex;
+        align-items: center;
+        gap: .35rem;
+        margin-bottom: .3rem;
+        color: #64748b;
+        font-size: .7rem;
+        font-weight: 600;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+    .sc-stat.is-success .sc-stat-head i { color: #10b981; }
+    .sc-stat.is-warning .sc-stat-head i { color: #f59e0b; }
+    .sc-stat.is-danger  .sc-stat-head i { color: #dc2626; }
+    .sc-stat.is-primary .sc-stat-head i { color: #0453cb; }
+    .sc-stat-value {
+        font-size: 1.65rem;
+        font-weight: 700;
+        line-height: 1;
+        color: #0f172a;
+        letter-spacing: -.01em;
+    }
+    .sc-stat.is-success .sc-stat-value { color: #047857; }
+    .sc-stat.is-warning .sc-stat-value { color: #b45309; }
+    .sc-stat.is-danger  .sc-stat-value { color: #b91c1c; }
+    .sc-stat.is-primary .sc-stat-value { color: #0453cb; }
+    .sc-stat-label {
+        margin-top: .2rem;
+        font-size: .75rem;
+        color: #64748b;
+        font-weight: 500;
+    }
+    @media (max-width: 992px) {
+        .sc-stats-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 576px) {
+        .sc-stats-grid { grid-template-columns: 1fr; gap: .5rem; }
+    }
+
     /* Hero KPIs (row 2 glass) */
     .sc-hero-kpis {
         display: grid;
