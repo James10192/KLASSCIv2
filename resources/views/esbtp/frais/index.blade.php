@@ -13,7 +13,65 @@
     color: #fff;
     margin-bottom: 1.25rem;
     position: relative;
-    overflow: hidden;
+    /* overflow visible : dropdowns et elements absolute ne sont pas clipes */
+}
+
+/* Hero KPIs (row 2 glass) */
+.fi-hero-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .75rem;
+    margin-top: 1.5rem;
+}
+.fi-hero-kpi {
+    display: block;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 12px;
+    padding: .9rem 1rem;
+    color: #fff;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background .2s, border-color .2s, transform .15s;
+}
+.fi-hero-kpi:hover {
+    background: rgba(255,255,255,.16);
+    border-color: rgba(255,255,255,.3);
+    color: #fff;
+    transform: translateY(-2px);
+    text-decoration: none;
+}
+.fi-hero-kpi-head {
+    display: flex;
+    align-items: center;
+    gap: .35rem;
+    margin-bottom: .35rem;
+    color: rgba(255,255,255,.8);
+    font-size: .7rem;
+    font-weight: 600;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+}
+.fi-hero-kpi-head i { font-size: .72rem; }
+.fi-hero-kpi-value {
+    font-size: 1.7rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+    letter-spacing: -.01em;
+}
+.fi-hero-kpi-meta {
+    margin-top: .25rem;
+    font-size: .72rem;
+    color: rgba(255,255,255,.7);
+    font-weight: 500;
+}
+@media (max-width: 992px) {
+    .fi-hero-kpis { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 576px) {
+    .fi-hero-kpis { grid-template-columns: 1fr; gap: .5rem; }
+    .fi-hero-kpi-value { font-size: 1.4rem; }
 }
 .fi-hero-top {
     display: flex;
@@ -285,10 +343,19 @@
     font-size: var(--text-normal);
 }
 
+/* Bouton "+ Ajouter" : inline dans tab-header, plus en position absolute
+   (qui debordait du tab-container) */
 .add-category-btn {
+    position: static;
+    margin-top: 0;
+}
+.tab-header {
+    position: relative;
+}
+.tab-header .add-category-btn {
     position: absolute;
-    top: var(--space-md);
-    right: var(--space-md);
+    top: 0;
+    right: 0;
 }
 
 .category-grid {
@@ -479,6 +546,42 @@
                 </a>
             </div>
         </div>
+
+        {{-- Row 2 : KPIs glass (drill-down vers onglet correspondant) --}}
+        <div class="fi-hero-kpis">
+            <a href="#" class="fi-hero-kpi" onclick="scrollToTab('academic'); return false;" title="Voir les frais académiques">
+                <div class="fi-hero-kpi-head">
+                    <i class="fas fa-layer-group"></i>
+                    <span>Total catégories</span>
+                </div>
+                <div class="fi-hero-kpi-value">{{ $stats['total_categories'] }}</div>
+                <div class="fi-hero-kpi-meta">Toutes confondues</div>
+            </a>
+            <a href="#" class="fi-hero-kpi" onclick="scrollToTab('academic'); return false;" title="Voir les frais obligatoires">
+                <div class="fi-hero-kpi-head">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <span>Frais obligatoires</span>
+                </div>
+                <div class="fi-hero-kpi-value">{{ $stats['mandatory_categories'] }}</div>
+                <div class="fi-hero-kpi-meta">À payer par tous</div>
+            </a>
+            <a href="#" class="fi-hero-kpi" onclick="scrollToTab('service'); return false;" title="Voir les services optionnels">
+                <div class="fi-hero-kpi-head">
+                    <i class="fas fa-star"></i>
+                    <span>Services optionnels</span>
+                </div>
+                <div class="fi-hero-kpi-value">{{ $stats['optional_categories'] }}</div>
+                <div class="fi-hero-kpi-meta">Cantine & transport</div>
+            </a>
+            <a href="#" class="fi-hero-kpi" onclick="scrollToTab('administrative'); return false;" title="Voir les catégories actives">
+                <div class="fi-hero-kpi-head">
+                    <i class="fas fa-check-circle"></i>
+                    <span>Catégories actives</span>
+                </div>
+                <div class="fi-hero-kpi-value">{{ $stats['active_categories'] }}</div>
+                <div class="fi-hero-kpi-meta">Configurées</div>
+            </a>
+        </div>
     </div>
 
     @if(session('success'))
@@ -495,49 +598,7 @@
         </div>
     @endif
 
-    {{-- KPI drill-down : click ouvre l'onglet correspondant --}}
-    <div class="kpi-grid">
-        <a href="#" class="fi-kpi-link" onclick="scrollToTab('academic'); return false;" title="Voir les frais académiques">
-            <div class="kpi-card card-moderne">
-                <div class="kpi-value color-primary">{{ $stats['total_categories'] }}</div>
-                <div class="kpi-title">Total Catégories</div>
-                <div class="kpi-trend">
-                    <i class="fas fa-layer-group me-1"></i>
-                    Toutes confondues
-                </div>
-            </div>
-        </a>
-        <a href="#" class="fi-kpi-link" onclick="scrollToTab('academic'); return false;" title="Voir les frais obligatoires">
-            <div class="kpi-card card-moderne">
-                <div class="kpi-value color-success">{{ $stats['mandatory_categories'] }}</div>
-                <div class="kpi-title">Frais Obligatoires</div>
-                <div class="kpi-trend">
-                    <i class="fas fa-exclamation-circle me-1"></i>
-                    À payer par tous
-                </div>
-            </div>
-        </a>
-        <a href="#" class="fi-kpi-link" onclick="scrollToTab('service'); return false;" title="Voir les services optionnels">
-            <div class="kpi-card card-moderne">
-                <div class="kpi-value color-warning">{{ $stats['optional_categories'] }}</div>
-                <div class="kpi-title">Services Optionnels</div>
-                <div class="kpi-trend">
-                    <i class="fas fa-star me-1"></i>
-                    Cantine & Transport
-                </div>
-            </div>
-        </a>
-        <a href="#" class="fi-kpi-link" onclick="scrollToTab('administrative'); return false;" title="Voir les frais administratifs">
-            <div class="kpi-card card-moderne">
-                <div class="kpi-value color-accent">{{ $stats['active_categories'] }}</div>
-                <div class="kpi-title">Catégories Actives</div>
-                <div class="kpi-trend">
-                    <i class="fas fa-check-circle me-1"></i>
-                    Configurées
-                </div>
-            </div>
-        </a>
-    </div>
+    {{-- KPIs deplaces dans fi-hero row 2 ci-dessus (voir hero) --}}
 
     <!-- Système d'onglets pour les catégories -->
     <div class="tabs-container">
