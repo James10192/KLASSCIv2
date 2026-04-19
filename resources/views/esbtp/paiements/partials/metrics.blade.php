@@ -1,43 +1,63 @@
+@php
+    $currentStatus = request('status');
+    $buildStatusUrl = function ($status) {
+        $params = request()->query();
+        if ($status === null) {
+            unset($params['status']);
+        } else {
+            $params['status'] = $status;
+        }
+        return route('esbtp.paiements.index') . (!empty($params) ? '?' . http_build_query($params) : '');
+    };
+@endphp
 <div class="kpi-grid">
-    {{-- KPI 1: Paiements VALIDÉS (statut validé) --}}
-    <div class="card-moderne kpi-card">
-        <div class="kpi-title">Paiements Validés</div>
-        <div class="kpi-value color-success">{{ number_format($stats['montant_valide'], 0, ',', ' ') }} FCFA</div>
-        <div class="kpi-trend positive">
-            <i class="fas fa-check-circle"></i>
-            {{ $stats['valides'] ?? 0 }} paiement(s)
+    {{-- KPI 1: Paiements VALIDÉS (drill-down ?status=validé) --}}
+    <a href="{{ $buildStatusUrl('validé') }}" class="pi-kpi-link {{ $currentStatus === 'validé' ? 'is-active' : '' }}" title="Filtrer sur les paiements validés" aria-label="Filtrer les paiements validés">
+        <div class="card-moderne kpi-card">
+            <div class="kpi-title">Paiements Validés</div>
+            <div class="kpi-value color-success">{{ number_format($stats['montant_valide'], 0, ',', ' ') }} FCFA</div>
+            <div class="kpi-trend positive">
+                <i class="fas fa-check-circle"></i>
+                {{ $stats['valides'] ?? 0 }} paiement(s)
+            </div>
         </div>
-    </div>
+    </a>
 
-    {{-- KPI 2: Paiements EN ATTENTE de validation (statut en_attente) --}}
-    <div class="card-moderne kpi-card">
-        <div class="kpi-title">En Attente de Validation</div>
-        <div class="kpi-value color-warning">{{ number_format($stats['montant_en_attente'], 0, ',', ' ') }} FCFA</div>
-        <div class="kpi-trend">
-            <i class="fas fa-clock"></i>
-            {{ $stats['en_attente'] ?? 0 }} paiement(s)
+    {{-- KPI 2: Paiements EN ATTENTE (drill-down ?status=en_attente) --}}
+    <a href="{{ $buildStatusUrl('en_attente') }}" class="pi-kpi-link {{ $currentStatus === 'en_attente' ? 'is-active' : '' }}" title="Filtrer sur les paiements en attente" aria-label="Filtrer les paiements en attente">
+        <div class="card-moderne kpi-card">
+            <div class="kpi-title">En Attente de Validation</div>
+            <div class="kpi-value color-warning">{{ number_format($stats['montant_en_attente'], 0, ',', ' ') }} FCFA</div>
+            <div class="kpi-trend">
+                <i class="fas fa-clock"></i>
+                {{ $stats['en_attente'] ?? 0 }} paiement(s)
+            </div>
         </div>
-    </div>
+    </a>
 
-    {{-- KPI 3: Paiements REJETÉS (statut rejeté) --}}
-    <div class="card-moderne kpi-card">
-        <div class="kpi-title">Paiements Rejetés</div>
-        <div class="kpi-value color-danger">{{ number_format($stats['montant_rejete'] ?? 0, 0, ',', ' ') }} FCFA</div>
-        <div class="kpi-trend negative">
-            <i class="fas fa-times-circle"></i>
-            {{ $stats['rejetes'] ?? 0 }} paiement(s)
+    {{-- KPI 3: Paiements REJETÉS (drill-down ?status=rejeté) --}}
+    <a href="{{ $buildStatusUrl('rejeté') }}" class="pi-kpi-link {{ $currentStatus === 'rejeté' ? 'is-active' : '' }}" title="Filtrer sur les paiements rejetés" aria-label="Filtrer les paiements rejetés">
+        <div class="card-moderne kpi-card">
+            <div class="kpi-title">Paiements Rejetés</div>
+            <div class="kpi-value color-danger">{{ number_format($stats['montant_rejete'] ?? 0, 0, ',', ' ') }} FCFA</div>
+            <div class="kpi-trend negative">
+                <i class="fas fa-times-circle"></i>
+                {{ $stats['rejetes'] ?? 0 }} paiement(s)
+            </div>
         </div>
-    </div>
+    </a>
 
-    {{-- KPI 4: TOTAL des paiements (tous statuts confondus) --}}
-    <div class="card-moderne kpi-card">
-        <div class="kpi-title">Total Paiements</div>
-        <div class="kpi-value color-primary">{{ number_format($stats['montant_total'], 0, ',', ' ') }} FCFA</div>
-        <div class="kpi-trend">
-            <i class="fas fa-wallet"></i>
-            {{ $stats['total'] ?? 0 }} paiement(s)
+    {{-- KPI 4: TOTAL (retire le filtre status) --}}
+    <a href="{{ $buildStatusUrl(null) }}" class="pi-kpi-link {{ empty($currentStatus) ? 'is-active' : '' }}" title="Afficher tous les statuts" aria-label="Afficher tous les paiements">
+        <div class="card-moderne kpi-card">
+            <div class="kpi-title">Total Paiements</div>
+            <div class="kpi-value color-primary">{{ number_format($stats['montant_total'], 0, ',', ' ') }} FCFA</div>
+            <div class="kpi-trend">
+                <i class="fas fa-wallet"></i>
+                {{ $stats['total'] ?? 0 }} paiement(s)
+            </div>
         </div>
-    </div>
+    </a>
 </div>
 
 {{-- Section explicative --}}
