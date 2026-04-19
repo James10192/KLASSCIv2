@@ -56,7 +56,7 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
     padding: 24px;
     box-shadow: 0 1px 12px rgba(0,0,0,.06);
     border: 1px solid rgba(0,0,0,.05);
-    animation: fp-fade-in .5s ease .4s both;
+    animation: dc-fade-in .5s ease .4s both;
 }
 
 /* ── Aging bar segments ── */
