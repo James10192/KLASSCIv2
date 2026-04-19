@@ -27,40 +27,94 @@
     --fc-radius:     14px;
 }
 
-/* ── HERO ── */
+/* ── HERO (conforme rule premium-redesign KLASSCI) ── */
 .fc-hero {
-    background: linear-gradient(135deg, #071631 0%, #0a2d6e 35%, #0453cb 70%, #3674d1 100%);
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 1.75rem 2rem 1.5rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
     position: relative;
     overflow: hidden;
-    padding: 2rem 2rem 1.75rem;
-    border-radius: 18px;
-    margin-bottom: 1.75rem;
-    box-shadow: 0 8px 32px rgba(4,83,203,.18), 0 2px 8px rgba(15,23,42,.1), inset 0 1px 0 rgba(255,255,255,.08);
 }
-.fc-hero::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(ellipse 50% 70% at 90% 30%, rgba(94,145,222,.15) 0%, transparent 70%);
-    pointer-events: none;
+.fc-hero-inner {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
-.fc-hero-inner { position: relative; z-index: 1; display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
-.fc-hero-label {
+.fc-hero-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    flex: 1;
+    min-width: 0;
+}
+.fc-hero-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; flex-shrink: 0; color: #fff;
+}
+.fc-hero-title {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 .2rem;
+    letter-spacing: -.01em;
+}
+.fc-hero-sub {
+    color: rgba(255,255,255,.72);
+    font-size: .88rem;
+    margin: 0 0 .55rem;
+}
+.fc-hero-chips {
+    display: flex; flex-wrap: wrap; gap: .4rem;
+}
+.fc-hero-chip {
     display: inline-flex; align-items: center; gap: .35rem;
-    background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.12);
-    border-radius: 6px; padding: .2rem .6rem;
-    font-size: .65rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: rgba(255,255,255,.55);
-    margin-bottom: .5rem;
+    padding: .25rem .65rem;
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 99px;
+    font-size: .74rem; font-weight: 600;
+    color: rgba(255,255,255,.94);
 }
-.fc-hero-title { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; letter-spacing: -.3px; }
-.fc-hero-sub { color: rgba(255,255,255,.5); font-size: .82rem; margin: .3rem 0 0; }
-.fc-hero-actions { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
-.fc-btn-ghost {
-    background: rgba(255,255,255,.07); color: rgba(255,255,255,.85); border: 1px solid rgba(255,255,255,.15);
-    padding: .5rem 1.1rem; border-radius: 9px; font-weight: 500; font-size: .8rem; text-decoration: none;
-    transition: all .2s ease; display: inline-flex; align-items: center; gap: .4rem;
+.fc-hero-chip i { font-size: .7rem; }
+.fc-hero-actions { display: flex; gap: .5rem; align-items: center; flex-wrap: wrap; }
+.fc-btn-ghost,
+.fc-btn-glass {
+    display: inline-flex; align-items: center; gap: .45rem;
+    padding: .5rem 1rem;
+    font-size: .82rem; font-weight: 600;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,.2);
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    text-decoration: none;
+    transition: all .2s ease;
+    white-space: nowrap;
 }
-.fc-btn-ghost:hover { background: rgba(255,255,255,.14); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,.15); }
+.fc-btn-ghost:hover,
+.fc-btn-glass:hover {
+    background: rgba(255,255,255,.22);
+    color: #fff;
+}
+.fc-btn-ghost i { font-size: .78rem; }
+
+@media (max-width: 992px) {
+    .fc-hero-inner { flex-direction: column; align-items: stretch; }
+    .fc-hero-actions { justify-content: flex-start; }
+}
+@media (max-width: 576px) {
+    .fc-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 14px; }
+    .fc-hero-title { font-size: 1.2rem; }
+    .fc-hero-sub { font-size: .82rem; }
+}
 
 /* ── INFO BAR ── */
 .fc-info-bar {
@@ -530,26 +584,30 @@
 <div class="dashboard-acasi">
     <div class="main-content">
 
-        {{-- ── HERO ── --}}
+        {{-- ── HERO (conforme rule premium-redesign) ── --}}
         <div class="fc-hero">
             <div class="fc-hero-inner">
-                <div>
-                    <div class="fc-hero-label">
-                        <i class="fas fa-coins" style="font-size:.6rem;"></i>
-                        Gestion des frais
+                <div class="fc-hero-left">
+                    <span class="fc-hero-icon"><i class="fas fa-sliders-h"></i></span>
+                    <div>
+                        <h1 class="fc-hero-title">Configuration des Frais par Classe</h1>
+                        <p class="fc-hero-sub">Configurez les tarifs obligatoires pour chaque combinaison filière et niveau</p>
+                        <div class="fc-hero-chips">
+                            <span class="fc-hero-chip">
+                                <i class="fas fa-coins"></i>
+                                Gestion des frais
+                            </span>
+                        </div>
                     </div>
-                    <h1 class="fc-hero-title">
-                        <i class="fas fa-sliders-h" style="margin-right:.4rem;opacity:.75;font-size:.85em;"></i>
-                        Configuration des Frais par Classe
-                    </h1>
-                    <p class="fc-hero-sub">Configurez les tarifs obligatoires pour chaque combinaison filière et niveau</p>
                 </div>
                 <div class="fc-hero-actions">
                     <a href="{{ route('esbtp.frais.optional-config') }}" class="fc-btn-ghost">
-                        <i class="fas fa-puzzle-piece"></i> Frais Optionnels
+                        <i class="fas fa-puzzle-piece"></i>
+                        <span>Frais Optionnels</span>
                     </a>
                     <a href="{{ route('esbtp.frais.index') }}" class="fc-btn-ghost">
-                        <i class="fas fa-arrow-left"></i> Retour
+                        <i class="fas fa-arrow-left"></i>
+                        <span>Retour</span>
                     </a>
                 </div>
             </div>
