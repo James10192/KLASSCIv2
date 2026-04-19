@@ -179,7 +179,7 @@
 .fc-ring circle { transition: stroke-dashoffset .6s ease; transform: rotate(-90deg); transform-origin: 50% 50%; }
 .fc-ring-pct {
     position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
-    font-size: .7rem; font-weight: 800; color: var(--fc-text);
+    font-size: .8rem; font-weight: 700; color: var(--fc-text);
 }
 
 /* Status badge */
@@ -412,8 +412,10 @@
 
                         <div class="fc-ring" style="position:relative;display:inline-block;width:100%;">
                             <div style="display:flex;align-items:center;justify-content:center;">
-                                <div style="position:relative;width:52px;height:52px;">
-                                    <svg width="52" height="52">
+                                <div style="position:relative;width:52px;height:52px;"
+                                     role="img"
+                                     aria-label="Configuration {{ number_format($percentage, 0) }}% complète">
+                                    <svg width="52" height="52" aria-hidden="true">
                                         <circle cx="26" cy="26" r="22" stroke="#e9eef5" stroke-width="4" fill="transparent"/>
                                         <circle cx="26" cy="26" r="22"
                                                 stroke="{{ $ringColor }}"

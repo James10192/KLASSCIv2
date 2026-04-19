@@ -5,6 +5,185 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
+/* ═══════ Namespace fi-* (frais.index premium) ═══════ */
+.fi-hero {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 1.75rem 2rem 1.5rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
+    position: relative;
+    overflow: hidden;
+}
+.fi-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.fi-hero-left {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    flex: 1;
+    min-width: 0;
+}
+.fi-hero-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; flex-shrink: 0; color: #fff;
+}
+.fi-hero h1 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 .2rem;
+    letter-spacing: -.01em;
+}
+.fi-hero p {
+    color: rgba(255,255,255,.72);
+    font-size: .88rem;
+    margin: 0 0 .55rem;
+}
+.fi-hero-chips {
+    display: flex; flex-wrap: wrap; gap: .4rem;
+}
+.fi-chip {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .25rem .65rem;
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 99px;
+    font-size: .74rem; font-weight: 600;
+    color: rgba(255,255,255,.94);
+}
+.fi-chip i { font-size: .7rem; }
+.fi-hero-actions {
+    display: flex; gap: .5rem; flex-wrap: wrap; align-items: center;
+}
+.fi-btn {
+    display: inline-flex; align-items: center; gap: .45rem;
+    padding: .5rem 1rem;
+    font-size: .82rem; font-weight: 600;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all .2s ease;
+    text-decoration: none;
+    white-space: nowrap;
+    font-family: inherit;
+}
+.fi-btn--glass {
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    border-color: rgba(255,255,255,.2);
+}
+.fi-btn--glass:hover { background: rgba(255,255,255,.22); color: #fff; }
+.fi-btn--white {
+    background: #fff; color: #0453cb;
+    border-color: transparent;
+}
+.fi-btn--white:hover { background: #f8fafc; color: #0453cb; transform: translateY(-1px); }
+.fi-btn i { font-size: .78rem; }
+
+/* KPI drill-down (liens) */
+.fi-kpi-link {
+    display: block;
+    text-decoration: none;
+    color: inherit;
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .2s ease;
+}
+.fi-kpi-link:hover {
+    color: inherit;
+    text-decoration: none;
+    transform: translateY(-2px);
+}
+.fi-kpi-link:hover .kpi-card {
+    box-shadow: 0 8px 20px rgba(4,83,203,.1);
+    border-color: #cbd5e1;
+}
+
+/* Action buttons sur category-card — polish consistency */
+.category-actions .btn-acasi {
+    padding: .4rem .7rem;
+    font-size: .8rem;
+}
+
+/* Empty state amelioré */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    color: #64748b;
+}
+.empty-state > i {
+    font-size: 3rem;
+    color: #cbd5e1;
+    margin-bottom: 1rem;
+    display: block;
+}
+.empty-state p {
+    margin-bottom: 1.25rem;
+    font-size: .95rem;
+    color: #475569;
+}
+
+/* Toast (reuse) */
+.fi-toast-container {
+    position: fixed;
+    top: 80px; right: 20px;
+    z-index: 1080;
+    display: flex; flex-direction: column;
+    gap: .5rem;
+    max-width: 360px;
+    pointer-events: none;
+}
+.fi-toast {
+    background: #fff;
+    border-radius: 12px;
+    padding: .85rem 1rem;
+    box-shadow: 0 8px 24px rgba(15,23,42,.15);
+    display: flex; align-items: flex-start; gap: .6rem;
+    border-left: 4px solid #0453cb;
+    pointer-events: auto;
+    animation: fi-toast-in .25s ease forwards;
+    font-size: .86rem;
+}
+.fi-toast.is-leaving { animation: fi-toast-out .2s ease forwards; }
+.fi-toast-icon {
+    font-size: 1rem;
+    color: #0453cb;
+    flex-shrink: 0;
+    margin-top: .15rem;
+}
+.fi-toast-body { flex: 1; color: #1e293b; line-height: 1.4; }
+.fi-toast-title { font-weight: 700; color: #0f172a; margin-bottom: .1rem; font-size: .88rem; }
+.fi-toast-close {
+    background: none; border: none; color: #94a3b8;
+    font-size: 1.1rem; cursor: pointer;
+    padding: 0 .15rem; line-height: 1;
+    margin-left: .15rem;
+    transition: color .2s;
+}
+.fi-toast-close:hover { color: #475569; }
+@keyframes fi-toast-in  { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes fi-toast-out { to { opacity: 0; transform: translateX(20px); } }
+
+@media (max-width: 992px) {
+    .fi-hero-top { flex-direction: column; align-items: stretch; }
+    .fi-hero-actions { justify-content: flex-start; }
+}
+@media (max-width: 576px) {
+    .fi-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 14px; }
+    .fi-hero h1 { font-size: 1.2rem; }
+    .fi-hero p { font-size: .82rem; }
+}
+
 /* Système d'onglets moderne */
 .tabs-container {
     background: white;
@@ -269,25 +448,36 @@
 
 @section('content')
 <div class="dashboard-main-grid">
-    <!-- Header moderne -->
-    <div class="dashboard-header">
-        <div class="header-left">
-            <h1>
-                <i class="fas fa-euro-sign me-2"></i>
-                Gestion des Frais
-            </h1>
-            <p class="header-subtitle">Configuration et gestion des frais scolaires par catégorie et type</p>
-        </div>
-        <div class="header-actions">
-            <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi accent-blue">
-                <i class="fas fa-globe"></i>Services Optionnels
-            </a>
-            <a href="{{ route('esbtp.frais.configure') }}" class="btn-acasi secondary">
-                <i class="fas fa-cogs"></i>Configuration par Classe
-            </a>
-            <a href="{{ route('esbtp.frais.create') }}" class="btn-acasi primary">
-                <i class="fas fa-plus"></i>Nouvelle Catégorie
-            </a>
+    {{-- Hero premium fi-* --}}
+    <div class="fi-hero">
+        <div class="fi-hero-top">
+            <div class="fi-hero-left">
+                <span class="fi-hero-icon"><i class="fas fa-euro-sign"></i></span>
+                <div>
+                    <h1>Gestion des Frais</h1>
+                    <p>Configuration et gestion des frais scolaires par catégorie et type</p>
+                    <div class="fi-hero-chips">
+                        <span class="fi-chip">
+                            <i class="fas fa-layer-group"></i>
+                            {{ $stats['active_categories'] }}/{{ $stats['total_categories'] }} actives
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div class="fi-hero-actions">
+                <a href="{{ route('esbtp.frais.optional-config') }}" class="fi-btn fi-btn--glass">
+                    <i class="fas fa-globe"></i>
+                    <span>Services Optionnels</span>
+                </a>
+                <a href="{{ route('esbtp.frais.configure') }}" class="fi-btn fi-btn--glass">
+                    <i class="fas fa-cogs"></i>
+                    <span>Configuration par Classe</span>
+                </a>
+                <a href="{{ route('esbtp.frais.create') }}" class="fi-btn fi-btn--white">
+                    <i class="fas fa-plus"></i>
+                    <span>Nouvelle catégorie</span>
+                </a>
+            </div>
         </div>
     </div>
 
@@ -305,40 +495,48 @@
         </div>
     @endif
 
-    <!-- Statistiques KPI -->
+    {{-- KPI drill-down : click ouvre l'onglet correspondant --}}
     <div class="kpi-grid">
-        <div class="kpi-card card-moderne">
-            <div class="kpi-value color-primary">{{ $stats['total_categories'] }}</div>
-            <div class="kpi-title">Total Catégories</div>
-            <div class="kpi-trend">
-                <i class="fas fa-layer-group me-1"></i>
-                Toutes confondues
+        <a href="#" class="fi-kpi-link" onclick="scrollToTab('academic'); return false;" title="Voir les frais académiques">
+            <div class="kpi-card card-moderne">
+                <div class="kpi-value color-primary">{{ $stats['total_categories'] }}</div>
+                <div class="kpi-title">Total Catégories</div>
+                <div class="kpi-trend">
+                    <i class="fas fa-layer-group me-1"></i>
+                    Toutes confondues
+                </div>
             </div>
-        </div>
-        <div class="kpi-card card-moderne">
-            <div class="kpi-value color-success">{{ $stats['mandatory_categories'] }}</div>
-            <div class="kpi-title">Frais Obligatoires</div>
-            <div class="kpi-trend">
-                <i class="fas fa-exclamation-circle me-1"></i>
-                À payer par tous
+        </a>
+        <a href="#" class="fi-kpi-link" onclick="scrollToTab('academic'); return false;" title="Voir les frais obligatoires">
+            <div class="kpi-card card-moderne">
+                <div class="kpi-value color-success">{{ $stats['mandatory_categories'] }}</div>
+                <div class="kpi-title">Frais Obligatoires</div>
+                <div class="kpi-trend">
+                    <i class="fas fa-exclamation-circle me-1"></i>
+                    À payer par tous
+                </div>
             </div>
-        </div>
-        <div class="kpi-card card-moderne">
-            <div class="kpi-value color-warning">{{ $stats['optional_categories'] }}</div>
-            <div class="kpi-title">Services Optionnels</div>
-            <div class="kpi-trend">
-                <i class="fas fa-star me-1"></i>
-                Cantine & Transport
+        </a>
+        <a href="#" class="fi-kpi-link" onclick="scrollToTab('service'); return false;" title="Voir les services optionnels">
+            <div class="kpi-card card-moderne">
+                <div class="kpi-value color-warning">{{ $stats['optional_categories'] }}</div>
+                <div class="kpi-title">Services Optionnels</div>
+                <div class="kpi-trend">
+                    <i class="fas fa-star me-1"></i>
+                    Cantine & Transport
+                </div>
             </div>
-        </div>
-        <div class="kpi-card card-moderne">
-            <div class="kpi-value color-accent">{{ $stats['active_categories'] }}</div>
-            <div class="kpi-title">Catégories Actives</div>
-            <div class="kpi-trend">
-                <i class="fas fa-check-circle me-1"></i>
-                Configurées
+        </a>
+        <a href="#" class="fi-kpi-link" onclick="scrollToTab('administrative'); return false;" title="Voir les frais administratifs">
+            <div class="kpi-card card-moderne">
+                <div class="kpi-value color-accent">{{ $stats['active_categories'] }}</div>
+                <div class="kpi-title">Catégories Actives</div>
+                <div class="kpi-trend">
+                    <i class="fas fa-check-circle me-1"></i>
+                    Configurées
+                </div>
             </div>
-        </div>
+        </a>
     </div>
 
     <!-- Système d'onglets pour les catégories -->
@@ -656,6 +854,9 @@
     </div>
 </div>
 
+{{-- Toast container --}}
+<div id="fi-toast-container" class="fi-toast-container" aria-live="polite" aria-atomic="true"></div>
+
 @endsection
 
 @push('scripts')
@@ -696,9 +897,36 @@ function addCategoryForType(categoryType) {
     window.location.href = `{{ route('esbtp.frais.create') }}?category_type=${categoryType}`;
 }
 
-// Fonction pour afficher les statistiques globales
+// Drill-down KPI : active l'onglet et scroll vers le contenu
+function scrollToTab(tabId) {
+    const button = document.querySelector(`.tab-button[data-tab="${tabId}"]`);
+    const pane = document.getElementById(tabId);
+    if (!button || !pane) return;
+
+    document.querySelectorAll('.tab-button').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+    button.classList.add('active');
+    pane.classList.add('active');
+
+    document.querySelector('.tabs-container')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Toast helper (remplace alert pour statistiques globales TODO)
 function showGlobalStats() {
-    alert('Fonctionnalité de statistiques globales à implémenter');
+    if (typeof window.fiToast === 'function') {
+        window.fiToast('Les statistiques globales seront disponibles dans une prochaine version.', 'info');
+        return;
+    }
+    // Fallback toast minimal
+    const container = document.getElementById('fi-toast-container');
+    if (container) {
+        const toast = document.createElement('div');
+        toast.className = 'fi-toast';
+        toast.innerHTML = '<i class="fas fa-info-circle fi-toast-icon"></i><div class="fi-toast-body"><div class="fi-toast-title">Bientôt disponible</div><div>Les statistiques globales seront disponibles dans une prochaine version.</div></div><button type="button" class="fi-toast-close" aria-label="Fermer">&times;</button>';
+        container.appendChild(toast);
+        toast.querySelector('.fi-toast-close').addEventListener('click', () => toast.remove());
+        setTimeout(() => toast.remove(), 5000);
+    }
 }
 
 </script>
