@@ -30,8 +30,8 @@ class SsoTokenVerifier
         }
 
         try {
-            $payload = json_decode($this->base64UrlDecode($payloadB64), true, flags: JSON_THROW_ON_ERROR);
-        } catch (\JsonException) {
+            $payload = json_decode($this->base64UrlDecode($payloadB64), true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $e) {
             return null;
         }
 

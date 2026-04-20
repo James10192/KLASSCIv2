@@ -33,6 +33,8 @@ class AppServiceProvider extends ServiceProvider
         // Fix for key length issue with MySQL < 5.7.7 or MariaDB < 10.2.2
         Schema::defaultStringLength(191);
 
+        \App\Services\SsoSecretValidator::validate();
+
         // Use Bootstrap for pagination
         Paginator::useBootstrap();
         Paginator::defaultView('pagination::bootstrap-4');
