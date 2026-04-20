@@ -2,18 +2,14 @@
 
 namespace App\Services;
 
+use App\Support\SsoClaim;
 use RuntimeException;
 
 /**
  * Verifies HMAC-SHA256 tokens signed by the master app (adminKlassci) for cross-app SSO.
  *
- * Mirror of adminKlassci/app/Services/SsoTokenSigner. Must use the same shared secret
- * (GROUP_SSO_SHARED_SECRET env var) and same algorithm (HMAC-SHA256, same payload format).
- *
- * Why: the group portal signs a short-lived token embedding {tenant_code, user_email,
- * redirect_to}. When the user clicks "Ouvrir l'établissement", the browser hits
- * /auth/sso-from-group?token=... on the tenant app. This service validates the token
- * and the controller logs the user in.
+ * MUST stay in sync with adminKlassci/app/Services/SsoTokenSigner (same shared secret,
+ * same algorithm, same payload claims — see SsoClaim).
  */
 class SsoTokenVerifier
 {
@@ -39,7 +35,7 @@ class SsoTokenVerifier
             return null;
         }
 
-        if (! is_array($payload) || ! isset($payload['exp']) || $payload['exp'] < time()) {
+        if (! is_array($payload) || ! isset($payload[SsoClaim::EXP]) || $payload[SsoClaim::EXP] < time()) {
             return null;
         }
 

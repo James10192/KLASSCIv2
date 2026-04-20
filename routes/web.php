@@ -133,8 +133,8 @@ Route::post('/login', [LoginController::class, 'login'])->middleware('guest');
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // SSO depuis le portail groupe adminKlassci (token HMAC-SHA256 signé par master).
+// Pas de middleware 'guest': un user déjà loggé doit pouvoir basculer vers le target user du token.
 Route::get('/auth/sso-from-group', \App\Http\Controllers\Auth\GroupPortalSsoController::class)
-    ->middleware('guest')
     ->name('auth.sso-from-group');
 
 // Routes d'enregistrement
