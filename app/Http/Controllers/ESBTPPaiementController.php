@@ -1255,6 +1255,8 @@ class ESBTPPaiementController extends Controller
 
             DB::commit();
 
+            app(\App\Services\GroupCacheInvalidator::class)->invalidate('paiement_validated');
+
             // Envoyer notification à l'étudiant
             try {
                 $notificationService = app(\App\Services\NotificationService::class);
@@ -1631,6 +1633,10 @@ class ESBTPPaiementController extends Controller
             }
 
             DB::commit();
+
+            if ($successCount > 0) {
+                app(\App\Services\GroupCacheInvalidator::class)->invalidate('paiement_bulk_validated');
+            }
 
             // Construire le message de retour
             $message = '';

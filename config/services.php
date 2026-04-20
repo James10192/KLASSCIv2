@@ -66,4 +66,8 @@ return [
         'endpoint' => env('BROWSERLESS_ENDPOINT', 'https://production-sfo.browserless.io'),
     ],
 
+    'group_sso' => [
+        'secret' => env('GROUP_SSO_SHARED_SECRET'),
+    ],
+
 ];
