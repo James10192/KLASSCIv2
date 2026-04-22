@@ -1892,13 +1892,15 @@ class ESBTPClasseController extends Controller
             ]);
 
             // Générer le PDF
+            // Taille/orientation via setPaper() (plus fiable que `size` dans @page côté DomPDF) ;
+            // les marges restent pilotées par @page dans le template (SettingsHelper).
             $pdf = PDF::loadView("esbtp.classes.export-pdf", [
                 "classes" => $classes,
                 "anneeCourante" => $anneeCourante,
                 "filters" => $filters,
                 "settings" => $settings,
                 "dateExport" => now(),
-            ]);
+            ])->setPaper("a4", "landscape");
 
             // Télécharger le PDF
             $filename = "classes_" . now()->format("Y-m-d_His") . ".pdf";
