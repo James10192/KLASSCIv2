@@ -1552,7 +1552,8 @@ class ESBTPClasseController extends Controller
                 return $inscription->etudiant;
             })
             ->filter()
-            ->sortBy(["nom", "prenoms"]);
+            ->sortBy(["nom", "prenoms"])
+            ->values();
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
@@ -1601,7 +1602,8 @@ class ESBTPClasseController extends Controller
                 return $inscription->etudiant;
             })
             ->filter()
-            ->sortBy(["nom", "prenoms"]);
+            ->sortBy(["nom", "prenoms"])
+            ->values();
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
@@ -1659,7 +1661,8 @@ class ESBTPClasseController extends Controller
                 return $inscription->etudiant;
             })
             ->filter()
-            ->sortBy(["nom", "prenoms"]);
+            ->sortBy(["nom", "prenoms"])
+            ->values();
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
@@ -1891,9 +1894,9 @@ class ESBTPClasseController extends Controller
                 "total_classes" => $classes->count(),
             ]);
 
-            // Générer le PDF
-            // Taille/orientation via setPaper() (plus fiable que `size` dans @page côté DomPDF) ;
-            // les marges restent pilotées par @page dans le template (SettingsHelper).
+            // Générer le PDF — setPaper() + `size`/`margin` dans @page du template
+            // (pattern strictement identique à bulletins/pdf-configurable, seul
+            // combo vérifié rendant des marges visibles en prod sur cet hébergeur).
             $pdf = PDF::loadView("esbtp.classes.export-pdf", [
                 "classes" => $classes,
                 "anneeCourante" => $anneeCourante,

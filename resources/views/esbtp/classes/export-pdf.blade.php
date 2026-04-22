@@ -4,14 +4,6 @@
     $hdrText = $pdfCfg['header_text_color'] ?? '#ffffff';
     $primary = $pdfCfg['primary_color']     ?? '#0453cb';
 
-    // Marges configurables (mm) — cf. SettingsHelper::getPdfSettings()
-    // Plancher minimum forcé à 10mm : certains tenants ont des valeurs trop basses
-    // qui font paraître le PDF sans marges.
-    $mTop    = max(10, (int) ($pdfCfg['margin_top']    ?? 15));
-    $mBottom = max(10, (int) ($pdfCfg['margin_bottom'] ?? 15));
-    $mLeft   = max(10, (int) ($pdfCfg['margin_left']   ?? 15));
-    $mRight  = max(10, (int) ($pdfCfg['margin_right']  ?? 15));
-
     // Fusion : settings passés par le controller (nom, adresse, …) pour l'établissement,
     // couleurs depuis les settings PDF globaux.
     $etablissement = [
@@ -55,14 +47,11 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        /* Pattern éprouvé dans l'app (etudiants/paiements/bulletins) :
-           `size` + `margin` dans @page, doublé par setPaper() côté controller. */
+        /* Pattern strictement identique à bulletins/pdf-configurable.blade.php:342
+           — seule combinaison vérifiée visible en prod dans ce projet. */
         @page {
-            margin-top: {{ $mTop }}mm;
-            margin-right: {{ $mRight }}mm;
-            margin-bottom: {{ $mBottom }}mm;
-            margin-left: {{ $mLeft }}mm;
             size: A4 landscape;
+            margin: 15mm 12mm;
         }
 
         body {
