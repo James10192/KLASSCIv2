@@ -86,9 +86,19 @@
 
                     <!-- Sélection de la classe et de la séance -->
                     <div class="mb-4">
+                        @php
+                            $classesForJs = ($classes ?? collect())->map(function ($c) {
+                                return [
+                                    'id' => $c->id,
+                                    'name' => $c->name,
+                                    'filiere_id' => $c->filiere_id,
+                                    'niveau_etude_id' => $c->niveau_etude_id,
+                                ];
+                            })->values();
+                        @endphp
                         <form id="selectionForm" method="GET" action="{{ route('esbtp.attendances.create') }}" class="row g-3">
                             <div class="col-md-4"
-                                 data-classes='@json(($classes ?? collect())->map(fn ($c) => ["id" => $c->id, "name" => $c->name, "filiere_id" => $c->filiere_id, "niveau_etude_id" => $c->niveau_etude_id])->values())'
+                                 data-classes='@json($classesForJs)'
                                  x-data="classeFilter({
                                      classes: JSON.parse($el.dataset.classes || '[]'),
                                      initialClasseId: {{ (int) request('classe_id', 0) }}
