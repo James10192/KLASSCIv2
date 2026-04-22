@@ -88,7 +88,7 @@
                                 data-orig-notes="{{ $origNotes }}">
                                 <td class="amh-col-name">
                                     <div class="amh-etu">
-                                        <span class="amh-etu__name">{{ $etu->nom_complet ?? trim(($etu->nom ?? '').' '.($etu->prenoms ?? '')) }}</span>
+                                        <span class="amh-etu__name">{{ trim(mb_strtoupper($etu->nom ?? '', 'UTF-8').' '.($etu->prenoms ?? '')) }}</span>
                                         <span class="amh-state-chip amh-state-chip--saved" data-state-for="saved"
                                               title="Valeurs sauvegardées sur le bulletin">
                                             <i class="fas fa-check"></i>Enregistré

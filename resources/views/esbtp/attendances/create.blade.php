@@ -87,18 +87,53 @@
                     <!-- Sélection de la classe et de la séance -->
                     <div class="mb-4">
                         <form id="selectionForm" method="GET" action="{{ route('esbtp.attendances.create') }}" class="row g-3">
-                            <div class="col-md-4">
+                            <div class="col-md-4"
+                                 data-classes='@json(($classes ?? collect())->map(fn ($c) => ["id" => $c->id, "name" => $c->name, "filiere_id" => $c->filiere_id, "niveau_etude_id" => $c->niveau_etude_id])->values())'
+                                 x-data="classeFilter({
+                                     classes: JSON.parse($el.dataset.classes || '[]'),
+                                     initialClasseId: {{ (int) request('classe_id', 0) }}
+                                 })">
+                                <div class="row g-2 mb-2">
+                                    <div class="col-6">
+                                        <select x-model="filiereId" class="form-control form-control-sm" aria-label="Filtrer par filière">
+                                            <option value="">Toutes les filières</option>
+                                            @foreach($filieres ?? [] as $f)
+                                                <option value="{{ $f->id }}">{{ $f->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                    <div class="col-6">
+                                        <select x-model="niveauId" class="form-control form-control-sm" aria-label="Filtrer par niveau d'études">
+                                            <option value="">Tous les niveaux</option>
+                                            @foreach($niveauxEtudes ?? [] as $n)
+                                                <option value="{{ $n->id }}">{{ $n->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </div>
+                                </div>
+                                <input type="text"
+                                       x-model.debounce.150ms="search"
+                                       class="form-control form-control-sm mb-2"
+                                       placeholder="Rechercher une classe..."
+                                       aria-label="Rechercher une classe">
+
                                 <label for="classe_id" class="form-label">Classe</label>
-                                <select name="classe_id" id="classe_id" class="form-control" required>
+                                <select name="classe_id" id="classe_id" class="form-control" required x-model="selectedId">
                                     <option value="">Sélectionner une classe</option>
-                                    @foreach($classes as $classe)
-                                        <option value="{{ $classe->id }}" {{ request('classe_id') == $classe->id ? 'selected' : '' }}>
-                                            {{ $classe->name }}
-                                        </option>
-                                    @endforeach
+                                    <template x-for="c in filtered" :key="c.id">
+                                        <option :value="c.id" x-text="c.name"></option>
+                                    </template>
                                 </select>
-                                <small class="form-text text-muted">
-                                    <i class="fas fa-info-circle"></i> Sélectionnez d'abord une classe pour voir les séances disponibles.
+                                <small class="form-text text-muted d-flex justify-content-between align-items-center">
+                                    <span>
+                                        <i class="fas fa-info-circle"></i>
+                                        <span x-text="filtered.length"></span> / <span x-text="classes.length"></span> classe(s) affichée(s)
+                                    </span>
+                                    <a href="#" x-show="filiereId || niveauId || search"
+                                       @click.prevent="reset()"
+                                       class="text-decoration-none">
+                                        <i class="fas fa-rotate-left"></i> Réinitialiser
+                                    </a>
                                 </small>
                             </div>
 
@@ -217,7 +252,7 @@
                                                                 {{ $initials ?: '?' }}
                                                             @endif
                                                         </span>
-                                                        <span class="at-etu-name">{{ $etudiant->nom_complet }}</span>
+                                                        <span class="at-etu-name">{{ trim(mb_strtoupper($etudiant->nom ?? '', 'UTF-8').' '.($etudiant->prenoms ?? '')) }}</span>
                                                     </div>
                                                 </td>
                                                 <td>
@@ -1497,6 +1532,41 @@
 
         debugLog('✅ [ATTENDANCES] Event delegation configuré - ZERO RELOAD MODE');
     });
+
+    /* ═══════════════════════════════════════════════════════════
+       Filtre de classe : recherche texte + filtres filière / niveau
+       ═══════════════════════════════════════════════════════════ */
+    function classeFilter(config) {
+        return {
+            classes: Array.isArray(config.classes) ? config.classes : [],
+            filiereId: '',
+            niveauId: '',
+            search: '',
+            selectedId: String(config.initialClasseId || ''),
+            init() {
+                this.$watch('filtered', (list) => {
+                    if (!this.selectedId) return;
+                    const stillThere = list.some(c => String(c.id) === String(this.selectedId));
+                    if (!stillThere) this.selectedId = '';
+                });
+            },
+            get filtered() {
+                const term = this.search.trim().toLowerCase();
+                const f = this.filiereId ? parseInt(this.filiereId, 10) : null;
+                const n = this.niveauId ? parseInt(this.niveauId, 10) : null;
+                return this.classes.filter(c =>
+                    (!f || parseInt(c.filiere_id, 10) === f) &&
+                    (!n || parseInt(c.niveau_etude_id, 10) === n) &&
+                    (!term || (c.name || '').toLowerCase().includes(term))
+                );
+            },
+            reset() {
+                this.filiereId = '';
+                this.niveauId = '';
+                this.search = '';
+            }
+        };
+    }
 
     /* ═══════════════════════════════════════════════════════════
        Onglet Saisie manuelle des heures (Alpine component)

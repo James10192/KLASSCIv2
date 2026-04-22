@@ -425,8 +425,14 @@ class ESBTPAttendanceController extends Controller
      */
     public function create(Request $request)
     {
-        // Récupérer les classes pour le filtre
-        $classes = ESBTPClasse::all();
+        // Récupérer les classes pour le filtre (avec filière + niveau pour filtrage côté client)
+        $classes = ESBTPClasse::with('filiere:id,name', 'niveau:id,name')
+            ->orderBy('name')
+            ->get(['id', 'name', 'filiere_id', 'niveau_etude_id']);
+
+        // Listes pour les filtres (filière + niveau) du selecteur de classe
+        $filieres = \App\Models\ESBTPFiliere::active()->orderBy('name')->get(['id', 'name']);
+        $niveauxEtudes = \App\Models\ESBTPNiveauEtude::active()->orderBy('name')->get(['id', 'name']);
 
         // Initialiser les variables
         $seances = collect();
@@ -513,6 +519,8 @@ class ESBTPAttendanceController extends Controller
                                   ->where('status', 'active')
                                   ->where('classe_id', $classe->id);
                             })
+                            ->orderBy('esbtp_etudiants.nom')
+                            ->orderBy('esbtp_etudiants.prenoms')
                             ->get();
                         $debug['nombre_etudiants'] = $etudiants->count();
                         $debug['etudiants_ids'] = $etudiants->pluck('id')->toArray();
@@ -589,6 +597,8 @@ class ESBTPAttendanceController extends Controller
                               ->where('status', 'active')
                               ->where('classe_id', $classe->id);
                         })
+                        ->orderBy('esbtp_etudiants.nom')
+                        ->orderBy('esbtp_etudiants.prenoms')
                         ->get();
                     $debug['nombre_etudiants_classe'] = $etudiants->count();
 
@@ -627,6 +637,8 @@ class ESBTPAttendanceController extends Controller
 
         return view('esbtp.attendances.create', compact(
             'classes',
+            'filieres',
+            'niveauxEtudes',
             'seances',
             'etudiants',
             'dateSeance',
@@ -791,6 +803,8 @@ class ESBTPAttendanceController extends Controller
                       ->where('status', 'active')
                       ->where('classe_id', $classe->id);
                 })
+                ->orderBy('esbtp_etudiants.nom')
+                ->orderBy('esbtp_etudiants.prenoms')
                 ->get();
 
             if ($etudiants->isEmpty()) {
@@ -1840,8 +1854,8 @@ class ESBTPAttendanceController extends Controller
                         ->where('status', 'active')
                         ->where('classe_id', $classe->id);
                 })
-                ->orderBy('nom')
-                ->orderBy('prenoms')
+                ->orderBy('esbtp_etudiants.nom')
+                ->orderBy('esbtp_etudiants.prenoms')
                 ->get();
 
             $existing = $service->getForClasseMatiere(
