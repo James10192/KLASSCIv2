@@ -741,6 +741,7 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/inscriptions/common.js') }}"></script>
 <style>
 .avatar-circle {
     width: 40px;
@@ -1573,7 +1574,7 @@ function showYearChangeInfo() {
          */
         debugLog('🎯 Installation du handler de validation avec capture phase...');
 
-        document.addEventListener('click', function(e) {
+        document.addEventListener('click', async function(e) {
             // Vérifier si le clic est sur un bouton de validation ou un de ses enfants
             let btn = e.target.closest('.valider-paiement-btn');
 
@@ -1599,7 +1600,16 @@ function showYearChangeInfo() {
                     return false;
                 }
 
-                if (!confirm('Êtes-vous sûr de vouloir valider ce paiement ?')) {
+                const confirmed = typeof window.iiConfirm === 'function'
+                    ? await window.iiConfirm({
+                        title: 'Valider le paiement',
+                        message: 'Valider ce paiement ? Le montant sera comptabilisé immédiatement.',
+                        confirmLabel: 'Valider',
+                        cancelLabel: 'Annuler',
+                    })
+                    : window.confirm('Valider ce paiement ?');
+
+                if (!confirmed) {
                     debugLog('⏸️ Validation annulée par l\'utilisateur');
                     return false;
                 }
@@ -1674,7 +1684,7 @@ function clearAllFilters() {
     $form.submit();
 }
 
-function bulkValider() {
+async function bulkValider() {
     const selectedIds = getSelectedPaiementIds();
 
     if (selectedIds.length === 0) {
@@ -1682,7 +1692,16 @@ function bulkValider() {
         return;
     }
 
-    if (!confirm(`Êtes-vous sûr de vouloir valider ${selectedIds.length} paiement(s) ?`)) {
+    const confirmed = typeof window.iiConfirm === 'function'
+        ? await window.iiConfirm({
+            title: 'Valider la sélection',
+            message: `Valider ${selectedIds.length} paiement${selectedIds.length > 1 ? 's' : ''} ? Les montants seront comptabilisés immédiatement.`,
+            confirmLabel: `Valider (${selectedIds.length})`,
+            cancelLabel: 'Annuler',
+        })
+        : window.confirm(`Êtes-vous sûr de vouloir valider ${selectedIds.length} paiement(s) ?`);
+
+    if (!confirmed) {
         return;
     }
 

@@ -823,16 +823,16 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Routes pour les reliquats
             Route::post('/reliquats/pay', [App\Http\Controllers\ESBTPPaiementController::class, 'payReliquat'])->name('reliquats.pay');
 
-            // Routes pour validation des paiements
-            Route::post('/paiements/{paiement}/valider', [App\Http\Controllers\ESBTPPaiementController::class, 'valider'])->name('paiements.valider');
-            Route::post('/paiements/{paiement}/rejeter', [App\Http\Controllers\ESBTPPaiementController::class, 'rejeter'])->name('paiements.rejeter');
+            // Routes pour validation des paiements (throttled — money movement)
+            Route::post('/paiements/{paiement}/valider', [App\Http\Controllers\ESBTPPaiementController::class, 'valider'])->name('paiements.valider')->middleware('throttle:60,1');
+            Route::post('/paiements/{paiement}/rejeter', [App\Http\Controllers\ESBTPPaiementController::class, 'rejeter'])->name('paiements.rejeter')->middleware('throttle:60,1');
 
             // Route pour validation rapide depuis modal (inscriptions.index)
-            Route::post('/paiements/{paiement}/valider-rapide', [App\Http\Controllers\ESBTPPaiementController::class, 'validerRapide'])->name('paiements.valider-rapide');
+            Route::post('/paiements/{paiement}/valider-rapide', [App\Http\Controllers\ESBTPPaiementController::class, 'validerRapide'])->name('paiements.valider-rapide')->middleware('throttle:60,1');
 
-            // Routes pour validation/rejet groupés
-            Route::post('/paiements/bulk-valider', [App\Http\Controllers\ESBTPPaiementController::class, 'bulkValider'])->name('paiements.bulk-valider');
-            Route::post('/paiements/bulk-rejeter', [App\Http\Controllers\ESBTPPaiementController::class, 'bulkRejeter'])->name('paiements.bulk-rejeter');
+            // Routes pour validation/rejet groupés (plus strict — opère sur N lignes à la fois)
+            Route::post('/paiements/bulk-valider', [App\Http\Controllers\ESBTPPaiementController::class, 'bulkValider'])->name('paiements.bulk-valider')->middleware('throttle:10,1');
+            Route::post('/paiements/bulk-rejeter', [App\Http\Controllers\ESBTPPaiementController::class, 'bulkRejeter'])->name('paiements.bulk-rejeter')->middleware('throttle:10,1');
 
             // Routes ESBTP Bulletins
             Route::prefix('bulletins')->name('bulletins.')->group(function () {
