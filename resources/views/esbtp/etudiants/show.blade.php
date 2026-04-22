@@ -1858,11 +1858,16 @@
                 <a href="{{ route('esbtp.etudiants.index') }}" class="hero-btn ghost">
                     <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">Retour</span>
                 </a>
-                @can('delete', $etudiant)
-                <form action="{{ route('esbtp.etudiants.destroy', $etudiant) }}" method="POST" style="margin:0"
-                      onsubmit="return confirm('Supprimer définitivement {{ addslashes($etudiant->nom_complet) }} ?')">
+                @can('delete_students')
+                <form id="es-form-delete-student" action="{{ route('esbtp.etudiants.destroy', $etudiant) }}" method="POST" style="margin:0">
                     @csrf @method('DELETE')
-                    <button type="submit" class="hero-btn danger">
+                    <button type="button" class="hero-btn danger"
+                            data-ii-confirm-form="es-form-delete-student"
+                            data-ii-confirm-title="Supprimer l'étudiant"
+                            data-ii-confirm-message="Supprimer définitivement {{ $etudiant->nom_complet }} ? Cette action est irréversible et supprimera toutes les inscriptions, paiements, notes, bulletins, présences et documents liés."
+                            data-ii-confirm-label="Supprimer"
+                            data-ii-confirm-danger="1"
+                            title="Supprimer l'étudiant">
                         <i class="fas fa-trash"></i>
                     </button>
                 </form>
@@ -5019,6 +5024,7 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/inscriptions/common.js') }}"></script>
 <script>
 // Switch LMD semester tabs
 function switchLmdSem(sem) {
@@ -5734,4 +5740,31 @@ document.addEventListener('DOMContentLoaded', function() {
     </div>
 </div>
 @endif
+
+<script>
+// Intercept [data-ii-confirm-form] buttons — show iiConfirm modal, then submit
+// the referenced form programmatically. Replaces native confirm() dialogs.
+document.querySelectorAll('[data-ii-confirm-form]').forEach(btn => {
+    btn.addEventListener('click', async function (e) {
+        e.preventDefault();
+        const formId = this.getAttribute('data-ii-confirm-form');
+        const form = document.getElementById(formId);
+        if (!form || typeof window.iiConfirm !== 'function') {
+            return;
+        }
+
+        const confirmed = await window.iiConfirm({
+            title: this.getAttribute('data-ii-confirm-title') || 'Confirmer',
+            message: this.getAttribute('data-ii-confirm-message') || 'Voulez-vous continuer ?',
+            confirmLabel: this.getAttribute('data-ii-confirm-label') || 'Confirmer',
+            cancelLabel: this.getAttribute('data-ii-confirm-cancel') || 'Annuler',
+            danger: this.getAttribute('data-ii-confirm-danger') === '1',
+        });
+
+        if (confirmed) {
+            form.submit();
+        }
+    });
+});
+</script>
 @endpush
