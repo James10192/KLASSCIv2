@@ -10,6 +10,7 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPMatiereFilierNiveau;
 use App\Models\ESBTPAcademicYear;
 use App\Models\ESBTPTeacherAttendance;
 use App\Http\Requests\Attendance\StoreManualAttendanceHoursRequest;
@@ -1784,10 +1785,10 @@ class ESBTPAttendanceController extends Controller
     }
 
     /**
-     * Récupère les matières d'une classe via planifications académiques (filière + niveau).
-     * Fallback : pivot esbtp_classe_matiere si aucune planification n'existe (classes BTS legacy).
-     * C'est la source canonique utilisée par ClassPlanningService pour la cohérence
-     * planning / emploi-temps / notes / saisie manuelle.
+     * Récupère les matières liées à la combinaison (filière + niveau) de la classe.
+     * Source canonique : table esbtp_matiere_filiere_niveau (modèle ESBTPMatiereFilierNiveau),
+     * utilisée par ESBTPPlanningConfigController, ESBTPMatiereController, TroncCommunService.
+     * Fallback : pivot esbtp_classe_matiere (classes BTS legacy attachées directement).
      */
     private function getMatieresClasse(ESBTPClasse $classe): \Illuminate\Support\Collection
     {
@@ -1795,17 +1796,15 @@ class ESBTPAttendanceController extends Controller
             return collect();
         }
 
-        $matieres = ESBTPPlanificationAcademique::query()
-            ->where('filiere_id', $classe->filiere_id)
-            ->where('niveau_etude_id', $classe->niveau_etude_id)
-            ->whereNotNull('matiere_id')
-            ->with('matiere:id,name')
-            ->get()
-            ->pluck('matiere')
-            ->filter()
-            ->unique('id')
-            ->sortBy('name')
-            ->values();
+        $matiereIds = ESBTPMatiereFilierNiveau::matiereIdsForCombo(
+            $classe->filiere_id,
+            $classe->niveau_etude_id
+        );
+
+        $matieres = ESBTPMatiere::whereIn('id', $matiereIds)
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
 
         if ($matieres->isEmpty()) {
             // Fallback classes BTS historiques attachées directement via pivot
