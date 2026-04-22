@@ -22,7 +22,6 @@ class ESBTPLMDResultatController extends Controller
 
         $classes = ESBTPClasse::where('systeme_academique', 'LMD')
             ->where('is_active', true)
-            ->when($anneeId, fn($q, $id) => $q->where('annee_universitaire_id', $id))
             ->withCount([
                 'inscriptions as total_etudiants' => fn($q) => $q
                     ->where('status', 'active')
