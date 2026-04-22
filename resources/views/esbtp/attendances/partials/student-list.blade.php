@@ -18,7 +18,7 @@
                         {{ $initials ?: '?' }}
                     @endif
                 </span>
-                <span class="at-etu-name">{{ $etudiant->nom_complet }}</span>
+                <span class="at-etu-name">{{ trim(mb_strtoupper($etudiant->nom ?? '', 'UTF-8').' '.($etudiant->prenoms ?? '')) }}</span>
                 @if($attendance)
                     <span class="at-etu-badge at-etu-badge--edit" title="Modification d'une présence existante">
                         <i class="fas fa-edit"></i>Modifié
