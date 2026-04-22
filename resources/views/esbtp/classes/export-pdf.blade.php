@@ -1,3 +1,48 @@
+@php
+    $pdfCfg  = \App\Helpers\SettingsHelper::getPdfSettings();
+    $hdrBg   = $pdfCfg['header_bg_color']   ?? $pdfCfg['primary_color'] ?? '#0453cb';
+    $hdrText = $pdfCfg['header_text_color'] ?? '#ffffff';
+    $primary = $pdfCfg['primary_color']     ?? '#0453cb';
+
+    // Marges configurables (mm) — cf. SettingsHelper::getPdfSettings()
+    $mTop    = $pdfCfg['margin_top']    ?? 15;
+    $mBottom = $pdfCfg['margin_bottom'] ?? 15;
+    $mLeft   = $pdfCfg['margin_left']   ?? 12;
+    $mRight  = $pdfCfg['margin_right']  ?? 12;
+
+    // Fusion : settings passés par le controller (nom, adresse, …) pour l'établissement,
+    // couleurs depuis les settings PDF globaux.
+    $etablissement = [
+        'nom'       => $settings['nom']       ?? 'KLASSCI',
+        'adresse'   => $settings['adresse']   ?? '',
+        'telephone' => $settings['telephone'] ?? '',
+        'email'     => $settings['email']     ?? '',
+        'logo'      => $settings['logo']      ?? '',
+    ];
+
+    // ────────────────────────────────────────────────────────────
+    // Effectif canonique : année courante + status=active + workflow_step=etudiant_cree
+    // Référence : ESBTPClasse::getNombreEtudiantsAttribute() (Models/ESBTPClasse.php:231)
+    // ────────────────────────────────────────────────────────────
+    $effectifs = [];
+    $totalEffectif = 0;
+    $totalCapacite = 0;
+
+    foreach ($classes as $classe) {
+        $count = $classe->inscriptions()
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->when($anneeCourante, fn($q) => $q->where('annee_universitaire_id', $anneeCourante->id))
+            ->count();
+        $effectifs[$classe->id] = $count;
+        $totalEffectif += $count;
+        $totalCapacite += $classe->places_totales ?? 0;
+    }
+
+    $totalClasses         = $classes->count();
+    $classesActives       = $classes->where('is_active', true)->count();
+    $tauxMoyenRemplissage = $totalCapacite > 0 ? round(($totalEffectif / $totalCapacite) * 100, 1) : 0;
+@endphp
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -8,6 +53,11 @@
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
+        @page {
+            size: A4 landscape;
+            margin: {{ $mTop }}mm {{ $mRight }}mm {{ $mBottom }}mm {{ $mLeft }}mm;
+        }
+
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
             font-size: 10px;
@@ -15,11 +65,6 @@
             line-height: 1.35;
             background: #ffffff;
             padding: 0;
-        }
-
-        @page {
-            margin: 0.6cm;
-            size: A4 landscape;
         }
 
         .container {
@@ -275,45 +320,6 @@
     </style>
 </head>
 <body>
-    @php
-        $pdfCfg  = \App\Helpers\SettingsHelper::getPdfSettings();
-        $hdrBg   = $pdfCfg['header_bg_color']   ?? $pdfCfg['primary_color'] ?? '#0453cb';
-        $hdrText = $pdfCfg['header_text_color'] ?? '#ffffff';
-        $primary = $pdfCfg['primary_color']     ?? '#0453cb';
-
-        // Fusion : les settings passés par le controller (nom, adresse, …) font foi
-        // pour l'établissement, mais les couleurs viennent des settings PDF globaux.
-        $etablissement = [
-            'nom'       => $settings['nom']       ?? 'KLASSCI',
-            'adresse'   => $settings['adresse']   ?? '',
-            'telephone' => $settings['telephone'] ?? '',
-            'email'     => $settings['email']     ?? '',
-            'logo'      => $settings['logo']      ?? '',
-        ];
-
-        // ────────────────────────────────────────────────────────────
-        // Effectif canonique : année courante + status=active + workflow_step=etudiant_cree
-        // Référence : ESBTPClasse::getNombreEtudiantsAttribute() (Models/ESBTPClasse.php:231)
-        // ────────────────────────────────────────────────────────────
-        $effectifs = [];
-        $totalEffectif = 0;
-        $totalCapacite = 0;
-
-        foreach ($classes as $classe) {
-            $count = $classe->inscriptions()
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree')
-                ->when($anneeCourante, fn($q) => $q->where('annee_universitaire_id', $anneeCourante->id))
-                ->count();
-            $effectifs[$classe->id] = $count;
-            $totalEffectif += $count;
-            $totalCapacite += $classe->places_totales ?? 0;
-        }
-
-        $totalClasses         = $classes->count();
-        $classesActives       = $classes->where('is_active', true)->count();
-        $tauxMoyenRemplissage = $totalCapacite > 0 ? round(($totalEffectif / $totalCapacite) * 100, 1) : 0;
-    @endphp
 
     <div class="container">
         {{-- ===================================================
