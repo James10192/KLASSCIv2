@@ -342,18 +342,31 @@
                 <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}" class="ps-btn warning">
                     <i class="fas fa-edit"></i> Modifier
                 </a>
-                <form action="{{ route('esbtp.paiements.destroy', $paiement->id) }}" method="POST" style="margin:0"
-                      onsubmit="return confirm('Supprimer définitivement ce paiement ?')">
+                <form id="ps-form-delete-{{ $paiement->id }}" action="{{ route('esbtp.paiements.destroy', $paiement->id) }}" method="POST" style="margin:0">
                     @csrf @method('DELETE')
-                    <button type="submit" class="ps-btn danger"><i class="fas fa-trash"></i></button>
+                    <button type="button"
+                            class="ps-btn danger"
+                            data-ii-confirm-form="ps-form-delete-{{ $paiement->id }}"
+                            data-ii-confirm-title="Supprimer le paiement"
+                            data-ii-confirm-message="Supprimer définitivement ce paiement ? Cette action est irréversible."
+                            data-ii-confirm-label="Supprimer"
+                            data-ii-confirm-danger="1">
+                        <i class="fas fa-trash"></i>
+                    </button>
                 </form>
                 @endcan
 
                 @if($paiement->status === 'en_attente')
-                <form action="{{ route('esbtp.paiements.valider', $paiement->id) }}" method="POST" style="margin:0"
-                      onsubmit="return confirm('Valider ce paiement ?')">
+                <form id="ps-form-valider-{{ $paiement->id }}" action="{{ route('esbtp.paiements.valider', $paiement->id) }}" method="POST" style="margin:0">
                     @csrf
-                    <button type="submit" class="ps-btn success"><i class="fas fa-check"></i> Valider</button>
+                    <button type="button"
+                            class="ps-btn success"
+                            data-ii-confirm-form="ps-form-valider-{{ $paiement->id }}"
+                            data-ii-confirm-title="Valider le paiement"
+                            data-ii-confirm-message="Valider ce paiement ? Le montant sera comptabilisé immédiatement."
+                            data-ii-confirm-label="Valider le paiement">
+                        <i class="fas fa-check"></i> Valider
+                    </button>
                 </form>
                 <button type="button" class="ps-btn danger" data-bs-toggle="modal" data-bs-target="#modalRejeter">
                     <i class="fas fa-times"></i> Rejeter
@@ -605,12 +618,39 @@
 @endsection
 
 @push('scripts')
+<script src="{{ asset('js/inscriptions/common.js') }}"></script>
 <script>
 // Copy receipt number on click
 document.querySelectorAll('.ps-receipt').forEach(el => {
     el.addEventListener('click', function() {
         const hint = this.querySelector('.ps-copy-hint');
         if (hint) { hint.textContent = 'Copié !'; setTimeout(() => hint.textContent = 'Copier', 2000); }
+    });
+});
+
+// Intercept [data-ii-confirm-form] buttons — show iiConfirm modal, then submit
+// the referenced form programmatically. Replaces native confirm() dialogs
+// which don't always render in modern Chrome and lack KLASSCI styling.
+document.querySelectorAll('[data-ii-confirm-form]').forEach(btn => {
+    btn.addEventListener('click', async function (e) {
+        e.preventDefault();
+        const formId = this.getAttribute('data-ii-confirm-form');
+        const form = document.getElementById(formId);
+        if (!form || typeof window.iiConfirm !== 'function') {
+            return;
+        }
+
+        const confirmed = await window.iiConfirm({
+            title: this.getAttribute('data-ii-confirm-title') || 'Confirmer',
+            message: this.getAttribute('data-ii-confirm-message') || 'Voulez-vous continuer ?',
+            confirmLabel: this.getAttribute('data-ii-confirm-label') || 'Confirmer',
+            cancelLabel: this.getAttribute('data-ii-confirm-cancel') || 'Annuler',
+            danger: this.getAttribute('data-ii-confirm-danger') === '1',
+        });
+
+        if (confirmed) {
+            form.submit();
+        }
     });
 });
 </script>
