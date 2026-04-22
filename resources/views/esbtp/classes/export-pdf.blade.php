@@ -3,159 +3,71 @@
 <head>
     @include('pdf.partials.theme')
     <meta charset="UTF-8">
-    <title>Export classes - {{ $settings['nom'] ?? 'Établissement' }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Liste des classes - {{ $settings['nom'] ?? 'Établissement' }}</title>
     <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
         body {
-            font-family: 'Arial', sans-serif;
+            font-family: DejaVu Sans, Arial, sans-serif;
             font-size: 10px;
-            margin: 0;
-            padding: 0;
-            background: #f3f4f6;
             color: #1f2937;
-            line-height: 1.4;
+            line-height: 1.35;
+            background: #ffffff;
+            padding: 0;
         }
 
-        .page {
-            padding: 12px;
+        @page {
+            margin: 0.6cm;
+            size: A4 landscape;
         }
 
         .container {
             background: #ffffff;
-            border-radius: 12px;
-            padding: 10px;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.04);
         }
 
+        /* ============================================================
+           HEADER — 2 colonnes (Logo | Infos école + Titre document)
+           Copié du pattern de liste-complete-pdf
+           ============================================================ */
         .header-section {
-            background: #0453cb;
-            color: #ffffff;
-            padding: 14px;
-            border-radius: 12px;
-            text-align: center;
-            margin-bottom: 14px;
+            border-radius: 6px;
+            margin-bottom: 12px;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
+            overflow: hidden;
         }
 
-        .header-logo {
-            max-height: 38px;
-            margin-bottom: 8px;
-        }
-
-        .school-name {
-            font-size: 14px;
-            font-weight: 700;
-            letter-spacing: 0.4px;
-            margin-bottom: 4px;
-        }
-
-        .school-meta {
-            font-size: 9px;
-            opacity: 0.9;
-        }
-
-        .document-title {
-            display: inline-block;
-            margin-top: 8px;
-            background: rgba(255, 255, 255, 0.15);
-            padding: 5px 12px;
-            border-radius: 999px;
-            font-size: 10px;
-            font-weight: 600;
-            letter-spacing: 0.6px;
-        }
-
-        .info-section {
-            background: #f8fafc;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 10px;
+        /* ============================================================
+           KPI BAND — 4 cellules uniformes
+           ============================================================ */
+        .kpi-band {
             margin-bottom: 12px;
-            text-align: center;
+            border-radius: 6px;
+            overflow: hidden;
         }
 
-        .info-label {
-            font-size: 9px;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            margin-bottom: 4px;
-        }
-
-        .info-value {
-            font-size: 12px;
-            font-weight: 700;
-            color: #0453cb;
-        }
-
-        .kpi-grid {
-            text-align: center;
-            font-size: 0;
-            margin-bottom: 12px;
-        }
-
-        .kpi-card {
-            display: inline-block;
-            vertical-align: top;
-            width: 23%;
-            margin: 0 1% 6px;
-            font-size: 10px;
-            background: #ffffff;
-            border: 1px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 8px 10px;
-            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.06);
-        }
-
-        .kpi-label {
-            font-size: 8px;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            margin-bottom: 6px;
-        }
-
-        .kpi-value {
-            font-size: 15px;
-            font-weight: 700;
-            color: #0453cb;
-            margin-bottom: 4px;
-        }
-
-        .kpi-sub {
-            font-size: 9px;
-            color: #6b7280;
-        }
-
-        .section-title {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.4px;
-            text-transform: uppercase;
-            color: #0f172a;
-            margin: 16px 0 8px;
-        }
-
+        /* ============================================================
+           TABLE CLASSES — Premium monochrome bleu
+           ============================================================ */
         .classes-table {
             width: 100%;
             border-collapse: collapse;
             background: #ffffff;
-            border-radius: 10px;
+            border-radius: 6px;
             overflow: hidden;
-            box-shadow: 0 6px 14px rgba(15, 23, 42, 0.05);
-            table-layout: fixed;
+            font-size: 9px;
+            margin-top: 6px;
         }
 
         .classes-table thead th {
-            background: #0453cb;
-            color: #ffffff;
-            font-weight: 600;
+            font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.2px;
-            font-size: 7.5px;
-            padding: 4px 3px;
+            letter-spacing: 0.3px;
+            font-size: 8.5px;
+            padding: 7px 5px;
             text-align: center;
-            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            border-right: 1px solid rgba(255, 255, 255, 0.18);
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
@@ -165,253 +77,384 @@
         }
 
         .classes-table tbody td {
-            padding: 4px 3px;
+            padding: 6px 5px;
             border-bottom: 1px solid #e5e7eb;
             vertical-align: middle;
-            font-size: 8px;
+            font-size: 9px;
             word-break: break-word;
         }
 
-        .classes-table tbody tr:nth-child(even) {
-            background: #f8fafc;
+        .classes-table tbody tr:nth-child(even) td {
+            background-color: #f8fafc;
         }
 
         .classes-table tbody tr:last-child td {
             border-bottom: none;
         }
 
-        /* Colonne N° */
-        .classes-table td:nth-child(1),
-        .classes-table th:nth-child(1) {
-            width: 30px;
-            text-align: center;
+        /* Column widths — optimisés A4 landscape */
+        .col-num    { width: 26px; text-align: center; }
+        .col-name   { width: 140px; font-weight: 600; color: #0f172a; }
+        .col-code   { width: 68px; text-align: center; font-family: 'Courier New', monospace; font-size: 8.5px; }
+        .col-filie  { width: 140px; }
+        .col-niv    { width: 95px; }
+        .col-eff    { width: 65px; text-align: center; font-weight: 600; }
+        .col-taux   { width: 58px; text-align: center; }
+        .col-stat   { width: 60px; text-align: center; }
+
+        /* Pastille numéro ligne */
+        .row-number {
+            display: inline-block;
+            min-width: 18px;
+            padding: 2px 5px;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 8.5px;
+            color: #ffffff;
         }
 
-        /* Colonne Nom classe */
-        .classes-table td:nth-child(2),
-        .classes-table th:nth-child(2) {
-            width: 120px;
-            font-weight: 600;
-        }
-
-        /* Colonne Code */
-        .classes-table td:nth-child(3),
-        .classes-table th:nth-child(3) {
-            width: 70px;
-            text-align: center;
+        .code-chip {
+            display: inline-block;
+            background: #f3f4f6;
+            padding: 2px 5px;
+            border-radius: 3px;
             font-family: 'Courier New', monospace;
+            font-size: 8.5px;
+            color: #374151;
+            letter-spacing: 0.2px;
         }
 
-        /* Colonne Filière */
-        .classes-table td:nth-child(4),
-        .classes-table th:nth-child(4) {
-            width: 120px;
+        .eff-value {
+            font-weight: 700;
+            color: #0f172a;
+        }
+        .eff-capacity {
+            color: #64748b;
+            font-weight: 500;
         }
 
-        /* Colonne Niveau */
-        .classes-table td:nth-child(5),
-        .classes-table th:nth-child(5) {
-            width: 90px;
-        }
-
-        /* Colonne Effectif/Capacité */
-        .classes-table td:nth-child(6),
-        .classes-table th:nth-child(6) {
-            width: 65px;
-            text-align: center;
-            font-weight: 600;
-        }
-
-        /* Colonne Taux */
-        .classes-table td:nth-child(7),
-        .classes-table th:nth-child(7) {
-            width: 55px;
-            text-align: center;
-        }
-
-        /* Colonne Statut */
-        .classes-table td:nth-child(8),
-        .classes-table th:nth-child(8) {
-            width: 50px;
-            text-align: center;
-        }
-
+        /* Badges sémantiques (statut + taux remplissage) */
         .badge {
             display: inline-block;
-            padding: 2px 6px;
+            padding: 2px 7px;
             border-radius: 999px;
-            font-size: 7px;
-            font-weight: 600;
+            font-size: 8px;
+            font-weight: 700;
             letter-spacing: 0.3px;
             text-transform: uppercase;
+            border: 1px solid transparent;
         }
-
         .badge-success {
-            background: #dcfce7;
-            color: #166534;
+            background: #d1fae5;
+            color: #065f46;
+            border-color: #a7f3d0;
         }
-
-        .badge-danger {
-            background: #fee2e2;
-            color: #991b1b;
-        }
-
         .badge-warning {
             background: #fef3c7;
             color: #92400e;
+            border-color: #fde68a;
+        }
+        .badge-danger {
+            background: #fee2e2;
+            color: #991b1b;
+            border-color: #fecaca;
+        }
+        .badge-muted {
+            background: #f1f5f9;
+            color: #64748b;
+            border-color: #e2e8f0;
         }
 
-        .filters-section {
-            background: #fffbeb;
-            border: 1px solid #fde68a;
-            border-radius: 8px;
-            padding: 8px 10px;
+        /* ============================================================
+           FILTRES APPLIQUÉS — Card monochrome
+           ============================================================ */
+        .filters-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-left: 3px solid #0453cb;
+            border-radius: 6px;
+            padding: 9px 12px;
             margin-top: 12px;
         }
-
         .filters-title {
             font-size: 9px;
             font-weight: 700;
-            color: #78350f;
+            color: #0f172a;
             text-transform: uppercase;
             letter-spacing: 0.4px;
-            margin-bottom: 4px;
+            margin-bottom: 5px;
         }
-
         .filters-list {
-            font-size: 8px;
-            color: #92400e;
-            line-height: 1.6;
+            font-size: 9px;
+            color: #334155;
+            line-height: 1.7;
+        }
+        .filters-list strong {
+            color: #0f172a;
         }
 
-        .footer {
+        /* ============================================================
+           FOOTER — Résumé + Info génération
+           ============================================================ */
+        .footer-section {
             margin-top: 14px;
+            display: table;
+            width: 100%;
+        }
+        .footer-left,
+        .footer-right {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            padding: 3px;
+        }
+        .summary-card,
+        .info-card {
+            background: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 9px 11px;
+        }
+        .info-card { margin-left: 4px; }
+        .summary-title {
+            font-size: 9.5px;
+            font-weight: 700;
+            color: #0f172a;
+            margin-bottom: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .summary-grid { display: table; width: 100%; }
+        .summary-row  { display: table-row; }
+        .summary-cell {
+            display: table-cell;
+            width: 25%;
+            text-align: center;
+            padding: 2px;
+        }
+        .summary-value {
+            font-size: 12px;
+            font-weight: 700;
+            color: #0453cb;
+        }
+        .summary-label {
+            font-size: 8px;
+            color: #64748b;
+            margin-top: 1px;
+        }
+        .info-field { margin-bottom: 5px; }
+        .info-label {
+            font-size: 8px;
+            color: #64748b;
+            margin-bottom: 1px;
+        }
+        .info-value {
+            font-size: 9.5px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .generation-info {
             text-align: center;
             font-size: 8px;
-            color: #9ca3af;
+            color: #94a3b8;
+            margin-top: 10px;
+            padding-top: 6px;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 24px 10px;
+            color: #64748b;
+            font-size: 10px;
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
         }
     </style>
 </head>
 <body>
-    <div class="page">
-        <div class="container">
-            {{-- En-tête --}}
-            <div class="header-section">
-                @if(!empty($settings['logo']))
-                    <img src="{{ public_path('storage/' . $settings['logo']) }}" alt="Logo" class="header-logo">
-                @endif
+    @php
+        $pdfCfg  = \App\Helpers\SettingsHelper::getPdfSettings();
+        $hdrBg   = $pdfCfg['header_bg_color']   ?? $pdfCfg['primary_color'] ?? '#0453cb';
+        $hdrText = $pdfCfg['header_text_color'] ?? '#ffffff';
+        $primary = $pdfCfg['primary_color']     ?? '#0453cb';
 
-                <div class="school-name">{{ $settings['nom'] ?? 'KLASSCI' }}</div>
+        // Fusion : les settings passés par le controller (nom, adresse, …) font foi
+        // pour l'établissement, mais les couleurs viennent des settings PDF globaux.
+        $etablissement = [
+            'nom'       => $settings['nom']       ?? 'KLASSCI',
+            'adresse'   => $settings['adresse']   ?? '',
+            'telephone' => $settings['telephone'] ?? '',
+            'email'     => $settings['email']     ?? '',
+            'logo'      => $settings['logo']      ?? '',
+        ];
 
-                @if(!empty($settings['adresse']) || !empty($settings['telephone']))
-                    <div class="school-meta">
-                        @if(!empty($settings['adresse']))
-                            {{ $settings['adresse'] }}
+        // ────────────────────────────────────────────────────────────
+        // Effectif canonique : année courante + status=active + workflow_step=etudiant_cree
+        // Référence : ESBTPClasse::getNombreEtudiantsAttribute() (Models/ESBTPClasse.php:231)
+        // ────────────────────────────────────────────────────────────
+        $effectifs = [];
+        $totalEffectif = 0;
+        $totalCapacite = 0;
+
+        foreach ($classes as $classe) {
+            $count = $classe->inscriptions()
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
+                ->when($anneeCourante, fn($q) => $q->where('annee_universitaire_id', $anneeCourante->id))
+                ->count();
+            $effectifs[$classe->id] = $count;
+            $totalEffectif += $count;
+            $totalCapacite += $classe->places_totales ?? 0;
+        }
+
+        $totalClasses         = $classes->count();
+        $classesActives       = $classes->where('is_active', true)->count();
+        $tauxMoyenRemplissage = $totalCapacite > 0 ? round(($totalEffectif / $totalCapacite) * 100, 1) : 0;
+    @endphp
+
+    <div class="container">
+        {{-- ===================================================
+             HEADER — Logo | Infos école + Titre document
+             =================================================== --}}
+        <div class="header-section">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                <tr>
+                    {{-- Col 1 : Logo --}}
+                    <td width="18%" style="background-color: {{ $hdrBg }}; padding: 14px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.25);">
+                        @if($etablissement['logo'] && file_exists(storage_path('app/public/' . $etablissement['logo'])))
+                            <img src="data:image/{{ pathinfo($etablissement['logo'], PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $etablissement['logo']))) }}"
+                                 style="max-height: 55px; max-width: 100px; filter: brightness(0) invert(1);" alt="Logo">
+                        @else
+                            <div style="font-size: 30px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4; letter-spacing: -2px;">K</div>
                         @endif
-                        @if(!empty($settings['adresse']) && !empty($settings['telephone']))
-                            •
+                    </td>
+
+                    {{-- Col 2 : Infos + titre + meta --}}
+                    <td width="82%" style="background-color: {{ $hdrBg }}; padding: 12px 16px; vertical-align: middle;">
+                        <div style="font-size: 15px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 2px;">{{ $etablissement['nom'] }}</div>
+
+                        @if($etablissement['adresse'] || $etablissement['telephone'] || $etablissement['email'])
+                        <div style="font-size: 8.5px; color: {{ $hdrText }}; opacity: 0.85; margin-bottom: 8px;">
+                            @if($etablissement['adresse']){{ $etablissement['adresse'] }}@endif
+                            @if($etablissement['telephone'])
+                                @if($etablissement['adresse']) &nbsp;|&nbsp; @endif
+                                Tél: {{ $etablissement['telephone'] }}
+                            @endif
+                            @if($etablissement['email'])
+                                @if($etablissement['adresse'] || $etablissement['telephone']) &nbsp;|&nbsp; @endif
+                                Email: {{ $etablissement['email'] }}
+                            @endif
+                        </div>
                         @endif
-                        @if(!empty($settings['telephone']))
-                            Tél: {{ $settings['telephone'] }}
-                        @endif
-                    </div>
-                @endif
 
-                <div class="document-title">LISTE DES CLASSES</div>
-            </div>
+                        <div style="border-top: 1px solid rgba(255,255,255,0.35); padding-top: 7px;">
+                            <div style="font-size: 12px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px; margin-bottom: 5px;">LISTE COMPLÈTE DES CLASSES</div>
+                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                                <tr>
+                                    <td width="40%" style="font-size: 9px; color: {{ $hdrText }};">
+                                        <span style="color: {{ $hdrText }}; opacity: 0.75;">Année universitaire :</span>
+                                        <strong style="color: {{ $hdrText }};">{{ $anneeCourante->name ?? 'Non définie' }}</strong>
+                                    </td>
+                                    <td width="30%" style="font-size: 9px; color: {{ $hdrText }}; text-align: center;">
+                                        <span style="color: {{ $hdrText }}; opacity: 0.75;">Date :</span>
+                                        <strong style="color: {{ $hdrText }};">{{ $dateExport->format('d/m/Y') }}</strong>
+                                    </td>
+                                    <td width="30%" style="font-size: 9px; color: {{ $hdrText }}; text-align: right;">
+                                        <span style="color: {{ $hdrText }}; opacity: 0.75;">Total :</span>
+                                        <strong style="color: {{ $hdrText }};">{{ $totalClasses }} classe{{ $totalClasses > 1 ? 's' : '' }}</strong>
+                                    </td>
+                                </tr>
+                            </table>
+                        </div>
+                    </td>
+                </tr>
+            </table>
+        </div>
 
-            {{-- Année universitaire --}}
-            <div class="info-section">
-                <div class="info-label">Année Universitaire</div>
-                <div class="info-value">{{ $anneeCourante ? $anneeCourante->name : 'Année en cours' }}</div>
-            </div>
+        {{-- ===================================================
+             KPI BAND — 4 cellules uniformes
+             =================================================== --}}
+        <table class="kpi-band" width="100%" border="0" cellspacing="0" cellpadding="0">
+            <tr>
+                <td width="25%" style="background-color: {{ $primary }}; padding: 10px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
+                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">TOTAL CLASSES</div>
+                    <div style="font-size: 18px; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 3px;">{{ $totalClasses }}</div>
+                    <div style="font-size: 7.5px; color: white; opacity: 0.7;">{{ $classesActives }} active{{ $classesActives > 1 ? 's' : '' }}</div>
+                </td>
+                <td width="25%" style="background-color: {{ $primary }}; padding: 10px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
+                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">EFFECTIF TOTAL</div>
+                    <div style="font-size: 18px; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 3px;">{{ $totalEffectif }}</div>
+                    <div style="font-size: 7.5px; color: white; opacity: 0.7;">étudiants inscrits</div>
+                </td>
+                <td width="25%" style="background-color: {{ $primary }}; padding: 10px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
+                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">CAPACITÉ TOTALE</div>
+                    <div style="font-size: 18px; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 3px;">{{ $totalCapacite }}</div>
+                    <div style="font-size: 7.5px; color: white; opacity: 0.7;">places disponibles</div>
+                </td>
+                <td width="25%" style="background-color: {{ $primary }}; padding: 10px 8px; text-align: center; vertical-align: middle;">
+                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">TAUX REMPLISSAGE</div>
+                    <div style="font-size: 18px; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 3px;">{{ $tauxMoyenRemplissage }}%</div>
+                    <div style="font-size: 7.5px; color: white; opacity: 0.7;">moyenne établissement</div>
+                </td>
+            </tr>
+        </table>
 
-            {{-- KPI Cards --}}
-            @php
-                $totalClasses = $classes->count();
-                $classesActives = $classes->where('is_active', true)->count();
-                $totalEffectif = 0;
-                $totalCapacite = 0;
-
-                foreach ($classes as $classe) {
-                    $effectif = $classe->inscriptions()->where('status', '!=', 'annulée')->count();
-                    $totalEffectif += $effectif;
-                    $totalCapacite += $classe->places_totales ?? 0;
-                }
-
-                $tauxMoyenRemplissage = $totalCapacite > 0 ? round(($totalEffectif / $totalCapacite) * 100, 1) : 0;
-            @endphp
-
-            <div class="kpi-grid">
-                <div class="kpi-card">
-                    <div class="kpi-label">Total Classes</div>
-                    <div class="kpi-value">{{ $totalClasses }}</div>
-                    <div class="kpi-sub">{{ $classesActives }} actives</div>
-                </div>
-
-                <div class="kpi-card">
-                    <div class="kpi-label">Effectif Total</div>
-                    <div class="kpi-value">{{ $totalEffectif }}</div>
-                    <div class="kpi-sub">étudiants</div>
-                </div>
-
-                <div class="kpi-card">
-                    <div class="kpi-label">Capacité Totale</div>
-                    <div class="kpi-value">{{ $totalCapacite }}</div>
-                    <div class="kpi-sub">places</div>
-                </div>
-
-                <div class="kpi-card">
-                    <div class="kpi-label">Taux Remplissage</div>
-                    <div class="kpi-value">{{ $tauxMoyenRemplissage }}%</div>
-                    <div class="kpi-sub">moyen</div>
-                </div>
-            </div>
-
-            {{-- Tableau des classes --}}
-            <div class="section-title">DÉTAIL DES CLASSES</div>
-
+        {{-- ===================================================
+             TABLE DES CLASSES
+             =================================================== --}}
+        @if($totalClasses > 0)
             <table class="classes-table">
                 <thead>
                     <tr>
-                        <th>N°</th>
-                        <th>Nom Classe</th>
-                        <th>Code</th>
-                        <th>Filière</th>
-                        <th>Niveau</th>
-                        <th>Effectif</th>
-                        <th>Taux</th>
-                        <th>Statut</th>
+                        <th class="col-num"   style="background-color: {{ $hdrBg }}; color: {{ $hdrText }};">N°</th>
+                        <th class="col-name"  style="background-color: {{ $hdrBg }}; color: {{ $hdrText }}; text-align: left;">Nom de la classe</th>
+                        <th class="col-code"  style="background-color: {{ $hdrBg }}; color: {{ $hdrText }};">Code</th>
+                        <th class="col-filie" style="background-color: {{ $hdrBg }}; color: {{ $hdrText }}; text-align: left;">Filière</th>
+                        <th class="col-niv"   style="background-color: {{ $hdrBg }}; color: {{ $hdrText }}; text-align: left;">Niveau</th>
+                        <th class="col-eff"   style="background-color: {{ $hdrBg }}; color: {{ $hdrText }};">Effectif</th>
+                        <th class="col-taux"  style="background-color: {{ $hdrBg }}; color: {{ $hdrText }};">Taux</th>
+                        <th class="col-stat"  style="background-color: {{ $hdrBg }}; color: {{ $hdrText }};">Statut</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($classes as $index => $classe)
                         @php
-                            $effectifActuel = $classe->inscriptions()->where('status', '!=', 'annulée')->count();
-                            $capaciteMax = $classe->places_totales ?? 0;
-                            $placesRestantes = max(0, $capaciteMax - $effectifActuel);
+                            $effectifActuel = $effectifs[$classe->id] ?? 0;
+                            $capaciteMax    = $classe->places_totales ?? 0;
                             $tauxRemplissage = $capaciteMax > 0 ? round(($effectifActuel / $capaciteMax) * 100, 1) : 0;
 
-                            $badgeClass = 'badge-success';
-                            if ($tauxRemplissage >= 100) {
-                                $badgeClass = 'badge-danger';
+                            $tauxBadge = 'badge-success';
+                            if ($capaciteMax == 0) {
+                                $tauxBadge = 'badge-muted';
+                            } elseif ($tauxRemplissage >= 100) {
+                                $tauxBadge = 'badge-danger';
                             } elseif ($tauxRemplissage >= 80) {
-                                $badgeClass = 'badge-warning';
+                                $tauxBadge = 'badge-warning';
                             }
                         @endphp
                         <tr>
-                            <td>{{ $index + 1 }}</td>
-                            <td>{{ $classe->name ?? 'N/A' }}</td>
-                            <td>{{ $classe->code ?? 'N/A' }}</td>
-                            <td>{{ $classe->filiere ? $classe->filiere->name : 'N/A' }}</td>
-                            <td>{{ $classe->niveau ? $classe->niveau->name : 'N/A' }}</td>
-                            <td>{{ $effectifActuel }}/{{ $capaciteMax }}</td>
-                            <td>
-                                <span class="badge {{ $badgeClass }}">
-                                    {{ $tauxRemplissage }}%
+                            <td class="col-num">
+                                <span class="row-number" style="background-color: {{ $primary }};">{{ $index + 1 }}</span>
+                            </td>
+                            <td class="col-name">{{ $classe->name ?? 'N/A' }}</td>
+                            <td class="col-code">
+                                <span class="code-chip">{{ $classe->code ?? 'N/A' }}</span>
+                            </td>
+                            <td class="col-filie">{{ $classe->filiere->name ?? 'N/A' }}</td>
+                            <td class="col-niv">{{ $classe->niveau->name ?? 'N/A' }}</td>
+                            <td class="col-eff">
+                                <span class="eff-value">{{ $effectifActuel }}</span>
+                                <span class="eff-capacity">/ {{ $capaciteMax }}</span>
+                            </td>
+                            <td class="col-taux">
+                                <span class="badge {{ $tauxBadge }}">
+                                    {{ $capaciteMax > 0 ? $tauxRemplissage . '%' : '—' }}
                                 </span>
                             </td>
-                            <td>
+                            <td class="col-stat">
                                 @if($classe->is_active)
                                     <span class="badge badge-success">Active</span>
                                 @else
@@ -423,42 +466,36 @@
                 </tbody>
             </table>
 
-            {{-- Filtres appliqués --}}
+            {{-- ===================================================
+                 FILTRES APPLIQUÉS (si au moins un)
+                 =================================================== --}}
             @if(!empty(array_filter($filters)))
-                <div class="filters-section">
-                    <div class="filters-title">🔍 Filtres appliqués</div>
+                <div class="filters-card">
+                    <div class="filters-title">Filtres appliqués</div>
                     <div class="filters-list">
                         @if(!empty($filters['search']))
                             • Recherche : <strong>{{ $filters['search'] }}</strong><br>
                         @endif
-
                         @if(!empty($filters['filiere_id']))
-                            @php
-                                $filiere = \App\Models\ESBTPFiliere::find($filters['filiere_id']);
-                            @endphp
+                            @php $filiere = \App\Models\ESBTPFiliere::find($filters['filiere_id']); @endphp
                             @if($filiere)
                                 • Filière : <strong>{{ $filiere->name }}</strong><br>
                             @endif
                         @endif
-
                         @if(!empty($filters['niveau_id']))
-                            @php
-                                $niveau = \App\Models\ESBTPNiveauEtude::find($filters['niveau_id']);
-                            @endphp
+                            @php $niveau = \App\Models\ESBTPNiveauEtude::find($filters['niveau_id']); @endphp
                             @if($niveau)
                                 • Niveau : <strong>{{ $niveau->name }}</strong><br>
                             @endif
                         @endif
-
                         @if(!empty($filters['statut']))
-                            • Statut : <strong>{{ $filters['statut'] === 'active' ? 'Actives' : 'Inactives' }}</strong><br>
+                            • Statut : <strong>{{ $filters['statut'] === 'active' ? 'Classes actives' : 'Classes inactives' }}</strong><br>
                         @endif
-
                         @if(!empty($filters['capacite']))
                             @php
                                 $capaciteLabel = [
                                     'disponible' => 'Classes avec places disponibles',
-                                    'pleine' => 'Classes pleines'
+                                    'pleine'     => 'Classes pleines',
                                 ][$filters['capacite']] ?? $filters['capacite'];
                             @endphp
                             • Capacité : <strong>{{ $capaciteLabel }}</strong><br>
@@ -467,10 +504,65 @@
                 </div>
             @endif
 
-            {{-- Footer --}}
-            <div class="footer">
-                Document généré le {{ $dateExport->format('d/m/Y à H:i') }}
+            {{-- ===================================================
+                 FOOTER — Résumé + info génération
+                 =================================================== --}}
+            <div class="footer-section">
+                <div class="footer-left">
+                    <div class="summary-card">
+                        <div class="summary-title">Résumé statistique</div>
+                        <div class="summary-grid">
+                            <div class="summary-row">
+                                <div class="summary-cell">
+                                    <div class="summary-value" style="color: {{ $primary }};">{{ $totalClasses }}</div>
+                                    <div class="summary-label">Classes</div>
+                                </div>
+                                <div class="summary-cell">
+                                    <div class="summary-value" style="color: {{ $primary }};">{{ $classesActives }}</div>
+                                    <div class="summary-label">Actives</div>
+                                </div>
+                                <div class="summary-cell">
+                                    <div class="summary-value" style="color: {{ $primary }};">{{ $totalEffectif }}</div>
+                                    <div class="summary-label">Étudiants</div>
+                                </div>
+                                <div class="summary-cell">
+                                    <div class="summary-value" style="color: {{ $primary }};">{{ max(0, $totalCapacite - $totalEffectif) }}</div>
+                                    <div class="summary-label">Places libres</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="footer-right">
+                    <div class="info-card">
+                        <div class="summary-title">Informations document</div>
+                        <div class="info-field">
+                            <div class="info-label">Document généré le :</div>
+                            <div class="info-value">{{ $dateExport->format('d/m/Y à H:i') }}</div>
+                        </div>
+                        <div class="info-field">
+                            <div class="info-label">Par :</div>
+                            <div class="info-value">{{ auth()->user()->name ?? 'Système' }}</div>
+                        </div>
+                        <div class="info-field">
+                            <div class="info-label">Établissement :</div>
+                            <div class="info-value">{{ $etablissement['nom'] }}</div>
+                        </div>
+                    </div>
+                </div>
             </div>
+        @else
+            <div class="empty-state">
+                Aucune classe ne correspond aux critères sélectionnés pour l'année {{ $anneeCourante->name ?? 'courante' }}.
+            </div>
+        @endif
+
+        {{-- ===================================================
+             GENERATION INFO — Bas de page
+             =================================================== --}}
+        <div class="generation-info">
+            <strong>Document généré automatiquement le {{ $dateExport->format('d/m/Y à H:i') }}</strong><br>
+            {{ $etablissement['nom'] }} — Système de gestion des classes
         </div>
     </div>
 </body>
