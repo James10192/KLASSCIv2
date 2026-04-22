@@ -54,7 +54,6 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         @page {
-            size: A4 landscape;
             margin: {{ $mTop }}mm {{ $mRight }}mm {{ $mBottom }}mm {{ $mLeft }}mm;
         }
 
