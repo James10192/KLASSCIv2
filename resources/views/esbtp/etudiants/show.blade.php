@@ -1929,6 +1929,25 @@
     background: #fff;
     margin-top: 1rem;
 }
+
+/* Chip compact "Année en cours" rendu au-dessus de la card mh-card
+   quand on saute le fin-hero dark (étudiant avec heures manuelles mais
+   pas de séances). */
+.pres-year-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .5rem .9rem;
+    background: #eff6ff;
+    color: #1e40af;
+    border: 1px solid #bfdbfe;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 600;
+    margin-bottom: .6rem;
+}
+.pres-year-chip i { color: #0453cb; }
+.pres-year-chip strong { color: #0c4a6e; font-weight: 700; }
 </style>
 @endsection
 
@@ -3926,7 +3945,25 @@
                 ->where('annee_universitaire_id', $anneePresId)
                 ->exists();
         }
+
+        // Skip totalement le dark hero quand l'étudiant n'a QUE des heures
+        // manuelles pour cette année (ni séances, ni absence d'inscription) —
+        // la section manuelle ci-dessous porte toute la donnée et un dark
+        // hero vide créait une bande inutile.
+        $skipFinHeroPresCur = $presInscCourante
+            && ($totalCur ?? 0) === 0
+            && $hasManualHoursCur;
     @endphp
+    @if($skipFinHeroPresCur)
+        {{-- Juste un chip compact "Année en cours · Classe", en bleu clair. --}}
+        <div class="pres-year-chip">
+            <i class="fas fa-calendar-check"></i>
+            Année en cours&nbsp;: <strong>{{ $presAnneeCourante->name }}</strong>
+            @if($presInscCourante->classe)
+                &middot; {{ $presInscCourante->classe->name }}
+            @endif
+        </div>
+    @else
     <div class="fin-hero" style="margin-bottom:16px;">
         @if($presInscCourante)
         <div class="fin-hero-year-badge">
@@ -3955,15 +3992,14 @@
 
         @if(!$presInscCourante)
             {{-- Pas d'inscription courante — message déjà affiché dans le hero badge ci-dessus --}}
-        @elseif(($totalCur ?? 0) === 0 && !$hasManualHoursCur)
+        @elseif(($totalCur ?? 0) === 0)
+            {{-- Cas "pas de séances, pas de manual" : empty state classique.
+                 Le cas "pas de séances MAIS manual existe" ne rentre pas ici :
+                 on a sauté le fin-hero entier via `$skipFinHeroPresCur`. --}}
             <div style="text-align:center; padding:28px 16px; color:var(--k-muted);">
                 <i class="fas fa-calendar-times" style="font-size:2rem; opacity:.25; display:block; margin-bottom:12px;"></i>
                 <p style="font-size:.84rem; margin:0; font-weight:500;">Aucune séance de présence enregistrée pour cette année.</p>
             </div>
-        @elseif(($totalCur ?? 0) === 0 && $hasManualHoursCur)
-            {{-- Des heures manuelles existent — pas d'empty state, la card
-                 presences-manual-hours s'affichera naturellement en-dessous
-                 et portera la donnée. --}}
         @else
             @php
                 $presConstatClassCur = ($tauxCur ?? 0) >= 80 ? 'good' : (($tauxCur ?? 0) >= 60 ? 'warning' : 'bad');
@@ -4052,6 +4088,7 @@
             </div>
         @endif
     </div>
+    @endif {{-- /!$skipFinHeroPresCur --}}
 
     {{-- Section "Saisie manuelle" année courante : extraite du hero dark
          vers une card claire (contraste WCAG correct). --}}
