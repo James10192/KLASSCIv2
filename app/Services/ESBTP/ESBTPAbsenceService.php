@@ -3,18 +3,24 @@
 namespace App\Services\ESBTP;
 
 use App\Models\ESBTPAttendance;
-use App\Models\ESBTPAttendanceManualHours;
+use App\Support\Attendance\ManualHoursSnapshot;
 use Carbon\Carbon;
-use Illuminate\Support\Collection;
 
 class ESBTPAbsenceService
 {
+    public function __construct(
+        protected ManualHoursResolver $resolver,
+    ) {
+    }
+
     /**
      * Calcule les détails des absences pour un étudiant.
      *
      * Si $anneeUniversitaireId et $periode sont fournis, la saisie manuelle par matière
      * (table esbtp_attendance_manual_hours) devient prioritaire sur le calcul session-based
-     * pour les matières concernées.
+     * pour les matières concernées. La ligne "globale" (matiere_id NULL) est également
+     * sommée au total étudiant (mais n'est jamais ventilée par matière, cf.
+     * `calculerAbsencesParMatiere`).
      */
     public function calculerDetailAbsences(
         $etudiantId,
@@ -31,8 +37,9 @@ class ESBTPAbsenceService
             $dateFin = Carbon::now()->format('Y-m-d');
         }
 
-        $manualByMatiere = $this->loadManualByMatiere($etudiantId, $anneeUniversitaireId, $periode);
-        $manualMatiereIds = $manualByMatiere->keys()->all();
+        $snapshot = $this->snapshot($etudiantId, $anneeUniversitaireId, $periode);
+        $manualByMatiere = $snapshot->perMatiere;
+        $manualMatiereIds = $snapshot->matiereIdsWithManual();
 
         $sessionsQuery = ESBTPAttendance::where('etudiant_id', $etudiantId)
             ->whereBetween('date', [$dateDebut, $dateFin]);
@@ -100,6 +107,32 @@ class ESBTPAbsenceService
             }
         }
 
+        if ($snapshot->global !== null) {
+            $gJust = (float) $snapshot->global->heures_absence_justifiees;
+            $gNonJust = (float) $snapshot->global->heures_absence_non_justifiees;
+            $absencesJustifiees += $gJust;
+            $absencesNonJustifiees += $gNonJust;
+
+            if ($gJust > 0) {
+                $detailJustifiees[] = [
+                    'date' => null,
+                    'duree' => $gJust,
+                    'commentaire' => $snapshot->global->notes ?? 'Saisie globale (sans matière)',
+                    'source' => 'manual_global',
+                    'matiere_id' => null,
+                ];
+            }
+            if ($gNonJust > 0) {
+                $detailNonJustifiees[] = [
+                    'date' => null,
+                    'duree' => $gNonJust,
+                    'commentaire' => $snapshot->global->notes ?? 'Saisie globale (sans matière)',
+                    'source' => 'manual_global',
+                    'matiere_id' => null,
+                ];
+            }
+        }
+
         return [
             'justifiees' => $absencesJustifiees,
             'non_justifiees' => $absencesNonJustifiees,
@@ -109,6 +142,7 @@ class ESBTPAbsenceService
                 'non_justifiees' => $detailNonJustifiees,
             ],
             'manual_matieres' => $manualMatiereIds,
+            'has_global' => $snapshot->global !== null,
         ];
     }
 
@@ -133,8 +167,9 @@ class ESBTPAbsenceService
             $dateFin = Carbon::now()->format('Y-m-d');
         }
 
-        $manualByMatiere = $this->loadManualByMatiere($etudiantId, $anneeUniversitaireId, $periode);
-        $manualMatiereIds = $manualByMatiere->keys()->all();
+        $snapshot = $this->snapshot($etudiantId, $anneeUniversitaireId, $periode);
+        $manualByMatiere = $snapshot->perMatiere;
+        $manualMatiereIds = $snapshot->matiereIdsWithManual();
 
         $sessionsQuery = ESBTPAttendance::where('etudiant_id', $etudiantId)
             ->whereNotNull('matiere_id')
@@ -200,27 +235,33 @@ class ESBTPAbsenceService
             'par_matiere' => $parMatiere,
             'total_heures' => $totalHeures,
             'manual_matieres' => $manualMatiereIds,
+            'has_global' => $snapshot->global !== null,
+            'global' => $snapshot->global ? [
+                'justifiees' => (float) $snapshot->global->heures_absence_justifiees,
+                'non_justifiees' => (float) $snapshot->global->heures_absence_non_justifiees,
+                'presence' => (float) $snapshot->global->heures_presence,
+                'notes' => $snapshot->global->notes,
+            ] : null,
         ];
     }
 
     /**
-     * Charge les saisies manuelles par matière pour un étudiant/période.
-     * Retourne une collection indexée par matiere_id (vide si pas de contexte).
+     * Wrapper autour du resolver qui absorbe la normalisation de période
+     * (les appels historiques passent parfois '1'/'S1' au lieu de
+     * 'semestre1'). Retourne un snapshot vide si aucun contexte de
+     * période n'est fourni.
      */
-    private function loadManualByMatiere($etudiantId, $anneeUniversitaireId, $periode): Collection
+    private function snapshot($etudiantId, $anneeUniversitaireId, $periode): ManualHoursSnapshot
     {
         if (!$anneeUniversitaireId || !$periode) {
-            return collect();
+            return ManualHoursSnapshot::empty();
         }
 
-        $normalizedPeriode = $this->normalizePeriode((string) $periode);
-
-        return ESBTPAttendanceManualHours::with('matiere:id,name')
-            ->where('etudiant_id', $etudiantId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->where('periode', $normalizedPeriode)
-            ->get()
-            ->keyBy('matiere_id');
+        return $this->resolver->snapshot(
+            (int) $etudiantId,
+            (int) $anneeUniversitaireId,
+            $this->normalizePeriode((string) $periode)
+        );
     }
 
     /**

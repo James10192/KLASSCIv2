@@ -43,6 +43,13 @@ class ManualAttendanceHoursService
             ->groupBy(fn ($row) => $row->etudiant_id.'_'.$row->matiere_id);
     }
 
+    /**
+     * Crée, met à jour ou supprime les lignes manual_hours en batch.
+     *
+     * `$context['matiere_id']` peut être `null` → saisie globale
+     * (une seule ligne par (étudiant, année, période)). La logique de
+     * matching du `existing` s'adapte automatiquement via `matchQuery`.
+     */
     public function upsertBatch(array $entries, array $context, int $userId): int
     {
         $count = 0;
@@ -54,12 +61,12 @@ class ManualAttendanceHoursService
                     || ($entry['heures_absence_non_justifiees'] ?? 0) > 0
                     || !empty($entry['notes']);
 
-                $existing = ESBTPAttendanceManualHours::where([
-                    'etudiant_id' => $entry['etudiant_id'],
-                    'matiere_id' => $context['matiere_id'],
-                    'annee_universitaire_id' => $context['annee_universitaire_id'],
-                    'periode' => $context['periode'],
-                ])->first();
+                $existing = $this->matchQuery(
+                    (int) $entry['etudiant_id'],
+                    $context['matiere_id'] ?? null,
+                    (int) $context['annee_universitaire_id'],
+                    (string) $context['periode']
+                )->first();
 
                 if (!$hasValue) {
                     if ($existing) {
@@ -72,7 +79,7 @@ class ManualAttendanceHoursService
 
                 $payload = [
                     'etudiant_id' => $entry['etudiant_id'],
-                    'matiere_id' => $context['matiere_id'],
+                    'matiere_id' => $context['matiere_id'] ?? null,
                     'classe_id' => $context['classe_id'],
                     'annee_universitaire_id' => $context['annee_universitaire_id'],
                     'periode' => $context['periode'],
@@ -95,6 +102,18 @@ class ManualAttendanceHoursService
         });
 
         return $count;
+    }
+
+    private function matchQuery(int $etudiantId, ?int $matiereId, int $anneeId, string $periode)
+    {
+        $q = ESBTPAttendanceManualHours::query()
+            ->where('etudiant_id', $etudiantId)
+            ->where('annee_universitaire_id', $anneeId)
+            ->where('periode', $periode);
+
+        return $matiereId === null
+            ? $q->whereNull('matiere_id')
+            : $q->where('matiere_id', $matiereId);
     }
 
     public function delete(int $id, int $userId): bool

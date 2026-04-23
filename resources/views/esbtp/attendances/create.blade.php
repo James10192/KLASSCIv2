@@ -194,7 +194,8 @@
                          x-data="manualHoursTab({
                              initialClasseId: {{ (int) request('classe_id', 0) }},
                              anneeId: {{ (int) (optional($anneeUniversitaireCourante ?? null)->id ?? 0) }},
-                             initialMatieres: JSON.parse($el.dataset.initialMatieres || '[]')
+                             initialMatieres: JSON.parse($el.dataset.initialMatieres || '[]'),
+                             globalEnabled: {{ (bool) \App\Helpers\SettingsHelper::get('attendance_manual_hours_global_enabled', false) ? 'true' : 'false' }}
                          })"
                          x-show="hasClasse"
                          x-cloak
@@ -328,33 +329,44 @@
                                 </template>
 
                                 <template x-if="matieres.length > 0">
-                                    <div class="amh-selector-bar">
-                                        <div class="amh-selector-field">
-                                            <label for="amh-matiere-select">Matière</label>
-                                            <select id="amh-matiere-select" x-model="matiereId" class="form-control" x-ref="matiereSelect">
-                                                <option value="">— Sélectionner une matière —</option>
-                                                @if(isset($matieresClasse))
-                                                    @foreach($matieresClasse as $m)
-                                                        <option value="{{ $m->id }}">{{ $m->name }}</option>
-                                                    @endforeach
-                                                @endif
-                                            </select>
+                                    <div>
+                                        <div class="amh-selector-bar">
+                                            <div class="amh-selector-field">
+                                                <label for="amh-matiere-select">Matière</label>
+                                                <select id="amh-matiere-select" x-model="matiereId" class="form-control" x-ref="matiereSelect"
+                                                        :disabled="modeGlobal">
+                                                    <option value="">— Sélectionner une matière —</option>
+                                                    @if(isset($matieresClasse))
+                                                        @foreach($matieresClasse as $m)
+                                                            <option value="{{ $m->id }}">{{ $m->name }}</option>
+                                                        @endforeach
+                                                    @endif
+                                                </select>
+                                            </div>
+                                            <div class="amh-selector-field">
+                                                <label for="amh-periode-select">Période</label>
+                                                <select id="amh-periode-select" x-model="periode" class="form-control">
+                                                    <option value="semestre1">Semestre 1</option>
+                                                    <option value="semestre2">Semestre 2</option>
+                                                    <option value="annuel">Annuel</option>
+                                                </select>
+                                            </div>
+                                            <button type="button"
+                                                    class="amh-btn amh-btn--primary"
+                                                    @click="loadGrid()"
+                                                    :disabled="(!modeGlobal && !matiereId) || loading">
+                                                <i class="fas fa-rotate" :class="{ 'fa-spin': loading }"></i>
+                                                <span x-text="loading ? 'Chargement...' : 'Charger la grille'"></span>
+                                            </button>
                                         </div>
-                                        <div class="amh-selector-field">
-                                            <label for="amh-periode-select">Période</label>
-                                            <select id="amh-periode-select" x-model="periode" class="form-control">
-                                                <option value="semestre1">Semestre 1</option>
-                                                <option value="semestre2">Semestre 2</option>
-                                                <option value="annuel">Annuel</option>
-                                            </select>
-                                        </div>
-                                        <button type="button"
-                                                class="amh-btn amh-btn--primary"
-                                                @click="loadGrid()"
-                                                :disabled="!matiereId || loading">
-                                            <i class="fas fa-rotate" :class="{ 'fa-spin': loading }"></i>
-                                            <span x-text="loading ? 'Chargement...' : 'Charger la grille'"></span>
-                                        </button>
+                                        <label class="amh-global-toggle" x-show="globalEnabled" x-cloak>
+                                            <input type="checkbox" x-model="modeGlobal" @change="onModeGlobalChanged()">
+                                            <span class="amh-global-toggle__slider"></span>
+                                            <span class="amh-global-toggle__text">
+                                                <strong>Mode global (sans matière)</strong>
+                                                <small>Saisir les heures d'absence pour toute la période, sans associer à une matière spécifique.</small>
+                                            </span>
+                                        </label>
                                     </div>
                                 </template>
 
@@ -514,6 +526,52 @@
         letter-spacing: .04em;
         margin-bottom: .35rem;
     }
+
+    .amh-global-toggle {
+        display: flex;
+        align-items: flex-start;
+        gap: .75rem;
+        padding: .85rem 1.1rem;
+        background: #f0f9ff;
+        border: 1px solid #bae6fd;
+        border-radius: 10px;
+        margin-bottom: 1.25rem;
+        cursor: pointer;
+        transition: all .2s ease;
+    }
+    .amh-global-toggle:hover { background: #e0f2fe; }
+    .amh-global-toggle input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+        flex-shrink: 0;
+        margin-top: 2px;
+        accent-color: #0453cb;
+        cursor: pointer;
+    }
+    .amh-global-toggle__slider { display: none; }
+    .amh-global-toggle__text {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: .15rem;
+        line-height: 1.35;
+    }
+    .amh-global-toggle__text strong {
+        font-size: .88rem;
+        color: #0c4a6e;
+        font-weight: 600;
+    }
+    .amh-global-toggle__text small {
+        font-size: .78rem;
+        color: #0369a1;
+    }
+
+    .amh-alert--info {
+        background: #eff6ff;
+        border-color: #bfdbfe;
+        color: #1e40af;
+    }
+    .amh-alert--info i { color: #2563eb; }
 
     .amh-btn {
         display: inline-flex;
@@ -1591,15 +1649,25 @@
             periode: 'semestre1',
             loading: false,
             html: '',
+            globalEnabled: !!config.globalEnabled,
+            modeGlobal: false,
 
             get hasClasse() {
                 return !!this.classeId;
+            },
+
+            onModeGlobalChanged() {
+                this.html = '';
+                if (this.modeGlobal) {
+                    this.matiereId = '';
+                }
             },
 
             onClasseChanged(detail) {
                 this.classeId = detail.classeId || 0;
                 this.matieres = Array.isArray(detail.matieres) ? detail.matieres : [];
                 this.matiereId = '';
+                this.modeGlobal = false;
                 this.html = '';
                 // Reconstruire les <option> du select matière (évite x-for dans <select>)
                 this.$nextTick(() => {
@@ -1617,13 +1685,17 @@
             },
 
             async loadGrid() {
-                if (!this.matiereId) return;
+                if (!this.modeGlobal && !this.matiereId) return;
                 this.loading = true;
                 this.html = '';
                 try {
                     const url = new URL('{{ route('esbtp.attendances.manual.load') }}', window.location.origin);
                     url.searchParams.set('classe_id', this.classeId);
-                    url.searchParams.set('matiere_id', this.matiereId);
+                    if (this.modeGlobal) {
+                        url.searchParams.set('mode', 'global');
+                    } else {
+                        url.searchParams.set('matiere_id', this.matiereId);
+                    }
                     url.searchParams.set('periode', this.periode);
                     if (this.anneeId) url.searchParams.set('annee_universitaire_id', this.anneeId);
 

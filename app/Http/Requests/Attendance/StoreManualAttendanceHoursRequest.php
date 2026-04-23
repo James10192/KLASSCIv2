@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\Attendance;
 
+use App\Helpers\SettingsHelper;
 use App\Services\ESBTP\ManualAttendanceHoursService;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -17,9 +18,16 @@ class StoreManualAttendanceHoursRequest extends FormRequest
 
     public function rules(): array
     {
+        $globalEnabled = (bool) SettingsHelper::get('attendance_manual_hours_global_enabled', false);
+
         return [
             'classe_id' => ['required', 'integer', 'exists:esbtp_classes,id'],
-            'matiere_id' => ['required', 'integer', 'exists:esbtp_matieres,id'],
+            // `matiere_id` devient optionnel uniquement si la feature
+            // globale est activée côté tenant. Sinon on garde le
+            // comportement historique (matière obligatoire).
+            'matiere_id' => $globalEnabled
+                ? ['nullable', 'integer', 'exists:esbtp_matieres,id']
+                : ['required', 'integer', 'exists:esbtp_matieres,id'],
             'annee_universitaire_id' => ['required', 'integer', 'exists:esbtp_annee_universitaires,id'],
             'periode' => ['required', 'string', Rule::in(ManualAttendanceHoursService::PERIODES)],
             'entries' => ['required', 'array', 'min:1'],

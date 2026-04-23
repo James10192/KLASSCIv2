@@ -1,18 +1,32 @@
 @php
     $volumeHoraireTotal = $volumeHoraireTotal ?? 0;
+    $isGlobal = $isGlobal ?? false;
     $fmtHours = fn ($h) => rtrim(rtrim(number_format((float) $h, 2, '.', ''), '0'), '.');
 @endphp
-<div class="amh-panel" data-classe-id="{{ $classe->id }}" data-matiere-id="{{ $matiere->id }}" data-periode="{{ $periode }}" data-annee-id="{{ $anneeUniversitaire->id }}" data-volume-total="{{ $volumeHoraireTotal }}">
+<div class="amh-panel" data-classe-id="{{ $classe->id }}" data-matiere-id="{{ $isGlobal ? '' : $matiere->id }}" data-periode="{{ $periode }}" data-annee-id="{{ $anneeUniversitaire->id }}" data-volume-total="{{ $volumeHoraireTotal }}" data-mode="{{ $isGlobal ? 'global' : 'per-matiere' }}">
     <div class="amh-header">
         <div class="amh-header__titles">
-            <div class="amh-header__eyebrow">{{ $classe->name }} · {{ $matiere->name }}</div>
-            <div class="amh-header__title">Saisie manuelle — {{ ucfirst(str_replace('semestre', 'Semestre ', $periode)) }}</div>
+            <div class="amh-header__eyebrow">
+                {{ $classe->name }}
+                @if($isGlobal)
+                    · <span class="amh-chip amh-chip--blue"><i class="fas fa-globe"></i>Saisie globale</span>
+                @else
+                    · {{ $matiere->name }}
+                @endif
+            </div>
+            <div class="amh-header__title">
+                @if($isGlobal)
+                    Saisie globale (sans matière) — {{ ucfirst(str_replace('semestre', 'Semestre ', $periode)) }}
+                @else
+                    Saisie manuelle — {{ ucfirst(str_replace('semestre', 'Semestre ', $periode)) }}
+                @endif
+            </div>
             <div class="amh-header__meta">
                 Année {{ $anneeUniversitaire->name ?? $anneeUniversitaire->libelle ?? '—' }}
                 · {{ $etudiants->count() }} étudiant{{ $etudiants->count() > 1 ? 's' : '' }}
-                @if($volumeHoraireTotal > 0)
+                @if(!$isGlobal && $volumeHoraireTotal > 0)
                     · <span class="amh-chip amh-chip--blue"><i class="fas fa-clock"></i>Volume prévu : {{ $fmtHours($volumeHoraireTotal) }}h</span>
-                @else
+                @elseif(!$isGlobal)
                     · <span class="amh-chip amh-chip--muted"><i class="fas fa-circle-info"></i>Pas de volume horaire défini dans les planifications</span>
                 @endif
                 @if($existing->count() > 0)
@@ -42,6 +56,17 @@
         </div>
     @endif
 
+    @if($isGlobal)
+        <div class="amh-alert amh-alert--info">
+            <i class="fas fa-circle-info"></i>
+            <div>
+                La saisie <strong>globale</strong> enregistre des heures d'absence et de présence <strong>sans les rattacher à une matière</strong>.
+                Ces heures n'écrasent <strong>jamais</strong> une saisie par matière : sur le bulletin, la priorité est
+                <em>saisie par matière &gt; saisie globale &gt; séances</em>. Elles s'affichent en en-tête du bulletin.
+            </div>
+        </div>
+    @endif
+
     @if($etudiants->isEmpty())
         <div class="amh-alert amh-alert--muted">
             <i class="fas fa-user-slash"></i>
@@ -51,7 +76,9 @@
         <form id="amh-form" class="amh-form" autocomplete="off">
             @csrf
             <input type="hidden" name="classe_id" value="{{ $classe->id }}">
-            <input type="hidden" name="matiere_id" value="{{ $matiere->id }}">
+            @if(!$isGlobal)
+                <input type="hidden" name="matiere_id" value="{{ $matiere->id }}">
+            @endif
             <input type="hidden" name="annee_universitaire_id" value="{{ $anneeUniversitaire->id }}">
             <input type="hidden" name="periode" value="{{ $periode }}">
 
