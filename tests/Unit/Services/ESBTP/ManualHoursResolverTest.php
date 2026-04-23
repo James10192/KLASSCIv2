@@ -76,7 +76,7 @@ class ManualHoursResolverTest extends TestCase
         $this->assertSame([$matiere->id], $snapshot->matiereIdsWithManual());
     }
 
-    public function test_effective_for_matiere_never_falls_back_to_global(): void
+    public function test_per_matiere_collection_never_contains_global(): void
     {
         $etudiant = ESBTPEtudiant::factory()->create();
         $annee = ESBTPAnneeUniversitaire::factory()->create();
@@ -94,7 +94,9 @@ class ManualHoursResolverTest extends TestCase
 
         $snapshot = $this->resolver->snapshot($etudiant->id, $annee->id, 'semestre1');
 
-        $this->assertNull($snapshot->effectiveForMatiere($matiere->id));
+        $this->assertNull($snapshot->forMatiere($matiere->id));
+        $this->assertFalse($snapshot->hasMatiere($matiere->id));
+        $this->assertTrue($snapshot->perMatiere->isEmpty());
         $this->assertNotNull($snapshot->global);
     }
 }

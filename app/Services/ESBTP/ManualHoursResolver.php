@@ -19,7 +19,24 @@ use App\Support\Attendance\ManualHoursSnapshot;
  */
 class ManualHoursResolver
 {
+    /**
+     * Cache in-process pour éviter de re-requêter les mêmes
+     * (étudiant, année, période) lors d'une même requête HTTP.
+     * BulletinService appelle à la fois `calculerDetailAbsences` et
+     * `calculerAbsencesParMatiere` pour chaque étudiant lors de la
+     * génération d'un bulletin de classe — sans ce cache on doublerait
+     * les queries.
+     */
+    private array $cache = [];
+
     public function snapshot(int $etudiantId, int $anneeId, string $periode): ManualHoursSnapshot
+    {
+        $key = "{$etudiantId}:{$anneeId}:{$periode}";
+
+        return $this->cache[$key] ??= $this->build($etudiantId, $anneeId, $periode);
+    }
+
+    private function build(int $etudiantId, int $anneeId, string $periode): ManualHoursSnapshot
     {
         $rows = ESBTPAttendanceManualHours::query()
             ->where('etudiant_id', $etudiantId)

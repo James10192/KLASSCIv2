@@ -1833,7 +1833,10 @@ class ESBTPAttendanceController extends Controller
     public function loadManualTab(Request $request, ManualAttendanceHoursService $service)
     {
         $globalEnabled = (bool) \App\Helpers\SettingsHelper::get('attendance_manual_hours_global_enabled', false);
-        $isGlobal = $globalEnabled && ($request->input('mode') === 'global' || $request->input('matiere_id') === null);
+        $isGlobal = $globalEnabled && (
+            $request->input('mode') === ManualAttendanceHoursService::MODE_GLOBAL
+            || $request->input('matiere_id') === null
+        );
 
         $request->validate([
             'classe_id' => 'required|exists:esbtp_classes,id',
@@ -1955,15 +1958,10 @@ class ESBTPAttendanceController extends Controller
             ], 422);
         }
 
-        $globalEnabled = (bool) \App\Helpers\SettingsHelper::get('attendance_manual_hours_global_enabled', false);
+        // La FormRequest `StoreManualAttendanceHoursRequest` a déjà garanti
+        // que `matiere_id` est présent quand le flag est OFF — pas de double-check
+        // nécessaire ici, la défense est côté validation.
         $matiereId = $request->filled('matiere_id') ? (int) $request->matiere_id : null;
-
-        if ($matiereId === null && !$globalEnabled) {
-            return response()->json([
-                'success' => false,
-                'message' => 'La saisie globale (sans matière) n\'est pas activée pour ce tenant.',
-            ], 422);
-        }
 
         $count = $service->upsertBatch(
             $entries,

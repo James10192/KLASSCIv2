@@ -1,7 +1,7 @@
 @php
     $volumeHoraireTotal = $volumeHoraireTotal ?? 0;
     $isGlobal = $isGlobal ?? false;
-    $fmtHours = fn ($h) => rtrim(rtrim(number_format((float) $h, 2, '.', ''), '0'), '.');
+    $fmtHours = fn ($h) => \App\Support\Attendance\HoursFormatter::format((float) $h);
 @endphp
 <div class="amh-panel" data-classe-id="{{ $classe->id }}" data-matiere-id="{{ $isGlobal ? '' : $matiere->id }}" data-periode="{{ $periode }}" data-annee-id="{{ $anneeUniversitaire->id }}" data-volume-total="{{ $volumeHoraireTotal }}" data-mode="{{ $isGlobal ? 'global' : 'per-matiere' }}">
     <div class="amh-header">

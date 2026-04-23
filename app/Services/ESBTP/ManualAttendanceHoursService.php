@@ -10,6 +10,9 @@ class ManualAttendanceHoursService
 {
     public const PERIODES = ['semestre1', 'semestre2', 'annuel'];
 
+    /** Valeur du paramètre `mode` attendue côté `loadManualTab` pour la saisie globale (sans matière). */
+    public const MODE_GLOBAL = 'global';
+
     public function getForEtudiant(int $etudiantId, int $anneeId, string $periode): Collection
     {
         return ESBTPAttendanceManualHours::forEtudiant($etudiantId)

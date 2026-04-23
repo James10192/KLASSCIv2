@@ -23,7 +23,7 @@
     $mhPerMatiere = $mhRows->filter(fn ($r) => $r->matiere_id !== null);
     $mhGlobalRows = $mhRows->filter(fn ($r) => $r->matiere_id === null);
 
-    $fmtHours = fn ($h) => rtrim(rtrim(number_format((float) $h, 2, '.', ''), '0'), '.');
+    $fmtHours = fn ($h) => \App\Support\Attendance\HoursFormatter::format((float) $h);
 
     $periodeLabel = fn ($p) => ucfirst(str_replace('semestre', 'Semestre ', $p));
 @endphp

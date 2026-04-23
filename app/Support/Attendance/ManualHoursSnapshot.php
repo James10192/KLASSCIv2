@@ -57,15 +57,4 @@ final class ManualHoursSnapshot
     {
         return $this->perMatiere->keys()->all();
     }
-
-    /**
-     * Source effective pour une matière donnée selon la règle de priorité.
-     * Ne retourne JAMAIS la ligne globale ici — la ventilation par matière
-     * depuis une ligne globale ne serait qu'une moyenne artificielle. La
-     * ligne globale se consomme explicitement via `$snapshot->global`.
-     */
-    public function effectiveForMatiere(int $matiereId): ?ESBTPAttendanceManualHours
-    {
-        return $this->forMatiere($matiereId);
-    }
 }
