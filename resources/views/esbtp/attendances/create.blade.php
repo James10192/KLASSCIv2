@@ -204,14 +204,14 @@
                             <button type="button"
                                     class="att-tab"
                                     :class="{ 'att-tab--active': activeTab === 'seances' }"
-                                    @click="activeTab = 'seances'"
+                                    @click="activeTab = 'seances'; $dispatch('attendance:tab-changed', { tab: 'seances' })"
                                     role="tab">
                                 <i class="fas fa-calendar-check"></i>Saisie par séance
                             </button>
                             <button type="button"
                                     class="att-tab"
                                     :class="{ 'att-tab--active': activeTab === 'manual' }"
-                                    @click="activeTab = 'manual'"
+                                    @click="activeTab = 'manual'; $dispatch('attendance:tab-changed', { tab: 'manual' })"
                                     role="tab">
                                 <i class="fas fa-list-check"></i>Saisie manuelle (heures)
                             </button>
@@ -383,18 +383,22 @@
                             </div>
                     </div>
 
-                    {{-- Alertes contextuelles (Alpine-réactives) — en dehors des onglets pour être visibles même sans classe --}}
+                    {{-- Alertes contextuelles (Alpine-réactives) — en dehors des onglets pour être visibles même sans classe.
+                         `activeTab` est synchronisé via l'event `attendance:tab-changed` dispatché par les boutons d'onglets —
+                         on ne peut pas lire l'`activeTab` du composant manualHoursTab directement car il est dans un autre x-data scope. --}}
                     <div x-data="{
                             hasClasse: {{ (isset($classeSelectionnee) && $classeSelectionnee) ? 'true' : 'false' }},
                             hasSeance: {{ request()->filled('seance_id') ? 'true' : 'false' }},
-                            hasStudents: {{ (isset($etudiants) && $etudiants->count() > 0) ? 'true' : 'false' }}
+                            hasStudents: {{ (isset($etudiants) && $etudiants->count() > 0) ? 'true' : 'false' }},
+                            activeTab: 'seances'
                          }"
                          @attendance:classe-changed.window="hasClasse = !!$event.detail.classeId; hasSeance = false; hasStudents = false;"
-                         @attendance:seance-loaded.window="hasSeance = true; hasStudents = ($event.detail.nbEtudiants ?? 0) > 0;">
-                        <div class="alert alert-warning" x-show="hasClasse && hasSeance && !hasStudents" x-cloak>
+                         @attendance:seance-loaded.window="hasSeance = true; hasStudents = ($event.detail.nbEtudiants ?? 0) > 0;"
+                         @attendance:tab-changed.window="activeTab = $event.detail.tab">
+                        <div class="alert alert-warning" x-show="hasClasse && hasSeance && !hasStudents && activeTab === 'seances'" x-cloak>
                             <i class="fas fa-triangle-exclamation me-2"></i>Aucun étudiant n'est inscrit dans cette classe pour l'année en cours.
                         </div>
-                        <div class="alert alert-info" x-show="hasClasse && !hasSeance" x-cloak>
+                        <div class="alert alert-info" x-show="hasClasse && !hasSeance && activeTab === 'seances'" x-cloak>
                             <i class="fas fa-info-circle me-2"></i>Veuillez sélectionner une séance pour voir les étudiants et marquer les présences.
                         </div>
                         <div class="alert alert-info" x-show="!hasClasse" x-cloak>

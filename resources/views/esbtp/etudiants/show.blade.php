@@ -3902,6 +3902,7 @@
     {{-- ── Année en cours : bloc FLAT (toujours visible) ── --}}
     @if($presAnneeCourante)
     @php
+        $hasManualHoursCur = false;
         if ($presInscCourante) {
             $anneePresId    = $presAnneeCourante->id;
             $attRowCur = \App\Models\ESBTPAttendance::finalOnly()
@@ -3915,6 +3916,15 @@
             $absCur    = (int)($attRowCur->nb_absences ?? 0);
             $justCur   = (int)($attRowCur->nb_absences_just ?? 0);
             $tauxCur   = $totalCur > 0 ? round(($presCur + $retardCur) / $totalCur * 100, 1) : null;
+
+            // Précharger la présence de saisie manuelle pour cette année :
+            // ça évite d'afficher le message "Aucune séance enregistrée"
+            // alors que la card manual-hours juste en-dessous contient des
+            // données — la séparation visuelle paraissait incohérente.
+            $hasManualHoursCur = \App\Models\ESBTPAttendanceManualHours::query()
+                ->where('etudiant_id', $etudiant->id)
+                ->where('annee_universitaire_id', $anneePresId)
+                ->exists();
         }
     @endphp
     <div class="fin-hero" style="margin-bottom:16px;">
@@ -3945,11 +3955,15 @@
 
         @if(!$presInscCourante)
             {{-- Pas d'inscription courante — message déjà affiché dans le hero badge ci-dessus --}}
-        @elseif(($totalCur ?? 0) === 0)
+        @elseif(($totalCur ?? 0) === 0 && !$hasManualHoursCur)
             <div style="text-align:center; padding:28px 16px; color:var(--k-muted);">
                 <i class="fas fa-calendar-times" style="font-size:2rem; opacity:.25; display:block; margin-bottom:12px;"></i>
                 <p style="font-size:.84rem; margin:0; font-weight:500;">Aucune séance de présence enregistrée pour cette année.</p>
             </div>
+        @elseif(($totalCur ?? 0) === 0 && $hasManualHoursCur)
+            {{-- Des heures manuelles existent — pas d'empty state, la card
+                 presences-manual-hours s'affichera naturellement en-dessous
+                 et portera la donnée. --}}
         @else
             @php
                 $presConstatClassCur = ($tauxCur ?? 0) >= 80 ? 'good' : (($tauxCur ?? 0) >= 60 ? 'warning' : 'bad');
