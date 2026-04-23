@@ -1648,6 +1648,287 @@
 .doc-action-btn.preview:hover { background: #dce8ff; }
 .doc-action-btn.delete { background: #fef2f2; color: #ef4444; }
 .doc-action-btn.delete:hover { background: #fee2e2; }
+
+/* ═══════════════════════════════════════════════════════════
+   Saisie manuelle (heures par matière) — namespace mh-*
+   Extrait du tab Présences : card claire, palette monochrome
+   bleu KLASSCI + sémantiques (success/warning/danger) limitées
+   aux indicateurs de statut (présence / abs. just / abs. non just).
+   ═══════════════════════════════════════════════════════════ */
+.mh-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 1.25rem 1.4rem;
+    margin-top: 1.25rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+}
+.mh-card[data-current="0"] {
+    background: #f8fafc;
+    margin-top: 1rem;
+}
+
+.mh-head {
+    display: flex;
+    align-items: flex-start;
+    gap: .85rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.mh-head-title {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    flex: 1;
+    min-width: 220px;
+}
+.mh-head-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .9rem;
+    flex-shrink: 0;
+}
+.mh-head-label { font-size: .92rem; font-weight: 700; color: #1e293b; line-height: 1.25; }
+.mh-head-sub { font-size: .72rem; color: #64748b; margin-top: .1rem; }
+
+.mh-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .7rem;
+    font-weight: 600;
+    padding: .22rem .65rem;
+    border-radius: 999px;
+    white-space: nowrap;
+}
+.mh-chip--priority { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+.mh-chip--global   { background: #f0f9ff; color: #0c4a6e; border: 1px solid #bae6fd; }
+.mh-chip--sm       { font-size: .65rem; padding: .15rem .5rem; }
+
+.mh-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .75rem;
+    margin-bottom: 1.15rem;
+}
+@media (max-width: 720px) {
+    .mh-kpis { grid-template-columns: 1fr; }
+}
+.mh-kpi {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: .75rem .9rem;
+}
+.mh-kpi-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: .88rem;
+}
+.mh-kpi-icon--blue    { background: #dbeafe; color: #0453cb; }
+.mh-kpi-icon--success { background: #dcfce7; color: #10b981; }
+.mh-kpi-icon--warning { background: #fef3c7; color: #d97706; }
+.mh-kpi-icon--danger  { background: #fee2e2; color: #dc2626; }
+.mh-kpi-icon--muted   { background: #f1f5f9; color: #64748b; }
+.mh-kpi-val {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1;
+    display: inline-flex;
+    align-items: baseline;
+    gap: .15rem;
+}
+.mh-kpi-unit { font-size: .78rem; font-weight: 600; color: #64748b; }
+.mh-kpi-lbl { font-size: .72rem; color: #64748b; margin-top: .25rem; }
+
+.mh-chart {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: .9rem 1rem;
+    margin-bottom: 1rem;
+}
+.mh-chart-legend {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: .75rem;
+    flex-wrap: wrap;
+    padding-bottom: .65rem;
+    border-bottom: 1px dashed #e2e8f0;
+}
+.mh-legend-item { display: inline-flex; align-items: center; gap: .35rem; font-size: .72rem; color: #64748b; font-weight: 500; }
+.mh-legend-dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
+.mh-legend-dot--pres  { background: #10b981; }
+.mh-legend-dot--absj  { background: #0453cb; }
+.mh-legend-dot--absnj { background: #ef4444; }
+.mh-chart-row {
+    display: grid;
+    grid-template-columns: minmax(120px, 1.2fr) minmax(0, 3fr) minmax(60px, auto);
+    gap: .8rem;
+    align-items: center;
+    padding: .45rem 0;
+}
+.mh-chart-row + .mh-chart-row { border-top: 1px solid rgba(226,232,240,.6); }
+.mh-chart-name {
+    font-size: .82rem;
+    color: #1e293b;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.mh-chart-track {
+    display: flex;
+    height: 18px;
+    background: #e2e8f0;
+    border-radius: 5px;
+    overflow: hidden;
+    gap: 1px;
+}
+.mh-chart-seg { height: 100%; transition: width .25s ease; cursor: help; }
+.mh-chart-seg--pres  { background: #10b981; }
+.mh-chart-seg--absj  { background: #0453cb; }
+.mh-chart-seg--absnj { background: #ef4444; }
+.mh-chart-total {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #1e293b;
+    text-align: right;
+    display: inline-flex;
+    align-items: baseline;
+    gap: .1rem;
+    justify-content: flex-end;
+}
+.mh-chart-unit { font-size: .68rem; color: #64748b; font-weight: 500; }
+
+.mh-global {
+    background: #f0f9ff;
+    border: 1px solid #bae6fd;
+    border-radius: 10px;
+    padding: .85rem 1rem;
+    margin-bottom: 1rem;
+}
+.mh-global-head {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    margin-bottom: .7rem;
+    flex-wrap: wrap;
+}
+.mh-global-periode { font-size: .78rem; color: #0c4a6e; font-weight: 600; }
+.mh-global-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .75rem;
+}
+.mh-global-stat {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+    background: rgba(255,255,255,.6);
+    border-radius: 8px;
+    padding: .55rem .7rem;
+}
+.mh-global-stat-lbl { font-size: .68rem; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: .03em; }
+.mh-global-stat-val { font-size: 1rem; font-weight: 800; }
+.mh-global-stat-val--pres  { color: #10b981; }
+.mh-global-stat-val--absj  { color: #0453cb; }
+.mh-global-stat-val--absnj { color: #dc2626; }
+.mh-global-note {
+    font-size: .78rem;
+    color: #0c4a6e;
+    margin-top: .65rem;
+    display: flex;
+    align-items: flex-start;
+    gap: .4rem;
+}
+.mh-global-note i { color: #0369a1; margin-top: .15rem; }
+
+.mh-details { margin-top: 0; }
+.mh-details-summary {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .6rem .85rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: .8rem;
+    font-weight: 600;
+    color: #0453cb;
+    cursor: pointer;
+    list-style: none;
+    transition: background .15s;
+}
+.mh-details-summary::-webkit-details-marker { display: none; }
+.mh-details-summary:hover { background: #eff6ff; }
+.mh-details-chevron { transition: transform .2s ease; }
+.mh-details[open] .mh-details-chevron { transform: rotate(90deg); }
+.mh-details-body { margin-top: .75rem; }
+
+.mh-table-wrap {
+    overflow-x: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+}
+.mh-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .8rem;
+    background: #fff;
+}
+.mh-details-body .mh-table { border: 1px solid #e2e8f0; border-radius: 10px; overflow: hidden; }
+.mh-th {
+    text-align: left;
+    padding: .6rem .8rem;
+    color: #64748b;
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    font-weight: 600;
+    background: rgba(4,83,203,.04);
+}
+.mh-th--num { text-align: right; }
+.mh-td {
+    padding: .55rem .8rem;
+    color: #1e293b;
+    border-top: 1px solid #e2e8f0;
+}
+.mh-td--name   { font-weight: 500; }
+.mh-td--muted  { color: #64748b; }
+.mh-td--num    { text-align: right; font-weight: 600; }
+.mh-td--pres   { color: #10b981; }
+.mh-td--absj   { color: #0453cb; }
+.mh-td--absnj  { color: #dc2626; }
+
+.mh-footnote {
+    font-size: .74rem;
+    color: #64748b;
+    margin: .8rem 0 0 0;
+    font-style: italic;
+    display: flex;
+    align-items: flex-start;
+    gap: .4rem;
+}
+.mh-footnote i { color: #0453cb; margin-top: .12rem; flex-shrink: 0; }
+
+.presence-year-body .mh-card {
+    background: #fff;
+    margin-top: 1rem;
+}
 </style>
 @endsection
 
@@ -3756,57 +4037,17 @@
                 <span>{{ $presConstatTextCur }}</span>
             </div>
         @endif
-
-        @if($presInscCourante)
-            @php
-                $manualHoursCur = \App\Models\ESBTPAttendanceManualHours::with('matiere:id,name')
-                    ->where('etudiant_id', $etudiant->id)
-                    ->where('annee_universitaire_id', $presAnneeCourante->id)
-                    ->orderBy('matiere_id')
-                    ->orderBy('periode')
-                    ->get();
-            @endphp
-            @if($manualHoursCur->isNotEmpty())
-                <div class="et-manual-hours" style="margin-top:18px; padding-top:16px; border-top:1px solid rgba(255,255,255,.08);">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
-                        <i class="fas fa-list-check" style="color:#0453cb;"></i>
-                        <span style="font-size:.82rem; font-weight:600; color:var(--k-text);">Saisie manuelle (heures par matière)</span>
-                        <span class="amh-chip amh-chip--blue" style="margin-left:auto; display:inline-flex; align-items:center; gap:.3rem; font-size:.65rem; font-weight:600; padding:.18rem .55rem; border-radius:999px; background:#dbeafe; color:#1e40af;">
-                            <i class="fas fa-star"></i>Source prioritaire sur bulletin
-                        </span>
-                    </div>
-                    <div style="overflow-x:auto; border:1px solid var(--k-border); border-radius:10px;">
-                        <table style="width:100%; border-collapse:collapse; font-size:.8rem;">
-                            <thead>
-                                <tr style="background:rgba(4,83,203,.04);">
-                                    <th style="text-align:left; padding:.55rem .75rem; color:var(--k-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em;">Matière</th>
-                                    <th style="text-align:left; padding:.55rem .75rem; color:var(--k-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em;">Période</th>
-                                    <th style="text-align:right; padding:.55rem .75rem; color:var(--k-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em;">Présence</th>
-                                    <th style="text-align:right; padding:.55rem .75rem; color:var(--k-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em;">Abs. just.</th>
-                                    <th style="text-align:right; padding:.55rem .75rem; color:var(--k-muted); font-size:.7rem; text-transform:uppercase; letter-spacing:.04em;">Abs. non just.</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($manualHoursCur as $mh)
-                                    <tr style="border-top:1px solid var(--k-border);">
-                                        <td style="padding:.5rem .75rem; color:var(--k-text); font-weight:500;">{{ optional($mh->matiere)->name ?? '—' }}</td>
-                                        <td style="padding:.5rem .75rem; color:var(--k-muted);">{{ ucfirst(str_replace('semestre', 'Semestre ', $mh->periode)) }}</td>
-                                        <td style="padding:.5rem .75rem; text-align:right; color:#10b981; font-weight:600;">{{ rtrim(rtrim(number_format((float) $mh->heures_presence, 2, '.', ''), '0'), '.') }}h</td>
-                                        <td style="padding:.5rem .75rem; text-align:right; color:#3b82f6; font-weight:600;">{{ rtrim(rtrim(number_format((float) $mh->heures_absence_justifiees, 2, '.', ''), '0'), '.') }}h</td>
-                                        <td style="padding:.5rem .75rem; text-align:right; color:#ef4444; font-weight:600;">{{ rtrim(rtrim(number_format((float) $mh->heures_absence_non_justifiees, 2, '.', ''), '0'), '.') }}h</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-                    <p style="font-size:.72rem; color:var(--k-muted); margin:.6rem 0 0 0; font-style:italic;">
-                        <i class="fas fa-info-circle"></i>
-                        Pour ces matières et périodes, le bulletin utilise ces heures manuelles au lieu des séances.
-                    </p>
-                </div>
-            @endif
-        @endif
     </div>
+
+    {{-- Section "Saisie manuelle" année courante : extraite du hero dark
+         vers une card claire (contraste WCAG correct). --}}
+    @if($presInscCourante)
+        @include('esbtp.etudiants.partials.presences-manual-hours', [
+            'etudiantId' => $etudiant->id,
+            'anneeId' => $presAnneeCourante->id,
+            'isCurrentYear' => true,
+        ])
+    @endif
     @endif
 
     {{-- ── Années précédentes : accordéons ── --}}
@@ -3947,6 +4188,15 @@
                     <i class="fas {{ $presConstatIcon }}"></i>
                     <span>{{ $presConstatText }}</span>
                 </div>
+                {{-- Saisie manuelle : mode compact pour les accordéons N-1 --}}
+                @if($anneePresId)
+                    @include('esbtp.etudiants.partials.presences-manual-hours', [
+                        'etudiantId' => $etudiant->id,
+                        'anneeId' => $anneePresId,
+                        'isCurrentYear' => false,
+                        'anneeLabel' => $anneePresLabel,
+                    ])
+                @endif
             </div>
             @else
             <div class="presence-year-body">
@@ -3954,6 +4204,14 @@
                     <i class="fas fa-calendar-times" style="font-size:2rem; opacity:.25; display:block; margin-bottom:12px;"></i>
                     <p style="font-size:.84rem; margin:0; font-weight:500;">Aucune séance de présence enregistrée pour cette année.</p>
                 </div>
+                @if($anneePresId)
+                    @include('esbtp.etudiants.partials.presences-manual-hours', [
+                        'etudiantId' => $etudiant->id,
+                        'anneeId' => $anneePresId,
+                        'isCurrentYear' => false,
+                        'anneeLabel' => $anneePresLabel,
+                    ])
+                @endif
             </div>
             @endif
         </div>
