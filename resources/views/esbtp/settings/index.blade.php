@@ -1214,6 +1214,39 @@
                 </div>
             </div>
 
+            <!-- Section 6b: Assiduite / Saisie manuelle d'heures -->
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon"><i class="fas fa-list-check"></i></div>
+                    <div>
+                        <h3 class="section-title">Assiduite -- Saisie manuelle d'heures</h3>
+                        <p class="section-description">Sources et options pour la saisie manuelle des heures de presence/absence (page Marquer les presences)</p>
+                    </div>
+                </div>
+
+                <div class="bc-grid bc-grid-1">
+                    <div class="bc-card">
+                        <div class="bc-icon"><i class="fas fa-globe"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">Mode global (saisie sans matiere)</div>
+                            <div class="bc-desc">
+                                Active l'option "Mode global" dans /esbtp/attendances/create onglet Saisie manuelle.
+                                Permet d'enregistrer des heures d'absence/presence pour un etudiant sans les rattacher
+                                a une matiere specifique (cas : signalement disciplinaire, dispense, retour maladie).
+                                La regle de priorite bulletin reste : <strong>par matiere &gt; global &gt; seances</strong>.
+                            </div>
+                        </div>
+                        <div class="bc-toggle">
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="attendance_manual_hours_global_enabled" value="1"
+                                       {{ \App\Helpers\SettingsHelper::get('attendance_manual_hours_global_enabled', '0') == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Section 7: Mentions et Seuils -->
             <div class="settings-section">
                 <div class="section-header">

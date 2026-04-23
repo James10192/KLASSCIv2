@@ -153,6 +153,22 @@ class ESBTPSettingsController extends Controller
                 );
             }
 
+            // Assiduité / saisie manuelle d'heures — toggle tenant
+            Setting::firstOrCreate(
+                ['key' => 'attendance_manual_hours_global_enabled'],
+                [
+                    'value' => '0',
+                    'type' => 'boolean',
+                    'group' => 'attendance',
+                    'category' => 'bulletin',
+                    'description' => "Active le mode global (sans matière) pour la saisie manuelle d'heures sur /esbtp/attendances/create",
+                    'is_required' => false,
+                    'default_value' => '0',
+                    'validation_rules' => null,
+                    'sort_order' => 155,
+                ]
+            );
+
             // Créer les settings tronc commun si inexistants
             $troncCommunDefaults = [
                 'tronc_commun_enabled' => ['value' => '0', 'description' => 'Activer le tronc commun'],
@@ -192,6 +208,7 @@ class ESBTPSettingsController extends Controller
                 'bulletin_auto_calculate_mention', 'bulletin_show_felicitation', 'bulletin_show_encouragement',
                 'certificat_show_classe', 'certificat_show_niveau', 'certificat_show_filiere',
                 'bulletin_conduite_enabled', 'bulletin_show_absences_par_matiere',
+                'attendance_manual_hours_global_enabled',
             ], array_keys($troncCommunDefaults)))->get();
 
             foreach ($allCheckboxSettings as $setting) {
