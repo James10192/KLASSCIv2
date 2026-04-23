@@ -1930,24 +1930,101 @@
     margin-top: 1rem;
 }
 
-/* Chip compact "Année en cours" rendu au-dessus de la card mh-card
-   quand on saute le fin-hero dark (étudiant avec heures manuelles mais
-   pas de séances). */
-.pres-year-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: .5rem;
-    padding: .5rem .9rem;
-    background: #eff6ff;
-    color: #1e40af;
-    border: 1px solid #bfdbfe;
-    border-radius: 999px;
-    font-size: .78rem;
-    font-weight: 600;
-    margin-bottom: .6rem;
+/* ═══════════════════════════════════════════════════════════
+   mh-card "embedded" dans le dark hero fin-hero--pres
+   (année courante avec seulement des heures manuelles) —
+   reproduit le pattern de l'onglet Finances : UN SEUL dark hero
+   qui contient badge année + KPIs + graphe, comme le widget finance.
+   ═══════════════════════════════════════════════════════════ */
+.fin-hero--pres {
+    padding: 22px 24px 24px;
 }
-.pres-year-chip i { color: #0453cb; }
-.pres-year-chip strong { color: #0c4a6e; font-weight: 700; }
+.mh-card--embedded {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    padding: 0;
+    margin-top: 18px;
+}
+.mh-card--embedded .mh-head { margin-bottom: 18px; align-items: center; }
+.mh-card--embedded .mh-head-icon {
+    background: rgba(255,255,255,.14);
+    border: 1px solid rgba(255,255,255,.2);
+    color: #fff;
+}
+.mh-card--embedded .mh-head-label { color: #fff; font-size: .95rem; }
+.mh-card--embedded .mh-head-sub   { color: rgba(255,255,255,.72); }
+.mh-card--embedded .mh-chip--priority {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    border-color: rgba(255,255,255,.2);
+}
+.mh-card--embedded .mh-chip--global {
+    background: rgba(255,255,255,.12);
+    color: #fff;
+    border-color: rgba(255,255,255,.22);
+}
+
+/* KPIs dark */
+.mh-card--embedded .mh-kpi {
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.14);
+}
+.mh-card--embedded .mh-kpi-val { color: #fff; }
+.mh-card--embedded .mh-kpi-unit { color: rgba(255,255,255,.65); }
+.mh-card--embedded .mh-kpi-lbl { color: rgba(255,255,255,.7); }
+.mh-card--embedded .mh-kpi-icon--blue    { background: rgba(147,197,253,.18); color: #bfdbfe; }
+.mh-card--embedded .mh-kpi-icon--success { background: rgba(52,211,153,.18);  color: #a7f3d0; }
+.mh-card--embedded .mh-kpi-icon--warning { background: rgba(251,191,36,.18);  color: #fde68a; }
+.mh-card--embedded .mh-kpi-icon--danger  { background: rgba(248,113,113,.18); color: #fecaca; }
+.mh-card--embedded .mh-kpi-icon--muted   { background: rgba(255,255,255,.1);  color: rgba(255,255,255,.7); }
+
+/* Chart dark */
+.mh-card--embedded .mh-chart {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+}
+.mh-card--embedded .mh-chart-legend {
+    border-bottom-color: rgba(255,255,255,.15);
+}
+.mh-card--embedded .mh-legend-item { color: rgba(255,255,255,.75); }
+.mh-card--embedded .mh-chart-name  { color: #fff; }
+.mh-card--embedded .mh-chart-track { background: rgba(255,255,255,.12); }
+.mh-card--embedded .mh-chart-total { color: #fff; }
+.mh-card--embedded .mh-chart-unit  { color: rgba(255,255,255,.65); }
+.mh-card--embedded .mh-chart-row + .mh-chart-row { border-top-color: rgba(255,255,255,.08); }
+
+/* Global row dark */
+.mh-card--embedded .mh-global {
+    background: rgba(147,197,253,.12);
+    border-color: rgba(147,197,253,.28);
+}
+.mh-card--embedded .mh-global-periode { color: #bfdbfe; }
+.mh-card--embedded .mh-global-stat { background: rgba(255,255,255,.08); }
+.mh-card--embedded .mh-global-stat-lbl { color: rgba(255,255,255,.7); }
+.mh-card--embedded .mh-global-stat-val--pres  { color: #34d399; }
+.mh-card--embedded .mh-global-stat-val--absj  { color: #93c5fd; }
+.mh-card--embedded .mh-global-stat-val--absnj { color: #fca5a5; }
+.mh-card--embedded .mh-global-note { color: #bfdbfe; }
+.mh-card--embedded .mh-global-note i { color: #93c5fd; }
+
+/* Accordion détail dark-compatible */
+.mh-card--embedded .mh-details-summary {
+    background: rgba(255,255,255,.08);
+    border-color: rgba(255,255,255,.15);
+    color: #fff;
+}
+.mh-card--embedded .mh-details-summary:hover { background: rgba(255,255,255,.12); }
+.mh-card--embedded .mh-details-body .mh-table { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.12); }
+.mh-card--embedded .mh-th { background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); }
+.mh-card--embedded .mh-td { color: #fff; border-top-color: rgba(255,255,255,.08); }
+.mh-card--embedded .mh-td--muted  { color: rgba(255,255,255,.6); }
+.mh-card--embedded .mh-td--pres   { color: #34d399; }
+.mh-card--embedded .mh-td--absj   { color: #93c5fd; }
+.mh-card--embedded .mh-td--absnj  { color: #fca5a5; }
+
+.mh-card--embedded .mh-footnote { color: rgba(255,255,255,.7); }
+.mh-card--embedded .mh-footnote i { color: #93c5fd; }
 </style>
 @endsection
 
@@ -3955,13 +4032,25 @@
             && $hasManualHoursCur;
     @endphp
     @if($skipFinHeroPresCur)
-        {{-- Juste un chip compact "Année en cours · Classe", en bleu clair. --}}
-        <div class="pres-year-chip">
-            <i class="fas fa-calendar-check"></i>
-            Année en cours&nbsp;: <strong>{{ $presAnneeCourante->name }}</strong>
-            @if($presInscCourante->classe)
-                &middot; {{ $presInscCourante->classe->name }}
-            @endif
+        {{-- Cas "heures manuelles seules" : même pattern que l'onglet
+             Finances — un unique dark hero qui contient le badge année,
+             les KPIs et le graphe ; le détail/accordion reste dans une
+             card claire en-dessous. --}}
+        <div class="fin-hero fin-hero--pres" style="margin-bottom:16px;">
+            <div class="fin-hero-year-badge">
+                <i class="fas fa-calendar-check"></i>
+                Année en cours&nbsp;:
+                <strong>{{ $presAnneeCourante->name }}</strong>
+                @if($presInscCourante->classe)
+                    &middot; {{ $presInscCourante->classe->name }}
+                @endif
+            </div>
+            @include('esbtp.etudiants.partials.presences-manual-hours', [
+                'etudiantId' => $etudiant->id,
+                'anneeId' => $presAnneeCourante->id,
+                'isCurrentYear' => true,
+                'embedded' => true,
+            ])
         </div>
     @else
     <div class="fin-hero" style="margin-bottom:16px;">
@@ -4090,9 +4179,10 @@
     </div>
     @endif {{-- /!$skipFinHeroPresCur --}}
 
-    {{-- Section "Saisie manuelle" année courante : extraite du hero dark
-         vers une card claire (contraste WCAG correct). --}}
-    @if($presInscCourante)
+    {{-- Section "Saisie manuelle" année courante — seulement si on N'A PAS
+         déjà rendu la version embedded dans le dark hero ci-dessus
+         ($skipFinHeroPresCur). --}}
+    @if($presInscCourante && !$skipFinHeroPresCur)
         @include('esbtp.etudiants.partials.presences-manual-hours', [
             'etudiantId' => $etudiant->id,
             'anneeId' => $presAnneeCourante->id,
@@ -4133,6 +4223,17 @@
             $presRatio = $total > 0 ? ($pres+$retard)/$total : 0;
             $presOffset = round($circum * (1 - $presRatio), 1);
             $presColor = ($taux ?? 0) >= 80 ? '#10b981' : (($taux ?? 0) >= 60 ? '#f59e0b' : '#ef4444');
+
+            // Pré-vérification saisie manuelle pour cette année précédente :
+            // évite l'affichage du message "Aucune séance enregistrée" en
+            // doublon avec la card mh-card quand seules des heures manuelles
+            // existent (même logique que l'année courante).
+            $hasManualHoursPres = $anneePresId
+                ? \App\Models\ESBTPAttendanceManualHours::query()
+                    ->where('etudiant_id', $etudiant->id)
+                    ->where('annee_universitaire_id', $anneePresId)
+                    ->exists()
+                : false;
         @endphp
         <div class="presence-year">
             <div class="presence-year-head" onclick="this.closest('.presence-year').classList.toggle('open')">
@@ -4251,10 +4352,13 @@
             </div>
             @else
             <div class="presence-year-body">
-                <div style="text-align:center; padding:28px 16px; color:var(--k-muted);">
-                    <i class="fas fa-calendar-times" style="font-size:2rem; opacity:.25; display:block; margin-bottom:12px;"></i>
-                    <p style="font-size:.84rem; margin:0; font-weight:500;">Aucune séance de présence enregistrée pour cette année.</p>
-                </div>
+                @if(!$hasManualHoursPres)
+                    {{-- Ni séances ni heures manuelles — on garde l'empty state. --}}
+                    <div style="text-align:center; padding:28px 16px; color:var(--k-muted);">
+                        <i class="fas fa-calendar-times" style="font-size:2rem; opacity:.25; display:block; margin-bottom:12px;"></i>
+                        <p style="font-size:.84rem; margin:0; font-weight:500;">Aucune séance de présence enregistrée pour cette année.</p>
+                    </div>
+                @endif
                 @if($anneePresId)
                     @include('esbtp.etudiants.partials.presences-manual-hours', [
                         'etudiantId' => $etudiant->id,
