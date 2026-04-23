@@ -7,6 +7,9 @@
       $anneeId          int
       $isCurrentYear    bool
       $anneeLabel       string  (affiché hors année courante)
+      $embedded         bool    (true = rendu à l'intérieur d'un fin-hero
+                                 dark, on supprime le chrome card et on
+                                 masque l'en-tête dupliqué)
 
     La récupération se fait ici (plutôt que dans le controller-god) pour
     garder la vue autonome ; le coût est une requête par année affichée,
@@ -26,10 +29,12 @@
     $fmtHours = fn ($h) => \App\Support\Attendance\HoursFormatter::format((float) $h);
 
     $periodeLabel = fn ($p) => ucfirst(str_replace('semestre', 'Semestre ', $p));
+
+    $embedded = $embedded ?? false;
 @endphp
 
 @if($mhRows->isNotEmpty())
-<div class="mh-card" data-current="{{ $isCurrentYear ? '1' : '0' }}">
+<div class="mh-card {{ $embedded ? 'mh-card--embedded' : '' }}" data-current="{{ $isCurrentYear ? '1' : '0' }}">
     <div class="mh-head">
         <div class="mh-head-title">
             <span class="mh-head-icon"><i class="fas fa-list-check"></i></span>
