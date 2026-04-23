@@ -79,6 +79,21 @@ class ESBTPAttendanceManualHours extends Model
         return $query->where('classe_id', $classeId);
     }
 
+    public function scopePerMatiere($query)
+    {
+        return $query->whereNotNull('matiere_id');
+    }
+
+    public function scopeGlobal($query)
+    {
+        return $query->whereNull('matiere_id');
+    }
+
+    public function getIsGlobalAttribute(): bool
+    {
+        return $this->matiere_id === null;
+    }
+
     public function getTotalAbsencesAttribute(): float
     {
         return (float) $this->heures_absence_justifiees + (float) $this->heures_absence_non_justifiees;

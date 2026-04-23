@@ -1832,16 +1832,23 @@ class ESBTPAttendanceController extends Controller
 
     public function loadManualTab(Request $request, ManualAttendanceHoursService $service)
     {
+        $globalEnabled = (bool) \App\Helpers\SettingsHelper::get('attendance_manual_hours_global_enabled', false);
+        $isGlobal = $globalEnabled && ($request->input('mode') === 'global' || $request->input('matiere_id') === null);
+
         $request->validate([
             'classe_id' => 'required|exists:esbtp_classes,id',
-            'matiere_id' => 'required|exists:esbtp_matieres,id',
+            // En mode global la matière n'est pas envoyée. Hors mode global
+            // on conserve l'exigence historique.
+            'matiere_id' => $isGlobal
+                ? 'nullable|exists:esbtp_matieres,id'
+                : 'required|exists:esbtp_matieres,id',
             'periode' => 'required|in:semestre1,semestre2,annuel',
             'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
         ]);
 
         try {
             $classe = ESBTPClasse::with('filiere', 'niveau')->findOrFail($request->classe_id);
-            $matiere = ESBTPMatiere::findOrFail($request->matiere_id);
+            $matiere = $isGlobal ? null : ESBTPMatiere::findOrFail($request->matiere_id);
             $periode = $request->periode;
 
             $anneeUniversitaire = $request->annee_universitaire_id
@@ -1858,14 +1865,22 @@ class ESBTPAttendanceController extends Controller
                 ->orderBy('esbtp_etudiants.prenoms')
                 ->get();
 
-            $existing = $service->getForClasseMatiere(
-                $classe->id,
-                $matiere->id,
-                $anneeUniversitaire->id,
-                $periode
-            );
+            $existing = $isGlobal
+                ? ESBTPAttendanceManualHours::forClasse($classe->id)
+                    ->whereNull('matiere_id')
+                    ->forPeriod($anneeUniversitaire->id, $periode)
+                    ->get()
+                    ->keyBy('etudiant_id')
+                : $service->getForClasseMatiere(
+                    $classe->id,
+                    $matiere->id,
+                    $anneeUniversitaire->id,
+                    $periode
+                );
 
-            $existingSessionsCount = ESBTPAttendance::where('classe_id', $classe->id)
+            // En mode global le décompte de séances et le volume horaire
+            // n'ont pas de sens (aucune matière → aucun volume planifié).
+            $existingSessionsCount = $isGlobal ? 0 : ESBTPAttendance::where('classe_id', $classe->id)
                 ->where('matiere_id', $matiere->id)
                 ->where('annee_universitaire_id', $anneeUniversitaire->id)
                 ->where(function ($q) {
@@ -1873,13 +1888,12 @@ class ESBTPAttendanceController extends Controller
                 })
                 ->count();
 
-            // Volume horaire prévu pour cette matière et cette période (source: planifications académiques)
             $semestreFilter = match ($periode) {
                 'semestre1' => 1,
                 'semestre2' => 2,
                 default => null,
             };
-            $volumeHoraireTotal = (float) ESBTPPlanificationAcademique::query()
+            $volumeHoraireTotal = $isGlobal ? 0.0 : (float) ESBTPPlanificationAcademique::query()
                 ->where('filiere_id', $classe->filiere_id)
                 ->where('niveau_etude_id', $classe->niveau_etude_id)
                 ->where('matiere_id', $matiere->id)
@@ -1895,6 +1909,7 @@ class ESBTPAttendanceController extends Controller
                 'existing' => $existing,
                 'existingSessionsCount' => $existingSessionsCount,
                 'volumeHoraireTotal' => $volumeHoraireTotal,
+                'isGlobal' => $isGlobal,
             ])->render();
 
             return response()->json([
@@ -1940,11 +1955,21 @@ class ESBTPAttendanceController extends Controller
             ], 422);
         }
 
+        $globalEnabled = (bool) \App\Helpers\SettingsHelper::get('attendance_manual_hours_global_enabled', false);
+        $matiereId = $request->filled('matiere_id') ? (int) $request->matiere_id : null;
+
+        if ($matiereId === null && !$globalEnabled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La saisie globale (sans matière) n\'est pas activée pour ce tenant.',
+            ], 422);
+        }
+
         $count = $service->upsertBatch(
             $entries,
             [
                 'classe_id' => (int) $request->classe_id,
-                'matiere_id' => (int) $request->matiere_id,
+                'matiere_id' => $matiereId,
                 'annee_universitaire_id' => $anneeUniversitaire->id,
                 'periode' => $request->periode,
             ],
