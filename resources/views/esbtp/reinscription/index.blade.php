@@ -6,22 +6,28 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
 /* ═══════════════════════════════════════════════════════════════════════════
-   RÉINSCRIPTIONS — PREMIUM (re-*) — namespace isolé
-   JS contracts to preserve (DO NOT rename / remove):
-     - IDs form: #reinscriptionFiltersForm, #search, #filiere_id, #niveau_id,
-                 #statut_reinscription, #statut_paiement, #annee_academique
-     - IDs tabs: #myTab, #myTabContent + 7 panes (#passages, #rattrapages,
-                 #redoublements, #valides, #abandons-annee, #abandons-ecole,
-                 #errors) + 7 links (suffix -tab)
-     - Modal:   #yearChangeModal
-     - Classes: .reinscription-spinner, .reinscription-spinner-icon,
-                .reinscription-spinner-text, .content-container,
-                .load-more-btn, .load-more-container
-     - data-attrs: data-toggle="tab", data-dismiss="modal", data-category="X"
-     - JS funcs: loadTabContent, applyFilters, validerReinscription,
-                 marquerAbandonModal, showYearChangeInfo, exportResults,
-                 loadMore, refreshTab
-     - API: Bootstrap 4 (jQuery 3 + bootstrap@4.6.2) — NE PAS migrer BS5
+   RÉINSCRIPTIONS — PREMIUM (re-*) — namespace isolé.
+
+   JS contracts (lus par le <script> en bas de fichier — NE PAS rename) :
+     - IDs form (#search, #filiere_id, #niveau_id, #statut_reinscription,
+       #statut_paiement, #reinscriptionFiltersForm) → lus par loadTabContent()
+       et applyFilters()
+     - IDs tabs : #myTab, #myTabContent + 7 panes (#passages, #rattrapages,
+       #redoublements, #valides, #abandons-annee, #abandons-ecole, #errors)
+       + 7 links suffixés -tab → activés par BS4 .tab('show')
+     - Modal #yearChangeModal → ouvert par showYearChangeInfo()
+     - Classes .reinscription-spinner(.hidden), .content-container,
+       .load-more-btn, .load-more-container → manipulées par
+       loadTabContent() (show/hide spinner, injection HTML, pagination)
+     - data-attrs : data-toggle="tab", data-dismiss="modal" (BS4),
+       data-category="X" (lu par loadTabContent pour mapper pane→endpoint)
+
+   API : Bootstrap 4 (jQuery 3 + bootstrap@4.6.2). NE PAS migrer en BS5
+   sans refactor coordonné des handlers .tab/.modal.
+
+   Pourquoi !important sur .re-tab.nav-link : BS4 nav-tabs ship des
+   selectors plus spécifiques que nos classes ; sans !important le chip
+   custom revient au style nav-tab par défaut.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* Hero gradient ----------------------------------------------------------- */
@@ -32,9 +38,6 @@
     padding: 1.75rem 2rem 1.5rem;
     color: #fff;
     margin-bottom: 1.25rem;
-    /* Pas d'overflow:hidden ici — le popover d'aide doit pouvoir s'étendre
-       sous le hero. Le ::before n'est pas clippé mais son radial-gradient
-       fade naturellement à transparent donc invisible hors-hero. */
 }
 .re-hero::before {
     content: '';
@@ -44,9 +47,6 @@
     border-radius: 0 18px 0 0;
     background: radial-gradient(circle at top right, rgba(255,255,255,0.08) 0%, transparent 60%);
     pointer-events: none;
-    /* Reste contenu visuellement même sans overflow:hidden parent */
-    mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
-    -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
 }
 .re-hero-top {
     position: relative;
@@ -212,6 +212,18 @@
     transform: translateY(-1px);
     color: #fff;
     text-decoration: none;
+}
+/* KPI dont la tab correspondante n'est pas rendue (count = 0) :
+   visuel atténué, non cliquable, accessibilité préservée. */
+.re-kpi--empty {
+    opacity: 0.5;
+    pointer-events: none;
+    cursor: default;
+}
+.re-kpi--empty:hover {
+    background: rgba(255,255,255,.1);
+    border-color: rgba(255,255,255,.15);
+    transform: none;
 }
 .re-kpi-icon {
     width: 36px; height: 36px;
@@ -551,31 +563,37 @@
 }
 .re-alert ul { margin: 0; padding-left: 1.2rem; }
 
-/* Help popover BS4 customization ----------------------------------------- */
-.popover.re-help-popover {
-    max-width: 380px;
+/* Help dropdown (Alpine) -------------------------------------------------- */
+.re-help-dropdown {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    z-index: 1050;
+    background: #fff;
+    color: #1e293b;
     border-radius: 12px;
-    box-shadow: 0 12px 32px rgba(15,23,42,0.15);
+    box-shadow: 0 12px 32px rgba(15,23,42,0.18);
     border: 1px solid #e2e8f0;
+    min-width: 340px;
+    max-width: min(400px, calc(100vw - 2rem));
+    overflow: hidden;
+    text-align: left;
 }
-.popover.re-help-popover .popover-header {
+.re-help-dropdown__header {
     background: linear-gradient(135deg, #0453cb, #1b64d4);
     color: #fff;
-    border: none;
-    border-radius: 12px 12px 0 0;
+    padding: 0.7rem 1rem;
     font-weight: 600;
     font-size: 0.88rem;
 }
-.popover.re-help-popover .popover-body {
-    padding: 1rem 1.1rem;
-    font-size: 0.85rem;
-    color: #1e293b;
+.re-help-dropdown__body {
+    padding: 0.85rem 1.05rem;
+    font-size: 0.82rem;
+    line-height: 1.55;
 }
-.popover.re-help-popover .popover-body ul {
-    margin: 0.5rem 0 0;
-    padding-left: 1.2rem;
-}
-.popover.re-help-popover .popover-body strong { color: #0453cb; }
+.re-help-dropdown__body p { margin: 0 0 0.5rem; }
+.re-help-dropdown__body ul { margin: 0; padding-left: 1.1rem; }
+.re-help-dropdown__body strong { color: #0453cb; }
 
 /* Responsive ------------------------------------------------------------- */
 @media (max-width: 1280px) {
@@ -596,6 +614,8 @@
     .re-filters-row { grid-template-columns: 1fr; }
     .re-tab.nav-link { padding: 0.45rem 0.75rem !important; font-size: 0.78rem !important; }
     .re-filters-meta { width: 100%; margin-left: 0; margin-top: 0.5rem; }
+    /* Mobile : popover aligné à droite pour éviter overflow viewport */
+    .re-help-dropdown { left: auto; right: 0; min-width: min(320px, calc(100vw - 2rem)); }
 }
 
 [x-cloak] { display: none !important; }
@@ -616,27 +636,26 @@
                     <div class="re-hero-text">
                         <h1>
                             Réinscriptions
-                            {{-- Help popover (Alpine — n'introduit pas de nouveau JS dans la page existante) --}}
                             <span x-data="{open: false}" @click.outside="open = false" style="position:relative; display:inline-block;">
                                 <button type="button"
                                         class="re-help-btn"
                                         @click="open = !open"
+                                        :aria-expanded="open ? 'true' : 'false'"
                                         title="Comment fonctionne le système de réinscription ?"
-                                        aria-label="Aide">
+                                        aria-label="Aide sur le système de réinscription">
                                     <i class="fas fa-question"></i>
                                 </button>
-                                <div x-show="open" x-cloak x-transition
-                                     style="position:absolute; top:calc(100% + 8px); left:0; z-index:1050; background:#fff; color:#1e293b; border-radius:12px; box-shadow:0 12px 32px rgba(15,23,42,0.18); border:1px solid #e2e8f0; min-width:340px; max-width:400px; overflow:hidden; text-align:left;">
-                                    <div style="background:linear-gradient(135deg,#0453cb,#1b64d4); color:#fff; padding:0.7rem 1rem; font-weight:600; font-size:0.88rem;">
+                                <div class="re-help-dropdown" x-show="open" x-cloak x-transition>
+                                    <div class="re-help-dropdown__header">
                                         <i class="fas fa-info-circle me-1"></i> Nouveau système de réinscription
                                     </div>
-                                    <div style="padding:0.85rem 1.05rem; font-size:0.82rem; line-height:1.55;">
-                                        <p style="margin:0 0 0.5rem;"><strong style="color:#0453cb;">Principe :</strong> chaque réinscription crée une <strong>nouvelle inscription</strong> avec recalcul complet des frais selon la nouvelle classe.</p>
-                                        <ul style="margin:0; padding-left:1.1rem;">
-                                            <li><strong style="color:#0453cb;">Condition :</strong> étudiant entièrement soldé (100&nbsp;%)</li>
-                                            <li><strong style="color:#0453cb;">Historique :</strong> anciennes inscriptions visibles dans le profil</li>
-                                            <li><strong style="color:#0453cb;">Frais :</strong> nouveaux frais optionnels sélectionnables</li>
-                                            <li><strong style="color:#0453cb;">Facture :</strong> générée automatiquement</li>
+                                    <div class="re-help-dropdown__body">
+                                        <p><strong>Principe :</strong> chaque réinscription crée une <strong>nouvelle inscription</strong> avec recalcul complet des frais selon la nouvelle classe.</p>
+                                        <ul>
+                                            <li><strong>Condition :</strong> étudiant entièrement soldé (100&nbsp;%)</li>
+                                            <li><strong>Historique :</strong> anciennes inscriptions visibles dans le profil</li>
+                                            <li><strong>Frais :</strong> nouveaux frais optionnels sélectionnables</li>
+                                            <li><strong>Facture :</strong> générée automatiquement</li>
                                         </ul>
                                     </div>
                                 </div>
@@ -664,57 +683,38 @@
                 </div>
             </div>
 
-            {{-- ── KPIs glass row (cliquables : activent l'onglet correspondant) ── --}}
+            {{-- ── KPIs glass row : cliquables si la tab existe (count > 0).
+                 Les 4 dernières catégories ont leur tab gated par @if(count > 0)
+                 plus bas → on désactive visuellement le KPI pour éviter le clic
+                 silencieux qui ne ferait rien. --}}
+            @php
+                $kpiCards = [
+                    ['key' => 'passages',       'tab' => 'passages-tab',       'icon' => 'success', 'fa' => 'fa-arrow-up',           'label' => 'Passages',       'always' => true],
+                    ['key' => 'rattrapages',    'tab' => 'rattrapages-tab',    'icon' => 'warning', 'fa' => 'fa-exclamation-triangle', 'label' => 'Rattrapages',    'always' => true],
+                    ['key' => 'redoublements',  'tab' => 'redoublements-tab',  'icon' => 'danger',  'fa' => 'fa-redo',               'label' => 'Redoublements',  'always' => true],
+                    ['key' => 'abandons_annee', 'tab' => 'abandons-annee-tab', 'icon' => 'danger',  'fa' => 'fa-user-slash',         'label' => 'Abandons année', 'always' => false],
+                    ['key' => 'abandons_ecole', 'tab' => 'abandons-ecole-tab', 'icon' => 'muted',   'fa' => 'fa-graduation-cap',     'label' => 'Abandons école', 'always' => false],
+                    ['key' => 'valides',        'tab' => 'valides-tab',        'icon' => 'success', 'fa' => 'fa-check-double',       'label' => 'Validés',        'always' => false],
+                    ['key' => 'errors',         'tab' => 'errors-tab',         'icon' => 'neutral', 'fa' => 'fa-user-clock',         'label' => 'Non validés',    'always' => false],
+                ];
+            @endphp
             <div class="re-kpis">
-                <a class="re-kpi" href="#passages" data-bs4-tab="passages-tab" data-rekpi-target="passages-tab">
-                    <div class="re-kpi-icon success"><i class="fas fa-arrow-up"></i></div>
-                    <div class="re-kpi-content">
-                        <div class="re-kpi-value">{{ $statistiques['passages'] ?? 0 }}</div>
-                        <div class="re-kpi-label">Passages</div>
-                    </div>
-                </a>
-                <a class="re-kpi" href="#rattrapages" data-bs4-tab="rattrapages-tab" data-rekpi-target="rattrapages-tab">
-                    <div class="re-kpi-icon warning"><i class="fas fa-exclamation-triangle"></i></div>
-                    <div class="re-kpi-content">
-                        <div class="re-kpi-value">{{ $statistiques['rattrapages'] ?? 0 }}</div>
-                        <div class="re-kpi-label">Rattrapages</div>
-                    </div>
-                </a>
-                <a class="re-kpi" href="#redoublements" data-bs4-tab="redoublements-tab" data-rekpi-target="redoublements-tab">
-                    <div class="re-kpi-icon danger"><i class="fas fa-redo"></i></div>
-                    <div class="re-kpi-content">
-                        <div class="re-kpi-value">{{ $statistiques['redoublements'] ?? 0 }}</div>
-                        <div class="re-kpi-label">Redoublements</div>
-                    </div>
-                </a>
-                <a class="re-kpi" href="#abandons-annee" data-bs4-tab="abandons-annee-tab" data-rekpi-target="abandons-annee-tab">
-                    <div class="re-kpi-icon danger"><i class="fas fa-user-slash"></i></div>
-                    <div class="re-kpi-content">
-                        <div class="re-kpi-value">{{ $statistiques['abandons_annee'] ?? 0 }}</div>
-                        <div class="re-kpi-label">Abandons année</div>
-                    </div>
-                </a>
-                <a class="re-kpi" href="#abandons-ecole" data-bs4-tab="abandons-ecole-tab" data-rekpi-target="abandons-ecole-tab">
-                    <div class="re-kpi-icon muted"><i class="fas fa-graduation-cap"></i></div>
-                    <div class="re-kpi-content">
-                        <div class="re-kpi-value">{{ $statistiques['abandons_ecole'] ?? 0 }}</div>
-                        <div class="re-kpi-label">Abandons école</div>
-                    </div>
-                </a>
-                <a class="re-kpi" href="#valides" data-bs4-tab="valides-tab" data-rekpi-target="valides-tab">
-                    <div class="re-kpi-icon success"><i class="fas fa-check-double"></i></div>
-                    <div class="re-kpi-content">
-                        <div class="re-kpi-value">{{ $statistiques['valides'] ?? 0 }}</div>
-                        <div class="re-kpi-label">Validés</div>
-                    </div>
-                </a>
-                <a class="re-kpi" href="#errors" data-bs4-tab="errors-tab" data-rekpi-target="errors-tab">
-                    <div class="re-kpi-icon neutral"><i class="fas fa-user-clock"></i></div>
-                    <div class="re-kpi-content">
-                        <div class="re-kpi-value">{{ $statistiques['errors'] ?? 0 }}</div>
-                        <div class="re-kpi-label">Non validés</div>
-                    </div>
-                </a>
+                @foreach($kpiCards as $card)
+                    @php
+                        $count = $statistiques[$card['key']] ?? 0;
+                        $tabExists = $card['always'] || $count > 0;
+                        $emptyClass = $tabExists ? '' : 're-kpi--empty';
+                    @endphp
+                    <a class="re-kpi {{ $emptyClass }}"
+                       href="#{{ str_replace('_', '-', $card['key']) }}"
+                       @if($tabExists) data-rekpi-target="{{ $card['tab'] }}" @else aria-disabled="true" tabindex="-1" @endif>
+                        <div class="re-kpi-icon {{ $card['icon'] }}"><i class="fas {{ $card['fa'] }}"></i></div>
+                        <div class="re-kpi-content">
+                            <div class="re-kpi-value">{{ $count }}</div>
+                            <div class="re-kpi-label">{{ $card['label'] }}</div>
+                        </div>
+                    </a>
+                @endforeach
             </div>
         </div>
 
@@ -740,16 +740,24 @@
         @endif
 
         {{-- ── Filtres hybrides (3 visibles + 2 collapsibles Alpine) ──── --}}
-        <div class="re-filters-card" x-data="{advanced: {{ (request('niveau_id') || request('statut_paiement')) ? 'true' : 'false' }}}">
+        @php
+            // Filtres avancés ouverts par défaut si l'utilisateur arrive avec un
+            // filtre actif sur Niveau ou Paiement (sinon il ne les verrait pas).
+            $advancedFiltersOpen = (bool) (request('niveau_id') || request('statut_paiement'));
+        @endphp
+        <div class="re-filters-card"
+             data-advanced-default='@json($advancedFiltersOpen)'
+             x-data="{ advanced: JSON.parse($el.dataset.advancedDefault || 'false') }">
             <div class="re-filters-section-title">
                 <i class="fas fa-filter"></i>
                 Filtres de réinscription
             </div>
             <form method="GET" action="{{ route('esbtp.reinscription.index') }}" id="reinscriptionFiltersForm" onsubmit="return applyFilters()">
-                {{-- Hidden input pour conserver la référence #annee_academique
-                     (utilisée potentiellement par du JS de debug, sinon non lue par les
-                     fonctions principales mais préservée par sécurité) --}}
-                <input type="hidden" id="annee_academique" name="annee_academique" value="{{ $anneeAcademique }}">
+                {{-- ID #annee_academique conservé sans `name` : aucun JS du fichier
+                     ne le lit, mais on garde l'ID au cas où une partie externe
+                     (debug helpers) y ferait référence. Sans `name` → pas
+                     submitté avec le form GET → ne pollue pas l'URL. --}}
+                <input type="hidden" id="annee_academique" value="{{ $anneeAcademique }}">
 
                 {{-- Ligne principale : 3 visibles (Recherche, Filière, Statut) --}}
                 <div class="re-filters-row">
@@ -787,13 +795,15 @@
                 <button type="button"
                         class="re-filters-advanced-toggle"
                         :class="{'is-open': advanced}"
+                        :aria-expanded="advanced ? 'true' : 'false'"
+                        aria-controls="re-filters-advanced-section"
                         @click="advanced = !advanced">
                     <span x-show="!advanced"><i class="fas fa-chevron-down"></i> Plus de filtres</span>
                     <span x-show="advanced" x-cloak><i class="fas fa-chevron-up"></i> Moins de filtres</span>
                 </button>
 
                 {{-- Filtres avancés collapsibles --}}
-                <div class="re-filters-advanced" x-show="advanced" x-cloak x-transition>
+                <div id="re-filters-advanced-section" class="re-filters-advanced" x-show="advanced" x-cloak x-transition>
                     <div class="re-filter-group">
                         <label for="niveau_id">Niveau</label>
                         <select name="niveau_id" id="niveau_id">
@@ -1595,9 +1605,11 @@ $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
 });
 
 /* ───────────────────────────────────────────────────────────
-   KPI hero click → activate corresponding BS4 tab + scroll
-   Standalone : runs after jQuery + BS4 are loaded above.
-   N'altère AUCUN handler existant.
+   KPI hero click → active la tab BS4 correspondante + scroll.
+   Requires: jQuery + BS4 .tab() plugin (chargés plus haut dans
+   ce même <script>). Aucun handler existant n'est altéré.
+   Sécurité : seuls les KPIs avec data-rekpi-target sont liés
+   (les KPIs --empty n'ont pas l'attribut → pas d'écouteur).
    ─────────────────────────────────────────────────────────── */
 $(document).ready(function() {
     $('.re-kpi[data-rekpi-target]').on('click', function(e) {
@@ -1605,11 +1617,13 @@ $(document).ready(function() {
         var targetTabId = $(this).data('rekpi-target');
         var $tabLink = $('#' + targetTabId);
         if ($tabLink.length === 0) {
-            // Tab conditional non rendu (catégorie vide) → ne rien faire
+            // Defensive : tab non rendue (race condition au chargement). No-op.
             return;
         }
         $tabLink.tab('show');
-        // Scroll doux vers la zone tabs
+        // Scroll doux vers la zone tabs.
+        // Offset 90px = hauteur du topbar fixe de layouts.app — à ajuster
+        // si le topbar change de hauteur.
         var $tabsAnchor = $('#myTab');
         if ($tabsAnchor.length) {
             $('html, body').animate({
