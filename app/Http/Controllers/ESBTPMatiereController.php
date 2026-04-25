@@ -173,20 +173,18 @@ class ESBTPMatiereController extends Controller
         }
 
         if ($search !== '') {
+            // Recherche restreinte aux champs propres de la matière. Pour filtrer
+            // par filière ou niveau, l'utilisateur dispose des dropdowns dédiés
+            // (filiere_filter / niveau_filter). L'élargissement aux relations
+            // produisait des résultats contre-intuitifs : taper "Marketing"
+            // retournait toutes les matières liées à la filière Marketing au
+            // lieu de la seule matière dont le nom contient "Marketing".
             $query->where(function ($q) use ($search) {
                 $like = '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $search).'%';
 
                 $q->where('name', 'like', $like)
                     ->orWhere('code', 'like', $like)
-                    ->orWhere('description', 'like', $like)
-                    ->orWhereHas('filieres', function ($filieresQuery) use ($like) {
-                        $filieresQuery->where('name', 'like', $like)
-                            ->orWhere('code', 'like', $like);
-                    })
-                    ->orWhereHas('niveaux', function ($niveauxQuery) use ($like) {
-                        $niveauxQuery->where('name', 'like', $like)
-                            ->orWhere('code', 'like', $like);
-                    });
+                    ->orWhere('description', 'like', $like);
             });
         }
 
