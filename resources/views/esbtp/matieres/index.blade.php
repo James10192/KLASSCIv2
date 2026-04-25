@@ -213,12 +213,20 @@
 }
 .mi-filters-bar {
     display: grid;
-    grid-template-columns: 1fr 1fr 1fr auto;
+    grid-template-columns: minmax(220px, 1.6fr) 1fr 1fr 1fr auto;
     gap: 1rem;
     align-items: end;
     padding: 1rem 1.25rem;
 }
 .mi-filter-group { min-width: 0; }
+.mi-filter-input--search {
+    padding-left: 2.4rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: .85rem center;
+    background-size: 14px;
+}
+.mi-filter-input--search::-webkit-search-cancel-button { cursor: pointer; }
 .mi-filter-label {
     display: block;
     font-size: .72rem;
@@ -365,8 +373,13 @@
     border: 0;
 }
 
+@media (max-width: 1100px) {
+    .mi-filters-bar { grid-template-columns: 1fr 1fr 1fr auto; }
+    .mi-filter-group--search { grid-column: 1 / -1; }
+}
 @media (max-width: 768px) {
     .mi-filters-bar { grid-template-columns: 1fr; }
+    .mi-filter-group--search { grid-column: auto; }
     .mi-filters-actions { justify-content: flex-end; }
     .mi-advanced-panel { grid-template-columns: 1fr 1fr; }
 }
@@ -810,10 +823,17 @@ tr[data-matiere-id] {
           action="{{ route('esbtp.matieres.index') }}"
           class="mi-filters">
 
-        {{-- Hidden search input (synced with mi-hero-search) — NE PAS SUPPRIMER --}}
-        <input type="hidden" id="filter-search" name="search" value="{{ $filters['search'] ?? '' }}">
-
         <div class="mi-filters-bar">
+            <div class="mi-filter-group mi-filter-group--search">
+                <label for="filter-search" class="mi-filter-label">Recherche</label>
+                <input type="search"
+                       id="filter-search"
+                       name="search"
+                       class="mi-filter-input mi-filter-input--search"
+                       value="{{ $filters['search'] ?? '' }}"
+                       placeholder="Code, nom, description, filière, niveau..."
+                       autocomplete="off">
+            </div>
             <div class="mi-filter-group">
                 <label for="filter-filiere" class="mi-filter-label">Filière</label>
                 <select name="filiere_filter" id="filter-filiere" class="mi-filter-select">
@@ -1910,6 +1930,24 @@ tr[data-matiere-id] {
             if (event.key === 'Enter') {
                 event.preventDefault();
                 syncFormSearchFromHeader();
+                submitFilterForm();
+            }
+        });
+    }
+
+    // Visible filter-search input (in the filters bar) : miroir du headerSearch.
+    // L'input event sync vers le hero search puis débounce le submit.
+    const filterSearchInput = document.getElementById('filter-search');
+    if (filterSearchInput) {
+        filterSearchInput.addEventListener('input', () => {
+            syncHeaderSearchFromForm();
+            clearTimeout(filterTimer);
+            filterTimer = setTimeout(() => submitFilterForm(), FILTER_DEBOUNCE);
+        });
+        filterSearchInput.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                syncHeaderSearchFromForm();
                 submitFilterForm();
             }
         });
