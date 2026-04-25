@@ -2698,9 +2698,9 @@
             <div class="footer-col">
                 <h4>Ressources</h4>
                 <ul>
-                    <li><a href="#">Documentation</a></li>
-                    <li><a href="#">API Reference</a></li>
-                    <li><a href="#">Changelog</a></li>
+                    <li><a href="{{ route('docs.index') }}">Documentation</a></li>
+                    <li><a href="{{ route('api-reference') }}">API Reference</a></li>
+                    <li><a href="{{ route('changelog') }}">Changelog</a></li>
                 </ul>
             </div>
             <div class="footer-col">
