@@ -188,16 +188,30 @@ class ESBTPMatiereController extends Controller
             });
         }
 
-        // KPIs calculés sur la base filtrée (cohérent avec inscriptions/paiements premium).
-        // Cloner avant paginate, sans les eager-loads ni l'order by (le ORDER BY casse les
-        // agrégats SUM() sur MariaDB strict mode).
-        $kpiBase = (clone $query)->withoutEagerLoads()->reorder();
+        // KPIs calculés sur la base filtrée (cohérent avec inscriptions/paiements
+        // premium). Une seule query avec agrégats conditionnels au lieu de 4 :
+        // -3 round-trips DB par render et par AJAX refresh sur cette page.
+        // reorder() retire l'ORDER BY name (incompatible avec SUM/COUNT global
+        // sur MariaDB strict mode).
+        $row = (clone $query)
+            ->withoutEagerLoads()
+            ->reorder()
+            ->selectRaw("
+                COUNT(*) AS total,
+                SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END) AS actifs,
+                SUM(CASE WHEN EXISTS (
+                    SELECT 1 FROM esbtp_matiere_filiere_niveau
+                    WHERE esbtp_matiere_filiere_niveau.matiere_id = esbtp_matieres.id
+                ) THEN 1 ELSE 0 END) AS avec_liaisons,
+                SUM({$totalHeuresExpression}) AS heures_totales
+            ")
+            ->first();
 
         $kpis = [
-            'total'           => (clone $kpiBase)->count(),
-            'actifs'          => (clone $kpiBase)->where('is_active', true)->count(),
-            'avec_liaisons'   => (clone $kpiBase)->whereHas('liaisonsFilieresNiveaux')->count(),
-            'heures_totales'  => (int) (clone $kpiBase)->sum(\DB::raw($totalHeuresExpression)),
+            'total'           => (int) ($row->total ?? 0),
+            'actifs'          => (int) ($row->actifs ?? 0),
+            'avec_liaisons'   => (int) ($row->avec_liaisons ?? 0),
+            'heures_totales'  => (int) ($row->heures_totales ?? 0),
         ];
         $kpis['inactifs']     = $kpis['total'] - $kpis['actifs'];
         $kpis['sans_liaison'] = $kpis['total'] - $kpis['avec_liaisons'];
