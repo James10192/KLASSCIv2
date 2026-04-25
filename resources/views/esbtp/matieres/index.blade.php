@@ -768,9 +768,9 @@ tr[data-matiere-id] {
                 <input type="search"
                        class="mi-hero-search"
                        id="matieres-header-search"
-                       placeholder="Rechercher une matière..."
+                       placeholder="Rechercher par nom ou code..."
                        value="{{ $filters['search'] ?? '' }}"
-                       aria-label="Rechercher une matière">
+                       aria-label="Rechercher une matière par nom ou code">
                 <a href="{{ route('esbtp.matieres.create') }}" class="mi-btn--white">
                     <i class="fas fa-plus" aria-hidden="true"></i>
                     Nouvelle matière
@@ -831,7 +831,7 @@ tr[data-matiere-id] {
                        name="search"
                        class="mi-filter-input mi-filter-input--search"
                        value="{{ $filters['search'] ?? '' }}"
-                       placeholder="Code, nom, description, filière, niveau..."
+                       placeholder="Nom, code ou description..."
                        autocomplete="off">
             </div>
             <div class="mi-filter-group">
