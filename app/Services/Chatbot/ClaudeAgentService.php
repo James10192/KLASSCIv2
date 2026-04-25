@@ -41,9 +41,12 @@ class ClaudeAgentService
     protected int $contextWindow = 10;
     protected int $maxToolRounds = 3;
 
-    public function __construct(ChatbotSetupGuideService $setupGuide)
+    protected ConversationContextProvider $contextProvider;
+
+    public function __construct(ChatbotSetupGuideService $setupGuide, ConversationContextProvider $contextProvider)
     {
         $this->registerTools($setupGuide);
+        $this->contextProvider = $contextProvider;
     }
 
     protected function registerTools(ChatbotSetupGuideService $setupGuide): void
@@ -98,7 +101,7 @@ class ClaudeAgentService
             return $this->fallbackResponse();
         }
 
-        $systemPrompt = $this->buildSystemInstruction($user, $preferences, $clientContext);
+        $systemPrompt = $this->buildSystemInstruction($user, $preferences, $clientContext, $conversation);
         $history = $this->buildHistory($conversation);
         $toolDefinitions = $this->buildToolDefinitions($user);
 
@@ -150,6 +153,10 @@ class ClaudeAgentService
                 // Capturer les métadonnées d'affichage
                 if ($tool && !isset($result['error'])) {
                     $allToolCalls[] = ['tool' => $toolName, 'args' => $toolArgs, 'result_count' => $result['count'] ?? null];
+
+                    // Enregistrer un résumé minimal dans le contexte conversationnel
+                    // pour permettre les questions de suivi ("et dans la classe d'à côté ?").
+                    $this->contextProvider->updateFromToolResult($conversation, $toolName, $toolArgs, $result);
 
                     $resultDisplayType = $result['display_type'] ?? 'text';
 
@@ -278,8 +285,12 @@ class ClaudeAgentService
     /**
      * Construire l'instruction système.
      */
-    protected function buildSystemInstruction($user, ?ChatbotUserPreference $preferences, ?array $clientContext): string
-    {
+    protected function buildSystemInstruction(
+        $user,
+        ?ChatbotUserPreference $preferences,
+        ?array $clientContext,
+        ?ChatbotConversation $conversation = null,
+    ): string {
         $domainContext = $this->getDomainContext();
         $userName = $preferences?->preferred_name ?? $user->name ?? 'utilisateur';
         $roleName = $user->roles?->first()?->name ?? 'utilisateur';
@@ -313,13 +324,24 @@ class ClaudeAgentService
             $notesUtilisateur = "\nNotes personnelles de l'utilisateur : {$preferences->notes}";
         }
 
+        // Contexte conversationnel : résumé minimal du dernier tool result, pour les questions de suivi.
+        // Haiku doit UTILISER les IDs exacts listés ici (cf. règle 3b) si l'utilisateur fait référence à un élément précédent.
+        $previousContext = '';
+        if ($conversation) {
+            $summary = $this->contextProvider->summaryBlock($conversation);
+            if ($summary) {
+                $previousContext = "\nContexte du dernier résultat d'outil (pour les questions de suivi) : {$summary}\n"
+                    . "→ Si l'utilisateur fait référence implicitement à ces résultats (\"et pour l'autre classe ?\", \"et dans la 2e année ?\"), utilise ces IDs/noms exacts. Sinon, fais un nouvel appel d'outil.";
+            }
+        }
+
         return <<<PROMPT
 Tu es l'assistant IA de KLASSCI, un système de gestion d'établissement scolaire professionnel (BTS, Licence) en Côte d'Ivoire.
 
 {$domainContext}
 
 L'utilisateur s'appelle {$userName} et a le rôle "{$roleName}".
-{$styleInstructions}{$pageContext}{$notesUtilisateur}
+{$styleInstructions}{$pageContext}{$notesUtilisateur}{$previousContext}
 
 WORKFLOW EMPLOI DU TEMPS :
 - La page "Emplois du temps" (index) liste tous les emplois du temps + raccourci pour créer rapidement + bouton "Modifier rapidement" (multi-sélection)

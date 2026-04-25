@@ -14,7 +14,7 @@ class SearchClassesTool extends ChatbotTool
 
     public function description(): string
     {
-        return 'Rechercher des classes. Retourne nom, code, filière, niveau, effectif, statut actif/inactif.';
+        return 'Rechercher des classes. Retourne nom, code, filière, niveau, places totales/occupées/disponibles et statut places (disponible/limité/presque_complet/complet).';
     }
 
     public function parameters(): array
@@ -34,9 +34,17 @@ class SearchClassesTool extends ChatbotTool
                     'type' => 'string',
                     'description' => 'Niveau d\'études',
                 ],
+                'systeme' => [
+                    'type' => 'string',
+                    'description' => 'Système académique : "BTS" ou "LMD"',
+                ],
                 'active_only' => [
                     'type' => 'boolean',
                     'description' => 'Si true, retourne uniquement les classes actives (défaut: true)',
+                ],
+                'has_places' => [
+                    'type' => 'boolean',
+                    'description' => 'Si true, retourne uniquement les classes avec au moins une place disponible',
                 ],
                 'limit' => [
                     'type' => 'integer',
@@ -48,9 +56,7 @@ class SearchClassesTool extends ChatbotTool
 
     public function execute(array $args, $user): array
     {
-        $query = ESBTPClasse::query()
-            ->with(['filiere', 'niveau'])
-            ->withCount('inscriptions');
+        $query = ESBTPClasse::query()->with(['filiere', 'niveau']);
 
         if (!empty($args['name'])) {
             $search = $args['name'];
@@ -74,6 +80,10 @@ class SearchClassesTool extends ChatbotTool
             });
         }
 
+        if (!empty($args['systeme'])) {
+            $query->where('systeme_academique', strtoupper($args['systeme']));
+        }
+
         $activeOnly = $args['active_only'] ?? true;
         if ($activeOnly) {
             $query->where('is_active', true);
@@ -81,19 +91,41 @@ class SearchClassesTool extends ChatbotTool
 
         $limit = min(max((int) ($args['limit'] ?? 15), 1), 50);
         $total = (clone $query)->count();
-        $results = $query->orderBy('name')->limit($limit)->get();
+        // Charger un peu plus large pour pouvoir filtrer has_places en PHP (l'accessor places_disponibles n'est pas queryable en SQL)
+        $fetchLimit = !empty($args['has_places']) ? min($total, max($limit * 3, 50)) : $limit;
+        $results = $query->orderBy('name')->limit($fetchLimit)->get();
+
+        if (!empty($args['has_places'])) {
+            $results = $results->filter(fn ($c) => ($c->places_disponibles ?? 0) > 0)->take($limit)->values();
+        }
 
         $classes = $results->map(function ($c) {
+            $placesTotales = (int) ($c->places_totales ?? 0);
+            $placesDisponibles = (int) ($c->places_disponibles ?? 0);
+            $placesOccupees = max(0, $placesTotales - $placesDisponibles);
+            $ratio = $placesTotales > 0 ? $placesDisponibles / $placesTotales : 0;
+
+            $statut = match (true) {
+                $placesDisponibles <= 0 => 'complet',
+                $ratio < 0.10 => 'presque_complet',
+                $ratio < 0.30 => 'limite',
+                default => 'disponible',
+            };
+
             return [
                 'id' => $c->id,
                 'nom' => $c->name,
                 'code' => $c->code ?? 'N/A',
                 'filiere' => $c->filiere?->name ?? 'N/A',
                 'niveau' => $c->niveau?->name ?? 'N/A',
-                'effectif' => $c->inscriptions_count ?? 0,
+                'systeme' => $c->systeme_academique ?? 'N/A',
+                'places_totales' => $placesTotales,
+                'places_occupees' => $placesOccupees,
+                'places_disponibles' => $placesDisponibles,
+                'statut_places' => $statut,
                 'active' => $c->is_active ? 'Oui' : 'Non',
             ];
-        })->toArray();
+        })->values()->toArray();
 
         return [
             'results' => $classes,
