@@ -73,11 +73,53 @@ class ESBTPFraisOption extends Model
     }
 
     /**
+     * Boot — filet de sécurité contre les options orphelines.
+     *
+     * Toute option globale créée sans passer par le modal Assignations doit
+     * hériter d'une assignation type='all' pour être visible côté étudiant.
+     * Sans ce hook, une option pouvait être créée puis silencieusement
+     * invisible à tous les étudiants (UI affichait "Tous les étudiants" en
+     * fallback alors que la table des assignations était vide).
+     *
+     * Restreint aux options globales (configuration_id null) — les options
+     * class_based sont déjà scopées via leur configuration.
+     */
+    protected static function booted(): void
+    {
+        static::created(function (self $option): void {
+            if ($option->configuration_id !== null) {
+                return;
+            }
+            if ($option->assignments()->exists()) {
+                return;
+            }
+            $option->assignments()->create([
+                'assignment_type' => 'all',
+                'filiere_id' => null,
+                'niveau_id' => null,
+                'is_active' => true,
+            ]);
+        });
+    }
+
+    /**
      * Scopes
      */
     public function scopeActive($query)
     {
         return $query->where('esbtp_frais_options.is_active', true);
+    }
+
+    /**
+     * Scope : seulement les options qui ont au moins une assignation active.
+     * À utiliser sur les endpoints étudiants pour ne pas exposer d'options
+     * orphelines (créées sans assignation, suppression manuelle, etc.).
+     */
+    public function scopeAssigned($query)
+    {
+        return $query->whereHas('assignments', function ($q) {
+            $q->where('is_active', true);
+        });
     }
 
     public function scopeDefault($query)

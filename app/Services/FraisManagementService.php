@@ -105,9 +105,15 @@ class FraisManagementService
      */
     public function getGlobalOptions(ESBTPFraisCategory $category): Collection
     {
+        // assigned() filtre les options orphelines (sans assignation) qui
+        // sinon s'afficheraient à l'étudiant comme inutiles. L'écran admin
+        // (optional-config.blade.php) lit $category->options direct sans
+        // passer par ce service pour pouvoir afficher le badge "Aucune
+        // assignation" et permettre la correction.
         return ESBTPFraisOption::global()
             ->forFraisCategory($category->id)
             ->active()
+            ->assigned()
             ->ordered()
             ->get();
     }
