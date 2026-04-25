@@ -109,6 +109,10 @@ Route::get('/school', function () {
     ]);
 })->name('welcome.school');
 
+// Pages publiques (Documentation, API Reference, Changelog)
+Route::get('/changelog', [\App\Http\Controllers\Public\ChangelogController::class, 'show'])
+    ->name('changelog');
+
 // Routes pour l'installation
 Route::prefix('install')->group(function () {
     Route::get('/', [InstallController::class, 'index'])->name('install.index');
