@@ -9,13 +9,15 @@
 
 <tr data-matiere-id="{{ $matiere->id }}" class="position-relative">
     <td>
-        <div class="form-check">
+        <div class="form-check m-0">
             <input class="form-check-input matiere-checkbox" type="checkbox" id="matiere-{{ $matiere->id }}" value="{{ $matiere->id }}">
-            <label class="form-check-label" for="matiere-{{ $matiere->id }}"></label>
+            <label class="form-check-label visually-hidden" for="matiere-{{ $matiere->id }}">
+                Sélectionner {{ $matiere->name }}
+            </label>
         </div>
     </td>
     <td>
-        <span class="badge primary">{{ $matiere->code ?? '—' }}</span>
+        <span class="badge primary" style="font-family:'IBM Plex Mono',monospace;font-size:.72rem;letter-spacing:.04em;">{{ $matiere->code ?? '—' }}</span>
     </td>
     <td>
         <div class="font-semibold color-primary">{{ $matiere->name }}</div>
@@ -78,34 +80,55 @@
         @endif
     </td>
     <td>
-        <div class="matiere-actions-wrapper d-inline-flex align-items-center gap-2" data-matiere-actions="{{ $matiere->id }}">
-            <div class="d-flex gap-1 matiere-actions-buttons">
+        <div class="matiere-actions-wrapper" data-matiere-actions="{{ $matiere->id }}">
+            <div class="matiere-actions-buttons mi-actions">
+                {{-- Action primaire : Voir --}}
                 <a href="{{ route('esbtp.matieres.show', $matiere->id) }}"
-                   class="btn btn-sm btn-outline-info"
-                   title="Voir">
-                    <i class="fas fa-eye"></i>
+                   class="mi-action-primary"
+                   title="Voir la fiche"
+                   aria-label="Voir la fiche de {{ $matiere->name }}">
+                    <i class="fas fa-eye" aria-hidden="true"></i>
                 </a>
-                <button type="button"
-                        class="btn btn-sm btn-outline-success configure-matiere-btn"
-                        data-bs-toggle="modal"
-                        data-bs-target="#configureModal"
-                        data-matiere-id="{{ $matiere->id }}"
-                        data-matiere-name="{{ $matiere->name }}"
-                        title="Configurer les liaisons">
-                    <i class="fas fa-link"></i>
-                </button>
-                <a href="{{ route('esbtp.matieres.edit', $matiere->id) }}"
-                   class="btn btn-sm btn-outline-warning"
-                   title="Modifier">
-                    <i class="fas fa-edit"></i>
-                </a>
-                <button type="button"
-                        class="btn btn-sm btn-outline-danger"
-                        data-bs-toggle="modal"
-                        data-bs-target="#deleteModal{{ $matiere->id }}"
-                        title="Supprimer">
-                    <i class="fas fa-trash"></i>
-                </button>
+
+                {{-- Kebab menu : Configurer / Modifier / Supprimer --}}
+                <div class="mi-action-kebab-wrap">
+                    <button type="button"
+                            class="mi-action-kebab"
+                            data-mi-kebab-toggle
+                            aria-haspopup="menu"
+                            aria-expanded="false"
+                            aria-label="Plus d'actions pour {{ $matiere->name }}"
+                            title="Plus d'actions">
+                        <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
+                    </button>
+                    <div class="mi-action-menu" role="menu" data-mi-kebab-menu>
+                        <button type="button"
+                                role="menuitem"
+                                class="mi-action-item configure-matiere-btn"
+                                data-bs-toggle="modal"
+                                data-bs-target="#configureModal"
+                                data-matiere-id="{{ $matiere->id }}"
+                                data-matiere-name="{{ $matiere->name }}">
+                            <i class="fas fa-link" aria-hidden="true"></i>
+                            Configurer les liaisons
+                        </button>
+                        <a href="{{ route('esbtp.matieres.edit', $matiere->id) }}"
+                           role="menuitem"
+                           class="mi-action-item">
+                            <i class="fas fa-edit" aria-hidden="true"></i>
+                            Modifier
+                        </a>
+                        <div class="mi-action-divider"></div>
+                        <button type="button"
+                                role="menuitem"
+                                class="mi-action-item mi-action-item--danger"
+                                data-bs-toggle="modal"
+                                data-bs-target="#deleteModal{{ $matiere->id }}">
+                            <i class="fas fa-trash" aria-hidden="true"></i>
+                            Supprimer
+                        </button>
+                    </div>
+                </div>
             </div>
             <div class="matiere-actions-spinner" aria-hidden="true">
                 <div class="spinner-border spinner-border-sm text-primary" role="status">

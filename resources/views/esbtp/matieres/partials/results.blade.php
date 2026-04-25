@@ -1,55 +1,58 @@
-<div class="card-moderne">
-    <div class="main-card-header">
-        <h3 class="main-card-title">
-            <i class="fas fa-table me-2"></i>Liste des Matières
-        </h3>
-        <p class="main-card-subtitle">
-            @if($matieres->total() > 0)
-                {{ $matieres->firstItem() ?? 0 }} - {{ $matieres->lastItem() ?? 0 }} sur {{ $matieres->total() }} matière(s)
-            @else
-                Aucune matière ne correspond à vos filtres.
-            @endif
-        </p>
-    </div>
-    <div class="main-card-body">
-        <div class="table-responsive">
-            <table class="table datatable align-middle" style="width: 100%;">
-                <thead>
-                    <tr>
-                        <th style="width: 50px;">
-                            <div class="form-check">
-                                <input class="form-check-input" type="checkbox" id="matieres-select-all">
-                                <label class="form-check-label" for="matieres-select-all"></label>
-                            </div>
-                        </th>
-                        <th>Code</th>
-                        <th>Nom</th>
-                        <th>Coefficient</th>
-                        <th>Total heures</th>
-                        <th>Liaisons</th>
-                        <th>Statut</th>
-                        <th style="width: 180px;">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @forelse($matieres as $matiere)
-                        @include('esbtp.matieres.partials.matiere-row', ['matiere' => $matiere])
-                    @empty
-                        <tr>
-                            <td colspan="8" class="py-5 text-center">
-                                <div class="d-flex flex-column align-items-center gap-2 text-muted">
-                                    <i class="fas fa-inbox fa-2x"></i>
-                                    <span>Aucune matière trouvée avec ces critères.</span>
-                                </div>
-                            </td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+{{-- Le wrapper #matieres-results.mi-results-card est défini dans index.blade.php.
+     Ce partial rend uniquement le contenu interne (header de card + table + paginator),
+     car il est ré-injecté via AJAX (innerHTML) à chaque filtre/pagination.    --}}
 
-        <div class="mt-3">
-            {{ $matieres->appends(request()->query())->links() }}
-        </div>
-    </div>
+<div class="table-responsive">
+    <table class="table datatable mi-table align-middle" style="width:100%;">
+        <thead>
+            <tr>
+                <th style="width: 44px;">
+                    <div class="form-check m-0">
+                        <input class="form-check-input" type="checkbox" id="matieres-select-all" aria-label="Tout sélectionner sur cette page">
+                        <label class="form-check-label visually-hidden" for="matieres-select-all">Tout sélectionner</label>
+                    </div>
+                </th>
+                <th>Code</th>
+                <th>Nom</th>
+                <th>Coefficient</th>
+                <th>Volume horaire</th>
+                <th>Liaisons</th>
+                <th>Statut</th>
+                <th style="width: 110px;">Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @forelse($matieres as $matiere)
+                @include('esbtp.matieres.partials.matiere-row', ['matiere' => $matiere])
+            @empty
+                <tr>
+                    <td colspan="8" class="p-0">
+                        <div class="mi-empty-state">
+                            <div class="mi-empty-state-icon" aria-hidden="true">
+                                <i class="fas fa-inbox"></i>
+                            </div>
+                            <h4>Aucune matière trouvée</h4>
+                            <p>Aucune matière ne correspond aux filtres actuels. Essayez d'élargir votre recherche ou créez une nouvelle matière.</p>
+                            <div class="d-flex gap-2 justify-content-center flex-wrap">
+                                <button type="button" id="mi-empty-clear-filters" class="mi-empty-cta" style="background:#fff;color:#0453cb;border:1px solid #0453cb;">
+                                    <i class="fas fa-eraser" aria-hidden="true"></i>
+                                    Effacer les filtres
+                                </button>
+                                <a href="{{ route('esbtp.matieres.create') }}" class="mi-empty-cta">
+                                    <i class="fas fa-plus" aria-hidden="true"></i>
+                                    Nouvelle matière
+                                </a>
+                            </div>
+                        </div>
+                    </td>
+                </tr>
+            @endforelse
+        </tbody>
+    </table>
 </div>
+
+@if($matieres->total() > 0 && $matieres->hasPages())
+    <div class="pagination-wrapper d-flex justify-content-center">
+        {{ $matieres->appends(request()->query())->links() }}
+    </div>
+@endif

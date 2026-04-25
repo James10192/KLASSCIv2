@@ -33,6 +33,7 @@ class ESBTPMatiereController extends Controller
                 ])->render(),
                 'url' => $request->fullUrl(),
                 'summary' => $listing['summary'],
+                'kpis' => $listing['kpis'],
             ]);
         }
 
@@ -41,6 +42,7 @@ class ESBTPMatiereController extends Controller
             'filieres' => $filieres,
             'niveaux' => $niveaux,
             'summary' => $listing['summary'],
+            'kpis' => $listing['kpis'],
             'filters' => [
                 'search' => $request->input('search', ''),
                 'filiere_filter' => $request->input('filiere_filter'),
@@ -72,6 +74,7 @@ class ESBTPMatiereController extends Controller
             ])->render(),
             'url' => $navUrl,
             'summary' => $listing['summary'],
+            'kpis' => $listing['kpis'],
         ]);
     }
 
@@ -187,6 +190,20 @@ class ESBTPMatiereController extends Controller
             });
         }
 
+        // KPIs calculés sur la base filtrée (cohérent avec inscriptions/paiements premium).
+        // Cloner avant paginate, sans les eager-loads ni l'order by (le ORDER BY casse les
+        // agrégats SUM() sur MariaDB strict mode).
+        $kpiBase = (clone $query)->withoutEagerLoads()->reorder();
+
+        $kpis = [
+            'total'           => (clone $kpiBase)->count(),
+            'actifs'          => (clone $kpiBase)->where('is_active', true)->count(),
+            'avec_liaisons'   => (clone $kpiBase)->whereHas('liaisonsFilieresNiveaux')->count(),
+            'heures_totales'  => (int) (clone $kpiBase)->sum(\DB::raw($totalHeuresExpression)),
+        ];
+        $kpis['inactifs']     = $kpis['total'] - $kpis['actifs'];
+        $kpis['sans_liaison'] = $kpis['total'] - $kpis['avec_liaisons'];
+
         $matieres = $query->paginate($perPage > 0 ? $perPage : 15)->withQueryString();
 
         return [
@@ -198,6 +215,7 @@ class ESBTPMatiereController extends Controller
                 'from' => $matieres->firstItem(),
                 'to' => $matieres->lastItem(),
             ],
+            'kpis' => $kpis,
         ];
     }
 
