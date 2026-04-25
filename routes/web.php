@@ -117,6 +117,8 @@ Route::get('/docs', [\App\Http\Controllers\Public\DocsController::class, 'index'
 Route::get('/docs/{slug}', [\App\Http\Controllers\Public\DocsController::class, 'show'])
     ->where('slug', '[a-z0-9-]+(?:/[a-z0-9-]+)*')
     ->name('docs.show');
+Route::get('/api-reference', [\App\Http\Controllers\Public\ApiReferenceController::class, 'show'])
+    ->name('api-reference');
 
 // Routes pour l'installation
 Route::prefix('install')->group(function () {

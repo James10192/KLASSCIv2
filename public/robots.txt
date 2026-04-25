@@ -5,6 +5,11 @@ Disallow: /password
 Disallow: /admin
 Disallow: /dashboard
 Disallow: /esbtp
+Disallow: /personnel
+Disallow: /comptabilite
 Disallow: /telescope
+Allow: /docs
+Allow: /changelog
+Allow: /api-reference
 
 Sitemap: https://klassci.com/sitemap.xml
