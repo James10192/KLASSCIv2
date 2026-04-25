@@ -466,7 +466,7 @@
     color: #fff;
 }
 
-/* ─── ROW ACTIONS — kebab menu pour secondaires ─── */
+/* ─── ROW ACTIONS — Voir + BS5 native dropdown pour secondaires ─── */
 .mi-actions {
     display: inline-flex;
     align-items: center;
@@ -492,7 +492,6 @@
     border-color: #0369a1;
     color: #0369a1;
 }
-.mi-action-kebab-wrap { position: relative; }
 .mi-action-kebab {
     display: inline-flex;
     align-items: center;
@@ -513,65 +512,35 @@
     border-color: #94a3b8;
     color: #1e293b;
 }
-.mi-action-menu {
-    position: absolute;
-    right: 0;
-    top: calc(100% + 4px);
-    min-width: 180px;
-    background: #fff;
+/* Override BS5 dropdown-menu pour matcher le look premium KLASSCI */
+.mi-action-menu.dropdown-menu {
+    min-width: 200px;
     border: 1px solid #e2e8f0;
     border-radius: 10px;
     box-shadow: 0 10px 32px rgba(15,23,42,.12), 0 2px 6px rgba(15,23,42,.06);
     padding: .35rem;
-    z-index: 100;
-    display: none;
+    z-index: 1050;
 }
-.mi-action-menu.is-open {
-    display: block;
-    animation: mi-menu-fade-in .15s ease;
-}
-@keyframes mi-menu-fade-in {
-    from { opacity: 0; transform: translateY(-4px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-.mi-action-item {
-    display: flex;
-    align-items: center;
-    gap: .5rem;
-    width: 100%;
-    padding: .5rem .65rem;
+.mi-action-menu .dropdown-item {
     border-radius: 6px;
-    background: none;
-    border: none;
-    color: #1e293b;
+    padding: .5rem .65rem;
     font-size: .85rem;
-    text-align: left;
-    cursor: pointer;
-    text-decoration: none;
+    color: #1e293b;
     transition: background .12s;
 }
-.mi-action-item:hover {
+.mi-action-menu .dropdown-item:hover,
+.mi-action-menu .dropdown-item:focus {
     background: #f1f5f9;
     color: #0453cb;
 }
-.mi-action-item i {
-    font-size: .82rem;
-    color: #64748b;
-    width: 14px;
-    text-align: center;
-}
-.mi-action-item:hover i { color: #0453cb; }
-.mi-action-item--danger { color: #dc2626; }
-.mi-action-item--danger i { color: #dc2626; }
-.mi-action-item--danger:hover {
+.mi-action-menu .dropdown-item.text-danger:hover,
+.mi-action-menu .dropdown-item.text-danger:focus {
     background: #fef2f2;
     color: #b91c1c;
 }
-.mi-action-item--danger:hover i { color: #b91c1c; }
-.mi-action-divider {
-    height: 1px;
-    background: #e2e8f0;
+.mi-action-menu .dropdown-divider {
     margin: .25rem -.35rem;
+    border-color: #e2e8f0;
 }
 
 /* ════════════════════════════════════════════════════════════════

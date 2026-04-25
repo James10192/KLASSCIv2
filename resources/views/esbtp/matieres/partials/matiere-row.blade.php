@@ -90,44 +90,45 @@
                     <i class="fas fa-eye" aria-hidden="true"></i>
                 </a>
 
-                {{-- Kebab menu : Configurer / Modifier / Supprimer --}}
-                <div class="mi-action-kebab-wrap">
+                {{-- Kebab menu BS5 native dropdown : Configurer / Modifier / Supprimer --}}
+                <div class="dropdown">
                     <button type="button"
                             class="mi-action-kebab"
-                            data-mi-kebab-toggle
-                            aria-haspopup="menu"
+                            data-bs-toggle="dropdown"
                             aria-expanded="false"
                             aria-label="Plus d'actions pour {{ $matiere->name }}"
                             title="Plus d'actions">
                         <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                     </button>
-                    <div class="mi-action-menu" role="menu" data-mi-kebab-menu>
-                        <button type="button"
-                                role="menuitem"
-                                class="mi-action-item configure-matiere-btn"
-                                data-bs-toggle="modal"
-                                data-bs-target="#configureModal"
-                                data-matiere-id="{{ $matiere->id }}"
-                                data-matiere-name="{{ $matiere->name }}">
-                            <i class="fas fa-link" aria-hidden="true"></i>
-                            Configurer les liaisons
-                        </button>
-                        <a href="{{ route('esbtp.matieres.edit', $matiere->id) }}"
-                           role="menuitem"
-                           class="mi-action-item">
-                            <i class="fas fa-edit" aria-hidden="true"></i>
-                            Modifier
-                        </a>
-                        <div class="mi-action-divider"></div>
-                        <button type="button"
-                                role="menuitem"
-                                class="mi-action-item mi-action-item--danger"
-                                data-bs-toggle="modal"
-                                data-bs-target="#deleteModal{{ $matiere->id }}">
-                            <i class="fas fa-trash" aria-hidden="true"></i>
-                            Supprimer
-                        </button>
-                    </div>
+                    <ul class="dropdown-menu dropdown-menu-end mi-action-menu">
+                        <li>
+                            <button type="button"
+                                    class="dropdown-item configure-matiere-btn"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#configureModal"
+                                    data-matiere-id="{{ $matiere->id }}"
+                                    data-matiere-name="{{ $matiere->name }}">
+                                <i class="fas fa-link me-2" aria-hidden="true"></i>
+                                Configurer les liaisons
+                            </button>
+                        </li>
+                        <li>
+                            <a href="{{ route('esbtp.matieres.edit', $matiere->id) }}" class="dropdown-item">
+                                <i class="fas fa-edit me-2" aria-hidden="true"></i>
+                                Modifier
+                            </a>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button type="button"
+                                    class="dropdown-item text-danger"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#deleteModal{{ $matiere->id }}">
+                                <i class="fas fa-trash me-2" aria-hidden="true"></i>
+                                Supprimer
+                            </button>
+                        </li>
+                    </ul>
                 </div>
             </div>
             <div class="matiere-actions-spinner" aria-hidden="true">

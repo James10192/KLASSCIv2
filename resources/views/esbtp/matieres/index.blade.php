@@ -1455,57 +1455,8 @@
         }
     });
 
-    /* ───────────────────────────────────────────────────────────
-       KEBAB MENU — event delegation, persists across AJAX refreshes
-       ─────────────────────────────────────────────────────────── */
-    function closeAllKebabMenus(except) {
-        document.querySelectorAll('[data-mi-kebab-menu].is-open').forEach((menu) => {
-            if (menu === except) return;
-            menu.classList.remove('is-open');
-            const wrap = menu.closest('.mi-action-kebab-wrap');
-            const toggle = wrap?.querySelector('[data-mi-kebab-toggle]');
-            if (toggle) toggle.setAttribute('aria-expanded', 'false');
-        });
-    }
-
-    document.addEventListener('click', (event) => {
-        const toggle = event.target.closest('[data-mi-kebab-toggle]');
-        if (toggle) {
-            event.preventDefault();
-            const wrap = toggle.closest('.mi-action-kebab-wrap');
-            const menu = wrap?.querySelector('[data-mi-kebab-menu]');
-            if (!menu) return;
-            const willOpen = !menu.classList.contains('is-open');
-            closeAllKebabMenus(willOpen ? menu : null);
-            menu.classList.toggle('is-open', willOpen);
-            toggle.setAttribute('aria-expanded', String(willOpen));
-            return;
-        }
-
-        // Click on a menu item → close menu (item handles its own action via data-bs-toggle).
-        const menuItem = event.target.closest('[data-mi-kebab-menu] [role="menuitem"]');
-        if (menuItem) {
-            const menu = menuItem.closest('[data-mi-kebab-menu]');
-            if (menu) {
-                menu.classList.remove('is-open');
-                const wrap = menu.closest('.mi-action-kebab-wrap');
-                const t = wrap?.querySelector('[data-mi-kebab-toggle]');
-                if (t) t.setAttribute('aria-expanded', 'false');
-            }
-            return;
-        }
-
-        // Click outside any kebab → close all.
-        if (!event.target.closest('[data-mi-kebab-menu]')) {
-            closeAllKebabMenus(null);
-        }
-    });
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape') {
-            closeAllKebabMenus(null);
-        }
-    });
+    /* Kebab menu : Bootstrap 5 native dropdown gère le toggle / outside-click /
+       Esc / focus management. Aucun JS custom requis. */
 
     /* Empty-state "Effacer les filtres" — délégation pour survivre aux refresh AJAX */
     document.addEventListener('click', (event) => {
