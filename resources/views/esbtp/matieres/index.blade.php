@@ -9,93 +9,660 @@
 
 @push('styles')
 <style>
-.gap-1 {
-    gap: 0.25rem !important;
-}
+/* ════════════════════════════════════════════════════════════════
+   MI-* — Matières Index (premium namespace)
+   Pattern : planning-header 2-rows + KPIs glass + filtres hybrid
+   + bulk-bar sticky-top + table card. Cohérent avec pi-* / ii-*.
+   ════════════════════════════════════════════════════════════════ */
 
-.form-check:hover {
-    background-color: rgba(var(--primary-rgb), 0.05) !important;
-    border-radius: 6px;
+/* ─── HERO ─── */
+.mi-hero {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 1.75rem 2rem 1.5rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
+    position: relative;
+    overflow: hidden;
 }
-
-.form-check-input:checked {
-    background-color: var(--primary);
-    border-color: var(--primary);
+.mi-hero::before {
+    content: '';
+    position: absolute;
+    top: -60px;
+    right: -60px;
+    width: 280px;
+    height: 280px;
+    background: rgba(255,255,255,.06);
+    border-radius: 50%;
+    pointer-events: none;
 }
-
-#combinations-preview .badge {
-    font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
+.mi-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
 }
-
-.badge-link {
-    cursor: pointer;
-    transition: all 0.2s ease;
+.mi-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
 }
-
-.badge-link:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+.mi-hero-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+    color: #fff;
 }
-
-.table td {
-    vertical-align: middle;
+.mi-hero h1 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 .15rem;
+    letter-spacing: -.01em;
 }
-
-.btn-group .btn,
-.matiere-actions-buttons .btn {
-    margin-right: 2px;
+.mi-hero p {
+    color: rgba(255,255,255,.72);
+    font-size: .88rem;
+    margin: 0;
 }
-
-.btn-group .btn:last-child,
-.matiere-actions-buttons .btn:last-child {
-    margin-right: 0;
+.mi-hero-actions {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    flex-wrap: wrap;
 }
-
-.modal-xl {
-    max-width: 1200px;
+.mi-hero-search {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2);
+    color: #fff;
+    border-radius: 10px;
+    padding: .55rem 1rem .55rem 2.4rem;
+    font-size: .85rem;
+    width: 260px;
+    transition: all .2s;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='0.65'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: .85rem center;
+    background-size: 14px;
 }
-
-.matieres-bulk-bar {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
-    color: white;
-    padding: 15px 30px;
-    border-radius: 50px;
-    box-shadow: 0 10px 40px rgba(4, 83, 203, 0.4);
-    z-index: 1050;
-    animation: slideUp 0.3s ease-out;
+.mi-hero-search::placeholder { color: rgba(255,255,255,.55); }
+.mi-hero-search:focus {
+    outline: none;
+    background-color: rgba(255,255,255,.18);
+    border-color: rgba(255,255,255,.35);
+    box-shadow: 0 0 0 3px rgba(255,255,255,.1);
 }
-
-.matieres-bulk-bar .btn {
-    border-radius: 999px;
-    font-weight: 600;
+.mi-btn--white,
+.mi-btn--glass {
     display: inline-flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: .5rem;
+    padding: .55rem 1rem;
+    border-radius: 10px;
+    font-size: .85rem;
+    font-weight: 600;
+    text-decoration: none;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all .2s ease;
+    white-space: nowrap;
+}
+.mi-btn--white {
+    background: #fff;
+    color: #0453cb;
+}
+.mi-btn--white:hover {
+    background: #f8fafc;
+    color: #033a8e;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+}
+.mi-btn--glass {
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    border-color: rgba(255,255,255,.2);
+    backdrop-filter: blur(8px);
+}
+.mi-btn--glass:hover {
+    background: rgba(255,255,255,.22);
+    color: #fff;
+    transform: translateY(-1px);
 }
 
+/* ─── KPIs ─── */
+.mi-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: .75rem;
+    margin-top: 1.5rem;
+    position: relative;
+    z-index: 1;
+}
+.mi-kpi {
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 12px;
+    padding: .9rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    transition: all .2s ease;
+}
+.mi-kpi:hover {
+    background: rgba(255,255,255,.16);
+    border-color: rgba(255,255,255,.22);
+    transform: translateY(-1px);
+}
+.mi-kpi-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    background: rgba(255,255,255,.18);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .95rem;
+    flex-shrink: 0;
+}
+.mi-kpi-text { min-width: 0; }
+.mi-kpi-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+}
+.mi-kpi-label {
+    font-size: .72rem;
+    color: rgba(255,255,255,.65);
+    margin-top: .2rem;
+    letter-spacing: .02em;
+}
+
+@media (max-width: 992px) {
+    .mi-kpis { grid-template-columns: repeat(2, 1fr); }
+    .mi-hero-search { width: 220px; }
+}
+@media (max-width: 576px) {
+    .mi-hero { padding: 1.25rem 1.25rem 1rem; }
+    .mi-hero h1 { font-size: 1.2rem; }
+    .mi-kpis { grid-template-columns: 1fr 1fr; }
+    .mi-hero-search { width: 100%; }
+}
+
+/* ─── FILTRES (hybrid : 3 visibles + collapsible advanced) ─── */
+.mi-filters {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+}
+.mi-filters-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr auto;
+    gap: 1rem;
+    align-items: end;
+    padding: 1rem 1.25rem;
+}
+.mi-filter-group { min-width: 0; }
+.mi-filter-label {
+    display: block;
+    font-size: .72rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    margin-bottom: .35rem;
+}
+.mi-filter-input,
+.mi-filter-select {
+    width: 100%;
+    padding: .55rem .75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #1e293b;
+    font-size: .88rem;
+    transition: border-color .2s, box-shadow .2s;
+}
+.mi-filter-input:focus,
+.mi-filter-select:focus {
+    outline: none;
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+}
+.mi-filters-actions {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+}
+.mi-advanced-btn,
+.mi-btn-clear {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .55rem .85rem;
+    border-radius: 8px;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .2s ease;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    white-space: nowrap;
+}
+.mi-advanced-btn:hover,
+.mi-btn-clear:hover {
+    border-color: #0453cb;
+    color: #0453cb;
+    background: rgba(4,83,203,.04);
+}
+.mi-advanced-btn.is-open {
+    background: rgba(4,83,203,.08);
+    border-color: #0453cb;
+    color: #0453cb;
+}
+.mi-advanced-btn .mi-advanced-count {
+    background: #0453cb;
+    color: #fff;
+    font-size: .68rem;
+    font-weight: 700;
+    padding: .05rem .4rem;
+    border-radius: 999px;
+    margin-left: .15rem;
+    min-width: 18px;
+    text-align: center;
+}
+.mi-advanced-btn .fa-chevron-down {
+    font-size: .65rem;
+    transition: transform .2s ease;
+    margin-left: .15rem;
+}
+
+.mi-advanced-panel {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1rem;
+    padding: 1rem 1.25rem 1.25rem;
+    border-top: 1px dashed #e2e8f0;
+    background: #f8fafc;
+}
+
+.mi-filters-foot {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .65rem 1.25rem;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+    color: #64748b;
+    font-size: .8rem;
+}
+.mi-filters-foot i { color: #0453cb; }
+
+.mi-active-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+    padding: .65rem 1.25rem;
+    border-top: 1px dashed #e2e8f0;
+    background: #f8fafc;
+}
+.mi-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .25rem .5rem .25rem .65rem;
+    background: rgba(4,83,203,.08);
+    color: #0453cb;
+    border: 1px solid rgba(4,83,203,.18);
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 600;
+}
+.mi-chip-remove {
+    background: rgba(4,83,203,.15);
+    color: #0453cb;
+    border: none;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .65rem;
+    transition: all .15s;
+}
+.mi-chip-remove:hover {
+    background: #0453cb;
+    color: #fff;
+}
+
+.mi-apply-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0,0,0,0);
+    border: 0;
+}
+
+@media (max-width: 768px) {
+    .mi-filters-bar { grid-template-columns: 1fr; }
+    .mi-filters-actions { justify-content: flex-end; }
+    .mi-advanced-panel { grid-template-columns: 1fr 1fr; }
+}
+
+/* ─── RESULTS CARD ─── */
+.mi-results-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    overflow: hidden;
+    position: relative;
+}
+.mi-results-card .table-responsive {
+    overflow-x: auto;
+}
+.mi-results-card .table {
+    margin-bottom: 0;
+}
+.mi-results-card .table thead th {
+    background: #f8fafc;
+    color: #475569;
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    font-weight: 600;
+    padding: .85rem 1rem;
+    border-bottom: 1px solid #e2e8f0;
+    border-top: none;
+    white-space: nowrap;
+}
+.mi-results-card .table tbody tr {
+    transition: background-color .15s ease;
+}
+.mi-results-card .table tbody tr:hover {
+    background-color: #f0f4fa;
+}
+.mi-results-card .table tbody td {
+    padding: .85rem 1rem;
+    vertical-align: middle;
+    border-bottom: 1px solid #f1f5f9;
+}
+.mi-results-card .table tbody tr:last-child td {
+    border-bottom: none;
+}
+.mi-results-card .pagination-wrapper {
+    padding: .85rem 1.25rem;
+    border-top: 1px solid #e2e8f0;
+    background: #f8fafc;
+}
+
+/* ─── BULK-BAR sticky-top INSIDE results-card ─── */
+.matieres-bulk-bar,
+.mi-bulk-bar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 100%);
+    color: #fff;
+    padding: .85rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+    box-shadow: 0 4px 16px rgba(4,83,203,.18);
+    animation: mi-bulk-slide-down .25s ease-out;
+}
+.mi-bulk-info {
+    display: flex;
+    align-items: center;
+    gap: .65rem;
+    font-size: .9rem;
+    font-weight: 500;
+}
+.mi-bulk-info i { font-size: 1rem; }
+.mi-bulk-actions {
+    display: flex;
+    gap: .4rem;
+    flex-wrap: wrap;
+}
+.mi-bulk-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .45rem .85rem;
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 8px;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .18s ease;
+    white-space: nowrap;
+}
+.mi-bulk-btn:hover {
+    background: rgba(255,255,255,.25);
+    border-color: rgba(255,255,255,.4);
+}
+.mi-bulk-btn--danger {
+    background: rgba(220,38,38,.25);
+    border-color: rgba(248,113,113,.5);
+}
+.mi-bulk-btn--danger:hover {
+    background: rgba(220,38,38,.4);
+    border-color: rgba(248,113,113,.7);
+}
+.mi-bulk-btn--ghost {
+    background: transparent;
+    border-color: rgba(255,255,255,.3);
+}
+
+@keyframes mi-bulk-slide-down {
+    from { transform: translateY(-100%); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+/* ─── EMPTY STATE ─── */
+.mi-empty-state {
+    padding: 3.5rem 1.5rem;
+    text-align: center;
+    color: #64748b;
+}
+.mi-empty-state-icon {
+    width: 72px;
+    height: 72px;
+    margin: 0 auto 1rem;
+    background: linear-gradient(135deg, #e2e8f0 0%, #f1f5f9 100%);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    font-size: 1.6rem;
+}
+.mi-empty-state h4 {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin: 0 0 .35rem;
+}
+.mi-empty-state p {
+    font-size: .88rem;
+    color: #64748b;
+    margin: 0 0 1rem;
+    max-width: 380px;
+    margin-left: auto;
+    margin-right: auto;
+}
+.mi-empty-state .mi-empty-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .5rem .9rem;
+    background: #0453cb;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: .85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background .2s;
+    text-decoration: none;
+}
+.mi-empty-state .mi-empty-cta:hover {
+    background: #033a8e;
+    color: #fff;
+}
+
+/* ─── ROW ACTIONS — kebab menu pour secondaires ─── */
+.mi-actions {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+}
+.mi-action-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #0369a1;
+    cursor: pointer;
+    transition: all .15s;
+    text-decoration: none;
+    font-size: .8rem;
+}
+.mi-action-primary:hover {
+    background: #e0f2fe;
+    border-color: #0369a1;
+    color: #0369a1;
+}
+.mi-action-kebab-wrap { position: relative; }
+.mi-action-kebab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    border: 1px solid #cbd5e1;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+    transition: all .15s;
+    font-size: .85rem;
+}
+.mi-action-kebab:hover,
+.mi-action-kebab[aria-expanded="true"] {
+    background: #f1f5f9;
+    border-color: #94a3b8;
+    color: #1e293b;
+}
+.mi-action-menu {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    min-width: 180px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 10px 32px rgba(15,23,42,.12), 0 2px 6px rgba(15,23,42,.06);
+    padding: .35rem;
+    z-index: 100;
+    display: none;
+}
+.mi-action-menu.is-open {
+    display: block;
+    animation: mi-menu-fade-in .15s ease;
+}
+@keyframes mi-menu-fade-in {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.mi-action-item {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    width: 100%;
+    padding: .5rem .65rem;
+    border-radius: 6px;
+    background: none;
+    border: none;
+    color: #1e293b;
+    font-size: .85rem;
+    text-align: left;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background .12s;
+}
+.mi-action-item:hover {
+    background: #f1f5f9;
+    color: #0453cb;
+}
+.mi-action-item i {
+    font-size: .82rem;
+    color: #64748b;
+    width: 14px;
+    text-align: center;
+}
+.mi-action-item:hover i { color: #0453cb; }
+.mi-action-item--danger { color: #dc2626; }
+.mi-action-item--danger i { color: #dc2626; }
+.mi-action-item--danger:hover {
+    background: #fef2f2;
+    color: #b91c1c;
+}
+.mi-action-item--danger:hover i { color: #b91c1c; }
+.mi-action-divider {
+    height: 1px;
+    background: #e2e8f0;
+    margin: .25rem -.35rem;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   JS-REFERENCED CLASSES — must remain unchanged (preserved from old)
+   ════════════════════════════════════════════════════════════════ */
 .matiere-actions-wrapper {
     display: inline-flex;
     align-items: center;
     gap: 0.5rem;
     min-height: 32px;
 }
-
 .matiere-actions-spinner {
     display: none;
     min-width: 32px;
     align-items: center;
     justify-content: center;
 }
-
 .matiere-actions-wrapper.is-loading .matiere-actions-buttons {
     display: none !important;
 }
-
 .matiere-actions-wrapper.is-loading .matiere-actions-spinner {
     display: inline-flex !important;
 }
@@ -118,288 +685,288 @@ tr[data-matiere-id] {
     background: linear-gradient(90deg, rgba(4, 83, 203, 0) 0%, rgba(4, 83, 203, 0.65) 50%, rgba(4, 83, 203, 0) 100%);
     z-index: 5;
 }
-
 .matiere-row-highlight.reject {
     background: linear-gradient(90deg, rgba(220, 53, 69, 0) 0%, rgba(220, 53, 69, 0.65) 50%, rgba(220, 53, 69, 0) 100%);
 }
-
 .matiere-row-highlight.animate {
     animation: matiere-row-highlight-move 2.8s ease-out forwards;
 }
-
 .matiere-row-flash {
     animation: matiere-row-flash 0.8s ease-in-out;
 }
-
 .matiere-row-flash.reject {
     animation-name: matiere-row-flash-reject;
 }
 
 @keyframes matiere-row-highlight-move {
-    0% {
-        opacity: 0;
-        transform: translateX(-65%) skewX(-12deg);
-    }
-    18% {
-        opacity: 0.9;
-    }
-    55% {
-        opacity: 0.7;
-    }
-    100% {
-        opacity: 0;
-        transform: translateX(115%) skewX(-12deg);
-    }
+    0% { opacity: 0; transform: translateX(-65%) skewX(-12deg); }
+    18% { opacity: 0.9; }
+    55% { opacity: 0.7; }
+    100% { opacity: 0; transform: translateX(115%) skewX(-12deg); }
 }
-
 @keyframes matiere-row-flash {
-    0% {
-        background-color: transparent;
-    }
-    25% {
-        background-color: rgba(4, 83, 203, 0.15);
-    }
-    100% {
-        background-color: transparent;
-    }
+    0% { background-color: transparent; }
+    25% { background-color: rgba(4, 83, 203, 0.15); }
+    100% { background-color: transparent; }
 }
-
 @keyframes matiere-row-flash-reject {
-    0% {
-        background-color: transparent;
-    }
-    25% {
-        background-color: rgba(220, 53, 69, 0.15);
-    }
-    100% {
-        background-color: transparent;
-    }
+    0% { background-color: transparent; }
+    25% { background-color: rgba(220, 53, 69, 0.15); }
+    100% { background-color: transparent; }
 }
 
-@keyframes slideUp {
-    from {
-        bottom: -100px;
-        opacity: 0;
-    }
-    to {
-        bottom: 20px;
-        opacity: 1;
-    }
+#combinations-preview .badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
 }
+
+.modal-xl { max-width: 1200px; }
 </style>
 @endpush
 
+@php
+    $advancedFiltersActive = !empty($filters['coefficient_min']) || !empty($filters['coefficient_max'])
+        || !empty($filters['heures_min']) || !empty($filters['heures_max']);
+    $advancedFiltersCount = collect([
+        $filters['coefficient_min'] ?? null,
+        $filters['coefficient_max'] ?? null,
+        $filters['heures_min'] ?? null,
+        $filters['heures_max'] ?? null,
+    ])->filter(fn ($v) => $v !== null && $v !== '')->count();
+@endphp
+
 @section('content')
-<div class="main-content">
-    <div class="dashboard-header">
-        <div class="header-left">
-            <h1><i class="fas fa-book me-2"></i>Gestion des Matières</h1>
-            <p class="header-subtitle">Liste des matières disponibles dans votre établissement</p>
-        </div>
-        <div class="header-actions">
-            <input type="search"
-                   class="search-bar"
-                   placeholder="Rechercher une matière..."
-                   value="{{ $filters['search'] ?? '' }}"
-                   id="matieres-header-search">
-            <div class="d-flex gap-2">
-                <a href="{{ route('esbtp.matieres.create') }}" class="btn-acasi primary">
-                    <i class="fas fa-plus"></i> Ajouter une matière
+<div class="main-content"
+     x-data="{ advancedFilters: {{ $advancedFiltersActive ? 'true' : 'false' }} }">
+
+    {{-- ─── HERO ─── --}}
+    <section class="mi-hero" aria-label="En-tête matières">
+        <div class="mi-hero-top">
+            <div class="mi-hero-left">
+                <div class="mi-hero-icon" aria-hidden="true">
+                    <i class="fas fa-book"></i>
+                </div>
+                <div>
+                    <h1>Gestion des matières</h1>
+                    <p>Catalogue, coefficients et liaisons filière × niveau</p>
+                </div>
+            </div>
+            <div class="mi-hero-actions">
+                <input type="search"
+                       class="mi-hero-search"
+                       id="matieres-header-search"
+                       placeholder="Rechercher une matière..."
+                       value="{{ $filters['search'] ?? '' }}"
+                       aria-label="Rechercher une matière">
+                <a href="{{ route('esbtp.matieres.create') }}" class="mi-btn--white">
+                    <i class="fas fa-plus" aria-hidden="true"></i>
+                    Nouvelle matière
                 </a>
             </div>
         </div>
-    </div>
 
-    @if(session('success'))
-        <div class="card-moderne mb-lg" style="border-left: 4px solid var(--success);">
-            <div class="p-lg">
-                <div class="d-flex align-items-center">
-                    <i class="fas fa-check-circle color-success me-2"></i>
-                    <span>{{ session('success') }}</span>
+        <div class="mi-kpis" role="group" aria-label="Indicateurs clés">
+            <div class="mi-kpi" id="mi-kpi-total">
+                <div class="mi-kpi-icon"><i class="fas fa-book" aria-hidden="true"></i></div>
+                <div class="mi-kpi-text">
+                    <div class="mi-kpi-value" data-kpi="total">{{ $kpis['total'] ?? 0 }}</div>
+                    <div class="mi-kpi-label">Total matières</div>
                 </div>
             </div>
+            <div class="mi-kpi" id="mi-kpi-actifs">
+                <div class="mi-kpi-icon"><i class="fas fa-check-circle" aria-hidden="true"></i></div>
+                <div class="mi-kpi-text">
+                    <div class="mi-kpi-value" data-kpi="actifs">{{ $kpis['actifs'] ?? 0 }}</div>
+                    <div class="mi-kpi-label">Actives</div>
+                </div>
+            </div>
+            <div class="mi-kpi" id="mi-kpi-liaisons">
+                <div class="mi-kpi-icon"><i class="fas fa-link" aria-hidden="true"></i></div>
+                <div class="mi-kpi-text">
+                    <div class="mi-kpi-value" data-kpi="avec_liaisons">{{ $kpis['avec_liaisons'] ?? 0 }}</div>
+                    <div class="mi-kpi-label">Avec liaisons</div>
+                </div>
+            </div>
+            <div class="mi-kpi" id="mi-kpi-heures">
+                <div class="mi-kpi-icon"><i class="fas fa-clock" aria-hidden="true"></i></div>
+                <div class="mi-kpi-text">
+                    <div class="mi-kpi-value"><span data-kpi="heures_totales">{{ $kpis['heures_totales'] ?? 0 }}</span>h</div>
+                    <div class="mi-kpi-label">Volume horaire</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {{-- ─── Toast session success ─── --}}
+    @if(session('success'))
+        <div class="alert alert-success" role="alert" style="border-radius: 12px; margin-bottom: 1.25rem;">
+            <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
         </div>
     @endif
 
-    <div class="main-card mb-4">
-        <div class="main-card-header">
-            <div class="main-card-title">
-                <i class="fas fa-filter"></i>
-                Filtres avancés
+    {{-- ─── FILTRES — hybrid (3 visibles + collapsible advanced) ─── --}}
+    <form id="matieres-filter-form"
+          method="GET"
+          action="{{ route('esbtp.matieres.index') }}"
+          class="mi-filters">
+
+        {{-- Hidden search input (synced with mi-hero-search) — NE PAS SUPPRIMER --}}
+        <input type="hidden" id="filter-search" name="search" value="{{ $filters['search'] ?? '' }}">
+
+        <div class="mi-filters-bar">
+            <div class="mi-filter-group">
+                <label for="filter-filiere" class="mi-filter-label">Filière</label>
+                <select name="filiere_filter" id="filter-filiere" class="mi-filter-select">
+                    <option value="">Toutes les filières</option>
+                    @foreach($filieres as $filiere)
+                        <option value="{{ $filiere->id }}" @selected($filters['filiere_filter'] == $filiere->id)>{{ $filiere->name }}</option>
+                    @endforeach
+                </select>
             </div>
-            <div class="main-card-subtitle">Filtrer et rechercher parmi les matières</div>
+            <div class="mi-filter-group">
+                <label for="filter-niveau" class="mi-filter-label">Niveau</label>
+                <select name="niveau_filter" id="filter-niveau" class="mi-filter-select">
+                    <option value="">Tous les niveaux</option>
+                    @foreach($niveaux as $niveau)
+                        <option value="{{ $niveau->id }}" @selected($filters['niveau_filter'] == $niveau->id)>{{ $niveau->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="mi-filter-group">
+                <label for="filter-statut" class="mi-filter-label">Statut</label>
+                <select name="statut_filter" id="filter-statut" class="mi-filter-select">
+                    <option value="">Tous</option>
+                    <option value="1" @selected($filters['statut_filter'] === '1')>Actif</option>
+                    <option value="0" @selected($filters['statut_filter'] === '0')>Inactif</option>
+                </select>
+            </div>
+
+            <div class="mi-filters-actions">
+                <button type="button"
+                        class="mi-advanced-btn"
+                        :class="{ 'is-open': advancedFilters }"
+                        @click="advancedFilters = !advancedFilters"
+                        :aria-expanded="advancedFilters.toString()"
+                        aria-controls="mi-advanced-panel">
+                    <i class="fas fa-sliders-h" aria-hidden="true"></i>
+                    Avancés
+                    @if($advancedFiltersCount > 0)
+                        <span class="mi-advanced-count">{{ $advancedFiltersCount }}</span>
+                    @endif
+                    <i class="fas fa-chevron-down" aria-hidden="true"
+                       :style="advancedFilters ? 'transform: rotate(180deg)' : ''"></i>
+                </button>
+                <button type="button" id="matieres-clear-filters" class="mi-btn-clear" title="Effacer tous les filtres">
+                    <i class="fas fa-eraser" aria-hidden="true"></i>
+                    Effacer
+                </button>
+            </div>
         </div>
-        <div class="main-card-body">
-            <form id="matieres-filter-form" method="GET" action="{{ route('esbtp.matieres.index') }}" class="row g-3">
-                <div class="col-12">
-                    <div class="form-group-moderne">
-                        <label for="filter-search" class="form-label-moderne">
-                            <i class="fas fa-search me-1"></i>Recherche globale
-                        </label>
-                        <input type="text"
-                               id="filter-search"
-                               name="search"
-                               class="form-input-moderne"
-                               value="{{ $filters['search'] ?? '' }}"
-                               placeholder="Tapez pour rechercher dans toutes les colonnes (code, nom, coefficient, heures, filières, niveaux...)">
-                    </div>
-                </div>
 
-                <div class="col-md-3">
-                    <div class="form-group-moderne">
-                        <label for="filter-filiere" class="form-label-moderne">
-                            <i class="fas fa-graduation-cap me-1"></i>Filière
-                        </label>
-                        <select name="filiere_filter" id="filter-filiere" class="form-select-moderne">
-                            <option value="">Toutes les filières</option>
-                            @foreach($filieres as $filiere)
-                                <option value="{{ $filiere->id }}" @selected($filters['filiere_filter'] == $filiere->id)>{{ $filiere->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-
-                <div class="col-md-3">
-                    <div class="form-group-moderne">
-                        <label for="filter-niveau" class="form-label-moderne">
-                            <i class="fas fa-layer-group me-1"></i>Niveau
-                        </label>
-                        <select name="niveau_filter" id="filter-niveau" class="form-select-moderne">
-                            <option value="">Tous les niveaux</option>
-                            @foreach($niveaux as $niveau)
-                                <option value="{{ $niveau->id }}" @selected($filters['niveau_filter'] == $niveau->id)>{{ $niveau->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                </div>
-
-                <div class="col-md-3">
-                    <div class="form-group-moderne">
-                        <label for="filter-statut" class="form-label-moderne">
-                            <i class="fas fa-toggle-on me-1"></i>Statut
-                        </label>
-                        <select name="statut_filter" id="filter-statut" class="form-select-moderne">
-                            <option value="">Tous les statuts</option>
-                            <option value="1" @selected($filters['statut_filter'] === '1')>Actif</option>
-                            <option value="0" @selected($filters['statut_filter'] === '0')>Inactif</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="col-md-3">
-                    <div class="form-group-moderne">
-                        <label for="filter-coefficient-min" class="form-label-moderne">
-                            <i class="fas fa-sort-numeric-up me-1"></i>Coefficient min.
-                        </label>
-                        <input type="number"
-                               id="filter-coefficient-min"
-                               name="coefficient_min"
-                               class="form-input-moderne"
-                               min="0"
-                               step="0.1"
-                               value="{{ $filters['coefficient_min'] }}">
-                    </div>
-                </div>
-
-                <div class="col-md-3">
-                    <div class="form-group-moderne">
-                        <label for="filter-coefficient-max" class="form-label-moderne">
-                            <i class="fas fa-sort-numeric-down me-1"></i>Coefficient max.
-                        </label>
-                        <input type="number"
-                               id="filter-coefficient-max"
-                               name="coefficient_max"
-                               class="form-input-moderne"
-                               min="0"
-                               step="0.1"
-                               value="{{ $filters['coefficient_max'] }}">
-                    </div>
-                </div>
-
-                <div class="col-md-3">
-                    <div class="form-group-moderne">
-                        <label for="filter-heures-min" class="form-label-moderne">
-                            <i class="fas fa-clock me-1"></i>Heures min.
-                        </label>
-                        <input type="number"
-                               id="filter-heures-min"
-                               name="heures_min"
-                               class="form-input-moderne"
-                               min="0"
-                               value="{{ $filters['heures_min'] }}">
-                    </div>
-                </div>
-
-                <div class="col-md-3">
-                    <div class="form-group-moderne">
-                        <label for="filter-heures-max" class="form-label-moderne">
-                            <i class="fas fa-clock me-1"></i>Heures max.
-                        </label>
-                        <input type="number"
-                               id="filter-heures-max"
-                               name="heures_max"
-                               class="form-input-moderne"
-                               min="0"
-                               value="{{ $filters['heures_max'] }}">
-                    </div>
-                </div>
-
-                <div class="col-12">
-                    <div class="d-flex gap-2 justify-content-between align-items-center mt-3">
-                        <small class="text-muted">
-                            <i class="fas fa-info-circle me-1"></i>
-                            <span id="results-count">
-                                @if(($summary['total'] ?? 0) > 0)
-                                    {{ $summary['from'] ?? 0 }} - {{ $summary['to'] ?? 0 }} sur {{ $summary['total'] }} matière(s)
-                                @else
-                                    Aucun résultat pour le moment.
-                                @endif
-                            </span>
-                        </small>
-                        <div class="d-flex gap-2">
-                            <button type="button" id="matieres-clear-filters" class="btn-acasi secondary">
-                                <i class="fas fa-eraser me-1"></i>Effacer les filtres
-                            </button>
-                            <button type="submit" class="btn-acasi primary" id="matieres-apply-filters">
-                                <i class="fas fa-search me-1"></i>Appliquer les filtres
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </form>
+        <div class="mi-advanced-panel"
+             id="mi-advanced-panel"
+             x-show="advancedFilters"
+             x-cloak
+             x-transition:enter="transition ease-out duration-200"
+             x-transition:enter-start="opacity-0"
+             x-transition:enter-end="opacity-100">
+            <div class="mi-filter-group">
+                <label for="filter-coefficient-min" class="mi-filter-label">Coefficient min.</label>
+                <input type="number"
+                       id="filter-coefficient-min"
+                       name="coefficient_min"
+                       class="mi-filter-input"
+                       min="0"
+                       step="0.1"
+                       value="{{ $filters['coefficient_min'] }}">
+            </div>
+            <div class="mi-filter-group">
+                <label for="filter-coefficient-max" class="mi-filter-label">Coefficient max.</label>
+                <input type="number"
+                       id="filter-coefficient-max"
+                       name="coefficient_max"
+                       class="mi-filter-input"
+                       min="0"
+                       step="0.1"
+                       value="{{ $filters['coefficient_max'] }}">
+            </div>
+            <div class="mi-filter-group">
+                <label for="filter-heures-min" class="mi-filter-label">Heures min.</label>
+                <input type="number"
+                       id="filter-heures-min"
+                       name="heures_min"
+                       class="mi-filter-input"
+                       min="0"
+                       value="{{ $filters['heures_min'] }}">
+            </div>
+            <div class="mi-filter-group">
+                <label for="filter-heures-max" class="mi-filter-label">Heures max.</label>
+                <input type="number"
+                       id="filter-heures-max"
+                       name="heures_max"
+                       class="mi-filter-input"
+                       min="0"
+                       value="{{ $filters['heures_max'] }}">
+            </div>
         </div>
-    </div>
 
-    <div id="matieres-results"
-         data-summary='@json($summary)'
-         data-refresh-url="{{ route('esbtp.matieres.refresh') }}">
-        @include('esbtp.matieres.partials.results', ['matieres' => $matieres])
-    </div>
-</div>
+        {{-- Submit button hidden but kept (no-JS fallback) --}}
+        <button type="submit" id="matieres-apply-filters" class="mi-apply-hidden" tabindex="-1" aria-hidden="true">Appliquer</button>
 
-<div id="matieres-bulk-bar" class="matieres-bulk-bar" style="display: none;">
-    <div class="d-flex align-items-center gap-4">
-        <div class="d-flex align-items-center gap-2">
-            <i class="fas fa-check-circle fa-lg"></i>
-            <span>
+        <div class="mi-filters-foot">
+            <i class="fas fa-info-circle" aria-hidden="true"></i>
+            <span id="results-count">
+                @if(($summary['total'] ?? 0) > 0)
+                    {{ $summary['from'] ?? 0 }} - {{ $summary['to'] ?? 0 }} sur {{ $summary['total'] }} matière(s)
+                @else
+                    Aucun résultat pour le moment.
+                @endif
+            </span>
+        </div>
+    </form>
+
+    {{-- ─── BULK BAR : sticky-top, AVANT le wrapper AJAX pour ne pas être      --}}
+    {{-- réinjectée à chaque refresh. position:sticky+top:0 colle au viewport.  --}}
+    <div id="matieres-bulk-bar"
+         class="matieres-bulk-bar mi-bulk-bar"
+         role="region"
+         aria-label="Actions groupées sur les matières sélectionnées"
+         aria-live="polite"
+         style="display: none;">
+        <div class="mi-bulk-info">
+            <i class="fas fa-check-circle" aria-hidden="true"></i>
+            <span role="status" aria-atomic="true">
                 <strong id="matieres-selected-count">0</strong>
                 matière(s) sélectionnée(s)
             </span>
         </div>
-        <div class="d-flex gap-2">
-            <button type="button" class="btn btn-light btn-sm" id="matieres-bulk-attach">
-                <i class="fas fa-link me-1"></i>Attacher aux combinaisons
+        <div class="mi-bulk-actions">
+            <button type="button" class="mi-bulk-btn" id="matieres-bulk-attach">
+                <i class="fas fa-link" aria-hidden="true"></i>
+                Attacher aux combinaisons
             </button>
-            <button type="button" class="btn btn-outline-light btn-sm" id="matieres-bulk-configure">
-                <i class="fas fa-sliders-h me-1"></i>Configurer
+            <button type="button" class="mi-bulk-btn" id="matieres-bulk-configure">
+                <i class="fas fa-sliders-h" aria-hidden="true"></i>
+                Configurer
             </button>
-            <button type="button" class="btn btn-outline-light btn-sm" id="matieres-bulk-delete">
-                <i class="fas fa-trash me-1"></i>Supprimer
+            <button type="button" class="mi-bulk-btn mi-bulk-btn--danger" id="matieres-bulk-delete">
+                <i class="fas fa-trash" aria-hidden="true"></i>
+                Supprimer
             </button>
-            <button type="button" class="btn btn-outline-light btn-sm" id="matieres-bulk-clear">
-                <i class="fas fa-times me-1"></i>Annuler
+            <button type="button" class="mi-bulk-btn mi-bulk-btn--ghost" id="matieres-bulk-clear">
+                <i class="fas fa-times" aria-hidden="true"></i>
+                Annuler
             </button>
         </div>
+    </div>
+
+    {{-- ─── RESULTS WRAPPER (#matieres-results contract preserved) ─── --}}
+    {{-- L'AJAX innerHTML cible ce conteneur ; il ne contient que le partial.  --}}
+    <div id="matieres-results"
+         class="mi-results-card"
+         data-summary='@json($summary)'
+         data-refresh-url="{{ route('esbtp.matieres.refresh') }}">
+        @include('esbtp.matieres.partials.results', ['matieres' => $matieres])
     </div>
 </div>
 
@@ -961,6 +1528,8 @@ tr[data-matiere-id] {
 @endsection
 
 @push('scripts')
+{{-- common.js fournit window.iiConfirm() et window.iiToast(). --}}
+<script src="{{ asset('js/inscriptions/common.js') }}"></script>
 <script>
 (function () {
     const FILTER_DEBOUNCE = 350;
@@ -983,6 +1552,9 @@ tr[data-matiere-id] {
     function showToast(type, message) {
         if (window.toastr && typeof window.toastr[type] === 'function') {
             window.toastr[type](message);
+        } else if (typeof window.showToast === 'function' && window.showToast !== showToast) {
+            // common.js exposes window.showToast(message, type, duration)
+            window.showToast(message, type, 3500);
         } else {
             const logMethod = type === 'error' ? 'error' : 'log';
             console[logMethod](message);
@@ -991,6 +1563,16 @@ tr[data-matiere-id] {
 
     function getSelectedIdsArray() {
         return Array.from(selectedIds);
+    }
+
+    function updateKpis(kpis) {
+        if (!kpis || typeof kpis !== 'object') return;
+        document.querySelectorAll('[data-kpi]').forEach((el) => {
+            const key = el.dataset.kpi;
+            if (kpis[key] !== undefined && kpis[key] !== null) {
+                el.textContent = String(kpis[key]);
+            }
+        });
     }
 
     function updateSummary(summary) {
@@ -1219,6 +1801,7 @@ tr[data-matiere-id] {
                     history.pushState({}, '', data.url);
                 }
                 updateSummary(data.summary || {});
+                updateKpis(data.kpis || {});
                 clearSelection();
             })
             .catch((error) => {
@@ -1294,6 +1877,7 @@ tr[data-matiere-id] {
                             history.pushState({}, '', data.url);
                         }
                         updateSummary(data.summary || {});
+                        updateKpis(data.kpis || {});
                         clearSelection();
                         initTableInteractions();
                     })
@@ -1370,41 +1954,53 @@ tr[data-matiere-id] {
     }
 
     if (bulkDeleteBtn) {
-        bulkDeleteBtn.addEventListener('click', () => {
+        bulkDeleteBtn.addEventListener('click', async () => {
             const ids = getSelectedIdsArray();
             if (ids.length === 0) {
                 return;
             }
-            if (!confirm('Supprimer les matières sélectionnées ? Cette action est irréversible.')) {
-                return;
+
+            const confirmFn = typeof window.iiConfirm === 'function' ? window.iiConfirm : null;
+            const message = `Supprimer ${ids.length} matière(s) sélectionnée(s) ? Cette action est irréversible.`;
+            const ok = confirmFn
+                ? await confirmFn({ title: 'Suppression en lot', message, confirmLabel: 'Supprimer', cancelLabel: 'Annuler', danger: true })
+                : window.confirm(message);
+            if (!ok) return;
+
+            const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+            const formData = new FormData();
+            formData.append('_token', csrfToken || '');
+            formData.append('_method', 'DELETE');
+            ids.forEach((id) => formData.append('matieres[]', id));
+
+            bulkDeleteBtn.disabled = true;
+            const originalLabel = bulkDeleteBtn.innerHTML;
+            bulkDeleteBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Suppression...';
+
+            try {
+                const response = await fetch('{{ route('esbtp.matieres.bulk-delete') }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                    body: formData,
+                });
+
+                if (!response.ok && response.status !== 302) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+
+                clearSelection();
+                showToast('success', `${ids.length} matière(s) supprimée(s).`);
+                submitFilterForm(false);
+            } catch (error) {
+                debugError('Erreur lors de la suppression en lot:', error);
+                showToast('error', 'Impossible de supprimer les matières sélectionnées.');
+            } finally {
+                bulkDeleteBtn.disabled = false;
+                bulkDeleteBtn.innerHTML = originalLabel;
             }
-
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '{{ route('esbtp.matieres.bulk-delete') }}';
-
-            const csrfInput = document.createElement('input');
-            csrfInput.type = 'hidden';
-            csrfInput.name = '_token';
-            csrfInput.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
-            form.appendChild(csrfInput);
-
-            const methodInput = document.createElement('input');
-            methodInput.type = 'hidden';
-            methodInput.name = '_method';
-            methodInput.value = 'DELETE';
-            form.appendChild(methodInput);
-
-            ids.forEach((id) => {
-                const input = document.createElement('input');
-                input.type = 'hidden';
-                input.name = 'matieres[]';
-                input.value = id;
-                form.appendChild(input);
-            });
-
-            document.body.appendChild(form);
-            form.submit();
         });
     }
 
@@ -1575,7 +2171,7 @@ tr[data-matiere-id] {
 
     const saveLiaisonsBtn = document.getElementById('save-liaisons-btn');
     if (saveLiaisonsBtn) {
-        saveLiaisonsBtn.addEventListener('click', () => {
+        saveLiaisonsBtn.addEventListener('click', async () => {
             const mode = document.getElementById('modal-mode')?.value ?? 'single';
             const matiereId = document.getElementById('modal-matiere-id')?.value;
             const checkedBoxes = Array.from(document.querySelectorAll('.niveau-filiere-checkbox:checked'));
@@ -1585,9 +2181,12 @@ tr[data-matiere-id] {
             }));
 
             if (liaisons.length === 0) {
-                if (!confirm('Aucune liaison sélectionnée. Voulez-vous tout de même continuer (cela supprimera toutes les liaisons) ?')) {
-                    return;
-                }
+                const confirmFn = typeof window.iiConfirm === 'function' ? window.iiConfirm : null;
+                const message = 'Aucune liaison sélectionnée. Voulez-vous tout de même continuer (cela supprimera toutes les liaisons existantes) ?';
+                const ok = confirmFn
+                    ? await confirmFn({ title: 'Aucune liaison', message, confirmLabel: 'Continuer', cancelLabel: 'Annuler', danger: true })
+                    : window.confirm(message);
+                if (!ok) return;
             }
 
             const modalElement = document.getElementById('configureModal');
@@ -1649,6 +2248,68 @@ tr[data-matiere-id] {
                 matiereName
             });
         }
+    });
+
+    /* ───────────────────────────────────────────────────────────
+       KEBAB MENU — event delegation, persists across AJAX refreshes
+       ─────────────────────────────────────────────────────────── */
+    function closeAllKebabMenus(except) {
+        document.querySelectorAll('[data-mi-kebab-menu].is-open').forEach((menu) => {
+            if (menu === except) return;
+            menu.classList.remove('is-open');
+            const wrap = menu.closest('.mi-action-kebab-wrap');
+            const toggle = wrap?.querySelector('[data-mi-kebab-toggle]');
+            if (toggle) toggle.setAttribute('aria-expanded', 'false');
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        const toggle = event.target.closest('[data-mi-kebab-toggle]');
+        if (toggle) {
+            event.preventDefault();
+            const wrap = toggle.closest('.mi-action-kebab-wrap');
+            const menu = wrap?.querySelector('[data-mi-kebab-menu]');
+            if (!menu) return;
+            const willOpen = !menu.classList.contains('is-open');
+            closeAllKebabMenus(willOpen ? menu : null);
+            menu.classList.toggle('is-open', willOpen);
+            toggle.setAttribute('aria-expanded', String(willOpen));
+            return;
+        }
+
+        // Click on a menu item → close menu (item handles its own action via data-bs-toggle).
+        const menuItem = event.target.closest('[data-mi-kebab-menu] [role="menuitem"]');
+        if (menuItem) {
+            const menu = menuItem.closest('[data-mi-kebab-menu]');
+            if (menu) {
+                menu.classList.remove('is-open');
+                const wrap = menu.closest('.mi-action-kebab-wrap');
+                const t = wrap?.querySelector('[data-mi-kebab-toggle]');
+                if (t) t.setAttribute('aria-expanded', 'false');
+            }
+            return;
+        }
+
+        // Click outside any kebab → close all.
+        if (!event.target.closest('[data-mi-kebab-menu]')) {
+            closeAllKebabMenus(null);
+        }
+    });
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            closeAllKebabMenus(null);
+        }
+    });
+
+    /* Empty-state "Effacer les filtres" — délégation pour survivre aux refresh AJAX */
+    document.addEventListener('click', (event) => {
+        const btn = event.target.closest('#mi-empty-clear-filters');
+        if (!btn) return;
+        event.preventDefault();
+        if (filtersForm) filtersForm.reset();
+        if (headerSearch) headerSearch.value = '';
+        submitFilterForm();
     });
 
     updateSummary(JSON.parse(resultsContainer.dataset.summary || '{}'));
