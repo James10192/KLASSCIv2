@@ -5,117 +5,476 @@
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-.table-moderne {
-    width: 100%;
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-    border: 1px solid rgba(0, 0, 0, 0.05);
-    overflow: hidden;
-    font-size: 14px;
-}
+/* ═══════════════════════════════════════════════════════════════════════════
+   RÉINSCRIPTIONS — PREMIUM (re-*) — namespace isolé
+   JS contracts to preserve (DO NOT rename / remove):
+     - IDs form: #reinscriptionFiltersForm, #search, #filiere_id, #niveau_id,
+                 #statut_reinscription, #statut_paiement, #annee_academique
+     - IDs tabs: #myTab, #myTabContent + 7 panes (#passages, #rattrapages,
+                 #redoublements, #valides, #abandons-annee, #abandons-ecole,
+                 #errors) + 7 links (suffix -tab)
+     - Modal:   #yearChangeModal
+     - Classes: .reinscription-spinner, .reinscription-spinner-icon,
+                .reinscription-spinner-text, .content-container,
+                .load-more-btn, .load-more-container
+     - data-attrs: data-toggle="tab", data-dismiss="modal", data-category="X"
+     - JS funcs: loadTabContent, applyFilters, validerReinscription,
+                 marquerAbandonModal, showYearChangeInfo, exportResults,
+                 loadMore, refreshTab
+     - API: Bootstrap 4 (jQuery 3 + bootstrap@4.6.2) — NE PAS migrer BS5
+   ═══════════════════════════════════════════════════════════════════════════ */
 
-.table-moderne table {
-    width: 100%;
-    border-collapse: collapse;
-    background: white;
+/* Hero gradient ----------------------------------------------------------- */
+.re-hero {
+    position: relative;
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 1.75rem 2rem 1.5rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
+    /* Pas d'overflow:hidden ici — le popover d'aide doit pouvoir s'étendre
+       sous le hero. Le ::before n'est pas clippé mais son radial-gradient
+       fade naturellement à transparent donc invisible hors-hero. */
 }
-
-.table-moderne thead th {
-    padding: 16px 12px;
-    background-color: #f8fafc;
-    color: #64748b;
-    font-weight: 600;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    border-bottom: 2px solid rgba(0, 0, 0, 0.05);
+.re-hero::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 360px; height: 360px;
+    border-radius: 0 18px 0 0;
+    background: radial-gradient(circle at top right, rgba(255,255,255,0.08) 0%, transparent 60%);
+    pointer-events: none;
+    /* Reste contenu visuellement même sans overflow:hidden parent */
+    mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
+    -webkit-mask-image: linear-gradient(to bottom, #000 70%, transparent 100%);
 }
-
-.table-moderne tbody tr {
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-    transition: all 0.2s ease;
-}
-
-.table-moderne tbody tr:hover {
-    background-color: #f8fafc;
-}
-
-.table-moderne tbody td {
-    padding: 16px 12px;
-    vertical-align: middle;
-}
-
-.table-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 8px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 600;
-    white-space: nowrap;
-}
-
-.table-badge.primary {
-    background-color: rgba(59, 130, 246, 0.1);
-    color: rgb(59, 130, 246);
-}
-
-.table-badge.success {
-    background-color: rgba(34, 197, 94, 0.1);
-    color: rgb(34, 197, 94);
-}
-
-.table-badge.warning {
-    background-color: rgba(245, 158, 11, 0.1);
-    color: rgb(245, 158, 11);
-}
-
-.table-badge.danger {
-    background-color: rgba(239, 68, 68, 0.1);
-    color: rgb(239, 68, 68);
-}
-
-.table-actions {
+.re-hero-top {
+    position: relative;
     display: flex;
-    gap: 4px;
-    justify-content: center;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
 }
-
-.btn-table-action {
+.re-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex: 1;
+    min-width: 0;
+}
+.re-hero-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem;
+    flex-shrink: 0;
+    color: #fff;
+}
+.re-hero-text { flex: 1; min-width: 0; }
+.re-hero h1 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.re-hero p {
+    color: rgba(255,255,255,.7);
+    font-size: .88rem;
+    margin: 0.25rem 0 0;
+}
+.re-hero-meta {
+    margin-top: 0.65rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+}
+.re-hero-pill {
+    display: inline-flex; align-items: center; gap: 0.4rem;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.18);
+    border-radius: 999px;
+    padding: 0.3rem 0.85rem;
+    font-size: 0.78rem;
+    color: rgba(255,255,255,.92);
+    font-weight: 500;
+}
+.re-pill-link {
+    background: none;
+    border: none;
+    color: #fff;
+    text-decoration: underline;
+    font-size: 0.75rem;
+    padding: 0;
+    margin-left: 0.4rem;
+    cursor: pointer;
+    font-family: inherit;
+}
+.re-pill-link:hover { color: #fbbf24; }
+.re-help-btn {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.18);
+    color: #fff;
+    width: 26px; height: 26px;
+    border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 32px;
-    height: 32px;
-    border: none;
-    border-radius: 4px;
+    font-size: 0.8rem;
     cursor: pointer;
+    margin-left: 0.5rem;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+.re-help-btn:hover {
+    background: rgba(255,255,255,.22);
+    transform: scale(1.05);
+}
+
+.re-hero-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+.re-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.55rem 1.1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    border-radius: 10px;
     transition: all 0.2s ease;
     text-decoration: none;
-    font-size: 14px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    white-space: nowrap;
+    font-family: inherit;
+}
+.re-btn--glass {
+    background: rgba(255,255,255,.15);
+    color: #fff;
+    border-color: rgba(255,255,255,.2);
+}
+.re-btn--glass:hover {
+    background: rgba(255,255,255,.25);
+    color: #fff;
+    text-decoration: none;
+}
+.re-btn--white {
+    background: #fff;
+    color: #0453cb;
+}
+.re-btn--white:hover {
+    background: #f8fafc;
+    color: #0453cb;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    text-decoration: none;
 }
 
-.btn-table-action.primary {
-    background-color: rgba(59, 130, 246, 0.1);
-    color: rgb(59, 130, 246);
+/* KPIs glass row dans le hero -------------------------------------------- */
+.re-kpis {
+    position: relative;
+    display: flex;
+    gap: 0.65rem;
+    flex-wrap: wrap;
+}
+.re-kpi {
+    flex: 1 1 calc((100% / 7) - 0.65rem);
+    min-width: 130px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 12px;
+    padding: 0.85rem 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    color: #fff;
+    text-align: left;
+    text-decoration: none;
+    font-family: inherit;
+}
+.re-kpi:hover {
+    background: rgba(255,255,255,.16);
+    border-color: rgba(255,255,255,.28);
+    transform: translateY(-1px);
+    color: #fff;
+    text-decoration: none;
+}
+.re-kpi-icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.95rem;
+    flex-shrink: 0;
+    background: rgba(255,255,255,.12);
+    color: rgba(255,255,255,.85);
+}
+.re-kpi-icon.success { background: rgba(52,211,153,.18); color: #34d399; }
+.re-kpi-icon.warning { background: rgba(251,191,36,.18); color: #fbbf24; }
+.re-kpi-icon.danger  { background: rgba(248,113,113,.18); color: #f87171; }
+.re-kpi-icon.neutral { background: rgba(147,197,253,.15); color: #93c5fd; }
+.re-kpi-icon.muted   { background: rgba(255,255,255,.08); color: rgba(255,255,255,.6); }
+
+.re-kpi-content {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-width: 0;
+    flex: 1;
+}
+.re-kpi-value {
+    font-size: 1.3rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1;
+}
+.re-kpi-label {
+    font-size: 0.72rem;
+    color: rgba(255,255,255,.7);
+    margin-top: 0.18rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
-.btn-table-action.primary:hover {
-    background-color: rgba(59, 130, 246, 0.2);
+/* Filters card ----------------------------------------------------------- */
+.re-filters-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+}
+.re-filters-section-title {
+    display: flex; align-items: center; gap: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #1e293b;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.85rem;
+}
+.re-filters-section-title i {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: rgba(4,83,203,0.08);
+    color: #0453cb;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.78rem;
+}
+.re-filters-row {
+    display: grid;
+    grid-template-columns: 2fr 1.2fr 1.2fr;
+    gap: 0.85rem;
+    margin-bottom: 0.85rem;
+}
+.re-filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+.re-filter-group label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #64748b;
+    margin: 0;
+}
+.re-filter-group input,
+.re-filter-group select {
+    height: 40px;
+    padding: 0 0.85rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    background: #fff;
+    color: #1e293b;
+    transition: all 0.2s ease;
+    font-family: inherit;
+}
+.re-filter-group input:focus,
+.re-filter-group select:focus {
+    outline: none;
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,0.1);
 }
 
-.btn-table-action.warning {
-    background-color: rgba(245, 158, 11, 0.1);
-    color: rgb(245, 158, 11);
+.re-filters-advanced-toggle {
+    background: none;
+    border: 1px dashed #cbd5e1;
+    color: #0453cb;
+    padding: 0.5rem 1rem;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    margin-bottom: 0.85rem;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: inherit;
+}
+.re-filters-advanced-toggle:hover {
+    background: rgba(4,83,203,0.05);
+    border-color: #0453cb;
+}
+.re-filters-advanced-toggle i { transition: transform 0.2s ease; }
+.re-filters-advanced-toggle.is-open i { transform: rotate(180deg); }
+
+.re-filters-advanced {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.85rem;
+    margin-bottom: 0.85rem;
+    padding-top: 0.85rem;
+    border-top: 1px dashed #e2e8f0;
 }
 
-.btn-table-action.warning:hover {
-    background-color: rgba(245, 158, 11, 0.2);
+.re-filters-actions {
+    display: flex;
+    gap: 0.65rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.re-filter-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.55rem 1.25rem;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+    text-decoration: none;
+    font-family: inherit;
+}
+.re-filter-btn--primary {
+    background: linear-gradient(135deg, #0453cb, #1b64d4);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(4,83,203,0.25);
+}
+.re-filter-btn--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(4,83,203,0.35);
+    color: #fff;
+    text-decoration: none;
+}
+.re-filter-btn--ghost {
+    background: #fff;
+    color: #64748b;
+    border-color: #e2e8f0;
+}
+.re-filter-btn--ghost:hover {
+    background: #f8fafc;
+    color: #1e293b;
+    text-decoration: none;
+}
+.re-filters-meta {
+    margin-left: auto;
+    font-size: 0.78rem;
+    color: #94a3b8;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
 }
 
-/* SPINNER ISOLÉ - Force tous les styles */
+/* Tabs (chips style) ----------------------------------------------------- */
+.re-content-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+}
+.re-tabs-wrapper {
+    border-bottom: 1px solid #f1f5f9;
+    padding: 1.1rem 1.5rem 0;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+.re-tabs.nav-tabs {
+    border: none !important;
+    display: flex !important;
+    gap: 0.5rem !important;
+    flex-wrap: nowrap !important;
+    margin-bottom: 0 !important;
+    min-width: max-content;
+}
+.re-tabs .nav-item { border: none !important; }
+.re-tab.nav-link {
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    padding: 0.55rem 0.95rem !important;
+    color: #64748b !important;
+    font-weight: 600 !important;
+    font-size: 0.85rem !important;
+    background: #fff !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 0.5rem !important;
+    transition: all 0.2s ease !important;
+    white-space: nowrap !important;
+    margin-bottom: 1.1rem !important;
+}
+.re-tab.nav-link:hover {
+    border-color: #0453cb !important;
+    color: #0453cb !important;
+    background: rgba(4,83,203,0.04) !important;
+}
+.re-tab.nav-link.active {
+    background: linear-gradient(135deg, #0453cb, #1b64d4) !important;
+    border-color: #0453cb !important;
+    color: #fff !important;
+    box-shadow: 0 2px 8px rgba(4,83,203,0.2) !important;
+}
+.re-tab-icon { font-size: 0.85rem; line-height: 1; }
+.re-tab-icon.success { color: #10b981; }
+.re-tab-icon.warning { color: #f59e0b; }
+.re-tab-icon.danger  { color: #dc2626; }
+.re-tab-icon.neutral { color: #3b82f6; }
+.re-tab-icon.muted   { color: #94a3b8; }
+.re-tab.nav-link.active .re-tab-icon { color: rgba(255,255,255,0.92); }
+.re-tab-count {
+    background: #f1f5f9;
+    color: #64748b;
+    padding: 0.15rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    min-width: 24px;
+    text-align: center;
+    line-height: 1.4;
+}
+.re-tab.nav-link.active .re-tab-count {
+    background: rgba(255,255,255,0.25) !important;
+    color: #fff !important;
+}
+
+.re-tab-body {
+    padding: 1.5rem;
+}
+
+/* Spinner (classes JS-dépendantes — préservées) -------------------------- */
 .reinscription-spinner {
     position: relative !important;
     display: flex !important;
@@ -123,468 +482,476 @@
     align-items: center !important;
     justify-content: center !important;
     width: 100% !important;
-    min-height: 200px !important;
+    min-height: 280px !important;
     text-align: center !important;
     padding: 40px !important;
 }
-
-.reinscription-spinner.hidden {
-    display: none !important;
-}
-
+.reinscription-spinner.hidden { display: none !important; }
 .reinscription-spinner-icon {
     display: block !important;
-    margin-bottom: 20px !important;
+    margin-bottom: 16px !important;
     text-align: center !important;
 }
-
 .reinscription-spinner-icon i {
-    font-size: 48px !important;
-    color: #3b82f6 !important;
+    font-size: 38px !important;
+    color: #0453cb !important;
     animation: reinscription-spin 1s linear infinite !important;
     transform-origin: center center !important;
 }
-
 .reinscription-spinner-text {
     display: block !important;
-    position: static !important;
-    animation: none !important;
-    transform: none !important;
     color: #64748b !important;
+    font-size: 0.88rem !important;
     margin: 0 !important;
-    padding: 0 !important;
-    font-size: 14px !important;
-    font-weight: normal !important;
     text-align: center !important;
 }
-
 @keyframes reinscription-spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
 
-/* Container pour le contenu des onglets */
+/* Container AJAX (classes JS-dépendantes — préservées) ------------------- */
 .content-container {
     width: 100% !important;
     min-height: 200px;
 }
-
-/* S'assurer que les tab-panes prennent toute la largeur */
-.tab-pane {
-    width: 100% !important;
-}
-
-.tab-content {
-    width: 100% !important;
-}
-
-/* S'assurer que les tables prennent toute la largeur */
+.tab-pane { width: 100% !important; }
+.tab-content { width: 100% !important; }
 .content-container .table-responsive {
     width: 100% !important;
     margin: 0;
+    border-radius: 10px;
+    overflow: hidden;
 }
-
 .content-container .table-responsive table {
     width: 100% !important;
     margin: 0;
 }
 
-/* Correction pour mobile */
-@media (max-width: 768px) {
-    .table-moderne {
-        min-width: unset;
-        width: 100%;
-    }
-    
-    .content-container {
-        padding: 0 !important;
-    }
-    
-    .table-responsive {
-        border-radius: var(--radius-medium);
-        -webkit-overflow-scrolling: touch;
-    }
+/* Alerts session ---------------------------------------------------------- */
+.re-alert {
+    border-radius: 12px;
+    padding: 0.85rem 1.1rem;
+    margin-bottom: 1.1rem;
+    border: 1px solid transparent;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    font-size: 0.88rem;
 }
+.re-alert--success {
+    background: rgba(16,185,129,0.08);
+    border-color: rgba(16,185,129,0.2);
+    color: #047857;
+}
+.re-alert--danger {
+    background: rgba(239,68,68,0.06);
+    border-color: rgba(239,68,68,0.18);
+    color: #991b1b;
+}
+.re-alert ul { margin: 0; padding-left: 1.2rem; }
+
+/* Help popover BS4 customization ----------------------------------------- */
+.popover.re-help-popover {
+    max-width: 380px;
+    border-radius: 12px;
+    box-shadow: 0 12px 32px rgba(15,23,42,0.15);
+    border: 1px solid #e2e8f0;
+}
+.popover.re-help-popover .popover-header {
+    background: linear-gradient(135deg, #0453cb, #1b64d4);
+    color: #fff;
+    border: none;
+    border-radius: 12px 12px 0 0;
+    font-weight: 600;
+    font-size: 0.88rem;
+}
+.popover.re-help-popover .popover-body {
+    padding: 1rem 1.1rem;
+    font-size: 0.85rem;
+    color: #1e293b;
+}
+.popover.re-help-popover .popover-body ul {
+    margin: 0.5rem 0 0;
+    padding-left: 1.2rem;
+}
+.popover.re-help-popover .popover-body strong { color: #0453cb; }
+
+/* Responsive ------------------------------------------------------------- */
+@media (max-width: 1280px) {
+    .re-kpi { flex: 1 1 calc((100% / 4) - 0.65rem); }
+}
+@media (max-width: 992px) {
+    .re-hero { padding: 1.25rem 1.5rem; }
+    .re-kpi { flex: 1 1 calc(50% - 0.5rem); min-width: 0; }
+    .re-filters-row { grid-template-columns: 1fr 1fr; }
+    .re-filters-advanced { grid-template-columns: 1fr; }
+}
+@media (max-width: 576px) {
+    .re-hero { padding: 1rem 1.1rem; border-radius: 14px; }
+    .re-hero h1 { font-size: 1.2rem; }
+    .re-hero-top { flex-direction: column; }
+    .re-hero-actions { width: 100%; }
+    .re-btn { flex: 1; justify-content: center; }
+    .re-filters-row { grid-template-columns: 1fr; }
+    .re-tab.nav-link { padding: 0.45rem 0.75rem !important; font-size: 0.78rem !important; }
+    .re-filters-meta { width: 100%; margin-left: 0; margin-top: 0.5rem; }
+}
+
+[x-cloak] { display: none !important; }
 </style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header moderne -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1>Réinscriptions</h1>
-                <p class="header-subtitle">Gestion des passages, rattrapages et redoublements</p>
+
+        {{-- ── HERO PREMIUM (re-hero) ─────────────────────────────────── --}}
+        <div class="re-hero">
+            <div class="re-hero-top">
+                <div class="re-hero-left">
+                    <div class="re-hero-icon">
+                        <i class="fas fa-redo"></i>
+                    </div>
+                    <div class="re-hero-text">
+                        <h1>
+                            Réinscriptions
+                            {{-- Help popover (Alpine — n'introduit pas de nouveau JS dans la page existante) --}}
+                            <span x-data="{open: false}" @click.outside="open = false" style="position:relative; display:inline-block;">
+                                <button type="button"
+                                        class="re-help-btn"
+                                        @click="open = !open"
+                                        title="Comment fonctionne le système de réinscription ?"
+                                        aria-label="Aide">
+                                    <i class="fas fa-question"></i>
+                                </button>
+                                <div x-show="open" x-cloak x-transition
+                                     style="position:absolute; top:calc(100% + 8px); left:0; z-index:1050; background:#fff; color:#1e293b; border-radius:12px; box-shadow:0 12px 32px rgba(15,23,42,0.18); border:1px solid #e2e8f0; min-width:340px; max-width:400px; overflow:hidden; text-align:left;">
+                                    <div style="background:linear-gradient(135deg,#0453cb,#1b64d4); color:#fff; padding:0.7rem 1rem; font-weight:600; font-size:0.88rem;">
+                                        <i class="fas fa-info-circle me-1"></i> Nouveau système de réinscription
+                                    </div>
+                                    <div style="padding:0.85rem 1.05rem; font-size:0.82rem; line-height:1.55;">
+                                        <p style="margin:0 0 0.5rem;"><strong style="color:#0453cb;">Principe :</strong> chaque réinscription crée une <strong>nouvelle inscription</strong> avec recalcul complet des frais selon la nouvelle classe.</p>
+                                        <ul style="margin:0; padding-left:1.1rem;">
+                                            <li><strong style="color:#0453cb;">Condition :</strong> étudiant entièrement soldé (100&nbsp;%)</li>
+                                            <li><strong style="color:#0453cb;">Historique :</strong> anciennes inscriptions visibles dans le profil</li>
+                                            <li><strong style="color:#0453cb;">Frais :</strong> nouveaux frais optionnels sélectionnables</li>
+                                            <li><strong style="color:#0453cb;">Facture :</strong> générée automatiquement</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </span>
+                        </h1>
+                        <p>Gestion des passages, rattrapages et redoublements</p>
+                        <div class="re-hero-meta">
+                            <span class="re-hero-pill">
+                                <i class="fas fa-calendar-alt"></i>
+                                Année {{ $anneeAcademique }}
+                                <button type="button" class="re-pill-link" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
+                                    Changer
+                                </button>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                <div class="re-hero-actions">
+                    <a href="{{ route('esbtp.reinscription.regles.index') }}" class="re-btn re-btn--glass">
+                        <i class="fas fa-cogs"></i> Règles Académiques
+                    </a>
+                    <button type="button" class="re-btn re-btn--white" onclick="exportResults()">
+                        <i class="fas fa-download"></i> Exporter
+                    </button>
+                </div>
             </div>
-            <div class="header-actions">
-                <a href="{{ route('esbtp.reinscription.regles.index') }}" class="btn-acasi secondary">
-                    <i class="fas fa-cogs"></i>Règles Académiques
+
+            {{-- ── KPIs glass row (cliquables : activent l'onglet correspondant) ── --}}
+            <div class="re-kpis">
+                <a class="re-kpi" href="#passages" data-bs4-tab="passages-tab" data-rekpi-target="passages-tab">
+                    <div class="re-kpi-icon success"><i class="fas fa-arrow-up"></i></div>
+                    <div class="re-kpi-content">
+                        <div class="re-kpi-value">{{ $statistiques['passages'] ?? 0 }}</div>
+                        <div class="re-kpi-label">Passages</div>
+                    </div>
                 </a>
-                <button class="btn-acasi primary" onclick="exportResults()">
-                    <i class="fas fa-download"></i>Exporter
-                </button>
+                <a class="re-kpi" href="#rattrapages" data-bs4-tab="rattrapages-tab" data-rekpi-target="rattrapages-tab">
+                    <div class="re-kpi-icon warning"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="re-kpi-content">
+                        <div class="re-kpi-value">{{ $statistiques['rattrapages'] ?? 0 }}</div>
+                        <div class="re-kpi-label">Rattrapages</div>
+                    </div>
+                </a>
+                <a class="re-kpi" href="#redoublements" data-bs4-tab="redoublements-tab" data-rekpi-target="redoublements-tab">
+                    <div class="re-kpi-icon danger"><i class="fas fa-redo"></i></div>
+                    <div class="re-kpi-content">
+                        <div class="re-kpi-value">{{ $statistiques['redoublements'] ?? 0 }}</div>
+                        <div class="re-kpi-label">Redoublements</div>
+                    </div>
+                </a>
+                <a class="re-kpi" href="#abandons-annee" data-bs4-tab="abandons-annee-tab" data-rekpi-target="abandons-annee-tab">
+                    <div class="re-kpi-icon danger"><i class="fas fa-user-slash"></i></div>
+                    <div class="re-kpi-content">
+                        <div class="re-kpi-value">{{ $statistiques['abandons_annee'] ?? 0 }}</div>
+                        <div class="re-kpi-label">Abandons année</div>
+                    </div>
+                </a>
+                <a class="re-kpi" href="#abandons-ecole" data-bs4-tab="abandons-ecole-tab" data-rekpi-target="abandons-ecole-tab">
+                    <div class="re-kpi-icon muted"><i class="fas fa-graduation-cap"></i></div>
+                    <div class="re-kpi-content">
+                        <div class="re-kpi-value">{{ $statistiques['abandons_ecole'] ?? 0 }}</div>
+                        <div class="re-kpi-label">Abandons école</div>
+                    </div>
+                </a>
+                <a class="re-kpi" href="#valides" data-bs4-tab="valides-tab" data-rekpi-target="valides-tab">
+                    <div class="re-kpi-icon success"><i class="fas fa-check-double"></i></div>
+                    <div class="re-kpi-content">
+                        <div class="re-kpi-value">{{ $statistiques['valides'] ?? 0 }}</div>
+                        <div class="re-kpi-label">Validés</div>
+                    </div>
+                </a>
+                <a class="re-kpi" href="#errors" data-bs4-tab="errors-tab" data-rekpi-target="errors-tab">
+                    <div class="re-kpi-icon neutral"><i class="fas fa-user-clock"></i></div>
+                    <div class="re-kpi-content">
+                        <div class="re-kpi-value">{{ $statistiques['errors'] ?? 0 }}</div>
+                        <div class="re-kpi-label">Non validés</div>
+                    </div>
+                </a>
             </div>
         </div>
 
+        {{-- ── Alertes session ────────────────────────────────────────── --}}
         @php
             $errorsList = array_filter($errors->all(), fn($error) => trim((string) $error) !== '');
         @endphp
         @if (!empty($errorsList))
-            <div class="card-moderne mb-md" style="border-left: 4px solid var(--danger); background-color: rgba(239, 68, 68, 0.05);">
-                <div class="p-lg">
-                    <ul style="margin: 0; padding-left: 20px; color: var(--danger);">
-                        @foreach ($errorsList as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
+            <div class="re-alert re-alert--danger">
+                <i class="fas fa-exclamation-circle mt-1"></i>
+                <ul>
+                    @foreach ($errorsList as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
             </div>
         @endif
-
         @if (session('success'))
-            <div class="card-moderne mb-md" style="border-left: 4px solid var(--success); background-color: rgba(16, 185, 129, 0.05);">
-                <div class="p-lg">
-                    <p style="margin: 0; color: var(--success); font-weight: 500;">{{ session('success') }}</p>
-                </div>
+            <div class="re-alert re-alert--success">
+                <i class="fas fa-check-circle mt-1"></i>
+                <span>{{ session('success') }}</span>
             </div>
         @endif
 
-        <!-- Information année académique courante -->
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <div class="section-title mb-md">
-                    <i class="fas fa-calendar me-2"></i>Contexte d'affichage
-                </div>
-                <div style="display: flex; gap: var(--space-md); align-items: end;">
-                    <div style="flex: 1; max-width: 300px;">
-                        <label for="annee_academique" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Année Académique Courante</label>
-                        <select name="annee_academique" id="annee_academique" class="year-selector" style="width: 100%; background-color: #f8f9fa; cursor: not-allowed;" disabled>
-                            <option value="{{ $anneeAcademique }}" selected>
-                                {{ $anneeAcademique }} (Année en cours)
-                            </option>
+        {{-- ── Filtres hybrides (3 visibles + 2 collapsibles Alpine) ──── --}}
+        <div class="re-filters-card" x-data="{advanced: {{ (request('niveau_id') || request('statut_paiement')) ? 'true' : 'false' }}}">
+            <div class="re-filters-section-title">
+                <i class="fas fa-filter"></i>
+                Filtres de réinscription
+            </div>
+            <form method="GET" action="{{ route('esbtp.reinscription.index') }}" id="reinscriptionFiltersForm" onsubmit="return applyFilters()">
+                {{-- Hidden input pour conserver la référence #annee_academique
+                     (utilisée potentiellement par du JS de debug, sinon non lue par les
+                     fonctions principales mais préservée par sécurité) --}}
+                <input type="hidden" id="annee_academique" name="annee_academique" value="{{ $anneeAcademique }}">
+
+                {{-- Ligne principale : 3 visibles (Recherche, Filière, Statut) --}}
+                <div class="re-filters-row">
+                    <div class="re-filter-group">
+                        <label for="search">Recherche</label>
+                        <input type="text" name="search" id="search"
+                               value="{{ request('search') }}"
+                               placeholder="Nom, matricule…">
+                    </div>
+                    <div class="re-filter-group">
+                        <label for="filiere_id">Filière</label>
+                        <select name="filiere_id" id="filiere_id">
+                            <option value="">Toutes les filières</option>
+                            @foreach($filieres as $filiere)
+                                <option value="{{ $filiere->id }}" {{ request('filiere_id') == $filiere->id ? 'selected' : '' }}>
+                                    {{ $filiere->name }}
+                                </option>
+                            @endforeach
                         </select>
                     </div>
-                    <button type="button" class="btn-acasi secondary" onclick="showYearChangeInfo()" title="Comment changer d'année ?">
-                        <i class="fas fa-info-circle"></i>Changer d'année
+                    <div class="re-filter-group">
+                        <label for="statut_reinscription">Statut</label>
+                        <select name="statut_reinscription" id="statut_reinscription">
+                            <option value="">Tous les statuts</option>
+                            <option value="passage" {{ request('statut_reinscription') == 'passage' ? 'selected' : '' }}>Passage</option>
+                            <option value="rattrapage" {{ request('statut_reinscription') == 'rattrapage' ? 'selected' : '' }}>Rattrapage</option>
+                            <option value="redoublement" {{ request('statut_reinscription') == 'redoublement' ? 'selected' : '' }}>Redoublement</option>
+                            <option value="abandon" {{ request('statut_reinscription') == 'abandon' ? 'selected' : '' }}>Abandon</option>
+                            <option value="valide" {{ request('statut_reinscription') == 'valide' ? 'selected' : '' }}>Validé</option>
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Toggle filtres avancés --}}
+                <button type="button"
+                        class="re-filters-advanced-toggle"
+                        :class="{'is-open': advanced}"
+                        @click="advanced = !advanced">
+                    <span x-show="!advanced"><i class="fas fa-chevron-down"></i> Plus de filtres</span>
+                    <span x-show="advanced" x-cloak><i class="fas fa-chevron-up"></i> Moins de filtres</span>
+                </button>
+
+                {{-- Filtres avancés collapsibles --}}
+                <div class="re-filters-advanced" x-show="advanced" x-cloak x-transition>
+                    <div class="re-filter-group">
+                        <label for="niveau_id">Niveau</label>
+                        <select name="niveau_id" id="niveau_id">
+                            <option value="">Tous les niveaux</option>
+                            @foreach($niveaux as $niveau)
+                                <option value="{{ $niveau->id }}" {{ request('niveau_id') == $niveau->id ? 'selected' : '' }}>
+                                    {{ $niveau->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="re-filter-group">
+                        <label for="statut_paiement">Paiement</label>
+                        <select name="statut_paiement" id="statut_paiement">
+                            <option value="">Tous</option>
+                            <option value="solde" {{ request('statut_paiement') == 'solde' ? 'selected' : '' }}>Soldé</option>
+                            <option value="impaye" {{ request('statut_paiement') == 'impaye' ? 'selected' : '' }}>Impayé</option>
+                        </select>
+                    </div>
+                </div>
+
+                {{-- Actions filtres --}}
+                <div class="re-filters-actions">
+                    <button type="submit" class="re-filter-btn re-filter-btn--primary">
+                        <i class="fas fa-search"></i> Filtrer
                     </button>
+                    <a href="{{ route('esbtp.reinscription.index') }}" class="re-filter-btn re-filter-btn--ghost">
+                        <i class="fas fa-times"></i> Réinitialiser
+                    </a>
+                    <span class="re-filters-meta">
+                        <i class="fas fa-calendar-alt"></i> {{ $anneeAcademique }}
+                    </span>
                 </div>
-            </div>
+            </form>
         </div>
 
-        <!-- Filtres de réinscription -->
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <div class="section-title mb-md">
-                    <i class="fas fa-filter me-2"></i>Filtres de réinscription
-                </div>
-                <form method="GET" action="{{ route('esbtp.reinscription.index') }}" id="reinscriptionFiltersForm" onsubmit="return applyFilters()">
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-md); margin-bottom: var(--space-md);">
-                        <!-- Recherche -->
-                        <div>
-                            <label for="search" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Recherche</label>
-                            <input type="text" name="search" id="search" value="{{ request('search') }}" placeholder="Nom, matricule..." class="form-control" style="width: 100%;">
-                        </div>
-                        
-                        
-                        <!-- Filière -->
-                        <div>
-                            <label for="filiere_id" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Filière</label>
-                            <select name="filiere_id" id="filiere_id" class="form-control" style="width: 100%;">
-                                <option value="">Toutes les filières</option>
-                                @foreach($filieres as $filiere)
-                                    <option value="{{ $filiere->id }}" {{ request('filiere_id') == $filiere->id ? 'selected' : '' }}>
-                                        {{ $filiere->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        
-                        <!-- Niveau -->
-                        <div>
-                            <label for="niveau_id" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Niveau</label>
-                            <select name="niveau_id" id="niveau_id" class="form-control" style="width: 100%;">
-                                <option value="">Tous les niveaux</option>
-                                @foreach($niveaux as $niveau)
-                                    <option value="{{ $niveau->id }}" {{ request('niveau_id') == $niveau->id ? 'selected' : '' }}>
-                                        {{ $niveau->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                        </div>
-                        
-                        <!-- Statut de réinscription -->
-                        <div>
-                            <label for="statut_reinscription" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Statut</label>
-                            <select name="statut_reinscription" id="statut_reinscription" class="form-control" style="width: 100%;">
-                                <option value="">Tous les statuts</option>
-                                <option value="passage" {{ request('statut_reinscription') == 'passage' ? 'selected' : '' }}>Passage</option>
-                                <option value="rattrapage" {{ request('statut_reinscription') == 'rattrapage' ? 'selected' : '' }}>Rattrapage</option>
-                                <option value="redoublement" {{ request('statut_reinscription') == 'redoublement' ? 'selected' : '' }}>Redoublement</option>
-                                <option value="abandon" {{ request('statut_reinscription') == 'abandon' ? 'selected' : '' }}>Abandon</option>
-                                <option value="valide" {{ request('statut_reinscription') == 'valide' ? 'selected' : '' }}>Validé</option>
-                            </select>
-                        </div>
-                        
-                        <!-- Statut paiement -->
-                        <div>
-                            <label for="statut_paiement" style="display: block; margin-bottom: var(--space-sm); font-weight: 600; font-size: var(--text-small); text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary);">Paiement</label>
-                            <select name="statut_paiement" id="statut_paiement" class="form-control" style="width: 100%;">
-                                <option value="">Tous</option>
-                                <option value="solde" {{ request('statut_paiement') == 'solde' ? 'selected' : '' }}>Soldé</option>
-                                <option value="impaye" {{ request('statut_paiement') == 'impaye' ? 'selected' : '' }}>Impayé</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <div style="display: flex; gap: var(--space-md); align-items: center;">
-                        <button type="submit" class="btn-acasi primary">
-                            <i class="fas fa-search me-1"></i>Filtrer
-                        </button>
-                        <a href="{{ route('esbtp.reinscription.index') }}" class="btn-acasi secondary">
-                            <i class="fas fa-times me-1"></i>Réinitialiser
-                        </a>
-                        <div style="margin-left: auto; font-size: var(--text-small); color: var(--text-muted);">
-                            <i class="fas fa-calendar me-1"></i>Année: {{ $anneeAcademique }}
-                        </div>
-                    </div>
-                </form>
-            </div>
-        </div>
-
-
-        <!-- Information sur le nouveau système de réinscription -->
-        <div class="card-moderne mb-lg">
-            <div class="p-lg">
-                <div class="alert alert-info">
-                    <div class="d-flex align-items-start">
-                        <i class="fas fa-info-circle me-3 mt-1" style="color: var(--primary);"></i>
-                        <div>
-                            <h6 class="mb-2" style="color: var(--primary);">Nouveau Système de Réinscription</h6>
-                            <p class="mb-2">
-                                <strong>Principe :</strong> Chaque réinscription crée une <strong>nouvelle inscription</strong> pour la nouvelle année universitaire 
-                                avec recalcul complet des frais selon la nouvelle classe assignée.
-                            </p>
-                            <ul class="mb-0" style="padding-left: 20px;">
-                                <li><strong>Condition requise :</strong> L'étudiant doit être <strong>entièrement soldé</strong> (100%) avant de pouvoir se réinscrire</li>
-                                <li><strong>Historique préservé :</strong> Les anciennes inscriptions restent visibles dans le profil étudiant</li>
-                                <li><strong>Nouveaux frais :</strong> Possibilité de sélectionner de nouveaux frais optionnels lors de la réinscription</li>
-                                <li><strong>Facture automatique :</strong> Une nouvelle facture est générée automatiquement pour la nouvelle inscription</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Statistiques -->
-        <div class="kpi-grid mb-xl">
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Passages</div>
-                <div class="kpi-value color-success">{{ $statistiques['passages'] ?? 0 }}</div>
-                <div class="kpi-trend positive">
-                    <i class="fas fa-arrow-up"></i>
-                    <span>Admis niveau supérieur</span>
-                </div>
-            </div>
-
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Rattrapages</div>
-                <div class="kpi-value color-warning">{{ $statistiques['rattrapages'] ?? 0 }}</div>
-                <div class="kpi-trend">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    <span>Session de rattrapage</span>
-                </div>
-            </div>
-
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Redoublements</div>
-                <div class="kpi-value color-danger">{{ $statistiques['redoublements'] ?? 0 }}</div>
-                <div class="kpi-trend negative">
-                    <i class="fas fa-redo"></i>
-                    <span>Reprise de l'année</span>
-                </div>
-            </div>
-
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Abandons Année</div>
-                <div class="kpi-value color-danger">{{ $statistiques['abandons_annee'] ?? 0 }}</div>
-                <div class="kpi-trend negative">
-                    <i class="fas fa-user-slash"></i>
-                    <span>Année abandonnée</span>
-                </div>
-            </div>
-
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Abandons École</div>
-                <div class="kpi-value color-neutral">{{ $statistiques['abandons_ecole'] ?? 0 }}</div>
-                <div class="kpi-trend">
-                    <i class="fas fa-graduation-cap"></i>
-                    <span>Quittent l'établissement</span>
-                </div>
-            </div>
-
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Validés</div>
-                <div class="kpi-value color-success">{{ $statistiques['valides'] ?? 0 }}</div>
-                <div class="kpi-trend positive">
-                    <i class="fas fa-check-double"></i>
-                    <span>Réinscriptions confirmées</span>
-                </div>
-            </div>
-
-            <div class="card-moderne kpi-card">
-                <div class="kpi-title">Non validés</div>
-                <div class="kpi-value color-neutral">{{ $statistiques['errors'] ?? 0 }}</div>
-                <div class="kpi-trend">
-                    <i class="fas fa-user-clock"></i>
-                    <span>Inscriptions en cours</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- Onglets pour les différentes catégories -->
-        <div class="card-moderne">
-            <div class="p-lg" style="border-bottom: 1px solid rgba(0, 0, 0, 0.05);">
-                <ul class="nav nav-tabs" id="myTab" role="tablist" style="border: none; display: flex; gap: var(--space-md);">
-                    <li class="nav-item" style="border: none;">
-                        <a class="nav-link" id="passages-tab" data-toggle="tab" href="#passages" role="tab" 
-                           style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-arrow-up"></i> Passages ({{ $statistiques['passages'] ?? 0 }})
+        {{-- ── Card content (tabs chips + tab-content) ────────────────── --}}
+        <div class="re-content-card">
+            <div class="re-tabs-wrapper">
+                <ul class="re-tabs nav nav-tabs" id="myTab" role="tablist">
+                    <li class="nav-item">
+                        <a class="re-tab nav-link" id="passages-tab" data-toggle="tab" href="#passages" role="tab">
+                            <i class="fas fa-arrow-up re-tab-icon success"></i>
+                            <span>Passages</span>
+                            <span class="re-tab-count">{{ $statistiques['passages'] ?? 0 }}</span>
                         </a>
                     </li>
-                    <li class="nav-item" style="border: none;">
-                        <a class="nav-link" id="rattrapages-tab" data-toggle="tab" href="#rattrapages" role="tab"
-                           style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-exclamation-triangle"></i> Rattrapages ({{ $statistiques['rattrapages'] ?? 0 }})
+                    <li class="nav-item">
+                        <a class="re-tab nav-link" id="rattrapages-tab" data-toggle="tab" href="#rattrapages" role="tab">
+                            <i class="fas fa-exclamation-triangle re-tab-icon warning"></i>
+                            <span>Rattrapages</span>
+                            <span class="re-tab-count">{{ $statistiques['rattrapages'] ?? 0 }}</span>
                         </a>
                     </li>
-                    <li class="nav-item" style="border: none;">
-                        <a class="nav-link" id="redoublements-tab" data-toggle="tab" href="#redoublements" role="tab"
-                           style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-redo"></i> Redoublements ({{ $statistiques['redoublements'] ?? 0 }})
+                    <li class="nav-item">
+                        <a class="re-tab nav-link" id="redoublements-tab" data-toggle="tab" href="#redoublements" role="tab">
+                            <i class="fas fa-redo re-tab-icon danger"></i>
+                            <span>Redoublements</span>
+                            <span class="re-tab-count">{{ $statistiques['redoublements'] ?? 0 }}</span>
                         </a>
                     </li>
                     @if(($statistiques['valides'] ?? 0) > 0)
-                    <li class="nav-item" style="border: none;">
-                        <a class="nav-link" id="valides-tab" data-toggle="tab" href="#valides" role="tab"
-                           style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-check-double"></i> Validés ({{ $statistiques['valides'] ?? 0 }})
+                    <li class="nav-item">
+                        <a class="re-tab nav-link" id="valides-tab" data-toggle="tab" href="#valides" role="tab">
+                            <i class="fas fa-check-double re-tab-icon success"></i>
+                            <span>Validés</span>
+                            <span class="re-tab-count">{{ $statistiques['valides'] ?? 0 }}</span>
                         </a>
                     </li>
                     @endif
                     @if(($statistiques['abandons_annee'] ?? 0) > 0)
-                    <li class="nav-item" style="border: none;">
-                        <a class="nav-link" id="abandons-annee-tab" data-toggle="tab" href="#abandons-annee" role="tab"
-                           style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-user-slash"></i> Abandons Année ({{ $statistiques['abandons_annee'] ?? 0 }})
+                    <li class="nav-item">
+                        <a class="re-tab nav-link" id="abandons-annee-tab" data-toggle="tab" href="#abandons-annee" role="tab">
+                            <i class="fas fa-user-slash re-tab-icon danger"></i>
+                            <span>Abandons Année</span>
+                            <span class="re-tab-count">{{ $statistiques['abandons_annee'] ?? 0 }}</span>
                         </a>
                     </li>
                     @endif
                     @if(($statistiques['abandons_ecole'] ?? 0) > 0)
-                    <li class="nav-item" style="border: none;">
-                        <a class="nav-link" id="abandons-ecole-tab" data-toggle="tab" href="#abandons-ecole" role="tab"
-                           style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-graduation-cap"></i> Abandons École ({{ $statistiques['abandons_ecole'] ?? 0 }})
+                    <li class="nav-item">
+                        <a class="re-tab nav-link" id="abandons-ecole-tab" data-toggle="tab" href="#abandons-ecole" role="tab">
+                            <i class="fas fa-graduation-cap re-tab-icon muted"></i>
+                            <span>Abandons École</span>
+                            <span class="re-tab-count">{{ $statistiques['abandons_ecole'] ?? 0 }}</span>
                         </a>
                     </li>
                     @endif
                     @if(($statistiques['errors'] ?? 0) > 0)
-                    <li class="nav-item" style="border: none;">
-                        <a class="nav-link" id="errors-tab" data-toggle="tab" href="#errors" role="tab"
-                           style="border: none; border-radius: var(--radius-small); padding: var(--space-sm) var(--space-md); color: var(--text-secondary); font-weight: 500;">
-                            <i class="fas fa-user-clock"></i> Non validés ({{ $statistiques['errors'] ?? 0 }})
+                    <li class="nav-item">
+                        <a class="re-tab nav-link" id="errors-tab" data-toggle="tab" href="#errors" role="tab">
+                            <i class="fas fa-user-clock re-tab-icon neutral"></i>
+                            <span>Non validés</span>
+                            <span class="re-tab-count">{{ $statistiques['errors'] ?? 0 }}</span>
                         </a>
                     </li>
                     @endif
                 </ul>
             </div>
-            <div class="p-lg">
+            <div class="re-tab-body">
                 <div class="tab-content" id="myTabContent">
-                <!-- Onglet Passages -->
-                <div class="tab-pane fade" id="passages" role="tabpanel" data-category="passages">
-                    <div class="reinscription-spinner">
-                        <div class="reinscription-spinner-icon">
-                            <i class="fas fa-spinner"></i>
+                    <div class="tab-pane fade" id="passages" role="tabpanel" data-category="passages">
+                        <div class="reinscription-spinner">
+                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
+                            <div class="reinscription-spinner-text">Chargement des passages…</div>
                         </div>
-                        <div class="reinscription-spinner-text">Chargement des passages...</div>
+                        <div class="content-container" style="display: none;"></div>
                     </div>
-                    <div class="content-container" style="display: none;"></div>
-                </div>
-
-                <!-- Onglet Rattrapages -->
-                <div class="tab-pane fade" id="rattrapages" role="tabpanel" data-category="rattrapages">
-                    <div class="reinscription-spinner">
-                        <div class="reinscription-spinner-icon">
-                            <i class="fas fa-spinner"></i>
+                    <div class="tab-pane fade" id="rattrapages" role="tabpanel" data-category="rattrapages">
+                        <div class="reinscription-spinner">
+                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
+                            <div class="reinscription-spinner-text">Chargement des rattrapages…</div>
                         </div>
-                        <div class="reinscription-spinner-text">Chargement des rattrapages...</div>
+                        <div class="content-container" style="display: none;"></div>
                     </div>
-                    <div class="content-container" style="display: none;"></div>
-                </div>
-
-                <!-- Onglet Redoublements -->
-                <div class="tab-pane fade" id="redoublements" role="tabpanel" data-category="redoublements">
-                    <div class="reinscription-spinner">
-                        <div class="reinscription-spinner-icon">
-                            <i class="fas fa-spinner"></i>
+                    <div class="tab-pane fade" id="redoublements" role="tabpanel" data-category="redoublements">
+                        <div class="reinscription-spinner">
+                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
+                            <div class="reinscription-spinner-text">Chargement des redoublements…</div>
                         </div>
-                        <div class="reinscription-spinner-text">Chargement des redoublements...</div>
+                        <div class="content-container" style="display: none;"></div>
                     </div>
-                    <div class="content-container" style="display: none;"></div>
-                </div>
-
-                <!-- Onglet Validés -->
-                @if(($statistiques['valides'] ?? 0) > 0)
-                <div class="tab-pane fade" id="valides" role="tabpanel" data-category="valides">
-                    <div class="reinscription-spinner">
-                        <div class="reinscription-spinner-icon">
-                            <i class="fas fa-spinner"></i>
+                    @if(($statistiques['valides'] ?? 0) > 0)
+                    <div class="tab-pane fade" id="valides" role="tabpanel" data-category="valides">
+                        <div class="reinscription-spinner">
+                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
+                            <div class="reinscription-spinner-text">Chargement des validés…</div>
                         </div>
-                        <div class="reinscription-spinner-text">Chargement des validés...</div>
+                        <div class="content-container" style="display: none;"></div>
                     </div>
-                    <div class="content-container" style="display: none;"></div>
-                </div>
-                @endif
-
-                <!-- Onglet Abandons Année -->
-                @if(($statistiques['abandons_annee'] ?? 0) > 0)
-                <div class="tab-pane fade" id="abandons-annee" role="tabpanel" data-category="abandons_annee">
-                    <div class="reinscription-spinner">
-                        <div class="reinscription-spinner-icon">
-                            <i class="fas fa-spinner"></i>
+                    @endif
+                    @if(($statistiques['abandons_annee'] ?? 0) > 0)
+                    <div class="tab-pane fade" id="abandons-annee" role="tabpanel" data-category="abandons_annee">
+                        <div class="reinscription-spinner">
+                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
+                            <div class="reinscription-spinner-text">Chargement des abandons année…</div>
                         </div>
-                        <div class="reinscription-spinner-text">Chargement des abandons année...</div>
+                        <div class="content-container" style="display: none;"></div>
                     </div>
-                    <div class="content-container" style="display: none;"></div>
-                </div>
-                @endif
-
-                <!-- Onglet Abandons École -->
-                @if(($statistiques['abandons_ecole'] ?? 0) > 0)
-                <div class="tab-pane fade" id="abandons-ecole" role="tabpanel" data-category="abandons_ecole">
-                    <div class="reinscription-spinner">
-                        <div class="reinscription-spinner-icon">
-                            <i class="fas fa-spinner"></i>
+                    @endif
+                    @if(($statistiques['abandons_ecole'] ?? 0) > 0)
+                    <div class="tab-pane fade" id="abandons-ecole" role="tabpanel" data-category="abandons_ecole">
+                        <div class="reinscription-spinner">
+                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
+                            <div class="reinscription-spinner-text">Chargement des abandons école…</div>
                         </div>
-                        <div class="reinscription-spinner-text">Chargement des abandons école...</div>
+                        <div class="content-container" style="display: none;"></div>
                     </div>
-                    <div class="content-container" style="display: none;"></div>
-                </div>
-                @endif
-
-                <!-- Onglet Erreurs -->
-                @if(($statistiques['errors'] ?? 0) > 0)
-                <div class="tab-pane fade" id="errors" role="tabpanel" data-category="errors">
-                    <div class="reinscription-spinner">
-                        <div class="reinscription-spinner-icon">
-                            <i class="fas fa-spinner"></i>
+                    @endif
+                    @if(($statistiques['errors'] ?? 0) > 0)
+                    <div class="tab-pane fade" id="errors" role="tabpanel" data-category="errors">
+                        <div class="reinscription-spinner">
+                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
+                            <div class="reinscription-spinner-text">Chargement des non validés…</div>
                         </div>
-                        <div class="reinscription-spinner-text">Chargement des non validés...</div>
+                        <div class="content-container" style="display: none;"></div>
                     </div>
-                    <div class="content-container" style="display: none;"></div>
-                </div>
-                @endif
+                    @endif
                 </div>
             </div>
         </div>
@@ -1225,6 +1592,31 @@ $('#yearChangeModal .close[data-dismiss="modal"]').on('click', function() {
 
 $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
     $('#yearChangeModal').modal('hide');
+});
+
+/* ───────────────────────────────────────────────────────────
+   KPI hero click → activate corresponding BS4 tab + scroll
+   Standalone : runs after jQuery + BS4 are loaded above.
+   N'altère AUCUN handler existant.
+   ─────────────────────────────────────────────────────────── */
+$(document).ready(function() {
+    $('.re-kpi[data-rekpi-target]').on('click', function(e) {
+        e.preventDefault();
+        var targetTabId = $(this).data('rekpi-target');
+        var $tabLink = $('#' + targetTabId);
+        if ($tabLink.length === 0) {
+            // Tab conditional non rendu (catégorie vide) → ne rien faire
+            return;
+        }
+        $tabLink.tab('show');
+        // Scroll doux vers la zone tabs
+        var $tabsAnchor = $('#myTab');
+        if ($tabsAnchor.length) {
+            $('html, body').animate({
+                scrollTop: $tabsAnchor.offset().top - 90
+            }, 280);
+        }
+    });
 });
 </script>
 
