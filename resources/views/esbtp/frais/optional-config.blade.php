@@ -125,6 +125,14 @@
     border: 1px solid rgba(16,185,129,0.2);
 }
 .oc-assign-tag.empty { background: #f3f4f6; color: #9ca3af; border-color: #e5e7eb; }
+.oc-assign-orphan {
+    background: #fef2f2; color: #dc2626; border: 1px solid #fecaca;
+    padding: 4px 9px; border-radius: 6px; font-size: 11px; font-weight: 600;
+    cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+    transition: all .15s;
+}
+.oc-assign-orphan:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+.oc-assign-orphan i { font-size: 10px; }
 .oc-option-price {
     font-size: 15px; font-weight: 800; color: #0453cb;
     white-space: nowrap; text-align: right; min-width: 120px;
@@ -483,9 +491,12 @@ body.modal-open * {
                                                     </span>
                                                 @endforeach
                                             @else
-                                                <span class="oc-assign-tag empty">
-                                                    <i class="fas fa-minus"></i>Non assigné
-                                                </span>
+                                                <button type="button"
+                                                        class="oc-assign-tag oc-assign-orphan"
+                                                        onclick="manageAssignments({{ $option->id }}, '{{ addslashes($option->name) }}')"
+                                                        title="Cette formule est invisible aux étudiants. Cliquez pour configurer.">
+                                                    <i class="fas fa-exclamation-triangle"></i>Aucune assignation
+                                                </button>
                                             @endif
                                         </div>
                                     </div>
