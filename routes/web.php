@@ -112,6 +112,11 @@ Route::get('/school', function () {
 // Pages publiques (Documentation, API Reference, Changelog)
 Route::get('/changelog', [\App\Http\Controllers\Public\ChangelogController::class, 'show'])
     ->name('changelog');
+Route::get('/docs', [\App\Http\Controllers\Public\DocsController::class, 'index'])
+    ->name('docs.index');
+Route::get('/docs/{slug}', [\App\Http\Controllers\Public\DocsController::class, 'show'])
+    ->where('slug', '[a-z0-9-]+(?:/[a-z0-9-]+)*')
+    ->name('docs.show');
 
 // Routes pour l'installation
 Route::prefix('install')->group(function () {
