@@ -118,7 +118,7 @@
     cursor: pointer;
     font-family: inherit;
 }
-.re-pill-link:hover { color: #fbbf24; }
+.re-pill-link:hover { color: rgba(255,255,255,0.85); }
 .re-help-btn {
     background: rgba(255,255,255,.12);
     border: 1px solid rgba(255,255,255,.18);
@@ -478,8 +478,8 @@
     line-height: 1.4;
 }
 .re-tab.nav-link.active .re-tab-count {
-    background: rgba(255,255,255,0.25) !important;
-    color: #fff !important;
+    background: rgba(255,255,255,0.25);
+    color: #fff;
 }
 
 .re-tab-body {
@@ -623,6 +623,38 @@
 @endsection
 
 @section('content')
+@php
+    /*
+     * Source of truth unique pour les 7 catégories de réinscription.
+     * Dérive : KPIs hero + onglets nav + tab-panes (spinner labels).
+     *  - key       : statKey (utilise underscore, lu via $statistiques[key]
+     *                 et placé dans data-category="X" pour AJAX loadCategory)
+     *  - paneId    : ID HTML du tab-pane (dash, dérivé de key)
+     *  - tabId     : ID HTML du tab-link (paneId + '-tab')
+     *  - icon      : modifier sémantique CSS (.success/.warning/.danger/.neutral/.muted)
+     *  - fa        : classe Font Awesome
+     *  - label     : libellé court (chip + tab + KPI)
+     *  - spinner   : suffixe de "Chargement des …"
+     *  - always    : true → pane et tab toujours rendus (3 catégories de base)
+     *                false → rendus si count > 0 (4 catégories conditionnelles)
+     */
+    $kpiCards = [
+        ['key' => 'passages',       'icon' => 'success', 'fa' => 'fa-arrow-up',            'label' => 'Passages',       'spinner' => 'des passages',       'always' => true],
+        ['key' => 'rattrapages',    'icon' => 'warning', 'fa' => 'fa-exclamation-triangle','label' => 'Rattrapages',    'spinner' => 'des rattrapages',    'always' => true],
+        ['key' => 'redoublements',  'icon' => 'danger',  'fa' => 'fa-redo',                'label' => 'Redoublements',  'spinner' => 'des redoublements',  'always' => true],
+        ['key' => 'abandons_annee', 'icon' => 'danger',  'fa' => 'fa-user-slash',          'label' => 'Abandons Année', 'spinner' => 'des abandons année', 'always' => false],
+        ['key' => 'abandons_ecole', 'icon' => 'muted',   'fa' => 'fa-graduation-cap',      'label' => 'Abandons École', 'spinner' => 'des abandons école', 'always' => false],
+        ['key' => 'valides',        'icon' => 'success', 'fa' => 'fa-check-double',        'label' => 'Validés',        'spinner' => 'des validés',        'always' => false],
+        ['key' => 'errors',         'icon' => 'neutral', 'fa' => 'fa-user-clock',          'label' => 'Non validés',    'spinner' => 'des non validés',    'always' => false],
+    ];
+    foreach ($kpiCards as &$_card) {
+        $_card['paneId'] = str_replace('_', '-', $_card['key']);
+        $_card['tabId']  = $_card['paneId'] . '-tab';
+        $_card['count']  = $statistiques[$_card['key']] ?? 0;
+        $_card['render'] = $_card['always'] || $_card['count'] > 0;
+    }
+    unset($_card);
+@endphp
 <div class="dashboard-acasi">
     <div class="main-content">
 
@@ -683,34 +715,18 @@
                 </div>
             </div>
 
-            {{-- ── KPIs glass row : cliquables si la tab existe (count > 0).
-                 Les 4 dernières catégories ont leur tab gated par @if(count > 0)
-                 plus bas → on désactive visuellement le KPI pour éviter le clic
-                 silencieux qui ne ferait rien. --}}
-            @php
-                $kpiCards = [
-                    ['key' => 'passages',       'tab' => 'passages-tab',       'icon' => 'success', 'fa' => 'fa-arrow-up',           'label' => 'Passages',       'always' => true],
-                    ['key' => 'rattrapages',    'tab' => 'rattrapages-tab',    'icon' => 'warning', 'fa' => 'fa-exclamation-triangle', 'label' => 'Rattrapages',    'always' => true],
-                    ['key' => 'redoublements',  'tab' => 'redoublements-tab',  'icon' => 'danger',  'fa' => 'fa-redo',               'label' => 'Redoublements',  'always' => true],
-                    ['key' => 'abandons_annee', 'tab' => 'abandons-annee-tab', 'icon' => 'danger',  'fa' => 'fa-user-slash',         'label' => 'Abandons année', 'always' => false],
-                    ['key' => 'abandons_ecole', 'tab' => 'abandons-ecole-tab', 'icon' => 'muted',   'fa' => 'fa-graduation-cap',     'label' => 'Abandons école', 'always' => false],
-                    ['key' => 'valides',        'tab' => 'valides-tab',        'icon' => 'success', 'fa' => 'fa-check-double',       'label' => 'Validés',        'always' => false],
-                    ['key' => 'errors',         'tab' => 'errors-tab',         'icon' => 'neutral', 'fa' => 'fa-user-clock',         'label' => 'Non validés',    'always' => false],
-                ];
-            @endphp
+            {{-- ── KPIs glass row : KPIs avec count=0 et tab non-rendue
+                 deviennent visuellement inactifs (re-kpi--empty). Le handler
+                 jQuery filtre via :not(.re-kpi--empty) + dérive le tab id de
+                 l'attribut href (pas besoin de data-attribut séparé). --}}
             <div class="re-kpis">
                 @foreach($kpiCards as $card)
-                    @php
-                        $count = $statistiques[$card['key']] ?? 0;
-                        $tabExists = $card['always'] || $count > 0;
-                        $emptyClass = $tabExists ? '' : 're-kpi--empty';
-                    @endphp
-                    <a class="re-kpi {{ $emptyClass }}"
-                       href="#{{ str_replace('_', '-', $card['key']) }}"
-                       @if($tabExists) data-rekpi-target="{{ $card['tab'] }}" @else aria-disabled="true" tabindex="-1" @endif>
+                    <a class="re-kpi {{ $card['render'] ? '' : 're-kpi--empty' }}"
+                       href="#{{ $card['paneId'] }}"
+                       @unless($card['render']) aria-disabled="true" tabindex="-1" @endunless>
                         <div class="re-kpi-icon {{ $card['icon'] }}"><i class="fas {{ $card['fa'] }}"></i></div>
                         <div class="re-kpi-content">
-                            <div class="re-kpi-value">{{ $count }}</div>
+                            <div class="re-kpi-value">{{ $card['count'] }}</div>
                             <div class="re-kpi-label">{{ $card['label'] }}</div>
                         </div>
                     </a>
@@ -840,128 +856,39 @@
             </form>
         </div>
 
-        {{-- ── Card content (tabs chips + tab-content) ────────────────── --}}
+        {{-- ── Card content (tabs chips + tab-content) ──────────────────
+             Tabs nav et tab-panes générés depuis $kpiCards (même source que
+             les KPIs hero) pour éviter le triple source-of-truth quand on
+             ajoute/retire une catégorie. --}}
         <div class="re-content-card">
             <div class="re-tabs-wrapper">
                 <ul class="re-tabs nav nav-tabs" id="myTab" role="tablist">
-                    <li class="nav-item">
-                        <a class="re-tab nav-link" id="passages-tab" data-toggle="tab" href="#passages" role="tab">
-                            <i class="fas fa-arrow-up re-tab-icon success"></i>
-                            <span>Passages</span>
-                            <span class="re-tab-count">{{ $statistiques['passages'] ?? 0 }}</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="re-tab nav-link" id="rattrapages-tab" data-toggle="tab" href="#rattrapages" role="tab">
-                            <i class="fas fa-exclamation-triangle re-tab-icon warning"></i>
-                            <span>Rattrapages</span>
-                            <span class="re-tab-count">{{ $statistiques['rattrapages'] ?? 0 }}</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="re-tab nav-link" id="redoublements-tab" data-toggle="tab" href="#redoublements" role="tab">
-                            <i class="fas fa-redo re-tab-icon danger"></i>
-                            <span>Redoublements</span>
-                            <span class="re-tab-count">{{ $statistiques['redoublements'] ?? 0 }}</span>
-                        </a>
-                    </li>
-                    @if(($statistiques['valides'] ?? 0) > 0)
-                    <li class="nav-item">
-                        <a class="re-tab nav-link" id="valides-tab" data-toggle="tab" href="#valides" role="tab">
-                            <i class="fas fa-check-double re-tab-icon success"></i>
-                            <span>Validés</span>
-                            <span class="re-tab-count">{{ $statistiques['valides'] ?? 0 }}</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if(($statistiques['abandons_annee'] ?? 0) > 0)
-                    <li class="nav-item">
-                        <a class="re-tab nav-link" id="abandons-annee-tab" data-toggle="tab" href="#abandons-annee" role="tab">
-                            <i class="fas fa-user-slash re-tab-icon danger"></i>
-                            <span>Abandons Année</span>
-                            <span class="re-tab-count">{{ $statistiques['abandons_annee'] ?? 0 }}</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if(($statistiques['abandons_ecole'] ?? 0) > 0)
-                    <li class="nav-item">
-                        <a class="re-tab nav-link" id="abandons-ecole-tab" data-toggle="tab" href="#abandons-ecole" role="tab">
-                            <i class="fas fa-graduation-cap re-tab-icon muted"></i>
-                            <span>Abandons École</span>
-                            <span class="re-tab-count">{{ $statistiques['abandons_ecole'] ?? 0 }}</span>
-                        </a>
-                    </li>
-                    @endif
-                    @if(($statistiques['errors'] ?? 0) > 0)
-                    <li class="nav-item">
-                        <a class="re-tab nav-link" id="errors-tab" data-toggle="tab" href="#errors" role="tab">
-                            <i class="fas fa-user-clock re-tab-icon neutral"></i>
-                            <span>Non validés</span>
-                            <span class="re-tab-count">{{ $statistiques['errors'] ?? 0 }}</span>
-                        </a>
-                    </li>
-                    @endif
+                    @foreach($kpiCards as $card)
+                        @if($card['render'])
+                            <li class="nav-item">
+                                <a class="re-tab nav-link" id="{{ $card['tabId'] }}" data-toggle="tab" href="#{{ $card['paneId'] }}" role="tab">
+                                    <i class="fas {{ $card['fa'] }} re-tab-icon {{ $card['icon'] }}"></i>
+                                    <span>{{ $card['label'] }}</span>
+                                    <span class="re-tab-count">{{ $card['count'] }}</span>
+                                </a>
+                            </li>
+                        @endif
+                    @endforeach
                 </ul>
             </div>
             <div class="re-tab-body">
                 <div class="tab-content" id="myTabContent">
-                    <div class="tab-pane fade" id="passages" role="tabpanel" data-category="passages">
-                        <div class="reinscription-spinner">
-                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
-                            <div class="reinscription-spinner-text">Chargement des passages…</div>
-                        </div>
-                        <div class="content-container" style="display: none;"></div>
-                    </div>
-                    <div class="tab-pane fade" id="rattrapages" role="tabpanel" data-category="rattrapages">
-                        <div class="reinscription-spinner">
-                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
-                            <div class="reinscription-spinner-text">Chargement des rattrapages…</div>
-                        </div>
-                        <div class="content-container" style="display: none;"></div>
-                    </div>
-                    <div class="tab-pane fade" id="redoublements" role="tabpanel" data-category="redoublements">
-                        <div class="reinscription-spinner">
-                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
-                            <div class="reinscription-spinner-text">Chargement des redoublements…</div>
-                        </div>
-                        <div class="content-container" style="display: none;"></div>
-                    </div>
-                    @if(($statistiques['valides'] ?? 0) > 0)
-                    <div class="tab-pane fade" id="valides" role="tabpanel" data-category="valides">
-                        <div class="reinscription-spinner">
-                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
-                            <div class="reinscription-spinner-text">Chargement des validés…</div>
-                        </div>
-                        <div class="content-container" style="display: none;"></div>
-                    </div>
-                    @endif
-                    @if(($statistiques['abandons_annee'] ?? 0) > 0)
-                    <div class="tab-pane fade" id="abandons-annee" role="tabpanel" data-category="abandons_annee">
-                        <div class="reinscription-spinner">
-                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
-                            <div class="reinscription-spinner-text">Chargement des abandons année…</div>
-                        </div>
-                        <div class="content-container" style="display: none;"></div>
-                    </div>
-                    @endif
-                    @if(($statistiques['abandons_ecole'] ?? 0) > 0)
-                    <div class="tab-pane fade" id="abandons-ecole" role="tabpanel" data-category="abandons_ecole">
-                        <div class="reinscription-spinner">
-                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
-                            <div class="reinscription-spinner-text">Chargement des abandons école…</div>
-                        </div>
-                        <div class="content-container" style="display: none;"></div>
-                    </div>
-                    @endif
-                    @if(($statistiques['errors'] ?? 0) > 0)
-                    <div class="tab-pane fade" id="errors" role="tabpanel" data-category="errors">
-                        <div class="reinscription-spinner">
-                            <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
-                            <div class="reinscription-spinner-text">Chargement des non validés…</div>
-                        </div>
-                        <div class="content-container" style="display: none;"></div>
-                    </div>
-                    @endif
+                    @foreach($kpiCards as $card)
+                        @if($card['render'])
+                            <div class="tab-pane fade" id="{{ $card['paneId'] }}" role="tabpanel" data-category="{{ $card['key'] }}">
+                                <div class="reinscription-spinner">
+                                    <div class="reinscription-spinner-icon"><i class="fas fa-spinner"></i></div>
+                                    <div class="reinscription-spinner-text">Chargement {{ $card['spinner'] }}…</div>
+                                </div>
+                                <div class="content-container" style="display: none;"></div>
+                            </div>
+                        @endif
+                    @endforeach
                 </div>
             </div>
         </div>
@@ -1608,21 +1535,22 @@ $('#yearChangeModal button[data-dismiss="modal"]').on('click', function() {
    KPI hero click → active la tab BS4 correspondante + scroll.
    Requires: jQuery + BS4 .tab() plugin (chargés plus haut dans
    ce même <script>). Aucun handler existant n'est altéré.
-   Sécurité : seuls les KPIs avec data-rekpi-target sont liés
-   (les KPIs --empty n'ont pas l'attribut → pas d'écouteur).
+   Le tab id est dérivé de href (ex: href="#passages" → "#passages-tab").
+   Les KPIs --empty ont pointer-events:none (CSS), pas d'écouteur déclenché.
    ─────────────────────────────────────────────────────────── */
 $(document).ready(function() {
-    $('.re-kpi[data-rekpi-target]').on('click', function(e) {
+    $('.re-kpi:not(.re-kpi--empty)').on('click', function(e) {
         e.preventDefault();
-        var targetTabId = $(this).data('rekpi-target');
-        var $tabLink = $('#' + targetTabId);
+        var paneId = ($(this).attr('href') || '').replace(/^#/, '');
+        if (!paneId) return;
+        var $tabLink = $('#' + paneId + '-tab');
         if ($tabLink.length === 0) {
             // Defensive : tab non rendue (race condition au chargement). No-op.
             return;
         }
         $tabLink.tab('show');
         // Scroll doux vers la zone tabs.
-        // Offset 90px = hauteur du topbar fixe de layouts.app — à ajuster
+        // Offset 90px ≈ hauteur du topbar fixe de layouts.app — à ajuster
         // si le topbar change de hauteur.
         var $tabsAnchor = $('#myTab');
         if ($tabsAnchor.length) {
