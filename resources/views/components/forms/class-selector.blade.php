@@ -11,7 +11,7 @@
             <i class="fas fa-search"></i> Sélectionner
         </button>
     </div>
-    <div id="available-places-info" class="mt-2"></div>
+    <div id="available-places-info" class="mt-2" role="status" aria-live="polite" aria-atomic="true"></div>
     @error('classe_id')
     <div class="invalid-feedback d-block">{{ $message }}</div>
     @enderror
@@ -322,6 +322,70 @@ body.modal-open * {
 </style>
 
 <script>
+    // Vérifier les places disponibles (debounced, seuils Vert/Jaune/Orange/Rouge)
+    let fetchPlacesTimer = null;
+    let lastFetchedClasseId = null;
+    function fetchAvailablePlaces(classeId, targetDiv) {
+        if (!classeId || !targetDiv) return;
+        clearTimeout(fetchPlacesTimer);
+        fetchPlacesTimer = setTimeout(() => {
+            lastFetchedClasseId = classeId;
+            fetch(`/esbtp/classes/${classeId}/available-places`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(response => {
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    return response.json();
+                })
+                .then(data => {
+                    // Ignorer une réponse obsolète si l'utilisateur a re-sélectionné une autre classe
+                    if (classeId !== lastFetchedClasseId) return;
+                    debugLog('Places disponibles:', data);
+                    if (data.available_places === undefined) {
+                        targetDiv.innerHTML = `<div class="alert alert-warning p-2 mt-2 mb-0" role="alert"><i class="fas fa-exclamation-circle me-1"></i>Réponse invalide du serveur.</div>`;
+                        toggleSubmitButton(true);
+                        return;
+                    }
+                    const available = Number(data.available_places) || 0;
+                    const capacity = Number(data.capacity) || 0;
+                    const ratio = capacity > 0 ? available / capacity : 0;
+
+                    let alertClass, message;
+                    if (available <= 0) {
+                        alertClass = 'alert-danger';
+                        message = `<i class="fas fa-times-circle me-1"></i><strong>Classe complète.</strong> Aucune place disponible (${capacity}/${capacity}). Veuillez choisir une autre classe.`;
+                    } else if (ratio < 0.10) {
+                        alertClass = 'alert-danger';
+                        message = `<i class="fas fa-exclamation-triangle me-1"></i><strong>Places très limitées :</strong> ${available} / ${capacity} restantes.`;
+                    } else if (ratio < 0.30) {
+                        alertClass = 'alert-warning';
+                        message = `<i class="fas fa-exclamation-circle me-1"></i>Places bientôt épuisées : <strong>${available}</strong> / ${capacity} restantes.`;
+                    } else {
+                        alertClass = 'alert-success';
+                        message = `<i class="fas fa-chair me-1"></i>Places disponibles : <strong>${available}</strong> / ${capacity}`;
+                    }
+
+                    targetDiv.innerHTML = `<div class="alert ${alertClass} p-2 mt-2 mb-0" role="alert">${message}</div>`;
+                    toggleSubmitButton(available > 0);
+                })
+                .catch(error => {
+                    debugError('Erreur de vérification des places:', error);
+                    targetDiv.innerHTML = `<div class="alert alert-warning p-2 mt-2 mb-0" role="alert"><i class="fas fa-exclamation-circle me-1"></i>Impossible de vérifier les places disponibles. La soumission sera revalidée côté serveur.</div>`;
+                    toggleSubmitButton(true);
+                });
+        }, 250);
+    }
+
+    // Bloquer/débloquer le bouton submit du formulaire
+    function toggleSubmitButton(enabled) {
+        const submitBtn = document.querySelector('form button[type="submit"], form input[type="submit"]');
+        if (submitBtn) {
+            submitBtn.disabled = !enabled;
+            submitBtn.setAttribute('aria-disabled', String(!enabled));
+            submitBtn.title = enabled ? '' : 'Classe complète — veuillez choisir une autre classe';
+        }
+    }
+
     function selectClasse(classeId, classeName) {
         debugLog(`Classe sélectionnée : ${classeName} (ID: ${classeId})`);
         document.getElementById('classe_id').value = classeId;
@@ -332,88 +396,47 @@ body.modal-open * {
         } catch (e) {
             debugWarn('SessionStorage indisponible pour classe sélectionnée');
         }
-        try {
-            sessionStorage.setItem('inscription_classe_id', String(classeId));
-            sessionStorage.setItem('inscription_classe_label', classeName);
-        } catch (e) {
-            debugWarn('SessionStorage indisponible pour classe sélectionnée');
-        }
-        
-        // Fermer le modal
+
+        // Fermer le modal de sélection
         const modal = bootstrap.Modal.getInstance(document.getElementById('classeSelectorModal'));
-        modal.hide();
-        
-        // Mettre à jour l'UI
+        if (modal) modal.hide();
+
+        // Mettre à jour l'UI — spinner puis check places
         const placesInfo = document.getElementById('available-places-info');
-        placesInfo.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div> Vérification des places...';
+        if (placesInfo) {
+            placesInfo.innerHTML = '<div class="alert alert-light p-2 mt-2 mb-0" role="status"><span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Vérification des places disponibles...</div>';
+            fetchAvailablePlaces(classeId, placesInfo);
+        }
 
-        // Vérifier les places disponibles
-        fetchAvailablePlaces(classeId, placesInfo);
-
-        // Déclencher l'événement de changement de classe pour charger les frais (UNE SEULE FOIS)
-        setTimeout(() => {
-            const classeElement = document.getElementById('classe_id');
-            if (classeElement) {
-                const changeEvent = new Event('change', { bubbles: true });
-                classeElement.dispatchEvent(changeEvent);
-            }
-        }, 100); // Petit délai pour éviter les conflits
-    }
-
-    // Fonction partagée pour vérifier les places disponibles
-    function fetchAvailablePlaces(classeId, targetDiv) {
-        fetch(`/esbtp/classes/${classeId}/available-places`)
-            .then(response => {
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                return response.json();
-            })
+        // Vérifier si la classe nécessite confirmation de transfert (2e année ou plus)
+        fetch(`/esbtp/inscriptions/check-transfert/${classeId}`, {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        })
+            .then(r => r.json())
             .then(data => {
-                debugLog('Places disponibles:', data);
-                if (data.available_places !== undefined) {
-                    const ratio = data.capacity > 0 ? data.available_places / data.capacity : 0;
-                    let message = `<i class="fas fa-chair me-1"></i>Places disponibles : <strong>${data.available_places}</strong> / ${data.capacity}`;
-                    let alertClass = 'alert-success';
-                    if (ratio <= 0.2 && data.available_places > 0) alertClass = 'alert-warning';
-                    if (data.available_places <= 0) {
-                        alertClass = 'alert-danger';
-                        message = '<i class="fas fa-exclamation-triangle me-1"></i><strong>Classe complète !</strong> Aucune place disponible. Veuillez choisir une autre classe.';
-                    }
-                    targetDiv.innerHTML = `<div class="alert ${alertClass} p-2 mt-2 mb-0">${message}</div>`;
-                    toggleSubmitButton(data.available_places > 0);
+                debugLog('Vérification transfert:', data);
+                if (data.success && data.necessite_confirmation) {
+                    document.getElementById('transfert-niveau-nom').textContent = data.niveau_nom || data.niveau_code;
+                    const transfertModal = new bootstrap.Modal(document.getElementById('transfertConfirmationModal'));
+                    transfertModal.show();
                 } else {
-                    targetDiv.innerHTML = `<div class="alert alert-danger p-2 mt-2 mb-0">Réponse invalide du serveur.</div>`;
-                    toggleSubmitButton(true);
+                    triggerClasseChangeEvent();
                 }
             })
             .catch(error => {
-                debugError('Erreur de vérification des places:', error);
-                targetDiv.innerHTML = `<div class="alert alert-warning p-2 mt-2 mb-0"><i class="fas fa-exclamation-circle me-1"></i>Impossible de vérifier les places disponibles.</div>`;
-                toggleSubmitButton(true);
+                debugError('Erreur vérification transfert:', error);
+                triggerClasseChangeEvent();
             });
-    }
-
-    // Bloquer/débloquer le bouton submit du formulaire
-    function toggleSubmitButton(enabled) {
-        const submitBtn = document.querySelector('form button[type="submit"], form input[type="submit"]');
-        if (submitBtn) {
-            submitBtn.disabled = !enabled;
-            if (!enabled) {
-                submitBtn.title = 'Classe complète — veuillez choisir une autre classe';
-            } else {
-                submitBtn.title = '';
-            }
-        }
     }
 
     document.addEventListener('DOMContentLoaded', function () {
         const classeField = document.getElementById('classe_id');
         const availablePlacesDiv = document.getElementById('available-places-info');
 
-        if(classeField) {
+        if (classeField) {
             classeField.addEventListener('change', function() {
                 const classeId = this.value;
                 if (classeId && availablePlacesDiv) {
-                    availablePlacesDiv.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Vérification...';
                     fetchAvailablePlaces(classeId, availablePlacesDiv);
                 } else if (availablePlacesDiv) {
                     availablePlacesDiv.innerHTML = '';
@@ -773,74 +796,6 @@ body.modal-open * {
     // ============================================
     // GESTION DU MODAL DE TRANSFERT D'ÉTABLISSEMENT
     // ============================================
-
-    // Fonction modifiée selectClasse pour vérifier le transfert
-    window.originalSelectClasse = window.selectClasse || selectClasse;
-
-    function selectClasse(classeId, classeName) {
-        debugLog(`Classe sélectionnée : ${classeName} (ID: ${classeId})`);
-        document.getElementById('classe_id').value = classeId;
-        document.getElementById('classe_display').value = classeName;
-
-        // Fermer le modal de sélection
-        const modal = bootstrap.Modal.getInstance(document.getElementById('classeSelectorModal'));
-        modal.hide();
-
-        // Mettre à jour l'UI
-        const placesInfo = document.getElementById('available-places-info');
-        placesInfo.innerHTML = '<div class="spinner-border spinner-border-sm" role="status"><span class="visually-hidden">Loading...</span></div> Vérification des places...';
-
-        // Vérifier les places disponibles
-        fetch(`/esbtp/classes/${classeId}/available-places`)
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`Erreur HTTP ! Statut: ${response.status}`);
-                }
-                return response.json();
-            })
-            .then(data => {
-                debugLog('Places disponibles:', data);
-                if (data.available_places !== undefined) {
-                    let message = `Places disponibles: <strong>${data.available_places}</strong> / ${data.capacity}`;
-                    let alertClass = 'alert-success';
-                    if (data.available_places <= 5) alertClass = 'alert-warning';
-                    if (data.available_places === 0) {
-                        alertClass = 'alert-danger';
-                        message = '<strong>Aucune place disponible !</strong>';
-                    }
-                    placesInfo.innerHTML = `<div class="alert ${alertClass} p-2 mt-2">${message}</div>`;
-                } else {
-                     placesInfo.innerHTML = `<div class="alert alert-danger p-2 mt-2">Réponse invalide du serveur.</div>`;
-                }
-            })
-            .catch(error => {
-                debugError('Erreur de vérification des places:', error);
-                placesInfo.innerHTML = `<div class="alert alert-danger p-2 mt-2">Erreur lors de la récupération des places.</div>`;
-            });
-
-        // NOUVEAU: Vérifier si la classe nécessite confirmation de transfert
-        fetch(`/esbtp/inscriptions/check-transfert/${classeId}`)
-            .then(response => response.json())
-            .then(data => {
-                debugLog('Vérification transfert:', data);
-                if (data.success && data.necessite_confirmation) {
-                    // Classe de 2ème année ou plus -> afficher modal de transfert
-                    document.getElementById('transfert-niveau-nom').textContent = data.niveau_nom || data.niveau_code;
-
-                    // Ouvrir le modal de transfert
-                    const transfertModal = new bootstrap.Modal(document.getElementById('transfertConfirmationModal'));
-                    transfertModal.show();
-                } else {
-                    // Classe de 1ère année -> pas besoin de confirmation, déclencher événement change
-                    triggerClasseChangeEvent();
-                }
-            })
-            .catch(error => {
-                debugError('Erreur vérification transfert:', error);
-                // En cas d'erreur, on déclenche l'événement quand même
-                triggerClasseChangeEvent();
-            });
-    }
 
     // Fonction helper pour déclencher l'événement de changement de classe
     function triggerClasseChangeEvent() {
