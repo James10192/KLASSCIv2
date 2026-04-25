@@ -93,32 +93,16 @@ if (app()->environment('local')) {
     });
 }
 
-// Route d'accueil
-Route::get('/', function () {
-    return view('welcome')->withHeaders([
-        'Cache-Control' => 'public, max-age=3600',
-        'Expires' => gmdate('D, d M Y H:i:s', time() + 3600).' GMT',
-    ]);
-})->name('welcome');
+// Route d'accueil — la landing publique vit désormais sur klassci.com (Vercel /
+// klassci-landing). Sur les sous-domaines tenant et sur l'apex Laravel, on
+// redirige vers le login pour ne plus exposer de page marketing.
+Route::get('/', fn () => redirect()->route('login'))->name('welcome');
 
-// Route pour l'ancienne version de l'école (si nécessaire pour référence)
-Route::get('/school', function () {
-    return view('welcome-redesign')->withHeaders([
-        'Cache-Control' => 'public, max-age=3600', // Cache 1 heure
-        'Expires' => gmdate('D, d M Y H:i:s', time() + 3600).' GMT',
-    ]);
-})->name('welcome.school');
-
-// Pages publiques (Documentation, API Reference, Changelog)
-Route::get('/changelog', [\App\Http\Controllers\Public\ChangelogController::class, 'show'])
-    ->name('changelog');
-Route::get('/docs', [\App\Http\Controllers\Public\DocsController::class, 'index'])
-    ->name('docs.index');
-Route::get('/docs/{slug}', [\App\Http\Controllers\Public\DocsController::class, 'show'])
-    ->where('slug', '[a-z0-9-]+(?:/[a-z0-9-]+)*')
-    ->name('docs.show');
-Route::get('/api-reference', [\App\Http\Controllers\Public\ApiReferenceController::class, 'show'])
-    ->name('api-reference');
+// Pages publiques (docs, api-reference, changelog) — supprimées de Laravel.
+// Elles sont désormais servies en MDX par klassci-landing :
+//   https://klassci.com/docs
+//   https://klassci.com/docs/api-reference
+//   https://klassci.com/docs/changelog
 
 // Routes pour l'installation
 Route::prefix('install')->group(function () {
@@ -164,8 +148,10 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/password/change', [PasswordChangeController::class, 'updatePassword'])->name('password.change.update');
 });
 
-// Route pour les demandes de démonstration (accessible publiquement)
-Route::post('/contact-demo', [App\Http\Controllers\ContactController::class, 'sendDemo'])->name('contact.demo');
+// /contact-demo supprimé : le formulaire de demande de démo vit désormais sur
+// klassci.com (Vercel) et appelle directement contact@klassci.com via Web3Forms
+// ou un endpoint Vercel API. ContactController::sendDemo peut être supprimé
+// dans une PR de suivi si plus aucun usage interne ne le réclame.
 
 // Routes pour la navbar (recherche, notifications, messages, actions rapides)
 Route::middleware(['auth'])->group(function () {
