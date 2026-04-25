@@ -17,9 +17,11 @@ class CheckInstalled
      */
     public function handle(Request $request, Closure $next)
     {
-        // Toujours autoriser l'accès à la page d'accueil et aux assets
+        // Toujours autoriser l'accès aux pages marketing publiques et aux assets
         if ($request->is('/') || $request->is('assets/*') || $request->is('css/*') || $request->is('js/*') ||
-            $request->is('logout') || $request->is('register')) {
+            $request->is('logout') || $request->is('register') ||
+            $request->is('changelog') || $request->is('docs') || $request->is('docs/*') ||
+            $request->is('api-reference') || $request->is('robots.txt') || $request->is('sitemap.xml')) {
             return $next($request);
         }
 
