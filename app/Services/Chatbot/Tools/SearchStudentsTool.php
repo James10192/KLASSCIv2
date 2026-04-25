@@ -14,7 +14,7 @@ class SearchStudentsTool extends ChatbotTool
 
     public function description(): string
     {
-        return 'Rechercher des étudiants dans le système KLASSCI. Retourne nom, matricule, classe, statut.';
+        return 'Rechercher des étudiants dans le système KLASSCI. Par défaut limité aux inscriptions validées (workflow_step=etudiant_cree). Retourne nom, matricule, classe, statut.';
     }
 
     public function parameters(): array
@@ -37,6 +37,14 @@ class SearchStudentsTool extends ChatbotTool
                 'filiere' => [
                     'type' => 'string',
                     'description' => 'Nom de la filière (ex: "BTS Bâtiment", "Génie Civil")',
+                ],
+                'workflow_step' => [
+                    'type' => 'string',
+                    'description' => 'Filtre sur le workflow d\'inscription. Par défaut "etudiant_cree" (inscription validée, l\'étudiant est réellement inscrit). Utiliser "all" pour désactiver le filtre (inclure brouillons/pré-inscriptions).',
+                ],
+                'status' => [
+                    'type' => 'string',
+                    'description' => 'Statut de l\'inscription : "active", "inactive", "annule". Par défaut, pas de filtre.',
                 ],
                 'limit' => [
                     'type' => 'integer',
@@ -69,6 +77,20 @@ class SearchStudentsTool extends ChatbotTool
             $filiereName = $args['filiere'];
             $query->whereHas('inscriptions.classe.filiere', function ($q) use ($filiereName) {
                 $q->where('name', 'like', "%{$filiereName}%");
+            });
+        }
+
+        $workflowStep = $args['workflow_step'] ?? 'etudiant_cree';
+        if ($workflowStep !== 'all' && $workflowStep !== '') {
+            $query->whereHas('inscriptions', function ($q) use ($workflowStep) {
+                $q->where('workflow_step', $workflowStep);
+            });
+        }
+
+        if (!empty($args['status'])) {
+            $status = $args['status'];
+            $query->whereHas('inscriptions', function ($q) use ($status) {
+                $q->where('status', $status);
             });
         }
 
