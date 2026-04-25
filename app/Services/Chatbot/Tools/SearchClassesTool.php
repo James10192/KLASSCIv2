@@ -2,6 +2,7 @@
 
 namespace App\Services\Chatbot\Tools;
 
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use Illuminate\Support\Facades\Route;
 
@@ -56,7 +57,16 @@ class SearchClassesTool extends ChatbotTool
 
     public function execute(array $args, $user): array
     {
-        $query = ESBTPClasse::query()->with(['filiere', 'niveau']);
+        // Single lookup (not per-class) — sinon l'accessor places_disponibles exploserait en N+1.
+        $anneeCouranteId = ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
+
+        $query = ESBTPClasse::query()
+            ->with(['filiere', 'niveau'])
+            ->withCount(['inscriptions as effectif_reel' => function ($q) use ($anneeCouranteId) {
+                $q->where('status', 'active')
+                  ->where('workflow_step', 'etudiant_cree')
+                  ->when($anneeCouranteId, fn ($qq) => $qq->where('annee_universitaire_id', $anneeCouranteId));
+            }]);
 
         if (!empty($args['name'])) {
             $search = $args['name'];
@@ -90,19 +100,26 @@ class SearchClassesTool extends ChatbotTool
         }
 
         $limit = min(max((int) ($args['limit'] ?? 15), 1), 50);
-        $total = (clone $query)->count();
-        // Charger un peu plus large pour pouvoir filtrer has_places en PHP (l'accessor places_disponibles n'est pas queryable en SQL)
-        $fetchLimit = !empty($args['has_places']) ? min($total, max($limit * 3, 50)) : $limit;
-        $results = $query->orderBy('name')->limit($fetchLimit)->get();
 
+        // has_places en SQL : places_totales > effectif_reel (via l'alias du withCount).
         if (!empty($args['has_places'])) {
-            $results = $results->filter(fn ($c) => ($c->places_disponibles ?? 0) > 0)->take($limit)->values();
+            $query->whereRaw('COALESCE(places_totales, 0) > (
+                select count(*) from esbtp_inscriptions
+                where esbtp_inscriptions.classe_id = esbtp_classes.id
+                  and esbtp_inscriptions.status = ?
+                  and esbtp_inscriptions.workflow_step = ?
+                  ' . ($anneeCouranteId ? 'and esbtp_inscriptions.annee_universitaire_id = ?' : '') . '
+            )', $anneeCouranteId ? ['active', 'etudiant_cree', $anneeCouranteId] : ['active', 'etudiant_cree']);
         }
+
+        $total = (clone $query)->count();
+        $results = $query->orderBy('name')->limit($limit)->get();
 
         $classes = $results->map(function ($c) {
             $placesTotales = (int) ($c->places_totales ?? 0);
-            $placesDisponibles = (int) ($c->places_disponibles ?? 0);
-            $placesOccupees = max(0, $placesTotales - $placesDisponibles);
+            $effectifReel = (int) ($c->effectif_reel ?? 0);
+            $placesDisponibles = max(0, $placesTotales - $effectifReel);
+            $placesOccupees = $effectifReel;
             $ratio = $placesTotales > 0 ? $placesDisponibles / $placesTotales : 0;
 
             $statut = match (true) {
@@ -125,7 +142,7 @@ class SearchClassesTool extends ChatbotTool
                 'statut_places' => $statut,
                 'active' => $c->is_active ? 'Oui' : 'Non',
             ];
-        })->values()->toArray();
+        })->toArray();
 
         return [
             'results' => $classes,

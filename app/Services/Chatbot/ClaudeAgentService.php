@@ -154,8 +154,6 @@ class ClaudeAgentService
                 if ($tool && !isset($result['error'])) {
                     $allToolCalls[] = ['tool' => $toolName, 'args' => $toolArgs, 'result_count' => $result['count'] ?? null];
 
-                    // Enregistrer un résumé minimal dans le contexte conversationnel
-                    // pour permettre les questions de suivi ("et dans la classe d'à côté ?").
                     $this->contextProvider->updateFromToolResult($conversation, $toolName, $toolArgs, $result);
 
                     $resultDisplayType = $result['display_type'] ?? 'text';

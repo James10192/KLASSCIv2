@@ -75,7 +75,6 @@ class ConversationContextProvider
         array $args,
         array $result,
     ): void {
-        // Ne pas polluer le contexte avec des errors ou 0 résultats
         if (isset($result['error']) || empty($result['results'])) {
             return;
         }
@@ -107,9 +106,6 @@ class ConversationContextProvider
         }
 
         $context = $conversation->context ?? [];
-        if (!is_array($context)) {
-            $context = [];
-        }
         $context[self::CONTEXT_KEY] = $summary;
         $conversation->context = $context;
         $conversation->save();

@@ -80,8 +80,6 @@ class SearchStudentsTool extends ChatbotTool
             });
         }
 
-        // Filtre workflow_step : défaut "etudiant_cree" (seulement les inscriptions validées)
-        // L'utilisateur peut passer "all" pour inclure brouillons/pré-inscriptions.
         $workflowStep = $args['workflow_step'] ?? 'etudiant_cree';
         if ($workflowStep !== 'all' && $workflowStep !== '') {
             $query->whereHas('inscriptions', function ($q) use ($workflowStep) {
