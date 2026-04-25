@@ -83,27 +83,6 @@
     gap: .65rem;
     flex-wrap: wrap;
 }
-.mi-hero-search {
-    background: rgba(255,255,255,.12);
-    border: 1px solid rgba(255,255,255,.2);
-    color: #fff;
-    border-radius: 10px;
-    padding: .55rem 1rem .55rem 2.4rem;
-    font-size: .85rem;
-    width: 260px;
-    transition: all .2s;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' opacity='0.65'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
-    background-repeat: no-repeat;
-    background-position: .85rem center;
-    background-size: 14px;
-}
-.mi-hero-search::placeholder { color: rgba(255,255,255,.55); }
-.mi-hero-search:focus {
-    outline: none;
-    background-color: rgba(255,255,255,.18);
-    border-color: rgba(255,255,255,.35);
-    box-shadow: 0 0 0 3px rgba(255,255,255,.1);
-}
 .mi-btn--white,
 .mi-btn--glass {
     display: inline-flex;
@@ -193,13 +172,11 @@
 
 @media (max-width: 992px) {
     .mi-kpis { grid-template-columns: repeat(2, 1fr); }
-    .mi-hero-search { width: 220px; }
 }
 @media (max-width: 576px) {
     .mi-hero { padding: 1.25rem 1.25rem 1rem; }
     .mi-hero h1 { font-size: 1.2rem; }
     .mi-kpis { grid-template-columns: 1fr 1fr; }
-    .mi-hero-search { width: 100%; }
 }
 
 /* ─── FILTRES (hybrid : 3 visibles + collapsible advanced) ─── */
@@ -322,56 +299,6 @@
     font-size: .8rem;
 }
 .mi-filters-foot i { color: #0453cb; }
-
-.mi-active-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: .4rem;
-    padding: .65rem 1.25rem;
-    border-top: 1px dashed #e2e8f0;
-    background: #f8fafc;
-}
-.mi-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: .4rem;
-    padding: .25rem .5rem .25rem .65rem;
-    background: rgba(4,83,203,.08);
-    color: #0453cb;
-    border: 1px solid rgba(4,83,203,.18);
-    border-radius: 999px;
-    font-size: .75rem;
-    font-weight: 600;
-}
-.mi-chip-remove {
-    background: rgba(4,83,203,.15);
-    color: #0453cb;
-    border: none;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    font-size: .65rem;
-    transition: all .15s;
-}
-.mi-chip-remove:hover {
-    background: #0453cb;
-    color: #fff;
-}
-
-.mi-apply-hidden {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0,0,0,0);
-    border: 0;
-}
 
 @media (max-width: 1100px) {
     .mi-filters-bar { grid-template-columns: 1fr 1fr 1fr auto; }
@@ -765,12 +692,6 @@ tr[data-matiere-id] {
                 </div>
             </div>
             <div class="mi-hero-actions">
-                <input type="search"
-                       class="mi-hero-search"
-                       id="matieres-header-search"
-                       placeholder="Rechercher par nom ou code..."
-                       value="{{ $filters['search'] ?? '' }}"
-                       aria-label="Rechercher une matière par nom ou code">
                 <a href="{{ route('esbtp.matieres.create') }}" class="mi-btn--white">
                     <i class="fas fa-plus" aria-hidden="true"></i>
                     Nouvelle matière
@@ -929,9 +850,6 @@ tr[data-matiere-id] {
                        value="{{ $filters['heures_max'] }}">
             </div>
         </div>
-
-        {{-- Submit button hidden but kept (no-JS fallback) --}}
-        <button type="submit" id="matieres-apply-filters" class="mi-apply-hidden" tabindex="-1" aria-hidden="true">Appliquer</button>
 
         <div class="mi-filters-foot">
             <i class="fas fa-info-circle" aria-hidden="true"></i>
@@ -1548,18 +1466,16 @@ tr[data-matiere-id] {
 @endsection
 
 @push('scripts')
-{{-- common.js fournit window.iiConfirm() et window.iiToast(). --}}
+{{-- common.js : fournit window.iiConfirm() et window.showToast(). --}}
 <script src="{{ asset('js/inscriptions/common.js') }}"></script>
 <script>
 (function () {
     const FILTER_DEBOUNCE = 350;
 
     const filtersForm = document.getElementById('matieres-filter-form');
-    const headerSearch = document.getElementById('matieres-header-search');
     const summaryElement = document.getElementById('results-count');
     const resultsContainer = document.getElementById('matieres-results');
     const clearFiltersBtn = document.getElementById('matieres-clear-filters');
-    const applyFiltersBtn = document.getElementById('matieres-apply-filters');
     const bulkBar = document.getElementById('matieres-bulk-bar');
     const bulkCount = document.getElementById('matieres-selected-count');
     const bulkAttachBtn = document.getElementById('matieres-bulk-attach');
@@ -1568,18 +1484,6 @@ tr[data-matiere-id] {
     const bulkClearBtn = document.getElementById('matieres-bulk-clear');
     let filterTimer = null;
     const selectedIds = new Set();
-
-    function showToast(type, message) {
-        if (window.toastr && typeof window.toastr[type] === 'function') {
-            window.toastr[type](message);
-        } else if (typeof window.showToast === 'function' && window.showToast !== showToast) {
-            // common.js exposes window.showToast(message, type, duration)
-            window.showToast(message, type, 3500);
-        } else {
-            const logMethod = type === 'error' ? 'error' : 'log';
-            console[logMethod](message);
-        }
-    }
 
     function getSelectedIdsArray() {
         return Array.from(selectedIds);
@@ -1604,28 +1508,6 @@ tr[data-matiere-id] {
             summaryElement.textContent = `${summary.from ?? 0} - ${summary.to ?? 0} sur ${summary.total} matière(s)`;
         } else {
             summaryElement.textContent = 'Aucun résultat pour le moment.';
-        }
-    }
-
-    function syncHeaderSearchFromForm() {
-        if (!filtersForm || !headerSearch) {
-            return;
-        }
-
-        const formSearch = filtersForm.querySelector('#filter-search');
-        if (formSearch) {
-            headerSearch.value = formSearch.value || '';
-        }
-    }
-
-    function syncFormSearchFromHeader() {
-        if (!filtersForm || !headerSearch) {
-            return;
-        }
-
-        const formSearch = filtersForm.querySelector('#filter-search');
-        if (formSearch) {
-            formSearch.value = headerSearch.value || '';
         }
     }
 
@@ -1816,7 +1698,6 @@ tr[data-matiere-id] {
                     throw new Error('Template manquant dans la réponse');
                 }
                 resultsContainer.innerHTML = data.html;
-                resultsContainer.dataset.summary = JSON.stringify(data.summary || {});
                 if (pushHistory && data.url) {
                     history.pushState({}, '', data.url);
                 }
@@ -1892,7 +1773,6 @@ tr[data-matiere-id] {
                             throw new Error('Template manquant dans la réponse');
                         }
                         resultsContainer.innerHTML = data.html;
-                        resultsContainer.dataset.summary = JSON.stringify(data.summary || {});
                         if (data.url) {
                             history.pushState({}, '', data.url);
                         }
@@ -1919,35 +1799,17 @@ tr[data-matiere-id] {
         toggleBulkBar();
     }
 
-    if (headerSearch) {
-        headerSearch.addEventListener('input', () => {
-            syncFormSearchFromHeader();
-            clearTimeout(filterTimer);
-            filterTimer = setTimeout(() => submitFilterForm(), FILTER_DEBOUNCE);
-        });
-
-        headerSearch.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                syncFormSearchFromHeader();
-                submitFilterForm();
-            }
-        });
-    }
-
-    // Visible filter-search input (in the filters bar) : miroir du headerSearch.
-    // L'input event sync vers le hero search puis débounce le submit.
+    // Filter-search : input débouncé + Enter immédiat. C'est désormais le seul
+    // input search de la page (le hero search a été retiré).
     const filterSearchInput = document.getElementById('filter-search');
     if (filterSearchInput) {
         filterSearchInput.addEventListener('input', () => {
-            syncHeaderSearchFromForm();
             clearTimeout(filterTimer);
             filterTimer = setTimeout(() => submitFilterForm(), FILTER_DEBOUNCE);
         });
         filterSearchInput.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
                 event.preventDefault();
-                syncHeaderSearchFromForm();
                 submitFilterForm();
             }
         });
@@ -1973,16 +1835,6 @@ tr[data-matiere-id] {
     if (clearFiltersBtn && filtersForm) {
         clearFiltersBtn.addEventListener('click', () => {
             filtersForm.reset();
-            if (headerSearch) {
-                headerSearch.value = '';
-            }
-            submitFilterForm();
-        });
-    }
-
-    if (applyFiltersBtn) {
-        applyFiltersBtn.addEventListener('click', (event) => {
-            event.preventDefault();
             submitFilterForm();
         });
     }
@@ -1998,11 +1850,13 @@ tr[data-matiere-id] {
                 return;
             }
 
-            const confirmFn = typeof window.iiConfirm === 'function' ? window.iiConfirm : null;
-            const message = `Supprimer ${ids.length} matière(s) sélectionnée(s) ? Cette action est irréversible.`;
-            const ok = confirmFn
-                ? await confirmFn({ title: 'Suppression en lot', message, confirmLabel: 'Supprimer', cancelLabel: 'Annuler', danger: true })
-                : window.confirm(message);
+            const ok = await window.iiConfirm({
+                title: 'Suppression en lot',
+                message: `Supprimer ${ids.length} matière(s) sélectionnée(s) ? Cette action est irréversible.`,
+                confirmLabel: 'Supprimer',
+                cancelLabel: 'Annuler',
+                danger: true,
+            });
             if (!ok) return;
 
             const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
@@ -2030,11 +1884,11 @@ tr[data-matiere-id] {
                 }
 
                 clearSelection();
-                showToast('success', `${ids.length} matière(s) supprimée(s).`);
+                window.showToast(`${ids.length} matière(s) supprimée(s).`, 'success');
                 submitFilterForm(false);
             } catch (error) {
                 debugError('Erreur lors de la suppression en lot:', error);
-                showToast('error', 'Impossible de supprimer les matières sélectionnées.');
+                window.showToast('Impossible de supprimer les matières sélectionnées.', 'error');
             } finally {
                 bulkDeleteBtn.disabled = false;
                 bulkDeleteBtn.innerHTML = originalLabel;
@@ -2219,11 +2073,13 @@ tr[data-matiere-id] {
             }));
 
             if (liaisons.length === 0) {
-                const confirmFn = typeof window.iiConfirm === 'function' ? window.iiConfirm : null;
-                const message = 'Aucune liaison sélectionnée. Voulez-vous tout de même continuer (cela supprimera toutes les liaisons existantes) ?';
-                const ok = confirmFn
-                    ? await confirmFn({ title: 'Aucune liaison', message, confirmLabel: 'Continuer', cancelLabel: 'Annuler', danger: true })
-                    : window.confirm(message);
+                const ok = await window.iiConfirm({
+                    title: 'Aucune liaison',
+                    message: 'Voulez-vous tout de même continuer ? Cela supprimera toutes les liaisons existantes.',
+                    confirmLabel: 'Continuer',
+                    cancelLabel: 'Annuler',
+                    danger: true,
+                });
                 if (!ok) return;
             }
 
@@ -2260,11 +2116,11 @@ tr[data-matiere-id] {
                         document.querySelectorAll('.modal-backdrop').forEach((backdrop) => backdrop.remove());
                         document.body.classList.remove('modal-open');
                         document.body.style.removeProperty('padding-right');
-                        showToast('success', data.message || 'Liaisons mises à jour avec succès.');
+                        window.showToast(data.message || 'Liaisons mises à jour avec succès.', 'success');
                     })
                     .catch((error) => {
                         debugError('Erreur lors de la mise à jour des liaisons:', error);
-                        showToast('error', error.message || 'Impossible de mettre à jour les liaisons.');
+                        window.showToast(error.message || 'Impossible de mettre à jour les liaisons.', 'error');
                     })
                     .finally(() => {
                         saveLiaisonsBtn.disabled = false;
@@ -2346,17 +2202,14 @@ tr[data-matiere-id] {
         if (!btn) return;
         event.preventDefault();
         if (filtersForm) filtersForm.reset();
-        if (headerSearch) headerSearch.value = '';
         submitFilterForm();
     });
 
     updateSummary(JSON.parse(resultsContainer.dataset.summary || '{}'));
-    syncHeaderSearchFromForm();
     initTableInteractions();
 
     window.addEventListener('popstate', () => {
         applyQueryToForm(window.location.href);
-        syncHeaderSearchFromForm();
         submitFilterForm(false);
     });
 })();
