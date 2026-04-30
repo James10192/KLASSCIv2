@@ -922,6 +922,10 @@
     padding: 1.5rem;
     background: #fafbfc;
 }
+/* Fix Lot 17 : éviter espace blanc en bas du modal scrollable */
+.cr-modal-body > :last-child { margin-bottom: 0 !important; }
+.cr-modal-body .cr-error-zone:empty { display: none !important; }
+.cr-modal-body .cr-section:last-child { margin-bottom: 0; }
 .cr-modal-footer {
     background: #fff;
     border-top: 1px solid #f1f5f9;
@@ -1520,28 +1524,30 @@
                         </div>
                     </button>
                     <div class="cr-section-content">
-                        <div class="cr-roles-grid">
+                        <div class="cr-roles-list">
                             @foreach($standardRoles as $std)
                                 <article class="cr-role-card cr-role-card--standard">
-                                    <header class="cr-role-card-head">
-                                        <div class="cr-role-card-icon"><i class="fas {{ $std['icon'] }}"></i></div>
-                                        <div class="cr-role-card-title">
-                                            <h4>{{ $std['label'] }}</h4>
+                                    <div class="cr-role-card-icon"><i class="fas {{ $std['icon'] }}"></i></div>
+                                    <div class="cr-role-card-body">
+                                        <div class="cr-role-card-head">
+                                            <h4 class="cr-role-card-label">{{ $std['label'] }}</h4>
                                             <code class="cr-role-card-name">{{ $std['name'] }}</code>
                                         </div>
-                                    </header>
-                                    @if(!empty($std['description']))
-                                        <p class="cr-role-card-desc">{{ $std['description'] }}</p>
-                                    @endif
-                                    <footer class="cr-role-card-foot">
-                                        <span class="cr-role-card-stat"><i class="fas fa-users"></i> {{ $std['users_count'] }} user{{ $std['users_count'] > 1 ? 's' : '' }}</span>
-                                        <span class="cr-role-card-stat"><i class="fas fa-key"></i> {{ $std['permissions_count'] }} perm{{ $std['permissions_count'] > 1 ? 's' : '' }}</span>
-                                        <button type="button" class="cr-btn cr-btn-ghost cr-btn-sm"
+                                        @if(!empty($std['description']))
+                                            <p class="cr-role-card-desc">{{ $std['description'] }}</p>
+                                        @endif
+                                        <div class="cr-role-card-stats">
+                                            <span class="cr-role-card-stat"><i class="fas fa-users"></i> {{ $std['users_count'] }} user{{ $std['users_count'] > 1 ? 's' : '' }}</span>
+                                            <span class="cr-role-card-stat"><i class="fas fa-key"></i> {{ $std['permissions_count'] }} perm{{ $std['permissions_count'] > 1 ? 's' : '' }}</span>
+                                        </div>
+                                    </div>
+                                    <div class="cr-role-card-actions">
+                                        <button type="button" class="cr-role-action"
                                                 data-cr-edit-standard="{{ route('esbtp.custom-roles.standard.edit', $std['name']) }}"
                                                 title="Modifier label, icône, permissions">
-                                            <i class="fas fa-pen"></i> Modifier
+                                            <i class="fas fa-pen"></i>
                                         </button>
-                                    </footer>
+                                    </div>
                                 </article>
                             @endforeach
                         </div>
