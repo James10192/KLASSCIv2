@@ -47,7 +47,9 @@ Quand une section plate coexiste avec une section complète pour le même domain
 4. **Tester avec superAdmin** après modification — c'est le rôle qui révèle les doublons
 5. **Module toggles** : `@can('module.XXX.access')` = couche abonnement tenant, `@can('specific_perm')` = permission métier
 
-## Structure des 9 modules toggles
+## Structure des modules toggles
+
+Source : `config/permissions.php` (lue via `App\Services\PermissionRegistry`).
 
 ```
 module.enseignants.access
@@ -55,8 +57,12 @@ module.notes_evaluations.access
 module.emploi_temps.access
 module.presences.access
 module.lmd.access
-module.academique.access      (filières, classes, niveaux, cycles, matières)
-module.etudiants.access        (étudiants, inscriptions, réinscriptions)
-module.comptabilite.access     (frais, paiements, relances, dashboard comptable)
-module.communication.access    (annonces, messages)
+module.academique.access         (filières, classes, niveaux, cycles, matières)
+module.etudiants.access          (étudiants, inscriptions, réinscriptions)
+module.comptabilite.access       (frais, paiements, relances, dashboard comptable)
+module.caisse.access             (rôle caissier — pré-inscription + encaissement)
+module.communication.access      (annonces, messages)
+module.technical_support.access  (Service Technique uniquement)
 ```
+
+Pour ajouter un module : éditer `config/permissions.php` et déployer via `php bin/deploy/fix_permissions.php`. Voir [.claude/rules/permissions.md](permissions.md).

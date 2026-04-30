@@ -56,11 +56,16 @@
 
 ## Permissions & Rôles
 
-**Rôles** : `superAdmin`, `secretaire`, `enseignant`, `etudiant`, `comptable`, `coordinateur`
+**Source de vérité** : `config/permissions.php` (registry centralisé). Lecture via `App\Services\PermissionRegistry`. Voir [.claude/rules/permissions.md](.claude/rules/permissions.md).
 
-**Étudiant** (11 permissions `view_own_*`) : grades, exams, profile, timetable, attendances, bulletin, notes, evaluations, schedule, paiements, messages
+**Rôles UI** : `superAdmin`, `secretaire`, `comptable`, `caissier`, `coordinateur`, `enseignant`, `etudiant` (+ `serviceTechnique` masqué).
+Le rôle `parent` a été supprimé : les parents utilisent le compte de leur enfant étudiant.
 
-**Comptable** : `comptabilite.access`, `comptabilite.dashboard.view`, `comptabilite.relances.send`, `comptabilite.reports.export` + paiements.* + frais.*
+**Convention canonique** : `domaine.action[.qualifier]` snake_case (ex: `students.view`, `notes.view_own`, `comptabilite.dashboard.view`). Les noms legacy (`view_students`, `view cycles`...) sont conservés comme aliases pour rétrocompat.
+
+**Audit** : `php artisan permissions:audit` → détecte permissions cassées, hors-registry, aliases utilisés, orphelines en DB.
+
+**Déploiement** : `php bin/deploy/fix_permissions.php` synchronise rôles/permissions à partir du registry.
 
 ---
 
