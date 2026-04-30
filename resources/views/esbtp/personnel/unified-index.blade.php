@@ -670,6 +670,43 @@
     padding: 1rem 0 0;
 }
 
+/* ── Lot 16 — Encadré informatif système vs custom ── */
+.cr-info-note {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(94,145,222,.06));
+    border: 1px solid rgba(4,83,203,.15);
+    border-left: 3px solid #0453cb;
+    border-radius: 10px;
+    padding: .85rem 1rem;
+    margin: 1rem 0 .25rem;
+}
+.cr-info-note-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: rgba(4,83,203,.1);
+    color: #0453cb;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .9rem;
+    flex-shrink: 0;
+}
+.cr-info-note-body { flex: 1; min-width: 0; }
+.cr-info-note-title {
+    font-size: .82rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 .2rem;
+    line-height: 1.3;
+}
+.cr-info-note-text {
+    font-size: .78rem;
+    color: #475569;
+    margin: 0;
+    line-height: 1.5;
+}
+.cr-info-note-text strong { color: #1e293b; font-weight: 600; }
+
 /* ── Liste des rôles ── */
 .cr-roles-list {
     display: grid;
@@ -1393,6 +1430,17 @@
                     </div>
                 </button>
                 <div class="cr-section-content">
+                    {{-- Lot 16 — Encadré informatif : séparation système (Service Technique) vs custom (users.manage) --}}
+                    <div class="cr-info-note" role="note">
+                        <div class="cr-info-note-icon"><i class="fas fa-info-circle"></i></div>
+                        <div class="cr-info-note-body">
+                            <p class="cr-info-note-title">Rôles personnalisés gérés ici</p>
+                            <p class="cr-info-note-text">
+                                Vous pouvez créer, modifier et supprimer ces rôles, et leur assigner des utilisateurs.
+                                Pour modifier les permissions des <strong>rôles système</strong> (Secrétaire, Comptable, Coordinateur, Caissier, Enseignant, Étudiant), contactez le <strong>Service Technique</strong>.
+                            </p>
+                        </div>
+                    </div>
                     <div data-cr-list>
                         @include('esbtp.custom-roles._role-card', ['customRoles' => $customRoles ?? collect()])
                     </div>
