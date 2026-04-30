@@ -2,32 +2,10 @@
 
 @php
     use Illuminate\Support\Str;
-    $roleLabels = [
-        'superAdmin' => 'Super Admin',
-        'secretaire' => 'Secrétaire',
-        'comptable' => 'Comptable',
-        'coordinateur' => 'Coordinateur',
-        'enseignant' => 'Enseignant',
-        'etudiant' => 'Étudiant',
-    ];
-    $roleDescriptions = [
-        'superAdmin' => 'Accès complet au système',
-        'secretaire' => 'Gestion administrative quotidienne',
-        'comptable' => 'Gestion financière et comptabilité',
-        'coordinateur' => 'Suivi pédagogique et encadrement',
-        'enseignant' => 'Cours, présence, évaluations',
-        'etudiant' => 'Accès aux services étudiant',
-    ];
-    $roleIcons = [
-        'superAdmin' => 'fa-crown',
-        'secretaire' => 'fa-clipboard',
-        'comptable' => 'fa-calculator',
-        'coordinateur' => 'fa-user-tie',
-        'enseignant' => 'fa-chalkboard-teacher',
-        'etudiant' => 'fa-user-graduate',
-    ];
+    // $roleLabels, $roleDescriptions, $roleIcons sont passés par le controller depuis le registry
     $groupDescriptions = [
         'Administration' => 'Pilotage et gestion globale',
+        'Finance' => 'Caisse et comptabilité',
         'Pédagogie' => 'Suivi pédagogique et cours',
         'Étudiants' => 'Accès étudiant',
     ];
@@ -84,6 +62,16 @@
                 <span class="rp-counter"><strong id="rpCheckedCount">0</strong> / {{ $permissions->count() }} permissions activées</span>
             </div>
             <div class="rp-actions-right">
+                <a href="{{ route('esbtp.roles-permissions.index', ['role' => $selectedRoleName, 'show_legacy' => $showLegacy ? 0 : 1]) }}"
+                   class="btn-acasi secondary btn-sm" title="Affiche aussi les anciens noms de permissions">
+                    <i class="fas {{ $showLegacy ? 'fa-eye-slash' : 'fa-history' }} me-1"></i>{{ $showLegacy ? 'Masquer legacy' : 'Voir legacy' }}
+                </a>
+                <button type="button" class="btn-acasi secondary btn-sm" id="rpRestoreDefaults"
+                        data-restore-url="{{ route('esbtp.roles-permissions.restore-defaults') }}"
+                        data-role="{{ $selectedRoleName }}"
+                        title="Restaurer les permissions par défaut du rôle depuis le registry">
+                    <i class="fas fa-undo me-1"></i>Restaurer défauts
+                </button>
                 <button type="button" class="btn-acasi secondary btn-sm" id="rpSelectAll">
                     <i class="fas fa-check-double me-1"></i>Tout activer
                 </button>
@@ -103,7 +91,7 @@
                     $groupIcon = 'fa-layer-group';
                     $firstPerm = $groupItems->first();
                     if ($firstPerm && isset($catalog[$firstPerm->name])) {
-                        $groupIcon = $catalog[$firstPerm->name][2];
+                        $groupIcon = $catalog[$firstPerm->name]['icon'] ?? $groupIcon;
                     }
                     $groupSlug = Str::slug($groupName);
                     $selectedPermissions = $rolePermissions[$selectedRoleName] ?? collect();
@@ -133,14 +121,20 @@
                                 @foreach($groupItems as $permission)
                                     @php
                                         $entry = $catalog[$permission->name] ?? null;
-                                        $label = $entry ? $entry[0] : $permission->name;
+                                        $label = $entry['label'] ?? $permission->name;
+                                        $isAlias = $entry['is_alias'] ?? false;
+                                        $depReason = $entry['deprecated_reason'] ?? null;
                                     @endphp
-                                    <label class="rp-perm-card">
+                                    <label class="rp-perm-card {{ $isAlias ? 'rp-perm-legacy' : '' }} {{ $depReason ? 'rp-perm-deprecated' : '' }}">
                                         <input type="checkbox" name="permissions[]" value="{{ $permission->name }}"
                                                data-group="{{ $groupSlug }}"
                                                {{ $selectedPermissions->contains($permission->name) ? 'checked' : '' }}>
                                         <div class="rp-perm-content">
-                                            <span class="rp-perm-label">{{ $label }}</span>
+                                            <span class="rp-perm-label">
+                                                {{ $label }}
+                                                @if($isAlias)<span class="rp-badge rp-badge-legacy" title="Alias legacy de {{ $entry['canonical'] }}">Legacy</span>@endif
+                                                @if($depReason)<span class="rp-badge rp-badge-deprecated" title="{{ $depReason }}">Obsolète</span>@endif
+                                            </span>
                                             <span class="rp-perm-key">{{ $permission->name }}</span>
                                         </div>
                                         <div class="rp-perm-toggle"></div>
@@ -427,6 +421,31 @@
     transform: translateX(16px);
 }
 
+/* ── Badges legacy & deprecated ── */
+.rp-badge {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    vertical-align: middle;
+}
+.rp-badge-legacy {
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+.rp-badge-deprecated {
+    background: rgba(220, 38, 38, 0.12);
+    color: #b91c1c;
+    border: 1px solid rgba(220, 38, 38, 0.3);
+}
+.rp-perm-legacy { opacity: 0.75; }
+.rp-perm-deprecated .rp-perm-label { text-decoration: line-through; }
+
 /* ── Bottom bar ── */
 .rp-bottom-bar {
     display: flex;
@@ -512,6 +531,30 @@ document.addEventListener('DOMContentLoaded', function () {
     // Checkbox change
     document.querySelectorAll('input[name="permissions[]"]').forEach(cb => {
         cb.addEventListener('change', updateCounter);
+    });
+
+    // Restore defaults — POST avec confirmation
+    document.getElementById('rpRestoreDefaults')?.addEventListener('click', function () {
+        const role = this.dataset.role;
+        const url = this.dataset.restoreUrl;
+        if (!confirm(`Restaurer les permissions par défaut pour "${role}" ?\nLes permissions actuelles seront remplacées.`)) return;
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = url;
+        const csrf = document.createElement('input');
+        csrf.type = 'hidden';
+        csrf.name = '_token';
+        csrf.value = document.querySelector('meta[name="csrf-token"]')?.content
+                     || document.querySelector('input[name="_token"]')?.value;
+        const roleInput = document.createElement('input');
+        roleInput.type = 'hidden';
+        roleInput.name = 'role';
+        roleInput.value = role;
+        form.appendChild(csrf);
+        form.appendChild(roleInput);
+        document.body.appendChild(form);
+        form.submit();
     });
 
     // Init counter

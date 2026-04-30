@@ -1150,6 +1150,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
         Route::get('/roles-permissions', [\App\Http\Controllers\ESBTPRolePermissionConfigController::class, 'index'])->name('roles-permissions.index');
         Route::post('/roles-permissions', [\App\Http\Controllers\ESBTPRolePermissionConfigController::class, 'update'])->name('roles-permissions.update');
+        Route::post('/roles-permissions/restore-defaults', [\App\Http\Controllers\ESBTPRolePermissionConfigController::class, 'restoreDefaults'])->name('roles-permissions.restore-defaults');
+        Route::get('/roles-permissions/audit', [\App\Http\Controllers\ESBTPRolePermissionConfigController::class, 'audit'])->name('roles-permissions.audit');
 
         Route::get('/bulletin-style', [\App\Http\Controllers\ESBTP\ServiceTechniqueBulletinStyleController::class, 'index'])
             ->name('bulletin-style.index');
