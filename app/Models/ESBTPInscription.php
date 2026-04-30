@@ -291,13 +291,36 @@ class ESBTPInscription extends Model
      */
     public function scopeAnneeEnCours($query)
     {
-        $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneeEnCours = ESBTPAnneeUniversitaire::getCurrent();
 
         if (!$anneeEnCours) {
             return $query->whereRaw('1=0'); // Retourne une requête vide si aucune année en cours
         }
 
         return $query->where('annee_universitaire_id', $anneeEnCours->id);
+    }
+
+    /**
+     * Scope : inscriptions en attente de validation.
+     *
+     * Couvre deux cas :
+     *  - status explicite « en_attente » / « pending »
+     *  - status = active mais workflow_step pas encore complété
+     *
+     * Utilisé par les widgets dashboard et l'index inscriptions.
+     */
+    public function scopePendingValidation($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereIn('status', ['en_attente', 'pending'])
+              ->orWhere(function ($subQ) {
+                  $subQ->where('status', 'active')
+                       ->where(function ($wq) {
+                           $wq->whereIn('workflow_step', ['prospect', 'documents_complets', 'en_validation'])
+                              ->orWhereNull('workflow_step');
+                       });
+              });
+        });
     }
 
     /**

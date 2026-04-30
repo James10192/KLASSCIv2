@@ -1,14 +1,10 @@
 @php
-    /**
-     * Widget : Encaissements du mois (paiements validés)
-     */
+    /** @var array $widget */
     $startMonth = \Carbon\Carbon::now()->startOfMonth();
     $total = \App\Models\ESBTPPaiement::query()
         ->where(function ($q) {
-            $q->where('status', 'validé')
-              ->orWhere('status', 'valide')
-              ->orWhere('statut', 'validé')
-              ->orWhere('statut', 'valide');
+            $q->whereIn('status', ['validé', 'valide'])
+              ->orWhereIn('statut', ['validé', 'valide']);
         })
         ->where(function ($q) use ($startMonth) {
             $q->where('date_paiement', '>=', $startMonth)
@@ -16,16 +12,13 @@
               ->orWhere('created_at', '>=', $startMonth);
         })
         ->sum('montant');
-    $color = $widget['color'] ?? 'success';
 @endphp
 
-<div class="dw-widget dw-widget--{{ $color }}">
-    <div class="dw-widget-icon">
-        <i class="fas {{ $widget['icon'] ?? 'fa-coins' }}"></i>
-    </div>
-    <div class="dw-widget-body">
-        <div class="dw-widget-label">{{ $widget['label'] }}</div>
-        <div class="dw-widget-value">{{ number_format((float) $total, 0, ',', ' ') }} <span class="dw-widget-unit">FCFA</span></div>
-        <div class="dw-widget-hint">depuis le {{ $startMonth->format('d/m/Y') }}</div>
-    </div>
-</div>
+<x-dw-widget
+    :icon="$widget['icon'] ?? 'fa-coins'"
+    :label="$widget['label']"
+    :value="number_format((float) $total, 0, ',', ' ')"
+    unit="FCFA"
+    :hint="'depuis le ' . $startMonth->format('d/m/Y')"
+    :color="$widget['color'] ?? 'primary'"
+/>

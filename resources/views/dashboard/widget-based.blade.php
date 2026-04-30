@@ -430,9 +430,17 @@
             @foreach ($widgets as $widget)
                 @php
                     $size = $widget['size'] ?? 'sm';
+                    // Cache HTML 60s par user × widget. Évite N queries DB par hit dashboard
+                    // sur le hot path (login → /dashboard/widgets, ~1500 hits/jour/tenant).
+                    $cacheKey = "dw:widget:{$widget['key']}:user:" . ($user->id ?? 0);
+                    $rendered = \Illuminate\Support\Facades\Cache::remember(
+                        $cacheKey,
+                        60,
+                        fn () => view($widget['partial'], ['widget' => $widget, 'user' => $user])->render()
+                    );
                 @endphp
                 <div class="dw-grid-cell dw-grid-cell--{{ $size }}">
-                    @include($widget['partial'], ['widget' => $widget, 'user' => $user])
+                    {!! $rendered !!}
                 </div>
             @endforeach
         </div>

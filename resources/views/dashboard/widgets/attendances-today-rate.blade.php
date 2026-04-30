@@ -1,42 +1,30 @@
 @php
-    /**
-     * Widget : Taux de présence aujourd'hui
-     * Calcul : (présents / total saisi) sur les présences ESBTPAttendance du jour.
-     */
-    $today = \Carbon\Carbon::today();
-    $base = \App\Models\ESBTPAttendance::query()->whereDate('date', $today);
-    $total = (clone $base)->count();
-    $presents = $total > 0
-        ? (clone $base)->where(function ($q) {
-            $q->where('statut', 'present')->orWhere('status', 'present');
-        })->count()
-        : 0;
+    /** @var array $widget */
+    // Une seule query agrégée : count + sum conditional via CASE — évite 2 round-trips DB
+    $row = \App\Models\ESBTPAttendance::query()
+        ->whereDate('date', \Carbon\Carbon::today())
+        ->selectRaw("COUNT(*) as total, SUM(CASE WHEN status = 'present' OR statut = 'present' THEN 1 ELSE 0 END) as presents")
+        ->first();
+    $total = (int) ($row->total ?? 0);
+    $presents = (int) ($row->presents ?? 0);
     $rate = $total > 0 ? round(($presents / $total) * 100) : null;
-    $color = $widget['color'] ?? 'success';
+    $color = $widget['color'] ?? 'primary';
     if ($rate !== null && $rate < 50) {
         $color = 'warning';
     }
+
+    $value = $rate === null ? '—' : (string) $rate;
+    $unit = $rate === null ? null : '%';
+    $hint = $total === 0
+        ? "Aucune présence saisie aujourd'hui"
+        : "{$presents} / {$total} étudiant(s) présents";
 @endphp
 
-<div class="dw-widget dw-widget--{{ $color }}">
-    <div class="dw-widget-icon">
-        <i class="fas {{ $widget['icon'] ?? 'fa-clipboard-check' }}"></i>
-    </div>
-    <div class="dw-widget-body">
-        <div class="dw-widget-label">{{ $widget['label'] }}</div>
-        <div class="dw-widget-value">
-            @if ($rate === null)
-                —
-            @else
-                {{ $rate }}<span class="dw-widget-unit">%</span>
-            @endif
-        </div>
-        <div class="dw-widget-hint">
-            @if ($total === 0)
-                Aucune présence saisie aujourd'hui
-            @else
-                {{ $presents }} / {{ $total }} étudiant(s) présents
-            @endif
-        </div>
-    </div>
-</div>
+<x-dw-widget
+    :icon="$widget['icon'] ?? 'fa-clipboard-check'"
+    :label="$widget['label']"
+    :value="$value"
+    :unit="$unit"
+    :hint="$hint"
+    :color="$color"
+/>

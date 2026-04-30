@@ -27,6 +27,16 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 - 2 fichiers backup legacy `ESBTPEtudiantController(anicen commit).php` et `ESBTPParent(anicen commit).php` rangés par erreur dans `resources/views/esbtp/inscriptions/` (-1238 lignes). Polluaient l'audit `permissions:audit`.
 
+### Performance
+
+- **Lot 12 — Refactor backlog dashboard widgets** :
+  - Composants Blade `<x-dw-widget>` et `<x-dw-widget-list>` extraits ; les 12 widget partials passent de ~20 lignes HTML/CSS répétées à 5-15 lignes de logique uniquement (mutualisation ~150 lignes).
+  - `ESBTPAnneeUniversitaire::scopeCurrent()` + `getCurrent()` (cache 10 min, clé `esbtp:annee_universitaire:current`) — supprime les ~8 lookups répétés `where('is_current', true)->first()` dans les widgets et `DashboardController`.
+  - `ESBTPInscription::scopePendingValidation()` — extrait la logique workflow_step (status en_attente/pending OR status=active+workflow incomplet) dispersée entre `DashboardController` et le widget `inscriptions-pending-validation`.
+  - Cache HTML 60 s par widget × user dans `widget-based.blade.php` (`dw:widget:{key}:user:{id}`) — divise les requêtes DB du dashboard par ~10 sur les hits répétés.
+  - Migration `add_date_status_index_to_esbtp_attendances` (composite index `(date, status)`) — élimine le full-table-scan du widget `attendances.today_rate` (passe de ~50-200 ms à <5 ms en fin d'année).
+  - Widget `attendances-today-rate` : 2 queries → 1 query agrégée avec `SUM(CASE WHEN ...)`.
+
 ---
 
 ## [2026.04] - 2026-04-30
