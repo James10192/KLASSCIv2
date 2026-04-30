@@ -594,6 +594,687 @@
     .pu-hero-kpis { grid-template-columns: 1fr; }
     .pu-meta { flex-direction: column; gap: 0.25rem; }
 }
+
+/* ═══════════════════════════════════════════════════
+   CUSTOM ROLES (cr-* namespace) — Lot 8
+   ═══════════════════════════════════════════════════ */
+
+.cr-section-bar {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    overflow: hidden;
+    transition: box-shadow .2s ease;
+}
+.cr-section-bar:hover {
+    box-shadow: 0 8px 30px rgba(4,83,203,.06), 0 2px 8px rgba(15,23,42,.04);
+}
+.cr-section-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1.1rem 1.5rem;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    width: 100%;
+    text-align: left;
+}
+.cr-section-toggle-left { display: flex; align-items: center; gap: .85rem; }
+.cr-section-toggle-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .95rem;
+    flex-shrink: 0;
+}
+.cr-section-toggle-text h3 {
+    font-size: 1rem; font-weight: 700; color: #1e293b; margin: 0;
+}
+.cr-section-toggle-text p {
+    font-size: .8rem; color: #64748b; margin: 0;
+}
+.cr-section-toggle-right {
+    display: flex; align-items: center; gap: .75rem;
+}
+.cr-section-toggle-badge {
+    background: rgba(4,83,203,.08);
+    color: #0453cb;
+    font-size: .72rem;
+    font-weight: 700;
+    padding: .2rem .55rem;
+    border-radius: 8px;
+}
+.cr-section-toggle-chev {
+    color: #64748b;
+    font-size: .85rem;
+    transition: transform .2s ease;
+}
+.cr-section-bar.cr-open .cr-section-toggle-chev {
+    transform: rotate(180deg);
+}
+.cr-section-content {
+    display: none;
+    padding: 0 1.5rem 1.25rem;
+    border-top: 1px solid #f1f5f9;
+}
+.cr-section-bar.cr-open .cr-section-content {
+    display: block;
+}
+.cr-section-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .5rem;
+    padding: 1rem 0 0;
+}
+
+/* ── Liste des rôles ── */
+.cr-roles-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: .85rem;
+    margin-top: 1rem;
+}
+.cr-role-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: .85rem;
+    transition: all .2s ease;
+}
+.cr-role-card:hover {
+    border-color: #c7dafd;
+    box-shadow: 0 4px 16px rgba(4,83,203,.06);
+    transform: translateY(-2px);
+}
+.cr-role-card-icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(4,83,203,.1), rgba(94,145,222,.15));
+    color: #0453cb;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+}
+.cr-role-card-body { flex: 1; min-width: 0; }
+.cr-role-card-head {
+    display: flex; align-items: center; gap: .55rem;
+    flex-wrap: wrap;
+}
+.cr-role-card-label {
+    font-size: .95rem; font-weight: 700;
+    color: #1e293b; margin: 0;
+    line-height: 1.3;
+}
+.cr-role-card-name {
+    font-family: ui-monospace, monospace;
+    font-size: .68rem;
+    color: #64748b;
+    background: #f1f5f9;
+    padding: .15rem .45rem;
+    border-radius: 6px;
+}
+.cr-role-card-desc {
+    font-size: .8rem;
+    color: #64748b;
+    margin: .35rem 0 .55rem;
+    line-height: 1.4;
+}
+.cr-role-card-stats {
+    display: flex; gap: .5rem;
+}
+.cr-role-card-stat {
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .72rem; font-weight: 600;
+    color: #475569;
+    background: #f8fafc;
+    padding: .25rem .55rem;
+    border-radius: 6px;
+}
+.cr-role-card-stat i { font-size: .72rem; color: #0453cb; }
+.cr-role-card-actions {
+    display: flex; flex-direction: column; gap: .35rem;
+    flex-shrink: 0;
+}
+.cr-role-action {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all .15s ease;
+}
+.cr-role-action:hover {
+    background: #f8fafc;
+    color: #0453cb;
+    border-color: #c7dafd;
+}
+.cr-role-action.cr-role-action-users:hover {
+    background: rgba(4,83,203,.08);
+    color: #0453cb;
+}
+.cr-role-action.cr-role-action-danger:hover {
+    background: rgba(220,38,38,.08);
+    color: #dc2626;
+    border-color: rgba(220,38,38,.2);
+}
+
+/* ── Empty state ── */
+.cr-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #64748b;
+}
+.cr-empty-icon {
+    font-size: 2rem;
+    color: #cbd5e1;
+    margin-bottom: .5rem;
+}
+.cr-empty h3 {
+    font-size: 1rem; font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 .25rem;
+}
+.cr-empty p {
+    font-size: .85rem; margin: 0 0 1rem;
+}
+.cr-empty-btn {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    border: none;
+    padding: .55rem 1.1rem;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: .85rem;
+    display: inline-flex; align-items: center; gap: .45rem;
+    cursor: pointer;
+}
+.cr-empty-btn:hover { opacity: .9; }
+
+/* ── Modal premium ── */
+.cr-modal {
+    border-radius: 16px;
+    border: none;
+    overflow: hidden;
+    box-shadow: 0 25px 80px rgba(15,23,42,.2);
+}
+.cr-modal-header {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    color: #fff;
+    border-bottom: none;
+    padding: 1.25rem 1.5rem;
+}
+.cr-modal-header-left {
+    display: flex; align-items: center; gap: .85rem;
+}
+.cr-modal-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; color: #fff;
+}
+.cr-modal-title {
+    font-size: 1.1rem; font-weight: 700; margin: 0; color: #fff;
+}
+.cr-modal-subtitle {
+    font-size: .8rem; margin: .15rem 0 0;
+    color: rgba(255,255,255,.75);
+}
+.cr-modal-name-tag {
+    font-family: ui-monospace, monospace;
+    font-size: .7rem;
+    background: rgba(255,255,255,.15);
+    padding: .1rem .4rem;
+    border-radius: 5px;
+    margin-left: .35rem;
+}
+.cr-modal-body {
+    padding: 1.5rem;
+    background: #fafbfc;
+}
+.cr-modal-footer {
+    background: #fff;
+    border-top: 1px solid #f1f5f9;
+    padding: 1rem 1.5rem;
+}
+
+/* ── Sections du modal ── */
+.cr-section {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1.1rem 1.25rem;
+    margin-bottom: 1rem;
+}
+.cr-section-header {
+    display: flex; align-items: center; gap: .75rem;
+    margin-bottom: 1rem;
+}
+.cr-section-icon {
+    width: 36px; height: 36px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .85rem;
+}
+.cr-section-title {
+    font-size: .95rem; font-weight: 700;
+    color: #1e293b; margin: 0;
+}
+.cr-section-desc {
+    font-size: .78rem; color: #64748b; margin: 0;
+}
+
+/* ── Form inputs ── */
+.cr-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+.cr-form-grid:last-child { margin-bottom: 0; }
+.cr-form-group { display: flex; flex-direction: column; }
+.cr-form-label {
+    font-size: .8rem; font-weight: 600;
+    color: #1e293b;
+    margin-bottom: .35rem;
+}
+.cr-req { color: #dc2626; }
+.cr-form-input {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    padding: .55rem .75rem;
+    font-size: .85rem;
+    background: #fff;
+    color: #1e293b;
+    transition: border-color .15s, box-shadow .15s;
+}
+.cr-form-input:focus {
+    outline: none;
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.08);
+}
+.cr-form-input:disabled,
+.cr-form-input[readonly] {
+    background: #f8fafc;
+    color: #64748b;
+    cursor: not-allowed;
+}
+.cr-form-input-mono {
+    font-family: ui-monospace, monospace;
+    font-size: .82rem;
+}
+.cr-form-hint {
+    font-size: .72rem;
+    color: #94a3b8;
+    margin-top: .3rem;
+}
+
+/* ── Icon picker ── */
+.cr-icon-picker {
+    display: flex; gap: .5rem; align-items: center;
+}
+.cr-icon-preview {
+    width: 38px; height: 38px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, rgba(4,83,203,.08), rgba(94,145,222,.12));
+    color: #0453cb;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem;
+    flex-shrink: 0;
+    border: 1px solid #e2e8f0;
+}
+.cr-icon-picker .cr-form-input { flex: 1; }
+.cr-icon-suggestions {
+    display: flex; flex-wrap: wrap; gap: .35rem;
+    margin-top: .5rem;
+}
+.cr-icon-chip {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer;
+    transition: all .15s ease;
+    font-size: .85rem;
+}
+.cr-icon-chip:hover {
+    background: #f8fafc;
+    color: #0453cb;
+    border-color: #c7dafd;
+}
+.cr-icon-chip.active {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    border-color: transparent;
+}
+
+/* ── Picker permissions ── */
+.cr-picker { background: #fff; }
+.cr-picker-toolbar {
+    display: flex; gap: .75rem;
+    align-items: center;
+    margin-bottom: .85rem;
+    flex-wrap: wrap;
+}
+.cr-picker-search {
+    position: relative; flex: 1; min-width: 220px;
+}
+.cr-picker-search i {
+    position: absolute;
+    left: .75rem; top: 50%; transform: translateY(-50%);
+    color: #94a3b8; font-size: .8rem;
+}
+.cr-picker-search-input {
+    width: 100%;
+    padding: .55rem .75rem .55rem 2.1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: .82rem;
+    background: #f8fafc;
+    transition: all .15s;
+}
+.cr-picker-search-input:focus {
+    outline: none;
+    border-color: #0453cb;
+    background: #fff;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.08);
+}
+.cr-picker-counter {
+    background: rgba(4,83,203,.06);
+    border: 1px solid rgba(4,83,203,.15);
+    border-radius: 8px;
+    padding: .4rem .75rem;
+    font-size: .8rem;
+    color: #0453cb;
+    font-weight: 600;
+    display: flex; align-items: center; gap: .25rem;
+    white-space: nowrap;
+}
+.cr-picker-counter-value { font-weight: 800; }
+.cr-picker-counter-sep { color: #94a3b8; }
+.cr-picker-counter-total { color: #475569; }
+.cr-picker-counter-label { color: #64748b; font-weight: 500; margin-left: .15rem; }
+.cr-picker-bulk { display: flex; gap: .35rem; }
+.cr-picker-bulk-btn {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    color: #475569;
+    border-radius: 8px;
+    padding: .4rem .65rem;
+    font-size: .75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: .35rem;
+    transition: all .15s;
+}
+.cr-picker-bulk-btn:hover { color: #0453cb; border-color: #c7dafd; }
+
+.cr-picker-groups {
+    max-height: 420px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+}
+.cr-picker-group {
+    border-bottom: 1px solid #f1f5f9;
+}
+.cr-picker-group:last-child { border-bottom: none; }
+.cr-picker-group-header {
+    display: flex; align-items: center; justify-content: space-between;
+    background: #fff;
+    padding: 0;
+}
+.cr-picker-group-toggle {
+    display: flex; align-items: center; gap: .55rem;
+    background: transparent; border: none;
+    padding: .65rem 1rem;
+    flex: 1;
+    cursor: pointer;
+    text-align: left;
+}
+.cr-picker-group-chev {
+    color: #94a3b8; font-size: .75rem;
+    transition: transform .2s ease;
+}
+.cr-picker-group.cr-collapsed .cr-picker-group-chev {
+    transform: rotate(-90deg);
+}
+.cr-picker-group-name {
+    font-weight: 700; font-size: .85rem;
+    color: #1e293b;
+}
+.cr-picker-group-count {
+    font-size: .7rem; color: #64748b;
+    background: #f1f5f9;
+    padding: .15rem .45rem;
+    border-radius: 6px;
+    font-weight: 600;
+}
+.cr-picker-group-all {
+    background: transparent;
+    border: 1px solid transparent;
+    color: #94a3b8;
+    width: 32px; height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-right: .5rem;
+}
+.cr-picker-group-all:hover {
+    color: #0453cb;
+    background: rgba(4,83,203,.06);
+}
+.cr-picker-group-body {
+    padding: .35rem .6rem .65rem;
+    background: #f8fafc;
+}
+.cr-picker-group.cr-collapsed .cr-picker-group-body { display: none; }
+
+.cr-perm {
+    display: flex; align-items: center; gap: .65rem;
+    padding: .5rem .65rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color .12s;
+    margin-bottom: .15rem;
+}
+.cr-perm:hover { background: #fff; }
+.cr-perm input[type="checkbox"] {
+    position: absolute;
+    opacity: 0;
+    pointer-events: none;
+}
+.cr-perm-box {
+    width: 18px; height: 18px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 5px;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    color: transparent;
+    flex-shrink: 0;
+    transition: all .12s;
+}
+.cr-perm-box i { font-size: .65rem; }
+.cr-perm input:checked + .cr-perm-box {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    border-color: transparent;
+    color: #fff;
+}
+.cr-perm-icon {
+    color: #94a3b8;
+    font-size: .8rem;
+    width: 18px; text-align: center;
+    flex-shrink: 0;
+}
+.cr-perm input:checked ~ .cr-perm-icon { color: #0453cb; }
+.cr-perm-text {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column; gap: .1rem;
+}
+.cr-perm-label {
+    font-size: .82rem;
+    color: #1e293b;
+    font-weight: 500;
+    line-height: 1.3;
+}
+.cr-perm-name {
+    font-family: ui-monospace, monospace;
+    font-size: .68rem;
+    color: #94a3b8;
+}
+
+.cr-picker-empty {
+    text-align: center;
+    padding: 2.5rem 1rem;
+    color: #64748b;
+    background: #f8fafc;
+    border: 1px dashed #e2e8f0;
+    border-radius: 10px;
+}
+.cr-picker-empty-icon { font-size: 1.75rem; color: #cbd5e1; }
+.cr-picker-empty h4 {
+    font-size: .95rem;
+    color: #1e293b;
+    margin: .35rem 0 .15rem;
+}
+.cr-picker-empty p {
+    font-size: .8rem; margin: 0;
+}
+
+/* ── Users list (assign modal) ── */
+.cr-assign-info {
+    background: rgba(4,83,203,.06);
+    border: 1px solid rgba(4,83,203,.15);
+    color: #1e3a8a;
+    padding: .65rem .85rem;
+    border-radius: 8px;
+    font-size: .8rem;
+    margin-bottom: 1rem;
+    display: flex; align-items: center; gap: .5rem;
+}
+.cr-users-list {
+    max-height: 420px;
+    overflow-y: auto;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #f8fafc;
+    padding: .35rem;
+}
+.cr-user-row {
+    display: flex; align-items: center; gap: .65rem;
+    padding: .65rem .75rem;
+    background: #fff;
+    border-radius: 8px;
+    margin-bottom: .35rem;
+    cursor: pointer;
+    transition: all .15s;
+}
+.cr-user-row:hover {
+    background: #f8fafc;
+    box-shadow: 0 1px 3px rgba(15,23,42,.05);
+}
+.cr-user-row:last-child { margin-bottom: 0; }
+.cr-user-row input[type="checkbox"] {
+    position: absolute; opacity: 0; pointer-events: none;
+}
+.cr-user-box {
+    width: 18px; height: 18px;
+    border: 1.5px solid #cbd5e1;
+    border-radius: 5px;
+    background: #fff;
+    display: flex; align-items: center; justify-content: center;
+    color: transparent;
+    flex-shrink: 0;
+    transition: all .12s;
+}
+.cr-user-box i { font-size: .65rem; }
+.cr-user-row input:checked + .cr-user-box {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    border-color: transparent;
+    color: #fff;
+}
+.cr-user-avatar {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700;
+    font-size: .8rem;
+    flex-shrink: 0;
+}
+.cr-user-info {
+    flex: 1; min-width: 0;
+    display: flex; flex-direction: column;
+}
+.cr-user-name { font-size: .85rem; font-weight: 600; color: #1e293b; }
+.cr-user-email { font-size: .75rem; color: #64748b; }
+.cr-user-role-tag {
+    background: #f1f5f9;
+    color: #475569;
+    font-size: .7rem;
+    padding: .2rem .5rem;
+    border-radius: 6px;
+    font-weight: 600;
+    display: inline-flex; align-items: center; gap: .3rem;
+    flex-shrink: 0;
+}
+.cr-user-role-tag i { font-size: .65rem; color: #64748b; }
+
+/* ── Buttons ── */
+.cr-btn {
+    border-radius: 9px;
+    padding: .55rem 1.1rem;
+    font-size: .82rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: .45rem;
+    transition: all .15s ease;
+}
+.cr-btn-primary {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+}
+.cr-btn-primary:hover { opacity: .92; }
+.cr-btn-primary:disabled { opacity: .55; cursor: not-allowed; }
+.cr-btn-ghost {
+    background: #fff;
+    border-color: #e2e8f0;
+    color: #475569;
+}
+.cr-btn-ghost:hover { background: #f8fafc; color: #0453cb; }
+
+/* ── Errors ── */
+.cr-error-zone {
+    background: rgba(220,38,38,.06);
+    border: 1px solid rgba(220,38,38,.2);
+    color: #b91c1c;
+    padding: .65rem .85rem;
+    border-radius: 8px;
+    font-size: .82rem;
+    margin-top: 1rem;
+}
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+    .cr-form-grid { grid-template-columns: 1fr; }
+    .cr-roles-list { grid-template-columns: 1fr; }
+    .cr-picker-toolbar { flex-direction: column; align-items: stretch; }
+}
 </style>
 @endpush
 
@@ -693,6 +1374,41 @@
                 <i class="fas fa-exclamation-circle"></i>{{ session('error') }}
             </div>
         @endif
+
+        {{-- ═══ Lot 8 — Rôles personnalisés (collapsible) ═══ --}}
+        @can('users.manage')
+            @php $crCount = isset($customRoles) ? $customRoles->count() : 0; @endphp
+            <div class="cr-section-bar pu-animate pu-delay-1 {{ $crCount > 0 ? 'cr-open' : '' }}" data-cr-section>
+                <button type="button" class="cr-section-toggle" data-cr-section-toggle>
+                    <div class="cr-section-toggle-left">
+                        <div class="cr-section-toggle-icon"><i class="fas fa-id-badge"></i></div>
+                        <div class="cr-section-toggle-text">
+                            <h3>Rôles personnalisés</h3>
+                            <p>Créez des rôles métiers sur mesure (Agent Inscriptions, Surveillant…)</p>
+                        </div>
+                    </div>
+                    <div class="cr-section-toggle-right">
+                        <span class="cr-section-toggle-badge">{{ $crCount }} rôle{{ $crCount > 1 ? 's' : '' }}</span>
+                        <i class="fas fa-chevron-down cr-section-toggle-chev"></i>
+                    </div>
+                </button>
+                <div class="cr-section-content">
+                    <div data-cr-list>
+                        @include('esbtp.custom-roles._role-card', ['customRoles' => $customRoles ?? collect()])
+                    </div>
+                    <div class="cr-section-actions">
+                        <button type="button" class="cr-btn cr-btn-primary" data-cr-create-trigger>
+                            <i class="fas fa-plus"></i> Créer un rôle personnalisé
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Modal container (rempli en AJAX) --}}
+            <div class="modal fade" id="crModal" tabindex="-1" aria-hidden="true">
+                {{-- contenu chargé en AJAX --}}
+            </div>
+        @endcan
 
         {{-- ═══ Tabs Card ═══ --}}
         <div class="pu-tabs-card pu-animate pu-delay-2">
@@ -1318,4 +2034,352 @@ function toggleSecretaireStatus(secretaireId) {
     updateCount();
 })();
 </script>
+
+@can('users.manage')
+{{-- ═════════════════════════════════════════════════
+     LOT 8 — JS pour les rôles custom
+     ═════════════════════════════════════════════════ --}}
+<script>
+(function () {
+    const modalEl = document.getElementById('crModal');
+    if (!modalEl) return;
+
+    const sectionBar = document.querySelector('[data-cr-section]');
+    const sectionToggle = document.querySelector('[data-cr-section-toggle]');
+    const listContainer = document.querySelector('[data-cr-list]');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+
+    const ROUTES = {
+        list: @json(route('esbtp.custom-roles.index')),
+        create: @json(route('esbtp.custom-roles.create')),
+        store: @json(route('esbtp.custom-roles.store')),
+        editUrl: (n) => @json(url('/esbtp/custom-roles')) + '/' + n + '/edit',
+        updateUrl: (n) => @json(url('/esbtp/custom-roles')) + '/' + n,
+        destroyUrl: (n) => @json(url('/esbtp/custom-roles')) + '/' + n,
+        assignFormUrl: (n) => @json(url('/esbtp/custom-roles')) + '/' + n + '/assign-users',
+        assignUrl: (n) => @json(url('/esbtp/custom-roles')) + '/' + n + '/assign-users',
+    };
+
+    let bsModal = null;
+    function getModal() {
+        if (!bsModal && window.bootstrap) {
+            bsModal = new bootstrap.Modal(modalEl, { backdrop: 'static' });
+        }
+        return bsModal;
+    }
+
+    /* ── Section collapsible ── */
+    if (sectionToggle) {
+        sectionToggle.addEventListener('click', () => {
+            sectionBar.classList.toggle('cr-open');
+        });
+    }
+
+    /* ── Helpers ── */
+    function slugify(str) {
+        return (str || '')
+            .toLowerCase()
+            .normalize('NFD').replace(/[̀-ͯ]/g, '')
+            .replace(/[^a-z0-9_]+/g, '_')
+            .replace(/^_+|_+$/g, '')
+            .replace(/_+/g, '_')
+            .substring(0, 64);
+    }
+
+    async function loadModal(url) {
+        try {
+            const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' } });
+            if (!res.ok) {
+                const t = await res.text();
+                throw new Error(t || 'Erreur de chargement (' + res.status + ')');
+            }
+            const html = await res.text();
+            modalEl.innerHTML = html;
+            getModal().show();
+            wireModalForm();
+            wireModalIcons();
+            wireModalPicker();
+            wireModalUserPicker();
+            wireNameAutogen();
+        } catch (e) {
+            alert('Erreur de chargement du modal : ' + e.message);
+        }
+    }
+
+    function showError(msg) {
+        const z = modalEl.querySelector('[data-cr-error]');
+        if (!z) return;
+        z.textContent = msg;
+        z.style.display = 'block';
+    }
+
+    async function refreshList() {
+        try {
+            const res = await fetch(ROUTES.list, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+            const data = await res.json();
+            if (!data.success) return;
+            // On reconstruit la liste côté client pour éviter un nouveau call HTML
+            const html = renderList(data.roles || []);
+            if (listContainer) listContainer.innerHTML = html;
+            const badge = sectionBar?.querySelector('.cr-section-toggle-badge');
+            if (badge) {
+                const n = (data.roles || []).length;
+                badge.textContent = n + ' rôle' + (n > 1 ? 's' : '');
+            }
+            wireRoleCardActions();
+        } catch (e) {
+            // silencieux
+        }
+    }
+
+    function escapeHtml(s) {
+        return String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+    }
+
+    function renderList(roles) {
+        if (!roles.length) {
+            return `<div class="cr-empty">
+                <div class="cr-empty-icon"><i class="fas fa-id-badge"></i></div>
+                <h3>Aucun rôle personnalisé</h3>
+                <p>Créez votre premier rôle métier sur mesure (ex: Agent Inscriptions, Surveillant)</p>
+                <button type="button" class="cr-empty-btn" data-cr-create-trigger>
+                    <i class="fas fa-plus"></i> Créer un rôle personnalisé
+                </button>
+            </div>`;
+        }
+        return `<div class="cr-roles-list">${roles.map(r => `
+            <div class="cr-role-card" data-cr-role-card="${escapeHtml(r.name)}">
+                <div class="cr-role-card-icon"><i class="fas ${escapeHtml(r.icon)}"></i></div>
+                <div class="cr-role-card-body">
+                    <div class="cr-role-card-head">
+                        <h4 class="cr-role-card-label">${escapeHtml(r.label)}</h4>
+                        <span class="cr-role-card-name">${escapeHtml(r.name)}</span>
+                    </div>
+                    ${r.description ? `<p class="cr-role-card-desc">${escapeHtml(r.description)}</p>` : ''}
+                    <div class="cr-role-card-stats">
+                        <span class="cr-role-card-stat"><i class="fas fa-users"></i>${r.users_count}</span>
+                        <span class="cr-role-card-stat"><i class="fas fa-key"></i>${r.permissions_count}</span>
+                    </div>
+                </div>
+                <div class="cr-role-card-actions">
+                    <button type="button" class="cr-role-action" data-cr-edit="${escapeHtml(r.name)}" title="Modifier"><i class="fas fa-pen"></i></button>
+                    <button type="button" class="cr-role-action cr-role-action-users" data-cr-assign="${escapeHtml(r.name)}" title="Assigner"><i class="fas fa-user-plus"></i></button>
+                    <button type="button" class="cr-role-action cr-role-action-danger" data-cr-delete="${escapeHtml(r.name)}" data-cr-delete-label="${escapeHtml(r.label)}" data-cr-delete-users="${r.users_count}" title="Supprimer"><i class="fas fa-trash"></i></button>
+                </div>
+            </div>`).join('')}</div>`;
+    }
+
+    /* ── Form submission générique ── */
+    function wireModalForm() {
+        const form = modalEl.querySelector('#cr-create-form, #cr-edit-form, #cr-assign-form');
+        if (!form) return;
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const submitBtn = form.querySelector('[data-cr-submit]');
+            if (submitBtn) submitBtn.disabled = true;
+            const errorZone = form.querySelector('[data-cr-error]');
+            if (errorZone) errorZone.style.display = 'none';
+
+            const fd = new FormData(form);
+            const method = form.querySelector('input[name=_method]')?.value || form.method || 'POST';
+
+            try {
+                const res = await fetch(form.action, {
+                    method: method.toUpperCase() === 'GET' ? 'GET' : 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                    body: fd,
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data.success === false) {
+                    let msg = data.message || 'Erreur de validation.';
+                    if (data.errors) {
+                        msg += '\n' + Object.values(data.errors).flat().join('\n');
+                    }
+                    showError(msg);
+                    return;
+                }
+                // Succès
+                getModal().hide();
+                await refreshList();
+            } catch (e2) {
+                showError('Erreur réseau : ' + e2.message);
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
+        });
+    }
+
+    /* ── Auto-slug du nom à partir du label ── */
+    function wireNameAutogen() {
+        const labelInput = modalEl.querySelector('[data-cr-label-input]');
+        const nameInput = modalEl.querySelector('[data-cr-name-input]');
+        if (!labelInput || !nameInput) return;
+        let manuallyEdited = false;
+        nameInput.addEventListener('input', () => {
+            manuallyEdited = nameInput.value.trim().length > 0;
+        });
+        labelInput.addEventListener('input', () => {
+            if (!manuallyEdited) {
+                nameInput.value = slugify(labelInput.value);
+            }
+        });
+    }
+
+    /* ── Icon picker ── */
+    function wireModalIcons() {
+        const preview = modalEl.querySelector('[data-cr-icon-preview]');
+        const input = modalEl.querySelector('[data-cr-icon-input]');
+        const chips = modalEl.querySelectorAll('[data-cr-icon-suggest]');
+        if (!preview || !input) return;
+        const updatePreview = () => {
+            const v = (input.value || 'fa-user-tag').trim();
+            preview.className = 'fas ' + v;
+            chips.forEach(c => c.classList.toggle('active', c.dataset.crIconSuggest === v));
+        };
+        input.addEventListener('input', updatePreview);
+        chips.forEach(c => {
+            c.addEventListener('click', () => {
+                input.value = c.dataset.crIconSuggest;
+                updatePreview();
+            });
+        });
+        updatePreview();
+    }
+
+    /* ── Picker permissions (search, group toggle, select-all) ── */
+    function wireModalPicker() {
+        const picker = modalEl.querySelector('.cr-picker');
+        if (!picker) return;
+
+        const search = picker.querySelector('[data-cr-search]');
+        const checks = () => Array.from(picker.querySelectorAll('[data-cr-perm]'));
+        const counterChecked = picker.querySelector('[data-cr-counter-checked]');
+
+        const updateCounter = () => {
+            if (counterChecked) {
+                counterChecked.textContent = checks().filter(c => c.checked).length;
+            }
+            // par groupe
+            picker.querySelectorAll('.cr-picker-group').forEach(group => {
+                const items = group.querySelectorAll('[data-cr-perm]');
+                const checkedCount = group.querySelectorAll('[data-cr-perm]:checked').length;
+                const countEl = group.querySelector('[data-cr-group-count]');
+                if (countEl) countEl.textContent = checkedCount + '/' + items.length;
+            });
+        };
+
+        checks().forEach(c => c.addEventListener('change', updateCounter));
+
+        if (search) {
+            search.addEventListener('input', () => {
+                const q = search.value.toLowerCase().trim();
+                picker.querySelectorAll('[data-cr-perm-label]').forEach(label => {
+                    const text = label.dataset.crPermLabel || '';
+                    label.style.display = (q === '' || text.indexOf(q) !== -1) ? '' : 'none';
+                });
+                // Cacher groupes qui n'ont aucune match
+                picker.querySelectorAll('.cr-picker-group').forEach(group => {
+                    const visible = Array.from(group.querySelectorAll('[data-cr-perm-label]')).some(l => l.style.display !== 'none');
+                    group.style.display = visible || q === '' ? '' : 'none';
+                });
+            });
+        }
+
+        // Group toggle (collapse)
+        picker.querySelectorAll('.cr-picker-group-toggle').forEach(t => {
+            t.addEventListener('click', () => t.closest('.cr-picker-group').classList.toggle('cr-collapsed'));
+        });
+
+        // Group "tout cocher"
+        picker.querySelectorAll('[data-cr-group-all]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const group = btn.closest('.cr-picker-group');
+                const items = group.querySelectorAll('[data-cr-perm]');
+                const allChecked = Array.from(items).every(i => i.checked);
+                items.forEach(i => i.checked = !allChecked);
+                updateCounter();
+            });
+        });
+
+        // Bulk
+        picker.querySelector('[data-cr-select-all]')?.addEventListener('click', () => {
+            checks().forEach(c => { if (c.closest('label').style.display !== 'none') c.checked = true; });
+            updateCounter();
+        });
+        picker.querySelector('[data-cr-clear-all]')?.addEventListener('click', () => {
+            checks().forEach(c => c.checked = false);
+            updateCounter();
+        });
+
+        updateCounter();
+    }
+
+    /* ── User picker (assign modal) ── */
+    function wireModalUserPicker() {
+        const userSearch = modalEl.querySelector('[data-cr-user-search]');
+        const counter = modalEl.querySelector('[data-cr-user-counter]');
+        const checks = () => Array.from(modalEl.querySelectorAll('[data-cr-user-check]'));
+
+        const updateCounter = () => {
+            if (counter) counter.textContent = checks().filter(c => c.checked).length;
+        };
+        checks().forEach(c => c.addEventListener('change', updateCounter));
+
+        if (userSearch) {
+            userSearch.addEventListener('input', () => {
+                const q = userSearch.value.toLowerCase().trim();
+                modalEl.querySelectorAll('[data-cr-user-label]').forEach(row => {
+                    const text = row.dataset.crUserLabel || '';
+                    row.style.display = (q === '' || text.indexOf(q) !== -1) ? '' : 'none';
+                });
+            });
+        }
+        updateCounter();
+    }
+
+    /* ── Bind sur les actions des cards (rebind après refresh) ── */
+    function wireRoleCardActions() {
+        document.querySelectorAll('[data-cr-edit]').forEach(btn => {
+            btn.onclick = () => loadModal(ROUTES.editUrl(btn.dataset.crEdit));
+        });
+        document.querySelectorAll('[data-cr-assign]').forEach(btn => {
+            btn.onclick = () => loadModal(ROUTES.assignFormUrl(btn.dataset.crAssign));
+        });
+        document.querySelectorAll('[data-cr-delete]').forEach(btn => {
+            btn.onclick = async () => {
+                const name = btn.dataset.crDelete;
+                const label = btn.dataset.crDeleteLabel || name;
+                const users = parseInt(btn.dataset.crDeleteUsers || '0', 10);
+                if (users > 0) {
+                    alert(`Ce rôle est attribué à ${users} utilisateur(s). Détachez-les d'abord (icône utilisateurs) avant de supprimer.`);
+                    return;
+                }
+                if (!confirm(`Supprimer définitivement le rôle « ${label} » ?`)) return;
+                try {
+                    const res = await fetch(ROUTES.destroyUrl(name), {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json', 'X-CSRF-TOKEN': csrfToken },
+                        body: (() => { const f = new FormData(); f.append('_method', 'DELETE'); return f; })(),
+                    });
+                    const data = await res.json().catch(() => ({}));
+                    if (!res.ok || data.success === false) {
+                        alert(data.message || 'Erreur lors de la suppression.');
+                        return;
+                    }
+                    refreshList();
+                } catch (e) {
+                    alert('Erreur réseau : ' + e.message);
+                }
+            };
+        });
+        document.querySelectorAll('[data-cr-create-trigger]').forEach(btn => {
+            btn.onclick = () => loadModal(ROUTES.create);
+        });
+    }
+
+    // Bind initial
+    wireRoleCardActions();
+})();
+</script>
+@endcan
 @endpush

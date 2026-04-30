@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\ESBTPTeacher;
+use App\Services\PermissionRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -113,6 +114,35 @@ class ESBTPPersonnelUnifiedController extends Controller
         // Rétro-compatibilité : $isCoordinateur est dérivé de $userRole
         $isCoordinateur = ($userRole === 'coordinateur');
 
+        // Lot 8 — Rôles custom (visibles si l'utilisateur a users.manage)
+        $customRoles = collect();
+        if (auth()->user()->can('users.manage')) {
+            try {
+                $registry = app(PermissionRegistry::class);
+                $customRoles = Role::query()
+                    ->where('is_custom', true)
+                    ->withCount('users')
+                    ->orderBy('label_fr')
+                    ->orderBy('name')
+                    ->get()
+                    ->map(function (Role $role) use ($registry) {
+                        $meta = $registry->roleMeta($role->name) ?? [];
+                        return [
+                            'id' => $role->id,
+                            'name' => $role->name,
+                            'label' => $meta['label'] ?? $role->name,
+                            'icon' => $meta['icon'] ?? 'fa-user-tag',
+                            'description' => $meta['description'] ?? '',
+                            'users_count' => $role->users_count,
+                            'permissions_count' => $role->permissions()->count(),
+                        ];
+                    });
+            } catch (\Throwable $e) {
+                // Migration pas encore lancée ou autre — on degrade silencieusement
+                $customRoles = collect();
+            }
+        }
+
         return view('esbtp.personnel.unified-index', compact(
             'coordinateurs',
             'enseignants',
@@ -121,7 +151,8 @@ class ESBTPPersonnelUnifiedController extends Controller
             'caissiers',
             'stats',
             'isCoordinateur',
-            'userRole'
+            'userRole',
+            'customRoles'
         ));
     }
 
