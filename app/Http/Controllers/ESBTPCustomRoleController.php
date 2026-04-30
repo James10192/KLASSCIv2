@@ -31,6 +31,31 @@ use Spatie\Permission\PermissionRegistrar;
  */
 class ESBTPCustomRoleController extends Controller
 {
+    /**
+     * Whitelist des icônes Font Awesome autorisées pour les rôles custom.
+     *
+     * Empêche un acteur de saisir une classe arbitraire (ex: `fa-skull` ou `' onclick=...`)
+     * qui pourrait casser l'UI ou permettre une injection. Toute valeur hors liste est
+     * remplacée par le défaut `fa-user-tag`.
+     *
+     * Pour ajouter une icône : la déclarer ici ET dans les `cr-icon-suggestions` des
+     * modals create/edit pour qu'elle soit suggérée à l'utilisateur.
+     */
+    private const ALLOWED_ICONS = [
+        // Personnel & rôles
+        'fa-user-tag', 'fa-user-shield', 'fa-user-tie', 'fa-user-cog', 'fa-user-check',
+        'fa-user-plus', 'fa-user-graduate', 'fa-user-md', 'fa-user-secret', 'fa-user-clock',
+        'fa-users', 'fa-users-cog', 'fa-id-badge', 'fa-id-card', 'fa-address-card',
+        // Métiers
+        'fa-cash-register', 'fa-calculator', 'fa-pen-fancy', 'fa-hands-helping',
+        'fa-headset', 'fa-magnifying-glass', 'fa-clipboard-list', 'fa-clipboard-check',
+        'fa-graduation-cap', 'fa-chalkboard-teacher', 'fa-school', 'fa-book-open',
+        'fa-briefcase', 'fa-laptop', 'fa-tools', 'fa-handshake', 'fa-microscope',
+        // Sécurité & administration
+        'fa-shield-alt', 'fa-shield-halved', 'fa-key', 'fa-lock', 'fa-cog', 'fa-cogs',
+        'fa-tasks', 'fa-bullhorn', 'fa-flag', 'fa-star',
+    ];
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -40,6 +65,28 @@ class ESBTPCustomRoleController extends Controller
             }
             return $next($request);
         });
+    }
+
+    /**
+     * Normalise une icône utilisateur : si absente de la whitelist → fallback `fa-user-tag`.
+     */
+    private function normalizeIcon(?string $icon): string
+    {
+        $icon = trim((string) $icon);
+        if ($icon === '' || ! in_array($icon, self::ALLOWED_ICONS, true)) {
+            return 'fa-user-tag';
+        }
+        return $icon;
+    }
+
+    /**
+     * Retourne la whitelist d'icônes (utilisable depuis les vues pour la cohérence).
+     *
+     * @return string[]
+     */
+    public static function allowedIcons(): array
+    {
+        return self::ALLOWED_ICONS;
     }
 
     /**
@@ -103,7 +150,7 @@ class ESBTPCustomRoleController extends Controller
                 Rule::unique('roles', 'name'),
             ],
             'label_fr' => ['required', 'string', 'max:255'],
-            'icon' => ['nullable', 'string', 'max:64'],
+            'icon' => ['nullable', 'string', 'max:64', Rule::in(self::ALLOWED_ICONS)],
             'description' => ['nullable', 'string', 'max:1000'],
             'permissions' => ['array'],
             'permissions.*' => ['string', 'exists:permissions,name'],
@@ -111,6 +158,7 @@ class ESBTPCustomRoleController extends Controller
             'name.regex' => 'Le nom interne doit être en snake_case (ex: agent_inscriptions).',
             'name.unique' => 'Un rôle avec ce nom existe déjà.',
             'label_fr.required' => 'Le label affiché à l\'utilisateur est obligatoire.',
+            'icon.in' => 'Cette icône n\'est pas autorisée. Choisissez parmi les suggestions.',
         ]);
 
         // Garde-fou : empêcher la création d'un rôle réservé
@@ -143,7 +191,7 @@ class ESBTPCustomRoleController extends Controller
             $role->name = $validated['name'];
             $role->guard_name = config('auth.defaults.guard', 'web');
             $role->label_fr = $validated['label_fr'];
-            $role->icon = $validated['icon'] ?? 'fa-user-tag';
+            $role->icon = $this->normalizeIcon($validated['icon'] ?? null);
             $role->description = $validated['description'] ?? null;
             $role->is_custom = true;
             $role->created_by_user_id = Auth::id();
@@ -215,10 +263,13 @@ class ESBTPCustomRoleController extends Controller
 
         $validated = $request->validate([
             'label_fr' => ['required', 'string', 'max:255'],
-            'icon' => ['nullable', 'string', 'max:64'],
+            'icon' => ['nullable', 'string', 'max:64', Rule::in(self::ALLOWED_ICONS)],
             'description' => ['nullable', 'string', 'max:1000'],
             'permissions' => ['array'],
             'permissions.*' => ['string', 'exists:permissions,name'],
+        ], [
+            'label_fr.required' => 'Le label affiché à l\'utilisateur est obligatoire.',
+            'icon.in' => 'Cette icône n\'est pas autorisée. Choisissez parmi les suggestions.',
         ]);
 
         $requestedPerms = collect($validated['permissions'] ?? [])->unique()->values()->all();
@@ -238,7 +289,7 @@ class ESBTPCustomRoleController extends Controller
         DB::beginTransaction();
         try {
             $roleModel->label_fr = $validated['label_fr'];
-            $roleModel->icon = $validated['icon'] ?? 'fa-user-tag';
+            $roleModel->icon = $this->normalizeIcon($validated['icon'] ?? null);
             $roleModel->description = $validated['description'] ?? null;
             $roleModel->save();
 
