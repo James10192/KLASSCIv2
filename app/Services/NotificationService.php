@@ -952,7 +952,7 @@ class NotificationService
     public function notifyWelcomeNewUser(User $user, string $role): void
     {
         try {
-            $title = "Bienvenue dans ESBTP-yAKRO";
+            $title = "Bienvenue dans " . \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI');
             $message = "Votre compte a été créé avec succès. Vous avez le rôle de {$role}. Explorez toutes les fonctionnalités disponibles.";
             $link = route('dashboard');
 

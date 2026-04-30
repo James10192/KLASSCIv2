@@ -104,7 +104,7 @@ class ESBTPClasseController extends Controller
         }
 
         // Enseignant : ne voir que les classes où il a des séances dans l'emploi du temps
-        if ($user && $user->can('identity.teach')) {
+        if ($user && $user->can('can_teach')) {
             $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
             if ($teacher && $anneeCourante) {
                 $classeIds = ESBTPSeanceCours::query()
@@ -1445,7 +1445,7 @@ class ESBTPClasseController extends Controller
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
+            "nom" => Setting::get("school_name", "KLASSCI"),
             "adresse" => Setting::get("school_address", ""),
             "telephone" => Setting::get("school_phone", ""),
             "email" => Setting::get("school_email", ""),
@@ -1498,7 +1498,7 @@ class ESBTPClasseController extends Controller
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
+            "nom" => Setting::get("school_name", "KLASSCI"),
             "adresse" => Setting::get("school_address", ""),
             "telephone" => Setting::get("school_phone", ""),
             "email" => Setting::get("school_email", ""),
@@ -1557,7 +1557,7 @@ class ESBTPClasseController extends Controller
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
+            "nom" => Setting::get("school_name", "KLASSCI"),
             "adresse" => Setting::get("school_address", ""),
             "telephone" => Setting::get("school_phone", ""),
             "email" => Setting::get("school_email", ""),
@@ -1607,7 +1607,7 @@ class ESBTPClasseController extends Controller
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
+            "nom" => Setting::get("school_name", "KLASSCI"),
             "adresse" => Setting::get("school_address", ""),
             "telephone" => Setting::get("school_phone", ""),
             "email" => Setting::get("school_email", ""),
@@ -1666,7 +1666,7 @@ class ESBTPClasseController extends Controller
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
+            "nom" => Setting::get("school_name", "KLASSCI"),
             "adresse" => Setting::get("school_address", ""),
             "telephone" => Setting::get("school_phone", ""),
             "email" => Setting::get("school_email", ""),
@@ -1882,7 +1882,7 @@ class ESBTPClasseController extends Controller
 
             // Récupérer les paramètres de l'école
             $settings = [
-                "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
+                "nom" => Setting::get("school_name", "KLASSCI"),
                 "adresse" => Setting::get("school_address", ""),
                 "telephone" => Setting::get("school_phone", ""),
                 "email" => Setting::get("school_email", ""),

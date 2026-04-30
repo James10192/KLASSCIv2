@@ -835,7 +835,7 @@ class ESBTPInscriptionPaiementController extends Controller
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
+            "nom" => Setting::get("school_name", "KLASSCI"),
             "adresse" => Setting::get("school_address", ""),
             "telephone" => Setting::get("school_phone", ""),
             "email" => Setting::get("school_email", ""),
@@ -921,7 +921,7 @@ class ESBTPInscriptionPaiementController extends Controller
 
         // Récupérer les paramètres de l'établissement
         $etablissement = [
-            "nom" => Setting::get("school_name", "ESBTP-yAKRO"),
+            "nom" => Setting::get("school_name", "KLASSCI"),
             "adresse" => Setting::get("school_address", ""),
             "telephone" => Setting::get("school_phone", ""),
             "email" => Setting::get("school_email", ""),

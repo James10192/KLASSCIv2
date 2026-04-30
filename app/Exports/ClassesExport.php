@@ -147,7 +147,7 @@ class ClassesExport implements FromCollection, WithHeadings, WithMapping, WithTi
      */
     private function renderHeader($sheet, $highestColumn)
     {
-        $schoolName = $this->settings['nom'] ?? 'ESBTP-yAKRO';
+        $schoolName = $this->settings['nom'] ?? 'KLASSCI';
         $anneeName = $this->anneeCourante ? $this->anneeCourante->name : 'Année en cours';
 
         // Ligne 1: Nom de l'établissement
@@ -421,7 +421,7 @@ class ClassesExport implements FromCollection, WithHeadings, WithMapping, WithTi
     private function loadDefaultSettings(): array
     {
         return [
-            'nom' => SettingsHelper::get('school_name', 'ESBTP-yAKRO'),
+            'nom' => SettingsHelper::get('school_name', 'KLASSCI'),
             'adresse' => SettingsHelper::get('school_address', ''),
             'telephone' => SettingsHelper::get('school_phone', ''),
             'email' => SettingsHelper::get('school_email', ''),

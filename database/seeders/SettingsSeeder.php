@@ -107,9 +107,9 @@ class SettingsSeeder extends Seeder
                 'group' => 'establishment',
                 'category' => 'establishment',
                 'description' => 'Nom du directeur',
-                'is_required' => true,
+                'is_required' => false,
                 'default_value' => '',
-                'validation_rules' => ['required', 'string', 'max:255'],
+                'validation_rules' => ['nullable', 'string', 'max:255'],
                 'sort_order' => 8
             ],
             [

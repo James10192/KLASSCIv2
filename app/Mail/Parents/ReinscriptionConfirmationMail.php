@@ -30,7 +30,7 @@ class ReinscriptionConfirmationMail extends Mailable
      */
     public function build()
     {
-        return $this->subject('Confirmation de Réinscription - ESBTP-yAKRO')
+        return $this->subject('Confirmation de Réinscription - ' . \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI'))
                     ->view('esbtp.emails.parents.reinscription-confirmation')
                     ->with($this->data);
     }
