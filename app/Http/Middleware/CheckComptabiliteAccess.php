@@ -21,7 +21,7 @@ class CheckComptabiliteAccess
 
     if (
         !$user->can('comptabilite.access') &&
-        !$user->can('access_comptabilite_module') &&
+        !$user->can('comptabilite.access') &&
         !$user->can('comptabilite.manage')
     ) {
         abort(403, 'Accès non autorisé.');

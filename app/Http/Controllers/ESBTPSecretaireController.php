@@ -217,7 +217,7 @@ class ESBTPSecretaireController extends Controller
      */
     public function resetPassword(User $secretaire)
     {
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
 
         if (!$secretaire->hasRole('secretaire')) {
             abort(404, 'Secrétaire non trouvé.');

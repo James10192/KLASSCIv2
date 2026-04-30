@@ -322,7 +322,7 @@ class ESBTPEnseignantController extends Controller
 
             // Redirect flexible via permission toggle :
             // manage_personnel → page unifiée, sinon → liste enseignants
-            $redirectRoute = auth()->user()->can('manage_personnel')
+            $redirectRoute = auth()->user()->can('personnel.manage')
                 ? "esbtp.personnel.unified.index"
                 : "esbtp.enseignants.index";
 
@@ -1377,7 +1377,7 @@ class ESBTPEnseignantController extends Controller
      */
     public function matieres(ESBTPTeacher $teacher)
     {
-        $this->authorize("edit_enseignants");
+        $this->authorize("teachers.edit");
 
         // Récupérer toutes les matières disponibles
         $matieres = ESBTPMatiere::with(["niveauEtude", "filieres"])
@@ -1401,7 +1401,7 @@ class ESBTPEnseignantController extends Controller
      */
     public function assignMatieres(Request $request, ESBTPTeacher $teacher)
     {
-        $this->authorize("edit_enseignants");
+        $this->authorize("teachers.edit");
 
         $request->validate([
             "matieres" => "array",

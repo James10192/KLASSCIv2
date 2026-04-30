@@ -25,10 +25,10 @@ class ESBTPStudentController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('permission:view_students', ['only' => ['index', 'show', 'genererCertificat', 'exportExcel', 'exportPdf']]);
-        $this->middleware('permission:create_students', ['only' => ['create', 'store']]);
-        $this->middleware('permission:edit_students', ['only' => ['edit', 'update']]);
-        $this->middleware('permission:delete_students', ['only' => ['destroy']]);
+        $this->middleware('permission:students.view', ['only' => ['index', 'show', 'genererCertificat', 'exportExcel', 'exportPdf']]);
+        $this->middleware('permission:students.create', ['only' => ['create', 'store']]);
+        $this->middleware('permission:students.edit', ['only' => ['edit', 'update']]);
+        $this->middleware('permission:students.delete', ['only' => ['destroy']]);
     }
 
     public function index(Request $request, FuzzyNameMatcher $matcher)
@@ -515,7 +515,7 @@ class ESBTPStudentController extends Controller
     public function destroy(ESBTPEtudiant $etudiant)
     {
         // Vérifier les permissions
-        if (!auth()->user()->can('delete_students')) {
+        if (!auth()->user()->can('students.delete')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Vous n\'avez pas les permissions pour supprimer des étudiants.'

@@ -15,12 +15,12 @@ class ESBTPCycleController extends Controller
     public function __construct()
     {
         $this->middleware('auth');
-        $this->middleware('permission:view cycles')->only(['index', 'show']);
-        $this->middleware('permission:create cycles')->only(['create', 'store']);
-        $this->middleware('permission:edit cycles')->only(['edit', 'update']);
-        $this->middleware('permission:delete cycles')->only('destroy');
-        $this->middleware('permission:restore cycles')->only('restore');
-        $this->middleware('permission:force delete cycles')->only('forceDelete');
+        $this->middleware('permission:cycles.view')->only(['index', 'show']);
+        $this->middleware('permission:cycles.create')->only(['create', 'store']);
+        $this->middleware('permission:cycles.edit')->only(['edit', 'update']);
+        $this->middleware('permission:cycles.delete')->only('destroy');
+        $this->middleware('permission:cycles.restore')->only('restore');
+        $this->middleware('permission:cycles.force_delete')->only('forceDelete');
     }
 
     /**

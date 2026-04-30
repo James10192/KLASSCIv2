@@ -33,7 +33,7 @@ class ESBTPMatierePolicy
      */
     public function viewAny(User $user)
     {
-        return $user->can('view_matieres');
+        return $user->can('matieres.view');
     }
 
     /**
@@ -45,7 +45,7 @@ class ESBTPMatierePolicy
      */
     public function view(User $user, ESBTPMatiere $eSBTPMatiere)
     {
-        return $user->can('view_matieres');
+        return $user->can('matieres.view');
     }
 
     /**
@@ -56,7 +56,7 @@ class ESBTPMatierePolicy
      */
     public function create(User $user)
     {
-        return $user->can('create_matieres');
+        return $user->can('matieres.create');
     }
 
     /**
@@ -68,7 +68,7 @@ class ESBTPMatierePolicy
      */
     public function update(User $user, ESBTPMatiere $eSBTPMatiere)
     {
-        return $user->can('edit_matieres');
+        return $user->can('matieres.edit');
     }
 
     /**
@@ -80,7 +80,7 @@ class ESBTPMatierePolicy
      */
     public function delete(User $user, ESBTPMatiere $eSBTPMatiere)
     {
-        return $user->can('delete_matieres');
+        return $user->can('matieres.delete');
     }
 
     /**
@@ -92,7 +92,7 @@ class ESBTPMatierePolicy
      */
     public function restore(User $user, ESBTPMatiere $eSBTPMatiere)
     {
-        return $user->can('manage_system');
+        return $user->can('system.manage');
     }
 
     /**
@@ -104,6 +104,6 @@ class ESBTPMatierePolicy
      */
     public function forceDelete(User $user, ESBTPMatiere $eSBTPMatiere)
     {
-        return $user->can('manage_system');
+        return $user->can('system.manage');
     }
 }

@@ -22,7 +22,7 @@ class ESBTPBulletinPolicy
 
     public function viewAny(User $user)
     {
-        return $user->can('view_bulletins') || $user->can('view_own_bulletin');
+        return $user->can('bulletins.view') || $user->can('bulletins.view_own');
     }
 
     /**
@@ -36,7 +36,7 @@ class ESBTPBulletinPolicy
                 && $bulletin->etudiant->user_id === $user->id;
         }
 
-        return $user->can('view_bulletins') || $user->can('view_own_bulletin');
+        return $user->can('bulletins.view') || $user->can('bulletins.view_own');
     }
 
     /**
@@ -49,16 +49,16 @@ class ESBTPBulletinPolicy
 
     public function create(User $user)
     {
-        return $user->can('create_bulletins');
+        return $user->can('bulletins.create');
     }
 
     public function update(User $user, ESBTPBulletin $bulletin)
     {
-        return $user->can('edit_bulletins');
+        return $user->can('bulletins.edit');
     }
 
     public function delete(User $user, ESBTPBulletin $bulletin)
     {
-        return $user->can('delete_bulletins');
+        return $user->can('bulletins.delete');
     }
 }

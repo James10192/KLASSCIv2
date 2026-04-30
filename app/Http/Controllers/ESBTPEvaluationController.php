@@ -129,7 +129,7 @@ class ESBTPEvaluationController extends Controller
         // Pour les rôles non-enseignants, récupérer les évaluations pour la gestion des liens externes
         $evaluationsForExternalLinks = collect();
         $currentUser = \Auth::user();
-        if (! $currentUser->hasAnyPermission(['can_teach', 'can_view_student_features'])) {
+        if (! $currentUser->hasAnyPermission(['identity.teach', 'identity.student'])) {
             $evaluationsForExternalLinks = ESBTPEvaluation::with(['classe', 'matiere'])
                 ->where('is_published', true)
                 ->whereDoesntHave('notes')
@@ -295,7 +295,7 @@ class ESBTPEvaluationController extends Controller
         // Récupérer la liste des enseignants pour l'assignation (seulement pour les non-enseignants)
         $enseignants = collect();
         $currentUser = \Auth::user();
-        if (! $currentUser->can('can_teach')) {
+        if (! $currentUser->can('identity.teach')) {
             $enseignants = User::whereHas('roles', function ($query) {
                 $query->whereIn('name', ['teacher', 'enseignant']);
             })->orderBy('name')->get();
@@ -443,7 +443,7 @@ $evaluation = new ESBTPEvaluation;
 
             // Auto-assigner l'enseignant si c'est un rôle enseignant qui crée l'évaluation
             $user = \Auth::user();
-            if ($user->can('can_teach')) {
+            if ($user->can('identity.teach')) {
                 $evaluation->enseignant_id = \Auth::id();
             } else {
                 // Pour les autres rôles, utiliser l'assignation du formulaire

@@ -28,7 +28,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function viewAny(User $user)
     {
-        return $user->can('view_timetables') || $user->can('view_own_timetable');
+        return $user->can('timetables.view') || $user->can('timetables.view_own');
     }
 
     /**
@@ -40,7 +40,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function view(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->can('view_timetables') || $user->can('view_own_timetable');
+        return $user->can('timetables.view') || $user->can('timetables.view_own');
     }
 
     /**
@@ -51,7 +51,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function create(User $user)
     {
-        return $user->can('create_timetable') || $user->can('edit_timetables');
+        return $user->can('timetables.create') || $user->can('timetables.edit');
     }
 
     /**
@@ -63,7 +63,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function update(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->can('create_timetable') || $user->can('edit_timetables');
+        return $user->can('timetables.create') || $user->can('timetables.edit');
     }
 
     /**
@@ -75,7 +75,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function edit(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->can('create_timetable') || $user->can('edit_timetables');
+        return $user->can('timetables.create') || $user->can('timetables.edit');
     }
 
     /**
@@ -87,7 +87,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function delete(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->can('delete_timetables');
+        return $user->can('timetables.delete');
     }
 
     /**
@@ -99,7 +99,7 @@ class ESBTPSeanceCoursPolicy
      */
     public function restore(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->can('manage_system');
+        return $user->can('system.manage');
     }
 
     /**
@@ -111,6 +111,6 @@ class ESBTPSeanceCoursPolicy
      */
     public function forceDelete(User $user, ESBTPSeanceCours $eSBTPSeanceCours)
     {
-        return $user->can('manage_system');
+        return $user->can('system.manage');
     }
 }

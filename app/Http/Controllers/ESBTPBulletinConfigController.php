@@ -53,7 +53,7 @@ class ESBTPBulletinConfigController extends Controller
     public function configMatieresTypeFormation(Request $request)
     {
         // Vérifier que l'utilisateur est autorisé
-        if (! Auth::check() || ! Auth::user()->can('bulletin.configure')) {
+        if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
             abort(403, 'Accès non autorisé. Vous n\'avez pas la permission de configurer les bulletins.');
         }
 
@@ -259,7 +259,7 @@ class ESBTPBulletinConfigController extends Controller
     public function saveConfigMatieresTypeFormation(Request $request)
     {
         // Vérifier que l'utilisateur est autorisé
-        if (! Auth::check() || ! Auth::user()->can('bulletin.configure')) {
+        if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
             abort(403, 'Accès non autorisé. Vous n\'avez pas la permission de configurer les bulletins.');
         }
 
@@ -427,7 +427,7 @@ class ESBTPBulletinConfigController extends Controller
     public function editProfesseurs(Request $request)
     {
         // Vérifier que l'utilisateur est autorisé
-        if (! Auth::check() || ! Auth::user()->can('bulletin.configure')) {
+        if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
             abort(403, 'Accès non autorisé. Vous n\'avez pas la permission de configurer les bulletins.');
         }
 
@@ -914,7 +914,7 @@ class ESBTPBulletinConfigController extends Controller
     public function editAbsences(Request $request)
     {
         // Vérifier les permissions
-        if (! Auth::check() || ! Auth::user()->can('bulletin.configure')) {
+        if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
             abort(403, 'Accès non autorisé. Vous n\'avez pas la permission de configurer les bulletins.');
         }
 

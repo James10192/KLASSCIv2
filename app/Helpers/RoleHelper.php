@@ -177,7 +177,7 @@ class RoleHelper
         if (self::isStudent($role)) {
             return [
                 'view_own_courses',
-                'view_own_grades',
+                'notes.view_own',
                 'access_chat',
                 'view_schedule'
             ];

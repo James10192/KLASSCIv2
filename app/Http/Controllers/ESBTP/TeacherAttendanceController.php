@@ -309,7 +309,7 @@ class TeacherAttendanceController extends Controller
 
     public function generateDailyCode()
     {
-        $this->authorize('generate-attendance-code');
+        $this->authorize('attendances.generate_codes');
 
         $code = ESBTPDailyCode::create([
             'code' => ESBTPDailyCode::generateCode(),
@@ -360,7 +360,7 @@ class TeacherAttendanceController extends Controller
     public function report(Request $request)
     {
         // Autorisation gérée par le middleware de route (teacher|superAdmin)
-        // $this->authorize('view-attendance-reports');
+        // $this->authorize('attendances.view_reports');
 
         // Récupérer l'année universitaire en cours
         $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();

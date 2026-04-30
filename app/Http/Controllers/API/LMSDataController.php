@@ -340,7 +340,7 @@ class LMSDataController extends BaseApiController
         }
 
         // Pour les enseignants, vérifier qu'ils enseignent dans cette classe
-        if (auth()->user()->can('can_teach')) {
+        if (auth()->user()->can('identity.teach')) {
             $hasAccess = ESBTPMatiere::whereHas('enseignants', function ($q) use ($annee) {
                 $q->where('enseignant_id', auth()->id())
                   ->where('esbtp_enseignant_matiere.annee_universitaire_id', $annee->id)
@@ -445,9 +445,9 @@ class LMSDataController extends BaseApiController
         // Filtrer selon le rôle
         $user = auth()->user();
 
-        if ($user->can('can_teach')) {
+        if ($user->can('identity.teach')) {
             $query->where('enseignant_id', $user->id);
-        } elseif ($user->can('can_view_student_features')) {
+        } elseif ($user->can('identity.student')) {
             $etudiant = $user->etudiant;
             if ($etudiant) {
                 $inscription = $etudiant->inscriptions()
@@ -499,7 +499,7 @@ class LMSDataController extends BaseApiController
                 'type_cours' => $seance->type_cours,
                 'statut' => $seance->statut,
                 'lms_integration' => [
-                    'can_start_visio' => auth()->user()->can('can_teach'),
+                    'can_start_visio' => auth()->user()->can('identity.teach'),
                     'visio_url' => null, // À remplir par le LMS
                     'course_materials_count' => 0 // À remplir par le LMS
                 ]
@@ -1056,7 +1056,7 @@ class LMSDataController extends BaseApiController
 
         // Vérifier que l'utilisateur est un étudiant
         $user = auth()->user();
-        if (!$user->can('can_view_student_features')) {
+        if (!$user->can('identity.student')) {
             return $this->errorResponse('Cet endpoint est réservé aux étudiants', [], 403);
         }
 
@@ -1294,7 +1294,7 @@ class LMSDataController extends BaseApiController
 
         // Vérifier que l'utilisateur est un enseignant (accepter 'teacher' OU 'enseignant')
         $user = auth()->user();
-        if (!$user->can('can_teach')) {
+        if (!$user->can('identity.teach')) {
             return $this->errorResponse('Cet endpoint est réservé aux enseignants', [], 403);
         }
 
@@ -2332,7 +2332,7 @@ class LMSDataController extends BaseApiController
         $reason = null;
 
         // Vérifier si c'est l'enseignant
-        if ($user->can('can_teach')) {
+        if ($user->can('identity.teach')) {
             $teacher = \App\Models\ESBTPTeacher::where('user_id', $userId)->first();
 
             if ($teacher && $seance->teacher_id == $teacher->id) {
@@ -2343,7 +2343,7 @@ class LMSDataController extends BaseApiController
             }
         }
         // Vérifier si c'est un étudiant inscrit dans la classe
-        elseif ($user->can('can_view_student_features')) {
+        elseif ($user->can('identity.student')) {
             $etudiant = $user->etudiant;
 
             if ($etudiant) {
@@ -2364,7 +2364,7 @@ class LMSDataController extends BaseApiController
             }
         }
         // Admin et coordinateur (optionnel)
-        elseif ($user->hasAnyPermission(['access_admin', 'can_coordinate_academics'])) {
+        elseif ($user->hasAnyPermission(['admin.access', 'identity.coordinate'])) {
             $authorized = true;
             $role = 'moderator';
         }
@@ -2722,7 +2722,7 @@ class LMSDataController extends BaseApiController
 
         // Vérifier les permissions (seulement ses propres préférences ou admin)
         $authUser = auth()->user();
-        if ($authUser->id !== $userId && !$authUser->hasAnyPermission(['access_admin', 'can_coordinate_academics'])) {
+        if ($authUser->id !== $userId && !$authUser->hasAnyPermission(['admin.access', 'identity.coordinate'])) {
             return $this->errorResponse('Accès non autorisé', [], 403);
         }
 
@@ -2755,7 +2755,7 @@ class LMSDataController extends BaseApiController
         ];
 
         // Si c'est un étudiant, récupérer les préférences du parent
-        if ($user->can('can_view_student_features')) {
+        if ($user->can('identity.student')) {
             $etudiant = $user->etudiant;
             $parent = $etudiant?->parent;
 
@@ -2784,7 +2784,7 @@ class LMSDataController extends BaseApiController
             }
         }
         // Si c'est un enseignant
-        elseif ($user->can('can_teach')) {
+        elseif ($user->can('identity.teach')) {
             $teacher = \App\Models\ESBTPTeacher::where('user_id', $userId)->first();
 
             if ($teacher) {

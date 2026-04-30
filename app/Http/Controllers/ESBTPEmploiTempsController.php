@@ -1043,7 +1043,7 @@ class ESBTPEmploiTempsController extends Controller
     public function destroy(Request $request, ESBTPEmploiTemps $emploi_temp)
     {
         // Vérifier si l'utilisateur a la permission de supprimer les emplois du temps
-        if (! auth()->user()->can('delete_timetables')) {
+        if (! auth()->user()->can('timetables.delete')) {
             abort(403, 'Accès non autorisé. Permission de suppression requise.');
         }
 
@@ -1468,7 +1468,7 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function activateAll()
     {
-        if (! auth()->user()->can('edit_timetables')) {
+        if (! auth()->user()->can('timetables.edit')) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -1527,7 +1527,7 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function setCurrent($id)
     {
-        if (! auth()->user()->can('edit_timetables')) {
+        if (! auth()->user()->can('timetables.edit')) {
             abort(403, 'Unauthorized action.');
         }
 
@@ -1876,7 +1876,7 @@ class ESBTPEmploiTempsController extends Controller
     {
         $user = auth()->user();
 
-        if (! $user || (! $user->can('create_timetable'))) {
+        if (! $user || (! $user->can('timetables.create'))) {
             abort(403);
         }
 
@@ -2026,7 +2026,7 @@ class ESBTPEmploiTempsController extends Controller
     public function quickGeneratePreview(Request $request, TimetableShortcutService $shortcutService)
     {
         $user = auth()->user();
-        if (! $user || (! $user->can('create_timetable'))) {
+        if (! $user || (! $user->can('timetables.create'))) {
             abort(403);
         }
 
@@ -2109,7 +2109,7 @@ class ESBTPEmploiTempsController extends Controller
     public function duplicateWeek(Request $request)
     {
         $user = auth()->user();
-        if (! $user || ! $user->can('create_timetable')) {
+        if (! $user || ! $user->can('timetables.create')) {
             abort(403);
         }
 

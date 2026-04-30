@@ -25,12 +25,12 @@ class EvaluationGradingShortcutService
             ->where('is_published', true)
             ->where('notes_published', false);
 
-        $isTeacher = $user->can('can_teach');
-        $canSeeAll = $user->can('access_admin')
-            || $user->can('can_manage_school')
-            || $user->can('can_coordinate_academics')
-            || $user->can('view_exams')
-            || $user->can('view_evaluations');
+        $isTeacher = $user->can('identity.teach');
+        $canSeeAll = $user->can('admin.access')
+            || $user->can('identity.school_manager')
+            || $user->can('identity.coordinate')
+            || $user->can('exams.view')
+            || $user->can('evaluations.view');
 
         if ($isTeacher && ! $canSeeAll) {
             $baseQuery->where('enseignant_id', $user->id);

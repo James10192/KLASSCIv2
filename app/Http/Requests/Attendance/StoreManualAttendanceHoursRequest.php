@@ -13,7 +13,7 @@ class StoreManualAttendanceHoursRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->can('create_attendance') ?? false;
+        return $this->user()?->can('attendances.create') ?? false;
     }
 
     public function rules(): array

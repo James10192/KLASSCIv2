@@ -25,7 +25,7 @@ class ESBTPPersonnelUnifiedController extends Controller
     public function index(Request $request)
     {
         // Vérifier les permissions via toggle (manage_personnel)
-        if (!auth()->user()->can('manage_personnel')) {
+        if (!auth()->user()->can('personnel.manage')) {
             abort(403, 'Accès non autorisé');
         }
 
@@ -131,9 +131,9 @@ class ESBTPPersonnelUnifiedController extends Controller
     public function getData(Request $request)
     {
         try {
-            $this->authorize('manage-users');
+            $this->authorize('users.manage');
         } catch (\Exception $e) {
-            if (!auth()->user()->can('access_admin')) {
+            if (!auth()->user()->can('admin.access')) {
                 abort(403, 'Accès non autorisé');
             }
         }
@@ -279,9 +279,9 @@ class ESBTPPersonnelUnifiedController extends Controller
     public function store(Request $request)
     {
         try {
-            $this->authorize('manage-users');
+            $this->authorize('users.manage');
         } catch (\Exception $e) {
-            if (!auth()->user()->can('access_admin')) {
+            if (!auth()->user()->can('admin.access')) {
                 abort(403, 'Accès non autorisé');
             }
         }
@@ -369,9 +369,9 @@ class ESBTPPersonnelUnifiedController extends Controller
     public function update(Request $request, $type, $id)
     {
         try {
-            $this->authorize('manage-users');
+            $this->authorize('users.manage');
         } catch (\Exception $e) {
-            if (!auth()->user()->can('access_admin')) {
+            if (!auth()->user()->can('admin.access')) {
                 abort(403, 'Accès non autorisé');
             }
         }
@@ -463,9 +463,9 @@ class ESBTPPersonnelUnifiedController extends Controller
     public function destroy($type, $id)
     {
         try {
-            $this->authorize('manage-users');
+            $this->authorize('users.manage');
         } catch (\Exception $e) {
-            if (!auth()->user()->can('access_admin')) {
+            if (!auth()->user()->can('admin.access')) {
                 abort(403, 'Accès non autorisé');
             }
         }
@@ -521,9 +521,9 @@ class ESBTPPersonnelUnifiedController extends Controller
     public function toggleStatus($type, $id)
     {
         try {
-            $this->authorize('manage-users');
+            $this->authorize('users.manage');
         } catch (\Exception $e) {
-            if (!auth()->user()->can('access_admin')) {
+            if (!auth()->user()->can('admin.access')) {
                 abort(403, 'Accès non autorisé');
             }
         }
@@ -561,9 +561,9 @@ class ESBTPPersonnelUnifiedController extends Controller
     public function getStats()
     {
         try {
-            $this->authorize('manage-users');
+            $this->authorize('users.manage');
         } catch (\Exception $e) {
-            if (!auth()->user()->can('access_admin')) {
+            if (!auth()->user()->can('admin.access')) {
                 abort(403, 'Accès non autorisé');
             }
         }

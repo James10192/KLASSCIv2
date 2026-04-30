@@ -84,27 +84,27 @@ class User extends Authenticatable
 
     public function isSuperAdmin()
     {
-        return $this->can('access_admin');
+        return $this->can('admin.access');
     }
 
     public function isSecretary()
     {
-        return $this->can('can_manage_school');
+        return $this->can('identity.school_manager');
     }
 
     public function isTeacher()
     {
-        return $this->can('can_teach');
+        return $this->can('identity.teach');
     }
 
     public function isStudent()
     {
-        return $this->can('can_view_student_features');
+        return $this->can('identity.student');
     }
 
     public function isAdmin()
     {
-        return $this->can('access_admin');
+        return $this->can('admin.access');
     }
 
     public function superAdmin()

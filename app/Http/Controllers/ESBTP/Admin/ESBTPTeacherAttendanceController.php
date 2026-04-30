@@ -19,7 +19,7 @@ class ESBTPTeacherAttendanceController extends Controller
     {
         // Check if this is a teacher accessing their attendance marking page
         $user = auth()->user();
-        if ($user->can('can_teach')) {
+        if ($user->can('identity.teach')) {
             return $this->showTeacherAttendancePage();
         }
 

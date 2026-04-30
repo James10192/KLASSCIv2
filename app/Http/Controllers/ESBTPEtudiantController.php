@@ -44,10 +44,10 @@ class ESBTPEtudiantController extends Controller
         $this->inscriptionWorkflowService = $inscriptionWorkflowService;
         $this->classeManagementService = $classeManagementService;
         $this->middleware('auth');
-        $this->middleware('permission:view_students', ['only' => ['index', 'show']]);
-        $this->middleware('permission:create_students', ['only' => ['create', 'store']]);
-        $this->middleware('permission:edit_students', ['only' => ['edit', 'update']]);
-        $this->middleware('permission:delete_students', ['only' => ['destroy']]);
+        $this->middleware('permission:students.view', ['only' => ['index', 'show']]);
+        $this->middleware('permission:students.create', ['only' => ['create', 'store']]);
+        $this->middleware('permission:students.edit', ['only' => ['edit', 'update']]);
+        $this->middleware('permission:students.delete', ['only' => ['destroy']]);
     }
 
     /**
@@ -1331,7 +1331,7 @@ class ESBTPEtudiantController extends Controller
         $user = auth()->user();
 
         // Rediriger les non-étudiants vers leur profil approprié
-        if (!$user->can('can_view_student_features')) {
+        if (!$user->can('identity.student')) {
             // Pour les administrateurs et secrétaires
             return redirect()->route('dashboard')->with('warning', 'Vous n\'avez pas accès au profil étudiant.');
         }

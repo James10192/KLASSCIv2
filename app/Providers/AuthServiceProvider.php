@@ -50,8 +50,8 @@ class AuthServiceProvider extends ServiceProvider
             return $user && $user->hasRole('superAdmin') ? true : null;
         });
 
-        Gate::define('manage-users', function ($user) {
-            return $user && $user->hasPermissionTo('manage-users');
+        Gate::define('users.manage', function ($user) {
+            return $user && $user->hasPermissionTo('users.manage');
         });
 
         // Lot 5 : Matrice de gestion users granulaire (qui peut gérer qui)

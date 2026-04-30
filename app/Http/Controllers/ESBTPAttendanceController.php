@@ -376,7 +376,7 @@ class ESBTPAttendanceController extends Controller
         $unreadNotifications = 0;
         $recentActivities = [];
 
-        if (Auth::user() && Auth::user()->can('can_coordinate_academics')) {
+        if (Auth::user() && Auth::user()->can('identity.coordinate')) {
             $today = Carbon::today();
             $coordinatorStats = $this->calculateCoordinatorStats($today);
 
@@ -1463,7 +1463,7 @@ class ESBTPAttendanceController extends Controller
     public function processJustification(Request $request, $absenceId)
     {
         // Vérifier que l'utilisateur est admin ou secrétaire
-        if (!auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school'])) {
+        if (!auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
             abort(403, 'Vous n\'êtes pas autorisé à traiter les justifications d\'absence');
         }
 

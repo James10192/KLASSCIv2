@@ -64,7 +64,7 @@ class ESBTPNoteController extends Controller
 
         // Enseignant : ne voir que les classes où il a des séances dans l'emploi du temps
         $user = Auth::user();
-        if ($user && $user->can('can_teach')) {
+        if ($user && $user->can('identity.teach')) {
             $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
             if ($teacher && $anneeCourante) {
                 $classeIds = ESBTPSeanceCours::query()
@@ -282,7 +282,7 @@ class ESBTPNoteController extends Controller
             $allClasses = $classes;
 
             $evaluationTypes = ESBTPEvaluation::getTypes();
-            $enseignants = Auth::user()->can('can_teach')
+            $enseignants = Auth::user()->can('identity.teach')
                 ? collect()
                 : User::whereHas('roles', fn ($q) => $q->whereIn('name', ['teacher', 'enseignant']))->orderBy('name')->get();
 
@@ -297,7 +297,7 @@ class ESBTPNoteController extends Controller
         $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
 
         $evaluationTypes = ESBTPEvaluation::getTypes();
-        $enseignants = Auth::user()->can('can_teach')
+        $enseignants = Auth::user()->can('identity.teach')
             ? collect()
             : User::whereHas('roles', fn ($q) => $q->whereIn('name', ['teacher', 'enseignant']))->orderBy('name')->get();
 
@@ -572,7 +572,7 @@ class ESBTPNoteController extends Controller
                 ->where('evaluation_id', $request->evaluation_id)
                 ->first();
 
-            if ($existingNote && ! Auth::user()->can('edit_existing_notes')) {
+            if ($existingNote && ! Auth::user()->can('notes.edit')) {
                 return response()->json([
                     'success' => false,
                     'message' => "Vous n'avez pas la permission de modifier les notes déjà enregistrées.",
@@ -646,7 +646,7 @@ class ESBTPNoteController extends Controller
                     ->get()->keyBy(fn($n) => $n->etudiant_id . '_' . $n->evaluation_id)
                 : collect();
 
-            $canEdit = Auth::user()->can('edit_existing_notes');
+            $canEdit = Auth::user()->can('notes.edit');
             $pendingNotifications = [];
 
             foreach ($request->notes as $entry) {
@@ -766,7 +766,7 @@ class ESBTPNoteController extends Controller
                 ->with('error', "La saisie des notes est disponible uniquement après la date d'évaluation.");
         }
 
-        if ($user->can('can_teach') && $user->can('manage_own_notes')) {
+        if ($user->can('identity.teach') && $user->can('notes.manage_own')) {
             $isOwner = $evaluation->enseignant_id === $user->id || $evaluation->created_by === $user->id;
             if (! $isOwner) {
                 return redirect()
@@ -915,7 +915,7 @@ class ESBTPNoteController extends Controller
         $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
         $user = Auth::user();
 
-        if ($user->can('can_teach') && $user->can('manage_own_notes')) {
+        if ($user->can('identity.teach') && $user->can('notes.manage_own')) {
             $isOwner = $evaluation->enseignant_id === $user->id || $evaluation->created_by === $user->id;
             if (! $isOwner) {
                 return redirect()->back()
@@ -931,7 +931,7 @@ class ESBTPNoteController extends Controller
         }
 
         // Vérifier si l'utilisateur a le droit de modifier les notes existantes
-        if (! $user->can('edit_existing_notes')) {
+        if (! $user->can('notes.edit')) {
             $existingNotesCount = ESBTPNote::where('evaluation_id', $evaluation->id)->count();
 
             if ($existingNotesCount > 0) {

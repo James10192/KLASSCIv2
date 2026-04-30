@@ -24,7 +24,7 @@ class ESBTPCoordinateurController extends Controller
     public function index()
     {
         // Vérifier les permissions
-        $this->authorize('view_coordinateurs');
+        $this->authorize('coordinateurs.view');
         
         $coordinateurs = User::role('coordinateur')
             ->with(['roles'])
@@ -39,7 +39,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function create()
     {
-        $this->authorize('create_coordinateurs');
+        $this->authorize('coordinateurs.create');
         
         return view('esbtp.coordinateurs.create');
     }
@@ -49,7 +49,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function store(Request $request)
     {
-        $this->authorize('create_coordinateurs');
+        $this->authorize('coordinateurs.create');
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -106,7 +106,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function show(User $coordinateur)
     {
-        $this->authorize('view_coordinateurs');
+        $this->authorize('coordinateurs.view');
         
         // Vérifier que l'utilisateur est bien un coordinateur
         if (!$coordinateur->hasRole('coordinateur')) {
@@ -124,7 +124,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function edit(User $coordinateur)
     {
-        $this->authorize('edit_coordinateurs');
+        $this->authorize('coordinateurs.edit');
         
         // Vérifier que l'utilisateur est bien un coordinateur
         if (!$coordinateur->hasRole('coordinateur')) {
@@ -139,7 +139,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function update(Request $request, User $coordinateur)
     {
-        $this->authorize('edit_coordinateurs');
+        $this->authorize('coordinateurs.edit');
         
         // Vérifier que l'utilisateur est bien un coordinateur
         if (!$coordinateur->hasRole('coordinateur')) {
@@ -194,7 +194,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function destroy(User $coordinateur)
     {
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
         
         // Vérifier que l'utilisateur est bien un coordinateur
         if (!$coordinateur->hasRole('coordinateur')) {
@@ -251,7 +251,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function resetPassword(User $coordinateur)
     {
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
 
         // Vérifier que l'utilisateur est bien un coordinateur
         if (!$coordinateur->hasRole('coordinateur')) {
@@ -314,7 +314,7 @@ class ESBTPCoordinateurController extends Controller
      */
     public function toggleStatus(User $coordinateur)
     {
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
 
         if (!$coordinateur->hasRole('coordinateur')) {
             abort(404, 'Coordinateur non trouvé.');

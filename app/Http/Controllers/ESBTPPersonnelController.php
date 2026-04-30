@@ -17,7 +17,7 @@ class ESBTPPersonnelController extends Controller
     public function index()
     {
         // Vérifier les permissions
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
         
         // Récupérer tous les types de personnel
         $coordinateurs = User::role('coordinateur')
@@ -58,7 +58,7 @@ class ESBTPPersonnelController extends Controller
      */
     public function getData(Request $request)
     {
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
         
         $type = $request->get('type'); // coordinateur, enseignant, secretaire
         $search = $request->get('search');
@@ -113,7 +113,7 @@ class ESBTPPersonnelController extends Controller
      */
     public function store(Request $request)
     {
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
         
         $type = $request->get('type'); // coordinateur, enseignant, secretaire
         
@@ -172,7 +172,7 @@ class ESBTPPersonnelController extends Controller
      */
     public function update(Request $request, User $personnel)
     {
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
         
         $validated = $request->validate([
             'name' => 'required|string|max:255',
@@ -231,7 +231,7 @@ class ESBTPPersonnelController extends Controller
      */
     public function destroy(User $personnel)
     {
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
         
         // Empêcher la suppression de son propre compte
         if ($personnel->id === Auth::id()) {
@@ -271,7 +271,7 @@ class ESBTPPersonnelController extends Controller
      */
     public function toggleStatus(User $personnel)
     {
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
         
         $personnel->update([
             'is_active' => !$personnel->is_active
@@ -291,7 +291,7 @@ class ESBTPPersonnelController extends Controller
      */
     public function getStats()
     {
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
         
         $stats = [
             'coordinateurs' => [
@@ -322,7 +322,7 @@ class ESBTPPersonnelController extends Controller
      */
     public function export(Request $request)
     {
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
         
         $type = $request->get('type');
         $format = $request->get('format', 'csv'); // csv, xlsx, pdf
@@ -341,7 +341,7 @@ class ESBTPPersonnelController extends Controller
      */
     public function bulkAction(Request $request)
     {
-        $this->authorize('manage-users');
+        $this->authorize('users.manage');
         
         $validated = $request->validate([
             'action' => 'required|in:activate,deactivate,delete',

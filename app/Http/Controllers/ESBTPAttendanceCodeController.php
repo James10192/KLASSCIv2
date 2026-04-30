@@ -18,7 +18,7 @@ class ESBTPAttendanceCodeController extends Controller
      */
     public function index()
     {
-        $this->authorize('generate-attendance-codes');
+        $this->authorize('attendances.generate_codes');
 
         $activeCodes = ESBTPDailyCode::with(['generator', 'seance.matiere', 'seance.classe', 'seance.teacher'])
             ->where('status', 'active')
@@ -66,7 +66,7 @@ class ESBTPAttendanceCodeController extends Controller
      */
     public function generate(Request $request)
     {
-        $this->authorize('generate-attendance-codes');
+        $this->authorize('attendances.generate_codes');
 
         $request->validate([
             'description' => 'nullable|string|max:255',
@@ -203,7 +203,7 @@ class ESBTPAttendanceCodeController extends Controller
      */
     public function invalidate($id)
     {
-        $this->authorize('generate-attendance-codes');
+        $this->authorize('attendances.generate_codes');
 
         try {
             $code = ESBTPDailyCode::findOrFail($id);
@@ -233,7 +233,7 @@ class ESBTPAttendanceCodeController extends Controller
      */
     public function cleanupDuplicates()
     {
-        $this->authorize('generate-attendance-codes');
+        $this->authorize('attendances.generate_codes');
 
         try {
             // Nettoyer les codes généraux multiples (sans seance_id)
@@ -273,7 +273,7 @@ class ESBTPAttendanceCodeController extends Controller
      */
     public function statistics()
     {
-        $this->authorize('view-attendance-statistics');
+        $this->authorize('attendances.view_statistics');
 
         $stats = [
             'total_codes' => ESBTPDailyCode::count(),

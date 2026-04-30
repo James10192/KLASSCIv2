@@ -249,7 +249,7 @@ class AttendanceController extends Controller
 
         // Récupérer l'enseignant connecté
         $teacher = null;
-        if (Auth::user()->can('can_teach')) {
+        if (Auth::user()->can('identity.teach')) {
             $teacher = Teacher::where('user_id', Auth::id())->first();
         } else {
             // Si ce n'est pas un enseignant, utiliser le premier enseignant disponible
@@ -310,7 +310,7 @@ class AttendanceController extends Controller
 
         // Récupérer l'enseignant connecté
         $teacher = null;
-        if (Auth::user()->can('can_teach')) {
+        if (Auth::user()->can('identity.teach')) {
             $teacher = Teacher::where('user_id', Auth::id())->first();
         } else {
             // Si ce n'est pas un enseignant, utiliser le premier enseignant disponible

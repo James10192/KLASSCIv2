@@ -1315,7 +1315,7 @@ class ESBTPBulletinController extends Controller
     {
         try {
             // Vérifier que l'utilisateur est autorisé
-            if (! Auth::check() || ! Auth::user()->can('bulletin.configure')) {
+            if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
                 abort(403, 'Accès non autorisé. Vous n\'avez pas la permission de configurer les bulletins.');
             }
 

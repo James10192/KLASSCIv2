@@ -101,7 +101,7 @@ class ESBTPNotificationController extends Controller
 
     private function userCanSeeTimetableShortcut(User $user): bool
     {
-        return $user->can('view_timetables') || $user->can('view-all-timetables');
+        return $user->can('timetables.view') || $user->can('timetables.view_all');
     }
 
     private function userCanSeeEvaluationShortcut(User $user): bool
@@ -117,15 +117,15 @@ class ESBTPNotificationController extends Controller
 
     private function userCanAccessEvaluationsPage(User $user): bool
     {
-        return $user->can('view_exams') || $user->can('view_evaluations');
+        return $user->can('exams.view') || $user->can('evaluations.view');
     }
 
     private function userCanAccessNotesPage(User $user): bool
     {
-        return $user->can('view_grades')
-            || $user->can('create_grades')
-            || $user->can('edit_grades')
-            || $user->can('manage_own_notes');
+        return $user->can('notes.view')
+            || $user->can('notes.create')
+            || $user->can('notes.edit')
+            || $user->can('notes.manage_own');
     }
 
     private function decorateNotification(Notification $notification): Notification

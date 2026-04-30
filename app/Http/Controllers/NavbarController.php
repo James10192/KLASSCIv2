@@ -25,7 +25,7 @@ class NavbarController extends Controller
             ->concat($this->getEvaluationShortcutNotifications($user))
             ->concat($this->getEvaluationGradingShortcutNotifications($user));
 
-        if ($user->can('access_admin') || $user->can('can_manage_school') || $user->can('can_coordinate_academics')) {
+        if ($user->can('admin.access') || $user->can('identity.school_manager') || $user->can('identity.coordinate')) {
             // Notifications pour admin/secrétaire/coordinateur
             $notifications = Notification::where('user_id', $user->id)
                 ->with('sender') // Load sender relationship
@@ -45,7 +45,7 @@ class NavbarController extends Controller
                         'sender' => $notification->sender ? $notification->sender->name : 'Système',
                     ];
                 });
-        } elseif ($user->can('can_view_student_features')) {
+        } elseif ($user->can('identity.student')) {
             // Notifications pour étudiant
             $notifications = Notification::where('user_id', $user->id)
                 ->with('sender') // Load sender relationship
@@ -65,7 +65,7 @@ class NavbarController extends Controller
                         'sender' => $notification->sender ? $notification->sender->name : 'Système',
                     ];
                 });
-        } elseif ($user->can('can_teach')) {
+        } elseif ($user->can('identity.teach')) {
             // Notifications pour enseignant
             $notifications = Notification::where('user_id', $user->id)
                 ->with('sender') // Load sender relationship
@@ -240,20 +240,20 @@ class NavbarController extends Controller
 
     private function userCanAccessTimetablePage($user): bool
     {
-        return $user->can('view_timetables') || $user->can('view-all-timetables');
+        return $user->can('timetables.view') || $user->can('timetables.view_all');
     }
 
     private function userCanAccessEvaluationsPage($user): bool
     {
-        return $user->can('view_exams') || $user->can('view_evaluations');
+        return $user->can('exams.view') || $user->can('evaluations.view');
     }
 
     private function userCanAccessNotesPage($user): bool
     {
-        return $user->can('view_grades')
-            || $user->can('create_grades')
-            || $user->can('edit_grades')
-            || $user->can('manage_own_notes');
+        return $user->can('notes.view')
+            || $user->can('notes.create')
+            || $user->can('notes.edit')
+            || $user->can('notes.manage_own');
     }
 
     /**
@@ -264,7 +264,7 @@ class NavbarController extends Controller
         $user = auth()->user();
         $messages = collect();
 
-        if ($user->can('access_admin') || $user->can('can_manage_school') || $user->can('can_coordinate_academics')) {
+        if ($user->can('admin.access') || $user->can('identity.school_manager') || $user->can('identity.coordinate')) {
             // Messages pour admin/secrétaire/coordinateur - récupérer les annonces qui leur sont destinées
             $messages = ESBTPAnnonce::with('createdBy') // Charger la relation créateur
                 ->where(function ($query) {
@@ -299,7 +299,7 @@ class NavbarController extends Controller
                         'avatar' => null,
                     ];
                 });
-        } elseif ($user->can('can_view_student_features')) {
+        } elseif ($user->can('identity.student')) {
             // Messages pour étudiant - récupérer seulement les annonces qui leur sont destinées
             $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
             $classeId = $etudiant ? $etudiant->inscriptions()->anneeEnCours()->latest()->value('classe_id') : null;
@@ -344,7 +344,7 @@ class NavbarController extends Controller
                         'avatar' => null,
                     ];
                 });
-        } elseif ($user->can('can_teach')) {
+        } elseif ($user->can('identity.teach')) {
             // Messages pour enseignant - récupérer les annonces qui leur sont destinées
             $messages = ESBTPAnnonce::with('createdBy') // Charger la relation créateur
                 ->where(function ($query) {
@@ -391,7 +391,7 @@ class NavbarController extends Controller
         $user = auth()->user();
         $actions = [];
 
-        if ($user->can('access_admin')) {
+        if ($user->can('admin.access')) {
             $actions = [
                 [
                     'title' => 'Nouvel étudiant',
@@ -430,7 +430,7 @@ class NavbarController extends Controller
                     'color' => 'info',
                 ],
             ];
-        } elseif ($user->can('can_manage_school')) {
+        } elseif ($user->can('identity.school_manager')) {
             $actions = [
                 [
                     'title' => 'Nouvel étudiant',
@@ -457,7 +457,7 @@ class NavbarController extends Controller
                     'color' => 'info',
                 ],
             ];
-        } elseif ($user->can('can_view_student_features')) {
+        } elseif ($user->can('identity.student')) {
             $actions = [
                 [
                     'title' => 'Mon emploi du temps',
@@ -484,7 +484,7 @@ class NavbarController extends Controller
                     'color' => 'secondary',
                 ],
             ];
-        } elseif ($user->can('can_teach')) {
+        } elseif ($user->can('identity.teach')) {
             $actions = [
                 [
                     'title' => 'Émargement',
@@ -601,7 +601,7 @@ class NavbarController extends Controller
         $user = auth()->user();
 
         // Seuls les admins/secrétaires peuvent supprimer des annonces
-        if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
+        if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
             $annonce = ESBTPAnnonce::findOrFail($id);
             $annonce->delete();
 
@@ -619,7 +619,7 @@ class NavbarController extends Controller
         $user = auth()->user();
 
         // Seuls les admins/secrétaires peuvent supprimer toutes les annonces
-        if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
+        if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
             ESBTPAnnonce::truncate(); // Supprimer toutes les annonces
 
             return response()->json(['success' => true]);
@@ -655,14 +655,14 @@ class NavbarController extends Controller
         $user = auth()->user();
         $stats = [];
 
-        if ($user->hasAnyPermission(['access_admin', 'can_manage_school'])) {
+        if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
             $stats = [
                 'total_etudiants' => ESBTPEtudiant::count(),
                 'nouvelles_inscriptions' => ESBTPEtudiant::whereDate('created_at', today())->count(),
                 'evaluations_en_cours' => ESBTPEvaluation::whereDate('date', '>=', today())->count(),
                 'notes_en_attente' => ESBTPNote::whereNull('valeur')->count(),
             ];
-        } elseif ($user->can('can_view_student_features')) {
+        } elseif ($user->can('identity.student')) {
             $etudiant = $user->etudiant;
             if ($etudiant) {
                 $stats = [

@@ -71,7 +71,7 @@ class DashboardController extends Controller
         }
 
         // Secrétaire
-        if ($user->can('can_manage_school')) {
+        if ($user->can('identity.school_manager')) {
             return $this->secretaireDashboard();
         }
 
@@ -86,17 +86,17 @@ class DashboardController extends Controller
         }
 
         // Coordinateur
-        if ($user->can('can_coordinate_academics')) {
+        if ($user->can('identity.coordinate')) {
             return $this->coordinateurDashboard();
         }
 
         // Enseignant
-        if ($user->can('can_teach')) {
+        if ($user->can('identity.teach')) {
             return redirect()->route('teacher.dashboard');
         }
 
         // Étudiant
-        if ($user->can('can_view_student_features')) {
+        if ($user->can('identity.student')) {
             return $this->etudiantDashboard();
         }
 
@@ -1056,7 +1056,7 @@ class DashboardController extends Controller
     public function coordinateurDashboardData()
     {
         $user = Auth::user();
-        if (!$user || !$user->can('can_coordinate_academics')) {
+        if (!$user || !$user->can('identity.coordinate')) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
@@ -1260,7 +1260,7 @@ class DashboardController extends Controller
         $user = Auth::user();
 
         // Vérifier que l'utilisateur est bien super admin
-        if (!$user->can('access_admin')) {
+        if (!$user->can('admin.access')) {
             abort(403, 'Accès non autorisé');
         }
 
@@ -1425,7 +1425,7 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->can('can_manage_school')) {
+        if (!$user->can('identity.school_manager')) {
             abort(403, 'Accès non autorisé');
         }
 
@@ -1439,7 +1439,7 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user->can('can_view_student_features')) {
+        if (!$user->can('identity.student')) {
             abort(403, 'Accès non autorisé');
         }
         return $this->etudiantDashboard();

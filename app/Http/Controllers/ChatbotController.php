@@ -426,7 +426,7 @@ class ChatbotController extends Controller
 
     public function storeInscriptionsFilter(Request $request)
     {
-        if (!$request->user()->can('view_inscriptions')) {
+        if (!$request->user()->can('inscriptions.view')) {
             return response()->json([
                 'success' => false,
                 'message' => 'Vous n\'avez pas l\'autorisation de consulter les inscriptions.',

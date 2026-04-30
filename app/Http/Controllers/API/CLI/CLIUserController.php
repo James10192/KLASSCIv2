@@ -159,7 +159,7 @@ class CLIUserController extends BaseApiController
         }
 
         // Block deletion of last superAdmin
-        if ($user->can('access_admin') && User::role('superAdmin')->count() <= 1) {
+        if ($user->can('admin.access') && User::role('superAdmin')->count() <= 1) {
             return $this->errorResponse('Cannot delete the last superAdmin account', [], 422);
         }
 

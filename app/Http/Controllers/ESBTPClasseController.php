@@ -104,7 +104,7 @@ class ESBTPClasseController extends Controller
         }
 
         // Enseignant : ne voir que les classes où il a des séances dans l'emploi du temps
-        if ($user && $user->can('can_teach')) {
+        if ($user && $user->can('identity.teach')) {
             $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
             if ($teacher && $anneeCourante) {
                 $classeIds = ESBTPSeanceCours::query()
