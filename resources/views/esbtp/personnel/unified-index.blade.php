@@ -1878,7 +1878,7 @@
                         @if(isset($comptables) && $comptables->count() > 0)
                             @foreach($comptables as $comptable)
                             <div class="pu-card personnel-card">
-                                <div class="pu-avatar pu-avatar-green">
+                                <div class="pu-avatar">
                                     {{ strtoupper(substr($comptable->name, 0, 2)) }}
                                 </div>
                                 <div class="pu-info">
@@ -1949,17 +1949,16 @@
                         @if(isset($caissiers) && $caissiers->count() > 0)
                             @foreach($caissiers as $caissier)
                             <div class="pu-card personnel-card">
-                                <div class="pu-avatar pu-avatar-blue">
+                                <div class="pu-avatar">
                                     {{ strtoupper(substr($caissier->name, 0, 2)) }}
                                 </div>
                                 <div class="pu-info">
                                     <div class="pu-name">{{ $caissier->name }}</div>
                                     <div class="pu-meta">
                                         <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $caissier->email ?: 'Sans email' }}</span>
-                                        @if($caissier->phone ?? $caissier->telephone ?? null)
-                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $caissier->phone ?? $caissier->telephone }}</span>
+                                        @if($caissier->telephone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $caissier->telephone }}</span>
                                         @endif
-                                        <span class="pu-meta-item"><i class="fas fa-cash-register"></i>Caissier</span>
                                         <span class="pu-meta-item"><i class="fas fa-calendar"></i>{{ $caissier->created_at->format('d/m/Y') }}</span>
                                     </div>
                                 </div>
@@ -1970,8 +1969,8 @@
                                     <a href="{{ route('esbtp.caissiers.show', $caissier) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    <a href="{{ route('esbtp.caissiers.edit', $caissier) }}" class="pu-action-btn" title="Modifier">
-                                        <i class="fas fa-edit"></i>
+                                    <a href="{{ route('esbtp.caissiers.edit', $caissier) }}" class="pu-action-btn pu-act-edit" title="Modifier">
+                                        <i class="fas fa-pen"></i>
                                     </a>
                                     @if($caissier->id !== auth()->id())
                                     <button type="button"
