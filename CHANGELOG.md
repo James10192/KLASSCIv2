@@ -12,20 +12,20 @@ Le format suit [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/) et le pr
 
 ### Added
 
-- _Lot 8 — Custom roles CRUD + assign users (en cours)._
-- _Lot 9 — Dashboard widgets configurables (en cours)._
-- _Lot 10 — UI permission-aware sans 403 sur la page entière (en cours)._
-- _Lot 11 — Rules `.claude/rules/memory-updates.md` + `.claude/rules/changelog.md` + ce `CHANGELOG.md` initial._
+- **Lot 8 — Custom roles CRUD + assign users** : `ESBTPCustomRoleController` permet au superAdmin (et users avec `users.manage`) de créer des rôles custom de A à Z depuis `/esbtp/personnel/unified` (nom, label FR, icône, description), de sélectionner les permissions parmi les 154 canoniques (UI premium namespace `cr-*`), et d'assigner/détacher des utilisateurs. Migration `roles.label_fr/icon/description/is_custom/created_by_user_id`. `PermissionRegistry::roleMeta()` lit la DB en priorité (override + custom roles) avec fallback config. Tests unitaires `PermissionRegistryRoleMetaTest` (14 tests).
+- **Lot 9 — Dashboard widgets configurables** : système de widgets ajoutables/retirables par chaque user, gated par permissions canoniques. Catalogue de 12 widgets concrets (`students.total`, `inscriptions.pending_validation`, `paiements.pending`, `bulletins.generated_this_period`, `attendances.today_rate`, etc.). Service `DashboardWidgetRegistry`, controller `DashboardWidgetController`, migration `users.dashboard_widgets` JSON, vue universelle `dashboard/widget-based.blade.php` namespace `dw-*`, modal "Configurer mon dashboard". Les rôles custom sont automatiquement routés vers ce dashboard widget-based. Tests unitaires `DashboardWidgetRegistryTest` (11 tests).
+- **Lot 10 — UI permission-aware sans 403 sur la page entière** : 23 vues mises à jour pour wrapper les boutons d'actions secondaires avec `@can()` canonique. Les pages restent accessibles dès que l'user a la permission de base (ex: `inscriptions.view`), seuls les boutons "Valider", "Modifier", "Supprimer", "Ajouter paiement", "Générer bulletin", "Configurer", "Envoyer relances" sont conditionnels. Plus jamais de 403 sur une page entière à cause d'un seul bouton.
+- **Lot 11 — Discipline memory + changelog** : nouvelles rules `.claude/rules/memory-updates.md` (quand sauvegarder en mémoire, format frontmatter, mise à jour pendant le travail) et `.claude/rules/changelog.md` (quand updater CHANGELOG, format keepachangelog, workflow Unreleased → version datée). Ce `CHANGELOG.md` initial avec historique complet Lots 0-11.
 
 ### Changed
 
-### Deprecated
+- `PermissionRegistry::roles()` et `rolesVisibleInUi()` incluent désormais les rôles custom (`is_custom = true`) en plus des rôles config.
+- `DashboardController` détecte les rôles custom et les route vers la nouvelle vue widget-based plutôt que l'un des dashboards historiques (superAdmin/secretaire/comptable/etc.).
+- `.claude/rules/premium-redesign.md` : ajout du namespace `cr-*` (custom-roles Lot 8) dans la table des préfixes CSS par page.
 
 ### Removed
 
-### Fixed
-
-### Security
+- 2 fichiers backup legacy `ESBTPEtudiantController(anicen commit).php` et `ESBTPParent(anicen commit).php` rangés par erreur dans `resources/views/esbtp/inscriptions/` (-1238 lignes). Polluaient l'audit `permissions:audit`.
 
 ---
 
