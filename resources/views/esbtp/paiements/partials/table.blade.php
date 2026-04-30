@@ -12,6 +12,14 @@
         
         <div class="table-responsive">
             <table class="table table-hover">
+                @php
+                    // Lot 13 — colonne "Encaissé par" visible UNIQUEMENT pour les users
+                    // qui voient TOUS les paiements (paiements.view). Les users avec uniquement
+                    // paiements.view_own ne voient que leurs propres encaissements, donc la
+                    // colonne serait redondante.
+                    $showCreatorColumn = auth()->user()?->can('paiements.view') ?? false;
+                    $colspan = $showCreatorColumn ? 10 : 9;
+                @endphp
                 <thead class="table-light">
                     <tr>
                         <th style="width: 40px;">
@@ -23,16 +31,19 @@
                         <th>Date</th>
                         <th>Montant</th>
                         <th class="d-none d-md-table-cell">Mode</th>
+                        @if($showCreatorColumn)
+                            <th class="d-none d-lg-table-cell">Encaissé par</th>
+                        @endif
                         <th>Statut</th>
                         <th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($paiements as $paiement)
-                        @include('esbtp.paiements.partials.ligne-paiement', ['paiement' => $paiement])
+                        @include('esbtp.paiements.partials.ligne-paiement', ['paiement' => $paiement, 'showCreatorColumn' => $showCreatorColumn])
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center py-4">
+                            <td colspan="{{ $colspan }}" class="text-center py-4">
                                 <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
                                 <br><span class="text-muted">Aucun paiement trouvé</span>
                             </td>

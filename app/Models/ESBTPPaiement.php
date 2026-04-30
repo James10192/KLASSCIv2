@@ -226,6 +226,18 @@ class ESBTPPaiement extends Model implements Auditable
     }
 
     /**
+     * Alias canonique pour la relation createdBy — l'encaisseur du paiement.
+     *
+     * Utilisée pour afficher "Encaissé par : ..." sur l'index, le détail et le reçu PDF.
+     *
+     * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
+     */
+    public function creator()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
      * Utilisateur qui a mis à jour l'entrée.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo
@@ -233,6 +245,23 @@ class ESBTPPaiement extends Model implements Auditable
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    /**
+     * Scope pour filtrer les paiements créés par un utilisateur donné (ownership).
+     *
+     * Utilisé pour la permission `paiements.view_own` : un utilisateur (caissier
+     * notamment) ne voit que les paiements qu'il a lui-même encaissés.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder  $query
+     * @param  \App\Models\User|int  $user
+     * @return \Illuminate\Database\Eloquent\Builder
+     */
+    public function scopeOwnedBy($query, $user)
+    {
+        $userId = is_object($user) ? $user->getKey() : $user;
+
+        return $query->where('created_by', $userId);
     }
 
     /**

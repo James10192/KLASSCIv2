@@ -528,10 +528,21 @@ return [
 
         // ===== Paiements =====
         'paiements.view' => [
-            'label' => 'Voir les paiements',
+            'label' => 'Voir tous les paiements',
             'group' => 'Paiements',
             'icon' => 'fa-money-bill',
             'aliases' => ['view_payments'],
+        ],
+        'paiements.view_own' => [
+            'label' => 'Voir uniquement ses propres paiements créés',
+            'group' => 'Paiements',
+            'icon' => 'fa-user-tag',
+            'aliases' => ['view_own_payments'],
+        ],
+        'paiements.export' => [
+            'label' => 'Exporter les paiements (PDF / Excel)',
+            'group' => 'Paiements',
+            'icon' => 'fa-download',
         ],
         'paiements.create' => [
             'label' => 'Enregistrer un paiement',
@@ -1070,6 +1081,7 @@ return [
             'annonces.view', 'annonces.create', 'annonces.edit',
             'reports.view',
             'resultats.view', 'resultats.export',
+            'paiements.export',  // Lot 15
             'users.manage',
             'identity.school_manager',
             // Modules toggle
@@ -1085,6 +1097,7 @@ return [
             'comptabilite.paiements.view', 'comptabilite.paiements.validate',
             'comptabilite.frais.view', 'comptabilite.frais.configure',
             'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.validate',
+            'paiements.export',  // Lot 15
             'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
             'students.view', 'inscriptions.view',
             'reports.view', 'reports.generate',
@@ -1096,7 +1109,8 @@ return [
             'dashboard.view', 'admin.access',
             'students.view', 'inscriptions.view',
             'inscriptions.create',  // pré-inscription
-            'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.validate',
+            // Lot 13 : caissier voit UNIQUEMENT ses propres encaissements (pas paiements.view)
+            'paiements.view_own', 'paiements.create', 'paiements.edit', 'paiements.validate',
             'comptabilite.access', 'comptabilite.dashboard.view',
             'comptabilite.relances.send',
             'comptabilite.paiements.view', 'comptabilite.paiements.validate',

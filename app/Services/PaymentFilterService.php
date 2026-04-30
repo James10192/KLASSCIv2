@@ -32,9 +32,20 @@ class PaymentFilterService
             'inscription.filiere',
             'inscription.niveauEtude',
             'validatedBy',
+            'creator:id,name',
             'fraisCategory',
             'categorie',
         ])->orderByDesc('created_at');
+
+        // Lot 13 — Ownership filter : si user n'a PAS `paiements.view` mais a `paiements.view_own`,
+        // restreindre aux paiements qu'il a encaissés (created_by = user.id).
+        $authUser = $request->user();
+        if ($authUser
+            && ! $authUser->can('paiements.view')
+            && $authUser->can('paiements.view_own')
+        ) {
+            $baseQuery->ownedBy($authUser);
+        }
 
         if ($status) {
             $baseQuery->where('status', $status);
@@ -423,9 +434,19 @@ class PaymentFilterService
             'inscription.filiere',
             'inscription.niveauEtude',
             'validatedBy',
+            'creator:id,name',
             'fraisCategory',
             'categorie',
         ])->orderByDesc('created_at');
+
+        // Lot 13 — Ownership filter pour l'export aussi (cohérence avec preparePaiementListing)
+        $authUser = $request->user();
+        if ($authUser
+            && ! $authUser->can('paiements.view')
+            && $authUser->can('paiements.view_own')
+        ) {
+            $query->ownedBy($authUser);
+        }
 
         // Appliquer les filtres
         if ($status) {

@@ -443,6 +443,17 @@
                         <span class="ps-info-val">{{ $paiement->motif }}</span>
                     </div>
                     @endif
+                    {{-- Lot 13 — Encaisseur (créateur du paiement) --}}
+                    <div class="ps-info">
+                        <span class="ps-info-lbl">Encaissé par</span>
+                        <span class="ps-info-val">
+                            @if($paiement->creator)
+                                <span class="ps-badge blue"><i class="fas fa-user-circle"></i> {{ $paiement->creator->name }}</span>
+                            @else
+                                <span style="color:var(--k-muted); font-style:italic;">—</span>
+                            @endif
+                        </span>
+                    </div>
                     @if($paiement->status == 'validé' && $paiement->date_validation)
                     <div class="ps-info">
                         <span class="ps-info-lbl">Validé le</span>

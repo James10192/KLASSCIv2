@@ -379,6 +379,28 @@
             </table>
         </div>
 
+        <!-- ═══ ENCAISSÉ PAR (Lot 13 — créateur du paiement) ═══ -->
+        @if($paiement->creator)
+        <div style="margin-top: 12px; margin-bottom: 8px;">
+            <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border: 1px solid {{ $primary }}; border-radius: 6px; overflow: hidden;">
+                <tr>
+                    <td style="padding: 10px 16px; background-color: #f8fafc; border-left: 4px solid {{ $primary }};">
+                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+                            <tr>
+                                <td width="38%" style="font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; vertical-align: middle;">
+                                    Encaissé par
+                                </td>
+                                <td style="font-size: 16px; font-weight: 700; color: {{ $primary }}; vertical-align: middle;">
+                                    {{ $paiement->creator->name }}
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </div>
+        @endif
+
         <!-- ═══ SIGNATURES ═══ -->
         <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 10px; margin-top: 28px;">
             <tr>
