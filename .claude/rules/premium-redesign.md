@@ -170,6 +170,7 @@ Chaque page a son propre namespace pour éviter les conflits avec les classes gl
 | situation financière | `sf-*` | `sf-hero` |
 | student-messages | `sm-*` | `sm-hero-top`, `sm-hero-icon` |
 | planning-header | `ph-*` | `ph-hero`, `ph-kpi`, `ph-tab` (composant réutilisable) |
+| custom-roles (Lot 8) | `cr-*` | `cr-modal`, `cr-picker`, `cr-perm`, `cr-role-card`, `cr-section-bar` |
 
 Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 
