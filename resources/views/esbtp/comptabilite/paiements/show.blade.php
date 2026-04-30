@@ -40,9 +40,11 @@
         <a href="{{ route('esbtp.comptabilite.paiements') }}" class="btn btn-outline-primary w-100 mb-2">
             <i class="fas fa-list"></i> Liste des paiements
         </a>
+        @can('paiements.create')
         <a href="{{ route('esbtp.comptabilite.paiements.create') }}" class="btn btn-primary w-100">
             <i class="fas fa-plus"></i> Nouveau paiement
         </a>
+        @endcan
     </div>
 @endsection
 
@@ -54,9 +56,11 @@
                 <h4 class="mb-0 fw-bold"><i class="fas fa-receipt me-2"></i>Détails du paiement : <span class="text-primary">{{ $paiement->reference_paiement }}</span></h4>
                 <div class="d-flex gap-2">
                 @if($paiement->statut != 'completé')
+                    @can('paiements.edit')
                     <a href="{{ route('esbtp.comptabilite.paiements.edit', $paiement->id) }}" class="btn btn-outline-primary">
                     <i class="fas fa-edit me-1"></i> Modifier
                 </a>
+                    @endcan
                 @endif
                     <a href="{{ route('esbtp.comptabilite.paiements.recu', $paiement->id) }}" class="btn btn-success" target="_blank">
                     <i class="fas fa-file-invoice me-1"></i> Générer reçu
@@ -156,11 +160,14 @@
                                     <i class="fas fa-file-invoice me-1"></i> Générer reçu
                                 </a>
                                 @if($paiement->statut != 'completé')
+                                @can('paiements.edit')
                 <a href="{{ route('esbtp.comptabilite.paiements.edit', $paiement->id) }}" class="btn btn-outline-primary">
                                     <i class="fas fa-edit me-1"></i> Modifier
                                 </a>
+                                @endcan
                                 @endif
                                 @if($paiement->statut == 'en_attente')
+                                @can('paiements.validate')
                                 <form action="{{ route('esbtp.comptabilite.paiements.valider', $paiement->id) }}" method="POST">
                                     @csrf
                     <button type="submit" class="btn btn-primary w-100">
@@ -173,6 +180,7 @@
                                         <i class="fas fa-times-circle me-1"></i> Rejeter ce paiement
                                     </button>
                                 </form>
+                                @endcan
                                 @endif
                             </div>
                         </div>

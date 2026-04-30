@@ -41,18 +41,22 @@
         <p class="header-subtitle">Suivi et gestion des paiements étudiants</p>
     </div>
     <div class="header-actions">
+        @can('paiements.create')
         <a href="{{ route('esbtp.comptabilite.paiements.create') }}" class="btn-acasi primary">
             <i class="fas fa-plus-circle"></i> Nouveau paiement
         </a>
+        @endcan
     </div>
 @endsection
 
 @section('sidebarRight')
     <h3 class="sidebar-title">Actions Rapides</h3>
     <div style="display: flex; flex-direction: column; gap: var(--space-sm);">
+        @can('comptabilite.reports.export')
         <a href="{{ route('esbtp.comptabilite.rapports') }}" class="btn-acasi secondary">
             <i class="fas fa-file-export"></i> Export Rapport
             </a>
+        @endcan
         </div>
 @endsection
 
@@ -137,14 +141,17 @@
                                         <i class="fas fa-eye"></i>
                                     </a>
                             @if($paiement->statut != 'complété')
+                                    @can('paiements.edit')
                                     <a href="{{ route('esbtp.comptabilite.paiements.edit', $paiement->id) }}" class="btn btn-sm btn-primary" title="Modifier">
                                         <i class="fas fa-edit"></i>
                                     </a>
+                                    @endcan
                                     @endif
                                     <a href="{{ route('esbtp.comptabilite.paiements.recu', $paiement->id) }}" class="btn btn-sm btn-success" title="Générer reçu" target="_blank">
                                         <i class="fas fa-file-invoice"></i>
                                     </a>
                                     @if($paiement->statut == 'en attente')
+                                    @can('paiements.validate')
                                     <form action="{{ route('esbtp.comptabilite.paiements.valider', $paiement->id) }}" method="POST" class="d-inline">
                                         @csrf
                                         <button type="submit" class="btn btn-sm btn-success" title="Valider">
@@ -157,6 +164,7 @@
                                             <i class="fas fa-times"></i>
                                         </button>
                                     </form>
+                                    @endcan
                                     @endif
                                 </div>
                             </td>

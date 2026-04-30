@@ -13,14 +13,16 @@
                         <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $bulletin->etudiant_id, 'classe_id' => $bulletin->classe_id, 'periode' => $bulletin->periode, 'annee_universitaire_id' => $bulletin->annee_universitaire_id]) }}" class="btn btn-secondary me-2" target="_blank">
                             <i class="fas fa-file-pdf me-1"></i>Télécharger PDF
                         </a>
-                        @if(auth()->check() && auth()->user() && auth()->user()->can('admin.access'))
+                        @can('bulletins.configure')
                         <a href="{{ route('esbtp.bulletins.config-matieres', ['bulletin' => $bulletin->etudiant_id, 'classe_id' => $bulletin->classe_id, 'periode' => $bulletin->periode, 'annee_universitaire_id' => $bulletin->annee_universitaire_id]) }}" class="btn btn-info me-2">
                             <i class="fas fa-cog me-1"></i>Configurer Matières
                         </a>
-                        @endif
+                        @endcan
+                        @can('bulletins.edit')
                         <a href="{{ route('esbtp.bulletins.edit', $bulletin) }}" class="btn btn-warning me-2">
                             <i class="fas fa-edit me-1"></i>Modifier
                         </a>
+                        @endcan
                         <a href="{{ route('esbtp.bulletins.index') }}" class="btn btn-primary">
                             <i class="fas fa-arrow-left me-1"></i>Retour à la liste
                         </a>
@@ -362,10 +364,13 @@
                     </div>
 
                     <div class="d-flex justify-content-end mt-4">
+                        @can('bulletins.delete')
                         <button type="button" class="btn btn-danger me-2" data-bs-toggle="modal" data-bs-target="#deleteModal">
                             <i class="fas fa-trash me-1"></i>Supprimer ce bulletin
                         </button>
+                        @endcan
 
+                        @can('bulletins.edit')
                         <form action="{{ route('esbtp.bulletins.toggle-publication', $bulletin) }}" method="POST">
                             @csrf
                             @method('PUT')
@@ -379,15 +384,18 @@
                                 </button>
                             @endif
                         </form>
+                        @endcan
                     </div>
 
                     <!-- Boutons d'action -->
                     <div class="d-flex justify-content-between mt-3">
                         <div>
+                            @can('bulletins.edit')
                             <a href="{{ route('esbtp.bulletins.edit', $bulletin) }}" class="btn btn-primary">
                                 <i class="fas fa-edit"></i> Modifier
                             </a>
-                            @if(auth()->check() && auth()->user() && auth()->user()->can('admin.access'))
+                            @endcan
+                            @can('bulletins.configure')
                                 <a href="{{ route('esbtp.bulletins.migrate-resultats-to-details', $bulletin) }}" class="btn btn-info ml-2">
                                     <i class="fas fa-sync"></i> Migrer résultats vers détails
                                 </a>
@@ -397,7 +405,7 @@
                                 <a href="{{ route('esbtp.bulletins.config-matieres') }}?classe_id={{ $bulletin->classe_id }}&periode={{ $bulletin->periode }}&annee_universitaire_id={{ $bulletin->annee_universitaire_id }}&bulletin_id={{ $bulletin->id }}&bulletin={{ $bulletin->etudiant_id }}" class="btn btn-warning ml-2">
                                     <i class="fas fa-cogs"></i> Configurer matières
                                 </a>
-                            @endif
+                            @endcan
                         </div>
                         <div>
                             <a href="{{ route('esbtp.bulletins.pdf', $bulletin) }}" class="btn btn-success" target="_blank">

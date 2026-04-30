@@ -700,9 +700,11 @@
                     <i class="fas fa-file-pdf"></i> PDF
                 </a>
                 @endcan
+                @can('comptabilite.config.manage')
                 <a href="{{ route('esbtp.comptabilite.relances.config') }}" class="rl-btn-ghost">
                     <i class="fas fa-cog"></i> Configuration
                 </a>
+                @endcan
                 <a href="{{ route('esbtp.paiements.index') }}" class="rl-btn-ghost">
                     <i class="fas fa-list-alt"></i> Paiements
                 </a>
@@ -776,9 +778,11 @@
             <i class="fas fa-exclamation-triangle" style="font-size:1rem;"></i>
             Les délais de relance ne sont pas configurés.
         </div>
+        @can('comptabilite.config.manage')
         <a href="{{ route('esbtp.comptabilite.relances.config') }}" class="rl-config-banner-btn">
             <i class="fas fa-cog me-1"></i> Configurer
         </a>
+        @endcan
     </div>
     @endif
 

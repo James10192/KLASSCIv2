@@ -1764,11 +1764,11 @@
                             <i class="fas fa-layer-group"></i> Modifier rapidement
                         </button>
                     @endif
-                    @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']) || auth()->user()->can('timetables.create'))
+                    @can('timetables.create')
                         <a href="{{ route('esbtp.emploi-temps.create') }}" class="et-header-btn et-header-btn--primary">
                             <i class="fas fa-plus-circle"></i> Nouveau
                         </a>
-                    @endif
+                    @endcan
                 </div>
             </div>
         </div>
@@ -1819,7 +1819,8 @@
                 <span class="et-chip__count">{{ $edtExpiresCount ?? 0 }}</span>
             </button>
             <div class="et-chips-separator"></div>
-            @if(($classesSansEdtCount ?? 0) > 0 && (auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']) || auth()->user()->can('timetables.create')))
+            @can('timetables.create')
+            @if(($classesSansEdtCount ?? 0) > 0)
                 <button type="button"
                         class="et-chip et-chip--link"
                         data-bs-toggle="modal"
@@ -1829,6 +1830,7 @@
                     <i class="fas fa-arrow-right"></i>
                 </button>
             @endif
+            @endcan
         </div>
 
         <!-- Navigateur de semaine -->
@@ -2121,9 +2123,11 @@
                     </div>
                     <div class="card-body">
                         <div class="d-grid gap-2">
+                            @can('timetables.create')
                             <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn-acasi success">
                                 <i class="fas fa-plus-circle me-2"></i>Créer emploi du temps
                             </a>
+                            @endcan
                             <a href="{{ route('esbtp.planning-general.repartition-matieres') }}" class="btn-acasi info">
                                 <i class="fas fa-chart-pie me-2"></i>Répartition matières
                             </a>

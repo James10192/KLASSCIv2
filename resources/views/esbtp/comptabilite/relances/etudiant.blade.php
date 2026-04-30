@@ -622,6 +622,7 @@
 
             {{-- Actions bar ─────────────────────────────────────────────── --}}
             <div class="hero-actions-bar">
+                @can('comptabilite.relances.send')
                 @if($etudiant->email_personnel || ($etudiant->parents && $etudiant->parents->first() && $etudiant->parents->first()->email))
                 <button class="hero-action-btn ghost" data-bs-toggle="modal" data-bs-target="#emailModal">
                     <i class="fas fa-envelope"></i>Email de relance
@@ -630,10 +631,13 @@
                 <button class="hero-action-btn ghost" data-bs-toggle="modal" data-bs-target="#appelModal">
                     <i class="fas fa-phone"></i>Enregistrer un appel
                 </button>
+                @endcan
                 @if($soldeRestant > 0)
+                @can('paiements.create')
                 <a href="{{ route('esbtp.inscriptions.show', $inscription) }}" class="hero-action-btn primary-glow ms-auto">
                     <i class="fas fa-plus-circle"></i>Enregistrer un paiement
                 </a>
+                @endcan
                 @endif
             </div>
         </div>
@@ -847,6 +851,7 @@
                 </div>
 
                 {{-- Actions de relance ──────────────────────────────────── --}}
+                @can('comptabilite.relances.send')
                 <div class="relance-section">
                     <div class="section-title">
                         <i class="fas fa-paper-plane" style="color:#5e91de;"></i>
@@ -883,6 +888,7 @@
                     </button>
 
                     @if($soldeRestant > 0)
+                    @can('paiements.create')
                     <a href="{{ route('esbtp.inscriptions.show', $inscription) }}" class="paiement-cta">
                         <div class="cta-icon"><i class="fas fa-plus"></i></div>
                         <div>
@@ -896,8 +902,10 @@
                         </div>
                         <i class="fas fa-arrow-right ms-auto" style="color:#10b981;"></i>
                     </a>
+                    @endcan
                     @endif
                 </div>
+                @endcan
 
                 {{-- ── Autres inscriptions (navigation multi-années) ────── --}}
                 @if($autresInscriptions->isNotEmpty())

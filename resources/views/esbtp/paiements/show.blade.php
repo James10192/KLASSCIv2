@@ -338,10 +338,12 @@
                 </div>
                 @endif
 
-                @can('admin.access')
+                @can('paiements.edit')
                 <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}" class="ps-btn warning">
                     <i class="fas fa-edit"></i> Modifier
                 </a>
+                @endcan
+                @can('paiements.delete')
                 <form id="ps-form-delete-{{ $paiement->id }}" action="{{ route('esbtp.paiements.destroy', $paiement->id) }}" method="POST" style="margin:0">
                     @csrf @method('DELETE')
                     <button type="button"
@@ -357,6 +359,7 @@
                 @endcan
 
                 @if($paiement->status === 'en_attente')
+                @can('paiements.validate')
                 <form id="ps-form-valider-{{ $paiement->id }}" action="{{ route('esbtp.paiements.valider', $paiement->id) }}" method="POST" style="margin:0">
                     @csrf
                     <button type="button"
@@ -371,6 +374,7 @@
                 <button type="button" class="ps-btn danger" data-bs-toggle="modal" data-bs-target="#modalRejeter">
                     <i class="fas fa-times"></i> Rejeter
                 </button>
+                @endcan
                 @endif
             </div>
         </div>

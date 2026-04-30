@@ -867,10 +867,12 @@
                         <i class="fas fa-list"></i>
                         <span>Liste des paiements</span>
                     </a>
+                    @can('paiements.create')
                     <a href="{{ route('esbtp.paiements.create') }}" class="sc-btn sc-btn--white">
                         <i class="fas fa-plus"></i>
                         <span>Nouveau paiement</span>
                     </a>
+                    @endcan
                 </div>
             </div>
 

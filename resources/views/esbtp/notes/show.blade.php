@@ -15,9 +15,11 @@
                 <a href="{{ route('esbtp.evaluations.show', $note->evaluation) }}" class="btn-acasi secondary me-2">
                     <i class="fas fa-arrow-left"></i>Retour à l'évaluation
                 </a>
+                @can('notes.edit')
                 <a href="{{ route('esbtp.notes.edit', $note) }}" class="btn-acasi warning">
                     <i class="fas fa-edit"></i>Modifier cette note
                 </a>
+                @endcan
             </div>
         </div>
         @if (session('success'))
@@ -224,12 +226,16 @@
                 </div>
 
                 <div class="d-flex justify-content-between mt-4 pt-4 border-top">
+                    @can('notes.delete')
                     <button type="button" class="btn-acasi danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
                         <i class="fas fa-trash"></i>Supprimer la note
                     </button>
+                    @endcan
+                    @can('notes.edit')
                     <a href="{{ route('esbtp.notes.edit', $note) }}" class="btn-acasi success">
                         <i class="fas fa-edit"></i>Modifier cette note
                     </a>
+                    @endcan
                 </div>
             </div>
         </div>

@@ -215,9 +215,11 @@
                     </div>
 
                     <div class="d-flex justify-content-between mt-4">
+                        @can('notes.delete')
                         <button type="button" class="btn-acasi danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
                             <i class="fas fa-trash"></i>Supprimer la note
                         </button>
+                        @endcan
                         <div class="d-flex gap-2">
                             <button type="reset" class="btn-acasi secondary">
                                 <i class="fas fa-undo"></i>Annuler les modifications

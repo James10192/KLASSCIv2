@@ -39,12 +39,16 @@
                        placeholder="Rechercher une évaluation..."
                        autocomplete="off"
                        value="{{ $filters['search'] ?? '' }}">
+                @can('evaluations.edit')
                 <button type="button" class="btn-acasi secondary" id="coeff-settings-btn">
                     <i class="fas fa-sliders-h"></i>Coefficients
                 </button>
+                @endcan
+                @can('evaluations.create')
                 <a href="{{ route('esbtp.evaluations.create') }}" class="btn-acasi primary">
                     <i class="fas fa-plus-circle"></i>Nouvelle évaluation
                 </a>
+                @endcan
             </div>
         </div>
         <!-- Statistiques KPI -->
@@ -284,6 +288,7 @@
     </div>
 </div>
 
+@canany(['evaluations.edit', 'evaluations.create'])
 <div id="evaluations-bulk-bar" class="evaluations-bulk-bar" style="display: none;">
     <div class="d-flex align-items-center gap-4 flex-wrap">
         <div class="d-flex align-items-center gap-2">
@@ -294,6 +299,7 @@
             </span>
         </div>
         <div class="d-flex gap-2 flex-wrap">
+            @can('evaluations.edit')
             <button type="button" class="btn btn-light btn-sm" id="evaluations-bulk-publish">
                 <i class="fas fa-eye me-1"></i>Publier
             </button>
@@ -306,15 +312,19 @@
             <button type="button" class="btn btn-outline-light btn-sm" id="evaluations-bulk-cancel">
                 <i class="fas fa-times me-1"></i>Annuler
             </button>
+            @endcan
+            @canany(['evaluations.create', 'admin.access'])
             <button type="button" class="btn btn-outline-light btn-sm" id="evaluations-bulk-delete">
                 <i class="fas fa-trash me-1"></i>Supprimer
             </button>
+            @endcanany
             <button type="button" class="btn btn-outline-light btn-sm" id="evaluations-bulk-clear">
                 <i class="fas fa-times-circle me-1"></i>Annuler la sélection
             </button>
         </div>
     </div>
 </div>
+@endcanany
 
 @endsection
 

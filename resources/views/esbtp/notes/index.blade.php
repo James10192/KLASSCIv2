@@ -189,12 +189,14 @@
                             <option value="semestre2">Semestre 2</option>
                         </select>
                     </div>
+                    @can('evaluations.create')
                     <div style="flex-shrink: 0;">
                         <label>&nbsp;</label>
                         <button type="button" class="nm-create-eval-btn" onclick="createEvaluation()" id="createEvaluationBtn">
                             <i class="fas fa-plus"></i>Créer évaluation
                         </button>
                     </div>
+                    @endcan
                 </div>
 
                 {{-- Notes grid --}}

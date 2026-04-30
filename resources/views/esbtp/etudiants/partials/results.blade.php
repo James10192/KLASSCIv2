@@ -197,12 +197,14 @@
                             <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1" title="Voir les détails">
                                 <i class="fas fa-eye"></i>
                             </a>
+                            @can('students.edit')
                             <button type="button"
                                 class="btn btn-warning btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 btn-open-edit-modal"
                                 title="Modifier"
                                 data-student='@json($studentDataset, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)'>
                                 <i class="fas fa-edit"></i>
                             </button>
+                            @endcan
                             @if($pendingInscription)
                                 @can('inscriptions.validate')
                                 <button type="button" class="btn btn-success btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}" title="Valider l'inscription">
@@ -397,11 +399,13 @@
                     <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-sm btn-primary">
                         <i class="fas fa-eye"></i> Voir
                     </a>
+                    @can('students.edit')
                     <button type="button"
                         class="btn btn-sm btn-warning btn-open-edit-modal"
                         data-student='@json($studentDataset, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)'>
                         <i class="fas fa-edit"></i> Modifier
                     </button>
+                    @endcan
                     @if($pendingInscription)
                         @can('inscriptions.validate')
                         <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}">

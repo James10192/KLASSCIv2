@@ -1192,6 +1192,7 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
                             </div>
                             <i class="fas fa-chevron-right qa-arrow"></i>
                         </a>
+                        @can('frais.configure')
                         <a href="{{ route('esbtp.frais.configure') }}" class="qa-tile">
                             <div class="qa-icon" style="background:rgba(30,41,59,.07);">
                                 <i class="fas fa-sliders-h" style="color:#475569;"></i>
@@ -1202,6 +1203,7 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
                             </div>
                             <i class="fas fa-chevron-right qa-arrow"></i>
                         </a>
+                        @endcan
                         <a href="{{ route('esbtp.paiements.suivi-categories') }}" class="qa-tile">
                             <div class="qa-icon" style="background:rgba(4,83,203,.1);">
                                 <i class="fas fa-chart-pie" style="color:#0453cb;"></i>
@@ -1212,6 +1214,7 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
                             </div>
                             <i class="fas fa-chevron-right qa-arrow"></i>
                         </a>
+                        @can('comptabilite.reports.export')
                         <a href="{{ route('esbtp.paiements.index', ['format' => 'export-excel']) }}" class="qa-tile">
                             <div class="qa-icon" style="background:rgba(16,185,129,.1);">
                                 <i class="fas fa-file-excel" style="color:#10b981;"></i>
@@ -1222,6 +1225,7 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
                             </div>
                             <i class="fas fa-chevron-right qa-arrow"></i>
                         </a>
+                        @endcan
                     </div>
                 </div>
             </div>

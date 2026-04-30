@@ -703,7 +703,7 @@
         </div>
 
         {{-- Sticky bulk subheader (remplace fixed-bottom bar) --}}
-        @if(auth()->user()->can('admin.access'))
+        @can('paiements.validate')
         <div id="bulk-actions-bar" class="pi-bulk-bar" role="toolbar" aria-label="Actions groupées sur paiements sélectionnés">
             <div class="pi-bulk-info">
                 <i class="fas fa-check-circle"></i>
@@ -725,7 +725,7 @@
                 </button>
             </div>
         </div>
-        @endif
+        @endcan
 
         {{-- Tableau des Paiements --}}
         <div id="paiements-table-container"
@@ -2018,7 +2018,7 @@ $(document).ready(function() {
 </div>
 
 <!-- Modal de rejet groupé -->
-@if(auth()->user()->can('admin.access'))
+@can('paiements.validate')
 <div class="modal fade" id="bulkRejetModal" tabindex="-1" aria-labelledby="bulkRejetModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
@@ -2064,4 +2064,4 @@ $(document).ready(function() {
         </div>
     </div>
 </div>
-@endif
+@endcan

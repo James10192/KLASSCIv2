@@ -61,7 +61,7 @@
                     <a href="{{ route('esbtp.resultats.classes') }}" class="sr-hero-btn">
                         <i class="fas fa-arrow-left"></i>Retour
                     </a>
-                    @can('admin.access')
+                    @can('resultats.edit')
                         <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}?annee_universitaire_id={{ $annee_id }}&semestre={{ $semestre }}"
                            class="sr-hero-btn--solid sr-hero-btn">
                             <i class="fas fa-edit"></i>Éditer groupé

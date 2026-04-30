@@ -2175,11 +2175,11 @@
                 <span class="hero-pill year"><i class="fas fa-calendar-alt"></i> {{ $anneeCourante->name }}</span>
             @endif
             <div class="hero-btns">
-                @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
+                @can('students.edit')
                 <a href="{{ route('esbtp.etudiants.edit', $etudiant) }}" class="hero-btn primary">
                     <i class="fas fa-edit"></i> <span class="d-none d-sm-inline">Modifier</span>
                 </a>
-                @endif
+                @endcan
 
                 {{-- Dropdown Documents — visible dès qu'il y a au moins une inscription --}}
                 @if($etudiant->inscriptions->isNotEmpty())
@@ -4559,11 +4559,13 @@
             </a>
             @endif
             @if($finInscRef && $finSolde > 0)
+            @can('paiements.create')
             <button class="hero-btn primary" style="display:inline-flex; align-items:center; gap:8px; padding:10px 24px; font-size:.88rem; border-radius:10px; background:linear-gradient(135deg, var(--k-blue), var(--k-blue-2)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 4px 12px rgba(4,83,203,.3);"
                     data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal"
                     onclick="prepareEtudiantPaymentModal({{ $finInscRef->id }})">
                 <i class="fas fa-plus-circle"></i> Enregistrer un paiement
             </button>
+            @endcan
             @endif
         </div>
     </div>
@@ -4668,11 +4670,13 @@
                         </td>
                         <td style="text-align:center;">
                             @if($subSolde > 0)
+                            @can('paiements.create')
                             <button class="pmt-act-btn view" style="background:rgba(4,83,203,.08); color:var(--k-blue); border:none; border-radius:6px; padding:5px 10px; cursor:pointer; font-size:.78rem; font-weight:600;"
                                     data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal"
                                     onclick="prepareEtudiantPaymentModalForCategory({{ $finInscActive->id }}, {{ $sub->frais_category_id }})">
                                 <i class="fas fa-coins"></i> Payer
                             </button>
+                            @endcan
                             @else
                             <span style="font-size:.75rem; color:#10b981; font-weight:600;"><i class="fas fa-check-circle"></i> Soldé</span>
                             @endif
@@ -4981,12 +4985,14 @@
                        style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; font-size:.8rem; border-radius:8px; background:linear-gradient(135deg, #dc2626, #ef4444); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(220,38,38,.25); text-decoration:none;">
                         <i class="fas fa-file-pdf"></i> PDF Situation
                     </a>
+                    @can('paiements.create')
                     <button {{ $autreSolde <= 0 ? 'disabled' : '' }}
                             style="display:inline-flex; align-items:center; gap:6px; padding:7px 16px; font-size:.8rem; border-radius:8px; background:linear-gradient(135deg, var(--k-blue, #0453cb), var(--k-blue-2, #5e91de)); color:#fff; border:none; cursor:pointer; font-weight:600; box-shadow:0 2px 8px rgba(4,83,203,.25);{{ $autreSolde <= 0 ? ' opacity:.5; cursor:not-allowed;' : '' }}"
                             @if($autreSolde > 0) data-bs-toggle="modal" data-bs-target="#etudiantPaymentModal" onclick="prepareEtudiantPaymentModal({{ $autreInsc->id }})" @endif>
                         <i class="fas fa-{{ $autreSolde <= 0 ? 'check-circle' : 'plus-circle' }}"></i>
                         {{ $autreSolde <= 0 ? 'Soldé' : 'Enregistrer un paiement' }}
                     </button>
+                    @endcan
                 </div>
             </div>
         </div>

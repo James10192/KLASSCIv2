@@ -90,6 +90,7 @@
     </td>
     <td>
         <div class="d-flex align-items-center flex-wrap gap-2">
+            @can('evaluations.edit')
             <button
                 type="button"
                 class="btn btn-sm {{ $evaluation->notes_published ? 'btn-success' : 'btn-outline-secondary' }}"
@@ -104,6 +105,7 @@
                     <i class="fas fa-eye-slash me-1"></i>Notes non publiées
                 @endif
             </button>
+            @endcan
 
             @php
                 $notesDisabled = !$evaluation->is_published || $evaluationDateFuture;
@@ -114,6 +116,7 @@
                     $notesDisabledReason = "La saisie est disponible après la date d'évaluation";
                 }
             @endphp
+            @can('notes.create')
             <a href="{{ $notesDisabled ? '#' : route('esbtp.notes.saisie-rapide', $evaluation) }}"
                class="btn btn-sm btn-outline-primary {{ $notesDisabled ? 'disabled' : '' }}"
                title="{{ $notesDisabled ? $notesDisabledReason : 'Gérer la saisie rapide' }}"
@@ -125,6 +128,7 @@
             @if($notesDisabled && $notesDisabledReason)
                 <small class="text-muted d-block">{{ $notesDisabledReason }}</small>
             @endif
+            @endcan
         </div>
     </td>
     <td>
@@ -133,57 +137,61 @@
                 <a href="{{ route('esbtp.evaluations.show', $evaluation) }}" class="btn btn-sm btn-outline-info" title="Voir les détails">
                     <i class="fas fa-eye"></i>
                 </a>
-                @if($evaluation->isEditable())
-                    <a href="{{ route('esbtp.evaluations.edit', $evaluation) }}" class="btn btn-sm btn-outline-warning" title="Modifier">
-                        <i class="fas fa-pen-to-square"></i>
-                    </a>
-                @endif
-                @if($evaluation->status === \App\Models\ESBTPEvaluation::STATUS_CANCELLED)
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-outline-success"
-                        data-evaluation-action="restore"
-                        data-url="{{ route('esbtp.evaluations.restore', $evaluation) }}"
-                        data-method="PATCH"
-                        title="Réactiver l'évaluation"
-                    >
-                        <i class="fas fa-arrow-rotate-left"></i>
-                    </button>
-                @elseif(!$evaluation->is_published)
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-outline-success"
-                        data-evaluation-action="restore"
-                        data-url="{{ route('esbtp.evaluations.restore', $evaluation) }}"
-                        data-method="PATCH"
-                        title="Activer l'évaluation"
-                    >
-                        <i class="fas fa-circle-play"></i>
-                    </button>
-                @else
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-outline-danger"
-                        data-evaluation-action="cancel"
-                        data-url="{{ route('esbtp.evaluations.cancel', $evaluation) }}"
-                        data-method="PATCH"
-                        title="Annuler l'évaluation"
-                    >
-                        <i class="fas fa-circle-xmark"></i>
-                    </button>
-                @endif
-                @if($evaluation->isDeletable())
-                    <button
-                        type="button"
-                        class="btn btn-sm btn-outline-danger"
-                        data-evaluation-action="delete"
-                        data-url="{{ route('esbtp.evaluations.destroy', $evaluation) }}"
-                        data-method="DELETE"
-                        title="Supprimer"
-                    >
-                        <i class="fas fa-trash-can"></i>
-                    </button>
-                @endif
+                @can('evaluations.edit')
+                    @if($evaluation->isEditable())
+                        <a href="{{ route('esbtp.evaluations.edit', $evaluation) }}" class="btn btn-sm btn-outline-warning" title="Modifier">
+                            <i class="fas fa-pen-to-square"></i>
+                        </a>
+                    @endif
+                    @if($evaluation->status === \App\Models\ESBTPEvaluation::STATUS_CANCELLED)
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-success"
+                            data-evaluation-action="restore"
+                            data-url="{{ route('esbtp.evaluations.restore', $evaluation) }}"
+                            data-method="PATCH"
+                            title="Réactiver l'évaluation"
+                        >
+                            <i class="fas fa-arrow-rotate-left"></i>
+                        </button>
+                    @elseif(!$evaluation->is_published)
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-success"
+                            data-evaluation-action="restore"
+                            data-url="{{ route('esbtp.evaluations.restore', $evaluation) }}"
+                            data-method="PATCH"
+                            title="Activer l'évaluation"
+                        >
+                            <i class="fas fa-circle-play"></i>
+                        </button>
+                    @else
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-danger"
+                            data-evaluation-action="cancel"
+                            data-url="{{ route('esbtp.evaluations.cancel', $evaluation) }}"
+                            data-method="PATCH"
+                            title="Annuler l'évaluation"
+                        >
+                            <i class="fas fa-circle-xmark"></i>
+                        </button>
+                    @endif
+                @endcan
+                @canany(['evaluations.edit', 'admin.access'])
+                    @if($evaluation->isDeletable())
+                        <button
+                            type="button"
+                            class="btn btn-sm btn-outline-danger"
+                            data-evaluation-action="delete"
+                            data-url="{{ route('esbtp.evaluations.destroy', $evaluation) }}"
+                            data-method="DELETE"
+                            title="Supprimer"
+                        >
+                            <i class="fas fa-trash-can"></i>
+                        </button>
+                    @endif
+                @endcanany
             </div>
             <div class="evaluation-actions-spinner" aria-hidden="true">
                 <div class="spinner-border spinner-border-sm text-primary" role="status">

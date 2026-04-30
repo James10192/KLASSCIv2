@@ -84,9 +84,11 @@
                 <div class="card-header py-3 d-flex justify-content-between align-items-center">
                     <h6 class="m-0 font-weight-bold text-primary">Liste des bulletins</h6>
                     <div>
+                        @can('bulletins.generate')
                         <a href="{{ route('esbtp.bulletins.select') }}" class="btn btn-sm btn-primary">
                             <i class="fas fa-plus-circle me-1"></i>Générer de nouveaux bulletins
                         </a>
+                        @endcan
                     </div>
                 </div>
                 <div class="card-body">
@@ -225,12 +227,15 @@
                                                 <a href="{{ route('esbtp.bulletins.show', $bulletin) }}" class="btn btn-sm btn-info">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
+                                                @can('bulletins.edit')
                                                 <a href="{{ route('esbtp.bulletins.edit', $bulletin) }}" class="btn btn-sm btn-warning">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
+                                                @endcan
                                                 <a href="{{ route('esbtp.bulletins.download', $bulletin) }}" class="btn btn-sm btn-secondary" target="_blank">
                                                     <i class="fas fa-print"></i>
                                                 </a>
+                                                @can('bulletins.delete')
                                                 <button type="button" class="btn btn-sm btn-danger"
                                                         onclick="if(confirm('Êtes-vous sûr de vouloir supprimer ce bulletin ?')) document.getElementById('delete-form-{{ $bulletin->id }}').submit();">
                                                     <i class="fas fa-trash"></i>
@@ -239,6 +244,7 @@
                                                     @csrf
                                                     @method('DELETE')
                                                 </form>
+                                                @endcan
                                             </div>
                                         </td>
                                     </tr>
