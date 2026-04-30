@@ -116,6 +116,18 @@ return [
         'default_for_roles' => ['superAdmin', 'comptable'],
     ],
 
+    'paiements.by_mode' => [
+        'label' => 'Paiements par mode (mois)',
+        'description' => 'Répartition des encaissements validés du mois par mode de paiement (espèces, mobile money, virement, etc.)',
+        'icon' => 'fa-list-ul',
+        'color' => 'primary',
+        'permission' => 'paiements.view',
+        'partial' => 'dashboard.widgets.paiements-by-mode',
+        'group' => 'Paiements',
+        'size' => 'lg',
+        'default_for_roles' => ['superAdmin', 'comptable', 'caissier'],
+    ],
+
     // ===== Notes & Bulletins =====
     'bulletins.generated_this_period' => [
         'label' => 'Bulletins générés (période)',
