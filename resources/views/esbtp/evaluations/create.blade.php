@@ -197,7 +197,7 @@
                                 @enderror
                                 <div class="form-hint mt-2" style="background: #f1f5f9; border-left: 3px solid var(--primary); padding: 10px 12px; border-radius: 6px;">
                                     <i class="fas fa-info-circle me-1"></i>
-                                    @if(auth()->user()->hasAnyPermission(['access_admin', 'can_coordinate_academics', 'can_manage_school']))
+                                    @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.coordinate', 'identity.school_manager']))
                                         Pour rattacher une matière à une classe (via filière + niveau),
                                         allez sur <a href="{{ route('esbtp.matieres.index') }}" class="text-decoration-underline">Matières</a>
                                         puis cliquez sur <strong>Configurer les liaisons</strong> (icône <i class="fas fa-link"></i>) sur la matière,

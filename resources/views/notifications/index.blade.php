@@ -503,7 +503,7 @@
                                                         <i class="fas fa-chart-line me-1"></i> Voir rapport
                                                     </a>
                                                 @endif
-                                            @elsecan('can_view_student_features')
+                                            @elsecan('identity.student')
                                                 {{-- Actions pour étudiants --}}
                                                 @if(str_contains(strtolower($notification->title ?? ''), 'absence'))
                                                     <a href="{{ $notification->link ?? route('esbtp.mes-absences.index') }}" class="btn btn-primary btn-sm" onclick="event.stopPropagation();">

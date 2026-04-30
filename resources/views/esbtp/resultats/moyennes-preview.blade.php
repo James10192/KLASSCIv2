@@ -612,7 +612,7 @@
                     </p>
                 </div>
                 <div class="mp-hero-actions">
-                    @if(auth()->check() && auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_coordinate_academics']))
+                    @if(auth()->check() && auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']))
                     <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="mp-btn-ghost">
                         <i class="fas fa-sliders-h"></i>
                         <span class="d-none d-sm-inline">Matières de la classe</span>

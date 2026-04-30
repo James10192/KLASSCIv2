@@ -124,7 +124,7 @@
         </div>
 
         <!-- Section de gestion des liens externes (pour admins/secrétaires uniquement) -->
-        @if(auth()->check() && auth()->user() && !auth()->user()->hasAnyPermission(['can_teach', 'can_view_student_features']))
+        @if(auth()->check() && auth()->user() && !auth()->user()->hasAnyPermission(['identity.teach', 'identity.student']))
         <div class="main-card">
             @if($evaluationsForExternalLinks->isNotEmpty())
                 @include('components.external-links-manager', ['evaluations' => $evaluationsForExternalLinks])
