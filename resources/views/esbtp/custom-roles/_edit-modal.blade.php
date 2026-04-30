@@ -5,7 +5,7 @@
     - $grantablePermissions : Collection groupée des permissions accordables
     - $assignedPermissions : array<string> permissions actuellement attribuées
 --}}
-<div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+<div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content cr-modal">
         <form id="cr-edit-form" action="{{ route('esbtp.custom-roles.update', $role->name) }}" method="POST" novalidate>
             @csrf
