@@ -926,6 +926,22 @@
 .cr-modal-body > :last-child { margin-bottom: 0 !important; }
 .cr-modal-body .cr-error-zone:empty { display: none !important; }
 .cr-modal-body .cr-section:last-child { margin-bottom: 0; }
+
+/* Override dashboard-moderne.css:5546 qui force .modal.show .modal-body
+   à `flex: 1; max-height: calc(90vh - 150px)` — créait un espace blanc
+   géant en bas quand le contenu est plus court que 90vh-150px.
+   Pour les modales custom-roles : laisse le body se dimensionner sur son
+   contenu naturel (le picker interne a déjà son propre scroll max-height: 420px). */
+.modal.show .modal-content.cr-modal {
+    height: auto !important;
+    max-height: 90vh;
+}
+.modal.show .modal-content.cr-modal .modal-body {
+    flex: 0 1 auto !important;       /* PAS flex:1 — pas de force-grow */
+    height: auto !important;
+    max-height: calc(90vh - 150px);  /* cap si content très long */
+    overflow-y: auto !important;
+}
 .cr-modal-footer {
     background: #fff;
     border-top: 1px solid #f1f5f9;
