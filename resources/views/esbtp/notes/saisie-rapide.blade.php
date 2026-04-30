@@ -489,7 +489,7 @@
         {{-- ── Read-only alert ─────────────────────────────────────── --}}
         @php
             $hasExistingNotes = $notes->isNotEmpty();
-            $isCoordinateur = Auth::user()->can('can_coordinate_academics');
+            $isCoordinateur = Auth::user()->can('identity.coordinate');
             $isReadOnly = $hasExistingNotes && $isCoordinateur;
         @endphp
 

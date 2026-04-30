@@ -166,7 +166,7 @@
         <div class="notifications-panel">
             <div class="notifications-toolbar">
                 <div class="d-flex flex-wrap gap-2 align-items-center">
-                    @can('can_coordinate_academics')
+                    @can('identity.coordinate')
                         {{-- Lien vers le tableau de bord des présences --}}
                         <a href="{{ route('esbtp.attendances.index') }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-chart-bar me-1"></i> Présences & Tableau de Bord
@@ -202,9 +202,9 @@
                         $hasEvaluationShortcut = !empty($evaluationShortcut) && ($evaluationShortcut['show'] ?? false);
                         $hasEvaluationGradingShortcut = !empty($evaluationGradingShortcut) && ($evaluationGradingShortcut['show'] ?? false);
                         $gradingCtaUrl = null;
-                        if (auth()->user()?->can('view_exams') || auth()->user()?->can('view_evaluations')) {
+                        if (auth()->user()?->can('exams.view') || auth()->user()?->can('evaluations.view')) {
                             $gradingCtaUrl = route('esbtp.evaluations.index');
-                        } elseif (auth()->user()?->can('view_grades') || auth()->user()?->can('create_grades') || auth()->user()?->can('edit_grades') || auth()->user()?->can('manage_own_notes')) {
+                        } elseif (auth()->user()?->can('notes.view') || auth()->user()?->can('notes.create') || auth()->user()?->can('notes.edit') || auth()->user()?->can('notes.manage_own')) {
                             $gradingCtaUrl = route('esbtp.notes.index');
                         }
                     @endphp
@@ -480,7 +480,7 @@
                                         </div>
                                         <div class="d-flex align-items-start gap-2 flex-shrink-0">
                                             {{-- Actions spécifiques selon le type de notification et le rôle --}}
-                                            @can('can_coordinate_academics')
+                                            @can('identity.coordinate')
                                                 {{-- Actions pour coordinateurs --}}
                                                 @if(str_contains(strtolower($notification->title ?? ''), 'émargement'))
                                                     <a href="{{ $notification->link ?? route('esbtp.teacher-attendance.report') }}" class="btn btn-info btn-sm" onclick="event.stopPropagation();">
@@ -591,7 +591,7 @@ document.querySelector('.mark-all-read')?.addEventListener('click', function(e) 
 });
 
 // Filtres pour coordinateurs
-@if(auth()->user()->can('can_coordinate_academics'))
+@if(auth()->user()->can('identity.coordinate'))
 document.querySelectorAll('.filter-notifications').forEach(button => {
     button.addEventListener('click', function() {
         // Réinitialiser l'état des boutons
@@ -626,7 +626,7 @@ document.querySelectorAll('.filter-notifications').forEach(button => {
 });
 
 // Auto-refresh pour les coordinateurs (toutes les 30 secondes)
-@if(auth()->user()->can('can_coordinate_academics'))
+@if(auth()->user()->can('identity.coordinate'))
 setInterval(function() {
     fetch('{{ route('notifications.unreadCount') }}')
         .then(response => response.json())

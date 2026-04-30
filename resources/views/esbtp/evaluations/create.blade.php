@@ -22,7 +22,7 @@
                     Année courante: {{ $anneeUniversitaire->name }}
                 </span>
                 @endif
-                @if(auth()->check() && auth()->user() && !auth()->user()->can('can_teach'))
+                @if(auth()->check() && auth()->user() && !auth()->user()->can('identity.teach'))
                 <a href="{{ route('esbtp.evaluations.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour à la liste
                 </a>
@@ -288,7 +288,7 @@
                 </div>
 
                 <!-- Section 4: Assignation d'enseignant (non-enseignants uniquement) -->
-                @if(auth()->check() && auth()->user() && !auth()->user()->can('can_teach'))
+                @if(auth()->check() && auth()->user() && !auth()->user()->can('identity.teach'))
                 <div class="main-card">
                     <div class="main-card-header">
                         <div class="main-card-title">

@@ -3,9 +3,9 @@
     $hasEvaluationShortcut = !empty($evaluationShortcut) && ($evaluationShortcut['show'] ?? false);
     $hasEvaluationGradingShortcut = !empty($evaluationGradingShortcut) && ($evaluationGradingShortcut['show'] ?? false);
     $gradingCtaUrl = null;
-    if (auth()->user()?->can('view_exams') || auth()->user()?->can('view_evaluations')) {
+    if (auth()->user()?->can('exams.view') || auth()->user()?->can('evaluations.view')) {
         $gradingCtaUrl = route('esbtp.evaluations.index');
-    } elseif (auth()->user()?->can('view_grades') || auth()->user()?->can('create_grades') || auth()->user()?->can('edit_grades') || auth()->user()?->can('manage_own_notes')) {
+    } elseif (auth()->user()?->can('notes.view') || auth()->user()?->can('notes.create') || auth()->user()?->can('notes.edit') || auth()->user()?->can('notes.manage_own')) {
         $gradingCtaUrl = route('esbtp.notes.index');
     }
 @endphp

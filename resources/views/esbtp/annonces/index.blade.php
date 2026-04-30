@@ -603,7 +603,7 @@
                     <i class="fas fa-sync-alt"></i>
                     Actualiser
                 </button>
-                @if(auth()->user()->can('create_annonces'))
+                @if(auth()->user()->can('annonces.create'))
                 <a href="{{ route('esbtp.annonces.create') }}" class="btn-modern primary">
                     <i class="fas fa-plus"></i>
                     Nouvelle annonce

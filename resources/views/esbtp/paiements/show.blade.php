@@ -338,7 +338,7 @@
                 </div>
                 @endif
 
-                @can('access_admin')
+                @can('admin.access')
                 <a href="{{ route('esbtp.paiements.edit', $paiement->id) }}" class="ps-btn warning">
                     <i class="fas fa-edit"></i> Modifier
                 </a>

@@ -462,7 +462,7 @@
                             <i class="fas fa-book"></i>Gérer matières
                         </a>
                     @endif
-                    @if(auth()->user()->can('access_admin'))
+                    @if(auth()->user()->can('admin.access'))
                         <a href="{{ route('esbtp.classes.edit', array_merge(['classe' => $classe->id], ['return_url' => request()->fullUrl()])) }}" class="cs-btn--white">
                             <i class="fas fa-edit"></i>Modifier
                         </a>

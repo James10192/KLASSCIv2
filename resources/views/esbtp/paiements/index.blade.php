@@ -618,7 +618,7 @@
                         <i class="fas fa-chart-bar"></i>
                         <span>Suivi par Catégorie</span>
                     </a>
-                    @can('create-paiements')
+                    @can('paiements.create')
                     <a href="{{ route('esbtp.paiements.create') }}" class="pi-btn pi-btn--white">
                         <i class="fas fa-plus"></i>
                         <span>Nouveau paiement</span>
@@ -703,7 +703,7 @@
         </div>
 
         {{-- Sticky bulk subheader (remplace fixed-bottom bar) --}}
-        @if(auth()->user()->can('access_admin'))
+        @if(auth()->user()->can('admin.access'))
         <div id="bulk-actions-bar" class="pi-bulk-bar" role="toolbar" aria-label="Actions groupées sur paiements sélectionnés">
             <div class="pi-bulk-info">
                 <i class="fas fa-check-circle"></i>
@@ -2018,7 +2018,7 @@ $(document).ready(function() {
 </div>
 
 <!-- Modal de rejet groupé -->
-@if(auth()->user()->can('access_admin'))
+@if(auth()->user()->can('admin.access'))
 <div class="modal fade" id="bulkRejetModal" tabindex="-1" aria-labelledby="bulkRejetModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">

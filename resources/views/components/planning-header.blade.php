@@ -170,7 +170,7 @@
                 </ul>
             </div>
 
-            @canany(['manage-planning', 'view-all-timetables'])
+            @canany(['planning.manage', 'timetables.view_all'])
             <a href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => $anneeSelectionnee?->id]) }}" class="ph-btn ph-btn--glass">
                 <i class="fas fa-cogs"></i>Gestion Planning
             </a>
@@ -255,7 +255,7 @@
        href="{{ route('esbtp.planning-general.emargement', ['annee_id' => $anneeSelectionnee?->id]) }}">
         <i class="fas fa-qrcode"></i>Émargement
     </a>
-    @canany(['manage-planning', 'view-all-timetables'])
+    @canany(['planning.manage', 'timetables.view_all'])
     <a class="ph-tab {{ $activeTab === 'coordinateur' ? 'active' : '' }}"
        href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => $anneeSelectionnee?->id]) }}">
         <i class="fas fa-user-tie"></i>Coordinateur

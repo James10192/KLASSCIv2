@@ -545,7 +545,7 @@
     </div>
 </div>
 
-@can('access_admin')
+@can('admin.access')
 {{-- Bulk bar premium --}}
 <div class="ii-bulk-bar" id="bulk-actions-bar">
     <div class="ii-bulk-count">

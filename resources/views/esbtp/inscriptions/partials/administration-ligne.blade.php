@@ -21,7 +21,7 @@
     data-matricule="{{ $inscription->etudiant->matricule ?? '' }}"
     data-classe-id="{{ $inscription->classe->id ?? '' }}"
     data-classe-label="{{ optional($inscription->classe)->nom ?? optional($inscription->classe)->name ?? '' }}">
-    @can('access_admin')
+    @can('admin.access')
     <td data-no-row-click>
         @if($inscription->workflow_step !== 'etudiant_cree')
             <input type="checkbox" class="form-check-input inscription-checkbox ia-row-checkbox"

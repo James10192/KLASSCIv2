@@ -760,7 +760,7 @@
                             </div>
                             <div class="notifications-footer">
                                 <div class="dropdown-divider"></div>
-                                <a href="@if(auth()->check() && auth()->user()->can('can_view_student_features')){{ route('esbtp.mes-notifications.index') }}@else{{ route('notifications.index') }}@endif" class="dropdown-item text-center">Voir toutes les notifications</a>
+                                <a href="@if(auth()->check() && auth()->user()->can('identity.student')){{ route('esbtp.mes-notifications.index') }}@else{{ route('notifications.index') }}@endif" class="dropdown-item text-center">Voir toutes les notifications</a>
                             </div>
                         </div>
                     </div>
@@ -874,7 +874,7 @@
         let isLoading = false;
 
         function updateUnreadCount() {
-            @if(auth()->check() && auth()->user()->can('can_view_student_features'))
+            @if(auth()->check() && auth()->user()->can('identity.student'))
             fetch('{{ route("esbtp.notifications.unreadCount") }}')
             @else
             fetch('{{ route("notifications.unreadCount") }}')
@@ -891,7 +891,7 @@
 
             notificationsContainer.innerHTML = '<div class="text-center p-3"><small>Chargement...</small></div>';
 
-            @if(auth()->check() && auth()->user()->can('can_view_student_features'))
+            @if(auth()->check() && auth()->user()->can('identity.student'))
             fetch('{{ route("esbtp.mes-notifications.index") }}', {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest'
@@ -916,7 +916,7 @@
         }
 
         function markAsRead(id) {
-            @if(auth()->check() && auth()->user()->can('can_view_student_features'))
+            @if(auth()->check() && auth()->user()->can('identity.student'))
             fetch(`{{ url('esbtp/mes-notifications') }}/${id}/read`, {
             @else
             fetch(`{{ url('notifications') }}/${id}/read`, {
@@ -964,7 +964,7 @@
             e.preventDefault();
             e.stopPropagation();
 
-            @if(auth()->check() && auth()->user()->can('can_view_student_features'))
+            @if(auth()->check() && auth()->user()->can('identity.student'))
             fetch('{{ route("esbtp.mes-notifications.markAllAsRead") }}', {
             @else
             fetch('{{ route("notifications.markAllAsRead") }}', {

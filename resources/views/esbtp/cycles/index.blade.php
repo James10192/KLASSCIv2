@@ -42,7 +42,7 @@
                         <div class="card-header">
                             <h3 class="card-title">Cycles Actifs</h3>
                             <div class="card-tools">
-                                @can('create cycles')
+                                @can('cycles.create')
                                 <a href="{{ route('esbtp.cycles.create') }}" class="btn btn-primary btn-sm">
                                     <i class="fas fa-plus"></i> Nouveau Cycle
                                 </a>
@@ -76,17 +76,17 @@
                                                 </td>
                                                 <td>
                                                     <div class="btn-group">
-                                                        @can('view cycles')
+                                                        @can('cycles.view')
                                                         <a href="{{ route('esbtp.cycles.show', $cycle->id) }}" class="btn btn-info btn-sm">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
                                                         @endcan
-                                                        @can('edit cycles')
+                                                        @can('cycles.edit')
                                                         <a href="{{ route('esbtp.cycles.edit', $cycle->id) }}" class="btn btn-warning btn-sm">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
                                                         @endcan
-                                                        @can('delete cycles')
+                                                        @can('cycles.delete')
                                                         <button type="button" class="btn btn-danger btn-sm" onclick="confirmDelete('{{ $cycle->id }}')">
                                                             <i class="fas fa-trash"></i>
                                                         </button>
@@ -137,17 +137,17 @@
                                                 </td>
                                                 <td>
                                                     <div class="btn-group">
-                                                        @can('view cycles')
+                                                        @can('cycles.view')
                                                         <a href="{{ route('esbtp.cycles.show', $cycle->id) }}" class="btn btn-info btn-sm">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
                                                         @endcan
-                                                        @can('edit cycles')
+                                                        @can('cycles.edit')
                                                         <a href="{{ route('esbtp.cycles.edit', $cycle->id) }}" class="btn btn-warning btn-sm">
                                                             <i class="fas fa-edit"></i>
                                                         </a>
                                                         @endcan
-                                                        @can('delete cycles')
+                                                        @can('cycles.delete')
                                                         <button type="button" class="btn btn-danger btn-sm" onclick="confirmDelete('{{ $cycle->id }}')">
                                                             <i class="fas fa-trash"></i>
                                                         </button>
@@ -198,12 +198,12 @@
                                                 </td>
                                                 <td>
                                                     <div class="btn-group">
-                                                        @can('view cycles')
+                                                        @can('cycles.view')
                                                         <a href="{{ route('esbtp.cycles.show', $cycle->id) }}" class="btn btn-info btn-sm">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
                                                         @endcan
-                                                        @can('restore cycles')
+                                                        @can('cycles.restore')
                                                         <button type="button" class="btn btn-success btn-sm" onclick="confirmRestore('{{ $cycle->id }}')">
                                                             <i class="fas fa-undo"></i>
                                                         </button>
@@ -211,7 +211,7 @@
                                                             @csrf
                                                         </form>
                                                         @endcan
-                                                        @can('force delete cycles')
+                                                        @can('cycles.force_delete')
                                                         <button type="button" class="btn btn-danger btn-sm" onclick="confirmForceDelete('{{ $cycle->id }}')">
                                                             <i class="fas fa-times"></i>
                                                         </button>

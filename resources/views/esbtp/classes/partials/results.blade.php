@@ -24,7 +24,7 @@
         </div>
         <div class="ci-empty-title">Aucune classe trouvée</div>
         <div class="ci-empty-text">Essayez d'ajuster vos filtres ou créez votre première classe.</div>
-        @if(auth()->user()->can('access_admin'))
+        @if(auth()->user()->can('admin.access'))
             <button type="button" class="ci-btn--white" id="btn-open-create-modal-empty" style="background: var(--ci-primary); color: #fff;">
                 <i class="fas fa-plus-circle"></i>Créer une classe
             </button>

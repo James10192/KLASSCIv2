@@ -37,7 +37,7 @@
                 @endif
 
                 {{-- Configuration (superAdmin) --}}
-                @if(auth()->user()->can('access_admin'))
+                @if(auth()->user()->can('admin.access'))
                     <a href="{{ route('esbtp.bulletins.config-matieres', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}"
                        class="sr-action-btn">
                         <div class="sr-action-btn-icon sr-action-btn-icon--info">

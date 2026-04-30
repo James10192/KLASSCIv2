@@ -127,7 +127,7 @@
             <i class="fas fa-list-ul" style="color:#0453cb;"></i>
             {{ $seances->count() }} séance(s) programmée(s)
         </div>
-        @can('create_timetable')
+        @can('timetables.create')
         <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}"
            class="btn btn-sm btn-primary" style="border-radius:9px; font-weight:600; background:#0453cb; border-color:#0453cb;">
             <i class="fas fa-plus me-1"></i>Ajouter
@@ -234,14 +234,14 @@
                             </td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Actions séance">
-                                    @can('edit_timetables')
+                                    @can('timetables.edit')
                                     <a href="{{ route('esbtp.seances-cours.edit', $seance->id) }}"
                                        class="btn btn-sm btn-outline-primary"
                                        data-bs-toggle="tooltip" title="Modifier">
                                         <i class="fas fa-edit"></i>
                                     </a>
                                     @endcan
-                                    @can('delete_timetables')
+                                    @can('timetables.delete')
                                     <button type="button" class="btn btn-sm btn-outline-danger"
                                             data-bs-toggle="tooltip" title="Supprimer"
                                             onclick="window.etsDeleteSeance({{ $seance->id }}, @js($seance->matiere->name ?? 'Séance'))">
@@ -299,7 +299,7 @@
                 </div>
                 <h6 style="color:#1e293b; font-weight:600;">Aucune séance programmée</h6>
                 <p class="text-muted mb-3" style="font-size:.88rem;">Cet emploi du temps ne contient aucune séance.</p>
-                @can('create_timetable')
+                @can('timetables.create')
                 <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}"
                    class="btn btn-primary btn-sm" style="border-radius:9px; font-weight:600;">
                     <i class="fas fa-plus me-1"></i>Ajouter la première séance

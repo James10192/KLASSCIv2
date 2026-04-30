@@ -1759,12 +1759,12 @@
                     <button type="button" class="timetable-tips-btn" data-bs-toggle="modal" data-bs-target="#timetableTipsModal">
                         <i class="fas fa-lightbulb"></i> Tips
                     </button>
-                    @if(auth()->user()->can('edit_timetables'))
+                    @if(auth()->user()->can('timetables.edit'))
                         <button type="button" class="et-header-btn" data-bs-toggle="modal" data-bs-target="#bulkEditModal">
                             <i class="fas fa-layer-group"></i> Modifier rapidement
                         </button>
                     @endif
-                    @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('create_timetable'))
+                    @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']) || auth()->user()->can('timetables.create'))
                         <a href="{{ route('esbtp.emploi-temps.create') }}" class="et-header-btn et-header-btn--primary">
                             <i class="fas fa-plus-circle"></i> Nouveau
                         </a>
@@ -1819,7 +1819,7 @@
                 <span class="et-chip__count">{{ $edtExpiresCount ?? 0 }}</span>
             </button>
             <div class="et-chips-separator"></div>
-            @if(($classesSansEdtCount ?? 0) > 0 && (auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('create_timetable')))
+            @if(($classesSansEdtCount ?? 0) > 0 && (auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']) || auth()->user()->can('timetables.create')))
                 <button type="button"
                         class="et-chip et-chip--link"
                         data-bs-toggle="modal"
@@ -2355,7 +2355,7 @@
     </div>
 </div>
 
-@if(!empty($timetableShortcut) && ($timetableShortcut['show'] ?? false) && (auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('create_timetable')))
+@if(!empty($timetableShortcut) && ($timetableShortcut['show'] ?? false) && (auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']) || auth()->user()->can('timetables.create')))
 <div class="modal fade" id="quickGenerateModal" tabindex="-1" aria-labelledby="quickGenerateModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">

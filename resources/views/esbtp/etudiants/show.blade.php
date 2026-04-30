@@ -2235,7 +2235,7 @@
                 <a href="{{ route('esbtp.etudiants.index') }}" class="hero-btn ghost">
                     <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">Retour</span>
                 </a>
-                @can('delete_students')
+                @can('students.delete')
                 <form id="es-form-delete-student" action="{{ route('esbtp.etudiants.destroy', $etudiant) }}" method="POST" style="margin:0">
                     @csrf @method('DELETE')
                     <button type="button" class="hero-btn danger"
@@ -5112,7 +5112,7 @@
                 <span class="info-val">{{ $etudiant->user->created_at?->format('d/m/Y à H:i') ?? '—' }}</span>
             </div>
         </div>
-        @can('edit_students')
+        @can('students.edit')
         <div style="padding:12px 16px 4px; border-top:1px solid rgba(0,0,0,.06);">
             <a href="{{ route('esbtp.etudiants.reset-password', $etudiant->id) }}"
                onclick="return confirm('Réinitialiser le mot de passe de cet étudiant ? Le nouveau mot de passe sera : Bonjour@2025')"
