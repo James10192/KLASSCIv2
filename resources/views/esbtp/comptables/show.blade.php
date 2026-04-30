@@ -601,6 +601,18 @@ select.cs-comptable-edit-input { text-align: left; min-width: 160px; cursor: poi
                         </div>
                     </div>
 
+                    @if(session('new_password'))
+                    <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 1px solid rgba(16,185,129,.3); border-radius: var(--cs-comptable-radius); padding: 16px; margin-bottom: 16px;">
+                        <h6 style="color: #047857; font-size: .9rem; font-weight: 700; margin: 0 0 6px;">
+                            <i class="fas fa-check-circle"></i> Mot de passe reinitialise
+                        </h6>
+                        <p style="margin: 0;">Nouveau mot de passe : <code style="background: rgba(0,0,0,.06); padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #065f46;">{{ session('new_password') }}</code></p>
+                        <p style="font-size: .8rem; color: #047857; margin: 8px 0 0;">
+                            <i class="fas fa-info-circle"></i> Communiquez ces identifiants au comptable.
+                        </p>
+                    </div>
+                    @endif
+
                     <div class="cs-comptable-info-row">
                         <span class="cs-comptable-info-label"><i class="fas fa-at"></i> Nom d'utilisateur</span>
                         <span class="cs-comptable-info-value">{{ $user->username }}</span>
@@ -621,6 +633,13 @@ select.cs-comptable-edit-input { text-align: left; min-width: 160px; cursor: poi
                     <div class="cs-comptable-info-row">
                         <span class="cs-comptable-info-label"><i class="fas fa-user-tag"></i> Role</span>
                         <span class="cs-comptable-info-value">Comptable</span>
+                    </div>
+
+                    <div style="margin-top: 20px;">
+                        <button type="button" class="cs-comptable-action-btn" onclick="csComptableShowResetPasswordModal()">
+                            <i class="fas fa-key"></i>
+                            <span>Reinitialiser le mot de passe</span>
+                        </button>
                     </div>
                 </div>
 
@@ -705,6 +724,11 @@ select.cs-comptable-edit-input { text-align: left; min-width: 160px; cursor: poi
                             </button>
                         </form>
                         @endif
+
+                        <button type="button" class="cs-comptable-action-btn" onclick="csComptableShowResetPasswordModal()">
+                            <i class="fas fa-key"></i>
+                            <span>Reinitialiser le mot de passe</span>
+                        </button>
                     </div>
                 </div>
 
@@ -733,6 +757,74 @@ select.cs-comptable-edit-input { text-align: left; min-width: 160px; cursor: poi
             </div>
         </div>
 
+    </div>
+</div>
+
+{{-- ================================================================
+     MODAL: Reset Password (Lot 18d — bouton universel)
+================================================================= --}}
+<div class="modal fade" id="csComptableResetPasswordModal" tabindex="-1" aria-labelledby="csComptableResetPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 16px; border: none; box-shadow: 0 10px 40px rgba(0,0,0,0.2); overflow: hidden;">
+            <div class="modal-header" style="background: linear-gradient(135deg, var(--cs-comptable-blue) 0%, var(--cs-comptable-blue-2) 100%); color: white; padding: 1.5rem; border: none;">
+                <h5 class="modal-title fw-bold" id="csComptableResetPasswordModalLabel">
+                    <i class="fas fa-key me-2"></i>Reinitialiser le mot de passe
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="csComptableResetPasswordForm" method="POST" action="{{ route('esbtp.comptables.reset-password', ['user' => $user->id]) }}">
+                @csrf
+                <div class="modal-body" style="padding: 2rem;">
+                    <div style="background: rgba(4,83,203,.05); border-left: 4px solid var(--cs-comptable-blue); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 1.5rem;">
+                        <div class="d-flex align-items-start gap-3">
+                            <div style="width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--cs-comptable-blue), var(--cs-comptable-blue-2)); display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div style="flex-grow: 1;">
+                                <div style="color: var(--cs-comptable-text); font-weight: 600; margin-bottom: 0.25rem;">Attention</div>
+                                <div style="color: var(--cs-comptable-muted); font-size: 0.9rem;">
+                                    Cette action va reinitialiser le mot de passe a <strong>"Bonjour@2025"</strong> pour le comptable
+                                    <strong>{{ $user->name }}</strong>. Le comptable devra changer son mot de passe a la premiere connexion.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" style="color: var(--cs-comptable-text); font-size: 0.9rem;">
+                            <i class="fas fa-user me-1" style="color: var(--cs-comptable-blue);"></i>
+                            Comptable concerne
+                        </label>
+                        <div style="background: var(--cs-comptable-surface); border: 2px solid var(--cs-comptable-border); border-radius: 8px; padding: 0.75rem; font-weight: 500;">
+                            {{ $user->name }} ({{ $user->email ?: $user->username }})
+                        </div>
+                    </div>
+
+                    <div id="csComptableNewPasswordDisplay" style="display: none;" class="mb-3">
+                        <label class="form-label fw-semibold" style="color: var(--cs-comptable-text); font-size: 0.9rem;">
+                            <i class="fas fa-check-circle me-1" style="color: var(--cs-comptable-success);"></i>
+                            Mot de passe reinitialise
+                        </label>
+                        <div style="background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); border: 2px solid var(--cs-comptable-success); border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 1.2rem; font-weight: 700; text-align: center; color: #047857; letter-spacing: 2px;" id="csComptableNewPasswordValue"></div>
+                        <div class="form-text text-center mt-2" style="color: #047857;">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Communiquez ce mot de passe au comptable. Il devra le changer a la premiere connexion.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="background: var(--cs-comptable-surface); padding: 1.25rem 2rem; border: none;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 500;">
+                        <i class="fas fa-times me-1"></i>Annuler
+                    </button>
+                    <button type="submit" class="btn" id="csComptableResetPasswordBtn" style="background: linear-gradient(135deg, var(--cs-comptable-blue) 0%, var(--cs-comptable-blue-2) 100%); border: none; color: white; padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 600; box-shadow: 0 4px 12px rgba(4,83,203,.3);">
+                        <i class="fas fa-key me-1"></i>Reinitialiser a Bonjour@2025
+                    </button>
+                    <button type="button" class="btn" id="csComptableCopyPasswordBtn" style="display: none; background: var(--cs-comptable-success); color: white; border: none; padding: 0.65rem 1.5rem; border-radius: 8px; font-weight: 600;" onclick="csComptableCopyPassword()">
+                        <i class="fas fa-copy me-1"></i>Copier le mot de passe
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 @endsection
@@ -832,5 +924,78 @@ function csComptableNotify(message, type) {
         setTimeout(function() { document.body.removeChild(el); }, 300);
     }, 3000);
 }
+
+// -- Reset Password Modal (Lot 18d) -------------------------------
+function csComptableShowResetPasswordModal() {
+    var modal = new bootstrap.Modal(document.getElementById('csComptableResetPasswordModal'));
+    modal.show();
+}
+
+function csComptableCopyPassword() {
+    var password = document.getElementById('csComptableNewPasswordValue').textContent;
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(password).then(function() {
+            csComptableNotify('Mot de passe copie dans le presse-papiers !', 'success');
+        }).catch(function() {
+            csComptableNotify('Erreur lors de la copie', 'danger');
+        });
+    }
+}
+
+(function() {
+    var rpForm = document.getElementById('csComptableResetPasswordForm');
+    if (!rpForm) return;
+
+    rpForm.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var formData = new FormData(rpForm);
+        var btn = document.getElementById('csComptableResetPasswordBtn');
+        var originalText = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Reinitialisation...';
+
+        fetch(rpForm.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            }
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            if (data.success) {
+                document.getElementById('csComptableNewPasswordValue').textContent = data.password;
+                document.getElementById('csComptableNewPasswordDisplay').style.display = 'block';
+                btn.style.display = 'none';
+                document.getElementById('csComptableCopyPasswordBtn').style.display = 'inline-block';
+                csComptableNotify('Mot de passe reinitialise avec succes !', 'success');
+            } else {
+                csComptableNotify('Erreur : ' + (data.message || 'Une erreur est survenue'), 'danger');
+                btn.disabled = false;
+                btn.innerHTML = originalText;
+            }
+        })
+        .catch(function() {
+            csComptableNotify('Erreur de connexion', 'danger');
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        });
+    });
+
+    var rpModal = document.getElementById('csComptableResetPasswordModal');
+    if (rpModal) {
+        rpModal.addEventListener('hidden.bs.modal', function() {
+            document.getElementById('csComptableNewPasswordDisplay').style.display = 'none';
+            document.getElementById('csComptableNewPasswordValue').textContent = '';
+            var b = document.getElementById('csComptableResetPasswordBtn');
+            b.style.display = 'inline-block';
+            b.disabled = false;
+            b.innerHTML = '<i class="fas fa-key me-1"></i>Reinitialiser a Bonjour@2025';
+            document.getElementById('csComptableCopyPasswordBtn').style.display = 'none';
+        });
+    }
+})();
 </script>
 @endpush
