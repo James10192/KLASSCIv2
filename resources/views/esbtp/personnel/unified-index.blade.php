@@ -2184,8 +2184,10 @@ function toggleSecretaireStatus(secretaireId) {
     const modalEl = document.getElementById('crModal');
     if (!modalEl) return;
 
-    const sectionBar = document.querySelector('[data-cr-section]');
-    const sectionToggle = document.querySelector('[data-cr-section-toggle]');
+    // Lot 17 : il y a maintenant DEUX sections (Rôles personnalisés + Rôles standards),
+    // querySelector() ne prend que le premier — il faut wirer chaque toggle individuellement.
+    const sectionBars = document.querySelectorAll('[data-cr-section]');
+    const sectionBar = sectionBars[0] || null;  // backward compat (badge update sur Rôles personnalisés)
     const listContainer = document.querySelector('[data-cr-list]');
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
 
@@ -2208,12 +2210,14 @@ function toggleSecretaireStatus(secretaireId) {
         return bsModal;
     }
 
-    /* ── Section collapsible ── */
-    if (sectionToggle) {
-        sectionToggle.addEventListener('click', () => {
-            sectionBar.classList.toggle('cr-open');
+    /* ── Sections collapsibles (Rôles personnalisés + Rôles standards) ── */
+    sectionBars.forEach((bar) => {
+        const toggle = bar.querySelector('[data-cr-section-toggle]');
+        if (!toggle) return;
+        toggle.addEventListener('click', () => {
+            bar.classList.toggle('cr-open');
         });
-    }
+    });
 
     /* ── Helpers ── */
     function slugify(str) {
