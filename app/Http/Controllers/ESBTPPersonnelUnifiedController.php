@@ -117,18 +117,39 @@ class ESBTPPersonnelUnifiedController extends Controller
         // Lot 8/17 — Rôles custom + standards éditables (visibles si users.manage)
         $customRoles = collect();
         $standardRoles = collect();
+        // Lot 19 — Users assignés à chaque rôle custom, indexé par roleName, pour générer un tab par rôle
+        $customRoleUsers = collect();
         if (auth()->user()->can('users.manage')) {
             try {
                 $registry = app(PermissionRegistry::class);
 
                 // Custom roles (is_custom = true)
-                $customRoles = Role::query()
+                $customRolesQuery = Role::query()
                     ->where('is_custom', true)
                     ->withCount(['users', 'permissions'])
                     ->orderBy('label_fr')
                     ->orderBy('name')
-                    ->get()
+                    ->get();
+
+                $customRoles = $customRolesQuery
                     ->map(fn (Role $role) => $this->buildRoleCardData($role, $registry));
+
+                // Lot 19 — Charger les users assignés à chaque rôle custom (un tab par rôle, même vide)
+                foreach ($customRolesQuery as $role) {
+                    $users = User::role($role->name)
+                        ->where('is_active', true)
+                        ->orderBy('name')
+                        ->get(['id', 'name', 'email', 'telephone', 'is_active', 'created_at']);
+                    $customRoleUsers[$role->name] = [
+                        'role' => $role,
+                        'users' => $users,
+                        'meta' => $registry->roleMeta($role->name) ?? [
+                            'label' => $role->name,
+                            'icon' => 'fa-user-tag',
+                            'description' => '',
+                        ],
+                    ];
+                }
 
                 // Standard roles éditables (Lot 17c) — whitelist depuis le controller
                 $standardRoleNames = \App\Http\Controllers\ESBTPCustomRoleController::EDITABLE_STANDARD_ROLES;
@@ -143,6 +164,7 @@ class ESBTPPersonnelUnifiedController extends Controller
                 // Migration pas encore lancée ou registry indispo — degrade silencieusement
                 $customRoles = collect();
                 $standardRoles = collect();
+                $customRoleUsers = collect();
             }
         }
 
@@ -156,7 +178,8 @@ class ESBTPPersonnelUnifiedController extends Controller
             'isCoordinateur',
             'userRole',
             'customRoles',
-            'standardRoles'
+            'standardRoles',
+            'customRoleUsers'
         ));
     }
 

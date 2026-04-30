@@ -1604,6 +1604,17 @@
                     <span class="pu-tab-label">Caissiers</span>
                     <span class="pu-tab-count">{{ $stats['caissiers'] ?? 0 }} personnes</span>
                 </button>
+
+                {{-- ═══ Lot 19 — Tabs dynamiques pour rôles custom ═══ --}}
+                @if(isset($customRoleUsers) && $customRoleUsers->count() > 0)
+                    @foreach($customRoleUsers as $roleName => $payload)
+                    <button class="pu-tab slider-tab" data-tab="custom-{{ $roleName }}">
+                        <span class="pu-tab-icon"><i class="fas {{ $payload['meta']['icon'] ?? 'fa-user-tag' }}"></i></span>
+                        <span class="pu-tab-label">{{ $payload['meta']['label'] ?? $roleName }}</span>
+                        <span class="pu-tab-count">{{ $payload['users']->count() }} personne{{ $payload['users']->count() > 1 ? 's' : '' }}</span>
+                    </button>
+                    @endforeach
+                @endif
             </div>
 
             <div class="pu-panel-content">
@@ -1996,6 +2007,68 @@
                     </div>
                 </div>
 
+                {{-- ═══ Lot 19 — Panels dynamiques pour rôles custom ═══ --}}
+                @if(isset($customRoleUsers) && $customRoleUsers->count() > 0)
+                    @foreach($customRoleUsers as $roleName => $payload)
+                    <div class="pu-panel slider-panel" id="custom-{{ $roleName }}-panel">
+                        <div class="pu-panel-header">
+                            <div class="pu-search">
+                                <input type="text" placeholder="Rechercher dans {{ $payload['meta']['label'] ?? $roleName }}..." class="pu-search-input" data-search-target="custom-{{ $roleName }}-list">
+                            </div>
+                            <a href="{{ route('esbtp.custom-roles.assign-users.form', $roleName) }}" class="pu-panel-btn pu-panel-btn-primary">
+                                <i class="fas fa-user-cog"></i>Gérer les assignations
+                            </a>
+                        </div>
+
+                        <div class="pu-filters">
+                            <label>Filtrer :</label>
+                            <select class="pu-filter-select filter-select" data-filter-target="custom-{{ $roleName }}-list">
+                                <option value="">Tous les statuts</option>
+                                <option value="active">Actifs</option>
+                                <option value="inactive">Inactifs</option>
+                            </select>
+                        </div>
+
+                        <div id="custom-{{ $roleName }}-list">
+                            @if($payload['users']->count() > 0)
+                                @foreach($payload['users'] as $u)
+                                <div class="pu-card personnel-card">
+                                    <div class="pu-avatar">
+                                        {{ strtoupper(substr($u->name, 0, 2)) }}
+                                    </div>
+                                    <div class="pu-info">
+                                        <div class="pu-name">{{ $u->name }}</div>
+                                        <div class="pu-meta">
+                                            <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $u->email ?: 'Sans email' }}</span>
+                                            @if($u->telephone)
+                                            <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $u->telephone }}</span>
+                                            @endif
+                                            <span class="pu-meta-item"><i class="fas fa-calendar"></i>{{ $u->created_at->format('d/m/Y') }}</span>
+                                        </div>
+                                    </div>
+                                    <span class="pu-status pu-status-active">Actif</span>
+                                    <div class="pu-actions">
+                                        <a href="{{ route('esbtp.custom-roles.assign-users.form', $roleName) }}" class="pu-action-btn" title="Gérer les assignations">
+                                            <i class="fas fa-user-cog"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                                @endforeach
+                            @else
+                                <div class="pu-empty">
+                                    <div class="pu-empty-icon"><i class="fas {{ $payload['meta']['icon'] ?? 'fa-user-tag' }}"></i></div>
+                                    <h3>Aucun utilisateur dans ce rôle</h3>
+                                    <p>Assignez des utilisateurs à <strong>{{ $payload['meta']['label'] ?? $roleName }}</strong> depuis la section « Rôles personnalisés » au-dessus.</p>
+                                    <a href="{{ route('esbtp.custom-roles.assign-users.form', $roleName) }}" class="pu-empty-btn">
+                                        <i class="fas fa-user-cog"></i>Gérer les assignations
+                                    </a>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                    @endforeach
+                @endif
+
             </div>
         </div>
     </div>
@@ -2104,9 +2177,37 @@ $(document).ready(function() {
         });
     });
 
+    // ═══ Lot 19 — Search générique pour rôles custom (data-search-target) ═══
+    $('.pu-search-input[data-search-target]').on('input', function() {
+        const q = $(this).val().toLowerCase();
+        const targetId = $(this).data('search-target');
+        $('#' + targetId + ' .personnel-card').each(function() {
+            $(this).toggle($(this).text().toLowerCase().includes(q));
+        });
+    });
+
     // ═══ Filters ═══
     $('.filter-select').change(function() {
-        const panelType = $(this).attr('id').split('-')[1];
+        // Lot 19 — support data-filter-target pour rôles custom
+        const dataTarget = $(this).data('filter-target');
+        if (dataTarget) {
+            const statusFilter = $(this).val();
+            $('#' + dataTarget + ' .personnel-card').each(function() {
+                let show = true;
+                if (statusFilter) {
+                    const hasActive = $(this).find('.pu-status-active').length > 0;
+                    const hasInactive = $(this).find('.pu-status-inactive').length > 0;
+                    if (statusFilter === 'active' && !hasActive) show = false;
+                    if (statusFilter === 'inactive' && !hasInactive) show = false;
+                }
+                $(this).toggle(show);
+            });
+            return;
+        }
+
+        const idAttr = $(this).attr('id');
+        if (!idAttr) return;
+        const panelType = idAttr.split('-')[1];
         const statusFilter = $('#filter-' + panelType + '-status').val();
         $('#' + panelType + '-list .personnel-card').each(function() {
             let show = true;
