@@ -11,12 +11,15 @@ use App\Models\ESBTPPaiement;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPBulletin;
+use App\Models\User;
 use App\Policies\ESBTPSeanceCoursPolicy;
 use App\Policies\ESBTPMatierePolicy;
 use App\Policies\ESBTPPaiementPolicy;
 use App\Policies\ESBTPNotePolicy;
 use App\Policies\ESBTPInscriptionPolicy;
 use App\Policies\ESBTPBulletinPolicy;
+use App\Policies\UserManagementPolicy;
+use App\Services\UserManagementService;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -49,6 +52,16 @@ class AuthServiceProvider extends ServiceProvider
 
         Gate::define('manage-users', function ($user) {
             return $user && $user->hasPermissionTo('manage-users');
+        });
+
+        // Lot 5 : Matrice de gestion users granulaire (qui peut gérer qui)
+        Gate::define('manage-user', function (User $actor, User $target) {
+            return app(UserManagementService::class)->canManage($actor, $target);
+        });
+
+        Gate::define('assign-role', function (User $actor, User $target, string $role) {
+            $service = app(UserManagementService::class);
+            return $service->canManage($actor, $target) && $service->canAssignRole($actor, $role);
         });
     }
 }

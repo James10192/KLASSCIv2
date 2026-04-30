@@ -95,30 +95,20 @@ try {
     echo "\n";
 
     /*
-     * 4. Utilisateurs sans rôle : attribution par défaut basée sur l'email
-     *    (TODO Lot 5 : remplacer par UI explicite)
+     * 4. Utilisateurs sans rôle : audit (signalement uniquement, pas d'attribution
+     *    automatique par email — supprimé Lot 5, sécurité)
      */
     echo "🔍 Vérification des utilisateurs sans rôle...\n";
     $usersWithoutRole = User::doesntHave('roles')->get();
 
-    foreach ($usersWithoutRole as $user) {
-        if (str_contains($user->email, 'admin') || str_contains($user->email, 'superadmin')) {
-            $user->assignRole('superAdmin');
-            echo "  ✓ {$user->name} ({$user->email}) → superAdmin\n";
-        } elseif (str_contains($user->email, 'secretaire')) {
-            $user->assignRole('secretaire');
-            echo "  ✓ {$user->name} ({$user->email}) → secretaire\n";
-        } elseif (str_contains($user->email, 'enseignant') || str_contains($user->email, 'teacher')) {
-            $user->assignRole('enseignant');
-            echo "  ✓ {$user->name} ({$user->email}) → enseignant\n";
-        } else {
-            $user->assignRole('etudiant');
-            echo "  ✓ {$user->name} ({$user->email}) → etudiant (par défaut)\n";
+    if ($usersWithoutRole->isNotEmpty()) {
+        echo "  ⚠️  {$usersWithoutRole->count()} utilisateur(s) sans rôle détecté(s) :\n";
+        foreach ($usersWithoutRole as $user) {
+            echo "    • {$user->name} ({$user->email}) — à assigner manuellement via /esbtp/personnel\n";
         }
-    }
-
-    if ($usersWithoutRole->isEmpty()) {
-        echo "  ✓ Tous les utilisateurs ont déjà un rôle\n";
+        echo "  💡 L'attribution doit se faire explicitement via l'interface admin (Lot 5).\n";
+    } else {
+        echo "  ✓ Tous les utilisateurs ont un rôle\n";
     }
 
     app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
