@@ -72,10 +72,12 @@ try {
 
         // Paiements avec syntaxe point
         'paiements.view',
+        'paiements.view_own',     // Lot 13 — voir uniquement ses propres encaissements
         'paiements.create',
         'paiements.edit',
         'paiements.delete',
         'paiements.validate',
+        'paiements.export',       // Lot 13 — gating exports détaillés (utilisé par Lot 15)
 
         // Frais avec syntaxe point
         'frais.view',
@@ -320,7 +322,7 @@ try {
         'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
         'edit inscriptions', 'valider inscriptions',
         'approve_inscriptions',
-        'paiements.view', 'paiements.create', 'paiements.validate',
+        'paiements.view', 'paiements.create', 'paiements.validate', 'paiements.export', // Lot 13
         'frais.view', 'frais.create', 'frais.edit',
         'view cycles', 'create cycles', 'edit cycles', 'delete cycles',
         'view_classes', 'create_classes', 'edit_classes',
@@ -531,6 +533,7 @@ try {
         'paiements.create',
         'paiements.edit',
         'paiements.validate',
+        'paiements.export',     // Lot 13 — comptable peut exporter les paiements
         'frais.view',
         'frais.create',
         'frais.edit',
@@ -562,8 +565,9 @@ try {
         'view_students', 'view_inscriptions', 'inscriptions.view',
         // Création pré-inscription (inscription prospect)
         'create_inscriptions', 'inscriptions.create',
-        // Paiements
-        'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.validate',
+        // Paiements — Lot 13 : caissier ne voit QUE ses encaissements (paiements.view_own)
+        // PAS `paiements.view` (qui donne accès à TOUS les paiements)
+        'paiements.view_own', 'paiements.create', 'paiements.edit', 'paiements.validate',
         'view_payments', 'create_payments', 'edit_payments',
         // Comptabilité (consultation + relances, pas de config)
         'comptabilite.access', 'comptabilite.dashboard.view',

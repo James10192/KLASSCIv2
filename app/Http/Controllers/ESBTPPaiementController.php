@@ -34,7 +34,8 @@ class ESBTPPaiementController extends Controller
         $this->statsService = $statsService;
 
         $this->middleware('auth');
-        $this->middleware('permission:paiements.view', ['only' => ['index', 'show', 'paiementsEtudiant']]);
+        // Accepter soit `paiements.view` (voit tous), soit `paiements.view_own` (voit ses encaissements)
+        $this->middleware('permission:paiements.view|paiements.view_own', ['only' => ['index', 'show', 'paiementsEtudiant']]);
         $this->middleware('permission:paiements.create', ['only' => ['create', 'store']]);
         $this->middleware('permission:paiements.edit', ['only' => ['edit', 'update']]);
         $this->middleware('permission:paiements.delete', ['only' => ['destroy']]);
@@ -451,6 +452,7 @@ class ESBTPPaiementController extends Controller
             'inscription.niveauEtude',
             'validatedBy',
             'createdBy',
+            'creator:id,name',
             'updatedBy'
         ])->findOrFail($id);
 
@@ -574,7 +576,8 @@ class ESBTPPaiementController extends Controller
             'inscription.filiere',
             'inscription.niveauEtude',
             'fraisCategory',
-            'validatedBy'
+            'validatedBy',
+            'creator:id,name'
         ])->findOrFail($id);
 
         // Retourner la vue HTML pour prévisualisation
@@ -595,7 +598,8 @@ class ESBTPPaiementController extends Controller
             'inscription.filiere',
             'inscription.niveauEtude',
             'fraisCategory',
-            'validatedBy'
+            'validatedBy',
+            'creator:id,name'
         ])->findOrFail($id);
 
         // Récupérer les paramètres depuis les settings comme pour les bulletins
