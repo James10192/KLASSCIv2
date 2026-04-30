@@ -707,6 +707,50 @@
 }
 .cr-info-note-text strong { color: #1e293b; font-weight: 600; }
 
+/* Lot 17c — Variant warning (utilisé dans modal édition rôle système) */
+.cr-info-note--warning {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.06), rgba(245, 158, 11, 0.02));
+    border-left-color: #f59e0b;
+}
+.cr-info-note--warning .cr-info-note-icon { color: #b45309; }
+
+/* Lot 17c — Grid pour les rôles standards (cards row) */
+.cr-roles-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 12px;
+    padding: 12px 16px;
+}
+.cr-role-card--standard {
+    border-left: 3px solid #0453cb;
+    background: #fff;
+}
+.cr-role-card--standard .cr-role-card-name {
+    background: rgba(4, 83, 203, 0.06);
+    color: #033a8e;
+}
+
+/* Lot 17c — Tag « immuable » sur le label name readonly */
+.cr-form-tag-immutable {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    background: rgba(100, 116, 139, 0.1);
+    color: #64748b;
+    letter-spacing: 0.3px;
+}
+.cr-form-hint {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.75rem;
+    color: #64748b;
+    font-style: italic;
+}
+
 /* ── Liste des rôles ── */
 .cr-roles-list {
     display: grid;
@@ -1430,14 +1474,15 @@
                     </div>
                 </button>
                 <div class="cr-section-content">
-                    {{-- Lot 16 — Encadré informatif : séparation système (Service Technique) vs custom (users.manage) --}}
+                    {{-- Lot 16/17 — Encadré informatif : séparation système vs custom --}}
                     <div class="cr-info-note" role="note">
                         <div class="cr-info-note-icon"><i class="fas fa-info-circle"></i></div>
                         <div class="cr-info-note-body">
-                            <p class="cr-info-note-title">Rôles personnalisés gérés ici</p>
+                            <p class="cr-info-note-title">Rôles personnalisés (totalement libres)</p>
                             <p class="cr-info-note-text">
-                                Vous pouvez créer, modifier et supprimer ces rôles, et leur assigner des utilisateurs.
-                                Pour modifier les permissions des <strong>rôles système</strong> (Secrétaire, Comptable, Coordinateur, Caissier, Enseignant, Étudiant), contactez le <strong>Service Technique</strong>.
+                                Créez, modifiez, supprimez et assignez des utilisateurs à des rôles métiers sur mesure.
+                                Vous pouvez aussi modifier le label, l'icône, la description et les permissions des <strong>rôles standards</strong> ci-dessous.
+                                Les rôles <strong>superAdmin</strong> et <strong>Service Technique</strong> restent gérés exclusivement par le Service Technique (page <code>/esbtp/roles-permissions</code>).
                             </p>
                         </div>
                     </div>
@@ -1456,6 +1501,53 @@
             <div class="modal fade" id="crModal" tabindex="-1" aria-hidden="true">
                 {{-- contenu chargé en AJAX --}}
             </div>
+
+            {{-- ═══ Lot 17c — Rôles standards éditables (collapsible) ═══ --}}
+            @if(isset($standardRoles) && $standardRoles->isNotEmpty())
+                @php $stdCount = $standardRoles->count(); @endphp
+                <div class="cr-section-bar pu-animate pu-delay-1" data-cr-section>
+                    <button type="button" class="cr-section-toggle" data-cr-section-toggle>
+                        <div class="cr-section-toggle-left">
+                            <div class="cr-section-toggle-icon"><i class="fas fa-shield-halved"></i></div>
+                            <div class="cr-section-toggle-text">
+                                <h3>Rôles standards</h3>
+                                <p>Modifiez le label, l'icône et les permissions des rôles système (sauf superAdmin / Service Technique)</p>
+                            </div>
+                        </div>
+                        <div class="cr-section-toggle-right">
+                            <span class="cr-section-toggle-badge">{{ $stdCount }} rôle{{ $stdCount > 1 ? 's' : '' }}</span>
+                            <i class="fas fa-chevron-down cr-section-toggle-chev"></i>
+                        </div>
+                    </button>
+                    <div class="cr-section-content">
+                        <div class="cr-roles-grid">
+                            @foreach($standardRoles as $std)
+                                <article class="cr-role-card cr-role-card--standard">
+                                    <header class="cr-role-card-head">
+                                        <div class="cr-role-card-icon"><i class="fas {{ $std['icon'] }}"></i></div>
+                                        <div class="cr-role-card-title">
+                                            <h4>{{ $std['label'] }}</h4>
+                                            <code class="cr-role-card-name">{{ $std['name'] }}</code>
+                                        </div>
+                                    </header>
+                                    @if(!empty($std['description']))
+                                        <p class="cr-role-card-desc">{{ $std['description'] }}</p>
+                                    @endif
+                                    <footer class="cr-role-card-foot">
+                                        <span class="cr-role-card-stat"><i class="fas fa-users"></i> {{ $std['users_count'] }} user{{ $std['users_count'] > 1 ? 's' : '' }}</span>
+                                        <span class="cr-role-card-stat"><i class="fas fa-key"></i> {{ $std['permissions_count'] }} perm{{ $std['permissions_count'] > 1 ? 's' : '' }}</span>
+                                        <button type="button" class="cr-btn cr-btn-ghost cr-btn-sm"
+                                                data-cr-edit-standard="{{ route('esbtp.custom-roles.standard.edit', $std['name']) }}"
+                                                title="Modifier label, icône, permissions">
+                                            <i class="fas fa-pen"></i> Modifier
+                                        </button>
+                                    </footer>
+                                </article>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            @endif
         @endcan
 
         {{-- ═══ Tabs Card ═══ --}}
@@ -2389,6 +2481,10 @@ function toggleSecretaireStatus(secretaireId) {
     function wireRoleCardActions() {
         document.querySelectorAll('[data-cr-edit]').forEach(btn => {
             btn.onclick = () => loadModal(ROUTES.editUrl(btn.dataset.crEdit));
+        });
+        // Lot 17c : édition rôles standards (URL absolue, pas via ROUTES.editUrl)
+        document.querySelectorAll('[data-cr-edit-standard]').forEach(btn => {
+            btn.onclick = () => loadModal(btn.dataset.crEditStandard);
         });
         document.querySelectorAll('[data-cr-assign]').forEach(btn => {
             btn.onclick = () => loadModal(ROUTES.assignFormUrl(btn.dataset.crAssign));

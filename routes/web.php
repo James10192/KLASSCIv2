@@ -1936,6 +1936,11 @@ Route::middleware(['auth', 'permission:admin.access', 'paywall'])->prefix('esbtp
     Route::post('/custom-roles/{role}/assign-users', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'assignUsers'])->name('custom-roles.assign-users');
     Route::delete('/custom-roles/{role}/detach-user/{user}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'detachUser'])->name('custom-roles.detach-user');
 
+    // Lot 17c — édition rôles standards (whitelist : secretaire, comptable, caissier,
+    // coordinateur, enseignant, etudiant). superAdmin/serviceTechnique restent ST-only.
+    Route::get('/custom-roles/standard/{role}/edit', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'editStandard'])->name('custom-roles.standard.edit');
+    Route::put('/custom-roles/standard/{role}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'updateStandard'])->name('custom-roles.standard.update');
+
     // Routes pour les coordinateurs (maintien de la compatibilité)
     Route::resource('coordinateurs', \App\Http\Controllers\ESBTPCoordinateurController::class);
     Route::patch('coordinateurs/{coordinateur}/toggle-status', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'toggleStatus'])->name('coordinateurs.toggle-status');

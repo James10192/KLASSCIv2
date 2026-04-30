@@ -41,6 +41,23 @@ class ESBTPCustomRoleController extends Controller
      * Pour ajouter une icône : la déclarer ici ET dans les `cr-icon-suggestions` des
      * modals create/edit pour qu'elle soit suggérée à l'utilisateur.
      */
+    /**
+     * Rôles système éditables depuis /esbtp/personnel/unified par les users avec
+     * `users.manage` (Lot 17). superAdmin et serviceTechnique restent gérés
+     * exclusivement via /esbtp/roles-permissions (Service Technique).
+     *
+     * Pour ces rôles, seuls label_fr / icon / description / permissions sont modifiables.
+     * Le `name` interne reste immuable (sinon casse les @can() et le code applicatif).
+     */
+    public const EDITABLE_STANDARD_ROLES = [
+        'secretaire',
+        'comptable',
+        'caissier',
+        'coordinateur',
+        'enseignant',
+        'etudiant',
+    ];
+
     private const ALLOWED_ICONS = [
         // Personnel & rôles
         'fa-user-tag', 'fa-user-shield', 'fa-user-tie', 'fa-user-cog', 'fa-user-check',
@@ -303,6 +320,103 @@ class ESBTPCustomRoleController extends Controller
             return response()->json([
                 'success' => true,
                 'message' => "Rôle « {$validated['label_fr']} » mis à jour.",
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour : ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Modal d'édition d'un rôle standard (système éditable).
+     *
+     * Ne permet pas de changer le `name` interne. Permet d'override :
+     * - label_fr, icon, description (DB metadata, fallback registry config)
+     * - permissions assignées (sync, avec garde-fou grantable)
+     */
+    public function editStandard(string $role, PermissionRegistry $registry)
+    {
+        if (! in_array($role, self::EDITABLE_STANDARD_ROLES, true)) {
+            abort(403, 'Ce rôle système n\'est pas éditable depuis cette page. Contactez le Service Technique.');
+        }
+
+        $roleModel = Role::where('name', $role)->firstOrFail();
+        $configMeta = config('permissions.roles', [])[$role] ?? [];
+
+        $grantablePermissions = $this->grantablePermissionsForActor($registry);
+        $assignedPermissions = $roleModel->permissions->pluck('name')->all();
+
+        return view('esbtp.custom-roles._edit-standard-modal', [
+            'role' => $roleModel,
+            'configMeta' => $configMeta,
+            'grantablePermissions' => $grantablePermissions,
+            'assignedPermissions' => $assignedPermissions,
+        ]);
+    }
+
+    /**
+     * Met à jour un rôle standard (label_fr/icon/description en DB + permissions).
+     */
+    public function updateStandard(Request $request, string $role, PermissionRegistry $registry)
+    {
+        if (! in_array($role, self::EDITABLE_STANDARD_ROLES, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Ce rôle système n\'est pas éditable depuis cette page. Contactez le Service Technique.',
+            ], 403);
+        }
+
+        $roleModel = Role::where('name', $role)->firstOrFail();
+
+        $validated = $request->validate([
+            'label_fr' => ['required', 'string', 'max:255'],
+            'icon' => ['nullable', 'string', 'max:64', Rule::in(self::ALLOWED_ICONS)],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'permissions' => ['array'],
+            'permissions.*' => ['string', 'exists:permissions,name'],
+        ], [
+            'label_fr.required' => 'Le label affiché à l\'utilisateur est obligatoire.',
+            'icon.in' => 'Cette icône n\'est pas autorisée. Choisissez parmi les suggestions.',
+        ]);
+
+        // Garde-fou : un acteur ne peut donner que les permissions qu'il possède
+        // (sauf superAdmin via Gate::before)
+        $requestedPerms = collect($validated['permissions'] ?? [])->unique()->values()->all();
+        $allowedPerms = $this->grantablePermissionsForActor($registry)
+            ->flatten(1)
+            ->pluck('name')
+            ->all();
+        $forbidden = array_diff($requestedPerms, $allowedPerms);
+        if (! empty($forbidden)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous ne pouvez accorder que des permissions que vous possédez. Refusées : ' . implode(', ', $forbidden),
+                'forbidden' => array_values($forbidden),
+            ], 403);
+        }
+
+        DB::beginTransaction();
+        try {
+            // Override DB metadata (le registry config sert de fallback)
+            $roleModel->label_fr = $validated['label_fr'];
+            $roleModel->icon = $this->normalizeIcon($validated['icon'] ?? null);
+            $roleModel->description = $validated['description'] ?? null;
+            // is_custom reste FALSE (rôle système, pas custom)
+            $roleModel->save();
+
+            $roleModel->syncPermissions($requestedPerms);
+
+            DB::commit();
+
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+            $registry->clearCache();
+
+            return response()->json([
+                'success' => true,
+                'message' => "Rôle système « {$validated['label_fr']} » mis à jour.",
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();

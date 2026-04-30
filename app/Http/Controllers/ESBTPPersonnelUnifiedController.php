@@ -114,32 +114,35 @@ class ESBTPPersonnelUnifiedController extends Controller
         // Rétro-compatibilité : $isCoordinateur est dérivé de $userRole
         $isCoordinateur = ($userRole === 'coordinateur');
 
-        // Lot 8 — Rôles custom (visibles si l'utilisateur a users.manage)
+        // Lot 8/17 — Rôles custom + standards éditables (visibles si users.manage)
         $customRoles = collect();
+        $standardRoles = collect();
         if (auth()->user()->can('users.manage')) {
             try {
                 $registry = app(PermissionRegistry::class);
+
+                // Custom roles (is_custom = true)
                 $customRoles = Role::query()
                     ->where('is_custom', true)
                     ->withCount(['users', 'permissions'])
                     ->orderBy('label_fr')
                     ->orderBy('name')
                     ->get()
-                    ->map(function (Role $role) use ($registry) {
-                        $meta = $registry->roleMeta($role->name) ?? [];
-                        return [
-                            'id' => $role->id,
-                            'name' => $role->name,
-                            'label' => $meta['label'] ?? $role->name,
-                            'icon' => $meta['icon'] ?? 'fa-user-tag',
-                            'description' => $meta['description'] ?? '',
-                            'users_count' => $role->users_count,
-                            'permissions_count' => $role->permissions_count,
-                        ];
-                    });
+                    ->map(fn (Role $role) => $this->buildRoleCardData($role, $registry));
+
+                // Standard roles éditables (Lot 17c) — whitelist depuis le controller
+                $standardRoleNames = \App\Http\Controllers\ESBTPCustomRoleController::EDITABLE_STANDARD_ROLES;
+                $standardRoles = Role::query()
+                    ->whereIn('name', $standardRoleNames)
+                    ->withCount(['users', 'permissions'])
+                    ->get()
+                    ->sortBy(fn ($r) => array_search($r->name, $standardRoleNames))
+                    ->values()
+                    ->map(fn (Role $role) => $this->buildRoleCardData($role, $registry));
             } catch (\Throwable $e) {
-                // Migration pas encore lancée ou autre — on degrade silencieusement
+                // Migration pas encore lancée ou registry indispo — degrade silencieusement
                 $customRoles = collect();
+                $standardRoles = collect();
             }
         }
 
@@ -152,8 +155,26 @@ class ESBTPPersonnelUnifiedController extends Controller
             'stats',
             'isCoordinateur',
             'userRole',
-            'customRoles'
+            'customRoles',
+            'standardRoles'
         ));
+    }
+
+    /**
+     * Construit le payload affiché dans une cr-role-card pour un Role donné.
+     */
+    private function buildRoleCardData(Role $role, PermissionRegistry $registry): array
+    {
+        $meta = $registry->roleMeta($role->name) ?? [];
+        return [
+            'id' => $role->id,
+            'name' => $role->name,
+            'label' => $meta['label'] ?? $role->name,
+            'icon' => $meta['icon'] ?? 'fa-user-tag',
+            'description' => $meta['description'] ?? '',
+            'users_count' => $role->users_count,
+            'permissions_count' => $role->permissions_count,
+        ];
     }
 
     /**
