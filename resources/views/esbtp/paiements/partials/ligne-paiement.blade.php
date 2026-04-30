@@ -89,6 +89,18 @@
     <td class="d-none d-md-table-cell">
         <span class="badge bg-info">{{ $paiement->mode_paiement }}</span>
     </td>
+    @if($showCreatorColumn ?? false)
+        {{-- Lot 13 — Encaisseur (visible uniquement pour les users avec paiements.view) --}}
+        <td class="d-none d-lg-table-cell">
+            @if($paiement->creator)
+                <span class="text-truncate" title="{{ $paiement->creator->name }}">
+                    <i class="fas fa-user-circle text-muted me-1"></i>{{ $paiement->creator->name }}
+                </span>
+            @else
+                <span class="text-muted fst-italic">—</span>
+            @endif
+        </td>
+    @endif
     <td>
         @php
             $statusColors = [

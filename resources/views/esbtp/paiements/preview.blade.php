@@ -639,6 +639,20 @@
                             </div>
                         </div>
 
+                        {{-- Lot 13 — Encaissé par (créateur du paiement) --}}
+                        @if($paiement->creator)
+                        <div style="margin-top: 12px; margin-bottom: 8px; border: 1px solid {{ $primary }}; border-radius: 6px; overflow: hidden;">
+                            <div style="padding: 10px 16px; background-color: #f8fafc; border-left: 4px solid {{ $primary }}; display: flex; align-items: center; gap: 12px;">
+                                <span style="font-size: 13px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; min-width: 130px;">
+                                    <i class="fas fa-user-circle me-1"></i>Encaissé par
+                                </span>
+                                <span style="font-size: 16px; font-weight: 700; color: {{ $primary }};">
+                                    {{ $paiement->creator->name }}
+                                </span>
+                            </div>
+                        </div>
+                        @endif
+
                         <!-- Signatures -->
                         <div class="rc-signatures">
                             <div class="rc-signature-box">
