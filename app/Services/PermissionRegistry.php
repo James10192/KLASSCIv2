@@ -3,21 +3,38 @@
 namespace App\Services;
 
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
+use Spatie\Permission\Models\Role;
+use Throwable;
 
 /**
  * Lecture du registry config/permissions.php.
  *
  * Source unique de vérité pour rôles, permissions, aliases, défauts et
  * matrice de gestion. À utiliser partout au lieu d'accéder directement au config.
+ *
+ * Lot 8 : roleMeta() lit la DB en priorité (rôles custom + override) avec
+ * fallback sur le config pour les rôles système.
  */
 class PermissionRegistry
 {
     /** Cache des aliases inversés : alias => canonical */
     private ?array $aliasMap = null;
 
+    /** Cache des rôles DB (incl. is_custom) pour la requête courante */
+    private ?array $dbRolesCache = null;
+
     public function roles(): Collection
     {
-        return collect(config('permissions.roles', []));
+        $configRoles = collect(config('permissions.roles', []));
+
+        // Fusionne les rôles custom de la DB (is_custom = true) qui n'existent pas en config
+        $custom = $this->customRolesFromDb();
+        if ($custom->isEmpty()) {
+            return $configRoles;
+        }
+
+        return $configRoles->merge($custom);
     }
 
     public function rolesVisibleInUi(): Collection
@@ -27,7 +44,46 @@ class PermissionRegistry
 
     public function roleMeta(string $role): ?array
     {
-        return config('permissions.roles', [])[$role] ?? null;
+        $configMeta = config('permissions.roles', [])[$role] ?? null;
+        $dbRow = $this->dbRoles()[$role] ?? null;
+
+        // Si le rôle n'existe ni en config ni en DB → null
+        if ($configMeta === null && $dbRow === null) {
+            return null;
+        }
+
+        // DB row dispo et a un override (label_fr) ou est custom → DB-first
+        if ($dbRow !== null && ((! empty($dbRow['label_fr'])) || ! empty($dbRow['is_custom']))) {
+            $configMeta = $configMeta ?? [];
+
+            return array_merge($configMeta, [
+                'label' => $dbRow['label_fr'] ?? $configMeta['label'] ?? $role,
+                'icon' => $dbRow['icon'] ?? $configMeta['icon'] ?? 'fa-user-tag',
+                'description' => $dbRow['description'] ?? $configMeta['description'] ?? '',
+                'group' => $configMeta['group'] ?? 'Personnalisé',
+                'visible_in_ui' => $configMeta['visible_in_ui'] ?? true,
+                'is_custom' => (bool) ($dbRow['is_custom'] ?? false),
+            ]);
+        }
+
+        // Fallback config (rôle système, pas d'override DB)
+        if ($configMeta !== null) {
+            return array_merge($configMeta, [
+                'is_custom' => false,
+            ]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Indique si un rôle est custom (créé depuis l'UI), donc modifiable/supprimable.
+     */
+    public function roleIsCustom(string $role): bool
+    {
+        $row = $this->dbRoles()[$role] ?? null;
+
+        return $row !== null && (bool) ($row['is_custom'] ?? false);
     }
 
     public function all(): Collection
@@ -108,6 +164,14 @@ class PermissionRegistry
     }
 
     /**
+     * Vide le cache interne (utile après création/édition d'un rôle custom).
+     */
+    public function clearCache(): void
+    {
+        $this->dbRolesCache = null;
+    }
+
+    /**
      * Map alias => canonical, calculé à la demande puis caché.
      */
     private function aliasMap(): array
@@ -124,5 +188,71 @@ class PermissionRegistry
         }
 
         return $this->aliasMap = $map;
+    }
+
+    /**
+     * Charge les rôles depuis la DB indexés par name. Tolère l'absence des
+     * colonnes ajoutées par la migration Lot 8 (env. tests, fresh install).
+     *
+     * @return array<string, array{label_fr:?string, icon:?string, description:?string, is_custom:bool}>
+     */
+    private function dbRoles(): array
+    {
+        if ($this->dbRolesCache !== null) {
+            return $this->dbRolesCache;
+        }
+
+        try {
+            if (! Schema::hasTable('roles') || ! Schema::hasColumn('roles', 'is_custom')) {
+                return $this->dbRolesCache = [];
+            }
+
+            $rows = Role::query()
+                ->select(['name', 'label_fr', 'icon', 'description', 'is_custom'])
+                ->get()
+                ->keyBy('name')
+                ->map(fn ($r) => [
+                    'label_fr' => $r->label_fr ?? null,
+                    'icon' => $r->icon ?? null,
+                    'description' => $r->description ?? null,
+                    'is_custom' => (bool) ($r->is_custom ?? false),
+                ])
+                ->all();
+
+            return $this->dbRolesCache = $rows;
+        } catch (Throwable $e) {
+            // Test env sans DB / table absente → on degrade gracefully
+            return $this->dbRolesCache = [];
+        }
+    }
+
+    /**
+     * Construit une collection des rôles custom au format identique au config
+     * (label, description, icon, group, visible_in_ui, is_custom = true).
+     */
+    private function customRolesFromDb(): Collection
+    {
+        $configKeys = array_keys(config('permissions.roles', []));
+        $custom = [];
+
+        foreach ($this->dbRoles() as $name => $row) {
+            if (! ($row['is_custom'] ?? false)) {
+                continue;
+            }
+            // Si déjà dans le config (cas exotique), on laisse roleMeta() faire le merge
+            if (in_array($name, $configKeys, true)) {
+                continue;
+            }
+            $custom[$name] = [
+                'label' => $row['label_fr'] ?? $name,
+                'description' => $row['description'] ?? '',
+                'icon' => $row['icon'] ?? 'fa-user-tag',
+                'group' => 'Personnalisé',
+                'visible_in_ui' => true,
+                'is_custom' => true,
+            ];
+        }
+
+        return collect($custom);
     }
 }
