@@ -197,6 +197,15 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     // Dashboard - Route principale qui redirige vers le tableau de bord approprié selon le rôle
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Lot 9 — Dashboard widget-based (universel, gated par permissions)
+    // Premier consommateur : rôles custom (Lot 8). Accessible à tous via /dashboard/widgets.
+    Route::prefix('dashboard/widgets')->name('dashboard.widgets.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\DashboardWidgetController::class, 'index'])->name('index');
+        Route::get('/configure', [\App\Http\Controllers\DashboardWidgetController::class, 'configure'])->name('configure');
+        Route::post('/update', [\App\Http\Controllers\DashboardWidgetController::class, 'update'])->name('update');
+        Route::post('/reset', [\App\Http\Controllers\DashboardWidgetController::class, 'reset'])->name('reset');
+    });
+
     // Route de test debug mode (uniquement en développement)
     if (config('app.debug')) {
         Route::get('/test-debug-mode', function () {
@@ -1905,6 +1914,17 @@ Route::middleware(['auth', 'permission:admin.access', 'paywall'])->prefix('esbtp
     Route::put('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'update'])->name('personnel.unified.update');
     Route::delete('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'destroy'])->name('personnel.unified.destroy');
     Route::patch('/personnel/unified/{type}/{id}/toggle-status', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'toggleStatus'])->name('personnel.unified.toggle-status');
+
+    // Lot 8 — Rôles personnalisés (custom roles) gérés depuis personnel/unified
+    Route::get('/custom-roles', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'index'])->name('custom-roles.index');
+    Route::get('/custom-roles/create', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'create'])->name('custom-roles.create');
+    Route::post('/custom-roles', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'store'])->name('custom-roles.store');
+    Route::get('/custom-roles/{role}/edit', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'edit'])->name('custom-roles.edit');
+    Route::put('/custom-roles/{role}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'update'])->name('custom-roles.update');
+    Route::delete('/custom-roles/{role}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'destroy'])->name('custom-roles.destroy');
+    Route::get('/custom-roles/{role}/assign-users', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'assignUsersForm'])->name('custom-roles.assign-users.form');
+    Route::post('/custom-roles/{role}/assign-users', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'assignUsers'])->name('custom-roles.assign-users');
+    Route::delete('/custom-roles/{role}/detach-user/{user}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'detachUser'])->name('custom-roles.detach-user');
 
     // Routes pour les coordinateurs (maintien de la compatibilité)
     Route::resource('coordinateurs', \App\Http\Controllers\ESBTPCoordinateurController::class);
