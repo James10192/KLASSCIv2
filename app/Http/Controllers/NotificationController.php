@@ -298,11 +298,6 @@ class NotificationController extends Controller
                 $q->where('recipient_type', 'all')
                   ->orWhere('recipient_type', 'teachers');
             });
-        } elseif ($user->can('can_view_parent_features') && $user->guardian) {
-            $query->where(function($q) {
-                $q->where('recipient_type', 'all')
-                  ->orWhere('recipient_type', 'parents');
-            });
         }
         
         $notifications = $query->with('sender')

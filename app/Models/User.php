@@ -102,11 +102,6 @@ class User extends Authenticatable
         return $this->can('can_view_student_features');
     }
 
-    public function isParent()
-    {
-        return $this->can('can_view_parent_features');
-    }
-
     public function isAdmin()
     {
         return $this->can('access_admin');

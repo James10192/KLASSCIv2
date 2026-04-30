@@ -623,52 +623,6 @@
                 </li>
                 @endrole
 
-                @role('parent')
-                <div class="menu-category">Espace Parent</div>
-                <li class="nav-item">
-                    <a href="{{ route('parent.dashboard') }}" class="nav-link {{ request()->routeIs('parent.dashboard') ? 'active' : '' }}">
-                        <i class="fas fa-home nav-icon"></i>
-                        <span>Tableau de bord</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('parent.payments') }}" class="nav-link {{ request()->routeIs('parent.payments*') ? 'active' : '' }}">
-                        <i class="fas fa-money-bill-wave nav-icon"></i>
-                        <span>Paiements</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('parent.absences.summary') }}" class="nav-link {{ request()->routeIs('parent.absences*') ? 'active' : '' }}">
-                        <i class="fas fa-user-clock nav-icon"></i>
-                        <span>Absences</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('parent.bulletins') }}" class="nav-link {{ request()->routeIs('parent.bulletins*') ? 'active' : '' }}">
-                        <i class="fas fa-file-invoice nav-icon"></i>
-                        <span>Résultats et bulletins</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('parent.messages') }}" class="nav-link {{ request()->routeIs('parent.messages*') ? 'active' : '' }}">
-                        <i class="fas fa-envelope nav-icon"></i>
-                        <span>Messages</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('parent.notifications') }}" class="nav-link {{ request()->routeIs('parent.notifications*') ? 'active' : '' }}">
-                        <i class="fas fa-bell nav-icon"></i>
-                        <span>Notifications</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('parent.settings.index') }}" class="nav-link {{ request()->routeIs('parent.settings*') ? 'active' : '' }}">
-                        <i class="fas fa-cog nav-icon"></i>
-                        <span>Paramètres</span>
-                    </a>
-                </li>
-                @endrole
-
                 <!-- Communication -->
                 @hasanyrole('superAdmin|secretaire')
                 <div class="menu-category">Communication</div>

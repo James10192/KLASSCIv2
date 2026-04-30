@@ -52,10 +52,6 @@ use App\Http\Controllers\ESBTPSpecialtyController;
 use App\Http\Controllers\ESBTPStudentController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\NavbarController;
-use App\Http\Controllers\ParentMessageController;
-use App\Http\Controllers\ParentNotificationController;
-use App\Http\Controllers\ParentPaymentController;
-use App\Http\Controllers\ParentSettingsController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\StudentProgressionController;
 use App\Http\Controllers\TeacherController;
@@ -1097,58 +1093,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             return view('admin.roles.index', compact('roles'));
         })->name('roles.index');
-    });
-
-    // Routes pour le rôle parent
-    Route::middleware(['auth', 'role:parent'])->prefix('parent')->name('parent.')->group(function () {
-        Route::get('/dashboard', [App\Http\Controllers\ESBTP\ParentController::class, 'dashboard'])->name('dashboard');
-        Route::get('/etudiant/{id}', [App\Http\Controllers\ESBTP\ParentController::class, 'showStudent'])->name('student.show');
-
-        // Notifications
-        Route::get('/notifications', [ParentNotificationController::class, 'index'])->name('notifications');
-        Route::get('/notifications/{id}', [ParentNotificationController::class, 'show'])->name('notifications.show');
-        Route::get('/notifications/{id}/read', [ParentNotificationController::class, 'markAsRead'])->name('notifications.read');
-        Route::get('/notifications/mark-all-as-read', [ParentNotificationController::class, 'markAllAsRead'])->name('notifications.mark-all-read');
-
-        // Messages
-        Route::get('/messages', [ParentMessageController::class, 'index'])->name('messages');
-        Route::get('/messages/create', [ParentMessageController::class, 'create'])->name('messages.create');
-        Route::post('/messages', [ParentMessageController::class, 'store'])->name('messages.store');
-        Route::get('/messages/{id}', [ParentMessageController::class, 'show'])->name('messages.show');
-        Route::get('/messages/{id}/reply', [ParentMessageController::class, 'reply'])->name('messages.reply');
-        Route::post('/messages/{id}/reply', [ParentMessageController::class, 'storeReply'])->name('messages.store-reply');
-        Route::get('/messages/{id}/read', [ParentMessageController::class, 'markAsRead'])->name('messages.read');
-        Route::get('/messages/mark-all-as-read', [ParentMessageController::class, 'markAllAsRead'])->name('messages.mark-all-read');
-
-        // Paiements
-        Route::get('/paiements', [ParentPaymentController::class, 'index'])->name('payments');
-        Route::get('/paiements/etudiant/{id}', [ParentPaymentController::class, 'studentHistory'])->name('payments.student');
-        Route::get('/paiements/{id}', [ParentPaymentController::class, 'show'])->name('payments.show');
-        Route::get('/paiements/{id}/recu', [ParentPaymentController::class, 'downloadReceipt'])->name('payments.download-receipt');
-        Route::get('/paiements/nouveau', [ParentPaymentController::class, 'create'])->name('payments.create');
-        Route::post('/paiements', [ParentPaymentController::class, 'store'])->name('payments.store');
-
-        // Absences
-        Route::get('/absences/resume', [App\Http\Controllers\ESBTP\ParentAbsenceController::class, 'summary'])->name('absences.summary');
-        Route::get('/absences/etudiant/{etudiant_id}', [App\Http\Controllers\ESBTP\ParentAbsenceController::class, 'index'])->name('absences.index');
-        Route::get('/absences/etudiant/{etudiant_id}/absence/{absence_id}', [App\Http\Controllers\ESBTP\ParentAbsenceController::class, 'show'])->name('absences.show');
-        Route::get('/absences/etudiant/{etudiant_id}/absence/{absence_id}/justifier', [App\Http\Controllers\ESBTP\ParentAbsenceController::class, 'edit'])->name('absences.edit');
-        Route::post('/absences/etudiant/{etudiant_id}/absence/{absence_id}/justifier', [App\Http\Controllers\ESBTP\ParentAbsenceController::class, 'update'])->name('absences.update');
-
-        // Bulletins - nouvelles routes pour parents
-        Route::get('/bulletins', [App\Http\Controllers\ESBTP\ParentController::class, 'bulletins'])->name('bulletins.index')
-            ->middleware(['permission:view children bulletins']);
-        Route::get('/bulletins/etudiant/{id}', [App\Http\Controllers\ESBTP\ParentController::class, 'showStudentBulletins'])->name('bulletins.student');
-        Route::get('/bulletins/{id}', [App\Http\Controllers\ESBTP\ParentController::class, 'show'])->name('bulletins.show')
-            ->middleware(['permission:view children bulletins']);
-        Route::get('/bulletins/{id}/pdf', [App\Http\Controllers\ESBTP\ParentController::class, 'downloadPdf'])->name('bulletins.pdf');
-
-        // Paramètres du compte
-        Route::get('/settings', [ParentSettingsController::class, 'index'])->name('settings.index');
-        Route::put('/settings/profile', [ParentSettingsController::class, 'updateProfile'])->name('settings.update');
-        Route::put('/settings/password', [ParentSettingsController::class, 'updatePassword'])->name('settings.password.update');
-        Route::put('/settings/notifications', [ParentSettingsController::class, 'updateNotifications'])->name('settings.notifications.update');
-        Route::put('/settings/photo', [ParentSettingsController::class, 'updatePhoto'])->name('settings.photo.update');
     });
 
     // Notifications routes

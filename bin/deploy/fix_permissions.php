@@ -161,7 +161,6 @@ try {
         'generate_bulletins',
         'edit_bulletins',
         'view_own_bulletin',
-        'view children bulletins',
 
         // Présences
         'view_attendances',
@@ -258,7 +257,6 @@ try {
         'can_manage_school',
         'can_coordinate_academics',
         'can_view_student_features',
-        'can_view_parent_features',
         'module.technical_support.access',
         'module.caisse.access',
 
@@ -289,7 +287,6 @@ try {
         'coordinateur' => 'Coordinateur',
         'enseignant' => 'Enseignant',
         'etudiant' => 'Étudiant',
-        'parent' => 'Parent',
         'serviceTechnique' => 'Service Technique (African Digit Consulting)',
         'teacher' => 'Teacher (alias de enseignant)',
         'comptable' => 'Comptable',
@@ -334,7 +331,7 @@ try {
         'view_niveaux_etudes', 'create_niveaux_etudes', 'edit_niveaux_etudes',
         'view_matieres',
         'view_notes', 'view_evaluations', 'view_exams',
-        'view_bulletins', 'generate_bulletins', 'view children bulletins',
+        'view_bulletins', 'generate_bulletins',
         'view_attendances', 'create_attendance', 'create_attendances', 'edit_attendances', 'delete_attendances',
         'generate-attendance-codes',
         'view_payments', 'create_payments', 'edit_payments',
@@ -405,7 +402,7 @@ try {
         // Évaluations
         'view_evaluations', 'create_evaluations', 'edit_evaluations', 'view_exams',
         // Bulletins
-        'view_bulletins', 'generate_bulletins', 'edit_bulletins', 'view children bulletins',
+        'view_bulletins', 'generate_bulletins', 'edit_bulletins',
         // Présences — full CRUD
         'view_attendances', 'create_attendance', 'create_attendances',
         'edit_attendances', 'delete_attendances',
@@ -492,22 +489,6 @@ try {
     $etudiantPermissions[] = 'can_view_student_features';
     $etudiantRole->syncPermissions($etudiantPermissions);
     echo '✓ Étudiant: '.count($etudiantPermissions)." permissions accordées\n";
-
-    // Parent - Permissions parentales
-    $parentRole = Role::findByName('parent');
-    $parentPermissions = [
-        'view_dashboard',
-        'view_own_students',
-        'view_own_notes',
-        'view_own_bulletin',
-        'view_own_attendances',
-        'view_own_schedule',
-        'receive_messages',
-        'view_annonces',
-    ];
-    $parentPermissions[] = 'can_view_parent_features';
-    $parentRole->syncPermissions($parentPermissions);
-    echo '✓ Parent: '.count($parentPermissions)." permissions accordées\n";
 
     // Service Technique - Toutes les permissions + permissions spéciales paywall
     $serviceTechniqueRole = Role::findByName('serviceTechnique');
