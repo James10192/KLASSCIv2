@@ -1135,7 +1135,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // ESBTP Parents Search (pour modal de sélection dans edit étudiant)
-        Route::get('/parents/search', [App\Http\Controllers\ESBTP\ParentController::class, 'search'])->name('esbtp.parents.search');
+        Route::get('/parents/search', [ESBTPEtudiantController::class, 'searchParents'])->name('esbtp.parents.search');
     });
 
     // Configuration des matricules - accès direct sans sidebar
