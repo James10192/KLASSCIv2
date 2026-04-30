@@ -324,16 +324,17 @@ class ESBTPCustomRoleController extends Controller
         $manageableRoles[] = $roleModel->name;  // user déjà attribué = OK
 
         $assignableUsers = User::query()
-            ->whereHas('roles', function ($q) use ($manageableRoles) {
-                $q->whereIn('name', $manageableRoles);
-            })
-            ->orWhere('id', Auth::id())
             ->where('is_active', true)
+            ->where(function ($q) use ($manageableRoles) {
+                $q->whereHas('roles', function ($sub) use ($manageableRoles) {
+                    $sub->whereIn('name', $manageableRoles);
+                })->orWhere('id', Auth::id());
+            })
+            ->with(['roles:id,name,label_fr'])
             ->orderBy('name')
-            ->get(['id', 'name', 'email']);
-
-        // Filtrer doublons et exclure les users qui n'ont QUE des rôles non-gérables
-        $assignableUsers = $assignableUsers->unique('id')->values();
+            ->get(['id', 'name', 'email'])
+            ->unique('id')
+            ->values();
 
         $currentUserIds = $roleModel->users()->pluck('users.id')->all();
 
@@ -385,22 +386,16 @@ class ESBTPCustomRoleController extends Controller
 
         DB::beginTransaction();
         try {
-            // Récupérer les users actuels pour calculer le diff
             $currentIds = $roleModel->users()->pluck('users.id')->all();
             $toAttach = array_diff($requestedUserIds, $currentIds);
             $toDetach = array_diff($currentIds, $requestedUserIds);
 
-            foreach ($toAttach as $userId) {
-                $user = User::find($userId);
-                if ($user) {
-                    $user->assignRole($roleModel);
-                }
+            // Batch operations : 2 queries au lieu de 2*N (cf revue perf simplify)
+            if (! empty($toAttach)) {
+                $roleModel->users()->attach($toAttach);
             }
-            foreach ($toDetach as $userId) {
-                $user = User::find($userId);
-                if ($user) {
-                    $user->removeRole($roleModel);
-                }
+            if (! empty($toDetach)) {
+                $roleModel->users()->detach($toDetach);
             }
 
             DB::commit();

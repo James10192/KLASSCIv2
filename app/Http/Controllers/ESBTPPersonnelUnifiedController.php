@@ -121,7 +121,7 @@ class ESBTPPersonnelUnifiedController extends Controller
                 $registry = app(PermissionRegistry::class);
                 $customRoles = Role::query()
                     ->where('is_custom', true)
-                    ->withCount('users')
+                    ->withCount(['users', 'permissions'])
                     ->orderBy('label_fr')
                     ->orderBy('name')
                     ->get()
@@ -134,7 +134,7 @@ class ESBTPPersonnelUnifiedController extends Controller
                             'icon' => $meta['icon'] ?? 'fa-user-tag',
                             'description' => $meta['description'] ?? '',
                             'users_count' => $role->users_count,
-                            'permissions_count' => $role->permissions()->count(),
+                            'permissions_count' => $role->permissions_count,
                         ];
                     });
             } catch (\Throwable $e) {
