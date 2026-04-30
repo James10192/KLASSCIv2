@@ -95,7 +95,30 @@ try {
     echo "\n";
 
     /*
-     * 4. Utilisateurs sans rôle : audit (signalement uniquement, pas d'attribution
+     * 4. Healing : pour chaque rôle existant, si il a un alias legacy, lui
+     *    ajouter aussi le canonique (non-destructif). Permet la migration code
+     *    Lot 6 (alias → canonique) sans casser les tenants existants.
+     */
+    echo "🔄 Synchronisation canoniques pour rôles existants...\n";
+    foreach ($roles->keys() as $roleName) {
+        $role = Role::findByName($roleName);
+        $existingNames = $role->permissions->pluck('name')->all();
+        $toAdd = [];
+        foreach ($existingNames as $name) {
+            $canonical = $registry->canonicalize($name);
+            if ($canonical !== $name && ! in_array($canonical, $existingNames, true)) {
+                $toAdd[] = $canonical;
+            }
+        }
+        if (! empty($toAdd)) {
+            $role->givePermissionTo($toAdd);
+            echo "  ✓ {$roleName} : ".count($toAdd)." canoniques ajoutés (alias → canon)\n";
+        }
+    }
+    echo "\n";
+
+    /*
+     * 5. Utilisateurs sans rôle : audit (signalement uniquement, pas d'attribution
      *    automatique par email — supprimé Lot 5, sécurité)
      */
     echo "🔍 Vérification des utilisateurs sans rôle...\n";
