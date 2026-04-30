@@ -583,14 +583,14 @@
                                 <i class="fas fa-ellipsis-v"></i>
                             </button>
                             <ul class="dropdown-menu dropdown-menu-end timeline-session-dropdown">
-                                @can('edit_timetables')
+                                @can('timetables.edit')
                                 <li>
                                     <a class="dropdown-item" href="{{ route('esbtp.seances-cours.edit', $session['id']) }}">
                                         <i class="fas fa-edit"></i> Modifier
                                     </a>
                                 </li>
                                 @endcan
-                                @can('delete_timetables')
+                                @can('timetables.delete')
                                 <li>
                                     <button type="button"
                                             class="dropdown-item text-danger"

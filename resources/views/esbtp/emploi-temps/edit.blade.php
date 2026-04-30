@@ -137,7 +137,7 @@
                         </div>
 
                         <div class="d-flex justify-content-between">
-                            @can('delete_timetables')
+                            @can('timetables.delete')
                             <form action="{{ route('esbtp.emploi-temps.destroy', ['emploi_temp' => is_object($emploiTemps) ? $emploiTemps->id : $emploiTemps]) }}" method="POST">
                                 @csrf
                                 @method('DELETE')

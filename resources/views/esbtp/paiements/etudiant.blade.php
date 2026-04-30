@@ -13,7 +13,7 @@
                         <a href="{{ route('esbtp.etudiants.show', $etudiant->id) }}" class="btn btn-default btn-sm">
                             <i class="fas fa-arrow-left"></i> Profil de l'étudiant
                         </a>
-                        @can('create-paiements')
+                        @can('paiements.create')
                         <a href="{{ route('esbtp.paiements.create', ['etudiant_id' => $etudiant->id]) }}" class="btn btn-primary btn-sm">
                             <i class="fas fa-plus"></i> Nouveau paiement
                         </a>

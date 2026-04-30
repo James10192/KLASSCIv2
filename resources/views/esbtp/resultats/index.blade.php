@@ -25,7 +25,7 @@
                     <a href="{{ route('esbtp.resultats.classes') }}" class="sr-hero-btn">
                         <i class="fas fa-layer-group"></i>Classes
                     </a>
-                    @can('edit_bulletins')
+                    @can('bulletins.edit')
                         <a href="{{ route('esbtp.bulletins.configuration') }}" class="sr-hero-btn--solid sr-hero-btn">
                             <i class="fas fa-cog"></i>Configuration
                         </a>

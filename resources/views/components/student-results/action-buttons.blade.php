@@ -26,7 +26,7 @@
 
             @if(isset($classe) && $classe)
                 {{-- Modification (superAdmin / secretaire) --}}
-                @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']))
+                @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
                     <a href="{{ route('esbtp.bulletins.moyennes-preview', ['etudiant_id' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => ($periode == '1' ? 'semestre1' : ($periode == '2' ? 'semestre2' : $periode)), 'annee_universitaire_id' => $annee_id]) }}"
                        class="sr-action-btn">
                         <div class="sr-action-btn-icon sr-action-btn-icon--warning">
@@ -37,7 +37,7 @@
                 @endif
 
                 {{-- Configuration (superAdmin) --}}
-                @if(auth()->user()->can('access_admin'))
+                @if(auth()->user()->can('admin.access'))
                     <a href="{{ route('esbtp.bulletins.config-matieres', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}"
                        class="sr-action-btn">
                         <div class="sr-action-btn-icon sr-action-btn-icon--info">

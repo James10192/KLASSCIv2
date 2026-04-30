@@ -577,7 +577,7 @@
                 </div>
             </a>
 
-            @can('manage-planning')
+            @can('planning.manage')
             <a href="{{ route('esbtp.planning-general.coordinateur') }}" class="action-card-modern">
                 <div class="action-icon-modern">
                     <i class="fas fa-cogs"></i>

@@ -775,7 +775,7 @@
                     <a href="{{ route('esbtp.emploi-temps.index') }}" class="ets-btn ets-btn--glass">
                         <i class="fas fa-arrow-left"></i> Retour
                     </a>
-                    @can('create_timetable')
+                    @can('timetables.create')
                     <a href="{{ route('esbtp.seances-cours.create', ['emploi_temps_id' => $emploiTemps->id]) }}" class="ets-btn ets-btn--white">
                         <i class="fas fa-plus"></i> Séance
                     </a>
@@ -796,14 +796,14 @@
                                 </a>
                             </li>
                             <li><div class="ets-dropdown-divider"></div></li>
-                            @can('edit_timetables')
+                            @can('timetables.edit')
                             <li>
                                 <a class="dropdown-item" href="{{ route('esbtp.emploi-temps.edit', ['emploi_temp' => $emploiTemps->id]) }}">
                                     <i class="fas fa-edit"></i> Modifier l'emploi
                                 </a>
                             </li>
                             @endcan
-                            @can('delete_timetables')
+                            @can('timetables.delete')
                             <li>
                                 <button type="button" class="dropdown-item text-danger" onclick="etsDeleteEmploi()">
                                     <i class="fas fa-trash"></i> Supprimer l'emploi
@@ -849,7 +849,7 @@
         </div>
 
         {{-- Form cache suppression emploi (declenche via kebab menu) --}}
-        @can('delete_timetables')
+        @can('timetables.delete')
         <form id="ets-delete-emploi-form" method="POST" action="{{ route('esbtp.emploi-temps.destroy', ['emploi_temp' => $emploiTemps->id]) }}" style="display:none;">
             @csrf
             @method('DELETE')
@@ -884,7 +884,7 @@
                 @if (session('show_force_delete'))
                     <hr>
                     <div class="d-flex justify-content-end">
-                        @if(auth()->user()->can('access_admin') && auth()->user()->can('delete_timetables'))
+                        @if(auth()->user()->can('admin.access') && auth()->user()->can('timetables.delete'))
                         <form action="{{ route('esbtp.emploi-temps.destroy', ['emploi_temp' => $emploiTemps->id]) }}" method="POST">
                             @csrf
                             @method('DELETE')

@@ -35,7 +35,7 @@
                     <a href="{{ route('esbtp.resultats.classe', $classe->id) }}" class="sr-cls-btn sr-cls-btn--primary">
                         <i class="fas fa-chart-bar"></i>Résultats
                     </a>
-                    @can('access_admin')
+                    @can('admin.access')
                         <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}" class="sr-cls-btn sr-cls-btn--secondary">
                             <i class="fas fa-edit"></i>
                         </a>

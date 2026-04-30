@@ -29,7 +29,7 @@
         <table class="ii-table">
             <thead>
                 <tr>
-                    @can('access_admin')
+                    @can('admin.access')
                     <th style="width:38px;">
                         <input type="checkbox" id="select-all-inscriptions" class="form-check-input" aria-label="Tout sélectionner">
                     </th>

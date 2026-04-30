@@ -815,7 +815,7 @@ let evaluationsData = {};
 let notesData = {};
 let evalParamsCache = {};
 let classeSemestres = []; // Dynamic semesters from class level
-const canEditExistingNotes = @json(auth()->user()->can('edit_existing_notes'));
+const canEditExistingNotes = @json(auth()->user()->can('notes.edit'));
 
 document.addEventListener('DOMContentLoaded', function() {
     notesModal = new bootstrap.Modal(document.getElementById('modalNotes'));

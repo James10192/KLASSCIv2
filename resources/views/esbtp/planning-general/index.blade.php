@@ -1685,7 +1685,7 @@
                             </div>
                         </a>
 
-                        @canany(['manage-planning', 'view-all-timetables'])
+                        @canany(['planning.manage', 'timetables.view_all'])
                         <a href="{{ route('esbtp.planning-general.coordinateur', ['annee_id' => $anneeSelectionnee->id]) }}" class="action-card card-moderne text-decoration-none">
                             <div class="p-lg">
                                 <div class="action-icon settings">

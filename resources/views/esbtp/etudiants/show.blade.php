@@ -2096,7 +2096,7 @@
             <span class="hero-avatar-status {{ $estInscritCetteAnnee ? 'actif' : 'inactif' }}"
                   title="{{ $estInscritCetteAnnee ? 'Inscrit ' . ($anneeCourante->name ?? '') : ($inscFutureSousReserve ? 'Pré-inscrit ' . ($inscFutureSousReserve->anneeUniversitaire->name ?? '') . ' (sous réserve)' : 'Non inscrit pour l\'année en cours') }}"></span>
             {{-- Bouton upload photo (superAdmin / secretaire) --}}
-            @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']))
+            @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
                 <label class="hero-avatar-upload" id="heroPhotoUploadBtn" title="Modifier la photo">
                     <i class="fas fa-camera"></i>
                     <input type="file" accept="image/jpeg,image/png,image/jpg,image/gif"
@@ -2175,7 +2175,7 @@
                 <span class="hero-pill year"><i class="fas fa-calendar-alt"></i> {{ $anneeCourante->name }}</span>
             @endif
             <div class="hero-btns">
-                @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']))
+                @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
                 <a href="{{ route('esbtp.etudiants.edit', $etudiant) }}" class="hero-btn primary">
                     <i class="fas fa-edit"></i> <span class="d-none d-sm-inline">Modifier</span>
                 </a>
@@ -2235,7 +2235,7 @@
                 <a href="{{ route('esbtp.etudiants.index') }}" class="hero-btn ghost">
                     <i class="fas fa-arrow-left"></i> <span class="d-none d-sm-inline">Retour</span>
                 </a>
-                @can('delete_students')
+                @can('students.delete')
                 <form id="es-form-delete-student" action="{{ route('esbtp.etudiants.destroy', $etudiant) }}" method="POST" style="margin:0">
                     @csrf @method('DELETE')
                     <button type="button" class="hero-btn danger"
@@ -5112,7 +5112,7 @@
                 <span class="info-val">{{ $etudiant->user->created_at?->format('d/m/Y à H:i') ?? '—' }}</span>
             </div>
         </div>
-        @can('edit_students')
+        @can('students.edit')
         <div style="padding:12px 16px 4px; border-top:1px solid rgba(0,0,0,.06);">
             <a href="{{ route('esbtp.etudiants.reset-password', $etudiant->id) }}"
                onclick="return confirm('Réinitialiser le mot de passe de cet étudiant ? Le nouveau mot de passe sera : Bonjour@2025')"

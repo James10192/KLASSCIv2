@@ -146,7 +146,7 @@
                 </div>
 
                 <div class="row mb-3">
-                    @if($inscription->status !== 'active' || auth()->user()->can('access_admin'))
+                    @if($inscription->status !== 'active' || auth()->user()->can('admin.access'))
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label for="filiere_id">Filière <span class="text-danger">*</span></label>
@@ -180,7 +180,7 @@
                                 @enderror
                             </div>
                         </div>
-                    @elseif($inscription->status === 'active' && !auth()->user()->can('access_admin'))
+                    @elseif($inscription->status === 'active' && !auth()->user()->can('admin.access'))
                         <!-- Champs hidden pour conserver les valeurs non modifiables (sauf pour superAdmin) -->
                         <input type="hidden" name="filiere_id" value="{{ $inscription->filiere_id }}">
                         <input type="hidden" name="niveau_id" value="{{ $inscription->niveau_id }}">
@@ -202,7 +202,7 @@
                         </div>
                     @endif
 
-                    @if($inscription->status !== 'active' || auth()->user()->can('access_admin'))
+                    @if($inscription->status !== 'active' || auth()->user()->can('admin.access'))
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label for="classe_id" class="form-label">Classe</label>
@@ -224,7 +224,7 @@
                                 <div class="form-text text-muted">Vous pouvez changer la classe tant que l'inscription n'est pas activée.</div>
                             </div>
                         </div>
-                    @elseif($inscription->status === 'active' && !auth()->user()->can('access_admin'))
+                    @elseif($inscription->status === 'active' && !auth()->user()->can('admin.access'))
                         <!-- Champ hidden pour conserver la valeur de la classe (sauf pour superAdmin) -->
                         <input type="hidden" name="classe_id" value="{{ $inscription->classe_id }}">
 

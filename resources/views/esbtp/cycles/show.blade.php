@@ -43,13 +43,13 @@
                         <div class="card-header">
                             <h3 class="card-title">Informations du Cycle</h3>
                             <div class="card-tools">
-                                @can('edit cycles')
+                                @can('cycles.edit')
                                 <a href="{{ route('esbtp.cycles.edit', $cycle->id) }}" class="btn btn-warning btn-sm">
                                     <i class="fas fa-edit"></i> Modifier
                                 </a>
                                 @endcan
                                 @if(!$cycle->trashed())
-                                    @can('delete cycles')
+                                    @can('cycles.delete')
                                     <button type="button" class="btn btn-danger btn-sm" onclick="confirmDelete('{{ $cycle->id }}')">
                                         <i class="fas fa-trash"></i> Archiver
                                     </button>
@@ -59,7 +59,7 @@
                                     </form>
                                     @endcan
                                 @else
-                                    @can('restore cycles')
+                                    @can('cycles.restore')
                                     <button type="button" class="btn btn-success btn-sm" onclick="confirmRestore('{{ $cycle->id }}')">
                                         <i class="fas fa-undo"></i> Restaurer
                                     </button>
@@ -67,7 +67,7 @@
                                         @csrf
                                     </form>
                                     @endcan
-                                    @can('force delete cycles')
+                                    @can('cycles.force_delete')
                                     <button type="button" class="btn btn-danger btn-sm" onclick="confirmForceDelete('{{ $cycle->id }}')">
                                         <i class="fas fa-times"></i> Supprimer définitivement
                                     </button>

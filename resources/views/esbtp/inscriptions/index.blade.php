@@ -730,7 +730,7 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
             <button type="button" class="ii-bulk-btn ii-bulk-btn--primary" onclick="iiBulkValider()">
                 <i class="fas fa-check-double"></i>Valider
             </button>
-            @can('annuler inscriptions')
+            @can('inscriptions.cancel')
                 <button type="button" class="ii-bulk-btn" onclick="iiBulkAnnuler()">
                     <i class="fas fa-times"></i>Annuler
                 </button>

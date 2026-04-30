@@ -101,7 +101,7 @@
                     </div>
                 </div>
                 <div class="sr-hero-actions">
-                    @if(isset($classe) && $classe && auth()->user()->can('access_admin'))
+                    @if(isset($classe) && $classe && auth()->user()->can('admin.access'))
                         <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}?annee_universitaire_id={{ $annee_id }}&semestre={{ isset($periode) ? str_replace('semestre', '', $periode) : '' }}"
                            class="sr-hero-btn">
                             <i class="fas fa-edit"></i>Éditer classe

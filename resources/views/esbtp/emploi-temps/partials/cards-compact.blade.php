@@ -32,8 +32,8 @@
             ($emploiTemps->classe->niveau->name ?? '')
         ));
 
-        $canEdit = auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('edit_timetables');
-        $canDelete = auth()->user()->can('access_admin') && auth()->user()->can('delete_timetables');
+        $canEdit = auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']) || auth()->user()->can('timetables.edit');
+        $canDelete = auth()->user()->can('admin.access') && auth()->user()->can('timetables.delete');
     @endphp
 
     <div class="et-row"

@@ -1485,7 +1485,7 @@
 
                     <!-- Academic Management Section -->
                     @can('module.academique.access')
-                    @can('view_filieres')
+                    @can('filieres.view')
                         <div class="menu-category">Gestion académique</div>
 
                         <!-- Programs & Classes -->
@@ -1541,7 +1541,7 @@
 
                     <!-- Students Section -->
                     @can('module.etudiants.access')
-                    @can('view_students')
+                    @can('students.view')
                         <div class="menu-category">Étudiants</div>
 
                         <!-- Student Management -->
@@ -1564,7 +1564,7 @@
                                     <div class="menu-icon"><i class="fas fa-user-plus"></i></div>
                                     <div class="menu-text">Nouvelle Inscription</div>
                                 </a>
-                                @can('view_inscriptions')
+                                @can('inscriptions.view')
                                 <a href="{{ route('esbtp.reinscription.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-redo"></i></div>
                                     <div class="menu-text">Réinscriptions</div>
@@ -1580,8 +1580,8 @@
                     @endcan
 
                     <!-- Personnel (non-superAdmin — superAdmin has accordion in Administration) -->
-                    @can('manage_personnel')
-                        @if(!auth()->user()->can('access_admin'))
+                    @can('personnel.manage')
+                        @if(!auth()->user()->can('admin.access'))
                         <div class="menu-category">Personnel</div>
                         <div class="menu-item">
                             <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-link {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
@@ -1607,7 +1607,7 @@
 
                     <!-- Teaching Section -->
                     @can('module.emploi_temps.access')
-                    @can('view_timetables')
+                    @can('timetables.view')
                         <div class="menu-category">Enseignement</div>
 
                         <!-- Schedule Management -->
@@ -1618,7 +1618,7 @@
                             </a>
                         </div>
 
-                        @can('view_matieres')
+                        @can('matieres.view')
                         <!-- Matières -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.matieres.index') }}" class="menu-link {{ Request::routeIs('esbtp.matieres.*') ? 'active' : '' }}">
@@ -1641,7 +1641,7 @@
 
                     <!-- Grades & Reports Section -->
                     @can('module.notes_evaluations.access')
-                    @can('view_notes')
+                    @can('notes.view')
                         <div class="menu-category">Notes & Rapports</div>
 
                         <!-- Grades Management -->
@@ -1675,7 +1675,7 @@
 
                     <!-- LMD Section (Licence-Master-Doctorat) -->
                     @can('module.lmd.access')
-                    @can('view_notes')
+                    @can('notes.view')
                         <div class="menu-category">Système LMD</div>
 
                         <div class="menu-accordion">
@@ -1711,7 +1711,7 @@
                     @endcan
 
                     <!-- Administration Section -->
-                    @can('manage_personnel')
+                    @can('personnel.manage')
                         <div class="menu-category">Administration</div>
 
                         <!-- Staff Management -->
@@ -1748,7 +1748,7 @@
 
                     <!-- Attendance Section -->
                     @can('module.presences.access')
-                    @can('view_attendances')
+                    @can('attendances.view')
                         <div class="menu-category">Présence & Absences</div>
 
                         <!-- Gestion des présences/absences -->
@@ -1771,7 +1771,7 @@
                                     <span class="menu-dot"></span>
                                     <span>Historique émargement enseignant</span>
                                 </a>-->
-                                @can('generate-attendance-codes')
+                                @can('attendances.generate_codes')
                                 <a href="{{ route('esbtp.attendance-codes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendance-codes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Codes d'émargement</span>
@@ -1787,11 +1787,11 @@
                     @endcan
 
                     {{-- Enseignant-only section: hidden for users who already see canonical sections --}}
-                    @can('can_teach')
-                    @if(!auth()->user()->can('access_admin'))
+                    @can('identity.teach')
+                    @if(!auth()->user()->can('admin.access'))
                         <div class="menu-category">Enseignement</div>
 
-                        @can('view_classes')
+                        @can('classes.view')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.classes.index') }}" class="menu-link {{ Request::routeIs('esbtp.classes.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-chalkboard"></i></div>
@@ -1809,7 +1809,7 @@
                         </div>
                         @endcan
 
-                        @can('view_notes')
+                        @can('notes.view')
                         <div class="menu-item">
                             <a href="{{ route('teacher.grades') }}" class="menu-link {{ Request::routeIs('teacher.grades') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-pen-to-square"></i></div>
@@ -1818,7 +1818,7 @@
                         </div>
                         @endcan
 
-                        @can('view_attendances')
+                        @can('attendances.view')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.attendance.mark') }}" class="menu-link {{ Request::routeIs('esbtp.attendance.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
@@ -1844,7 +1844,7 @@
                         @if(!auth()->user()->can('module.etudiants.access'))
                         <div class="menu-category">Consultation</div>
 
-                        @can('view_students')
+                        @can('students.view')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.etudiants.index') }}" class="menu-link {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-graduate"></i></div>
@@ -1853,7 +1853,7 @@
                         </div>
                         @endcan
 
-                        @can('view_inscriptions')
+                        @can('inscriptions.view')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-link {{ Request::routeIs('esbtp.inscriptions.*') && !Request::routeIs('esbtp.inscriptions.pre-inscription') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-file-signature"></i></div>
@@ -1916,7 +1916,7 @@
                     @endcan
 
                     <!-- Messages Section -->
-                    @can('can_view_student_features')
+                    @can('identity.student')
                         <div class="menu-category">Communication</div>
 
                         <!-- Messages -->
@@ -1929,7 +1929,7 @@
 
                         <!-- Notifications -->
                         <div class="menu-item">
-                            @can('can_view_student_features')
+                            @can('identity.student')
                                 <a href="{{ route('esbtp.mes-notifications.index') }}" class="menu-link {{ Request::routeIs('esbtp.mes-notifications.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-bell"></i></div>
                                     <div class="menu-text">Mes notifications</div>
@@ -1995,7 +1995,7 @@
 
                     <!-- Announcements Section -->
                     @can('module.communication.access')
-                    @can('view_annonces')
+                    @can('annonces.view')
                     <div class="menu-category">Communication</div>
                     <!-- Announcements Management -->
                         <div class="menu-item">
@@ -2005,7 +2005,7 @@
                             </a>
                         </div>
 
-                        @can('create_annonces')
+                        @can('annonces.create')
                         <!-- Create Announcement -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.annonces.create') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.create') ? 'active' : '' }}">
@@ -2050,7 +2050,7 @@
                     @endrole
 
                     <!-- System Section -->
-                    @can('manage_system')
+                    @can('system.manage')
                         <div class="menu-category">Système</div>
 
                         <!-- System Settings -->
@@ -2147,9 +2147,9 @@
                     <div class="menu-item">
                         @php
                             $profileRoute = 'admin.profile';
-                            if (auth()->user()->can('can_teach')) {
+                            if (auth()->user()->can('identity.teach')) {
                                 $profileRoute = 'teacher.profile';
-                            } elseif (auth()->user()->can('can_coordinate_academics')) {
+                            } elseif (auth()->user()->can('identity.coordinate')) {
                                 $profileRoute = 'coordinateur.profile';
                             }
                         @endphp
@@ -2246,7 +2246,7 @@
                                 </div>
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
-                                    @can('can_view_student_features')
+                                    @can('identity.student')
                                         <a class="dropdown-item text-center view-all" href="{{ route('esbtp.mes-messages.index') }}">
                                             <i class="fas fa-envelope-open me-1"></i>
                                             Voir tous les messages
@@ -2273,7 +2273,7 @@
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <div class="quick-actions-grid" id="quick-actions-list">
-                                        @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']))
+                                        @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
                                             <a href="{{ route('esbtp.etudiants.create') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
                                                     <i class="fas fa-user-plus"></i>
@@ -2298,7 +2298,7 @@
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle classe</span>
                                             </a>
-                                        @elseif(auth()->user()->can('can_coordinate_academics'))
+                                        @elseif(auth()->user()->can('identity.coordinate'))
                                             <a href="{{ route('esbtp.emploi-temps.create') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
                                                     <i class="fas fa-calendar-plus"></i>
@@ -2317,7 +2317,7 @@
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle annonce</span>
                                             </a>
-                                        @elseif(auth()->user()->can('can_view_student_features'))
+                                        @elseif(auth()->user()->can('identity.student'))
                                             <a href="{{ route('esbtp.mes-evaluations.index') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
                                                     <i class="fas fa-clipboard-list"></i>
@@ -2478,11 +2478,11 @@
                             ? \Carbon\Carbon::parse($anneeCouranteModal->end_date)
                             : null;
                         $anneeCouranteExpired = $anneeCouranteModal && $anneeCouranteEndDate && $anneeCouranteEndDate->isPast();
-                        $isSuperAdmin = auth()->user()?->can('access_admin');
+                        $isSuperAdmin = auth()->user()?->can('admin.access');
                         $canValidateInscriptions = auth()->user()?->can('inscriptions.validate');
-                        $canAccessTimetable = auth()->user()?->can('view_timetables') || auth()->user()?->can('view-all-timetables');
-                        $canAccessEvaluations = auth()->user()?->can('view_exams') || auth()->user()?->can('view_evaluations');
-                        $canAccessNotes = auth()->user()?->can('view_grades') || auth()->user()?->can('create_grades') || auth()->user()?->can('edit_grades') || auth()->user()?->can('manage_own_notes');
+                        $canAccessTimetable = auth()->user()?->can('timetables.view') || auth()->user()?->can('timetables.view_all');
+                        $canAccessEvaluations = auth()->user()?->can('exams.view') || auth()->user()?->can('evaluations.view');
+                        $canAccessNotes = auth()->user()?->can('notes.view') || auth()->user()?->can('notes.create') || auth()->user()?->can('notes.edit') || auth()->user()?->can('notes.manage_own');
                         $canSeeGradingReminder = $canAccessEvaluations || $canAccessNotes;
                         $pendingCurrentYearInscriptionsCount = 0;
                         $pendingCurrentYearInscriptionsByStep = [];

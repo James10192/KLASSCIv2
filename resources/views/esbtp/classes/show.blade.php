@@ -457,12 +457,12 @@
                     </div>
                 </div>
                 <div class="cs-hero-actions">
-                    @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_coordinate_academics']))
+                    @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']))
                         <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" class="cs-btn--glass">
                             <i class="fas fa-book"></i>Gérer matières
                         </a>
                     @endif
-                    @if(auth()->user()->can('access_admin'))
+                    @if(auth()->user()->can('admin.access'))
                         <a href="{{ route('esbtp.classes.edit', array_merge(['classe' => $classe->id], ['return_url' => request()->fullUrl()])) }}" class="cs-btn--white">
                             <i class="fas fa-edit"></i>Modifier
                         </a>
@@ -627,7 +627,7 @@
                         <strong id="studentCountSubtitle">{{ $nombreEtudiants }} étudiant(s)</strong> inscrit(s) dans cette classe pour l'année courante
                     </div>
                     <div class="cs-students-btns">
-                        @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_coordinate_academics']))
+                        @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']))
                             <button type="button" class="cs-btn--primary" data-bs-toggle="modal" data-bs-target="#addStudentsModal">
                                 <i class="fas fa-user-plus"></i>Ajouter
                             </button>
@@ -635,7 +635,7 @@
                                 <i class="fas fa-exchange-alt"></i>Retirer / Transférer
                             </button>
                         @endif
-                        @if($nombreEtudiants > 0 && auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_teach', 'can_coordinate_academics']))
+                        @if($nombreEtudiants > 0 && auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.teach', 'identity.coordinate']))
                             <div class="dropdown">
                                 <button type="button" class="cs-btn--outline" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-download"></i>Exporter
@@ -691,7 +691,7 @@
                         <i class="fas fa-exclamation-triangle"></i>
                         <div>
                             Aucune matière n'est encore configurée dans le catalogue pour cette filière / ce niveau.
-                            @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']))
+                            @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
                                 <br><a href="{{ route('esbtp.matieres.index') }}" style="color:#92400e;text-decoration:underline;">Compléter le paramétrage global</a>
                                 ·
                                 <a href="{{ route('esbtp.classes.matieres', ['classe' => $classe->id]) }}" style="color:#92400e;text-decoration:underline;">Ajuster pour {{ $classe->name }}</a>

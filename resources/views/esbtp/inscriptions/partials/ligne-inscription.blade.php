@@ -148,7 +148,7 @@
         <div class="inscription-actions-wrapper" data-inscription-actions="{{ $inscription->id }}">
             <div class="inscription-actions-buttons ii-actions">
                 @if($inscription->status === 'pending' || $inscription->status === 'en_attente')
-                    @can('valider inscriptions')
+                    @can('inscriptions.validate')
                         <button type="button"
                                 class="ii-btn ii-btn--primary valider-btn"
                                 data-id="{{ $inscription->id }}"
@@ -182,7 +182,7 @@
                                 </a>
                             </li>
                         @endcan
-                        @can('edit inscriptions')
+                        @can('inscriptions.edit')
                             @if($inscription->status === 'pending' || $inscription->status === 'en_attente')
                                 <li>
                                     <a class="dropdown-item" href="{{ route('esbtp.inscriptions.edit', $inscription->id) }}">
@@ -192,7 +192,7 @@
                             @endif
                         @endcan
                         @if($inscription->status === 'pending' || $inscription->status === 'en_attente')
-                            @can('annuler inscriptions')
+                            @can('inscriptions.cancel')
                                 <li>
                                     <button type="button"
                                             class="dropdown-item"
@@ -205,7 +205,7 @@
                                 </li>
                             @endcan
                         @endif
-                        @can('delete inscriptions')
+                        @can('inscriptions.delete')
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <button type="button"

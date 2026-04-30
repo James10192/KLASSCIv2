@@ -871,7 +871,7 @@
                     </div>
                 </div>
                 <div class="ci-hero-actions">
-                    @if(auth()->user()->can('access_admin'))
+                    @if(auth()->user()->can('admin.access'))
                         <form action="{{ route('esbtp.classes.sync-systeme-academique') }}" method="POST" style="display:inline;">
                             @csrf
                             <button type="submit" class="ci-btn--glass" title="Synchroniser BTS/LMD depuis les niveaux d'études">

@@ -12,9 +12,9 @@
         ? min(100, round(($classe->nombre_etudiants / $classe->places_totales) * 100))
         : 0;
     $occLevel = $occupation >= 95 ? 'full' : ($occupation >= 75 ? 'high' : ($occupation >= 40 ? 'mid' : 'low'));
-    $canAdmin = auth()->user()->can('access_admin');
-    $canManageSchool = auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_coordinate_academics']);
-    $canTeach = auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school', 'can_teach', 'can_coordinate_academics']);
+    $canAdmin = auth()->user()->can('admin.access');
+    $canManageSchool = auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']);
+    $canTeach = auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.teach', 'identity.coordinate']);
     $showUrl = route('esbtp.classes.show', array_merge(['classe' => $classe->id], request()->query()));
 @endphp
 

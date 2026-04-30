@@ -26,7 +26,7 @@
                     <span class="emploi-shortcut-chip">{{ $timetableShortcut['expiring_soon'] }} expire(nt) bientôt</span>
                 @endif
             </div>
-            @if(auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('create_timetable'))
+            @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']) || auth()->user()->can('timetables.create'))
                 <div class="emploi-actions" style="border-top: none; padding-top: 0;">
                     <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal" data-bs-target="#quickGenerateModal">
                         <i class="fas fa-bolt me-1"></i>Créer maintenant
@@ -71,8 +71,8 @@
             ($emploiTemps->classe->niveau->name ?? '')
         ));
 
-        $canEdit = auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('edit_timetables');
-        $canDelete = auth()->user()->can('access_admin') && auth()->user()->can('delete_timetables');
+        $canEdit = auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']) || auth()->user()->can('timetables.edit');
+        $canDelete = auth()->user()->can('admin.access') && auth()->user()->can('timetables.delete');
     @endphp
 
     <div class="et-card et-card--{{ $cardStatus }}"
@@ -206,7 +206,7 @@
         $canDuplicate = ! empty($previousWeekValue ?? null)
             && ($previousWeekPlanningCount ?? 0) > 0
             && ! empty($requestedWeek)
-            && (auth()->user()->hasAnyPermission(['access_admin', 'can_manage_school']) || auth()->user()->can('create_timetable'));
+            && (auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']) || auth()->user()->can('timetables.create'));
     @endphp
     @if($canDuplicate)
         @php
