@@ -34,6 +34,7 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPSystemSetting;
 use App\Models\ESBTPEtablissement;
+use App\Services\PermissionRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -57,6 +58,14 @@ class DashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
+
+        // Lot 9 — Si l'utilisateur n'a QUE des rôles custom (créés via UI Lot 8),
+        // pas de dashboard hard-codé : router vers le dashboard widget-based.
+        // Les rôles système (superAdmin, secretaire...) gardent leur dashboard
+        // dédié pour préserver l'UX existante.
+        if ($this->userHasOnlyCustomRoles($user)) {
+            return redirect()->route('dashboard.widgets.index');
+        }
 
         // SuperAdmin/Admin en premier — ils ont TOUTES les permissions,
         // donc tout check permission-based matcherait. On utilise hasRole()
@@ -102,6 +111,38 @@ class DashboardController extends Controller
 
         // Fallback — tableau de bord générique
         return view('dashboard.index', compact('user'));
+    }
+
+    /**
+     * Lot 9 — Détecte si l'utilisateur n'a que des rôles custom (créés via UI Lot 8).
+     *
+     * Si oui, on n'a pas de dashboard hard-codé pour eux : router vers le
+     * dashboard widget-based (config/dashboard_widgets.php).
+     *
+     * Retourne false si l'utilisateur a au moins un rôle système (gestion legacy)
+     * ou aucun rôle (fallback générique).
+     */
+    private function userHasOnlyCustomRoles($user): bool
+    {
+        $roleNames = $user->roles->pluck('name')->all();
+        if (empty($roleNames)) {
+            return false;
+        }
+
+        $registry = app(PermissionRegistry::class);
+        // Si la méthode roleIsCustom n'existe pas (Lot 8 pas encore mergé),
+        // on revient au comportement legacy (false → continue le routing standard).
+        if (! method_exists($registry, 'roleIsCustom')) {
+            return false;
+        }
+
+        foreach ($roleNames as $name) {
+            if (! $registry->roleIsCustom($name)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**
