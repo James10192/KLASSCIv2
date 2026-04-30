@@ -201,6 +201,15 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     // Dashboard - Route principale qui redirige vers le tableau de bord approprié selon le rôle
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Lot 9 — Dashboard widget-based (universel, gated par permissions)
+    // Premier consommateur : rôles custom (Lot 8). Accessible à tous via /dashboard/widgets.
+    Route::prefix('dashboard/widgets')->name('dashboard.widgets.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\DashboardWidgetController::class, 'index'])->name('index');
+        Route::get('/configure', [\App\Http\Controllers\DashboardWidgetController::class, 'configure'])->name('configure');
+        Route::post('/update', [\App\Http\Controllers\DashboardWidgetController::class, 'update'])->name('update');
+        Route::post('/reset', [\App\Http\Controllers\DashboardWidgetController::class, 'reset'])->name('reset');
+    });
+
     // Route de test debug mode (uniquement en développement)
     if (config('app.debug')) {
         Route::get('/test-debug-mode', function () {

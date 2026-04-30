@@ -41,6 +41,7 @@ class User extends Authenticatable
         'must_change_password',
         'password_changed_at',
         'first_login_at',
+        'dashboard_widgets',
     ];
 
     protected $hidden = [
@@ -57,6 +58,7 @@ class User extends Authenticatable
         'must_change_password' => 'boolean',
         'password_changed_at' => 'datetime',
         'first_login_at' => 'datetime',
+        'dashboard_widgets' => 'array',
         // 'password' => 'hashed', // ❌ SUPPRIMÉ car non supporté
     ];
 
