@@ -69,6 +69,8 @@ try {
         'valider inscriptions',
         'annuler inscriptions',
         'delete inscriptions',
+        // Inscription cancel (référencée etudiants/index_fusionne.blade.php:359)
+        'inscriptions.cancel',
 
         // Paiements avec syntaxe point
         'paiements.view',
@@ -76,6 +78,9 @@ try {
         'paiements.edit',
         'paiements.delete',
         'paiements.validate',
+        // Paiements kebab (référencées dans paiements/*.blade.php — à canoniser Lot 6)
+        'create-paiements',
+        'edit-paiements',
 
         // Frais avec syntaxe point
         'frais.view',
@@ -113,6 +118,7 @@ try {
         // Classes et filières
         'view_classes',
         'create_classes',
+        'create_classe',  // typo référencé routes/web.php:399 — à canoniser Lot 6
         'edit_classes',
         'delete_classes',
         'view_filieres',
