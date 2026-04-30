@@ -1909,7 +1909,7 @@
                     </div>
                 </div>
 
-                {{-- Caissiers Panel --}}
+                {{-- ═══ Panel Caissiers (Lot 18e — aligne sur le pattern comptables) ═══ --}}
                 <div class="pu-panel slider-panel {{ $firstVisibleTab === 'caissiers' ? 'active' : '' }}" id="caissiers-panel">
                     <div class="pu-panel-header">
                         <div class="pu-search">
@@ -1919,30 +1919,50 @@
                             <i class="fas fa-plus"></i>Nouveau Caissier
                         </a>
                     </div>
-                    <div class="pu-grid" id="caissiers-grid">
+
+                    <div class="pu-filters">
+                        <label>Filtrer :</label>
+                        <select class="pu-filter-select filter-select" id="filter-caissiers-status">
+                            <option value="">Tous les statuts</option>
+                            <option value="active">Actifs</option>
+                            <option value="inactive">Inactifs</option>
+                        </select>
+                    </div>
+
+                    <div id="caissiers-list">
                         @if(isset($caissiers) && $caissiers->count() > 0)
                             @foreach($caissiers as $caissier)
                             <div class="pu-card personnel-card">
                                 <div class="pu-avatar pu-avatar-blue">
                                     {{ strtoupper(substr($caissier->name, 0, 2)) }}
                                 </div>
-                                <div class="pu-card-body">
-                                    <h4 class="pu-card-name">{{ $caissier->name }}</h4>
-                                    <p class="pu-card-info">{{ $caissier->email }}</p>
-                                    @if($caissier->telephone)
-                                    <p class="pu-card-info"><i class="fas fa-phone"></i> {{ $caissier->telephone }}</p>
-                                    @endif
-                                    <span class="pu-badge {{ $caissier->is_active ? 'pu-badge-success' : 'pu-badge-danger' }}">
-                                        {{ $caissier->is_active ? 'Actif' : 'Inactif' }}
-                                    </span>
+                                <div class="pu-info">
+                                    <div class="pu-name">{{ $caissier->name }}</div>
+                                    <div class="pu-meta">
+                                        <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $caissier->email ?: 'Sans email' }}</span>
+                                        @if($caissier->phone ?? $caissier->telephone ?? null)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $caissier->phone ?? $caissier->telephone }}</span>
+                                        @endif
+                                        <span class="pu-meta-item"><i class="fas fa-cash-register"></i>Caissier</span>
+                                        <span class="pu-meta-item"><i class="fas fa-calendar"></i>{{ $caissier->created_at->format('d/m/Y') }}</span>
+                                    </div>
                                 </div>
-                                <div class="pu-card-actions">
+                                <span class="pu-status {{ $caissier->is_active ? 'pu-status-active' : 'pu-status-inactive' }}">
+                                    {{ $caissier->is_active ? 'Actif' : 'Inactif' }}
+                                </span>
+                                <div class="pu-actions">
+                                    <a href="{{ route('esbtp.caissiers.show', $caissier) }}" class="pu-action-btn" title="Voir">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    <a href="{{ route('esbtp.caissiers.edit', $caissier) }}" class="pu-action-btn" title="Modifier">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
                                     @if($caissier->id !== auth()->id())
                                     <button type="button"
-                                            class="pu-action-btn pu-act-danger"
-                                            title="Supprimer"
-                                            onclick="deletePersonnel('caissier', {{ $caissier->id }})">
-                                        <i class="fas fa-trash"></i>
+                                            class="pu-action-btn {{ $caissier->is_active ? 'pu-act-danger' : 'pu-act-success' }}"
+                                            title="{{ $caissier->is_active ? 'Désactiver' : 'Activer' }}"
+                                            onclick="toggleCaissierStatus({{ $caissier->id }})">
+                                        <i class="fas fa-{{ $caissier->is_active ? 'pause' : 'play' }}"></i>
                                     </button>
                                     @endif
                                 </div>
@@ -2115,6 +2135,19 @@ function toggleSecretaireStatus(secretaireId) {
     if (confirm('Changer le statut de ce secrétaire ?')) {
         fetch(`/esbtp/secretaires/${secretaireId}/toggle-status`, {
             method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' }
+        })
+        .then(r => r.json())
+        .then(d => { if (d.success) { alert(d.message); location.reload(); } else alert('Erreur'); })
+        .catch(() => alert('Erreur'));
+    }
+}
+
+// Lot 18e — toggle status caissier (route PATCH dediee)
+function toggleCaissierStatus(caissierId) {
+    if (confirm('Changer le statut de ce caissier ?')) {
+        fetch(`/esbtp/caissiers/${caissierId}/toggle-status`, {
+            method: 'PATCH',
             headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' }
         })
         .then(r => r.json())
