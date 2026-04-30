@@ -801,6 +801,16 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/paiements/refresh', [App\Http\Controllers\ESBTPPaiementController::class, 'refresh'])->name('paiements.refresh');
             Route::get('/paiements/check-updates', [App\Http\Controllers\ESBTPPaiementController::class, 'checkForUpdates'])->name('paiements.check-updates');
 
+            // Lot 15 — Export détaillé des paiements (états financiers avec filtres + garde-fou PDF)
+            Route::middleware(['permission:paiements.export'])
+                ->prefix('paiements/export-detaille')
+                ->name('paiements.export-detaille.')
+                ->group(function () {
+                    Route::get('/', [App\Http\Controllers\ESBTPPaiementExportController::class, 'index'])->name('index');
+                    Route::post('/preview', [App\Http\Controllers\ESBTPPaiementExportController::class, 'preview'])->name('preview');
+                    Route::post('/generate', [App\Http\Controllers\ESBTPPaiementExportController::class, 'generate'])->name('generate');
+                });
+
             // Routes pour export des paiements
             Route::get('/paiements/test-filters', [App\Http\Controllers\ESBTPPaiementController::class, 'testFilters'])->name('paiements.test-filters');
             Route::get('/paiements/export/excel', [App\Http\Controllers\ESBTPPaiementController::class, 'exportExcel'])->name('paiements.export.excel');

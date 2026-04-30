@@ -1888,9 +1888,19 @@
 
                         @can('paiements.view')
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.paiements.index') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.*') ? 'active' : '' }}">
+                            <a href="{{ route('esbtp.paiements.index') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.index') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-money-bill-wave"></i></div>
                                 <div class="menu-text">Paiements</div>
+                            </a>
+                        </div>
+                        @endcan
+
+                        {{-- Lot 15 — Export détaillé (visible aussi pour caissier sans accès module comptabilité) --}}
+                        @can('paiements.export')
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.paiements.export-detaille.index') }}" class="menu-link {{ Request::routeIs('esbtp.paiements.export-detaille.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-file-export"></i></div>
+                                <div class="menu-text">Export détaillé</div>
                             </a>
                         </div>
                         @endcan
@@ -1981,6 +1991,13 @@
                                     <span class="menu-dot"></span>
                                     <span>Suivi par Catégorie</span>
                                 </a>
+                                {{-- Lot 15 — Export détaillé --}}
+                                @can('paiements.export')
+                                <a href="{{ route('esbtp.paiements.export-detaille.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.paiements.export-detaille.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Export détaillé</span>
+                                </a>
+                                @endcan
                                 {{-- Relances --}}
                                 @can('comptabilite.relances.send')
                                 <a href="{{ route('esbtp.comptabilite.relances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.relances.*') ? 'active' : '' }}">
