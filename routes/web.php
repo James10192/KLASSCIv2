@@ -1897,10 +1897,21 @@ Route::middleware(['auth', 'permission:system.manage', 'paywall'])->prefix('esbt
     Route::put('/comptables/{user}', [\App\Http\Controllers\ESBTPComptableController::class, 'update'])->name('comptables.update');
     Route::post('/comptables/{user}/toggle-status', [\App\Http\Controllers\ESBTPComptableController::class, 'toggleStatus'])->name('comptables.toggle-status');
     Route::delete('/comptables/{user}', [\App\Http\Controllers\ESBTPComptableController::class, 'destroy'])->name('comptables.destroy');
+    // Lot 18d — bouton reset-password universel sur fiche comptable
+    Route::post('/comptables/{user}/reset-password', [\App\Http\Controllers\ESBTPComptableController::class, 'resetPassword'])->name('comptables.reset-password');
 
-    // Caissier
+    // Caissier (create/store mutualisés avec ESBTPComptableController, le reste sur ESBTPCaissierController)
     Route::get('/caissiers/create', [\App\Http\Controllers\ESBTPComptableController::class, 'createCaissier'])->name('caissiers.create');
     Route::post('/caissiers', [\App\Http\Controllers\ESBTPComptableController::class, 'storeCaissier'])->name('caissiers.store');
+
+    // Lot 18a — caissiers : show, edit, update, destroy + toggle-status + reset-password
+    Route::get('/caissiers/{caissier}', [\App\Http\Controllers\ESBTPCaissierController::class, 'show'])->name('caissiers.show');
+    Route::get('/caissiers/{caissier}/edit', [\App\Http\Controllers\ESBTPCaissierController::class, 'edit'])->name('caissiers.edit');
+    Route::put('/caissiers/{caissier}', [\App\Http\Controllers\ESBTPCaissierController::class, 'update'])->name('caissiers.update');
+    Route::patch('/caissiers/{caissier}', [\App\Http\Controllers\ESBTPCaissierController::class, 'update']);
+    Route::delete('/caissiers/{caissier}', [\App\Http\Controllers\ESBTPCaissierController::class, 'destroy'])->name('caissiers.destroy');
+    Route::patch('/caissiers/{caissier}/toggle-status', [\App\Http\Controllers\ESBTPCaissierController::class, 'toggleStatus'])->name('caissiers.toggle-status');
+    Route::post('/caissiers/{caissier}/reset-password', [\App\Http\Controllers\ESBTPCaissierController::class, 'resetPassword'])->name('caissiers.reset-password');
 });
 
 // Routes pour la gestion du personnel avec sliders
