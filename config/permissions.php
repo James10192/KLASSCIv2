@@ -144,7 +144,7 @@ return [
             'label' => 'Voir tous les étudiants',
             'group' => 'Étudiants',
             'icon' => 'fa-user-graduate',
-            'aliases' => ['view_students'],
+            'aliases' => ['view_students', 'view students'],
         ],
         'students.view_own' => [
             'label' => 'Voir uniquement ses propres étudiants',
@@ -289,7 +289,7 @@ return [
             'label' => 'Voir les filières',
             'group' => 'Académique',
             'icon' => 'fa-stream',
-            'aliases' => ['view_filieres'],
+            'aliases' => ['view_filieres', 'view filieres'],
         ],
         'filieres.create' => [
             'label' => 'Créer une filière',
@@ -439,6 +439,12 @@ return [
             'icon' => 'fa-file-alt',
             'aliases' => ['view_own_bulletin'],
         ],
+        'bulletins.create' => [
+            'label' => 'Créer un bulletin',
+            'group' => 'Bulletins',
+            'icon' => 'fa-plus',
+            'aliases' => ['create_bulletins'],
+        ],
         'bulletins.generate' => [
             'label' => 'Générer un bulletin',
             'group' => 'Bulletins',
@@ -450,6 +456,12 @@ return [
             'group' => 'Bulletins',
             'icon' => 'fa-edit',
             'aliases' => ['edit_bulletins'],
+        ],
+        'bulletins.delete' => [
+            'label' => 'Supprimer un bulletin',
+            'group' => 'Bulletins',
+            'icon' => 'fa-trash',
+            'aliases' => ['delete_bulletins'],
         ],
         'bulletins.configure' => [
             'label' => 'Configurer le format des bulletins',
@@ -499,7 +511,19 @@ return [
             'label' => 'Générer les codes d\'émargement',
             'group' => 'Présences',
             'icon' => 'fa-qrcode',
-            'aliases' => ['generate-attendance-codes'],
+            'aliases' => ['generate-attendance-codes', 'generate-attendance-code'],
+        ],
+        'attendances.view_reports' => [
+            'label' => 'Voir les rapports de présence',
+            'group' => 'Présences',
+            'icon' => 'fa-chart-bar',
+            'aliases' => ['view-attendance-reports'],
+        ],
+        'attendances.view_statistics' => [
+            'label' => 'Voir les statistiques de présence',
+            'group' => 'Présences',
+            'icon' => 'fa-chart-pie',
+            'aliases' => ['view-attendance-statistics'],
         ],
 
         // ===== Paiements =====
@@ -569,6 +593,12 @@ return [
             'label' => 'Accès à l\'espace Comptabilité',
             'group' => 'Comptabilité',
             'icon' => 'fa-calculator',
+            'aliases' => ['access_comptabilite_module'],
+        ],
+        'comptabilite.manage' => [
+            'label' => 'Gérer la comptabilité (action globale)',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-tasks',
         ],
         'comptabilite.dashboard.view' => [
             'label' => 'Voir le tableau de bord comptable',
@@ -615,13 +645,18 @@ return [
             'group' => 'Comptabilité',
             'icon' => 'fa-history',
         ],
+        'comptabilite.sensitive.access' => [
+            'label' => 'Accès aux données comptables sensibles',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-lock',
+        ],
 
         // ===== Personnel & enseignants =====
         'teachers.view' => [
             'label' => 'Voir les enseignants',
             'group' => 'Personnel',
             'icon' => 'fa-chalkboard-teacher',
-            'aliases' => ['view_teachers'],
+            'aliases' => ['view_teachers', 'view teachers'],
         ],
         'teachers.create' => [
             'label' => 'Créer un enseignant',
@@ -960,6 +995,38 @@ return [
             'label' => 'Surveiller l\'activité des utilisateurs',
             'group' => 'Sécurité',
             'icon' => 'fa-user-shield',
+        ],
+        'security.events.view' => [
+            'label' => 'Voir les événements de sécurité',
+            'group' => 'Sécurité',
+            'icon' => 'fa-shield-alt',
+        ],
+        'security.backup.view' => [
+            'label' => 'Voir les sauvegardes',
+            'group' => 'Sécurité',
+            'icon' => 'fa-database',
+        ],
+        'security.backup.create' => [
+            'label' => 'Créer une sauvegarde',
+            'group' => 'Sécurité',
+            'icon' => 'fa-save',
+        ],
+        'security.backup.restore' => [
+            'label' => 'Restaurer une sauvegarde',
+            'group' => 'Sécurité',
+            'icon' => 'fa-undo',
+        ],
+        'admin.system.security' => [
+            'label' => 'Administration sécurité système',
+            'group' => 'Sécurité',
+            'icon' => 'fa-shield-virus',
+        ],
+
+        // ===== Workflow comptable =====
+        'comptabilite.bons.approve' => [
+            'label' => 'Approuver les bons comptables (workflow)',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-check-double',
         ],
     ],
 

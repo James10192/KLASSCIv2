@@ -27,7 +27,7 @@ class PermissionRegistry
 
     public function roleMeta(string $role): ?array
     {
-        return config("permissions.roles.$role");
+        return config('permissions.roles', [])[$role] ?? null;
     }
 
     public function all(): Collection
@@ -44,7 +44,7 @@ class PermissionRegistry
 
     public function permissionMeta(string $name): ?array
     {
-        return config("permissions.permissions.$name");
+        return config('permissions.permissions', [])[$name] ?? null;
     }
 
     /**
@@ -80,7 +80,7 @@ class PermissionRegistry
      */
     public function defaultPermissionsFor(string $role): array
     {
-        $defaults = config("permissions.role_defaults.$role", []);
+        $defaults = config('permissions.role_defaults', [])[$role] ?? [];
 
         if (in_array('*', $defaults, true)) {
             return $this->all()->keys()->all();
@@ -94,17 +94,17 @@ class PermissionRegistry
      */
     public function manageableRoles(string $actorRole): array
     {
-        return config("permissions.role_management.$actorRole", []);
+        return config('permissions.role_management', [])[$actorRole] ?? [];
     }
 
     public function isDeprecated(string $name): bool
     {
-        return config("permissions.deprecated.$name") !== null;
+        return isset(config('permissions.deprecated', [])[$name]);
     }
 
     public function deprecatedReason(string $name): ?string
     {
-        return config("permissions.deprecated.$name.reason");
+        return config('permissions.deprecated', [])[$name]['reason'] ?? null;
     }
 
     /**
