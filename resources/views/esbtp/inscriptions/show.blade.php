@@ -1269,6 +1269,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                         Cette inscription concerne l'année <strong>{{ $inscription->anneeUniversitaire->name }}</strong> qui n'est pas encore l'année courante.
                         Souhaitez-vous la marquer sous réserve (ex: en attente du Baccalauréat) ?
                     </div>
+                    @can('inscriptions.edit')
                     <form method="POST" action="{{ route('esbtp.inscriptions.marquer-sous-reserve', $inscription) }}" style="display:inline-flex; gap:8px; align-items:center;">
                         @csrf
                         <input type="text" name="condition_reserve" value="BACCALAURÉAT" class="form-control form-control-sm" style="width:180px; font-size:.82rem;" placeholder="Condition...">
@@ -1276,6 +1277,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             <i class="fas fa-clipboard-check"></i> Marquer sous réserve
                         </button>
                     </form>
+                    @endcan
                 </div>
             </div>
             @endif
@@ -1521,10 +1523,12 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 <div class="alert-no-classe-text mb-2">
                                     L'étudiant a été retiré de sa classe ou n'a jamais été affecté. Choisissez une classe pour réactiver ses frais de scolarité.
                                 </div>
+                                @can('inscriptions.edit')
                                 <button type="button" class="btn-affecter-classe" data-bs-toggle="modal" data-bs-target="#affectationClasseModal">
                                     <i class="fas fa-user-plus"></i>
                                     Affecter à une classe
                                 </button>
+                                @endcan
                             </div>
                         </div>
                     </div>
@@ -1554,7 +1558,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                         @else
                                             <div class="classe-manquante-cell">
                                                 <span class="classe-manquante-badge"><i class="fas fa-exclamation-circle"></i> Non affecté</span>
+                                                @can('inscriptions.edit')
                                                 <button type="button" class="btn btn-sm btn-affecter-classe" data-bs-toggle="modal" data-bs-target="#affectationClasseModal" style="padding:4px 12px;font-size:0.78rem;"><i class="fas fa-user-plus"></i> Affecter</button>
+                                                @endcan
                                             </div>
                                         @endif
                                     </span>
@@ -2554,9 +2560,11 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             <div class="is-section-header">
                                 <div class="is-section-icon"><i class="fas fa-plus-circle"></i></div>
                                 <div class="is-section-title">Frais Optionnels Disponibles</div>
+                                @can('inscriptions.edit')
                                 <button type="button" class="btn btn-sm btn-primary ms-auto" style="border-radius:8px;font-size:0.8rem;" data-bs-toggle="modal" data-bs-target="#subscriptionModal">
                                     <i class="fas fa-plus me-1"></i>Souscrire
                                 </button>
+                                @endcan
                             </div>
                             <div class="d-flex align-items-center gap-2 mb-3 px-3 py-2 rounded-3" style="background: rgba(6,182,212,0.07); border: 1px solid rgba(6,182,212,0.2);">
                                 <i class="fas fa-info-circle text-info" style="font-size:1.1rem;"></i>
