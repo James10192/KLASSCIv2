@@ -149,6 +149,6 @@ class ESBTPCategoriePaiement extends Model
      */
     public function getUrlAttribute()
     {
-        return route('esbtp.comptabilite.paiements', ['categorie' => $this->id]);
+        return route('esbtp.paiements.index', ['categorie' => $this->id]);
     }
 }
