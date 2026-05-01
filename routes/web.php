@@ -1403,6 +1403,13 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     // KPIs temps réel
     Route::get('/kpis-temps-reel', [ESBTPComptabiliteController::class, 'kpisTempsReel'])->name('kpis-temps-reel');
 
+    // Analytics Prédictifs (Phase 3)
+    Route::get('/analytics', [\App\Http\Controllers\ESBTPAnalyticsController::class, 'index'])
+        ->name('analytics.index');
+    Route::get('/analytics/refresh', [\App\Http\Controllers\ESBTPAnalyticsController::class, 'refresh'])
+        ->name('analytics.refresh')
+        ->middleware('throttle:30,1');
+
     // Gestion des frais de scolarité
     Route::get('/frais-scolarite', [ESBTPComptabiliteReportController::class, 'fraisScolarite'])->name('frais-scolarite');
     Route::get('/frais-scolarite/create', [ESBTPComptabiliteFraisController::class, 'createFraisScolarite'])->name('frais-scolarite.create');

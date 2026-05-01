@@ -616,6 +616,16 @@ return [
             'group' => 'Comptabilité',
             'icon' => 'fa-chart-line',
         ],
+        'comptabilite.analytics.view' => [
+            'label' => 'Voir les prédictions analytics (cash-flow, défauts, anomalies)',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-brain',
+        ],
+        'comptabilite.analytics.refresh' => [
+            'label' => 'Forcer le recalcul synchrone des prédictions analytics',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-sync',
+        ],
         'comptabilite.relances.send' => [
             'label' => 'Envoyer des relances de paiement',
             'group' => 'Comptabilité',
