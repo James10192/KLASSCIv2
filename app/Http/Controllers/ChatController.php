@@ -19,7 +19,9 @@ class ChatController extends Controller
             ->whereHas('participants', fn ($q) => $q->where('user_id', $user->id))
             ->with([
                 'participants:id,name,email',
-                'lastMessage:id,chat_conversation_id,sender_id,type,body,created_at',
+                // Pas de select() partiel ici : latestOfMany() construit un INNER JOIN
+                // sur subquery qui rend chat_conversation_id ambigu côté MySQL.
+                'lastMessage',
             ])
             ->orderByDesc('last_message_at')
             ->limit(50)
