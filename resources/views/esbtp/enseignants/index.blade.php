@@ -552,7 +552,7 @@
                     <div class="te-hero-title">
                         <i class="fas fa-chalkboard-teacher"></i>Gestion des Enseignants
                     </div>
-                    <div class="te-hero-subtitle">Profils, disponibilités et affectations du corps enseignant</div>
+                    <div class="te-hero-subtitle">Vue secondaire — la gestion principale est dans <strong>Personnel</strong>.</div>
                 </div>
                 <div class="te-hero-actions">
                     <button type="button" class="te-hero-btn" data-bs-toggle="modal" data-bs-target="#bulkAvailabilityModal">

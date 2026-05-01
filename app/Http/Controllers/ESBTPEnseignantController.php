@@ -52,12 +52,20 @@ class ESBTPEnseignantController extends Controller
 
         $specializations = ESBTPTeacher::distinct()->pluck("specialization")->filter();
 
+        $row = ESBTPTeacher::selectRaw(
+            "COUNT(*) as total,
+             SUM(status = 'active') as active,
+             SUM(status = 'inactive') as inactive,
+             SUM(regime = 'permanent') as permanent,
+             SUM(regime = 'vacataire') as temporary"
+        )->first();
+
         $stats = [
-            "total" => ESBTPTeacher::count(),
-            "active" => ESBTPTeacher::where("status", "active")->count(),
-            "inactive" => ESBTPTeacher::where("status", "inactive")->count(),
-            "permanent" => ESBTPTeacher::where("regime", "permanent")->count(),
-            "temporary" => ESBTPTeacher::where("regime", "vacataire")->count(),
+            "total" => (int) ($row->total ?? 0),
+            "active" => (int) ($row->active ?? 0),
+            "inactive" => (int) ($row->inactive ?? 0),
+            "permanent" => (int) ($row->permanent ?? 0),
+            "temporary" => (int) ($row->temporary ?? 0),
         ];
 
         return view(
@@ -893,8 +901,7 @@ class ESBTPEnseignantController extends Controller
      */
     public function destroy(ESBTPTeacher $teacher)
     {
-        // Empêcher la suppression de son propre compte
-        if ($teacher->user_id === Auth::id()) {
+        if ($teacher->user_id === auth()->id()) {
             return redirect()->back()->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');
         }
 
