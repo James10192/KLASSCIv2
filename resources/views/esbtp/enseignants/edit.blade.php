@@ -56,45 +56,9 @@
 .es-edit-btn.ghost { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.35); }
 .es-edit-btn.ghost:hover { background: rgba(255,255,255,.25); }
 
-/* -- Form cards (namespace ee-*) ----------------------------------- */
-.ee-form { max-width: 1100px; margin: 0 auto; }
+@include('esbtp.enseignants.partials._form-styles', ['ns' => 'ee'])
 
-.ee-card {
-    background: #fff;
-    border: 1px solid #e2e8f0;
-    border-radius: 14px;
-    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
-    margin-bottom: 1.25rem;
-    transition: box-shadow .2s ease;
-}
-.ee-card:hover {
-    box-shadow: 0 4px 16px rgba(4,83,203,.06), 0 1px 3px rgba(15,23,42,.04);
-}
-.ee-card-body { padding: 1.5rem 1.75rem; }
-
-.ee-section-header { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; }
-.ee-section-icon {
-    width: 38px; height: 38px;
-    border-radius: 10px;
-    background: linear-gradient(135deg, #0453cb, #3b7ddb);
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: .9rem; flex-shrink: 0;
-}
-.ee-section-title { margin: 0; font-size: 1.05rem; font-weight: 700; color: #0f172a; }
-.ee-section-sub { margin: 0; font-size: .8rem; color: #64748b; }
-
-.ee-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 1rem 1.25rem;
-}
-.ee-field { display: flex; flex-direction: column; gap: .35rem; }
-.ee-field-wide { grid-column: 1 / -1; }
-.ee-label { font-size: .8rem; font-weight: 600; color: #1e293b; }
-.ee-label .req { color: #dc2626; margin-left: 2px; }
-
-.ee-input,
-.ee-select,
+/* -- Edit-only : textarea + status toggle + availability grid ------ */
 .ee-textarea {
     width: 100%;
     padding: .6rem .8rem;
@@ -104,52 +68,14 @@
     color: #0f172a;
     background: #fff;
     transition: border-color .15s, box-shadow .15s;
+    min-height: 90px;
+    resize: vertical;
+    font-family: inherit;
 }
-.ee-textarea { min-height: 90px; resize: vertical; font-family: inherit; }
-.ee-input:focus, .ee-select:focus, .ee-textarea:focus {
+.ee-textarea:focus {
     outline: none; border-color: #0453cb;
     box-shadow: 0 0 0 3px rgba(4,83,203,.1);
 }
-.ee-input.is-invalid, .ee-select.is-invalid { border-color: #dc2626; }
-.ee-help { font-size: .73rem; color: #64748b; line-height: 1.4; }
-.ee-error { font-size: .76rem; color: #dc2626; font-weight: 500; }
-
-/* Régime cards */
-.ee-regime-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: .75rem;
-}
-.ee-regime-card {
-    position: relative;
-    border: 1.5px solid #e2e8f0;
-    border-radius: 12px;
-    padding: 1rem 1.1rem;
-    cursor: pointer;
-    transition: all .15s ease;
-    background: #fff;
-}
-.ee-regime-card:hover { border-color: #94a3b8; transform: translateY(-1px); }
-.ee-regime-card.active {
-    border-color: #0453cb;
-    background: rgba(4,83,203,.04);
-    box-shadow: 0 0 0 3px rgba(4,83,203,.08);
-}
-.ee-regime-card input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
-.ee-regime-icon {
-    width: 32px; height: 32px;
-    border-radius: 8px;
-    background: #eef2f7; color: #475569;
-    display: flex; align-items: center; justify-content: center;
-    font-size: .85rem;
-    margin-bottom: .55rem;
-    transition: all .15s ease;
-}
-.ee-regime-card.active .ee-regime-icon { background: #0453cb; color: #fff; }
-.ee-regime-name { font-weight: 700; font-size: .92rem; color: #0f172a; margin: 0 0 .15rem; }
-.ee-regime-desc { font-size: .73rem; color: #64748b; margin: 0; line-height: 1.4; }
-.ee-conditional { display: none; }
-.ee-conditional.show { display: flex; }
 
 /* Toggle status */
 .ee-status-toggle {
@@ -179,31 +105,6 @@ input[type="checkbox"]:checked + .ee-status-switch { background: #10b981; }
 input[type="checkbox"]:checked + .ee-status-switch::before { transform: translateX(18px); }
 .ee-status-label { font-size: .85rem; font-weight: 600; color: #1e293b; }
 
-/* Section pliable */
-.ee-collapse-toggle {
-    width: 100%;
-    background: transparent; border: none;
-    display: flex; align-items: center; gap: .75rem;
-    padding: 0; cursor: pointer; text-align: left;
-}
-.ee-collapse-toggle:hover .ee-section-title { color: #0453cb; }
-.ee-toggle-chevron {
-    margin-left: auto;
-    color: #94a3b8;
-    transition: transform .25s ease;
-}
-.ee-card[data-collapsed="false"] .ee-toggle-chevron { transform: rotate(180deg); }
-.ee-collapse-body {
-    overflow: hidden;
-    max-height: 0;
-    transition: max-height .3s ease, margin-top .3s ease;
-    margin-top: 0;
-}
-.ee-card[data-collapsed="false"] .ee-collapse-body {
-    max-height: 1500px;
-    margin-top: 1.25rem;
-}
-
 /* Disponibilités grid */
 .ee-avail-table { width: 100%; border-collapse: separate; border-spacing: 4px; margin-top: .5rem; }
 .ee-avail-table th { font-size: .72rem; color: #64748b; font-weight: 600; padding: .35rem; text-align: center; }
@@ -226,31 +127,15 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
 .ee-avail-legend-dot.available { background: rgba(16,185,129,.4); }
 .ee-avail-legend-dot.preferred { background: rgba(4,83,203,.5); }
 
-/* Actions / Alerts */
-.ee-actions { display: flex; justify-content: space-between; gap: .6rem; padding: 1.25rem 0; align-items: center; }
+/* Edit-specific actions layout (justify-content: space-between vs flex-end du partial) */
+.ee-actions { justify-content: space-between; align-items: center; }
 .ee-actions-right { display: flex; gap: .6rem; }
-.ee-alert {
-    border-radius: 10px;
-    padding: .85rem 1rem;
-    margin-bottom: 1rem;
-    display: flex; align-items: flex-start; gap: .65rem;
-    font-size: .87rem; line-height: 1.5;
-    border: 1px solid transparent;
-}
-.ee-alert-warning { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.25); color: #78350f; }
-.ee-alert-success { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.25); color: #065f46; }
-.ee-alert-icon { margin-top: 2px; flex-shrink: 0; }
 
 @media (max-width: 768px) {
     .es-edit-hero-inner { padding: 20px 16px; flex-direction: column; text-align: center; }
     .es-edit-pills { justify-content: center; }
     .es-edit-btns { margin-left: 0; justify-content: center; }
-    .ee-card-body { padding: 1.1rem; }
-    .ee-grid { grid-template-columns: 1fr; }
-    .ee-regime-grid { grid-template-columns: 1fr; }
-    .ee-actions { flex-direction: column-reverse; }
     .ee-actions-right { width: 100%; }
-    .ee-actions .btn-acasi { width: 100%; justify-content: center; }
     .ee-avail-table { font-size: .7rem; }
 }
 </style>
@@ -393,24 +278,19 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                     </div>
 
                     @php
-                        $regimeOptions = [
-                            'vacataire' => ['label' => 'Vacataire', 'desc' => 'Heure facturée, contrat semestriel', 'icon' => 'fa-clock'],
-                            'permanent' => ['label' => 'Permanent', 'desc' => 'Salaire mensuel, charge fixe', 'icon' => 'fa-user-tie'],
-                            'consultant' => ['label' => 'Consultant', 'desc' => 'Mission ponctuelle, expertise', 'icon' => 'fa-handshake'],
-                        ];
-                        $selectedRegime = old('regime', $teacher->regime ?? 'vacataire');
+                        $selectedRegime = old('regime', $teacher->regime ?? \App\Enums\TeacherRegime::Vacataire->value);
                         $currentDate = old('date_debut_activite', $teacher->date_debut_activite ? $teacher->date_debut_activite->format('Y-m-d') : '');
                         $currentTaux = old('taux_horaire', $teacher->taux_horaire ?? '');
                         $currentCharge = old('charge_horaire_max_semaine', $teacher->teaching_hours_due ?? 18);
                     @endphp
 
                     <div class="ee-regime-grid" id="regimeGrid">
-                        @foreach($regimeOptions as $key => $opt)
-                            <label class="ee-regime-card {{ $selectedRegime === $key ? 'active' : '' }}" data-regime="{{ $key }}">
-                                <input type="radio" name="regime" value="{{ $key }}" {{ $selectedRegime === $key ? 'checked' : '' }}>
-                                <div class="ee-regime-icon"><i class="fas {{ $opt['icon'] }}"></i></div>
-                                <p class="ee-regime-name">{{ $opt['label'] }}</p>
-                                <p class="ee-regime-desc">{{ $opt['desc'] }}</p>
+                        @foreach(\App\Enums\TeacherRegime::cases() as $regime)
+                            <label class="ee-regime-card {{ $selectedRegime === $regime->value ? 'active' : '' }}" data-regime="{{ $regime->value }}">
+                                <input type="radio" name="regime" value="{{ $regime->value }}" {{ $selectedRegime === $regime->value ? 'checked' : '' }}>
+                                <div class="ee-regime-icon"><i class="fas {{ $regime->icon() }}"></i></div>
+                                <p class="ee-regime-name">{{ $regime->label() }}</p>
+                                <p class="ee-regime-desc">{{ $regime->description() }}</p>
                             </label>
                         @endforeach
                     </div>
