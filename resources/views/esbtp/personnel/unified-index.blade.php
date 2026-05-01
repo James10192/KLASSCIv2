@@ -927,19 +927,27 @@
 .cr-modal-body .cr-error-zone:empty { display: none !important; }
 .cr-modal-body .cr-section:last-child { margin-bottom: 0; }
 
-/* Override dashboard-moderne.css:5546 qui force .modal.show .modal-body
-   à `flex: 1; max-height: calc(90vh - 150px)` — créait un espace blanc
-   géant en bas quand le contenu est plus court que 90vh-150px.
-   Pour les modales custom-roles : laisse le body se dimensionner sur son
-   contenu naturel (le picker interne a déjà son propre scroll max-height: 420px). */
-.modal.show .modal-content.cr-modal {
+/* Override TOTAL des règles globales dashboard-moderne.css qui forcent
+   modal-dialog/content/body à 90vh + flex:1 — créait un espace blanc géant
+   en bas. Cible #crModal (ID = spécificité maximale) pour battre toute
+   règle de classe globale, peu importe l'ordre de chargement. */
+#crModal.modal.show .modal-dialog,
+#crModal.modal.show .modal-content,
+#crModal.modal.show .modal-body {
     height: auto !important;
-    max-height: 90vh;
+    max-height: none !important;
+    flex: 0 0 auto !important;
+    overflow: visible !important;
 }
-.modal.show .modal-content.cr-modal .modal-body {
-    flex: 0 1 auto !important;       /* PAS flex:1 — pas de force-grow */
-    height: auto !important;
-    max-height: calc(90vh - 150px);  /* cap si content très long */
+/* Le picker garde son scroll INTERNE pour les longues listes de permissions */
+#crModal .cr-picker-groups {
+    max-height: 50vh !important;
+    overflow-y: auto !important;
+}
+/* Cap global : si exceptionnellement la modal complète dépasse le viewport,
+   c'est elle qui scroll (pas un sous-élément avec un espace blanc parasite) */
+#crModal.modal.show .modal-content {
+    max-height: 90vh !important;
     overflow-y: auto !important;
 }
 .cr-modal-footer {
