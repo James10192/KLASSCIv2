@@ -16,6 +16,11 @@
                 </div>
             </div>
             <div class="an-hero-right">
+                @can('comptabilite.recouvrement.access')
+                    <a href="{{ route('esbtp.comptabilite.recouvrement.index') }}" class="an-btn an-btn--glass">
+                        <i class="fas fa-hand-holding-usd"></i> Recouvrement
+                    </a>
+                @endcan
                 @can('comptabilite.analytics.run_now')
                     <form method="POST" action="{{ route('esbtp.comptabilite.analytics.run-now') }}" class="d-inline">
                         @csrf
@@ -110,6 +115,22 @@
                 <p class="an-section-sub">Modèle saisonnier (Holt-Winters) + régression linéaire sur 24 mois d'historique.</p>
             </div>
         </div>
+
+        @if(($cashFlowAccuracy['label'] ?? null) !== null)
+            @php $accLabel = $cashFlowAccuracy['label']; @endphp
+            <div class="an-accuracy an-accuracy--{{ $accLabel }}">
+                <i class="fas fa-shield-alt"></i>
+                <span>
+                    <strong>Précision du modèle :
+                    @if($accLabel === 'excellente') Excellente
+                    @elseif($accLabel === 'bonne') Bonne
+                    @else À surveiller
+                    @endif
+                    </strong>
+                    — évaluée sur les 6 derniers mois de prédictions vs paiements réellement encaissés.
+                </span>
+            </div>
+        @endif
 
         @if($cashFlow->isAvailable())
             <div class="an-cf">
@@ -571,6 +592,22 @@
 .an-anomaly-score {
     font-size: .75rem; color: var(--an-muted); font-style: italic;
 }
+
+/* ===== Accuracy banner ===== */
+.an-accuracy {
+    display: flex; align-items: center; gap: .65rem;
+    padding: .75rem 1rem; border-radius: 10px;
+    font-size: .85rem; margin-bottom: 1rem;
+    border: 1px solid;
+}
+.an-accuracy i { font-size: 1rem; flex-shrink: 0; }
+.an-accuracy strong { font-weight: 700; }
+.an-accuracy--excellente { background: rgba(16,185,129,.06); border-color: rgba(16,185,129,.2); color: #047857; }
+.an-accuracy--excellente i { color: var(--an-success); }
+.an-accuracy--bonne { background: rgba(4,83,203,.05); border-color: rgba(4,83,203,.2); color: var(--an-primary); }
+.an-accuracy--bonne i { color: var(--an-primary); }
+.an-accuracy--a_surveiller { background: rgba(245,158,11,.06); border-color: rgba(245,158,11,.25); color: #b45309; }
+.an-accuracy--a_surveiller i { color: var(--an-warning); }
 
 /* ===== Empty / Alerts ===== */
 .an-empty {

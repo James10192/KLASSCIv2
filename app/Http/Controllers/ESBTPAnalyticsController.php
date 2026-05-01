@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Analytics\AccuracyEvaluator;
 use App\Domain\Analytics\Cache\CachedPredictor;
 use App\Domain\Analytics\Detectors\AnomalyDetector;
 use App\Domain\Analytics\DTOs\AnalyticsContext;
@@ -38,22 +39,25 @@ class ESBTPAnalyticsController extends Controller
         CashFlowPredictor $cashFlow,
         DefaultRiskPredictor $defaultRisk,
         AnomalyDetector $anomalyDetector,
+        AccuracyEvaluator $accuracy,
     ): View {
         $context = AnalyticsContext::fromRequest($request);
 
         $cashFlowResult = $this->safePredict(new CachedPredictor($cashFlow), $context);
         $defaultRiskResult = $this->safePredict(new CachedPredictor($defaultRisk), $context);
         $anomalies = $this->safeDetect($anomalyDetector, $context);
+        $cashFlowAccuracy = $this->safeAccuracy($accuracy, 'cash_flow');
 
         return view('esbtp.comptabilite.analytics.index', [
-            'cashFlow'        => $cashFlowResult,
-            'defaultRisk'     => $defaultRiskResult,
-            'anomalies'       => $anomalies,
-            'context'         => $context,
-            'annees'          => ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get(),
-            'filieres'        => ESBTPFiliere::orderBy('name')->get(),
-            'classes'         => ESBTPClasse::orderBy('name')->get(),
-            'lastComputedAt'  => $this->lastComputedAt(),
+            'cashFlow'         => $cashFlowResult,
+            'defaultRisk'      => $defaultRiskResult,
+            'anomalies'        => $anomalies,
+            'cashFlowAccuracy' => $cashFlowAccuracy,
+            'context'          => $context,
+            'annees'           => ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get(),
+            'filieres'         => ESBTPFiliere::orderBy('name')->get(),
+            'classes'          => ESBTPClasse::orderBy('name')->get(),
+            'lastComputedAt'   => $this->lastComputedAt(),
         ]);
     }
 
@@ -133,6 +137,7 @@ class ESBTPAnalyticsController extends Controller
             'anomaly.z_critical'             => 'required|numeric|min:1.5|max:6',
             'anomaly.payment_outlier_multiplier' => 'required|numeric|min:1.5|max:10',
             'anomaly.notifications_enabled'  => 'nullable|in:0,1',
+            'recouvrement.whatsapp_template' => 'nullable|string|max:1000',
         ]);
 
         $mappings = [
@@ -148,6 +153,7 @@ class ESBTPAnalyticsController extends Controller
             'analytics.anomaly.z_critical'                  => $validated['anomaly']['z_critical'],
             'analytics.anomaly.payment_outlier_multiplier'  => $validated['anomaly']['payment_outlier_multiplier'],
             'analytics.anomaly.notifications_enabled'       => $validated['anomaly']['notifications_enabled'] ?? '0',
+            'analytics.recouvrement.whatsapp_template'      => $validated['recouvrement']['whatsapp_template'] ?? '',
         ];
 
         foreach ($mappings as $key => $value) {
@@ -157,6 +163,26 @@ class ESBTPAnalyticsController extends Controller
         return redirect()
             ->route('esbtp.comptabilite.analytics.settings')
             ->with('success', 'Paramètres Analytics mis à jour.');
+    }
+
+    /**
+     * @return array{score: ?float, label: ?string}
+     */
+    private function safeAccuracy(AccuracyEvaluator $evaluator, string $predictor): array
+    {
+        try {
+            $score = $evaluator->averageAccuracy($predictor);
+            return [
+                'score' => $score,
+                'label' => $score === null ? null : AccuracyEvaluator::labelForScore($score),
+            ];
+        } catch (\Throwable $e) {
+            Log::warning('Analytics accuracy lookup failed', [
+                'predictor' => $predictor,
+                'error' => $e->getMessage(),
+            ]);
+            return ['score' => null, 'label' => null];
+        }
     }
 
     private function safePredict(PredictorInterface $predictor, AnalyticsContext $context): PredictionResult
@@ -204,7 +230,7 @@ class ESBTPAnalyticsController extends Controller
     }
 
     /**
-     * @return array<string, array<string, float|int>>
+     * @return array<string, array<string, mixed>>
      */
     private function defaultSettings(): array
     {
@@ -223,6 +249,9 @@ class ESBTPAnalyticsController extends Controller
                 'z_warning'                  => AnomalyDetector::DEFAULT_Z_WARNING,
                 'z_critical'                 => AnomalyDetector::DEFAULT_Z_CRITICAL,
                 'payment_outlier_multiplier' => AnomalyDetector::DEFAULT_PAYMENT_OUTLIER_MULTIPLIER,
+            ],
+            'recouvrement' => [
+                'whatsapp_template' => "Bonjour {prenom}, votre solde de scolarité de {solde} FCFA est en retard de {retard} jours. Merci de régulariser dès que possible. — {ecole}",
             ],
         ];
     }

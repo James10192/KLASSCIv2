@@ -1997,6 +1997,20 @@
                                     <span>Relances</span>
                                 </a>
                                 @endcan
+                                {{-- Recouvrement quotidien --}}
+                                @can('comptabilite.recouvrement.access')
+                                <a href="{{ route('esbtp.comptabilite.recouvrement.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.recouvrement.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Recouvrement quotidien</span>
+                                </a>
+                                @endcan
+                                {{-- Analytics prédictifs --}}
+                                @can('comptabilite.analytics.view')
+                                <a href="{{ route('esbtp.comptabilite.analytics.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.analytics.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Analytics prédictifs</span>
+                                </a>
+                                @endcan
                             </div>
                         </div>
                     @endcan

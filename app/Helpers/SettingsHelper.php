@@ -220,6 +220,12 @@ class SettingsHelper
                 'payment_outlier_multiplier'  => (float) self::get('analytics.anomaly.payment_outlier_multiplier', 3.0),
                 'notifications_enabled'       => (string) self::get('analytics.anomaly.notifications_enabled', '1') === '1',
             ],
+            'recouvrement' => [
+                'whatsapp_template' => (string) self::get(
+                    'analytics.recouvrement.whatsapp_template',
+                    "Bonjour {prenom}, votre solde de scolarité de {solde} FCFA est en retard de {retard} jours. Merci de régulariser dès que possible. — {ecole}",
+                ),
+            ],
         ];
     }
 
