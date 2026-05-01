@@ -393,24 +393,19 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                     </div>
 
                     @php
-                        $regimeOptions = [
-                            'vacataire' => ['label' => 'Vacataire', 'desc' => 'Heure facturée, contrat semestriel', 'icon' => 'fa-clock'],
-                            'permanent' => ['label' => 'Permanent', 'desc' => 'Salaire mensuel, charge fixe', 'icon' => 'fa-user-tie'],
-                            'consultant' => ['label' => 'Consultant', 'desc' => 'Mission ponctuelle, expertise', 'icon' => 'fa-handshake'],
-                        ];
-                        $selectedRegime = old('regime', $teacher->regime ?? 'vacataire');
+                        $selectedRegime = old('regime', $teacher->regime ?? \App\Enums\TeacherRegime::Vacataire->value);
                         $currentDate = old('date_debut_activite', $teacher->date_debut_activite ? $teacher->date_debut_activite->format('Y-m-d') : '');
                         $currentTaux = old('taux_horaire', $teacher->taux_horaire ?? '');
                         $currentCharge = old('charge_horaire_max_semaine', $teacher->teaching_hours_due ?? 18);
                     @endphp
 
                     <div class="ee-regime-grid" id="regimeGrid">
-                        @foreach($regimeOptions as $key => $opt)
-                            <label class="ee-regime-card {{ $selectedRegime === $key ? 'active' : '' }}" data-regime="{{ $key }}">
-                                <input type="radio" name="regime" value="{{ $key }}" {{ $selectedRegime === $key ? 'checked' : '' }}>
-                                <div class="ee-regime-icon"><i class="fas {{ $opt['icon'] }}"></i></div>
-                                <p class="ee-regime-name">{{ $opt['label'] }}</p>
-                                <p class="ee-regime-desc">{{ $opt['desc'] }}</p>
+                        @foreach(\App\Enums\TeacherRegime::cases() as $regime)
+                            <label class="ee-regime-card {{ $selectedRegime === $regime->value ? 'active' : '' }}" data-regime="{{ $regime->value }}">
+                                <input type="radio" name="regime" value="{{ $regime->value }}" {{ $selectedRegime === $regime->value ? 'checked' : '' }}>
+                                <div class="ee-regime-icon"><i class="fas {{ $regime->icon() }}"></i></div>
+                                <p class="ee-regime-name">{{ $regime->label() }}</p>
+                                <p class="ee-regime-desc">{{ $regime->description() }}</p>
                             </label>
                         @endforeach
                     </div>

@@ -357,20 +357,13 @@
                     </div>
 
                     <div class="ec-regime-grid" id="regimeGrid">
-                        @php
-                            $regimeOptions = [
-                                'vacataire' => ['label' => 'Vacataire', 'desc' => 'Heure facturée, contrat semestriel', 'icon' => 'fa-clock'],
-                                'permanent' => ['label' => 'Permanent', 'desc' => 'Salaire mensuel, charge fixe', 'icon' => 'fa-user-tie'],
-                                'consultant' => ['label' => 'Consultant', 'desc' => 'Mission ponctuelle, expertise', 'icon' => 'fa-handshake'],
-                            ];
-                            $selectedRegime = old('regime', 'vacataire');
-                        @endphp
-                        @foreach($regimeOptions as $key => $opt)
-                            <label class="ec-regime-card {{ $selectedRegime === $key ? 'active' : '' }}" data-regime="{{ $key }}">
-                                <input type="radio" name="regime" value="{{ $key }}" {{ $selectedRegime === $key ? 'checked' : '' }}>
-                                <div class="ec-regime-icon"><i class="fas {{ $opt['icon'] }}"></i></div>
-                                <p class="ec-regime-name">{{ $opt['label'] }}</p>
-                                <p class="ec-regime-desc">{{ $opt['desc'] }}</p>
+                        @php $selectedRegime = old('regime', \App\Enums\TeacherRegime::Vacataire->value); @endphp
+                        @foreach(\App\Enums\TeacherRegime::cases() as $regime)
+                            <label class="ec-regime-card {{ $selectedRegime === $regime->value ? 'active' : '' }}" data-regime="{{ $regime->value }}">
+                                <input type="radio" name="regime" value="{{ $regime->value }}" {{ $selectedRegime === $regime->value ? 'checked' : '' }}>
+                                <div class="ec-regime-icon"><i class="fas {{ $regime->icon() }}"></i></div>
+                                <p class="ec-regime-name">{{ $regime->label() }}</p>
+                                <p class="ec-regime-desc">{{ $regime->description() }}</p>
                             </label>
                         @endforeach
                     </div>

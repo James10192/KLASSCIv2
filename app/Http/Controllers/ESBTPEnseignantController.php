@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TeacherRegime;
+use App\Enums\TeacherStatus;
+use App\Http\Requests\Enseignant\QuickStoreEnseignantRequest;
+use App\Http\Requests\Enseignant\StoreEnseignantRequest;
+use App\Http\Requests\Enseignant\UpdateEnseignantRequest;
 use App\Models\User;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPMatiere;
@@ -10,20 +15,22 @@ use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPTeacherAvailability;
+use App\Services\TeacherPlanningService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use Carbon\Carbon;
 
 class ESBTPEnseignantController extends Controller
 {
     protected $userService;
+    protected $planningService;
 
-    public function __construct(UserService $userService)
+    public function __construct(UserService $userService, TeacherPlanningService $planningService)
     {
         $this->userService = $userService;
+        $this->planningService = $planningService;
     }
     /**
      * Display a listing of the teachers.
@@ -111,28 +118,9 @@ class ESBTPEnseignantController extends Controller
     /**
      * Store a newly created teacher in storage.
      */
-    public function store(Request $request)
+    public function store(StoreEnseignantRequest $request)
     {
-        $validated = $request->validate([
-            "name" => "required|string|max:255",
-            "phone" => "required|string|max:20",
-            "specialization" => "required|string|max:255",
-
-            "email" => "nullable|string|email|max:255|unique:users,email",
-            "titre_academique" => "nullable|string|max:10",
-            "grade_academique" => "nullable|string|max:50",
-
-            "regime" => "nullable|in:permanent,vacataire,consultant",
-            "taux_horaire" => "nullable|numeric|min:0",
-            "charge_horaire_max_semaine" => "nullable|integer|min:1|max:60",
-            "date_debut_activite" => "nullable|date",
-
-            "diplome_principal" => "nullable|string|max:255",
-            "universite_diplome" => "nullable|string|max:255",
-            "annee_diplome" => "nullable|integer|min:1950|max:" . date("Y"),
-        ]);
-
-        $regime = $request->input('regime') ?: 'vacataire';
+        $regime = $request->input('regime') ?: TeacherRegime::Vacataire->value;
 
         DB::beginTransaction();
 
@@ -153,7 +141,7 @@ class ESBTPEnseignantController extends Controller
                 "title" => $request->titre_academique,
                 "specialization" => $request->specialization,
                 "grade" => $request->grade_academique,
-                "status" => "active",
+                "status" => TeacherStatus::Active->value,
                 "regime" => $regime,
                 "taux_horaire" => $request->taux_horaire,
                 "date_debut_activite" => $request->date_debut_activite
@@ -162,7 +150,7 @@ class ESBTPEnseignantController extends Controller
                 "diplome_principal" => $request->diplome_principal,
                 "universite_diplome" => $request->universite_diplome,
                 "annee_diplome" => $request->annee_diplome,
-                "teaching_hours_due" => $regime === 'permanent'
+                "teaching_hours_due" => $regime === TeacherRegime::Permanent->value
                     ? ($request->charge_horaire_max_semaine ?? 18)
                     : 0,
                 "created_by" => auth()->id(),
@@ -194,39 +182,8 @@ class ESBTPEnseignantController extends Controller
         }
     }
 
-    public function quickStore(Request $request)
+    public function quickStore(QuickStoreEnseignantRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            "name" => "required|string|max:255",
-            "email" => "nullable|string|email|max:255|unique:users,email",
-            "phone" => "nullable|string|max:20",
-            "titre_academique" => "nullable|string|max:10",
-            "grade_academique" => "nullable|string|max:50",
-            "specialization" => "required|string|max:255",
-            "regime" =>
-                "nullable|in:permanent,vacataire,consultant",
-            "type_contrat" =>
-                "nullable|in:permanent,temporaire,vacataire,consultant",
-            "statut_emploi" =>
-                "nullable|in:temps_plein,temps_partiel,vacations",
-            "date_debut_activite" => "nullable|date",
-            "date_embauche" => "nullable|date",
-            "taux_horaire" => "nullable|numeric|min:0",
-            "charge_horaire_max_semaine" => "nullable|integer|min:1|max:60",
-            "planification_id" =>
-                "nullable|exists:esbtp_planifications_academiques,id",
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(
-                [
-                    "success" => false,
-                    "errors" => $validator->errors(),
-                ],
-                422,
-            );
-        }
-
         DB::beginTransaction();
 
         try {
@@ -245,9 +202,9 @@ class ESBTPEnseignantController extends Controller
             // Régime unifié — fallback sur type_contrat legacy si client AJAX antérieur.
             $regime = $request->input('regime')
                 ?: match ($request->input('type_contrat')) {
-                    'permanent' => 'permanent',
-                    'consultant' => 'consultant',
-                    default => 'vacataire',
+                    'permanent' => TeacherRegime::Permanent->value,
+                    'consultant' => TeacherRegime::Consultant->value,
+                    default => TeacherRegime::Vacataire->value,
                 };
 
             $dateDebut = $request->date_debut_activite ?: $request->date_embauche;
@@ -261,11 +218,11 @@ class ESBTPEnseignantController extends Controller
                 "title" => $request->titre_academique,
                 "specialization" => $request->specialization,
                 "grade" => $request->grade_academique,
-                "status" => "active",
+                "status" => TeacherStatus::Active->value,
                 "regime" => $regime,
                 "taux_horaire" => $request->taux_horaire,
                 "date_debut_activite" => $dateDebut,
-                "teaching_hours_due" => $regime === 'permanent'
+                "teaching_hours_due" => $regime === TeacherRegime::Permanent->value
                     ? ($request->charge_horaire_max_semaine ?? 18)
                     : 0,
                 "created_by" => auth()->id(),
@@ -325,7 +282,7 @@ class ESBTPEnseignantController extends Controller
             }
 
             $teacher->loadMissing(["user", "availabilities"]);
-            $availabilityData = $this->prepareAvailabilityData($teacher);
+            $availabilityData = $this->planningService->getAvailabilityMatrix($teacher)['availability'];
 
             DB::commit();
 
@@ -419,14 +376,13 @@ class ESBTPEnseignantController extends Controller
             true,
         )->first();
         $periode = $request->input("periode", "annee");
-        $teachingPlanning = $this->buildPlanningPourEnseignant(
+        $teachingPlanning = $this->planningService->getPlanning(
             $enseignant,
             $anneeCourante,
             $periode,
         );
 
-        // Préparer les données de disponibilité réelles
-        $realAvailability = $this->prepareAvailabilityData($enseignant);
+        $realAvailability = $this->planningService->getAvailabilityMatrix($enseignant)['availability'];
 
         // Passer $enseignant en tant que $teacher pour la compatibilité avec la vue
         $teacher = $enseignant;
@@ -442,339 +398,7 @@ class ESBTPEnseignantController extends Controller
         );
     }
 
-    private function buildPlanningPourEnseignant(
-        ESBTPTeacher $enseignant,
-        ?ESBTPAnneeUniversitaire $anneeCourante,
-        string $periode,
-    ) {
-        if (!$anneeCourante) {
-            return [
-                "classes" => collect(),
-                "stats" => [
-                    "classes" => 0,
-                    "heures_planifiees" => 0,
-                    "heures_realisees" => 0,
-                    "nb_seances" => 0,
-                    "taux_realisation" => 0,
-                ],
-            ];
-        }
 
-        $seancesQuery = ESBTPSeanceCours::query()
-            ->join(
-                "esbtp_emploi_temps",
-                "esbtp_seance_cours.emploi_temps_id",
-                "=",
-                "esbtp_emploi_temps.id",
-            )
-            ->leftJoin(
-                DB::raw('(
-                SELECT ta1.course_id, ta1.status
-                FROM esbtp_teacher_attendances ta1
-                INNER JOIN (
-                    SELECT course_id,
-                           MAX(CASE
-                               WHEN DATE(date) = CURDATE() THEN CONCAT("1_", created_at)
-                               WHEN DATE(date) = (SELECT DATE(date_seance) FROM esbtp_seance_cours WHERE id = course_id) THEN CONCAT("2_", created_at)
-                               ELSE CONCAT("3_", created_at)
-                           END) as max_priority
-                    FROM esbtp_teacher_attendances
-                    WHERE type = "start"
-                    GROUP BY course_id
-                ) ta2 ON ta1.course_id = ta2.course_id
-                     AND CONCAT(
-                         CASE
-                             WHEN DATE(ta1.date) = CURDATE() THEN "1_"
-                             WHEN DATE(ta1.date) = (SELECT DATE(date_seance) FROM esbtp_seance_cours WHERE id = ta1.course_id) THEN "2_"
-                             ELSE "3_"
-                         END, ta1.created_at
-                     ) = ta2.max_priority
-                WHERE ta1.type = "start"
-            ) as latest_attendance'),
-                "latest_attendance.course_id",
-                "=",
-                "esbtp_seance_cours.id",
-            )
-            ->where(function ($query) {
-                $query
-                    ->whereNull("latest_attendance.status")
-                    ->orWhere("latest_attendance.status", "!=", "absent");
-            })
-            ->where("esbtp_seance_cours.teacher_id", $enseignant->id)
-            ->where(
-                "esbtp_emploi_temps.annee_universitaire_id",
-                $anneeCourante->id,
-            )
-            ->select(
-                "esbtp_seance_cours.matiere_id",
-                "esbtp_seance_cours.classe_id",
-                DB::raw("COUNT(DISTINCT esbtp_seance_cours.id) as nb_seances"),
-                DB::raw(
-                    "SUM(TIME_TO_SEC(TIMEDIFF(esbtp_seance_cours.heure_fin, esbtp_seance_cours.heure_debut))/3600) as total_heures",
-                ),
-            )
-            ->groupBy(
-                "esbtp_seance_cours.matiere_id",
-                "esbtp_seance_cours.classe_id",
-            )
-            ->whereRaw("(
-                esbtp_seance_cours.date_seance < CURDATE()
-                OR (
-                    esbtp_seance_cours.date_seance = CURDATE()
-                    AND TIME(esbtp_seance_cours.heure_fin) <= TIME(NOW())
-                )
-            )");
-
-        if ($periode === "semestre1") {
-            $seancesQuery->whereIn("esbtp_emploi_temps.semestre", [
-                "1",
-                1,
-                "S1",
-                "Semestre 1",
-                "semestre1",
-                "SEMESTRE 1",
-                "Semestre1",
-                "s1",
-            ]);
-        } elseif ($periode === "semestre2") {
-            $seancesQuery->whereIn("esbtp_emploi_temps.semestre", [
-                "2",
-                2,
-                "S2",
-                "Semestre 2",
-                "semestre2",
-                "SEMESTRE 2",
-                "Semestre2",
-                "s2",
-            ]);
-        }
-
-        $seancesRealisees = $seancesQuery->get();
-        $classIds = $seancesRealisees->pluck("classe_id")->filter()->unique();
-
-        $classes = ESBTPClasse::with(["filiere", "niveau"])
-            ->whereIn("id", $classIds)
-            ->get()
-            ->keyBy("id");
-
-        $comboKeys = $classes
-            ->map(function ($classe) {
-                return $classe->filiere_id . "_" . $classe->niveau_etude_id;
-            })
-            ->unique();
-
-        $planificationsQuery = ESBTPPlanificationAcademique::with(["matiere"])
-            ->where("annee_universitaire_id", $anneeCourante->id)
-            ->whereIn("filiere_id", $classes->pluck("filiere_id")->unique())
-            ->whereIn(
-                "niveau_etude_id",
-                $classes->pluck("niveau_etude_id")->unique(),
-            )
-            ->select(
-                "matiere_id",
-                "filiere_id",
-                "niveau_etude_id",
-                DB::raw("SUM(volume_horaire_total) as heures_planifiees"),
-            )
-            ->groupBy("matiere_id", "filiere_id", "niveau_etude_id");
-
-        if ($periode === "semestre1") {
-            $planificationsQuery->where(function ($query) {
-                $query->where("semestre", 1)->orWhereNull("semestre");
-            });
-        } elseif ($periode === "semestre2") {
-            $planificationsQuery->where(function ($query) {
-                $query->where("semestre", 2)->orWhereNull("semestre");
-            });
-        }
-
-        $planifications = $planificationsQuery->get();
-
-        $planificationsByCombo = $planifications->groupBy(function (
-            $planification,
-        ) {
-            return $planification->filiere_id .
-                "_" .
-                $planification->niveau_etude_id;
-        });
-
-        $matiereIds = $planifications
-            ->pluck("matiere_id")
-            ->merge($seancesRealisees->pluck("matiere_id"))
-            ->filter()
-            ->unique();
-        $matieres = ESBTPMatiere::whereIn("id", $matiereIds)
-            ->get()
-            ->keyBy("id");
-
-        $classesData = $classes
-            ->values()
-            ->map(function ($classe) use (
-                $seancesRealisees,
-                $planificationsByCombo,
-                $matieres,
-            ) {
-                $comboKey =
-                    $classe->filiere_id . "_" . $classe->niveau_etude_id;
-                $planificationsCombo = $planificationsByCombo
-                    ->get($comboKey, collect())
-                    ->keyBy("matiere_id");
-                $seancesClasse = $seancesRealisees->where(
-                    "classe_id",
-                    $classe->id,
-                );
-
-                $matiereIdsClasse = $seancesClasse
-                    ->pluck("matiere_id")
-                    ->filter()
-                    ->unique();
-
-                $matieresData = $matiereIdsClasse
-                    ->map(function ($matiereId) use (
-                        $planificationsCombo,
-                        $seancesClasse,
-                        $matieres,
-                    ) {
-                        $planification = $planificationsCombo->get($matiereId);
-                        $heuresPlanifiees = $planification
-                            ? (float) $planification->heures_planifiees
-                            : 0;
-
-                        $seancesMatiere = $seancesClasse->where(
-                            "matiere_id",
-                            $matiereId,
-                        );
-                        $totalHeures = (float) $seancesMatiere->sum(
-                            "total_heures",
-                        );
-                        $nbSeances = (int) $seancesMatiere->sum("nb_seances");
-
-                        $heuresRestantes = max(
-                            0,
-                            $heuresPlanifiees - $totalHeures,
-                        );
-
-                        return [
-                            "matiere" => $matieres->get($matiereId),
-                            "heures_planifiees" => round($heuresPlanifiees, 2),
-                            "heures_realisees" => round($totalHeures, 2),
-                            "heures_restantes" => round($heuresRestantes, 2),
-                            "nb_seances" => $nbSeances,
-                            "pourcentage_realise" =>
-                                $heuresPlanifiees > 0
-                                    ? round(
-                                        ($totalHeures / $heuresPlanifiees) *
-                                            100,
-                                        1,
-                                    )
-                                    : 0,
-                            "est_configure" => $heuresPlanifiees > 0,
-                        ];
-                    })
-                    ->filter()
-                    ->sortBy(function ($item) {
-                        return $item["matiere"]->name ?? "";
-                    })
-                    ->values();
-
-                $totalPlanifiees = $matieresData->sum("heures_planifiees");
-                $totalRealisees = $matieresData->sum("heures_realisees");
-                $totalSeances = $matieresData->sum("nb_seances");
-                $taux =
-                    $totalPlanifiees > 0
-                        ? round(($totalRealisees / $totalPlanifiees) * 100, 1)
-                        : 0;
-
-                return [
-                    "classe" => $classe,
-                    "matieres" => $matieresData,
-                    "stats" => [
-                        "heures_planifiees" => round($totalPlanifiees, 2),
-                        "heures_realisees" => round($totalRealisees, 2),
-                        "nb_seances" => (int) $totalSeances,
-                        "taux_realisation" => $taux,
-                    ],
-                ];
-            })
-            ->values();
-
-        $totalPlanifiees = $classesData->sum(function ($item) {
-            return $item["stats"]["heures_planifiees"] ?? 0;
-        });
-        $totalRealisees = $classesData->sum(function ($item) {
-            return $item["stats"]["heures_realisees"] ?? 0;
-        });
-        $totalSeances = $classesData->sum(function ($item) {
-            return $item["stats"]["nb_seances"] ?? 0;
-        });
-        $tauxGlobal =
-            $totalPlanifiees > 0
-                ? round(($totalRealisees / $totalPlanifiees) * 100, 1)
-                : 0;
-
-        return [
-            "classes" => $classesData,
-            "stats" => [
-                "classes" => $classesData->count(),
-                "heures_planifiees" => round($totalPlanifiees, 2),
-                "heures_realisees" => round($totalRealisees, 2),
-                "nb_seances" => (int) $totalSeances,
-                "taux_realisation" => $tauxGlobal,
-            ],
-        ];
-    }
-
-    /**
-     * Préparer les données de disponibilité pour l'affichage
-     */
-    private function prepareAvailabilityData($teacher)
-    {
-        // Utiliser des créneaux par heure comme la page EDIT pour cohérence
-        $hours = range(8, 18); // 8h à 18h = 11 heures
-        $days = [
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-            "sunday",
-        ];
-
-        // Initialiser avec 'unavailable' par défaut
-        $availability = [];
-        foreach ($days as $day) {
-            $availability[$day] = array_fill(0, count($hours), "unavailable");
-        }
-
-        // Remplir avec les vraies données - traitement par heure
-        foreach ($teacher->availabilities as $avail) {
-            $dayName = $days[$avail->day_of_week] ?? null;
-
-            // Parser l'heure de début et de fin
-            if ($avail->start_time instanceof \Carbon\Carbon) {
-                $startHour = $avail->start_time->hour;
-                $endHour = $avail->end_time->hour;
-            } elseif (is_string($avail->start_time)) {
-                $startHour = (int) substr($avail->start_time, 0, 2);
-                $endHour = (int) substr($avail->end_time, 0, 2);
-            } else {
-                $startHour = (int) substr((string) $avail->start_time, 0, 2);
-                $endHour = (int) substr((string) $avail->end_time, 0, 2);
-            }
-
-            if ($dayName) {
-                for ($hour = $startHour; $hour < $endHour; $hour++) {
-                    $hourIndex = $hour - 8;
-                    if ($hourIndex >= 0 && $hourIndex < count($hours)) {
-                        $availability[$dayName][$hourIndex] = $avail->availability_type;
-                    }
-                }
-            }
-        }
-
-        return $availability;
-    }
 
     /**
      * Show the form for editing the specified teacher.
@@ -782,9 +406,8 @@ class ESBTPEnseignantController extends Controller
     public function edit(ESBTPTeacher $enseignant)
     {
         $enseignant->load(["user", "availabilities"]);
-        $availabilityData = $this->prepareAvailabilityData($enseignant);
+        $availabilityData = $this->planningService->getAvailabilityMatrix($enseignant)['availability'];
 
-        // Compatibilité vue (variable $teacher).
         $teacher = $enseignant;
 
         return view(
@@ -801,34 +424,9 @@ class ESBTPEnseignantController extends Controller
     /**
      * Update the specified teacher in storage.
      */
-    public function update(Request $request, ESBTPTeacher $enseignant)
+    public function update(UpdateEnseignantRequest $request, ESBTPTeacher $enseignant)
     {
-        $validated = $request->validate([
-            "name" => "required|string|max:255",
-            "specialization" => "required|string|max:255",
-
-            "phone" => "nullable|string|max:20",
-            "email" => "nullable|string|email|max:255|unique:users,email," . $enseignant->user_id,
-            "titre_academique" => "nullable|string|max:10",
-            "grade_academique" => "nullable|string|max:50",
-
-            "regime" => "nullable|in:permanent,vacataire,consultant",
-            "taux_horaire" => "nullable|numeric|min:0",
-            "charge_horaire_max_semaine" => "nullable|integer|min:1|max:60",
-            "date_debut_activite" => "nullable|date",
-
-            "diplome_principal" => "nullable|string|max:255",
-            "universite_diplome" => "nullable|string|max:255",
-            "annee_diplome" => "nullable|integer|min:1950|max:" . date("Y"),
-
-            "bio" => "nullable|string|max:1000",
-            "website" => "nullable|url",
-            "status" => "nullable|in:active,inactive",
-
-            "availability" => "nullable|array",
-        ]);
-
-        $regime = $request->input('regime') ?: 'vacataire';
+        $regime = $request->input('regime') ?: TeacherRegime::Vacataire->value;
 
         DB::beginTransaction();
 
@@ -856,7 +454,7 @@ class ESBTPEnseignantController extends Controller
                 "bio" => $request->bio,
                 "website" => $request->website,
                 "status" => $request->status ?? $enseignant->status,
-                "teaching_hours_due" => $regime === 'permanent'
+                "teaching_hours_due" => $regime === TeacherRegime::Permanent->value
                     ? ($request->charge_horaire_max_semaine ?? $enseignant->teaching_hours_due ?? 18)
                     : 0,
                 "updated_by" => auth()->id(),
@@ -909,7 +507,7 @@ class ESBTPEnseignantController extends Controller
             DB::beginTransaction();
 
             // Marquer l'enseignant comme inactif (soft deactivation)
-            $teacher->update(['status' => 'inactive']);
+            $teacher->update(['status' => TeacherStatus::Inactive->value]);
 
             // Désactiver le compte utilisateur associé
             if ($teacher->user) {
@@ -1099,7 +697,7 @@ class ESBTPEnseignantController extends Controller
 
         // Construire les données de vue pour chaque enseignant
         $enseignantsData = $enseignants->map(function ($enseignant) {
-            return $this->buildAvailabilityViewData($enseignant);
+            return $this->planningService->getAvailabilityMatrix($enseignant);
         });
 
         return view(
@@ -1114,7 +712,7 @@ class ESBTPEnseignantController extends Controller
     public function availabilitySection(ESBTPTeacher $enseignant)
     {
         $enseignant->load(["user", "availabilities"]);
-        $data = $this->buildAvailabilityViewData($enseignant);
+        $data = $this->planningService->getAvailabilityMatrix($enseignant);
 
         $html = view(
             "esbtp.enseignants.partials.availability-block",
@@ -1133,7 +731,7 @@ class ESBTPEnseignantController extends Controller
     public function availabilityData(ESBTPTeacher $enseignant)
     {
         $enseignant->load(['availabilities']);
-        $data = $this->buildAvailabilityViewData($enseignant);
+        $data = $this->planningService->getAvailabilityMatrix($enseignant);
 
         $updatedAt = $enseignant->availabilities->max('updated_at');
 
@@ -1144,86 +742,6 @@ class ESBTPEnseignantController extends Controller
         ]);
     }
 
-    /**
-     * Construire les données de disponibilité pour la vue
-     */
-    private function buildAvailabilityViewData(ESBTPTeacher $enseignant): array
-    {
-        $hours = range(8, 18); // 8h à 18h = 11 heures
-        $days = [
-            "monday",
-            "tuesday",
-            "wednesday",
-            "thursday",
-            "friday",
-            "saturday",
-            "sunday",
-        ];
-        $joursNoms = [
-            "monday" => "Lundi",
-            "tuesday" => "Mardi",
-            "wednesday" => "Mercredi",
-            "thursday" => "Jeudi",
-            "friday" => "Vendredi",
-            "saturday" => "Samedi",
-            "sunday" => "Dimanche",
-        ];
-
-        // Initialiser avec 'unavailable' par défaut
-        $availability = [];
-        foreach ($days as $day) {
-            $availability[$day] = array_fill(0, count($hours), "unavailable");
-        }
-
-        // Remplir avec les vraies données
-        foreach ($enseignant->availabilities as $avail) {
-            $dayName = $days[$avail->day_of_week] ?? null;
-
-            // Parser l'heure de début et de fin
-            if ($avail->start_time instanceof \Carbon\Carbon) {
-                $startHour = $avail->start_time->hour;
-                $endHour = $avail->end_time->hour;
-            } elseif (is_string($avail->start_time)) {
-                $startHour = (int) substr($avail->start_time, 0, 2);
-                $endHour = (int) substr($avail->end_time, 0, 2);
-            } else {
-                $startHour = (int) substr((string) $avail->start_time, 0, 2);
-                $endHour = (int) substr((string) $avail->end_time, 0, 2);
-            }
-
-            // Remplir toutes les heures entre start_time et end_time
-            if ($dayName) {
-                for ($hour = $startHour; $hour < $endHour; $hour++) {
-                    $hourIndex = $hour - 8; // Index dans le tableau (8h = index 0)
-                    if ($hourIndex >= 0 && $hourIndex < count($hours)) {
-                        $availability[$dayName][$hourIndex] =
-                            $avail->availability_type;
-                    }
-                }
-            }
-        }
-
-        // Calculer les stats
-        $stats = [
-            "available" => 0,
-            "preferred" => 0,
-            "unavailable" => 0,
-        ];
-        foreach ($availability as $daySlots) {
-            foreach ($daySlots as $status) {
-                $stats[$status]++;
-            }
-        }
-
-        return [
-            "enseignant" => $enseignant,
-            "availability" => $availability,
-            "hours" => $hours,
-            "days" => $days,
-            "joursNoms" => $joursNoms,
-            "stats" => $stats,
-        ];
-    }
 
     /**
      * Mettre à jour les disponibilités de l'enseignant via AJAX
