@@ -275,18 +275,25 @@
     </div>
 </div>
 
-<script>
-function messagesPage() {
-    return {
-        tab: 'all',
-        conversations: @json($conversations->map(fn ($c) => [
+@php
+    $conversationsPayload = $conversations->map(function ($c) {
+        return [
             'id' => $c->id,
             'type' => $c->type,
             'title' => $c->title,
             'last_message_at' => $c->last_message_at?->toIso8601String(),
             'last_message' => $c->lastMessage ? ['body' => $c->lastMessage->body, 'type' => $c->lastMessage->type] : null,
-            'participants' => $c->participants->where('id', '!=', auth()->id())->map(fn ($p) => ['id' => $p->id, 'name' => $p->name])->values(),
-        ])),
+            'participants' => $c->participants->where('id', '!=', auth()->id())->map(function ($p) {
+                return ['id' => $p->id, 'name' => $p->name];
+            })->values(),
+        ];
+    });
+@endphp
+<script>
+function messagesPage() {
+    return {
+        tab: 'all',
+        conversations: {!! json_encode($conversationsPayload) !!},
         activeConvo: null,
         activeOther: null,
         messages: [],
