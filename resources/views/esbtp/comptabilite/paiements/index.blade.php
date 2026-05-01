@@ -4,7 +4,7 @@
 
 @section('sidebar')
     <li class="navigation-item">
-        <a href="{{ route('esbtp.comptabilite.dashboard-avance') }}" class="navigation-link">
+        <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="navigation-link">
             <i class="fas fa-home"></i> Accueil
         </a>
     </li>
@@ -13,22 +13,28 @@
             <i class="fas fa-credit-card"></i> Paiements
         </a>
     </li>
-    <li class="navigation-item">
+    @if(Route::has('esbtp.comptabilite.depenses'))
+<li class="navigation-item">
         <a href="{{ route('esbtp.comptabilite.depenses') }}" class="navigation-link">
             <i class="fas fa-shopping-cart"></i> Dépenses
         </a>
     </li>
-    <li class="navigation-item">
+@endif
+@if(Route::has('esbtp.comptabilite.bons-sortie.index'))
+<li class="navigation-item">
         <a href="{{ route('esbtp.comptabilite.bons-sortie.index') }}" class="navigation-link">
             <i class="fas fa-file-export"></i> Bons de Sortie
         </a>
     </li>
-    <li class="navigation-item">
+@endif
+@if(Route::has('esbtp.comptabilite.factures'))
+<li class="navigation-item">
         <a href="{{ route('esbtp.comptabilite.factures') }}" class="navigation-link">
             <i class="fas fa-file-invoice"></i> Factures
         </a>
     </li>
-    <li class="navigation-item">
+@endif
+<li class="navigation-item">
         <a href="{{ route('esbtp.comptabilite.rapports') }}" class="navigation-link">
             <i class="fas fa-chart-bar"></i> Rapports
         </a>

@@ -9,7 +9,7 @@
         <div class="row align-items-center">
             <div class="col-12 col-lg-7">
                 <div style="display: flex; align-items: center; gap: var(--space-lg);">
-                    <div style="width: 80px; height: 80px; border-radius: var(--radius-circle); background-color: var(--accent-blue); color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; box-shadow: var(--shadow-elevated);">
+                    <div style="width: 80px; height: 80px; border-radius: var(--radius-circle); background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.25); backdrop-filter: blur(8px); color: white; display: flex; align-items: center; justify-content: center; font-size: 2rem; font-weight: 700; box-shadow: var(--shadow-elevated);">
                         <i class="fas fa-crown"></i>
                     </div>
                     <div>
@@ -30,15 +30,15 @@
                         <i class="fas fa-sync-alt"></i>
                     </button>
                     <div class="dropdown d-inline-block">
-                        <button class="btn-acasi" style="background-color: var(--warning); color: white;" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <button class="btn-acasi" style="background-color: var(--primary); color: white;" type="button" id="quickActionsDropdown" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-bolt"></i> Actions rapides
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li><a class="dropdown-item" href="{{ route('esbtp.inscriptions.create') }}"><i class="fas fa-user-plus" style="color: var(--primary);"></i> Nouvel étudiant</a></li>
-                            <li><a class="dropdown-item" href="{{ route('esbtp.evaluations.create') }}"><i class="fas fa-file-alt" style="color: var(--success);"></i> Créer examen</a></li>
-                            <li><a class="dropdown-item" href="{{ route('esbtp.annonces.create') }}"><i class="fas fa-bullhorn" style="color: var(--warning);"></i> Publier annonce</a></li>
+                            <li><a class="dropdown-item" href="{{ route('esbtp.evaluations.create') }}"><i class="fas fa-file-alt" style="color: var(--primary);"></i> Créer examen</a></li>
+                            <li><a class="dropdown-item" href="{{ route('esbtp.annonces.create') }}"><i class="fas fa-bullhorn" style="color: var(--primary);"></i> Publier annonce</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ route('esbtp.resultats.index') }}"><i class="fas fa-print" style="color: var(--accent-blue);"></i> Générer bulletins</a></li>
+                            <li><a class="dropdown-item" href="{{ route('esbtp.resultats.index') }}"><i class="fas fa-print" style="color: var(--primary);"></i> Générer bulletins</a></li>
                         </ul>
                     </div>
                 </div>
@@ -75,31 +75,31 @@
 
     <!-- KPI Cards -->
     <div class="kpi-grid mb-xl">
-        <div class="kpi-card card-moderne" style="background-color: var(--primary); color: white; text-align: center;">
+        <div class="kpi-card card-moderne" style="background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 100%); color: white; text-align: center;">
             <i class="fas fa-users fa-2x mb-md"></i>
             <div class="kpi-title" style="color: white;">Étudiants</div>
             <div class="kpi-value" style="color: white;">{{ $totalStudents }}</div>
         </div>
 
-        <div class="kpi-card card-moderne" style="background-color: var(--success); color: white; text-align: center;">
+        <div class="kpi-card card-moderne" style="background: linear-gradient(135deg, #0453cb 0%, #1b64d4 100%); color: white; text-align: center;">
             <i class="fas fa-graduation-cap fa-2x mb-md"></i>
             <div class="kpi-title" style="color: white;">Filières</div>
             <div class="kpi-value" style="color: white;">{{ $totalFilieres }}</div>
         </div>
 
-        <div class="kpi-card card-moderne" style="background-color: var(--warning); color: white; text-align: center;">
+        <div class="kpi-card card-moderne" style="background: linear-gradient(135deg, #1b64d4 0%, #3b7ddb 100%); color: white; text-align: center;">
             <i class="fas fa-chalkboard-teacher fa-2x mb-md"></i>
             <div class="kpi-title" style="color: white;">Classes</div>
             <div class="kpi-value" style="color: white;">{{ $totalClasses }}</div>
         </div>
 
-        <div class="kpi-card card-moderne" style="background-color: var(--accent-blue); color: white; text-align: center;">
+        <div class="kpi-card card-moderne" style="background: linear-gradient(135deg, #3b7ddb 0%, #5e91de 100%); color: white; text-align: center;">
             <i class="fas fa-book-open fa-2x mb-md"></i>
             <div class="kpi-title" style="color: white;">Matières</div>
             <div class="kpi-value" style="color: white;">{{ $totalMatieres }}</div>
         </div>
 
-        <div class="kpi-card card-moderne" style="background-color: var(--secondary); color: white; text-align: center;">
+        <div class="kpi-card card-moderne" style="background: linear-gradient(135deg, #0a3d8f 0%, #3b7ddb 100%); color: white; text-align: center;">
             <i class="fas fa-user-tie fa-2x mb-md"></i>
             <div class="kpi-title" style="color: white;">Enseignants</div>
             <div class="kpi-value" style="color: white;">{{ $totalTeachers ?? 0 }}</div>

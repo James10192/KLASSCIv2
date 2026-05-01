@@ -2164,9 +2164,9 @@
                     <div class="menu-item">
                         @php
                             $profileRoute = 'admin.profile';
-                            if (auth()->user()->can('identity.teach')) {
+                            if (auth()->check() && auth()->user()->can('identity.teach')) {
                                 $profileRoute = 'teacher.profile';
-                            } elseif (auth()->user()->can('identity.coordinate')) {
+                            } elseif (auth()->check() && auth()->user()->can('identity.coordinate')) {
                                 $profileRoute = 'coordinateur.profile';
                             }
                         @endphp
@@ -2290,7 +2290,7 @@
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     <div class="quick-actions-grid" id="quick-actions-list">
-                                        @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
+                                        @if(auth()->check() && auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
                                             <a href="{{ route('esbtp.etudiants.create') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
                                                     <i class="fas fa-user-plus"></i>
@@ -2315,7 +2315,7 @@
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle classe</span>
                                             </a>
-                                        @elseif(auth()->user()->can('identity.coordinate'))
+                                        @elseif(auth()->check() && auth()->user()->can('identity.coordinate'))
                                             <a href="{{ route('esbtp.emploi-temps.create') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
                                                     <i class="fas fa-calendar-plus"></i>
@@ -2334,7 +2334,7 @@
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle annonce</span>
                                             </a>
-                                        @elseif(auth()->user()->can('identity.student'))
+                                        @elseif(auth()->check() && auth()->user()->can('identity.student'))
                                             <a href="{{ route('esbtp.mes-evaluations.index') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
                                                     <i class="fas fa-clipboard-list"></i>

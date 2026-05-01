@@ -22,8 +22,7 @@ class ESBTPComptableController extends Controller
 
     public function index()
     {
-        $comptables = User::role('comptable')->orderBy('name')->get();
-        return view('esbtp.comptables.index', compact('comptables'));
+        return redirect()->route('esbtp.personnel.unified.index');
     }
 
     public function create()

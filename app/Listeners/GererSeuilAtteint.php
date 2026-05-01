@@ -48,7 +48,7 @@ class GererSeuilAtteint implements ShouldQueue
                     "Alerte {$event->niveau}: {$event->typeKPI}",
                     $event->message,
                     $typeNotification,
-                    route('esbtp.comptabilite.dashboard-avance'),
+                    route('esbtp.comptabilite.dashboard'),
                     null
                 );
             }

@@ -4,7 +4,7 @@
 
 @section('sidebar')
     <li class="navigation-item">
-        <a href="{{ route('esbtp.comptabilite.dashboard-avance') }}" class="navigation-link">
+        <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="navigation-link">
             <i class="fas fa-tachometer-alt me-2"></i>Dashboard
         </a>
     </li>
@@ -13,17 +13,21 @@
             <i class="fas fa-credit-card me-2"></i>Paiements
         </a>
     </li>
-    <li class="navigation-item">
+    @if(Route::has('esbtp.comptabilite.depenses.index'))
+<li class="navigation-item">
         <a href="{{ route('esbtp.comptabilite.depenses.index') }}" class="navigation-link">
             <i class="fas fa-wallet me-2"></i>Dépenses
         </a>
     </li>
-    <li class="navigation-item">
+@endif
+@if(Route::has('esbtp.comptabilite.factures.index'))
+<li class="navigation-item">
         <a href="{{ route('esbtp.comptabilite.factures.index') }}" class="navigation-link">
             <i class="fas fa-file-invoice me-2"></i>Factures
         </a>
     </li>
-    <li class="navigation-item active">
+@endif
+<li class="navigation-item active">
         <a href="{{ route('esbtp.comptabilite.rapports.builder') }}" class="navigation-link active">
             <i class="fas fa-chart-pie me-2"></i>Rapports
         </a>
