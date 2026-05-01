@@ -197,6 +197,33 @@ class SettingsHelper
     }
 
     /**
+     * Récupère les paramètres Analytics (poids, seuils, notifications).
+     *
+     * @return array
+     */
+    public static function getAnalyticsSettings()
+    {
+        return [
+            'default_risk' => [
+                'weight_solde'      => (float) self::get('analytics.default_risk.weight.solde', 3.0),
+                'weight_retard'     => (float) self::get('analytics.default_risk.weight.retard', 2.5),
+                'weight_engagement' => (float) self::get('analytics.default_risk.weight.engagement', 1.0),
+                'weight_montant'    => (float) self::get('analytics.default_risk.weight.montant', 0.5),
+                'bias'              => (float) self::get('analytics.default_risk.bias', -2.5),
+                'threshold_high'    => (float) self::get('analytics.default_risk.threshold_high', 0.66),
+                'threshold_medium'  => (float) self::get('analytics.default_risk.threshold_medium', 0.33),
+                'top_n'             => (int)   self::get('analytics.default_risk.top_n', 50),
+            ],
+            'anomaly' => [
+                'z_warning'                   => (float) self::get('analytics.anomaly.z_warning', 2.0),
+                'z_critical'                  => (float) self::get('analytics.anomaly.z_critical', 3.0),
+                'payment_outlier_multiplier'  => (float) self::get('analytics.anomaly.payment_outlier_multiplier', 3.0),
+                'notifications_enabled'       => (string) self::get('analytics.anomaly.notifications_enabled', '1') === '1',
+            ],
+        ];
+    }
+
+    /**
      * Initialise les paramètres par défaut
      *
      * @return void

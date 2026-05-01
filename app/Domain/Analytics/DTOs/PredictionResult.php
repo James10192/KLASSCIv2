@@ -10,6 +10,7 @@ final class PredictionResult
 {
     /**
      * @param  array<int, string>  $explanation  Top raisons, ordre d'importance
+     * @param  array<string, mixed>  $metadata  Données structurées additionnelles (top-N rows, breakdown, etc.)
      */
     public function __construct(
         public readonly string $predictor,
@@ -19,6 +20,7 @@ final class PredictionResult
         public readonly string $confidenceLabel,
         public readonly array $explanation,
         public readonly ?\DateTimeInterface $targetDate = null,
+        public readonly array $metadata = [],
     ) {}
 
     public static function unavailable(string $predictor, string $reason): self
@@ -33,6 +35,11 @@ final class PredictionResult
         );
     }
 
+    public function isAvailable(): bool
+    {
+        return $this->value !== null && $this->label !== 'indisponible';
+    }
+
     public function toArray(): array
     {
         return [
@@ -43,6 +50,7 @@ final class PredictionResult
             'confidence_label' => $this->confidenceLabel,
             'explanation' => $this->explanation,
             'target_date' => $this->targetDate?->format('Y-m-d'),
+            'metadata' => $this->metadata,
         ];
     }
 }

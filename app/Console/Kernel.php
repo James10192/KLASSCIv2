@@ -7,6 +7,8 @@ use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 use App\Jobs\CalculerKPIsJob;
 use App\Jobs\SauvegardeDataJob;
 use App\Jobs\PlanifierRelancesJob;
+use App\Jobs\ComputeAnalyticsPredictionsJob;
+use App\Jobs\DetectAnalyticsAnomaliesJob;
 
 class Kernel extends ConsoleKernel
 {
@@ -166,6 +168,25 @@ class Kernel extends ConsoleKernel
             ->at('05:00')
             ->name('optimisation-database')
             ->description('Optimisation hebdomadaire de la base de données');
+
+        // =====================================================================
+        // ANALYTICS — Phase 4 (PR feat/analytics-default-risk-anomaly)
+        // =====================================================================
+
+        // Calcul quotidien des prédictions analytics (4h Africa/Abidjan)
+        $schedule->job(new ComputeAnalyticsPredictionsJob)
+            ->dailyAt('04:00')
+            ->timezone('Africa/Abidjan')
+            ->name('analytics-predictions-daily')
+            ->description('Calcul quotidien cash flow + default risk + persistence + cache warm-up')
+            ->onOneServer();
+
+        // Détection d'anomalies financières (toutes les 6 heures)
+        $schedule->job(new DetectAnalyticsAnomaliesJob)
+            ->everySixHours()
+            ->name('analytics-anomaly-detection')
+            ->description('Détection anomalies revenue + paiements outliers + notification admin/comptables')
+            ->onOneServer();
     }
 
     /**

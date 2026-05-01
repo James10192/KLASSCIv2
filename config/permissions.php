@@ -626,6 +626,16 @@ return [
             'group' => 'Comptabilité',
             'icon' => 'fa-sync',
         ],
+        'comptabilite.analytics.run_now' => [
+            'label' => 'Déclencher manuellement le job de calcul analytics',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-play',
+        ],
+        'comptabilite.analytics.configure' => [
+            'label' => 'Configurer les seuils & poids du moteur analytics',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-sliders-h',
+        ],
         'comptabilite.relances.send' => [
             'label' => 'Envoyer des relances de paiement',
             'group' => 'Comptabilité',
@@ -1106,6 +1116,8 @@ return [
             'comptabilite.reports.export', 'comptabilite.config.manage',
             'comptabilite.paiements.view', 'comptabilite.paiements.validate',
             'comptabilite.frais.view', 'comptabilite.frais.configure',
+            'comptabilite.analytics.view', 'comptabilite.analytics.refresh',
+            'comptabilite.analytics.run_now', 'comptabilite.analytics.configure',
             'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.validate',
             'paiements.export',  // Lot 15
             'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
