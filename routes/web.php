@@ -24,7 +24,6 @@ use App\Http\Controllers\ESBTPClasseController;
 use App\Http\Controllers\ESBTPComptabiliteAnalyticsController;
 use App\Http\Controllers\ESBTPComptabiliteController;
 use App\Http\Controllers\ESBTPComptabiliteFraisController;
-use App\Http\Controllers\ESBTPComptabilitePaiementController;
 use App\Http\Controllers\ESBTPComptabiliteReportController;
 use App\Http\Controllers\ESBTPComptabiliteRelanceController;
 use App\Http\Controllers\ESBTPContinuingEducationController;
@@ -1391,24 +1390,18 @@ Route::middleware(['auth', 'role:enseignant|coordinateur'])->group(function () {
 });
 
 // Groupe de routes pour la comptabilité
-Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')->name('esbtp.comptabilite.')->group(function () {
-    // Dashboard comptabilité
-    Route::get('/', [ESBTPComptabiliteController::class, 'index'])->name('index');
+// Legacy comptabilité redirects (modules supprimés — voir docs/COMPTABILITE_CLEANUP_PLAN.md)
+Route::permanentRedirect('/esbtp/comptabilite', '/esbtp/comptabilite/dashboard');
+Route::permanentRedirect('/esbtp/comptabilite/paiements', '/esbtp/paiements');
+Route::permanentRedirect('/esbtp/comptabilite/paiements/create', '/esbtp/paiements/create');
+Route::permanentRedirect('/esbtp/comptabilite/rapports', '/esbtp/comptabilite/dashboard');
+Route::get('/esbtp/comptabilite/paiements/{id}', fn ($id) => redirect()->route('esbtp.paiements.show', $id));
+Route::get('/esbtp/comptabilite/paiements/{id}/edit', fn ($id) => redirect()->route('esbtp.paiements.edit', $id));
+Route::get('/esbtp/comptabilite/paiements/{id}/recu', fn ($id) => redirect()->route('esbtp.paiements.recu', $id));
 
+Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')->name('esbtp.comptabilite.')->group(function () {
     // KPIs temps réel
     Route::get('/kpis-temps-reel', [ESBTPComptabiliteController::class, 'kpisTempsReel'])->name('kpis-temps-reel');
-
-    // Paiements
-    // Gestion des paiements
-    Route::get('/paiements', [ESBTPComptabilitePaiementController::class, 'paiements'])->name('paiements');
-    Route::get('/paiements/create', [ESBTPComptabilitePaiementController::class, 'createPaiement'])->name('paiements.create');
-    Route::post('/paiements', [ESBTPComptabilitePaiementController::class, 'storePaiement'])->name('paiements.store');
-    Route::get('/paiements/{id}', [ESBTPComptabilitePaiementController::class, 'showPaiement'])->name('paiements.show');
-    Route::get('/paiements/{id}/edit', [ESBTPComptabilitePaiementController::class, 'editPaiement'])->name('paiements.edit');
-    Route::put('/paiements/{id}', [ESBTPComptabilitePaiementController::class, 'updatePaiement'])->name('paiements.update');
-    Route::post('/paiements/{id}/valider', [ESBTPComptabilitePaiementController::class, 'validerPaiement'])->name('paiements.valider');
-    Route::post('/paiements/{id}/rejeter', [ESBTPComptabilitePaiementController::class, 'rejeterPaiement'])->name('paiements.rejeter');
-    Route::get('/paiements/{id}/recu', [ESBTPComptabilitePaiementController::class, 'genererRecu'])->name('paiements.recu');
 
     // Gestion des frais de scolarité
     Route::get('/frais-scolarite', [ESBTPComptabiliteReportController::class, 'fraisScolarite'])->name('frais-scolarite');
@@ -1428,16 +1421,8 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     Route::put('/bourses/{id}', [ESBTPComptabiliteFraisController::class, 'updateBourse'])->name('bourses.update');
     Route::delete('/bourses/{id}', [ESBTPComptabiliteFraisController::class, 'destroyBourse'])->name('bourses.destroy');
 
-    // Tableau de bord et rapports financiers
-    Route::get('/rapports', [ESBTPComptabiliteReportController::class, 'rapports'])->name('rapports');
-    Route::get('/rapports/generate', [ESBTPComptabiliteReportController::class, 'generateReport'])->name('rapports.generate');
-    Route::post('/rapports/export', [ESBTPComptabiliteReportController::class, 'exportReport'])->name('rapports.export');
-
-    // Routes avancées pour le générateur de rapports - Task #6
+    // Routes Analytics (legacy `rapports.*` direct routes removed — voir COMPTABILITE_CLEANUP_PLAN.md)
     Route::prefix('rapports')->name('rapports.')->group(function () {
-        Route::get('/builder', [ESBTPComptabiliteController::class, 'rapportsAvances'])->name('builder')
-            ->middleware(['permission:comptabilite.dashboard.view']);
-
         Route::post('/generer', [ESBTPComptabiliteAnalyticsController::class, 'genererRapportPersonnalise'])->name('generer')
             ->middleware(['permission:comptabilite.reports.export', 'throttle:10,1']);
 

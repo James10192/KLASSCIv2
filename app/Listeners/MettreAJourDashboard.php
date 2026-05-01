@@ -157,7 +157,7 @@ class MettreAJourDashboard implements ShouldQueue
                 'Mise à jour des KPIs',
                 $message,
                 'info',
-                route('esbtp.comptabilite.dashboard-avance'),
+                route('esbtp.comptabilite.dashboard'),
                 null
             );
         }

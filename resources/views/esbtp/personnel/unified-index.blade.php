@@ -1616,7 +1616,7 @@
                 {{-- ═══ Lot 19 — Tabs dynamiques pour rôles custom ═══ --}}
                 @if(isset($customRoleUsers) && $customRoleUsers->count() > 0)
                     @foreach($customRoleUsers as $roleName => $payload)
-                    <button class="pu-tab slider-tab" data-tab="custom-{{ $roleName }}">
+                    <button class="pu-tab slider-tab" data-tab="custom-{{ $payload['slug'] }}">
                         <span class="pu-tab-icon"><i class="fas {{ $payload['meta']['icon'] ?? 'fa-user-tag' }}"></i></span>
                         <span class="pu-tab-label">{{ $payload['meta']['label'] ?? $roleName }}</span>
                         <span class="pu-tab-count">{{ $payload['users']->count() }} personne{{ $payload['users']->count() > 1 ? 's' : '' }}</span>
@@ -2018,10 +2018,10 @@
                 {{-- ═══ Lot 19 — Panels dynamiques pour rôles custom ═══ --}}
                 @if(isset($customRoleUsers) && $customRoleUsers->count() > 0)
                     @foreach($customRoleUsers as $roleName => $payload)
-                    <div class="pu-panel slider-panel" id="custom-{{ $roleName }}-panel">
+                    <div class="pu-panel slider-panel" id="custom-{{ $payload['slug'] }}-panel">
                         <div class="pu-panel-header">
                             <div class="pu-search">
-                                <input type="text" placeholder="Rechercher dans {{ $payload['meta']['label'] ?? $roleName }}..." class="pu-search-input" data-search-target="custom-{{ $roleName }}-list">
+                                <input type="text" placeholder="Rechercher dans {{ $payload['meta']['label'] ?? $roleName }}..." class="pu-search-input" data-search-target="custom-{{ $payload['slug'] }}-list">
                             </div>
                             <a href="{{ route('esbtp.custom-roles.assign-users.form', $roleName) }}" class="pu-panel-btn pu-panel-btn-primary">
                                 <i class="fas fa-user-cog"></i>Gérer les assignations
@@ -2030,14 +2030,14 @@
 
                         <div class="pu-filters">
                             <label>Filtrer :</label>
-                            <select class="pu-filter-select filter-select" data-filter-target="custom-{{ $roleName }}-list">
+                            <select class="pu-filter-select filter-select" data-filter-target="custom-{{ $payload['slug'] }}-list">
                                 <option value="">Tous les statuts</option>
                                 <option value="active">Actifs</option>
                                 <option value="inactive">Inactifs</option>
                             </select>
                         </div>
 
-                        <div id="custom-{{ $roleName }}-list">
+                        <div id="custom-{{ $payload['slug'] }}-list">
                             @if($payload['users']->count() > 0)
                                 @foreach($payload['users'] as $u)
                                 <div class="pu-card personnel-card">

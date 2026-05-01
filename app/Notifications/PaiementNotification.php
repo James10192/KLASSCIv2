@@ -41,7 +41,7 @@ class PaiementNotification extends Notification implements ShouldQueue
             ->line('Un paiement de ' . number_format($this->paiement->montant) . ' FCFA a été reçu.')
             ->line('Étudiant: ' . ($this->paiement->etudiant->nom_complet ?? 'Inconnu'))
             ->line('Date de paiement: ' . $this->paiement->date_paiement?->format('d/m/Y'))
-            ->action('Voir détails', url('/esbtp/comptabilite/paiements/' . $this->paiement->id))
+            ->action('Voir détails', route('esbtp.paiements.show', $this->paiement->id))
             ->line('Merci d\'utiliser ESBTP KLASSCI!');
     }
 
@@ -56,7 +56,7 @@ class PaiementNotification extends Notification implements ShouldQueue
             'etudiant' => $this->paiement->etudiant->nom_complet ?? 'Inconnu',
             'type_paiement' => $this->paiement->type_paiement,
             'date_paiement' => $this->paiement->date_paiement?->format('d/m/Y'),
-            'action_url' => url('/esbtp/comptabilite/paiements/' . $this->paiement->id)
+            'action_url' => route('esbtp.paiements.show', $this->paiement->id)
         ];
     }
 }

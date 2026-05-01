@@ -406,7 +406,7 @@ $gradientColor = adjustBrightness(ltrim($baseColor, '#'), -20);
                                     <td>{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</td>
                                     <td>{{ $paiement->date_paiement->format('d/m/Y') }}</td>
                                     <td>
-                                        <a href="{{ route('esbtp.comptabilite.paiements.show', $paiement->id) }}" 
+                                        <a href="{{ route('esbtp.paiements.show', $paiement->id) }}"
                                            class="btn btn-sm btn-info rounded-circle">
                                             <i class="fas fa-eye"></i>
                                         </a>
@@ -419,7 +419,7 @@ $gradientColor = adjustBrightness(ltrim($baseColor, '#'), -20);
                     
                     @if($paiements->count() > 5)
                     <div class="text-center mt-3">
-                        <a href="{{ route('esbtp.comptabilite.paiements.index', ['categorie' => $categorie->id]) }}" 
+                        <a href="{{ route('esbtp.paiements.index', ['categorie' => $categorie->id]) }}"
                            class="btn btn-outline-primary btn-sm rounded-pill px-4">
                             <i class="fas fa-list me-2"></i>Voir tous les paiements
                         </a>
