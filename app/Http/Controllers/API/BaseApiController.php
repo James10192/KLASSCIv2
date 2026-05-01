@@ -251,7 +251,7 @@ class BaseApiController extends Controller
 
             case 'evaluations':
                 // Autoriser plusieurs chemins pour retrouver les évaluations de l'enseignant
-                $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+                $teacher = $user->teacherProfile;
                 $teacherId = $teacher ? $teacher->id : null;
 
                 return $query->where(function ($subQuery) use ($user, $annee, $teacherId) {

@@ -22,7 +22,7 @@ class ESBTPTeacherAttendanceController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $teacherModel = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacherModel = $user->teacherProfile;
         $teacherId = $teacherModel ? $teacherModel->id : null;
         $today = \Carbon\Carbon::today()->format('Y-m-d');
 
@@ -81,7 +81,7 @@ class ESBTPTeacherAttendanceController extends Controller
             $settings = config('esbtp.attendance', []);
 
             // Récupérer le modèle enseignant lié à l'utilisateur
-            $teacherModel = \App\Models\ESBTPTeacher::where('user_id', $teacher->id)->first();
+            $teacherModel = $teacher->teacherProfile;
             if (!$teacherModel) {
                 throw new \Exception('Aucun profil enseignant associé à ce compte.');
             }

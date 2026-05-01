@@ -458,7 +458,7 @@
                     $hasCoursesToday = $todayClasses->count() > 0;
 
                     // Récupérer le teacher_id correct
-                    $teacherModel = \App\Models\ESBTPTeacher::where('user_id', Auth::id())->first();
+                    $teacherModel = auth()->user()?->teacherProfile;
                     $teacherId = $teacherModel ? $teacherModel->id : null;
 
                     // Compter les émargements DÉBUT et FIN séparément
@@ -729,7 +729,7 @@
                                             ->first();
 
                                         // Récupérer le teacher_id correct (ESBTPTeacher.id pas User.id)
-                                        $teacherModel = \App\Models\ESBTPTeacher::where('user_id', Auth::id())->first();
+                                        $teacherModel = auth()->user()?->teacherProfile;
                                         $teacherId = $teacherModel ? $teacherModel->id : null;
 
                                         // Vérifier émargements DÉBUT et FIN

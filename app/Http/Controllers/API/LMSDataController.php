@@ -1305,7 +1305,7 @@ class LMSDataController extends BaseApiController
 
         // Récupérer le teacher associé à l'utilisateur connecté (table esbtp_teachers)
         // IMPORTANT: teacher_id dans les séances référence esbtp_teachers.id, PAS users.id
-        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacher = $user->teacherProfile;
         $teacherId = $teacher ? $teacher->id : null;
 
         if (!$teacherId) {
@@ -2333,7 +2333,7 @@ class LMSDataController extends BaseApiController
 
         // Vérifier si c'est l'enseignant
         if ($user->can('identity.teach')) {
-            $teacher = \App\Models\ESBTPTeacher::where('user_id', $userId)->first();
+            $teacher = $user->teacherProfile;
 
             if ($teacher && $seance->teacher_id == $teacher->id) {
                 $authorized = true;
@@ -2785,7 +2785,7 @@ class LMSDataController extends BaseApiController
         }
         // Si c'est un enseignant
         elseif ($user->can('identity.teach')) {
-            $teacher = \App\Models\ESBTPTeacher::where('user_id', $userId)->first();
+            $teacher = $user->teacherProfile;
 
             if ($teacher) {
                 $preferences['channels']['whatsapp']['phone'] = $teacher->telephone ?? $user->phone;
