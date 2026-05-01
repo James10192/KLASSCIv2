@@ -8,11 +8,12 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection as EloquentCollection;
+use Illuminate\Support\Collection;
 
 /**
- * Construit le payload de données du dashboard comptabilité (KPIs paiements,
- * encaissements mensuels, aging buckets, paiements en attente). Utilisé par
- * dashboard() (HTML) et dashboardData() (JSON AJAX) — élimine la duplication.
+ * Construit le payload du dashboard comptabilité (KPIs + encaissements + aging + pending).
+ * Utilisé par dashboard() (HTML) et dashboardData() (JSON AJAX) — élimine la duplication.
  */
 class BuildDashboardDataAction
 {
@@ -22,18 +23,20 @@ class BuildDashboardDataAction
     private const PENDING_PAYMENTS_LIMIT = 10;
 
     public function __construct(
-        private readonly CalculerTotalDuAction $calculerTotalDu,
         private readonly GetImpayesAgingAction $getImpayesAging,
     ) {}
 
+    /**
+     * @return array<string, mixed>
+     */
     public function __invoke(ComptabiliteFilters $filters, ?ESBTPAnneeUniversitaire $annee): array
     {
         $totalPaid = (float) $this->paiementsQuery($filters)
             ->where('status', self::PAYMENT_STATUS_VALIDATED)
             ->sum('montant');
 
-        $totalDuResult = ($this->calculerTotalDu)($filters);
-        $totalOverdue = max(0.0, $totalDuResult->totalDue - $totalPaid);
+        $totalDuResult = $this->getImpayesAging->totalDuForFilters($filters);
+        $totalOverdue = max(0.0, $totalDuResult['totalDue'] - $totalPaid);
 
         $countPaid = $this->paiementsQuery($filters)
             ->where('status', self::PAYMENT_STATUS_VALIDATED)
@@ -51,8 +54,8 @@ class BuildDashboardDataAction
         [$labelsMois, $dataEncaissements] = $this->buildMonthlySeries($filters, $annee);
 
         return [
-            'totalDue' => $totalDuResult->totalDue,
-            'countDue' => $totalDuResult->countDue,
+            'totalDue' => $totalDuResult['totalDue'],
+            'countDue' => $totalDuResult['countDue'],
             'totalPaid' => $totalPaid,
             'totalOverdue' => $totalOverdue,
             'countPaid' => $countPaid,
@@ -79,6 +82,8 @@ class BuildDashboardDataAction
     }
 
     /**
+     * Single GROUP BY query au lieu de N queries (1 par mois) — évite N+1 sur dashboard load.
+     *
      * @return array{0: array<int, string>, 1: array<int, float>}
      */
     private function buildMonthlySeries(ComptabiliteFilters $filters, ?ESBTPAnneeUniversitaire $annee): array
@@ -90,25 +95,25 @@ class BuildDashboardDataAction
         $debut = Carbon::parse($annee->start_date);
         $fin = Carbon::parse($annee->end_date ?? now());
 
+        $monthlyTotals = $this->paiementsQuery($filters)
+            ->where('status', self::PAYMENT_STATUS_VALIDATED)
+            ->whereBetween('date_paiement', [$debut, $fin])
+            ->selectRaw('YEAR(date_paiement) as y, MONTH(date_paiement) as m, SUM(montant) as total')
+            ->groupBy('y', 'm')
+            ->get()
+            ->keyBy(fn ($row) => $row->y . '-' . str_pad((string) $row->m, 2, '0', STR_PAD_LEFT));
+
         $labels = [];
         $data = [];
         for ($date = $debut->copy(); $date->lte($fin); $date->addMonth()) {
             $labels[] = $date->translatedFormat('M Y');
-            $data[] = (float) $this->paiementsQuery($filters)
-                ->where('status', self::PAYMENT_STATUS_VALIDATED)
-                ->whereMonth('date_paiement', $date->month)
-                ->whereYear('date_paiement', $date->year)
-                ->sum('montant');
+            $data[] = (float) ($monthlyTotals->get($date->format('Y-m'))?->total ?? 0);
         }
 
         return [$labels, $data];
     }
 
-    /**
-     * Retourne les ESBTPPaiement Eloquent objects (consommés par la vue Blade).
-     * Pour le JSON AJAX, le controller appelle pendingPaymentsToArray() ci-dessous.
-     */
-    private function fetchPendingPayments(ComptabiliteFilters $filters): \Illuminate\Database\Eloquent\Collection
+    private function fetchPendingPayments(ComptabiliteFilters $filters): EloquentCollection
     {
         return ESBTPPaiement::query()
             ->with(['inscription.etudiant', 'fraisCategory'])
@@ -121,10 +126,9 @@ class BuildDashboardDataAction
     }
 
     /**
-     * Sérialise la Collection<ESBTPPaiement> vers la shape JSON attendue par
-     * dashboardData() (utilisé par les filtres AJAX du dashboard).
+     * Sérialise vers la shape JSON attendue par dashboardData() (filtres AJAX).
      */
-    public static function pendingPaymentsToArray(\Illuminate\Database\Eloquent\Collection $payments): \Illuminate\Support\Collection
+    public static function pendingPaymentsToArray(EloquentCollection $payments): Collection
     {
         return $payments->map(fn ($p) => [
             'nom' => $p->inscription->etudiant->nom ?? 'N/A',
