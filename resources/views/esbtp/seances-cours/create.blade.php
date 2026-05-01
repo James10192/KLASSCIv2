@@ -640,7 +640,7 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="col-lg-6">
+                        <div class="col-lg-12">
                             <div class="form-group">
                                 <label class="form-label">Spécialisation <span class="text-danger">*</span></label>
                                 <input type="text" name="specialization" id="teacher_specialization" class="form-control" required>
@@ -648,44 +648,23 @@
                         </div>
                         <div class="col-lg-6">
                             <div class="form-group">
-                                <label class="form-label">Département <span class="text-danger">*</span></label>
-                                <select name="department_id" id="teacher_department" class="form-select" required>
-                                    <option value="">Sélectionner</option>
-                                    @foreach($departments as $department)
-                                        <option value="{{ $department->id }}">{{ $department->name }}</option>
+                                <label class="form-label">Régime <span class="text-danger">*</span></label>
+                                <select name="regime" id="teacher_regime" class="form-select" required>
+                                    @foreach(\App\Enums\TeacherRegime::cases() as $regime)
+                                        <option value="{{ $regime->value }}" {{ $regime === \App\Enums\TeacherRegime::Vacataire ? 'selected' : '' }}>
+                                            {{ $regime->label() }} — {{ $regime->description() }}
+                                        </option>
                                     @endforeach
                                 </select>
                             </div>
                         </div>
-                        <div class="col-lg-4">
+                        <div class="col-lg-3">
                             <div class="form-group">
-                                <label class="form-label">Type de contrat <span class="text-danger">*</span></label>
-                                <select name="type_contrat" id="teacher_contract" class="form-select" required>
-                                    <option value="">Sélectionner</option>
-                                    @foreach($types_contrat as $key => $value)
-                                        <option value="{{ $key }}">{{ $value }}</option>
-                                    @endforeach
-                                </select>
+                                <label class="form-label">Date de début d'activité</label>
+                                <input type="date" name="date_debut_activite" id="teacher_hire_date" class="form-control" value="{{ now()->toDateString() }}">
                             </div>
                         </div>
-                        <div class="col-lg-4">
-                            <div class="form-group">
-                                <label class="form-label">Statut d'emploi <span class="text-danger">*</span></label>
-                                <select name="statut_emploi" id="teacher_status" class="form-select" required>
-                                    <option value="">Sélectionner</option>
-                                    @foreach($statuts_emploi as $key => $value)
-                                        <option value="{{ $key }}">{{ $value }}</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                        </div>
-                        <div class="col-lg-4">
-                            <div class="form-group">
-                                <label class="form-label">Date d'embauche <span class="text-danger">*</span></label>
-                                <input type="date" name="date_embauche" id="teacher_hire_date" class="form-control" required>
-                            </div>
-                        </div>
-                        <div class="col-lg-4">
+                        <div class="col-lg-3">
                             <div class="form-group">
                                 <label class="form-label">Charge horaire max/semaine</label>
                                 <input type="number" name="charge_horaire_max_semaine" id="teacher_weekly_hours" class="form-control" min="1" max="60" value="40">

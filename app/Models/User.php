@@ -124,6 +124,23 @@ class User extends Authenticatable
         return $this->hasOne(\App\Models\ESBTPEtudiant::class);
     }
 
+    public function teacherProfile()
+    {
+        return $this->hasOne(\App\Models\ESBTPTeacher::class);
+    }
+
+    /** Alias rétrocompat : $user->teacher → ESBTPTeacher (utilisé par TeacherController, GradeController, NotificationController). */
+    public function teacher()
+    {
+        return $this->teacherProfile();
+    }
+
+    /** Alias rétrocompat : $user->enseignant → ESBTPTeacher (utilisé par TeacherGradeController, TeacherAttendanceController). */
+    public function enseignant()
+    {
+        return $this->teacherProfile();
+    }
+
     public function parent()
     {
         return $this->hasOne(ESBTPParent::class);

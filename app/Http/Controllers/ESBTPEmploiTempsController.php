@@ -644,7 +644,7 @@ class ESBTPEmploiTempsController extends Controller
         // Récupérer les enseignants disponibles (tous les enseignants, mais marquer ceux qui sont assignés)
         $tousLesEnseignants = \App\Models\User::role('enseignant')
             ->where('is_active', true)
-            ->with('enseignantProfile')
+            ->with('teacherProfile')
             ->get();
 
         $enseignantsDisponibles = collect();

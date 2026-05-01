@@ -2228,10 +2228,6 @@
                         </div>
                     </div>
 
-                    @php
-                        $teacherDepartments = \App\Models\ESBTPDepartment::where('is_active', true)->orderBy('name')->get();
-                    @endphp
-
                     <div class="row g-3">
                         <div class="col-md-6">
                             <label class="form-label">Nom complet <span class="text-danger">*</span></label>
@@ -2250,40 +2246,24 @@
                             <input type="text" name="specialization" class="form-control" required>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Département <span class="text-danger">*</span></label>
-                            <select name="department_id" class="form-select" required>
-                                <option value="">Sélectionner</option>
-                                @foreach($teacherDepartments as $department)
-                                    <option value="{{ $department->id }}">{{ $department->name }}</option>
+                            <label class="form-label">Régime <span class="text-danger">*</span></label>
+                            <select name="regime" class="form-select" required>
+                                @foreach(\App\Enums\TeacherRegime::cases() as $regime)
+                                    <option value="{{ $regime->value }}" {{ $regime === \App\Enums\TeacherRegime::Vacataire ? 'selected' : '' }}>
+                                        {{ $regime->label() }} — {{ $regime->description() }}
+                                    </option>
                                 @endforeach
                             </select>
                         </div>
                         <div class="col-md-6">
-                            <label class="form-label">Type de contrat <span class="text-danger">*</span></label>
-                            <select name="type_contrat" class="form-select" required>
-                                <option value="">Sélectionner</option>
-                                <option value="permanent">Permanent</option>
-                                <option value="temporaire">Temporaire</option>
-                                <option value="vacataire">Vacataire</option>
-                                <option value="consultant">Consultant</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Statut d'emploi <span class="text-danger">*</span></label>
-                            <select name="statut_emploi" class="form-select" required>
-                                <option value="">Sélectionner</option>
-                                <option value="temps_plein">Temps Plein</option>
-                                <option value="temps_partiel">Temps Partiel</option>
-                                <option value="vacations">Vacations</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label">Date d'embauche <span class="text-danger">*</span></label>
-                            <input type="date" name="date_embauche" class="form-control" required>
+                            <label class="form-label">Date de début d'activité</label>
+                            <input type="date" name="date_debut_activite" class="form-control" value="{{ now()->toDateString() }}">
+                            <small class="text-muted">Pré-rempli à aujourd'hui. Modifiable.</small>
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Charge horaire max/semaine</label>
                             <input type="number" name="charge_horaire_max_semaine" class="form-control" min="1" max="60" value="40">
+                            <small class="text-muted">Utilisé uniquement pour les enseignants Permanents.</small>
                         </div>
                     </div>
                 </div>

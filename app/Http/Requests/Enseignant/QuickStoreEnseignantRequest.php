@@ -25,7 +25,9 @@ class QuickStoreEnseignantRequest extends FormRequest
             'grade_academique' => 'nullable|string|max:50',
             'specialization' => 'required|string|max:255',
             'regime' => ['nullable', Rule::in(TeacherRegime::values())],
-            // type_contrat est legacy (clients AJAX antérieurs) — toléré pour rétrocompat.
+            // @deprecated 2026-Q3 — type_contrat/statut_emploi/date_embauche : retrocompat AJAX clients
+            // d'avant PR #287. Les modals quick-create modernes envoient regime + date_debut_activite.
+            // À retirer après audit confirmant zéro client legacy actif.
             'type_contrat' => 'nullable|in:permanent,temporaire,vacataire,consultant',
             'statut_emploi' => 'nullable|in:temps_plein,temps_partiel,vacations',
             'date_debut_activite' => 'nullable|date',
