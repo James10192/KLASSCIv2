@@ -266,8 +266,6 @@ class ESBTPSeanceCoursController extends Controller
             // Get default colors
             $defaultColors = ESBTPSeanceCours::DEFAULT_COLORS;
 
-            $departments = \App\Models\ESBTPDepartment::where('is_active', true)->get();
-
             $titres_academiques = [
                 'M.' => 'Monsieur',
                 'Mme' => 'Madame',
@@ -283,19 +281,6 @@ class ESBTPSeanceCoursController extends Controller
                 'professeur' => 'Professeur'
             ];
 
-            $types_contrat = [
-                'permanent' => 'Permanent',
-                'temporaire' => 'Temporaire',
-                'vacataire' => 'Vacataire',
-                'consultant' => 'Consultant'
-            ];
-
-            $statuts_emploi = [
-                'temps_plein' => 'Temps Plein',
-                'temps_partiel' => 'Temps Partiel',
-                'vacations' => 'Vacations'
-            ];
-
             return view('esbtp.seances-cours.create', compact(
                 'emploiTemps',
                 'teachers',
@@ -306,11 +291,8 @@ class ESBTPSeanceCoursController extends Controller
                 'request',
                 'planificationData',
                 'availabilityData',
-                'departments',
                 'titres_academiques',
-                'grades_academiques',
-                'types_contrat',
-                'statuts_emploi'
+                'grades_academiques'
             ));
         } catch (\Exception $e) {
             Log::error('Error in SeanceCoursController@create: '.$e->getMessage());

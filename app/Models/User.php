@@ -124,6 +124,11 @@ class User extends Authenticatable
         return $this->hasOne(\App\Models\ESBTPEtudiant::class);
     }
 
+    public function teacherProfile()
+    {
+        return $this->hasOne(\App\Models\ESBTPTeacher::class);
+    }
+
     public function parent()
     {
         return $this->hasOne(ESBTPParent::class);
