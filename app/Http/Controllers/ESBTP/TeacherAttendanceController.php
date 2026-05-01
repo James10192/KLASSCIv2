@@ -116,7 +116,7 @@ class TeacherAttendanceController extends Controller
             $seanceCours = ESBTPSeanceCours::findOrFail($request->course_id);
 
             // Get the teacher record from esbtp_teachers table
-            $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+            $teacher = $user->teacherProfile;
 
             if (!$teacher) {
                 return back()->with('error', 'Profil enseignant non trouvé.');
@@ -661,7 +661,7 @@ class TeacherAttendanceController extends Controller
         $seance = ESBTPSeanceCours::with(['matiere', 'classe'])->findOrFail($seanceId);
 
         // Récupérer le modèle enseignant associé à l'utilisateur
-        $teacherModel = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacherModel = $user->teacherProfile;
         if (!$teacherModel) {
             return redirect()->route('teacher.dashboard')
                 ->with('error', 'Aucun profil enseignant associé à ce compte.');

@@ -20,7 +20,7 @@ class SessionReportController extends Controller
         $user = Auth::user();
 
         // Récupérer le teacher associé à l'utilisateur
-        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacher = $user->teacherProfile;
         if (!$teacher) {
             abort(403, 'Vous n\'êtes pas enregistré comme enseignant.');
         }
@@ -54,7 +54,7 @@ class SessionReportController extends Controller
         $user = Auth::user();
 
         // Récupérer le teacher associé à l'utilisateur
-        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacher = $user->teacherProfile;
         if (!$teacher) {
             abort(403, 'Vous n\'êtes pas enregistré comme enseignant.');
         }

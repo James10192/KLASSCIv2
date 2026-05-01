@@ -47,9 +47,9 @@ class ESBTPTeacherAttendanceController extends Controller
     private function showTeacherAttendancePage()
     {
         $user = auth()->user();
-        
+
         // Récupérer le modèle enseignant associé à l'utilisateur
-        $teacherModel = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacherModel = $user->teacherProfile;
         $teacherId = $teacherModel ? $teacherModel->id : null;
         $teacherUserId = $user->id;
 
@@ -154,9 +154,9 @@ class ESBTPTeacherAttendanceController extends Controller
         
         // Get current teacher
         $user = auth()->user();
-        
+
         // Récupérer le modèle enseignant associé à l'utilisateur
-        $teacherModel = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacherModel = $user->teacherProfile;
         if (!$teacherModel) {
             return redirect()->back()->with('error', 'Aucun profil enseignant associé à ce compte.');
         }

@@ -324,7 +324,7 @@
             @php
                 // Debug plus détaillé
                 $user = Auth::user();
-                $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+                $teacher = $user->teacherProfile;
                 echo "<!-- Debug: User ID = {$user->id}, Teacher = " . ($teacher ? $teacher->id : 'NULL') . " -->";
             @endphp
             
@@ -366,7 +366,7 @@
 
                                 // Récupérer l'ID enseignant (ESBTPTeacher, PAS User!)
                                 $user = Auth::user();
-                                $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+                                $teacher = $user->teacherProfile;
                                 $teacherId = $teacher ? $teacher->id : null;
 
                                 $dailyCode = \App\Models\ESBTPDailyCode::where('status', 'active')

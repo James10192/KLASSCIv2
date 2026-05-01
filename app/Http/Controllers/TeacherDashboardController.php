@@ -34,7 +34,7 @@ class TeacherDashboardController extends Controller
     public function index()
     {
         $user = Auth::user();
-        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacher = $user->teacherProfile;
         $teacherId = $teacher ? $teacher->id : null;
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         \Log::info('Dashboard enseignant - user_id', ['user_id' => $user->id, 'teacher_id' => $teacherId]);
@@ -161,7 +161,7 @@ class TeacherDashboardController extends Controller
         $callType = request()->get('type', 'start');
 
         // Récupérer le teacher associé à l'utilisateur connecté
-        $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacher = $user->teacherProfile;
         if (! $teacher) {
             abort(403, 'Vous n\'êtes pas enregistré comme enseignant.');
         }
@@ -246,7 +246,7 @@ class TeacherDashboardController extends Controller
         $callType = $request->input('call_type', 'start');
 
         // Récupérer le teacher associé à l'utilisateur connecté
-        $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacher = $user->teacherProfile;
         if (! $teacher) {
             abort(403, 'Vous n\'êtes pas enregistré comme enseignant.');
         }
@@ -472,7 +472,7 @@ class TeacherDashboardController extends Controller
     public function closeCourse($seanceId)
     {
         $user = Auth::user();
-        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacher = $user->teacherProfile;
 
         $seance = ESBTPSeanceCours::where('id', $seanceId)
             ->where('teacher_id', $teacher->id ?? null)
@@ -512,7 +512,7 @@ class TeacherDashboardController extends Controller
     public function showTimetable(Request $request)
     {
         $user = Auth::user();
-        $teacherModel = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacherModel = $user->teacherProfile;
         $teacherId = $teacherModel ? $teacherModel->id : null;
 
         // Navigation par période (semaine par défaut)
@@ -798,7 +798,7 @@ class TeacherDashboardController extends Controller
     public function showAttendance()
     {
         $user = Auth::user();
-        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacher = $user->teacherProfile;
         $teacherId = $teacher ? $teacher->id : null;
 
         // Récupérer les séances de cours pour lesquelles l'enseignant a enregistré des présences
@@ -912,7 +912,7 @@ class TeacherDashboardController extends Controller
     public function showAvailability()
     {
         $user = Auth::user();
-        $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacher = $user->teacherProfile;
 
         if (! $teacher) {
             return redirect()->route('teacher.dashboard')
@@ -932,7 +932,7 @@ class TeacherDashboardController extends Controller
     {
         try {
             $user = Auth::user();
-            $teacher = ESBTPTeacher::where('user_id', $user->id)->first();
+            $teacher = $user->teacherProfile;
 
             if (! $teacher) {
                 return response()->json([

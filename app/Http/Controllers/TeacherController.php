@@ -375,7 +375,7 @@ class TeacherController extends Controller
     public function profile()
     {
         // Essayer d'abord ESBTPTeacher, puis Teacher
-        $teacher = \App\Models\ESBTPTeacher::where('user_id', Auth::id())->first();
+        $teacher = auth()->user()?->teacherProfile;
 
         if (!$teacher) {
             $teacher = Auth::user()->teacher;
@@ -415,7 +415,7 @@ class TeacherController extends Controller
         $user = Auth::user();
 
         // Essayer d'abord ESBTPTeacher, puis Teacher
-        $teacher = \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+        $teacher = $user->teacherProfile;
 
         if (!$teacher) {
             $teacher = $user->teacher;
