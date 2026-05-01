@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Domain\Analytics\Cache\CachedPredictor;
 use App\Domain\Analytics\DTOs\AnalyticsContext;
 use App\Domain\Analytics\Predictors\DefaultRiskPredictor;
+use App\Domain\Exports\Reports\RecouvrementReport;
 use App\Domain\Notifications\Channels\WhatsAppDeeplinkChannel;
 use App\Domain\Notifications\EtudiantContact;
 use App\Helpers\SettingsHelper;
@@ -12,6 +13,7 @@ use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPInscription;
+use App\Services\ExportRenderer;
 use App\Services\RelanceActionLogger;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -37,6 +39,84 @@ class ESBTPRecouvrementController extends Controller
         $this->middleware('auth');
         $this->middleware('comptabilite.access');
         $this->middleware('can:comptabilite.recouvrement.access');
+    }
+
+    public function previewPdf(Request $request, DefaultRiskPredictor $predictor, ExportRenderer $renderer)
+    {
+        return $renderer->pdfPreview($this->buildReport($request, $predictor));
+    }
+
+    public function exportPdf(Request $request, DefaultRiskPredictor $predictor, ExportRenderer $renderer)
+    {
+        return $renderer->pdfDownload($this->buildReport($request, $predictor));
+    }
+
+    public function exportExcel(Request $request, DefaultRiskPredictor $predictor, ExportRenderer $renderer)
+    {
+        return $renderer->excelDownload($this->buildReport($request, $predictor));
+    }
+
+    public function emailPdf(Request $request, DefaultRiskPredictor $predictor, ExportRenderer $renderer): JsonResponse
+    {
+        $to = trim((string) $request->input('to', '')) ?: ($request->user()?->email);
+        if (!$to || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
+            return response()->json(['success' => false, 'message' => 'Adresse email invalide'], 422);
+        }
+        try {
+            $renderer->emailPdf($this->buildReport($request, $predictor), $to, $request->user()?->name);
+            return response()->json(['success' => true, 'message' => "Rapport en cours d'envoi à {$to}"]);
+        } catch (\Throwable $e) {
+            Log::error('Recouvrement emailPdf failed', ['error' => $e->getMessage()]);
+            return response()->json(['success' => false, 'message' => 'Erreur lors de l\'envoi'], 500);
+        }
+    }
+
+    private function buildReport(Request $request, DefaultRiskPredictor $predictor): RecouvrementReport
+    {
+        $context = AnalyticsContext::fromRequest($request);
+        $cached = new CachedPredictor($predictor, ttlSeconds: 1800);
+        $prediction = $cached->predict($context);
+
+        $topAtRisk = $prediction->metadata['top_at_risk'] ?? [];
+        $contacts = $this->loadContacts(array_column($topAtRisk, 'inscription_id'));
+
+        $rows = collect($topAtRisk)
+            ->map(function ($student) use ($contacts) {
+                $contact = $contacts[$student['inscription_id']] ?? null;
+                return array_merge($student, [
+                    'phone' => $contact?->phone,
+                    'email' => $contact?->email,
+                ]);
+            });
+
+        // Filtres UI appliqués server-side pour cohérence preview/download avec la vue
+        $level = $request->query('level');
+        $retardMin = (int) $request->query('retard_min', 0);
+        $search = trim((string) $request->query('search', ''));
+
+        if ($level) {
+            $rows = $rows->where('level', $level);
+        }
+        if ($retardMin > 0) {
+            $rows = $rows->where('jours_retard', '>=', $retardMin);
+        }
+        if ($search !== '') {
+            $rows = $rows->filter(fn ($r) => str_contains(mb_strtolower($r['etudiant_nom'] ?? ''), mb_strtolower($search)));
+        }
+
+        $appliedFilters = array_filter([
+            'Niveau' => $level ? ucfirst($level) : null,
+            'Retard min.' => $retardMin > 0 ? "{$retardMin} jours" : null,
+            'Recherche' => $search !== '' ? $search : null,
+            'Filière' => $context->filiereId ? optional(ESBTPFiliere::find($context->filiereId))->name : null,
+            'Classe' => $context->classeId ? optional(ESBTPClasse::find($context->classeId))->name : null,
+        ]);
+
+        return new RecouvrementReport(
+            rows: $rows->values()->all(),
+            appliedFilters: $appliedFilters,
+            kpis: $prediction->metadata ?? [],
+        );
     }
 
     public function index(Request $request, DefaultRiskPredictor $predictor): View

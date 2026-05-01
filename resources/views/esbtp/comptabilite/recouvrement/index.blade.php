@@ -28,6 +28,12 @@
                 <a href="{{ route('esbtp.comptabilite.analytics.index') }}" class="re-btn re-btn--glass">
                     <i class="fas fa-chart-line"></i> Analytics
                 </a>
+                <x-export-modal
+                    :preview-url="route('esbtp.comptabilite.recouvrement.preview-pdf')"
+                    :pdf-url="route('esbtp.comptabilite.recouvrement.export-pdf')"
+                    :excel-url="route('esbtp.comptabilite.recouvrement.export-excel')"
+                    :email-url="route('esbtp.comptabilite.recouvrement.email-pdf')"
+                    button-class="re-btn re-btn--glass" />
             </div>
         </div>
 
@@ -115,6 +121,10 @@
                                 <td>
                                     <div class="re-cell-student">
                                         <strong x-text="row.etudiant_nom"></strong>
+                                        <small x-show="row.has_valid_phone" class="re-phone">
+                                            <i class="fas fa-phone"></i>
+                                            <span x-text="formatPhone(row.phone)"></span>
+                                        </small>
                                         <small x-show="!row.has_valid_phone" class="re-warn">
                                             <i class="fas fa-exclamation-triangle"></i> Téléphone invalide
                                         </small>
@@ -180,7 +190,7 @@
 
 <script>
 function recouvrement(config) {
-    return {
+    const instance = {
         rows: config.rows.map(r => ({ ...r, confirmed: false, lastRelanceId: null })),
         search: '',
         levelFilter: '',
@@ -188,6 +198,13 @@ function recouvrement(config) {
         toast: null,
         toastType: 'info',
         config,
+        init() {
+            window.exportFilters = () => ({
+                search: this.search,
+                level: this.levelFilter,
+                retard_min: this.retardFilter,
+            });
+        },
 
         get filteredRows() {
             return this.rows.filter(row => {
@@ -287,7 +304,18 @@ function recouvrement(config) {
             this.toastType = type;
             setTimeout(() => { this.toast = null; }, 3500);
         },
+
+        formatPhone(raw) {
+            if (!raw) return '';
+            const digits = String(raw).replace(/\D+/g, '');
+            let national = digits;
+            if (digits.startsWith('00225')) national = digits.slice(5);
+            else if (digits.length === 13 && digits.startsWith('225')) national = digits.slice(3);
+            if (national.length !== 10) return raw;
+            return '+225 ' + national.match(/.{1,2}/g).join(' ');
+        },
     };
+    return instance;
 }
 </script>
 @endsection
@@ -420,6 +448,12 @@ function recouvrement(config) {
 .re-warn { color: var(--re-warning); }
 .re-info { color: var(--re-muted); display: inline-flex; align-items: center; gap: .35rem; }
 .re-info i { font-size: .65rem; }
+.re-phone {
+    color: var(--re-primary); display: inline-flex; align-items: center; gap: .35rem;
+    font-family: 'SFMono-Regular', Menlo, Consolas, monospace;
+    font-size: .72rem; margin-top: .15rem;
+}
+.re-phone i { font-size: .6rem; opacity: .7; }
 
 .re-chip {
     display: inline-block; padding: .25rem .6rem;

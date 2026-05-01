@@ -90,6 +90,32 @@ class ESBTPPaiementExportController extends Controller
     }
 
     /**
+     * Aperçu PDF inline (nouvelle tab) — applique les filtres et retourne
+     * le PDF visuel sans téléchargement. Permet au comptable de vérifier le
+     * rendu avant le bouton "Télécharger".
+     */
+    public function previewPdf(Request $request, PaiementExportService $service)
+    {
+        $filters = $this->validatedFilters($request);
+        $filters['format'] = 'pdf';
+        $count = $service->count($filters, $request->user());
+
+        if ($count === 0) {
+            return back()->with('error', 'Aucun paiement à prévisualiser avec ces filtres.');
+        }
+        if ($count > PaiementExportService::PDF_MAX_ROWS) {
+            return back()->with('error', "Trop de lignes pour le PDF ({$count}). Affinez les filtres.");
+        }
+
+        try {
+            return $service->previewPdf($filters, $request->user());
+        } catch (\Throwable $e) {
+            Log::error('Erreur aperçu PDF paiements', ['message' => $e->getMessage()]);
+            return back()->with('error', 'Erreur lors de l\'aperçu : ' . $e->getMessage());
+        }
+    }
+
+    /**
      * Génère et télécharge le fichier (PDF ou Excel/CSV).
      */
     public function generate(Request $request, PaiementExportService $service)
