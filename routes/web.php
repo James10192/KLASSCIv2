@@ -8,7 +8,6 @@ use App\Http\Controllers\Auth\RegisterController;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ESBTP\Admin\ESBTPTeacherAttendanceController;
-use App\Http\Controllers\ESBTP\Admin\TeacherAdminController;
 use App\Http\Controllers\ESBTP\TeacherAttendanceController;
 use App\Http\Controllers\ESBTP\TeacherAttendanceHistoryController;
 use App\Http\Controllers\ESBTPAnneeUniversitaireController;
@@ -28,7 +27,6 @@ use App\Http\Controllers\ESBTPComptabiliteReportController;
 use App\Http\Controllers\ESBTPComptabiliteRelanceController;
 use App\Http\Controllers\ESBTPContinuingEducationController;
 use App\Http\Controllers\ESBTPCycleController;
-use App\Http\Controllers\ESBTPDepartmentController;
 use App\Http\Controllers\ESBTPEmploiTempsController;
 use App\Http\Controllers\ESBTPEnseignantController;
 use App\Http\Controllers\ESBTPEtudiantController;
@@ -353,11 +351,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour les rôles et permissions
             Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class)->middleware(['role:superAdmin']);
-
-            // Routes pour les départements
-            Route::resource('departments', ESBTPDepartmentController::class);
-            Route::put('departments/{id}/restore', [ESBTPDepartmentController::class, 'restore'])->name('departments.restore');
-            Route::delete('departments/{id}/force-delete', [ESBTPDepartmentController::class, 'forceDelete'])->name('departments.force-delete');
 
             // Routes pour les filières
             Route::resource('filieres', ESBTPFiliereController::class)
@@ -781,20 +774,6 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/api/events', [App\Http\Controllers\ESBTPEvenementAcademiqueController::class, 'getEvents'])->name('api.events');
             });
 
-            // Routes pour les enseignants (ancien système - profile controller)
-            Route::prefix('enseignants-profiles')->name('enseignants.profiles.')->group(function () {
-                Route::get('/', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'index'])->name('index');
-                Route::get('/dashboard', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'dashboard'])->name('dashboard');
-                Route::get('/create', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'create'])->name('create');
-                Route::post('/', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'store'])->name('store');
-                Route::get('/{id}', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'show'])->name('show');
-                Route::get('/{id}/edit', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'edit'])->name('edit');
-                Route::put('/{id}', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'update'])->name('update');
-                Route::post('/{id}/valider', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'valider'])->name('valider');
-                Route::post('/{id}/affecter', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'affecter'])->name('affecter');
-                Route::get('/{id}/disponibilites', [App\Http\Controllers\ESBTPEnseignantProfileController::class, 'disponibilites'])->name('disponibilites');
-            });
-
             // Paiements
             Route::get('/paiements', [App\Http\Controllers\ESBTPPaiementController::class, 'index'])->name('paiements.index');
             Route::get('/paiements/refresh', [App\Http\Controllers\ESBTPPaiementController::class, 'refresh'])->name('paiements.refresh');
@@ -1088,10 +1067,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Route de suppression des emplois du temps - Handled by resource route
         });
 
-        // Teachers routes
+        // Specialties / Continuing education / Student restore
         Route::middleware(['permission:admin.access'])->group(function () {
-            Route::resource('teachers', TeacherAdminController::class);
-            Route::put('teachers/{id}/restore', [TeacherAdminController::class, 'restore'])->name('teachers.restore');
             Route::resource('specialties', ESBTPSpecialtyController::class);
             Route::put('specialties/{id}/restore', [ESBTPSpecialtyController::class, 'restore'])->name('specialties.restore');
             Route::resource('continuing-education', ESBTPContinuingEducationController::class);

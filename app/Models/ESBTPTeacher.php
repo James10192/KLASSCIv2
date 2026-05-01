@@ -31,8 +31,6 @@ class ESBTPTeacher extends Model
         'created_by',
         'updated_by',
         'is_active',
-        'department_id',
-        'laboratory_id',
         'grade',
         'office_location',
         'employee_id'
@@ -68,16 +66,6 @@ class ESBTPTeacher extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
-    }
-
-    public function department()
-    {
-        return $this->belongsTo(\App\Models\ESBTPDepartment::class);
-    }
-
-    public function laboratory()
-    {
-        return $this->belongsTo(\App\Models\ESBTPLaboratory::class);
     }
 
     public function seancesCours()
