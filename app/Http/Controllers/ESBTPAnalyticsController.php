@@ -2,15 +2,24 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Analytics\Cache\CachedPredictor;
+use App\Domain\Analytics\Detectors\AnomalyDetector;
 use App\Domain\Analytics\DTOs\AnalyticsContext;
 use App\Domain\Analytics\DTOs\PredictionResult;
 use App\Domain\Analytics\Predictors\CashFlowPredictor;
+use App\Domain\Analytics\Predictors\DefaultRiskPredictor;
+use App\Domain\Analytics\Predictors\PredictorInterface;
+use App\Helpers\SettingsHelper;
+use App\Jobs\ComputeAnalyticsPredictionsJob;
+use App\Jobs\DetectAnalyticsAnomaliesJob;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\View\View;
 
 class ESBTPAnalyticsController extends Controller
 {
@@ -18,47 +27,145 @@ class ESBTPAnalyticsController extends Controller
     {
         $this->middleware('auth');
         $this->middleware('comptabilite.access');
-        $this->middleware('can:comptabilite.analytics.view');
+        $this->middleware('can:comptabilite.analytics.view')->only(['index', 'refresh']);
     }
 
     /**
-     * Page Analytics premium — prédictions financières.
+     * Page Analytics premium — cash flow + default risk + anomalies en serveur-rendered.
      */
-    public function index(Request $request, CashFlowPredictor $cashFlow)
-    {
+    public function index(
+        Request $request,
+        CashFlowPredictor $cashFlow,
+        DefaultRiskPredictor $defaultRisk,
+        AnomalyDetector $anomalyDetector,
+    ): View {
         $context = AnalyticsContext::fromRequest($request);
-        $cashFlowPrediction = $this->safePredict($cashFlow, $context);
+
+        $cashFlowResult = $this->safePredict(new CachedPredictor($cashFlow), $context);
+        $defaultRiskResult = $this->safePredict(new CachedPredictor($defaultRisk), $context);
+        $anomalies = $this->safeDetect($anomalyDetector, $context);
 
         return view('esbtp.comptabilite.analytics.index', [
-            'cashFlow' => $cashFlowPrediction,
-            'context' => $context,
-            'annees' => ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get(),
-            'filieres' => ESBTPFiliere::orderBy('name')->get(),
-            'classes' => ESBTPClasse::orderBy('name')->get(),
+            'cashFlow'        => $cashFlowResult,
+            'defaultRisk'     => $defaultRiskResult,
+            'anomalies'       => $anomalies,
+            'context'         => $context,
+            'annees'          => ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get(),
+            'filieres'        => ESBTPFiliere::orderBy('name')->get(),
+            'classes'         => ESBTPClasse::orderBy('name')->get(),
+            'lastComputedAt'  => $this->lastComputedAt(),
         ]);
     }
 
     /**
-     * Endpoint AJAX JSON pour rafraîchir sans reload.
+     * Endpoint AJAX JSON — recompute synchrone des 3 sections.
      */
-    public function refresh(Request $request, CashFlowPredictor $cashFlow): JsonResponse
-    {
+    public function refresh(
+        Request $request,
+        CashFlowPredictor $cashFlow,
+        DefaultRiskPredictor $defaultRisk,
+        AnomalyDetector $anomalyDetector,
+    ): JsonResponse {
         $context = AnalyticsContext::fromRequest($request);
-        $prediction = $this->safePredict($cashFlow, $context);
+
+        $cachedCashFlow = new CachedPredictor($cashFlow);
+        $cachedRisk = new CachedPredictor($defaultRisk);
+        $cachedCashFlow->forget($context);
+        $cachedRisk->forget($context);
 
         return response()->json([
-            'success' => $prediction->value !== null,
-            'cash_flow' => $prediction->toArray(),
+            'success' => true,
+            'cash_flow' => $this->safePredict($cachedCashFlow, $context)->toArray(),
+            'default_risk' => $this->safePredict($cachedRisk, $context)->toArray(),
+            'anomalies' => array_map(fn ($a) => $a->toArray(), $this->safeDetect($anomalyDetector, $context)),
             'refreshed_at' => now()->toISOString(),
         ]);
     }
 
-    private function safePredict(CashFlowPredictor $predictor, AnalyticsContext $context): PredictionResult
+    /**
+     * Déclenche le job daily synchrone via queue + le job anomalies. Réservé aux
+     * admins ayant analytics.run_now.
+     */
+    public function runNow(): RedirectResponse
+    {
+        try {
+            ComputeAnalyticsPredictionsJob::dispatch();
+            DetectAnalyticsAnomaliesJob::dispatch();
+
+            return redirect()
+                ->route('esbtp.comptabilite.analytics.index')
+                ->with('success', 'Recalcul lancé en arrière-plan. Les prédictions seront mises à jour sous peu.');
+        } catch (\Throwable $e) {
+            Log::error('Analytics runNow dispatch failed', ['error' => $e->getMessage()]);
+
+            return redirect()
+                ->route('esbtp.comptabilite.analytics.index')
+                ->with('error', 'Impossible de lancer le recalcul : ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Page settings — paramètres du moteur Analytics (poids/seuils).
+     */
+    public function settings(): View
+    {
+        return view('esbtp.comptabilite.analytics.settings', [
+            'settings' => SettingsHelper::getAnalyticsSettings(),
+            'defaults' => $this->defaultSettings(),
+        ]);
+    }
+
+    /**
+     * POST settings — persiste les paramètres validés.
+     */
+    public function updateSettings(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'default_risk.weight_solde'      => 'required|numeric|min:0|max:10',
+            'default_risk.weight_retard'     => 'required|numeric|min:0|max:10',
+            'default_risk.weight_engagement' => 'required|numeric|min:0|max:10',
+            'default_risk.weight_montant'    => 'required|numeric|min:0|max:10',
+            'default_risk.bias'              => 'required|numeric|min:-10|max:10',
+            'default_risk.threshold_high'    => 'required|numeric|min:0.5|max:0.95',
+            'default_risk.threshold_medium'  => 'required|numeric|min:0.05|max:0.5',
+            'default_risk.top_n'             => 'required|integer|min:10|max:500',
+            'anomaly.z_warning'              => 'required|numeric|min:1|max:5',
+            'anomaly.z_critical'             => 'required|numeric|min:1.5|max:6',
+            'anomaly.payment_outlier_multiplier' => 'required|numeric|min:1.5|max:10',
+            'anomaly.notifications_enabled'  => 'nullable|in:0,1',
+        ]);
+
+        $mappings = [
+            'analytics.default_risk.weight.solde'           => $validated['default_risk']['weight_solde'],
+            'analytics.default_risk.weight.retard'          => $validated['default_risk']['weight_retard'],
+            'analytics.default_risk.weight.engagement'      => $validated['default_risk']['weight_engagement'],
+            'analytics.default_risk.weight.montant'         => $validated['default_risk']['weight_montant'],
+            'analytics.default_risk.bias'                   => $validated['default_risk']['bias'],
+            'analytics.default_risk.threshold_high'         => $validated['default_risk']['threshold_high'],
+            'analytics.default_risk.threshold_medium'       => $validated['default_risk']['threshold_medium'],
+            'analytics.default_risk.top_n'                  => $validated['default_risk']['top_n'],
+            'analytics.anomaly.z_warning'                   => $validated['anomaly']['z_warning'],
+            'analytics.anomaly.z_critical'                  => $validated['anomaly']['z_critical'],
+            'analytics.anomaly.payment_outlier_multiplier'  => $validated['anomaly']['payment_outlier_multiplier'],
+            'analytics.anomaly.notifications_enabled'       => $validated['anomaly']['notifications_enabled'] ?? '0',
+        ];
+
+        foreach ($mappings as $key => $value) {
+            SettingsHelper::setOrCreate($key, (string) $value, 'analytics');
+        }
+
+        return redirect()
+            ->route('esbtp.comptabilite.analytics.settings')
+            ->with('success', 'Paramètres Analytics mis à jour.');
+    }
+
+    private function safePredict(PredictorInterface $predictor, AnalyticsContext $context): PredictionResult
     {
         try {
             return $predictor->predict($context);
         } catch (\Throwable $e) {
-            Log::error('Analytics CashFlow prediction failed', [
+            Log::error('Analytics prediction failed', [
+                'predictor' => $predictor->name(),
                 'context' => $context->toArray(),
                 'error' => $e->getMessage(),
             ]);
@@ -67,5 +174,56 @@ class ESBTPAnalyticsController extends Controller
                 'Erreur technique — l\'équipe a été notifiée',
             );
         }
+    }
+
+    /**
+     * @return array<int, \App\Domain\Analytics\DTOs\AnomalyAlert>
+     */
+    private function safeDetect(AnomalyDetector $detector, AnalyticsContext $context): array
+    {
+        try {
+            return $detector->detect($context);
+        } catch (\Throwable $e) {
+            Log::error('Analytics anomaly detection failed', [
+                'context' => $context->toArray(),
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
+    }
+
+    private function lastComputedAt(): ?\Carbon\Carbon
+    {
+        try {
+            return \App\Models\AnalyticsPrediction::query()
+                ->orderByDesc('computed_at')
+                ->first()?->computed_at;
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * @return array<string, array<string, float|int>>
+     */
+    private function defaultSettings(): array
+    {
+        return [
+            'default_risk' => [
+                'weight_solde'      => DefaultRiskPredictor::DEFAULT_WEIGHT_SOLDE,
+                'weight_retard'     => DefaultRiskPredictor::DEFAULT_WEIGHT_RETARD,
+                'weight_engagement' => DefaultRiskPredictor::DEFAULT_WEIGHT_ENGAGEMENT,
+                'weight_montant'    => DefaultRiskPredictor::DEFAULT_WEIGHT_MONTANT,
+                'bias'              => DefaultRiskPredictor::DEFAULT_BIAS,
+                'threshold_high'    => DefaultRiskPredictor::DEFAULT_THRESHOLD_HIGH,
+                'threshold_medium'  => DefaultRiskPredictor::DEFAULT_THRESHOLD_MEDIUM,
+                'top_n'             => DefaultRiskPredictor::DEFAULT_TOP_N,
+            ],
+            'anomaly' => [
+                'z_warning'                  => AnomalyDetector::DEFAULT_Z_WARNING,
+                'z_critical'                 => AnomalyDetector::DEFAULT_Z_CRITICAL,
+                'payment_outlier_multiplier' => AnomalyDetector::DEFAULT_PAYMENT_OUTLIER_MULTIPLIER,
+            ],
+        ];
     }
 }

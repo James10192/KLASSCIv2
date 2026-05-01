@@ -17,8 +17,6 @@ use App\Models\ESBTPClasse;
 use App\Models\User;
 use App\Services\ComptabiliteService;
 use App\Services\PerformanceMonitoringService;
-use App\Services\AnalyticsPredictifService;
-use App\Services\AIAnalyticsService;
 use App\Services\BonDepenseService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -36,14 +34,10 @@ class ESBTPComptabiliteFraisController extends Controller
     public function __construct(
         ComptabiliteService $comptabiliteService,
         PerformanceMonitoringService $performanceMonitor,
-        AnalyticsPredictifService $analyticsPredictifService,
-        AIAnalyticsService $aiAnalyticsService,
         BonDepenseService $bonDepenseService
     ) {
         $this->comptabiliteService = $comptabiliteService;
         $this->performanceMonitor = $performanceMonitor;
-        $this->analyticsPredictifService = $analyticsPredictifService;
-        $this->aiAnalyticsService = $aiAnalyticsService;
         $this->bonDepenseService = $bonDepenseService;
 
         $this->middleware('auth');

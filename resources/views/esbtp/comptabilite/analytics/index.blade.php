@@ -1,703 +1,600 @@
 @extends('layouts.app')
 
-@section('title', 'Analytics Prédictifs - Comptabilité')
+@section('title', 'Analytics Prédictifs')
 
 @section('content')
-<div class="container-fluid">
-    <div class="d-sm-flex align-items-center justify-content-between mb-4">
-        <h1 class="h3 mb-0 text-gray-800">
-            <i class="fas fa-chart-line text-primary mr-2"></i>
-            Analytics Prédictifs
-        </h1>
-        <div class="btn-group">
-            <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-                <i class="fas fa-download mr-1"></i> Exporter
-            </button>
-            <div class="dropdown-menu">
-                <a class="dropdown-item" href="#" onclick="exportAnalytics('pdf')">
-                    <i class="fas fa-file-pdf mr-2"></i> PDF
-                </a>
-                <a class="dropdown-item" href="#" onclick="exportAnalytics('excel')">
-                    <i class="fas fa-file-excel mr-2"></i> Excel
-                </a>
-            </div>
-        </div>
-    </div>
+<div class="container-fluid an-page">
 
-    <!-- Alertes et notifications -->
-    <div id="alerts-container"></div>
-
-    <!-- Cartes de résumé -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-success shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
-                                Projections Cash-Flow
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="cashflow-status">
-                                <i class="fas fa-spinner fa-spin"></i> Chargement...
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-chart-line fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
+    {{-- ============================ HERO ============================ --}}
+    <div class="an-hero">
+        <div class="an-hero-top">
+            <div class="an-hero-left">
+                <div class="an-hero-icon"><i class="fas fa-chart-line"></i></div>
+                <div>
+                    <h1>Analytics Prédictifs</h1>
+                    <p>Cash flow, risque de défaut et anomalies — calculs quotidiens automatiques.</p>
                 </div>
             </div>
-        </div>
-
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-warning shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
-                                Anomalies Détectées
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="anomalies-count">
-                                <i class="fas fa-spinner fa-spin"></i> Chargement...
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
-                        </div>
-                    </div>
-                </div>
+            <div class="an-hero-right">
+                @can('comptabilite.analytics.run_now')
+                    <form method="POST" action="{{ route('esbtp.comptabilite.analytics.run-now') }}" class="d-inline">
+                        @csrf
+                        <button type="submit" class="an-btn an-btn--glass">
+                            <i class="fas fa-sync-alt"></i> Recalculer
+                        </button>
+                    </form>
+                @endcan
+                @can('comptabilite.analytics.configure')
+                    <a href="{{ route('esbtp.comptabilite.analytics.settings') }}" class="an-btn an-btn--glass">
+                        <i class="fas fa-sliders-h"></i> Paramètres
+                    </a>
+                @endcan
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-info shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
-                                Recommandations
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="recommendations-count">
-                                <i class="fas fa-spinner fa-spin"></i> Chargement...
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-lightbulb fa-2x text-gray-300"></i>
-                        </div>
+        <div class="an-kpis">
+            <div class="an-kpi">
+                <div class="an-kpi-icon"><i class="fas fa-coins"></i></div>
+                <div>
+                    <div class="an-kpi-value">
+                        @if($cashFlow->isAvailable())
+                            {{ number_format($cashFlow->value, 0, ',', ' ') }} <span class="an-kpi-unit">FCFA</span>
+                        @else
+                            N/D
+                        @endif
                     </div>
+                    <div class="an-kpi-label">Recettes prévues le mois prochain</div>
                 </div>
             </div>
-        </div>
 
-        <div class="col-xl-3 col-md-6 mb-4">
-            <div class="card border-left-primary shadow h-100 py-2">
-                <div class="card-body">
-                    <div class="row no-gutters align-items-center">
-                        <div class="col mr-2">
-                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
-                                Score de Performance
-                            </div>
-                            <div class="h5 mb-0 font-weight-bold text-gray-800" id="performance-score">
-                                <i class="fas fa-spinner fa-spin"></i> Chargement...
-                            </div>
-                        </div>
-                        <div class="col-auto">
-                            <i class="fas fa-tachometer-alt fa-2x text-gray-300"></i>
-                        </div>
+            <div class="an-kpi">
+                <div class="an-kpi-icon"><i class="fas fa-user-shield"></i></div>
+                <div>
+                    <div class="an-kpi-value">
+                        @if($defaultRisk->isAvailable())
+                            {{ (int) $defaultRisk->value }}
+                        @else
+                            N/D
+                        @endif
                     </div>
+                    <div class="an-kpi-label">Étudiants à haut risque de défaut</div>
+                </div>
+            </div>
+
+            @php
+                $criticalCount = collect($anomalies)->where('severity', \App\Domain\Analytics\DTOs\AnomalyAlert::SEVERITY_CRITICAL)->count();
+                $warningCount = collect($anomalies)->where('severity', \App\Domain\Analytics\DTOs\AnomalyAlert::SEVERITY_WARNING)->count();
+            @endphp
+            <div class="an-kpi">
+                <div class="an-kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div>
+                    <div class="an-kpi-value">{{ $criticalCount }} <span class="an-kpi-unit">critiques</span></div>
+                    <div class="an-kpi-label">{{ $warningCount }} alertes secondaires détectées</div>
+                </div>
+            </div>
+
+            <div class="an-kpi">
+                <div class="an-kpi-icon"><i class="fas fa-clock"></i></div>
+                <div>
+                    <div class="an-kpi-value">
+                        @if($lastComputedAt)
+                            {{ $lastComputedAt->locale('fr')->diffForHumans() }}
+                        @else
+                            Jamais
+                        @endif
+                    </div>
+                    <div class="an-kpi-label">Dernier calcul automatique</div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Navigation par onglets -->
-    <ul class="nav nav-tabs" id="analytics-tabs" role="tablist">
-        <li class="nav-item">
-            <a class="nav-link active" id="projections-tab" data-toggle="tab" href="#projections" role="tab">
-                <i class="fas fa-chart-line mr-1"></i> Projections Cash-Flow
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" id="anomalies-tab" data-toggle="tab" href="#anomalies" role="tab">
-                <i class="fas fa-exclamation-triangle mr-1"></i> Détection d'Anomalies
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" id="recommandations-tab" data-toggle="tab" href="#recommandations" role="tab">
-                <i class="fas fa-lightbulb mr-1"></i> Recommandations
-            </a>
-        </li>
-        <li class="nav-item">
-            <a class="nav-link" id="benchmarking-tab" data-toggle="tab" href="#benchmarking" role="tab">
-                <i class="fas fa-chart-bar mr-1"></i> Benchmarking
-            </a>
-        </li>
-    </ul>
+    {{-- ============================ FLASH ============================ --}}
+    @if(session('success'))
+        <div class="alert alert-success an-alert">
+            <i class="fas fa-check-circle me-2"></i> {{ session('success') }}
+        </div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger an-alert">
+            <i class="fas fa-exclamation-circle me-2"></i> {{ session('error') }}
+        </div>
+    @endif
 
-    <!-- Contenu des onglets -->
-    <div class="tab-content" id="analytics-content">
-        <!-- Onglet Projections -->
-        <div class="tab-pane fade show active" id="projections" role="tabpanel">
-            <div class="card shadow mb-4 mt-3">
-                <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
-                    <h6 class="m-0 font-weight-bold text-primary">
-                        <i class="fas fa-chart-line mr-2"></i>
-                        Projections de Cash-Flow Avancées
-                    </h6>
-                    <div class="dropdown no-arrow">
-                        <div class="form-group mb-0 mr-3">
-                            <select class="form-control form-control-sm" id="projections-period" onchange="updateProjections()">
-                                <option value="3">3 mois</option>
-                                <option value="6" selected>6 mois</option>
-                                <option value="12">12 mois</option>
-                                <option value="18">18 mois</option>
-                            </select>
-                        </div>
-                    </div>
-                </div>
-                <div class="card-body">
-                    <div id="projections-loading" class="text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-3x text-gray-300"></i>
-                        <p class="text-gray-500 mt-3">Calcul des projections en cours...</p>
-                    </div>
-                    <div id="projections-content" style="display: none;">
-                        <div class="row">
-                            <div class="col-lg-8">
-                                <canvas id="cashflow-chart" height="300"></canvas>
-                            </div>
-                            <div class="col-lg-4">
-                                <div id="projections-summary"></div>
-                                <div id="projections-risks" class="mt-4"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    {{-- ============================ CASH FLOW ============================ --}}
+    <div class="an-card mt-4">
+        <div class="an-section-header">
+            <div class="an-section-icon"><i class="fas fa-chart-area"></i></div>
+            <div>
+                <h2 class="an-section-title">Projection cash-flow — mois prochain</h2>
+                <p class="an-section-sub">Modèle saisonnier (Holt-Winters) + régression linéaire sur 24 mois d'historique.</p>
             </div>
         </div>
 
-        <!-- Onglet Anomalies -->
-        <div class="tab-pane fade" id="anomalies" role="tabpanel">
-            <div class="card shadow mb-4 mt-3">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-warning">
-                        <i class="fas fa-exclamation-triangle mr-2"></i>
-                        Détection d'Anomalies Financières
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div id="anomalies-loading" class="text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-3x text-gray-300"></i>
-                        <p class="text-gray-500 mt-3">Analyse des anomalies en cours...</p>
+        @if($cashFlow->isAvailable())
+            <div class="an-cf">
+                <div class="an-cf-main">
+                    <div class="an-cf-value">
+                        {{ number_format($cashFlow->value, 0, ',', ' ') }}
+                        <span class="an-cf-unit">FCFA</span>
                     </div>
-                    <div id="anomalies-content" style="display: none;">
-                        <div class="row">
-                            <div class="col-lg-8">
-                                <div id="anomalies-timeline"></div>
-                            </div>
-                            <div class="col-lg-4">
-                                <div id="anomalies-stats"></div>
-                                <div id="anomalies-actions" class="mt-4"></div>
-                            </div>
+                    @if($cashFlow->confidenceInterval)
+                        <div class="an-cf-range">
+                            <span class="an-cf-range-label">Intervalle 95% :</span>
+                            de <strong>{{ number_format($cashFlow->confidenceInterval->lower, 0, ',', ' ') }}</strong>
+                            à <strong>{{ number_format($cashFlow->confidenceInterval->upper, 0, ',', ' ') }}</strong> FCFA
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Onglet Recommandations -->
-        <div class="tab-pane fade" id="recommandations" role="tabpanel">
-            <div class="card shadow mb-4 mt-3">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-info">
-                        <i class="fas fa-lightbulb mr-2"></i>
-                        Recommandations Intelligentes
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div id="recommandations-loading" class="text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-3x text-gray-300"></i>
-                        <p class="text-gray-500 mt-3">Génération des recommandations...</p>
-                    </div>
-                    <div id="recommandations-content" style="display: none;">
-                        <div id="recommandations-list"></div>
-                        <div id="recommandations-impact" class="mt-4"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Onglet Benchmarking -->
-        <div class="tab-pane fade" id="benchmarking" role="tabpanel">
-            <div class="card shadow mb-4 mt-3">
-                <div class="card-header py-3">
-                    <h6 class="m-0 font-weight-bold text-success">
-                        <i class="fas fa-chart-bar mr-2"></i>
-                        Benchmarking Inter-Périodes
-                    </h6>
-                </div>
-                <div class="card-body">
-                    <div id="benchmarking-loading" class="text-center py-4">
-                        <i class="fas fa-spinner fa-spin fa-3x text-gray-300"></i>
-                        <p class="text-gray-500 mt-3">Calcul des benchmarks...</p>
-                    </div>
-                    <div id="benchmarking-content" style="display: none;">
-                        <div class="row">
-                            <div class="col-lg-12">
-                                <div class="nav nav-pills mb-3" id="benchmark-pills" role="tablist">
-                                    <a class="nav-link active" id="monthly-pill" data-toggle="pill" href="#monthly-benchmark" role="tab">Mensuel</a>
-                                    <a class="nav-link" id="quarterly-pill" data-toggle="pill" href="#quarterly-benchmark" role="tab">Trimestriel</a>
-                                    <a class="nav-link" id="yearly-pill" data-toggle="pill" href="#yearly-benchmark" role="tab">Annuel</a>
-                                </div>
-                                <div class="tab-content" id="benchmark-content">
-                                    <div class="tab-pane fade show active" id="monthly-benchmark" role="tabpanel">
-                                        <canvas id="monthly-chart" height="300"></canvas>
-                                    </div>
-                                    <div class="tab-pane fade" id="quarterly-benchmark" role="tabpanel">
-                                        <canvas id="quarterly-chart" height="300"></canvas>
-                                    </div>
-                                    <div class="tab-pane fade" id="yearly-benchmark" role="tabpanel">
-                                        <canvas id="yearly-chart" height="300"></canvas>
-                                    </div>
-                                </div>
-                            </div>
+                    @endif
+                    @if($cashFlow->targetDate)
+                        <div class="an-cf-target">
+                            Cible : {{ ucfirst(\Carbon\Carbon::parse($cashFlow->targetDate)->locale('fr')->translatedFormat('F Y')) }}
                         </div>
+                    @endif
+                    <div class="an-cf-confidence">
+                        <span class="an-conf an-conf--{{ $cashFlow->confidenceLabel }}">
+                            <i class="fas fa-shield-alt"></i>
+                            @if($cashFlow->confidenceLabel === 'tres_fiable') Très fiable
+                            @elseif($cashFlow->confidenceLabel === 'fiable') Fiable
+                            @else Indicatif
+                            @endif
+                        </span>
                     </div>
                 </div>
+                <div class="an-cf-reasons">
+                    <div class="an-reasons-title">Pourquoi cette estimation</div>
+                    <ul class="an-reasons-list">
+                        @foreach($cashFlow->explanation as $reason)
+                            <li><i class="fas fa-circle"></i> {{ $reason }}</li>
+                        @endforeach
+                    </ul>
+                </div>
             </div>
-        </div>
+        @else
+            <div class="an-empty">
+                <i class="fas fa-info-circle"></i>
+                <p>{{ $cashFlow->explanation[0] ?? 'Prévision indisponible.' }}</p>
+            </div>
+        @endif
     </div>
-</div>
 
-<!-- Modal de détails -->
-<div class="modal fade" id="detailsModal" tabindex="-1" role="dialog" aria-labelledby="detailsModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="detailsModalLabel">Détails de l'Analyse</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Fermer">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <div class="modal-body" id="detailsModalBody">
-                <!-- Contenu dynamique -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-dismiss="modal">Fermer</button>
-                <button type="button" class="btn btn-primary" onclick="exportModalContent()">Exporter</button>
+    {{-- ============================ DEFAULT RISK ============================ --}}
+    <div class="an-card mt-4">
+        <div class="an-section-header">
+            <div class="an-section-icon"><i class="fas fa-user-shield"></i></div>
+            <div>
+                <h2 class="an-section-title">Risque de défaut de paiement</h2>
+                <p class="an-section-sub">Score logistique multi-critères : solde restant, jours de retard, engagement, montant attendu.</p>
             </div>
         </div>
+
+        @if($defaultRisk->isAvailable())
+            @php
+                $buckets = $defaultRisk->metadata['buckets'] ?? ['haut' => 0, 'moyen' => 0, 'bas' => 0];
+                $totalActifs = $defaultRisk->metadata['total_actifs'] ?? 0;
+                $tauxRisque = $defaultRisk->metadata['taux_risque_pct'] ?? 0;
+                $totalSoldeHaut = $defaultRisk->metadata['total_solde_haut_risque'] ?? 0;
+                $topAtRisk = $defaultRisk->metadata['top_at_risk'] ?? [];
+            @endphp
+
+            <div class="an-risk-grid">
+                <div class="an-risk-bucket an-risk-bucket--haut">
+                    <div class="an-risk-bucket-value">{{ $buckets['haut'] }}</div>
+                    <div class="an-risk-bucket-label">Haut risque</div>
+                </div>
+                <div class="an-risk-bucket an-risk-bucket--moyen">
+                    <div class="an-risk-bucket-value">{{ $buckets['moyen'] }}</div>
+                    <div class="an-risk-bucket-label">Surveillance</div>
+                </div>
+                <div class="an-risk-bucket an-risk-bucket--bas">
+                    <div class="an-risk-bucket-value">{{ $buckets['bas'] }}</div>
+                    <div class="an-risk-bucket-label">À jour ou faible risque</div>
+                </div>
+                <div class="an-risk-bucket an-risk-bucket--total">
+                    <div class="an-risk-bucket-value">{{ $totalActifs }}</div>
+                    <div class="an-risk-bucket-label">Étudiants actifs analysés</div>
+                </div>
+            </div>
+
+            <div class="an-risk-summary">
+                <div class="an-risk-stat">
+                    <div class="an-risk-stat-label">Taux de risque cumulé</div>
+                    <div class="an-risk-stat-value">{{ number_format($tauxRisque, 1, ',', ' ') }}%</div>
+                </div>
+                <div class="an-risk-stat">
+                    <div class="an-risk-stat-label">Exposition haut risque</div>
+                    <div class="an-risk-stat-value">{{ number_format($totalSoldeHaut, 0, ',', ' ') }} FCFA</div>
+                </div>
+            </div>
+
+            <div class="an-reasons mt-3">
+                @foreach($defaultRisk->explanation as $reason)
+                    <div class="an-reason-line"><i class="fas fa-info-circle"></i> {{ $reason }}</div>
+                @endforeach
+            </div>
+
+            @if(!empty($topAtRisk))
+                <h3 class="an-subtitle mt-4">Top {{ count($topAtRisk) }} étudiants prioritaires</h3>
+                <div class="table-responsive">
+                    <table class="table table-modern an-risk-table">
+                        <thead>
+                            <tr>
+                                <th>Étudiant</th>
+                                <th>Classe</th>
+                                <th class="text-end">Solde restant</th>
+                                <th class="text-center">Retard</th>
+                                <th class="text-center">% payé</th>
+                                <th class="text-center">Score</th>
+                                <th class="text-center">Niveau</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($topAtRisk as $student)
+                                <tr>
+                                    <td><strong>{{ $student['etudiant_nom'] }}</strong></td>
+                                    <td>{{ $student['classe_nom'] }}</td>
+                                    <td class="text-end">{{ number_format($student['solde_restant'], 0, ',', ' ') }} FCFA</td>
+                                    <td class="text-center">
+                                        @if($student['jours_retard'] > 0)
+                                            <span class="an-chip an-chip--retard">{{ $student['jours_retard'] }} j</span>
+                                        @else
+                                            <span class="text-muted">—</span>
+                                        @endif
+                                    </td>
+                                    <td class="text-center">{{ number_format($student['ratio_paye'] * 100, 0) }}%</td>
+                                    <td class="text-center">{{ number_format($student['score'], 2) }}</td>
+                                    <td class="text-center">
+                                        <span class="an-level an-level--{{ $student['level'] }}">{{ ucfirst($student['level']) }}</span>
+                                    </td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        @else
+            <div class="an-empty">
+                <i class="fas fa-info-circle"></i>
+                <p>{{ $defaultRisk->explanation[0] ?? 'Analyse de risque indisponible.' }}</p>
+            </div>
+        @endif
+    </div>
+
+    {{-- ============================ ANOMALIES ============================ --}}
+    <div class="an-card mt-4">
+        <div class="an-section-header">
+            <div class="an-section-icon"><i class="fas fa-radiation"></i></div>
+            <div>
+                <h2 class="an-section-title">Anomalies financières détectées</h2>
+                <p class="an-section-sub">Z-score sur les flux mensuels + détection d'outliers sur les paiements des 30 derniers jours.</p>
+            </div>
+        </div>
+
+        @if(empty($anomalies))
+            <div class="an-empty an-empty--ok">
+                <i class="fas fa-check-circle"></i>
+                <p>Aucune anomalie détectée. Les flux financiers sont conformes aux tendances historiques.</p>
+            </div>
+        @else
+            <div class="an-anomalies">
+                @foreach($anomalies as $alert)
+                    <div class="an-anomaly an-anomaly--{{ $alert->severity }}">
+                        <div class="an-anomaly-icon">
+                            @if($alert->severity === 'critical')
+                                <i class="fas fa-exclamation-circle"></i>
+                            @elseif($alert->severity === 'warning')
+                                <i class="fas fa-exclamation-triangle"></i>
+                            @else
+                                <i class="fas fa-info-circle"></i>
+                            @endif
+                        </div>
+                        <div class="an-anomaly-body">
+                            <div class="an-anomaly-meta">
+                                <span class="an-anomaly-type">{{ str_replace('_', ' ', $alert->type) }}</span>
+                                <span class="an-anomaly-severity an-anomaly-severity--{{ $alert->severity }}">
+                                    {{ strtoupper($alert->severity) }}
+                                </span>
+                            </div>
+                            <div class="an-anomaly-message">{{ $alert->message }}</div>
+                            <div class="an-anomaly-score">Score d'écart : {{ number_format($alert->score, 2) }}</div>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        @endif
     </div>
 </div>
 @endsection
 
-@push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script>
-// Configuration globale
-const analyticsConfig = {
-    apiUrl: '{{ route("esbtp.comptabilite.analytics-predictifs.api.data") }}',
-    refreshInterval: 300000, // 5 minutes
-    charts: {},
-    data: {}
-};
-
-// Initialisation au chargement de la page
-document.addEventListener('DOMContentLoaded', function() {
-    initializeAnalytics();
-    setupEventListeners();
-    startAutoRefresh();
-});
-
-// Fonction d'initialisation principale
-function initializeAnalytics() {
-    loadProjections();
-    loadAnomalies();
-    loadRecommandations();
-    loadBenchmarking();
-    updateSummaryCards();
-}
-
-// Configuration des écouteurs d'événements
-function setupEventListeners() {
-    // Gestion des onglets
-    $('#analytics-tabs a').on('click', function(e) {
-        e.preventDefault();
-        const target = $(this).attr('href').substring(1);
-        loadTabContent(target);
-    });
-
-    // Gestion des périodes
-    $('#projections-period').on('change', function() {
-        updateProjections();
-    });
-}
-
-// Chargement des projections
-function loadProjections() {
-    $('#projections-loading').show();
-    $('#projections-content').hide();
-
-    const periode = $('#projections-period').val() || 6;
-
-    fetchAnalyticsData('projections', { periode: periode })
-        .then(data => {
-            analyticsConfig.data.projections = data;
-            renderProjectionsChart(data);
-            renderProjectionsSummary(data);
-            $('#projections-loading').hide();
-            $('#projections-content').show();
-        })
-        .catch(error => {
-            debugError('Erreur lors du chargement des projections:', error);
-            showError('Erreur lors du chargement des projections', 'projections-loading');
-        });
-}
-
-// Chargement des anomalies
-function loadAnomalies() {
-    $('#anomalies-loading').show();
-    $('#anomalies-content').hide();
-
-    fetchAnalyticsData('anomalies', { periode: 12 })
-        .then(data => {
-            analyticsConfig.data.anomalies = data;
-            renderAnomaliesTimeline(data);
-            renderAnomaliesStats(data);
-            $('#anomalies-loading').hide();
-            $('#anomalies-content').show();
-        })
-        .catch(error => {
-            debugError('Erreur lors du chargement des anomalies:', error);
-            showError('Erreur lors du chargement des anomalies', 'anomalies-loading');
-        });
-}
-
-// Chargement des recommandations
-function loadRecommandations() {
-    $('#recommandations-loading').show();
-    $('#recommandations-content').hide();
-
-    fetchAnalyticsData('recommandations', {})
-        .then(data => {
-            analyticsConfig.data.recommandations = data;
-            renderRecommandationsList(data);
-            renderRecommandationsImpact(data);
-            $('#recommandations-loading').hide();
-            $('#recommandations-content').show();
-        })
-        .catch(error => {
-            debugError('Erreur lors du chargement des recommandations:', error);
-            showError('Erreur lors du chargement des recommandations', 'recommandations-loading');
-        });
-}
-
-// Chargement du benchmarking
-function loadBenchmarking() {
-    $('#benchmarking-loading').show();
-    $('#benchmarking-content').hide();
-
-    fetchAnalyticsData('benchmarking', { periodes: ['mensuel', 'trimestriel', 'annuel'] })
-        .then(data => {
-            analyticsConfig.data.benchmarking = data;
-            renderBenchmarkingCharts(data);
-            $('#benchmarking-loading').hide();
-            $('#benchmarking-content').show();
-        })
-        .catch(error => {
-            debugError('Erreur lors du chargement du benchmarking:', error);
-            showError('Erreur lors du chargement du benchmarking', 'benchmarking-loading');
-        });
-}
-
-// Fonction générique pour récupérer les données
-function fetchAnalyticsData(type, params = {}) {
-    return fetch(analyticsConfig.apiUrl + '?' + new URLSearchParams({
-        type: type,
-        ...params
-    }), {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json',
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-        }
-    })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-    })
-    .then(data => {
-        if (data.success) {
-            return data.resultats;
-        } else {
-            throw new Error(data.error || 'Erreur inconnue');
-        }
-    });
-}
-
-// Rendu du graphique de projections
-function renderProjectionsChart(data) {
-    const ctx = document.getElementById('cashflow-chart').getContext('2d');
-
-    if (analyticsConfig.charts.cashflow) {
-        analyticsConfig.charts.cashflow.destroy();
-    }
-
-    const projections = data.projections || [];
-    const labels = projections.map(p => p.periode);
-    const recettes = projections.map(p => p.recettes.projection);
-    const depenses = projections.map(p => p.depenses.projection);
-    const cashflow = projections.map(p => p.cash_flow.projection);
-
-    analyticsConfig.charts.cashflow = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Recettes projetées',
-                data: recettes,
-                borderColor: '#28a745',
-                backgroundColor: 'rgba(40, 167, 69, 0.1)',
-                tension: 0.4
-            }, {
-                label: 'Dépenses projetées',
-                data: depenses,
-                borderColor: '#dc3545',
-                backgroundColor: 'rgba(220, 53, 69, 0.1)',
-                tension: 0.4
-            }, {
-                label: 'Cash-flow net',
-                data: cashflow,
-                borderColor: '#007bff',
-                backgroundColor: 'rgba(0, 123, 255, 0.1)',
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return new Intl.NumberFormat('fr-FR', {
-                                style: 'currency',
-                                currency: 'XOF'
-                            }).format(value);
-                        }
-                    }
-                }
-            },
-            plugins: {
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': ' +
-                                new Intl.NumberFormat('fr-FR', {
-                                    style: 'currency',
-                                    currency: 'XOF'
-                                }).format(context.parsed.y);
-                        }
-                    }
-                }
-            }
-        }
-    });
-}
-
-// Rendu du résumé des projections
-function renderProjectionsSummary(data) {
-    const resume = data.resume || {};
-    const html = `
-        <div class="card border-left-primary">
-            <div class="card-body">
-                <h6 class="card-title text-primary">Résumé des Projections</h6>
-                <p class="card-text">
-                    <strong>Recettes totales:</strong> ${formatCurrency(resume.total_recettes_projetees)}<br>
-                    <strong>Dépenses totales:</strong> ${formatCurrency(resume.total_depenses_projetees)}<br>
-                    <strong>Cash-flow cumulé:</strong>
-                    <span class="${resume.cash_flow_cumule >= 0 ? 'text-success' : 'text-danger'}">
-                        ${formatCurrency(resume.cash_flow_cumule)}
-                    </span><br>
-                    <strong>Évaluation:</strong>
-                    <span class="badge ${resume.evaluation_globale === 'Positive' ? 'badge-success' : 'badge-warning'}">
-                        ${resume.evaluation_globale}
-                    </span>
-                </p>
-            </div>
-        </div>
-    `;
-    $('#projections-summary').html(html);
-}
-
-// Mise à jour des cartes de résumé
-function updateSummaryCards() {
-    // Cette fonction sera appelée après le chargement de toutes les données
-    setTimeout(() => {
-        const data = analyticsConfig.data;
-
-        // Cash-flow status
-        if (data.projections && data.projections.resume) {
-            const status = data.projections.resume.evaluation_globale;
-            $('#cashflow-status').html(`<span class="badge ${status === 'Positive' ? 'badge-success' : 'badge-warning'}">${status}</span>`);
-        }
-
-        // Anomalies count
-        if (data.anomalies && data.anomalies.statistiques) {
-            const count = data.anomalies.statistiques.total_anomalies;
-            $('#anomalies-count').text(count + ' détectées');
-        }
-
-        // Recommendations count
-        if (data.recommandations && data.recommandations.recommandations) {
-            const count = data.recommandations.recommandations.length;
-            $('#recommendations-count').text(count + ' disponibles');
-        }
-
-        // Performance score
-        $('#performance-score').html('<span class="badge badge-info">85%</span>');
-    }, 2000);
-}
-
-// Fonctions utilitaires
-function formatCurrency(amount) {
-    return new Intl.NumberFormat('fr-FR', {
-        style: 'currency',
-        currency: 'XOF'
-    }).format(amount || 0);
-}
-
-function showError(message, containerId) {
-    $(`#${containerId}`).html(`
-        <div class="alert alert-danger" role="alert">
-            <i class="fas fa-exclamation-triangle mr-2"></i>
-            ${message}
-        </div>
-    `);
-}
-
-function updateProjections() {
-    loadProjections();
-}
-
-// Actualisation automatique
-function startAutoRefresh() {
-    setInterval(() => {
-        debugLog('Actualisation automatique des données...');
-        const activeTab = $('.nav-link.active').attr('href');
-        if (activeTab) {
-            loadTabContent(activeTab.substring(1));
-        }
-    }, analyticsConfig.refreshInterval);
-}
-
-function loadTabContent(tabName) {
-    switch(tabName) {
-        case 'projections':
-            loadProjections();
-            break;
-        case 'anomalies':
-            loadAnomalies();
-            break;
-        case 'recommandations':
-            loadRecommandations();
-            break;
-        case 'benchmarking':
-            loadBenchmarking();
-            break;
-    }
-}
-
-// Fonction d'export
-function exportAnalytics(format) {
-    // Implementation de l'export
-    debugLog(`Export en format ${format}`);
-}
-
-// Placeholder functions pour les autres rendus
-function renderAnomaliesTimeline(data) {
-    $('#anomalies-timeline').html('<p class="text-muted">Timeline des anomalies sera implémentée ici</p>');
-}
-
-function renderAnomaliesStats(data) {
-    $('#anomalies-stats').html('<p class="text-muted">Statistiques des anomalies</p>');
-}
-
-function renderRecommandationsList(data) {
-    $('#recommandations-list').html('<p class="text-muted">Liste des recommandations</p>');
-}
-
-function renderRecommandationsImpact(data) {
-    $('#recommandations-impact').html('<p class="text-muted">Impact des recommandations</p>');
-}
-
-function renderBenchmarkingCharts(data) {
-    $('#monthly-chart').html('<p class="text-muted">Graphique mensuel</p>');
-}
-</script>
-@endpush
-
 @push('styles')
 <style>
-.card-header {
-    background: linear-gradient(45deg, #f8f9fc, #eaecf4);
+:root {
+    --an-primary: #0453cb;
+    --an-primary-d: #033a8e;
+    --an-secondary: #5e91de;
+    --an-dark: #0f172a;
+    --an-text: #1e293b;
+    --an-muted: #64748b;
+    --an-border: #e2e8f0;
+    --an-success: #10b981;
+    --an-warning: #f59e0b;
+    --an-danger: #dc2626;
 }
 
-.nav-tabs .nav-link {
-    border: none;
-    color: #6c757d;
-    font-weight: 500;
+.an-page { padding: 1rem 0; }
+
+/* ===== Hero ===== */
+.an-hero {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 2rem 2.5rem 1.75rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 8px 30px rgba(4,83,203,.18);
+}
+.an-hero-top {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    flex-wrap: wrap; gap: 1rem;
+}
+.an-hero-left { display: flex; align-items: center; gap: 1rem; }
+.an-hero-icon {
+    width: 52px; height: 52px; border-radius: 14px;
+    background: rgba(255,255,255,.12); backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; flex-shrink: 0; color: #fff;
+}
+.an-hero h1 { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; }
+.an-hero p { color: rgba(255,255,255,.72); font-size: .88rem; margin: 0; }
+.an-hero-right { display: flex; gap: .5rem; flex-wrap: wrap; }
+
+.an-btn {
+    display: inline-flex; align-items: center; gap: .5rem;
+    border-radius: 10px; padding: .5rem 1rem;
+    font-size: .82rem; font-weight: 600;
+    text-decoration: none; border: none; cursor: pointer;
+    transition: all .2s ease;
+}
+.an-btn--glass {
+    background: rgba(255,255,255,.15); color: #fff;
+    border: 1px solid rgba(255,255,255,.2);
+}
+.an-btn--glass:hover {
+    background: rgba(255,255,255,.25); color: #fff;
+    transform: translateY(-1px);
 }
 
-.nav-tabs .nav-link.active {
-    background: linear-gradient(45deg, #4e73df, #224abe);
-    color: white;
-    border-radius: 5px;
+/* KPIs in hero */
+.an-kpis {
+    display: flex; gap: .75rem; margin-top: 1.5rem; flex-wrap: wrap;
+}
+.an-kpi {
+    flex: 1; min-width: 180px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 12px;
+    padding: .9rem 1rem;
+    display: flex; align-items: center; gap: .75rem;
+}
+.an-kpi-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; color: #fff; flex-shrink: 0;
+}
+.an-kpi-value { font-size: 1.25rem; font-weight: 700; color: #fff; line-height: 1.1; }
+.an-kpi-unit { font-size: .68rem; font-weight: 500; opacity: .65; }
+.an-kpi-label { font-size: .72rem; color: rgba(255,255,255,.65); margin-top: .15rem; }
+
+/* ===== Card ===== */
+.an-card {
+    background: #fff;
+    border: 1px solid var(--an-border);
+    border-radius: 14px;
+    padding: 1.5rem 1.75rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
 }
 
-.nav-tabs .nav-link:hover {
-    background: rgba(78, 115, 223, 0.1);
-    color: #4e73df;
+.an-section-header {
+    display: flex; align-items: center; gap: .85rem;
+    margin-bottom: 1.25rem;
+}
+.an-section-icon {
+    width: 42px; height: 42px; border-radius: 11px;
+    background: linear-gradient(135deg, var(--an-primary), var(--an-secondary));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 1rem; flex-shrink: 0;
+}
+.an-section-title { font-size: 1.1rem; font-weight: 700; color: var(--an-dark); margin: 0; }
+.an-section-sub { font-size: .82rem; color: var(--an-muted); margin: .15rem 0 0; }
+
+.an-subtitle {
+    font-size: .95rem; font-weight: 600; color: var(--an-text);
+    margin: 0 0 .75rem;
 }
 
-#analytics-content {
-    background: white;
-    border-radius: 0 0 5px 5px;
-    border: 1px solid #e3e6f0;
-    border-top: none;
+/* ===== Cash Flow card ===== */
+.an-cf {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;
+}
+.an-cf-main {
+    padding: 1.25rem 1.5rem;
+    background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(94,145,222,.04));
+    border-radius: 12px;
+    border: 1px solid rgba(4,83,203,.1);
+}
+.an-cf-value {
+    font-size: 2rem; font-weight: 700; color: var(--an-primary);
+    line-height: 1.1;
+}
+.an-cf-unit { font-size: .9rem; font-weight: 500; color: var(--an-muted); }
+.an-cf-range { margin-top: .75rem; font-size: .82rem; color: var(--an-text); }
+.an-cf-range-label { color: var(--an-muted); }
+.an-cf-target { margin-top: .5rem; font-size: .82rem; color: var(--an-muted); font-style: italic; }
+.an-cf-confidence { margin-top: 1rem; }
+
+.an-conf {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .35rem .75rem; border-radius: 999px;
+    font-size: .75rem; font-weight: 600;
+}
+.an-conf--tres_fiable { background: rgba(16,185,129,.12); color: #047857; }
+.an-conf--fiable { background: rgba(4,83,203,.1); color: var(--an-primary); }
+.an-conf--indicatif { background: rgba(245,158,11,.12); color: #b45309; }
+
+.an-cf-reasons {
+    background: #fafbfc; padding: 1rem 1.25rem;
+    border-radius: 12px; border: 1px solid var(--an-border);
+}
+.an-reasons-title {
+    font-size: .78rem; font-weight: 700; text-transform: uppercase;
+    color: var(--an-muted); letter-spacing: .04em; margin-bottom: .65rem;
+}
+.an-reasons-list { list-style: none; padding: 0; margin: 0; }
+.an-reasons-list li {
+    display: flex; align-items: flex-start; gap: .5rem;
+    padding: .35rem 0; font-size: .85rem; color: var(--an-text);
+    line-height: 1.4;
+}
+.an-reasons-list li i {
+    color: var(--an-primary); font-size: .35rem; margin-top: .55rem; flex-shrink: 0;
 }
 
-.border-left-success {
-    border-left: 4px solid #1cc88a !important;
+.an-reasons { display: flex; flex-direction: column; gap: .35rem; }
+.an-reason-line {
+    font-size: .85rem; color: var(--an-text);
+    display: flex; align-items: center; gap: .5rem;
+}
+.an-reason-line i { color: var(--an-primary); font-size: .8rem; }
+
+/* ===== Risk grid ===== */
+.an-risk-grid {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;
+    margin-bottom: 1.25rem;
+}
+.an-risk-bucket {
+    padding: 1.25rem 1rem; text-align: center;
+    border-radius: 12px; border: 1px solid var(--an-border);
+    background: #fafbfc;
+}
+.an-risk-bucket-value {
+    font-size: 1.85rem; font-weight: 700; color: var(--an-dark); line-height: 1;
+}
+.an-risk-bucket-label {
+    font-size: .75rem; color: var(--an-muted);
+    margin-top: .35rem; text-transform: uppercase; letter-spacing: .03em;
+}
+.an-risk-bucket--haut { border-color: rgba(220,38,38,.25); background: rgba(220,38,38,.04); }
+.an-risk-bucket--haut .an-risk-bucket-value { color: var(--an-danger); }
+.an-risk-bucket--moyen { border-color: rgba(245,158,11,.25); background: rgba(245,158,11,.04); }
+.an-risk-bucket--moyen .an-risk-bucket-value { color: var(--an-warning); }
+.an-risk-bucket--bas { border-color: rgba(16,185,129,.25); background: rgba(16,185,129,.04); }
+.an-risk-bucket--bas .an-risk-bucket-value { color: var(--an-success); }
+.an-risk-bucket--total { border-color: rgba(4,83,203,.25); background: rgba(4,83,203,.04); }
+.an-risk-bucket--total .an-risk-bucket-value { color: var(--an-primary); }
+
+.an-risk-summary {
+    display: flex; gap: 1rem; flex-wrap: wrap;
+    padding: 1rem 1.25rem; background: #fafbfc;
+    border-radius: 12px; border: 1px solid var(--an-border);
+}
+.an-risk-stat { flex: 1; min-width: 200px; }
+.an-risk-stat-label {
+    font-size: .75rem; color: var(--an-muted);
+    text-transform: uppercase; letter-spacing: .03em;
+}
+.an-risk-stat-value {
+    font-size: 1.15rem; font-weight: 700; color: var(--an-dark); margin-top: .15rem;
 }
 
-.border-left-warning {
-    border-left: 4px solid #f6c23e !important;
+.an-risk-table { font-size: .88rem; margin-top: .5rem; }
+.an-risk-table thead th {
+    background: #fafbfc; font-weight: 600; color: var(--an-text);
+    border-bottom: 2px solid var(--an-border); padding: .75rem;
+}
+.an-risk-table tbody td { padding: .75rem; vertical-align: middle; }
+.an-risk-table tbody tr:hover { background: rgba(4,83,203,.02); }
+
+.an-chip {
+    display: inline-block; padding: .25rem .6rem;
+    border-radius: 999px; font-size: .72rem; font-weight: 600;
+}
+.an-chip--retard { background: rgba(245,158,11,.12); color: #b45309; }
+
+.an-level {
+    display: inline-block; padding: .25rem .65rem;
+    border-radius: 999px; font-size: .72rem; font-weight: 600;
+}
+.an-level--haut { background: rgba(220,38,38,.12); color: var(--an-danger); }
+.an-level--moyen { background: rgba(245,158,11,.12); color: #b45309; }
+.an-level--bas { background: rgba(16,185,129,.12); color: #047857; }
+
+/* ===== Anomalies ===== */
+.an-anomalies { display: flex; flex-direction: column; gap: .75rem; }
+.an-anomaly {
+    display: flex; gap: 1rem; padding: 1rem 1.25rem;
+    border-radius: 12px; border: 1px solid var(--an-border);
+    background: #fafbfc;
+}
+.an-anomaly--critical { border-color: rgba(220,38,38,.3); background: rgba(220,38,38,.03); }
+.an-anomaly--warning { border-color: rgba(245,158,11,.3); background: rgba(245,158,11,.03); }
+.an-anomaly--info { border-color: rgba(4,83,203,.2); background: rgba(4,83,203,.03); }
+
+.an-anomaly-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.1rem; flex-shrink: 0;
+}
+.an-anomaly--critical .an-anomaly-icon { background: rgba(220,38,38,.15); color: var(--an-danger); }
+.an-anomaly--warning .an-anomaly-icon { background: rgba(245,158,11,.15); color: var(--an-warning); }
+.an-anomaly--info .an-anomaly-icon { background: rgba(4,83,203,.15); color: var(--an-primary); }
+
+.an-anomaly-body { flex: 1; }
+.an-anomaly-meta {
+    display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem;
+}
+.an-anomaly-type {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .04em; color: var(--an-muted);
+}
+.an-anomaly-severity {
+    padding: .15rem .55rem; border-radius: 999px;
+    font-size: .65rem; font-weight: 700; letter-spacing: .04em;
+}
+.an-anomaly-severity--critical { background: rgba(220,38,38,.15); color: var(--an-danger); }
+.an-anomaly-severity--warning { background: rgba(245,158,11,.15); color: #b45309; }
+.an-anomaly-severity--info { background: rgba(4,83,203,.15); color: var(--an-primary); }
+
+.an-anomaly-message {
+    font-size: .92rem; color: var(--an-text); margin-bottom: .35rem;
+    line-height: 1.4;
+}
+.an-anomaly-score {
+    font-size: .75rem; color: var(--an-muted); font-style: italic;
 }
 
-.border-left-info {
-    border-left: 4px solid #36b9cc !important;
+/* ===== Empty / Alerts ===== */
+.an-empty {
+    text-align: center; padding: 2.5rem 1rem;
+    color: var(--an-muted);
+}
+.an-empty i { font-size: 2rem; margin-bottom: .75rem; color: var(--an-secondary); }
+.an-empty--ok i { color: var(--an-success); }
+.an-empty p { margin: 0; font-size: .9rem; }
+
+.an-alert {
+    border-radius: 12px; border: none; margin-bottom: 1rem;
 }
 
-.border-left-primary {
-    border-left: 4px solid #4e73df !important;
+/* ===== Responsive ===== */
+@media (max-width: 992px) {
+    .an-cf, .an-risk-grid { grid-template-columns: 1fr; }
 }
-
-.loading-spinner {
-    display: inline-block;
-    width: 20px;
-    height: 20px;
-    border: 3px solid rgba(78, 115, 223, 0.3);
-    border-radius: 50%;
-    border-top-color: #4e73df;
-    animation: spin 1s ease-in-out infinite;
-}
-
-@keyframes spin {
-    to { transform: rotate(360deg); }
+@media (max-width: 768px) {
+    .an-hero { padding: 1.5rem 1.25rem 1.25rem; }
+    .an-card { padding: 1.25rem 1rem; }
+    .an-risk-grid { grid-template-columns: repeat(2, 1fr); }
+    .an-hero h1 { font-size: 1.2rem; }
+    .an-kpi { min-width: 140px; }
 }
 </style>
 @endpush
