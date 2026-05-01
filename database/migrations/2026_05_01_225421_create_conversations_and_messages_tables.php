@@ -23,8 +23,8 @@ return new class extends Migration {
             $table->foreignId('user_id')->constrained()->cascadeOnDelete();
             $table->timestamp('last_read_at')->nullable();
             $table->timestamps();
-            $table->unique(['chat_conversation_id', 'user_id']);
-            $table->index(['user_id', 'last_read_at']);
+            $table->unique(['chat_conversation_id', 'user_id'], 'chat_part_conv_user_uq');
+            $table->index(['user_id', 'last_read_at'], 'chat_part_user_read_ix');
         });
 
         Schema::create('chat_messages', function (Blueprint $table) {
