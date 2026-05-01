@@ -7,8 +7,69 @@
 <style>
 /* ═══════════════════════════════════════════════════════════
    ENSEIGNANT CREATE — Premium (namespace ec-*)
-   Pas de hero (formulaire) — dashboard-header standard.
+   Hero gradient bleu KLASSCI + form premium
    ═══════════════════════════════════════════════════════════ */
+
+/* -- Hero premium ------------------------------------------- */
+.ec-hero {
+    position: relative;
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 0 0 20px 20px;
+    margin-bottom: 24px;
+    overflow: hidden;
+}
+.ec-hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(circle at 85% 20%, rgba(255,255,255,.12) 0%, transparent 50%);
+    pointer-events: none;
+}
+.ec-hero-inner {
+    position: relative; z-index: 2;
+    max-width: 1280px; margin: 0 auto;
+    padding: 28px 32px 24px;
+    display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+}
+.ec-hero-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.15);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; color: #fff; flex-shrink: 0;
+    box-shadow: 0 4px 16px rgba(0,0,0,.12);
+}
+.ec-hero-text { flex: 1; min-width: 220px; color: #fff; }
+.ec-hero-title { font-size: 1.45rem; font-weight: 800; margin: 0 0 4px; letter-spacing: -.02em; color: #fff; }
+.ec-hero-sub { font-size: .85rem; opacity: .8; margin: 0 0 10px; }
+.ec-hero-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.ec-hero-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(255,255,255,.15);
+    backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,.25);
+    color: #fff; font-size: .73rem; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px; white-space: nowrap;
+}
+.ec-hero-btns { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.ec-hero-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 10px; font-size: .82rem; font-weight: 600;
+    text-decoration: none; border: none; cursor: pointer;
+    transition: all .18s ease; white-space: nowrap;
+}
+.ec-hero-btn.ghost {
+    background: rgba(255,255,255,.15); color: #fff;
+    border: 1px solid rgba(255,255,255,.3);
+}
+.ec-hero-btn.ghost:hover { background: rgba(255,255,255,.25); }
+
+@media (max-width: 768px) {
+    .ec-hero-inner { padding: 20px 16px; flex-direction: column; align-items: flex-start; }
+    .ec-hero-btns { margin-left: 0; width: 100%; }
+    .ec-hero-btn { flex: 1; justify-content: center; }
+}
 
 .ec-form { max-width: 1100px; margin: 0 auto; }
 
@@ -189,20 +250,29 @@
 @endsection
 
 @section('content')
+<div class="ec-hero">
+    <div class="ec-hero-inner">
+        <div class="ec-hero-icon"><i class="fas fa-user-plus"></i></div>
+        <div class="ec-hero-text">
+            <h1 class="ec-hero-title">Nouvel Enseignant</h1>
+            <p class="ec-hero-sub"><i class="fas fa-info-circle" style="margin-right:4px;"></i> Créez le profil de l'enseignant. Vous pourrez compléter les détails plus tard.</p>
+            <div class="ec-hero-pills">
+                <span class="ec-hero-pill"><i class="fas fa-asterisk" style="font-size:.55rem"></i> 3 champs requis</span>
+                <span class="ec-hero-pill"><i class="fas fa-briefcase"></i> Régime à choisir</span>
+                <span class="ec-hero-pill"><i class="fas fa-user-graduate"></i> Profil détaillé optionnel</span>
+            </div>
+        </div>
+        <div class="ec-hero-btns">
+            <a href="{{ route('esbtp.personnel.unified.index') }}" class="ec-hero-btn ghost">
+                <i class="fas fa-arrow-left"></i> Retour à la liste
+            </a>
+        </div>
+    </div>
+</div>
+
 <div class="dashboard-acasi">
     <div class="main-content">
 
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1><i class="fas fa-user-plus me-2"></i>Nouvel Enseignant</h1>
-                <p class="header-subtitle">Créez le profil de l'enseignant. Vous pourrez compléter les informations détaillées plus tard.</p>
-            </div>
-            <div class="header-actions">
-                <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi secondary">
-                    <i class="fas fa-arrow-left"></i> Retour à la liste
-                </a>
-            </div>
-        </div>
 
         @if($errors->any())
             <div class="ec-alert ec-alert-warning">
