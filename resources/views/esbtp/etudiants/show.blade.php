@@ -2531,6 +2531,7 @@
                 Cet étudiant a une inscription pour <strong>{{ $inscFutureNonReserve->anneeUniversitaire->name ?? '' }}</strong>
                 qui n'est pas marquée sous réserve. Souhaitez-vous la marquer ?
             </div>
+            @can('inscriptions.edit')
             <form method="POST" action="{{ route('esbtp.inscriptions.marquer-sous-reserve', $inscFutureNonReserve) }}" style="display:inline-flex; gap:8px; align-items:center;">
                 @csrf
                 <input type="text" name="condition_reserve" value="BACCALAURÉAT" class="form-control form-control-sm" style="width:180px; font-size:.82rem;" placeholder="Condition...">
@@ -2538,6 +2539,7 @@
                     <i class="fas fa-clipboard-check"></i> Marquer sous réserve
                 </button>
             </form>
+            @endcan
         </div>
     </div>
     @endif

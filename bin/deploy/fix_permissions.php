@@ -6,13 +6,17 @@
  *
  * Source de vérité : config/permissions.php (lu via PermissionRegistry).
  *
- * Comportement :
+ * Délègue à App\Services\PermissionSyncService — partagé avec
+ * App\Http\Controllers\API\CLI\CLIPermissionController::sync (klassci-cli)
+ * pour éviter le drift entre les deux entrypoints.
+ *
+ * Comportement (cf. PermissionSyncService::run) :
  * - Crée toutes les permissions canoniques + leurs aliases (rétrocompat)
  * - Crée tous les rôles canoniques
- * - Synchronise les permissions par défaut de chaque rôle (canon + aliases)
- *   UNIQUEMENT si le rôle n'a aucune permission assignée (préserve les
- *   configurations live des tenants en prod)
- * - Détecte les utilisateurs sans rôle et leur attribue un rôle par défaut
+ * - Synchronise les permissions par défaut UNIQUEMENT si le rôle est vide
+ *   (préserve les configurations live des tenants en prod)
+ * - Healing canoniques pour les rôles ayant des aliases legacy
+ * - Audit : signale les utilisateurs sans rôle (pas d'attribution auto)
  *
  * Usage : php bin/deploy/fix_permissions.php
  */
@@ -31,8 +35,7 @@ $response = $kernel->handle($request = Illuminate\Http\Request::capture());
 
 use App\Models\User;
 use App\Services\PermissionRegistry;
-use Spatie\Permission\Models\Permission;
-use Spatie\Permission\Models\Role;
+use App\Services\PermissionSyncService;
 
 echo "=== Synchronisation rôles & permissions (registry-driven) ===\n";
 
@@ -40,86 +43,36 @@ try {
     /** @var PermissionRegistry $registry */
     $registry = app(PermissionRegistry::class);
 
-    app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
-    echo "✅ Cache Spatie réinitialisé\n\n";
+    /** @var PermissionSyncService $sync */
+    $sync = app(PermissionSyncService::class);
 
-    /*
-     * 1. Créer toutes les permissions (canoniques + aliases pour rétrocompat)
-     */
-    $allNames = $registry->allNames();
-    echo "📋 Création des permissions ({$allNames->count()} total)...\n";
-    foreach ($allNames as $name) {
-        Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
-    }
-    echo "  ✓ {$allNames->count()} permissions créées/vérifiées\n\n";
+    $result = $sync->run();
 
-    /*
-     * 2. Créer tous les rôles
-     */
+    echo "✅ Cache Spatie réinitialisé\n";
+    echo "📋 {$result['permissions_count']} permissions créées/vérifiées\n";
+
     $roles = $registry->roles();
-    echo "👥 Création des rôles ({$roles->count()} total)...\n";
     foreach ($roles as $name => $meta) {
-        Role::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
-        echo "  ✓ {$name} ({$meta['label']})\n";
+        echo "  ✓ rôle {$name} ({$meta['label']})\n";
+    }
+    echo "\n";
+
+    foreach ($result['roles_with_defaults_assigned'] as $assigned) {
+        echo "  ✓ {$assigned['role']} : {$assigned['permissions_count']} permissions assignées (rôle vide)\n";
+    }
+    foreach ($result['roles_preserved'] as $preserved) {
+        echo "  ⤷ {$preserved} : permissions existantes (préservé)\n";
+    }
+    echo "\n";
+
+    foreach ($result['aliases_healed'] as $healed) {
+        echo "  ✓ {$healed['role']} : {$healed['canonicals_added']} canoniques ajoutés (alias → canon)\n";
     }
     echo "\n";
 
     /*
-     * 3. Synchroniser les permissions par défaut (UNIQUEMENT si rôle vide)
-     *    Préserve les configurations live des tenants
-     */
-    echo "🔐 Attribution des permissions par défaut...\n";
-    foreach ($roles->keys() as $roleName) {
-        $role = Role::findByName($roleName);
-        $existingCount = $role->permissions->count();
-
-        if ($existingCount > 0) {
-            echo "  ⤷ {$roleName} : {$existingCount} permissions existantes (préservé)\n";
-            continue;
-        }
-
-        // Récupère défauts canoniques + leurs aliases (pour @can('view_students') legacy)
-        $canonicals = $registry->defaultPermissionsFor($roleName);
-        $expanded = [];
-        foreach ($canonicals as $canonical) {
-            $expanded[] = $canonical;
-            foreach ($registry->aliasesOf($canonical) as $alias) {
-                $expanded[] = $alias;
-            }
-        }
-        $expanded = array_values(array_unique($expanded));
-
-        $role->syncPermissions($expanded);
-        echo "  ✓ {$roleName} : ".count($expanded)." permissions assignées\n";
-    }
-    echo "\n";
-
-    /*
-     * 4. Healing : pour chaque rôle existant, si il a un alias legacy, lui
-     *    ajouter aussi le canonique (non-destructif). Permet la migration code
-     *    Lot 6 (alias → canonique) sans casser les tenants existants.
-     */
-    echo "🔄 Synchronisation canoniques pour rôles existants...\n";
-    foreach ($roles->keys() as $roleName) {
-        $role = Role::findByName($roleName);
-        $existingNames = $role->permissions->pluck('name')->all();
-        $toAdd = [];
-        foreach ($existingNames as $name) {
-            $canonical = $registry->canonicalize($name);
-            if ($canonical !== $name && ! in_array($canonical, $existingNames, true)) {
-                $toAdd[] = $canonical;
-            }
-        }
-        if (! empty($toAdd)) {
-            $role->givePermissionTo($toAdd);
-            echo "  ✓ {$roleName} : ".count($toAdd)." canoniques ajoutés (alias → canon)\n";
-        }
-    }
-    echo "\n";
-
-    /*
-     * 5. Utilisateurs sans rôle : audit (signalement uniquement, pas d'attribution
-     *    automatique par email — supprimé Lot 5, sécurité)
+     * Audit utilisateurs sans rôle (signalement uniquement, pas d'attribution
+     * automatique par email — supprimé Lot 5, sécurité)
      */
     echo "🔍 Vérification des utilisateurs sans rôle...\n";
     $usersWithoutRole = User::doesntHave('roles')->get();
@@ -134,12 +87,10 @@ try {
         echo "  ✓ Tous les utilisateurs ont un rôle\n";
     }
 
-    app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
-
     echo "\n=== Récapitulatif ===\n";
-    echo "✅ {$allNames->count()} permissions (canoniques + aliases)\n";
-    echo '✅ '.$roles->count()." rôles\n";
-    echo '✅ '.$usersWithoutRole->count()." utilisateurs sans rôle traités\n";
+    echo "✅ {$result['permissions_count']} permissions (canoniques + aliases)\n";
+    echo "✅ {$result['roles_count']} rôles\n";
+    echo "✅ {$usersWithoutRole->count()} utilisateurs sans rôle traités\n";
     echo "✅ Cache des permissions réinitialisé\n";
     echo "\n💡 Pour auditer la cohérence du système, lancez :\n";
     echo "   php artisan permissions:audit\n";

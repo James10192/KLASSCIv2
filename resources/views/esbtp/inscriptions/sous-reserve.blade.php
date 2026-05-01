@@ -124,22 +124,28 @@
     </div>
 </div>
 
-{{-- Bulk bar --}}
+{{-- Bulk bar — visible si l'utilisateur a au moins une action de masse --}}
+@if(auth()->user()->canAny(['inscriptions.edit', 'inscriptions.view']))
 <div class="ii-bulk-bar" id="isr-bulk-bar">
     <div class="ii-bulk-count">
         <i class="fas fa-check-circle me-1"></i>
         <span id="isr-bulk-count">0</span> sélectionnée(s)
     </div>
+    @can('inscriptions.edit')
     <button type="button" class="ii-btn ii-btn--white" onclick="isrBulkLever()">
         <i class="fas fa-check-double"></i> Lever réserves
     </button>
+    @endcan
+    @can('inscriptions.view')
     <button type="button" class="ii-btn ii-btn--glass" onclick="isrBulkExporter()">
         <i class="fas fa-file-export"></i> Exporter CSV
     </button>
+    @endcan
     <button type="button" class="ii-btn ii-btn--glass" onclick="isrClearSelection()" title="Fermer">
         <i class="fas fa-times"></i>
     </button>
 </div>
+@endif
 
 @endsection
 

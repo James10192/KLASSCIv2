@@ -609,9 +609,11 @@ $(document).ready(function() {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal" onclick="$('#yearChangeModal').modal('hide');">Fermer</button>
+                @can('annees.view')
                 <a href="{{ route('esbtp.annees-universitaires.index') }}" target="_blank" class="btn btn-primary">
                     <i class="fas fa-external-link-alt"></i> Aller aux Années
                 </a>
+                @endcan
             </div>
         </div>
     </div>

@@ -227,6 +227,7 @@
                     Retour
                 </a>
 
+                @can('niveaux.delete')
                 <button type="button"
                         class="btn-acasi"
                         style="background-color: var(--danger); color: white; margin-right: var(--space-md);"
@@ -235,6 +236,7 @@
                     <i class="fas fa-trash"></i>
                     Supprimer
                 </button>
+                @endcan
 
                 <button type="submit" class="btn-acasi primary">
                     <i class="fas fa-save"></i>

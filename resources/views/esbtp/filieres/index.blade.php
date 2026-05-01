@@ -17,9 +17,11 @@
             </div>
             <div class="header-actions">
                 <input type="search" class="search-bar" placeholder="Rechercher une filière...">
+                @can('filieres.create')
                 <a href="{{ route('esbtp.filieres.create') }}" class="btn-acasi primary">
                     <i class="fas fa-plus-circle"></i>Nouvelle Filière
                 </a>
+                @endcan
             </div>
         </div>
 
@@ -88,12 +90,17 @@
                                         </td>
                                         <td>
                                             <div class="d-flex">
+                                                @can('filieres.view')
                                                 <a href="{{ route('esbtp.filieres.show', $filiere->id) }}" class="btn btn-info btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Voir détails">
                                                     <i class="fas fa-eye"></i>
                                                 </a>
+                                                @endcan
+                                                @can('filieres.edit')
                                                 <a href="{{ route('esbtp.filieres.edit', $filiere->id) }}" class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Modifier">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
+                                                @endcan
+                                                @can('filieres.delete')
                                                 @if(($filiere->classes ? $filiere->classes->count() : 0) == 0 && ($filiere->options ? $filiere->options->count() : 0) == 0)
                                                 <button type="button" class="btn btn-danger btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 delete-btn" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $filiere->id }}" title="Supprimer">
                                                     <i class="fas fa-trash"></i>
@@ -103,6 +110,7 @@
                                                     <i class="fas fa-lock"></i>
                                                 </button>
                                                 @endif
+                                                @endcan
                                             </div>
                                             
                                             <!-- Modal de suppression -->

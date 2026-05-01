@@ -13,9 +13,11 @@
                         <a href="{{ route('esbtp.filieres.index') }}" class="btn btn-secondary me-2">
                             <i class="fas fa-list me-1"></i>Liste des filières
                         </a>
+                        @can('filieres.edit')
                         <a href="{{ route('esbtp.filieres.edit', $filiere) }}" class="btn btn-primary">
                             <i class="fas fa-edit me-1"></i>Modifier
                         </a>
+                        @endcan
                     </div>
                 </div>
 
@@ -210,12 +212,18 @@
 
                 <div class="card-footer">
                     <div class="d-flex justify-content-between">
+                        @can('filieres.delete')
                         <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
                             <i class="fas fa-trash me-1"></i>Supprimer la filière
                         </button>
+                        @else
+                        <span></span>
+                        @endcan
+                        @can('filieres.edit')
                         <a href="{{ route('esbtp.filieres.edit', $filiere) }}" class="btn btn-primary">
                             <i class="fas fa-edit me-1"></i>Modifier
                         </a>
+                        @endcan
                     </div>
                 </div>
             </div>

@@ -9,9 +9,11 @@
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Gestion des Étudiants et Inscriptions</h5>
+                    @can('inscriptions.create')
                     <a href="{{ route('esbtp.inscriptions.create') }}" class="btn btn-primary">
                         <i class="fas fa-plus-circle me-1"></i>Ajouter un étudiant
                     </a>
+                    @endcan
                 </div>
                 <div class="card-body">
                     @if(session('success'))

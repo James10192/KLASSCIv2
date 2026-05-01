@@ -871,17 +871,19 @@
                     </div>
                 </div>
                 <div class="ci-hero-actions">
-                    @if(auth()->user()->can('admin.access'))
+                    @can('classes.edit')
                         <form action="{{ route('esbtp.classes.sync-systeme-academique') }}" method="POST" style="display:inline;">
                             @csrf
                             <button type="submit" class="ci-btn--glass" title="Synchroniser BTS/LMD depuis les niveaux d'études">
                                 <i class="fas fa-sync-alt"></i>Sync BTS/LMD
                             </button>
                         </form>
+                    @endcan
+                    @can('classes.create')
                         <button type="button" class="ci-btn--white" id="btn-open-create-modal">
                             <i class="fas fa-plus-circle"></i>Nouvelle classe
                         </button>
-                    @endif
+                    @endcan
                 </div>
             </div>
 

@@ -2823,14 +2823,16 @@
                 <p class="header-subtitle">Gestion des étudiants de l'établissement</p>
             </div>
             <div class="header-actions">
+                @can('inscriptions.create')
                 <a href="{{ route('esbtp.inscriptions.create') }}" class="btn-acasi primary">
                     <i class="fas fa-plus-circle"></i>Ajouter un étudiant
                 </a>
-                @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']))
+                @endcan
+                @can('inscriptions.view')
                 <a href="{{ route('esbtp.reinscription.index') }}" class="btn-acasi success">
                     <i class="fas fa-user-graduate"></i>Réinscriptions
                 </a>
-                @endif
+                @endcan
 
                 {{-- Export modal trigger --}}
                 <button type="button" class="btn-acasi secondary" data-bs-toggle="modal" data-bs-target="#exportModal" style="gap: 6px;">
