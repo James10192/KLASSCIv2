@@ -2,19 +2,18 @@
     Carte d'UNE classe — design premium namespace ci-*
     - Card cliquable via Bootstrap 5 .stretched-link (pas de JS stopPropagation)
     - Menu kebab BS5 dropdown pour actions secondaires
-    - 1 seul CTA visible (btn edit) si access_admin, sinon la card entière = CTA view
+    - 1 seul CTA visible (btn edit) si edit perm, sinon la card entière = CTA view
 
     Paramètres requis :
     - $classe : ESBTPClasse avec relations (filiere, niveau, annee)
+    - $canAdmin, $canEditClasse, $canDeleteClasse, $canManageSchool, $canTeach :
+      booléens hoisted depuis items.blade.php (un seul calcul pour la liste entière)
 --}}
 @php
     $occupation = $classe->places_totales > 0
         ? min(100, round(($classe->nombre_etudiants / $classe->places_totales) * 100))
         : 0;
     $occLevel = $occupation >= 95 ? 'full' : ($occupation >= 75 ? 'high' : ($occupation >= 40 ? 'mid' : 'low'));
-    $canAdmin = auth()->user()->can('admin.access');
-    $canManageSchool = auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']);
-    $canTeach = auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.teach', 'identity.coordinate']);
     $showUrl = route('esbtp.classes.show', array_merge(['classe' => $classe->id], request()->query()));
 @endphp
 
@@ -42,7 +41,7 @@
             <span class="ci-card-status ci-card-status--{{ $classe->is_active ? 'active' : 'inactive' }}">
                 {{ $classe->is_active ? 'Active' : 'Inactive' }}
             </span>
-            @if($canAdmin || $canManageSchool || $canTeach)
+            @if($canManageSchool || $canTeach || $canEditClasse || $canDeleteClasse)
                 <div class="dropdown ci-card-menu">
                     <button type="button"
                             class="ci-card-kebab"
@@ -71,29 +70,33 @@
                                 </a>
                             </li>
                         @endif
-                        @if($canAdmin)
+                        @if($canEditClasse || $canDeleteClasse)
                             <li><hr class="dropdown-divider"></li>
-                            <li>
-                                <button type="button"
-                                        class="dropdown-item btn-open-edit-modal"
-                                        data-classe-id="{{ $classe->id }}">
-                                    <i class="fas fa-edit"></i>Modifier
-                                </button>
-                            </li>
-                            <li>
-                                @if($classe->nombre_etudiants == 0)
+                            @if($canEditClasse)
+                                <li>
                                     <button type="button"
-                                            class="dropdown-item ci-dropdown-item--danger"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#deleteModal{{ $classe->id }}">
-                                        <i class="fas fa-archive"></i>Archiver la classe
+                                            class="dropdown-item btn-open-edit-modal"
+                                            data-classe-id="{{ $classe->id }}">
+                                        <i class="fas fa-edit"></i>Modifier
                                     </button>
-                                @else
-                                    <button type="button" class="dropdown-item" disabled title="Classe avec historique d'inscriptions — archivage désactivé">
-                                        <i class="fas fa-lock"></i>Archivage désactivé
-                                    </button>
-                                @endif
-                            </li>
+                                </li>
+                            @endif
+                            @if($canDeleteClasse)
+                                <li>
+                                    @if($classe->nombre_etudiants == 0)
+                                        <button type="button"
+                                                class="dropdown-item ci-dropdown-item--danger"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteModal{{ $classe->id }}">
+                                            <i class="fas fa-archive"></i>Archiver la classe
+                                        </button>
+                                    @else
+                                        <button type="button" class="dropdown-item" disabled title="Classe avec historique d'inscriptions — archivage désactivé">
+                                            <i class="fas fa-lock"></i>Archivage désactivé
+                                        </button>
+                                    @endif
+                                </li>
+                            @endif
                         @endif
                     </ul>
                 </div>
@@ -149,7 +152,7 @@
 </article>
 
 {{-- Modal suppression/archivage (monochrome avec bouton rouge outline pour confirmation Q3a) --}}
-@if($canAdmin && $classe->nombre_etudiants == 0)
+@if($canDeleteClasse && $classe->nombre_etudiants == 0)
     <div class="modal fade" id="deleteModal{{ $classe->id }}" tabindex="-1" aria-labelledby="deleteModalLabel{{ $classe->id }}" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">

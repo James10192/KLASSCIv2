@@ -462,11 +462,11 @@
                             <i class="fas fa-book"></i>Gérer matières
                         </a>
                     @endif
-                    @if(auth()->user()->can('admin.access'))
+                    @can('classes.edit')
                         <a href="{{ route('esbtp.classes.edit', array_merge(['classe' => $classe->id], ['return_url' => request()->fullUrl()])) }}" class="cs-btn--white">
                             <i class="fas fa-edit"></i>Modifier
                         </a>
-                    @endif
+                    @endcan
                     <a href="{{ $returnToIndexUrl }}" class="cs-btn--glass" title="Retour à la liste">
                         <i class="fas fa-arrow-left"></i>
                     </a>

@@ -718,8 +718,8 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
     </div>
 </div>
 
-{{-- BULK ACTIONS BAR --}}
-@can('inscriptions.validate')
+{{-- BULK ACTIONS BAR — visible si l'utilisateur a au moins une action de masse possible --}}
+@if(auth()->user()->canAny(['inscriptions.validate', 'inscriptions.cancel', 'inscriptions.view']))
 <div id="ii-bulk-bar" class="ii-bulk-bar">
     <div class="ii-bulk-bar-content">
         <div class="ii-bulk-count">
@@ -727,24 +727,28 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
             <span id="ii-selected-count">0</span> sélection(s)
         </div>
         <div class="ii-bulk-actions">
-            <button type="button" class="ii-bulk-btn ii-bulk-btn--primary" onclick="iiBulkValider()">
-                <i class="fas fa-check-double"></i>Valider
-            </button>
+            @can('inscriptions.validate')
+                <button type="button" class="ii-bulk-btn ii-bulk-btn--primary" onclick="iiBulkValider()">
+                    <i class="fas fa-check-double"></i>Valider
+                </button>
+            @endcan
             @can('inscriptions.cancel')
                 <button type="button" class="ii-bulk-btn" onclick="iiBulkAnnuler()">
                     <i class="fas fa-times"></i>Annuler
                 </button>
             @endcan
-            <button type="button" class="ii-bulk-btn" onclick="iiBulkExporter()">
-                <i class="fas fa-download"></i>Exporter
-            </button>
+            @can('inscriptions.view')
+                <button type="button" class="ii-bulk-btn" onclick="iiBulkExporter()">
+                    <i class="fas fa-download"></i>Exporter
+                </button>
+            @endcan
         </div>
         <button type="button" class="ii-bulk-close" onclick="iiClearSelection()" aria-label="Fermer la sélection">
             <i class="fas fa-times"></i>
         </button>
     </div>
 </div>
-@endcan
+@endif
 
 {{-- MODALS GLOBAUX (data-id dynamique) --}}
 

@@ -10,9 +10,11 @@
             <p class="header-subtitle">Gérez les différents niveaux d'études de votre établissement</p>
         </div>
         <div class="header-actions">
+            @can('niveaux.create')
             <a href="{{ route('esbtp.niveaux-etudes.create') }}" class="btn-acasi primary">
                 <i class="fas fa-plus-circle"></i> Nouveau Niveau
             </a>
+            @endcan
         </div>
     </div>
 
@@ -80,9 +82,11 @@
                     <i class="fas fa-graduation-cap fa-3x color-neutral mb-lg"></i>
                     <h3 class="color-neutral">Aucun niveau d'étude</h3>
                     <p class="color-neutral">Aucun niveau d'étude n'a été trouvé dans le système.</p>
+                    @can('niveaux.create')
                     <a href="{{ route('esbtp.niveaux-etudes.create') }}" class="btn-acasi primary mt-md">
                         <i class="fas fa-plus-circle"></i> Créer le premier niveau
                     </a>
+                    @endcan
                 </div>
             @else
                 <div class="table-responsive">
@@ -139,15 +143,21 @@
                                     </td>
                                     <td style="padding: var(--space-md); text-align: center;">
                                         <div style="display: flex; gap: var(--space-xs); justify-content: center;">
+                                            @can('niveaux.view')
                                             <a href="{{ route('esbtp.niveaux-etudes.show', $niveauEtude) }}" class="btn-acasi secondary" style="padding: var(--space-xs) var(--space-sm);" title="Voir">
                                                 <i class="fas fa-eye"></i>
                                             </a>
+                                            @endcan
+                                            @can('niveaux.edit')
                                             <a href="{{ route('esbtp.niveaux-etudes.edit', $niveauEtude) }}" class="btn-acasi" style="background-color: var(--warning); color: white; padding: var(--space-xs) var(--space-sm);" title="Modifier">
                                                 <i class="fas fa-edit"></i>
                                             </a>
+                                            @endcan
+                                            @can('niveaux.delete')
                                             <button type="button" class="btn-acasi" style="background-color: var(--danger); color: white; padding: var(--space-xs) var(--space-sm);" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $niveauEtude->id }}" title="Supprimer">
                                                 <i class="fas fa-trash"></i>
                                             </button>
+                                            @endcan
                                         </div>
                                     </td>
                                 </tr>

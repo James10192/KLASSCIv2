@@ -35,7 +35,9 @@ p
                 </div>
                 <div class="card-footer">
                     <div class="stats">
-                        <a href="{{ route('esbtp.classes.index') }}" class="text-success">Gérer les classes</a>
+                        @can('classes.view')
+                            <a href="{{ route('esbtp.classes.index') }}" class="text-success">Gérer les classes</a>
+                        @endcan
                     </div>
                 </div>
             </div>
@@ -52,7 +54,9 @@ p
                 </div>
                 <div class="card-footer">
                     <div class="stats">
-                        <a href="{{ route('esbtp.filieres.index') }}" class="text-warning">Voir les filières</a>
+                        @can('filieres.view')
+                            <a href="{{ route('esbtp.filieres.index') }}" class="text-warning">Voir les filières</a>
+                        @endcan
                     </div>
                 </div>
             </div>
@@ -124,26 +128,34 @@ p
                 </div>
                 <div class="card-body">
                     <div class="row">
+                        @can('inscriptions.create')
                         <div class="col-md-6 mb-3">
                             <a href="{{ route('esbtp.inscriptions.create') }}" class="btn btn-primary btn-block">
                                 <i class="fa fa-user-plus"></i> Ajouter un Étudiant
                             </a>
                         </div>
+                        @endcan
+                        @can('classes.create')
                         <div class="col-md-6 mb-3">
                             <a href="{{ route('esbtp.classes.create') }}" class="btn btn-success btn-block">
                                 <i class="fa fa-plus-circle"></i> Créer une Classe
                             </a>
                         </div>
+                        @endcan
+                        @can('matieres.create')
                         <div class="col-md-6 mb-3">
                             <a href="{{ route('esbtp.matieres.create') }}" class="btn btn-info btn-block">
                                 <i class="fa fa-book-medical"></i> Ajouter une Matière
                             </a>
                         </div>
+                        @endcan
+                        @can('timetables.create')
                         <div class="col-md-6 mb-3">
                             <a href="{{ route('esbtp.emploi-temps.create') }}" class="btn btn-warning btn-block">
                                 <i class="fa fa-calendar-alt"></i> Créer un Emploi du Temps
                             </a>
                         </div>
+                        @endcan
                     </div>
                 </div>
             </div>

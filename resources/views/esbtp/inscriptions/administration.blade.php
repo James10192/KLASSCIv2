@@ -427,12 +427,16 @@
                     </div>
                 </div>
                 <div class="ii-hero-actions">
+                    @can('inscriptions.view')
                     <a href="{{ route('esbtp.inscriptions.index') }}" class="ii-btn ii-btn--glass">
                         <i class="fas fa-arrow-left"></i> Retour aux inscriptions
                     </a>
+                    @endcan
+                    @can('inscriptions.create')
                     <a href="{{ route('esbtp.inscriptions.create') }}" class="ii-btn ii-btn--white">
                         <i class="fas fa-plus"></i> Nouvelle inscription
                     </a>
+                    @endcan
                 </div>
             </div>
 
@@ -935,9 +939,11 @@
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                @can('annees.view')
                 <a href="{{ route('esbtp.annees-universitaires.index') }}" target="_blank" class="btn btn-primary">
                     <i class="fas fa-external-link-alt me-2"></i>Aller aux Années
                 </a>
+                @endcan
             </div>
         </div>
     </div>

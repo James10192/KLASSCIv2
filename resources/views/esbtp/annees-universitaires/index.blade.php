@@ -16,9 +16,11 @@
                 <p class="header-subtitle">Gestion des années universitaires de l'établissement</p>
             </div>
             <div class="header-actions">
+                @can('annees.create')
                 <a href="{{ route('esbtp.annees-universitaires.create') }}" class="btn-acasi primary">
                     <i class="fas fa-plus-circle"></i>Nouvelle année universitaire
                 </a>
+                @endcan
             </div>
         </div>
 
@@ -45,7 +47,10 @@
                 
                 @if($anneesUniversitaires->isEmpty())
                     <div class="alert alert-info">
-                        Aucune année universitaire n'a été créée. <a href="{{ route('esbtp.annees-universitaires.create') }}">Créer une année universitaire</a>
+                        Aucune année universitaire n'a été créée.
+                        @can('annees.create')
+                            <a href="{{ route('esbtp.annees-universitaires.create') }}">Créer une année universitaire</a>
+                        @endcan
                     </div>
                 @else
                     <div class="table-responsive">
@@ -79,12 +84,17 @@
                                             </td>
                                             <td>
                                                 <div class="d-flex">
+                                                    @can('annees.view')
                                                     <a href="{{ route('esbtp.annees-universitaires.show', $anneeUniversitaire) }}" class="btn btn-info btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Voir les détails">
                                                         <i class="fas fa-eye"></i>
                                                     </a>
+                                                    @endcan
+                                                    @can('annees.edit')
                                                     <a href="{{ route('esbtp.annees-universitaires.edit', $anneeUniversitaire) }}" class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 me-1" title="Modifier">
                                                         <i class="fas fa-edit"></i>
                                                     </a>
+                                                    @endcan
+                                                    @can('annees.set_current')
                                                     @if(!optional($anneeUniversitaire)->is_current)
                                                         <form action="{{ route('esbtp.annees-universitaires.set-current', $anneeUniversitaire) }}" method="POST" class="d-inline">
                                                             @csrf
@@ -93,9 +103,12 @@
                                                             </button>
                                                         </form>
                                                     @endif
+                                                    @endcan
+                                                    @can('annees.delete')
                                                     <button type="button" class="btn btn-danger btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#deleteModal{{ $anneeUniversitaire->id }}" title="Supprimer">
                                                         <i class="fas fa-trash"></i>
                                                     </button>
+                                                    @endcan
                                                 </div>
 
                                                 <!-- Modal de confirmation de suppression -->

@@ -225,12 +225,16 @@
 
     <!-- Action Buttons -->
     <div class="text-center mt-xl">
+        @can('niveaux.edit')
         <a href="{{ route('esbtp.niveaux-etudes.edit', $niveauxEtude) }}" class="btn-acasi primary" style="margin-right: var(--space-md);">
             <i class="fas fa-edit"></i> Modifier
         </a>
+        @endcan
+        @can('niveaux.delete')
         <button type="button" class="btn-acasi" style="background-color: var(--danger); color: white; margin-right: var(--space-md);" data-bs-toggle="modal" data-bs-target="#deleteModal">
             <i class="fas fa-trash"></i> Supprimer
         </button>
+        @endcan
         <a href="{{ route('esbtp.niveaux-etudes.index') }}" class="btn-acasi secondary">
             <i class="fas fa-arrow-left"></i> Retour à la liste
         </a>

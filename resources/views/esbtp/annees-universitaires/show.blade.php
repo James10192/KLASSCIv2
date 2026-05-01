@@ -16,9 +16,12 @@
                 <p class="header-subtitle">{{ $anneesUniversitaire->name }}</p>
             </div>
             <div class="header-actions">
+                @can('annees.edit')
                 <a href="{{ route('esbtp.annees-universitaires.edit', $anneesUniversitaire) }}" class="btn-acasi primary">
                     <i class="fas fa-edit"></i>Modifier
                 </a>
+                @endcan
+                @can('annees.set_current')
                 @if(!optional($anneesUniversitaire)->is_current)
                     <form action="{{ route('esbtp.annees-universitaires.set-current', $anneesUniversitaire) }}" method="POST" class="d-inline">
                         @csrf
@@ -27,6 +30,7 @@
                         </button>
                     </form>
                 @endif
+                @endcan
                 <a href="{{ route('esbtp.annees-universitaires.index') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour à la liste
                 </a>
@@ -144,6 +148,7 @@
             </div>
         </div>
 
+        @can('annees.delete')
         <!-- Actions de gestion -->
         <div class="main-card">
             <div class="main-card-header">
@@ -159,8 +164,8 @@
                         <div class="alert alert-danger">
                             <h6><i class="fas fa-exclamation-triangle me-2"></i>Zone de danger</h6>
                             <p class="mb-0">
-                                La suppression d'une année universitaire est une action irréversible qui peut affecter 
-                                de nombreuses données dans le système. Assurez-vous de bien comprendre les implications 
+                                La suppression d'une année universitaire est une action irréversible qui peut affecter
+                                de nombreuses données dans le système. Assurez-vous de bien comprendre les implications
                                 avant de procéder à cette opération.
                             </p>
                         </div>
@@ -173,6 +178,7 @@
                 </div>
             </div>
         </div>
+        @endcan
     </div>
 </div>
 

@@ -1483,35 +1483,43 @@
                             </a>
                     </div>
 
-                    <!-- Academic Management Section -->
+                    <!-- Academic Management Section — gates per-link via les nouvelles permissions registry -->
                     @can('module.academique.access')
-                    @can('filieres.view')
+                    @if(auth()->user()->canAny(['filieres.view', 'classes.view', 'niveaux.view', 'annees.view']))
                         <div class="menu-category">Gestion académique</div>
 
                         <!-- Programs & Classes -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') || Request::routeIs('esbtp.niveaux-etudes.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') || Request::routeIs('esbtp.niveaux-etudes.*') || Request::routeIs('esbtp.annees-universitaires.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-school"></i></div>
                                 <div class="menu-text">Filières & Classes</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') || Request::routeIs('esbtp.niveaux-etudes.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') || Request::routeIs('esbtp.niveaux-etudes.*') || Request::routeIs('esbtp.annees-universitaires.*') ? 'show' : '' }}">
+                                @can('filieres.view')
                                 <a href="{{ route('esbtp.filieres.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.filieres.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Filières</span>
                                 </a>
+                                @endcan
+                                @can('classes.view')
                                 <a href="{{ route('esbtp.classes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.classes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Classes</span>
                                 </a>
+                                @endcan
+                                @can('niveaux.view')
                                 <a href="{{ route('esbtp.niveaux-etudes.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.niveaux-etudes.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Niveaux d'études</span>
                                 </a>
+                                @endcan
+                                @can('annees.view')
                                 <a href="{{ route('esbtp.annees-universitaires.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.annees-universitaires.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Années universitaires</span>
                                 </a>
+                                @endcan
                             </div>
                         </div>
                         <!-- Training Cycles -->
@@ -1536,12 +1544,12 @@
                                 </a>
                             </div>
                         </div>-->
-                    @endcan
+                    @endif
                     @endcan
 
                     <!-- Students Section -->
                     @can('module.etudiants.access')
-                    @can('students.view')
+                    @if(auth()->user()->canAny(['students.view', 'inscriptions.view', 'inscriptions.create']))
                         <div class="menu-category">Étudiants</div>
 
                         <!-- Student Management -->
@@ -1552,31 +1560,37 @@
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
                             <div class="menu-accordion-content {{ Request::routeIs('esbtp.etudiants.*') || Request::routeIs('esbtp.inscriptions.*') || Request::routeIs('esbtp.reinscription.*') ? 'show' : '' }}">
+                                @can('students.view')
                                 <a href="{{ route('esbtp.etudiants.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.etudiants.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-list"></i></div>
                                     <div class="menu-text">Liste des Étudiants</div>
                                 </a>
+                                @endcan
+                                @can('inscriptions.view')
                                 <a href="{{ route('esbtp.inscriptions.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.index') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-clipboard-list"></i></div>
                                     <div class="menu-text">Inscriptions</div>
                                 </a>
+                                @endcan
+                                @can('inscriptions.create')
                                 <a href="{{ route('esbtp.inscriptions.create') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.create') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-user-plus"></i></div>
                                     <div class="menu-text">Nouvelle Inscription</div>
                                 </a>
+                                @endcan
                                 @can('inscriptions.view')
                                 <a href="{{ route('esbtp.reinscription.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.reinscription.*') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-redo"></i></div>
                                     <div class="menu-text">Réinscriptions</div>
                                 </a>
-                                @endcan
                                 <a href="{{ route('esbtp.inscriptions.sous-reserve') }}" class="menu-sublink {{ Request::routeIs('esbtp.inscriptions.sous-reserve') ? 'active' : '' }}">
                                     <div class="menu-icon"><i class="fas fa-clipboard-check"></i></div>
                                     <div class="menu-text">Sous réserve</div>
                                 </a>
+                                @endcan
                             </div>
                         </div>
-                    @endcan
+                    @endif
                     @endcan
 
                     <!-- Personnel (non-superAdmin — superAdmin has accordion in Administration) -->
@@ -1825,12 +1839,14 @@
                     @can('module.caisse.access')
                         <div class="menu-category">Caisse</div>
 
+                        @can('inscriptions.create')
                         <div class="menu-item">
                             <a href="{{ route('esbtp.inscriptions.pre-inscription') }}" class="menu-link {{ Request::routeIs('esbtp.inscriptions.pre-inscription') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-user-plus"></i></div>
                                 <div class="menu-text">Pré-inscription</div>
                             </a>
                         </div>
+                        @endcan
 
                         {{-- Consultation : uniquement pour les users caisse SANS acces module etudiants complet --}}
                         @if(!auth()->user()->can('module.etudiants.access'))
@@ -2297,30 +2313,38 @@
                                 <li>
                                     <div class="quick-actions-grid" id="quick-actions-list">
                                         @if(auth()->check() && auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
+                                            @can('students.create')
                                             <a href="{{ route('esbtp.etudiants.create') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #10b981, #059669); color: white;">
                                                     <i class="fas fa-user-plus"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvel étudiant</span>
                                             </a>
+                                            @endcan
+                                            @can('inscriptions.create')
                                             <a href="{{ route('esbtp.inscriptions.create') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
                                                     <i class="fas fa-clipboard-check"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle inscription</span>
                                             </a>
+                                            @endcan
+                                            @can('evaluations.create')
                                             <a href="{{ route('esbtp.evaluations.create') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white;">
                                                     <i class="fas fa-plus-circle"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle évaluation</span>
                                             </a>
+                                            @endcan
+                                            @can('classes.create')
                                             <a href="{{ route('esbtp.classes.create') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white;">
                                                     <i class="fas fa-school"></i>
                                                 </div>
                                                 <span class="quick-action-text">Nouvelle classe</span>
                                             </a>
+                                            @endcan
                                         @elseif(auth()->check() && auth()->user()->can('identity.coordinate'))
                                             <a href="{{ route('esbtp.emploi-temps.create') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #3b82f6, #2563eb); color: white;">
@@ -2581,11 +2605,11 @@
                                         <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
                                             Fermer
                                         </button>
-                                        @if($isSuperAdmin)
+                                        @can('annees.view')
                                             <a href="{{ route('esbtp.annees-universitaires.index') }}" class="btn btn-warning">
                                                 <i class="fas fa-calendar-check me-1"></i>Aller aux années
                                             </a>
-                                        @endif
+                                        @endcan
                                     </div>
                                 </div>
                             </div>
