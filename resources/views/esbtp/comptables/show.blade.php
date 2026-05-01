@@ -432,9 +432,6 @@ select.cs-comptable-edit-input { text-align: left; min-width: 160px; cursor: poi
             <button class="cs-comptable-tab active" data-tab="info" type="button">
                 <i class="fas fa-user"></i> Informations
             </button>
-            <button class="cs-comptable-tab" data-tab="access" type="button">
-                <i class="fas fa-rocket"></i> Acces Rapide
-            </button>
             <button class="cs-comptable-tab" data-tab="account" type="button">
                 <i class="fas fa-user-cog"></i> Compte
             </button>
@@ -556,36 +553,6 @@ select.cs-comptable-edit-input { text-align: left; min-width: 160px; cursor: poi
                             <span class="cs-comptable-info-value">{{ $user->last_login_at ? $user->last_login_at->format('d/m/Y H:i') : 'Jamais' }}</span>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- ---- TAB: Acces Rapide --------------------------------- --}}
-        <div class="cs-comptable-panel" id="cs-comptable-tab-access">
-            <div class="cs-comptable-card">
-                <div class="cs-comptable-card-header">
-                    <div class="cs-comptable-card-title">
-                        <div class="cs-comptable-card-title-icon"><i class="fas fa-rocket"></i></div>
-                        Acces rapides comptabilite
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px;">
-                    <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="cs-comptable-quick-card">
-                        <i class="fas fa-chart-line" style="color: var(--cs-comptable-blue);"></i>
-                        <span>Dashboard Compta</span>
-                    </a>
-                    <a href="{{ route('esbtp.paiements.index') }}" class="cs-comptable-quick-card">
-                        <i class="fas fa-money-bill-wave" style="color: var(--cs-comptable-success);"></i>
-                        <span>Paiements</span>
-                    </a>
-                    <a href="{{ route('esbtp.frais.index') }}" class="cs-comptable-quick-card">
-                        <i class="fas fa-tags" style="color: #d97706;"></i>
-                        <span>Frais</span>
-                    </a>
-                    <a href="{{ route('esbtp.roles-permissions.index', ['role' => 'comptable']) }}" class="cs-comptable-quick-card">
-                        <i class="fas fa-sliders-h" style="color: var(--cs-comptable-danger);"></i>
-                        <span>Permissions</span>
-                    </a>
                 </div>
             </div>
         </div>
