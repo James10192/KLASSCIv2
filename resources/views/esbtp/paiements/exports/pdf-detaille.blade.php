@@ -58,8 +58,6 @@
             font-size: {{ $showCreator ? '8.5px' : '9.5px' }};
             margin-top: 8px;
             background: white;
-            border-radius: 4px;
-            overflow: hidden;
         }
         table.payments thead th {
             background: #0453cb;
@@ -116,28 +114,30 @@
         .badge-rejected { background: #dc2626; }
         .badge-default { background: #64748b; }
 
-        /* ─── Footer total ─── */
-        .totals {
+        /* ─── Footer total (vraie table — display:table-row/cell sur div crashe DomPDF) ─── */
+        table.totals {
+            width: 100%;
             margin-top: 10px;
             background: #eff6ff;
-            border-radius: 4px;
-            padding: 8px 10px;
             border-left: 4px solid #0453cb;
+            border-collapse: collapse;
         }
-        .totals .label {
+        table.totals td {
+            padding: 4px 10px;
+            background: #eff6ff;
+        }
+        table.totals .label {
             font-size: 9px;
             font-weight: 600;
             color: #475569;
             text-transform: uppercase;
             letter-spacing: 0.4px;
         }
-        .totals .value {
+        table.totals .value {
             font-size: 12px;
             font-weight: 700;
             color: #0453cb;
         }
-        .totals .row { display: table-row; }
-        .totals .cell { display: table-cell; padding: 2px 0; }
 
         /* ─── Generation info (cohérence avec liste-complete-pdf) ─── */
         .generation-info {
@@ -317,17 +317,17 @@
         </tbody>
     </table>
 
-    {{-- Footer total (cohérent avec liste-complete-pdf) --}}
-    <div class="totals">
-        <div class="row">
-            <div class="cell"><span class="label">Nombre de paiements :</span></div>
-            <div class="cell" style="text-align:right;"><span class="value">{{ $count }}</span></div>
-        </div>
-        <div class="row">
-            <div class="cell"><span class="label">Total encaissé :</span></div>
-            <div class="cell" style="text-align:right;"><span class="value">{{ $formatMontant($totalMontant) }} FCFA</span></div>
-        </div>
-    </div>
+    {{-- Footer total (vraie <table> — pas de div avec display:table-* qui crashe DomPDF) --}}
+    <table class="totals" cellspacing="0" cellpadding="0">
+        <tr>
+            <td><span class="label">Nombre de paiements :</span></td>
+            <td style="text-align:right;"><span class="value">{{ $count }}</span></td>
+        </tr>
+        <tr>
+            <td><span class="label">Total encaissé :</span></td>
+            <td style="text-align:right;"><span class="value">{{ $formatMontant($totalMontant) }} FCFA</span></td>
+        </tr>
+    </table>
 
     {{-- Generation info (signature document, identique à liste-complete-pdf) --}}
     <div class="generation-info">
