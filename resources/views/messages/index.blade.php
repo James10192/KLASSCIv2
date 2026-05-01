@@ -46,14 +46,26 @@
 .ms-thread-name { font-weight: 700; color: var(--ms-text); }
 .ms-thread-status { color: var(--ms-muted); font-size: .78rem; }
 .ms-thread-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--ms-muted); padding: 2rem; text-align: center; }
-.ms-msgs { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: .5rem; }
-.ms-msg { max-width: 70%; padding: .65rem .9rem; border-radius: 14px; font-size: .9rem; line-height: 1.4; word-break: break-word; }
+.ms-msgs { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: .25rem; position: relative; }
+/* Message grouping : remove margin between consecutive same-sender messages within 5min */
+.ms-msg-group { display: flex; flex-direction: column; gap: .15rem; }
+.ms-msg-group + .ms-msg-group { margin-top: .65rem; }
+.ms-msg { max-width: 70%; padding: .55rem .85rem; border-radius: 14px; font-size: .9rem; line-height: 1.4; word-break: break-word; transition: opacity .2s; }
+.ms-msg.pending { opacity: .55; }
 .ms-msg.mine { align-self: flex-end; background: var(--ms-bubble-mine); color: #fff; border-bottom-right-radius: 4px; }
 .ms-msg.theirs { align-self: flex-start; background: var(--ms-bubble-them); color: var(--ms-text); border-bottom-left-radius: 4px; }
+/* Grouped messages : flatten corners on middle bubbles */
+.ms-msg-group .ms-msg.mine:not(:last-child) { border-bottom-right-radius: 6px; }
+.ms-msg-group .ms-msg.mine:not(:first-child) { border-top-right-radius: 6px; }
+.ms-msg-group .ms-msg.theirs:not(:last-child) { border-bottom-left-radius: 6px; }
+.ms-msg-group .ms-msg.theirs:not(:first-child) { border-top-left-radius: 6px; }
 .ms-msg.system { align-self: center; background: rgba(245, 158, 11, 0.1); color: #92400e; border: 1px solid rgba(245,158,11,.3); font-size: .82rem; font-weight: 500; padding: .5rem .9rem; border-radius: 99px; }
 .ms-msg.action_card { align-self: flex-start; background: var(--ms-surface); border: 1px solid var(--ms-border); padding: 1rem 1.1rem; max-width: 85%; box-shadow: 0 1px 3px rgba(15,23,42,.04); border-radius: 12px; }
-.ms-msg-meta { font-size: .68rem; color: var(--ms-muted); margin: .15rem .5rem 0; }
-.ms-msg.mine + .ms-msg-meta { text-align: right; }
+.ms-msg-meta { font-size: .68rem; color: var(--ms-muted); margin: .2rem .5rem 0; }
+.ms-msg-group:has(.ms-msg.mine) .ms-msg-meta { text-align: right; }
+/* "X new messages" banner — replaces auto-scroll anti-pattern */
+.ms-new-banner { position: sticky; bottom: .5rem; align-self: center; background: var(--ms-primary); color: #fff; padding: .4rem .9rem; border-radius: 99px; font-size: .8rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(4,83,203,.3); z-index: 5; transition: all .15s; }
+.ms-new-banner:hover { transform: translateY(-2px); }
 .ms-action-card-title { font-weight: 700; color: var(--ms-text); margin-bottom: .35rem; font-size: .92rem; }
 .ms-action-card-body { color: var(--ms-muted); font-size: .85rem; margin-bottom: .65rem; }
 .ms-action-card-cta { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1rem; background: var(--ms-primary); color: #fff; border-radius: 8px; font-weight: 600; font-size: .85rem; text-decoration: none; transition: all .15s; }
@@ -186,33 +198,43 @@
                             </div>
                         </div>
 
-                        <div class="ms-msgs" x-ref="msgs">
-                            <template x-for="m in messages" :key="m.id">
-                                <div>
-                                    <template x-if="m.type === 'system'">
-                                        <div class="ms-msg system" x-text="m.body"></div>
-                                    </template>
-                                    <template x-if="m.type === 'action_card'">
-                                        <div class="ms-msg action_card">
-                                            <div class="ms-action-card-title" x-text="m.payload?.title || m.body"></div>
-                                            <div class="ms-action-card-body" x-text="m.payload?.body" x-show="m.payload?.body"></div>
-                                            <a class="ms-action-card-cta" :href="m.payload?.url" x-show="m.payload?.url">
-                                                <i class="fas fa-arrow-right"></i>
-                                                <span x-text="m.payload?.label || 'Ouvrir'"></span>
-                                            </a>
+                        <div class="ms-msgs" x-ref="msgs" @scroll="onScroll($event)" aria-live="polite" aria-atomic="false" aria-label="Messages de la conversation">
+                            <template x-for="(group, gi) in groupedMessages" :key="gi">
+                                <div class="ms-msg-group">
+                                    <template x-for="m in group.items" :key="m.id">
+                                        <div>
+                                            <template x-if="m.type === 'system'">
+                                                <div class="ms-msg system" x-text="m.body"></div>
+                                            </template>
+                                            <template x-if="m.type === 'action_card'">
+                                                <div class="ms-msg action_card">
+                                                    <div class="ms-action-card-title" x-text="m.payload?.title || m.body"></div>
+                                                    <div class="ms-action-card-body" x-text="m.payload?.body" x-show="m.payload?.body"></div>
+                                                    <a class="ms-action-card-cta" :href="m.payload?.url" x-show="m.payload?.url">
+                                                        <i class="fas fa-arrow-right"></i>
+                                                        <span x-text="m.payload?.label || 'Ouvrir'"></span>
+                                                    </a>
+                                                </div>
+                                            </template>
+                                            <template x-if="m.type === 'text'">
+                                                <div :class="['ms-msg', m.mine ? 'mine' : 'theirs', m.pending ? 'pending' : '']" x-text="m.body"></div>
+                                            </template>
                                         </div>
                                     </template>
-                                    <template x-if="m.type === 'text'">
-                                        <div :class="m.mine ? 'ms-msg mine' : 'ms-msg theirs'" x-text="m.body"></div>
-                                    </template>
-                                    <div class="ms-msg-meta" x-show="m.type === 'text'"
-                                         x-text="(m.mine ? 'Toi' : m.sender_name) + ' · ' + formatTime(m.created_at)"></div>
+                                    <div class="ms-msg-meta" x-text="(group.mine ? 'Toi' : group.sender_name) + ' · ' + formatTime(group.last_at)"></div>
                                 </div>
                             </template>
+                            {{-- "X new messages" banner — anti auto-scroll, respecte la lecture en cours --}}
+                            <button type="button" class="ms-new-banner" x-show="newCount > 0" @click="scrollBottom(true); newCount = 0">
+                                <i class="fas fa-arrow-down me-1"></i>
+                                <span x-text="newCount + ' nouveau' + (newCount > 1 ? 'x' : '') + ' message' + (newCount > 1 ? 's' : '')"></span>
+                            </button>
                         </div>
 
                         <form class="ms-composer" @submit.prevent="sendMessage()">
-                            <textarea x-model="draft" placeholder="Écris un message…" rows="1"
+                            <textarea x-model="draft" rows="1"
+                                      placeholder="Écris un message… (Entrée pour envoyer, Shift+Entrée pour saut de ligne)"
+                                      aria-label="Composer un message"
                                       @keydown.enter.prevent="if (!$event.shiftKey) sendMessage(); else draft += '\n'"></textarea>
                             <button type="submit" :disabled="!draft.trim() || sending">
                                 <span x-show="!sending"><i class="fas fa-paper-plane"></i></span>
@@ -272,9 +294,12 @@ function messagesPage() {
         sending: false,
         notifications: [],
         notifPollInterval: null,
+        msgPollInterval: null,
         dmQuery: '',
         dmResults: [],
         dmModal: null,
+        newCount: 0,           // "X new messages" banner counter
+        atBottom: true,
         csrf: document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
 
         init() {
@@ -282,20 +307,79 @@ function messagesPage() {
             this.notifPollInterval = setInterval(() => this.loadNotifications(), 30000);
         },
 
+        // Groupement messages par sender consécutif < 5min (anti-clutter — finding research 2026)
+        get groupedMessages() {
+            const groups = [];
+            let current = null;
+            for (const m of this.messages) {
+                const t = new Date(m.created_at).getTime();
+                if (current
+                    && current.sender_id === m.sender_id
+                    && current.type === m.type
+                    && (t - current.last_t) < 5 * 60 * 1000) {
+                    current.items.push(m);
+                    current.last_at = m.created_at;
+                    current.last_t = t;
+                } else {
+                    current = {
+                        sender_id: m.sender_id,
+                        sender_name: m.sender_name,
+                        mine: !!m.mine,
+                        type: m.type,
+                        items: [m],
+                        last_at: m.created_at,
+                        last_t: t,
+                    };
+                    groups.push(current);
+                }
+            }
+            return groups;
+        },
+
         async openConvo(c) {
             this.activeConvo = c;
             this.activeOther = (c.participants || [])[0] || null;
+            this.newCount = 0;
             const r = await fetch(`/messages/conversations/${c.id}`, { headers: { Accept: 'application/json' } });
             const data = await r.json();
             this.messages = data.messages;
-            this.$nextTick(() => this.scrollBottom());
+            this.atBottom = true;
+            this.$nextTick(() => this.scrollBottom(false));
+            // Restart message polling pour la conversation active (30s — bandwidth-friendly Tecno 3G/4G per research)
+            if (this.msgPollInterval) clearInterval(this.msgPollInterval);
+            this.msgPollInterval = setInterval(() => this.refreshMessages(), 30000);
+        },
+
+        async refreshMessages() {
+            if (!this.activeConvo) return;
+            try {
+                const r = await fetch(`/messages/conversations/${this.activeConvo.id}`, { headers: { Accept: 'application/json' } });
+                const data = await r.json();
+                const knownIds = new Set(this.messages.map(m => m.id));
+                const incoming = data.messages.filter(m => !knownIds.has(m.id));
+                if (incoming.length === 0) return;
+                this.messages = data.messages;
+                if (this.atBottom) {
+                    this.$nextTick(() => this.scrollBottom(false));
+                } else {
+                    this.newCount += incoming.filter(m => !m.mine).length;
+                }
+            } catch (e) { /* silent */ }
         },
 
         async sendMessage() {
             if (!this.draft.trim() || this.sending || !this.activeConvo) return;
-            this.sending = true;
             const body = this.draft.trim();
             this.draft = '';
+            // Optimistic UI : on push immédiatement avec pending=true (research finding 2026)
+            const tempId = 'tmp-' + Date.now();
+            this.messages.push({
+                id: tempId, sender_id: -1, sender_name: 'Toi', mine: true,
+                type: 'text', body, payload: null,
+                created_at: new Date().toISOString(), pending: true,
+            });
+            this.$nextTick(() => this.scrollBottom(false));
+            this.sending = true;
             try {
                 const r = await fetch(`/messages/conversations/${this.activeConvo.id}/messages`, {
                     method: 'POST',
@@ -304,18 +388,33 @@ function messagesPage() {
                 });
                 if (!r.ok) throw new Error('Send failed');
                 const m = await r.json();
-                this.messages.push({ ...m, type: 'text', payload: null });
-                this.$nextTick(() => this.scrollBottom());
+                // Replace temp message with confirmed one
+                const idx = this.messages.findIndex(x => x.id === tempId);
+                if (idx >= 0) this.messages[idx] = { ...m, type: 'text', payload: null, pending: false };
             } catch (e) {
+                // Mark as failed — keep visible avec UI dégradée
+                const idx = this.messages.findIndex(x => x.id === tempId);
+                if (idx >= 0) {
+                    this.messages[idx].pending = false;
+                    this.messages[idx].body = body + ' (échec — réessayer)';
+                }
                 this.draft = body;
-                alert('Échec de l\'envoi.');
             } finally {
                 this.sending = false;
             }
         },
 
-        scrollBottom() {
-            if (this.$refs.msgs) this.$refs.msgs.scrollTop = this.$refs.msgs.scrollHeight;
+        onScroll(e) {
+            const el = e.target;
+            this.atBottom = (el.scrollHeight - el.scrollTop - el.clientHeight) < 50;
+            if (this.atBottom) this.newCount = 0;
+        },
+
+        scrollBottom(smooth = true) {
+            if (!this.$refs.msgs) return;
+            this.$refs.msgs.scrollTo({ top: this.$refs.msgs.scrollHeight, behavior: smooth ? 'smooth' : 'instant' });
+            this.atBottom = true;
+            this.newCount = 0;
         },
 
         formatTime(iso) {
