@@ -51,13 +51,6 @@ class ESBTPTeacher extends Model
             if (empty($teacher->employee_id)) {
                 $teacher->employee_id = self::generateEmployeeId();
             }
-
-            // Set default department_id if not provided
-            if (empty($teacher->department_id)) {
-                // Get the first department or set a default value
-                $defaultDepartment = \App\Models\Department::first();
-                $teacher->department_id = $defaultDepartment ? $defaultDepartment->id : 1;
-            }
         });
     }
 
@@ -79,12 +72,12 @@ class ESBTPTeacher extends Model
 
     public function department()
     {
-        return $this->belongsTo(\App\Models\Department::class);
+        return $this->belongsTo(\App\Models\ESBTPDepartment::class);
     }
 
     public function laboratory()
     {
-        return $this->belongsTo(\App\Models\Laboratory::class);
+        return $this->belongsTo(\App\Models\ESBTPLaboratory::class);
     }
 
     public function seancesCours()

@@ -613,24 +613,13 @@
                             <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactifs</option>
                         </select>
                     </div>
-                    <div class="te-filter-group">
-                        <label class="te-filter-label">Département</label>
-                        <select name="department_id" class="te-filter-select">
-                            <option value="">Tous</option>
-                            @foreach($departments ?? [] as $dept)
-                                <option value="{{ $dept->id }}" {{ request('department_id') == $dept->id ? 'selected' : '' }}>
-                                    {{ $dept->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
                     <div class="te-filter-group" style="flex: 0 0 auto; min-width: auto;">
                         <label class="te-filter-label">&nbsp;</label>
                         <div style="display: flex; gap: 0.5rem;">
                             <button type="submit" class="te-filter-btn">
                                 <i class="fas fa-search"></i>Filtrer
                             </button>
-                            @if(request()->hasAny(['search', 'status', 'department_id']))
+                            @if(request()->hasAny(['search', 'status']))
                                 <a href="{{ route('esbtp.enseignants.index') }}" class="te-filter-btn-reset">
                                     <i class="fas fa-times"></i>Reset
                                 </a>
@@ -660,7 +649,6 @@
                                 <th>Enseignant</th>
                                 <th>Contact</th>
                                 <th>Spécialisation</th>
-                                <th>Département</th>
                                 <th>Statut</th>
                                 <th style="width: 130px; text-align: center;">Actions</th>
                             </tr>
@@ -690,16 +678,6 @@
                                     </td>
                                     <td>
                                         <span style="font-size: 0.85rem; color: #374151;">{{ $teacher->specialization ?? '—' }}</span>
-                                    </td>
-                                    <td>
-                                        @if($teacher->department)
-                                            <span class="te-dept-tag">
-                                                <i class="fas fa-building" style="font-size: 0.65rem;"></i>
-                                                {{ $teacher->department->name }}
-                                            </span>
-                                        @else
-                                            <span style="color: #94a3b8; font-size: 0.82rem;">—</span>
-                                        @endif
                                     </td>
                                     <td>
                                         <span class="te-status {{ $teacher->status === 'active' ? 'te-status-active' : 'te-status-inactive' }}">
@@ -784,7 +762,7 @@
                     </div>
 
                     @php
-                        $allTeachers = \App\Models\ESBTPTeacher::with(['user', 'department'])
+                        $allTeachers = \App\Models\ESBTPTeacher::with('user')
                             ->where('status', 'active')
                             ->orderBy('id')
                             ->get();
@@ -812,9 +790,6 @@
                                         <div class="fw-semibold">{{ $t->user->name ?? 'N/A' }}</div>
                                         <div class="small text-muted">
                                             {{ $t->specialization ?? 'Pas de spécialisation' }}
-                                            @if($t->department)
-                                                · {{ $t->department->name }}
-                                            @endif
                                         </div>
                                     </div>
                                 </label>

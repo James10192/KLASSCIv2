@@ -1362,7 +1362,6 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.ac
     Route::post('enseignants/{teacher}/assign-matieres', [ESBTPEnseignantController::class, 'assignMatieres'])->name('enseignants.assign-matieres');
     Route::post('enseignants/{teacher}/toggle-status', [ESBTPEnseignantController::class, 'toggleStatus'])->name('enseignants.toggleStatus');
     Route::post('enseignants/{enseignant}/update-availability', [ESBTPEnseignantController::class, 'updateAvailability'])->name('enseignants.update-availability');
-    Route::get('enseignants/{enseignant}/debug-result', [ESBTPEnseignantController::class, 'debugResult'])->name('enseignants.debug-result');
     Route::post('enseignants/{enseignant}/reset-password', [ESBTPEnseignantController::class, 'resetPassword'])->name('enseignants.reset-password');
     Route::resource('specialties', ESBTPSpecialtyController::class);
     Route::put('specialties/{id}/restore', [ESBTPSpecialtyController::class, 'restore'])->name('specialties.restore');

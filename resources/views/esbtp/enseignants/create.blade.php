@@ -1,1358 +1,634 @@
 @extends('layouts.app')
 
-@section('title', 'Nouveau Enseignant - KLASSCI')
+@section('title', 'Nouvel Enseignant — KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .form-wizard {
-        background: var(--surface);
-        border-radius: var(--radius-large);
-        overflow: hidden;
-        box-shadow: var(--shadow-card);
-    }
-    
-    .wizard-header {
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        color: white;
-        padding: var(--space-xl);
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .wizard-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 100px;
-        height: 100%;
-        background: rgba(255,255,255,0.1);
-        transform: skewX(-15deg);
-        transform-origin: top;
-    }
-    
-    .wizard-steps {
-        display: flex;
-        justify-content: space-between;
-        background: rgba(255,255,255,0.1);
-        padding: var(--space-md);
-        margin: var(--space-md) 0 0;
-        border-radius: var(--radius-medium);
-    }
-    
-    .wizard-step {
-        flex: 1;
-        text-align: center;
-        padding: var(--space-sm);
-        border-radius: var(--radius-small);
-        transition: all 0.3s ease;
-        cursor: pointer;
-        position: relative;
-    }
-    
-    .wizard-step.active {
-        background: rgba(255,255,255,0.2);
-        transform: scale(1.05);
-    }
-    
-    .wizard-step.completed {
-        background: rgba(76, 175, 80, 0.3);
-    }
-    
-    .wizard-step-number {
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.3);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto var(--space-xs);
-        font-weight: bold;
-        font-size: 0.9rem;
-    }
-    
-    .wizard-step.active .wizard-step-number {
-        background: white;
-        color: var(--primary);
-    }
-    
-    .wizard-step.completed .wizard-step-number {
-        background: var(--success);
-        color: white;
-    }
-    
-    .wizard-step-title {
-        font-size: 0.8rem;
-        margin-bottom: var(--space-xs);
-        font-weight: 600;
-    }
-    
-    .wizard-step-desc {
-        font-size: 0.7rem;
-        opacity: 0.9;
-    }
-    
-    .wizard-content {
-        padding: var(--space-xl);
-    }
-    
-    .form-section {
-        display: none;
-        animation: fadeIn 0.3s ease;
-    }
-    
-    .form-section.active {
-        display: block;
-    }
-    
-    .form-section-title {
-        color: var(--primary);
-        font-size: 1.4rem;
-        font-weight: 600;
-        margin-bottom: var(--space-md);
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-    }
-    
-    .form-section-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: rgba(var(--primary-rgb), 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--primary);
-        font-size: 1.2rem;
-    }
-    
-    .form-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: var(--space-lg);
-        margin-bottom: var(--space-lg);
-    }
-    
-    .form-group-moderne {
-        margin-bottom: var(--space-md);
-    }
-    
-    .form-label-moderne {
-        display: block;
-        margin-bottom: var(--space-xs);
-        font-weight: 500;
-        color: var(--text-primary);
-        font-size: 0.9rem;
-    }
-    
-    .form-input-moderne,
-    .form-select-moderne,
-    .form-textarea-moderne {
-        width: 100%;
-        padding: var(--space-sm);
-        border: 2px solid var(--border);
-        border-radius: var(--radius-medium);
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-        background: var(--surface);
-        color: var(--text-primary);
-    }
-    
-    .form-input-moderne:focus,
-    .form-select-moderne:focus,
-    .form-textarea-moderne:focus {
-        border-color: var(--primary);
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
-    }
-    
-    .form-textarea-moderne {
-        min-height: 80px;
-        resize: vertical;
-    }
-    
-    .form-help-text {
-        font-size: 0.8rem;
-        color: var(--text-secondary);
-        margin-top: var(--space-xs);
-    }
-    
-    .checkbox-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--space-md);
-        margin-top: var(--space-sm);
-    }
-    
-    .checkbox-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        padding: var(--space-sm);
-        background: var(--background);
-        border-radius: var(--radius-small);
-        cursor: pointer;
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-    }
-    
-    .checkbox-item:hover {
-        background: rgba(var(--primary-rgb), 0.05);
-        border-color: var(--primary);
-    }
-    
-    .checkbox-item input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-        accent-color: var(--primary);
-    }
-    
-    .file-upload-zone {
-        border: 2px dashed var(--border);
-        border-radius: var(--radius-medium);
-        padding: var(--space-xl);
-        text-align: center;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        background: var(--background);
-    }
-    
-    .file-upload-zone:hover {
-        border-color: var(--primary);
-        background: rgba(var(--primary-rgb), 0.05);
-    }
-    
-    .file-upload-zone.dragover {
-        border-color: var(--primary);
-        background: rgba(var(--primary-rgb), 0.1);
-    }
-    
-    .upload-icon {
-        font-size: 2rem;
-        color: var(--primary);
-        margin-bottom: var(--space-sm);
-    }
-    
-    .upload-text {
-        color: var(--text-secondary);
-        font-size: 0.9rem;
-    }
-    
-    .upload-formats {
-        font-size: 0.8rem;
-        color: var(--text-secondary);
-        margin-top: var(--space-xs);
-    }
-    
-    .wizard-actions {
-        display: flex;
-        justify-content: space-between;
-        padding: var(--space-lg);
-        background: var(--background);
-        border-top: 1px solid var(--border);
-        margin-top: var(--space-xl);
-    }
-    
-    .availability-grid {
-        display: grid;
-        grid-template-columns: 120px repeat(7, 1fr);
-        gap: var(--space-sm);
-        margin-top: var(--space-md);
-    }
-    
-    .availability-header {
-        font-weight: 600;
-        text-align: center;
-        padding: var(--space-sm);
-        background: var(--primary);
-        color: white;
-        border-radius: var(--radius-small);
-        font-size: 0.8rem;
-    }
-    
-    .availability-time {
-        font-weight: 500;
-        text-align: center;
-        padding: var(--space-sm);
-        background: var(--surface);
-        border-radius: var(--radius-small);
-        font-size: 0.8rem;
-    }
-    
-    .availability-slot {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: var(--space-xs);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-small);
-        cursor: pointer;
-        transition: all 0.3s ease;
-        min-height: 35px;
-    }
-    
-    .availability-slot:hover {
-        background: rgba(var(--primary-rgb), 0.1);
-    }
-    
-    .availability-slot.available {
-        background: var(--success);
-        color: white;
-    }
-    
-    .availability-slot.preferred {
-        background: var(--primary);
-        color: white;
-    }
-    
-    .availability-slot.unavailable {
-        background: var(--danger);
-        color: white;
-    }
-    
-    .availability-legend {
-        display: flex;
-        justify-content: center;
-        gap: var(--space-lg);
-        margin-top: var(--space-md);
-    }
-    
-    .legend-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        font-size: 0.8rem;
-    }
-    
-    .legend-color {
-        width: 20px;
-        height: 20px;
-        border-radius: var(--radius-small);
-    }
-    
-    .progress-bar {
-        height: 4px;
-        background: var(--border);
-        border-radius: var(--radius-full);
-        overflow: hidden;
-        margin-bottom: var(--space-lg);
-    }
-    
-    .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, var(--primary), var(--secondary));
-        border-radius: var(--radius-full);
-        transition: width 0.3s ease;
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    /* Header principal amélioré */
-    .main-header {
-        background: linear-gradient(135deg, #0453cb, #1b64d4);
-        color: white;
-        padding: var(--space-xl);
-        border-radius: var(--radius-large);
-        margin-bottom: var(--space-xl);
-        position: relative;
-        overflow: hidden;
-        box-shadow: var(--shadow-elevated);
-    }
+/* ═══════════════════════════════════════════════════════════
+   ENSEIGNANT CREATE — Premium (namespace ec-*)
+   Pas de hero (formulaire) — dashboard-header standard.
+   ═══════════════════════════════════════════════════════════ */
 
-    .main-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -20%;
-        width: 100px;
-        height: 200%;
-        background: rgba(255,255,255,0.05);
-        transform: skewX(-15deg);
-    }
+.ec-form { max-width: 1100px; margin: 0 auto; }
 
-    .header-content {
-        position: relative;
-        z-index: 2;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
+.ec-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    margin-bottom: 1.25rem;
+    transition: box-shadow .2s ease;
+}
+.ec-card:hover {
+    box-shadow: 0 4px 16px rgba(4,83,203,.06), 0 1px 3px rgba(15,23,42,.04);
+}
 
-    .header-left h1 {
-        font-size: 2rem;
-        margin: 0 0 var(--space-xs);
-        font-weight: 700;
-        color: white;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
+.ec-card-body { padding: 1.5rem 1.75rem; }
 
-    .header-left p {
-        margin: 0;
-        opacity: 0.95;
-        font-size: 1.1rem;
-        color: rgba(255,255,255,0.95);
-        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    }
+.ec-section-header {
+    display: flex; align-items: center; gap: .75rem;
+    margin-bottom: 1.25rem;
+}
+.ec-section-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .9rem; flex-shrink: 0;
+}
+.ec-section-title { margin: 0; font-size: 1.05rem; font-weight: 700; color: #0f172a; }
+.ec-section-sub { margin: 0; font-size: .8rem; color: #64748b; }
 
-    .header-actions {
-        display: flex;
-        gap: var(--space-md);
-    }
+/* Grid de champs */
+.ec-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem 1.25rem;
+}
+.ec-field { display: flex; flex-direction: column; gap: .35rem; }
+.ec-field-wide { grid-column: 1 / -1; }
 
-    .btn-header {
-        padding: var(--space-sm) var(--space-lg);
-        border: 2px solid rgba(255,255,255,0.4);
-        border-radius: var(--radius-full);
-        color: white;
-        text-decoration: none;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        background: rgba(255,255,255,0.1);
-        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    }
+.ec-label {
+    font-size: .8rem; font-weight: 600;
+    color: #1e293b; letter-spacing: .01em;
+}
+.ec-label .req { color: #dc2626; margin-left: 2px; }
 
-    .btn-header:hover {
-        background: rgba(255,255,255,0.25);
-        border-color: rgba(255,255,255,0.6);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        color: white;
-        text-decoration: none;
-    }
+.ec-input,
+.ec-select {
+    width: 100%;
+    padding: .6rem .8rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 9px;
+    font-size: .9rem;
+    color: #0f172a;
+    background: #fff;
+    transition: border-color .15s, box-shadow .15s;
+}
+.ec-input:focus,
+.ec-select:focus {
+    outline: none;
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+}
+.ec-input.is-invalid,
+.ec-select.is-invalid { border-color: #dc2626; }
 
-    @media (max-width: 768px) {
-        .form-grid {
-            grid-template-columns: 1fr;
-        }
+.ec-help { font-size: .73rem; color: #64748b; line-height: 1.4; }
+.ec-error { font-size: .76rem; color: #dc2626; font-weight: 500; }
 
-        .wizard-steps {
-            flex-wrap: wrap;
-        }
+/* Cards radio "Régime" */
+.ec-regime-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: .75rem;
+}
+.ec-regime-card {
+    position: relative;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+    transition: all .15s ease;
+    background: #fff;
+}
+.ec-regime-card:hover { border-color: #94a3b8; transform: translateY(-1px); }
+.ec-regime-card.active {
+    border-color: #0453cb;
+    background: rgba(4,83,203,.04);
+    box-shadow: 0 0 0 3px rgba(4,83,203,.08);
+}
+.ec-regime-card input[type="radio"] {
+    position: absolute; opacity: 0; pointer-events: none;
+}
+.ec-regime-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: #eef2f7;
+    color: #475569;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .85rem;
+    margin-bottom: .55rem;
+    transition: all .15s ease;
+}
+.ec-regime-card.active .ec-regime-icon {
+    background: #0453cb; color: #fff;
+}
+.ec-regime-name { font-weight: 700; font-size: .92rem; color: #0f172a; margin: 0 0 .15rem; }
+.ec-regime-desc { font-size: .73rem; color: #64748b; margin: 0; line-height: 1.4; }
 
-        .wizard-step {
-            min-width: 120px;
-        }
+/* Section pliable (profil détaillé) */
+.ec-collapse-toggle {
+    width: 100%;
+    background: transparent; border: none;
+    display: flex; align-items: center; gap: .75rem;
+    padding: 0; cursor: pointer; text-align: left;
+}
+.ec-collapse-toggle:hover .ec-section-title { color: #0453cb; }
+.ec-toggle-chevron {
+    margin-left: auto;
+    color: #94a3b8;
+    transition: transform .25s ease;
+}
+.ec-card[data-collapsed="false"] .ec-toggle-chevron { transform: rotate(180deg); }
 
-        .availability-grid {
-            grid-template-columns: 80px repeat(7, 1fr);
-            font-size: 0.7rem;
-        }
-    }
+.ec-collapse-body {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height .3s ease, margin-top .3s ease;
+    margin-top: 0;
+}
+.ec-card[data-collapsed="false"] .ec-collapse-body {
+    max-height: 1500px;
+    margin-top: 1.25rem;
+}
+
+/* Conditional fields */
+.ec-conditional { display: none; }
+.ec-conditional.show { display: flex; }
+
+/* Actions */
+.ec-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .6rem;
+    padding: 1.25rem 0;
+}
+
+/* Alerts */
+.ec-alert {
+    border-radius: 10px;
+    padding: .85rem 1rem;
+    margin-bottom: 1rem;
+    display: flex; align-items: flex-start; gap: .65rem;
+    font-size: .87rem; line-height: 1.5;
+    border: 1px solid transparent;
+}
+.ec-alert-warning {
+    background: rgba(245,158,11,.08);
+    border-color: rgba(245,158,11,.25);
+    color: #78350f;
+}
+.ec-alert-info {
+    background: rgba(4,83,203,.06);
+    border-color: rgba(4,83,203,.18);
+    color: #1e293b;
+}
+.ec-alert-icon { margin-top: 2px; flex-shrink: 0; }
+
+/* Responsive */
+@media (max-width: 768px) {
+    .ec-card-body { padding: 1.1rem 1.1rem; }
+    .ec-grid { grid-template-columns: 1fr; }
+    .ec-regime-grid { grid-template-columns: 1fr; }
+    .ec-actions { flex-direction: column-reverse; }
+    .ec-actions .btn-acasi { width: 100%; justify-content: center; }
+}
 </style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <div class="main-header">
-            <div class="header-content">
-                <div class="header-left">
-                    <h1>
-                        <i class="fas fa-user-plus me-2"></i>
-                        Nouveau Enseignant
-                    </h1>
-                    <p>Créez un profil complet pour le nouvel enseignant</p>
-                </div>
-                <div class="header-actions">
-                    <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-header">
-                        <i class="fas fa-arrow-left"></i>
-                        Retour à la liste
-                    </a>
-                </div>
+
+        <div class="dashboard-header">
+            <div class="header-left">
+                <h1><i class="fas fa-user-plus me-2"></i>Nouvel Enseignant</h1>
+                <p class="header-subtitle">Créez le profil de l'enseignant. Vous pourrez compléter les informations détaillées plus tard.</p>
+            </div>
+            <div class="header-actions">
+                <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-arrow-left"></i> Retour à la liste
+                </a>
             </div>
         </div>
 
-        <div class="form-wizard">
-            <div class="wizard-header">
-                <h2>Assistant de Création d'Enseignant</h2>
-                <p>Suivez les étapes pour créer un profil complet</p>
-                
-                <div class="wizard-steps">
-                    <div class="wizard-step active" data-step="1">
-                        <div class="wizard-step-number">1</div>
-                        <div class="wizard-step-title">Informations Personnelles</div>
-                        <div class="wizard-step-desc">Identité & Contact</div>
-                    </div>
-                    <div class="wizard-step" data-step="2">
-                        <div class="wizard-step-number">2</div>
-                        <div class="wizard-step-title">Qualifications</div>
-                        <div class="wizard-step-desc">Diplômes & Expérience</div>
-                    </div>
-                    <div class="wizard-step" data-step="3">
-                        <div class="wizard-step-number">3</div>
-                        <div class="wizard-step-title">Informations Professionnelles</div>
-                        <div class="wizard-step-desc">Contrat & Affectation</div>
-                    </div>
-                    <div class="wizard-step" data-step="4">
-                        <div class="wizard-step-number">4</div>
-                        <div class="wizard-step-title">Finalisation</div>
-                        <div class="wizard-step-desc">Documents & Validation</div>
-                    </div>
+        @if($errors->any())
+            <div class="ec-alert ec-alert-warning">
+                <i class="fas fa-exclamation-triangle ec-alert-icon"></i>
+                <div>
+                    <strong>Veuillez corriger les erreurs suivantes :</strong>
+                    <ul style="margin: .35rem 0 0; padding-left: 1.15rem;">
+                        @foreach($errors->all() as $err)
+                            <li>{{ $err }}</li>
+                        @endforeach
+                    </ul>
                 </div>
             </div>
+        @endif
 
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 20%"></div>
-            </div>
+        <form action="{{ route('esbtp.enseignants.store') }}" method="POST" id="teacherForm" class="ec-form">
+            @csrf
 
-            <form action="{{ route('esbtp.enseignants.store') }}" method="POST" enctype="multipart/form-data" id="teacherForm">
-                @csrf
-                <div class="wizard-content">
-                    
-                    <!-- Étape 1: Informations Personnelles -->
-                    <div class="form-section active" id="step-1">
-                        <div class="form-section-title">
-                            <div class="form-section-icon">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            Informations Personnelles
-                        </div>
-                        
-                        <div class="form-grid">
-                            <div class="form-group-moderne">
-                                <label for="name" class="form-label-moderne">
-                                    Nom complet <span class="text-danger">*</span>
-                                </label>
-                                <input type="text" name="name" id="name" 
-                                       class="form-input-moderne @error('name') is-invalid @enderror"
-                                       value="{{ old('name') }}" required>
-                                @error('name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-<label for="email" class="form-label-moderne">
-                                    Email
-                                </label>
-                                <input type="email" name="email" id="email" 
-                                       class="form-input-moderne @error('email') is-invalid @enderror"
-                                       value="{{ old('email') }}">
-                                @error('email')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-help-text">
-                                    Adresse email pour les notifications et communications
-                                </div>
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="phone" class="form-label-moderne">
-                                    Téléphone
-                                </label>
-                                <input type="tel" name="phone" id="phone" 
-                                       class="form-input-moderne @error('phone') is-invalid @enderror"
-                                       value="{{ old('phone') }}">
-                                @error('phone')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="titre_academique" class="form-label-moderne">
-                                    Titre Académique
-                                </label>
-                                <select name="titre_academique" id="titre_academique" 
-                                        class="form-select-moderne @error('titre_academique') is-invalid @enderror">
-                                    <option value="">Sélectionnez un titre</option>
-                                    @foreach($titres_academiques as $key => $value)
-                                        <option value="{{ $key }}" {{ old('titre_academique') == $key ? 'selected' : '' }}>
-                                            {{ $value }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('titre_academique')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            {{-- Information sur la génération automatique des credentials --}}
-                            <div style="background-color: rgba(16, 185, 129, 0.1); border-radius: var(--radius-medium); padding: var(--space-md); margin-bottom: var(--space-lg); grid-column: 1 / -1;">
-                                <div style="display: flex; align-items: flex-start; gap: var(--space-sm);">
-                                    <i class="fas fa-info-circle" style="color: var(--success); margin-top: 2px;"></i>
-                                    <div>
-                                        <p style="margin: 0; font-weight: 600; color: var(--text-primary); margin-bottom: var(--space-xs);">Génération automatique des identifiants</p>
-                                        <p style="margin: 0; font-size: var(--text-small); color: var(--text-secondary);">
-                                            Le nom d'utilisateur et le mot de passe seront générés automatiquement lors de la création du compte. 
-                                            L'enseignant devra changer son mot de passe lors de sa première connexion.
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Étape 2: Qualifications -->
-                    <div class="form-section" id="step-2">
-                        <div class="form-section-title">
-                            <div class="form-section-icon">
-                                <i class="fas fa-graduation-cap"></i>
-                            </div>
-                            Qualifications & Expérience
-                        </div>
-                        
-                        <div class="form-grid">
-                            <div class="form-group-moderne">
-                                <label for="diplome_principal" class="form-label-moderne">
-                                    Diplôme Principal
-                                </label>
-                                <input type="text" name="diplome_principal" id="diplome_principal" 
-                                       class="form-input-moderne @error('diplome_principal') is-invalid @enderror"
-                                       value="{{ old('diplome_principal') }}"
-                                       placeholder="ex: Master en Informatique">
-                                @error('diplome_principal')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="universite_diplome" class="form-label-moderne">
-                                    Université/Institut
-                                </label>
-                                <input type="text" name="universite_diplome" id="universite_diplome" 
-                                       class="form-input-moderne @error('universite_diplome') is-invalid @enderror"
-                                       value="{{ old('universite_diplome') }}"
-                                       placeholder="ex: Université de Douala">
-                                @error('universite_diplome')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="annee_diplome" class="form-label-moderne">
-                                    Année d'obtention
-                                </label>
-                                <input type="number" name="annee_diplome" id="annee_diplome" 
-                                       class="form-input-moderne @error('annee_diplome') is-invalid @enderror"
-                                       value="{{ old('annee_diplome') }}"
-                                       min="1950" max="{{ date('Y') }}">
-                                @error('annee_diplome')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="grade_academique" class="form-label-moderne">
-                                    Grade Académique
-                                </label>
-                                <select name="grade_academique" id="grade_academique" 
-                                        class="form-select-moderne @error('grade_academique') is-invalid @enderror">
-                                    <option value="">Sélectionnez un grade</option>
-                                    @foreach($grades_academiques as $key => $value)
-                                        <option value="{{ $key }}" {{ old('grade_academique') == $key ? 'selected' : '' }}>
-                                            {{ $value }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('grade_academique')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="annees_experience_enseignement" class="form-label-moderne">
-                                    Années d'expérience en enseignement
-                                </label>
-                                <input type="number" name="annees_experience_enseignement" id="annees_experience_enseignement" 
-                                       class="form-input-moderne @error('annees_experience_enseignement') is-invalid @enderror"
-                                       value="{{ old('annees_experience_enseignement') }}"
-                                       min="0" max="50">
-                                @error('annees_experience_enseignement')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="annees_experience_professionnelle" class="form-label-moderne">
-                                    Années d'expérience professionnelle
-                                </label>
-                                <input type="number" name="annees_experience_professionnelle" id="annees_experience_professionnelle" 
-                                       class="form-input-moderne @error('annees_experience_professionnelle') is-invalid @enderror"
-                                       value="{{ old('annees_experience_professionnelle') }}"
-                                       min="0" max="50">
-                                @error('annees_experience_professionnelle')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="form-group-moderne">
-                            <label for="specialization" class="form-label-moderne">
-                                Spécialisation <span class="text-danger">*</span>
-                            </label>
-                            <input type="text" name="specialization" id="specialization" 
-                                   class="form-input-moderne @error('specialization') is-invalid @enderror"
-                                   value="{{ old('specialization') }}" required
-                                   placeholder="ex: Développement Web, Réseaux Informatiques, Base de Données">
-                            @error('specialization')
-                                <div class="invalid-feedback">{{ $message }}</div>
-                            @enderror
-                            <div class="form-help-text">
-                                Décrivez votre domaine d'expertise principal
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Étape 3: Informations Professionnelles -->
-                    <div class="form-section" id="step-3">
-                        <div class="form-section-title">
-                            <div class="form-section-icon">
-                                <i class="fas fa-briefcase"></i>
-                            </div>
-                            Informations Professionnelles
-                        </div>
-                        
-                        <div class="form-grid">
-                            <div class="form-group-moderne">
-                                <label for="department_id" class="form-label-moderne">
-                                    Département <span class="text-danger">*</span>
-                                </label>
-                                <select name="department_id" id="department_id" 
-                                        class="form-select-moderne @error('department_id') is-invalid @enderror" required>
-                                    <option value="">Sélectionnez un département</option>
-                                    @foreach($departments as $department)
-                                        <option value="{{ $department->id }}" {{ old('department_id') == $department->id ? 'selected' : '' }}>
-                                            {{ $department->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('department_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="laboratory_id" class="form-label-moderne">
-                                    Laboratoire
-                                </label>
-                                <select name="laboratory_id" id="laboratory_id" 
-                                        class="form-select-moderne @error('laboratory_id') is-invalid @enderror">
-                                    <option value="">Aucun laboratoire</option>
-                                    @foreach($laboratories as $laboratory)
-                                        <option value="{{ $laboratory->id }}" {{ old('laboratory_id') == $laboratory->id ? 'selected' : '' }}>
-                                            {{ $laboratory->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('laboratory_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="type_contrat" class="form-label-moderne">
-                                    Type de contrat <span class="text-danger">*</span>
-                                </label>
-                                <select name="type_contrat" id="type_contrat" 
-                                        class="form-select-moderne @error('type_contrat') is-invalid @enderror" required>
-                                    <option value="">Sélectionnez un type</option>
-                                    @foreach($types_contrat as $key => $value)
-                                        <option value="{{ $key }}" {{ old('type_contrat') == $key ? 'selected' : '' }}>
-                                            {{ $value }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('type_contrat')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="statut_emploi" class="form-label-moderne">
-                                    Statut d'emploi <span class="text-danger">*</span>
-                                </label>
-                                <select name="statut_emploi" id="statut_emploi" 
-                                        class="form-select-moderne @error('statut_emploi') is-invalid @enderror" required>
-                                    <option value="">Sélectionnez un statut</option>
-                                    @foreach($statuts_emploi as $key => $value)
-                                        <option value="{{ $key }}" {{ old('statut_emploi') == $key ? 'selected' : '' }}>
-                                            {{ $value }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('statut_emploi')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="date_embauche" class="form-label-moderne">
-                                    Date d'embauche <span class="text-danger">*</span>
-                                </label>
-                                <input type="date" name="date_embauche" id="date_embauche" 
-                                       class="form-input-moderne @error('date_embauche') is-invalid @enderror"
-                                       value="{{ old('date_embauche') }}" required>
-                                @error('date_embauche')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="fin_contrat" class="form-label-moderne">
-                                    Fin de contrat (si temporaire)
-                                </label>
-                                <input type="date" name="fin_contrat" id="fin_contrat" 
-                                       class="form-input-moderne @error('fin_contrat') is-invalid @enderror"
-                                       value="{{ old('fin_contrat') }}">
-                                @error('fin_contrat')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="taux_horaire" class="form-label-moderne">
-                                    Taux horaire (FCFA)
-                                </label>
-                                <input type="number" name="taux_horaire" id="taux_horaire" 
-                                       class="form-input-moderne @error('taux_horaire') is-invalid @enderror"
-                                       value="{{ old('taux_horaire') }}"
-                                       min="0" step="0.01">
-                                @error('taux_horaire')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="charge_horaire_max_semaine" class="form-label-moderne">
-                                    Charge horaire max/semaine
-                                </label>
-                                <input type="number" name="charge_horaire_max_semaine" id="charge_horaire_max_semaine" 
-                                       class="form-input-moderne @error('charge_horaire_max_semaine') is-invalid @enderror"
-                                       value="{{ old('charge_horaire_max_semaine', 40) }}"
-                                       min="1" max="60">
-                                @error('charge_horaire_max_semaine')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-help-text">
-                                    Nombre d'heures maximum par semaine
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Étape 4: Finalisation -->
-                    <div class="form-section" id="step-4">
-                        <div class="form-section-title">
-                            <div class="form-section-icon">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                            Finalisation du Profil
-                        </div>
-                        
-                        <div class="form-grid">
-                            <div class="form-group-moderne">
-                                <label for="bio" class="form-label-moderne">
-                                    Biographie
-                                </label>
-                                <textarea name="bio" id="bio" 
-                                          class="form-textarea-moderne @error('bio') is-invalid @enderror"
-                                          placeholder="Décrivez votre parcours, vos centres d'intérêt...">{{ old('bio') }}</textarea>
-                                @error('bio')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="motivation" class="form-label-moderne">
-                                    Motivation
-                                </label>
-                                <textarea name="motivation" id="motivation" 
-                                          class="form-textarea-moderne @error('motivation') is-invalid @enderror"
-                                          placeholder="Pourquoi souhaitez-vous enseigner à IFRAN ?">{{ old('motivation') }}</textarea>
-                                @error('motivation')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="objectifs_pedagogiques" class="form-label-moderne">
-                                    Objectifs Pédagogiques
-                                </label>
-                                <textarea name="objectifs_pedagogiques" id="objectifs_pedagogiques" 
-                                          class="form-textarea-moderne @error('objectifs_pedagogiques') is-invalid @enderror"
-                                          placeholder="Quels sont vos objectifs en tant qu'enseignant ?">{{ old('objectifs_pedagogiques') }}</textarea>
-                                @error('objectifs_pedagogiques')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="website" class="form-label-moderne">
-                                    Site web / Portfolio
-                                </label>
-                                <input type="url" name="website" id="website" 
-                                       class="form-input-moderne @error('website') is-invalid @enderror"
-                                       value="{{ old('website') }}"
-                                       placeholder="https://monsite.com">
-                                @error('website')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-
-                        <div class="form-grid">
-                            <div class="form-group-moderne">
-                                <label for="cv" class="form-label-moderne">
-                                    CV (PDF, DOC, DOCX)
-                                </label>
-                                <div class="file-upload-zone" onclick="document.getElementById('cv').click()">
-                                    <div class="upload-icon">
-                                        <i class="fas fa-file-upload"></i>
-                                    </div>
-                                    <div class="upload-text">
-                                        Cliquez pour télécharger votre CV
-                                    </div>
-                                    <div class="upload-formats">
-                                        Formats acceptés: PDF, DOC, DOCX (max 2MB)
-                                    </div>
-                                </div>
-                                <input type="file" name="cv" id="cv" accept=".pdf,.doc,.docx" style="display: none;">
-                                @error('cv')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="photo" class="form-label-moderne">
-                                    Photo de profil
-                                </label>
-                                <div class="file-upload-zone" onclick="document.getElementById('photo').click()">
-                                    <div class="upload-icon">
-                                        <i class="fas fa-camera"></i>
-                                    </div>
-                                    <div class="upload-text">
-                                        Cliquez pour télécharger votre photo
-                                    </div>
-                                    <div class="upload-formats">
-                                        Formats acceptés: JPG, PNG, GIF (max 2MB)
-                                    </div>
-                                </div>
-                                <input type="file" name="photo" id="photo" accept="image/*" style="display: none;">
-                                @error('photo')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                {{-- Hidden input for duplicate override --}}
-                <input type="hidden" name="duplicate_override" id="duplicate_override" value="0">
-
-                {{-- Duplicate warning --}}
-                <div id="duplicate-warning" class="alert alert-warning d-none mt-4" role="alert">
-                    <div class="d-flex align-items-start">
-                        <i class="fas fa-exclamation-triangle me-2 mt-1"></i>
+            {{-- Section 1 : Essentiel --}}
+            <div class="ec-card">
+                <div class="ec-card-body">
+                    <div class="ec-section-header">
+                        <div class="ec-section-icon"><i class="fas fa-id-card"></i></div>
                         <div>
-                            <strong>Attention : Doublon potentiel détecté</strong><br>
-                            <span id="duplicate-warning-text">Veuillez vérifier les informations avant de continuer.</span>
-                            <div class="mt-2">
-                                <button type="button" class="btn btn-sm btn-outline-primary" id="show-duplicates-modal">
-                                    Voir les doublons
-                                </button>
+                            <h3 class="ec-section-title">Informations essentielles</h3>
+                            <p class="ec-section-sub">Trois champs suffisent pour démarrer.</p>
+                        </div>
+                    </div>
+
+                    <div class="ec-grid">
+                        <div class="ec-field">
+                            <label for="name" class="ec-label">Nom complet <span class="req">*</span></label>
+                            <input type="text" name="name" id="name" required
+                                   value="{{ old('name') }}"
+                                   class="ec-input @error('name') is-invalid @enderror"
+                                   autocomplete="name" autofocus>
+                            @error('name') <div class="ec-error">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="ec-field">
+                            <label for="phone" class="ec-label">Téléphone <span class="req">*</span></label>
+                            <input type="tel" name="phone" id="phone" required
+                                   value="{{ old('phone') }}"
+                                   placeholder="07 00 00 00 00"
+                                   class="ec-input @error('phone') is-invalid @enderror"
+                                   autocomplete="tel">
+                            <small class="ec-help">Indispensable pour les communications école ↔ enseignant.</small>
+                            @error('phone') <div class="ec-error">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="ec-field ec-field-wide">
+                            <label for="specialization" class="ec-label">Spécialisation <span class="req">*</span></label>
+                            <input type="text" name="specialization" id="specialization" required
+                                   value="{{ old('specialization') }}"
+                                   placeholder="ex : Mathématiques, Génie civil, Réseaux informatiques"
+                                   class="ec-input @error('specialization') is-invalid @enderror">
+                            <small class="ec-help">La discipline principale enseignée. Pas de liste fermée — saisissez librement.</small>
+                            @error('specialization') <div class="ec-error">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+
+                    <div class="ec-alert ec-alert-info" style="margin-top: 1rem; margin-bottom: 0;">
+                        <i class="fas fa-info-circle ec-alert-icon"></i>
+                        <div>
+                            <strong>Identifiants générés automatiquement.</strong>
+                            Le nom d'utilisateur et le mot de passe par défaut seront créés à la sauvegarde.
+                            L'enseignant devra changer son mot de passe à la première connexion.
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Section 2 : Régime --}}
+            <div class="ec-card">
+                <div class="ec-card-body">
+                    <div class="ec-section-header">
+                        <div class="ec-section-icon"><i class="fas fa-briefcase"></i></div>
+                        <div>
+                            <h3 class="ec-section-title">Régime d'engagement</h3>
+                            <p class="ec-section-sub">Définit le mode de collaboration avec l'école.</p>
+                        </div>
+                    </div>
+
+                    <div class="ec-regime-grid" id="regimeGrid">
+                        @php
+                            $regimeOptions = [
+                                'vacataire' => ['label' => 'Vacataire', 'desc' => 'Heure facturée, contrat semestriel', 'icon' => 'fa-clock'],
+                                'permanent' => ['label' => 'Permanent', 'desc' => 'Salaire mensuel, charge fixe', 'icon' => 'fa-user-tie'],
+                                'consultant' => ['label' => 'Consultant', 'desc' => 'Mission ponctuelle, expertise', 'icon' => 'fa-handshake'],
+                            ];
+                            $selectedRegime = old('regime', 'vacataire');
+                        @endphp
+                        @foreach($regimeOptions as $key => $opt)
+                            <label class="ec-regime-card {{ $selectedRegime === $key ? 'active' : '' }}" data-regime="{{ $key }}">
+                                <input type="radio" name="regime" value="{{ $key }}" {{ $selectedRegime === $key ? 'checked' : '' }}>
+                                <div class="ec-regime-icon"><i class="fas {{ $opt['icon'] }}"></i></div>
+                                <p class="ec-regime-name">{{ $opt['label'] }}</p>
+                                <p class="ec-regime-desc">{{ $opt['desc'] }}</p>
+                            </label>
+                        @endforeach
+                    </div>
+
+                    <div class="ec-grid" style="margin-top: 1.25rem;">
+                        <div class="ec-field ec-conditional show" id="tauxField">
+                            <label for="taux_horaire" class="ec-label">Taux horaire (FCFA/heure)</label>
+                            <input type="number" name="taux_horaire" id="taux_horaire"
+                                   value="{{ old('taux_horaire') }}"
+                                   min="0" step="500"
+                                   placeholder="ex: 5000"
+                                   class="ec-input @error('taux_horaire') is-invalid @enderror">
+                            <small class="ec-help">Tarif facturé par heure de cours. Optionnel.</small>
+                            @error('taux_horaire') <div class="ec-error">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="ec-field ec-conditional" id="chargeField">
+                            <label for="charge_horaire_max_semaine" class="ec-label">Charge hebdomadaire (h/sem)</label>
+                            <input type="number" name="charge_horaire_max_semaine" id="charge_horaire_max_semaine"
+                                   value="{{ old('charge_horaire_max_semaine', 18) }}"
+                                   min="1" max="60"
+                                   class="ec-input @error('charge_horaire_max_semaine') is-invalid @enderror">
+                            <small class="ec-help">Heures maximales par semaine pour ce permanent.</small>
+                            @error('charge_horaire_max_semaine') <div class="ec-error">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="ec-field">
+                            <label for="date_debut_activite" class="ec-label">Date de début d'activité</label>
+                            <input type="date" name="date_debut_activite" id="date_debut_activite"
+                                   value="{{ old('date_debut_activite', date('Y-m-d')) }}"
+                                   class="ec-input @error('date_debut_activite') is-invalid @enderror">
+                            <small class="ec-help">Pré-rempli à aujourd'hui. Modifiable.</small>
+                            @error('date_debut_activite') <div class="ec-error">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Section 3 : Profil détaillé (collapsable, optionnel) --}}
+            <div class="ec-card" data-collapsed="true" id="profileCard">
+                <div class="ec-card-body">
+                    <button type="button" class="ec-collapse-toggle" id="profileToggle" aria-expanded="false">
+                        <div class="ec-section-icon"><i class="fas fa-graduation-cap"></i></div>
+                        <div>
+                            <h3 class="ec-section-title">Profil détaillé</h3>
+                            <p class="ec-section-sub">Email, titre, diplômes — optionnel, modifiable plus tard.</p>
+                        </div>
+                        <i class="fas fa-chevron-down ec-toggle-chevron"></i>
+                    </button>
+
+                    <div class="ec-collapse-body">
+                        <div class="ec-grid">
+                            <div class="ec-field">
+                                <label for="email" class="ec-label">Email</label>
+                                <input type="email" name="email" id="email"
+                                       value="{{ old('email') }}"
+                                       class="ec-input @error('email') is-invalid @enderror"
+                                       autocomplete="email">
+                                <small class="ec-help">Pour les notifications et la connexion (optionnel).</small>
+                                @error('email') <div class="ec-error">{{ $message }}</div> @enderror
+                            </div>
+
+                            <div class="ec-field">
+                                <label for="titre_academique" class="ec-label">Titre</label>
+                                <select name="titre_academique" id="titre_academique" class="ec-select">
+                                    <option value="">—</option>
+                                    @foreach($titres_academiques as $key => $value)
+                                        <option value="{{ $key }}" {{ old('titre_academique') == $key ? 'selected' : '' }}>{{ $value }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="ec-field">
+                                <label for="grade_academique" class="ec-label">Grade académique</label>
+                                <select name="grade_academique" id="grade_academique" class="ec-select">
+                                    <option value="">—</option>
+                                    @foreach($grades_academiques as $key => $value)
+                                        <option value="{{ $key }}" {{ old('grade_academique') == $key ? 'selected' : '' }}>{{ $value }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+
+                            <div class="ec-field">
+                                <label for="diplome_principal" class="ec-label">Diplôme principal</label>
+                                <input type="text" name="diplome_principal" id="diplome_principal"
+                                       value="{{ old('diplome_principal') }}"
+                                       placeholder="ex : Master en Génie civil"
+                                       class="ec-input">
+                            </div>
+
+                            <div class="ec-field">
+                                <label for="universite_diplome" class="ec-label">Université / Institut</label>
+                                <input type="text" name="universite_diplome" id="universite_diplome"
+                                       value="{{ old('universite_diplome') }}"
+                                       placeholder="ex : Université Félix Houphouët-Boigny"
+                                       class="ec-input">
+                            </div>
+
+                            <div class="ec-field">
+                                <label for="annee_diplome" class="ec-label">Année d'obtention</label>
+                                <input type="number" name="annee_diplome" id="annee_diplome"
+                                       value="{{ old('annee_diplome') }}"
+                                       min="1950" max="{{ date('Y') }}"
+                                       class="ec-input">
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <div class="wizard-actions">
-                    <button type="button" class="btn-acasi secondary" id="prevBtn" onclick="changeStep(-1)" style="display: none;">
-                        <i class="fas fa-arrow-left me-1"></i>Précédent
-                    </button>
-                    
-                    <button type="button" class="btn-acasi primary" id="nextBtn" onclick="changeStep(1)">
-                        Suivant<i class="fas fa-arrow-right ms-1"></i>
-                    </button>
-                    
-                    <button type="submit" class="btn-acasi success" id="submitBtn" style="display: none;">
-                        <i class="fas fa-check me-1"></i>Créer l'enseignant
+            {{-- Avertissement doublon --}}
+            <div id="duplicate-warning" class="ec-alert ec-alert-warning" style="display: none;">
+                <i class="fas fa-exclamation-triangle ec-alert-icon"></i>
+                <div>
+                    <strong>Attention : doublon potentiel détecté</strong>
+                    <div id="duplicate-warning-text" style="margin-top: .25rem;"></div>
+                    <button type="button" class="btn-acasi secondary" id="show-duplicates-modal" style="margin-top: .5rem; padding: .35rem .85rem; font-size: .82rem;">
+                        Voir les doublons
                     </button>
                 </div>
-            </form>
-        </div>
+            </div>
+
+            <input type="hidden" name="duplicate_override" id="duplicate_override" value="0">
+
+            <div class="ec-actions">
+                <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi secondary">Annuler</a>
+                <button type="submit" class="btn-acasi primary" id="submitBtn">
+                    <i class="fas fa-check me-1"></i> Créer l'enseignant
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
-{{-- Modal pour afficher les doublons --}}
+{{-- Modal doublons --}}
 <div class="modal fade" id="duplicateModal" tabindex="-1" aria-labelledby="duplicateModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="duplicateModalLabel">Doublons potentiels détectés</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <div class="modal-body">
-                <p>Nous avons trouvé des enseignants similaires dans la base de données :</p>
+                <p>Nous avons trouvé des enseignants similaires dans la base :</p>
                 <div id="duplicate-modal-content">
-                    <div class="alert alert-info">
-                        <i class="fas fa-info-circle me-2"></i>Aucun doublon détecté.
+                    <div class="ec-alert ec-alert-info">
+                        <i class="fas fa-info-circle ec-alert-icon"></i>
+                        <div>Aucun doublon détecté.</div>
                     </div>
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                <button type="button" class="btn btn-primary" id="continue-with-duplicate">Continuer l'inscription</button>
+                <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn-acasi primary" id="continue-with-duplicate">Continuer la création</button>
             </div>
         </div>
     </div>
 </div>
-
 @endsection
 
 @push('scripts')
 <script>
-let currentStep = 1;
-const totalSteps = 4;
+(function() {
+    'use strict';
 
-function changeStep(direction) {
-    const newStep = currentStep + direction;
-    
-    if (newStep < 1 || newStep > totalSteps) {
-        return;
+    // ─── Régime cards : radio behavior + conditional fields ──────────
+    const regimeGrid = document.getElementById('regimeGrid');
+    const tauxField = document.getElementById('tauxField');
+    const chargeField = document.getElementById('chargeField');
+
+    function applyRegime(regime) {
+        regimeGrid.querySelectorAll('.ec-regime-card').forEach(card => {
+            card.classList.toggle('active', card.dataset.regime === regime);
+        });
+        // Vacataire / Consultant → taux horaire visible
+        // Permanent → charge horaire visible
+        tauxField.classList.toggle('show', regime !== 'permanent');
+        chargeField.classList.toggle('show', regime === 'permanent');
     }
-    
-    // Validation avant de passer à l'étape suivante
-    if (direction > 0 && !validateStep(currentStep)) {
-        return;
-    }
-    
-    // Masquer l'étape actuelle
-    document.getElementById(`step-${currentStep}`).classList.remove('active');
-    document.querySelector(`[data-step="${currentStep}"]`).classList.remove('active');
-    
-    // Marquer l'étape comme terminée si on avance
-    if (direction > 0) {
-        document.querySelector(`[data-step="${currentStep}"]`).classList.add('completed');
-    }
-    
-    // Afficher la nouvelle étape
-    currentStep = newStep;
-    document.getElementById(`step-${currentStep}`).classList.add('active');
-    document.querySelector(`[data-step="${currentStep}"]`).classList.add('active');
-    
-    // Mettre à jour les boutons
-    updateButtons();
-    
-    // Mettre à jour la barre de progression
-    updateProgress();
-}
 
-function updateButtons() {
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const submitBtn = document.getElementById('submitBtn');
-    
-    prevBtn.style.display = currentStep > 1 ? 'block' : 'none';
-    nextBtn.style.display = currentStep < totalSteps ? 'block' : 'none';
-    submitBtn.style.display = currentStep === totalSteps ? 'block' : 'none';
-}
-
-function updateProgress() {
-    const progress = (currentStep / totalSteps) * 100;
-    document.querySelector('.progress-fill').style.width = progress + '%';
-}
-
-function validateStep(step) {
-    const stepElement = document.getElementById(`step-${step}`);
-    const requiredFields = stepElement.querySelectorAll('[required]');
-    
-    for (let field of requiredFields) {
-        if (!field.value.trim()) {
-            field.focus();
-            field.classList.add('is-invalid');
-            return false;
-        } else {
-            field.classList.remove('is-invalid');
-        }
-    }
-    
-    return true;
-}
-
-// Gestion des uploads de fichiers
-document.getElementById('cv').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const uploadZone = this.parentElement.querySelector('.file-upload-zone');
-        uploadZone.innerHTML = `
-            <div class="upload-icon">
-                <i class="fas fa-file-check"></i>
-            </div>
-            <div class="upload-text">
-                ${file.name}
-            </div>
-            <div class="upload-formats">
-                Fichier sélectionné (${(file.size / 1024 / 1024).toFixed(2)} MB)
-            </div>
-        `;
-    }
-});
-
-document.getElementById('photo').addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        const uploadZone = this.parentElement.querySelector('.file-upload-zone');
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            uploadZone.innerHTML = `
-                <img src="${e.target.result}" style="max-width: 100px; max-height: 100px; border-radius: 8px;">
-                <div class="upload-text">
-                    ${file.name}
-                </div>
-            `;
-        };
-        reader.readAsDataURL(file);
-    }
-});
-
-// Validation en temps réel
-document.querySelectorAll('input[required], select[required]').forEach(field => {
-    field.addEventListener('blur', function() {
-        if (!this.value.trim()) {
-            this.classList.add('is-invalid');
-        } else {
-            this.classList.remove('is-invalid');
-        }
+    regimeGrid.querySelectorAll('.ec-regime-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const radio = card.querySelector('input[type="radio"]');
+            radio.checked = true;
+            applyRegime(card.dataset.regime);
+        });
     });
-});
 
-// Navigation par les étapes
-document.querySelectorAll('.wizard-step').forEach((step, index) => {
-    step.addEventListener('click', function() {
-        const targetStep = index + 1;
-        if (targetStep <= currentStep + 1) {
-            changeStep(targetStep - currentStep);
-        }
+    // Apply initial state from old() value
+    const checkedRadio = regimeGrid.querySelector('input[name="regime"]:checked');
+    if (checkedRadio) applyRegime(checkedRadio.value);
+
+    // ─── Section pliable : profil détaillé ──────────────────────────
+    const profileToggle = document.getElementById('profileToggle');
+    const profileCard = document.getElementById('profileCard');
+    profileToggle.addEventListener('click', () => {
+        const collapsed = profileCard.dataset.collapsed === 'true';
+        profileCard.dataset.collapsed = collapsed ? 'false' : 'true';
+        profileToggle.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
     });
-});
 
-// Gestion du type de contrat
-document.getElementById('type_contrat').addEventListener('change', function() {
-    const finContratField = document.getElementById('fin_contrat');
-    const tauxHoraireField = document.getElementById('taux_horaire');
-    
-    if (this.value === 'temporaire') {
-        finContratField.required = true;
-        finContratField.parentElement.querySelector('.form-label-moderne').innerHTML = 
-            'Fin de contrat <span class="text-danger">*</span>';
-    } else {
-        finContratField.required = false;
-        finContratField.parentElement.querySelector('.form-label-moderne').innerHTML = 
-            'Fin de contrat (si temporaire)';
-    }
-    
-    if (this.value === 'vacataire') {
-        tauxHoraireField.required = true;
-        tauxHoraireField.parentElement.querySelector('.form-label-moderne').innerHTML = 
-            'Taux horaire (FCFA) <span class="text-danger">*</span>';
-    } else {
-        tauxHoraireField.required = false;
-        tauxHoraireField.parentElement.querySelector('.form-label-moderne').innerHTML = 
-            'Taux horaire (FCFA)';
-    }
-});
+    // ─── Détection de doublons (debounced) ──────────────────────────
+    const duplicateForm = document.getElementById('teacherForm');
+    const duplicateOverride = document.getElementById('duplicate_override');
+    const duplicateWarning = document.getElementById('duplicate-warning');
+    const duplicateWarningText = document.getElementById('duplicate-warning-text');
+    const duplicateModalEl = document.getElementById('duplicateModal');
+    const duplicateModalContent = document.getElementById('duplicate-modal-content');
+    const showDuplicatesBtn = document.getElementById('show-duplicates-modal');
+    const continueBtn = document.getElementById('continue-with-duplicate');
+    const duplicateUrl = "{{ route('esbtp.enseignants.duplicates') }}";
 
-// Initialisation
-updateButtons();
-updateProgress();
-
-// ===== DUPLICATE DETECTION =====
-const duplicateForm = document.getElementById('teacherForm');
-const duplicateOverrideInput = document.getElementById('duplicate_override');
-const duplicateWarning = document.getElementById('duplicate-warning');
-const duplicateWarningText = document.getElementById('duplicate-warning-text');
-const duplicateModalElement = document.getElementById('duplicateModal');
-const duplicateModalContent = document.getElementById('duplicate-modal-content');
-const showDuplicatesBtn = document.getElementById('show-duplicates-modal');
-const continueWithDuplicateBtn = document.getElementById('continue-with-duplicate');
-const duplicateCheckUrl = "{{ route('esbtp.enseignants.duplicates') }}";
-let duplicateModalInstance = null;
-
-if (duplicateModalElement && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
-    duplicateModalInstance = new bootstrap.Modal(duplicateModalElement);
-}
-
-const duplicateState = { results: [], override: false };
-let duplicateTimer = null;
-
-function resetDuplicateOverride() {
-    duplicateState.override = false;
-    if (duplicateOverrideInput) {
-        duplicateOverrideInput.value = '0';
-    }
-}
-
-function scheduleDuplicateCheck() {
-    if (!duplicateCheckUrl) {
-        return;
-    }
-    if (duplicateTimer) {
-        clearTimeout(duplicateTimer);
-    }
-    duplicateTimer = setTimeout(runDuplicateCheck, 600);
-    resetDuplicateOverride();
-}
-
-function runDuplicateCheck() {
-    if (!duplicateForm || !duplicateCheckUrl) {
-        return;
+    let duplicateModalInstance = null;
+    if (duplicateModalEl && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        duplicateModalInstance = new bootstrap.Modal(duplicateModalEl);
     }
 
-    const nameField = duplicateForm.querySelector('input[name="name"]');
-    const specializationField = duplicateForm.querySelector('input[name="specialization"]');
+    const state = { results: [], override: false };
+    let timer = null;
 
-    if (!nameField) {
-        return;
+    function resetOverride() {
+        state.override = false;
+        if (duplicateOverride) duplicateOverride.value = '0';
     }
 
-    const nameValue = nameField.value.trim();
-
-    if (!nameValue || nameValue.length < 3) {
-        duplicateState.results = [];
-        updateDuplicateUI();
-        return;
+    function schedule() {
+        if (!duplicateUrl) return;
+        if (timer) clearTimeout(timer);
+        timer = setTimeout(check, 600);
+        resetOverride();
     }
 
-    const specializationValue = specializationField ? specializationField.value.trim() : '';
-
-    const params = new URLSearchParams();
-    params.append('name', nameValue);
-    if (specializationValue) {
-        params.append('specialization', specializationValue);
-    }
-
-    fetch(`${duplicateCheckUrl}?${params.toString()}`, {
-        method: 'GET',
-        headers: {
-            'Accept': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        duplicateState.results = Array.isArray(data.duplicates) ? data.duplicates : [];
-        resetDuplicateOverride();
-        updateDuplicateUI();
-    })
-    .catch(() => {
-        duplicateState.results = [];
-        updateDuplicateUI();
-    });
-}
-
-function updateDuplicateUI() {
-    if (!duplicateWarning || !duplicateWarningText) {
-        return;
-    }
-
-    if (duplicateState.results.length > 0) {
-        if (duplicateState.override) {
-            duplicateWarning.classList.add('d-none');
-            if (duplicateOverrideInput) {
-                duplicateOverrideInput.value = '1';
-            }
+    function check() {
+        const nameValue = (document.getElementById('name').value || '').trim();
+        if (nameValue.length < 3) {
+            state.results = [];
+            renderUI();
             return;
         }
 
-        duplicateWarning.classList.remove('d-none');
-        duplicateWarningText.textContent = `Nous avons trouvé ${duplicateState.results.length} enseignant(s) avec un profil similaire.`;
-        renderDuplicateModal();
-    } else {
-        duplicateWarning.classList.add('d-none');
-        if (duplicateOverrideInput) {
-            duplicateOverrideInput.value = '0';
-        }
-        if (duplicateModalInstance) {
-            duplicateModalInstance.hide();
-        }
-        if (duplicateModalContent) {
-            duplicateModalContent.innerHTML = `
-                <div class="alert alert-success">
-                    <i class="fas fa-check-circle me-2"></i>Aucun doublon détecté.
-                </div>
-            `;
-        }
-    }
-}
+        const params = new URLSearchParams({ name: nameValue });
+        const spec = (document.getElementById('specialization').value || '').trim();
+        if (spec) params.append('specialization', spec);
 
-function renderDuplicateModal() {
-    if (!duplicateModalContent) {
-        return;
+        fetch(`${duplicateUrl}?${params.toString()}`, {
+            headers: {
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+            },
+        })
+            .then(r => r.json())
+            .then(data => {
+                state.results = Array.isArray(data.duplicates) ? data.duplicates : [];
+                resetOverride();
+                renderUI();
+            })
+            .catch(() => {
+                state.results = [];
+                renderUI();
+            });
     }
 
-    if (duplicateState.results.length === 0) {
-        duplicateModalContent.innerHTML = `
-            <div class="alert alert-success">
-                <i class="fas fa-check-circle me-2"></i>Aucun doublon détecté.
-            </div>
-        `;
-        return;
+    function renderUI() {
+        if (state.results.length === 0) {
+            duplicateWarning.style.display = 'none';
+            if (duplicateOverride) duplicateOverride.value = '0';
+            if (duplicateModalInstance) duplicateModalInstance.hide();
+            return;
+        }
+
+        if (state.override) {
+            duplicateWarning.style.display = 'none';
+            if (duplicateOverride) duplicateOverride.value = '1';
+            return;
+        }
+
+        duplicateWarning.style.display = 'flex';
+        duplicateWarningText.textContent = `${state.results.length} enseignant(s) avec un profil similaire ont été trouvés.`;
+        renderModal();
     }
 
-    let html = '<div class="list-group">';
-    duplicateState.results.forEach(teacher => {
-        html += `
-            <div class="list-group-item">
-                <div class="d-flex justify-content-between align-items-start">
-                    <div>
-                        <h6 class="mb-1">${teacher.name}</h6>
-                        <p class="mb-1 text-muted"><small>Email: ${teacher.email}</small></p>
-                        <p class="mb-1 text-muted"><small>Spécialisation: ${teacher.specialization || 'N/A'}</small></p>
-                        <p class="mb-0 text-muted"><small>Matricule: ${teacher.matricule}</small></p>
-                    </div>
-                    <div>
-                        <a href="${teacher.show_url}" target="_blank" class="btn btn-sm btn-outline-primary">
+    function renderModal() {
+        if (!duplicateModalContent) return;
+        if (state.results.length === 0) {
+            duplicateModalContent.innerHTML = '';
+            return;
+        }
+        let html = '<div class="list-group">';
+        state.results.forEach(t => {
+            const name = (t.name || '').replace(/[<>]/g, '');
+            const email = (t.email || '').replace(/[<>]/g, '');
+            const spec = (t.specialization || 'N/A').replace(/[<>]/g, '');
+            const matricule = (t.matricule || '').replace(/[<>]/g, '');
+            html += `
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">${name}</h6>
+                            <p class="mb-1 text-muted"><small>Email : ${email || '—'}</small></p>
+                            <p class="mb-1 text-muted"><small>Spécialisation : ${spec}</small></p>
+                            <p class="mb-0 text-muted"><small>Matricule : ${matricule}</small></p>
+                        </div>
+                        <a href="${t.show_url}" target="_blank" class="btn-acasi secondary" style="padding: .25rem .65rem; font-size: .78rem;">
                             <i class="fas fa-eye"></i> Voir
                         </a>
                     </div>
                 </div>
-            </div>
-        `;
-    });
-    html += '</div>';
+            `;
+        });
+        html += '</div>';
+        duplicateModalContent.innerHTML = html;
+    }
 
-    duplicateModalContent.innerHTML = html;
-}
+    document.getElementById('name').addEventListener('input', schedule);
+    document.getElementById('specialization').addEventListener('input', schedule);
 
-// Event listeners for duplicate detection
-const nameField = document.querySelector('input[name="name"]');
-const specializationField = document.querySelector('input[name="specialization"]');
-
-if (nameField) {
-    nameField.addEventListener('input', scheduleDuplicateCheck);
-}
-if (specializationField) {
-    specializationField.addEventListener('input', scheduleDuplicateCheck);
-}
-
-if (showDuplicatesBtn) {
-    showDuplicatesBtn.addEventListener('click', () => {
-        if (duplicateModalInstance) {
-            duplicateModalInstance.show();
-        }
-    });
-}
-
-if (continueWithDuplicateBtn) {
-    continueWithDuplicateBtn.addEventListener('click', () => {
-        duplicateState.override = true;
-        updateDuplicateUI();
-        if (duplicateModalInstance) {
-            duplicateModalInstance.hide();
-        }
-    });
-}
+    if (showDuplicatesBtn) {
+        showDuplicatesBtn.addEventListener('click', () => {
+            if (duplicateModalInstance) duplicateModalInstance.show();
+        });
+    }
+    if (continueBtn) {
+        continueBtn.addEventListener('click', () => {
+            state.override = true;
+            renderUI();
+            if (duplicateModalInstance) duplicateModalInstance.hide();
+        });
+    }
+})();
 </script>
 @endpush

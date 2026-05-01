@@ -10,6 +10,24 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ---
 
+## Mai 2026
+
+### Améliorations
+
+- **Refonte des pages création / modification d'enseignants** (`/esbtp/enseignants/create` et `/esbtp/enseignants/{id}/edit`) — abandon du wizard 4 étapes au profit d'un formulaire premium en une seule page (namespaces `ec-*` et `ee-*`). Trois champs requis seulement pour démarrer (Nom complet, Téléphone, Spécialisation), une section « Régime d'engagement » avec radio cards (Vacataire / Permanent / Consultant) et champs conditionnels (taux horaire pour les vacataires, charge hebdomadaire pour les permanents), et un panneau « Profil détaillé » pliable pour les diplômes et grade. La date d'embauche devient « Date de début d'activité », optionnelle et pré-remplie à la date du jour.
+
+### Suppressions
+
+- **Champs hors-contexte sur la fiche enseignant** — retrait de Laboratoire (école BTS/Licence sans labos de recherche), Motivation et Objectifs pédagogiques (références à des templates de candidature RH étrangers à l'usage admin), Méthodes d'enseignement et Outils pédagogiques (paramètres jamais affichés ailleurs), upload CV et photo (à venir via upload progressif sur la fiche). Le filtre et la colonne « Département » sur la liste, ainsi que les pills département/laboratoire dans les fiches, sont également retirés.
+- **Page de debug `/esbtp/enseignants/{id}/debug-result`** — vue, route et méthode `debugResult` supprimées du flux de modification ; la mise à jour redirige désormais vers la fiche profil avec un simple message de succès.
+
+### Corrections
+
+- **Création d'enseignant sans dépendance au modèle legacy `Department`** — suppression du hook `ESBTPTeacher::boot::creating` qui pré-remplissait `department_id` via `Department::first()` (table legacy `departments`) alors que la FK pointait vers `esbtp_departments`, source potentielle de violations silencieuses de FK. Les relations `department()` et `laboratory()` du modèle pointent désormais vers les modèles ESBTP.
+- **Logs de debug en production retirés** du contrôleur `ESBTPEnseignantController` (`updateAvailability`, `prepareAvailabilityData`, `update`) — plus de `\Log::info("🔧 DEBUG ...")` ni de `error_log()` à chaque interaction.
+
+---
+
 ## Avril 2026
 
 ### Ajouts

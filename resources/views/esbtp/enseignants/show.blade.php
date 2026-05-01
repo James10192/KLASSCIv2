@@ -520,11 +520,6 @@
                         <i class="fas fa-circle" style="font-size:.5rem"></i>
                         {{ $teacher->status === 'active' ? 'Actif' : 'Inactif' }}
                     </span>
-                    @if($teacher->department)
-                    <span class="es-hero-pill muted">
-                        <i class="fas fa-building"></i> {{ $teacher->department->name }}
-                    </span>
-                    @endif
                     <span class="es-hero-pill muted">
                         <i class="fas fa-calendar-alt"></i>
                         Depuis {{ $teacher->created_at ? $teacher->created_at->format('M Y') : 'N/A' }}
@@ -650,16 +645,6 @@
                         <span class="es-info-label"><i class="fas fa-star"></i> Specialisation</span>
                         <span class="es-info-value">{{ $teacher->specialization }}</span>
                     </div>
-                    <div class="es-info-row">
-                        <span class="es-info-label"><i class="fas fa-building"></i> Departement</span>
-                        <span class="es-info-value">{{ $teacher->department->name ?? 'Non assigne' }}</span>
-                    </div>
-                    @if($teacher->laboratory)
-                    <div class="es-info-row">
-                        <span class="es-info-label"><i class="fas fa-flask"></i> Laboratoire</span>
-                        <span class="es-info-value">{{ $teacher->laboratory->name }}</span>
-                    </div>
-                    @endif
                     <div class="es-info-row">
                         <span class="es-info-label"><i class="fas fa-clock"></i> Heures dues</span>
                         <span class="es-info-value">{{ (int)($teacher->teaching_hours_due ?? 0) }}h/semaine</span>
