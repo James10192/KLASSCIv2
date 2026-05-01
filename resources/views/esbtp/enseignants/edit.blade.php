@@ -1,589 +1,263 @@
 @extends('layouts.app')
 
-@section('title', 'Modifier Enseignant - KLASSCI')
+@section('title', 'Modifier Enseignant — KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .form-wizard {
-        background: var(--surface);
-        border-radius: var(--radius-large);
-        overflow: hidden;
-        box-shadow: var(--shadow-card);
-    }
-    
-    .wizard-header {
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        color: white;
-        padding: var(--space-xl);
-        text-align: center;
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .wizard-header::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        right: 0;
-        width: 100px;
-        height: 100%;
-        background: rgba(255,255,255,0.1);
-        transform: skewX(-15deg);
-        transform-origin: top;
-    }
-    
-    .wizard-steps {
-        display: flex;
-        justify-content: space-between;
-        background: rgba(255,255,255,0.1);
-        padding: var(--space-md);
-        margin: var(--space-md) 0 0;
-        border-radius: var(--radius-medium);
-    }
-    
-    .wizard-step {
-        flex: 1;
-        text-align: center;
-        padding: var(--space-sm);
-        border-radius: var(--radius-small);
-        transition: all 0.3s ease;
-        cursor: pointer;
-        position: relative;
-    }
-    
-    .wizard-step.active {
-        background: rgba(255,255,255,0.2);
-        transform: scale(1.05);
-    }
-    
-    .wizard-step.completed {
-        background: rgba(76, 175, 80, 0.3);
-    }
-    
-    .wizard-step-number {
-        width: 30px;
-        height: 30px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.3);
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto var(--space-xs);
-        font-weight: bold;
-        font-size: 0.9rem;
-    }
-    
-    .wizard-step.active .wizard-step-number {
-        background: white;
-        color: var(--primary);
-    }
-    
-    .wizard-step.completed .wizard-step-number {
-        background: var(--success);
-        color: white;
-    }
-    
-    .wizard-step-title {
-        font-size: 0.8rem;
-        margin-bottom: var(--space-xs);
-        font-weight: 600;
-    }
-    
-    .wizard-step-desc {
-        font-size: 0.7rem;
-        opacity: 0.9;
-    }
-    
-    .wizard-content {
-        padding: var(--space-xl);
-    }
-    
-    .form-section {
-        display: none;
-        animation: fadeIn 0.3s ease;
-    }
-    
-    .form-section.active {
-        display: block;
-    }
-    
-    .form-section-title {
-        color: var(--primary);
-        font-size: 1.4rem;
-        font-weight: 600;
-        margin-bottom: var(--space-md);
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-    }
-    
-    .form-section-icon {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        background: rgba(var(--primary-rgb), 0.1);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--primary);
-        font-size: 1.2rem;
-    }
-    
-    .form-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-        gap: var(--space-lg);
-        margin-bottom: var(--space-lg);
-    }
-    
-    .form-group-moderne {
-        margin-bottom: var(--space-md);
-    }
-    
-    .form-label-moderne {
-        display: block;
-        margin-bottom: var(--space-xs);
-        font-weight: 500;
-        color: var(--text-primary);
-        font-size: 0.9rem;
-    }
-    
-    .form-input-moderne,
-    .form-select-moderne,
-    .form-textarea-moderne {
-        width: 100%;
-        padding: var(--space-sm);
-        border: 2px solid var(--border);
-        border-radius: var(--radius-medium);
-        font-size: 0.9rem;
-        transition: all 0.3s ease;
-        background: var(--surface);
-        color: var(--text-primary);
-    }
-    
-    .form-input-moderne:focus,
-    .form-select-moderne:focus,
-    .form-textarea-moderne:focus {
-        border-color: var(--primary);
-        outline: none;
-        box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
-    }
-    
-    .form-textarea-moderne {
-        min-height: 80px;
-        resize: vertical;
-    }
-    
-    .form-help-text {
-        font-size: 0.8rem;
-        color: var(--text-secondary);
-        margin-top: var(--space-xs);
-    }
-    
-    .checkbox-group {
-        display: flex;
-        flex-wrap: wrap;
-        gap: var(--space-md);
-        margin-top: var(--space-sm);
-    }
-    
-    .checkbox-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        padding: var(--space-sm);
-        background: var(--background);
-        border-radius: var(--radius-small);
-        cursor: pointer;
-        transition: all 0.3s ease;
-        border: 2px solid transparent;
-    }
-    
-    .checkbox-item:hover {
-        background: rgba(var(--primary-rgb), 0.05);
-        border-color: var(--primary);
-    }
-    
-    .checkbox-item input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-        accent-color: var(--primary);
-    }
-    
-    .availability-grid {
-        display: grid;
-        grid-template-columns: 120px repeat(7, 1fr);
-        gap: var(--space-sm);
-        margin-top: var(--space-md);
-    }
-    
-    .availability-header {
-        font-weight: 600;
-        text-align: center;
-        padding: var(--space-sm);
-        background: var(--primary);
-        color: white;
-        border-radius: var(--radius-small);
-        font-size: 0.8rem;
-    }
-    
-    .availability-time {
-        font-weight: 500;
-        text-align: center;
-        padding: var(--space-sm);
-        background: var(--surface);
-        border-radius: var(--radius-small);
-        font-size: 0.8rem;
-    }
-    
-    .availability-slot {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: var(--space-xs);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-small);
-        cursor: pointer;
-        transition: all 0.3s ease;
-        min-height: 35px;
-    }
-    
-    .availability-slot:hover {
-        background: rgba(var(--primary-rgb), 0.1);
-    }
-    
-    .availability-slot.available {
-        background: var(--success);
-        color: white;
-    }
-    
-    .availability-slot.preferred {
-        background: var(--primary);
-        color: white;
-    }
-    
-    .availability-slot.unavailable {
-        background: var(--danger);
-        color: white;
-    }
-    
-    .availability-legend {
-        display: flex;
-        justify-content: center;
-        gap: var(--space-lg);
-        margin-top: var(--space-md);
-    }
-    
-    .legend-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        font-size: 0.8rem;
-    }
-    
-    .legend-color {
-        width: 20px;
-        height: 20px;
-        border-radius: var(--radius-small);
-    }
-    
-    .progress-bar {
-        height: 4px;
-        background: var(--border);
-        border-radius: var(--radius-full);
-        overflow: hidden;
-        margin-bottom: var(--space-lg);
-    }
-    
-    .progress-fill {
-        height: 100%;
-        background: linear-gradient(90deg, var(--primary), var(--secondary));
-        border-radius: var(--radius-full);
-        transition: width 0.3s ease;
-    }
-    
-    /* Header principal amélioré */
-    .main-header {
-        background: linear-gradient(135deg, #0453cb, #1b64d4);
-        color: white;
-        padding: var(--space-xl);
-        border-radius: var(--radius-large);
-        margin-bottom: var(--space-xl);
-        position: relative;
-        overflow: hidden;
-        box-shadow: var(--shadow-elevated);
-    }
-    
-    .main-header::before {
-        content: '';
-        position: absolute;
-        top: -50%;
-        right: -20%;
-        width: 100px;
-        height: 200%;
-        background: rgba(255,255,255,0.05);
-        transform: skewX(-15deg);
-    }
-    
-    .header-content {
-        position: relative;
-        z-index: 2;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-    }
-    
-    .header-left h1 {
-        font-size: 2rem;
-        margin: 0 0 var(--space-xs);
-        font-weight: 700;
-        color: white;
-        text-shadow: 0 2px 4px rgba(0,0,0,0.3);
-    }
-    
-    .header-left p {
-        margin: 0;
-        opacity: 0.95;
-        font-size: 1.1rem;
-        color: rgba(255,255,255,0.95);
-        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    }
-    
-    .header-actions {
-        display: flex;
-        gap: var(--space-md);
-    }
-    
-    .btn-header {
-        padding: var(--space-sm) var(--space-lg);
-        border: 2px solid rgba(255,255,255,0.4);
-        border-radius: var(--radius-full);
-        color: white;
-        text-decoration: none;
-        font-weight: 600;
-        transition: all 0.3s ease;
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-        background: rgba(255,255,255,0.1);
-        text-shadow: 0 1px 2px rgba(0,0,0,0.2);
-    }
-    
-    .btn-header:hover {
-        background: rgba(255,255,255,0.25);
-        border-color: rgba(255,255,255,0.6);
-        transform: translateY(-2px);
-        box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-        color: white;
-        text-decoration: none;
-    }
+/* ═══════════════════════════════════════════════════════════
+   ENSEIGNANT EDIT — Premium (namespace ee-*)
+   Hero conservé (.es-edit-*), formulaire refondu sans wizard.
+   ═══════════════════════════════════════════════════════════ */
 
-    /* Card d'information enseignant améliorée */
-    .teacher-info-card {
-        background: white;
-        border-radius: var(--radius-large);
-        padding: 0;
-        margin-bottom: var(--space-xl);
-        box-shadow: var(--shadow-card);
-        border: 1px solid var(--border-light);
-        overflow: hidden;
-    }
-    
-    .teacher-info-header {
-        background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-        padding: var(--space-xl);
-        display: flex;
-        align-items: center;
-        gap: var(--space-lg);
-        border-bottom: 1px solid var(--border-light);
-    }
-    
-    .teacher-avatar {
-        width: 100px;
-        height: 100px;
-        border-radius: 50%;
-        background: linear-gradient(135deg, var(--primary), var(--accent-blue));
-        color: white;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 2rem;
-        font-weight: 900;
-        text-transform: uppercase;
-        box-shadow: var(--shadow-medium);
-        border: 4px solid white;
-    }
-    
-    .teacher-details {
-        flex: 1;
-    }
-    
-    .teacher-details h3 {
-        margin: 0 0 var(--space-sm);
-        color: var(--text-primary);
-        font-size: 1.5rem;
-        font-weight: 700;
-    }
-    
-    .teacher-details .email {
-        margin: 0 0 var(--space-xs);
-        color: var(--text-secondary);
-        font-size: 1rem;
-        font-weight: 500;
-    }
-    
-    .teacher-details .specialization {
-        margin: 0;
-        color: var(--primary);
-        font-size: 0.95rem;
-        background: rgba(var(--primary-rgb), 0.1);
-        padding: var(--space-xs) var(--space-sm);
-        border-radius: var(--radius-small);
-        display: inline-block;
-        font-weight: 500;
-        border: 1px solid rgba(var(--primary-rgb), 0.2);
-    }
-    
-    .teacher-meta {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 0;
-        background: white;
-    }
-    
-    .meta-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-md);
-        padding: var(--space-lg);
-        font-size: 0.95rem;
-        border-right: 1px solid var(--border-light);
-        transition: all 0.3s ease;
-    }
-    
-    .meta-item:hover {
-        background: var(--background);
-    }
-    
-    .meta-item:last-child {
-        border-right: none;
-    }
-    
-    .meta-icon {
-        color: var(--primary);
-        width: 20px;
-        height: 20px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(var(--primary-rgb), 0.15);
-        border-radius: 50%;
-        padding: var(--space-xs);
-        font-size: 0.8rem;
-    }
-    
-    .meta-label {
-        font-weight: 600;
-        color: var(--text-primary);
-    }
-    
-    .wizard-actions {
-        display: flex;
-        justify-content: space-between;
-        padding: var(--space-lg);
-        background: var(--background);
-        border-top: 1px solid var(--border);
-        margin-top: var(--space-xl);
-    }
-    
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    @media (max-width: 768px) {
-        .form-grid {
-            grid-template-columns: 1fr;
-        }
-        
-        .wizard-steps {
-            flex-wrap: wrap;
-        }
-        
-        .wizard-step {
-            min-width: 120px;
-        }
-        
-        .availability-grid {
-            grid-template-columns: 80px repeat(7, 1fr);
-            font-size: 0.7rem;
-        }
-    }
+/* -- Hero (identique create/show) ---------------------------------- */
+.es-edit-hero {
+    position: relative;
+    background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
+    padding: 0; margin-bottom: 24px;
+    border-radius: 0 0 20px 20px;
+}
+.es-edit-hero-inner {
+    position: relative; z-index: 2;
+    max-width: 1280px; margin: 0 auto;
+    padding: 28px 32px 24px;
+    display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
+}
+.es-edit-avatar {
+    width: 72px; height: 72px; border-radius: 50%;
+    border: 3px solid rgba(255,255,255,.6);
+    background: rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.6rem; font-weight: 700; color: rgba(255,255,255,.9);
+    overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    backdrop-filter: blur(4px); flex-shrink: 0;
+}
+.es-edit-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.es-edit-text { flex: 1; min-width: 200px; color: #fff; }
+.es-edit-name { font-size: 1.4rem; font-weight: 800; margin: 0 0 2px; letter-spacing: -.02em; }
+.es-edit-sub { font-size: .84rem; opacity: .8; margin: 0 0 8px; }
+.es-edit-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+.es-edit-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(255,255,255,.18); backdrop-filter: blur(6px);
+    border: 1px solid rgba(255,255,255,.28);
+    color: #fff; font-size: .74rem; font-weight: 600;
+    padding: 3px 10px; border-radius: 20px; white-space: nowrap;
+}
+.es-edit-pill.green { background: rgba(16,185,129,.25); border-color: rgba(16,185,129,.4); }
+.es-edit-btns { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.es-edit-btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 16px; border-radius: 8px; font-size: .8rem; font-weight: 600;
+    text-decoration: none; border: none; cursor: pointer; transition: all .18s; white-space: nowrap;
+}
+.es-edit-btn.primary { background: rgba(255,255,255,.95); color: #0453cb; }
+.es-edit-btn.primary:hover { background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.15); }
+.es-edit-btn.ghost { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.35); }
+.es-edit-btn.ghost:hover { background: rgba(255,255,255,.25); }
 
-    /* -- Edit page hero (es- namespace) -------------------------------- */
-    .es-edit-hero {
-        position: relative;
-        background: linear-gradient(135deg, #0453cb 0%, #5e91de 100%);
-        padding: 0; margin-bottom: 24px;
-        border-radius: 0 0 20px 20px;
-    }
-    .es-edit-hero::before {
-        content: '';
-        position: absolute; inset: 0;
-        background-image: url("data:image/svg+xml,%3Csvg width='24' height='24' viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='12' cy='12' r='1.5' fill='rgba(255,255,255,0.1)'/%3E%3C/svg%3E");
-        pointer-events: none; overflow: hidden;
-        border-radius: 0 0 20px 20px;
-    }
-    .es-edit-hero-inner {
-        position: relative; z-index: 2;
-        max-width: 1280px; margin: 0 auto;
-        padding: 28px 32px 24px;
-        display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
-    }
-    .es-edit-avatar {
-        width: 72px; height: 72px; border-radius: 50%;
-        border: 3px solid rgba(255,255,255,.6);
-        background: rgba(255,255,255,.15);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.6rem; font-weight: 700; color: rgba(255,255,255,.9);
-        overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,.2);
-        backdrop-filter: blur(4px); flex-shrink: 0;
-    }
-    .es-edit-avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .es-edit-text { flex: 1; min-width: 200px; color: #fff; }
-    .es-edit-name { font-size: 1.4rem; font-weight: 800; margin: 0 0 2px; letter-spacing: -.02em; }
-    .es-edit-sub { font-size: .84rem; opacity: .8; margin: 0 0 8px; }
-    .es-edit-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-    .es-edit-pill {
-        display: inline-flex; align-items: center; gap: 5px;
-        background: rgba(255,255,255,.18); backdrop-filter: blur(6px);
-        border: 1px solid rgba(255,255,255,.28);
-        color: #fff; font-size: .74rem; font-weight: 600;
-        padding: 3px 10px; border-radius: 20px; white-space: nowrap;
-    }
-    .es-edit-pill.green { background: rgba(16,185,129,.25); border-color: rgba(16,185,129,.4); }
-    .es-edit-btns { display: flex; gap: 8px; margin-left: auto; flex-shrink: 0; }
-    .es-edit-btn {
-        display: inline-flex; align-items: center; gap: 6px;
-        padding: 8px 16px; border-radius: 8px; font-size: .8rem; font-weight: 600;
-        text-decoration: none; border: none; cursor: pointer; transition: all .18s; white-space: nowrap;
-    }
-    .es-edit-btn.primary { background: rgba(255,255,255,.95); color: #0453cb; }
-    .es-edit-btn.primary:hover { background: #fff; box-shadow: 0 4px 16px rgba(0,0,0,.15); }
-    .es-edit-btn.ghost { background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.35); }
-    .es-edit-btn.ghost:hover { background: rgba(255,255,255,.25); }
-    @media (max-width: 768px) {
-        .es-edit-hero-inner { padding: 20px 16px; flex-direction: column; text-align: center; }
-        .es-edit-pills { justify-content: center; }
-        .es-edit-btns { margin-left: 0; justify-content: center; }
-    }
+/* -- Form cards (namespace ee-*) ----------------------------------- */
+.ee-form { max-width: 1100px; margin: 0 auto; }
+
+.ee-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    margin-bottom: 1.25rem;
+    transition: box-shadow .2s ease;
+}
+.ee-card:hover {
+    box-shadow: 0 4px 16px rgba(4,83,203,.06), 0 1px 3px rgba(15,23,42,.04);
+}
+.ee-card-body { padding: 1.5rem 1.75rem; }
+
+.ee-section-header { display: flex; align-items: center; gap: .75rem; margin-bottom: 1.25rem; }
+.ee-section-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .9rem; flex-shrink: 0;
+}
+.ee-section-title { margin: 0; font-size: 1.05rem; font-weight: 700; color: #0f172a; }
+.ee-section-sub { margin: 0; font-size: .8rem; color: #64748b; }
+
+.ee-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem 1.25rem;
+}
+.ee-field { display: flex; flex-direction: column; gap: .35rem; }
+.ee-field-wide { grid-column: 1 / -1; }
+.ee-label { font-size: .8rem; font-weight: 600; color: #1e293b; }
+.ee-label .req { color: #dc2626; margin-left: 2px; }
+
+.ee-input,
+.ee-select,
+.ee-textarea {
+    width: 100%;
+    padding: .6rem .8rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 9px;
+    font-size: .9rem;
+    color: #0f172a;
+    background: #fff;
+    transition: border-color .15s, box-shadow .15s;
+}
+.ee-textarea { min-height: 90px; resize: vertical; font-family: inherit; }
+.ee-input:focus, .ee-select:focus, .ee-textarea:focus {
+    outline: none; border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+}
+.ee-input.is-invalid, .ee-select.is-invalid { border-color: #dc2626; }
+.ee-help { font-size: .73rem; color: #64748b; line-height: 1.4; }
+.ee-error { font-size: .76rem; color: #dc2626; font-weight: 500; }
+
+/* Régime cards */
+.ee-regime-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: .75rem;
+}
+.ee-regime-card {
+    position: relative;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem 1.1rem;
+    cursor: pointer;
+    transition: all .15s ease;
+    background: #fff;
+}
+.ee-regime-card:hover { border-color: #94a3b8; transform: translateY(-1px); }
+.ee-regime-card.active {
+    border-color: #0453cb;
+    background: rgba(4,83,203,.04);
+    box-shadow: 0 0 0 3px rgba(4,83,203,.08);
+}
+.ee-regime-card input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+.ee-regime-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: #eef2f7; color: #475569;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .85rem;
+    margin-bottom: .55rem;
+    transition: all .15s ease;
+}
+.ee-regime-card.active .ee-regime-icon { background: #0453cb; color: #fff; }
+.ee-regime-name { font-weight: 700; font-size: .92rem; color: #0f172a; margin: 0 0 .15rem; }
+.ee-regime-desc { font-size: .73rem; color: #64748b; margin: 0; line-height: 1.4; }
+.ee-conditional { display: none; }
+.ee-conditional.show { display: flex; }
+
+/* Toggle status */
+.ee-status-toggle {
+    display: inline-flex; align-items: center; gap: .75rem;
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    border-radius: 999px;
+    padding: .35rem .8rem .35rem .35rem;
+}
+.ee-status-toggle input[type="checkbox"] { display: none; }
+.ee-status-switch {
+    width: 40px; height: 22px;
+    background: #cbd5e1; border-radius: 999px;
+    position: relative;
+    transition: background .2s;
+    cursor: pointer;
+}
+.ee-status-switch::before {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 18px; height: 18px;
+    background: #fff; border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,.15);
+    transition: transform .2s;
+}
+input[type="checkbox"]:checked + .ee-status-switch { background: #10b981; }
+input[type="checkbox"]:checked + .ee-status-switch::before { transform: translateX(18px); }
+.ee-status-label { font-size: .85rem; font-weight: 600; color: #1e293b; }
+
+/* Section pliable */
+.ee-collapse-toggle {
+    width: 100%;
+    background: transparent; border: none;
+    display: flex; align-items: center; gap: .75rem;
+    padding: 0; cursor: pointer; text-align: left;
+}
+.ee-collapse-toggle:hover .ee-section-title { color: #0453cb; }
+.ee-toggle-chevron {
+    margin-left: auto;
+    color: #94a3b8;
+    transition: transform .25s ease;
+}
+.ee-card[data-collapsed="false"] .ee-toggle-chevron { transform: rotate(180deg); }
+.ee-collapse-body {
+    overflow: hidden;
+    max-height: 0;
+    transition: max-height .3s ease, margin-top .3s ease;
+    margin-top: 0;
+}
+.ee-card[data-collapsed="false"] .ee-collapse-body {
+    max-height: 1500px;
+    margin-top: 1.25rem;
+}
+
+/* Disponibilités grid */
+.ee-avail-table { width: 100%; border-collapse: separate; border-spacing: 4px; margin-top: .5rem; }
+.ee-avail-table th { font-size: .72rem; color: #64748b; font-weight: 600; padding: .35rem; text-align: center; }
+.ee-avail-table td.ee-time { font-size: .76rem; color: #475569; font-weight: 600; text-align: right; padding-right: .65rem; white-space: nowrap; }
+.ee-avail-cell {
+    height: 34px;
+    border-radius: 7px;
+    cursor: pointer;
+    background: #f1f5f9;
+    border: 1.5px solid transparent;
+    transition: all .15s;
+}
+.ee-avail-cell:hover { transform: scale(1.05); border-color: #0453cb; }
+.ee-avail-cell.available { background: rgba(16,185,129,.18); }
+.ee-avail-cell.preferred { background: rgba(4,83,203,.25); }
+.ee-avail-cell.unavailable { background: #f1f5f9; }
+.ee-avail-legend { display: flex; gap: 1.25rem; font-size: .8rem; color: #475569; margin-top: 1rem; flex-wrap: wrap; }
+.ee-avail-legend-dot { width: 14px; height: 14px; border-radius: 4px; display: inline-block; margin-right: .35rem; vertical-align: middle; }
+.ee-avail-legend-dot.unavailable { background: #f1f5f9; border: 1px solid #cbd5e1; }
+.ee-avail-legend-dot.available { background: rgba(16,185,129,.4); }
+.ee-avail-legend-dot.preferred { background: rgba(4,83,203,.5); }
+
+/* Actions / Alerts */
+.ee-actions { display: flex; justify-content: space-between; gap: .6rem; padding: 1.25rem 0; align-items: center; }
+.ee-actions-right { display: flex; gap: .6rem; }
+.ee-alert {
+    border-radius: 10px;
+    padding: .85rem 1rem;
+    margin-bottom: 1rem;
+    display: flex; align-items: flex-start; gap: .65rem;
+    font-size: .87rem; line-height: 1.5;
+    border: 1px solid transparent;
+}
+.ee-alert-warning { background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.25); color: #78350f; }
+.ee-alert-success { background: rgba(16,185,129,.08); border-color: rgba(16,185,129,.25); color: #065f46; }
+.ee-alert-icon { margin-top: 2px; flex-shrink: 0; }
+
+@media (max-width: 768px) {
+    .es-edit-hero-inner { padding: 20px 16px; flex-direction: column; text-align: center; }
+    .es-edit-pills { justify-content: center; }
+    .es-edit-btns { margin-left: 0; justify-content: center; }
+    .ee-card-body { padding: 1.1rem; }
+    .ee-grid { grid-template-columns: 1fr; }
+    .ee-regime-grid { grid-template-columns: 1fr; }
+    .ee-actions { flex-direction: column-reverse; }
+    .ee-actions-right { width: 100%; }
+    .ee-actions .btn-acasi { width: 100%; justify-content: center; }
+    .ee-avail-table { font-size: .7rem; }
+}
 </style>
 @endsection
 
 @section('content')
-{{-- Premium Hero Header --}}
+{{-- Hero --}}
 <div class="es-edit-hero">
     <div class="es-edit-hero-inner">
         <div class="es-edit-avatar">
@@ -602,11 +276,8 @@
                     <i class="fas fa-circle" style="font-size:.5rem"></i>
                     {{ $teacher->status === 'active' ? 'Actif' : 'Inactif' }}
                 </span>
-                @if($teacher->department)
-                <span class="es-edit-pill"><i class="fas fa-building"></i> {{ $teacher->department->name }}</span>
-                @endif
                 @if($teacher->specialization)
-                <span class="es-edit-pill"><i class="fas fa-star"></i> {{ $teacher->specialization }}</span>
+                    <span class="es-edit-pill"><i class="fas fa-star"></i> {{ $teacher->specialization }}</span>
                 @endif
             </div>
         </div>
@@ -624,469 +295,368 @@
 <div class="dashboard-acasi">
     <div class="main-content">
 
-        <!-- Messages d'erreur -->
-        @if ($errors->any())
-            <div class="card-moderne mb-lg" style="border-left: 4px solid var(--danger); background-color: rgba(239, 68, 68, 0.05);">
-                <div class="p-lg">
-                    <h4 style="color: var(--danger); margin-bottom: var(--space-md);">
-                        <i class="fas fa-exclamation-triangle me-2"></i>Erreurs de validation
-                    </h4>
-                    <ul style="margin: 0; padding-left: 20px; color: var(--danger);">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
+        @if($errors->any())
+            <div class="ee-alert ee-alert-warning">
+                <i class="fas fa-exclamation-triangle ee-alert-icon"></i>
+                <div>
+                    <strong>Veuillez corriger les erreurs suivantes :</strong>
+                    <ul style="margin: .35rem 0 0; padding-left: 1.15rem;">
+                        @foreach($errors->all() as $err)
+                            <li>{{ $err }}</li>
                         @endforeach
                     </ul>
                 </div>
             </div>
         @endif
 
-        <!-- Messages de succès -->
-        @if (session('success'))
-            <div class="card-moderne mb-lg" style="border-left: 4px solid var(--success); background-color: rgba(16, 185, 129, 0.05);">
-                <div class="p-lg">
-                    <p style="margin: 0; color: var(--success); font-weight: 500;">
-                        <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
-                    </p>
-                </div>
+        @if(session('success'))
+            <div class="ee-alert ee-alert-success">
+                <i class="fas fa-check-circle ee-alert-icon"></i>
+                <div>{{ session('success') }}</div>
             </div>
         @endif
 
-        <div class="form-wizard">
-            <div class="wizard-header">
-                <h2>Modification du Profil Enseignant</h2>
-                <p>Mettez à jour les informations selon vos besoins</p>
-                
-                <div class="wizard-steps">
-                    <div class="wizard-step active" data-step="1">
-                        <div class="wizard-step-number">1</div>
-                        <div class="wizard-step-title">Informations Personnelles</div>
-                        <div class="wizard-step-desc">Identité & Contact</div>
+        <form action="{{ route('esbtp.enseignants.update', ['enseignant' => $teacher->id]) }}"
+              method="POST" id="teacherForm" class="ee-form">
+            @csrf
+            @method('PUT')
+
+            {{-- Section : Identité & contact --}}
+            <div class="ee-card">
+                <div class="ee-card-body">
+                    <div class="ee-section-header">
+                        <div class="ee-section-icon"><i class="fas fa-id-card"></i></div>
+                        <div>
+                            <h3 class="ee-section-title">Identité & contact</h3>
+                            <p class="ee-section-sub">Informations principales de l'enseignant.</p>
+                        </div>
                     </div>
-                    <div class="wizard-step" data-step="2">
-                        <div class="wizard-step-number">2</div>
-                        <div class="wizard-step-title">Qualifications</div>
-                        <div class="wizard-step-desc">Diplômes & Expérience</div>
-                    </div>
-                    <div class="wizard-step" data-step="3">
-                        <div class="wizard-step-number">3</div>
-                        <div class="wizard-step-title">Informations Professionnelles</div>
-                        <div class="wizard-step-desc">Contrat & Affectation</div>
-                    </div>
-                    <div class="wizard-step" data-step="4">
-                        <div class="wizard-step-number">4</div>
-                        <div class="wizard-step-title">Résumé des Modifications</div>
-                        <div class="wizard-step-desc">Finalisation</div>
+
+                    <div class="ee-grid">
+                        <div class="ee-field">
+                            <label for="name" class="ee-label">Nom complet <span class="req">*</span></label>
+                            <input type="text" name="name" id="name" required
+                                   value="{{ old('name', $teacher->user->name ?? '') }}"
+                                   class="ee-input @error('name') is-invalid @enderror">
+                            @error('name') <div class="ee-error">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="ee-field">
+                            <label for="phone" class="ee-label">Téléphone <span class="req">*</span></label>
+                            <input type="tel" name="phone" id="phone" required
+                                   value="{{ old('phone', $teacher->user->phone ?? '') }}"
+                                   class="ee-input @error('phone') is-invalid @enderror">
+                            @error('phone') <div class="ee-error">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="ee-field">
+                            <label for="email" class="ee-label">Email</label>
+                            <input type="email" name="email" id="email"
+                                   value="{{ old('email', $teacher->user->email ?? '') }}"
+                                   class="ee-input @error('email') is-invalid @enderror">
+                            <small class="ee-help">Optionnel, utilisé pour les notifications.</small>
+                            @error('email') <div class="ee-error">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="ee-field">
+                            <label for="titre_academique" class="ee-label">Titre</label>
+                            <select name="titre_academique" id="titre_academique" class="ee-select">
+                                <option value="">—</option>
+                                @foreach($titres_academiques as $key => $value)
+                                    <option value="{{ $key }}" {{ old('titre_academique', $teacher->title) == $key ? 'selected' : '' }}>{{ $value }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div class="ee-field ee-field-wide">
+                            <label for="specialization" class="ee-label">Spécialisation <span class="req">*</span></label>
+                            <input type="text" name="specialization" id="specialization" required
+                                   value="{{ old('specialization', $teacher->specialization) }}"
+                                   placeholder="ex : Mathématiques, Génie civil, Réseaux"
+                                   class="ee-input @error('specialization') is-invalid @enderror">
+                            <small class="ee-help">La discipline principale enseignée.</small>
+                            @error('specialization') <div class="ee-error">{{ $message }}</div> @enderror
+                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="progress-bar">
-                <div class="progress-fill" style="width: 20%"></div>
-            </div>
-
-            <form action="{{ route('esbtp.enseignants.update', ['enseignant' => $teacher->id]) }}" method="POST" enctype="multipart/form-data" id="teacherForm">
-                @csrf
-                @method('PUT')
-                <div class="wizard-content">
-                    
-                    <!-- Étape 1: Informations Personnelles -->
-                    <div class="form-section active" id="step-1">
-                        <div class="form-section-title">
-                            <div class="form-section-icon">
-                                <i class="fas fa-user"></i>
-                            </div>
-                            Informations Personnelles
-                        </div>
-                        
-                        <div class="form-grid">
-                            <div class="form-group-moderne">
-                                <label for="name" class="form-label-moderne">
-                                    Nom complet <span class="text-danger">*</span>
-                                </label>
-                                <input type="text" name="name" id="name" 
-                                       class="form-input-moderne @error('name') is-invalid @enderror"
-                                       value="{{ old('name', $teacher->user->name ?? '') }}" required>
-                                @error('name')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="email" class="form-label-moderne">
-                                    Email <span class="text-danger">*</span>
-                                </label>
-                                <input type="email" name="email" id="email" 
-                                       class="form-input-moderne @error('email') is-invalid @enderror"
-                                       value="{{ old('email', $teacher->user->email ?? '') }}" required>
-                                @error('email')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-help-text">
-                                    Adresse email pour se connecter au système
-                                </div>
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="phone" class="form-label-moderne">
-                                    Téléphone
-                                </label>
-                                <input type="tel" name="phone" id="phone"
-                                       class="form-input-moderne @error('phone') is-invalid @enderror"
-                                       value="{{ old('phone', $teacher->user->phone ?? '') }}">
-                                @error('phone')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="titre_academique" class="form-label-moderne">
-                                    Titre Académique
-                                </label>
-                                <select name="titre_academique" id="titre_academique"
-                                        class="form-select-moderne @error('titre_academique') is-invalid @enderror">
-                                    <option value="">Sélectionnez un titre</option>
-                                    @foreach($titres_academiques as $key => $value)
-                                        <option value="{{ $key }}" {{ old('titre_academique', $teacher->title) == $key ? 'selected' : '' }}>
-                                            {{ $value }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('titre_academique')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="password" class="form-label-moderne">
-                                    Nouveau mot de passe
-                                </label>
-                                <input type="password" name="password" id="password" 
-                                       class="form-input-moderne @error('password') is-invalid @enderror">
-                                @error('password')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-help-text">
-                                    Laissez vide pour conserver l'ancien mot de passe
-                                </div>
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="password_confirmation" class="form-label-moderne">
-                                    Confirmer le nouveau mot de passe
-                                </label>
-                                <input type="password" name="password_confirmation" id="password_confirmation" 
-                                       class="form-input-moderne">
-                            </div>
+            {{-- Section : Régime --}}
+            <div class="ee-card">
+                <div class="ee-card-body">
+                    <div class="ee-section-header">
+                        <div class="ee-section-icon"><i class="fas fa-briefcase"></i></div>
+                        <div>
+                            <h3 class="ee-section-title">Régime d'engagement</h3>
+                            <p class="ee-section-sub">Mode de collaboration avec l'école.</p>
                         </div>
                     </div>
 
-                    <!-- Étape 2: Qualifications -->
-                    <div class="form-section" id="step-2">
-                        <div class="form-section-title">
-                            <div class="form-section-icon">
-                                <i class="fas fa-graduation-cap"></i>
-                            </div>
-                            Qualifications & Expérience
+                    @php
+                        $regimeOptions = [
+                            'vacataire' => ['label' => 'Vacataire', 'desc' => 'Heure facturée, contrat semestriel', 'icon' => 'fa-clock'],
+                            'permanent' => ['label' => 'Permanent', 'desc' => 'Salaire mensuel, charge fixe', 'icon' => 'fa-user-tie'],
+                            'consultant' => ['label' => 'Consultant', 'desc' => 'Mission ponctuelle, expertise', 'icon' => 'fa-handshake'],
+                        ];
+                        $selectedRegime = old('regime', $currentRegime ?? 'vacataire');
+                        $currentDate = old('date_debut_activite', !empty($profileData->date_embauche) ? \Carbon\Carbon::parse($profileData->date_embauche)->format('Y-m-d') : '');
+                        $currentTaux = old('taux_horaire', $profileData->taux_horaire ?? '');
+                        $currentCharge = old('charge_horaire_max_semaine', $profileData->charge_horaire_max_semaine ?? $teacher->teaching_hours_due ?? 18);
+                    @endphp
+
+                    <div class="ee-regime-grid" id="regimeGrid">
+                        @foreach($regimeOptions as $key => $opt)
+                            <label class="ee-regime-card {{ $selectedRegime === $key ? 'active' : '' }}" data-regime="{{ $key }}">
+                                <input type="radio" name="regime" value="{{ $key }}" {{ $selectedRegime === $key ? 'checked' : '' }}>
+                                <div class="ee-regime-icon"><i class="fas {{ $opt['icon'] }}"></i></div>
+                                <p class="ee-regime-name">{{ $opt['label'] }}</p>
+                                <p class="ee-regime-desc">{{ $opt['desc'] }}</p>
+                            </label>
+                        @endforeach
+                    </div>
+
+                    <div class="ee-grid" style="margin-top: 1.25rem;">
+                        <div class="ee-field ee-conditional {{ $selectedRegime !== 'permanent' ? 'show' : '' }}" id="tauxField">
+                            <label for="taux_horaire" class="ee-label">Taux horaire (FCFA/heure)</label>
+                            <input type="number" name="taux_horaire" id="taux_horaire"
+                                   value="{{ $currentTaux }}"
+                                   min="0" step="500"
+                                   class="ee-input @error('taux_horaire') is-invalid @enderror">
+                            @error('taux_horaire') <div class="ee-error">{{ $message }}</div> @enderror
                         </div>
-                        
-                        <div class="form-grid">
-                            <div class="form-group-moderne">
-                                <label for="specialization" class="form-label-moderne">
-                                    Spécialisation <span class="text-danger">*</span>
-                                </label>
-                                <input type="text" name="specialization" id="specialization" 
-                                       class="form-input-moderne @error('specialization') is-invalid @enderror"
-                                       value="{{ old('specialization', $teacher->specialization) }}" required
-                                       placeholder="ex: Développement Web, Réseaux Informatiques, Base de Données">
-                                @error('specialization')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                                <div class="form-help-text">
-                                    Domaine d'expertise principal
-                                </div>
+
+                        <div class="ee-field ee-conditional {{ $selectedRegime === 'permanent' ? 'show' : '' }}" id="chargeField">
+                            <label for="charge_horaire_max_semaine" class="ee-label">Charge hebdomadaire (h/sem)</label>
+                            <input type="number" name="charge_horaire_max_semaine" id="charge_horaire_max_semaine"
+                                   value="{{ $currentCharge }}"
+                                   min="1" max="60"
+                                   class="ee-input @error('charge_horaire_max_semaine') is-invalid @enderror">
+                            @error('charge_horaire_max_semaine') <div class="ee-error">{{ $message }}</div> @enderror
+                        </div>
+
+                        <div class="ee-field">
+                            <label for="date_debut_activite" class="ee-label">Date de début d'activité</label>
+                            <input type="date" name="date_debut_activite" id="date_debut_activite"
+                                   value="{{ $currentDate }}"
+                                   class="ee-input @error('date_debut_activite') is-invalid @enderror">
+                            @error('date_debut_activite') <div class="ee-error">{{ $message }}</div> @enderror
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Section : Profil détaillé (collapsable) --}}
+            <div class="ee-card" data-collapsed="{{ $profileData && ($profileData->diplome_principal || $profileData->grade_academique) ? 'false' : 'true' }}" id="profileCard">
+                <div class="ee-card-body">
+                    <button type="button" class="ee-collapse-toggle" id="profileToggle" aria-expanded="{{ $profileData && ($profileData->diplome_principal || $profileData->grade_academique) ? 'true' : 'false' }}">
+                        <div class="ee-section-icon"><i class="fas fa-graduation-cap"></i></div>
+                        <div>
+                            <h3 class="ee-section-title">Profil détaillé</h3>
+                            <p class="ee-section-sub">Diplômes, grade académique, biographie.</p>
+                        </div>
+                        <i class="fas fa-chevron-down ee-toggle-chevron"></i>
+                    </button>
+
+                    <div class="ee-collapse-body">
+                        <div class="ee-grid">
+                            <div class="ee-field">
+                                <label for="grade_academique" class="ee-label">Grade académique</label>
+                                <select name="grade_academique" id="grade_academique" class="ee-select">
+                                    <option value="">—</option>
+                                    @foreach($grades_academiques as $key => $value)
+                                        <option value="{{ $key }}" {{ old('grade_academique', $teacher->grade ?? ($profileData->grade_academique ?? '')) == $key ? 'selected' : '' }}>{{ $value }}</option>
+                                    @endforeach
+                                </select>
                             </div>
 
-                            <div class="form-group-moderne">
-                                <label for="bio" class="form-label-moderne">
-                                    Biographie
-                                </label>
-                                <textarea name="bio" id="bio" 
-                                          class="form-textarea-moderne @error('bio') is-invalid @enderror"
-                                          placeholder="Décrivez votre parcours, vos centres d'intérêt...">{{ old('bio', $teacher->bio) }}</textarea>
-                                @error('bio')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                            <div class="ee-field">
+                                <label for="diplome_principal" class="ee-label">Diplôme principal</label>
+                                <input type="text" name="diplome_principal" id="diplome_principal"
+                                       value="{{ old('diplome_principal', $profileData->diplome_principal ?? '') }}"
+                                       class="ee-input">
                             </div>
 
-                            <div class="form-group-moderne">
-                                <label for="website" class="form-label-moderne">
-                                    Site web / Portfolio
-                                </label>
-                                <input type="url" name="website" id="website" 
-                                       class="form-input-moderne @error('website') is-invalid @enderror"
+                            <div class="ee-field">
+                                <label for="universite_diplome" class="ee-label">Université / Institut</label>
+                                <input type="text" name="universite_diplome" id="universite_diplome"
+                                       value="{{ old('universite_diplome', $profileData->universite_diplome ?? '') }}"
+                                       class="ee-input">
+                            </div>
+
+                            <div class="ee-field">
+                                <label for="annee_diplome" class="ee-label">Année d'obtention</label>
+                                <input type="number" name="annee_diplome" id="annee_diplome"
+                                       value="{{ old('annee_diplome', $profileData->annee_diplome ?? '') }}"
+                                       min="1950" max="{{ date('Y') }}"
+                                       class="ee-input">
+                            </div>
+
+                            <div class="ee-field ee-field-wide">
+                                <label for="bio" class="ee-label">Biographie</label>
+                                <textarea name="bio" id="bio" rows="3"
+                                          class="ee-textarea @error('bio') is-invalid @enderror">{{ old('bio', $teacher->bio) }}</textarea>
+                                @error('bio') <div class="ee-error">{{ $message }}</div> @enderror
+                            </div>
+
+                            <div class="ee-field ee-field-wide">
+                                <label for="website" class="ee-label">Site web / Portfolio</label>
+                                <input type="url" name="website" id="website"
                                        value="{{ old('website', $teacher->website) }}"
-                                       placeholder="https://monsite.com">
-                                @error('website')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
+                                       placeholder="https://"
+                                       class="ee-input @error('website') is-invalid @enderror">
+                                @error('website') <div class="ee-error">{{ $message }}</div> @enderror
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Étape 3: Informations Professionnelles -->
-                    <div class="form-section" id="step-3">
-                        <div class="form-section-title">
-                            <div class="form-section-icon">
-                                <i class="fas fa-briefcase"></i>
-                            </div>
-                            Informations Professionnelles
-                        </div>
-                        
-                        <div class="form-grid">
-                            <div class="form-group-moderne">
-                                <label for="department_id" class="form-label-moderne">
-                                    Département <span class="text-danger">*</span>
-                                </label>
-                                <select name="department_id" id="department_id" 
-                                        class="form-select-moderne @error('department_id') is-invalid @enderror" required>
-                                    <option value="">Sélectionnez un département</option>
-                                    @foreach($departments as $department)
-                                        <option value="{{ $department->id }}" 
-                                                {{ old('department_id', $teacher->department_id) == $department->id ? 'selected' : '' }}>
-                                            {{ $department->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('department_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="laboratory_id" class="form-label-moderne">
-                                    Laboratoire
-                                </label>
-                                <select name="laboratory_id" id="laboratory_id" 
-                                        class="form-select-moderne @error('laboratory_id') is-invalid @enderror">
-                                    <option value="">Aucun laboratoire</option>
-                                    @foreach($laboratories as $laboratory)
-                                        <option value="{{ $laboratory->id }}" 
-                                                {{ old('laboratory_id', $teacher->laboratory_id) == $laboratory->id ? 'selected' : '' }}>
-                                            {{ $laboratory->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('laboratory_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="status" class="form-label-moderne">
-                                    Statut <span class="text-danger">*</span>
-                                </label>
-                                <select name="status" id="status" 
-                                        class="form-select-moderne @error('status') is-invalid @enderror" required>
-                                    <option value="active" {{ old('status', $teacher->status) == 'active' ? 'selected' : '' }}>
-                                        Actif
-                                    </option>
-                                    <option value="inactive" {{ old('status', $teacher->status) == 'inactive' ? 'selected' : '' }}>
-                                        Inactif
-                                    </option>
-                                </select>
-                                @error('status')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group-moderne">
-                                <label for="teaching_hours_due" class="form-label-moderne">
-                                    Heures d'enseignement dues
-                                </label>
-                                <input type="number" name="teaching_hours_due" id="teaching_hours_due" 
-                                       class="form-input-moderne @error('teaching_hours_due') is-invalid @enderror"
-                                       value="{{ old('teaching_hours_due', (int)$teacher->teaching_hours_due) }}"
-                                       min="0" max="80">
-                                @error('teaching_hours_due')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Étape 4: Finalisation -->
-                    <div class="form-section" id="step-4">
-                        <div class="form-section-title">
-                            <div class="form-section-icon">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                            Résumé des Modifications
-                        </div>
-                        
-                        <div class="form-group-moderne">
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle me-2"></i>
-                                Vérifiez les informations saisies avant de valider les modifications.
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="wizard-actions">
-                    <div class="actions-left">
-                        <a href="{{ route('esbtp.personnel.unified.index') }}" class="btn-acasi secondary">
-                            <i class="fas fa-times me-1"></i>Annuler
-                        </a>
-                        <button type="button" class="btn-acasi secondary" id="prevBtn" onclick="changeStep(-1)" style="display: none;">
-                            <i class="fas fa-arrow-left me-1"></i>Précédent
-                        </button>
-                    </div>
-                    
-                    <div class="actions-right">
-                        <button type="button" class="btn-acasi primary" id="nextBtn" onclick="changeStep(1)">
-                            Suivant<i class="fas fa-arrow-right ms-1"></i>
-                        </button>
-                        
-                        <button type="submit" class="btn-acasi success" id="submitBtn" style="display: none;">
-                            <i class="fas fa-save me-1"></i>Mettre à jour
-                        </button>
                     </div>
                 </div>
-            </form>
-        </div>
+            </div>
+
+            {{-- Section : Disponibilités --}}
+            <div class="ee-card">
+                <div class="ee-card-body">
+                    <div class="ee-section-header">
+                        <div class="ee-section-icon"><i class="fas fa-calendar-week"></i></div>
+                        <div>
+                            <h3 class="ee-section-title">Disponibilités hebdomadaires</h3>
+                            <p class="ee-section-sub">Cliquez sur un créneau pour faire défiler : indisponible → disponible → préféré.</p>
+                        </div>
+                    </div>
+
+                    @php
+                        $hours = range(8, 18);
+                        $days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
+                        $dayLabels = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+                    @endphp
+
+                    <table class="ee-avail-table">
+                        <thead>
+                            <tr>
+                                <th></th>
+                                @foreach($dayLabels as $label)
+                                    <th>{{ $label }}</th>
+                                @endforeach
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($hours as $i => $hour)
+                                <tr>
+                                    <td class="ee-time">{{ sprintf('%02d:00', $hour) }}</td>
+                                    @foreach($days as $dayIdx => $day)
+                                        @php
+                                            $status = $availabilityData[$day][$i] ?? 'unavailable';
+                                            $key = $dayIdx . '_' . $hour;
+                                        @endphp
+                                        <td>
+                                            <div class="ee-avail-cell {{ $status }}"
+                                                 data-key="{{ $key }}"
+                                                 data-status="{{ $status }}"></div>
+                                            <input type="hidden" name="availability[{{ $key }}]" value="{{ $status }}">
+                                        </td>
+                                    @endforeach
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+
+                    <div class="ee-avail-legend">
+                        <span><i class="ee-avail-legend-dot unavailable"></i>Indisponible</span>
+                        <span><i class="ee-avail-legend-dot available"></i>Disponible</span>
+                        <span><i class="ee-avail-legend-dot preferred"></i>Préféré</span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Section : Statut --}}
+            <div class="ee-card">
+                <div class="ee-card-body" style="display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;">
+                    <div class="ee-section-header" style="margin-bottom: 0;">
+                        <div class="ee-section-icon" style="background: linear-gradient(135deg, #10b981, #34d399);"><i class="fas fa-toggle-on"></i></div>
+                        <div>
+                            <h3 class="ee-section-title">Statut du compte</h3>
+                            <p class="ee-section-sub">Désactiver bloque l'accès à l'application.</p>
+                        </div>
+                    </div>
+                    <label class="ee-status-toggle">
+                        <input type="checkbox" name="status_toggle" id="statusToggle" {{ ($teacher->status === 'active') ? 'checked' : '' }}>
+                        <span class="ee-status-switch"></span>
+                        <span class="ee-status-label" id="statusLabel">{{ $teacher->status === 'active' ? 'Actif' : 'Inactif' }}</span>
+                    </label>
+                    <input type="hidden" name="status" id="statusHidden" value="{{ $teacher->status }}">
+                </div>
+            </div>
+
+            <div class="ee-actions">
+                <a href="{{ route('esbtp.enseignants.show', ['enseignant' => $teacher->id]) }}" class="btn-acasi secondary">
+                    <i class="fas fa-times"></i> Annuler
+                </a>
+                <div class="ee-actions-right">
+                    <button type="submit" class="btn-acasi primary">
+                        <i class="fas fa-check me-1"></i> Enregistrer les modifications
+                    </button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 @endsection
 
 @push('scripts')
 <script>
-let currentStep = 1;
-const totalSteps = 4;
+(function() {
+    'use strict';
 
-function changeStep(direction) {
-    const newStep = currentStep + direction;
-    
-    if (newStep < 1 || newStep > totalSteps) {
-        return;
-    }
-    
-    // Validation avant de passer à l'étape suivante
-    if (direction > 0 && !validateStep(currentStep)) {
-        return;
-    }
-    
-    // Masquer l'étape actuelle
-    document.getElementById(`step-${currentStep}`).classList.remove('active');
-    document.querySelector(`[data-step="${currentStep}"]`).classList.remove('active');
-    
-    // Marquer l'étape comme terminée si on avance
-    if (direction > 0) {
-        document.querySelector(`[data-step="${currentStep}"]`).classList.add('completed');
-    }
-    
-    // Afficher la nouvelle étape
-    currentStep = newStep;
-    document.getElementById(`step-${currentStep}`).classList.add('active');
-    document.querySelector(`[data-step="${currentStep}"]`).classList.add('active');
-    
-    // Mettre à jour les boutons
-    updateButtons();
-    
-    // Mettre à jour la barre de progression
-    updateProgress();
-}
+    // ─── Régime cards ──────────────────────────────────────────────
+    const regimeGrid = document.getElementById('regimeGrid');
+    const tauxField = document.getElementById('tauxField');
+    const chargeField = document.getElementById('chargeField');
 
-function updateButtons() {
-    const prevBtn = document.getElementById('prevBtn');
-    const nextBtn = document.getElementById('nextBtn');
-    const submitBtn = document.getElementById('submitBtn');
-    
-    prevBtn.style.display = currentStep > 1 ? 'block' : 'none';
-    nextBtn.style.display = currentStep < totalSteps ? 'block' : 'none';
-    submitBtn.style.display = currentStep === totalSteps ? 'block' : 'none';
-}
-
-function updateProgress() {
-    const progress = (currentStep / totalSteps) * 100;
-    document.querySelector('.progress-fill').style.width = progress + '%';
-}
-
-function validateStep(step) {
-    const stepElement = document.getElementById(`step-${step}`);
-    const requiredFields = stepElement.querySelectorAll('[required]');
-    
-    for (let field of requiredFields) {
-        if (!field.value.trim()) {
-            field.focus();
-            field.classList.add('is-invalid');
-            return false;
-        } else {
-            field.classList.remove('is-invalid');
-        }
-    }
-    
-    return true;
-}
-
-// Validation en temps réel
-document.querySelectorAll('input[required], select[required]').forEach(field => {
-    field.addEventListener('blur', function() {
-        if (!this.value.trim()) {
-            this.classList.add('is-invalid');
-        } else {
-            this.classList.remove('is-invalid');
-        }
-    });
-});
-
-// Navigation par les étapes
-document.querySelectorAll('.wizard-step').forEach((step, index) => {
-    step.addEventListener('click', function() {
-        const targetStep = index + 1;
-        if (targetStep <= currentStep + 1) {
-            changeStep(targetStep - currentStep);
-        }
-    });
-});
-
-// Gestion des mots de passe
-document.getElementById('password').addEventListener('input', function() {
-    const confirmField = document.getElementById('password_confirmation');
-    if (this.value) {
-        confirmField.required = true;
-        confirmField.parentElement.querySelector('.form-label-moderne').innerHTML = 
-            'Confirmer le nouveau mot de passe <span class="text-danger">*</span>';
-    } else {
-        confirmField.required = false;
-        confirmField.parentElement.querySelector('.form-label-moderne').innerHTML = 
-            'Confirmer le nouveau mot de passe';
-    }
-});
-
-// Initialisation
-updateButtons();
-updateProgress();
-
-// Validation du formulaire
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('teacherForm');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            @if(config('app.debug'))
-            debugLog('Étape actuelle:', currentStep);
-            debugLog('Total étapes:', totalSteps);
-            @endif
-
-            // Validation finale avant soumission
-            if (currentStep !== totalSteps) {
-                e.preventDefault();
-                alert('Veuillez compléter toutes les étapes du formulaire avant de soumettre');
-                return false;
-            }
+    function applyRegime(regime) {
+        regimeGrid.querySelectorAll('.ee-regime-card').forEach(c => {
+            c.classList.toggle('active', c.dataset.regime === regime);
         });
+        tauxField.classList.toggle('show', regime !== 'permanent');
+        chargeField.classList.toggle('show', regime === 'permanent');
     }
-});
+    regimeGrid.querySelectorAll('.ee-regime-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const radio = card.querySelector('input[type="radio"]');
+            radio.checked = true;
+            applyRegime(card.dataset.regime);
+        });
+    });
 
+    // ─── Profil détaillé (collapse) ────────────────────────────────
+    const profileToggle = document.getElementById('profileToggle');
+    const profileCard = document.getElementById('profileCard');
+    profileToggle.addEventListener('click', () => {
+        const collapsed = profileCard.dataset.collapsed === 'true';
+        profileCard.dataset.collapsed = collapsed ? 'false' : 'true';
+        profileToggle.setAttribute('aria-expanded', collapsed ? 'true' : 'false');
+    });
+
+    // ─── Disponibilités : click cycle ───────────────────────────────
+    const cycle = ['unavailable', 'available', 'preferred'];
+    document.querySelectorAll('.ee-avail-cell').forEach(cell => {
+        cell.addEventListener('click', () => {
+            const current = cell.dataset.status;
+            const next = cycle[(cycle.indexOf(current) + 1) % cycle.length];
+            cell.dataset.status = next;
+            cell.classList.remove('unavailable', 'available', 'preferred');
+            cell.classList.add(next);
+            const hidden = cell.parentElement.querySelector('input[type="hidden"]');
+            if (hidden) hidden.value = next;
+        });
+    });
+
+    // ─── Statut toggle ──────────────────────────────────────────────
+    const statusToggle = document.getElementById('statusToggle');
+    const statusLabel = document.getElementById('statusLabel');
+    const statusHidden = document.getElementById('statusHidden');
+    statusToggle.addEventListener('change', () => {
+        const active = statusToggle.checked;
+        statusHidden.value = active ? 'active' : 'inactive';
+        statusLabel.textContent = active ? 'Actif' : 'Inactif';
+    });
+})();
 </script>
-@endpush 
+@endpush

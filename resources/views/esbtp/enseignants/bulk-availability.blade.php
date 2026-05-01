@@ -488,9 +488,6 @@
                                 </div>
                                 <div class="text-muted small">
                                     {{ $enseignant->specialization ?? 'Spécialisation non définie' }}
-                                    @if($enseignant->department)
-                                        · {{ $enseignant->department->name }}
-                                    @endif
                                     · Matricule: {{ $enseignant->matricule ?? 'N/A' }}
                                 </div>
                             </div>
