@@ -1328,7 +1328,7 @@ Route::prefix('secretaires')->name('secretaires.')->middleware(['auth', 'permiss
 });
 
 // Routes pour la gestion des enseignants
-Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.access', 'permission:module.enseignants.access'])->group(function () {
+Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.access', 'permission:module.enseignants.access', 'throttle:60,1'])->group(function () {
     Route::get('enseignants/duplicates', [ESBTPEnseignantController::class, 'duplicates'])->name('enseignants.duplicates');
     Route::post('enseignants/quick-create', [ESBTPEnseignantController::class, 'quickStore'])->name('enseignants.quick-create');
     Route::get('enseignants/bulk-availability', [ESBTPEnseignantController::class, 'bulkAvailability'])->name('enseignants.bulk-availability');
@@ -1339,7 +1339,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.ac
     Route::post('enseignants/{teacher}/assign-matieres', [ESBTPEnseignantController::class, 'assignMatieres'])->name('enseignants.assign-matieres');
     Route::post('enseignants/{teacher}/toggle-status', [ESBTPEnseignantController::class, 'toggleStatus'])->name('enseignants.toggleStatus');
     Route::post('enseignants/{enseignant}/update-availability', [ESBTPEnseignantController::class, 'updateAvailability'])->name('enseignants.update-availability');
-    Route::post('enseignants/{enseignant}/reset-password', [ESBTPEnseignantController::class, 'resetPassword'])->name('enseignants.reset-password');
+    Route::post('enseignants/{enseignant}/reset-password', [ESBTPEnseignantController::class, 'resetPassword'])->middleware('throttle:5,1')->name('enseignants.reset-password');
     Route::resource('specialties', ESBTPSpecialtyController::class);
     Route::put('specialties/{id}/restore', [ESBTPSpecialtyController::class, 'restore'])->name('specialties.restore');
     Route::resource('continuing-education', ESBTPContinuingEducationController::class);

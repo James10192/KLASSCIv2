@@ -342,8 +342,8 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                         </div>
 
                         <div class="ee-field">
-                            <label for="phone" class="ee-label">Téléphone <span class="req">*</span></label>
-                            <input type="tel" name="phone" id="phone" required
+                            <label for="phone" class="ee-label">Téléphone</label>
+                            <input type="tel" name="phone" id="phone"
                                    value="{{ old('phone', $teacher->user->phone ?? '') }}"
                                    class="ee-input @error('phone') is-invalid @enderror">
                             @error('phone') <div class="ee-error">{{ $message }}</div> @enderror
