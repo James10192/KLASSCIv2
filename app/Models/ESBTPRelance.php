@@ -14,20 +14,30 @@ class ESBTPRelance extends Model
 
     protected $fillable = [
         'etudiant_id',
+        'inscription_id',
         'facture_id',
         'type',
+        'canal',
         'niveau',
         'template_utilise',
         'contenu_message',
         'date_envoi',
+        'confirmee_a',
         'statut',
-        'response_data'
+        'declenchee_par',
+        'response_data',
     ];
 
     protected $casts = [
         'date_envoi' => 'datetime',
-        'response_data' => 'json'
+        'confirmee_a' => 'datetime',
+        'response_data' => 'json',
     ];
+
+    public const STATUT_INTENT = 'intent';
+    public const STATUT_ENVOYEE = 'envoyee';
+    public const STATUT_PLANIFIEE = 'planifiee';
+    public const STATUT_ECHEC = 'echec';
 
     /**
      * Relations

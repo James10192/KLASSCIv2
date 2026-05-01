@@ -303,6 +303,44 @@ return [
             'icon' => 'fa-edit',
             'aliases' => ['edit_filieres'],
         ],
+        'filieres.delete' => [
+            'label' => 'Supprimer une filière',
+            'group' => 'Académique',
+            'icon' => 'fa-trash',
+            'aliases' => ['delete_filieres'],
+        ],
+
+        // ===== Années universitaires =====
+        'annees.view' => [
+            'label' => 'Voir les années universitaires',
+            'group' => 'Académique',
+            'icon' => 'fa-calendar-alt',
+            'aliases' => ['view_annees_universitaires'],
+        ],
+        'annees.create' => [
+            'label' => 'Créer une année universitaire',
+            'group' => 'Académique',
+            'icon' => 'fa-plus',
+            'aliases' => ['create_annees_universitaires'],
+        ],
+        'annees.edit' => [
+            'label' => 'Modifier une année universitaire',
+            'group' => 'Académique',
+            'icon' => 'fa-edit',
+            'aliases' => ['edit_annees_universitaires'],
+        ],
+        'annees.delete' => [
+            'label' => 'Supprimer une année universitaire',
+            'group' => 'Académique',
+            'icon' => 'fa-trash',
+            'aliases' => ['delete_annees_universitaires'],
+        ],
+        'annees.set_current' => [
+            'label' => 'Définir l\'année universitaire en cours',
+            'group' => 'Académique',
+            'icon' => 'fa-star',
+            'aliases' => ['set_current_annee_universitaire'],
+        ],
 
         // ===== Niveaux d'études =====
         'niveaux.view' => [
@@ -635,6 +673,11 @@ return [
             'label' => 'Configurer les seuils & poids du moteur analytics',
             'group' => 'Comptabilité',
             'icon' => 'fa-sliders-h',
+        ],
+        'comptabilite.recouvrement.access' => [
+            'label' => 'Accéder à la page Recouvrement quotidien (liste actionnable)',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-hand-holding-usd',
         ],
         'comptabilite.relances.send' => [
             'label' => 'Envoyer des relances de paiement',
@@ -1118,6 +1161,7 @@ return [
             'comptabilite.frais.view', 'comptabilite.frais.configure',
             'comptabilite.analytics.view', 'comptabilite.analytics.refresh',
             'comptabilite.analytics.run_now', 'comptabilite.analytics.configure',
+            'comptabilite.recouvrement.access',
             'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.validate',
             'paiements.export',  // Lot 15
             'frais.view', 'frais.create', 'frais.edit', 'frais.configure',

@@ -1395,6 +1395,19 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
         ->name('analytics.settings.update')
         ->middleware(['permission:comptabilite.analytics.configure', 'throttle:20,1']);
 
+    // Recouvrement quotidien (Sprint 11 — RecouvrementOptimizer + WhatsApp deeplinks)
+    Route::get('/recouvrement', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'index'])
+        ->name('recouvrement.index');
+    Route::post('/recouvrement/log-intent', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'logIntent'])
+        ->name('recouvrement.log-intent')
+        ->middleware('throttle:120,1');
+    Route::post('/recouvrement/confirm-sent', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'confirmSent'])
+        ->name('recouvrement.confirm-sent')
+        ->middleware('throttle:120,1');
+    Route::post('/recouvrement/mark-done', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'markDone'])
+        ->name('recouvrement.mark-done')
+        ->middleware('throttle:120,1');
+
     // Gestion des frais de scolarité
     Route::get('/frais-scolarite', [ESBTPComptabiliteReportController::class, 'fraisScolarite'])->name('frais-scolarite');
     Route::get('/frais-scolarite/create', [ESBTPComptabiliteFraisController::class, 'createFraisScolarite'])->name('frais-scolarite.create');

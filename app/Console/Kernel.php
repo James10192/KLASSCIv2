@@ -9,6 +9,7 @@ use App\Jobs\SauvegardeDataJob;
 use App\Jobs\PlanifierRelancesJob;
 use App\Jobs\ComputeAnalyticsPredictionsJob;
 use App\Jobs\DetectAnalyticsAnomaliesJob;
+use App\Jobs\EvaluateAnalyticsAccuracyJob;
 
 class Kernel extends ConsoleKernel
 {
@@ -186,6 +187,14 @@ class Kernel extends ConsoleKernel
             ->everySixHours()
             ->name('analytics-anomaly-detection')
             ->description('Détection anomalies revenue + paiements outliers + notification admin/comptables')
+            ->onOneServer();
+
+        // Évaluation rétrospective de la précision des prédictions (1er du mois 5h)
+        $schedule->job(new EvaluateAnalyticsAccuracyJob)
+            ->monthlyOn(1, '05:00')
+            ->timezone('Africa/Abidjan')
+            ->name('analytics-accuracy-evaluation')
+            ->description('Comparaison predicted vs actual du mois écoulé + update accuracy_score')
             ->onOneServer();
     }
 

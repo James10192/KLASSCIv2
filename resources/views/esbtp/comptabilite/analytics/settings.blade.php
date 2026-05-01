@@ -184,6 +184,29 @@
             </div>
         </div>
 
+        {{-- ===== Recouvrement / WhatsApp template ===== --}}
+        <div class="an-card mt-4">
+            <div class="an-section-header">
+                <div class="an-section-icon"><i class="fab fa-whatsapp"></i></div>
+                <div>
+                    <h2 class="an-section-title">Modèle de message Recouvrement</h2>
+                    <p class="an-section-sub">Template WhatsApp pré-rempli sur la page Recouvrement quotidien. Variables disponibles : <code>{prenom}</code>, <code>{nom}</code>, <code>{solde}</code>, <code>{retard}</code>, <code>{ecole}</code>.</p>
+                </div>
+            </div>
+
+            <div class="an-form-grid">
+                <div class="an-field" style="grid-column: 1 / -1;">
+                    <label class="an-field-label">Message WhatsApp
+                        <span class="an-field-help">Sera ouvert pré-rempli quand le comptable clique sur le bouton WhatsApp d'un étudiant</span>
+                    </label>
+                    <textarea name="recouvrement[whatsapp_template]" rows="4" class="an-input" maxlength="1000">{{ old('recouvrement.whatsapp_template', $settings['recouvrement']['whatsapp_template']) }}</textarea>
+                    <div class="an-field-help" style="margin-top: .5rem;">
+                        Recommandé : <em>« {{ $defaults['recouvrement']['whatsapp_template'] }} »</em>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="an-form-actions mt-4">
             <button type="submit" class="btn-acasi primary">
                 <i class="fas fa-save me-1"></i> Enregistrer les paramètres
