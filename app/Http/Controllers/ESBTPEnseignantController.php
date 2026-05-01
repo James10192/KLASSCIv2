@@ -916,9 +916,9 @@ class ESBTPEnseignantController extends Controller
     {
         $validated = $request->validate([
             "name" => "required|string|max:255",
-            "phone" => "required|string|max:20",
             "specialization" => "required|string|max:255",
 
+            "phone" => "nullable|string|max:20",
             "email" => "nullable|string|email|max:255|unique:users,email," . $enseignant->user_id,
             "titre_academique" => "nullable|string|max:10",
             "grade_academique" => "nullable|string|max:50",
