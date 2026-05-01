@@ -398,10 +398,10 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                             'permanent' => ['label' => 'Permanent', 'desc' => 'Salaire mensuel, charge fixe', 'icon' => 'fa-user-tie'],
                             'consultant' => ['label' => 'Consultant', 'desc' => 'Mission ponctuelle, expertise', 'icon' => 'fa-handshake'],
                         ];
-                        $selectedRegime = old('regime', $currentRegime ?? 'vacataire');
-                        $currentDate = old('date_debut_activite', !empty($profileData->date_embauche) ? \Carbon\Carbon::parse($profileData->date_embauche)->format('Y-m-d') : '');
-                        $currentTaux = old('taux_horaire', $profileData->taux_horaire ?? '');
-                        $currentCharge = old('charge_horaire_max_semaine', $profileData->charge_horaire_max_semaine ?? $teacher->teaching_hours_due ?? 18);
+                        $selectedRegime = old('regime', $teacher->regime ?? 'vacataire');
+                        $currentDate = old('date_debut_activite', $teacher->date_debut_activite ? $teacher->date_debut_activite->format('Y-m-d') : '');
+                        $currentTaux = old('taux_horaire', $teacher->taux_horaire ?? '');
+                        $currentCharge = old('charge_horaire_max_semaine', $teacher->teaching_hours_due ?? 18);
                     @endphp
 
                     <div class="ee-regime-grid" id="regimeGrid">
@@ -446,9 +446,9 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
             </div>
 
             {{-- Section : Profil détaillé (collapsable) --}}
-            <div class="ee-card" data-collapsed="{{ $profileData && ($profileData->diplome_principal || $profileData->grade_academique) ? 'false' : 'true' }}" id="profileCard">
+            <div class="ee-card" data-collapsed="{{ ($teacher->diplome_principal || $teacher->grade) ? 'false' : 'true' }}" id="profileCard">
                 <div class="ee-card-body">
-                    <button type="button" class="ee-collapse-toggle" id="profileToggle" aria-expanded="{{ $profileData && ($profileData->diplome_principal || $profileData->grade_academique) ? 'true' : 'false' }}">
+                    <button type="button" class="ee-collapse-toggle" id="profileToggle" aria-expanded="{{ ($teacher->diplome_principal || $teacher->grade) ? 'true' : 'false' }}">
                         <div class="ee-section-icon"><i class="fas fa-graduation-cap"></i></div>
                         <div>
                             <h3 class="ee-section-title">Profil détaillé</h3>
@@ -464,7 +464,7 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                                 <select name="grade_academique" id="grade_academique" class="ee-select">
                                     <option value="">—</option>
                                     @foreach($grades_academiques as $key => $value)
-                                        <option value="{{ $key }}" {{ old('grade_academique', $teacher->grade ?? ($profileData->grade_academique ?? '')) == $key ? 'selected' : '' }}>{{ $value }}</option>
+                                        <option value="{{ $key }}" {{ old('grade_academique', $teacher->grade ?? '') == $key ? 'selected' : '' }}>{{ $value }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -472,21 +472,21 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                             <div class="ee-field">
                                 <label for="diplome_principal" class="ee-label">Diplôme principal</label>
                                 <input type="text" name="diplome_principal" id="diplome_principal"
-                                       value="{{ old('diplome_principal', $profileData->diplome_principal ?? '') }}"
+                                       value="{{ old('diplome_principal', $teacher->diplome_principal ?? '') }}"
                                        class="ee-input">
                             </div>
 
                             <div class="ee-field">
                                 <label for="universite_diplome" class="ee-label">Université / Institut</label>
                                 <input type="text" name="universite_diplome" id="universite_diplome"
-                                       value="{{ old('universite_diplome', $profileData->universite_diplome ?? '') }}"
+                                       value="{{ old('universite_diplome', $teacher->universite_diplome ?? '') }}"
                                        class="ee-input">
                             </div>
 
                             <div class="ee-field">
                                 <label for="annee_diplome" class="ee-label">Année d'obtention</label>
                                 <input type="number" name="annee_diplome" id="annee_diplome"
-                                       value="{{ old('annee_diplome', $profileData->annee_diplome ?? '') }}"
+                                       value="{{ old('annee_diplome', $teacher->annee_diplome ?? '') }}"
                                        min="1950" max="{{ date('Y') }}"
                                        class="ee-input">
                             </div>
