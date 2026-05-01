@@ -2180,3 +2180,25 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
     Route::put('bulletins/{bulletin}/toggle-publication', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'togglePublication'])->name('bulletins.toggle-publication');
     Route::delete('bulletins/{bulletin}', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'destroy'])->name('bulletins.destroy');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Chat interactif + Notifs workflow (issue #298)
+|--------------------------------------------------------------------------
+| Page /messages : conversations DM + groupe + workflow (action cards inline).
+| Notifs in-app pour étapes workflow inscription→paiement→validation.
+*/
+Route::middleware(['auth', 'paywall'])->prefix('messages')->name('chat.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\ChatController::class, 'index'])->name('index');
+    Route::get('/conversations/{conversation}', [\App\Http\Controllers\ChatController::class, 'show'])
+        ->whereNumber('conversation')
+        ->name('show');
+    Route::post('/conversations/{conversation}/messages', [\App\Http\Controllers\ChatController::class, 'send'])
+        ->whereNumber('conversation')
+        ->name('send')
+        ->middleware('throttle:60,1');
+    Route::post('/dm/start', [\App\Http\Controllers\ChatController::class, 'startDm'])->name('dm.start');
+    Route::get('/users/search', [\App\Http\Controllers\ChatController::class, 'searchUsers'])->name('users.search');
+    Route::get('/notifications', [\App\Http\Controllers\ChatController::class, 'notifications'])->name('notifications');
+    Route::post('/notifications/{id}/read', [\App\Http\Controllers\ChatController::class, 'markNotificationRead'])->name('notifications.read');
+});
