@@ -78,14 +78,79 @@
 .ms-composer button:hover:not(:disabled) { background: var(--ms-primary-d); }
 .ms-composer button:disabled { opacity: .5; cursor: not-allowed; }
 
-/* New DM modal */
-.ms-modal-search { padding: 0; }
-.ms-modal-search input { width: 100%; padding: .75rem 1rem; border: 1px solid var(--ms-border); border-radius: 10px; font-size: .92rem; }
-.ms-modal-search input:focus { outline: none; border-color: var(--ms-primary); }
-.ms-search-result { padding: .65rem 1rem; cursor: pointer; border-radius: 8px; }
-.ms-search-result:hover { background: rgba(4,83,203,.06); }
-.ms-search-result strong { display: block; color: var(--ms-text); font-size: .9rem; }
-.ms-search-result small { color: var(--ms-muted); font-size: .78rem; }
+/* New DM modal — premium redesign */
+.ms-modal .modal-dialog { max-width: 560px; }
+.ms-modal .modal-content { border: none; border-radius: 18px; overflow: hidden; box-shadow: 0 24px 60px rgba(15,23,42,.18); }
+.ms-modal .modal-header {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 50%, #3b7ddb 100%);
+    color: #fff; padding: 1.5rem 1.75rem; border-bottom: none; align-items: flex-start;
+}
+.ms-modal-icon {
+    width: 44px; height: 44px; border-radius: 12px;
+    background: rgba(255,255,255,.18); border: 1px solid rgba(255,255,255,.25);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    margin-right: 1rem; backdrop-filter: blur(8px);
+}
+.ms-modal-icon i { font-size: 1.1rem; color: #fff; }
+.ms-modal-title-block { flex: 1; min-width: 0; }
+.ms-modal-title-block h5 { font-weight: 700; font-size: 1.15rem; margin: 0 0 .2rem; color: #fff; }
+.ms-modal-title-block p { margin: 0; font-size: .82rem; color: rgba(255,255,255,.78); }
+.ms-modal .btn-close-white { filter: brightness(2); opacity: .85; }
+.ms-modal .modal-body { padding: 1.5rem 1.75rem 1.25rem; }
+.ms-search-wrap { position: relative; }
+.ms-search-wrap i.fa-search {
+    position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);
+    color: var(--ms-muted); font-size: .9rem; pointer-events: none;
+}
+.ms-modal-search-input {
+    width: 100%; padding: .9rem 1rem .9rem 2.6rem; border: 1.5px solid var(--ms-border);
+    border-radius: 12px; font-size: .95rem; background: var(--ms-bg);
+    transition: all .15s; font-family: inherit;
+}
+.ms-modal-search-input:focus {
+    outline: none; border-color: var(--ms-primary); background: #fff;
+    box-shadow: 0 0 0 4px rgba(4,83,203,.1);
+}
+.ms-modal-results { margin-top: 1rem; max-height: 360px; overflow-y: auto; }
+.ms-search-result {
+    display: flex; align-items: center; gap: .85rem;
+    padding: .8rem .85rem; cursor: pointer; border-radius: 10px;
+    transition: all .12s; border: 1px solid transparent;
+}
+.ms-search-result:hover {
+    background: rgba(4,83,203,.05);
+    border-color: rgba(4,83,203,.15);
+    transform: translateX(2px);
+}
+.ms-search-avatar {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--ms-primary), #5e91de);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: .92rem; flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(4,83,203,.25);
+}
+.ms-search-info { flex: 1; min-width: 0; }
+.ms-search-info strong { display: block; color: var(--ms-text); font-size: .92rem; font-weight: 600; }
+.ms-search-info small { color: var(--ms-muted); font-size: .78rem; }
+.ms-search-result-arrow { color: var(--ms-muted); transition: transform .15s; flex-shrink: 0; }
+.ms-search-result:hover .ms-search-result-arrow { color: var(--ms-primary); transform: translateX(3px); }
+.ms-modal-empty {
+    padding: 2.5rem 1rem; text-align: center; color: var(--ms-muted);
+    background: var(--ms-bg); border-radius: 12px; margin-top: .5rem;
+}
+.ms-modal-empty i { font-size: 2rem; opacity: .35; display: block; margin-bottom: .6rem; }
+.ms-modal-empty .ms-empty-title { font-weight: 600; color: var(--ms-text); margin-bottom: .25rem; font-size: .92rem; }
+.ms-modal-empty .ms-empty-hint { font-size: .82rem; }
+.ms-modal-footer {
+    padding: .9rem 1.75rem; border-top: 1px solid var(--ms-border);
+    background: var(--ms-bg); display: flex; align-items: center; justify-content: space-between;
+    font-size: .78rem; color: var(--ms-muted);
+}
+.ms-modal-footer kbd {
+    background: #fff; border: 1px solid var(--ms-border); border-radius: 5px;
+    padding: 1px 6px; font-size: .72rem; font-family: ui-monospace, SFMono-Regular, monospace;
+    box-shadow: 0 1px 0 rgba(15,23,42,.06);
+}
 
 /* Notifs panel */
 .ms-notif-panel { width: 380px; border-left: 1px solid var(--ms-border); background: var(--ms-surface); display: flex; flex-direction: column; }
@@ -246,27 +311,57 @@
             </main>
         </div>
 
-        {{-- Modal nouveau DM --}}
-        <div class="modal fade" id="newDmModal" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-dialog-centered">
+        {{-- Modal nouveau DM — design premium --}}
+        <div class="modal fade ms-modal" id="newDmModal" tabindex="-1" aria-hidden="true" aria-labelledby="newDmModalLabel">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                 <div class="modal-content">
                     <div class="modal-header">
-                        <h5 class="modal-title">Nouveau message</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        <div class="ms-modal-icon"><i class="fas fa-pen"></i></div>
+                        <div class="ms-modal-title-block">
+                            <h5 id="newDmModalLabel">Nouveau message</h5>
+                            <p>Démarre une conversation privée avec un membre de l'équipe</p>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
                     </div>
-                    <div class="modal-body ms-modal-search">
-                        <input type="search" placeholder="Rechercher un utilisateur (nom ou email)…" x-model="dmQuery" @input.debounce.300ms="searchUsers()">
-                        <div style="margin-top: .75rem">
+                    <div class="modal-body">
+                        <div class="ms-search-wrap">
+                            <i class="fas fa-search"></i>
+                            <input
+                                type="search"
+                                class="ms-modal-search-input"
+                                placeholder="Rechercher un utilisateur par nom ou email…"
+                                x-model="dmQuery"
+                                @input.debounce.300ms="searchUsers()"
+                                x-ref="dmSearchInput"
+                                aria-label="Rechercher un utilisateur"
+                            >
+                        </div>
+                        <div class="ms-modal-results">
                             <template x-for="u in dmResults" :key="u.id">
-                                <div class="ms-search-result" @click="startDm(u)">
-                                    <strong x-text="u.name"></strong>
-                                    <small x-text="u.email"></small>
+                                <div class="ms-search-result" @click="startDm(u)" role="button" tabindex="0" @keydown.enter="startDm(u)">
+                                    <div class="ms-search-avatar" x-text="(u.name || '?').slice(0, 2).toUpperCase()"></div>
+                                    <div class="ms-search-info">
+                                        <strong x-text="u.name"></strong>
+                                        <small x-text="u.email"></small>
+                                    </div>
+                                    <i class="fas fa-arrow-right ms-search-result-arrow"></i>
                                 </div>
                             </template>
-                            <div class="ms-list-empty" x-show="dmQuery.length >= 2 && dmResults.length === 0">
-                                Aucun résultat
+                            <div class="ms-modal-empty" x-show="dmQuery.length >= 2 && dmResults.length === 0">
+                                <i class="far fa-frown"></i>
+                                <div class="ms-empty-title">Aucun résultat</div>
+                                <div class="ms-empty-hint">Essaie un autre nom ou email.</div>
+                            </div>
+                            <div class="ms-modal-empty" x-show="dmQuery.length < 2">
+                                <i class="far fa-user-circle"></i>
+                                <div class="ms-empty-title">Tape au moins 2 caractères</div>
+                                <div class="ms-empty-hint">La recherche couvre nom et email des membres actifs.</div>
                             </div>
                         </div>
+                    </div>
+                    <div class="ms-modal-footer">
+                        <span><kbd>Entrée</kbd> pour ouvrir la conversation</span>
+                        <span><kbd>Échap</kbd> pour fermer</span>
                     </div>
                 </div>
             </div>
@@ -461,10 +556,13 @@ function messagesPage() {
         },
 
         openNewDm() {
-            if (!this.dmModal) this.dmModal = new bootstrap.Modal(document.getElementById('newDmModal'));
+            const el = document.getElementById('newDmModal');
+            if (!this.dmModal) this.dmModal = new bootstrap.Modal(el);
             this.dmQuery = '';
             this.dmResults = [];
             this.dmModal.show();
+            // Focus auto sur le champ search (a11y + UX)
+            el.addEventListener('shown.bs.modal', () => this.$refs.dmSearchInput?.focus(), { once: true });
         },
 
         async searchUsers() {
