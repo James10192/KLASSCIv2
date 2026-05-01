@@ -431,9 +431,6 @@
             <button class="cs-tab active" data-tab="info" type="button">
                 <i class="fas fa-user"></i> Informations
             </button>
-            <button class="cs-tab" data-tab="access" type="button">
-                <i class="fas fa-rocket"></i> Acces Rapide
-            </button>
             <button class="cs-tab" data-tab="account" type="button">
                 <i class="fas fa-user-cog"></i> Compte
             </button>
@@ -577,44 +574,6 @@
                         </div>
                         @endif
                     </div>
-                </div>
-            </div>
-        </div>
-
-        {{-- ---- TAB: Acces Rapide --------------------------------- --}}
-        <div class="cs-panel" id="cs-tab-access">
-            <div class="cs-card">
-                <div class="cs-card-header">
-                    <div class="cs-card-title">
-                        <div class="cs-card-title-icon"><i class="fas fa-rocket"></i></div>
-                        Acces rapides caisse
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px;">
-                    @if(\Route::has('esbtp.paiements.index'))
-                    <a href="{{ route('esbtp.paiements.index') }}" class="cs-quick-card">
-                        <i class="fas fa-money-bill-wave" style="color: var(--cs-success);"></i>
-                        <span>Paiements</span>
-                    </a>
-                    @endif
-                    @if(\Route::has('esbtp.inscriptions.index'))
-                    <a href="{{ route('esbtp.inscriptions.index') }}" class="cs-quick-card">
-                        <i class="fas fa-user-graduate" style="color: var(--cs-blue);"></i>
-                        <span>Pre-inscriptions</span>
-                    </a>
-                    @endif
-                    @if(\Route::has('esbtp.frais.index'))
-                    <a href="{{ route('esbtp.frais.index') }}" class="cs-quick-card">
-                        <i class="fas fa-tags" style="color: #d97706;"></i>
-                        <span>Frais</span>
-                    </a>
-                    @endif
-                    @if(\Route::has('esbtp.relances.index'))
-                    <a href="{{ route('esbtp.relances.index') }}" class="cs-quick-card">
-                        <i class="fas fa-bell" style="color: var(--cs-danger);"></i>
-                        <span>Relances</span>
-                    </a>
-                    @endif
                 </div>
             </div>
         </div>
