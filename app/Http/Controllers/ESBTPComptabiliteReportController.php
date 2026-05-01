@@ -71,6 +71,167 @@ class ESBTPComptabiliteReportController extends Controller
         ));
     }
 
+    /**
+     * Récupère les statistiques des recettes.
+     */
+    private function getStatsRecettes()
+    {
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('est_actif', true)->first();
+
+        if (!$anneeEnCours) {
+            return ['total' => 0, 'mensuel' => 0, 'annuel' => 0, 'previsionnel' => 0];
+        }
+
+        $totalPaiements = ESBTPPaiement::where('annee_universitaire_id', $anneeEnCours->id)
+            ->where('status', 'validé')
+            ->sum('montant');
+
+        $paiementsMensuels = ESBTPPaiement::where('annee_universitaire_id', $anneeEnCours->id)
+            ->where('status', 'validé')
+            ->whereMonth('date_paiement', Carbon::now()->month)
+            ->whereYear('date_paiement', Carbon::now()->year)
+            ->sum('montant');
+
+        $paiementsAnnuels = ESBTPPaiement::where('annee_universitaire_id', $anneeEnCours->id)
+            ->where('status', 'validé')
+            ->whereYear('date_paiement', Carbon::now()->year)
+            ->sum('montant');
+
+        $totalPrevisionnel = ESBTPFraisScolarite::where('annee_universitaire_id', $anneeEnCours->id)
+            ->sum('montant_total');
+
+        return [
+            'total' => $totalPaiements,
+            'mensuel' => $paiementsMensuels,
+            'annuel' => $paiementsAnnuels,
+            'previsionnel' => $totalPrevisionnel,
+        ];
+    }
+
+    /**
+     * Récupère les statistiques des dépenses (module supprimé, valeurs vides).
+     */
+    private function getStatsDepenses()
+    {
+        return ['total' => 0, 'mensuel' => 0, 'salaires' => 0, 'fournitures' => 0];
+    }
+
+    /**
+     * Récupère les statistiques des paiements (taux de recouvrement).
+     */
+    private function getStatsPaiements()
+    {
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('est_actif', true)->first();
+
+        if (!$anneeEnCours) {
+            return ['total' => 0, 'complets' => 0, 'partiels' => 0, 'impayés' => 0, 'taux_recouvrement' => 0];
+        }
+
+        $totalInscriptions = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)->count();
+
+        $etudiantsPayeComplet = DB::table('esbtp_inscriptions')
+            ->join('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
+            ->join('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+            ->where('esbtp_inscriptions.annee_universitaire_id', $anneeEnCours->id)
+            ->groupBy('esbtp_etudiants.id')
+            ->havingRaw('SUM(esbtp_paiements.montant) >= (
+                SELECT esbtp_frais_scolarite.montant_total
+                FROM esbtp_frais_scolarite
+                WHERE esbtp_frais_scolarite.filiere_id = esbtp_inscriptions.filiere_id
+                AND esbtp_frais_scolarite.niveau_etude_id = esbtp_inscriptions.niveau_id
+                AND esbtp_frais_scolarite.annee_universitaire_id = esbtp_inscriptions.annee_universitaire_id
+            )')
+            ->count();
+
+        $etudiantsPayePartiel = DB::table('esbtp_inscriptions')
+            ->join('esbtp_etudiants', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
+            ->join('esbtp_paiements', 'esbtp_inscriptions.id', '=', 'esbtp_paiements.inscription_id')
+            ->where('esbtp_inscriptions.annee_universitaire_id', $anneeEnCours->id)
+            ->groupBy('esbtp_etudiants.id')
+            ->havingRaw('SUM(esbtp_paiements.montant) > 0 AND SUM(esbtp_paiements.montant) < (
+                SELECT esbtp_frais_scolarite.montant_total
+                FROM esbtp_frais_scolarite
+                WHERE esbtp_frais_scolarite.filiere_id = esbtp_inscriptions.filiere_id
+                AND esbtp_frais_scolarite.niveau_etude_id = esbtp_inscriptions.niveau_id
+                AND esbtp_frais_scolarite.annee_universitaire_id = esbtp_inscriptions.annee_universitaire_id
+            )')
+            ->count();
+
+        $etudiantsImpaye = $totalInscriptions - $etudiantsPayeComplet - $etudiantsPayePartiel;
+        $tauxRecouvrement = $totalInscriptions > 0
+            ? round(($etudiantsPayeComplet / $totalInscriptions) * 100, 2)
+            : 0;
+
+        return [
+            'total' => $totalInscriptions,
+            'complets' => $etudiantsPayeComplet,
+            'partiels' => $etudiantsPayePartiel,
+            'impayés' => $etudiantsImpaye,
+            'taux_recouvrement' => $tauxRecouvrement,
+        ];
+    }
+
+    /**
+     * Récupère les recettes par mois pour l'année en cours (12 derniers mois).
+     */
+    private function getRecettesParMois()
+    {
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('est_actif', true)->first();
+
+        if (!$anneeEnCours) {
+            return ['labels' => [], 'data' => []];
+        }
+
+        $debut = Carbon::parse($anneeEnCours->date_debut);
+        $fin = Carbon::parse($anneeEnCours->date_fin);
+
+        $dates = [];
+        for ($date = $debut->copy(); $date->lte($fin); $date->addMonth()) {
+            $dates[] = $date->copy();
+        }
+        $dates = array_slice($dates, -12);
+
+        $mois = [];
+        $recettes = [];
+        foreach ($dates as $date) {
+            $mois[] = $date->translatedFormat('F Y');
+            $recettes[] = ESBTPPaiement::whereMonth('date_paiement', $date->month)
+                ->whereYear('date_paiement', $date->year)
+                ->where('status', 'validé')
+                ->sum('montant');
+        }
+
+        return ['labels' => $mois, 'data' => $recettes];
+    }
+
+    /**
+     * Dépenses par mois (module supprimé, données vides mais shape conservé).
+     */
+    private function getDepensesParMois()
+    {
+        $anneeEnCours = ESBTPAnneeUniversitaire::where('est_actif', true)->first();
+
+        if (!$anneeEnCours) {
+            return ['labels' => [], 'data' => []];
+        }
+
+        $debut = Carbon::parse($anneeEnCours->date_debut);
+        $fin = Carbon::parse($anneeEnCours->date_fin);
+
+        $dates = [];
+        for ($date = $debut->copy(); $date->lte($fin); $date->addMonth()) {
+            $dates[] = $date->copy();
+        }
+        $dates = array_slice($dates, -12);
+
+        $mois = [];
+        foreach ($dates as $date) {
+            $mois[] = $date->translatedFormat('F Y');
+        }
+
+        return ['labels' => $mois, 'data' => array_fill(0, count($mois), 0)];
+    }
+
 
     /**
      * Génère un rapport financier personnalisé

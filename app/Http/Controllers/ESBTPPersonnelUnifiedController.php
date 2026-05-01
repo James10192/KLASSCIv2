@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use App\Services\UserService;
 use Spatie\Permission\Models\Role;
 
@@ -134,15 +135,28 @@ class ESBTPPersonnelUnifiedController extends Controller
                 $customRoles = $customRolesQuery
                     ->map(fn (Role $role) => $this->buildRoleCardData($role, $registry));
 
-                // Lot 19 — Charger les users assignés à chaque rôle custom (un tab par rôle, même vide)
-                foreach ($customRolesQuery as $role) {
-                    $users = User::role($role->name)
+                // Lot 19 — Charger les users de TOUS les rôles custom en une seule requête
+                // (évite le N+1 d'une query par rôle).
+                $customRoleNames = $customRolesQuery->pluck('name')->all();
+                $usersByRole = collect();
+                if (!empty($customRoleNames)) {
+                    $usersByRole = User::role($customRoleNames)
                         ->where('is_active', true)
+                        ->with(['roles:id,name'])
                         ->orderBy('name')
-                        ->get(['id', 'name', 'email', 'telephone', 'is_active', 'created_at']);
+                        ->get(['id', 'name', 'email', 'telephone', 'is_active', 'created_at'])
+                        ->groupBy(fn ($u) => $u->roles
+                            ->whereIn('name', $customRoleNames)
+                            ->first()?->name);
+                }
+
+                foreach ($customRolesQuery as $role) {
+                    // Slug ASCII-safe pour les sélecteurs HTML/JS (data-tab, id, etc.).
+                    // Le nom brut du rôle reste utilisable comme paramètre de route.
                     $customRoleUsers[$role->name] = [
                         'role' => $role,
-                        'users' => $users,
+                        'slug' => Str::slug($role->name) ?: 'role-'.$role->id,
+                        'users' => $usersByRole->get($role->name, collect()),
                         'meta' => $registry->roleMeta($role->name) ?? [
                             'label' => $role->name,
                             'icon' => 'fa-user-tag',
