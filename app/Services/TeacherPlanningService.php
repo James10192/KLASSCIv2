@@ -301,15 +301,7 @@ class TeacherPlanningService
             )
             ->groupBy('matiere_id', 'filiere_id', 'niveau_etude_id');
 
-        if ($periode === 'semestre1') {
-            $planificationsQuery->where(function ($query) {
-                $query->where('semestre', 1)->orWhereNull('semestre');
-            });
-        } elseif ($periode === 'semestre2') {
-            $planificationsQuery->where(function ($query) {
-                $query->where('semestre', 2)->orWhereNull('semestre');
-            });
-        }
+        $this->applySemestreFilter($planificationsQuery, 'semestre', $periode, includeNull: true);
 
         return $planificationsQuery->get();
     }
@@ -317,18 +309,28 @@ class TeacherPlanningService
     /**
      * Applique un filtre de semestre tolérant aux différents formats stockés
      * (1, "1", "S1", "Semestre 1", "semestre1", etc).
+     *
+     * @param bool $includeNull  Inclut aussi les rows avec semestre NULL (planifications
+     *                           qui s'appliquent aux deux semestres).
      */
-    private function applySemestreFilter($query, string $column, string $periode): void
+    private function applySemestreFilter($query, string $column, string $periode, bool $includeNull = false): void
     {
-        if ($periode === 'semestre1') {
-            $query->whereIn($column, [
-                '1', 1, 'S1', 'Semestre 1', 'semestre1', 'SEMESTRE 1', 'Semestre1', 's1',
-            ]);
-        } elseif ($periode === 'semestre2') {
-            $query->whereIn($column, [
-                '2', 2, 'S2', 'Semestre 2', 'semestre2', 'SEMESTRE 2', 'Semestre2', 's2',
-            ]);
+        $variants = match ($periode) {
+            'semestre1' => ['1', 1, 'S1', 'Semestre 1', 'semestre1', 'SEMESTRE 1', 'Semestre1', 's1'],
+            'semestre2' => ['2', 2, 'S2', 'Semestre 2', 'semestre2', 'SEMESTRE 2', 'Semestre2', 's2'],
+            default => null,
+        };
+
+        if ($variants === null) {
+            return;
         }
+
+        $query->where(function ($q) use ($column, $variants, $includeNull) {
+            $q->whereIn($column, $variants);
+            if ($includeNull) {
+                $q->orWhereNull($column);
+            }
+        });
     }
 
     /**

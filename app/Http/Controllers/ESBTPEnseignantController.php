@@ -10,9 +10,7 @@ use App\Http\Requests\Enseignant\UpdateEnseignantRequest;
 use App\Models\User;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPMatiere;
-use App\Models\ESBTPClasse;
 use App\Models\ESBTPPlanificationAcademique;
-use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPTeacherAvailability;
 use App\Services\TeacherPlanningService;
@@ -199,7 +197,8 @@ class ESBTPEnseignantController extends Controller
             $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'enseignant']);
             $user->assignRole($role);
 
-            // Régime unifié — fallback sur type_contrat legacy si client AJAX antérieur.
+            // @deprecated 2026-Q3 — fallback type_contrat pour clients AJAX legacy d'avant PR #287.
+            // Tous les clients modernes envoient `regime` directement. À retirer après audit.
             $regime = $request->input('regime')
                 ?: match ($request->input('type_contrat')) {
                     'permanent' => TeacherRegime::Permanent->value,
@@ -559,7 +558,9 @@ class ESBTPEnseignantController extends Controller
      */
     public function toggleStatus(Request $request, ESBTPTeacher $teacher)
     {
-        $newStatus = $teacher->status === "active" ? "inactive" : "active";
+        $newStatus = $teacher->status === TeacherStatus::Active->value
+            ? TeacherStatus::Inactive->value
+            : TeacherStatus::Active->value;
 
         $teacher->update([
             "status" => $newStatus,
