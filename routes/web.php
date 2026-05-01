@@ -831,6 +831,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->group(function () {
                     Route::get('/', [App\Http\Controllers\ESBTPPaiementExportController::class, 'index'])->name('index');
                     Route::post('/preview', [App\Http\Controllers\ESBTPPaiementExportController::class, 'preview'])->name('preview');
+                    Route::post('/preview-pdf', [App\Http\Controllers\ESBTPPaiementExportController::class, 'previewPdf'])->name('preview-pdf');
                     Route::post('/generate', [App\Http\Controllers\ESBTPPaiementExportController::class, 'generate'])->name('generate');
                 });
 
@@ -1481,6 +1482,16 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     Route::post('/analytics/settings', [\App\Http\Controllers\ESBTPAnalyticsController::class, 'updateSettings'])
         ->name('analytics.settings.update')
         ->middleware(['permission:comptabilite.analytics.configure', 'throttle:20,1']);
+    // Analytics — exports (PDF preview/download + Excel multi-sheets)
+    Route::get('/analytics/preview-pdf', [\App\Http\Controllers\ESBTPAnalyticsController::class, 'previewPdf'])
+        ->name('analytics.preview-pdf')
+        ->middleware(['permission:comptabilite.analytics.view', 'throttle:30,1']);
+    Route::get('/analytics/export-pdf', [\App\Http\Controllers\ESBTPAnalyticsController::class, 'exportPdf'])
+        ->name('analytics.export-pdf')
+        ->middleware(['permission:comptabilite.analytics.view', 'throttle:10,1']);
+    Route::get('/analytics/export-excel', [\App\Http\Controllers\ESBTPAnalyticsController::class, 'exportExcel'])
+        ->name('analytics.export-excel')
+        ->middleware(['permission:comptabilite.analytics.view', 'throttle:10,1']);
 
     // Recouvrement quotidien (Sprint 11 — RecouvrementOptimizer + WhatsApp deeplinks)
     Route::get('/recouvrement', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'index'])
@@ -1494,6 +1505,19 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     Route::post('/recouvrement/mark-done', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'markDone'])
         ->name('recouvrement.mark-done')
         ->middleware('throttle:120,1');
+    // Recouvrement — exports (PDF preview/download + Excel + email)
+    Route::get('/recouvrement/preview-pdf', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'previewPdf'])
+        ->name('recouvrement.preview-pdf')
+        ->middleware(['permission:comptabilite.recouvrement.access', 'throttle:30,1']);
+    Route::get('/recouvrement/export-pdf', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'exportPdf'])
+        ->name('recouvrement.export-pdf')
+        ->middleware(['permission:comptabilite.recouvrement.access', 'throttle:10,1']);
+    Route::get('/recouvrement/export-excel', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'exportExcel'])
+        ->name('recouvrement.export-excel')
+        ->middleware(['permission:comptabilite.recouvrement.access', 'throttle:10,1']);
+    Route::post('/recouvrement/email-pdf', [\App\Http\Controllers\ESBTPRecouvrementController::class, 'emailPdf'])
+        ->name('recouvrement.email-pdf')
+        ->middleware(['permission:comptabilite.recouvrement.access', 'throttle:5,1']);
 
     // Gestion des frais de scolarité
     Route::get('/frais-scolarite', [ESBTPComptabiliteReportController::class, 'fraisScolarite'])->name('frais-scolarite');

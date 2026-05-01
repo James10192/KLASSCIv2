@@ -537,12 +537,15 @@
                     <i class="fas fa-info-circle"></i>
                     <span>Cliquez sur « Vérifier » pour compter les lignes correspondant aux filtres</span>
                 </div>
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 flex-wrap">
                     <button type="button" id="pe-btn-preview" class="pe-action-btn pe-action-btn--secondary">
-                        <i class="fas fa-search"></i> Vérifier
+                        <i class="fas fa-search"></i> Vérifier le volume
+                    </button>
+                    <button type="button" id="pe-btn-preview-pdf" class="pe-action-btn pe-action-btn--secondary" disabled>
+                        <i class="fas fa-eye"></i> Aperçu PDF
                     </button>
                     <button type="submit" id="pe-btn-generate" class="pe-action-btn pe-action-btn--primary" disabled>
-                        <i class="fas fa-download"></i> Générer le fichier
+                        <i class="fas fa-download"></i> Télécharger
                     </button>
                 </div>
             </div>
@@ -773,15 +776,19 @@
                 const info = document.getElementById('pe-preview-info');
                 const generateBtn = document.getElementById('pe-btn-generate');
 
+                const previewPdfBtn = document.getElementById('pe-btn-preview-pdf');
+                const formatPdf = document.querySelector('input[name="format"]:checked')?.value === 'pdf';
                 if (ok && json.success) {
                     info.className = 'pe-preview-info is-success';
                     info.querySelector('span').textContent = json.message || (json.count + ' lignes prêtes');
                     generateBtn.disabled = false;
+                    previewPdfBtn.disabled = !formatPdf;
                     toast(json.message || 'Prévisualisation OK', 'success');
                 } else {
                     info.className = 'pe-preview-info is-error';
                     info.querySelector('span').textContent = json.message || ('Erreur ' + status);
                     generateBtn.disabled = true;
+                    previewPdfBtn.disabled = true;
                     toast(json.message || 'Erreur de prévisualisation', 'error');
                 }
             })
@@ -800,9 +807,27 @@
             const generateBtn = document.getElementById('pe-btn-generate');
             if (generateBtn.disabled) {
                 e.preventDefault();
-                toast('Veuillez d\'abord cliquer sur « Vérifier »', 'warning');
+                toast('Veuillez d\'abord cliquer sur « Vérifier le volume »', 'warning');
                 return;
             }
+        });
+
+        // Aperçu PDF — submit le form vers preview-pdf (nouvelle tab)
+        document.getElementById('pe-btn-preview-pdf').addEventListener('click', function () {
+            const form = document.getElementById('pe-form');
+            const originalAction = form.action;
+            const originalTarget = form.target;
+            form.action = '{{ route("esbtp.paiements.export-detaille.preview-pdf") }}';
+            form.target = '_blank';
+            // Force format=pdf temporairement
+            const formatInput = document.querySelector('input[name="format"][value="pdf"]');
+            const wasChecked = formatInput?.checked;
+            if (formatInput && !wasChecked) formatInput.checked = true;
+            form.submit();
+            // Restaurer (le submit a déjà été lancé)
+            form.action = originalAction;
+            form.target = originalTarget;
+            if (formatInput && !wasChecked) formatInput.checked = false;
         });
     })();
 </script>

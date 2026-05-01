@@ -10,9 +10,11 @@ use App\Domain\Analytics\DTOs\PredictionResult;
 use App\Domain\Analytics\Predictors\CashFlowPredictor;
 use App\Domain\Analytics\Predictors\DefaultRiskPredictor;
 use App\Domain\Analytics\Predictors\PredictorInterface;
+use App\Domain\Exports\Reports\AnalyticsReport;
 use App\Helpers\SettingsHelper;
 use App\Jobs\ComputeAnalyticsPredictionsJob;
 use App\Jobs\DetectAnalyticsAnomaliesJob;
+use App\Services\ExportRenderer;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
@@ -87,25 +89,86 @@ class ESBTPAnalyticsController extends Controller
     }
 
     /**
-     * Déclenche le job daily synchrone via queue + le job anomalies. Réservé aux
-     * admins ayant analytics.run_now.
+     * Déclenche le job daily + job anomalies. Retourne JSON pour AJAX
+     * (no full page reload — voir rule laravel-ajax-blade-alpine.md).
      */
-    public function runNow(): RedirectResponse
+    public function runNow(Request $request): JsonResponse
     {
         try {
             ComputeAnalyticsPredictionsJob::dispatch();
             DetectAnalyticsAnomaliesJob::dispatch();
 
-            return redirect()
-                ->route('esbtp.comptabilite.analytics.index')
-                ->with('success', 'Recalcul lancé en arrière-plan. Les prédictions seront mises à jour sous peu.');
+            return response()->json([
+                'success' => true,
+                'message' => 'Recalcul lancé en arrière-plan. Les prédictions seront mises à jour sous peu.',
+                'dispatched_at' => now()->toISOString(),
+            ]);
         } catch (\Throwable $e) {
             Log::error('Analytics runNow dispatch failed', ['error' => $e->getMessage()]);
-
-            return redirect()
-                ->route('esbtp.comptabilite.analytics.index')
-                ->with('error', 'Impossible de lancer le recalcul : ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de lancer le recalcul : ' . $e->getMessage(),
+            ], 500);
         }
+    }
+
+    /**
+     * Preview PDF Analytics inline (nouvelle tab).
+     */
+    public function previewPdf(
+        Request $request,
+        CashFlowPredictor $cashFlow,
+        DefaultRiskPredictor $defaultRisk,
+        AnomalyDetector $anomalyDetector,
+        ExportRenderer $renderer,
+    ) {
+        return $renderer->pdfPreview($this->buildAnalyticsReport($request, $cashFlow, $defaultRisk, $anomalyDetector));
+    }
+
+    /**
+     * Download PDF Analytics.
+     */
+    public function exportPdf(
+        Request $request,
+        CashFlowPredictor $cashFlow,
+        DefaultRiskPredictor $defaultRisk,
+        AnomalyDetector $anomalyDetector,
+        ExportRenderer $renderer,
+    ) {
+        return $renderer->pdfDownload($this->buildAnalyticsReport($request, $cashFlow, $defaultRisk, $anomalyDetector));
+    }
+
+    /**
+     * Download Excel Analytics multi-sheets.
+     */
+    public function exportExcel(
+        Request $request,
+        CashFlowPredictor $cashFlow,
+        DefaultRiskPredictor $defaultRisk,
+        AnomalyDetector $anomalyDetector,
+        ExportRenderer $renderer,
+    ) {
+        return $renderer->excelDownload($this->buildAnalyticsReport($request, $cashFlow, $defaultRisk, $anomalyDetector));
+    }
+
+    private function buildAnalyticsReport(
+        Request $request,
+        CashFlowPredictor $cashFlow,
+        DefaultRiskPredictor $defaultRisk,
+        AnomalyDetector $anomalyDetector,
+    ): AnalyticsReport {
+        $context = AnalyticsContext::fromRequest($request);
+        $cashFlowResult = $this->safePredict(new CachedPredictor($cashFlow), $context);
+        $defaultRiskResult = $this->safePredict(new CachedPredictor($defaultRisk), $context);
+        $anomalies = $this->safeDetect($anomalyDetector, $context);
+
+        $appliedFilters = array_filter([
+            'Année' => $context->anneeId ? optional(ESBTPAnneeUniversitaire::find($context->anneeId))->name : null,
+            'Filière' => $context->filiereId ? optional(ESBTPFiliere::find($context->filiereId))->name : null,
+            'Classe' => $context->classeId ? optional(ESBTPClasse::find($context->classeId))->name : null,
+        ]);
+
+        return new AnalyticsReport($cashFlowResult, $defaultRiskResult, $anomalies, $appliedFilters);
     }
 
     /**

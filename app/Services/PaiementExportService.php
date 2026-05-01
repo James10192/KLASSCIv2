@@ -189,16 +189,41 @@ class PaiementExportService
      */
     public function exportPdf(array $filters, ?User $user = null): Response
     {
+        $pdf = $this->buildPdf($filters, $user);
+        $filename = 'etat-paiements-detaille_' . now()->format('Y-m-d_His') . '.pdf';
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Aperçu PDF inline (Content-Disposition: inline) — ouvre dans un nouvel
+     * onglet du navigateur sans télécharger.
+     */
+    public function previewPdf(array $filters, ?User $user = null): Response
+    {
+        $pdf = $this->buildPdf($filters, $user);
+        $filename = 'apercu-paiements-detaille_' . now()->format('Y-m-d_His') . '.pdf';
+        return new Response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
+    }
+
+    private function buildPdf(array $filters, ?User $user)
+    {
         $paiements = $this->buildQuery($filters, $user)->get();
         $count = $paiements->count();
         $totalMontant = (float) $paiements->sum('montant');
         $showCreator = $this->shouldShowCreatorColumn($user);
         $context = $this->buildContext($filters, $user, $showCreator);
-
-        // Format A4 paysage si on a la colonne creator (≥ 8 colonnes)
         $orientation = $showCreator ? 'landscape' : 'portrait';
 
-        $pdf = Pdf::loadView('esbtp.paiements.exports.pdf-detaille', [
+        Log::info('PDF détaillé paiements rendu', [
+            'user_id' => $user?->id,
+            'count' => $count,
+            'orientation' => $orientation,
+        ]);
+
+        return Pdf::loadView('esbtp.paiements.exports.pdf-detaille', [
             'paiements' => $paiements,
             'count' => $count,
             'totalMontant' => $totalMontant,
@@ -207,16 +232,6 @@ class PaiementExportService
             'filtersSummary' => $this->buildFiltersSummary($filters, $user),
             'dateGeneration' => now(),
         ])->setPaper('a4', $orientation);
-
-        Log::info('Export PDF détaillé paiements généré', [
-            'user_id' => $user?->id,
-            'count' => $count,
-            'orientation' => $orientation,
-        ]);
-
-        $filename = 'etat-paiements-detaille_' . now()->format('Y-m-d_His') . '.pdf';
-
-        return $pdf->download($filename);
     }
 
     /**

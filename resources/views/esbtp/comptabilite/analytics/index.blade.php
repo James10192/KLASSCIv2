@@ -3,7 +3,7 @@
 @section('title', 'Analytics Prédictifs')
 
 @section('content')
-<div class="container-fluid an-page">
+<div class="container-fluid an-page" x-data="analyticsPage()">
 
     {{-- ============================ HERO ============================ --}}
     <div class="an-hero">
@@ -22,13 +22,19 @@
                     </a>
                 @endcan
                 @can('comptabilite.analytics.run_now')
-                    <form method="POST" action="{{ route('esbtp.comptabilite.analytics.run-now') }}" class="d-inline">
-                        @csrf
-                        <button type="submit" class="an-btn an-btn--glass">
-                            <i class="fas fa-sync-alt"></i> Recalculer
-                        </button>
-                    </form>
+                    <button type="button"
+                            @click="recalculer()"
+                            :disabled="recalcul.loading"
+                            class="an-btn an-btn--glass">
+                        <i class="fas fa-sync-alt" :class="recalcul.loading ? 'fa-spin' : ''"></i>
+                        <span x-text="recalcul.loading ? 'Lancement…' : 'Recalculer'"></span>
+                    </button>
                 @endcan
+                <x-export-modal
+                    :preview-url="route('esbtp.comptabilite.analytics.preview-pdf')"
+                    :pdf-url="route('esbtp.comptabilite.analytics.export-pdf')"
+                    :excel-url="route('esbtp.comptabilite.analytics.export-excel')"
+                    button-class="an-btn an-btn--glass" />
                 @can('comptabilite.analytics.configure')
                     <a href="{{ route('esbtp.comptabilite.analytics.settings') }}" class="an-btn an-btn--glass">
                         <i class="fas fa-sliders-h"></i> Paramètres
@@ -323,7 +329,47 @@
             </div>
         @endif
     </div>
+
+    {{-- Toast feedback (AJAX no-refresh) --}}
+    <div class="an-toast" x-show="toast.message" x-transition :class="'an-toast--' + (toast.type || 'info')">
+        <i class="fas" :class="toast.type === 'error' ? 'fa-exclamation-circle' : 'fa-check-circle'"></i>
+        <span x-text="toast.message"></span>
+    </div>
 </div>
+
+<script>
+function analyticsPage() {
+    return {
+        recalcul: { loading: false },
+        toast: { message: null, type: 'info' },
+
+        async recalculer() {
+            this.recalcul.loading = true;
+            try {
+                const response = await fetch('{{ route("esbtp.comptabilite.analytics.run-now") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                });
+                const data = await response.json();
+                this.showToast(data.message || (data.success ? 'Recalcul lancé' : 'Erreur'), data.success ? 'success' : 'error');
+            } catch (e) {
+                this.showToast('Erreur réseau lors du lancement', 'error');
+            } finally {
+                this.recalcul.loading = false;
+            }
+        },
+
+        showToast(message, type = 'info') {
+            this.toast = { message, type };
+            setTimeout(() => { this.toast = { message: null, type: 'info' }; }, 4000);
+        },
+    };
+}
+</script>
 @endsection
 
 @push('styles')
@@ -621,6 +667,21 @@
 .an-alert {
     border-radius: 12px; border: none; margin-bottom: 1rem;
 }
+
+.an-toast {
+    position: fixed; bottom: 24px; right: 24px;
+    padding: .85rem 1.25rem; border-radius: 12px;
+    background: #fff; box-shadow: 0 8px 30px rgba(15,23,42,.15);
+    border: 1px solid var(--an-border);
+    display: flex; align-items: center; gap: .65rem;
+    font-size: .9rem; z-index: 1000; max-width: 400px;
+}
+.an-toast--success { border-color: rgba(16,185,129,.3); color: #047857; }
+.an-toast--success i { color: var(--an-success); }
+.an-toast--error { border-color: rgba(220,38,38,.3); color: var(--an-danger); }
+.an-toast--error i { color: var(--an-danger); }
+.an-toast--info i { color: var(--an-primary); }
+[x-cloak] { display: none !important; }
 
 /* ===== Responsive ===== */
 @media (max-width: 992px) {
