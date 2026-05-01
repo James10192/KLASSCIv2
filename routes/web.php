@@ -1413,7 +1413,7 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     Route::put('/bourses/{id}', [ESBTPComptabiliteFraisController::class, 'updateBourse'])->name('bourses.update');
     Route::delete('/bourses/{id}', [ESBTPComptabiliteFraisController::class, 'destroyBourse'])->name('bourses.destroy');
 
-    // Routes Analytics (legacy `rapports.*` direct routes removed — voir COMPTABILITE_CLEANUP_PLAN.md)
+    // Rapports — génération + planification + templates (analytics-predictifs supprimés Sprint 9, remplacés par /esbtp/comptabilite/analytics)
     Route::prefix('rapports')->name('rapports.')->group(function () {
         Route::post('/generer', [ESBTPComptabiliteAnalyticsController::class, 'genererRapportPersonnalise'])->name('generer')
             ->middleware(['permission:comptabilite.reports.export', 'throttle:10,1']);
@@ -1424,39 +1424,11 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
         Route::get('/scheduled', [ESBTPComptabiliteAnalyticsController::class, 'listeRapportsProgrammes'])->name('scheduled')
             ->middleware(['permission:comptabilite.dashboard.view']);
 
-        Route::post('/analytics/predictive', [ESBTPComptabiliteAnalyticsController::class, 'analysesPredictives'])->name('analytics.predictive')
-            ->middleware(['permission:comptabilite.dashboard.view', 'throttle:20,1']);
-
-        Route::get('/analytics/cashflow', [ESBTPComptabiliteAnalyticsController::class, 'projectionCashFlow'])->name('analytics.cashflow')
-            ->middleware(['permission:comptabilite.dashboard.view']);
-
-        Route::get('/analytics/anomalies', [ESBTPComptabiliteAnalyticsController::class, 'detectionAnomalies'])->name('analytics.anomalies')
-            ->middleware(['permission:comptabilite.dashboard.view']);
-
         Route::get('/templates', [ESBTPComptabiliteAnalyticsController::class, 'modelesRapports'])->name('templates')
             ->middleware(['permission:comptabilite.dashboard.view']);
 
         Route::post('/templates', [ESBTPComptabiliteAnalyticsController::class, 'sauvegarderModele'])->name('templates.save')
             ->middleware(['permission:comptabilite.config.manage']);
-    });
-
-    // NOUVELLES ROUTES ANALYTICS PRÉDICTIFS - Tâche #11
-    Route::prefix('analytics-predictifs')->name('analytics-predictifs.')->group(function () {
-        Route::get('/', [ESBTPComptabiliteAnalyticsController::class, 'analyticsPredictifs'])->name('index')
-            ->middleware(['permission:comptabilite.dashboard.view']);
-
-        Route::get('/recommandations', [ESBTPComptabiliteAnalyticsController::class, 'recommandationsIntelligentes'])->name('recommandations')
-            ->middleware(['permission:comptabilite.dashboard.view']);
-
-        Route::get('/benchmarking', [ESBTPComptabiliteAnalyticsController::class, 'benchmarkingAvance'])->name('benchmarking')
-            ->middleware(['permission:comptabilite.dashboard.view']);
-
-        Route::get('/visualisations', [ESBTPComptabiliteAnalyticsController::class, 'visualisationsAvancees'])->name('visualisations')
-            ->middleware(['permission:comptabilite.dashboard.view']);
-
-        // API pour les données en temps réel
-        Route::get('/api/data', [ESBTPComptabiliteAnalyticsController::class, 'apiAnalyticsPredictifs'])->name('api.data')
-            ->middleware(['permission:comptabilite.dashboard.view', 'throttle:60,1']);
     });
 
     // Gestion des catégories de paiement

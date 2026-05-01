@@ -16,9 +16,6 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPClasse;
 use App\Models\User;
 use App\Services\ComptabiliteService;
-use App\Services\PerformanceMonitoringService;
-use App\Services\AnalyticsPredictifService;
-use App\Services\AIAnalyticsService;
 use App\Services\BonDepenseService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -35,15 +32,9 @@ class ESBTPComptabiliteAnalyticsController extends Controller
      */
     public function __construct(
         ComptabiliteService $comptabiliteService,
-        PerformanceMonitoringService $performanceMonitor,
-        AnalyticsPredictifService $analyticsPredictifService,
-        AIAnalyticsService $aiAnalyticsService,
         BonDepenseService $bonDepenseService
     ) {
         $this->comptabiliteService = $comptabiliteService;
-        $this->performanceMonitor = $performanceMonitor;
-        $this->analyticsPredictifService = $analyticsPredictifService;
-        $this->aiAnalyticsService = $aiAnalyticsService;
         $this->bonDepenseService = $bonDepenseService;
 
         $this->middleware('auth');
@@ -210,109 +201,6 @@ class ESBTPComptabiliteAnalyticsController extends Controller
 
 
     /**
-     * Analyses prédictives avancées - Task #6
-     */
-    public function analysesPredictives(Request $request)
-    {
-        $request->validate([
-            'type' => 'required|in:cashflow,anomalies,trends,forecast',
-            'periode' => 'integer|min:1|max:12',
-            'parametres' => 'array'
-        ]);
-
-        try {
-            $type = $request->input('type');
-            $periode = $request->input('periode', 6); // 6 mois par défaut
-            $parametres = $request->input('parametres', []);
-
-            $resultats = [];
-
-            switch ($type) {
-                case 'cashflow':
-                    $resultats = $this->analyticsPredictifService->projeterCashFlowAvance($periode);
-                    break;
-
-                case 'anomalies':
-                    $periodeAnalyse = $parametres['periode_analyse'] ?? 12;
-                    $resultats = $this->analyticsPredictifService->detecterAnomalies($periodeAnalyse);
-                    break;
-
-                case 'trends':
-                    $periodesComparaison = $parametres['periodes'] ?? ['mensuel', 'trimestriel'];
-                    $resultats = $this->analyticsPredictifService->genererBenchmarkingAvance($periodesComparaison);
-                    break;
-
-                case 'forecast':
-                    $resultats = $this->analyticsPredictifService->genererRecommandationsIntelligentes();
-                    break;
-            }
-
-            return response()->json([
-                'success' => true,
-                'type' => $type,
-                'periode' => $periode,
-                'resultats' => $resultats,
-                'genere_le' => now()->format('d/m/Y H:i')
-            ]);
-
-        } catch (\Exception $e) {
-            \Log::error('Erreur analyses prédictives: ' . $e->getMessage(), [
-                'user_id' => Auth::id(),
-                'type' => $request->input('type'),
-                'parametres' => $request->all()
-            ]);
-
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de l\'analyse: ' . $e->getMessage()
-            ], 500);
-        }
-    }
-
-
-    /**
-     * Projection cash-flow détaillée - Task #11
-     */
-    public function projectionCashFlow(Request $request)
-    {
-        $mois = $request->input('mois', 6);
-        $anneeId = $request->input('annee_id');
-
-        try {
-            $projection = $this->analyticsPredictifService->projeterCashFlowAvance($mois, $anneeId);
-            $visualisations = $this->analyticsPredictifService->preparerDonneesVisualisationsAvancees('projections');
-
-            return view('esbtp.comptabilite.analytics.cashflow', compact('projection', 'mois', 'visualisations'));
-
-        } catch (\Exception $e) {
-            Log::error('Erreur projection cash-flow', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
-            return redirect()->back()->with('error', 'Erreur lors de la projection: ' . $e->getMessage());
-        }
-    }
-
-
-    /**
-     * Détection d'anomalies financières - Task #11
-     */
-    public function detectionAnomalies(Request $request)
-    {
-        $periode = $request->input('periode', 12); // 12 mois par défaut
-        $anneeId = $request->input('annee_id');
-
-        try {
-            $anomalies = $this->analyticsPredictifService->detecterAnomalies($periode, $anneeId);
-            $visualisations = $this->analyticsPredictifService->preparerDonneesVisualisationsAvancees('anomalies');
-
-            return view('esbtp.comptabilite.analytics.anomalies', compact('anomalies', 'periode', 'visualisations'));
-
-        } catch (\Exception $e) {
-            Log::error('Erreur détection anomalies', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
-            return redirect()->back()->with('error', 'Erreur lors de la détection: ' . $e->getMessage());
-        }
-    }
-
-
-    /**
      * Modèles de rapports sauvegardés - Task #6
      */
     public function modelesRapports()
@@ -372,160 +260,6 @@ class ESBTPComptabiliteAnalyticsController extends Controller
             ], 500);
         }
     }
-
-
-    /**
-     * Analytics prédictifs - Dashboard principal - Task #11
-     */
-    public function analyticsPredictifs()
-    {
-        try {
-            return view('esbtp.comptabilite.analytics.index');
-        } catch (\Exception $e) {
-            Log::error('Erreur analytics prédictifs', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
-            return redirect()->back()->with('error', 'Erreur lors du chargement des analytics.');
-        }
-    }
-
-
-    /**
-     * Recommandations intelligentes - Task #11
-     */
-    public function recommandationsIntelligentes(Request $request)
-    {
-        $anneeId = $request->input('annee_id');
-
-        try {
-            $recommandations = $this->analyticsPredictifService->genererRecommandationsIntelligentes($anneeId);
-
-            return view('esbtp.comptabilite.analytics.recommandations', compact('recommandations'));
-
-        } catch (\Exception $e) {
-            Log::error('Erreur recommandations intelligentes', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
-            return redirect()->back()->with('error', 'Erreur lors de la génération des recommandations: ' . $e->getMessage());
-        }
-    }
-
-
-    /**
-     * Benchmarking inter-périodes - Task #11
-     */
-    public function benchmarkingAvance(Request $request)
-    {
-        $periodesComparaison = $request->input('periodes', ['mensuel', 'trimestriel', 'annuel']);
-
-        try {
-            $benchmarks = $this->analyticsPredictifService->genererBenchmarkingAvance($periodesComparaison);
-            $visualisations = $this->analyticsPredictifService->preparerDonneesVisualisationsAvancees('tendances');
-
-            return view('esbtp.comptabilite.analytics.benchmarking', compact('benchmarks', 'visualisations'));
-
-        } catch (\Exception $e) {
-            Log::error('Erreur benchmarking avancé', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
-            return redirect()->back()->with('error', 'Erreur lors du benchmarking: ' . $e->getMessage());
-        }
-    }
-
-
-    /**
-     * Visualisations avancées - Task #11
-     */
-    public function visualisationsAvancees(Request $request)
-    {
-        $typeViz = $request->input('type', 'all');
-
-        try {
-            $visualisations = $this->analyticsPredictifService->preparerDonneesVisualisationsAvancees($typeViz);
-
-            return response()->json([
-                'success' => true,
-                'visualisations' => $visualisations,
-                'type' => $typeViz,
-                'generated_at' => now()->toISOString()
-            ]);
-
-        } catch (\Exception $e) {
-            Log::error('Erreur visualisations avancées', ['error' => $e->getMessage(), 'user_id' => Auth::id()]);
-            return response()->json([
-                'success' => false,
-                'error' => 'Erreur lors de la génération des visualisations'
-            ], 500);
-        }
-    }
-
-
-    /**
-     * API pour récupérer les données prédictives en temps réel - Task #11
-     */
-    public function apiAnalyticsPredictifs(Request $request)
-    {
-        $request->validate([
-            'type' => 'required|in:projections,anomalies,recommandations,benchmarking',
-            'periode' => 'nullable|integer|min:1|max:24',
-            'annee_id' => 'nullable|integer'
-        ]);
-
-        return $this->performanceMonitor->monitor('api_analytics_predictifs', function () use ($request) {
-            try {
-                $type = $request->input('type');
-                $periode = $request->input('periode', 6);
-                $anneeId = $request->input('annee_id');
-
-                $resultats = [];
-
-                switch ($type) {
-                    case 'projections':
-                        $resultats = $this->analyticsPredictifService->projeterCashFlowAvance($periode, $anneeId);
-                        break;
-
-                    case 'anomalies':
-                        $resultats = $this->analyticsPredictifService->detecterAnomalies($periode, $anneeId);
-                        break;
-
-                    case 'recommandations':
-                        $resultats = $this->analyticsPredictifService->genererRecommandationsIntelligentes($anneeId);
-                        break;
-
-                    case 'benchmarking':
-                        $periodesComparaison = $request->input('periodes_comparaison', ['mensuel', 'trimestriel']);
-                        $resultats = $this->analyticsPredictifService->genererBenchmarkingAvance($periodesComparaison);
-                        break;
-                }
-
-                return response()->json([
-                    'success' => true,
-                    'type' => $type,
-                    'periode' => $periode,
-                    'resultats' => $resultats,
-                    'cache_info' => [
-                        'cached' => isset($resultats['cache_generated_at']) || isset($resultats['derniere_mise_a_jour']),
-                        'last_updated' => $resultats['derniere_mise_a_jour'] ?? $resultats['cache_generated_at'] ?? now()->toISOString()
-                    ],
-                    'performance' => [
-                        'execution_time' => round((microtime(true) - LARAVEL_START) * 1000, 2) . 'ms'
-                    ]
-                ]);
-
-            } catch (\Exception $e) {
-                Log::error('Erreur API analytics prédictifs', [
-                    'error' => $e->getMessage(),
-                    'user_id' => Auth::id(),
-                    'params' => $request->all()
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'error' => 'Erreur lors de l\'analyse prédictive',
-                    'message' => $e->getMessage()
-                ], 500);
-            }
-        }, [
-            'type' => $request->input('type'),
-            'periode' => $request->input('periode'),
-            'user_id' => Auth::id()
-        ]);
-    }
-
 
 
     /**
