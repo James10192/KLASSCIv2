@@ -40,6 +40,12 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Whitelist d'icônes Font Awesome** sur la création/édition de rôles — empêche l'injection de classes arbitraires.
 - **`Gate::before` pour superAdmin** — toute vérification `@can()` retourne `true` automatiquement pour le superAdmin, évitant les blocages silencieux quand une permission est cassée ailleurs.
 
+### Corrections
+
+- **Crash PDF de l'export détaillé des paiements** (`/esbtp/paiements/export-detaille`) — l'erreur DomPDF `Call to a member function get_cellmap() on null` provoquée par une `<table>` imbriquée dans un `<td>` est corrigée. La rangée méta (Lignes / Date / Total) est désormais une table sœur du bandeau d'en-tête, sans changer le rendu visuel.
+- **Export Excel détaillé en .xlsx natif** — le service `PaiementExportService::exportExcel()` produit maintenant un vrai `.xlsx` via `maatwebsite/excel` (en-tête bleu KLASSCI, badges colorés sur le statut, format monétaire FCFA, freeze pane, autofilter, ligne TOTAL, résumé filtres) au lieu d'un CSV. Fallback automatique vers CSV UTF-8 BOM en cas d'erreur PhpSpreadsheet.
+- **Sélection des classes et étudiants en Select2 premium** sur le formulaire d'export — la sélection multi-classes utilise désormais Select2 avec recherche, tags premium (chips bleu KLASSCI), bouton X par tag pour retirer, et templateResult avec icône + nom + filière. La recherche d'étudiants passe en Select2 AJAX (3 caractères min). Bouton « Réinitialiser tous les filtres » et bouton « Effacer » sur les modes de paiement.
+
 ### Saisie globale et autres
 
 - **Saisie globale des heures sans matière (présences)** — la nouvelle interface permet de saisir les heures de cours sans assigner de matière spécifique, utile pour les cours mutualisés ou les conférences. Pattern `UNIQUE+NULL` cross-compatible MariaDB/MySQL via une colonne générée.

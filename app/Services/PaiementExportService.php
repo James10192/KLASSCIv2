@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exports\PaiementDetailleExport;
 use App\Models\ESBTPPaiement;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -9,6 +10,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -218,7 +220,11 @@ class PaiementExportService
     }
 
     /**
-     * Génère un export Excel — utilise maatwebsite/excel si disponible, sinon CSV UTF-8 BOM.
+     * Génère un export Excel — utilise maatwebsite/excel pour produire un .xlsx natif.
+     *
+     * Lot 17e : maatwebsite/excel est désormais utilisé en chemin nominal.
+     * En cas d'erreur (paquet manquant, exception PhpSpreadsheet…), on retombe
+     * automatiquement sur un CSV UTF-8 BOM compatible Excel.
      */
     public function exportExcel(array $filters, ?User $user = null): Response
     {
@@ -226,16 +232,55 @@ class PaiementExportService
         $count = $paiements->count();
         $showCreator = $this->shouldShowCreatorColumn($user);
         $totalMontant = (float) $paiements->sum('montant');
+        $filtersSummary = $this->buildFiltersSummary($filters, $user);
+        $context = $this->buildContext($filters, $user, $showCreator);
 
-        $filename = 'etat-paiements-detaille_' . now()->format('Y-m-d_His') . '.csv';
-
-        Log::info('Export CSV/Excel détaillé paiements généré', [
+        Log::info('Export Excel détaillé paiements demandé', [
             'user_id' => $user?->id,
             'count' => $count,
         ]);
 
-        // Fallback CSV UTF-8 BOM (ouvrable Excel)
-        return new StreamedResponse(function () use ($paiements, $showCreator, $count, $totalMontant, $filters, $user) {
+        // Chemin nominal : .xlsx via maatwebsite/excel
+        try {
+            $filename = 'etat-paiements-detaille_' . now()->format('Y-m-d_His') . '.xlsx';
+            $export = new PaiementDetailleExport(
+                $paiements,
+                $showCreator,
+                $count,
+                $totalMontant,
+                $filtersSummary,
+                $context
+            );
+
+            return Excel::download($export, $filename);
+        } catch (\Throwable $e) {
+            Log::warning('Excel xlsx indisponible — fallback CSV', [
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->exportCsvFallback(
+                $paiements,
+                $showCreator,
+                $count,
+                $totalMontant,
+                $filtersSummary
+            );
+        }
+    }
+
+    /**
+     * Fallback CSV UTF-8 BOM (ouvrable Excel) — utilisé si maatwebsite/excel échoue.
+     */
+    protected function exportCsvFallback(
+        $paiements,
+        bool $showCreator,
+        int $count,
+        float $totalMontant,
+        array $filtersSummary
+    ): Response {
+        $filename = 'etat-paiements-detaille_' . now()->format('Y-m-d_His') . '.csv';
+
+        return new StreamedResponse(function () use ($paiements, $showCreator, $count, $totalMontant, $filtersSummary) {
             $out = fopen('php://output', 'w');
             // BOM UTF-8 pour Excel
             fwrite($out, "\xEF\xBB\xBF");
@@ -246,8 +291,6 @@ class PaiementExportService
             fputcsv($out, ['Nombre de paiements', $count], ';');
             fputcsv($out, ['Total montant (FCFA)', number_format($totalMontant, 0, ',', ' ')], ';');
 
-            // Filtres résumé
-            $filtersSummary = $this->buildFiltersSummary($filters, $user);
             foreach ($filtersSummary as $row) {
                 fputcsv($out, [$row['label'], $row['value']], ';');
             }
@@ -279,7 +322,11 @@ class PaiementExportService
 
             // Footer
             fputcsv($out, [], ';');
-            fputcsv($out, ['TOTAL', '', '', '', '', '', number_format($totalMontant, 0, ',', ' '), '', ''], ';');
+            $totalRow = ['TOTAL', '', '', '', '', '', number_format($totalMontant, 0, ',', ' '), ''];
+            if ($showCreator) {
+                $totalRow[] = '';
+            }
+            fputcsv($out, $totalRow, ';');
             fclose($out);
         }, 200, [
             'Content-Type' => 'text/csv; charset=UTF-8',

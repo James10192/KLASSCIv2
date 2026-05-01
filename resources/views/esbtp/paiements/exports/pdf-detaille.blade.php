@@ -24,13 +24,14 @@
             padding: 10px;
         }
 
-        /* ─── Header (aligné sur liste-complete-pdf : table 2 colonnes logo|infos) ─── */
+        /* ─── Header (aligné sur liste-complete-pdf : table 2 colonnes logo|infos)
+              Lot 17e fix : on retire border-radius + overflow:hidden qui combinés
+              avec 2 tables sœurs perturbent le rendu DomPDF — l'apparence reste
+              homogène grâce au background uni du <td> et au border-top tonal. */
         .header-section {
-            border-radius: 6px;
             margin-bottom: 12px;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
-            overflow: hidden;
         }
 
         /* ─── Filters bar ─── */
@@ -180,9 +181,12 @@
 @endphp
 
 <div class="container">
-    {{-- Header Section — pattern liste-complete-pdf (2 colonnes : Logo | Infos école + titre document) --}}
+    {{-- Header Section — pattern liste-complete-pdf (2 colonnes : Logo | Infos école + titre document)
+         Lot 17e fix DomPDF : la rangée méta (Lignes / Date / Total) a été extraite en table SŒUR
+         pour éviter la table imbriquée dans un <td> parent qui crashe DomPDF (get_cellmap() on null). --}}
     <div class="header-section">
-        <table width="100%" border="0" cellspacing="0" cellpadding="0">
+        {{-- Bandeau principal : Logo (gauche) + École/Titre (droite), sans table imbriquée --}}
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse;">
             <tr>
                 {{-- Colonne gauche : Logo --}}
                 <td width="18%" style="background-color: {{ $hdrBg }}; padding: 14px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.25);">
@@ -193,7 +197,7 @@
                         <div style="font-size: 30px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4; letter-spacing: -2px;">K</div>
                     @endif
                 </td>
-                {{-- Colonne droite : Nom école + contact + titre document --}}
+                {{-- Colonne droite : Nom école + contact + titre document (zéro table imbriquée) --}}
                 <td width="82%" style="background-color: {{ $hdrBg }}; padding: 12px 16px; vertical-align: middle;">
                     {{-- Nom établissement --}}
                     <div style="font-size: 15px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 2px;">{{ $etablissement['nom'] ?? 'KLASSCI' }}</div>
@@ -211,31 +215,36 @@
                         @endif
                     </div>
                     @endif
-                    {{-- Séparateur + titre document + résumé --}}
+                    {{-- Titre document (rangée méta extraite en dessous, hors du <td>) --}}
                     <div style="border-top: 1px solid rgba(255,255,255,0.35); padding-top: 7px;">
-                        <div style="font-size: 12px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px; margin-bottom: 5px;">{{ strtoupper($context['title'] ?? 'TABLEAU DÉTAILLÉ DES PAIEMENTS') }}</div>
-                        <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                            <tr>
-                                <td width="33%" style="font-size: 9px; color: {{ $hdrText }};">
-                                    <span style="color: {{ $hdrText }}; opacity: 0.75;">Lignes :</span>
-                                    <strong style="color: {{ $hdrText }};">{{ $count }}</strong>
-                                </td>
-                                <td width="33%" style="font-size: 9px; color: {{ $hdrText }}; text-align: center;">
-                                    <span style="color: {{ $hdrText }}; opacity: 0.75;">Date :</span>
-                                    <strong style="color: {{ $hdrText }};">{{ $dateGeneration->format('d/m/Y H:i') }}</strong>
-                                </td>
-                                <td width="34%" style="font-size: 9px; color: {{ $hdrText }}; text-align: right;">
-                                    <span style="color: {{ $hdrText }}; opacity: 0.75;">Total :</span>
-                                    <strong style="color: {{ $hdrText }};">{{ $formatMontant($totalMontant) }} FCFA</strong>
-                                </td>
-                            </tr>
-                        </table>
+                        <div style="font-size: 12px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px;">
+                            {{ strtoupper($context['title'] ?? 'TABLEAU DÉTAILLÉ DES PAIEMENTS') }}
+                        </div>
                         @if(! empty($context['subtitle_creator']))
                             <div style="font-size: 8.5px; color: {{ $hdrText }}; opacity: 0.85; margin-top: 5px; font-style: italic;">
                                 {{ $context['subtitle_creator'] }}
                             </div>
                         @endif
                     </div>
+                </td>
+            </tr>
+        </table>
+
+        {{-- Méta-row (Lignes / Date / Total) — table SŒUR, plus imbriquée → DomPDF safe --}}
+        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin-top: 0;">
+            <tr>
+                <td width="18%" style="background-color: {{ $hdrBg }}; padding: 6px 10px 10px; border-top: 1px solid rgba(255,255,255,0.25); border-right: 2px solid rgba(255,255,255,0.25);"></td>
+                <td width="27%" style="background-color: {{ $hdrBg }}; padding: 6px 8px 10px 16px; font-size: 9px; color: {{ $hdrText }}; border-top: 1px solid rgba(255,255,255,0.18);">
+                    <span style="color: {{ $hdrText }}; opacity: 0.75;">Lignes :</span>
+                    <strong style="color: {{ $hdrText }};">{{ $count }}</strong>
+                </td>
+                <td width="28%" style="background-color: {{ $hdrBg }}; padding: 6px 8px 10px; font-size: 9px; color: {{ $hdrText }}; text-align: center; border-top: 1px solid rgba(255,255,255,0.18);">
+                    <span style="color: {{ $hdrText }}; opacity: 0.75;">Date :</span>
+                    <strong style="color: {{ $hdrText }};">{{ $dateGeneration->format('d/m/Y H:i') }}</strong>
+                </td>
+                <td width="27%" style="background-color: {{ $hdrBg }}; padding: 6px 16px 10px 8px; font-size: 9px; color: {{ $hdrText }}; text-align: right; border-top: 1px solid rgba(255,255,255,0.18);">
+                    <span style="color: {{ $hdrText }}; opacity: 0.75;">Total :</span>
+                    <strong style="color: {{ $hdrText }};">{{ $formatMontant($totalMontant) }} FCFA</strong>
                 </td>
             </tr>
         </table>

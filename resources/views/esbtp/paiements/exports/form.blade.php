@@ -4,6 +4,8 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css">
 <style>
     /* ═══════════════════════════════════════════════
        Namespace pe-* (paiements-export premium)
@@ -81,6 +83,24 @@
     .pe-section-title { font-size: 1rem; font-weight: 700; color: #0f172a; margin: 0; }
     .pe-section-subtitle { font-size: .8rem; color: #64748b; margin: 0; }
 
+    .pe-section-toolbar {
+        margin-left: auto;
+        display: flex; gap: .5rem; align-items: center;
+    }
+    .pe-reset-btn {
+        display: inline-flex; align-items: center; gap: .4rem;
+        padding: .45rem .85rem;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        color: #475569;
+        font-size: .78rem; font-weight: 600;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: all .15s ease;
+    }
+    .pe-reset-btn:hover { border-color: #0453cb; color: #0453cb; background: #f0f4ff; }
+    .pe-reset-btn i { font-size: .72rem; }
+
     /* Form */
     .pe-form-grid {
         display: grid;
@@ -114,7 +134,6 @@
         border-color: #0453cb;
         box-shadow: 0 0 0 3px rgba(4,83,203,.12);
     }
-    .pe-select[multiple] { min-height: 110px; }
 
     .pe-checkbox-group {
         display: flex; flex-wrap: wrap; gap: .5rem;
@@ -132,6 +151,15 @@
     .pe-checkbox:hover { border-color: #0453cb; background: #f0f4ff; }
     .pe-checkbox input { margin: 0; }
     .pe-checkbox input:checked + span { color: #0453cb; font-weight: 600; }
+    .pe-checkbox-clear {
+        margin-left: .25rem;
+        font-size: .72rem;
+        color: #64748b;
+        background: transparent; border: 0;
+        cursor: pointer; padding: .2rem .5rem;
+        border-radius: 999px;
+    }
+    .pe-checkbox-clear:hover { color: #dc2626; background: #fef2f2; }
 
     .pe-format-toggle {
         display: flex; gap: .65rem;
@@ -196,6 +224,146 @@
         opacity: .55; cursor: not-allowed;
     }
 
+    /* ─── Select2 premium overrides KLASSCI ─── */
+    .pe-card .select2-container .select2-selection,
+    .pe-card .select2-container--bootstrap-5 .select2-selection {
+        min-height: calc(.55rem * 2 + 1.4rem);
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        background: #fff;
+        font-size: .85rem;
+        color: #1e293b;
+        padding: .25rem .55rem;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    .pe-card .select2-container--bootstrap-5.select2-container--focus .select2-selection,
+    .pe-card .select2-container--bootstrap-5.select2-container--open .select2-selection {
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4,83,203,.12);
+    }
+    /* Multi-select (classes) — tags premium */
+    .pe-card .select2-container--bootstrap-5 .select2-selection--multiple {
+        padding: .25rem .35rem;
+        min-height: 42px;
+    }
+    .pe-card .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__rendered {
+        gap: .3rem;
+        padding: 0;
+    }
+    .pe-card .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice {
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        color: #fff;
+        border: 0;
+        border-radius: 999px;
+        padding: .2rem .65rem .2rem .55rem;
+        font-size: .78rem;
+        font-weight: 600;
+        margin: .15rem .25rem .15rem 0;
+        line-height: 1.4;
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+    }
+    .pe-card .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove {
+        color: rgba(255,255,255,.85) !important;
+        font-weight: 700;
+        margin-right: .2rem;
+        border: 0;
+        background: transparent;
+        font-size: .9rem;
+        line-height: 1;
+        padding: 0 .15rem;
+    }
+    .pe-card .select2-container--bootstrap-5 .select2-selection--multiple .select2-selection__choice__remove:hover {
+        color: #fff !important;
+        background: rgba(255,255,255,.18);
+        border-radius: 999px;
+    }
+    /* Dropdown — premium */
+    .select2-container--bootstrap-5 .select2-dropdown {
+        border: 1px solid #e2e8f0;
+        border-radius: 12px;
+        box-shadow: 0 12px 40px rgba(15,23,42,.14);
+        overflow: hidden;
+        padding: 4px;
+    }
+    .select2-container--bootstrap-5 .select2-search--dropdown .select2-search__field {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: .45rem .65rem;
+        font-size: .85rem;
+        background: #f8fafc;
+    }
+    .select2-container--bootstrap-5 .select2-search--dropdown .select2-search__field:focus {
+        outline: none;
+        border-color: #0453cb;
+        background: #fff;
+        box-shadow: 0 0 0 3px rgba(4,83,203,.10);
+    }
+    .select2-container--bootstrap-5 .select2-results__option {
+        padding: .55rem .7rem;
+        font-size: .85rem;
+        font-weight: 500;
+        color: #1e293b;
+        border-radius: 8px;
+        margin: 2px 0;
+        transition: background .12s ease;
+    }
+    .select2-container--bootstrap-5 .select2-results__option--highlighted,
+    .select2-container--bootstrap-5 .select2-results__option--highlighted[aria-selected] {
+        background: linear-gradient(135deg, #0453cb, #3b7ddb) !important;
+        color: #fff !important;
+        font-weight: 600;
+    }
+    .select2-container--bootstrap-5 .select2-results__option[aria-selected=true] {
+        background: rgba(4,83,203,.08);
+        color: #0453cb;
+        font-weight: 600;
+    }
+    /* Placeholder */
+    .pe-card .select2-container--bootstrap-5 .select2-selection__placeholder {
+        color: #94a3b8;
+    }
+    /* Allow clear (X) sur single select */
+    .pe-card .select2-container--bootstrap-5 .select2-selection__clear {
+        color: #94a3b8;
+        font-weight: 700;
+        margin-right: .35rem;
+    }
+    .pe-card .select2-container--bootstrap-5 .select2-selection__clear:hover {
+        color: #dc2626;
+    }
+    /* Item template avatar (étudiant + classe) */
+    .pe-opt-row {
+        display: flex; align-items: center; gap: .65rem;
+    }
+    .pe-opt-icon {
+        flex: 0 0 28px; width: 28px; height: 28px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #0453cb, #5e91de);
+        color: #fff;
+        display: flex; align-items: center; justify-content: center;
+        font-size: .75rem; font-weight: 700;
+    }
+    .pe-opt-text {
+        flex: 1; min-width: 0;
+        display: flex; flex-direction: column; gap: 1px;
+    }
+    .pe-opt-title {
+        font-weight: 600; color: #0f172a;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .pe-opt-sub {
+        font-size: .72rem; color: #64748b;
+        white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    /* Sélection (chips) — étudiant simple : pas d'avatar dans la cellule pour rester compact */
+    .select2-container--bootstrap-5 .select2-selection--single .select2-selection__rendered {
+        padding: .15rem .55rem;
+        line-height: 1.4;
+        color: #1e293b;
+    }
+
     @media (max-width: 768px) {
         .pe-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 14px; }
         .pe-hero-top { flex-direction: column; }
@@ -235,18 +403,23 @@
                     <h3 class="pe-section-title">Filtres</h3>
                     <p class="pe-section-subtitle">Affinez la sélection des paiements à exporter</p>
                 </div>
+                <div class="pe-section-toolbar">
+                    <button type="button" id="pe-reset-all" class="pe-reset-btn" title="Réinitialiser tous les filtres">
+                        <i class="fas fa-rotate-left"></i> Réinitialiser tous les filtres
+                    </button>
+                </div>
             </div>
 
             <div class="pe-form-grid">
-                {{-- Étudiant (matricule + nom) --}}
+                {{-- Étudiant (Select2 AJAX) --}}
                 <div class="pe-field">
                     <label class="pe-field-label" for="pe-etudiant">
                         <i class="fas fa-user-graduate"></i> Étudiant (matricule ou nom)
                     </label>
-                    <input type="text" id="pe-etudiant-search" class="pe-input"
-                        placeholder="Rechercher par matricule ou nom…" autocomplete="off">
-                    <input type="hidden" name="etudiant_id" id="pe-etudiant" value="">
-                    <div class="pe-field-hint" id="pe-etudiant-hint">Laisser vide pour tous les étudiants</div>
+                    <select name="etudiant_id" id="pe-etudiant" class="pe-select" data-placeholder="Rechercher un étudiant…">
+                        <option value=""></option>
+                    </select>
+                    <div class="pe-field-hint">Tapez au moins 3 caractères — laisser vide pour tous les étudiants</div>
                 </div>
 
                 {{-- Format --}}
@@ -283,8 +456,8 @@
                     <label class="pe-field-label" for="pe-filiere">
                         <i class="fas fa-stream"></i> Filière
                     </label>
-                    <select name="filiere_id" id="pe-filiere" class="pe-select">
-                        <option value="">— Toutes les filières —</option>
+                    <select name="filiere_id" id="pe-filiere" class="pe-select" data-placeholder="— Toutes les filières —">
+                        <option value=""></option>
                         @foreach($filieres as $f)
                             <option value="{{ $f->id }}">{{ $f->name }}</option>
                         @endforeach
@@ -296,27 +469,30 @@
                     <label class="pe-field-label" for="pe-niveau">
                         <i class="fas fa-layer-group"></i> Niveau d'études
                     </label>
-                    <select name="niveau_id" id="pe-niveau" class="pe-select">
-                        <option value="">— Tous les niveaux —</option>
+                    <select name="niveau_id" id="pe-niveau" class="pe-select" data-placeholder="— Tous les niveaux —">
+                        <option value=""></option>
                         @foreach($niveaux as $n)
                             <option value="{{ $n->id }}">{{ $n->name }}</option>
                         @endforeach
                     </select>
                 </div>
 
-                {{-- Classes (multi) --}}
+                {{-- Classes (multi Select2) --}}
                 <div class="pe-field" style="grid-column: 1 / -1;">
                     <label class="pe-field-label" for="pe-classes">
                         <i class="fas fa-chalkboard"></i> Classes (multi-sélection)
                     </label>
-                    <select name="classe_ids[]" id="pe-classes" class="pe-select" multiple>
+                    <select name="classe_ids[]" id="pe-classes" class="pe-select" multiple
+                            data-placeholder="Sélectionnez une ou plusieurs classes…">
                         @foreach($classes as $c)
-                            <option value="{{ $c->id }}">
+                            <option value="{{ $c->id }}" data-filiere="{{ $c->filiere->name ?? '' }}">
                                 {{ $c->name }}{{ $c->filiere ? ' — ' . $c->filiere->name : '' }}
                             </option>
                         @endforeach
                     </select>
-                    <div class="pe-field-hint">Ctrl/Cmd + clic pour sélectionner plusieurs classes — vide = toutes</div>
+                    <div class="pe-field-hint">
+                        Recherche + clics pour ajouter, X sur chaque tag pour retirer — vide = toutes les classes
+                    </div>
                 </div>
 
                 {{-- Date début --}}
@@ -339,8 +515,11 @@
                 <div class="pe-field" style="grid-column: 1 / -1;">
                     <label class="pe-field-label">
                         <i class="fas fa-money-check-alt"></i> Mode(s) de paiement
+                        <button type="button" id="pe-modes-clear" class="pe-checkbox-clear" title="Effacer la sélection">
+                            <i class="fas fa-times-circle"></i> Effacer
+                        </button>
                     </label>
-                    <div class="pe-checkbox-group">
+                    <div class="pe-checkbox-group" id="pe-modes-group">
                         @forelse($modes as $mode)
                             <label class="pe-checkbox">
                                 <input type="checkbox" name="modes[]" value="{{ $mode }}">
@@ -373,6 +552,8 @@
 @endsection
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/i18n/fr.js"></script>
 <script>
     (function () {
         'use strict';
@@ -384,7 +565,6 @@
                 window.showToast(msg, type);
                 return;
             }
-            // Fallback BS5 toast inline
             let container = document.getElementById('pe-toast-container');
             if (!container) {
                 container = document.createElement('div');
@@ -402,38 +582,139 @@
             setTimeout(() => el.remove(), 5000);
         }
 
-        // Étudiant autocomplete (simple — fetch on input)
-        const etudiantSearchInput = document.getElementById('pe-etudiant-search');
-        const etudiantHidden = document.getElementById('pe-etudiant');
-        const etudiantHint = document.getElementById('pe-etudiant-hint');
-        let etudiantTimer = null;
+        // ─── Select2 templates premium ───
+        function initialOf(text) {
+            text = (text || '?').trim();
+            if (!text) return '?';
+            // Prendre l'initiale du dernier mot s'il y a un nom complet
+            const parts = text.split(/\s+/);
+            return (parts[parts.length - 1][0] || '?').toUpperCase();
+        }
+        function templateClasse(item) {
+            if (!item.id) return item.text;
+            const $el = $('<div class="pe-opt-row"></div>');
+            const $icon = $('<div class="pe-opt-icon"></div>').text(initialOf(item.text));
+            const $text = $('<div class="pe-opt-text"></div>');
+            // item.text inclut "Classe — Filière" → on split sur "—"
+            const raw = (item.text || '').toString();
+            const idx = raw.indexOf('—');
+            if (idx > -1) {
+                $text.append($('<div class="pe-opt-title"></div>').text(raw.slice(0, idx).trim()));
+                $text.append($('<div class="pe-opt-sub"></div>').text(raw.slice(idx + 1).trim()));
+            } else {
+                $text.append($('<div class="pe-opt-title"></div>').text(raw));
+            }
+            $el.append($icon, $text);
+            return $el;
+        }
+        function templateClasseSelected(item) {
+            if (!item.id) return item.text;
+            // Pour les chips, juste le nom de la classe (avant le —)
+            const raw = (item.text || '').toString();
+            const idx = raw.indexOf('—');
+            return idx > -1 ? raw.slice(0, idx).trim() : raw;
+        }
+        function templateEtudiant(item) {
+            if (!item.id) return item.text;
+            const $el = $('<div class="pe-opt-row"></div>');
+            const $icon = $('<div class="pe-opt-icon"><i class="fas fa-user-graduate"></i></div>');
+            const $text = $('<div class="pe-opt-text"></div>');
+            // text = "MAT123 - NOM Prénom"
+            const raw = (item.text || '').toString();
+            const idx = raw.indexOf(' - ');
+            if (idx > -1) {
+                $text.append($('<div class="pe-opt-title"></div>').text(raw.slice(idx + 3).trim()));
+                $text.append($('<div class="pe-opt-sub"></div>').text(raw.slice(0, idx).trim()));
+            } else {
+                $text.append($('<div class="pe-opt-title"></div>').text(raw));
+            }
+            $el.append($icon, $text);
+            return $el;
+        }
 
-        if (etudiantSearchInput) {
-            etudiantSearchInput.addEventListener('input', function () {
-                clearTimeout(etudiantTimer);
-                const q = this.value.trim();
-                etudiantHidden.value = '';
-                if (q.length < 2) {
-                    etudiantHint.textContent = 'Tapez au moins 2 caractères';
-                    return;
-                }
-                etudiantTimer = setTimeout(() => {
-                    fetch('{{ route('esbtp.api.parents.search') }}?q=' + encodeURIComponent(q) + '&context=etudiant', {
-                        headers: { 'Accept': 'application/json' }
-                    })
-                    .then(r => r.json())
-                    .then(json => {
-                        // Note: cette API renvoie soit un array, soit { items: [] } selon contexte.
-                        // En cas d'absence d'API étudiant dédiée, on laisse l'utilisateur taper le matricule
-                        // → le serveur ignorera le filtre etudiant_id si le hidden est vide.
-                        etudiantHint.textContent = q
-                            ? 'Saisissez le matricule exact (filtre flou non disponible) — laisser vide ignore ce critère'
-                            : 'Laisser vide pour tous les étudiants';
-                    })
-                    .catch(() => {
-                        etudiantHint.textContent = 'Filtre étudiant non disponible — laisser vide';
-                    });
-                }, 350);
+        // ─── Init Select2 sur tous les champs ───
+        const $etudiant = $('#pe-etudiant');
+        const $filiere = $('#pe-filiere');
+        const $niveau = $('#pe-niveau');
+        const $classes = $('#pe-classes');
+
+        const select2Common = {
+            theme: 'bootstrap-5',
+            language: 'fr',
+            width: '100%',
+            allowClear: true,
+        };
+
+        $filiere.select2(Object.assign({}, select2Common, {
+            placeholder: '— Toutes les filières —',
+        }));
+        $niveau.select2(Object.assign({}, select2Common, {
+            placeholder: '— Tous les niveaux —',
+        }));
+        $classes.select2(Object.assign({}, select2Common, {
+            placeholder: 'Sélectionnez une ou plusieurs classes…',
+            templateResult: templateClasse,
+            templateSelection: templateClasseSelected,
+            closeOnSelect: false,
+        }));
+
+        // Étudiant — Select2 AJAX
+        $etudiant.select2(Object.assign({}, select2Common, {
+            placeholder: 'Rechercher un étudiant (matricule ou nom)…',
+            minimumInputLength: 3,
+            templateResult: templateEtudiant,
+            templateSelection: function (item) {
+                if (!item.id) return item.text;
+                return $('<span></span>').text(item.text);
+            },
+            ajax: {
+                url: '{{ route('esbtp.api.etudiants.search') }}',
+                dataType: 'json',
+                delay: 300,
+                data: function (params) {
+                    return { q: params.term, page: params.page || 1 };
+                },
+                processResults: function (data, params) {
+                    params.page = params.page || 1;
+                    return {
+                        results: data.results || [],
+                        pagination: { more: !!(data.pagination && data.pagination.more) },
+                    };
+                },
+                cache: true,
+            },
+            language: Object.assign({}, $.fn.select2.defaults.defaults.language || {}, {
+                inputTooShort: function (args) {
+                    var remaining = args.minimum - args.input.length;
+                    return 'Entrez ' + remaining + ' caractère' + (remaining > 1 ? 's' : '') + ' supplémentaire' + (remaining > 1 ? 's' : '');
+                },
+                searching: function () { return 'Recherche…'; },
+                noResults: function () { return 'Aucun étudiant trouvé'; },
+            }),
+        }));
+
+        // ─── Reset all filters ───
+        document.getElementById('pe-reset-all').addEventListener('click', function () {
+            $etudiant.val(null).trigger('change');
+            $filiere.val('').trigger('change');
+            $niveau.val('').trigger('change');
+            $classes.val(null).trigger('change');
+            document.getElementById('pe-date-debut').value = '';
+            document.getElementById('pe-date-fin').value = '';
+            document.querySelectorAll('input[name="modes[]"]').forEach(cb => cb.checked = false);
+            // Format reset à PDF
+            const pdfRadio = document.querySelector('input[name="format"][value="pdf"]');
+            if (pdfRadio) pdfRadio.checked = true;
+            resetPreview();
+            toast('Filtres réinitialisés', 'info');
+        });
+
+        // Effacer les modes uniquement
+        const modesClear = document.getElementById('pe-modes-clear');
+        if (modesClear) {
+            modesClear.addEventListener('click', function () {
+                document.querySelectorAll('input[name="modes[]"]').forEach(cb => cb.checked = false);
+                resetPreview();
             });
         }
 
@@ -446,11 +727,14 @@
         }
 
         // Format change → reset preview
-        const formatRadios = document.querySelectorAll('input[name="format"]');
-        formatRadios.forEach(r => r.addEventListener('change', resetPreview));
+        document.querySelectorAll('input[name="format"]').forEach(r => r.addEventListener('change', resetPreview));
 
-        // Reset preview state on any filter change
-        ['pe-filiere', 'pe-niveau', 'pe-classes', 'pe-date-debut', 'pe-date-fin', 'pe-etudiant-search'].forEach(id => {
+        // Reset preview state on any filter change (Select2 + checkboxes + dates)
+        $etudiant.on('change.select2', resetPreview);
+        $filiere.on('change.select2', resetPreview);
+        $niveau.on('change.select2', resetPreview);
+        $classes.on('change.select2', resetPreview);
+        ['pe-date-debut', 'pe-date-fin'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('change', resetPreview);
         });
@@ -519,7 +803,6 @@
                 toast('Veuillez d\'abord cliquer sur « Vérifier »', 'warning');
                 return;
             }
-            // Laisser le POST classique télécharger le fichier
         });
     })();
 </script>
