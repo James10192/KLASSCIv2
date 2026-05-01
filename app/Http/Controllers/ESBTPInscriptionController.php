@@ -543,6 +543,14 @@ class ESBTPInscriptionController extends Controller
                 ]);
             }
 
+            // Workflow event : notifie les holders de paiements.create (hors actor)
+            // + flash modal "next step" si l'actor a déjà la permission (anti-self-notif).
+            \App\Support\WorkflowFlash::dispatch(
+                'inscription.created',
+                auth()->user(),
+                ['inscription_id' => $inscription->id, 'etudiant_id' => $inscription->etudiant_id],
+            );
+
             return redirect()
                 ->route("esbtp.inscriptions.show", $inscription->id)
                 ->with(
@@ -1155,6 +1163,14 @@ class ESBTPInscriptionController extends Controller
             }
 
             DB::commit();
+
+            // Workflow event : fin du chain (issue #298) — pas de notif (next_perm null)
+            // mais loggé pour audit + permet hook futur (e.g. génération bulletin auto)
+            \App\Support\WorkflowFlash::dispatch(
+                'inscription.validated',
+                Auth::user(),
+                ['inscription' => $inscription->id, 'etudiant_id' => $inscription->etudiant_id],
+            );
 
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([

@@ -423,6 +423,13 @@ class ESBTPPaiementController extends Controller
                 Log::error('Erreur envoi notification paiement aux parents: ' . $e->getMessage());
             }
 
+            // Workflow event : notifie holders de paiements.validate (issue #298)
+            \App\Support\WorkflowFlash::dispatch(
+                'paiement.created',
+                Auth::user(),
+                ['paiement' => $paiement->id, 'inscription_id' => $paiement->inscription_id],
+            );
+
             return redirect()->route('esbtp.paiements.show', $paiement->id)
                 ->with('success', 'Paiement enregistré avec succès. Numéro de reçu : ' . $numeroRecu);
 
@@ -1283,6 +1290,13 @@ class ESBTPPaiementController extends Controller
             } catch (\Exception $e) {
                 Log::error('Erreur désactivation reminder paiement: ' . $e->getMessage());
             }
+
+            // Workflow event : notifie holders de inscriptions.validate (issue #298)
+            \App\Support\WorkflowFlash::dispatch(
+                'paiement.validated',
+                Auth::user(),
+                ['inscription' => $paiement->inscription_id, 'paiement' => $paiement->id],
+            );
 
             // Si requête AJAX, retourner JSON
             if ($request->ajax()) {

@@ -15,9 +15,11 @@ use App\Events\SeuilAtteint;
 use App\Events\RelanceEnvoyee;
 use App\Events\KPIsCalcules;
 use App\Events\TeacherAttendanceValidated;
+use App\Events\WorkflowStepCompleted;
 
 // Import all the listeners
 use App\Listeners\EnvoyerNotificationPaiement;
+use App\Listeners\NotifyWorkflowNextStepActors;
 use App\Listeners\MettreAJourKPIs;
 use App\Listeners\NotifierBonApprouve;
 use App\Listeners\GererSeuilAtteint;
@@ -66,6 +68,11 @@ class EventServiceProvider extends ServiceProvider
         // Événements émargement enseignants
         TeacherAttendanceValidated::class => [
             UpdatePlanificationHours::class,
+        ],
+
+        // Workflow inscription → notifs event-driven (issue #298)
+        WorkflowStepCompleted::class => [
+            NotifyWorkflowNextStepActors::class,
         ],
     ];
 
