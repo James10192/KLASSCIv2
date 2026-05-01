@@ -18,6 +18,12 @@ class ESBTPTeacher extends Model
         'title',
         'specialization',
         'status',
+        'regime',
+        'taux_horaire',
+        'date_debut_activite',
+        'diplome_principal',
+        'universite_diplome',
+        'annee_diplome',
         'teaching_hours_due',
         'phone',
         'email',
@@ -38,7 +44,10 @@ class ESBTPTeacher extends Model
 
     protected $casts = [
         'research_interests' => 'array',
-        'is_active' => 'boolean'
+        'is_active' => 'boolean',
+        'taux_horaire' => 'decimal:2',
+        'date_debut_activite' => 'date',
+        'annee_diplome' => 'integer',
     ];
 
     protected static function boot()

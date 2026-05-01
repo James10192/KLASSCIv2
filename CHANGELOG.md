@@ -12,6 +12,14 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### Migrations DB
+
+- **Fusion `esbtp_enseignant_profiles` dans `esbtp_teachers`** — ajout de 6 colonnes à `esbtp_teachers` : `regime` (enum vacataire/permanent/consultant), `taux_horaire`, `date_debut_activite`, `diplome_principal`, `universite_diplome`, `annee_diplome`. La data utile de `esbtp_enseignant_profiles` est copiée via UPDATE INNER JOIN (idempotent : `COALESCE` préserve les valeurs déjà saisies). `type_contrat` et `statut_emploi` consolidés en un seul champ `regime`. Drop des tables `esbtp_enseignant_profiles`, `esbtp_enseignant_disponibilites`, `esbtp_enseignant_affectations` (tables ambitieuses jamais réellement alimentées par l'UI moderne).
+
+### Améliorations
+
+- **Mono-write côté contrôleur enseignant** — fin du `Schema::hasTable('esbtp_enseignant_profiles')` defensif et du double-write `DB::table('esbtp_enseignant_profiles')->insert/update`. `ESBTPEnseignantController::store/quickStore/update/edit` lit/écrit directement sur `ESBTPTeacher`. Suppression des helpers `regimeToContrat()` et `normalizeRegime()`. Vues `show.blade.php` et `edit.blade.php` : références `$profileData->X` remplacées par `$teacher->X`. KPI « Expérience » remplacé par KPI « Régime ». Section « Motivation & Objectifs » de la fiche profil supprimée (champs jamais alimentés).
+
 ### Suppressions
 
 - **Cleanup zombies du domaine enseignant** — suppression des controllers `TeacherAdminController` (legacy non-ESBTP), `App\Http\Controllers\ESBTP\Admin\TeacherAdminController` (UI admin parallèle), `ESBTPEnseignantProfileController` (ancien système de profils), `ESBTPDepartmentController` (concept hors scope KLASSCI). Suppression des modèles `ESBTPEnseignantProfile`, `ESBTPEnseignantAffectation`, `ESBTPEnseignantDisponibilite` (jamais réellement utilisés par l'UI moderne). Suppression des dossiers de vues `esbtp/departments/`, `esbtp/teachers/` (ancienne UI parallèle), `superadmin/teachers/`. Suppression du lien « Départements » dans la sidebar et des routes correspondantes (`esbtp.departments.*`, `esbtp.teachers.*` admin namespace, `esbtp.enseignants.profiles.*`). Mise à jour de `User.php` : retrait des relations Eloquent legacy `hasOne(Teacher)` et `hasOne(ESBTPEnseignantProfile)`. Mise à jour de `ESBTPTeacher` : retrait des champs `department_id` et `laboratory_id` du fillable et des relations `department()` / `laboratory()`. Repointage de la relation `ESBTPResultat::enseignant()` vers `User`. Recherche globale (`SearchController`) et résultats (`search/results.blade.php`) : liens `esbtp.teachers.*` remplacés par `esbtp.enseignants.*`.
