@@ -229,9 +229,6 @@
                                                     </td>
                                                     <td>
                                                         <div class="btn-group">
-                                                            <a href="{{ route('esbtp.departments.show', $department->id) }}" class="btn btn-info btn-sm">
-                                                                <i class="fas fa-eye"></i> Voir
-                                                            </a>
                                                             <form action="{{ route('esbtp.partnerships.detach-department', [$partnership->id, $department->id]) }}" method="POST" style="display: inline;" onsubmit="return confirm('Êtes-vous sûr de vouloir retirer ce département?');">
                                                                 @csrf
                                                                 @method('DELETE')

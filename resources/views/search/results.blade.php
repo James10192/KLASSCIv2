@@ -193,7 +193,7 @@
                                                         <p class="card-text">
                                                             <small class="text-muted">{{ $enseignant->email }}</small>
                                                         </p>
-                                                        <a href="{{ route('esbtp.teachers.show', $enseignant->id) }}" class="btn btn-sm btn-outline-primary">
+                                                        <a href="{{ route('esbtp.enseignants.show', $enseignant->id) }}" class="btn btn-sm btn-outline-primary">
                                                             Voir le profil
                                                         </a>
                                                     </div>
