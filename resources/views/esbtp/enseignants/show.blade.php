@@ -559,8 +559,8 @@
             <div class="es-kpi">
                 <i class="fas fa-graduation-cap es-kpi-icon"></i>
                 <div>
-                    <div class="es-kpi-val">{{ $profileData->annees_experience_enseignement ?? 0 }} ans</div>
-                    <div class="es-kpi-lbl">Experience</div>
+                    <div class="es-kpi-val">{{ ucfirst($teacher->regime ?? 'vacataire') }}</div>
+                    <div class="es-kpi-lbl">Regime</div>
                 </div>
             </div>
             <div class="es-kpi">
@@ -624,11 +624,11 @@
                     </div>
                     <div class="es-info-row">
                         <span class="es-info-label"><i class="fas fa-award"></i> Titre academique</span>
-                        <span class="es-info-value">{{ $profileData->titre_academique ?? 'Non renseigne' }}</span>
+                        <span class="es-info-value">{{ $teacher->title ?? 'Non renseigne' }}</span>
                     </div>
                     <div class="es-info-row">
                         <span class="es-info-label"><i class="fas fa-medal"></i> Grade academique</span>
-                        <span class="es-info-value">{{ $profileData->grade_academique ?? 'Non renseigne' }}</span>
+                        <span class="es-info-value">{{ $teacher->grade ?? 'Non renseigne' }}</span>
                     </div>
                 </div>
 
@@ -658,16 +658,22 @@
                             </span>
                         </span>
                     </div>
-                    @if($profileData && $profileData->type_contrat)
+                    @if($teacher->regime)
                     <div class="es-info-row">
-                        <span class="es-info-label"><i class="fas fa-file-contract"></i> Type de contrat</span>
-                        <span class="es-info-value">{{ ucfirst($profileData->type_contrat) }}</span>
+                        <span class="es-info-label"><i class="fas fa-file-contract"></i> Regime</span>
+                        <span class="es-info-value">{{ ucfirst($teacher->regime) }}</span>
                     </div>
                     @endif
-                    @if($profileData && $profileData->statut_emploi)
+                    @if($teacher->taux_horaire)
                     <div class="es-info-row">
-                        <span class="es-info-label"><i class="fas fa-user-tie"></i> Statut d'emploi</span>
-                        <span class="es-info-value">{{ str_replace('_', ' ', ucfirst($profileData->statut_emploi)) }}</span>
+                        <span class="es-info-label"><i class="fas fa-coins"></i> Taux horaire</span>
+                        <span class="es-info-value">{{ number_format($teacher->taux_horaire, 0, ',', ' ') }} FCFA/h</span>
+                    </div>
+                    @endif
+                    @if($teacher->date_debut_activite)
+                    <div class="es-info-row">
+                        <span class="es-info-label"><i class="fas fa-calendar-check"></i> Debut d'activite</span>
+                        <span class="es-info-value">{{ $teacher->date_debut_activite->format('d/m/Y') }}</span>
                     </div>
                     @endif
 
@@ -697,7 +703,7 @@
             </div>
 
             {{-- Qualifications & Formation --}}
-            @if($profileData)
+            @if($teacher->diplome_principal || $teacher->universite_diplome || $teacher->annee_diplome)
             <div class="es-card">
                 <div class="es-card-header">
                     <div class="es-card-title">
@@ -707,36 +713,22 @@
                 </div>
                 <div class="es-grid-2">
                     <div>
-                        @if($profileData->diplome_principal)
+                        @if($teacher->diplome_principal)
                         <div class="es-info-row">
                             <span class="es-info-label"><i class="fas fa-scroll"></i> Diplome principal</span>
-                            <span class="es-info-value">{{ $profileData->diplome_principal }}</span>
+                            <span class="es-info-value">{{ $teacher->diplome_principal }}</span>
                         </div>
                         @endif
-                        @if($profileData->universite_diplome)
+                        @if($teacher->universite_diplome)
                         <div class="es-info-row">
                             <span class="es-info-label"><i class="fas fa-university"></i> Universite</span>
-                            <span class="es-info-value">{{ $profileData->universite_diplome }}</span>
+                            <span class="es-info-value">{{ $teacher->universite_diplome }}</span>
                         </div>
                         @endif
-                        @if($profileData->annee_diplome)
+                        @if($teacher->annee_diplome)
                         <div class="es-info-row">
                             <span class="es-info-label"><i class="fas fa-calendar"></i> Annee d'obtention</span>
-                            <span class="es-info-value">{{ $profileData->annee_diplome }}</span>
-                        </div>
-                        @endif
-                    </div>
-                    <div>
-                        @if($profileData->annees_experience_enseignement)
-                        <div class="es-info-row">
-                            <span class="es-info-label"><i class="fas fa-chalkboard-teacher"></i> Experience enseignement</span>
-                            <span class="es-info-value">{{ $profileData->annees_experience_enseignement }} annees</span>
-                        </div>
-                        @endif
-                        @if($profileData->annees_experience_professionnelle)
-                        <div class="es-info-row">
-                            <span class="es-info-label"><i class="fas fa-briefcase"></i> Experience professionnelle</span>
-                            <span class="es-info-value">{{ $profileData->annees_experience_professionnelle }} annees</span>
+                            <span class="es-info-value">{{ $teacher->annee_diplome }}</span>
                         </div>
                         @endif
                     </div>
@@ -754,30 +746,6 @@
                     </div>
                 </div>
                 <div class="es-bio-text">{{ $teacher->bio }}</div>
-            </div>
-            @endif
-
-            {{-- Motivation & Objectifs --}}
-            @if($profileData && ($profileData->motivation || $profileData->objectifs_pedagogiques))
-            <div class="es-card">
-                <div class="es-card-header">
-                    <div class="es-card-title">
-                        <div class="es-card-title-icon"><i class="fas fa-lightbulb"></i></div>
-                        Motivation & Objectifs
-                    </div>
-                </div>
-                @if($profileData->motivation)
-                <div class="es-info-row">
-                    <span class="es-info-label"><i class="fas fa-heart"></i> Motivation</span>
-                    <span class="es-info-value">{{ $profileData->motivation }}</span>
-                </div>
-                @endif
-                @if($profileData->objectifs_pedagogiques)
-                <div class="es-info-row">
-                    <span class="es-info-label"><i class="fas fa-bullseye"></i> Objectifs pedagogiques</span>
-                    <span class="es-info-value">{{ $profileData->objectifs_pedagogiques }}</span>
-                </div>
-                @endif
             </div>
             @endif
 

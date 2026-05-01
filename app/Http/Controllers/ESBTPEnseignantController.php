@@ -15,7 +15,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Schema;
 use Carbon\Carbon;
 
 class ESBTPEnseignantController extends Controller
@@ -57,16 +56,9 @@ class ESBTPEnseignantController extends Controller
             "total" => ESBTPTeacher::count(),
             "active" => ESBTPTeacher::where("status", "active")->count(),
             "inactive" => ESBTPTeacher::where("status", "inactive")->count(),
-            "permanent" => 0,
-            "temporary" => 0,
+            "permanent" => ESBTPTeacher::where("regime", "permanent")->count(),
+            "temporary" => ESBTPTeacher::where("regime", "vacataire")->count(),
         ];
-
-        if (Schema::hasTable("esbtp_enseignant_profiles")) {
-            $stats["permanent"] = DB::table("esbtp_enseignant_profiles")
-                ->where("type_contrat", "permanent")->count();
-            $stats["temporary"] = DB::table("esbtp_enseignant_profiles")
-                ->where("type_contrat", "vacataire")->count();
-        }
 
         return view(
             "esbtp.enseignants.index",
@@ -109,31 +101,6 @@ class ESBTPEnseignantController extends Controller
     }
 
     /**
-     * Map le champ unifié "regime" vers les colonnes legacy
-     * type_contrat + statut_emploi de esbtp_enseignant_profiles.
-     */
-    private function regimeToContrat(string $regime): array
-    {
-        return match ($regime) {
-            'permanent' => ['type_contrat' => 'permanent', 'statut_emploi' => 'temps_plein'],
-            'consultant' => ['type_contrat' => 'consultant', 'statut_emploi' => 'temps_partiel'],
-            default => ['type_contrat' => 'vacataire', 'statut_emploi' => 'vacations'],
-        };
-    }
-
-    /**
-     * Mapping inverse pour rétrocompat : type_contrat legacy → regime canonique.
-     */
-    private function normalizeRegime(string $typeContrat): string
-    {
-        return match ($typeContrat) {
-            'permanent' => 'permanent',
-            'consultant' => 'consultant',
-            default => 'vacataire',
-        };
-    }
-
-    /**
      * Store a newly created teacher in storage.
      */
     public function store(Request $request)
@@ -158,7 +125,6 @@ class ESBTPEnseignantController extends Controller
         ]);
 
         $regime = $request->input('regime') ?: 'vacataire';
-        $contrat = $this->regimeToContrat($regime);
 
         DB::beginTransaction();
 
@@ -180,36 +146,19 @@ class ESBTPEnseignantController extends Controller
                 "specialization" => $request->specialization,
                 "grade" => $request->grade_academique,
                 "status" => "active",
+                "regime" => $regime,
+                "taux_horaire" => $request->taux_horaire,
+                "date_debut_activite" => $request->date_debut_activite
+                    ? Carbon::parse($request->date_debut_activite)->format('Y-m-d')
+                    : now()->toDateString(),
+                "diplome_principal" => $request->diplome_principal,
+                "universite_diplome" => $request->universite_diplome,
+                "annee_diplome" => $request->annee_diplome,
                 "teaching_hours_due" => $regime === 'permanent'
                     ? ($request->charge_horaire_max_semaine ?? 18)
                     : 0,
                 "created_by" => auth()->id(),
             ]);
-
-            if (Schema::hasTable("esbtp_enseignant_profiles")) {
-                $dateDebut = $request->date_debut_activite
-                    ? Carbon::parse($request->date_debut_activite)->format('Y-m-d')
-                    : now()->toDateString();
-
-                DB::table("esbtp_enseignant_profiles")->insert(array_filter([
-                    "user_id" => $user->id,
-                    "matricule_enseignant" => $teacher->matricule,
-                    "titre_academique" => $request->titre_academique,
-                    "grade_academique" => $request->grade_academique,
-                    "diplome_principal" => $request->diplome_principal,
-                    "universite_diplome" => $request->universite_diplome,
-                    "annee_diplome" => $request->annee_diplome,
-                    "charge_horaire_max_semaine" => $request->charge_horaire_max_semaine ?? 18,
-                    "type_contrat" => $contrat['type_contrat'],
-                    "statut_emploi" => $contrat['statut_emploi'],
-                    "date_embauche" => $dateDebut,
-                    "taux_horaire" => $request->taux_horaire,
-                    "statut" => "actif",
-                    "created_by" => auth()->id(),
-                    "created_at" => now(),
-                    "updated_at" => now(),
-                ], fn($v) => $v !== null));
-            }
 
             DB::commit();
 
@@ -285,10 +234,18 @@ class ESBTPEnseignantController extends Controller
             $role = \Spatie\Permission\Models\Role::firstOrCreate(['name' => 'enseignant']);
             $user->assignRole($role);
 
-            // Régime unifié (préféré) ou retombée sur type_contrat legacy.
+            // Régime unifié — fallback sur type_contrat legacy si client AJAX antérieur.
             $regime = $request->input('regime')
-                ?: ($request->input('type_contrat') ? $this->normalizeRegime($request->input('type_contrat')) : 'vacataire');
-            $contrat = $this->regimeToContrat($regime);
+                ?: match ($request->input('type_contrat')) {
+                    'permanent' => 'permanent',
+                    'consultant' => 'consultant',
+                    default => 'vacataire',
+                };
+
+            $dateDebut = $request->date_debut_activite ?: $request->date_embauche;
+            $dateDebut = $dateDebut
+                ? Carbon::parse($dateDebut)->format('Y-m-d')
+                : now()->toDateString();
 
             $teacher = ESBTPTeacher::create([
                 "user_id" => $user->id,
@@ -297,66 +254,14 @@ class ESBTPEnseignantController extends Controller
                 "specialization" => $request->specialization,
                 "grade" => $request->grade_academique,
                 "status" => "active",
+                "regime" => $regime,
+                "taux_horaire" => $request->taux_horaire,
+                "date_debut_activite" => $dateDebut,
                 "teaching_hours_due" => $regime === 'permanent'
                     ? ($request->charge_horaire_max_semaine ?? 18)
                     : 0,
                 "created_by" => auth()->id(),
             ]);
-
-            if (Schema::hasTable("esbtp_enseignant_profiles")) {
-                try {
-                    $dateDebut = $request->date_debut_activite
-                        ?: $request->date_embauche;
-                    $dateDebut = $dateDebut
-                        ? Carbon::parse($dateDebut)->format('Y-m-d')
-                        : now()->toDateString();
-
-                    $profileData = [
-                        "user_id" => $user->id,
-                        "matricule_enseignant" => $teacher->matricule,
-                        "titre_academique" => $request->titre_academique,
-                        "grade_academique" => $request->grade_academique,
-                        "charge_horaire_max_semaine" =>
-                            $request->charge_horaire_max_semaine ?? 18,
-                        "type_contrat" => $contrat['type_contrat'],
-                        "statut_emploi" => $contrat['statut_emploi'],
-                        "date_embauche" => $dateDebut,
-                        "taux_horaire" => $request->taux_horaire,
-                        "statut" => "actif",
-                        "created_by" => auth()->id(),
-                        "created_at" => now(),
-                        "updated_at" => now(),
-                    ];
-
-                    // Colonnes optionnelles — vérifier leur existence avant insertion
-                    $optionalColumns = [
-                        'diplome_principal' => null,
-                        'universite_diplome' => null,
-                        'annee_diplome' => null,
-                        'annees_experience_enseignement' => 0,
-                        'annees_experience_professionnelle' => 0,
-                        'fin_contrat' => null,
-                        'taux_horaire' => null,
-                        'accepte_enseignement_distance' => false,
-                        'accepte_cours_weekend' => false,
-                        'accepte_cours_soir' => false,
-                        'motivation' => null,
-                        'objectifs_pedagogiques' => null,
-                    ];
-
-                    foreach ($optionalColumns as $col => $default) {
-                        if (Schema::hasColumn('esbtp_enseignant_profiles', $col)) {
-                            $profileData[$col] = $default;
-                        }
-                    }
-
-                    DB::table("esbtp_enseignant_profiles")->insert($profileData);
-                } catch (\Exception $profileEx) {
-                    \Log::warning(
-                        "Profil enseignant non créé (non-bloquant): " . $profileEx->getMessage(),
-                    );
-                }
-            }
 
             if ($request->has("availability")) {
                 ESBTPTeacherAvailability::where("teacher_id", $teacher->id)->delete();
@@ -512,14 +417,6 @@ class ESBTPEnseignantController extends Controller
             $periode,
         );
 
-        // Récupérer les informations additionnelles si elles existent
-        $profileData = null;
-        if (Schema::hasTable("esbtp_enseignant_profiles")) {
-            $profileData = DB::table("esbtp_enseignant_profiles")
-                ->where("user_id", $enseignant->user_id)
-                ->first();
-        }
-
         // Préparer les données de disponibilité réelles
         $realAvailability = $this->prepareAvailabilityData($enseignant);
 
@@ -529,7 +426,6 @@ class ESBTPEnseignantController extends Controller
             "esbtp.enseignants.show",
             compact(
                 "teacher",
-                "profileData",
                 "realAvailability",
                 "teachingPlanning",
                 "anneeCourante",
@@ -878,19 +774,6 @@ class ESBTPEnseignantController extends Controller
     public function edit(ESBTPTeacher $enseignant)
     {
         $enseignant->load(["user", "availabilities"]);
-
-        $profileData = null;
-        if (Schema::hasTable("esbtp_enseignant_profiles")) {
-            $profileData = DB::table("esbtp_enseignant_profiles")
-                ->where("user_id", $enseignant->user_id)
-                ->first();
-        }
-
-        // Régime canonique reconstruit depuis le profil legacy.
-        $currentRegime = $profileData && !empty($profileData->type_contrat)
-            ? $this->normalizeRegime($profileData->type_contrat)
-            : 'vacataire';
-
         $availabilityData = $this->prepareAvailabilityData($enseignant);
 
         // Compatibilité vue (variable $teacher).
@@ -900,8 +783,6 @@ class ESBTPEnseignantController extends Controller
             "esbtp.enseignants.edit",
             [
                 "teacher" => $teacher,
-                "profileData" => $profileData,
-                "currentRegime" => $currentRegime,
                 "availabilityData" => $availabilityData,
                 "titres_academiques" => $this->titresAcademiques(),
                 "grades_academiques" => $this->gradesAcademiques(),
@@ -940,7 +821,6 @@ class ESBTPEnseignantController extends Controller
         ]);
 
         $regime = $request->input('regime') ?: 'vacataire';
-        $contrat = $this->regimeToContrat($regime);
 
         DB::beginTransaction();
 
@@ -951,10 +831,20 @@ class ESBTPEnseignantController extends Controller
                 "phone" => $request->phone,
             ]);
 
+            $dateDebut = $request->date_debut_activite
+                ? Carbon::parse($request->date_debut_activite)->format('Y-m-d')
+                : $enseignant->date_debut_activite;
+
             $enseignant->update([
                 "title" => $request->titre_academique,
                 "specialization" => $request->specialization,
                 "grade" => $request->grade_academique,
+                "regime" => $regime,
+                "taux_horaire" => $request->taux_horaire,
+                "date_debut_activite" => $dateDebut,
+                "diplome_principal" => $request->diplome_principal,
+                "universite_diplome" => $request->universite_diplome,
+                "annee_diplome" => $request->annee_diplome,
                 "bio" => $request->bio,
                 "website" => $request->website,
                 "status" => $request->status ?? $enseignant->status,
@@ -963,45 +853,6 @@ class ESBTPEnseignantController extends Controller
                     : 0,
                 "updated_by" => auth()->id(),
             ]);
-
-            // Mise à jour profil étendu (legacy table conservée jusqu'à PR fusion).
-            if (Schema::hasTable("esbtp_enseignant_profiles")) {
-                $dateDebut = $request->date_debut_activite
-                    ? Carbon::parse($request->date_debut_activite)->format('Y-m-d')
-                    : null;
-
-                $profileUpdate = array_filter([
-                    "titre_academique" => $request->titre_academique,
-                    "grade_academique" => $request->grade_academique,
-                    "diplome_principal" => $request->diplome_principal,
-                    "universite_diplome" => $request->universite_diplome,
-                    "annee_diplome" => $request->annee_diplome,
-                    "type_contrat" => $contrat['type_contrat'],
-                    "statut_emploi" => $contrat['statut_emploi'],
-                    "taux_horaire" => $request->taux_horaire,
-                    "charge_horaire_max_semaine" => $request->charge_horaire_max_semaine,
-                    "date_embauche" => $dateDebut,
-                    "updated_at" => now(),
-                ], fn($v) => $v !== null);
-
-                $exists = DB::table("esbtp_enseignant_profiles")
-                    ->where("user_id", $enseignant->user_id)
-                    ->exists();
-
-                if ($exists) {
-                    DB::table("esbtp_enseignant_profiles")
-                        ->where("user_id", $enseignant->user_id)
-                        ->update($profileUpdate);
-                } else {
-                    DB::table("esbtp_enseignant_profiles")->insert(array_merge($profileUpdate, [
-                        "user_id" => $enseignant->user_id,
-                        "matricule_enseignant" => $enseignant->matricule,
-                        "statut" => "actif",
-                        "created_by" => auth()->id(),
-                        "created_at" => now(),
-                    ]));
-                }
-            }
 
             // Disponibilités : reset + recréation si fournies.
             if ($request->has("availability")) {
