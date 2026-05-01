@@ -157,7 +157,7 @@ class SearchController extends Controller
                         'id' => $enseignant->id,
                         'title' => $enseignant->user ? $enseignant->user->name : 'Nom non disponible',
                         'description' => $enseignant->matricule . ' - ' . ($enseignant->specialization ?? 'Spécialisation non définie'),
-                        'url' => route('esbtp.teachers.show', $enseignant->id),
+                        'url' => route('esbtp.enseignants.show', $enseignant->id),
                         'icon' => 'fas fa-chalkboard-teacher',
                         'color' => 'warning'
                     ];
@@ -427,8 +427,8 @@ class SearchController extends Controller
                 [
                     'title' => 'Gestion des enseignants',
                     'description' => 'Administration du personnel enseignant',
-                    'route' => 'esbtp.teachers.index',
-                    'url' => route('esbtp.teachers.index'),
+                    'route' => 'esbtp.enseignants.index',
+                    'url' => route('esbtp.enseignants.index'),
                     'icon' => 'fas fa-chalkboard-teacher'
                 ],
                 [
@@ -534,8 +534,8 @@ class SearchController extends Controller
                 [
                     'title' => 'Ajouter un enseignant',
                     'description' => 'Recruter un nouveau professeur',
-                    'route' => 'esbtp.teachers.create',
-                    'url' => route('esbtp.teachers.create'),
+                    'route' => 'esbtp.enseignants.create',
+                    'url' => route('esbtp.enseignants.create'),
                     'icon' => 'fas fa-user-tie'
                 ],
                 [

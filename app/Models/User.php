@@ -119,11 +119,6 @@ class User extends Authenticatable
         return $this->hasOne(Secretaire::class);
     }
 
-    public function teacher()
-    {
-        return $this->hasOne(Teacher::class);
-    }
-
     public function etudiant()
     {
         return $this->hasOne(\App\Models\ESBTPEtudiant::class);
@@ -221,13 +216,6 @@ class User extends Authenticatable
         return $this->hasMany(ESBTPSeanceCours::class, 'teacher_id');
     }
 
-    /**
-     * Relation avec le profil enseignant (nouveau système)
-     */
-    public function enseignantProfile()
-    {
-        return $this->hasOne(ESBTPEnseignantProfile::class, 'user_id');
-    }
 }
 
 

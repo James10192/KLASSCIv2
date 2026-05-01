@@ -159,7 +159,7 @@ class ESBTPResultat extends Model
      */
     public function enseignant()
     {
-        return $this->belongsTo(ESBTPEnseignantProfile::class, 'enseignant_id');
+        return $this->belongsTo(\App\Models\User::class, 'enseignant_id');
     }
 
     /**

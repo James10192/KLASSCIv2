@@ -12,6 +12,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### Suppressions
+
+- **Cleanup zombies du domaine enseignant** — suppression des controllers `TeacherAdminController` (legacy non-ESBTP), `App\Http\Controllers\ESBTP\Admin\TeacherAdminController` (UI admin parallèle), `ESBTPEnseignantProfileController` (ancien système de profils), `ESBTPDepartmentController` (concept hors scope KLASSCI). Suppression des modèles `ESBTPEnseignantProfile`, `ESBTPEnseignantAffectation`, `ESBTPEnseignantDisponibilite` (jamais réellement utilisés par l'UI moderne). Suppression des dossiers de vues `esbtp/departments/`, `esbtp/teachers/` (ancienne UI parallèle), `superadmin/teachers/`. Suppression du lien « Départements » dans la sidebar et des routes correspondantes (`esbtp.departments.*`, `esbtp.teachers.*` admin namespace, `esbtp.enseignants.profiles.*`). Mise à jour de `User.php` : retrait des relations Eloquent legacy `hasOne(Teacher)` et `hasOne(ESBTPEnseignantProfile)`. Mise à jour de `ESBTPTeacher` : retrait des champs `department_id` et `laboratory_id` du fillable et des relations `department()` / `laboratory()`. Repointage de la relation `ESBTPResultat::enseignant()` vers `User`. Recherche globale (`SearchController`) et résultats (`search/results.blade.php`) : liens `esbtp.teachers.*` remplacés par `esbtp.enseignants.*`.
+
 ### Améliorations
 
 - **Refonte des pages création / modification d'enseignants** (`/esbtp/enseignants/create` et `/esbtp/enseignants/{id}/edit`) — abandon du wizard 4 étapes au profit d'un formulaire premium en une seule page (namespaces `ec-*` et `ee-*`). Trois champs requis seulement pour démarrer (Nom complet, Téléphone, Spécialisation), une section « Régime d'engagement » avec radio cards (Vacataire / Permanent / Consultant) et champs conditionnels (taux horaire pour les vacataires, charge hebdomadaire pour les permanents), et un panneau « Profil détaillé » pliable pour les diplômes et grade. La date d'embauche devient « Date de début d'activité », optionnelle et pré-remplie à la date du jour.
