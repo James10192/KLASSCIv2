@@ -1164,6 +1164,14 @@ class ESBTPInscriptionController extends Controller
 
             DB::commit();
 
+            // Workflow event : fin du chain (issue #298) — pas de notif (next_perm null)
+            // mais loggé pour audit + permet hook futur (e.g. génération bulletin auto)
+            \App\Support\WorkflowFlash::dispatch(
+                'inscription.validated',
+                Auth::user(),
+                ['inscription' => $inscription->id, 'etudiant_id' => $inscription->etudiant_id],
+            );
+
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     "success" => true,
