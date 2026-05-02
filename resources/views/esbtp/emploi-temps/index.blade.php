@@ -1302,12 +1302,16 @@
         display: block;
         border-radius: 14px 0 0 14px;
     }
-    /* Dropdown kebab Alpine (.et-card__menu-pop) doit passer au-dessus des cards
-       voisines hovered — celles-ci créent un nouveau stacking context via transform.
-       On bumpe le z-index de la card parent quand le menu Alpine est ouvert. */
+    /* Stacking fix : la card hovered crée un nouveau stacking context via transform,
+       ce qui peut la placer au-dessus du dropdown Alpine d'une autre card.
+       Solution :
+       1. Bump z-index de la card avec menu ouvert (1000)
+       2. Désactiver le transform sur TOUTE card hovered tant qu'un dropdown est ouvert
+          ailleurs (supprime le stacking context concurrent). */
     .et-card { z-index: 1; }
-    .et-card:has(.et-card__menu--open) { z-index: 50; }
+    .et-card:has(.et-card__menu--open) { z-index: 1000; }
     .et-card__menu-pop { z-index: 1060; }
+    body:has(.et-card__menu--open) .et-card:hover { transform: none; }
     .et-card__inner {
         flex: 1;
         padding: 1rem 1.1rem;
