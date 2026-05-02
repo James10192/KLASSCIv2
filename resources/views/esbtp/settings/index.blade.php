@@ -1010,7 +1010,7 @@
                     <div class="form-group">
                         <label class="form-label-modern">
                             <i class="fas fa-user-edit text-primary"></i>
-                            Afficher le nom de l'auteur ("Par X")
+                            Afficher "Généré par [Nom]"
                         </label>
                         <label class="form-switch-modern">
                             <input type="hidden" name="setting_pdf_show_generator_name" value="0">
@@ -1018,7 +1018,7 @@
                                    {{ \App\Helpers\SettingsHelper::get('pdf_show_generator_name', '1') == '1' ? 'checked' : '' }}>
                             <span class="slider"></span>
                         </label>
-                        <small class="text-muted"><i class="fas fa-info-circle"></i> Si désactivé, le nom de l'utilisateur connecté n'apparaîtra plus dans l'en-tête des PDF.</small>
+                        <small class="text-muted"><i class="fas fa-info-circle"></i> Affiche le nom de l'utilisateur qui a cliqué sur "Télécharger PDF" dans l'en-tête de chaque document.</small>
                     </div>
                     <div class="form-group">
                         <label class="form-label-modern">
