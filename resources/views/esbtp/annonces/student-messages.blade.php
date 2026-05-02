@@ -5,616 +5,893 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    .messages-page {
-        background-color: var(--background);
-        min-height: 100vh;
-        padding: var(--space-lg);
-    }
+/* ══════════════════════════════════════════════
+   Mes Messages — Premium Redesign
+   Prefix: mm- (mes-messages)
+   ══════════════════════════════════════════════ */
 
-    /* Hero — exact planning-header (ph-hero) pattern */
-    .messages-header {
-        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
-        border-radius: 18px;
-        padding: 2rem 2.5rem 1.5rem;
-        margin-bottom: 1.25rem;
-        color: #fff;
-        position: relative;
-    }
+.mm-page {
+    padding: 1.5rem;
+    background: #f8fafc;
+    min-height: calc(100vh - 60px);
+}
 
-    .sm-hero-top {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 1rem;
-    }
-    .sm-hero-left {
-        display: flex;
-        align-items: center;
-        gap: 1rem;
-    }
-    .sm-hero-icon {
-        width: 52px; height: 52px;
+/* ── Hero (planning-header pattern) ── */
+.mm-hero {
+    position: relative;
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 2rem 2.5rem 1.5rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+    animation: mm-fade-down .4s ease-out;
+}
+@keyframes mm-fade-down {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.mm-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.mm-hero-left {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    min-width: 0;
+}
+.mm-hero-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; flex-shrink: 0; color: #fff;
+}
+.mm-hero-info h1 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 .2rem;
+    letter-spacing: -.02em;
+}
+.mm-hero-info p {
+    margin: 0;
+    color: rgba(255,255,255,.72);
+    font-size: .88rem;
+}
+
+.mm-hero-actions {
+    display: flex;
+    gap: .5rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+.mm-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .55rem 1rem;
+    min-height: 44px;
+    border-radius: 10px;
+    font-size: .82rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all .2s ease;
+    border: 1px solid rgba(255,255,255,.2);
+    cursor: pointer;
+    background: rgba(255,255,255,.15);
+    color: #fff;
+}
+.mm-btn:hover, .mm-btn:focus-visible {
+    background: rgba(255,255,255,.22);
+    color: #fff;
+    outline: none;
+}
+.mm-btn:focus-visible {
+    box-shadow: 0 0 0 3px rgba(255,255,255,.35);
+}
+.mm-btn--white {
+    background: #fff;
+    color: #0453cb;
+    border-color: transparent;
+}
+.mm-btn--white:hover, .mm-btn--white:focus-visible {
+    background: #f0f4ff;
+    color: #0453cb;
+}
+
+/* ── KPIs in hero ── */
+.mm-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .75rem;
+    margin-top: 1.5rem;
+}
+.mm-kpi {
+    background: rgba(255,255,255,.10);
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 12px;
+    padding: .9rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    transition: background .2s ease;
+    min-width: 0;
+}
+.mm-kpi:hover {
+    background: rgba(255,255,255,.16);
+}
+.mm-kpi-icon {
+    width: 38px; height: 38px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .95rem;
+    flex-shrink: 0;
+    background: rgba(255,255,255,.18);
+    color: #fff;
+}
+.mm-kpi--unread .mm-kpi-icon { background: rgba(94,145,222,.32); color: #cfe1ff; }
+.mm-kpi--urgent .mm-kpi-icon { background: rgba(220,38,38,.30); color: #fecaca; }
+.mm-kpi-text { min-width: 0; }
+.mm-kpi-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+}
+.mm-kpi-label {
+    font-size: .72rem;
+    color: rgba(255,255,255,.65);
+    margin-top: .2rem;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    font-weight: 500;
+}
+
+/* ── Filter tabs ── */
+.mm-tabs {
+    display: flex;
+    gap: .35rem;
+    align-items: center;
+    flex-wrap: wrap;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: .35rem;
+    margin-bottom: 1rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04);
+}
+.mm-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .55rem 1rem;
+    min-height: 40px;
+    border-radius: 10px;
+    font-size: .85rem;
+    font-weight: 600;
+    color: #64748b;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+.mm-tab:hover {
+    background: #f1f5f9;
+    color: #1e293b;
+}
+.mm-tab.is-active {
+    background: linear-gradient(135deg, #0453cb 0%, #3b7ddb 100%);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(4,83,203,.25);
+}
+.mm-tab.is-active .mm-tab-pill {
+    background: rgba(255,255,255,.25);
+    color: #fff;
+}
+.mm-tab:focus-visible {
+    outline: 2px solid #0453cb;
+    outline-offset: 2px;
+}
+.mm-tab-pill {
+    background: #e2e8f0;
+    color: #475569;
+    padding: 1px 8px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 22px;
+    text-align: center;
+}
+
+/* ── Messages list ── */
+.mm-list {
+    display: flex;
+    flex-direction: column;
+    gap: .85rem;
+}
+
+.mm-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04);
+    overflow: hidden;
+    transition: all .2s ease;
+    position: relative;
+    cursor: pointer;
+}
+.mm-card:hover {
+    box-shadow: 0 8px 30px rgba(4,83,203,.10), 0 2px 8px rgba(15,23,42,.04);
+    transform: translateY(-2px);
+    border-color: #cbd5e1;
+}
+.mm-card:focus-visible {
+    outline: 2px solid #0453cb;
+    outline-offset: 2px;
+}
+
+.mm-card.is-unread {
+    border-left: 3px solid #0453cb;
+}
+.mm-card.is-urgent {
+    border-left: 3px solid #dc2626;
+}
+.mm-card.is-urgent.is-unread {
+    border-left: 3px solid #dc2626;
+    background: linear-gradient(135deg, rgba(220,38,38,.025), rgba(220,38,38,.00) 60%);
+}
+
+.mm-card-body {
+    padding: 1.15rem 1.25rem;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+/* ── Avatar ── */
+.mm-avatar {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+    background: linear-gradient(135deg, rgba(4,83,203,.10), rgba(94,145,222,.18));
+    color: #0453cb;
+    border: 1px solid rgba(4,83,203,.12);
+}
+.mm-avatar--classe {
+    background: linear-gradient(135deg, rgba(16,185,129,.10), rgba(16,185,129,.20));
+    color: #047857;
+    border-color: rgba(16,185,129,.18);
+}
+.mm-avatar--etudiant {
+    background: linear-gradient(135deg, rgba(245,158,11,.10), rgba(245,158,11,.22));
+    color: #b45309;
+    border-color: rgba(245,158,11,.18);
+}
+
+/* ── Message content ── */
+.mm-content { min-width: 0; }
+.mm-title-row {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-bottom: .35rem;
+}
+.mm-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+    line-height: 1.35;
+    letter-spacing: -.01em;
+}
+.mm-unread-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.18);
+    flex-shrink: 0;
+    animation: mm-pulse 2s ease-in-out infinite;
+}
+@keyframes mm-pulse {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(4,83,203,.18); }
+    50%      { box-shadow: 0 0 0 6px rgba(4,83,203,.08); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .mm-unread-dot { animation: none; }
+    .mm-hero { animation: none; }
+}
+
+.mm-snippet {
+    font-size: .88rem;
+    color: #64748b;
+    line-height: 1.5;
+    margin: 0 0 .55rem;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.mm-meta {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    flex-wrap: wrap;
+    font-size: .78rem;
+}
+
+.mm-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .25rem .6rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 600;
+    line-height: 1.2;
+    border: 1px solid transparent;
+}
+.mm-chip i { font-size: .68rem; }
+
+.mm-chip--type-general {
+    background: rgba(4,83,203,.08);
+    color: #0453cb;
+    border-color: rgba(4,83,203,.15);
+}
+.mm-chip--type-classe {
+    background: rgba(16,185,129,.10);
+    color: #047857;
+    border-color: rgba(16,185,129,.18);
+}
+.mm-chip--type-etudiant {
+    background: rgba(245,158,11,.10);
+    color: #b45309;
+    border-color: rgba(245,158,11,.20);
+}
+.mm-chip--prio-high {
+    background: rgba(220,38,38,.08);
+    color: #b91c1c;
+    border-color: rgba(220,38,38,.20);
+}
+.mm-chip--prio-medium {
+    background: rgba(245,158,11,.10);
+    color: #b45309;
+    border-color: rgba(245,158,11,.20);
+}
+.mm-chip--prio-normal {
+    background: rgba(16,185,129,.10);
+    color: #047857;
+    border-color: rgba(16,185,129,.18);
+}
+.mm-chip--time {
+    background: #f1f5f9;
+    color: #64748b;
+    border-color: #e2e8f0;
+}
+
+.mm-card-actions {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .5rem;
+    flex-shrink: 0;
+}
+.mm-icon-btn {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #64748b;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+.mm-icon-btn:hover, .mm-icon-btn:focus-visible {
+    background: #f1f5f9;
+    color: #0453cb;
+    border-color: #cbd5e1;
+    outline: none;
+}
+.mm-icon-btn:focus-visible {
+    box-shadow: 0 0 0 3px rgba(4,83,203,.20);
+}
+.mm-icon-btn--read {
+    background: rgba(4,83,203,.06);
+    color: #0453cb;
+    border-color: rgba(4,83,203,.18);
+}
+.mm-icon-btn--read:hover {
+    background: rgba(4,83,203,.12);
+}
+
+/* ── Empty states ── */
+.mm-empty {
+    text-align: center;
+    padding: 3.5rem 1.5rem;
+    background: #fff;
+    border: 1px dashed #cbd5e1;
+    border-radius: 14px;
+}
+.mm-empty-icon {
+    width: 80px; height: 80px;
+    border-radius: 22px;
+    background: linear-gradient(135deg, rgba(4,83,203,.08), rgba(94,145,222,.15));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 1.25rem;
+    color: #0453cb;
+    font-size: 32px;
+    border: 1px solid rgba(4,83,203,.12);
+}
+.mm-empty--up-to-date .mm-empty-icon {
+    background: linear-gradient(135deg, rgba(16,185,129,.10), rgba(16,185,129,.18));
+    color: #10b981;
+    border-color: rgba(16,185,129,.18);
+}
+.mm-empty h3 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0 0 .35rem;
+}
+.mm-empty p {
+    color: #64748b;
+    font-size: .9rem;
+    margin: 0;
+    max-width: 420px;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+/* ── Modal premium ── */
+.mm-modal .modal-content {
+    border: none;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 25px 60px rgba(15,23,42,.20);
+}
+.mm-modal .modal-header {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 50%, #3b7ddb 100%);
+    color: #fff;
+    border-bottom: none;
+    padding: 1.25rem 1.5rem;
+    align-items: flex-start;
+    gap: .75rem;
+}
+.mm-modal .modal-header.is-urgent {
+    background: linear-gradient(135deg, #7f1d1d 0%, #b91c1c 50%, #dc2626 100%);
+}
+.mm-modal-title-wrap { flex: 1; min-width: 0; }
+.mm-modal-eyebrow {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    background: rgba(255,255,255,.18);
+    border: 1px solid rgba(255,255,255,.25);
+    padding: .25rem .6rem;
+    border-radius: 999px;
+    font-size: .7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: .55rem;
+}
+.mm-modal h5.modal-title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin: 0;
+    color: #fff;
+    letter-spacing: -.01em;
+    line-height: 1.3;
+}
+.mm-modal .btn-close {
+    filter: invert(1) brightness(2);
+    opacity: .85;
+}
+.mm-modal .btn-close:hover { opacity: 1; }
+
+.mm-modal-body { padding: 1.5rem; background: #fff; }
+.mm-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 1.25rem;
+    border-bottom: 1px solid #e2e8f0;
+}
+.mm-info-item {
+    display: flex;
+    align-items: center;
+    gap: .55rem;
+    font-size: .82rem;
+    color: #475569;
+}
+.mm-info-item i {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: rgba(4,83,203,.08);
+    color: #0453cb;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .8rem;
+}
+.mm-info-item strong { color: #1e293b; font-weight: 600; }
+
+.mm-modal-content {
+    color: #1e293b;
+    font-size: .95rem;
+    line-height: 1.65;
+    padding: 0;
+}
+.mm-modal-content p { margin-bottom: .85rem; }
+
+.mm-modal-footer {
+    border-top: 1px solid #e2e8f0;
+    padding: 1rem 1.5rem;
+    background: #f8fafc;
+    display: flex;
+    justify-content: flex-end;
+    gap: .5rem;
+    flex-wrap: wrap;
+}
+.mm-modal-footer .btn-acasi { min-height: 44px; }
+
+/* ── Pagination ── */
+.mm-pagination {
+    display: flex;
+    justify-content: center;
+    margin-top: 1.5rem;
+}
+.mm-pagination .pagination { margin: 0; }
+
+/* ── Responsive ── */
+@media (max-width: 992px) {
+    .mm-hero { padding: 1.75rem 1.5rem 1.25rem; }
+    .mm-hero-info h1 { font-size: 1.3rem; }
+    .mm-kpis { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+    .mm-page { padding: 1rem; }
+    .mm-hero {
+        padding: 1.5rem 1.25rem 1.15rem;
         border-radius: 14px;
-        background: rgba(255,255,255,.12);
-        backdrop-filter: blur(8px);
-        border: 1px solid rgba(255,255,255,.15);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.35rem; flex-shrink: 0; color: #fff;
     }
-
-    .header-title {
-        font-size: 1.45rem;
-        font-weight: 700;
-        color: #fff;
-        margin: 0 0 .2rem;
-        letter-spacing: -.02em;
+    .mm-hero-top { flex-direction: column; align-items: flex-start; }
+    .mm-hero-actions { width: 100%; }
+    .mm-hero-actions .mm-btn { flex: 1; justify-content: center; }
+    .mm-card-body {
+        grid-template-columns: auto 1fr;
+        gap: .85rem;
     }
-
-    .header-subtitle {
-        color: rgba(255,255,255,.7);
-        font-size: .88rem;
-        margin: 0;
-    }
-
-    .filters-container {
-        display: flex;
-        gap: var(--space-sm);
+    .mm-card-actions {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        justify-content: flex-start;
         align-items: center;
-        flex-wrap: wrap;
+        padding-top: .5rem;
+        border-top: 1px solid #f1f5f9;
+        margin-top: .5rem;
     }
-
-    .filter-btn {
-        background: rgba(255,255,255,.12);
-        border: 1px solid rgba(255,255,255,.2);
-        color: rgba(255,255,255,.85);
-        padding: .5rem 1rem;
-        border-radius: 10px;
-        font-size: .82rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s ease;
-        display: inline-flex;
-        align-items: center;
-        gap: .4rem;
-        text-decoration: none;
+    .mm-tabs {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+        -webkit-overflow-scrolling: touch;
     }
-
-    .filter-btn:hover {
-        background: rgba(255,255,255,.2);
-        color: #fff;
-    }
-
-    .filter-btn.active {
-        background: #fff;
-        color: #0453cb;
-        border-color: transparent;
-    }
-
-    .filter-badge {
-        background: rgba(255,255,255,.25);
-        color: inherit;
-        padding: 1px 7px;
-        border-radius: 20px;
-        font-size: 10px;
-        font-weight: 700;
-        margin-left: .2rem;
-    }
-    .filter-btn.active .filter-badge {
-        background: rgba(4,83,203,.12);
-    }
-
-    .messages-grid {
-        display: grid;
-        gap: var(--space-md);
-    }
-
-    .message-card {
-        background: #fff;
-        border: 1px solid #e2e8f0;
-        border-radius: 14px;
-        box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
-        overflow: hidden;
-        transition: all 0.2s ease;
-        position: relative;
-    }
-
-    .message-card:hover {
-        box-shadow: 0 8px 30px rgba(4,83,203,.08), 0 2px 8px rgba(15,23,42,.04);
-        transform: translateY(-2px);
-    }
-
-    .message-card.unread {
-        border-left: 4px solid #0453cb;
-        background: linear-gradient(135deg, rgba(4,83,203,.02), rgba(4,83,203,.01));
-    }
-
-    .message-card.urgent {
-        border-left: 4px solid #0f172a;
-        background: linear-gradient(135deg, rgba(15,23,42,.03), rgba(15,23,42,.01));
-    }
-
-    .message-header {
-        padding: var(--space-lg);
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        gap: var(--space-md);
-    }
-
-    .message-title-area {
-        flex: 1;
-        min-width: 0;
-    }
-
-    .message-title {
-        font-size: var(--text-normal);
-        font-weight: 700;
-        color: var(--text-primary);
-        margin: 0 0 var(--space-xs) 0;
-        line-height: 1.3;
-    }
-
-    .message-meta {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        flex-wrap: wrap;
-    }
-
-    .message-date {
-        font-size: var(--text-small);
-        color: var(--text-secondary);
-        display: flex;
-        align-items: center;
-        gap: var(--space-xs);
-    }
-
-    .message-actions {
-        display: flex;
-        align-items: flex-start;
-        gap: var(--space-sm);
-        flex-shrink: 0;
-    }
-
-    .message-content {
-        padding: 0 var(--space-lg) var(--space-lg);
-        color: var(--text-primary);
-        line-height: 1.5;
-    }
-
-    .message-preview {
-        margin-bottom: var(--space-md);
-        color: var(--text-secondary);
-    }
-
-    .message-attachment {
-        background-color: rgba(99, 102, 241, 0.05);
-        border: 1px solid rgba(99, 102, 241, 0.1);
-        border-radius: var(--radius-small);
-        padding: var(--space-sm) var(--space-md);
-        margin-top: var(--space-md);
-        display: inline-flex;
-        align-items: center;
-        gap: var(--space-xs);
-        font-size: var(--text-small);
-        color: var(--primary);
-        text-decoration: none;
-        transition: all 0.2s ease;
-    }
-
-    .message-attachment:hover {
-        background-color: rgba(99, 102, 241, 0.1);
-        color: var(--secondary);
-    }
-
-    .status-badge {
-        padding: var(--space-xs) var(--space-sm);
-        border-radius: var(--radius-small);
-        font-size: 10px;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    .status-badge.new {
-        background: #0453cb;
-        color: white;
-    }
-
-    .status-badge.urgent {
-        background: #0f172a;
-        color: white;
-    }
-
-    .status-badge.read {
-        background: #64748b;
-        color: white;
-    }
-
-    .priority-indicator {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        flex-shrink: 0;
-    }
-
-    .priority-indicator.high {
-        background-color: #0f172a;
-    }
-
-    .priority-indicator.medium {
-        background-color: #5e91de;
-    }
-
-    .priority-indicator.normal {
-        background-color: #10b981;
-    }
-
-    .empty-state {
-        text-align: center;
-        padding: var(--space-xl);
-        background-color: var(--surface);
-        border-radius: var(--radius-medium);
-        box-shadow: var(--shadow-card);
-    }
-
-    .empty-icon {
-        width: 72px;
-        height: 72px;
-        border-radius: 18px;
-        background: rgba(4,83,203,.06);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin: 0 auto var(--space-md);
-        color: #0453cb;
-        font-size: 28px;
-    }
-
-    .modal-moderne .modal-content {
-        border-radius: var(--radius-medium);
-        border: none;
-        box-shadow: 0 25px 50px rgba(0, 0, 0, 0.25);
-    }
-
-    .modal-moderne .modal-header {
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-        color: white;
-        border-bottom: none;
-        padding: var(--space-lg);
-        border-radius: var(--radius-medium) var(--radius-medium) 0 0;
-    }
-
-    .modal-moderne .modal-body {
-        padding: var(--space-lg);
-    }
-
-    .modal-moderne .modal-footer {
-        border-top: 1px solid rgba(0, 0, 0, 0.05);
-        padding: var(--space-lg);
-        background-color: var(--background);
-        border-radius: 0 0 var(--radius-medium) var(--radius-medium);
-    }
-
-    .message-full-content {
-        background-color: var(--background);
-        padding: var(--space-lg);
-        border-radius: var(--radius-small);
-        line-height: 1.6;
-    }
-
-    .message-info-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: var(--space-md);
-        margin-bottom: var(--space-lg);
-    }
-
-    .info-item {
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-        font-size: var(--text-small);
-        color: var(--text-secondary);
-    }
-
-    .info-icon {
-        color: var(--accent-blue);
-        width: 16px;
-    }
-
-    /* Stats KPIs — integrated in hero like planning-header ph-kpis */
-    .stats-grid {
-        display: flex;
-        gap: .75rem;
-        margin-top: 1.5rem;
-        flex-wrap: wrap;
-    }
-
-    .stat-card {
-        flex: 1;
-        min-width: 140px;
-        background: rgba(255,255,255,.1);
-        border: 1px solid rgba(255,255,255,.15);
-        border-radius: 12px;
-        padding: .9rem 1rem;
-        display: flex;
-        align-items: center;
-        gap: .75rem;
-        transition: background .2s;
-    }
-    .stat-card:hover {
-        background: rgba(255,255,255,.15);
-    }
-
-    .stat-number {
-        font-size: 1.35rem;
-        font-weight: 700;
-        color: #fff;
-        line-height: 1;
-    }
-
-    .stat-label {
-        font-size: .72rem;
-        color: rgba(255,255,255,.65);
-        text-transform: uppercase;
-        letter-spacing: 0.3px;
-        font-weight: 500;
-        margin-top: .15rem;
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-        .messages-page {
-            padding: var(--space-md);
-        }
-
-        .messages-header {
-            flex-direction: column;
-            padding: 1.5rem 1.25rem 1.25rem;
-            border-radius: 14px;
-        }
-
-        .filters-container {
-            justify-content: flex-start;
-            margin-top: var(--space-md);
-        }
-
-        .stats-grid {
-            flex-direction: column;
-        }
-
-        .message-header {
-            flex-direction: column;
-            gap: var(--space-sm);
-        }
-
-        .message-actions {
-            align-self: stretch;
-            justify-content: center;
-        }
-
-        .stats-grid {
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-        }
-    }
+    .mm-tab { white-space: nowrap; flex-shrink: 0; }
+}
+@media (max-width: 576px) {
+    .mm-kpis { grid-template-columns: 1fr; }
+    .mm-hero-info h1 { font-size: 1.15rem; }
+    .mm-title { font-size: .95rem; }
+    .mm-modal .modal-header { padding: 1rem 1.15rem; }
+    .mm-modal-body { padding: 1.15rem; }
+}
 </style>
 @endpush
 
 @section('content')
-<div class="messages-page">
-    <!-- Header avec statistiques -->
-    <div class="messages-header">
-        {{-- Row 1 : titre + filtres --}}
-        <div class="sm-hero-top">
-            <div class="sm-hero-left">
-                <div class="sm-hero-icon"><i class="fas fa-envelope-open-text"></i></div>
-                <div>
-                    <h1 class="header-title">Mes Messages</h1>
-                    <p class="header-subtitle">Consultez et gérez vos messages importants</p>
-                </div>
-            </div>
-            <div class="filters-container">
-                <button class="filter-btn active" id="filterAll" data-filter="all">
-                    <i class="fas fa-inbox"></i> Tous
-                    <span class="filter-badge">{{ $stats['total'] }}</span>
-                </button>
-                <button class="filter-btn" id="filterUnread" data-filter="unread">
-                    <i class="fas fa-envelope"></i> Non lus
-                    <span class="filter-badge">{{ $stats['unread'] }}</span>
-                </button>
-                @if($stats['urgent'] > 0)
-                <button class="filter-btn" id="filterUrgent" data-filter="urgent">
-                    <i class="fas fa-exclamation-triangle"></i> Urgent
-                    <span class="filter-badge">{{ $stats['urgent'] }}</span>
-                </button>
-                @endif
-                @if($stats['unread'] > 0)
-                <button class="filter-btn" id="markAllRead" style="background:#fff;color:#0453cb;border-color:transparent;">
-                    <i class="fas fa-check-double"></i> Tout marquer lu
-                </button>
-                @endif
-            </div>
-        </div>
+<div class="mm-page">
 
-        {{-- Row 2 : KPIs --}}
-        <div class="stats-grid">
-            <div class="stat-card total">
-                <div>
-                    <div class="stat-number">{{ $stats['total'] }}</div>
-                    <div class="stat-label">Messages</div>
+    {{-- Hero premium --}}
+    <div class="mm-hero">
+        <div class="mm-hero-top">
+            <div class="mm-hero-left">
+                <div class="mm-hero-icon" aria-hidden="true">
+                    <i class="fas fa-envelope-open-text"></i>
+                </div>
+                <div class="mm-hero-info">
+                    <h1>Mes Messages</h1>
+                    <p>Consultez vos annonces et notifications de l'établissement.</p>
                 </div>
             </div>
-            <div class="stat-card unread">
-                <div>
-                    <div class="stat-number">{{ $stats['unread'] }}</div>
-                    <div class="stat-label">Non lus</div>
-                </div>
-            </div>
-            @if($stats['urgent'] > 0)
-            <div class="stat-card urgent">
-                <div>
-                    <div class="stat-number">{{ $stats['urgent'] }}</div>
-                    <div class="stat-label">Urgent</div>
-                </div>
+
+            @if($stats['unread'] > 0)
+            <div class="mm-hero-actions">
+                <button type="button"
+                        class="mm-btn mm-btn--white"
+                        id="mmMarkAllRead"
+                        aria-label="Marquer tous les messages comme lus">
+                    <i class="fas fa-check-double" aria-hidden="true"></i>
+                    Tout marquer lu
+                </button>
             </div>
             @endif
         </div>
+
+        {{-- KPIs --}}
+        <div class="mm-kpis" role="group" aria-label="Statistiques messages">
+            <div class="mm-kpi mm-kpi--total">
+                <div class="mm-kpi-icon" aria-hidden="true"><i class="fas fa-inbox"></i></div>
+                <div class="mm-kpi-text">
+                    <div class="mm-kpi-value" data-mm-kpi="total">{{ $stats['total'] }}</div>
+                    <div class="mm-kpi-label">Total messages</div>
+                </div>
+            </div>
+            <div class="mm-kpi mm-kpi--unread">
+                <div class="mm-kpi-icon" aria-hidden="true"><i class="fas fa-envelope"></i></div>
+                <div class="mm-kpi-text">
+                    <div class="mm-kpi-value" data-mm-kpi="unread">{{ $stats['unread'] }}</div>
+                    <div class="mm-kpi-label">Non lus</div>
+                </div>
+            </div>
+            <div class="mm-kpi mm-kpi--urgent">
+                <div class="mm-kpi-icon" aria-hidden="true"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="mm-kpi-text">
+                    <div class="mm-kpi-value" data-mm-kpi="urgent">{{ $stats['urgent'] }}</div>
+                    <div class="mm-kpi-label">Urgents</div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- Messages -->
-    <div class="messages-grid">
+    {{-- Tabs filtres --}}
+    <div class="mm-tabs" role="tablist" aria-label="Filtrer les messages">
+        <button type="button"
+                class="mm-tab is-active"
+                data-mm-filter="all"
+                role="tab"
+                aria-selected="true">
+            <i class="fas fa-list" aria-hidden="true"></i>
+            Tous
+            <span class="mm-tab-pill" data-mm-pill="total">{{ $stats['total'] }}</span>
+        </button>
+        <button type="button"
+                class="mm-tab"
+                data-mm-filter="unread"
+                role="tab"
+                aria-selected="false">
+            <i class="fas fa-envelope" aria-hidden="true"></i>
+            Non lus
+            <span class="mm-tab-pill" data-mm-pill="unread">{{ $stats['unread'] }}</span>
+        </button>
+        <button type="button"
+                class="mm-tab"
+                data-mm-filter="urgent"
+                role="tab"
+                aria-selected="false">
+            <i class="fas fa-exclamation-triangle" aria-hidden="true"></i>
+            Urgents
+            <span class="mm-tab-pill" data-mm-pill="urgent">{{ $stats['urgent'] }}</span>
+        </button>
+    </div>
+
+    {{-- Liste des messages --}}
+    <div class="mm-list" id="mmList">
         @forelse($messages as $message)
-        <div class="message-card {{ $message->is_read ? '' : 'unread' }} {{ $message->priority == 'high' ? 'urgent' : '' }}" 
-             data-message-type="{{ $message->is_read ? 'read' : 'unread' }} {{ $message->priority == 'high' ? 'urgent' : '' }}">
-            
-            <div class="message-header">
-                <div class="message-title-area">
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                        <div class="priority-indicator {{ $message->priority ?? 'normal' }}"></div>
-                        <h3 class="message-title">{{ $message->titre }}</h3>
-                        
-                        @if(!$message->is_read)
-                            <span class="status-badge new">Nouveau</span>
-                        @endif
-                        
-                        @if($message->priority == 'high')
-                            <span class="status-badge urgent">Urgent</span>
-                        @endif
-                    </div>
-                    
-                    <div class="message-meta">
-                        <div class="message-date">
-                            <i class="fas fa-calendar-alt info-icon"></i>
-                            @if($message->created_at->isToday())
-                                Aujourd'hui à {{ $message->created_at->format('H:i') }}
-                            @elseif($message->created_at->isYesterday())
-                                Hier à {{ $message->created_at->format('H:i') }}
-                            @else
-                                {{ $message->created_at->format('d/m/Y à H:i') }}
-                            @endif
-                        </div>
-                        
-                        @if($message->expiration)
-                        <div class="message-date">
-                            <i class="fas fa-hourglass-end info-icon"></i>
-                            Expire le {{ $message->expiration->format('d/m/Y') }}
-                        </div>
-                        @endif
-                    </div>
-                </div>
-                
-                <div class="message-actions">
-                    @if(!$message->is_read)
-                    <button class="btn-acasi secondary mark-read-btn" data-id="{{ $message->id }}">
-                        <i class="fas fa-check"></i>
-                        Marquer lu
-                    </button>
-                    @endif
-                    
-                    <button class="btn-acasi primary" onclick="openMessageModal({{ $message->id }})">
-                        <i class="fas fa-eye"></i>
-                        Lire
-                    </button>
-                </div>
-            </div>
-            
-            <div class="message-content">
-                <div class="message-preview">
-                    {!! Str::limit(strip_tags($message->contenu), 200) !!}
-                </div>
-                
-                @if($message->fichier)
-                <a href="{{ asset('storage/' . $message->fichier) }}" class="message-attachment" target="_blank">
-                    <i class="fas fa-paperclip"></i>
-                    Pièce jointe
-                </a>
-                @endif
-            </div>
-        </div>
+            @php
+                $isUrgent = (int) ($message->priorite ?? 0) === 2;
+                $isMedium = (int) ($message->priorite ?? 0) === 1;
+                $isUnread = !$message->is_read;
+                $cardClasses = 'mm-card';
+                if ($isUnread) { $cardClasses .= ' is-unread'; }
+                if ($isUrgent) { $cardClasses .= ' is-urgent'; }
 
-        <!-- Modal pour chaque message -->
-        <div class="modal fade modal-moderne" id="messageModal{{ $message->id }}" tabindex="-1" aria-hidden="true">
-            <div class="modal-dialog modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">
-                            @if($message->priority == 'high')
-                            <i class="fas fa-exclamation-triangle me-2"></i>
-                            @else
-                            <i class="fas fa-envelope-open me-2"></i>
+                $type = $message->type ?? 'general';
+                $avatarClass = match($type) {
+                    'classe'   => 'mm-avatar--classe',
+                    'etudiant' => 'mm-avatar--etudiant',
+                    default    => '',
+                };
+                $avatarIcon = match($type) {
+                    'classe'   => 'fa-users',
+                    'etudiant' => 'fa-user',
+                    default    => 'fa-bullhorn',
+                };
+                $typeLabel = match($type) {
+                    'classe'   => 'Classe',
+                    'etudiant' => 'Personnel',
+                    default    => 'Général',
+                };
+
+                $prioLabel = $isUrgent ? 'Urgent' : ($isMedium ? 'Important' : 'Normal');
+                $prioClass = $isUrgent ? 'mm-chip--prio-high' : ($isMedium ? 'mm-chip--prio-medium' : 'mm-chip--prio-normal');
+                $prioIcon  = $isUrgent ? 'fa-exclamation-triangle' : ($isMedium ? 'fa-flag' : 'fa-circle-check');
+
+                $relative = $message->created_at ? $message->created_at->locale('fr')->diffForHumans(['short' => true]) : '';
+                $absolute = $message->created_at ? $message->created_at->format('d/m/Y à H:i') : '';
+            @endphp
+
+            <article class="{{ $cardClasses }}"
+                     data-mm-id="{{ $message->id }}"
+                     data-mm-state="{{ $isUnread ? 'unread' : 'read' }}"
+                     data-mm-priority="{{ $isUrgent ? 'urgent' : ($isMedium ? 'medium' : 'normal') }}"
+                     role="button"
+                     tabindex="0"
+                     aria-label="Message {{ $message->titre }}, {{ $isUnread ? 'non lu' : 'lu' }}, priorité {{ $prioLabel }}"
+                     onclick="mmOpenMessage({{ $message->id }})"
+                     onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();mmOpenMessage({{ $message->id }});}">
+                <div class="mm-card-body">
+                    <div class="mm-avatar {{ $avatarClass }}" aria-hidden="true">
+                        <i class="fas {{ $avatarIcon }}"></i>
+                    </div>
+
+                    <div class="mm-content">
+                        <div class="mm-title-row">
+                            @if($isUnread)
+                                <span class="mm-unread-dot" aria-label="Non lu" title="Non lu"></span>
                             @endif
-                            {{ $message->titre }}
-                        </h5>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            <h3 class="mm-title">{{ $message->titre }}</h3>
+                        </div>
+
+                        <p class="mm-snippet">
+                            {{ Str::limit(strip_tags($message->contenu), 180) }}
+                        </p>
+
+                        <div class="mm-meta">
+                            <span class="mm-chip mm-chip--type-{{ $type }}">
+                                <i class="fas {{ $avatarIcon }}" aria-hidden="true"></i>
+                                {{ $typeLabel }}
+                            </span>
+                            <span class="mm-chip {{ $prioClass }}">
+                                <i class="fas {{ $prioIcon }}" aria-hidden="true"></i>
+                                {{ $prioLabel }}
+                            </span>
+                            <span class="mm-chip mm-chip--time" title="{{ $absolute }}">
+                                <i class="far fa-clock" aria-hidden="true"></i>
+                                {{ $relative }}
+                            </span>
+                        </div>
                     </div>
-                    <div class="modal-body">
-                        <div class="message-info-grid">
-                            <div class="info-item">
-                                <i class="fas fa-calendar-alt info-icon"></i>
-                                <strong>Date:</strong> {{ $message->created_at->format('d/m/Y H:i') }}
-                            </div>
-                            <div class="info-item">
-                                <i class="fas fa-hourglass-end info-icon"></i>
-                                <strong>Expire:</strong> {{ $message->expiration ? $message->expiration->format('d/m/Y') : 'Jamais' }}
-                            </div>
-                            <div class="info-item">
-                                <i class="fas fa-signal info-icon"></i>
-                                <strong>Priorité:</strong>
-                                @if($message->priority == 'high')
-                                    <span class="status-badge urgent">Urgent</span>
-                                @elseif($message->priority == 'medium')
-                                    <span class="badge bg-warning">Moyenne</span>
-                                @else
-                                    <span class="badge bg-success">Normale</span>
-                                @endif
-                            </div>
-                        </div>
-                        
-                        <div class="message-full-content">
-                            {!! nl2br(e($message->contenu)) !!}
-                        </div>
-                        
-                        @if($message->fichier)
-                        <div class="mt-4">
-                            <h6><i class="fas fa-paperclip me-2"></i>Pièce jointe:</h6>
-                            <a href="{{ asset('storage/' . $message->fichier) }}" class="btn-acasi secondary" target="_blank">
-                                <i class="fas fa-download"></i>
-                                Télécharger
-                            </a>
-                        </div>
-                        @endif
-                    </div>
-                    <div class="modal-footer">
-                        @if(!$message->is_read)
-                        <button type="button" class="btn-acasi primary mark-read-btn" data-id="{{ $message->id }}" data-bs-dismiss="modal">
-                            <i class="fas fa-check"></i>
-                            Marquer comme lu
+
+                    <div class="mm-card-actions" onclick="event.stopPropagation();">
+                        @if($isUnread)
+                        <button type="button"
+                                class="mm-icon-btn mm-icon-btn--read"
+                                data-mm-mark-read="{{ $message->id }}"
+                                aria-label="Marquer comme lu"
+                                title="Marquer comme lu">
+                            <i class="fas fa-check" aria-hidden="true"></i>
                         </button>
                         @endif
-                        <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">
-                            <i class="fas fa-times"></i>
-                            Fermer
+                        <button type="button"
+                                class="mm-icon-btn"
+                                onclick="mmOpenMessage({{ $message->id }})"
+                                aria-label="Lire le message"
+                                title="Lire">
+                            <i class="fas fa-eye" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>
+            </article>
+
+            {{-- Modal détail message --}}
+            <div class="modal fade mm-modal"
+                 id="mmModal{{ $message->id }}"
+                 tabindex="-1"
+                 aria-labelledby="mmModalLabel{{ $message->id }}"
+                 aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header {{ $isUrgent ? 'is-urgent' : '' }}">
+                            <div class="mm-modal-title-wrap">
+                                <span class="mm-modal-eyebrow">
+                                    <i class="fas {{ $avatarIcon }}" aria-hidden="true"></i>
+                                    {{ $typeLabel }}
+                                    @if($isUrgent) , urgent @elseif($isMedium) , important @endif
+                                </span>
+                                <h5 class="modal-title" id="mmModalLabel{{ $message->id }}">
+                                    {{ $message->titre }}
+                                </h5>
+                            </div>
+                            <button type="button"
+                                    class="btn-close"
+                                    data-bs-dismiss="modal"
+                                    aria-label="Fermer"></button>
+                        </div>
+                        <div class="mm-modal-body modal-body">
+                            <div class="mm-info-grid">
+                                <div class="mm-info-item">
+                                    <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+                                    <span><strong>Publié</strong><br>{{ $absolute }}</span>
+                                </div>
+                                @if($message->date_expiration)
+                                <div class="mm-info-item">
+                                    <i class="fas fa-hourglass-end" aria-hidden="true"></i>
+                                    <span><strong>Expire</strong><br>{{ $message->date_expiration->format('d/m/Y') }}</span>
+                                </div>
+                                @endif
+                                <div class="mm-info-item">
+                                    <i class="fas fa-signal" aria-hidden="true"></i>
+                                    <span>
+                                        <strong>Priorité</strong><br>
+                                        <span class="mm-chip {{ $prioClass }}" style="margin-top:.15rem;">
+                                            <i class="fas {{ $prioIcon }}" aria-hidden="true"></i>
+                                            {{ $prioLabel }}
+                                        </span>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <div class="mm-modal-content">
+                                {!! nl2br(e($message->contenu)) !!}
+                            </div>
+                        </div>
+                        <div class="mm-modal-footer">
+                            @if($isUnread)
+                            <button type="button"
+                                    class="btn-acasi primary"
+                                    data-mm-mark-read="{{ $message->id }}"
+                                    data-bs-dismiss="modal">
+                                <i class="fas fa-check"></i>
+                                Marquer comme lu
+                            </button>
+                            @endif
+                            <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">
+                                <i class="fas fa-times"></i>
+                                Fermer
+                            </button>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
         @empty
-        <div class="empty-state">
-            <div class="empty-icon">
-                <i class="fas fa-envelope"></i>
+            <div class="mm-empty">
+                <div class="mm-empty-icon" aria-hidden="true">
+                    <i class="far fa-envelope-open"></i>
+                </div>
+                <h3>Aucun message pour le moment</h3>
+                <p>Les annonces et notifications de l'établissement apparaîtront ici dès leur publication.</p>
             </div>
-            <h3>Aucun message</h3>
-            <p class="text-muted">Vous n'avez pas encore reçu de messages.</p>
-        </div>
         @endforelse
+
+        {{-- Empty states pour les filtres (gérés en JS) --}}
+        <div class="mm-empty mm-empty--up-to-date" id="mmEmptyUnread" hidden>
+            <div class="mm-empty-icon" aria-hidden="true">
+                <i class="fas fa-circle-check"></i>
+            </div>
+            <h3>Vous êtes à jour</h3>
+            <p>Tous vos messages ont été lus. Revenez plus tard pour les nouvelles annonces.</p>
+        </div>
+        <div class="mm-empty" id="mmEmptyUrgent" hidden>
+            <div class="mm-empty-icon" aria-hidden="true">
+                <i class="fas fa-shield-halved"></i>
+            </div>
+            <h3>Aucun message urgent</h3>
+            <p>Vous n'avez pas de message marqué comme urgent en ce moment.</p>
+        </div>
     </div>
 
-    <!-- Pagination -->
+    {{-- Pagination --}}
     @if($messages->hasPages())
-    <div class="d-flex justify-content-center mt-4">
+    <div class="mm-pagination">
         {{ $messages->links() }}
     </div>
     @endif
@@ -623,129 +900,190 @@
 
 @push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Filtres
-    const filterButtons = document.querySelectorAll('.filter-btn');
-    const messageCards = document.querySelectorAll('.message-card');
+(function () {
+    'use strict';
 
-    filterButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            // Retirer active de tous les boutons
-            filterButtons.forEach(btn => btn.classList.remove('active'));
-            // Ajouter active au bouton cliqué
-            this.classList.add('active');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+    const markReadUrlBase = @json(rtrim(route('esbtp.mes-messages.read', ['id' => '__ID__']), '/'));
+    const markAllReadUrl  = @json(route('esbtp.mes-messages.mark-all-read'));
 
-            const filter = this.getAttribute('data-filter');
-            
-            messageCards.forEach(card => {
-                const messageType = card.getAttribute('data-message-type');
-                
-                if (filter === 'all') {
-                    card.style.display = 'block';
-                } else if (filter === 'unread' && messageType.includes('unread')) {
-                    card.style.display = 'block';
-                } else if (filter === 'urgent' && messageType.includes('urgent')) {
-                    card.style.display = 'block';
-                } else {
-                    card.style.display = 'none';
-                }
-            });
+    function showFeedback(message, type) {
+        if (typeof window.showToast === 'function') {
+            window.showToast(message, type || 'info', 3000);
+        }
+    }
+
+    function getCounts() {
+        const cards = document.querySelectorAll('.mm-card[data-mm-id]');
+        let total = cards.length;
+        let unread = 0;
+        let urgent = 0;
+        cards.forEach(c => {
+            if (c.dataset.mmState === 'unread') unread++;
+            if (c.dataset.mmPriority === 'urgent') urgent++;
         });
-    });
+        return { total, unread, urgent };
+    }
 
-    // Marquer un message comme lu
-    const markReadButtons = document.querySelectorAll('.mark-read-btn');
-    
-    markReadButtons.forEach(button => {
-        button.addEventListener('click', function() {
-            const messageId = this.getAttribute('data-id');
-            markAsRead(messageId);
+    function refreshCounts() {
+        const c = getCounts();
+        document.querySelectorAll('[data-mm-kpi="total"]').forEach(el => el.textContent = c.total);
+        document.querySelectorAll('[data-mm-kpi="unread"]').forEach(el => el.textContent = c.unread);
+        document.querySelectorAll('[data-mm-kpi="urgent"]').forEach(el => el.textContent = c.urgent);
+        document.querySelectorAll('[data-mm-pill="total"]').forEach(el => el.textContent = c.total);
+        document.querySelectorAll('[data-mm-pill="unread"]').forEach(el => el.textContent = c.unread);
+        document.querySelectorAll('[data-mm-pill="urgent"]').forEach(el => el.textContent = c.urgent);
+
+        // Cacher le bouton "Tout marquer lu" si plus rien à lire
+        const btn = document.getElementById('mmMarkAllRead');
+        if (btn && c.unread === 0) btn.style.display = 'none';
+    }
+
+    function applyFilter(filter) {
+        const cards = document.querySelectorAll('.mm-card[data-mm-id]');
+        let visible = 0;
+        cards.forEach(card => {
+            let show = true;
+            if (filter === 'unread' && card.dataset.mmState !== 'unread') show = false;
+            if (filter === 'urgent' && card.dataset.mmPriority !== 'urgent') show = false;
+            card.style.display = show ? '' : 'none';
+            if (show) visible++;
         });
-    });
 
-    // Marquer tous les messages comme lus
-    const markAllReadBtn = document.getElementById('markAllRead');
-    if (markAllReadBtn) {
-        markAllReadBtn.addEventListener('click', function() {
-            fetch('{{ route("esbtp.mes-messages.mark-all-read") }}', {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    location.reload();
-                }
-            })
-            .catch(error => {
-                debugError('Error:', error);
-            });
+        // Empty states ciblés
+        const emptyUnread = document.getElementById('mmEmptyUnread');
+        const emptyUrgent = document.getElementById('mmEmptyUrgent');
+        if (emptyUnread) emptyUnread.hidden = !(filter === 'unread' && visible === 0 && cards.length > 0);
+        if (emptyUrgent) emptyUrgent.hidden = !(filter === 'urgent' && visible === 0 && cards.length > 0);
+
+        // Tabs aria
+        document.querySelectorAll('.mm-tab').forEach(t => {
+            const isActive = t.dataset.mmFilter === filter;
+            t.classList.toggle('is-active', isActive);
+            t.setAttribute('aria-selected', isActive ? 'true' : 'false');
         });
     }
 
-    function markAsRead(messageId) {
-        fetch(`{{ route('esbtp.mes-messages.read', '') }}/${messageId}`, {
+    function markAsRead(messageId, options) {
+        const url = markReadUrlBase.replace('__ID__', messageId);
+        return fetch(url, {
             method: 'POST',
             headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Content-Type': 'application/json'
+                'X-CSRF-TOKEN': csrfToken,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
             }
         })
-        .then(response => response.json())
+        .then(resp => resp.ok ? resp.json() : Promise.reject(new Error('HTTP ' + resp.status)))
         .then(data => {
-            if (data.success) {
-                // Trouver la card du message
-                const messageCard = document.querySelector(`[data-id="${messageId}"]`).closest('.message-card');
-                messageCard.classList.remove('unread');
-                messageCard.setAttribute('data-message-type', messageCard.getAttribute('data-message-type').replace('unread', 'read').trim());
-                
-                // Retirer les badges et boutons "marquer lu"
-                const newBadge = messageCard.querySelector('.status-badge.new');
-                if (newBadge) newBadge.remove();
-                
-                const markReadBtns = messageCard.querySelectorAll('.mark-read-btn');
-                markReadBtns.forEach(btn => btn.remove());
-                
-                // Mettre à jour les compteurs
-                updateFilterCounts();
+            if (data && data.success) {
+                const card = document.querySelector('.mm-card[data-mm-id="' + messageId + '"]');
+                if (card) {
+                    card.dataset.mmState = 'read';
+                    card.classList.remove('is-unread');
+                    const dot = card.querySelector('.mm-unread-dot');
+                    if (dot) dot.remove();
+                    const markBtns = card.querySelectorAll('[data-mm-mark-read]');
+                    markBtns.forEach(b => b.remove());
+                    // Update aria-label
+                    const title = card.querySelector('.mm-title')?.textContent?.trim() || '';
+                    card.setAttribute('aria-label', 'Message ' + title + ', lu');
+                }
+                // Retirer aussi le bouton dans le modal correspondant
+                const modal = document.getElementById('mmModal' + messageId);
+                if (modal) {
+                    modal.querySelectorAll('[data-mm-mark-read]').forEach(b => b.remove());
+                }
+                refreshCounts();
+                if (!options || !options.silent) {
+                    showFeedback('Message marqué comme lu', 'success');
+                }
             }
         })
-        .catch(error => {
-            debugError('Error:', error);
+        .catch(err => {
+            showFeedback('Impossible de marquer le message comme lu', 'error');
+            // eslint-disable-next-line no-console
+            console.error('mes-messages markAsRead', err);
         });
     }
 
-    function updateFilterCounts() {
-        const totalMessages = document.querySelectorAll('.message-card').length;
-        const unreadMessages = document.querySelectorAll('.message-card.unread').length;
-        const urgentMessages = document.querySelectorAll('.message-card.urgent').length;
-        
-        // Mettre à jour les badges des filtres
-        document.querySelector('#filterAll .filter-badge').textContent = totalMessages;
-        document.querySelector('#filterUnread .filter-badge').textContent = unreadMessages;
-        
-        const urgentFilter = document.querySelector('#filterUrgent .filter-badge');
-        if (urgentFilter) {
-            urgentFilter.textContent = urgentMessages;
-        }
-        
-        // Mettre à jour les stats
-        document.querySelector('.stat-card.unread .stat-number').textContent = unreadMessages;
-        document.querySelector('.stat-card.urgent .stat-number').textContent = urgentMessages;
-        
-        // Masquer le bouton "tout marquer comme lu" si pas de messages non lus
-        if (unreadMessages === 0 && markAllReadBtn) {
-            markAllReadBtn.style.display = 'none';
-        }
-    }
-});
+    document.addEventListener('DOMContentLoaded', function () {
+        // Tabs
+        document.querySelectorAll('.mm-tab').forEach(tab => {
+            tab.addEventListener('click', function () {
+                applyFilter(this.dataset.mmFilter);
+            });
+        });
 
-function openMessageModal(messageId) {
-    const modal = new bootstrap.Modal(document.getElementById(`messageModal${messageId}`));
-    modal.show();
-}
+        // Click "Marquer lu" sur card et modal (event delegation)
+        document.body.addEventListener('click', function (e) {
+            const btn = e.target.closest('[data-mm-mark-read]');
+            if (!btn) return;
+            e.preventDefault();
+            const id = btn.dataset.mmMarkRead;
+            markAsRead(id);
+        });
+
+        // Tout marquer lu
+        const allBtn = document.getElementById('mmMarkAllRead');
+        if (allBtn) {
+            allBtn.addEventListener('click', function () {
+                allBtn.disabled = true;
+                fetch(markAllReadUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': csrfToken,
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    }
+                })
+                .then(resp => resp.ok ? resp.json() : Promise.reject(new Error('HTTP ' + resp.status)))
+                .then(data => {
+                    if (data && data.success) {
+                        document.querySelectorAll('.mm-card[data-mm-id]').forEach(card => {
+                            card.dataset.mmState = 'read';
+                            card.classList.remove('is-unread');
+                            const dot = card.querySelector('.mm-unread-dot');
+                            if (dot) dot.remove();
+                            card.querySelectorAll('[data-mm-mark-read]').forEach(b => b.remove());
+                        });
+                        // Retirer aussi tous les boutons dans les modals
+                        document.querySelectorAll('.mm-modal [data-mm-mark-read]').forEach(b => b.remove());
+                        refreshCounts();
+                        showFeedback('Tous les messages sont marqués comme lus', 'success');
+                    } else {
+                        allBtn.disabled = false;
+                        showFeedback('Une erreur est survenue', 'error');
+                    }
+                })
+                .catch(err => {
+                    allBtn.disabled = false;
+                    showFeedback('Impossible de marquer tous les messages comme lus', 'error');
+                    // eslint-disable-next-line no-console
+                    console.error('mes-messages markAllRead', err);
+                });
+            });
+        }
+    });
+
+    // Ouverture modal exposée globalement (utilisée dans onclick blade)
+    window.mmOpenMessage = function (messageId) {
+        const modalEl = document.getElementById('mmModal' + messageId);
+        if (!modalEl) return;
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+
+        // Auto-mark as read on open (silencieux pour ne pas spam le toast)
+        const card = document.querySelector('.mm-card[data-mm-id="' + messageId + '"]');
+        if (card && card.dataset.mmState === 'unread') {
+            markAsRead(messageId, { silent: true });
+        }
+    };
+})();
 </script>
+
+{{-- Toast helper (window.showToast) --}}
+<script src="{{ asset('js/inscriptions/common.js') }}" defer></script>
 @endpush

@@ -1933,7 +1933,10 @@
                         @endif
                     @endcan
 
-                    {{-- Chat interactif (issue #298) — visible pour tous les users authentifiés --}}
+                    {{-- Chat interactif (issue #298) — réservé staff (permission messages.send).
+                         Les étudiants consultent leurs annonces via /esbtp/mes-messages
+                         (section « Communication » plus bas, gated @can('identity.student')). --}}
+                    @can('messages.send')
                     <div class="menu-item">
                         <a href="{{ route('chat.index') }}" class="menu-link {{ Request::routeIs('chat.*') ? 'active' : '' }}">
                             <div class="menu-icon"><i class="fas fa-comment-dots"></i></div>
@@ -1949,6 +1952,7 @@
                             </div>
                         </a>
                     </div>
+                    @endcan
 
                     <!-- Messages Section -->
                     @can('identity.student')
