@@ -15,58 +15,104 @@
         'Catégorie' => 'Scolarité annuelle',
     ]"
     orientation="portrait"
-    :overrides="$overrides ?? []"
-    signature-block="director">
+    :overrides="$overrides ?? []">
 
+    @php
+        $previewPdf = array_merge(\App\Helpers\SettingsHelper::getPdfSettings(), $overrides ?? []);
+        $previewPrimary = $previewPdf['primary_color'] ?? '#0453cb';
+        $previewText = $previewPdf['text_color'] ?? '#1f2937';
+    @endphp
     <style>
+        /* KPI bar pattern liste-complete-pdf : fond primary plein, valeurs blanches */
         .preview-kpi-row { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
         .preview-kpi-cell {
-            border: 1px solid #e5e7eb;
-            border-radius: 6px;
-            padding: 10px 12px;
+            background-color: {{ $previewPrimary }};
+            padding: 10px 8px;
             text-align: center;
-            background: #f8fafc;
+            vertical-align: middle;
+            border-right: 1px solid rgba(255,255,255,0.25);
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
         }
+        .preview-kpi-cell:last-child { border-right: 0; }
         .preview-kpi-label {
-            font-size: 9px;
-            color: #64748b;
+            font-size: 7.5px;
+            font-weight: 600;
+            color: #fff;
+            opacity: 0.8;
             text-transform: uppercase;
-            letter-spacing: .4px;
+            letter-spacing: 0.5px;
             margin-bottom: 4px;
         }
         .preview-kpi-value {
-            font-size: 14px;
+            font-size: 16px;
             font-weight: 700;
-            color: #0453cb;
-        }
-        .preview-table { width: 100%; border-collapse: collapse; font-size: 9px; }
-        .preview-table th {
-            background: #0453cb;
             color: #fff;
-            padding: 8px 10px;
-            text-align: left;
+            line-height: 1.1;
+            margin-bottom: 3px;
+        }
+        .preview-kpi-sublabel {
+            font-size: 7px;
+            color: #fff;
+            opacity: 0.65;
+        }
+
+        /* Table pattern liste-complete-pdf : badges student-number + matricule mono */
+        .preview-table { width: 100%; border-collapse: collapse; font-size: 9px; background: white; }
+        .preview-table th {
+            background: {{ $previewPrimary }};
+            color: #fff;
+            padding: 7px 6px;
+            text-align: center;
             font-weight: 600;
-            border-bottom: 2px solid #033a8e;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.2px;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
         }
         .preview-table td {
-            padding: 7px 10px;
+            padding: 6px;
             border-bottom: 1px solid #e5e7eb;
+            text-align: center;
+            vertical-align: middle;
+            color: {{ $previewText }};
         }
-        .preview-table tr:nth-child(even) td { background: #f8fafc; }
+        .preview-table tbody tr:nth-child(even) td { background-color: #f8f9fa; }
         .preview-table tfoot td {
             background: #eff6ff;
             font-weight: 700;
-            color: #0453cb;
-            border-top: 2px solid #0453cb;
-            padding: 9px 10px;
+            color: {{ $previewPrimary }};
+            border-top: 2px solid {{ $previewPrimary }};
+            padding: 9px 6px;
         }
+        .preview-num-badge {
+            background: {{ $previewPrimary }};
+            color: #fff;
+            padding: 2px 6px;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 9px;
+            display: inline-block;
+            min-width: 18px;
+        }
+        .preview-matricule {
+            font-family: 'Courier New', monospace;
+            background: #f3f4f6;
+            padding: 2px 5px;
+            border-radius: 2px;
+            font-size: 8.5px;
+            color: #374151;
+            display: inline-block;
+        }
+        .preview-name { font-weight: 600; color: #1f2937; text-align: left; }
         .preview-section-title {
             font-size: 11px;
             font-weight: 700;
-            color: #0453cb;
+            color: {{ $previewPrimary }};
             margin: 14px 0 6px;
             text-transform: uppercase;
-            letter-spacing: .5px;
+            letter-spacing: 0.5px;
         }
         .preview-note {
             background: #fffbeb;
@@ -79,27 +125,28 @@
         }
     </style>
 
-    {{-- KPIs synthèse --}}
+    {{-- KPIs synthèse — pattern liste-complete-pdf : fond bleu plein, valeurs blanches --}}
     <table class="preview-kpi-row">
         <tr>
             <td class="preview-kpi-cell" style="width: 25%;">
-                <div class="preview-kpi-label">Étudiants concernés</div>
+                <div class="preview-kpi-label">Étudiants</div>
                 <div class="preview-kpi-value">42</div>
+                <div class="preview-kpi-sublabel">Concernés</div>
             </td>
-            <td style="width: 1%;"></td>
             <td class="preview-kpi-cell" style="width: 25%;">
-                <div class="preview-kpi-label">Total attendu</div>
-                <div class="preview-kpi-value">12 600 000 FCFA</div>
+                <div class="preview-kpi-label">Attendu</div>
+                <div class="preview-kpi-value">12 600 000</div>
+                <div class="preview-kpi-sublabel">FCFA</div>
             </td>
-            <td style="width: 1%;"></td>
             <td class="preview-kpi-cell" style="width: 25%;">
-                <div class="preview-kpi-label">Total payé</div>
-                <div class="preview-kpi-value">8 740 000 FCFA</div>
+                <div class="preview-kpi-label">Payé</div>
+                <div class="preview-kpi-value">8 740 000</div>
+                <div class="preview-kpi-sublabel">FCFA</div>
             </td>
-            <td style="width: 1%;"></td>
             <td class="preview-kpi-cell" style="width: 25%;">
-                <div class="preview-kpi-label">Taux recouvrement</div>
+                <div class="preview-kpi-label">Recouvrement</div>
                 <div class="preview-kpi-value">69 %</div>
+                <div class="preview-kpi-sublabel">Taux global</div>
             </td>
         </tr>
     </table>
@@ -109,12 +156,12 @@
     <table class="preview-table">
         <thead>
             <tr>
-                <th style="width: 40px;">#</th>
-                <th>Étudiant</th>
-                <th>Matricule</th>
-                <th style="text-align: right;">Attendu</th>
-                <th style="text-align: right;">Payé</th>
-                <th style="text-align: right;">Solde</th>
+                <th style="width: 30px;">#</th>
+                <th style="width: 90px;">Matricule</th>
+                <th>Nom &amp; prénoms</th>
+                <th style="width: 80px;">Attendu</th>
+                <th style="width: 80px;">Payé</th>
+                <th style="width: 80px;">Solde</th>
             </tr>
         </thead>
         <tbody>
@@ -131,9 +178,9 @@
             @endphp
             @foreach($rows as $i => $row)
                 <tr>
-                    <td>{{ $i + 1 }}</td>
-                    <td>{{ $row[0] }}</td>
-                    <td>{{ $row[1] }}</td>
+                    <td><span class="preview-num-badge">{{ $i + 1 }}</span></td>
+                    <td><span class="preview-matricule">{{ $row[1] }}</span></td>
+                    <td class="preview-name">{{ $row[0] }}</td>
                     <td style="text-align: right;">{{ number_format($row[2], 0, ',', ' ') }}</td>
                     <td style="text-align: right;">{{ number_format($row[3], 0, ',', ' ') }}</td>
                     <td style="text-align: right;">{{ number_format($row[4], 0, ',', ' ') }}</td>
@@ -142,7 +189,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <td colspan="3">Total ({{ count($rows) }} étudiants)</td>
+                <td colspan="3" style="text-align: left; padding-left: 10px;">Total ({{ count($rows) }} étudiants)</td>
                 <td style="text-align: right;">{{ number_format(array_sum(array_column($rows, 2)), 0, ',', ' ') }}</td>
                 <td style="text-align: right;">{{ number_format(array_sum(array_column($rows, 3)), 0, ',', ' ') }}</td>
                 <td style="text-align: right;">{{ number_format(array_sum(array_column($rows, 4)), 0, ',', ' ') }}</td>

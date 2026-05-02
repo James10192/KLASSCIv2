@@ -598,6 +598,13 @@
                         </button>
                         <ul class="dropdown-menu">
                             <li>
+                                <a class="dropdown-item" href="#" onclick="exportPaiements('pdf-preview'); return false;">
+                                    <i class="fas fa-eye text-primary me-2"></i>Aperçu PDF
+                                    <small class="text-muted d-block ms-4" style="font-size:.7rem;">Voir avant téléchargement</small>
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
                                 <a class="dropdown-item" href="#" onclick="exportPaiements('excel'); return false;">
                                     <i class="fas fa-file-excel text-success me-2"></i>Excel (.xlsx)
                                 </a>
@@ -609,7 +616,7 @@
                             </li>
                             <li>
                                 <a class="dropdown-item" href="#" onclick="exportPaiements('pdf'); return false;">
-                                    <i class="fas fa-file-pdf text-danger me-2"></i>PDF
+                                    <i class="fas fa-file-pdf text-danger me-2"></i>Télécharger PDF
                                 </a>
                             </li>
                         </ul>
@@ -1515,6 +1522,7 @@ function showYearChangeInfo() {
 
         // Construire l'URL d'export avec les filtres
         let exportUrl = '';
+        let openInNewTab = false;
         switch(format) {
             case 'excel':
                 exportUrl = '{{ route('esbtp.paiements.export.excel') }}';
@@ -1524,6 +1532,10 @@ function showYearChangeInfo() {
                 break;
             case 'pdf':
                 exportUrl = '{{ route('esbtp.paiements.export.pdf') }}';
+                break;
+            case 'pdf-preview':
+                exportUrl = '{{ route('esbtp.paiements.export.pdf-preview') }}';
+                openInNewTab = true;
                 break;
             default:
                 debugError('❌ Format d\'export inconnu:', format);
@@ -1537,8 +1549,12 @@ function showYearChangeInfo() {
 
         debugLog('🔗 URL d\'export:', exportUrl);
 
-        // Rediriger vers l'URL d'export (le téléchargement démarrera automatiquement)
-        window.location.href = exportUrl;
+        // Preview = nouvelle tab inline ; téléchargement = même tab
+        if (openInNewTab) {
+            window.open(exportUrl, '_blank', 'noopener,noreferrer');
+        } else {
+            window.location.href = exportUrl;
+        }
     };
 
     /**

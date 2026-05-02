@@ -869,6 +869,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/paiements/export/excel', [App\Http\Controllers\ESBTPPaiementController::class, 'exportExcel'])->name('paiements.export.excel');
                 Route::get('/paiements/export/csv', [App\Http\Controllers\ESBTPPaiementController::class, 'exportCsv'])->name('paiements.export.csv');
                 Route::get('/paiements/export/pdf', [App\Http\Controllers\ESBTPPaiementController::class, 'exportPdf'])->name('paiements.export.pdf');
+                Route::get('/paiements/export/pdf-preview', [App\Http\Controllers\ESBTPPaiementController::class, 'exportPdfPreview'])
+                    ->middleware('throttle:60,1')
+                    ->name('paiements.export.pdf-preview');
                 Route::get('/paiements/suivi-categories/export/{statut}/excel', [App\Http\Controllers\ESBTPPaiementController::class, 'exportStudentsExcel'])->name('paiements.suivi-categories.export.excel');
                 Route::get('/paiements/suivi-categories/export/{statut}/pdf', [App\Http\Controllers\ESBTPPaiementController::class, 'exportStudentsPdf'])->name('paiements.suivi-categories.export.pdf');
             });

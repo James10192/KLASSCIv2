@@ -209,42 +209,30 @@
             padding: 0 8px;
         }
         .pdf-signature-card {
-            border: 1px dashed {{ $primary }};
-            border-radius: 4px;
-            padding: 10px 14px 14px;
-            min-height: {{ $signatureHeight + 36 }}px;
-            background: #ffffff;
-        }
-        .pdf-signature-label {
-            font-size: 9px;
-            font-weight: 700;
-            color: {{ $primary }};
-            text-transform: uppercase;
-            letter-spacing: 0.4px;
-            margin-bottom: 8px;
+            text-align: center;
+            padding: 0 14px;
+            min-height: {{ $signatureHeight + 30 }}px;
         }
         .pdf-signature-img {
             max-height: {{ $signatureHeight }}px;
             max-width: 220px;
             display: block;
-            margin: 6px 0;
+            margin: 0 auto 4px;
+        }
+        .pdf-signature-line {
+            border-top: 1px solid {{ $secondary }};
+            margin: 0 30px 4px;
+            padding-top: 4px;
         }
         .pdf-signature-name {
             font-size: 10px;
-            font-weight: 600;
+            font-weight: 700;
             color: {{ $textColor }};
-            margin-top: 8px;
         }
         .pdf-signature-title-text {
-            font-size: 8.5px;
-            color: {{ $secondary }};
-            margin-top: 2px;
-        }
-        .pdf-signature-empty {
-            color: {{ $secondary }};
-            font-style: italic;
             font-size: 9px;
-            margin-top: 18px;
+            color: {{ $secondary }};
+            margin-top: 1px;
         }
 
         /* ===== Footer paginé ===== */
@@ -345,7 +333,9 @@
         {{ $slot }}
     </div>
 
-    {{-- Signature block optionnel --}}
+    {{-- Signature block — pattern document officiel : zone libre pour signature
+         manuscrite/cachet, séparateur ligne fine, nom du signataire en BAS.
+         Pas de "Espace réservé" — un vrai bulletin n'écrit jamais ça. --}}
     @if(in_array($signatureBlock, ['director', 'secretary', 'both'], true))
         <div class="pdf-signature-block">
             <table class="pdf-signature-grid">
@@ -353,30 +343,29 @@
                     @if(in_array($signatureBlock, ['director', 'both'], true))
                         <td class="pdf-signature-cell" style="width: {{ $signatureBlock === 'both' ? 50 : 100 }}%;">
                             <div class="pdf-signature-card">
-                                <div class="pdf-signature-label">Signature &amp; Cachet · {{ $directorTitle }}</div>
                                 @if(!empty($signatureFiles['director']))
                                     <img src="data:image/{{ $signatureFiles['director']['ext'] }};base64,{{ $signatureFiles['director']['b64'] }}"
                                          alt="Signature directeur" class="pdf-signature-img">
-                                @else
-                                    <div class="pdf-signature-empty">Espace réservé pour signature manuscrite et cachet officiel</div>
                                 @endif
-                                @if($directorName)
-                                    <div class="pdf-signature-name">{{ $directorName }}</div>
-                                    <div class="pdf-signature-title-text">{{ $directorTitle }}</div>
-                                @endif
+                                <div class="pdf-signature-line">
+                                    <div class="pdf-signature-name">{{ $directorName ?: $directorTitle }}</div>
+                                    @if($directorName)
+                                        <div class="pdf-signature-title-text">{{ $directorTitle }}</div>
+                                    @endif
+                                </div>
                             </div>
                         </td>
                     @endif
                     @if(in_array($signatureBlock, ['secretary', 'both'], true))
                         <td class="pdf-signature-cell" style="width: {{ $signatureBlock === 'both' ? 50 : 100 }}%;">
                             <div class="pdf-signature-card">
-                                <div class="pdf-signature-label">Signature · Secrétariat</div>
                                 @if(!empty($signatureFiles['secretary']))
                                     <img src="data:image/{{ $signatureFiles['secretary']['ext'] }};base64,{{ $signatureFiles['secretary']['b64'] }}"
                                          alt="Signature secrétaire" class="pdf-signature-img">
-                                @else
-                                    <div class="pdf-signature-empty">Espace réservé pour signature et cachet</div>
                                 @endif
+                                <div class="pdf-signature-line">
+                                    <div class="pdf-signature-name">Le Secrétariat</div>
+                                </div>
                             </div>
                         </td>
                     @endif

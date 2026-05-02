@@ -2008,64 +2008,93 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
-     * Exporter les paiements au format PDF
+     * Exporter les paiements au format PDF (téléchargement)
      */
     public function exportPdf(Request $request, FuzzyNameMatcher $matcher)
     {
         try {
-            // Récupérer les données filtrées pour les stats
-            $data = $this->filterService->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@exportPdf');
-
-            // Récupérer TOUS les paiements filtrés (sans pagination)
-            $paiements = $this->filterService->getAllFilteredPaiements($request, $matcher);
-
-            // Préparer les filtres
-            $filters = [
-                'search' => $request->input('search'),
-                'status' => $request->input('status'),
-                'date_debut' => $request->input('date_debut'),
-                'date_fin' => $request->input('date_fin'),
-            ];
-
-            // Récupérer les paramètres de l'école
-            $settings = $this->getReceiptSettings();
-            $schoolInfo = \App\Helpers\SettingsHelper::getSchoolInfo();
-            $pdfCfg = \App\Helpers\SettingsHelper::getPdfSettings();
-
-            $etablissement = [
-                'nom' => $schoolInfo['name'],
-                'adresse' => $schoolInfo['address'],
-                'telephone' => $schoolInfo['phone'],
-                'email' => $schoolInfo['email'],
-                'logo' => $schoolInfo['logo'],
-            ];
-
-            Log::info('Export PDF paiements généré', [
-                'user_id' => auth()->id(),
-                'total_paiements' => $paiements->count(),
-            ]);
-
-            // Générer le PDF
-            $pdf = PDF::loadView('esbtp.paiements.export-pdf', [
-                'paiements' => $paiements,
-                'stats' => $data['stats'],
-                'filters' => $filters,
-                'settings' => $settings,
-                'etablissement' => $etablissement,
-                'pdfCfg' => $pdfCfg,
-                'dateExport' => now()
-            ]);
-
-            // Télécharger le PDF
-            $filename = 'paiements_' . now()->format('Y-m-d_His') . '.pdf';
+            [$pdf, $filename] = $this->buildExportPdf($request, $matcher);
             return $pdf->download($filename);
-
         } catch (\Exception $e) {
             Log::error('Erreur export PDF paiements: ' . $e->getMessage(), [
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
-
             return redirect()->back()->with('error', 'Erreur lors de l\'export PDF: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * Aperçu PDF des paiements (inline, nouvelle tab du navigateur).
+     * Phase 9.5 — preview universel.
+     */
+    public function exportPdfPreview(Request $request, FuzzyNameMatcher $matcher)
+    {
+        try {
+            [$pdf, $filename] = $this->buildExportPdf($request, $matcher);
+            return new \Illuminate\Http\Response(
+                $pdf->output(),
+                200,
+                [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $filename . '"',
+                    'X-Robots-Tag' => 'noindex, nofollow',
+                ]
+            );
+        } catch (\Exception $e) {
+            Log::error('Erreur aperçu PDF paiements: ' . $e->getMessage(), [
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+            ]);
+            return redirect()->back()->with('error', 'Erreur lors de l\'aperçu PDF: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Construit l'objet DomPDF pour l'export paiements (download + preview
+     * partagent la même logique). Retourne [Pdf, filename].
+     *
+     * @return array{0: \Barryvdh\DomPDF\PDF, 1: string}
+     */
+    private function buildExportPdf(Request $request, FuzzyNameMatcher $matcher): array
+    {
+        $data = $this->filterService->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@buildExportPdf');
+        $paiements = $this->filterService->getAllFilteredPaiements($request, $matcher);
+
+        $filters = [
+            'search' => $request->input('search'),
+            'status' => $request->input('status'),
+            'date_debut' => $request->input('date_debut'),
+            'date_fin' => $request->input('date_fin'),
+        ];
+
+        $settings = $this->getReceiptSettings();
+        $schoolInfo = \App\Helpers\SettingsHelper::getSchoolInfo();
+        $pdfCfg = \App\Helpers\SettingsHelper::getPdfSettings();
+
+        $etablissement = [
+            'nom' => $schoolInfo['name'],
+            'adresse' => $schoolInfo['address'],
+            'telephone' => $schoolInfo['phone'],
+            'email' => $schoolInfo['email'],
+            'logo' => $schoolInfo['logo'],
+        ];
+
+        Log::info('PDF paiements généré', [
+            'user_id' => auth()->id(),
+            'total_paiements' => $paiements->count(),
+        ]);
+
+        $pdf = PDF::loadView('esbtp.paiements.export-pdf', [
+            'paiements' => $paiements,
+            'stats' => $data['stats'],
+            'filters' => $filters,
+            'settings' => $settings,
+            'etablissement' => $etablissement,
+            'pdfCfg' => $pdfCfg,
+            'dateExport' => now()
+        ]);
+
+        $filename = 'paiements_' . now()->format('Y-m-d_His') . '.pdf';
+
+        return [$pdf, $filename];
     }
 }
