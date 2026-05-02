@@ -76,6 +76,8 @@ class ESBTPSettingsController extends Controller
                 'pdf_footer_custom_text' => ['value' => '', 'type' => 'string', 'desc' => 'Texte personnalisé du pied de page'],
                 'pdf_show_pagination' => ['value' => '1', 'type' => 'boolean', 'desc' => 'Afficher la pagination dans le footer'],
                 'pdf_show_director_signature' => ['value' => '1', 'type' => 'boolean', 'desc' => 'Afficher la mention "Directeur" dans le footer'],
+                'pdf_show_generator_name' => ['value' => '1', 'type' => 'boolean', 'desc' => 'Afficher le nom de l\'auteur du document (Édité par X)'],
+                'pdf_signature_height' => ['value' => '80', 'type' => 'integer', 'desc' => 'Hauteur des images de signature (px, défaut 80)'],
                 'pdf_watermark_opacity' => ['value' => '0.05', 'type' => 'float', 'desc' => 'Opacité du filigrane (0.02 à 0.30)'],
                 'pdf_watermark_rotation' => ['value' => '-30', 'type' => 'integer', 'desc' => 'Rotation du filigrane (-90 à 90 degrés)'],
                 'pdf_watermark' => ['value' => '', 'type' => 'string', 'desc' => 'Texte du filigrane (vide = désactivé)'],

@@ -1007,6 +1007,38 @@
                             <span class="slider"></span>
                         </label>
                     </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-user-edit text-primary"></i>
+                            Afficher le nom de l'auteur ("Par X")
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="hidden" name="setting_pdf_show_generator_name" value="0">
+                            <input type="checkbox" name="setting_pdf_show_generator_name" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('pdf_show_generator_name', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                        <small class="text-muted"><i class="fas fa-info-circle"></i> Si désactivé, le nom de l'utilisateur connecté n'apparaîtra plus dans l'en-tête des PDF.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-signature text-primary"></i>
+                            Hauteur des signatures (px) :
+                            <span style="color: #0453cb; font-weight: 700;">{{ \App\Helpers\SettingsHelper::get('pdf_signature_height', '80') }} px</span>
+                        </label>
+                        <div style="display: flex; gap: .75rem; align-items: center;">
+                            <input type="range" min="40" max="200" step="10"
+                                   value="{{ \App\Helpers\SettingsHelper::get('pdf_signature_height', '80') }}"
+                                   oninput="this.nextElementSibling.value = this.value; this.previousElementSibling.querySelector('span').textContent = this.value + ' px';"
+                                   style="flex: 1;">
+                            <input type="number" min="40" max="200" step="10"
+                                   class="form-control form-control-modern"
+                                   name="setting_pdf_signature_height"
+                                   value="{{ \App\Helpers\SettingsHelper::get('pdf_signature_height', '80') }}"
+                                   style="width: 80px;">
+                        </div>
+                        <small class="text-muted"><i class="fas fa-info-circle"></i> Hauteur max des images signature directeur/secrétaire dans les bulletins/certificats. Défaut : 80 px.</small>
+                    </div>
                 </div>
             </div>
 

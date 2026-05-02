@@ -196,8 +196,10 @@
                 </td>
                 <td class="pdf-doc-meta-cell">
                     <strong>{{ $school['acronym'] ?? '' }}</strong><br>
-                    Édité le {{ now()->locale('fr')->translatedFormat('d F Y à H:i') }}<br>
-                    @auth Par {{ auth()->user()->name }} @endauth
+                    Édité le {{ now()->locale('fr')->translatedFormat('d F Y à H:i') }}
+                    @if(!empty($pdf['show_generator_name']) && auth()->check())
+                        <br>Par {{ auth()->user()->name }}
+                    @endif
                 </td>
             </tr>
         </table>
