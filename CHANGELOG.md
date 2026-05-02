@@ -12,9 +12,26 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### Ajouts
+
+- **Journal d'audit étendu à 14 entités critiques + 4 vues premium + composant `<x-entity-history>`** — l'application logge désormais qui crée, modifie ou supprime quoi sur les entités sensibles : Notes, Inscriptions, Étudiants, Évaluations, Classes, Matières, Présences, Frais (catégories / options / abonnements), Utilisateurs, Bulletins, Résultats, Enseignants. Auparavant seuls les Paiements et Factures étaient tracés. Couverture étendue via le package `owen-it/laravel-auditing` et un whitelist par modèle (`$auditInclude`) pour ne tracer que les colonnes métier sensibles. Les changements de paramètres (`Setting`) et les attributions/révocations de rôles & permissions Spatie sont également loggés via observer + listener dédiés.
+- **4 vues premium `/esbtp/audit`** — Index (KPIs total / jour / semaine / événements critiques + filtres live + tableau paginé avec chips événement et niveau de risque), Détail (diff field-by-field, métadonnées parsées navigateur+OS, 5 audits liés sur la même entité), Audit comptable (Paiements + Factures avec KPIs financiers), Activité utilisateurs (timeline groupée par jour, top entités, top IPs, distribution horaire 24h, alertes hors heures bureau).
+- **Composant Blade `<x-entity-history :model :limit>`** — réutilisable sur n'importe quelle page détail. Timeline des derniers événements avec event chips, diff inline 3 premiers champs modifiés, lien vers détail complet. Gardé par `security.audit.view`. Premier exemple sur la fiche Paiement.
+- **Sidebar — nouvelle catégorie "Sécurité & Audit"** — accordion avec 3 sous-liens (Toutes les actions / Audit comptable / Activité utilisateurs). Visible avec `security.audit.view` (Super Administrateur + Service Technique par défaut ; un Super Administrateur peut déléguer cette permission à un autre rôle depuis la page Rôles & Permissions).
+- **Exports PDF + Excel du journal d'audit** — formats premium (PDF via `<x-pdf-document>`, Excel avec colonnes formatées). Throttle 5/min sur exports, 100/min sur consultation.
+- **Index DB sur `audits`** — ajout de 3 indexes (`created_at`, `event`, `tags`) pour temps de réponse stables au-delà de 10 000 enregistrements.
+
 ### Corrections
 
+- **CRITIQUE — calcul de moyenne dans la saisie de notes** (`/esbtp/notes`) — la moyenne par étudiant affichée côté UI excluait silencieusement les notes 0 légitimes. Une enseignante saisissait 10 et 0 et voyait 10 au lieu de 5. Cause : la fonction JS `calculateStudentAverage()` filtrait `noteValue > 0` au lieu de `rawValue !== ''`, ce qui rejetait à la fois les cellules vides ET les notes 0. La fonction sœur `calculateClassAverages()` du même fichier utilisait le bon filtre, ce qui créait une divergence entre la moyenne par étudiant (fausse) et la moyenne par évaluation (correcte). Algo aligné sur le bon filtre + ajout d'un garde-fou contre les barèmes invalides (≤ 0).
+
+- **CRITIQUE — moyennes des bulletins non normalisées par barème** — `BulletinService::genererDonneesBulletin()` calculait la moyenne par matière en multipliant directement la note brute par le coefficient (`note × coef`), sans la normaliser sur 20 lorsque le barème de l'évaluation différait de 20. Conséquence : un étudiant ayant 15/30 dans une éval (équiv. 10/20) et 10/20 dans une autre voyait sur son bulletin officiel (15+10)/2 = 12.5 au lieu de la vraie moyenne (10+10)/2 = 10. Refactor pour capturer barème + flag `is_absent` dans la structure de notes et déléguer le calcul à une nouvelle méthode pure `computeMoyenneFromNotesData()` qui normalise systématiquement chaque note sur 20, exclut les absences et résiste aux barèmes invalides.
+
 - **Bug accents en majuscules dans les titres PDF** — les exports comptabilité affichaient « TABLEAU DéTAILLé DES PAIEMENTS » au lieu de « TABLEAU DÉTAILLÉ DES PAIEMENTS ». La fonction PHP `strtoupper()` ne gère pas correctement les caractères UTF-8 (les accents `é`, `à`, `è`, etc. ne sont pas convertis en majuscules). Remplacement par `mb_strtoupper(..., 'UTF-8')` sur les 3 templates PDF concernés (recouvrement, analytics, paiements détaillés). Effet collatéral : les badges de statut (Validé / Rejeté / Annulé) et les libellés de niveau de risque sont également correctement majuscules.
+
+### Ajouts
+
+- **Commande d'audit `php artisan notes:audit-divergence`** — détecte les bulletins/résultats matière dont la moyenne persistée diverge de la moyenne recalculée avec la nouvelle logique (post-fix barème). Lecture seule par défaut, options `--classe=ID` pour cibler une classe, `--export-csv=path.csv` pour un rapport complet, écarts > 0.5 affichés en rouge, eager-load anti N+1, chunkById(500) pour gros volumes. Sortie résumée avec écart max et nombre de divergences significatives. Le recompute des moyennes persistées sera traité dans une PR séparée.
 
 ### Améliorations
 
