@@ -1302,9 +1302,12 @@
         display: block;
         border-radius: 14px 0 0 14px;
     }
-    /* Dropdown kebab dans la card doit s'afficher au-dessus des cards voisines */
-    .et-card .dropdown-menu.show { z-index: 1060; }
-    .et-card:has(.dropdown-menu.show) { z-index: 5; }
+    /* Dropdown kebab Alpine (.et-card__menu-pop) doit passer au-dessus des cards
+       voisines hovered — celles-ci créent un nouveau stacking context via transform.
+       On bumpe le z-index de la card parent quand le menu Alpine est ouvert. */
+    .et-card { z-index: 1; }
+    .et-card:has(.et-card__menu--open) { z-index: 50; }
+    .et-card__menu-pop { z-index: 1060; }
     .et-card__inner {
         flex: 1;
         padding: 1rem 1.1rem;

@@ -170,7 +170,7 @@
                     <i class="fas fa-arrow-right"></i>
                 </a>
                 @if($canEdit || $canDelete)
-                    <div class="et-card__menu" x-data="{ open: false }" @click.outside="open = false">
+                    <div class="et-card__menu" x-data="{ open: false }" @click.outside="open = false" :class="{ 'et-card__menu--open': open }">
                         <button type="button"
                                 class="et-card-btn et-card-btn--icon"
                                 @click="open = !open"
