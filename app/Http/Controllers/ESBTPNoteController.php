@@ -16,6 +16,7 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
 use App\Models\User;
+use App\Services\NoteCalculationService;
 use App\Services\NotesImportService;
 use App\Services\NotificationService;
 use Carbon\Carbon;
@@ -1350,7 +1351,7 @@ class ESBTPNoteController extends Controller
      * Calcule l'impact d'une note hypothétique sur la moyenne matière + générale.
      * Utilisé par l'UI temps réel sous chaque ligne étudiant.
      */
-    public function previewImpact(Request $request)
+    public function previewImpact(Request $request, NoteCalculationService $calc)
     {
         $user = Auth::user();
         if (! $user || (! $user->can('notes.view') && ! $user->can('notes.view_own') && ! $user->can('notes.create') && ! $user->can('notes.edit'))) {
@@ -1409,61 +1410,69 @@ class ESBTPNoteController extends Controller
             ->keyBy('evaluation_id');
 
         // Moyenne matière AVANT
-        $moyenneMatiereAvant = $this->computeMatiereAverage($evaluations, $notes, null, null);
+        $moyenneMatiereAvant = $this->computeMatiereAverage($calc, $evaluations, $notes, null, null);
 
         // Moyenne matière APRÈS (en remplaçant la note de cette éval)
-        $moyenneMatiereApres = $this->computeMatiereAverage($evaluations, $notes, $evaluationId, [
+        $moyenneMatiereApres = $this->computeMatiereAverage($calc, $evaluations, $notes, $evaluationId, [
             'note' => $hypoValue,
             'is_absent' => $isAbsent,
         ]);
 
-        $mentionAvant = $this->getMention($moyenneMatiereAvant);
-        $mentionApres = $this->getMention($moyenneMatiereApres);
+        $mentionAvant = $moyenneMatiereAvant !== null ? $calc->getMention($moyenneMatiereAvant) : null;
+        $mentionApres = $moyenneMatiereApres !== null ? $calc->getMention($moyenneMatiereApres) : null;
 
         // Moyenne générale (toutes matières confondues, période)
-        $moyenneGeneraleAvant = $this->computeGeneralAverage($etudiantId, $classeId, $periode, null, null, null);
-        $moyenneGeneraleApres = $this->computeGeneralAverage($etudiantId, $classeId, $periode, $matiereId, $evaluationId, [
+        $moyenneGeneraleAvant = $this->computeGeneralAverage($calc, $etudiantId, $classeId, $periode, null, null, null);
+        $moyenneGeneraleApres = $this->computeGeneralAverage($calc, $etudiantId, $classeId, $periode, $matiereId, $evaluationId, [
             'note' => $hypoValue,
             'is_absent' => $isAbsent,
         ]);
 
         return response()->json([
             'success' => true,
-            'matiere_avant' => $moyenneMatiereAvant !== null ? round($moyenneMatiereAvant, 2) : null,
-            'matiere_apres' => $moyenneMatiereApres !== null ? round($moyenneMatiereApres, 2) : null,
+            'matiere_avant' => $moyenneMatiereAvant,
+            'matiere_apres' => $moyenneMatiereApres,
             'mention_avant' => $mentionAvant,
             'mention_apres' => $mentionApres,
-            'moyenne_generale_avant' => $moyenneGeneraleAvant !== null ? round($moyenneGeneraleAvant, 2) : null,
-            'moyenne_generale_apres' => $moyenneGeneraleApres !== null ? round($moyenneGeneraleApres, 2) : null,
+            'moyenne_generale_avant' => $moyenneGeneraleAvant,
+            'moyenne_generale_apres' => $moyenneGeneraleApres,
             'changed_mention' => $mentionAvant !== $mentionApres,
         ]);
     }
 
     /**
-     * Calcule la moyenne d'une matière à partir d'une collection d'évaluations + notes.
-     * Si $overrideEvalId fourni, remplace la note correspondante par $override.
+     * Construit le tableau de notes (note/bareme/coefficient/is_absent) à partir d'une
+     * collection d'évaluations + notes existantes, en appliquant un override hypothétique
+     * sur une évaluation cible si fourni.
+     *
+     * Délègue ensuite le calcul à NoteCalculationService::studentMatiereAverage()
+     * pour garantir la cohérence avec BTS / LMD / bulletins.
      *
      * @param  \Illuminate\Support\Collection  $evaluations
      * @param  \Illuminate\Support\Collection  $notesByEvalId  (keyBy evaluation_id)
-     * @param  int|null  $overrideEvalId
      * @param  array{note: float, is_absent: bool}|null  $override
+     * @return float|null  null si aucune note exploitable (UI = "—"), sinon moyenne sur 20.
      */
-    private function computeMatiereAverage($evaluations, $notesByEvalId, ?int $overrideEvalId = null, ?array $override = null): ?float
-    {
-        $totalPondere = 0.0;
-        $totalCoef = 0.0;
+    private function computeMatiereAverage(
+        NoteCalculationService $calc,
+        $evaluations,
+        $notesByEvalId,
+        ?int $overrideEvalId = null,
+        ?array $override = null
+    ): ?float {
+        $payload = [];
 
         foreach ($evaluations as $eval) {
             $bareme = max(0.01, (float) ($eval->bareme ?? 20));
             $coef = (float) ($eval->coefficient ?? 1);
 
             if ($overrideEvalId !== null && $eval->id === $overrideEvalId && $override !== null) {
-                if ($override['is_absent']) {
-                    continue;
-                }
-                $valSur20 = ((float) $override['note'] / $bareme) * 20;
-                $totalPondere += $valSur20 * $coef;
-                $totalCoef += $coef;
+                $payload[] = [
+                    'note' => (float) $override['note'],
+                    'bareme' => $bareme,
+                    'coefficient' => $coef,
+                    'is_absent' => (bool) $override['is_absent'],
+                ];
                 continue;
             }
 
@@ -1471,15 +1480,27 @@ class ESBTPNoteController extends Controller
             if (! $note) {
                 continue;
             }
-            if ($note->is_absent) {
-                continue;
-            }
-            $valSur20 = ((float) $note->note / $bareme) * 20;
-            $totalPondere += $valSur20 * $coef;
-            $totalCoef += $coef;
+            $payload[] = [
+                'note' => (float) ($note->note ?? 0),
+                'bareme' => $bareme,
+                'coefficient' => $coef,
+                'is_absent' => (bool) $note->is_absent,
+            ];
         }
 
-        return $totalCoef > 0 ? $totalPondere / $totalCoef : null;
+        // Aucune note exploitable (toutes vides ou absentes) → null pour distinguer "vide" de "0".
+        $hasUsableNote = false;
+        foreach ($payload as $row) {
+            if (empty($row['is_absent']) && $row['bareme'] > 0 && $row['coefficient'] > 0) {
+                $hasUsableNote = true;
+                break;
+            }
+        }
+        if (! $hasUsableNote) {
+            return null;
+        }
+
+        return $calc->studentMatiereAverage($payload);
     }
 
     /**
@@ -1487,9 +1508,10 @@ class ESBTPNoteController extends Controller
      * pour une période donnée.
      *
      * Si $overrideMatiereId + $overrideEvalId fournis, recalcule la matière concernée
-     * en remplaçant la note.
+     * en remplaçant la note. Délègue à NoteCalculationService.
      */
     private function computeGeneralAverage(
+        NoteCalculationService $calc,
         int $etudiantId,
         int $classeId,
         string $periode,
@@ -1519,14 +1541,14 @@ class ESBTPNoteController extends Controller
 
         $byMatiere = $evaluations->groupBy('matiere_id');
 
-        $totalPondere = 0.0;
-        $totalCoef = 0.0;
+        $matieresPayload = [];
 
         foreach ($byMatiere as $matiereId => $evalsMat) {
             $notesMat = $notes->where('matiere_id', $matiereId)->keyBy('evaluation_id');
 
             $isOverridden = ($overrideMatiereId === (int) $matiereId);
             $moyMat = $this->computeMatiereAverage(
+                $calc,
                 $evalsMat,
                 $notesMat,
                 $isOverridden ? $overrideEvalId : null,
@@ -1537,35 +1559,17 @@ class ESBTPNoteController extends Controller
                 continue;
             }
 
-            $coef = $matiereCoefs->get($matiereId, 1.0);
-            $totalPondere += $moyMat * $coef;
-            $totalCoef += $coef;
+            $matieresPayload[] = [
+                'moyenne' => $moyMat,
+                'coefficient' => $matiereCoefs->get($matiereId, 1.0),
+            ];
         }
 
-        return $totalCoef > 0 ? $totalPondere / $totalCoef : null;
-    }
-
-    /**
-     * Mention CAMES standard sur 20.
-     */
-    private function getMention(?float $moyenne): ?string
-    {
-        if ($moyenne === null) {
+        if (empty($matieresPayload)) {
             return null;
         }
-        if ($moyenne >= 16) {
-            return 'Très Bien';
-        }
-        if ($moyenne >= 14) {
-            return 'Bien';
-        }
-        if ($moyenne >= 12) {
-            return 'Assez Bien';
-        }
-        if ($moyenne >= 10) {
-            return 'Passable';
-        }
-        return 'Insuffisant';
+
+        return $calc->studentGeneralAverage($matieresPayload);
     }
 
     /**
