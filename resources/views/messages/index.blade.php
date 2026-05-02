@@ -20,7 +20,7 @@
     --ms-text: #0f172a;
     --ms-muted: #64748b;
     --ms-bubble-mine: linear-gradient(135deg, #0453cb, #3b7ddb);
-    --ms-bubble-them: #f1f5f9;
+    --ms-bubble-them: #fff;
 }
 .ms-shell { display: grid; grid-template-columns: 320px 1fr; height: calc(100vh - 80px); background: var(--ms-bg); border-radius: 16px; overflow: hidden; box-shadow: 0 1px 3px rgba(15,23,42,.06); }
 .ms-sidebar { background: var(--ms-surface); border-right: 1px solid var(--ms-border); display: flex; flex-direction: column; }
@@ -57,7 +57,7 @@
 .ms-msg { max-width: 70%; padding: .55rem .85rem; border-radius: 14px; font-size: .9rem; line-height: 1.4; word-break: break-word; transition: opacity .2s; }
 .ms-msg.pending { opacity: .55; }
 .ms-msg.mine { align-self: flex-end; background: var(--ms-bubble-mine); color: #fff; border-bottom-right-radius: 4px; }
-.ms-msg.theirs { align-self: flex-start; background: var(--ms-bubble-them); color: var(--ms-text); border-bottom-left-radius: 4px; }
+.ms-msg.theirs { align-self: flex-start; background: var(--ms-bubble-them); color: var(--ms-text); border-bottom-left-radius: 4px; border: 1px solid var(--ms-border); box-shadow: 0 1px 3px rgba(15,23,42,.04); }
 /* Grouped messages : flatten corners on middle bubbles */
 .ms-msg-group .ms-msg.mine:not(:last-child) { border-bottom-right-radius: 6px; }
 .ms-msg-group .ms-msg.mine:not(:first-child) { border-top-right-radius: 6px; }
@@ -91,8 +91,68 @@
     gap: .65rem;
     transition: box-shadow .15s, transform .15s;
 }
-.acard.mine { align-self: flex-end; }
 .acard:hover { box-shadow: 0 4px 16px rgba(4,83,203,.08), 0 1px 3px rgba(15,23,42,.06); transform: translateY(-1px); }
+
+/* Pattern iMessage : reçue (par défaut) à gauche en blanc, envoyée à droite en bleu KLASSCI. */
+.acard.mine {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 50%, #3b7ddb 100%);
+    border-color: rgba(255,255,255,.18);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(4,83,203,.18), 0 1px 3px rgba(4,83,203,.1);
+}
+.acard.mine:hover { box-shadow: 0 8px 24px rgba(4,83,203,.24), 0 2px 6px rgba(4,83,203,.12); }
+.acard.mine .acard-title { color: #fff; }
+.acard.mine .acard-sub { color: rgba(255,255,255,.78); }
+.acard.mine .acard-meta-label { color: rgba(255,255,255,.65); }
+.acard.mine .acard-meta-value { color: #fff; }
+.acard.mine .acard-avatar {
+    background: rgba(255,255,255,.18);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.25);
+    backdrop-filter: blur(6px);
+}
+.acard.mine .acard-kind-badge {
+    background: rgba(255,255,255,.18);
+    color: #fff;
+}
+.acard.mine .acard-kind-badge--paiement {
+    background: rgba(255,255,255,.18);
+    color: #fff;
+}
+.acard.mine .acard-chip {
+    background: rgba(255,255,255,.14);
+    color: #fff;
+    border: 1px solid rgba(255,255,255,.18);
+}
+.acard.mine .acard-chip--success { background: rgba(16,185,129,.32); color: #d1fae5; border-color: rgba(16,185,129,.4); }
+.acard.mine .acard-chip--warning { background: rgba(245,158,11,.32); color: #fef3c7; border-color: rgba(245,158,11,.42); }
+.acard.mine .acard-chip--danger  { background: rgba(220,38,38,.32); color: #fee2e2; border-color: rgba(220,38,38,.42); }
+.acard.mine .acard-cta--primary {
+    background: #fff;
+    color: var(--ms-primary);
+}
+.acard.mine .acard-cta--primary:hover {
+    color: var(--ms-primary-d);
+    box-shadow: 0 6px 16px rgba(0,0,0,.18);
+}
+.acard.mine .acard-cta--ghost {
+    background: rgba(255,255,255,.14);
+    color: #fff;
+    border-color: rgba(255,255,255,.28);
+}
+.acard.mine .acard-cta--ghost:hover {
+    background: rgba(255,255,255,.22);
+    color: #fff;
+}
+.acard.mine .acard-cta--disabled {
+    background: rgba(255,255,255,.1);
+    color: rgba(255,255,255,.55);
+}
+.acard.mine .acard-note {
+    color: rgba(255,255,255,.7);
+    border-top-color: rgba(255,255,255,.18);
+}
 .acard-head { display: flex; align-items: center; gap: .65rem; }
 .acard-avatar {
     width: 40px; height: 40px; border-radius: 10px;
@@ -157,15 +217,42 @@
     box-shadow: 0 10px 30px rgba(15,23,42,.12);
     z-index: 1000;
 }
-.ms-attach-menu button {
-    display: flex; width: 100%; align-items: center; gap: .65rem;
-    padding: .55rem .75rem; background: transparent; border: none; border-radius: 8px;
-    color: var(--ms-text); font-size: .88rem; font-weight: 500; cursor: pointer; transition: all .12s;
-    text-align: left;
+/* Spécificité forte pour neutraliser les styles globaux <button> du dashboard. */
+.ms-attach-menu .ms-attach-item,
+.ms-attach-menu button.ms-attach-item {
+    display: flex !important;
+    width: 100% !important;
+    align-items: center !important;
+    gap: .65rem !important;
+    padding: .6rem .8rem !important;
+    background: transparent !important;
+    border: 1px solid transparent !important;
+    border-radius: 8px !important;
+    color: var(--ms-text) !important;
+    font-size: .88rem !important;
+    font-weight: 500 !important;
+    cursor: pointer !important;
+    transition: all .12s !important;
+    text-align: left !important;
+    box-shadow: none !important;
+    line-height: 1.2 !important;
+    white-space: nowrap;
 }
-.ms-attach-menu button:hover { background: rgba(4,83,203,.06); color: var(--ms-primary); }
-.ms-attach-menu button i { width: 18px; text-align: center; color: var(--ms-muted); }
-.ms-attach-menu button:hover i { color: var(--ms-primary); }
+.ms-attach-menu .ms-attach-item:hover,
+.ms-attach-menu button.ms-attach-item:hover {
+    background: rgba(4,83,203,.08) !important;
+    border-color: rgba(4,83,203,.14) !important;
+    color: var(--ms-primary) !important;
+    transform: translateX(2px);
+}
+.ms-attach-menu .ms-attach-item i {
+    width: 18px;
+    text-align: center;
+    color: var(--ms-muted);
+    font-size: .92rem;
+    flex-shrink: 0;
+}
+.ms-attach-menu .ms-attach-item:hover i { color: var(--ms-primary); }
 
 /* Picker modal — réutilise .ms-modal mais avec resultat plus spécifique */
 .ms-picker-result {
@@ -261,9 +348,15 @@
     font-size: .78rem; color: var(--ms-muted);
 }
 .ms-modal-footer kbd {
-    background: #fff; border: 1px solid var(--ms-border); border-radius: 5px;
-    padding: 1px 6px; font-size: .72rem; font-family: ui-monospace, SFMono-Regular, monospace;
+    background: #fff !important;
+    color: var(--ms-text) !important;
+    border: 1px solid var(--ms-border);
+    border-radius: 5px;
+    padding: 1px 6px;
+    font-size: .72rem;
+    font-family: ui-monospace, SFMono-Regular, monospace;
     box-shadow: 0 1px 0 rgba(15,23,42,.06);
+    font-weight: 600;
 }
 
 /* Notifs panel */
@@ -506,11 +599,11 @@
                                     <i class="fas fa-paperclip"></i>
                                 </button>
                                 <div class="ms-attach-menu" x-show="attachOpen" x-cloak x-transition>
-                                    <button type="button" @click="openPicker('inscription'); attachOpen = false">
+                                    <button type="button" class="ms-attach-item" @click="openPicker('inscription'); attachOpen = false">
                                         <i class="fas fa-user-graduate"></i>
                                         <span>Partager une inscription</span>
                                     </button>
-                                    <button type="button" @click="openPicker('paiement'); attachOpen = false">
+                                    <button type="button" class="ms-attach-item" @click="openPicker('paiement'); attachOpen = false">
                                         <i class="fas fa-cash-register"></i>
                                         <span>Partager un paiement</span>
                                     </button>
