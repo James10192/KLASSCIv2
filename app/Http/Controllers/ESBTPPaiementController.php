@@ -2059,6 +2059,9 @@ class ESBTPPaiementController extends Controller
         $data = $this->filterService->preparePaiementListing($request, $matcher, [], microtime(true), 'ESBTPPaiementController@buildExportPdf');
         $paiements = $this->filterService->getAllFilteredPaiements($request, $matcher);
 
+        // Eager load createdBy si on va afficher la colonne (évite N+1)
+        $paiements->loadMissing('createdBy:id,name');
+
         $filters = [
             'search' => $request->input('search'),
             'status' => $request->input('status'),
@@ -2078,9 +2081,37 @@ class ESBTPPaiementController extends Controller
             'logo' => $schoolInfo['logo'],
         ];
 
+        // Logique permissions :
+        // - Si user voit TOUS les paiements (paiements.view) → colonne 'Encaissé par' sur chaque ligne
+        // - Si user voit SEULEMENT ses propres paiements (paiements.view_own) → pas de colonne (redondant
+        //   car c'est lui partout) MAIS son rôle + nom dans le header pour identifier le document.
+        //   Format : "{Rôle français} : {Nom}" — ex "Caissier : N'GUESSAN Marcel".
+        //   Supporte les rôles custom créés par l'admin tenant (Lot 19).
+        $user = auth()->user();
+        $canViewAll = $user && $user->can('paiements.view');
+        $showCreatorColumn = $canViewAll;
+        $creatorHeader = null;
+        if (!$canViewAll && $user && $user->can('paiements.view_own')) {
+            $roleName = optional($user->roles->first())->name;
+            $roleLabels = [
+                'superAdmin' => 'Administrateur',
+                'secretaire' => 'Secrétaire',
+                'comptable' => 'Comptable',
+                'caissier' => 'Caissier',
+                'coordinateur' => 'Coordinateur',
+                'enseignant' => 'Enseignant',
+                'etudiant' => 'Étudiant',
+                'serviceTechnique' => 'Service Technique',
+            ];
+            $displayRole = $roleName ? ($roleLabels[$roleName] ?? ucfirst($roleName)) : null;
+            $creatorHeader = $displayRole ? ($displayRole . ' : ' . $user->name) : $user->name;
+        }
+
         Log::info('PDF paiements généré', [
             'user_id' => auth()->id(),
             'total_paiements' => $paiements->count(),
+            'show_creator_column' => $showCreatorColumn,
+            'creator_header' => $creatorHeader,
         ]);
 
         $pdf = PDF::loadView('esbtp.paiements.export-pdf', [
@@ -2090,7 +2121,9 @@ class ESBTPPaiementController extends Controller
             'settings' => $settings,
             'etablissement' => $etablissement,
             'pdfCfg' => $pdfCfg,
-            'dateExport' => now()
+            'dateExport' => now(),
+            'showCreatorColumn' => $showCreatorColumn,
+            'creatorHeader' => $creatorHeader,
         ]);
 
         $filename = 'paiements_' . now()->format('Y-m-d_His') . '.pdf';

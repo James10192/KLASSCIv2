@@ -233,6 +233,11 @@
                     @endif
                     <div style="border-top: 1px solid rgba(255,255,255,0.35); padding-top: 7px;">
                         <div style="font-size: 13px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px; margin-bottom: 4px;">TABLEAU DÉTAILLÉ DES PAIEMENTS</div>
+                        @if(!empty($creatorHeader))
+                            <div style="font-size: 9.5px; color: {{ $hdrText }}; opacity: 0.9; margin-bottom: 6px; font-style: italic;">
+                                {{ $creatorHeader }}
+                            </div>
+                        @endif
                         <table width="100%" border="0" cellspacing="0" cellpadding="0">
                             <tr>
                                 <td width="33%" style="font-size: 9px; color: {{ $hdrText }};">
@@ -289,6 +294,12 @@
     </table>
 
     {{-- ═══ TABLE PAIEMENTS ═══ --}}
+    @php
+        // Largeurs adaptatives : avec colonne 'Encaissé par' on resserre les autres pour éviter le débordement
+        $w = $showCreatorColumn
+            ? ['nom'=>14,'classe'=>11,'cat'=>12,'mont'=>9,'mode'=>7,'stat'=>7,'recu'=>9,'creator'=>9]
+            : ['nom'=>16,'classe'=>12,'cat'=>14,'mont'=>10,'mode'=>8,'stat'=>8,'recu'=>10];
+    @endphp
     @if($paiements->count() > 0)
         <table class="payments-table">
             <thead>
@@ -296,13 +307,16 @@
                     <td style="width:4%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">N°</td>
                     <td style="width:8%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">Date</td>
                     <td style="width:10%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">Matricule</td>
-                    <td style="width:16%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; font-size:9px; padding:6px 3px;">Nom complet</td>
-                    <td style="width:12%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; font-size:9px; padding:6px 3px;">Classe</td>
-                    <td style="width:14%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; font-size:9px; padding:6px 3px;">Catégorie</td>
-                    <td style="width:10%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:right; font-size:9px; padding:6px 3px;">Montant</td>
-                    <td style="width:8%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">Mode</td>
-                    <td style="width:8%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">Statut</td>
-                    <td style="width:10%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">N° reçu</td>
+                    <td style="width:{{ $w['nom'] }}%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; font-size:9px; padding:6px 3px;">Nom complet</td>
+                    <td style="width:{{ $w['classe'] }}%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; font-size:9px; padding:6px 3px;">Classe</td>
+                    <td style="width:{{ $w['cat'] }}%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; font-size:9px; padding:6px 3px;">Catégorie</td>
+                    <td style="width:{{ $w['mont'] }}%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:right; font-size:9px; padding:6px 3px;">Montant</td>
+                    <td style="width:{{ $w['mode'] }}%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">Mode</td>
+                    <td style="width:{{ $w['stat'] }}%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">Statut</td>
+                    <td style="width:{{ $w['recu'] }}%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; text-align:center; font-size:9px; padding:6px 3px;">N° reçu</td>
+                    @if($showCreatorColumn)
+                        <td style="width:{{ $w['creator'] }}%; background-color:{{ $primary }}; color:{{ $hdrText }}; font-weight:700; font-size:9px; padding:6px 3px;">Encaissé par</td>
+                    @endif
                 </tr>
             </thead>
             <tbody>
@@ -315,7 +329,7 @@
                             case 'validé': case 'valide': $statusLabel = 'Validé'; $statusClass = 'status-valid'; break;
                             case 'rejeté': case 'rejete': $statusLabel = 'Rejeté'; $statusClass = 'status-rejected'; break;
                             case 'en_attente': case 'en attente': case 'pending': $statusLabel = 'En attente'; $statusClass = 'status-pending'; break;
-                            default: $statusLabel = $status ? ucfirst($status) : 'N/D'; $statusClass = 'status-default'; break;
+                            default: $statusLabel = $status ? mb_strtoupper(mb_substr($status, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($status, 1, null, 'UTF-8') : 'N/D'; $statusClass = 'status-default'; break;
                         }
                     @endphp
                     <tr>
@@ -329,6 +343,9 @@
                         <td style="text-align:center; font-size:9px;">{{ $paiement->mode_paiement ?? 'N/A' }}</td>
                         <td style="text-align:center;"><span class="status-badge {{ $statusClass }}">{{ $statusLabel }}</span></td>
                         <td style="text-align:center; font-family:'Courier New',monospace; font-size:8.5px;">{{ $paiement->numero_recu ?? '-' }}</td>
+                        @if($showCreatorColumn)
+                            <td style="font-size:9px;">{{ optional($paiement->createdBy)->name ?? '—' }}</td>
+                        @endif
                     </tr>
                 @endforeach
             </tbody>
@@ -353,8 +370,14 @@
     @endif
 
     {{-- ═══ FOOTER ═══ --}}
+    @php
+        $showGenerator = $pdfCfg['show_generator_name'] ?? true;
+    @endphp
     <div class="export-footer">
         <strong>Export généré le {{ $formatDate($dateExport ?? now(), true) }}</strong>
+        @if($showGenerator && auth()->check())
+            &nbsp;par&nbsp;<strong>{{ auth()->user()->name }}</strong>
+        @endif
         &nbsp;—&nbsp; {{ $etab['nom'] ?? $settings['school_name'] ?? 'KLASSCI' }}
     </div>
 
