@@ -181,18 +181,21 @@
         </div>
 
         {{-- ═══════════════════════════════ ALERTES SUSPECTES ═══════════════════════════════ --}}
+        @php
+            $suspicious = $stats['suspicious_activities'] ?? 0;
+            $suspiciousCount = is_array($suspicious) ? count($suspicious) : (int) $suspicious;
+        @endphp
         <div class="au-card">
             <div class="au-card-header">
                 <div class="au-card-title"><i class="fas fa-exclamation-triangle"></i> Activités suspectes</div>
-                <span class="au-card-meta">{{ count($stats['suspicious_activities'] ?? []) }} détectée(s)</span>
+                <span class="au-card-meta">{{ $suspiciousCount }} détectée(s)</span>
             </div>
             <div class="au-card-body">
-                @php $suspicious = $stats['suspicious_activities'] ?? []; @endphp
-                @if(empty($suspicious))
+                @if($suspiciousCount === 0)
                     <div class="au-empty au-empty--success">
                         <i class="fas fa-check-circle"></i> Aucune activité suspecte détectée
                     </div>
-                @else
+                @elseif(is_array($suspicious))
                     <ul class="au-suspicious-list">
                         @foreach($suspicious as $sus)
                             <li class="au-suspicious-item">
@@ -201,6 +204,12 @@
                             </li>
                         @endforeach
                     </ul>
+                @else
+                    <div class="au-suspicious-summary">
+                        <i class="fas fa-flag text-warning"></i>
+                        <strong>{{ $suspiciousCount }}</strong> action(s) hors heures bureau (avant 08h, après 18h) ou suppressions/restaurations sur la période.
+                        <a href="{{ route('esbtp.audit.index') }}?event=deleted" class="au-suspicious-link">Voir le détail →</a>
+                    </div>
                 @endif
             </div>
         </div>
@@ -413,6 +422,14 @@
     padding:.65rem .85rem; background:#fef2f2; border:1px solid #fecaca;
     border-radius:8px; margin-bottom:.5rem; color:#991b1b; font-size:.88rem;
 }
+.au-suspicious-summary {
+    background:#fefce8; border:1px solid #fde68a; border-radius:10px;
+    padding:.85rem 1rem; color:#92400e; font-size:.9rem;
+    display:flex; align-items:center; gap:.65rem; flex-wrap:wrap;
+}
+.au-suspicious-summary strong { color:#b45309; }
+.au-suspicious-link { margin-left:auto; color:#b45309; font-weight:600; text-decoration:none; }
+.au-suspicious-link:hover { color:#78350f; text-decoration:underline; }
 
 /* Chips */
 .au-chip {
