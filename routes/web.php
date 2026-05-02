@@ -1161,13 +1161,18 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/notifications/unread-count', [ESBTPNotificationController::class, 'getUnreadCount'])
                 ->name('notifications.unreadCount');
 
-            // Routes pour les messages des étudiants
+            // Routes pour les messages des étudiants (annonces consultables).
+            // Issue #315 : gate explicite sur `annonces.view` pour cohérence avec
+            // le reste des routes étudiant. Le rôle `etudiant` a déjà la permission.
             Route::get('/mes-messages', [ESBTPAnnonceController::class, 'studentMessages'])
-                ->name('mes-messages.index');
+                ->name('mes-messages.index')
+                ->middleware('permission:annonces.view');
             Route::post('/mes-messages/{id}/read', [ESBTPAnnonceController::class, 'markAsRead'])
-                ->name('mes-messages.read');
+                ->name('mes-messages.read')
+                ->middleware('permission:annonces.view');
             Route::post('/mes-messages/mark-all-read', [ESBTPAnnonceController::class, 'markAllAsRead'])
-                ->name('mes-messages.mark-all-read');
+                ->name('mes-messages.mark-all-read')
+                ->middleware('permission:annonces.view');
         });
 
         // Routes pour la suppression de ressources (protégées par permissions spécifiques)
@@ -2259,8 +2264,14 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
 |--------------------------------------------------------------------------
 | Page /messages : conversations DM + groupe + workflow (action cards inline).
 | Notifs in-app pour étapes workflow inscription→paiement→validation.
+|
+| Isolation étudiants (issue #315) : le chat user-to-user est réservé aux
+| utilisateurs qui ont la permission `messages.send`. Les étudiants n'ont
+| que `messages.receive` + `annonces.view` et consultent leurs annonces via
+| la page séparée /esbtp/mes-messages. Un étudiant qui tape /messages
+| directement dans la barre d'adresse est bloqué en 403.
 */
-Route::middleware(['auth', 'paywall'])->prefix('messages')->name('chat.')->group(function () {
+Route::middleware(['auth', 'paywall', 'permission:messages.send'])->prefix('messages')->name('chat.')->group(function () {
     Route::get('/', [\App\Http\Controllers\ChatController::class, 'index'])->name('index');
     Route::get('/conversations/{conversation}', [\App\Http\Controllers\ChatController::class, 'show'])
         ->whereNumber('conversation')
@@ -2282,12 +2293,13 @@ Route::middleware(['auth', 'paywall'])->prefix('messages')->name('chat.')->group
     Route::get('/picker/paiements', [\App\Http\Controllers\ChatController::class, 'pickerPaiements'])
         ->middleware('throttle:60,1')
         ->name('picker.paiements');
+    // permission:messages.send déjà appliqué au groupe parent ci-dessus (issue #315).
     Route::post('/share/inscription/{inscription}', [\App\Http\Controllers\ChatController::class, 'shareInscription'])
         ->whereNumber('inscription')
-        ->middleware(['permission:messages.send', 'throttle:30,1'])
+        ->middleware('throttle:30,1')
         ->name('share.inscription');
     Route::post('/share/paiement/{paiement}', [\App\Http\Controllers\ChatController::class, 'sharePaiement'])
         ->whereNumber('paiement')
-        ->middleware(['permission:messages.send', 'throttle:30,1'])
+        ->middleware('throttle:30,1')
         ->name('share.paiement');
 });
