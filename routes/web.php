@@ -1070,6 +1070,20 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Routes pour les notes
             Route::post('notes/save-ajax', [ESBTPNoteController::class, 'saveNoteAjax'])->name('notes.save-ajax');
             Route::post('notes/save-ajax-bulk', [ESBTPNoteController::class, 'saveNotesAjaxBulk'])->name('notes.save-ajax-bulk');
+
+            // PR #7 — Excel import/export bidirectionnel + preview impact bulletin
+            Route::get('notes/export-excel', [ESBTPNoteController::class, 'exportExcel'])
+                ->middleware('throttle:10,1')
+                ->name('notes.export-excel');
+            Route::post('notes/import/dry-run', [ESBTPNoteController::class, 'importDryRun'])
+                ->middleware('throttle:5,1')
+                ->name('notes.import.dry-run');
+            Route::post('notes/import/apply', [ESBTPNoteController::class, 'importApply'])
+                ->middleware('throttle:3,1')
+                ->name('notes.import.apply');
+            Route::post('notes/preview-impact', [ESBTPNoteController::class, 'previewImpact'])
+                ->middleware('throttle:60,1')
+                ->name('notes.preview-impact');
             Route::resource('notes', \App\Http\Controllers\ESBTPNoteController::class)
                 ->names([
                     'index' => 'esbtp.notes.index',

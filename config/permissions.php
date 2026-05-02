@@ -446,6 +446,12 @@ return [
             'icon' => 'fa-cog',
             'aliases' => ['manage_own_notes'],
         ],
+        'notes.import_excel' => [
+            'label' => 'Importer des notes depuis un fichier Excel',
+            'group' => 'Notes & Évaluations',
+            'icon' => 'fa-file-import',
+            'aliases' => [],
+        ],
 
         // ===== Évaluations =====
         'evaluations.view' => [
@@ -1143,7 +1149,7 @@ return [
             'filieres.view', 'filieres.create', 'filieres.edit',
             'niveaux.view', 'niveaux.create', 'niveaux.edit',
             'matieres.view',
-            'notes.view', 'evaluations.view', 'exams.view',
+            'notes.view', 'notes.create', 'notes.edit', 'notes.import_excel', 'evaluations.view', 'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.configure',
             'attendances.view', 'attendances.create', 'attendances.edit', 'attendances.delete',
             'attendances.generate_codes',
@@ -1214,7 +1220,7 @@ return [
             'classes.view',
             'filieres.view', 'niveaux.view',
             'matieres.view', 'matieres.create', 'matieres.edit',
-            'notes.view', 'notes.create',
+            'notes.view', 'notes.create', 'notes.import_excel',
             'evaluations.view', 'evaluations.create', 'evaluations.edit',
             'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit',
@@ -1241,7 +1247,7 @@ return [
             'admin.access', 'dashboard.view',
             'students.view_own',
             'classes.view',
-            'notes.view', 'notes.view_own', 'notes.create', 'notes.edit', 'notes.manage_own',
+            'notes.view', 'notes.view_own', 'notes.create', 'notes.edit', 'notes.manage_own', 'notes.import_excel',
             'evaluations.view', 'evaluations.create', 'evaluations.edit',
             'bulletins.view',
             'attendances.view', 'attendances.create', 'attendances.edit',

@@ -1345,3 +1345,422 @@
         min-width: 150px;
     }
 }
+
+/* ══════════════════════════════════════════════════════════
+   PR #7 — Excel Import/Export + Preview Impact (namespace nm-)
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Boutons modal footer (Export Excel + Import Excel) ── */
+.nm-modal-footer .nm-btn-export,
+.nm-modal-footer .nm-btn-import {
+    border-radius: 7px;
+    font-weight: 600;
+    font-size: 0.82rem;
+    padding: 0.4rem 0.85rem;
+    border: 1px solid transparent;
+    background: #fff;
+    transition: all 0.15s ease;
+}
+.nm-modal-footer .nm-btn-export {
+    color: #047857;
+    border-color: #10b981;
+    background: rgba(16, 185, 129, 0.06);
+}
+.nm-modal-footer .nm-btn-export:hover:not(:disabled):not(.disabled) {
+    background: #10b981;
+    color: #fff;
+}
+.nm-modal-footer .nm-btn-import {
+    color: #0453cb;
+    border-color: #0453cb;
+    background: rgba(4, 83, 203, 0.06);
+}
+.nm-modal-footer .nm-btn-import:hover:not(:disabled):not(.disabled) {
+    background: #0453cb;
+    color: #fff;
+}
+.nm-modal-footer .nm-btn-export:disabled,
+.nm-modal-footer .nm-btn-import:disabled,
+.nm-modal-footer .nm-btn-export.disabled,
+.nm-modal-footer .nm-btn-import.disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+/* ── Modal Import — Header gradient ───────────────────── */
+#nm-import-preview-modal .modal-content {
+    border-radius: 14px;
+    overflow: hidden;
+    border: none;
+}
+.nm-import-modal-header {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 50%, #3b7ddb 100%);
+    color: #fff;
+    padding: 1.1rem 1.5rem;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+}
+.nm-import-modal-header .modal-title {
+    font-weight: 700;
+    font-size: 1.05rem;
+}
+.nm-import-context {
+    color: rgba(255,255,255,0.78);
+    font-size: 0.82rem;
+    margin: 0;
+}
+
+/* ── Drop zone ─────────────────────────────────────────── */
+.nm-import-dropzone {
+    border: 2px dashed #cbd5e1;
+    border-radius: 14px;
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    background: #f8fafc;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.nm-import-dropzone:hover,
+.nm-import-dropzone.is-dragover {
+    border-color: #0453cb;
+    background: rgba(4, 83, 203, 0.04);
+    transform: translateY(-1px);
+}
+.nm-import-dropzone-icon {
+    font-size: 2.6rem;
+    color: #0453cb;
+    margin-bottom: 0.6rem;
+    display: flex;
+    justify-content: center;
+}
+.nm-import-dropzone-icon i {
+    background: linear-gradient(135deg, #0453cb, #5e91de);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+.nm-import-dropzone-title {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 1.05rem;
+    margin-bottom: 0.25rem;
+}
+.nm-import-dropzone-sub {
+    color: #64748b;
+    font-size: 0.88rem;
+    margin-bottom: 0.6rem;
+}
+.nm-import-dropzone-formats {
+    display: inline-block;
+    padding: 0.25rem 0.75rem;
+    background: rgba(4, 83, 203, 0.08);
+    color: #0453cb;
+    font-size: 0.74rem;
+    border-radius: 999px;
+    font-weight: 600;
+}
+
+/* ── Loading state ─────────────────────────────────────── */
+.nm-import-loading {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: #64748b;
+}
+
+/* ── Preview file pill ─────────────────────────────────── */
+.nm-import-file-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.8rem;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    color: #0453cb;
+    font-weight: 600;
+    font-size: 0.82rem;
+    border-radius: 999px;
+    margin-bottom: 1rem;
+}
+.nm-import-file-pill i {
+    color: #047857;
+}
+.nm-import-file-clear {
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0.1rem 0.3rem;
+    border-radius: 4px;
+    transition: all 0.15s ease;
+}
+.nm-import-file-clear:hover {
+    background: rgba(220, 38, 38, 0.1);
+    color: #dc2626;
+}
+
+/* ── KPIs (4 cards) ────────────────────────────────────── */
+.nm-import-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.6rem;
+    margin-bottom: 1rem;
+}
+.nm-import-kpi {
+    padding: 0.7rem;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    text-align: center;
+}
+.nm-import-kpi-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 1;
+}
+.nm-import-kpi-label {
+    font-size: 0.72rem;
+    color: #64748b;
+    margin-top: 0.3rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+.nm-import-kpi-create {
+    border-color: rgba(16, 185, 129, 0.3);
+    background: rgba(16, 185, 129, 0.04);
+}
+.nm-import-kpi-create .nm-import-kpi-value { color: #10b981; }
+.nm-import-kpi-update {
+    border-color: rgba(245, 158, 11, 0.3);
+    background: rgba(245, 158, 11, 0.04);
+}
+.nm-import-kpi-update .nm-import-kpi-value { color: #f59e0b; }
+.nm-import-kpi-unchanged {
+    border-color: #e2e8f0;
+    background: #f8fafc;
+}
+.nm-import-kpi-unchanged .nm-import-kpi-value { color: #64748b; }
+.nm-import-kpi-error {
+    border-color: rgba(220, 38, 38, 0.3);
+    background: rgba(220, 38, 38, 0.04);
+}
+.nm-import-kpi-error .nm-import-kpi-value { color: #dc2626; }
+
+/* ── Errors block ─────────────────────────────────────── */
+.nm-import-errors {
+    border-radius: 10px;
+    border: 1px solid rgba(220, 38, 38, 0.3);
+    background: rgba(220, 38, 38, 0.04);
+    margin-bottom: 1rem;
+    overflow: hidden;
+}
+.nm-import-errors-header {
+    padding: 0.55rem 0.85rem;
+    background: rgba(220, 38, 38, 0.1);
+    color: #b91c1c;
+    font-weight: 700;
+    font-size: 0.82rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.nm-import-errors-body {
+    max-height: 180px;
+    overflow-y: auto;
+    padding: 0.5rem 0.85rem;
+    font-size: 0.78rem;
+    color: #7f1d1d;
+}
+.nm-import-error-item {
+    padding: 0.3rem 0;
+    border-bottom: 1px dotted rgba(220, 38, 38, 0.2);
+}
+.nm-import-error-item:last-child { border-bottom: none; }
+.nm-import-error-item .err-cell {
+    background: rgba(220, 38, 38, 0.15);
+    color: #b91c1c;
+    padding: 0.05rem 0.4rem;
+    border-radius: 4px;
+    font-family: monospace;
+    font-weight: 700;
+    font-size: 0.74rem;
+}
+
+/* ── Changes table ─────────────────────────────────────── */
+.nm-import-changes-header {
+    font-weight: 700;
+    font-size: 0.88rem;
+    color: #1e293b;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+.nm-import-changes-header i { color: #0453cb; }
+.nm-import-table-wrap {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    overflow: hidden;
+    max-height: 380px;
+    overflow-y: auto;
+}
+.nm-import-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+.nm-import-table thead th {
+    background: #f1f5f9;
+    color: #475569;
+    font-weight: 700;
+    text-align: left;
+    padding: 0.55rem 0.75rem;
+    font-size: 0.74rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+.nm-import-table tbody td {
+    padding: 0.45rem 0.75rem;
+    border-top: 1px solid #f1f5f9;
+    color: #1e293b;
+}
+.nm-import-table tbody tr.row-create td {
+    background: rgba(16, 185, 129, 0.04);
+    border-left: 3px solid #10b981;
+}
+.nm-import-table tbody tr.row-update td {
+    background: rgba(245, 158, 11, 0.04);
+    border-left: 3px solid #f59e0b;
+}
+.nm-import-table .cell-before {
+    color: #64748b;
+    text-decoration: line-through;
+    text-decoration-color: #cbd5e1;
+}
+.nm-import-table .cell-after {
+    color: #0f172a;
+    font-weight: 700;
+}
+.nm-import-table .cell-after-abs {
+    color: #f59e0b;
+    font-weight: 700;
+}
+.nm-import-table .badge-action-create {
+    background: rgba(16, 185, 129, 0.15);
+    color: #047857;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.nm-import-table .badge-action-update {
+    background: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+/* ── Modal footer + confirm button ────────────────────── */
+.nm-import-modal-footer {
+    background: #fff;
+    border-top: 1px solid #e8edf5;
+    padding: 0.75rem 1.25rem;
+}
+.nm-btn-confirm-import {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    border: none;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 0.5rem 1.1rem;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+}
+.nm-btn-confirm-import:hover:not(:disabled) {
+    background: linear-gradient(135deg, #033a8e, #0453cb);
+    color: #fff;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(4, 83, 203, 0.3);
+}
+.nm-btn-confirm-import:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── Preview impact (sous-row dans la grille notes) ──── */
+.nm-impact-row {
+    background: #fafbfc;
+}
+.nm-impact-row td {
+    padding: 0.45rem 0.85rem !important;
+    border-top: 1px dotted #e2e8f0 !important;
+    font-size: 0.78rem;
+    color: #475569;
+}
+.nm-impact-content {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.85rem;
+    align-items: center;
+}
+.nm-impact-block {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.3rem;
+}
+.nm-impact-label {
+    color: #94a3b8;
+    font-weight: 500;
+    font-size: 0.74rem;
+}
+.nm-impact-value-old {
+    color: #94a3b8;
+    text-decoration: line-through;
+    font-weight: 600;
+}
+.nm-impact-arrow {
+    color: #0453cb;
+    margin: 0 0.15rem;
+}
+.nm-impact-value-new {
+    color: #0453cb;
+    font-weight: 700;
+}
+.nm-impact-mention {
+    padding: 0.1rem 0.45rem;
+    background: rgba(4, 83, 203, 0.1);
+    color: #0453cb;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    margin-left: 0.25rem;
+}
+.nm-impact-mention-up {
+    background: rgba(16, 185, 129, 0.12);
+    color: #047857;
+}
+.nm-impact-mention-down {
+    background: rgba(245, 158, 11, 0.12);
+    color: #b45309;
+}
+.nm-impact-loading {
+    color: #94a3b8;
+    font-style: italic;
+}
+
+@media (max-width: 768px) {
+    .nm-import-kpis {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    .nm-import-table {
+        font-size: 0.74rem;
+    }
+}
