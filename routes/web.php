@@ -2273,6 +2273,7 @@ Route::middleware(['auth', 'paywall'])->prefix('messages')->name('chat.')->group
     Route::get('/users/search', [\App\Http\Controllers\ChatController::class, 'searchUsers'])->name('users.search');
     Route::get('/notifications', [\App\Http\Controllers\ChatController::class, 'notifications'])->name('notifications');
     Route::post('/notifications/{id}/read', [\App\Http\Controllers\ChatController::class, 'markNotificationRead'])->name('notifications.read');
+    Route::get('/conversations-list', [\App\Http\Controllers\ChatController::class, 'conversationsList'])->name('conversations.list');
 
     // Action cards — partager une inscription/paiement comme card riche
     Route::get('/picker/inscriptions', [\App\Http\Controllers\ChatController::class, 'pickerInscriptions'])

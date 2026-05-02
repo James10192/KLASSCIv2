@@ -121,6 +121,63 @@ class ChatController extends Controller
         ]);
     }
 
+    /**
+     * Liste JSON des conversations du user pour polling live de la sidebar.
+     */
+    public function conversationsList(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $conversations = ChatConversation::query()
+            ->whereHas('participants', fn ($q) => $q->where('user_id', $user->id))
+            ->with(['participants:id,name,email', 'lastMessage'])
+            ->orderByDesc('last_message_at')
+            ->limit(50)
+            ->get();
+
+        return response()->json([
+            'items' => $conversations->map(function (ChatConversation $c) use ($user) {
+                $last = $c->lastMessage;
+                $kind = is_array($last->payload ?? null) ? ($last->payload['kind'] ?? null) : null;
+                $preview = $last ? match ($last->type) {
+                    'action_card' => '📎 ' . match ($kind) {
+                        'inscription' => 'Inscription partagée',
+                        'paiement' => 'Paiement partagé',
+                        default => 'Card partagée',
+                    },
+                    'system' => $last->body ?? 'Notification',
+                    default => $last->body ?? '',
+                } : null;
+
+                $lastReadAt = $c->participants->firstWhere('id', $user->id)?->pivot?->last_read_at;
+                $unreadCount = $last && (!$lastReadAt || $last->created_at->gt($lastReadAt))
+                    ? $c->messages()->where('sender_id', '!=', $user->id)
+                        ->when($lastReadAt, fn ($q) => $q->where('created_at', '>', $lastReadAt))
+                        ->count()
+                    : 0;
+
+                return [
+                    'id' => $c->id,
+                    'type' => $c->type,
+                    'title' => $c->title,
+                    'last_message_at' => $c->last_message_at?->toIso8601String(),
+                    'last_message' => $last ? [
+                        'id' => $last->id,
+                        'body' => $last->body,
+                        'type' => $last->type,
+                        'preview' => $preview,
+                        'sender_id' => $last->sender_id,
+                    ] : null,
+                    'unread_count' => $unreadCount,
+                    'participants' => $c->participants->where('id', '!=', $user->id)->map(fn ($p) => [
+                        'id' => $p->id,
+                        'name' => $p->name,
+                    ])->values(),
+                ];
+            })->all(),
+        ]);
+    }
+
     public function markNotificationRead(Request $request, string $id): JsonResponse
     {
         $request->user()->unreadNotifications()
