@@ -1,63 +1,72 @@
-<div class="bulk-enseignant-block" data-enseignant-id="{{ $enseignant->id }}">
-    <!-- Stats rapides -->
-    <div class="availability-stats">
-        <div class="stat-mini stat-preferred">
-            <i class="fas fa-star"></i>
-            <span>Préféré: <span class="stat-value">{{ $stats['preferred'] }}</span></span>
+<div data-enseignant-id="{{ $enseignant->id }}">
+    <div class="bav-edit-banner">
+        <i class="fas fa-edit"></i>
+        <span>Mode édition actif. Cliquez sur un créneau pour cycler entre <strong>Indisponible → Disponible → Préféré</strong>.</span>
+    </div>
+
+    <div class="bav-stats">
+        <div class="bav-stat bav-stat--preferred">
+            <div class="bav-stat-icon"><i class="fas fa-star"></i></div>
+            <div class="bav-stat-content">
+                <div class="bav-stat-value">{{ $stats['preferred'] }}</div>
+                <div class="bav-stat-label">Préférés</div>
+            </div>
         </div>
-        <div class="stat-mini stat-available">
-            <i class="fas fa-check-circle"></i>
-            <span>Disponible: <span class="stat-value">{{ $stats['available'] }}</span></span>
+        <div class="bav-stat bav-stat--available">
+            <div class="bav-stat-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="bav-stat-content">
+                <div class="bav-stat-value">{{ $stats['available'] }}</div>
+                <div class="bav-stat-label">Disponibles</div>
+            </div>
         </div>
-        <div class="stat-mini stat-unavailable">
-            <i class="fas fa-times-circle"></i>
-            <span>Indisponible: <span class="stat-value">{{ $stats['unavailable'] }}</span></span>
+        <div class="bav-stat bav-stat--unavailable">
+            <div class="bav-stat-icon"><i class="fas fa-times-circle"></i></div>
+            <div class="bav-stat-content">
+                <div class="bav-stat-value">{{ $stats['unavailable'] }}</div>
+                <div class="bav-stat-label">Indisponibles</div>
+            </div>
         </div>
     </div>
 
-    <!-- Actions -->
-    <div class="availability-actions">
-        <button type="button" class="btn-edit-availability" onclick="toggleEditMode({{ $enseignant->id }})">
-            <i class="fas fa-edit me-1"></i>
+    <div class="bav-actions">
+        <button type="button" class="bav-btn bav-btn--edit" onclick="toggleEditMode({{ $enseignant->id }})">
+            <i class="fas fa-edit"></i>
             <span class="edit-text">Modifier</span>
         </button>
-        <button type="button" class="btn-save-availability" onclick="saveAvailability({{ $enseignant->id }})" style="display: none;">
-            <i class="fas fa-save me-1"></i>
-            Sauvegarder
+        <button type="button" class="bav-btn bav-btn--save" onclick="saveAvailability({{ $enseignant->id }})" style="display: none;">
+            <i class="fas fa-save"></i>
+            <span>Sauvegarder</span>
         </button>
-        <button type="button" class="btn-cancel-availability" onclick="cancelEditMode({{ $enseignant->id }})" style="display: none;">
-            <i class="fas fa-times me-1"></i>
-            Annuler
+        <button type="button" class="bav-btn bav-btn--cancel" onclick="cancelEditMode({{ $enseignant->id }})" style="display: none;">
+            <i class="fas fa-times"></i>
+            <span>Annuler</span>
         </button>
     </div>
 
-    <!-- Grille de disponibilité -->
-    <div class="availability-grid" id="availability-grid-{{ $enseignant->id }}">
-        <!-- En-têtes -->
-        <div class="availability-time-header">Horaires</div>
+    <div class="bav-grid" id="bav-grid-{{ $enseignant->id }}">
+        <div class="bav-grid-time-header">Horaires</div>
         @foreach($joursNoms as $dayKey => $dayName)
-            <div class="availability-day-header">{{ substr($dayName, 0, 3) }}</div>
+            <div class="bav-grid-day-header">{{ substr($dayName, 0, 3) }}</div>
         @endforeach
 
-        <!-- Créneaux horaires -->
         @foreach($hours as $index => $hour)
-            <div class="availability-time-slot">{{ sprintf('%02d:00', $hour) }}</div>
+            <div class="bav-grid-time">{{ sprintf('%02d:00', $hour) }}</div>
             @foreach($days as $dayIndex => $day)
                 @php
                     $status = $availability[$day][$index] ?? 'unavailable';
                 @endphp
-                <div class="availability-slot {{ $status }}"
+                <div class="bav-grid-cell {{ $status }}"
                      id="slot-{{ $enseignant->id }}-{{ $index }}-{{ $dayIndex }}"
                      data-enseignant-id="{{ $enseignant->id }}"
                      data-day="{{ $dayIndex }}"
                      data-hour="{{ $hour }}"
                      data-time-index="{{ $index }}"
                      data-original-status="{{ $status }}"
-                     title="{{ $joursNoms[$day] }} {{ sprintf('%02d:00', $hour) }} - {{ ucfirst($status) }}">
+                     title="{{ $joursNoms[$day] }} {{ sprintf('%02d:00', $hour) }} — {{ ucfirst($status) }}">
                     @if($status === 'preferred')
-                        <i class="fas fa-star"></i><span class="slot-label">Préf.</span>
+                        <i class="fas fa-star"></i><span class="bav-slot-label">Préf.</span>
                     @elseif($status === 'available')
-                        <i class="fas fa-check"></i><span class="slot-label">Dispo</span>
+                        <i class="fas fa-check"></i><span class="bav-slot-label">Dispo</span>
                     @else
                         <i class="fas fa-minus"></i>
                     @endif
@@ -66,24 +75,17 @@
         @endforeach
     </div>
 
-    <!-- Légende -->
-    <div class="availability-legend">
-        <div class="legend-item">
-            <div class="legend-color" style="background: #dbeafe; color: #2563eb; border: 1px solid #bfdbfe;">
-                <i class="fas fa-star"></i>
-            </div>
+    <div class="bav-legend">
+        <div class="bav-legend-item">
+            <div class="bav-legend-swatch preferred"><i class="fas fa-star"></i></div>
             <span>Préféré</span>
         </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background: #dcfce7; color: #16a34a; border: 1px solid #bbf7d0;">
-                <i class="fas fa-check"></i>
-            </div>
+        <div class="bav-legend-item">
+            <div class="bav-legend-swatch available"><i class="fas fa-check"></i></div>
             <span>Disponible</span>
         </div>
-        <div class="legend-item">
-            <div class="legend-color" style="background: #fee2e2; color: #dc2626; border: 1px solid #fecaca;">
-                <i class="fas fa-minus"></i>
-            </div>
+        <div class="bav-legend-item">
+            <div class="bav-legend-swatch unavailable"><i class="fas fa-minus"></i></div>
             <span>Indisponible</span>
         </div>
     </div>
@@ -92,9 +94,7 @@
 <script>
 (function() {
     const enseignantId = {{ $enseignant->id }};
-    const blockId = `enseignant-block-${enseignantId}`;
 
-    // Initialiser les données pour cet enseignant
     if (!window.editModes) window.editModes = {};
     if (!window.originalData) window.originalData = {};
     if (!window.modifiedSlots) window.modifiedSlots = {};
@@ -103,56 +103,47 @@
     window.originalData[enseignantId] = {};
     window.modifiedSlots[enseignantId] = new Set();
 
-    // Fonctions d'édition
     window.toggleEditMode = function(id) {
         window.editModes[id] = !window.editModes[id];
-        const block = document.querySelector(`[data-enseignant-id="${id}"]`);
-        const slots = block.querySelectorAll('.availability-slot');
-        const editBtn = block.querySelector('.btn-edit-availability');
-        const saveBtn = block.querySelector('.btn-save-availability');
-        const cancelBtn = block.querySelector('.btn-cancel-availability');
+        const item = document.getElementById('bav-item-' + id);
+        const slots = item.querySelectorAll('.bav-grid-cell');
+        const editBtn = item.querySelector('.bav-btn--edit');
+        const saveBtn = item.querySelector('.bav-btn--save');
+        const cancelBtn = item.querySelector('.bav-btn--cancel');
 
         if (window.editModes[id]) {
-            // Activer le mode édition
+            item.classList.add('bav-edit-active');
             slots.forEach(slot => {
-                slot.style.cursor = 'pointer';
                 slot.onclick = () => toggleSlotStatus(id, slot);
                 window.originalData[id][slot.id] = slot.dataset.originalStatus;
             });
-
             editBtn.style.display = 'none';
-            saveBtn.style.display = 'flex';
-            cancelBtn.style.display = 'flex';
-            block.style.background = 'linear-gradient(135deg, #fefce8, #fef9c3)';
-
-            showNotification('Mode édition activé. Cliquez sur les créneaux pour modifier.', 'info');
+            saveBtn.style.display = 'inline-flex';
+            cancelBtn.style.display = 'inline-flex';
+            showNotification('Mode édition activé', 'info');
         } else {
-            // Désactiver le mode édition
-            slots.forEach(slot => {
-                slot.style.cursor = 'default';
-                slot.onclick = null;
-            });
-
-            editBtn.style.display = 'flex';
+            item.classList.remove('bav-edit-active');
+            slots.forEach(slot => { slot.onclick = null; });
+            editBtn.style.display = 'inline-flex';
             saveBtn.style.display = 'none';
             cancelBtn.style.display = 'none';
-            block.style.background = '#ffffff';
         }
     };
 
     window.toggleSlotStatus = function(id, slot) {
         if (!window.editModes[id]) return;
-
         const statuses = ['unavailable', 'available', 'preferred'];
-        const icons = ['<i class="fas fa-minus"></i>', '<i class="fas fa-check"></i><span class="slot-label">Dispo</span>', '<i class="fas fa-star"></i><span class="slot-label">Préf.</span>'];
+        const icons = [
+            '<i class="fas fa-minus"></i>',
+            '<i class="fas fa-check"></i><span class="bav-slot-label">Dispo</span>',
+            '<i class="fas fa-star"></i><span class="bav-slot-label">Préf.</span>',
+        ];
         const currentClasses = Array.from(slot.classList);
-        let currentStatus = statuses.find(status => currentClasses.includes(status)) || 'unavailable';
-
-        const currentIndex = statuses.indexOf(currentStatus);
-        const nextIndex = (currentIndex + 1) % statuses.length;
+        let currentStatus = statuses.find(s => currentClasses.includes(s)) || 'unavailable';
+        const nextIndex = (statuses.indexOf(currentStatus) + 1) % statuses.length;
         const nextStatus = statuses[nextIndex];
 
-        statuses.forEach(status => slot.classList.remove(status));
+        statuses.forEach(s => slot.classList.remove(s));
         slot.classList.add(nextStatus);
         slot.innerHTML = icons[nextIndex];
 
@@ -164,28 +155,25 @@
             window.modifiedSlots[id].delete(slot.id);
         }
 
-        // Mettre à jour le tooltip
         const joursNoms = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
         const statusNames = { unavailable: 'Indisponible', available: 'Disponible', preferred: 'Préféré' };
-        const dayIndex = parseInt(slot.dataset.day);
-        const hour = slot.dataset.hour;
-        slot.title = `${joursNoms[dayIndex]} ${hour}:00 - ${statusNames[nextStatus]}`;
+        slot.title = `${joursNoms[parseInt(slot.dataset.day)]} ${slot.dataset.hour}:00 — ${statusNames[nextStatus]}`;
     };
 
     window.cancelEditMode = function(id) {
-        const icons = { unavailable: '<i class="fas fa-minus"></i>', available: '<i class="fas fa-check"></i><span class="slot-label">Dispo</span>', preferred: '<i class="fas fa-star"></i><span class="slot-label">Préf.</span>' };
-
+        const icons = {
+            unavailable: '<i class="fas fa-minus"></i>',
+            available: '<i class="fas fa-check"></i><span class="bav-slot-label">Dispo</span>',
+            preferred: '<i class="fas fa-star"></i><span class="bav-slot-label">Préf.</span>',
+        };
         window.modifiedSlots[id].forEach(slotId => {
             const slot = document.getElementById(slotId);
             const originalStatus = window.originalData[id][slotId];
-            const statuses = ['unavailable', 'available', 'preferred'];
-
-            statuses.forEach(status => slot.classList.remove(status));
+            ['unavailable', 'available', 'preferred'].forEach(s => slot.classList.remove(s));
             slot.classList.add(originalStatus);
             slot.innerHTML = icons[originalStatus];
             slot.classList.remove('modified');
         });
-
         window.modifiedSlots[id].clear();
         toggleEditMode(id);
         showNotification('Modifications annulées', 'warning');
@@ -196,22 +184,17 @@
             showNotification('Aucune modification à sauvegarder', 'warning');
             return;
         }
-
         const changedSlots = [];
         window.modifiedSlots[id].forEach(slotId => {
             const slot = document.getElementById(slotId);
             const statuses = ['unavailable', 'available', 'preferred'];
-            const currentStatus = statuses.find(status => slot.classList.contains(status));
-
-            const timeIndex = parseInt(slot.dataset.timeIndex);
-            const startHour = 8 + timeIndex;
-            const endHour = startHour + 1;
-
+            const currentStatus = statuses.find(s => slot.classList.contains(s));
+            const startHour = 8 + parseInt(slot.dataset.timeIndex);
             changedSlots.push({
                 day: parseInt(slot.dataset.day),
                 startTime: String(startHour).padStart(2, '0') + ':00',
-                endTime: String(endHour).padStart(2, '0') + ':00',
-                status: currentStatus
+                endTime: String(startHour + 1).padStart(2, '0') + ':00',
+                status: currentStatus,
             });
         });
 
@@ -219,37 +202,30 @@
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
             },
-            body: JSON.stringify({ changes: changedSlots })
+            body: JSON.stringify({ changes: changedSlots }),
         })
-        .then(response => response.json())
+        .then(r => r.json())
         .then(data => {
             if (data.success) {
-                showNotification('Disponibilités mises à jour !', 'success');
-
-                // Mettre à jour les données originales
+                showNotification('Disponibilités mises à jour', 'success');
                 window.modifiedSlots[id].forEach(slotId => {
                     const slot = document.getElementById(slotId);
                     const statuses = ['unavailable', 'available', 'preferred'];
-                    const currentStatus = statuses.find(status => slot.classList.contains(status));
+                    const currentStatus = statuses.find(s => slot.classList.contains(s));
                     window.originalData[id][slotId] = currentStatus;
                     slot.dataset.originalStatus = currentStatus;
                     slot.classList.remove('modified');
                 });
-
                 window.modifiedSlots[id].clear();
                 toggleEditMode(id);
-
-                // Rafraîchir le bloc pour mettre à jour les stats
                 refreshBlock(id);
             } else {
-                showNotification('Erreur: ' + (data.message || 'Erreur inconnue'), 'danger');
+                showNotification('Erreur : ' + (data.message || 'Erreur inconnue'), 'danger');
             }
         })
-        .catch(error => {
-            showNotification('Erreur de connexion: ' + error.message, 'danger');
-        });
+        .catch(error => showNotification('Erreur de connexion : ' + error.message, 'danger'));
     };
 })();
 </script>
