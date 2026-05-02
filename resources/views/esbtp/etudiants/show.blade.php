@@ -2190,11 +2190,16 @@
                         <i class="fas fa-file-alt"></i>
                         <span class="d-none d-sm-inline">Documents</span>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end" style="min-width:230px;">
+                    <ul class="dropdown-menu dropdown-menu-end" style="min-width:250px;">
                         <li><h6 class="dropdown-header" style="font-size:.72rem; letter-spacing:.04em;">CERTIFICAT DE SCOLARITÉ</h6></li>
                         <li>
                             <a class="dropdown-item" href="{{ route('esbtp.etudiants.certificat.preview', $etudiant) }}" target="_blank">
-                                <i class="fas fa-eye fa-fw me-2 text-muted"></i>Prévisualiser
+                                <i class="fas fa-window-restore fa-fw me-2 text-muted"></i>Vue web (impression)
+                            </a>
+                        </li>
+                        <li>
+                            <a class="dropdown-item" href="{{ route('esbtp.etudiants.certificat.preview-pdf', $etudiant) }}" target="_blank">
+                                <i class="fas fa-eye fa-fw me-2 text-muted"></i>Aperçu PDF
                             </a>
                         </li>
                         <li>
@@ -2207,12 +2212,24 @@
                         <li>
                             @if($estInscritCetteAnnee)
                             <a class="dropdown-item" href="{{ route('esbtp.etudiants.attestation-frequentation.preview', $etudiant) }}" target="_blank">
-                                <i class="fas fa-eye fa-fw me-2 text-muted"></i>Prévisualiser
+                                <i class="fas fa-window-restore fa-fw me-2 text-muted"></i>Vue web (impression)
                             </a>
                             @else
                             <a class="dropdown-item" href="#"
                                onclick="openAttestationConfirm(event, '{{ route('esbtp.etudiants.attestation-frequentation.preview', $etudiant) }}')">
-                                <i class="fas fa-eye fa-fw me-2 text-muted"></i>Prévisualiser
+                                <i class="fas fa-window-restore fa-fw me-2 text-muted"></i>Vue web (impression)
+                            </a>
+                            @endif
+                        </li>
+                        <li>
+                            @if($estInscritCetteAnnee)
+                            <a class="dropdown-item" href="{{ route('esbtp.etudiants.attestation-frequentation.preview-pdf', $etudiant) }}" target="_blank">
+                                <i class="fas fa-eye fa-fw me-2 text-muted"></i>Aperçu PDF
+                            </a>
+                            @else
+                            <a class="dropdown-item" href="#"
+                               onclick="openAttestationConfirm(event, '{{ route('esbtp.etudiants.attestation-frequentation.preview-pdf', $etudiant) }}')">
+                                <i class="fas fa-eye fa-fw me-2 text-muted"></i>Aperçu PDF
                             </a>
                             @endif
                         </li>
@@ -3415,9 +3432,14 @@
                 <div class="acad-hero-subtitle">{{ $acadClasse }}</div>
             </div>
             @if($acadLastBul)
-            <a href="{{ route('esbtp.bulletins.download', $acadLastBul) }}" class="acad-hero-pdf-btn" target="_blank">
-                <i class="fas fa-file-pdf"></i> Bulletin PDF
-            </a>
+            <span class="acad-hero-pdf-actions">
+                <a href="{{ route('esbtp.bulletins.preview-pdf', $acadLastBul) }}" class="acad-hero-pdf-btn acad-hero-pdf-btn--ghost" target="_blank" title="Aperçu PDF dans un nouvel onglet">
+                    <i class="fas fa-eye"></i> Aperçu
+                </a>
+                <a href="{{ route('esbtp.bulletins.download', $acadLastBul) }}" class="acad-hero-pdf-btn" target="_blank" title="Télécharger le bulletin PDF">
+                    <i class="fas fa-file-pdf"></i> Bulletin PDF
+                </a>
+            </span>
             @endif
         </div>
 
@@ -3613,7 +3635,10 @@
                     @if($semMention)
                         <span class="acad-mention-badge {{ $mc2 }}" style="font-size:.65rem;">{{ $semMention }}</span>
                     @endif
-                    <a href="{{ route('esbtp.bulletins.download', $bul) }}" class="acad-arch-pdf-link" target="_blank" onclick="event.stopPropagation()">
+                    <a href="{{ route('esbtp.bulletins.preview-pdf', $bul) }}" class="acad-arch-pdf-link acad-arch-pdf-link--ghost" target="_blank" onclick="event.stopPropagation()" title="Aperçu PDF">
+                        <i class="fas fa-eye"></i>
+                    </a>
+                    <a href="{{ route('esbtp.bulletins.download', $bul) }}" class="acad-arch-pdf-link" target="_blank" onclick="event.stopPropagation()" title="Télécharger PDF">
                         <i class="fas fa-file-pdf"></i> PDF
                     </a>
                     <i class="fas fa-chevron-down acad-sem-chevron"></i>
@@ -3925,7 +3950,12 @@
                                 $_abClasseId = $autreInsc->classe_id;
                                 $_abAnneeId = optional($autreInsc->anneeUniversitaire)->id;
                             @endphp
-                            <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $ab->id, 'classe_id' => $_abClasseId, 'periode' => $ab->periode, 'annee_universitaire_id' => $_abAnneeId]) }}"
+                            @php $_abPdfParams = ['bulletin' => $ab->id, 'classe_id' => $_abClasseId, 'periode' => $ab->periode, 'annee_universitaire_id' => $_abAnneeId]; @endphp
+                            <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_abPdfParams) }}"
+                               class="acad-arch-pdf-link acad-arch-pdf-link--ghost" target="_blank" title="Aperçu PDF">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                            <a href="{{ route('esbtp.bulletins.pdf-params', $_abPdfParams) }}"
                                class="acad-arch-pdf-link" target="_blank" title="Télécharger le bulletin PDF">
                                 <i class="fas fa-file-pdf"></i> PDF
                             </a>

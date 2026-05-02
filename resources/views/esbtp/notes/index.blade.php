@@ -228,6 +228,9 @@
                 </div>
             </div>
             <div class="modal-footer nm-modal-footer">
+                <a href="#" class="btn btn-outline-secondary disabled" id="previewBlankPdfBtn" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1" title="Aperçu PDF dans un nouvel onglet">
+                    <i class="fas fa-eye me-1"></i>Aperçu PDF
+                </a>
                 <a href="#" class="btn btn-outline-primary disabled" id="exportBlankPdfBtn" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1">
                     <i class="fas fa-file-pdf me-1"></i>Feuille vierge (PDF)
                 </a>
@@ -489,6 +492,7 @@ let cachedStudentsClassId = null;
 let currentLoadRequest = null;
 let evalParamsCache = {};
 const blankPdfUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf", ["classe" => ":classId"]) }}';
+const blankPdfPreviewUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf-preview", ["classe" => ":classId"]) }}';
 
 // Initialisation
 $(document).ready(function() {
@@ -670,22 +674,28 @@ function selectClass(classId, className) {
 }
 
 function updateBlankPdfLink() {
-    const btn = document.getElementById('exportBlankPdfBtn');
-    if (!btn) return;
+    const downloadBtn = document.getElementById('exportBlankPdfBtn');
+    const previewBtn = document.getElementById('previewBlankPdfBtn');
 
-    if (!currentClassId) {
-        btn.setAttribute('href', '#');
-        btn.classList.add('disabled');
-        btn.setAttribute('aria-disabled', 'true');
-        btn.setAttribute('tabindex', '-1');
-        return;
-    }
+    [
+        { btn: downloadBtn, template: blankPdfUrlTemplate },
+        { btn: previewBtn, template: blankPdfPreviewUrlTemplate },
+    ].forEach(({ btn, template }) => {
+        if (!btn) return;
 
-    const url = blankPdfUrlTemplate.replace(':classId', currentClassId);
-    btn.setAttribute('href', url);
-    btn.classList.remove('disabled');
-    btn.removeAttribute('aria-disabled');
-    btn.setAttribute('tabindex', '0');
+        if (!currentClassId) {
+            btn.setAttribute('href', '#');
+            btn.classList.add('disabled');
+            btn.setAttribute('aria-disabled', 'true');
+            btn.setAttribute('tabindex', '-1');
+            return;
+        }
+
+        btn.setAttribute('href', template.replace(':classId', currentClassId));
+        btn.classList.remove('disabled');
+        btn.removeAttribute('aria-disabled');
+        btn.setAttribute('tabindex', '0');
+    });
 }
 
 // Fonction pour charger les évaluations et notes

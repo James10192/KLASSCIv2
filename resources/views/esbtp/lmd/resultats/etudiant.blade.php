@@ -100,6 +100,9 @@
                             <div style="font-size: 0.7rem; color: #94a3b8;">Rang</div>
                         </div>
                     @endif
+                    <a href="{{ route('esbtp.lmd.bulletins.pdf-preview', $bulletin) }}" class="btn-acasi secondary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;" target="_blank" title="Aperçu PDF">
+                        <i class="fas fa-eye me-1"></i> Aperçu
+                    </a>
                     <a href="{{ route('esbtp.lmd.bulletins.pdf', $bulletin) }}" class="btn-acasi primary" style="font-size: 0.8rem; padding: 0.4rem 0.8rem;">
                         <i class="fas fa-file-pdf me-1"></i> PDF
                     </a>

@@ -678,6 +678,10 @@
                                 <i class="fas fa-eye"></i>
                                 Consulter
                             </a>
+                            <a href="{{ route('esbtp.bulletins.preview-pdf', $bulletin->id) }}" class="btn-bulletin-download" target="_blank" style="background:#fff;color:#0453cb;border:1px solid #0453cb;" title="Aperçu PDF dans un nouvel onglet">
+                                <i class="fas fa-eye"></i>
+                                Aperçu
+                            </a>
                             <a href="{{ route('esbtp.bulletins.download', $bulletin->id) }}" class="btn-bulletin-download">
                                 <i class="fas fa-download"></i>
                                 Télécharger PDF

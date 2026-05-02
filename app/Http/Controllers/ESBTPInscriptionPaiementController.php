@@ -856,9 +856,18 @@ class ESBTPInscriptionPaiementController extends Controller
 
 
     /**
-     * Exporter la situation financière en PDF
+     * Aperçu PDF inline de la situation financière (Content-Disposition: inline).
      */
-    public function exportSituationFinanciere(ESBTPInscription $inscription)
+    public function previewSituationFinancierePdf(ESBTPInscription $inscription)
+    {
+        return $this->exportSituationFinanciere($inscription, true);
+    }
+
+    /**
+     * Exporter la situation financière en PDF. Si $inline est true, le PDF est
+     * streamé inline (preview), sinon téléchargé en attachment (download).
+     */
+    public function exportSituationFinanciere(ESBTPInscription $inscription, bool $inline = false)
     {
         // Récupérer les mêmes données que pour la preview
         $inscription->load([
@@ -989,7 +998,7 @@ class ESBTPInscriptionPaiementController extends Controller
             now()->format("Y-m-d") .
             ".pdf";
 
-        return $pdf->download($filename);
+        return $inline ? $pdf->stream($filename) : $pdf->download($filename);
     }
 
 

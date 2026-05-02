@@ -1541,6 +1541,22 @@ class ESBTPEtudiantController extends Controller
      */
     public function genererCertificat($id)
     {
+        return $this->respondWithCertificatPdf($id, 'attachment');
+    }
+
+    /**
+     * Aperçu PDF inline du certificat de scolarité (Content-Disposition: inline).
+     */
+    public function previewCertificatPdf($id)
+    {
+        return $this->respondWithCertificatPdf($id, 'inline');
+    }
+
+    /**
+     * Génère la response PDF certificat avec la disposition demandée.
+     */
+    private function respondWithCertificatPdf($id, string $disposition)
+    {
         try {
             // Récupérer l'étudiant avec toutes ses inscriptions
             $etudiant = ESBTPEtudiant::with([
@@ -1587,15 +1603,15 @@ class ESBTPEtudiantController extends Controller
 
             return response($pdf, 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+                'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
             ]);
-            
+
         } catch (\Exception $e) {
             \Log::error('Erreur génération certificat scolarité: ' . $e->getMessage(), [
                 'etudiant_id' => $id,
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
-            
+
             return back()->with('error', 'Erreur lors de la génération du certificat: ' . $e->getMessage());
         }
     }
@@ -2211,6 +2227,22 @@ class ESBTPEtudiantController extends Controller
      */
     public function genererAttestationFrequentation($id)
     {
+        return $this->respondWithAttestationPdf($id, 'attachment');
+    }
+
+    /**
+     * Aperçu PDF inline de l'attestation de fréquentation.
+     */
+    public function previewAttestationFrequentationPdf($id)
+    {
+        return $this->respondWithAttestationPdf($id, 'inline');
+    }
+
+    /**
+     * Génère la response PDF attestation avec la disposition demandée.
+     */
+    private function respondWithAttestationPdf($id, string $disposition)
+    {
         try {
             // Récupérer l'étudiant avec ses inscriptions
             $etudiant = ESBTPEtudiant::with([
@@ -2257,15 +2289,15 @@ class ESBTPEtudiantController extends Controller
 
             return response($pdf, 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+                'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
             ]);
-            
+
         } catch (\Exception $e) {
             \Log::error('Erreur génération attestation fréquentation: ' . $e->getMessage(), [
                 'etudiant_id' => $id,
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null
             ]);
-            
+
             return back()->with('error', 'Erreur lors de la génération de l\'attestation: ' . $e->getMessage());
         }
     }

@@ -273,10 +273,13 @@
                 </p>
             </div>
             <div class="header-actions">
-                <a href="{{ route('esbtp.emploi-temps.export-pdf', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-acasi danger" target="_blank">
-                    <i class="fas fa-file-pdf"></i>
-                    Exporter en PDF
-                </a>
+                <x-pdf-actions
+                    :preview-url="route('esbtp.emploi-temps.preview-pdf', ['emploi_temp' => $emploiTemps->id])"
+                    :download-url="route('esbtp.emploi-temps.export-pdf', ['emploi_temp' => $emploiTemps->id])"
+                    label="Emploi du temps"
+                    buttonClass="btn-acasi primary"
+                    downloadClass="btn-acasi danger"
+                    downloadLabel="Exporter en PDF" />
                 <button onclick="window.print()" class="btn-acasi primary">
                     <i class="fas fa-print"></i>
                     Imprimer

@@ -140,7 +140,11 @@
                                                 <a href="{{ route('esbtp.bulletins.edit', $bulletin) }}" class="btn btn-sm btn-warning" title="Modifier">
                                                     <i class="fas fa-edit"></i>
                                                 </a>
-                                                <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $bulletin->etudiant_id, 'classe_id' => $bulletin->classe_id, 'periode' => $bulletin->periode, 'annee_universitaire_id' => $bulletin->annee_universitaire_id]) }}" class="btn btn-sm btn-secondary" target="_blank" title="PDF">
+                                                @php $_pdfParams = ['bulletin' => $bulletin->etudiant_id, 'classe_id' => $bulletin->classe_id, 'periode' => $bulletin->periode, 'annee_universitaire_id' => $bulletin->annee_universitaire_id]; @endphp
+                                                <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_pdfParams) }}" class="btn btn-sm btn-outline-secondary" target="_blank" title="Aperçu PDF">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{{ route('esbtp.bulletins.pdf-params', $_pdfParams) }}" class="btn btn-sm btn-secondary" target="_blank" title="Télécharger PDF">
                                                     <i class="fas fa-file-pdf"></i>
                                                 </a>
 

@@ -321,9 +321,11 @@
                                 </button>
                             </form>
 
-                            <a href="{{ route('esbtp.evaluations.pdf', $evaluation) }}" class="btn-acasi secondary">
-                                <i class="fas fa-file-pdf"></i> Exporter en PDF
-                            </a>
+                            <x-pdf-actions
+                                :preview-url="route('esbtp.evaluations.pdf-preview', $evaluation)"
+                                :download-url="route('esbtp.evaluations.pdf', $evaluation)"
+                                label="Évaluation"
+                                buttonClass="btn-acasi secondary" />
 
                             @if($evaluation->isDeletable())
                                 <button type="button" class="btn-acasi danger" data-bs-toggle="modal" data-bs-target="#deleteModal">

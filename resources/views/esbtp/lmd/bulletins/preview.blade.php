@@ -127,6 +127,9 @@
                     <a href="{{ route('esbtp.lmd.bulletins.index') }}" class="sr-hero-btn">
                         <i class="fas fa-arrow-left"></i>Retour
                     </a>
+                    <a href="{{ route('esbtp.lmd.bulletins.pdf-preview', $bulletin) }}" class="sr-hero-btn" target="_blank" title="Aperçu PDF dans un nouvel onglet">
+                        <i class="fas fa-eye"></i>Aperçu PDF
+                    </a>
                     <a href="{{ route('esbtp.lmd.bulletins.pdf', $bulletin) }}" class="sr-hero-btn--solid sr-hero-btn">
                         <i class="fas fa-file-pdf"></i>PDF
                     </a>

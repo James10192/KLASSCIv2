@@ -93,6 +93,12 @@
             </div>
 
             <div class="et-row__actions">
+                <a href="{{ route('esbtp.emploi-temps.preview-pdf', $emploiTemps->id) }}"
+                   class="et-row__btn"
+                   target="_blank"
+                   title="Aperçu PDF" aria-label="Aperçu PDF">
+                    <i class="fas fa-eye"></i>
+                </a>
                 <a href="{{ route('esbtp.emploi-temps.export-pdf', $emploiTemps->id) }}"
                    class="et-row__btn et-row__btn--pdf"
                    title="Exporter en PDF" aria-label="PDF">

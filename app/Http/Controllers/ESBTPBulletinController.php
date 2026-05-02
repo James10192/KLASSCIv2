@@ -399,11 +399,21 @@ class ESBTPBulletinController extends Controller
     }
 
     /**
-     * Génère un PDF du bulletin.
+     * Aperçu PDF du bulletin (Content-Disposition: inline) — ouvre dans une
+     * nouvelle tab pour vérifier avant téléchargement.
+     */
+    public function previewPDF(ESBTPBulletin $bulletin)
+    {
+        return $this->genererPDF($bulletin, true);
+    }
+
+    /**
+     * Génère un PDF du bulletin. Si $inline est true, le PDF est streamé
+     * inline (preview), sinon téléchargé en attachment (download).
      *
      * @return \Illuminate\Http\Response
      */
-    public function genererPDF(ESBTPBulletin $bulletin)
+    public function genererPDF(ESBTPBulletin $bulletin, bool $inline = false)
     {
         $this->authorize('download', $bulletin);
 
@@ -722,8 +732,8 @@ class ESBTPBulletinController extends Controller
 
                 Log::info('PDF généré avec succès pour le bulletin #'.$bulletin->id);
 
-                // Télécharger le PDF
-                return $pdf->download($filename);
+                // Stream inline (preview) ou télécharger selon le mode demandé
+                return $inline ? $pdf->stream($filename) : $pdf->download($filename);
             } catch (\Exception $e) {
                 Log::error('Erreur lors de la génération du PDF: '.$e->getMessage());
                 Log::error('Trace: '.$e->getTraceAsString());
@@ -1309,9 +1319,18 @@ class ESBTPBulletinController extends Controller
 
 
     /**
-     * Génère l'appréciation selon la moyenne
+     * Aperçu PDF inline du bulletin via params (Content-Disposition: inline).
      */
-    public function genererPDFParParamsUnified(Request $request)
+    public function previewPDFParParamsUnified(Request $request)
+    {
+        return $this->genererPDFParParamsUnified($request, true);
+    }
+
+    /**
+     * Génère le PDF du bulletin via params. Si $inline est true, retourne en
+     * inline (preview), sinon en attachment (download).
+     */
+    public function genererPDFParParamsUnified(Request $request, bool $inline = false)
     {
         try {
             // Vérifier que l'utilisateur est autorisé
@@ -1376,7 +1395,7 @@ class ESBTPBulletinController extends Controller
                         $periode.'_'.
                         ($donnees['anneeUniversitaire']->libelle ?? 'unknown').'.pdf';
 
-            return $pdf->download($filename);
+            return $inline ? $pdf->stream($filename) : $pdf->download($filename);
 
         } catch (CoefficientMissingException $e) {
             $context = $this->buildCoefficientIssueContext($e->getContext(), $request);

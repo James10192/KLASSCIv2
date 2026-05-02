@@ -165,6 +165,15 @@
                 <p class="header-subtitle">{{ $classe->name }} - Du {{ \Carbon\Carbon::parse($validatedData['date_debut'])->format('d/m/Y') }} au {{ \Carbon\Carbon::parse($validatedData['date_fin'])->format('d/m/Y') }}</p>
             </div>
             <div class="header-actions">
+                <form action="{{ route('esbtp.attendances.rapport-pdf-preview') }}" method="POST" target="_blank" style="display: inline;">
+                    @csrf
+                    <input type="hidden" name="classe_id" value="{{ $validatedData['classe_id'] }}">
+                    <input type="hidden" name="date_debut" value="{{ $validatedData['date_debut'] }}">
+                    <input type="hidden" name="date_fin" value="{{ $validatedData['date_fin'] }}">
+                    <button type="submit" class="btn-acasi primary">
+                        <i class="fas fa-eye"></i>Aperçu PDF
+                    </button>
+                </form>
                 <form action="{{ route('esbtp.attendances.rapport-pdf') }}" method="POST" style="display: inline;">
                     @csrf
                     <input type="hidden" name="classe_id" value="{{ $validatedData['classe_id'] }}">

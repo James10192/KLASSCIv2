@@ -2635,7 +2635,12 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                     <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="situationFinanciereDropdown">
                                         <li>
                                             <a class="dropdown-item" href="{{ route('esbtp.inscriptions.situation-financiere.preview', $inscription) }}">
-                                                <i class="fas fa-eye me-1"></i>Prévisualiser
+                                                <i class="fas fa-window-restore me-1"></i>Vue web
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" href="{{ route('esbtp.inscriptions.situation-financiere.pdf-preview', $inscription) }}" target="_blank">
+                                                <i class="fas fa-eye me-1"></i>Aperçu PDF
                                             </a>
                                         </li>
                                         <li>

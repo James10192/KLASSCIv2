@@ -232,8 +232,11 @@
                                                     <i class="fas fa-edit"></i>
                                                 </a>
                                                 @endcan
-                                                <a href="{{ route('esbtp.bulletins.download', $bulletin) }}" class="btn btn-sm btn-secondary" target="_blank">
-                                                    <i class="fas fa-print"></i>
+                                                <a href="{{ route('esbtp.bulletins.preview-pdf', $bulletin) }}" class="btn btn-sm btn-outline-secondary" target="_blank" title="Aperçu PDF">
+                                                    <i class="fas fa-eye"></i>
+                                                </a>
+                                                <a href="{{ route('esbtp.bulletins.download', $bulletin) }}" class="btn btn-sm btn-secondary" target="_blank" title="Télécharger PDF">
+                                                    <i class="fas fa-download"></i>
                                                 </a>
                                                 @can('bulletins.delete')
                                                 <button type="button" class="btn btn-sm btn-danger"

@@ -194,6 +194,16 @@
             btnS2.href = baseUrl + '?classe_id=' + classeId + '&annee_universitaire_id=' + anneeId + '&periode=semestre2';
             btnS1.target = '';
             btnS2.target = '';
+        } else if (action === 'pdf-preview') {
+            // Route: esbtp.bulletins.pdf-params-preview → /esbtp-special/bulletins-pdf/preview?bulletin={etudiant_id}&...
+            var baseUrl = '{{ url("/esbtp-special/bulletins-pdf/preview") }}'
+                + '?bulletin=' + etudiantId
+                + '&classe_id=' + classeId
+                + '&annee_universitaire_id=' + anneeId;
+            btnS1.href = baseUrl + '&periode=semestre1';
+            btnS2.href = baseUrl + '&periode=semestre2';
+            btnS1.target = '_blank';
+            btnS2.target = '_blank';
         } else {
             // Route: esbtp.bulletins.pdf-params → /esbtp-special/bulletins-pdf?bulletin={etudiant_id}&...
             var baseUrl = '{{ url("/esbtp-special/bulletins-pdf") }}'

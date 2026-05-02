@@ -174,7 +174,11 @@
                                                         <a href="{{ route('esbtp.bulletins.show', $bulletin->id) }}" class="btn btn-sm btn-outline-info" title="Voir le bulletin">
                                                             <i class="fas fa-eye"></i>
                                                         </a>
-                                                        <a href="#" class="btn btn-sm btn-outline-danger" onclick="window.open('{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $bulletin->etudiant_id, 'classe_id' => $bulletin->classe_id, 'periode' => $bulletin->periode, 'annee_universitaire_id' => $bulletin->annee_universitaire_id]) }}', '_blank')" title="Générer PDF">
+                                                        @php $_dbPdfParams = ['bulletin' => $bulletin->etudiant_id, 'classe_id' => $bulletin->classe_id, 'periode' => $bulletin->periode, 'annee_universitaire_id' => $bulletin->annee_universitaire_id]; @endphp
+                                                        <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_dbPdfParams) }}" target="_blank" class="btn btn-sm btn-outline-secondary" title="Aperçu PDF">
+                                                            <i class="fas fa-eye"></i>
+                                                        </a>
+                                                        <a href="#" class="btn btn-sm btn-outline-danger" onclick="window.open('{{ route('esbtp.bulletins.pdf-params', $_dbPdfParams) }}', '_blank')" title="Télécharger PDF">
                                                             <i class="fas fa-file-pdf"></i>
                                                         </a>
                                                     </div>

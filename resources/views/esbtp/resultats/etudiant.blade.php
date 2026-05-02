@@ -111,15 +111,23 @@
                         <i class="fas fa-arrow-left"></i>Retour
                     </a>
                     @if(isset($classe) && $classe)
+                        @php $_resBulletinParams = ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]; @endphp
                         <a href="{{ route('esbtp.resultats.etudiant.preview', ['etudiant' => $etudiant->id]) }}?classe_id={{ $classe->id }}&annee_universitaire_id={{ $annee_id }}&periode={{ $periode }}"
-                           class="sr-hero-btn--solid sr-hero-btn"
-                           data-check-url="{{ route('esbtp.bulletins.check-prerequisites', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}"
+                           class="sr-hero-btn"
+                           data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_resBulletinParams) }}"
                            onclick="return srCheckBeforePDF(event, this);">
-                            <i class="fas fa-eye"></i>Prévisualiser
+                            <i class="fas fa-window-restore"></i>Vue web
                         </a>
-                        <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}"
+                        <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_resBulletinParams) }}"
+                           class="sr-hero-btn--solid sr-hero-btn sr-pdf-link"
+                           target="_blank"
+                           data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_resBulletinParams) }}"
+                           onclick="return srCheckBeforePDF(event, this);">
+                            <i class="fas fa-eye"></i>Aperçu PDF
+                        </a>
+                        <a href="{{ route('esbtp.bulletins.pdf-params', $_resBulletinParams) }}"
                            class="sr-hero-btn sr-hero-btn--danger sr-pdf-link"
-                           data-check-url="{{ route('esbtp.bulletins.check-prerequisites', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}"
+                           data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_resBulletinParams) }}"
                            onclick="return srCheckBeforePDF(event, this);">
                             <i class="fas fa-file-pdf"></i>PDF
                         </a>

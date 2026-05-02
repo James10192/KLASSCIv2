@@ -156,9 +156,30 @@ class ESBTPLMDBulletinController extends Controller
     }
 
     /**
-     * Telecharger le bulletin en PDF.
+     * Télécharge le bulletin en PDF (Content-Disposition: attachment).
      */
     public function pdf(ESBTPLMDBulletin $bulletin)
+    {
+        [$pdf, $filename] = $this->buildBulletinPdf($bulletin);
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Aperçu PDF inline (Content-Disposition: inline) — ouvre dans une
+     * nouvelle tab pour vérifier avant téléchargement.
+     */
+    public function pdfPreview(ESBTPLMDBulletin $bulletin)
+    {
+        [$pdf, $filename] = $this->buildBulletinPdf($bulletin);
+
+        return $pdf->stream($filename);
+    }
+
+    /**
+     * Construction unifiée du PDF bulletin LMD. Retourne [PDF, filename].
+     */
+    private function buildBulletinPdf(ESBTPLMDBulletin $bulletin): array
     {
         $data = $this->service->preparerDonneesBulletin($bulletin);
 
@@ -208,7 +229,7 @@ class ESBTPLMDBulletinController extends Controller
         $semestre = $bulletin->semestre;
         $filename = "bulletin_lmd_{$matricule}_S{$semestre}.pdf";
 
-        return $pdf->stream($filename);
+        return [$pdf, $filename];
     }
 
     private function prepareLogoBase64(?string $logoPath): ?string

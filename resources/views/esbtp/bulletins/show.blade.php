@@ -10,9 +10,15 @@
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0">Bulletin de {{ $bulletin->etudiant->nom }} {{ $bulletin->etudiant->prenom }}</h5>
                     <div>
-                        <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $bulletin->etudiant_id, 'classe_id' => $bulletin->classe_id, 'periode' => $bulletin->periode, 'annee_universitaire_id' => $bulletin->annee_universitaire_id]) }}" class="btn btn-secondary me-2" target="_blank">
-                            <i class="fas fa-file-pdf me-1"></i>Télécharger PDF
-                        </a>
+                        @php
+                            $bulletinPdfParams = ['bulletin' => $bulletin->etudiant_id, 'classe_id' => $bulletin->classe_id, 'periode' => $bulletin->periode, 'annee_universitaire_id' => $bulletin->annee_universitaire_id];
+                        @endphp
+                        <x-pdf-actions
+                            :preview-url="route('esbtp.bulletins.pdf-params-preview', $bulletinPdfParams)"
+                            :download-url="route('esbtp.bulletins.pdf-params', $bulletinPdfParams)"
+                            label="Bulletin"
+                            buttonClass="btn btn-secondary me-2" />
+
                         @can('bulletins.configure')
                         <a href="{{ route('esbtp.bulletins.config-matieres', ['bulletin' => $bulletin->etudiant_id, 'classe_id' => $bulletin->classe_id, 'periode' => $bulletin->periode, 'annee_universitaire_id' => $bulletin->annee_universitaire_id]) }}" class="btn btn-info me-2">
                             <i class="fas fa-cog me-1"></i>Configurer Matières

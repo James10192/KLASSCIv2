@@ -151,6 +151,12 @@
             @endif
 
             <div class="et-card__actions">
+                <a href="{{ route('esbtp.emploi-temps.preview-pdf', $emploiTemps->id) }}"
+                   class="et-card-btn et-card-btn--ghost"
+                   target="_blank"
+                   title="Aperçu PDF">
+                    <i class="fas fa-eye"></i>
+                </a>
                 <a href="{{ route('esbtp.emploi-temps.export-pdf', $emploiTemps->id) }}"
                    class="et-card-btn et-card-btn--ghost"
                    title="Exporter en PDF">

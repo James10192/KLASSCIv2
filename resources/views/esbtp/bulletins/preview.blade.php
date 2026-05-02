@@ -233,6 +233,9 @@
                 <a href="javascript:history.back()" class="btn btn-secondary">
                     <i class="fas fa-arrow-left"></i> Retour
                 </a>
+                <button type="button" class="btn btn-outline-success" onclick="previewPDF()" title="Aperçu PDF dans un nouvel onglet">
+                    <i class="fas fa-eye"></i> Aperçu PDF
+                </button>
                 <button type="button" class="btn btn-success" onclick="downloadPDF()">
                     <i class="fas fa-download"></i> Télécharger le PDF
                 </button>
@@ -462,7 +465,6 @@
 
 <script>
 function downloadPDF() {
-    // Redirection vers la route de téléchargement PDF
     @if(isset($etudiant) && isset($classe) && isset($anneeUniversitaire))
         window.open("{{ route('esbtp.bulletins.pdf-params', [
             'bulletin' => $etudiant->id,
@@ -472,6 +474,18 @@ function downloadPDF() {
         ]) }}", '_blank');
     @else
         alert('Erreur: Impossible de générer le PDF. Données manquantes.');
+    @endif
+}
+function previewPDF() {
+    @if(isset($etudiant) && isset($classe) && isset($anneeUniversitaire))
+        window.open("{{ route('esbtp.bulletins.pdf-params-preview', [
+            'bulletin' => $etudiant->id,
+            'classe_id' => $classe->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $anneeUniversitaire->id
+        ]) }}", '_blank');
+    @else
+        alert('Erreur: Impossible d\'ouvrir l\'aperçu PDF. Données manquantes.');
     @endif
 }
 </script>

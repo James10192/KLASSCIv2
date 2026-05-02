@@ -376,6 +376,9 @@
                             <a href="{{ route('esbtp.bulletins.show', $bulletin->id) }}" class="btn btn-primary">
                                 <i class="fas fa-eye me-2"></i>Consulter
                             </a>
+                            <a href="{{ route('esbtp.bulletins.preview-pdf', $bulletin->id) }}" class="btn btn-outline-success" target="_blank">
+                                <i class="fas fa-eye me-2"></i>Aperçu PDF
+                            </a>
                             <a href="{{ route('esbtp.bulletins.download', $bulletin->id) }}" class="btn btn-success">
                                 <i class="fas fa-download me-2"></i>Télécharger PDF
                             </a>

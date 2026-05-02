@@ -735,7 +735,10 @@
                                 </td>
                                 <td style="text-align:center;">
                                     <div class="lb-actions">
-                                        <a href="{{ route('esbtp.lmd.bulletins.show', $b) }}" class="lb-act lb-act--view" title="Aperçu">
+                                        <a href="{{ route('esbtp.lmd.bulletins.show', $b) }}" class="lb-act lb-act--view" title="Détails (web)">
+                                            <i class="fas fa-list-ul"></i>
+                                        </a>
+                                        <a href="{{ route('esbtp.lmd.bulletins.pdf-preview', $b) }}" class="lb-act lb-act--view" title="Aperçu PDF" target="_blank">
                                             <i class="fas fa-eye"></i>
                                         </a>
                                         <a href="{{ route('esbtp.lmd.bulletins.pdf', $b) }}" class="lb-act lb-act--pdf" title="Télécharger PDF">

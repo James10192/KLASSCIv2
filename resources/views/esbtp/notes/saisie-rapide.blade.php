@@ -408,8 +408,14 @@
                     </div>
                 </div>
                 <div class="sr-header-actions">
+                    <a href="{{ route('esbtp.notes.saisie-rapide.pdf-preview', $evaluation) }}" class="sr-header-btn" target="_blank" title="Aperçu du PDF vierge dans un nouvel onglet">
+                        <i class="fas fa-eye"></i> Aperçu vierge
+                    </a>
                     <a href="{{ route('esbtp.notes.saisie-rapide.pdf', $evaluation) }}" class="sr-header-btn sr-header-btn--danger">
                         <i class="fas fa-file-pdf"></i> PDF vierge
+                    </a>
+                    <a href="{{ route('esbtp.evaluations.pdf-preview', $evaluation) }}" class="sr-header-btn" target="_blank" title="Aperçu PDF avec notes">
+                        <i class="fas fa-eye"></i> Aperçu
                     </a>
                     <a href="{{ route('esbtp.evaluations.pdf', $evaluation) }}" class="sr-header-btn">
                         <i class="fas fa-file-export"></i> Exporter

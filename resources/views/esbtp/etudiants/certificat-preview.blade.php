@@ -147,6 +147,9 @@
         <a href="{{ route('esbtp.etudiants.attestation-frequentation.preview', $etudiant->id) }}" class="btn-acasi info">
             <i class="fas fa-file-contract me-1"></i>Attestation
         </a>
+        <a href="{{ route('esbtp.etudiants.certificat.preview-pdf', $etudiant->id) }}" class="btn-acasi info" target="_blank" title="Aperçu PDF dans un nouvel onglet">
+            <i class="fas fa-eye me-1"></i>Aperçu PDF
+        </a>
         <a href="{{ route('esbtp.etudiants.certificat', $etudiant->id) }}" class="btn-acasi success">
             <i class="fas fa-file-pdf me-1"></i>Générer PDF
         </a>

@@ -1566,6 +1566,22 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function generatePdf($id)
     {
+        return $this->respondWithEmploiTempsPdf($id, 'attachment');
+    }
+
+    /**
+     * Aperçu inline du PDF de l'emploi du temps (Content-Disposition: inline).
+     */
+    public function previewPdf($id)
+    {
+        return $this->respondWithEmploiTempsPdf($id, 'inline');
+    }
+
+    /**
+     * Construit la response PDF emploi du temps avec disposition donnée.
+     */
+    private function respondWithEmploiTempsPdf($id, string $disposition)
+    {
         try {
             $emploiTemps = ESBTPEmploiTemps::with([
                 'seances.matiere',
@@ -1575,17 +1591,14 @@ class ESBTPEmploiTempsController extends Controller
                 'annee',
             ])->findOrFail($id);
 
-            // Utiliser le service PDF pour générer le document
             $pdfService = app(ESBTPPDFService::class);
             $pdf = $pdfService->genererEmploiTempsPDF($emploiTemps);
 
-            // Générer le nom du fichier
             $filename = 'emploi_temps_'.$emploiTemps->classe->name.'_'.now()->format('Y-m-d').'.pdf';
 
-            // Retourner le PDF pour téléchargement (Browsershot retourne le contenu binaire directement)
             return response($pdf, 200, [
                 'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'attachment; filename="'.$filename.'"',
+                'Content-Disposition' => $disposition.'; filename="'.$filename.'"',
             ]);
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la génération du PDF de l\'emploi du temps', [

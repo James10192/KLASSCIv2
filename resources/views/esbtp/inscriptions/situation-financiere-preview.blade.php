@@ -260,6 +260,9 @@
         <div class="sf-toolbar-sub">{{ $inscription->etudiant->nom }} {{ $inscription->etudiant->prenoms }} — {{ $inscription->etudiant->matricule }}</div>
     </div>
     <div class="sf-toolbar-actions">
+        <a href="{{ route('esbtp.inscriptions.situation-financiere.pdf-preview', $inscription->id) }}" class="btn-acasi info" target="_blank" title="Aperçu PDF dans un nouvel onglet">
+            <i class="fas fa-eye"></i>Aperçu PDF
+        </a>
         <a href="{{ route('esbtp.inscriptions.situation-financiere.pdf', $inscription->id) }}" class="btn-acasi danger">
             <i class="fas fa-file-pdf"></i>Télécharger PDF
         </a>

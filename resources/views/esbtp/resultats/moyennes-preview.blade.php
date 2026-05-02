@@ -903,7 +903,15 @@
                             <button type="submit" class="mp-btn-primary">
                                 <i class="fas fa-save"></i>Enregistrer les modifications
                             </button>
-                            <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $anneeUniversitaire->id]) }}"
+                            @php $_mpPdfParams = ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $anneeUniversitaire->id]; @endphp
+                            <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_mpPdfParams) }}"
+                               class="mp-btn-pdf"
+                               style="background:#fff;color:#0453cb;border:1px solid #0453cb;"
+                               target="_blank"
+                               title="Aperçu du bulletin PDF dans un nouvel onglet">
+                                <i class="fas fa-eye"></i>Aperçu
+                            </a>
+                            <a href="{{ route('esbtp.bulletins.pdf-params', $_mpPdfParams) }}"
                                class="mp-btn-pdf"
                                target="_blank">
                                 <i class="fas fa-file-pdf"></i>Générer le bulletin

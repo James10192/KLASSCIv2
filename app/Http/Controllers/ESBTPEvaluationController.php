@@ -1072,55 +1072,78 @@ $evaluation->titre = $request->titre;
     }
 
     /**
-     * Génère un PDF de l'évaluation avec les notes des étudiants
-     *
-     * @return \Illuminate\Http\Response
+     * Télécharge le PDF de l'évaluation (attachment).
      */
     public function generatePdf(ESBTPEvaluation $evaluation)
     {
         try {
-            $evaluation->load(['classe', 'matiere', 'notes.etudiant']);
-
-            $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-
-            $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
-                $query->where('classe_id', $evaluation->classe_id)
-                    ->where('status', 'active');
-                if ($anneeCourante) {
-                    $query->where('annee_universitaire_id', $anneeCourante->id);
-                }
-            })
-                ->with(['notes' => function ($query) use ($evaluation) {
-                    $query->where('evaluation_id', $evaluation->id);
-                }])
-                ->orderBy('nom')
-                ->get();
-
-            $notesByEtudiant = $evaluation->notes
-                ->whereIn('etudiant_id', $etudiants->pluck('id'))
-                ->keyBy('etudiant_id');
-
-            $etablissement = [
-                'nom' => \App\Models\Setting::get('school_name', 'KLASSCI'),
-                'adresse' => \App\Models\Setting::get('school_address', ''),
-                'telephone' => \App\Models\Setting::get('school_phone', ''),
-                'email' => \App\Models\Setting::get('school_email', ''),
-                'logo' => \App\Models\Setting::get('school_logo', ''),
-            ];
-
-            $isBlank = false;
-            $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
-                'esbtp.notes.saisie-rapide-pdf',
-                compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement', 'notesByEtudiant', 'isBlank')
-            );
-            $pdf->setPaper('A4', 'portrait');
-
-            $filename = 'evaluation_'.Str::slug($evaluation->titre).'_'.$evaluation->date_evaluation->format('d-m-Y').'.pdf';
+            [$pdf, $filename] = $this->buildEvaluationPdf($evaluation);
 
             return $pdf->download($filename);
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur lors de la génération du PDF : '.$e->getMessage());
         }
+    }
+
+    /**
+     * Aperçu inline du PDF de l'évaluation.
+     */
+    public function previewPdf(ESBTPEvaluation $evaluation)
+    {
+        try {
+            [$pdf, $filename] = $this->buildEvaluationPdf($evaluation);
+
+            return $pdf->stream($filename);
+        } catch (\Exception $e) {
+            return back()->with('error', 'Erreur lors de la prévisualisation du PDF : '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Construit le PDF d'une évaluation avec les notes des étudiants.
+     * Retourne [PDF, filename].
+     */
+    private function buildEvaluationPdf(ESBTPEvaluation $evaluation): array
+    {
+        $evaluation->load(['classe', 'matiere', 'notes.etudiant']);
+
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+
+        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
+            $query->where('classe_id', $evaluation->classe_id)
+                ->where('status', 'active');
+            if ($anneeCourante) {
+                $query->where('annee_universitaire_id', $anneeCourante->id);
+            }
+        })
+            ->with(['notes' => function ($query) use ($evaluation) {
+                $query->where('evaluation_id', $evaluation->id);
+            }])
+            ->orderBy('nom')
+            ->get();
+
+        $notesByEtudiant = $evaluation->notes
+            ->whereIn('etudiant_id', $etudiants->pluck('id'))
+            ->keyBy('etudiant_id');
+
+        $etablissement = [
+            'nom' => \App\Models\Setting::get('school_name', 'KLASSCI'),
+            'adresse' => \App\Models\Setting::get('school_address', ''),
+            'telephone' => \App\Models\Setting::get('school_phone', ''),
+            'email' => \App\Models\Setting::get('school_email', ''),
+            'logo' => \App\Models\Setting::get('school_logo', ''),
+        ];
+
+        $isBlank = false;
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'esbtp.notes.saisie-rapide-pdf',
+            compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement', 'notesByEtudiant', 'isBlank')
+        );
+        $pdf->setPaper('A4', 'portrait');
+
+        $filename = 'evaluation_'.Str::slug($evaluation->titre).'_'.$evaluation->date_evaluation->format('d-m-Y').'.pdf';
+
+        return [$pdf, $filename];
     }
 
     /**

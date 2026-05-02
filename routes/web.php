@@ -342,6 +342,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/etudiants/{etudiant}/certificat', [ESBTPEtudiantController::class, 'genererCertificat'])
                 ->name('etudiants.certificat')
                 ->middleware(['permission:students.view']);
+            Route::get('/etudiants/{etudiant}/certificat/preview-pdf', [ESBTPEtudiantController::class, 'previewCertificatPdf'])
+                ->name('etudiants.certificat.preview-pdf')
+                ->middleware(['permission:students.view', 'throttle:60,1']);
 
             // Routes pour les attestations de fréquentation
             Route::get('/etudiants/{etudiant}/attestation-frequentation-preview', [ESBTPEtudiantController::class, 'previewAttestationFrequentation'])
@@ -350,6 +353,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/etudiants/{etudiant}/attestation-frequentation', [ESBTPEtudiantController::class, 'genererAttestationFrequentation'])
                 ->name('etudiants.attestation-frequentation')
                 ->middleware(['permission:students.view']);
+            Route::get('/etudiants/{etudiant}/attestation-frequentation/preview-pdf', [ESBTPEtudiantController::class, 'previewAttestationFrequentationPdf'])
+                ->name('etudiants.attestation-frequentation.preview-pdf')
+                ->middleware(['permission:students.view', 'throttle:60,1']);
 
             // Routes pour les rôles et permissions
             Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class)->middleware(['role:superAdmin']);
@@ -609,6 +615,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('emploi-temps.export-pdf')
                 ->middleware(['permission:timetables.view']);
 
+            // Aperçu PDF inline (Phase 9.5 — preview universel)
+            Route::get('emploi-temps/{emploi_temp}/preview-pdf', [ESBTPEmploiTempsController::class, 'previewPdf'])
+                ->name('emploi-temps.preview-pdf')
+                ->middleware(['permission:timetables.view', 'throttle:60,1']);
+
             // Route pour prévisualiser l'emploi du temps avant génération PDF
             Route::get('emploi-temps/{emploi_temp}/preview', [ESBTPEmploiTempsController::class, 'previewEmploiTemps'])
                 ->name('emploi-temps.preview')
@@ -741,6 +752,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/attendances/rapport-pdf', [ESBTPAttendanceController::class, 'rapportPdf'])
                     ->name('rapport-pdf')
                     ->middleware('permission:attendances.view');
+
+                // Aperçu PDF inline du rapport de présence (Phase 9.5)
+                Route::post('/attendances/rapport-pdf/preview', [ESBTPAttendanceController::class, 'rapportPdfPreview'])
+                    ->name('rapport-pdf-preview')
+                    ->middleware(['permission:attendances.view', 'throttle:60,1']);
 
                 // AJAX routes for partial refresh
                 Route::get('/attendances/load-seances', [ESBTPAttendanceController::class, 'loadSeances'])
@@ -976,6 +992,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/inscriptions/{inscription}', [ESBTPInscriptionController::class, 'show'])->name('inscriptions.show');
                 Route::get('/inscriptions/{inscription}/situation-financiere/preview', [ESBTPInscriptionPaiementController::class, 'previewSituationFinanciere'])->name('inscriptions.situation-financiere.preview');
                 Route::get('/inscriptions/{inscription}/situation-financiere/pdf', [ESBTPInscriptionPaiementController::class, 'exportSituationFinanciere'])->name('inscriptions.situation-financiere.pdf');
+                Route::get('/inscriptions/{inscription}/situation-financiere/pdf/preview', [ESBTPInscriptionPaiementController::class, 'previewSituationFinancierePdf'])
+                    ->name('inscriptions.situation-financiere.pdf-preview')
+                    ->middleware('throttle:60,1');
                 Route::get('/inscriptions/{inscription}/data', [ESBTPInscriptionApiController::class, 'getInscriptionData'])->name('inscriptions.data');
                 Route::get('/inscriptions/{inscription}/paiement-en-attente', [ESBTPInscriptionApiController::class, 'getPaiementEnAttente'])->name('inscriptions.paiement-en-attente');
                 Route::get('/inscriptions/{inscription}/classes-alternatives', [ESBTPInscriptionApiController::class, 'getClassesAlternatives'])->name('inscriptions.classes-alternatives');
@@ -1061,7 +1080,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:notes.view|notes.create|notes.edit|notes.delete']);
             Route::get('evaluations/{evaluation}/saisie-rapide', [ESBTPNoteController::class, 'saisieRapide'])->name('notes.saisie-rapide');
             Route::get('evaluations/{evaluation}/saisie-rapide/pdf', [ESBTPNoteController::class, 'saisieRapidePDF'])->name('notes.saisie-rapide.pdf');
+            Route::get('evaluations/{evaluation}/saisie-rapide/pdf/preview', [ESBTPNoteController::class, 'saisieRapidePDFPreview'])
+                ->name('notes.saisie-rapide.pdf-preview')
+                ->middleware('throttle:60,1');
             Route::get('classes/{classe}/notes/saisie-rapide/pdf', [ESBTPNoteController::class, 'saisieRapideBlankPDF'])->name('notes.saisie-rapide-blank.pdf');
+            Route::get('classes/{classe}/notes/saisie-rapide/pdf/preview', [ESBTPNoteController::class, 'saisieRapideBlankPDFPreview'])
+                ->name('notes.saisie-rapide-blank.pdf-preview')
+                ->middleware('throttle:60,1');
             Route::post('notes/store-batch', [ESBTPNoteController::class, 'enregistrerSaisieRapide'])->name('notes.store-batch');
         });
 
@@ -1386,6 +1411,9 @@ Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['aut
     Route::patch('/{evaluation}/toggle-notes-published', [ESBTPEvaluationController::class, 'toggleNotesPublished'])->name('toggle-notes-published');
     Route::patch('/{evaluation}/update-status', [ESBTPEvaluationController::class, 'updateStatus'])->name('update-status');
     Route::get('/{evaluation}/pdf', [ESBTPEvaluationController::class, 'generatePdf'])->name('pdf');
+    Route::get('/{evaluation}/pdf/preview', [ESBTPEvaluationController::class, 'previewPdf'])
+        ->name('pdf-preview')
+        ->middleware('throttle:60,1');
 });
 
 // Routes pour les notifications des étudiants
@@ -1411,6 +1439,9 @@ Route::get('/esbtp/bulletins/select', [ESBTPBulletinController::class, 'select']
 
 // Route pour télécharger un bulletin au format PDF
 Route::get('/esbtp/bulletins/{bulletin}/download', [ESBTPBulletinController::class, 'genererPDF'])->name('esbtp.bulletins.download')->middleware(['auth', 'permission:admin.access']);
+Route::get('/esbtp/bulletins/{bulletin}/preview-pdf', [ESBTPBulletinController::class, 'previewPDF'])
+    ->name('esbtp.bulletins.preview-pdf')
+    ->middleware(['auth', 'permission:admin.access', 'throttle:60,1']);
 
 // Routes pour la gestion des secrétaires
 Route::prefix('secretaires')->name('secretaires.')->middleware(['auth', 'permission:system.manage'])->group(function () {
@@ -1831,6 +1862,9 @@ Route::get('/debug-permissions', function () {
 // Routes spéciales pour le workflow des bulletins — PROTÉGÉES
 Route::middleware(['auth', 'permission:admin.access'])->group(function () {
     Route::get('/esbtp-special/bulletins-pdf', [ESBTPBulletinController::class, 'genererPDFParParamsUnified'])->name('esbtp.bulletins.pdf-params');
+    Route::get('/esbtp-special/bulletins-pdf/preview', [ESBTPBulletinController::class, 'previewPDFParParamsUnified'])
+        ->name('esbtp.bulletins.pdf-params-preview')
+        ->middleware('throttle:60,1');
     Route::get('/esbtp-special/bulletins-check', [ESBTPBulletinController::class, 'checkBulletinPrerequisites'])->name('esbtp.bulletins.check-prerequisites');
     Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'previewBulletin'])->name('esbtp.bulletins.preview');
     Route::post('/esbtp/bulletins/generer-classe', [ESBTPBulletinController::class, 'genererClasseBulletins'])->name('esbtp.bulletins.generer-classe');
@@ -2209,6 +2243,9 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
     Route::post('bulletins/generer-classe', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'genererClasse'])->name('bulletins.generer-classe');
     Route::get('bulletins/{bulletin}', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'show'])->name('bulletins.show');
     Route::get('bulletins/{bulletin}/pdf', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'pdf'])->name('bulletins.pdf');
+    Route::get('bulletins/{bulletin}/pdf/preview', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'pdfPreview'])
+        ->name('bulletins.pdf-preview')
+        ->middleware('throttle:60,1');
     Route::put('bulletins/{bulletin}/toggle-publication', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'togglePublication'])->name('bulletins.toggle-publication');
     Route::delete('bulletins/{bulletin}', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'destroy'])->name('bulletins.destroy');
 });

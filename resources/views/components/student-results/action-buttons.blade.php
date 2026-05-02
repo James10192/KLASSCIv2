@@ -71,9 +71,20 @@
                     </div>
                     <span class="sr-action-btn-text">Prévisualiser bulletin</span>
                 </a>
-                <a href="{{ route('esbtp.bulletins.pdf-params', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}"
+                @php $_abPdfParams = ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]; @endphp
+                <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_abPdfParams) }}"
                    class="sr-action-btn sr-pdf-link"
-                   data-check-url="{{ route('esbtp.bulletins.check-prerequisites', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]) }}"
+                   target="_blank"
+                   data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_abPdfParams) }}"
+                   onclick="return srCheckBeforePDF(event, this);">
+                    <div class="sr-action-btn-icon sr-action-btn-icon--success">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <span class="sr-action-btn-text">Aperçu PDF</span>
+                </a>
+                <a href="{{ route('esbtp.bulletins.pdf-params', $_abPdfParams) }}"
+                   class="sr-action-btn sr-pdf-link"
+                   data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_abPdfParams) }}"
                    onclick="return srCheckBeforePDF(event, this);">
                     <div class="sr-action-btn-icon sr-action-btn-icon--primary">
                         <i class="fas fa-file-pdf"></i>

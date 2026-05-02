@@ -787,7 +787,12 @@
                         <ul class="dropdown-menu dropdown-menu-end ets-dropdown-menu">
                             <li>
                                 <a class="dropdown-item" href="{{ route('esbtp.emploi-temps.preview', ['emploi_temp' => $emploiTemps->id]) }}" target="_blank">
-                                    <i class="fas fa-eye"></i> Prévisualiser PDF
+                                    <i class="fas fa-window-restore"></i> Vue web
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item" href="{{ route('esbtp.emploi-temps.preview-pdf', ['emploi_temp' => $emploiTemps->id]) }}" target="_blank">
+                                    <i class="fas fa-eye"></i> Aperçu PDF
                                 </a>
                             </li>
                             <li>

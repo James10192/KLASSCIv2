@@ -800,18 +800,34 @@ class ESBTPNoteController extends Controller
     }
 
     /**
-     * Génère un PDF pour la saisie rapide des notes.
-     *
-     * @return \Illuminate\Http\Response
+     * Télécharge le PDF de saisie rapide d'une évaluation (attachment).
      */
     public function saisieRapidePDF(ESBTPEvaluation $evaluation)
     {
+        [$pdf, $filename] = $this->buildSaisieRapidePdf($evaluation);
+
+        return $pdf->download($filename);
+    }
+
+    /**
+     * Aperçu inline du PDF de saisie rapide d'une évaluation.
+     */
+    public function saisieRapidePDFPreview(ESBTPEvaluation $evaluation)
+    {
+        [$pdf, $filename] = $this->buildSaisieRapidePdf($evaluation);
+
+        return $pdf->stream($filename);
+    }
+
+    /**
+     * Construit le PDF de saisie rapide pour une évaluation. Retourne [PDF, filename].
+     */
+    private function buildSaisieRapidePdf(ESBTPEvaluation $evaluation): array
+    {
         $evaluation->load(['classe', 'matiere']);
 
-        // Récupérer l'année universitaire courante
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        // Récupérer uniquement les étudiants avec inscriptions actives sur l'année courante
         $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
             $query->where('classe_id', $evaluation->classe_id)
                 ->where('status', 'active');
@@ -822,7 +838,6 @@ class ESBTPNoteController extends Controller
             ->orderBy('nom')
             ->get();
 
-        // Récupérer les paramètres de l'établissement
         $etablissement = [
             'nom' => \App\Models\Setting::get('school_name', 'KLASSCI'),
             'adresse' => \App\Models\Setting::get('school_address', ''),
@@ -838,15 +853,33 @@ class ESBTPNoteController extends Controller
 
         $filename = 'saisie-notes-'.\Illuminate\Support\Str::slug($evaluation->titre).'-'.date('Y-m-d').'.pdf';
 
+        return [$pdf, $filename];
+    }
+
+    /**
+     * Télécharge le PDF de saisie rapide vierge pour une classe (attachment).
+     */
+    public function saisieRapideBlankPDF(ESBTPClasse $classe)
+    {
+        [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe);
+
         return $pdf->download($filename);
     }
 
     /**
-     * Génère un PDF de saisie rapide vierge pour une classe.
-     *
-     * @return \Illuminate\Http\Response
+     * Aperçu inline du PDF de saisie rapide vierge pour une classe.
      */
-    public function saisieRapideBlankPDF(ESBTPClasse $classe)
+    public function saisieRapideBlankPDFPreview(ESBTPClasse $classe)
+    {
+        [$pdf, $filename] = $this->buildSaisieRapideBlankPdf($classe);
+
+        return $pdf->stream($filename);
+    }
+
+    /**
+     * Construit le PDF vierge de saisie rapide pour une classe. Retourne [PDF, filename].
+     */
+    private function buildSaisieRapideBlankPdf(ESBTPClasse $classe): array
     {
         $classe->load(['filiere']);
 
@@ -889,7 +922,7 @@ class ESBTPNoteController extends Controller
 
         $filename = 'saisie-notes-'.\Illuminate\Support\Str::slug($classe->name ?? 'classe').'-'.date('Y-m-d').'.pdf';
 
-        return $pdf->download($filename);
+        return [$pdf, $filename];
     }
 
     /**

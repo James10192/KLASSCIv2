@@ -1159,12 +1159,21 @@ class ESBTPAttendanceController extends Controller
     }
 
     /**
-     * Génère et télécharge le PDF du rapport de présence.
+     * Aperçu inline du PDF du rapport de présence.
+     */
+    public function rapportPdfPreview(Request $request)
+    {
+        return $this->rapportPdf($request, true);
+    }
+
+    /**
+     * Génère le PDF du rapport de présence. Si $inline est true, retourne en
+     * inline (preview), sinon en attachment (download).
      *
      * @param Request $request
      * @return \Illuminate\Http\Response
      */
-    public function rapportPdf(Request $request)
+    public function rapportPdf(Request $request, bool $inline = false)
     {
         // Valider les données
         $validatedData = $request->validate([
@@ -1237,8 +1246,7 @@ class ESBTPAttendanceController extends Controller
         // Nom du fichier
         $filename = 'rapport-presence-' . str_replace(' ', '-', strtolower($classe->name)) . '-' . date('Y-m-d') . '.pdf';
 
-        // Télécharger le PDF
-        return $pdf->download($filename);
+        return $inline ? $pdf->stream($filename) : $pdf->download($filename);
     }
 
     /**
