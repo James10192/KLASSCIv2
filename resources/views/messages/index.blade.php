@@ -68,8 +68,45 @@
 .ms-msg-group .ms-msg.theirs:not(:first-child) { border-top-left-radius: 6px; }
 .ms-msg.system { align-self: center; background: rgba(245, 158, 11, 0.1); color: #92400e; border: 1px solid rgba(245,158,11,.3); font-size: .82rem; font-weight: 500; padding: .5rem .9rem; border-radius: 99px; }
 .ms-msg.action_card { align-self: flex-start; background: var(--ms-surface); border: 1px solid var(--ms-border); padding: 1rem 1.1rem; max-width: 85%; box-shadow: 0 1px 3px rgba(15,23,42,.04); border-radius: 12px; }
-.ms-msg-meta { font-size: .68rem; color: var(--ms-muted); margin: .35rem .55rem 0; }
-.ms-msg-group.mine .ms-msg-meta { text-align: right; }
+.ms-msg-meta { font-size: .68rem; color: var(--ms-muted); margin: .35rem .55rem 0; display: flex; align-items: center; gap: .35rem; }
+.ms-msg-group.mine .ms-msg-meta { justify-content: flex-end; text-align: right; }
+.ms-msg-receipt { color: var(--ms-muted); font-size: .76rem; }
+.ms-msg-receipt.read { color: var(--ms-primary); }
+
+/* Date dividers entre messages selon le jour */
+.ms-date-divider {
+    align-self: center;
+    background: rgba(15,23,42,.06);
+    color: var(--ms-muted);
+    padding: .25rem .9rem;
+    border-radius: 99px;
+    font-size: .72rem;
+    font-weight: 600;
+    margin: .8rem 0 .4rem;
+    letter-spacing: .02em;
+    text-transform: capitalize;
+}
+
+/* Présence — dot vert pour en ligne + label sub */
+.ms-presence-wrap { position: relative; }
+.ms-presence-dot {
+    position: absolute;
+    bottom: -2px;
+    right: -2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #94a3b8;
+    border: 2px solid var(--ms-surface);
+    transition: background .2s;
+}
+.ms-presence-dot.online { background: #10b981; box-shadow: 0 0 0 2px rgba(16,185,129,.18); }
+.ms-presence-label { font-size: .72rem; color: var(--ms-muted); display: inline-flex; align-items: center; gap: .3rem; }
+.ms-presence-label .ms-presence-mini-dot {
+    width: 7px; height: 7px; border-radius: 50%; background: #94a3b8; flex-shrink: 0;
+}
+.ms-presence-label.online .ms-presence-mini-dot { background: #10b981; }
+.ms-presence-label.online { color: #047857; font-weight: 600; }
 /* "X new messages" banner — replaces auto-scroll anti-pattern */
 .ms-new-banner { position: sticky; bottom: .5rem; align-self: center; background: var(--ms-primary); color: #fff; padding: .4rem .9rem; border-radius: 99px; font-size: .8rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(4,83,203,.3); z-index: 5; transition: all .15s; }
 .ms-new-banner:hover { transform: translateY(-2px); }
@@ -417,8 +454,11 @@
                             </template>
                             <template x-for="c in conversations" :key="c.id">
                                 <div class="ms-conv" :class="{ active: activeConvo?.id === c.id }" @click="openConvo(c)">
-                                    <div class="ms-conv-avatar" :class="{ workflow: c.type === 'workflow' }"
-                                         x-text="(c.title || c.participants?.[0]?.name || '?').slice(0,2).toUpperCase()"></div>
+                                    <div class="ms-presence-wrap">
+                                        <div class="ms-conv-avatar" :class="{ workflow: c.type === 'workflow' }"
+                                             x-text="(c.title || c.participants?.[0]?.name || '?').slice(0,2).toUpperCase()"></div>
+                                        <span class="ms-presence-dot" x-show="c.type === 'dm' && c.participants?.[0]" :class="{ online: c.participants?.[0]?.is_online }"></span>
+                                    </div>
                                     <div class="ms-conv-body">
                                         <div class="ms-conv-name" x-text="c.title || c.participants?.[0]?.name || 'Conversation'"></div>
                                         <div class="ms-conv-preview" x-text="c.last_message?.preview || c.last_message?.body || 'Aucun message'"></div>
@@ -465,17 +505,33 @@
                 <template x-if="activeConvo">
                     <div style="display: contents">
                         <div class="ms-thread-head">
-                            <div class="ms-conv-avatar" :class="{ workflow: activeConvo.type === 'workflow' }"
-                                 x-text="(activeConvo.title || activeOther?.name || '?').slice(0,2).toUpperCase()"></div>
+                            <div class="ms-presence-wrap">
+                                <div class="ms-conv-avatar" :class="{ workflow: activeConvo.type === 'workflow' }"
+                                     x-text="(activeConvo.title || activeOther?.name || '?').slice(0,2).toUpperCase()"></div>
+                                <span class="ms-presence-dot" x-show="activeConvo.type === 'dm' && activeOther" :class="{ online: activeOther?.is_online }"></span>
+                            </div>
                             <div>
                                 <div class="ms-thread-name" x-text="activeConvo.title || activeOther?.name || 'Conversation'"></div>
-                                <div class="ms-thread-status" x-text="activeConvo.type === 'workflow' ? 'Conversation workflow' : 'Discussion privée'"></div>
+                                <template x-if="activeConvo.type === 'dm' && activeOther">
+                                    <div class="ms-presence-label" :class="{ online: activeOther?.is_online }">
+                                        <span class="ms-presence-mini-dot"></span>
+                                        <span x-text="formatPresence(activeOther) || 'Discussion privée'"></span>
+                                    </div>
+                                </template>
+                                <template x-if="activeConvo.type !== 'dm'">
+                                    <div class="ms-thread-status" x-text="activeConvo.type === 'workflow' ? 'Conversation workflow' : 'Discussion'"></div>
+                                </template>
                             </div>
                         </div>
 
                         <div class="ms-msgs" x-ref="msgs" @scroll="onScroll($event)" aria-live="polite" aria-atomic="false" aria-label="Messages de la conversation">
-                            <template x-for="(group, gi) in groupedMessages" :key="gi">
-                                <div class="ms-msg-group" :class="{ mine: group.mine }">
+                            <template x-for="block in groupedMessages" :key="block.kind === 'divider' ? 'd_' + block.dayKey : 'g_' + block.items[0].id + '_' + block.items.length + '_' + block.last_t">
+                                <div class="ms-block">
+                                    <template x-if="block.kind === 'divider'">
+                                        <div class="ms-date-divider" x-text="block.label"></div>
+                                    </template>
+                                    <template x-if="block.kind === 'group'">
+                                <div class="ms-msg-group" :class="{ mine: block.mine }" x-data="{ group: block }">
                                     <template x-for="m in group.items" :key="m.id">
                                         <div>
                                             <template x-if="m.type === 'system'">
@@ -588,7 +644,17 @@
                                             </template>
                                         </div>
                                     </template>
-                                    <div class="ms-msg-meta" x-text="(group.mine ? 'Toi' : group.sender_name) + ' · ' + formatTime(group.last_at)"></div>
+                                    <div class="ms-msg-meta">
+                                        <span x-text="(group.mine ? 'Toi' : group.sender_name) + ' · ' + formatTime(group.last_at)"></span>
+                                        <template x-if="group.mine && group.items[group.items.length - 1]?.read_by_others">
+                                            <i class="fas fa-check-double ms-msg-receipt read" title="Lu"></i>
+                                        </template>
+                                        <template x-if="group.mine && !group.items[group.items.length - 1]?.read_by_others">
+                                            <i class="fas fa-check ms-msg-receipt" title="Envoyé"></i>
+                                        </template>
+                                    </div>
+                                </div>
+                                    </template>
                                 </div>
                             </template>
                             {{-- "X new messages" banner — anti auto-scroll, respecte la lecture en cours --}}
@@ -779,7 +845,13 @@
             'last_message_at' => $c->last_message_at?->toIso8601String(),
             'last_message' => $previewLastMessage($c->lastMessage),
             'participants' => $c->participants->where('id', '!=', auth()->id())->map(function ($p) {
-                return ['id' => $p->id, 'name' => $p->name];
+                $isOnline = $p->last_seen_at && $p->last_seen_at->gt(now()->subMinutes(2));
+                return [
+                    'id' => $p->id,
+                    'name' => $p->name,
+                    'is_online' => (bool) $isOnline,
+                    'last_seen_at' => $p->last_seen_at?->toIso8601String(),
+                ];
             })->values(),
         ];
     });
@@ -830,31 +902,84 @@ function messagesPage() {
 
         // Groupement messages par sender consécutif < 5min (anti-clutter — finding research 2026)
         get groupedMessages() {
-            const groups = [];
-            let current = null;
+            const blocks = [];
+            let currentGroup = null;
+            let currentDayKey = null;
             for (const m of this.messages) {
-                const t = new Date(m.created_at).getTime();
-                if (current
-                    && current.sender_id === m.sender_id
-                    && current.type === m.type
-                    && (t - current.last_t) < 5 * 60 * 1000) {
-                    current.items.push(m);
-                    current.last_at = m.created_at;
-                    current.last_t = t;
+                const d = new Date(m.created_at);
+                const t = d.getTime();
+                const dayKey = d.toISOString().slice(0, 10);
+
+                // Date divider quand on passe à un nouveau jour
+                if (dayKey !== currentDayKey) {
+                    blocks.push({ kind: 'divider', dayKey, label: this.formatRelativeDate(m.created_at) });
+                    currentDayKey = dayKey;
+                    currentGroup = null;
+                }
+
+                if (currentGroup
+                    && currentGroup.sender_id === m.sender_id
+                    && currentGroup.msgType === m.type
+                    && (t - currentGroup.last_t) < 5 * 60 * 1000) {
+                    currentGroup.items.push(m);
+                    currentGroup.last_at = m.created_at;
+                    currentGroup.last_t = t;
                 } else {
-                    current = {
+                    currentGroup = {
+                        kind: 'group',
                         sender_id: m.sender_id,
                         sender_name: m.sender_name,
                         mine: !!m.mine,
-                        type: m.type,
+                        msgType: m.type,
                         items: [m],
                         last_at: m.created_at,
                         last_t: t,
                     };
-                    groups.push(current);
+                    blocks.push(currentGroup);
                 }
             }
-            return groups;
+            return blocks;
+        },
+
+        /**
+         * Label relatif d'une date pour les dividers (Aujourd'hui / Hier / Mardi 28 mars 2026).
+         * Recompute au tick de this.now (reactive).
+         */
+        formatRelativeDate(iso) {
+            const d = new Date(iso);
+            const today = new Date(this.now);
+            today.setHours(0, 0, 0, 0);
+            const target = new Date(d);
+            target.setHours(0, 0, 0, 0);
+            const diffDays = Math.round((today - target) / (1000 * 60 * 60 * 24));
+            if (diffDays === 0) return "Aujourd'hui";
+            if (diffDays === 1) return 'Hier';
+            if (diffDays > 1 && diffDays < 7) {
+                return d.toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+            }
+            return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+        },
+
+        /**
+         * Label de présence : "En ligne" / "Vu il y a X" / "Vu hier" / "Vu le 28 mars".
+         */
+        formatPresence(participant) {
+            if (!participant) return '';
+            if (participant.is_online) return 'En ligne';
+            if (!participant.last_seen_at) return '';
+            const t = new Date(participant.last_seen_at).getTime();
+            const diff = (this.now - t) / 60000;
+            if (diff < 60) return 'Vu il y a ' + Math.max(1, Math.floor(diff)) + ' min';
+            if (diff < 1440) return 'Vu il y a ' + Math.floor(diff / 60) + ' h';
+            const d = new Date(participant.last_seen_at);
+            const today = new Date(this.now);
+            today.setHours(0, 0, 0, 0);
+            const target = new Date(d);
+            target.setHours(0, 0, 0, 0);
+            const diffDays = Math.round((today - target) / 86400000);
+            if (diffDays === 1) return 'Vu hier';
+            if (diffDays < 7) return 'Vu ' + d.toLocaleDateString('fr-FR', { weekday: 'long' });
+            return 'Vu le ' + d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' });
         },
 
         async openConvo(c) {
@@ -864,9 +989,10 @@ function messagesPage() {
             const r = await fetch(`/messages/conversations/${c.id}`, { headers: { Accept: 'application/json' } });
             const data = await r.json();
             this.messages = data.messages;
+            // refresh activeOther avec les données enrichies de show() (presence à jour)
+            if (data.conversation?.participants?.[0]) this.activeOther = data.conversation.participants[0];
             this.atBottom = true;
             this.$nextTick(() => this.scrollBottom(false));
-            // Restart message polling pour la conversation active (30s — bandwidth-friendly Tecno 3G/4G per research)
             if (this.msgPollInterval) clearInterval(this.msgPollInterval);
             this.msgPollInterval = setInterval(() => this.refreshMessages(), 30000);
         },
@@ -876,10 +1002,13 @@ function messagesPage() {
             try {
                 const r = await fetch(`/messages/conversations/${this.activeConvo.id}`, { headers: { Accept: 'application/json' } });
                 const data = await r.json();
+                // refresh activeOther presence (online/last_seen) à chaque tick
+                if (data.conversation?.participants?.[0]) this.activeOther = data.conversation.participants[0];
                 const knownIds = new Set(this.messages.map(m => m.id));
                 const incoming = data.messages.filter(m => !knownIds.has(m.id));
-                if (incoming.length === 0) return;
+                // Toujours sync messages pour mettre à jour read_by_others (les receipts changent même sans nouveau msg)
                 this.messages = data.messages;
+                if (incoming.length === 0) return;
                 if (this.atBottom) {
                     this.$nextTick(() => this.scrollBottom(false));
                 } else {
