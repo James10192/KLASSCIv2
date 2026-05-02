@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
+use App\Http\Controllers\API\CLI\CLIPermissionController;
 
 class CLIMaintenanceController extends BaseApiController
 {
@@ -428,7 +429,12 @@ class CLIMaintenanceController extends BaseApiController
     }
 
     /**
-     * POST /api/cli/permissions/fix — Sync all permissions and roles
+     * POST /api/cli/permissions/fix — Sync all permissions and roles.
+     *
+     * Legacy endpoint kept for klassci-cli backward compatibility.
+     * Now delegates to the registry-driven flow (config/permissions.php) so any
+     * permission added to the registry — including academic ones (annees.*) —
+     * gets synced automatically. Prefer /api/cli/permissions/sync going forward.
      */
     public function permissionsFix(Request $request): JsonResponse
     {
@@ -436,6 +442,15 @@ class CLIMaintenanceController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
+        return app(CLIPermissionController::class)->sync($request);
+    }
+
+    /**
+     * @deprecated Hardcoded fallback — kept for emergency rollback only.
+     * Real sync happens in CLIPermissionController::sync via PermissionRegistry.
+     */
+    private function legacyHardcodedSync(Request $request): JsonResponse
+    {
         try {
             // Reset permission cache
             app(\Spatie\Permission\PermissionRegistrar::class)->forgetCachedPermissions();
@@ -521,6 +536,78 @@ class CLIMaintenanceController extends BaseApiController
         } catch (\Exception $e) {
             Log::error('CLI: permissions fix failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
+        }
+    }
+
+    /**
+     * POST /api/cli/pull — Git pull la branche courante du tenant + cache:clear.
+     *
+     * Permet aux futurs deploys de se faire entièrement via CLI (au lieu de SSH).
+     * Pour appliquer les migrations après pull, enchaîner avec POST /api/cli/migrate.
+     */
+    public function pull(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $steps = [];
+        $cwd = base_path();
+
+        try {
+            $branchProcess = \Symfony\Component\Process\Process::fromShellCommandline('git rev-parse --abbrev-ref HEAD', $cwd);
+            $branchProcess->setTimeout(15);
+            $branchProcess->run();
+            $branch = trim($branchProcess->getOutput()) ?: 'HEAD';
+            $steps[] = ['action' => 'detect branch', 'status' => 'done', 'branch' => $branch];
+
+            // Stash local changes (cas presentation où on a parfois des fichiers modifiés)
+            $stashProcess = \Symfony\Component\Process\Process::fromShellCommandline('git stash --include-untracked', $cwd);
+            $stashProcess->setTimeout(30);
+            $stashProcess->run();
+            $stashOutput = trim($stashProcess->getOutput() . $stashProcess->getErrorOutput());
+            $stashed = !str_contains($stashOutput, 'No local changes to save');
+            $steps[] = ['action' => 'git stash', 'status' => $stashed ? 'stashed' : 'skipped', 'output' => $stashOutput];
+
+            // Pull
+            $pullProcess = \Symfony\Component\Process\Process::fromShellCommandline("git pull origin {$branch}", $cwd);
+            $pullProcess->setTimeout(120);
+            $pullProcess->run();
+            $pullOutput = trim($pullProcess->getOutput() . "\n" . $pullProcess->getErrorOutput());
+            $pullExit = $pullProcess->getExitCode();
+            $steps[] = ['action' => 'git pull', 'exit_code' => $pullExit, 'output' => $pullOutput];
+
+            if ($pullExit !== 0) {
+                if ($stashed) {
+                    $popProcess = \Symfony\Component\Process\Process::fromShellCommandline('git stash pop', $cwd);
+                    $popProcess->setTimeout(15);
+                    $popProcess->run();
+                    $steps[] = ['action' => 'git stash pop (after fail)', 'output' => trim($popProcess->getOutput() . $popProcess->getErrorOutput())];
+                }
+                return $this->errorResponse('git pull failed', ['steps' => $steps], 500);
+            }
+
+            // Drop stash silently (les changes locaux étaient sans doute des artefacts)
+            if ($stashed) {
+                $dropProcess = \Symfony\Component\Process\Process::fromShellCommandline('git stash drop', $cwd);
+                $dropProcess->setTimeout(15);
+                $dropProcess->run();
+                $steps[] = ['action' => 'git stash drop', 'status' => 'done'];
+            }
+
+            // Cache clear pour que le nouveau code soit visible
+            Artisan::call('config:clear');
+            Artisan::call('view:clear');
+            Artisan::call('cache:clear');
+            $steps[] = ['action' => 'cache_clear', 'status' => 'done'];
+
+            return $this->successResponse([
+                'branch' => $branch,
+                'steps' => $steps,
+            ], 'Pull + cache:clear OK');
+        } catch (\Throwable $e) {
+            Log::error('CLI: pull failed', ['error' => $e->getMessage()]);
+            return $this->errorResponse('Pull failed: ' . $e->getMessage(), ['steps' => $steps], 500);
         }
     }
 }
