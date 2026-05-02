@@ -392,10 +392,24 @@ class ESBTPAnnonceController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate(10);
 
+            // Hydratation cohérente pour la vue (is_read toujours présent)
+            foreach ($messages as $message) {
+                $message->is_read = true;
+                $message->read_at = null;
+            }
+
             $stats = [
                 'total' => $messages->total(),
                 'unread' => 0,
-                'urgent' => 0,
+                'urgent' => $messages->total() > 0
+                    ? ESBTPAnnonce::where('is_published', true)
+                        ->where('date_publication', '<=', now())
+                        ->where(function($q) {
+                            $q->whereNull('date_expiration')->orWhere('date_expiration', '>=', now());
+                        })
+                        ->where('priorite', 2)
+                        ->count()
+                    : 0,
             ];
 
             return view('esbtp.annonces.student-messages', compact('messages', 'stats', 'etudiant'));
@@ -407,22 +421,21 @@ class ESBTPAnnonceController extends Controller
             ->latest()
             ->value('classe_id');
 
-        // Récupérer tous les messages pertinents pour l'étudiant
-        $query = ESBTPAnnonce::where('is_published', true)
-            ->where('date_publication', '<=', now())
-            ->where(function($q) use ($classeId, $etudiant) {
+        // Closure qui applique les filtres d'audience (général / classe / étudiant)
+        $audienceFilter = function ($query) use ($classeId, $etudiant) {
+            $query->where(function($q) use ($classeId, $etudiant) {
                 // Messages généraux
                 $q->where('type', 'general');
 
                 // Messages pour la classe de l'étudiant (si disponible)
-                    if ($classeId) {
-                        $q->orWhere(function($sq) use ($classeId) {
-                            $sq->where('type', 'classe')
-                               ->whereHas('classes', function($cq) use ($classeId) {
-                                    $cq->where('esbtp_classes.id', $classeId);
-                               });
-                        });
-                    }
+                if ($classeId) {
+                    $q->orWhere(function($sq) use ($classeId) {
+                        $sq->where('type', 'classe')
+                           ->whereHas('classes', function($cq) use ($classeId) {
+                                $cq->where('esbtp_classes.id', $classeId);
+                           });
+                    });
+                }
 
                 // Messages spécifiques à l'étudiant
                 $q->orWhere(function($sq) use ($etudiant) {
@@ -431,24 +444,29 @@ class ESBTPAnnonceController extends Controller
                             $eq->where('esbtp_etudiants.id', $etudiant->id);
                        });
                 });
-            })
-            ->where(function($q) {
-                // Seulement les messages non expirés ou sans date d'expiration
-                $q->whereNull('date_expiration')
-                  ->orWhere('date_expiration', '>=', now());
             });
+        };
 
-        // Tri par priorité (descendant) puis par date (plus récent d'abord)
-        $messages = $query->orderBy('priorite', 'desc')
-                          ->orderBy('created_at', 'desc')
-                          ->paginate(10);
+        // Builder de base réutilisable pour pagination + comptes
+        $baseBuilder = ESBTPAnnonce::where('is_published', true)
+            ->where('date_publication', '<=', now())
+            ->where(function($q) {
+                $q->whereNull('date_expiration')->orWhere('date_expiration', '>=', now());
+            })
+            ->tap($audienceFilter);
+
+        // Pagination des messages affichés (ordre priorité desc puis date desc)
+        $messages = (clone $baseBuilder)
+            ->orderBy('priorite', 'desc')
+            ->orderBy('created_at', 'desc')
+            ->paginate(10);
 
         // Pour chaque message, déterminer s'il a été lu par l'étudiant
         foreach ($messages as $message) {
             if ($message->type == 'etudiant') {
                 $pivot = $message->etudiants()->wherePivot('etudiant_id', $etudiant->id)->first();
                 if ($pivot) {
-                    $message->is_read = $pivot->pivot->is_read;
+                    $message->is_read = (bool) $pivot->pivot->is_read;
                     $message->read_at = $pivot->pivot->read_at;
                 } else {
                     $message->is_read = false;
@@ -466,13 +484,36 @@ class ESBTPAnnonceController extends Controller
             }
         }
 
-        // Statistiques des messages
+        // Statistiques globales (pas seulement page courante) avec builders frais
+        $totalCount = (clone $baseBuilder)->count();
+
+        $unreadCount = (clone $baseBuilder)
+            ->where(function($q) use ($etudiant) {
+                // Non lu = soit pas dans esbtp_annonce_lectures (général/classe),
+                //        soit pivot etudiant avec is_read=false (etudiant)
+                $q->where(function($sq) use ($etudiant) {
+                    $sq->whereIn('type', ['general', 'classe'])
+                       ->whereDoesntHave('lectures', function($lq) use ($etudiant) {
+                           $lq->where('etudiant_id', $etudiant->id);
+                       });
+                })->orWhere(function($sq) use ($etudiant) {
+                    $sq->where('type', 'etudiant')
+                       ->whereHas('etudiants', function($eq) use ($etudiant) {
+                           $eq->where('esbtp_etudiants.id', $etudiant->id)
+                              ->where('esbtp_annonce_etudiant.is_read', false);
+                       });
+                });
+            })
+            ->count();
+
+        $urgentCount = (clone $baseBuilder)
+            ->where('priorite', 2)
+            ->count();
+
         $stats = [
-            'total' => $messages->total(),
-            'unread' => $query->whereDoesntHave('lectures', function($q) use ($etudiant) {
-                $q->where('etudiant_id', $etudiant->id);
-            })->count(),
-            'urgent' => $query->where('priorite', 2)->count()
+            'total' => $totalCount,
+            'unread' => $unreadCount,
+            'urgent' => $urgentCount,
         ];
 
         return view('esbtp.annonces.student-messages', compact('messages', 'stats', 'etudiant'));
