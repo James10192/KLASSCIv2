@@ -102,7 +102,7 @@
         flex-wrap: wrap;
         align-items: flex-start;
         position: relative;
-        z-index: 3;
+        z-index: 10;
     }
     .ets-btn {
         display: inline-flex;
@@ -159,15 +159,17 @@
         margin: .3rem 0;
     }
 
-    /* KPIs dans hero */
+    /* KPIs dans hero — pointer-events:none pour ne pas bloquer les boutons en hover */
     .ets-kpis {
         display: flex;
         gap: .65rem;
         margin-top: 1.2rem;
         flex-wrap: wrap;
         position: relative;
-        z-index: 2;
+        z-index: 1;
+        pointer-events: none;
     }
+    .ets-kpis .ets-kpi { pointer-events: auto; }
     .ets-kpi {
         flex: 1;
         min-width: 160px;

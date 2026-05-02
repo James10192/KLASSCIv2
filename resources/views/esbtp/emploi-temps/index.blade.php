@@ -1287,7 +1287,7 @@
         border: 1px solid #e2e8f0;
         border-radius: 14px;
         margin-bottom: .85rem;
-        overflow: hidden;
+        /* overflow visible pour ne pas clipper le dropdown kebab */
         box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
         transition: box-shadow .2s ease, transform .2s ease, border-color .2s ease;
     }
@@ -1300,7 +1300,11 @@
         width: 4px;
         flex-shrink: 0;
         display: block;
+        border-radius: 14px 0 0 14px;
     }
+    /* Dropdown kebab dans la card doit s'afficher au-dessus des cards voisines */
+    .et-card .dropdown-menu.show { z-index: 1060; }
+    .et-card:has(.dropdown-menu.show) { z-index: 5; }
     .et-card__inner {
         flex: 1;
         padding: 1rem 1.1rem;
