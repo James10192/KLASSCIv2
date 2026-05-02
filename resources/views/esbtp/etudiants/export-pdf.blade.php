@@ -434,16 +434,19 @@
                 </div>
             </div>
             <div class="summary-right">
+                @php $pdfCfg = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings(); @endphp
                 <div class="summary-card" style="margin-left: 3px;">
                     <div class="summary-title">Informations document</div>
                     <div style="margin-bottom: 5px;">
                         <div style="font-size: 8px; color: #6b7280;">Généré le :</div>
                         <div style="font-size: 9px; font-weight: 600; color: #374151;">{{ now()->format('d/m/Y à H:i') }}</div>
                     </div>
-                    <div style="margin-bottom: 5px;">
-                        <div style="font-size: 8px; color: #6b7280;">Par :</div>
-                        <div style="font-size: 9px; font-weight: 600; color: #374151;">{{ auth()->user()->name ?? 'Système' }}</div>
-                    </div>
+                    @if(($pdfCfg['show_generator_name'] ?? true) && auth()->check())
+                        <div style="margin-bottom: 5px;">
+                            <div style="font-size: 8px; color: #6b7280;">Par :</div>
+                            <div style="font-size: 9px; font-weight: 600; color: #374151;">{{ auth()->user()->name }}</div>
+                        </div>
+                    @endif
                     <div>
                         <div style="font-size: 8px; color: #6b7280;">Établissement :</div>
                         <div style="font-size: 9px; font-weight: 600; color: #374151;">{{ $etablissement['nom'] ?? 'KLASSCI' }}</div>

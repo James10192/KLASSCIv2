@@ -528,8 +528,9 @@
         @endif
 
         <!-- Generation Info -->
+        @php $pdfCfg = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings(); @endphp
         <div class="generation-info">
-            <strong>Document genere automatiquement le {{ now()->format('d/m/Y a H:i') }}</strong><br>
+            <strong>Document genere automatiquement le {{ now()->format('d/m/Y a H:i') }}</strong>@if(($pdfCfg['show_generator_name'] ?? true) && auth()->check()) par {{ auth()->user()->name }}@endif<br>
             {{ $etablissement['nom'] ?? 'KLASSCI' }} - Systeme de Gestion des Inscriptions
         </div>
     </div>

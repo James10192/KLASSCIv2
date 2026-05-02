@@ -281,8 +281,9 @@
     </div>
 
     <!-- Footer -->
+    @php $pdfCfg = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings(); @endphp
     <div class="footer">
-        <p>Document généré le {{ now()->format('d/m/Y à H:i') }}</p>
+        <p>Document généré le {{ now()->format('d/m/Y à H:i') }}@if(($pdfCfg['show_generator_name'] ?? true) && auth()->check()) par {{ auth()->user()->name }}@endif</p>
         <p>Rapport de présence - {{ $classe->name }}</p>
     </div>
 </body>

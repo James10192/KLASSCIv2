@@ -208,8 +208,8 @@
     
     <!-- Informations étudiant -->
     <div class="student-info">
-        <p>{{ $etudiant->sexe === 'F' ? 'Mme, M., Mlle' : 'M.' }} <strong>{{ strtoupper($etudiant->nom) }} {{ strtoupper($etudiant->prenom) }}</strong></p>
-        <p>Né(e) le <strong>{{ $etudiant->date_naissance ? $etudiant->date_naissance->format('d/m/Y') : 'Non renseigné' }}</strong> à <strong>{{ strtoupper($etudiant->lieu_naissance) }}</strong></p>
+        <p>{{ $etudiant->sexe === 'F' ? 'Mme, M., Mlle' : 'M.' }} <strong>{{ mb_strtoupper($etudiant->nom ?? '', 'UTF-8') }} {{ mb_strtoupper($etudiant->prenom ?? '', 'UTF-8') }}</strong></p>
+        <p>Né(e) le <strong>{{ $etudiant->date_naissance ? $etudiant->date_naissance->format('d/m/Y') : 'Non renseigné' }}</strong> à <strong>{{ mb_strtoupper($etudiant->lieu_naissance ?? '', 'UTF-8') }}</strong></p>
         <p>Sous le matricule : <strong>{{ $etudiant->numero_etudiant ?? 'Non attribué' }}</strong></p>
     </div>
     
@@ -235,7 +235,7 @@
                     @endif
                 </td>
                 <td>{{ $inscription->classe->nom ?? ($inscription->niveau->nom ?? 'Non renseigné') }}</td>
-                <td>{{ strtoupper($inscription->filiere->nom ?? 'Non renseigné') }}</td>
+                <td>{{ mb_strtoupper($inscription->filiere->nom ?? 'Non renseigné', 'UTF-8') }}</td>
                 <td>
                     @if($inscription->moyenne_generale)
                         {{ number_format($inscription->moyenne_generale, 2) }}

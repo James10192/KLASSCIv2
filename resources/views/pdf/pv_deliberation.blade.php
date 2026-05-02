@@ -64,7 +64,7 @@
         <div class="school-info">
             <h2>ÉCOLE SUPÉRIEURE DU BÂTIMENT ET DES TRAVAUX PUBLICS</h2>
             <p>Année Universitaire {{ $bulletins->first()->annee_universitaire->annee }}</p>
-            <h3>PROCÈS VERBAL DE DÉLIBÉRATION - {{ strtoupper($periode) }}</h3>
+            <h3>PROCÈS VERBAL DE DÉLIBÉRATION - {{ mb_strtoupper($periode ?? '', 'UTF-8') }}</h3>
         </div>
     </div>
 

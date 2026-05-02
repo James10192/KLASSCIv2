@@ -87,7 +87,7 @@
                 <th rowspan="2">Matières</th>
                 <th rowspan="2">Coef</th>
                 @foreach($bulletins as $bulletin)
-                    <th colspan="3">{{ strtoupper($bulletin->periode) }}</th>
+                    <th colspan="3">{{ mb_strtoupper($bulletin->periode ?? '', 'UTF-8') }}</th>
                 @endforeach
             </tr>
             <tr>

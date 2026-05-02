@@ -555,8 +555,9 @@
         @endif
 
         <!-- Generation Info -->
+        @php $pdfCfg = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings(); @endphp
         <div class="generation-info">
-            <strong>Document généré automatiquement le {{ now()->format('d/m/Y à H:i') }}</strong><br>
+            <strong>Document généré automatiquement le {{ now()->format('d/m/Y à H:i') }}</strong>@if(($pdfCfg['show_generator_name'] ?? true) && auth()->check()) par {{ auth()->user()->name }}@endif<br>
             {{ $etablissement['nom'] ?? 'KLASSCI' }} - Système de Gestion des Évaluations<br>
             <strong>Instructions :</strong> Renseigner la note dans la case prévue · Cocher ABS si l'étudiant était absent
         </div>

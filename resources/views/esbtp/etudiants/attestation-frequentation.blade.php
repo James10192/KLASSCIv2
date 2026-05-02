@@ -304,14 +304,14 @@
 
             <p>
                 {{ $etudiant->sexe === 'F' ? 'Mme / M. / Mlle' : 'M.' }}
-                <span class="hl">{{ strtoupper($etudiant->nom) }} {{ strtoupper($etudiant->prenoms) }}</span>
+                <span class="hl">{{ mb_strtoupper($etudiant->nom ?? '', 'UTF-8') }} {{ mb_strtoupper($etudiant->prenoms ?? '', 'UTF-8') }}</span>
             </p>
 
             @if($etudiant->date_naissance)
             <p>
                 Né(e) le <span class="hl">{{ $etudiant->date_naissance->format('d/m/Y') }}</span>
                 @if($etudiant->lieu_naissance)
-                    à <span class="hl">{{ strtoupper($etudiant->lieu_naissance) }}</span>
+                    à <span class="hl">{{ mb_strtoupper($etudiant->lieu_naissance ?? '', 'UTF-8') }}</span>
                 @endif
             </p>
             @endif
@@ -340,7 +340,7 @@
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Filière :</div>
-                    <div class="detail-value">{{ strtoupper($inscription->filiere->name ?? 'Non renseigné') }}</div>
+                    <div class="detail-value">{{ mb_strtoupper($inscription->filiere->name ?? 'Non renseigné', 'UTF-8') }}</div>
                 </div>
                 <div class="detail-row">
                     <div class="detail-label">Sous le numéro Matricule :</div>
