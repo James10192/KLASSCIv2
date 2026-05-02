@@ -200,7 +200,7 @@
             <img src="{{ public_path($config['school_logo']) }}" alt="Logo" class="logo">
             <div class="school-name">{{ $config['school_name'] }}</div>
             <div class="school-info">{{ $config['school_address'] }} | Tel: {{ $config['school_phone'] }} | Email: {{ $config['school_email'] }}</div>
-            <div class="document-title">ÉVALUATION - {{ strtoupper($evaluation->type) }}</div>
+            <div class="document-title">ÉVALUATION - {{ mb_strtoupper($evaluation->type ?? '', 'UTF-8') }}</div>
         </div>
 
         <div class="info-section">
@@ -315,7 +315,8 @@
         <div class="page-number">Page 1</div>
 
         <div class="footer">
-            Document généré le {{ $date_edition }} | {{ $config['school_name'] }}
+            @php $pdfCfg = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings(); @endphp
+            Document généré le {{ $date_edition }}@if(($pdfCfg['show_generator_name'] ?? true) && auth()->check()) par {{ auth()->user()->name }}@endif | {{ $config['school_name'] }}
         </div>
     </div>
 </body>

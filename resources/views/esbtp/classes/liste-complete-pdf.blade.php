@@ -425,16 +425,19 @@
                     </div>
                 </div>
                 <div class="footer-right">
+                    @php $pdfCfg = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings(); @endphp
                     <div class="info-card">
                         <div class="summary-title">Informations document</div>
                         <div class="info-field">
                             <div class="info-label">Document genere le :</div>
                             <div class="info-value">{{ now()->format('d/m/Y à H:i') }}</div>
                         </div>
-                        <div class="info-field">
-                            <div class="info-label">Par :</div>
-                            <div class="info-value">{{ auth()->user()->name ?? 'Systeme' }}</div>
-                        </div>
+                        @if(($pdfCfg['show_generator_name'] ?? true) && auth()->check())
+                            <div class="info-field">
+                                <div class="info-label">Par :</div>
+                                <div class="info-value">{{ auth()->user()->name }}</div>
+                            </div>
+                        @endif
                         <div class="info-field">
                             <div class="info-label">Etablissement :</div>
                             <div class="info-value">{{ $etablissement['nom'] ?? 'KLASSCI' }}</div>

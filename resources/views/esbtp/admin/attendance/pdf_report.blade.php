@@ -172,8 +172,9 @@
         </tbody>
     </table>
 
+    @php $pdfCfg = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings(); @endphp
     <div class="footer">
-        <p>Rapport généré le {{ now()->format('d/m/Y H:i') }}</p>
+        <p>Rapport généré le {{ now()->format('d/m/Y H:i') }}@if(($pdfCfg['show_generator_name'] ?? true) && auth()->check()) par {{ auth()->user()->name }}@endif</p>
     </div>
 </body>
 </html>

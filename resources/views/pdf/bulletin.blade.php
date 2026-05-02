@@ -70,7 +70,7 @@
         <div class="school-info">
             <h2>ÉCOLE SUPÉRIEURE DU BÂTIMENT ET DES TRAVAUX PUBLICS</h2>
             <p>Année Universitaire {{ $bulletin->annee_universitaire->annee }}</p>
-            <h3>BULLETIN DE NOTES - {{ strtoupper($bulletin->periode) }}</h3>
+            <h3>BULLETIN DE NOTES - {{ mb_strtoupper($bulletin->periode, 'UTF-8') }}</h3>
         </div>
     </div>
 

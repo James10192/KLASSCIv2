@@ -178,7 +178,7 @@
             @endif
         </td>
         <td width="82%" style="background-color: {{ $headerBg }}; padding: 12px 16px; vertical-align: middle; -webkit-print-color-adjust: exact; color-adjust: exact;">
-            <span style="font-size: 15px; font-weight: 700; color: {{ $headerText }};">{{ strtoupper($schoolName) }}</span>
+            <span style="font-size: 15px; font-weight: 700; color: {{ $headerText }};">{{ mb_strtoupper($schoolName ?? '', 'UTF-8') }}</span>
             @if($schoolAddress || $schoolPhone || $schoolEmail)
             <br><span style="font-size: 8.5px; color: {{ $headerText }}; opacity: 0.85;">@if($schoolAddress){{ $schoolAddress }}@endif @if($schoolPhone)@if($schoolAddress) | @endif Tel: {{ $schoolPhone }}@endif @if($schoolEmail)@if($schoolAddress || $schoolPhone) | @endif Email: {{ $schoolEmail }}@endif</span>
             @endif
@@ -295,7 +295,7 @@
                 <span class="student-matricule">{{ $etudiant?->matricule ?? 'N/A' }}</span>
             </td>
             <td style="font-weight: bold; font-size: 9px;">
-                {{ $etudiant ? strtoupper($etudiant->nom ?? '') . ' ' . ($etudiant->prenoms ?? '') : '—' }}
+                {{ $etudiant ? mb_strtoupper($etudiant->nom ?? '', 'UTF-8') . ' ' . ($etudiant->prenoms ?? '') : '—' }}
             </td>
             <td style="font-size: 8.5px; color: #374151;">
                 {{ $inscription->classe->name ?? ($inscription->niveauEtude->name ?? '—') }}
@@ -375,7 +375,9 @@
                     <td style="padding: 8px 9px 4px; font-size: 10px; font-weight: 600; color: #374151; text-transform: uppercase; letter-spacing: 0.2px;">Informations document</td>
                 </tr>
                 <tr><td style="padding: 4px 9px;"><span class="info-label">Généré le :</span> <span class="info-value">{{ now()->format('d/m/Y à H:i') }}</span></td></tr>
-                <tr><td style="padding: 4px 9px;"><span class="info-label">Par :</span> <span class="info-value">{{ auth()->user()->name ?? 'Système' }}</span></td></tr>
+                @if(($pdfSettings['show_generator_name'] ?? true) && auth()->check())
+                    <tr><td style="padding: 4px 9px;"><span class="info-label">Par :</span> <span class="info-value">{{ auth()->user()->name }}</span></td></tr>
+                @endif
                 <tr><td style="padding: 4px 9px;"><span class="info-label">Établissement :</span> <span class="info-value">{{ $schoolName }}</span></td></tr>
                 <tr><td style="padding: 4px 9px 8px;"><span class="info-label">Catégorie :</span> <span class="info-value">{{ $category->name ?? '—' }}</span></td></tr>
             </table>

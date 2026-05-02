@@ -253,8 +253,9 @@
         </div>
 
         {{-- Ligne meta generation (discret) --}}
+        @php $pdfCfg = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings(); @endphp
         <div class="generation-info">
-            Document généré le {{ now()->format('d/m/Y à H:i') }} · {{ $etablissement['nom'] ?? 'KLASSCI' }}
+            Document généré le {{ now()->format('d/m/Y à H:i') }}@if(($pdfCfg['show_generator_name'] ?? true) && auth()->check()) par {{ auth()->user()->name }}@endif · {{ $etablissement['nom'] ?? 'KLASSCI' }}
         </div>
     </div>
 </body>

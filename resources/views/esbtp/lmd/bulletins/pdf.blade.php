@@ -202,11 +202,11 @@
             <table width="100%" cellspacing="0" cellpadding="2">
                 <tr>
                     <td width="25%" style="font-size: 9.5px; font-weight: bold;">NOM :</td>
-                    <td style="font-size: 9.5px;">{{ strtoupper($etudiant->nom ?? '') }}</td>
+                    <td style="font-size: 9.5px;">{{ mb_strtoupper($etudiant->nom ?? '', 'UTF-8') }}</td>
                 </tr>
                 <tr>
                     <td style="font-size: 9.5px; font-weight: bold;">PRENOMS :</td>
-                    <td style="font-size: 9.5px;">{{ strtoupper($etudiant->prenoms ?? '') }}</td>
+                    <td style="font-size: 9.5px;">{{ mb_strtoupper($etudiant->prenoms ?? '', 'UTF-8') }}</td>
                 </tr>
                 <tr>
                     <td style="font-size: 9.5px; font-weight: bold;">DATE NAISS. :</td>

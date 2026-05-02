@@ -67,7 +67,7 @@
         <img src="{{ public_path('images/logo.png') }}" alt="Logo" class="logo">
         <div class="school-info">
             <h2>ÉCOLE SUPÉRIEURE DU BÂTIMENT ET DES TRAVAUX PUBLICS</h2>
-            <h3>RAPPORT D'ABSENCES - {{ strtoupper($periode) }}</h3>
+            <h3>RAPPORT D'ABSENCES - {{ mb_strtoupper($periode ?? '', 'UTF-8') }}</h3>
         </div>
     </div>
 
