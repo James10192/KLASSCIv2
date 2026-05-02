@@ -52,10 +52,11 @@
 .ms-thread-empty { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--ms-muted); padding: 2rem; text-align: center; }
 .ms-msgs { flex: 1; overflow-y: auto; padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: .25rem; position: relative; }
 /* Message grouping : remove margin between consecutive same-sender messages within 5min */
-.ms-msg-group { display: flex; flex-direction: column; gap: .15rem; }
-.ms-msg-group + .ms-msg-group { margin-top: .65rem; }
+.ms-msg-group { display: flex; flex-direction: column; gap: .35rem; }
+.ms-msg-group + .ms-msg-group { margin-top: 1rem; }
 /* Wrapper <div> créé par Alpine x-for : sans flex, align-self sur l'enfant ne s'applique pas. */
 .ms-msg-group > div { display: flex; flex-direction: column; }
+.ms-msg-group > div + div { margin-top: .25rem; }
 .ms-msg { max-width: 70%; padding: .55rem .85rem; border-radius: 14px; font-size: .9rem; line-height: 1.4; word-break: break-word; transition: opacity .2s; }
 .ms-msg.pending { opacity: .55; }
 .ms-msg.mine { align-self: flex-end; background: var(--ms-bubble-mine); color: #fff; border-bottom-right-radius: 4px; }
@@ -67,7 +68,7 @@
 .ms-msg-group .ms-msg.theirs:not(:first-child) { border-top-left-radius: 6px; }
 .ms-msg.system { align-self: center; background: rgba(245, 158, 11, 0.1); color: #92400e; border: 1px solid rgba(245,158,11,.3); font-size: .82rem; font-weight: 500; padding: .5rem .9rem; border-radius: 99px; }
 .ms-msg.action_card { align-self: flex-start; background: var(--ms-surface); border: 1px solid var(--ms-border); padding: 1rem 1.1rem; max-width: 85%; box-shadow: 0 1px 3px rgba(15,23,42,.04); border-radius: 12px; }
-.ms-msg-meta { font-size: .68rem; color: var(--ms-muted); margin: .2rem .5rem 0; }
+.ms-msg-meta { font-size: .68rem; color: var(--ms-muted); margin: .35rem .55rem 0; }
 .ms-msg-group.mine .ms-msg-meta { text-align: right; }
 /* "X new messages" banner — replaces auto-scroll anti-pattern */
 .ms-new-banner { position: sticky; bottom: .5rem; align-self: center; background: var(--ms-primary); color: #fff; padding: .4rem .9rem; border-radius: 99px; font-size: .8rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(4,83,203,.3); z-index: 5; transition: all .15s; }
@@ -484,12 +485,14 @@
                                                 {{-- Action card riche : share inscription/paiement --}}
                                                 <div class="acard" :class="{ mine: m.mine }">
                                                     <div class="acard-head">
-                                                        <div class="acard-avatar">
-                                                            <template x-if="m.payload?.snapshot?.etudiant?.photo_url">
-                                                                <img :src="m.payload.snapshot.etudiant.photo_url" :alt="m.payload.snapshot.etudiant.name">
+                                                        <div class="acard-avatar" x-data="{ imgFailed: false }">
+                                                            <template x-if="m.payload?.snapshot?.etudiant?.photo_url && !imgFailed">
+                                                                <img :src="m.payload.snapshot.etudiant.photo_url"
+                                                                     :alt="m.payload.snapshot.etudiant.name"
+                                                                     x-on:error="imgFailed = true">
                                                             </template>
-                                                            <template x-if="!m.payload?.snapshot?.etudiant?.photo_url">
-                                                                <span x-text="(m.payload?.snapshot?.etudiant?.name || '?').slice(0,2).toUpperCase()"></span>
+                                                            <template x-if="!m.payload?.snapshot?.etudiant?.photo_url || imgFailed">
+                                                                <span x-text="(m.payload?.snapshot?.etudiant?.name || '?').trim().split(/\s+/).slice(0,2).map(w => w[0]).join('').toUpperCase() || '?'"></span>
                                                             </template>
                                                         </div>
                                                         <div class="acard-head-info">
@@ -794,6 +797,11 @@ function messagesPage() {
         notifications: [],
         notifPollInterval: null,
         msgPollInterval: null,
+        convPollInterval: null,
+        clockInterval: null,
+        now: Date.now(),
+        seenNotifIds: new Set(),
+        seenLastMessageIds: new Map(), // convId → lastMessage.id (pour diff)
         dmQuery: '',
         dmResults: [],
         dmModal: null,
@@ -810,8 +818,14 @@ function messagesPage() {
         pickerModal: null,
 
         init() {
-            this.loadNotifications();
-            this.notifPollInterval = setInterval(() => this.loadNotifications(), 30000);
+            // Seed l'état initial pour ne pas re-toaster les conversations existantes au load.
+            this.conversations.forEach(c => {
+                if (c.last_message?.id) this.seenLastMessageIds.set(c.id, c.last_message.id);
+            });
+            this.loadNotifications(/* silent: */ true);
+            this.notifPollInterval = setInterval(() => this.loadNotifications(false), 30000);
+            this.convPollInterval = setInterval(() => this.refreshConversations(), 30000);
+            this.clockInterval = setInterval(() => { this.now = Date.now(); }, 60000);
         },
 
         // Groupement messages par sender consécutif < 5min (anti-clutter — finding research 2026)
@@ -927,11 +941,11 @@ function messagesPage() {
 
         formatTime(iso) {
             if (!iso) return '';
-            const d = new Date(iso);
-            const now = new Date();
-            const diff = (now - d) / 1000 / 60;
+            const t = new Date(iso).getTime();
+            const diff = (this.now - t) / 60000; // dépend de this.now reactive → re-render auto chaque minute
             if (diff < 1) return 'à l\'instant';
             if (diff < 60) return Math.floor(diff) + ' min';
+            const d = new Date(iso);
             if (diff < 1440) return d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
             return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short' });
         },
@@ -945,12 +959,64 @@ function messagesPage() {
             })[t] || t;
         },
 
-        async loadNotifications() {
+        async loadNotifications(silent = false) {
             try {
                 const r = await fetch('/messages/notifications', { headers: { Accept: 'application/json' } });
                 const data = await r.json();
+                if (!silent) {
+                    // Diff : pour chaque nouvelle notif → toast cliquable
+                    data.items.forEach(n => {
+                        if (this.seenNotifIds.has(n.id)) return;
+                        this.seenNotifIds.add(n.id);
+                        const label = n.data?.label || this.formatType(n.data?.type) || 'Nouvelle notification';
+                        const actor = n.data?.actor_name ? n.data.actor_name + ' · ' : '';
+                        const url = n.data?.action_url || null;
+                        this.showActionToast(actor + label, 'info', url ? () => { window.location.href = url; } : null);
+                    });
+                }
+                data.items.forEach(n => this.seenNotifIds.add(n.id));
                 this.notifications = data.items;
             } catch (e) { /* silent */ }
+        },
+
+        /** Polling sidebar : refresh la liste des conversations + détecte les nouveaux messages dans des convs inactives → toast cliquable. */
+        async refreshConversations() {
+            try {
+                const r = await fetch('/messages/conversations-list', { headers: { Accept: 'application/json' } });
+                const data = await r.json();
+
+                // Diff : message id différent dans une conv non-active ⇒ nouveau message
+                data.items.forEach(c => {
+                    const last = c.last_message;
+                    const seen = this.seenLastMessageIds.get(c.id);
+                    if (!last) return;
+                    if (seen !== last.id && this.activeConvo?.id !== c.id && last.sender_id !== -1) {
+                        const sender = c.title || c.participants?.[0]?.name || 'Conversation';
+                        const preview = last.preview || last.body || '';
+                        this.showActionToast(`${sender} · ${preview}`, 'info', () => this.openConvo(c));
+                    }
+                    this.seenLastMessageIds.set(c.id, last.id);
+                });
+
+                this.conversations = data.items;
+            } catch (e) { /* silent */ }
+        },
+
+        /** Toast cliquable réutilisable. Si onClick fourni → cursor pointer + click trigger. */
+        showActionToast(message, type = 'info', onClick = null, duration = 6000) {
+            if (typeof window.showToast !== 'function') return;
+            window.showToast(message, type, duration);
+            if (!onClick) return;
+            // Attache onClick au dernier toast créé
+            const container = document.getElementById('ii-common-toast-container');
+            const toast = container?.lastElementChild;
+            if (!toast) return;
+            toast.style.cursor = 'pointer';
+            toast.addEventListener('click', (e) => {
+                if (e.target.closest('button')) return; // ne pas trigger sur le close button
+                onClick();
+                toast.remove();
+            });
         },
 
         async markRead(id) {
