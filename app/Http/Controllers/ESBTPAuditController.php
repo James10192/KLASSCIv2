@@ -420,8 +420,8 @@ class ESBTPAuditController extends Controller
      */
     private function formatChanges($audit)
     {
-        $oldValues = json_decode($audit->old_values, true) ?? [];
-        $newValues = json_decode($audit->new_values, true) ?? [];
+        $oldValues = $this->normalizeAuditValues($audit->old_values);
+        $newValues = $this->normalizeAuditValues($audit->new_values);
 
         $changes = [];
 
@@ -438,6 +438,27 @@ class ESBTPAuditController extends Controller
         }
 
         return $changes;
+    }
+
+    /**
+     * Normalise old_values / new_values d'un audit en array.
+     * Le model OwenIt\Auditing\Models\Audit cast déjà ces colonnes via Eloquent,
+     * donc selon le contexte on reçoit un array (Eloquent hydrate) ou un string
+     * (lecture brute via builder/raw query).
+     */
+    private function normalizeAuditValues($value): array
+    {
+        if (empty($value)) {
+            return [];
+        }
+        if (is_array($value)) {
+            return $value;
+        }
+        if (is_string($value)) {
+            $decoded = json_decode($value, true);
+            return is_array($decoded) ? $decoded : [];
+        }
+        return [];
     }
 
     /**

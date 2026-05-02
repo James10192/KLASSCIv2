@@ -88,63 +88,8 @@ class Kernel extends HttpKernel
         'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
     ];
 
-    /**
-     * Define the application's route model bindings, pattern filters, etc.
-     */
-    public function boot(): void
-    {
-        RateLimiter::for('api', function (Request $request) {
-            return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
-        });
-
-        // Rate limiting pour les audits (Task #10 - Sécurité)
-        RateLimiter::for('audit', function (Request $request) {
-            return [
-                // Limite générale pour les pages d'audit
-                Limit::perMinute(100)->by($request->user()?->id ?: $request->ip()),
-                // Limite plus stricte pour les utilisateurs non authentifiés
-                Limit::perMinute(10)->by($request->ip())->when(!$request->user()),
-            ];
-        });
-
-        // Rate limiting strict pour les opérations de sécurité sensibles
-        RateLimiter::for('security', function (Request $request) {
-            return [
-                // Limite très restrictive pour les opérations de sécurité
-                Limit::perMinute(30)->by($request->user()?->id ?: $request->ip()),
-                // Limite par IP pour prévenir les attaques
-                Limit::perHour(100)->by($request->ip()),
-            ];
-        });
-
-        // Rate limiting pour les exports (très restrictif)
-        RateLimiter::for('exports', function (Request $request) {
-            return [
-                // Maximum 5 exports par minute par utilisateur
-                Limit::perMinute(5)->by($request->user()?->id ?: $request->ip()),
-                // Maximum 20 exports par heure par utilisateur
-                Limit::perHour(20)->by($request->user()?->id ?: $request->ip()),
-            ];
-        });
-
-        // Rate limiting pour les tentatives de connexion
-        RateLimiter::for('login', function (Request $request) {
-            return [
-                // 5 tentatives par minute par email
-                Limit::perMinute(5)->by($request->input('email')),
-                // 10 tentatives par minute par IP
-                Limit::perMinute(10)->by($request->ip()),
-            ];
-        });
-
-        // Rate limiting pour les opérations financières critiques
-        RateLimiter::for('financial', function (Request $request) {
-            return [
-                // Limite stricte pour les opérations financières
-                Limit::perMinute(20)->by($request->user()?->id ?: $request->ip()),
-                // Limite par IP pour la sécurité
-                Limit::perHour(50)->by($request->ip()),
-            ];
-        });
-    }
+    // Note : aucune méthode boot() ici. Laravel n'invoque PAS boot() sur le Kernel
+    // HTTP — seuls les ServiceProvider l'invoquent. Les rate limiters sont déclarés
+    // dans app/Providers/RouteServiceProvider.php::configureRateLimiting() (qui est
+    // appelé par RouteServiceProvider::boot(), garanti exécuté à chaque requête).
 }

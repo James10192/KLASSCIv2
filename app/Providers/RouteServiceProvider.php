@@ -76,6 +76,54 @@ class RouteServiceProvider extends ServiceProvider
         RateLimiter::for('lms-discovery', function (Request $request) {
             return Limit::perMinute(10)->by($request->ip());
         });
+
+        // === Rate limiters Sécurité (Task #10) ===
+        // Note historique : ces limiters étaient déclarés dans app/Http/Kernel.php::boot()
+        // mais cette méthode boot() n'est jamais invoquée par Laravel sur la classe Kernel
+        // HTTP — seuls les ServiceProvider::boot() le sont. Conséquence : les noms
+        // `audit`, `security`, `exports`, `login`, `financial` n'étaient pas enregistrés
+        // et le middleware `throttle:audit` tombait sur la limite par défaut Laravel
+        // (60/min, mais affichée 0 par certaines versions). Migré ici 2026-05-02.
+
+        // Audit log : 600/min pour user authentifié (couvre admin intensif),
+        // 10/min anonyme. Le check role-based (superAdmin/serviceTechnique sans
+        // limite) a été retiré car il dépendait de Spatie qui n'est pas garanti
+        // résolu au niveau du rate limiter dans un contexte multi-tenant.
+        RateLimiter::for('audit', function (Request $request) {
+            if ($request->user()) {
+                return Limit::perMinute(600)->by($request->user()->id);
+            }
+            return Limit::perMinute(10)->by($request->ip());
+        });
+
+        // Sécurité : opérations sensibles (changement de rôle, override, etc.)
+        RateLimiter::for('security', function (Request $request) {
+            return [
+                Limit::perMinute(30)->by($request->user()?->id ?: $request->ip()),
+                Limit::perHour(100)->by($request->ip()),
+            ];
+        });
+
+        // Exports : très restrictif (PDF/Excel coûteux côté serveur)
+        RateLimiter::for('exports', function (Request $request) {
+            return [
+                Limit::perMinute(5)->by($request->user()?->id ?: $request->ip()),
+                Limit::perHour(20)->by($request->user()?->id ?: $request->ip()),
+            ];
+        });
+
+        // Login : anti brute-force
+        RateLimiter::for('login', function (Request $request) {
+            return [
+                Limit::perMinute(5)->by((string) $request->input('email')),
+                Limit::perMinute(10)->by($request->ip()),
+            ];
+        });
+
+        // Opérations financières critiques (validations paiement, etc.)
+        RateLimiter::for('financial', function (Request $request) {
+            return Limit::perMinute(20)->by($request->user()?->id ?: $request->ip());
+        });
     }
 
     /**
