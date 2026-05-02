@@ -12,6 +12,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### Améliorations
+
+- **Customisation PDF par tenant avec aperçu en nouvelle tab** (`/esbtp/settings` tab PDF) — chaque école peut désormais ajuster la mise en page de ses exports PDF : taille du logo, marges (4 côtés en mm), texte personnalisé du pied de page, toggle pagination, toggle mention « Directeur », filigrane (texte + opacité 2-30 % + rotation -90° à 90°). Bouton « Aperçu PDF (nouvelle tab) » qui génère un document de démonstration représentatif (KPIs + tableau étudiants + totaux) avec les paramètres en cours d'édition, sans persister. Le composant `<x-pdf-document>` accepte un prop `$overrides` qui se merge avec les settings sauvegardées, ce qui rend l'aperçu strictement fidèle au rendu final. Permission `settings.pdf.manage` (registry) pour les `secretaire` et `superAdmin`.
+
 ### Migrations DB
 
 - **Fusion `esbtp_enseignant_profiles` dans `esbtp_teachers`** — ajout de 6 colonnes à `esbtp_teachers` : `regime` (enum vacataire/permanent/consultant), `taux_horaire`, `date_debut_activite`, `diplome_principal`, `universite_diplome`, `annee_diplome`. La data utile de `esbtp_enseignant_profiles` est copiée via UPDATE INNER JOIN (idempotent : `COALESCE` préserve les valeurs déjà saisies). `type_contrat` et `statut_emploi` consolidés en un seul champ `regime`. Drop des tables `esbtp_enseignant_profiles`, `esbtp_enseignant_disponibilites`, `esbtp_enseignant_affectations` (tables ambitieuses jamais réellement alimentées par l'UI moderne).

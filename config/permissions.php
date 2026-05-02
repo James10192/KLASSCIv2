@@ -138,6 +138,21 @@ return [
             'icon' => 'fa-edit',
             'aliases' => ['edit_settings'],
         ],
+        'settings.pdf.manage' => [
+            'label' => 'Personnaliser le rendu PDF (couleurs, logo, marges, footer, watermark)',
+            'group' => 'Administration',
+            'icon' => 'fa-file-pdf',
+        ],
+        'exports.schedules.manage' => [
+            'label' => 'Gérer les exports programmés (créer, modifier, supprimer)',
+            'group' => 'Administration',
+            'icon' => 'fa-calendar-alt',
+        ],
+        'exports.schedules.send_external' => [
+            'label' => 'Envoyer un export programmé vers un email externe au domaine de l\'école',
+            'group' => 'Administration',
+            'icon' => 'fa-paper-plane',
+        ],
 
         // ===== Étudiants =====
         'students.view' => [
@@ -1145,6 +1160,8 @@ return [
             'reports.view',
             'resultats.view', 'resultats.export',
             'paiements.export',  // Lot 15
+            'settings.pdf.manage',  // Phase 9 — customisation PDF tenant
+            'exports.schedules.manage', 'exports.schedules.send_external',  // Phase 8 — exports programmés
             'users.manage',
             'identity.school_manager',
             // Modules toggle
@@ -1167,6 +1184,7 @@ return [
             'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
             'students.view', 'inscriptions.view',
             'reports.view', 'reports.generate',
+            'exports.schedules.manage', 'exports.schedules.send_external',  // Phase 8 — exports programmés
             'messages.send', 'messages.receive', 'annonces.view',
             'module.comptabilite.access', 'module.communication.access',
         ],

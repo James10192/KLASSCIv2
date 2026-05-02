@@ -1217,6 +1217,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/settings/validate', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.validate');
         });
 
+        // Phase 9 — Aperçu PDF avec settings non persistés (nouvelle tab)
+        Route::post('/settings/pdf-preview', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'pdfPreview'])
+            ->middleware(['permission:settings.pdf.manage', 'throttle:30,1'])
+            ->name('esbtp.settings.pdf-preview');
+
         // ESBTP Parents Search (pour modal de sélection dans edit étudiant)
         Route::get('/parents/search', [ESBTPEtudiantController::class, 'searchParents'])->name('esbtp.parents.search');
     });
