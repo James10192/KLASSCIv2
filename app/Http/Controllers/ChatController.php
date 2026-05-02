@@ -117,6 +117,7 @@ class ChatController extends Controller
     public function startDm(Request $request): JsonResponse
     {
         $data = $request->validate(['user_id' => 'required|exists:users,id']);
+        $this->assertCanReceiveMessages((int) $data['user_id']);
         $convo = $this->findOrCreateDm($request->user(), (int) $data['user_id']);
         return response()->json(['conversation_id' => $convo->id], $convo->wasRecentlyCreated ? 201 : 200);
     }
@@ -216,9 +217,16 @@ class ChatController extends Controller
     public function searchUsers(Request $request): JsonResponse
     {
         $q = $request->validate(['q' => 'required|string|min:2|max:100'])['q'];
+
+        // Issue #315 : isolation étudiants — on n'expose pas les comptes étudiants
+        // dans le picker du chat staff. Les étudiants ne peuvent pas recevoir de DM
+        // (ils consultent leurs annonces via /esbtp/mes-messages). On exclut donc
+        // explicitement les users qui ont le rôle `etudiant` ET on conserve les
+        // checks existants (auto-exclu, actifs).
         $users = User::query()
             ->where('id', '!=', $request->user()->id)
             ->where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'etudiant'))
             ->where(fn ($qb) => $qb->where('name', 'like', "%{$q}%")->orWhere('email', 'like', "%{$q}%"))
             ->limit(10)
             ->get(['id', 'name', 'email']);
@@ -400,6 +408,9 @@ class ChatController extends Controller
     {
         abort_if($recipientId === $sender->id, 422, 'Vous ne pouvez pas vous envoyer un message à vous-même.');
 
+        // Issue #315 : double-check au niveau du repository d'écriture. Toute conversation
+        // existante (legacy) reste accessible — on bloque uniquement la *création* de
+        // nouvelles conversations vers un destinataire qui ne peut pas recevoir de DM.
         $existing = ChatConversation::where('type', 'dm')
             ->whereHas('participants', fn ($q) => $q->where('user_id', $sender->id))
             ->whereHas('participants', fn ($q) => $q->where('user_id', $recipientId))
@@ -409,10 +420,35 @@ class ChatController extends Controller
             return $existing;
         }
 
+        $this->assertCanReceiveMessages($recipientId);
+
         return DB::transaction(function () use ($sender, $recipientId) {
             $conversation = ChatConversation::create(['type' => 'dm', 'last_message_at' => now()]);
             $conversation->participants()->attach([$sender->id, $recipientId]);
             return $conversation;
         });
+    }
+
+    /**
+     * Garde-fou : un destinataire de DM doit pouvoir *recevoir* des messages directs.
+     *
+     * Les étudiants (rôle `etudiant`) ont seulement `messages.receive` au sens
+     * « recevoir des annonces », pas du DM staff. La permission canonique pour
+     * être éligible à un DM est `messages.send` (staff actif). On vérifie donc
+     * que le destinataire dispose de cette permission, ce qui exclut nativement
+     * les étudiants et tout user désactivé/sans rôle.
+     *
+     * Issue #315 : isoler les étudiants du chat user-to-user.
+     */
+    private function assertCanReceiveMessages(int $userId): void
+    {
+        $recipient = User::find($userId);
+        abort_if(!$recipient, 422, 'Destinataire introuvable.');
+        abort_if(!$recipient->is_active, 422, 'Le destinataire est inactif.');
+        abort_if(
+            !$recipient->can('messages.send'),
+            422,
+            'Le destinataire ne peut pas recevoir de messages directs (probablement un étudiant — utilisez les annonces).'
+        );
     }
 }
