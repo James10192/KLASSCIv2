@@ -2230,4 +2230,20 @@ Route::middleware(['auth', 'paywall'])->prefix('messages')->name('chat.')->group
     Route::get('/users/search', [\App\Http\Controllers\ChatController::class, 'searchUsers'])->name('users.search');
     Route::get('/notifications', [\App\Http\Controllers\ChatController::class, 'notifications'])->name('notifications');
     Route::post('/notifications/{id}/read', [\App\Http\Controllers\ChatController::class, 'markNotificationRead'])->name('notifications.read');
+
+    // Action cards — partager une inscription/paiement comme card riche
+    Route::get('/picker/inscriptions', [\App\Http\Controllers\ChatController::class, 'pickerInscriptions'])
+        ->middleware('throttle:60,1')
+        ->name('picker.inscriptions');
+    Route::get('/picker/paiements', [\App\Http\Controllers\ChatController::class, 'pickerPaiements'])
+        ->middleware('throttle:60,1')
+        ->name('picker.paiements');
+    Route::post('/share/inscription/{inscription}', [\App\Http\Controllers\ChatController::class, 'shareInscription'])
+        ->whereNumber('inscription')
+        ->middleware(['permission:messages.send', 'throttle:30,1'])
+        ->name('share.inscription');
+    Route::post('/share/paiement/{paiement}', [\App\Http\Controllers\ChatController::class, 'sharePaiement'])
+        ->whereNumber('paiement')
+        ->middleware(['permission:messages.send', 'throttle:30,1'])
+        ->name('share.paiement');
 });

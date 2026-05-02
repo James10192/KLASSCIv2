@@ -4,13 +4,20 @@ namespace App\Http\Controllers;
 
 use App\Models\ChatConversation;
 use App\Models\ChatMessage;
+use App\Models\ESBTPInscription;
+use App\Models\ESBTPPaiement;
 use App\Models\User;
+use App\Services\ChatActionResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ChatController extends Controller
 {
+    public function __construct(private readonly ChatActionResolver $resolver = new ChatActionResolver())
+    {
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
@@ -47,6 +54,9 @@ class ChatController extends Controller
             ->reverse()
             ->values();
 
+        $viewer = $request->user();
+        $maps = $this->resolver->preload($messages);
+
         return response()->json([
             'conversation' => $conversation->only(['id', 'type', 'title', 'context']),
             'messages' => $messages->map(fn ($m) => [
@@ -56,8 +66,9 @@ class ChatController extends Controller
                 'type' => $m->type,
                 'body' => $m->body,
                 'payload' => $m->payload,
+                'cta' => $m->type === 'action_card' ? $this->resolver->resolveCta($m, $viewer, $maps) : null,
                 'created_at' => $m->created_at->toIso8601String(),
-                'mine' => $m->sender_id === $request->user()->id,
+                'mine' => $m->sender_id === $viewer->id,
             ])->all(),
         ]);
     }
@@ -93,26 +104,8 @@ class ChatController extends Controller
     public function startDm(Request $request): JsonResponse
     {
         $data = $request->validate(['user_id' => 'required|exists:users,id']);
-        if ($data['user_id'] === $request->user()->id) {
-            return response()->json(['error' => 'Cannot DM yourself'], 422);
-        }
-
-        $existing = ChatConversation::where('type', 'dm')
-            ->whereHas('participants', fn ($q) => $q->where('user_id', $request->user()->id))
-            ->whereHas('participants', fn ($q) => $q->where('user_id', $data['user_id']))
-            ->first();
-
-        if ($existing) {
-            return response()->json(['conversation_id' => $existing->id]);
-        }
-
-        $convo = DB::transaction(function () use ($request, $data) {
-            $c = ChatConversation::create(['type' => 'dm', 'last_message_at' => now()]);
-            $c->participants()->attach([$request->user()->id, $data['user_id']]);
-            return $c;
-        });
-
-        return response()->json(['conversation_id' => $convo->id], 201);
+        $convo = $this->findOrCreateDm($request->user(), (int) $data['user_id']);
+        return response()->json(['conversation_id' => $convo->id], $convo->wasRecentlyCreated ? 201 : 200);
     }
 
     public function notifications(Request $request): JsonResponse
@@ -152,5 +145,190 @@ class ChatController extends Controller
     {
         $isMember = $conversation->participants()->where('user_id', $user->id)->exists();
         abort_unless($isMember, 403, 'Vous n\'êtes pas membre de cette conversation.');
+    }
+
+    /**
+     * Partager une inscription dans une conversation (existante ou nouveau DM).
+     */
+    public function shareInscription(Request $request, ESBTPInscription $inscription): JsonResponse
+    {
+        abort_unless($request->user()->can('inscriptions.view'), 403);
+
+        $data = $request->validate([
+            'recipient_id' => 'required_without:conversation_id|exists:users,id',
+            'conversation_id' => 'required_without:recipient_id|exists:chat_conversations,id',
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        $payload = $this->resolver->snapshotInscription($inscription);
+
+        return $this->dispatchActionCard($request, $data, $payload);
+    }
+
+    /**
+     * Partager un paiement dans une conversation (existante ou nouveau DM).
+     */
+    public function sharePaiement(Request $request, ESBTPPaiement $paiement): JsonResponse
+    {
+        abort_unless($request->user()->can('paiements.view'), 403);
+
+        $data = $request->validate([
+            'recipient_id' => 'required_without:conversation_id|exists:users,id',
+            'conversation_id' => 'required_without:recipient_id|exists:chat_conversations,id',
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        $payload = $this->resolver->snapshotPaiement($paiement);
+
+        return $this->dispatchActionCard($request, $data, $payload);
+    }
+
+    /**
+     * Picker : recherche d'inscriptions à partager (autocomplete par étudiant/matricule).
+     */
+    public function pickerInscriptions(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->can('inscriptions.view'), 403);
+
+        $q = trim($request->validate(['q' => 'nullable|string|max:100'])['q'] ?? '');
+
+        $rows = ESBTPInscription::query()
+            ->select(['id', 'etudiant_id', 'classe_id', 'workflow_step', 'status', 'annee_universitaire_id'])
+            ->with([
+                'etudiant:id,nom,prenoms,matricule',
+                'classe:id,name',
+            ])
+            ->when($q !== '', function ($qb) use ($q) {
+                $qb->whereHas('etudiant', function ($eq) use ($q) {
+                    $eq->where('nom', 'like', "%{$q}%")
+                       ->orWhere('prenoms', 'like', "%{$q}%")
+                       ->orWhere('matricule', 'like', "%{$q}%");
+                });
+            })
+            ->latest('id')
+            ->limit(15)
+            ->get();
+
+        return response()->json([
+            'items' => $rows->map(fn (ESBTPInscription $i) => [
+                'id' => $i->id,
+                'etudiant' => trim(($i->etudiant?->nom ?? '') . ' ' . ($i->etudiant?->prenoms ?? '')) ?: '—',
+                'matricule' => $i->etudiant?->matricule,
+                'classe' => $i->classe?->name ?? '—',
+                'workflow_step' => $i->workflow_step,
+                'workflow_label' => ChatActionResolver::workflowLabel($i->workflow_step),
+                'status' => $i->status,
+            ])->all(),
+        ]);
+    }
+
+    /**
+     * Picker : recherche de paiements à partager.
+     */
+    public function pickerPaiements(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->can('paiements.view'), 403);
+
+        $q = trim($request->validate(['q' => 'nullable|string|max:100'])['q'] ?? '');
+
+        $rows = ESBTPPaiement::query()
+            ->select(['id', 'inscription_id', 'etudiant_id', 'montant', 'status', 'validateur_id', 'date_paiement', 'mode_paiement', 'reference_paiement'])
+            ->with(['etudiant:id,nom,prenoms,matricule'])
+            ->when($q !== '', function ($qb) use ($q) {
+                $qb->whereHas('etudiant', function ($eq) use ($q) {
+                    $eq->where('nom', 'like', "%{$q}%")
+                       ->orWhere('prenoms', 'like', "%{$q}%")
+                       ->orWhere('matricule', 'like', "%{$q}%");
+                })->orWhere('reference_paiement', 'like', "%{$q}%");
+            })
+            ->latest('id')
+            ->limit(15)
+            ->get();
+
+        return response()->json([
+            'items' => $rows->map(fn (ESBTPPaiement $p) => [
+                'id' => $p->id,
+                'etudiant' => trim(($p->etudiant?->nom ?? '') . ' ' . ($p->etudiant?->prenoms ?? '')) ?: '—',
+                'matricule' => $p->etudiant?->matricule,
+                'montant' => (float) $p->montant,
+                'statut' => $p->status,
+                'is_validated' => $p->status === 'validé',
+                'reference' => $p->reference_paiement,
+                'date' => optional($p->date_paiement)->toDateString(),
+            ])->all(),
+        ]);
+    }
+
+    /**
+     * Pipeline interne : trouve/crée la conv + insère le message action_card + (optionnel) note texte.
+     *
+     * @param array{recipient_id?: int, conversation_id?: int, note?: string} $data
+     */
+    private function dispatchActionCard(Request $request, array $data, array $payload): JsonResponse
+    {
+        $sender = $request->user();
+
+        $result = DB::transaction(function () use ($sender, $data, $payload) {
+            $conversation = $this->findOrCreateConversation($sender, $data);
+
+            $card = ChatMessage::create([
+                'chat_conversation_id' => $conversation->id,
+                'sender_id' => $sender->id,
+                'type' => 'action_card',
+                'body' => null,
+                'payload' => $payload,
+            ]);
+
+            if (!empty($data['note'])) {
+                ChatMessage::create([
+                    'chat_conversation_id' => $conversation->id,
+                    'sender_id' => $sender->id,
+                    'type' => 'text',
+                    'body' => $data['note'],
+                ]);
+            }
+
+            $conversation->update(['last_message_at' => now()]);
+
+            return [$conversation, $card];
+        });
+
+        [$conversation, $card] = $result;
+
+        return response()->json([
+            'conversation_id' => $conversation->id,
+            'message_id' => $card->id,
+            'redirect' => route('chat.index') . '?conversation=' . $conversation->id,
+        ], 201);
+    }
+
+    private function findOrCreateConversation(User $sender, array $data): ChatConversation
+    {
+        if (!empty($data['conversation_id'])) {
+            $conversation = ChatConversation::findOrFail($data['conversation_id']);
+            $this->authorizeMember($conversation, $sender);
+            return $conversation;
+        }
+        return $this->findOrCreateDm($sender, (int) $data['recipient_id']);
+    }
+
+    private function findOrCreateDm(User $sender, int $recipientId): ChatConversation
+    {
+        abort_if($recipientId === $sender->id, 422, 'Vous ne pouvez pas vous envoyer un message à vous-même.');
+
+        $existing = ChatConversation::where('type', 'dm')
+            ->whereHas('participants', fn ($q) => $q->where('user_id', $sender->id))
+            ->whereHas('participants', fn ($q) => $q->where('user_id', $recipientId))
+            ->first();
+
+        if ($existing) {
+            return $existing;
+        }
+
+        return DB::transaction(function () use ($sender, $recipientId) {
+            $conversation = ChatConversation::create(['type' => 'dm', 'last_message_at' => now()]);
+            $conversation->participants()->attach([$sender->id, $recipientId]);
+            return $conversation;
+        });
     }
 }
