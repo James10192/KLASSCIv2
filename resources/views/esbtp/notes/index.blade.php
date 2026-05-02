@@ -228,6 +228,10 @@
                 </div>
             </div>
             <div class="modal-footer nm-modal-footer">
+                {{-- Badge bulletin synchronisé : visible après chaque saveNote() success --}}
+                <span id="nm-sync-badge" class="badge bg-light text-success border me-auto" style="display:none; font-weight: 500; padding: .45rem .65rem;" title="Le bulletin sera mis à jour automatiquement avec cette note">
+                    <i class="fas fa-check-circle me-1"></i>Bulletin synchronisé · <span id="nm-sync-time">à l'instant</span>
+                </span>
                 <a href="#" class="btn btn-outline-secondary disabled" id="previewBlankPdfBtn" target="_blank" rel="noopener" aria-disabled="true" tabindex="-1" title="Aperçu PDF dans un nouvel onglet">
                     <i class="fas fa-eye me-1"></i>Aperçu PDF
                 </a>
@@ -1028,6 +1032,7 @@ function saveNote(studentId, evaluationId, noteValue) {
                 return;
             }
             triggerRowHighlight(studentId);
+            markBulletinSynced();
 
             if (!notesData[studentId]) notesData[studentId] = {};
             notesData[studentId][evaluationId] = isAbsent ? 0 : noteValue;
@@ -1047,6 +1052,59 @@ function saveNote(studentId, evaluationId, noteValue) {
         }
     });
 }
+
+/**
+ * Badge "Bulletin synchronisé" — affiché dans le footer du modal après chaque
+ * sauvegarde de note réussie. Le timestamp se rafraîchit toutes les 30s pour
+ * afficher "il y a Xs / Xmin" en français.
+ */
+let nmLastSyncAt = null;
+let nmSyncInterval = null;
+
+function markBulletinSynced() {
+    nmLastSyncAt = new Date();
+    const badge = document.getElementById('nm-sync-badge');
+    if (!badge) return;
+
+    badge.style.display = 'inline-block';
+    updateSyncTimeLabel();
+
+    if (!nmSyncInterval) {
+        nmSyncInterval = setInterval(updateSyncTimeLabel, 30000);
+    }
+}
+
+function updateSyncTimeLabel() {
+    const label = document.getElementById('nm-sync-time');
+    if (!label || !nmLastSyncAt) return;
+
+    const diffSec = Math.max(0, Math.floor((Date.now() - nmLastSyncAt.getTime()) / 1000));
+
+    let txt;
+    if (diffSec < 5) {
+        txt = "à l'instant";
+    } else if (diffSec < 60) {
+        txt = `il y a ${diffSec}s`;
+    } else if (diffSec < 3600) {
+        const m = Math.floor(diffSec / 60);
+        txt = `il y a ${m} min`;
+    } else {
+        const h = Math.floor(diffSec / 3600);
+        txt = `il y a ${h} h`;
+    }
+    label.textContent = txt;
+}
+
+// Reset le badge quand on rouvre le modal sur une autre classe
+$(document).on('hidden.bs.modal', '#classSelectionModal', function () {
+    const badge = document.getElementById('nm-sync-badge');
+    if (badge) badge.style.display = 'none';
+    nmLastSyncAt = null;
+    if (nmSyncInterval) {
+        clearInterval(nmSyncInterval);
+        nmSyncInterval = null;
+    }
+});
 
 function toggleAbsence(studentId, evaluationId, isAbsent) {
     const input = $(`input.note-input[data-student-id="${studentId}"][data-eval-id="${evaluationId}"]`);
