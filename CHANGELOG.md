@@ -12,6 +12,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### Ajouts
+
+- **Excel bidirectionnel + aperçu impact bulletin temps réel** (`/esbtp/notes`) — nouveau bouton « Exporter Excel » dans le modal de saisie qui télécharge un fichier xlsx ergonomique (1 ligne par étudiant, 1 colonne par évaluation avec barème et coefficient dans le header, freeze pane sur étudiant + nom, autoFilter, matricule en text pour préserver les zéros initiaux, ligne meta cachée pour ré-import). Nouveau bouton « Importer Excel » avec drag-drop premium, modal preview Avant/Après (4 KPIs créer/maj/inchangé/erreur, table colorée par action, validation par cellule barème + matricule + format français), application atomique en transaction. Sous chaque ligne étudiant dans la grille de saisie, un encadré discret affiche désormais en temps réel l'impact d'une note hypothétique sur la moyenne matière, la moyenne générale et la mention CAMES (Très Bien/Bien/Assez Bien/Passable/Insuffisant), debouncé 500 ms. Permission `notes.import_excel` ajoutée au registry pour secrétaire, coordinateur, enseignant et superAdmin. Throttle 10/min export, 5/min dry-run import, 3/min apply import, 60/min preview impact.
+
 ### Corrections
 
 - **Bug accents en majuscules dans les titres PDF** — les exports comptabilité affichaient « TABLEAU DéTAILLé DES PAIEMENTS » au lieu de « TABLEAU DÉTAILLÉ DES PAIEMENTS ». La fonction PHP `strtoupper()` ne gère pas correctement les caractères UTF-8 (les accents `é`, `à`, `è`, etc. ne sont pas convertis en majuscules). Remplacement par `mb_strtoupper(..., 'UTF-8')` sur les 3 templates PDF concernés (recouvrement, analytics, paiements détaillés). Effet collatéral : les badges de statut (Validé / Rejeté / Annulé) et les libellés de niveau de risque sont également correctement majuscules.

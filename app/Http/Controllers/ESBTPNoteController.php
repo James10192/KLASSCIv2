@@ -2,22 +2,28 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\NotesClasseMatiereExport;
+use App\Http\Requests\Notes\ImportNotesRequest;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPFiliere;
+use App\Models\ESBTPInscription;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
 use App\Models\User;
+use App\Services\NotesImportService;
 use App\Services\NotificationService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+use Maatwebsite\Excel\Facades\Excel;
 
 class ESBTPNoteController extends Controller
 {
@@ -1203,5 +1209,373 @@ class ESBTPNoteController extends Controller
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
         }
+    }
+
+    // ════════════════════════════════════════════════════════════════════════
+    // PR #7 — Excel import/export bidirectionnel + preview impact bulletin
+    // ════════════════════════════════════════════════════════════════════════
+
+    /**
+     * Export Excel des notes d'une classe + matière + période.
+     * Format optimisé pour saisie offline puis ré-import.
+     */
+    public function exportExcel(Request $request)
+    {
+        $user = Auth::user();
+        if (! $user || ! $user->can('notes.view')) {
+            abort(403, "Vous n'avez pas la permission d'exporter les notes.");
+        }
+
+        $validator = \Validator::make($request->all(), [
+            'classe' => ['required', 'integer', 'exists:esbtp_classes,id'],
+            'matiere' => ['required', 'integer', 'exists:esbtp_matieres,id'],
+            'periode' => ['required', 'in:semestre1,semestre2'],
+            'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        $classeId = (int) $request->input('classe');
+        $matiereId = (int) $request->input('matiere');
+        $periode = (string) $request->input('periode');
+        $anneeId = $request->filled('annee_universitaire_id')
+            ? (int) $request->input('annee_universitaire_id')
+            : null;
+
+        $export = new NotesClasseMatiereExport($classeId, $matiereId, $periode, $anneeId);
+
+        if ($export->cellsCount() > 5000) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Volume trop important : '
+                    . $export->studentsCount() . ' étudiants × '
+                    . $export->evaluationsCount() . ' évaluations dépasse la limite de 5000 cellules. Affinez les filtres.',
+            ], 422);
+        }
+
+        $classeSlug = Str::slug($export->classeName() ?? ('classe-' . $classeId));
+        $matiereSlug = Str::slug($export->matiereName() ?? ('matiere-' . $matiereId));
+        $filename = sprintf('notes_%s_%s_%s_%s.xlsx', $classeSlug, $matiereSlug, $periode, now()->format('Ymd-His'));
+
+        return Excel::download($export, $filename);
+    }
+
+    /**
+     * Dry-run : analyse l'import Excel et retourne le diff Avant/Après sans persister.
+     */
+    public function importDryRun(ImportNotesRequest $request, NotesImportService $service)
+    {
+        try {
+            $file = $request->file('file');
+            $parsed = $service->parseFile($file);
+
+            $diff = $service->dryRun(
+                $parsed,
+                (int) $request->input('classe_id'),
+                (int) $request->input('matiere_id'),
+                (string) $request->input('periode'),
+                $request->filled('annee_universitaire_id')
+                    ? (int) $request->input('annee_universitaire_id')
+                    : null
+            );
+
+            return response()->json([
+                'success' => true,
+                'summary' => $diff['summary'],
+                'changes' => $diff['changes'],
+                'errors' => $diff['errors'],
+                'evaluations' => $diff['evaluations'],
+                'parsed_signature' => $this->parsedSignature($parsed),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('importDryRun error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Impossible de lire le fichier Excel : ' . $e->getMessage(),
+            ], 422);
+        }
+    }
+
+    /**
+     * Applique l'import Excel (transaction).
+     */
+    public function importApply(ImportNotesRequest $request, NotesImportService $service)
+    {
+        try {
+            $file = $request->file('file');
+            $parsed = $service->parseFile($file);
+
+            $result = $service->apply(
+                $parsed,
+                (int) $request->input('classe_id'),
+                (int) $request->input('matiere_id'),
+                (string) $request->input('periode'),
+                $request->filled('annee_universitaire_id')
+                    ? (int) $request->input('annee_universitaire_id')
+                    : null
+            );
+
+            if (($result['errors'] ?? 0) > 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Import bloqué : ' . $result['errors'] . ' erreur(s) détectée(s). Corrigez le fichier puis réessayez.',
+                    'errors' => $result['error_details'] ?? [],
+                ], 422);
+            }
+
+            return response()->json([
+                'success' => true,
+                'created' => $result['created'],
+                'updated' => $result['updated'],
+                'message' => sprintf('Import réussi : %d note(s) créée(s), %d mise(s) à jour.', $result['created'], $result['updated']),
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('importApply error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'application de l\'import : ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Calcule l'impact d'une note hypothétique sur la moyenne matière + générale.
+     * Utilisé par l'UI temps réel sous chaque ligne étudiant.
+     */
+    public function previewImpact(Request $request)
+    {
+        $user = Auth::user();
+        if (! $user || (! $user->can('notes.view') && ! $user->can('notes.view_own') && ! $user->can('notes.create') && ! $user->can('notes.edit'))) {
+            return response()->json(['success' => false, 'message' => 'Permission refusée.'], 403);
+        }
+
+        $validator = \Validator::make($request->all(), [
+            'etudiant_id' => ['required', 'integer', 'exists:esbtp_etudiants,id'],
+            'classe_id' => ['required', 'integer', 'exists:esbtp_classes,id'],
+            'matiere_id' => ['required', 'integer', 'exists:esbtp_matieres,id'],
+            'periode' => ['required', 'in:semestre1,semestre2'],
+            'evaluation_id' => ['required', 'integer', 'exists:esbtp_evaluations,id'],
+            'hypothetical_note' => ['required', 'numeric', 'min:0'],
+            'is_absent' => ['nullable', 'boolean'],
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['success' => false, 'message' => $validator->errors()->first()], 422);
+        }
+
+        $etudiantId = (int) $request->input('etudiant_id');
+        $classeId = (int) $request->input('classe_id');
+        $matiereId = (int) $request->input('matiere_id');
+        $periode = (string) $request->input('periode');
+        $evaluationId = (int) $request->input('evaluation_id');
+        $hypoValue = (float) $request->input('hypothetical_note');
+        $isAbsent = (bool) $request->input('is_absent', false);
+
+        // Évaluation cible
+        $targetEval = ESBTPEvaluation::find($evaluationId);
+        if (! $targetEval) {
+            return response()->json(['success' => false, 'message' => 'Évaluation introuvable.'], 404);
+        }
+
+        // Validation barème
+        $bareme = max(0.01, (float) $targetEval->bareme);
+        if (! $isAbsent && $hypoValue > $bareme) {
+            return response()->json([
+                'success' => false,
+                'message' => sprintf('Note %s hors barème (max %s).', $hypoValue, $bareme),
+            ], 422);
+        }
+
+        // Toutes les évaluations de la matière + période
+        $evaluations = ESBTPEvaluation::query()
+            ->where('classe_id', $classeId)
+            ->where('matiere_id', $matiereId)
+            ->where('periode', $periode)
+            ->where('is_published', 1)
+            ->get();
+
+        // Notes existantes pour cet étudiant sur ces évaluations
+        $notes = ESBTPNote::where('etudiant_id', $etudiantId)
+            ->whereIn('evaluation_id', $evaluations->pluck('id'))
+            ->get()
+            ->keyBy('evaluation_id');
+
+        // Moyenne matière AVANT
+        $moyenneMatiereAvant = $this->computeMatiereAverage($evaluations, $notes, null, null);
+
+        // Moyenne matière APRÈS (en remplaçant la note de cette éval)
+        $moyenneMatiereApres = $this->computeMatiereAverage($evaluations, $notes, $evaluationId, [
+            'note' => $hypoValue,
+            'is_absent' => $isAbsent,
+        ]);
+
+        $mentionAvant = $this->getMention($moyenneMatiereAvant);
+        $mentionApres = $this->getMention($moyenneMatiereApres);
+
+        // Moyenne générale (toutes matières confondues, période)
+        $moyenneGeneraleAvant = $this->computeGeneralAverage($etudiantId, $classeId, $periode, null, null, null);
+        $moyenneGeneraleApres = $this->computeGeneralAverage($etudiantId, $classeId, $periode, $matiereId, $evaluationId, [
+            'note' => $hypoValue,
+            'is_absent' => $isAbsent,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'matiere_avant' => $moyenneMatiereAvant !== null ? round($moyenneMatiereAvant, 2) : null,
+            'matiere_apres' => $moyenneMatiereApres !== null ? round($moyenneMatiereApres, 2) : null,
+            'mention_avant' => $mentionAvant,
+            'mention_apres' => $mentionApres,
+            'moyenne_generale_avant' => $moyenneGeneraleAvant !== null ? round($moyenneGeneraleAvant, 2) : null,
+            'moyenne_generale_apres' => $moyenneGeneraleApres !== null ? round($moyenneGeneraleApres, 2) : null,
+            'changed_mention' => $mentionAvant !== $mentionApres,
+        ]);
+    }
+
+    /**
+     * Calcule la moyenne d'une matière à partir d'une collection d'évaluations + notes.
+     * Si $overrideEvalId fourni, remplace la note correspondante par $override.
+     *
+     * @param  \Illuminate\Support\Collection  $evaluations
+     * @param  \Illuminate\Support\Collection  $notesByEvalId  (keyBy evaluation_id)
+     * @param  int|null  $overrideEvalId
+     * @param  array{note: float, is_absent: bool}|null  $override
+     */
+    private function computeMatiereAverage($evaluations, $notesByEvalId, ?int $overrideEvalId = null, ?array $override = null): ?float
+    {
+        $totalPondere = 0.0;
+        $totalCoef = 0.0;
+
+        foreach ($evaluations as $eval) {
+            $bareme = max(0.01, (float) ($eval->bareme ?? 20));
+            $coef = (float) ($eval->coefficient ?? 1);
+
+            if ($overrideEvalId !== null && $eval->id === $overrideEvalId && $override !== null) {
+                if ($override['is_absent']) {
+                    continue;
+                }
+                $valSur20 = ((float) $override['note'] / $bareme) * 20;
+                $totalPondere += $valSur20 * $coef;
+                $totalCoef += $coef;
+                continue;
+            }
+
+            $note = $notesByEvalId->get($eval->id);
+            if (! $note) {
+                continue;
+            }
+            if ($note->is_absent) {
+                continue;
+            }
+            $valSur20 = ((float) $note->note / $bareme) * 20;
+            $totalPondere += $valSur20 * $coef;
+            $totalCoef += $coef;
+        }
+
+        return $totalCoef > 0 ? $totalPondere / $totalCoef : null;
+    }
+
+    /**
+     * Calcule la moyenne générale pondérée (par coefficient matière) d'un étudiant
+     * pour une période donnée.
+     *
+     * Si $overrideMatiereId + $overrideEvalId fournis, recalcule la matière concernée
+     * en remplaçant la note.
+     */
+    private function computeGeneralAverage(
+        int $etudiantId,
+        int $classeId,
+        string $periode,
+        ?int $overrideMatiereId,
+        ?int $overrideEvalId,
+        ?array $override
+    ): ?float {
+        $evaluations = ESBTPEvaluation::query()
+            ->where('classe_id', $classeId)
+            ->where('periode', $periode)
+            ->where('is_published', 1)
+            ->get();
+
+        if ($evaluations->isEmpty()) {
+            return null;
+        }
+
+        $matiereIds = $evaluations->pluck('matiere_id')->unique()->values()->all();
+
+        $matiereCoefs = ESBTPMatiere::whereIn('id', $matiereIds)
+            ->get(['id', 'coefficient'])
+            ->mapWithKeys(fn ($m) => [$m->id => max(0.01, (float) ($m->coefficient ?? 1))]);
+
+        $notes = ESBTPNote::where('etudiant_id', $etudiantId)
+            ->whereIn('evaluation_id', $evaluations->pluck('id'))
+            ->get();
+
+        $byMatiere = $evaluations->groupBy('matiere_id');
+
+        $totalPondere = 0.0;
+        $totalCoef = 0.0;
+
+        foreach ($byMatiere as $matiereId => $evalsMat) {
+            $notesMat = $notes->where('matiere_id', $matiereId)->keyBy('evaluation_id');
+
+            $isOverridden = ($overrideMatiereId === (int) $matiereId);
+            $moyMat = $this->computeMatiereAverage(
+                $evalsMat,
+                $notesMat,
+                $isOverridden ? $overrideEvalId : null,
+                $isOverridden ? $override : null
+            );
+
+            if ($moyMat === null) {
+                continue;
+            }
+
+            $coef = $matiereCoefs->get($matiereId, 1.0);
+            $totalPondere += $moyMat * $coef;
+            $totalCoef += $coef;
+        }
+
+        return $totalCoef > 0 ? $totalPondere / $totalCoef : null;
+    }
+
+    /**
+     * Mention CAMES standard sur 20.
+     */
+    private function getMention(?float $moyenne): ?string
+    {
+        if ($moyenne === null) {
+            return null;
+        }
+        if ($moyenne >= 16) {
+            return 'Très Bien';
+        }
+        if ($moyenne >= 14) {
+            return 'Bien';
+        }
+        if ($moyenne >= 12) {
+            return 'Assez Bien';
+        }
+        if ($moyenne >= 10) {
+            return 'Passable';
+        }
+        return 'Insuffisant';
+    }
+
+    /**
+     * Petit hash de la signature du fichier parsé pour idempotence (debug).
+     */
+    private function parsedSignature(array $parsed): string
+    {
+        return substr(md5(json_encode([
+            'rows_count' => count($parsed['rows'] ?? []),
+            'has_meta' => isset($parsed['meta']),
+        ])), 0, 12);
     }
 }

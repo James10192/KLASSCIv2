@@ -1461,5 +1461,468 @@ function showYearChangeInfo() {
         $(modalEl).modal('show');
     }
 }
+
+// ════════════════════════════════════════════════════════════════════════
+// PR #7 — Excel Export/Import + Preview Impact (JS)
+// ════════════════════════════════════════════════════════════════════════
+
+const PR7 = {
+    routes: {
+        exportExcel: '{{ route("esbtp.notes.export-excel") }}',
+        @can('notes.import_excel')
+        importDryRun: '{{ route("esbtp.notes.import.dry-run") }}',
+        importApply:  '{{ route("esbtp.notes.import.apply") }}',
+        @endcan
+        previewImpact: '{{ route("esbtp.notes.preview-impact") }}',
+    },
+    csrf: '{{ csrf_token() }}',
+    selectedFile: null,
+    impactDebounceTimers: {},
+    impactCache: {},
+};
+
+// ── Activer/désactiver les boutons Export/Import selon classe + matière + période ──
+function pr7UpdateButtons() {
+    const periodeFilter = $('#periodeFilter').val();
+    const validPeriode = (periodeFilter === 'semestre1' || periodeFilter === 'semestre2');
+    const ready = currentClassId && currentMatiereId && validPeriode;
+
+    const exportBtn = document.getElementById('exportExcelBtn');
+    if (exportBtn) {
+        exportBtn.disabled = !ready;
+        exportBtn.classList.toggle('disabled', !ready);
+        if (ready) {
+            exportBtn.title = `Exporter les notes — ${currentClassname || ''} (${periodeFilter})`;
+        } else {
+            exportBtn.title = 'Sélectionnez classe, matière et période (semestre 1 ou 2)';
+        }
+    }
+
+    const importBtn = document.getElementById('openImportModalBtn');
+    if (importBtn) {
+        importBtn.disabled = !ready;
+        importBtn.classList.toggle('disabled', !ready);
+    }
+}
+
+$(document).on('change', '#matiereSelect, #periodeFilter', pr7UpdateButtons);
+$(document).on('click', '.class-card, .nm-class-card, .class-select-btn, .nm-card-action', function() {
+    setTimeout(pr7UpdateButtons, 50);
+});
+
+// ── Bouton Export Excel ──
+$(document).on('click', '#exportExcelBtn:not(:disabled):not(.disabled)', function() {
+    const periode = $('#periodeFilter').val();
+    if (!currentClassId || !currentMatiereId || !(periode === 'semestre1' || periode === 'semestre2')) {
+        return;
+    }
+    const url = PR7.routes.exportExcel
+        + '?classe=' + encodeURIComponent(currentClassId)
+        + '&matiere=' + encodeURIComponent(currentMatiereId)
+        + '&periode=' + encodeURIComponent(periode);
+    window.open(url, '_blank');
+});
+
+@can('notes.import_excel')
+// ── Ouvrir modal import ──
+$(document).on('click', '#openImportModalBtn:not(:disabled):not(.disabled)', function() {
+    const periode = $('#periodeFilter').val();
+    if (!currentClassId || !currentMatiereId || !(periode === 'semestre1' || periode === 'semestre2')) {
+        return;
+    }
+    pr7ResetImportModal();
+    document.getElementById('nm-import-context').textContent =
+        `${currentClassname || 'Classe'} — ${currentMatiereName || 'Matière'} — ${periode === 'semestre1' ? 'Semestre 1' : 'Semestre 2'}`;
+    const modalEl = document.getElementById('nm-import-preview-modal');
+    if (window.bootstrap && window.bootstrap.Modal) {
+        new window.bootstrap.Modal(modalEl).show();
+    } else {
+        $(modalEl).modal('show');
+    }
+});
+
+function pr7ResetImportModal() {
+    PR7.selectedFile = null;
+    const fileInput = document.getElementById('nm-import-file-input');
+    if (fileInput) fileInput.value = '';
+    document.getElementById('nm-import-dropzone').style.display = '';
+    document.getElementById('nm-import-loading').style.display = 'none';
+    document.getElementById('nm-import-preview').style.display = 'none';
+    document.getElementById('nm-import-errors').style.display = 'none';
+    const confirmBtn = document.getElementById('nm-import-confirm-btn');
+    if (confirmBtn) confirmBtn.disabled = true;
+}
+
+// Drop zone handlers
+$(document).on('click', '#nm-import-dropzone', function() {
+    document.getElementById('nm-import-file-input').click();
+});
+
+$(document).on('dragover', '#nm-import-dropzone', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $(this).addClass('is-dragover');
+});
+
+$(document).on('dragleave drop', '#nm-import-dropzone', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    $(this).removeClass('is-dragover');
+});
+
+$(document).on('drop', '#nm-import-dropzone', function(e) {
+    const files = e.originalEvent.dataTransfer && e.originalEvent.dataTransfer.files;
+    if (files && files.length > 0) {
+        pr7HandleFile(files[0]);
+    }
+});
+
+$(document).on('change', '#nm-import-file-input', function(e) {
+    const file = e.target.files && e.target.files[0];
+    if (file) pr7HandleFile(file);
+});
+
+$(document).on('click', '#nm-import-file-clear', function() {
+    pr7ResetImportModal();
+});
+
+function pr7HandleFile(file) {
+    if (!file) return;
+
+    // Validation basique côté client
+    const validExt = /\.(xlsx|xls|csv)$/i;
+    if (!validExt.test(file.name)) {
+        alert('Format invalide. Utilisez xlsx, xls ou csv.');
+        return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+        alert('Fichier trop volumineux (max 5 Mo).');
+        return;
+    }
+
+    PR7.selectedFile = file;
+    document.getElementById('nm-import-filename').textContent = file.name;
+
+    // Show loading
+    document.getElementById('nm-import-dropzone').style.display = 'none';
+    document.getElementById('nm-import-loading').style.display = '';
+    document.getElementById('nm-import-preview').style.display = 'none';
+
+    // Send dry-run
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('classe_id', currentClassId);
+    formData.append('matiere_id', currentMatiereId);
+    formData.append('periode', $('#periodeFilter').val());
+
+    fetch(PR7.routes.importDryRun, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRF-TOKEN': PR7.csrf,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+    })
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            document.getElementById('nm-import-loading').style.display = 'none';
+            if (!ok || !data.success) {
+                pr7ShowError(data.message || 'Erreur lors de l\'analyse du fichier.');
+                return;
+            }
+            pr7RenderPreview(data);
+        })
+        .catch(err => {
+            console.error(err);
+            document.getElementById('nm-import-loading').style.display = 'none';
+            pr7ShowError('Erreur réseau. Vérifiez votre connexion.');
+        });
+}
+
+function pr7ShowError(message) {
+    document.getElementById('nm-import-dropzone').style.display = '';
+    alert(message);
+}
+
+function pr7RenderPreview(data) {
+    document.getElementById('nm-import-preview').style.display = '';
+
+    const summary = data.summary || {};
+    document.getElementById('nm-import-kpi-create').textContent = summary.will_create || 0;
+    document.getElementById('nm-import-kpi-update').textContent = summary.will_update || 0;
+    document.getElementById('nm-import-kpi-unchanged').textContent = summary.unchanged || 0;
+    document.getElementById('nm-import-kpi-error').textContent = summary.errors || 0;
+
+    // Errors
+    const errors = data.errors || [];
+    const errBox = document.getElementById('nm-import-errors');
+    const errList = document.getElementById('nm-import-errors-list');
+    if (errors.length > 0) {
+        errBox.style.display = '';
+        errList.innerHTML = errors.map(e => `
+            <div class="nm-import-error-item">
+                <span class="err-cell">L${e.row || '?'}${e.col || ''}</span>
+                ${e.matricule ? `<strong>${pr7Escape(e.matricule)}</strong>` : ''}
+                ${e.evaluation ? ` — <em>${pr7Escape(e.evaluation)}</em>` : ''}
+                — ${pr7Escape(e.reason || '')}
+            </div>
+        `).join('');
+    } else {
+        errBox.style.display = 'none';
+    }
+
+    // Changes table
+    const changes = data.changes || [];
+    document.getElementById('nm-import-changes-count').textContent = changes.length;
+    const body = document.getElementById('nm-import-changes-body');
+    if (changes.length === 0) {
+        body.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-3">Aucun changement détecté</td></tr>';
+    } else {
+        body.innerHTML = changes.slice(0, 500).map(c => {
+            const beforeDisp = (c.before === null || c.before === undefined) ? '<em style="color:#94a3b8;">—</em>' : pr7Escape(String(c.before));
+            const afterDisp = (c.after === 'ABS' || c.is_absent)
+                ? '<span class="cell-after-abs">ABS</span>'
+                : `<span class="cell-after">${pr7Escape(String(c.after))}</span>`;
+            return `
+                <tr class="row-${c.action}">
+                    <td>L${c.row || '?'}</td>
+                    <td><strong>${pr7Escape(c.matricule || '')}</strong> — ${pr7Escape(c.etudiant_nom || '')}</td>
+                    <td>${pr7Escape(c.evaluation || '')}</td>
+                    <td><span class="cell-before">${beforeDisp}</span></td>
+                    <td>${afterDisp}</td>
+                    <td><span class="badge-action-${c.action}">${c.action === 'create' ? 'Créer' : 'Mettre à jour'}</span></td>
+                </tr>
+            `;
+        }).join('');
+        if (changes.length > 500) {
+            body.innerHTML += `<tr><td colspan="6" class="text-center text-muted py-2"><em>… ${changes.length - 500} autres changements masqués pour l'affichage. Tous seront appliqués.</em></td></tr>`;
+        }
+    }
+
+    // Confirm button : enabled seulement si pas d'erreurs ET au moins 1 change
+    const confirmBtn = document.getElementById('nm-import-confirm-btn');
+    confirmBtn.disabled = (errors.length > 0) || (changes.length === 0);
+}
+
+// Confirm import → apply
+$(document).on('click', '#nm-import-confirm-btn:not(:disabled)', function() {
+    if (!PR7.selectedFile) return;
+
+    const btn = this;
+    const spinner = document.getElementById('nm-import-confirm-spinner');
+    const icon = document.getElementById('nm-import-confirm-icon');
+    btn.disabled = true;
+    if (spinner) spinner.classList.remove('d-none');
+    if (icon) icon.classList.add('d-none');
+
+    const formData = new FormData();
+    formData.append('file', PR7.selectedFile);
+    formData.append('classe_id', currentClassId);
+    formData.append('matiere_id', currentMatiereId);
+    formData.append('periode', $('#periodeFilter').val());
+
+    fetch(PR7.routes.importApply, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRF-TOKEN': PR7.csrf,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+    })
+        .then(r => r.json().then(data => ({ ok: r.ok, data })))
+        .then(({ ok, data }) => {
+            btn.disabled = false;
+            if (spinner) spinner.classList.add('d-none');
+            if (icon) icon.classList.remove('d-none');
+
+            if (!ok || !data.success) {
+                alert(data.message || 'Erreur lors de l\'application de l\'import.');
+                return;
+            }
+
+            // Toast + close + reload notes grid
+            pr7Toast(data.message || 'Import réussi.', 'success');
+            const modalEl = document.getElementById('nm-import-preview-modal');
+            const modal = window.bootstrap ? window.bootstrap.Modal.getInstance(modalEl) : null;
+            if (modal) modal.hide(); else $(modalEl).modal('hide');
+
+            // Recharge la grille
+            if (typeof loadEvaluationsAndNotes === 'function' && currentClassId && currentMatiereId) {
+                loadEvaluationsAndNotes();
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            btn.disabled = false;
+            if (spinner) spinner.classList.add('d-none');
+            if (icon) icon.classList.remove('d-none');
+            alert('Erreur réseau lors de l\'application de l\'import.');
+        });
+});
+
+function pr7Toast(message, type) {
+    type = type || 'success';
+    if (window.iiToast && typeof window.iiToast === 'function') {
+        window.iiToast(message, type);
+        return;
+    }
+    // Fallback simple
+    const t = document.createElement('div');
+    t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#10b981;color:#fff;padding:0.8rem 1.2rem;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;font-weight:600;';
+    if (type === 'error') t.style.background = '#dc2626';
+    t.textContent = message;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 4000);
+}
+
+@endcan
+
+function pr7Escape(str) {
+    const div = document.createElement('div');
+    div.textContent = String(str);
+    return div.innerHTML;
+}
+
+// ── Preview impact (debounced 500ms après dernière frappe) ──
+$(document).on('focus input', '.note-input', function() {
+    const $input = $(this);
+    const studentId = parseInt($input.data('student-id'));
+    const evalId = parseInt($input.data('eval-id'));
+    const noteValue = $input.val();
+    const isAbsent = $input.is(':disabled');
+
+    if (!studentId || !evalId) return;
+
+    const periode = $('#periodeFilter').val();
+    if (!(periode === 'semestre1' || periode === 'semestre2')) {
+        // Pas de période semestre claire : on ne peut pas calculer
+        return;
+    }
+
+    // Debounce per-input
+    const key = studentId + '_' + evalId;
+    if (PR7.impactDebounceTimers[key]) {
+        clearTimeout(PR7.impactDebounceTimers[key]);
+    }
+
+    // Show "calcul en cours" placeholder immédiatement
+    pr7ShowImpactLoading(studentId, evalId);
+
+    PR7.impactDebounceTimers[key] = setTimeout(() => {
+        pr7FetchImpact(studentId, evalId, noteValue, isAbsent, periode);
+    }, 500);
+});
+
+$(document).on('blur', '.note-input', function() {
+    // Ne pas masquer la row impact au blur (pour la voir après save)
+});
+
+function pr7ShowImpactLoading(studentId, evalId) {
+    const $studentRow = $('.note-input[data-student-id="' + studentId + '"]').first().closest('tr');
+    if ($studentRow.length === 0) return;
+
+    let $impactRow = $studentRow.next('.nm-impact-row[data-impact-student="' + studentId + '"]');
+    if ($impactRow.length === 0) {
+        $impactRow = $('<tr class="nm-impact-row" data-impact-student="' + studentId + '"><td colspan="100"><span class="nm-impact-loading"><i class="fas fa-spinner fa-spin me-1"></i>Calcul en cours…</span></td></tr>');
+        $studentRow.after($impactRow);
+    } else {
+        $impactRow.find('td').html('<span class="nm-impact-loading"><i class="fas fa-spinner fa-spin me-1"></i>Calcul en cours…</span>');
+    }
+}
+
+function pr7FetchImpact(studentId, evalId, noteValue, isAbsent, periode) {
+    if (!currentClassId || !currentMatiereId) return;
+
+    const numNote = noteValue === '' || noteValue === null ? null : parseFloat(noteValue);
+    if (!isAbsent && (numNote === null || isNaN(numNote))) {
+        // Cellule vide : retire la row impact
+        const $studentRow = $('.note-input[data-student-id="' + studentId + '"]').first().closest('tr');
+        $studentRow.next('.nm-impact-row').remove();
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('etudiant_id', studentId);
+    formData.append('classe_id', currentClassId);
+    formData.append('matiere_id', currentMatiereId);
+    formData.append('periode', periode);
+    formData.append('evaluation_id', evalId);
+    formData.append('hypothetical_note', isAbsent ? 0 : numNote);
+    formData.append('is_absent', isAbsent ? 1 : 0);
+
+    fetch(PR7.routes.previewImpact, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-CSRF-TOKEN': PR7.csrf,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+        },
+        credentials: 'same-origin',
+    })
+        .then(r => r.json())
+        .then(data => {
+            if (!data.success) return;
+            pr7RenderImpact(studentId, data);
+        })
+        .catch(() => {
+            // Silencieux : preview est best-effort
+        });
+}
+
+function pr7RenderImpact(studentId, data) {
+    const $studentRow = $('.note-input[data-student-id="' + studentId + '"]').first().closest('tr');
+    if ($studentRow.length === 0) return;
+
+    let $impactRow = $studentRow.next('.nm-impact-row[data-impact-student="' + studentId + '"]');
+    if ($impactRow.length === 0) {
+        $impactRow = $('<tr class="nm-impact-row" data-impact-student="' + studentId + '"><td colspan="100"></td></tr>');
+        $studentRow.after($impactRow);
+    }
+
+    // Récup nom étudiant
+    const studentName = $studentRow.find('.nm-student-fullname').text().trim() || 'Étudiant';
+
+    // Format display values
+    const matAv = data.matiere_avant !== null ? data.matiere_avant.toFixed(2) : '—';
+    const matAp = data.matiere_apres !== null ? data.matiere_apres.toFixed(2) : '—';
+    const genAv = data.moyenne_generale_avant !== null ? data.moyenne_generale_avant.toFixed(2) : '—';
+    const genAp = data.moyenne_generale_apres !== null ? data.moyenne_generale_apres.toFixed(2) : '—';
+
+    let mentionPart = '';
+    if (data.mention_avant && data.mention_apres) {
+        if (data.changed_mention) {
+            const direction = (data.matiere_apres || 0) > (data.matiere_avant || 0) ? 'up' : 'down';
+            mentionPart = `<span class="nm-impact-mention nm-impact-mention-${direction}">${pr7Escape(data.mention_avant)} → ${pr7Escape(data.mention_apres)}</span>`;
+        } else {
+            mentionPart = `<span class="nm-impact-mention">${pr7Escape(data.mention_apres)}</span>`;
+        }
+    }
+
+    const html = `
+        <div class="nm-impact-content">
+            <span><strong>${pr7Escape(studentName)}</strong></span>
+            <div class="nm-impact-block">
+                <span class="nm-impact-label">moyenne matière</span>
+                <span class="nm-impact-value-old">${matAv}</span>
+                <i class="fas fa-arrow-right nm-impact-arrow"></i>
+                <span class="nm-impact-value-new">${matAp}</span>
+                ${mentionPart}
+            </div>
+            <div class="nm-impact-block">
+                <span class="nm-impact-label">moyenne générale</span>
+                <span class="nm-impact-value-old">${genAv}</span>
+                <i class="fas fa-arrow-right nm-impact-arrow"></i>
+                <span class="nm-impact-value-new">${genAp}</span>
+            </div>
+        </div>
+    `;
+    $impactRow.find('td').html(html);
+}
+
 </script>
 @endpush
