@@ -2226,7 +2226,7 @@ Route::middleware(['auth', 'paywall'])->prefix('messages')->name('chat.')->group
     Route::get('/notifications', [\App\Http\Controllers\ChatController::class, 'notifications'])->name('notifications');
     Route::post('/notifications/{id}/read', [\App\Http\Controllers\ChatController::class, 'markNotificationRead'])->name('notifications.read');
 
-    // Action cards (issue #303) — partager une inscription/paiement comme card riche
+    // Action cards — partager une inscription/paiement comme card riche
     Route::get('/picker/inscriptions', [\App\Http\Controllers\ChatController::class, 'pickerInscriptions'])
         ->middleware('throttle:60,1')
         ->name('picker.inscriptions');

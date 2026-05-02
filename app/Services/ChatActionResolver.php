@@ -3,23 +3,22 @@
 namespace App\Services;
 
 use App\Models\ChatMessage;
-use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Models\User;
+use Illuminate\Support\Collection;
 
 /**
- * Résout l'état actuel + le CTA d'une action_card dans le chat selon le viewer.
+ * Snapshot + résolution CTA des action_card du chat.
  *
- * Le snapshot dans payload est figé au moment du share. Mais le CTA est calculé
- * en temps réel via lookup de la ressource (inscription/paiement) pour que le
- * destinataire voie l'action correcte selon l'état courant + ses permissions.
+ * Le snapshot dans payload est figé à l'envoi. Le CTA est calculé en temps réel
+ * depuis l'état courant de la ressource + les permissions du viewer.
+ *
+ * Pour les hot paths (ChatController::show()), utiliser preload() + resolveCta()
+ * avec les maps pré-chargées pour éviter le N+1.
  */
 class ChatActionResolver
 {
-    /**
-     * Construit le snapshot d'une inscription pour stockage dans payload.
-     */
     public function snapshotInscription(ESBTPInscription $inscription): array
     {
         $inscription->loadMissing([
@@ -28,8 +27,11 @@ class ChatActionResolver
             'anneeUniversitaire:id,name,libelle',
         ]);
 
+        $relance = app(RelanceCalculationService::class)->preloadForSingle($inscription);
+        $attendu = (float) $relance->calculerTotalDu($inscription);
+        $paye = (float) $inscription->paiements()->valides()->sum('montant');
+
         $etudiantName = trim(($inscription->etudiant?->nom ?? '') . ' ' . ($inscription->etudiant?->prenoms ?? ''));
-        $totals = $this->totalsForInscription($inscription);
 
         return [
             'kind' => 'inscription',
@@ -49,17 +51,16 @@ class ChatActionResolver
                     ?? '—',
                 'status' => $inscription->status,
                 'workflow_step' => $inscription->workflow_step,
+                'workflow_label' => self::workflowLabel($inscription->workflow_step),
+                'workflow_chip_class' => self::workflowChipClass($inscription->workflow_step),
                 'is_sous_reserve' => (bool) $inscription->is_sous_reserve,
-                'montant_total' => $totals['attendu'],
-                'montant_paye' => $totals['paye'],
-                'solde_restant' => $totals['solde'],
+                'montant_total' => $attendu,
+                'montant_paye' => $paye,
+                'solde_restant' => max(0, $attendu - $paye),
             ],
         ];
     }
 
-    /**
-     * Construit le snapshot d'un paiement pour stockage dans payload.
-     */
     public function snapshotPaiement(ESBTPPaiement $paiement): array
     {
         $paiement->loadMissing([
@@ -88,121 +89,132 @@ class ChatActionResolver
                 'mode_paiement' => $paiement->mode_paiement,
                 'reference' => $paiement->reference_paiement ?? $paiement->numero_recu,
                 'date_paiement' => optional($paiement->date_paiement)->toDateString(),
-                'statut' => $paiement->statut,
-                'is_validated' => $paiement->validateur_id !== null,
+                'statut' => $paiement->status,
+                'is_validated' => $paiement->status === 'validé',
                 'motif' => $paiement->motif,
-                'inscription_workflow_step' => $paiement->inscription?->workflow_step,
             ],
         ];
     }
 
     /**
-     * Calcule le CTA contextuel selon l'état courant de la ressource + perms du viewer.
+     * Pré-charge les ressources référencées par toutes les action_card de la collection,
+     * pour éviter le N+1 dans show().
      *
-     * @return array{label: string, url: string, variant: 'primary'|'ghost', icon: string}|null
+     * @param  iterable<ChatMessage>  $messages
+     * @return array{inscriptions: Collection, paiements: Collection}
      */
-    public function resolveCta(ChatMessage $message, User $viewer): ?array
+    public function preload(iterable $messages): array
+    {
+        $inscriptionIds = [];
+        $paiementIds = [];
+
+        foreach ($messages as $m) {
+            if ($m->type !== 'action_card' || !is_array($m->payload)) {
+                continue;
+            }
+            $kind = $m->payload['kind'] ?? null;
+            $id = $m->payload['id'] ?? null;
+            if (!$id) {
+                continue;
+            }
+            if ($kind === 'inscription') {
+                $inscriptionIds[] = (int) $id;
+            } elseif ($kind === 'paiement') {
+                $paiementIds[] = (int) $id;
+                if (!empty($m->payload['inscription_id'])) {
+                    $inscriptionIds[] = (int) $m->payload['inscription_id'];
+                }
+            }
+        }
+
+        $inscriptions = empty($inscriptionIds) ? collect() : ESBTPInscription::query()
+            ->select(['id', 'workflow_step', 'status', 'paiement_validation_id'])
+            ->whereIn('id', array_unique($inscriptionIds))
+            ->get()
+            ->keyBy('id');
+
+        $paiements = empty($paiementIds) ? collect() : ESBTPPaiement::query()
+            ->select(['id', 'inscription_id', 'status', 'validateur_id'])
+            ->whereIn('id', array_unique($paiementIds))
+            ->get()
+            ->keyBy('id');
+
+        return ['inscriptions' => $inscriptions, 'paiements' => $paiements];
+    }
+
+    /**
+     * Résout le CTA d'une action_card pour un viewer.
+     *
+     * @param  array{inscriptions: Collection, paiements: Collection}|null  $maps  Pré-chargé via preload() pour batch
+     * @return array{label: string, url: string, variant: string, icon: string}|null
+     */
+    public function resolveCta(ChatMessage $message, User $viewer, ?array $maps = null): ?array
     {
         if ($message->type !== 'action_card' || !is_array($message->payload)) {
             return null;
         }
 
         $kind = $message->payload['kind'] ?? null;
-        $id = $message->payload['id'] ?? null;
+        $id = (int) ($message->payload['id'] ?? 0);
         if (!$kind || !$id) {
             return null;
         }
 
         return match ($kind) {
-            'inscription' => $this->ctaForInscription((int) $id, $viewer),
-            'paiement' => $this->ctaForPaiement((int) $id, $viewer),
+            'inscription' => $this->ctaForInscription($id, $viewer, $maps),
+            'paiement' => $this->ctaForPaiement($id, $viewer, $maps),
             default => null,
         };
     }
 
-    private function ctaForInscription(int $inscriptionId, User $viewer): ?array
+    private function ctaForInscription(int $inscriptionId, User $viewer, ?array $maps): ?array
     {
-        $inscription = ESBTPInscription::query()
-            ->select(['id', 'workflow_step', 'status', 'paiement_validation_id'])
-            ->find($inscriptionId);
+        $inscription = $maps['inscriptions']->get($inscriptionId)
+            ?? ESBTPInscription::query()
+                ->select(['id', 'workflow_step', 'status', 'paiement_validation_id'])
+                ->find($inscriptionId);
 
         if (!$inscription) {
             return $this->ctaSoftDeleted();
         }
 
-        $step = $inscription->workflow_step;
-
-        // Inscription validée → fin du chain
-        if ($step === 'inscription_validee' || $step === 'validee') {
-            return $this->ctaView(
+        // Branches ordrées du plus avancé au moins avancé.
+        return match ((string) $inscription->workflow_step) {
+            'etudiant_cree' => $this->ctaView(
                 'Voir l\'inscription',
                 route('esbtp.inscriptions.show', $inscription->id),
                 'fa-eye',
                 $viewer->can('inscriptions.view'),
-            );
-        }
-
-        // Paiement validé mais inscription pas encore validée → valider inscription
-        if ($step === 'paiement_valide' && $viewer->can('inscriptions.validate')) {
-            return [
-                'label' => 'Valider l\'inscription',
-                'url' => route('esbtp.inscriptions.show', $inscription->id) . '#valider',
-                'variant' => 'primary',
-                'icon' => 'fa-check-double',
-            ];
-        }
-
-        // Paiement créé mais pas validé → valider le paiement
-        if ($step === 'paiement_cree' && $inscription->paiement_validation_id && $viewer->can('paiements.validate')) {
-            return [
-                'label' => 'Valider le paiement',
-                'url' => route('esbtp.paiements.show', $inscription->paiement_validation_id),
-                'variant' => 'primary',
-                'icon' => 'fa-shield-check',
-            ];
-        }
-
-        // Pas de paiement encore → encaisser
-        if (in_array($step, ['etudiant_cree', null], true) && $viewer->can('paiements.create')) {
-            return [
-                'label' => 'Encaisser un paiement',
-                'url' => route('esbtp.paiements.create', ['inscription_id' => $inscription->id]),
-                'variant' => 'primary',
-                'icon' => 'fa-cash-register',
-            ];
-        }
-
-        // Fallback : juste voir
-        return $this->ctaView(
-            'Voir l\'inscription',
-            route('esbtp.inscriptions.show', $inscription->id),
-            'fa-eye',
-            $viewer->can('inscriptions.view'),
-        );
+            ),
+            'en_validation' => $this->ctaValidatePaiement($inscription, $viewer)
+                ?? $this->ctaFallbackInscription($inscription, $viewer),
+            'prospect', 'documents_complets' => $this->ctaCreatePaiement($inscription, $viewer)
+                ?? $this->ctaFallbackInscription($inscription, $viewer),
+            default => $this->ctaFallbackInscription($inscription, $viewer),
+        };
     }
 
-    private function ctaForPaiement(int $paiementId, User $viewer): ?array
+    private function ctaForPaiement(int $paiementId, User $viewer, ?array $maps): ?array
     {
-        $paiement = ESBTPPaiement::query()
-            ->select(['id', 'inscription_id', 'statut', 'validateur_id'])
-            ->find($paiementId);
+        $paiement = $maps['paiements']->get($paiementId)
+            ?? ESBTPPaiement::query()
+                ->select(['id', 'inscription_id', 'status', 'validateur_id'])
+                ->find($paiementId);
 
         if (!$paiement) {
             return $this->ctaSoftDeleted();
         }
 
-        $isValidated = $paiement->validateur_id !== null
-            || in_array($paiement->statut, ['valide', 'validé', 'completed'], true);
+        $isValidated = $paiement->status === 'validé';
 
-        // Paiement validé → focus sur l'inscription liée
         if ($isValidated && $paiement->inscription_id) {
-            $inscription = ESBTPInscription::query()
-                ->select(['id', 'workflow_step'])
-                ->find($paiement->inscription_id);
+            $inscription = $maps['inscriptions']->get($paiement->inscription_id)
+                ?? ESBTPInscription::query()
+                    ->select(['id', 'workflow_step'])
+                    ->find($paiement->inscription_id);
 
             if ($inscription
-                && $inscription->workflow_step !== 'inscription_validee'
-                && $inscription->workflow_step !== 'validee'
+                && $inscription->workflow_step !== 'etudiant_cree'
                 && $viewer->can('inscriptions.validate')
             ) {
                 return [
@@ -214,7 +226,6 @@ class ChatActionResolver
             }
         }
 
-        // Paiement en attente → valider
         if (!$isValidated && $viewer->can('paiements.validate')) {
             return [
                 'label' => 'Valider le paiement',
@@ -224,12 +235,47 @@ class ChatActionResolver
             ];
         }
 
-        // Fallback : voir
         return $this->ctaView(
             'Voir le paiement',
             route('esbtp.paiements.show', $paiement->id),
             'fa-eye',
             $viewer->can('paiements.view'),
+        );
+    }
+
+    private function ctaCreatePaiement(ESBTPInscription $inscription, User $viewer): ?array
+    {
+        if (!$viewer->can('paiements.create')) {
+            return null;
+        }
+        return [
+            'label' => 'Encaisser un paiement',
+            'url' => route('esbtp.paiements.create', ['inscription_id' => $inscription->id]),
+            'variant' => 'primary',
+            'icon' => 'fa-cash-register',
+        ];
+    }
+
+    private function ctaValidatePaiement(ESBTPInscription $inscription, User $viewer): ?array
+    {
+        if (!$inscription->paiement_validation_id || !$viewer->can('paiements.validate')) {
+            return null;
+        }
+        return [
+            'label' => 'Valider le paiement',
+            'url' => route('esbtp.paiements.show', $inscription->paiement_validation_id),
+            'variant' => 'primary',
+            'icon' => 'fa-shield-check',
+        ];
+    }
+
+    private function ctaFallbackInscription(ESBTPInscription $inscription, User $viewer): ?array
+    {
+        return $this->ctaView(
+            'Voir l\'inscription',
+            route('esbtp.inscriptions.show', $inscription->id),
+            'fa-eye',
+            $viewer->can('inscriptions.view'),
         );
     }
 
@@ -252,26 +298,26 @@ class ChatActionResolver
     }
 
     /**
-     * Totaux frais pour une inscription : attendu / payé / solde.
-     *
-     * @return array{attendu: float, paye: float, solde: float}
+     * Source unique des labels workflow_step (cohérence avec WorkflowStepBadge).
      */
-    private function totalsForInscription(ESBTPInscription $inscription): array
+    public static function workflowLabel(?string $step): string
     {
-        $attendu = (float) ESBTPFraisSubscription::query()
-            ->where('inscription_id', $inscription->id)
-            ->where('is_active', true)
-            ->sum('amount');
+        return match ((string) $step) {
+            'prospect' => 'Prospect',
+            'documents_complets' => 'Documents complets',
+            'en_validation' => 'En validation',
+            'etudiant_cree' => 'Validée',
+            default => 'Non défini',
+        };
+    }
 
-        $paye = (float) ESBTPPaiement::query()
-            ->where('inscription_id', $inscription->id)
-            ->whereNotNull('validateur_id')
-            ->sum('montant');
-
-        return [
-            'attendu' => $attendu,
-            'paye' => $paye,
-            'solde' => max(0, $attendu - $paye),
-        ];
+    public static function workflowChipClass(?string $step): string
+    {
+        return match ((string) $step) {
+            'etudiant_cree' => 'acard-chip--success',
+            'en_validation', 'documents_complets' => 'acard-chip--warning',
+            'prospect' => 'acard-chip',
+            default => 'acard-chip',
+        };
     }
 }

@@ -2,6 +2,10 @@
 
 @section('title', 'Messages')
 
+@push('scripts')
+<script src="{{ asset('js/inscriptions/common.js') }}"></script>
+@endpush
+
 @push('styles')
 <style>
 /* ============================================================
@@ -72,7 +76,7 @@
 .ms-action-card-cta:hover { background: var(--ms-primary-d); color: #fff; transform: translateY(-1px); }
 
 /* ============================================================
-   Action cards (issue #303) — namespace acard-* — share inscription/paiement
+   Action cards — namespace acard-* — share inscription/paiement
    ============================================================ */
 .acard {
     align-self: flex-start;
@@ -382,7 +386,7 @@
                                                 <div class="ms-msg system" x-text="m.body"></div>
                                             </template>
                                             <template x-if="m.type === 'action_card' && m.payload?.kind">
-                                                {{-- Action card riche (issue #303) — share inscription/paiement --}}
+                                                {{-- Action card riche : share inscription/paiement --}}
                                                 <div class="acard" :class="{ mine: m.mine }">
                                                     <div class="acard-head">
                                                         <div class="acard-avatar">
@@ -412,7 +416,7 @@
                                                     <template x-if="m.payload.kind === 'inscription'">
                                                         <div>
                                                             <div class="acard-chips">
-                                                                <span class="acard-chip" :class="acardWorkflowChipClass(m.payload?.snapshot?.workflow_step)" x-text="acardWorkflowLabel(m.payload?.snapshot?.workflow_step)"></span>
+                                                                <span class="acard-chip" :class="m.payload?.snapshot?.workflow_chip_class || 'acard-chip'" x-text="m.payload?.snapshot?.workflow_label || 'Statut inconnu'"></span>
                                                                 <span class="acard-chip" x-show="m.payload?.snapshot?.is_sous_reserve">
                                                                     <i class="fas fa-exclamation-triangle"></i> Sous réserve
                                                                 </span>
@@ -582,7 +586,7 @@
             </div>
         </div>
 
-        {{-- Modal picker — partager inscription/paiement (issue #303) --}}
+        {{-- Modal picker — partager inscription/paiement --}}
         <div class="modal fade ms-modal" id="pickerModal" tabindex="-1" aria-hidden="true" aria-labelledby="pickerModalLabel">
             <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
                 <div class="modal-content">
@@ -621,7 +625,7 @@
                                         </small>
                                         <div class="ms-picker-meta">
                                             <template x-if="pickerKind === 'inscription'">
-                                                <span class="ms-picker-status" :class="acardWorkflowChipClass(item.workflow_step).replace('acard-chip', 'ms-picker-status')" x-text="acardWorkflowLabel(item.workflow_step)"></span>
+                                                <span class="ms-picker-status" :class="item.workflow_step === 'etudiant_cree' ? 'ms-picker-status--ok' : 'ms-picker-status--pending'" x-text="item.workflow_label || '—'"></span>
                                             </template>
                                             <template x-if="pickerKind === 'paiement'">
                                                 <span class="ms-picker-status" :class="item.is_validated ? 'ms-picker-status--ok' : 'ms-picker-status--pending'" x-text="item.is_validated ? 'Validé' : 'En attente'"></span>
@@ -688,7 +692,7 @@ function messagesPage() {
         atBottom: true,
         csrf: document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
 
-        // === Action cards (issue #303) ===
+        // === Action cards ===
         attachOpen: false,
         pickerKind: 'inscription',
         pickerQuery: '',
@@ -884,11 +888,11 @@ function messagesPage() {
             this.openConvo(this.conversations.find(c => c.id === data.conversation_id));
         },
 
-        // === Action cards (issue #303) ===
+        // === Action cards ===
 
         openPicker(kind) {
             if (!this.activeConvo) {
-                alert('Ouvre d\'abord une conversation pour partager.');
+                window.showToast?.('Ouvre d\'abord une conversation pour partager.', 'warning');
                 return;
             }
             this.pickerKind = kind;
@@ -932,8 +936,9 @@ function messagesPage() {
                 this.pickerModal.hide();
                 await this.refreshMessages();
                 this.$nextTick(() => this.scrollBottom(true));
+                window.showToast?.('Card partagée', 'success', 2500);
             } catch (e) {
-                alert('Le partage a échoué. Réessaie.');
+                window.showToast?.('Le partage a échoué. Réessaie.', 'error');
             }
         },
 
@@ -941,7 +946,7 @@ function messagesPage() {
 
         formatXof(n) {
             if (n === null || n === undefined || isNaN(n)) return '—';
-            return new Intl.NumberFormat('fr-FR').format(Math.round(Number(n))) + ' XOF';
+            return new Intl.NumberFormat('fr-FR').format(Math.round(Number(n))) + ' FCFA';
         },
 
         formatDate(iso) {
@@ -950,25 +955,6 @@ function messagesPage() {
             return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
         },
 
-        acardWorkflowLabel(step) {
-            return ({
-                'etudiant_cree': 'À encaisser',
-                'paiement_cree': 'Paiement à valider',
-                'paiement_valide': 'Inscription à valider',
-                'inscription_validee': 'Inscription validée',
-                'validee': 'Inscription validée',
-            })[step] || (step ? step.replace(/_/g, ' ') : 'Statut inconnu');
-        },
-
-        acardWorkflowChipClass(step) {
-            return ({
-                'etudiant_cree': 'acard-chip--warning',
-                'paiement_cree': 'acard-chip--warning',
-                'paiement_valide': 'acard-chip--warning',
-                'inscription_validee': 'acard-chip--success',
-                'validee': 'acard-chip--success',
-            })[step] || 'acard-chip';
-        },
     };
 }
 </script>

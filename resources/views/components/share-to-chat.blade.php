@@ -13,6 +13,12 @@
         : route('chat.share.inscription', $id);
 @endphp
 
+@once
+    @push('scripts')
+        <script src="{{ asset('js/inscriptions/common.js') }}"></script>
+    @endpush
+@endonce
+
 <button type="button" class="{{ $class }}" data-bs-toggle="modal" data-bs-target="#{{ $modalId }}">
     <i class="fas fa-share-alt"></i>
     <span class="d-none d-md-inline">{{ $label }}</span>
@@ -116,7 +122,7 @@ function shareToChat_{{ $kind }}_{{ $id }}() {
                 const data = await r.json();
                 window.location.href = data.redirect || @json(route('chat.index'));
             } catch (e) {
-                alert('Le partage a échoué. Réessaie.');
+                window.showToast?.('Le partage a échoué. Réessaie.', 'error');
             } finally {
                 this.sending = false;
             }

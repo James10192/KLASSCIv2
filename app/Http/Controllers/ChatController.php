@@ -55,6 +55,7 @@ class ChatController extends Controller
             ->values();
 
         $viewer = $request->user();
+        $maps = $this->resolver->preload($messages);
 
         return response()->json([
             'conversation' => $conversation->only(['id', 'type', 'title', 'context']),
@@ -65,7 +66,7 @@ class ChatController extends Controller
                 'type' => $m->type,
                 'body' => $m->body,
                 'payload' => $m->payload,
-                'cta' => $m->type === 'action_card' ? $this->resolver->resolveCta($m, $viewer) : null,
+                'cta' => $m->type === 'action_card' ? $this->resolver->resolveCta($m, $viewer, $maps) : null,
                 'created_at' => $m->created_at->toIso8601String(),
                 'mine' => $m->sender_id === $viewer->id,
             ])->all(),
@@ -103,26 +104,8 @@ class ChatController extends Controller
     public function startDm(Request $request): JsonResponse
     {
         $data = $request->validate(['user_id' => 'required|exists:users,id']);
-        if ($data['user_id'] === $request->user()->id) {
-            return response()->json(['error' => 'Cannot DM yourself'], 422);
-        }
-
-        $existing = ChatConversation::where('type', 'dm')
-            ->whereHas('participants', fn ($q) => $q->where('user_id', $request->user()->id))
-            ->whereHas('participants', fn ($q) => $q->where('user_id', $data['user_id']))
-            ->first();
-
-        if ($existing) {
-            return response()->json(['conversation_id' => $existing->id]);
-        }
-
-        $convo = DB::transaction(function () use ($request, $data) {
-            $c = ChatConversation::create(['type' => 'dm', 'last_message_at' => now()]);
-            $c->participants()->attach([$request->user()->id, $data['user_id']]);
-            return $c;
-        });
-
-        return response()->json(['conversation_id' => $convo->id], 201);
+        $convo = $this->findOrCreateDm($request->user(), (int) $data['user_id']);
+        return response()->json(['conversation_id' => $convo->id], $convo->wasRecentlyCreated ? 201 : 200);
     }
 
     public function notifications(Request $request): JsonResponse
@@ -233,6 +216,7 @@ class ChatController extends Controller
                 'matricule' => $i->etudiant?->matricule,
                 'classe' => $i->classe?->name ?? '—',
                 'workflow_step' => $i->workflow_step,
+                'workflow_label' => ChatActionResolver::workflowLabel($i->workflow_step),
                 'status' => $i->status,
             ])->all(),
         ]);
@@ -248,7 +232,7 @@ class ChatController extends Controller
         $q = trim($request->validate(['q' => 'nullable|string|max:100'])['q'] ?? '');
 
         $rows = ESBTPPaiement::query()
-            ->select(['id', 'inscription_id', 'etudiant_id', 'montant', 'statut', 'validateur_id', 'date_paiement', 'mode_paiement', 'reference_paiement'])
+            ->select(['id', 'inscription_id', 'etudiant_id', 'montant', 'status', 'validateur_id', 'date_paiement', 'mode_paiement', 'reference_paiement'])
             ->with(['etudiant:id,nom,prenoms,matricule'])
             ->when($q !== '', function ($qb) use ($q) {
                 $qb->whereHas('etudiant', function ($eq) use ($q) {
@@ -267,8 +251,8 @@ class ChatController extends Controller
                 'etudiant' => trim(($p->etudiant?->nom ?? '') . ' ' . ($p->etudiant?->prenoms ?? '')) ?: '—',
                 'matricule' => $p->etudiant?->matricule,
                 'montant' => (float) $p->montant,
-                'statut' => $p->statut,
-                'is_validated' => $p->validateur_id !== null,
+                'statut' => $p->status,
+                'is_validated' => $p->status === 'validé',
                 'reference' => $p->reference_paiement,
                 'date' => optional($p->date_paiement)->toDateString(),
             ])->all(),
@@ -325,8 +309,11 @@ class ChatController extends Controller
             $this->authorizeMember($conversation, $sender);
             return $conversation;
         }
+        return $this->findOrCreateDm($sender, (int) $data['recipient_id']);
+    }
 
-        $recipientId = (int) $data['recipient_id'];
+    private function findOrCreateDm(User $sender, int $recipientId): ChatConversation
+    {
         abort_if($recipientId === $sender->id, 422, 'Vous ne pouvez pas vous envoyer un message à vous-même.');
 
         $existing = ChatConversation::where('type', 'dm')
@@ -338,8 +325,10 @@ class ChatController extends Controller
             return $existing;
         }
 
-        $conversation = ChatConversation::create(['type' => 'dm', 'last_message_at' => now()]);
-        $conversation->participants()->attach([$sender->id, $recipientId]);
-        return $conversation;
+        return DB::transaction(function () use ($sender, $recipientId) {
+            $conversation = ChatConversation::create(['type' => 'dm', 'last_message_at' => now()]);
+            $conversation->participants()->attach([$sender->id, $recipientId]);
+            return $conversation;
+        });
     }
 }
