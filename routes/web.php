@@ -1218,7 +1218,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Phase 9 — Aperçu PDF avec settings non persistés (nouvelle tab)
-        Route::post('/settings/pdf-preview', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'pdfPreview'])
+        // Accepte POST + PUT : le form principal /esbtp/settings utilise le
+        // spoofing _method=PUT (form Laravel @method('PUT')); le bouton aperçu
+        // submit via formaction qui préserve ce _method, donc Laravel route en PUT.
+        Route::match(['POST', 'PUT'], '/settings/pdf-preview', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'pdfPreview'])
             ->middleware(['permission:settings.pdf.manage', 'throttle:30,1'])
             ->name('esbtp.settings.pdf-preview');
 
