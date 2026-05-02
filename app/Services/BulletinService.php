@@ -106,9 +106,13 @@ class BulletinService
                     ];
                 }
 
+                // BUG FIX : on capture aussi `bareme` et `is_absent` pour permettre la normalisation /20
+                // et l'exclusion des absences dans le calcul de moyenne par matière (cf. computeMoyenneFromNotesData).
                 $resultatsParMatiere[$matiereId]->notes[] = [
                     'note' => $note->note,
                     'coefficient' => $note->evaluation->coefficient,
+                    'bareme' => $note->evaluation->bareme ?: 20,
+                    'is_absent' => (bool) $note->is_absent,
                 ];
 
                 // Utiliser uniquement les professeurs configurés
@@ -117,16 +121,10 @@ class BulletinService
         }
 
         // Calculer les moyennes pondérées pour chaque matière (automatiques)
+        // BUG FIX : on normalise CHAQUE note par son barème avant pondération.
+        // Avant : note brute (15/30 + 10/20)/2 = 12.5 au lieu de (10 + 10)/2 = 10.
         foreach ($resultatsParMatiere as $matiereId => $resultat) {
-            $totalPoints = 0;
-            $totalCoeffs = 0;
-
-            foreach ($resultat->notes as $noteData) {
-                $totalPoints += $noteData['note'] * $noteData['coefficient'];
-                $totalCoeffs += $noteData['coefficient'];
-            }
-
-            $resultat->moyenne = $totalCoeffs > 0 ? $totalPoints / $totalCoeffs : 0;
+            $resultat->moyenne = $this->computeMoyenneFromNotesData($resultat->notes);
             $resultat->appreciation = $this->getAppreciation($resultat->moyenne);
         }
 
@@ -481,6 +479,50 @@ class BulletinService
                 ]
             );
         }
+    }
+
+    /**
+     * Calcule la moyenne pondérée d'une matière à partir d'un tableau de notes brutes.
+     *
+     * Algorithme officiel KLASSCI (mai 2026) :
+     *  1. Exclure les notes marquées absentes (is_absent = true).
+     *  2. Ignorer les notes dont le barème est invalide (<= 0) — garde-fou silencieux.
+     *  3. Normaliser chaque note sur 20 : (note / barème) * 20.
+     *  4. Pondérer par le coefficient de l'évaluation, faire la moyenne arithmétique pondérée.
+     *  5. Arrondir à 2 décimales (cohérence avec l'affichage UI).
+     *
+     * Pure function : aucun accès DB, aucun side-effect → testable unitairement.
+     *
+     * @param array<int, array{note: float|int|string, coefficient: float|int, bareme?: float|int|null, is_absent?: bool}> $notes
+     */
+    public function computeMoyenneFromNotesData(array $notes): float
+    {
+        $totalPoints = 0.0;
+        $totalCoeffs = 0.0;
+
+        foreach ($notes as $noteData) {
+            if (! empty($noteData['is_absent'])) {
+                continue;
+            }
+
+            $bareme = (float) ($noteData['bareme'] ?? 20);
+            if ($bareme <= 0) {
+                continue;
+            }
+
+            $coefficient = (float) ($noteData['coefficient'] ?? 1);
+            $noteValue = is_numeric($noteData['note'] ?? null) ? (float) $noteData['note'] : 0.0;
+            $normalized = ($noteValue / $bareme) * 20;
+
+            $totalPoints += $normalized * $coefficient;
+            $totalCoeffs += $coefficient;
+        }
+
+        if ($totalCoeffs <= 0) {
+            return 0.0;
+        }
+
+        return round($totalPoints / $totalCoeffs, 2);
     }
 
     /**
