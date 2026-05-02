@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
 use Maatwebsite\Excel\Facades\Excel;
 use Barryvdh\DomPDF\Facade\Pdf;
+use App\Exports\AuditExport;
 
 class ESBTPAuditController extends Controller
 {
@@ -118,7 +119,25 @@ class ESBTPAuditController extends Controller
             abort(403, 'Accès aux données sensibles non autorisé');
         }
 
-        return view('esbtp.audit.show', compact('audit'));
+        // Audits liés (même entité, antérieurs à celui-ci)
+        $relatedAudits = Audit::with('user')
+            ->where('auditable_type', $audit->auditable_type)
+            ->where('auditable_id', $audit->auditable_id)
+            ->where('id', '!=', $audit->id)
+            ->orderBy('created_at', 'desc')
+            ->limit(5)
+            ->get();
+
+        // Calcul niveau de risque pour la vue
+        $riskLevel = $this->calculateRiskLevel($audit);
+
+        // URL vers l'entité auditée si possible
+        $entityUrl = $this->resolveEntityUrl($audit);
+
+        // Diff field-by-field
+        $changes = $this->formatChanges($audit);
+
+        return view('esbtp.audit.show', compact('audit', 'relatedAudits', 'riskLevel', 'entityUrl', 'changes'));
     }
 
     /**
@@ -128,16 +147,19 @@ class ESBTPAuditController extends Controller
     {
         $this->authorize('comptabilite.audit.view');
 
-        $query = Audit::whereIn('auditable_type', [
+        $financialModels = [
             'App\Models\ESBTPPaiement',
             'App\Models\ESBTPDepense',
             'App\Models\ESBTPFacture',
             'App\Models\ESBTPFactureDetail',
             'App\Models\ESBTPFraisScolarite',
             'App\Models\ESBTPSalaire',
-            'App\Models\ESBTPBourse'
-        ])->with(['user'])
-          ->orderBy('created_at', 'desc');
+            'App\Models\ESBTPBourse',
+        ];
+
+        $query = Audit::whereIn('auditable_type', $financialModels)
+            ->with(['user'])
+            ->orderBy('created_at', 'desc');
 
         // Filtres spécifiques comptabilité
         if ($request->filled('montant_min')) {
@@ -147,13 +169,57 @@ class ESBTPAuditController extends Controller
             });
         }
 
-        if ($request->filled('type_operation')) {
-            $query->where('event', $request->type_operation);
+        if ($request->filled('event')) {
+            $query->where('event', $request->event);
         }
 
-        $audits = $query->paginate(25);
+        if ($request->filled('model_type')) {
+            $query->where('auditable_type', $request->model_type);
+        }
 
-        return view('esbtp.audit.comptabilite', compact('audits'));
+        if ($request->filled('date_from')) {
+            $query->whereDate('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->filled('date_to')) {
+            $query->whereDate('created_at', '<=', $request->date_to);
+        }
+
+        $audits = $query->paginate(25)->withQueryString();
+
+        // KPIs financiers (sur 30 derniers jours)
+        $since = Carbon::now()->subDays(30);
+        $weekStart = Carbon::now()->startOfWeek();
+        $kpis = [
+            'paiements_modifies' => Audit::where('auditable_type', 'App\Models\ESBTPPaiement')
+                ->where('event', 'updated')
+                ->where('created_at', '>=', $since)
+                ->count(),
+            'factures_modifiees' => Audit::where('auditable_type', 'App\Models\ESBTPFacture')
+                ->where('event', 'updated')
+                ->where('created_at', '>=', $since)
+                ->count(),
+            'annulations_semaine' => Audit::whereIn('auditable_type', $financialModels)
+                ->where('event', 'deleted')
+                ->where('created_at', '>=', $weekStart)
+                ->count(),
+            'validations_semaine' => Audit::whereIn('auditable_type', $financialModels)
+                ->where('event', 'created')
+                ->where('created_at', '>=', $weekStart)
+                ->count(),
+        ];
+
+        $financialModelsLabels = [
+            'App\Models\ESBTPPaiement' => 'Paiements',
+            'App\Models\ESBTPDepense' => 'Dépenses',
+            'App\Models\ESBTPFacture' => 'Factures',
+            'App\Models\ESBTPFactureDetail' => 'Détails Factures',
+            'App\Models\ESBTPFraisScolarite' => 'Frais Scolarité',
+            'App\Models\ESBTPSalaire' => 'Salaires',
+            'App\Models\ESBTPBourse' => 'Bourses',
+        ];
+
+        return view('esbtp.audit.comptabilite', compact('audits', 'kpis', 'financialModelsLabels'));
     }
 
     /**
@@ -164,8 +230,14 @@ class ESBTPAuditController extends Controller
         $this->authorize('security.users.monitor');
 
         $userId = $request->get('user_id');
-        $dateFrom = $request->get('date_from', now()->subDays(30));
-        $dateTo = $request->get('date_to', now());
+        $dateFrom = $request->filled('date_from')
+            ? Carbon::parse($request->get('date_from'))
+            : now()->subDays(30);
+        $dateTo = $request->filled('date_to')
+            ? Carbon::parse($request->get('date_to'))->endOfDay()
+            : now();
+
+        $baseQuery = fn () => Audit::whereBetween('created_at', [$dateFrom, $dateTo]);
 
         $query = Audit::with(['user'])
             ->whereBetween('created_at', [$dateFrom, $dateTo])
@@ -175,20 +247,80 @@ class ESBTPAuditController extends Controller
             $query->where('user_id', $userId);
         }
 
-        $activities = $query->paginate(50);
+        $activities = $query->paginate(50)->withQueryString();
 
-        // Statistiques d'activité
+        // Top modèles touchés (sur la fenêtre, scoped par user si filtré)
+        $topModelsQuery = $baseQuery();
+        if ($userId) {
+            $topModelsQuery->where('user_id', $userId);
+        }
+        $topModels = $topModelsQuery
+            ->select('auditable_type', DB::raw('COUNT(*) as total'))
+            ->groupBy('auditable_type')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->get()
+            ->map(fn ($r) => [
+                'label' => $this->formatModelType($r->auditable_type),
+                'count' => $r->total,
+            ]);
+
+        // Top IPs
+        $topIpsQuery = $baseQuery();
+        if ($userId) {
+            $topIpsQuery->where('user_id', $userId);
+        }
+        $topIps = $topIpsQuery
+            ->select('ip_address', DB::raw('COUNT(*) as total'))
+            ->whereNotNull('ip_address')
+            ->groupBy('ip_address')
+            ->orderByDesc('total')
+            ->limit(5)
+            ->get();
+
+        // Heures de pointe (24 buckets)
+        $peakHoursQuery = $baseQuery();
+        if ($userId) {
+            $peakHoursQuery->where('user_id', $userId);
+        }
+        $hoursRaw = $peakHoursQuery
+            ->select(DB::raw('HOUR(created_at) as hour'), DB::raw('COUNT(*) as total'))
+            ->groupBy(DB::raw('HOUR(created_at)'))
+            ->pluck('total', 'hour')
+            ->toArray();
+        $hourlyDistribution = [];
+        for ($h = 0; $h < 24; $h++) {
+            $hourlyDistribution[$h] = (int) ($hoursRaw[$h] ?? 0);
+        }
+        $peakHour = array_search(max($hourlyDistribution), $hourlyDistribution);
+
+        // Statistiques d'activité (recompute totals after applying user filter if any)
+        $totalActionsQuery = $baseQuery();
+        if ($userId) {
+            $totalActionsQuery->where('user_id', $userId);
+        }
         $stats = [
-            'total_actions' => $query->count(),
-            'unique_users' => Audit::whereBetween('created_at', [$dateFrom, $dateTo])
-                                   ->distinct('user_id')->count('user_id'),
+            'total_actions' => $totalActionsQuery->count(),
+            'unique_users' => $baseQuery()->distinct('user_id')->count('user_id'),
+            'unique_ips' => $baseQuery()->whereNotNull('ip_address')->distinct('ip_address')->count('ip_address'),
+            'peak_hour' => $peakHour !== false ? sprintf('%02dh', $peakHour) : '—',
             'suspicious_activities' => $this->getSuspiciousActivities($dateFrom, $dateTo),
-            'peak_hours' => $this->getPeakHours($dateFrom, $dateTo),
         ];
 
-        $users = User::select('id', 'name', 'email')->get();
+        $users = User::select('id', 'name', 'email')->orderBy('name')->get();
+        $selectedUser = $userId ? User::find($userId) : null;
 
-        return view('esbtp.audit.user-activity', compact('activities', 'stats', 'users'));
+        return view('esbtp.audit.user-activity', compact(
+            'activities',
+            'stats',
+            'users',
+            'selectedUser',
+            'topModels',
+            'topIps',
+            'hourlyDistribution',
+            'dateFrom',
+            'dateTo'
+        ));
     }
 
     /**
@@ -415,6 +547,35 @@ class ESBTPAuditController extends Controller
         }
 
         return 'Autre';
+    }
+
+    /**
+     * Résoudre l'URL de l'entité auditée si elle existe encore.
+     * Retourne null si modèle inconnu ou entité supprimée.
+     */
+    private function resolveEntityUrl($audit): ?string
+    {
+        if (!class_exists($audit->auditable_type)) {
+            return null;
+        }
+        $modelClass = $audit->auditable_type;
+        $instance = $modelClass::find($audit->auditable_id);
+        if (!$instance) {
+            return null;
+        }
+
+        // Mapping route show par modèle (best-effort, retourne null si pas de route)
+        try {
+            return match ($audit->auditable_type) {
+                'App\\Models\\ESBTPPaiement' => route('esbtp.paiements.show', $instance->id),
+                'App\\Models\\ESBTPEtudiant' => route('esbtp.etudiants.show', $instance->id),
+                'App\\Models\\ESBTPInscription' => route('esbtp.inscriptions.show', $instance->id),
+                'App\\Models\\User' => route('esbtp.users.show', $instance->id),
+                default => null,
+            };
+        } catch (\Throwable) {
+            return null;
+        }
     }
 
     /**

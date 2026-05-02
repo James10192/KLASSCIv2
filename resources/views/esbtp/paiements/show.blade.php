@@ -634,6 +634,11 @@
     </div>
 </div>
 @endif
+
+{{-- Historique d'audit (production audit log) --}}
+<div class="ps-content" style="margin-top: 1.5rem;">
+    <x-entity-history :model="$paiement" :limit="10" />
+</div>
 @endsection
 
 @push('scripts')

@@ -57,7 +57,7 @@ use App\Http\Controllers\TimetableController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
-// use App\Http\Controllers\ESBTP\ESBTPAuditController; // COMMENTED - CONTROLLER NOT IMPLEMENTED
+use App\Http\Controllers\ESBTPAuditController;
 // use App\Http\Controllers\ESBTP\ESBTPSecurityController; // COMMENTED - CONTROLLER NOT IMPLEMENTED
 
 /*
@@ -1939,8 +1939,7 @@ Route::middleware(['auth'])->group(function () {
 
 // ... existing code ...
 
-// Routes ESBTP Audit et Sécurité (Task #10) - COMMENTED OUT TEMPORARILY - CONTROLLERS NOT IMPLEMENTED YET
-/*
+// Routes ESBTP Audit et Sécurité (Task #10)
 Route::middleware(['auth', 'throttle:audit'])->prefix('esbtp/audit')->name('esbtp.audit.')->group(function () {
     // Page principale d'audit
     Route::get('/', [ESBTPAuditController::class, 'index'])->name('index');
@@ -1950,12 +1949,7 @@ Route::middleware(['auth', 'throttle:audit'])->prefix('esbtp/audit')->name('esbt
         ->middleware('throttle:30,1')
         ->name('data');
 
-    // Détails d'un audit spécifique
-    Route::get('/{id}', [ESBTPAuditController::class, 'show'])
-        ->where('id', '[0-9]+')
-        ->name('show');
-
-    // Audits spécifiques à la comptabilité
+    // Audits spécifiques à la comptabilité (avant /{id} pour éviter capture wildcard)
     Route::get('/comptabilite', [ESBTPAuditController::class, 'comptabiliteAudits'])
         ->middleware('permission:comptabilite.audit.view')
         ->name('comptabilite');
@@ -1970,9 +1964,15 @@ Route::middleware(['auth', 'throttle:audit'])->prefix('esbtp/audit')->name('esbt
         Route::get('/export/excel', [ESBTPAuditController::class, 'exportExcel'])->name('export.excel');
         Route::get('/export/pdf', [ESBTPAuditController::class, 'exportPdf'])->name('export.pdf');
     });
+
+    // Détails d'un audit spécifique (en dernier pour éviter conflit avec routes nommées ci-dessus)
+    Route::get('/{id}', [ESBTPAuditController::class, 'show'])
+        ->where('id', '[0-9]+')
+        ->name('show');
 });
 
-// Routes de sécurité avancées (Task #10)
+// Routes de sécurité avancées (Task #10) - COMMENTED : ESBTPSecurityController NOT IMPLEMENTED YET
+/*
 Route::middleware(['auth', 'throttle:security'])->prefix('esbtp/security')->name('esbtp.security.')->group(function () {
     // Tableau de bord sécurité (superAdmin uniquement)
     Route::get('/dashboard', [ESBTPSecurityController::class, 'dashboard'])

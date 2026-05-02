@@ -2105,6 +2105,37 @@
                         </div>
                     @endrole
 
+                    <!-- Security & Audit Section - permission-gated (superAdmin + serviceTechnique by default via *) -->
+                    @can('security.audit.view')
+                        <div class="menu-category">Sécurité & Audit</div>
+
+                        <div class="menu-accordion">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.audit.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-shield-alt"></i></div>
+                                <div class="menu-text">Journal d'audit</div>
+                                <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
+                            </button>
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.audit.*') ? 'show' : '' }}">
+                                <a href="{{ route('esbtp.audit.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.audit.index') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span><i class="fas fa-list me-2"></i>Toutes les actions</span>
+                                </a>
+                                @can('comptabilite.audit.view')
+                                <a href="{{ route('esbtp.audit.comptabilite') }}" class="menu-sublink {{ Request::routeIs('esbtp.audit.comptabilite') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span><i class="fas fa-coins me-2"></i>Audit comptable</span>
+                                </a>
+                                @endcan
+                                @can('security.users.monitor')
+                                <a href="{{ route('esbtp.audit.user-activity') }}" class="menu-sublink {{ Request::routeIs('esbtp.audit.user-activity') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span><i class="fas fa-user-clock me-2"></i>Activité utilisateurs</span>
+                                </a>
+                                @endcan
+                            </div>
+                        </div>
+                    @endcan
+
                     <!-- System Section -->
                     @can('system.manage')
                         <div class="menu-category">Système</div>
@@ -2543,6 +2574,7 @@
                             : null;
                         $anneeCouranteExpired = $anneeCouranteModal && $anneeCouranteEndDate && $anneeCouranteEndDate->isPast();
                         $isSuperAdmin = auth()->user()?->can('admin.access');
+                        $canManageAnneeCourante = auth()->user()?->can('annees.set_current');
                         $canValidateInscriptions = auth()->user()?->can('inscriptions.validate');
                         $canAccessTimetable = auth()->user()?->can('timetables.view') || auth()->user()?->can('timetables.view_all');
                         $canAccessEvaluations = auth()->user()?->can('exams.view') || auth()->user()?->can('evaluations.view');
@@ -2603,7 +2635,7 @@
                                             s'est terminée le <strong>{{ $anneeCouranteEndDate->format('d/m/Y') }}</strong>.
                                         </p>
 
-                                        @if($isSuperAdmin)
+                                        @if($canManageAnneeCourante)
                                             <div class="alert alert-warning mb-3">
                                                 <strong>Action requise :</strong> pensez à activer la nouvelle année courante.
                                             </div>
