@@ -54,6 +54,8 @@
 /* Message grouping : remove margin between consecutive same-sender messages within 5min */
 .ms-msg-group { display: flex; flex-direction: column; gap: .15rem; }
 .ms-msg-group + .ms-msg-group { margin-top: .65rem; }
+/* Wrapper <div> créé par Alpine x-for : sans flex, align-self sur l'enfant ne s'applique pas. */
+.ms-msg-group > div { display: flex; flex-direction: column; }
 .ms-msg { max-width: 70%; padding: .55rem .85rem; border-radius: 14px; font-size: .9rem; line-height: 1.4; word-break: break-word; transition: opacity .2s; }
 .ms-msg.pending { opacity: .55; }
 .ms-msg.mine { align-self: flex-end; background: var(--ms-bubble-mine); color: #fff; border-bottom-right-radius: 4px; }
@@ -418,7 +420,7 @@
                                          x-text="(c.title || c.participants?.[0]?.name || '?').slice(0,2).toUpperCase()"></div>
                                     <div class="ms-conv-body">
                                         <div class="ms-conv-name" x-text="c.title || c.participants?.[0]?.name || 'Conversation'"></div>
-                                        <div class="ms-conv-preview" x-text="c.last_message?.body || 'Aucun message'"></div>
+                                        <div class="ms-conv-preview" x-text="c.last_message?.preview || c.last_message?.body || 'Aucun message'"></div>
                                     </div>
                                     <span class="ms-conv-time" x-text="formatTime(c.last_message_at)"></span>
                                 </div>
@@ -752,13 +754,27 @@
 </div>
 
 @php
-    $conversationsPayload = $conversations->map(function ($c) {
+    $previewLastMessage = function ($m) {
+        if (!$m) return null;
+        $kind = is_array($m->payload ?? null) ? ($m->payload['kind'] ?? null) : null;
+        $preview = match ($m->type) {
+            'action_card' => '📎 ' . match ($kind) {
+                'inscription' => 'Inscription partagée',
+                'paiement' => 'Paiement partagé',
+                default => 'Card partagée',
+            },
+            'system' => $m->body ?? 'Notification',
+            default => $m->body ?? '',
+        };
+        return ['body' => $m->body, 'type' => $m->type, 'preview' => $preview];
+    };
+    $conversationsPayload = $conversations->map(function ($c) use ($previewLastMessage) {
         return [
             'id' => $c->id,
             'type' => $c->type,
             'title' => $c->title,
             'last_message_at' => $c->last_message_at?->toIso8601String(),
-            'last_message' => $c->lastMessage ? ['body' => $c->lastMessage->body, 'type' => $c->lastMessage->type] : null,
+            'last_message' => $previewLastMessage($c->lastMessage),
             'participants' => $c->participants->where('id', '!=', auth()->id())->map(function ($p) {
                 return ['id' => $p->id, 'name' => $p->name];
             })->values(),
@@ -882,6 +898,7 @@ function messagesPage() {
                 // Replace temp message with confirmed one
                 const idx = this.messages.findIndex(x => x.id === tempId);
                 if (idx >= 0) this.messages[idx] = { ...m, type: 'text', payload: null, pending: false };
+                this.bumpConvPreview(this.activeConvo.id, { type: 'text', body, preview: body });
             } catch (e) {
                 // Mark as failed — keep visible avec UI dégradée
                 const idx = this.messages.findIndex(x => x.id === tempId);
@@ -1027,12 +1044,30 @@ function messagesPage() {
                 });
                 if (!r.ok) throw new Error('Share failed');
                 this.pickerModal.hide();
+                this.bumpConvPreview(this.activeConvo.id, {
+                    type: 'action_card',
+                    body: null,
+                    preview: '📎 ' + (this.pickerKind === 'paiement' ? 'Paiement partagé' : 'Inscription partagée'),
+                });
                 await this.refreshMessages();
                 this.$nextTick(() => this.scrollBottom(true));
                 window.showToast?.('Card partagée', 'success', 2500);
             } catch (e) {
                 window.showToast?.('Le partage a échoué. Réessaie.', 'error');
             }
+        },
+
+        /** Met à jour localement le dernier message d'une conversation (sidebar preview). */
+        bumpConvPreview(convId, lastMessage) {
+            const idx = this.conversations.findIndex(c => c.id === convId);
+            if (idx < 0) return;
+            this.conversations[idx] = {
+                ...this.conversations[idx],
+                last_message: lastMessage,
+                last_message_at: new Date().toISOString(),
+            };
+            const [c] = this.conversations.splice(idx, 1);
+            this.conversations.unshift(c);
         },
 
         // Helpers acard rendering
