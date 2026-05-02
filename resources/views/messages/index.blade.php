@@ -68,7 +68,7 @@
 .ms-msg.system { align-self: center; background: rgba(245, 158, 11, 0.1); color: #92400e; border: 1px solid rgba(245,158,11,.3); font-size: .82rem; font-weight: 500; padding: .5rem .9rem; border-radius: 99px; }
 .ms-msg.action_card { align-self: flex-start; background: var(--ms-surface); border: 1px solid var(--ms-border); padding: 1rem 1.1rem; max-width: 85%; box-shadow: 0 1px 3px rgba(15,23,42,.04); border-radius: 12px; }
 .ms-msg-meta { font-size: .68rem; color: var(--ms-muted); margin: .2rem .5rem 0; }
-.ms-msg-group:has(.ms-msg.mine) .ms-msg-meta { text-align: right; }
+.ms-msg-group.mine .ms-msg-meta { text-align: right; }
 /* "X new messages" banner — replaces auto-scroll anti-pattern */
 .ms-new-banner { position: sticky; bottom: .5rem; align-self: center; background: var(--ms-primary); color: #fff; padding: .4rem .9rem; border-radius: 99px; font-size: .8rem; font-weight: 600; cursor: pointer; box-shadow: 0 4px 12px rgba(4,83,203,.3); z-index: 5; transition: all .15s; }
 .ms-new-banner:hover { transform: translateY(-2px); }
@@ -474,7 +474,7 @@
 
                         <div class="ms-msgs" x-ref="msgs" @scroll="onScroll($event)" aria-live="polite" aria-atomic="false" aria-label="Messages de la conversation">
                             <template x-for="(group, gi) in groupedMessages" :key="gi">
-                                <div class="ms-msg-group">
+                                <div class="ms-msg-group" :class="{ mine: group.mine }">
                                     <template x-for="m in group.items" :key="m.id">
                                         <div>
                                             <template x-if="m.type === 'system'">
