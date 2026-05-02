@@ -3,10 +3,11 @@
     'subtitle' => null,
     'filters' => [],
     'orientation' => 'portrait',
+    'overrides' => [],
 ])
 @php
     $school = \App\Helpers\SettingsHelper::getSchoolInfo();
-    $pdf = \App\Helpers\SettingsHelper::getPdfSettings();
+    $pdf = array_merge(\App\Helpers\SettingsHelper::getPdfSettings(), $overrides);
     $logoPath = $school['logo'] ?? '';
     $logoFile = '';
     if ($pdf['show_logo'] && $logoPath) {
@@ -20,6 +21,12 @@
             }
         }
     }
+    $logoMaxHeight = max(20, min(120, (int) ($pdf['logo_size'] ?? 60)));
+    $watermarkOpacity = max(0, min(0.5, (float) ($pdf['watermark_opacity'] ?? 0.05)));
+    $watermarkRotation = (int) ($pdf['watermark_rotation'] ?? -30);
+    $footerText = trim((string) ($pdf['footer_custom_text'] ?? '')) !== ''
+        ? $pdf['footer_custom_text']
+        : ($pdf['footer_text'] ?? ($school['name'] ?? config('app.name')));
 @endphp
 <!DOCTYPE html>
 <html lang="fr">
@@ -61,7 +68,7 @@
             padding-right: 12px;
         }
         .pdf-header-logo {
-            max-height: 60px;
+            max-height: {{ $logoMaxHeight }}px;
             max-width: 70px;
         }
         .pdf-header-info-cell {
@@ -154,8 +161,8 @@
         @if(!empty($pdf['watermark']))
             .pdf-watermark {
                 position: fixed; top: 50%; left: 50%;
-                transform: translate(-50%, -50%) rotate(-30deg);
-                font-size: 90px; color: rgba(0,0,0,0.05);
+                transform: translate(-50%, -50%) rotate({{ $watermarkRotation }}deg);
+                font-size: 90px; color: rgba(0,0,0,{{ $watermarkOpacity }});
                 font-weight: 900; z-index: -1;
                 white-space: nowrap;
             }
@@ -212,9 +219,13 @@
     </div>
 
     <div class="pdf-footer">
-        {{ $pdf['footer_text'] ?? ($school['name'] ?? config('app.name')) }}
-        @if($school['director_name']) · Directeur : {{ $school['director_name'] }} @endif
-        · Page <span class="pdf-footer-page"></span>
+        {{ $footerText }}
+        @if(!empty($pdf['show_director_signature']) && !empty($school['director_name']))
+            · Directeur : {{ $school['director_name'] }}
+        @endif
+        @if(!empty($pdf['show_pagination']))
+            · Page <span class="pdf-footer-page"></span>
+        @endif
     </div>
 </body>
 </html>

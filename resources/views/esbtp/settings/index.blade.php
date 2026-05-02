@@ -875,6 +875,229 @@
 
             </div>
 
+            {{-- ========================================================== --}}
+            {{-- Section : Mise en page & Marges (Phase 9) --}}
+            {{-- ========================================================== --}}
+            <div class="settings-section" x-data="pdfAdvancedSection()">
+                <div class="section-header">
+                    <div class="section-icon pdf">
+                        <i class="fas fa-ruler-combined"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Mise en page & Marges</h3>
+                        <p class="section-description">Marges, taille du logo et formatage. Affectent tous vos exports PDF.</p>
+                    </div>
+                </div>
+
+                <div class="settings-grid-2" style="margin-top: 20px;">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-image text-primary"></i>
+                            Hauteur max du logo (px)
+                        </label>
+                        <div style="display: flex; gap: .75rem; align-items: center;">
+                            <input type="range" min="20" max="120" step="5"
+                                   x-model="settings.pdf_logo_size"
+                                   style="flex: 1;">
+                            <input type="number" min="20" max="120" step="5"
+                                   class="form-control form-control-modern"
+                                   name="setting_pdf_logo_size"
+                                   x-model="settings.pdf_logo_size"
+                                   style="width: 80px;">
+                        </div>
+                        <small class="text-muted"><i class="fas fa-info-circle"></i> Recommandé : 50-70 px pour un en-tête équilibré.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-text-height text-primary"></i>
+                            Taille de police du corps (px)
+                        </label>
+                        <input type="number" min="8" max="16" step="1"
+                               class="form-control form-control-modern"
+                               name="setting_pdf_font_size"
+                               x-model="settings.pdf_font_size">
+                        <small class="text-muted">Taille du texte des paragraphes (entre 8 et 16).</small>
+                    </div>
+                </div>
+
+                <h4 style="margin-top: 24px; font-size: 0.95rem; color: #64748b; font-weight: 600;">
+                    <i class="fas fa-arrows-alt text-primary"></i> Marges (mm)
+                </h4>
+                <div class="settings-grid-4" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-top: 8px;">
+                    <div class="form-group">
+                        <label class="form-label-modern" style="font-size: .8rem;">Haut</label>
+                        <input type="number" min="0" max="50" step="1"
+                               class="form-control form-control-modern"
+                               name="setting_pdf_margin_top"
+                               x-model="settings.pdf_margin_top">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern" style="font-size: .8rem;">Bas</label>
+                        <input type="number" min="0" max="50" step="1"
+                               class="form-control form-control-modern"
+                               name="setting_pdf_margin_bottom"
+                               x-model="settings.pdf_margin_bottom">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern" style="font-size: .8rem;">Gauche</label>
+                        <input type="number" min="0" max="50" step="1"
+                               class="form-control form-control-modern"
+                               name="setting_pdf_margin_left"
+                               x-model="settings.pdf_margin_left">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern" style="font-size: .8rem;">Droite</label>
+                        <input type="number" min="0" max="50" step="1"
+                               class="form-control form-control-modern"
+                               name="setting_pdf_margin_right"
+                               x-model="settings.pdf_margin_right">
+                    </div>
+                </div>
+            </div>
+
+            {{-- ========================================================== --}}
+            {{-- Section : Footer & Mentions (Phase 9) --}}
+            {{-- ========================================================== --}}
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon pdf">
+                        <i class="fas fa-shoe-prints"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Pied de page & Mentions</h3>
+                        <p class="section-description">Texte personnalisé, pagination et signature directeur affichés en bas de chaque page.</p>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 16px;">
+                    <label class="form-label-modern">
+                        <i class="fas fa-quote-right text-primary"></i>
+                        Texte personnalisé du footer
+                    </label>
+                    <input type="text" class="form-control form-control-modern"
+                           name="setting_pdf_footer_custom_text"
+                           value="{{ \App\Helpers\SettingsHelper::get('pdf_footer_custom_text', '') }}"
+                           placeholder="Laissez vide pour afficher le nom de l'établissement"
+                           maxlength="200">
+                    <small class="text-muted"><i class="fas fa-info-circle"></i> Si vide, le nom de l'école est affiché. Max 200 caractères.</small>
+                </div>
+
+                <div class="settings-grid-2" style="margin-top: 16px;">
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-list-ol text-primary"></i>
+                            Afficher la pagination ("Page 1 / 5")
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="hidden" name="setting_pdf_show_pagination" value="0">
+                            <input type="checkbox" name="setting_pdf_show_pagination" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('pdf_show_pagination', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-user-tie text-primary"></i>
+                            Afficher "Directeur : [Nom]"
+                        </label>
+                        <label class="form-switch-modern">
+                            <input type="hidden" name="setting_pdf_show_director_signature" value="0">
+                            <input type="checkbox" name="setting_pdf_show_director_signature" value="1"
+                                   {{ \App\Helpers\SettingsHelper::get('pdf_show_director_signature', '1') == '1' ? 'checked' : '' }}>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ========================================================== --}}
+            {{-- Section : Filigrane / Watermark (Phase 9) --}}
+            {{-- ========================================================== --}}
+            <div class="settings-section" x-data="watermarkSection()">
+                <div class="section-header">
+                    <div class="section-icon pdf">
+                        <i class="fas fa-stamp"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title">Filigrane (watermark)</h3>
+                        <p class="section-description">Texte affiché en arrière-plan diagonal de chaque page (ex: "CONFIDENTIEL", "BROUILLON", "COPIE").</p>
+                    </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 16px;">
+                    <label class="form-label-modern">
+                        <i class="fas fa-pen text-primary"></i>
+                        Texte du filigrane
+                    </label>
+                    <input type="text" class="form-control form-control-modern"
+                           name="setting_pdf_watermark"
+                           x-model="watermark"
+                           placeholder="Laissez vide pour désactiver le filigrane"
+                           maxlength="50">
+                    <small class="text-muted"><i class="fas fa-info-circle"></i> Visible uniquement si rempli. Max 50 caractères.</small>
+                </div>
+
+                <div class="settings-grid-2" style="margin-top: 16px;" x-show="watermark.trim() !== ''" x-cloak>
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-adjust text-primary"></i>
+                            Opacité (<span x-text="(opacity * 100).toFixed(0) + ' %'"></span>)
+                        </label>
+                        <input type="range" min="0.02" max="0.30" step="0.01"
+                               x-model.number="opacity"
+                               style="width: 100%;">
+                        <input type="hidden" name="setting_pdf_watermark_opacity" :value="opacity">
+                        <small class="text-muted">Plus l'opacité est faible, plus le filigrane est discret.</small>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label-modern">
+                            <i class="fas fa-sync-alt text-primary"></i>
+                            Rotation (<span x-text="rotation + '°'"></span>)
+                        </label>
+                        <input type="range" min="-90" max="90" step="5"
+                               x-model.number="rotation"
+                               style="width: 100%;">
+                        <input type="hidden" name="setting_pdf_watermark_rotation" :value="rotation">
+                        <small class="text-muted">-30° est l'inclinaison standard.</small>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ========================================================== --}}
+            {{-- Section : Aperçu PDF (Phase 9) --}}
+            {{-- ========================================================== --}}
+            <div class="settings-section" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px solid #bfdbfe;">
+                <div class="section-header">
+                    <div class="section-icon pdf" style="background: linear-gradient(135deg, #0453cb, #3b7ddb); color: #fff;">
+                        <i class="fas fa-eye"></i>
+                    </div>
+                    <div>
+                        <h3 class="section-title" style="color: #033a8e;">Prévisualiser un PDF avec ces paramètres</h3>
+                        <p class="section-description" style="color: #1e40af;">
+                            Génère un document de démonstration avec vos paramètres en cours d'édition (sans les sauvegarder).
+                            Le PDF s'ouvre dans une nouvelle tab du navigateur.
+                        </p>
+                    </div>
+                </div>
+
+                <div style="margin-top: 16px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                    @can('settings.pdf.manage')
+                    <button type="submit"
+                            formaction="{{ route('esbtp.settings.pdf-preview') }}"
+                            formmethod="POST"
+                            formtarget="_blank"
+                            class="btn-acasi primary"
+                            style="padding: .7rem 1.4rem; font-size: .9rem;">
+                        <i class="fas fa-file-pdf"></i> Aperçu PDF (nouvelle tab)
+                    </button>
+                    @endcan
+                    <small class="text-muted" style="flex: 1; min-width: 200px;">
+                        <i class="fas fa-info-circle"></i>
+                        Le bouton utilise vos modifications en cours. Vous devrez ensuite cliquer sur "Enregistrer" pour les rendre permanentes.
+                    </small>
+                </div>
+            </div>
+
                 </div>
                 <!-- End Tab 2: Configuration PDF -->
 
@@ -2354,5 +2577,29 @@ function testReminders() {
         `;
     });
 }
+
+// ====================================================================
+// Phase 9 — Sections avancées PDF (mise en page, footer, watermark)
+// ====================================================================
+window.pdfAdvancedSection = function () {
+    return {
+        settings: {
+            pdf_logo_size: '{{ \App\Helpers\SettingsHelper::get("pdf_logo_size", "60") }}',
+            pdf_font_size: '{{ \App\Helpers\SettingsHelper::get("pdf_font_size", "12") }}',
+            pdf_margin_top: '{{ \App\Helpers\SettingsHelper::get("pdf_margin_top", "20") }}',
+            pdf_margin_bottom: '{{ \App\Helpers\SettingsHelper::get("pdf_margin_bottom", "20") }}',
+            pdf_margin_left: '{{ \App\Helpers\SettingsHelper::get("pdf_margin_left", "15") }}',
+            pdf_margin_right: '{{ \App\Helpers\SettingsHelper::get("pdf_margin_right", "15") }}',
+        },
+    };
+};
+
+window.watermarkSection = function () {
+    return {
+        watermark: '{{ addslashes(\App\Helpers\SettingsHelper::get("pdf_watermark", "")) }}',
+        opacity: parseFloat('{{ \App\Helpers\SettingsHelper::get("pdf_watermark_opacity", "0.05") }}') || 0.05,
+        rotation: parseInt('{{ \App\Helpers\SettingsHelper::get("pdf_watermark_rotation", "-30") }}') || -30,
+    };
+};
 </script>
 @endpush

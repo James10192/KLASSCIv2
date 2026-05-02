@@ -122,11 +122,17 @@ class SettingsHelper
         return [
             'header_text' => self::get('pdf_header_text', ''),
             'footer_text' => self::get('pdf_footer_text', ''),
+            'footer_custom_text' => self::get('pdf_footer_custom_text', ''),
             'show_logo' => self::get('pdf_show_logo', '1') === '1',
             'logo_position' => self::get('pdf_logo_position', 'left'),
+            'logo_size' => (int) self::get('pdf_logo_size', '60'),
             'signature_director' => self::get('pdf_signature_director', ''),
             'signature_secretary' => self::get('pdf_signature_secretary', ''),
+            'show_director_signature' => self::get('pdf_show_director_signature', '1') === '1',
+            'show_pagination' => self::get('pdf_show_pagination', '1') === '1',
             'watermark' => self::get('pdf_watermark', ''),
+            'watermark_opacity' => (float) self::get('pdf_watermark_opacity', '0.05'),
+            'watermark_rotation' => (int) self::get('pdf_watermark_rotation', '-30'),
             'font_size' => (int) self::get('pdf_font_size', '12'),
             'margin_top' => (int) self::get('pdf_margin_top', '20'),
             'margin_bottom' => (int) self::get('pdf_margin_bottom', '20'),
@@ -138,6 +144,38 @@ class SettingsHelper
             'text_color' => self::get('pdf_text_color', '#1f2937'),
             'header_bg_color' => self::get('pdf_header_bg_color', '#0453cb'),
             'header_text_color' => self::get('pdf_header_text_color', '#ffffff'),
+        ];
+    }
+
+    /**
+     * Defaults stricts du PDF (sans aller chercher en base).
+     * Utilisé pour le bouton "Réinitialiser défauts" et le formulaire d'aperçu.
+     */
+    public static function getPdfDefaults(): array
+    {
+        return [
+            'pdf_header_text' => '',
+            'pdf_footer_text' => '',
+            'pdf_footer_custom_text' => '',
+            'pdf_show_logo' => '1',
+            'pdf_logo_position' => 'left',
+            'pdf_logo_size' => '60',
+            'pdf_show_director_signature' => '1',
+            'pdf_show_pagination' => '1',
+            'pdf_watermark' => '',
+            'pdf_watermark_opacity' => '0.05',
+            'pdf_watermark_rotation' => '-30',
+            'pdf_font_size' => '12',
+            'pdf_margin_top' => '20',
+            'pdf_margin_bottom' => '20',
+            'pdf_margin_left' => '15',
+            'pdf_margin_right' => '15',
+            'pdf_primary_color' => '#0453cb',
+            'pdf_secondary_color' => '#64748b',
+            'pdf_accent_color' => '#f59e0b',
+            'pdf_text_color' => '#1f2937',
+            'pdf_header_bg_color' => '#0453cb',
+            'pdf_header_text_color' => '#ffffff',
         ];
     }
 

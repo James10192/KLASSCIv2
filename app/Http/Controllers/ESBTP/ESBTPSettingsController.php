@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class ESBTPSettingsController extends Controller
 {
@@ -65,6 +66,39 @@ class ESBTPSettingsController extends Controller
                         'default_value' => $defaultValue,
                         'validation_rules' => ['nullable', 'string', 'max:20'],
                         'sort_order' => 50
+                    ]
+                );
+            }
+
+            // Phase 9 — Settings avancées PDF (mise en page, footer, watermark)
+            $pdfAdvancedDefaults = [
+                'pdf_logo_size' => ['value' => '60', 'type' => 'integer', 'desc' => 'Hauteur max du logo (px)'],
+                'pdf_footer_custom_text' => ['value' => '', 'type' => 'string', 'desc' => 'Texte personnalisé du pied de page'],
+                'pdf_show_pagination' => ['value' => '1', 'type' => 'boolean', 'desc' => 'Afficher la pagination dans le footer'],
+                'pdf_show_director_signature' => ['value' => '1', 'type' => 'boolean', 'desc' => 'Afficher la mention "Directeur" dans le footer'],
+                'pdf_watermark_opacity' => ['value' => '0.05', 'type' => 'float', 'desc' => 'Opacité du filigrane (0.02 à 0.30)'],
+                'pdf_watermark_rotation' => ['value' => '-30', 'type' => 'integer', 'desc' => 'Rotation du filigrane (-90 à 90 degrés)'],
+                'pdf_watermark' => ['value' => '', 'type' => 'string', 'desc' => 'Texte du filigrane (vide = désactivé)'],
+                'pdf_font_size' => ['value' => '12', 'type' => 'integer', 'desc' => 'Taille de police du corps (px)'],
+                'pdf_margin_top' => ['value' => '20', 'type' => 'integer', 'desc' => 'Marge haut (mm)'],
+                'pdf_margin_bottom' => ['value' => '20', 'type' => 'integer', 'desc' => 'Marge bas (mm)'],
+                'pdf_margin_left' => ['value' => '15', 'type' => 'integer', 'desc' => 'Marge gauche (mm)'],
+                'pdf_margin_right' => ['value' => '15', 'type' => 'integer', 'desc' => 'Marge droite (mm)'],
+            ];
+
+            foreach ($pdfAdvancedDefaults as $key => $attrs) {
+                Setting::firstOrCreate(
+                    ['key' => $key],
+                    [
+                        'value' => $attrs['value'],
+                        'type' => $attrs['type'],
+                        'group' => 'pdf',
+                        'category' => 'pdf',
+                        'description' => $attrs['desc'],
+                        'is_required' => false,
+                        'default_value' => $attrs['value'],
+                        'validation_rules' => null,
+                        'sort_order' => 60
                     ]
                 );
             }
@@ -839,5 +873,64 @@ class ESBTPSettingsController extends Controller
                 'message' => 'Erreur lors du test: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Génère un PDF d'aperçu en utilisant les overrides fournis dans la requête
+     * (sans persister). Permet à l'admin tenant de prévisualiser ses paramètres
+     * PDF dans une nouvelle tab avant de sauvegarder.
+     *
+     * Phase 9 — Customisation PDF tenant.
+     */
+    public function pdfPreview(Request $request)
+    {
+        $overrides = $this->extractPdfOverrides($request);
+
+        $pdf = Pdf::loadView('pdf.preview-sample', [
+            'overrides' => $overrides,
+        ])->setPaper('A4', 'portrait');
+
+        return new \Illuminate\Http\Response(
+            $pdf->output(),
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="apercu-pdf-' . now()->format('Ymd-His') . '.pdf"',
+                'X-Robots-Tag' => 'noindex, nofollow',
+            ]
+        );
+    }
+
+    /**
+     * Convertit les inputs `pdf_*` du formulaire en array d'overrides matchant
+     * les clés de SettingsHelper::getPdfSettings() (sans préfixe `pdf_`).
+     * Booléens normalisés, marges/sizes castés en int, opacity en float.
+     */
+    private function extractPdfOverrides(Request $request): array
+    {
+        $defaults = \App\Helpers\SettingsHelper::getPdfDefaults();
+        $overrides = [];
+
+        foreach ($defaults as $key => $defaultValue) {
+            // Le form existant prefixe les inputs avec `setting_` (form principal /esbtp/settings).
+            // Le form du bouton "Aperçu" peut envoyer la clé directement.
+            $value = $request->input($key, $request->input('setting_' . $key));
+            if ($value === null) {
+                continue;
+            }
+            $shortKey = str_starts_with($key, 'pdf_') ? substr($key, 4) : $key;
+
+            $overrides[$shortKey] = match (true) {
+                in_array($shortKey, ['show_logo', 'show_director_signature', 'show_pagination'], true)
+                    => in_array($value, ['1', 1, true, 'true', 'on'], true),
+                in_array($shortKey, ['logo_size', 'font_size', 'margin_top', 'margin_bottom', 'margin_left', 'margin_right', 'watermark_rotation'], true)
+                    => (int) $value,
+                $shortKey === 'watermark_opacity'
+                    => (float) $value,
+                default => (string) $value,
+            };
+        }
+
+        return $overrides;
     }
 }
