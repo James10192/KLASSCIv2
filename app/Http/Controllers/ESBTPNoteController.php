@@ -15,6 +15,8 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPTeacher;
+use App\Http\Requests\Notes\StoreBulkNotesRequest;
+use App\Http\Requests\Notes\StoreNoteRequest;
 use App\Models\User;
 use App\Services\NoteCalculationService;
 use App\Services\NotesImportService;
@@ -547,26 +549,16 @@ class ESBTPNoteController extends Controller
     /**
      * Sauvegarde (création ou mise à jour) d'une note via AJAX depuis notes.index.
      * Retourne toujours du JSON. Utilise un UPSERT pour éviter le "already exists".
+     *
+     * Validation déléguée à StoreNoteRequest :
+     *   - permissions notes.create / notes.edit / notes.manage_own
+     *   - exists evaluation_id / etudiant_id
+     *   - note ≤ barème via la rule NoteRespectsBareme
      */
-    public function saveNoteAjax(Request $request)
+    public function saveNoteAjax(StoreNoteRequest $request)
     {
         try {
-            $validator = \Validator::make($request->all(), [
-                'etudiant_id'   => 'required|exists:esbtp_etudiants,id',
-                'evaluation_id' => 'required|exists:esbtp_evaluations,id',
-                'note'          => 'nullable|numeric|min:0',
-                'is_absent'     => 'nullable|string',
-            ]);
-
-            if ($validator->fails()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => $validator->errors()->first(),
-                    'errors'  => $validator->errors()->toArray(),
-                ], 422);
-            }
-
-            $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
+            $evaluation = ESBTPEvaluation::findOrFail($request->input('evaluation_id'));
 
             if (! $evaluation->is_published) {
                 return response()->json([
@@ -575,8 +567,8 @@ class ESBTPNoteController extends Controller
                 ], 422);
             }
 
-            $existingNote = ESBTPNote::where('etudiant_id', $request->etudiant_id)
-                ->where('evaluation_id', $request->evaluation_id)
+            $existingNote = ESBTPNote::where('etudiant_id', $request->input('etudiant_id'))
+                ->where('evaluation_id', $request->input('evaluation_id'))
                 ->first();
 
             if ($existingNote && ! Auth::user()->can('notes.edit')) {
@@ -586,14 +578,21 @@ class ESBTPNoteController extends Controller
                 ], 403);
             }
 
-            $result = $this->processNoteEntry($evaluation, $existingNote, [
-                'etudiant_id'   => $request->etudiant_id,
-                'evaluation_id' => $request->evaluation_id,
-                'note'          => $request->note,
-                'is_absent'     => $request->is_absent,
-                'commentaire'   => $request->commentaire,
-            ]);
+            // Transaction explicite : la création/modification d'une note
+            // déclenche un Observer (recalcul moyennes) qui peut écrire en
+            // cascade. On garde l'atomicité pour éviter les états partiels.
+            $result = DB::transaction(function () use ($evaluation, $existingNote, $request) {
+                return $this->processNoteEntry($evaluation, $existingNote, [
+                    'etudiant_id'   => $request->input('etudiant_id'),
+                    'evaluation_id' => $request->input('evaluation_id'),
+                    'note'          => $request->input('note'),
+                    'is_absent'     => $request->boolean('is_absent'),
+                    'commentaire'   => $request->input('commentaire'),
+                ]);
+            });
 
+            // La notification est envoyée APRÈS commit pour éviter qu'un échec
+            // d'envoi ne rollback la note enregistrée.
             if ($result['is_new_absent']) {
                 $this->sendAbsenceNotificationForNote($result['note'], $evaluation);
             }
@@ -607,45 +606,40 @@ class ESBTPNoteController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('saveNoteAjax error: ' . $e->getMessage());
+            \Log::error('saveNoteAjax error: ' . $e->getMessage(), [
+                'evaluation_id' => $request->input('evaluation_id'),
+                'etudiant_id' => $request->input('etudiant_id'),
+                'user_id' => Auth::id(),
+            ]);
+
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur serveur : ' . $e->getMessage(),
+                'message' => 'Erreur serveur lors de l\'enregistrement de la note.',
             ], 500);
         }
     }
 
     /**
      * Sauvegarde en masse des notes (une seule requête HTTP au lieu d'une par étudiant).
+     *
+     * Validation déléguée à StoreBulkNotesRequest :
+     *   - permissions notes.create / notes.edit / notes.manage_own
+     *   - max 500 notes par batch (anti-abus)
+     *   - exists evaluation_id / etudiant_id sur chaque entrée
      */
-    public function saveNotesAjaxBulk(Request $request)
+    public function saveNotesAjaxBulk(StoreBulkNotesRequest $request)
     {
-        $validator = \Validator::make($request->all(), [
-            'notes'                 => 'required|array|min:1',
-            'notes.*.etudiant_id'   => 'required|integer',
-            'notes.*.evaluation_id' => 'required|integer',
-            'notes.*.note'          => 'nullable|numeric|min:0',
-            'notes.*.is_absent'     => 'nullable|string',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json([
-                'success' => false,
-                'message' => $validator->errors()->first(),
-                'errors'  => $validator->errors()->toArray(),
-            ], 422);
-        }
-
         $errors = 0;
         $saved  = 0;
+        $notes = $request->input('notes', []);
 
         DB::beginTransaction();
         try {
-            $evalIds = collect($request->notes)->pluck('evaluation_id')->unique();
+            $evalIds = collect($notes)->pluck('evaluation_id')->unique();
             $evaluations = ESBTPEvaluation::whereIn('id', $evalIds)->get()->keyBy('id');
 
             // Requête tuple-based IN avec cast int pour éviter injection SQL
-            $pairs = collect($request->notes)
+            $pairs = collect($notes)
                 ->map(fn($e) => '(' . (int) $e['etudiant_id'] . ', ' . (int) $e['evaluation_id'] . ')')
                 ->implode(',');
             $existingNotes = $pairs
@@ -656,11 +650,23 @@ class ESBTPNoteController extends Controller
             $canEdit = Auth::user()->can('notes.edit');
             $pendingNotifications = [];
 
-            foreach ($request->notes as $entry) {
+            foreach ($notes as $entry) {
                 $evaluation = $evaluations->get($entry['evaluation_id']);
                 if (! $evaluation || ! $evaluation->is_published) {
                     $errors++;
                     continue;
+                }
+
+                // Garde-fou cohérence note ≤ barème (défense en profondeur,
+                // déjà couvert pour les saisies unitaires par NoteRespectsBareme).
+                $rawNote = $entry['note'] ?? null;
+                $isAbsent = (bool) ($entry['is_absent'] ?? false);
+                if (! $isAbsent && $rawNote !== null && $rawNote !== '') {
+                    $bareme = (float) $evaluation->bareme;
+                    if ($bareme <= 0 || (float) $rawNote > $bareme) {
+                        $errors++;
+                        continue;
+                    }
                 }
 
                 $key  = $entry['etudiant_id'] . '_' . $entry['evaluation_id'];
@@ -690,18 +696,21 @@ class ESBTPNoteController extends Controller
                 'success' => $errors === 0,
                 'saved'   => $saved,
                 'errors'  => $errors,
-                'total'   => count($request->notes),
+                'total'   => count($notes),
                 'message' => $errors === 0
                     ? "{$saved} note(s) enregistrée(s) avec succès."
                     : "{$saved} enregistrée(s), {$errors} erreur(s).",
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('saveNotesAjaxBulk error: ' . $e->getMessage());
+            \Log::error('saveNotesAjaxBulk error: ' . $e->getMessage(), [
+                'user_id' => Auth::id(),
+                'count' => count($notes),
+            ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'Erreur serveur : ' . $e->getMessage(),
+                'message' => 'Erreur serveur lors de l\'enregistrement des notes.',
             ], 500);
         }
     }
@@ -786,9 +795,11 @@ class ESBTPNoteController extends Controller
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Récupérer uniquement les étudiants avec inscriptions actives sur l'année courante
+        // ET workflow_step = etudiant_cree (exclut les pré-inscriptions / prospects).
         $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
             $query->where('classe_id', $evaluation->classe_id)
-                ->where('status', 'active');
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree');
             if ($anneeCourante) {
                 $query->where('annee_universitaire_id', $anneeCourante->id);
             }
@@ -837,7 +848,8 @@ class ESBTPNoteController extends Controller
 
         $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
             $query->where('classe_id', $evaluation->classe_id)
-                ->where('status', 'active');
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree');
             if ($anneeCourante) {
                 $query->where('annee_universitaire_id', $anneeCourante->id);
             }
@@ -894,7 +906,8 @@ class ESBTPNoteController extends Controller
 
         $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($classe, $anneeCourante) {
             $query->where('classe_id', $classe->id)
-                ->where('status', 'active');
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree');
             if ($anneeCourante) {
                 $query->where('annee_universitaire_id', $anneeCourante->id);
             }

@@ -1244,6 +1244,7 @@ class ESBTPClasseController extends Controller
                 ->inscriptions()
                 ->with(["etudiant"])
                 ->where("status", "active")
+                ->where("workflow_step", "etudiant_cree")
                 ->where("annee_universitaire_id", $anneeCourante->id)
                 ->get()
                 ->map(function ($inscription) {

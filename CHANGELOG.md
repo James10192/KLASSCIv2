@@ -22,6 +22,17 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 - **Exports PDF + Excel du journal d'audit** — formats premium (PDF via `<x-pdf-document>`, Excel avec colonnes formatées). Throttle 5/min sur exports, 100/min sur consultation.
 - **Index DB sur `audits`** — ajout de 3 indexes (`created_at`, `event`, `tags`) pour temps de réponse stables au-delà de 10 000 enregistrements.
 
+### Sécurité
+
+- **Throttling sur les endpoints notes** — 30 requêtes/min sur la saisie unitaire (`/esbtp/notes/save-ajax`), 10 req/min sur les saisies en masse (`/esbtp/notes/save-ajax-bulk` et `/esbtp/notes/store-batch`), 60 req/min sur les endpoints AJAX de lecture (étudiants par classe, évaluations par classe/matière). Évite les abus, scripts d'enumeration et erreurs en boucle.
+- **Validation backend stricte pour les notes** — refacto en `StoreNoteRequest` + `StoreBulkNotesRequest` (Form Requests) avec autorisation centralisée (permissions `notes.create` / `notes.edit` / `notes.manage_own`), nouvelle règle `App\Rules\NoteRespectsBareme` qui rejette toute note dépassant le barème de l'évaluation, plafond strict de 500 notes par batch, borne haute défensive à 100, validation `commentaire` ≤ 500 caractères, coercion robuste de `is_absent` (boolean au lieu de string). Garde-fou anti division par zéro : barème de l'évaluation rejeté s'il est ≤ 0.
+- **Validation barème + coefficient sur les évaluations** — `bareme` strictement > 0 (entre 0.1 et 100), `coefficient` borné entre 0.1 et 10 (déjà strict en création, désormais aussi en modification), `duree_minutes` borné entre 1 et 480 minutes (8h max). Empêche la création d'évaluations qui casseraient ensuite le calcul de moyenne.
+- **Filtre `workflow_step = etudiant_cree` sur la liste des étudiants pour saisie de notes** — la modal de saisie via `/esbtp/notes`, les pages de saisie rapide (web + PDF vierges) ainsi que les pages détail/PDF d'une évaluation (`ESBTPEvaluationController`) n'affichent plus les étudiants en pré-inscription / prospect. Évite la création accidentelle de notes orphelines pour des étudiants qui ne sont pas encore officiellement inscrits.
+
+### Améliorations
+
+- **Transaction DB sur la saisie de note unitaire** — `saveNoteAjax` est désormais wrappé dans `DB::transaction(...)` (le bulk l'avait déjà). Garantit l'atomicité face aux Observer / triggers de recalcul de moyennes en cascade. Les notifications d'absence sont envoyées après le commit (évite les rollbacks en cascade en cas d'échec d'envoi).
+
 ### Corrections
 
 - **CRITIQUE — calcul de moyenne dans la saisie de notes** (`/esbtp/notes`) — la moyenne par étudiant affichée côté UI excluait silencieusement les notes 0 légitimes. Une enseignante saisissait 10 et 0 et voyait 10 au lieu de 5. Cause : la fonction JS `calculateStudentAverage()` filtrait `noteValue > 0` au lieu de `rawValue !== ''`, ce qui rejetait à la fois les cellules vides ET les notes 0. La fonction sœur `calculateClassAverages()` du même fichier utilisait le bon filtre, ce qui créait une divergence entre la moyenne par étudiant (fausse) et la moyenne par évaluation (correcte). Algo aligné sur le bon filtre + ajout d'un garde-fou contre les barèmes invalides (≤ 0).
