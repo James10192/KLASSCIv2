@@ -307,6 +307,18 @@ class ESBTPSettingsController extends Controller
                         // dans la DB rejettent les champs facultatifs laissés vides).
                         $isEmpty = $value === null || $value === '';
 
+                        // Idempotence : si la valeur soumise est identique à celle en DB,
+                        // on ne valide pas (évite de pénaliser sur des seeds pourris où
+                        // un setting est marqué is_required=1 mais a une value vide
+                        // — ex: current_academic_year qui ne sert plus, l'année courante
+                        // venant de esbtp_annee_universitaires.is_current). Pas de
+                        // modification = pas de raison de re-valider.
+                        $currentValue = (string) ($setting->value ?? '');
+                        $newValue = $value === null ? '' : (string) $value;
+                        if ($currentValue === $newValue) {
+                            continue;
+                        }
+
                         if ($isEmpty && ! $setting->is_required) {
                             // Permet d'écraser une valeur existante par '' (vidage volontaire).
                             $setting->update([
