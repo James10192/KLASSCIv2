@@ -12,7 +12,13 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### Corrections
+
+- **Bug accents en majuscules dans les titres PDF** — les exports comptabilité affichaient « TABLEAU DéTAILLé DES PAIEMENTS » au lieu de « TABLEAU DÉTAILLÉ DES PAIEMENTS ». La fonction PHP `strtoupper()` ne gère pas correctement les caractères UTF-8 (les accents `é`, `à`, `è`, etc. ne sont pas convertis en majuscules). Remplacement par `mb_strtoupper(..., 'UTF-8')` sur les 3 templates PDF concernés (recouvrement, analytics, paiements détaillés). Effet collatéral : les badges de statut (Validé / Rejeté / Annulé) et les libellés de niveau de risque sont également correctement majuscules.
+
 ### Améliorations
+
+- **Refonte premium des 3 PDFs comptabilité** (Recouvrement quotidien, Analytics financiers, Tableau détaillé des paiements) — adoption du pattern canonique `liste-complete-pdf` avec header 2 colonnes (logo carré 18 % fond bleu primaire | nom école + contact + titre document 82 %), KPI bar pleine largeur fond primaire, footer summary 2 colonnes (résumé statistique / infos document) et nouvel emplacement signature & cachet spacieux (hauteur configurable via setting `pdf_signature_height`, défaut 80 px) avec bordure pointillée et zone visa comptabilité. Toutes les couleurs proviennent de `SettingsHelper::getPdfSettings()` (header_bg, primary, secondary, text). Respect du nouveau toggle `pdf_show_generator_name` partout (footer généré + carte « Document » + section signature).
 
 - **Customisation PDF par tenant avec aperçu en nouvelle tab** (`/esbtp/settings` tab PDF) — chaque école peut désormais ajuster la mise en page de ses exports PDF : taille du logo, marges (4 côtés en mm), texte personnalisé du pied de page, toggle pagination, toggle mention « Directeur », filigrane (texte + opacité 2-30 % + rotation -90° à 90°). Bouton « Aperçu PDF (nouvelle tab) » qui génère un document de démonstration représentatif (KPIs + tableau étudiants + totaux) avec les paramètres en cours d'édition, sans persister. Le composant `<x-pdf-document>` accepte un prop `$overrides` qui se merge avec les settings sauvegardées, ce qui rend l'aperçu strictement fidèle au rendu final. Permission `settings.pdf.manage` (registry) pour les `secretaire` et `superAdmin`.
 

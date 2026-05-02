@@ -4,6 +4,11 @@
     @include('pdf.partials.theme')
     <meta charset="UTF-8">
     <title>{{ $context['title'] ?? 'Tableau détaillé des paiements' }}</title>
+    @php
+        // Settings dispos AVANT le <style> (interpolation {{ $signatureHeight }})
+        $pdfCfgHead          = \App\Helpers\SettingsHelper::getPdfSettings();
+        $signatureHeightHead = $pdfCfgHead['signature_height'] ?? 80;
+    @endphp
     <style>
         @page {
             margin: 0.5cm;
@@ -139,6 +144,46 @@
             color: #0453cb;
         }
 
+        /* ─── Signature & cachet (emplacement spacieux, configurable via pdf_signature_height) ─── */
+        .signature-section {
+            margin-top: 16px;
+            display: table;
+            width: 100%;
+        }
+        .signature-cell {
+            display: table-cell;
+            width: 50%;
+            vertical-align: top;
+            padding: 0 6px;
+        }
+        .signature-box {
+            border: 1px dashed #94a3b8;
+            border-radius: 4px;
+            min-height: {{ max(80, (int) $signatureHeightHead) }}px;
+            padding: 8px 10px;
+            background: #ffffff;
+        }
+        .signature-label {
+            font-size: 8px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+        .signature-name {
+            font-size: 9px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-top: 4px;
+        }
+        .signature-img {
+            max-height: {{ max(40, (int) $signatureHeightHead - 20) }}px;
+            max-width: 200px;
+            display: block;
+            margin: 4px auto;
+        }
+
         /* ─── Generation info (cohérence avec liste-complete-pdf) ─── */
         .generation-info {
             text-align: center;
@@ -161,20 +206,26 @@
         'email' => \App\Helpers\SettingsHelper::get('school_email', ''),
         'logo' => \App\Helpers\SettingsHelper::get('school_logo', ''),
     ];
-    $pdfCfg  = \App\Helpers\SettingsHelper::getPdfSettings();
-    $hdrBg   = $pdfCfg['header_bg_color']  ?? $pdfCfg['primary_color'] ?? '#0453cb';
-    $hdrText = $pdfCfg['header_text_color'] ?? '#ffffff';
-    $primary = $pdfCfg['primary_color']     ?? '#0453cb';
+    $pdfCfg          = \App\Helpers\SettingsHelper::getPdfSettings();
+    $hdrBg           = $pdfCfg['header_bg_color']  ?? $pdfCfg['primary_color'] ?? '#0453cb';
+    $hdrText         = $pdfCfg['header_text_color'] ?? '#ffffff';
+    $primary         = $pdfCfg['primary_color']     ?? '#0453cb';
+    $secondary       = $pdfCfg['secondary_color']   ?? '#64748b';
+    $showGenerator   = $pdfCfg['show_generator_name'] ?? true;
+    $signatureHeight = $pdfCfg['signature_height']   ?? 80;
+    $directorName    = \App\Helpers\SettingsHelper::get('director_name', '');
+    $directorTitle   = \App\Helpers\SettingsHelper::get('director_title', 'Directeur Général');
 
     $statusBadge = function ($status) {
-        $normalized = strtolower(trim($status ?? ''));
+        // mb_strtolower : preserve les accents des libellés (validé, rejeté, annulé)
+        $normalized = mb_strtolower(trim($status ?? ''), 'UTF-8');
         return match ($normalized) {
             'validé', 'valide' => ['Validé', 'badge-valid'],
             'en_attente', 'en attente' => ['En attente', 'badge-pending'],
             'rejeté', 'rejete' => ['Rejeté', 'badge-rejected'],
             'annulé', 'annule' => ['Annulé', 'badge-default'],
             '' => ['—', 'badge-default'],
-            default => [ucfirst($status), 'badge-default'],
+            default => [mb_convert_case($status, MB_CASE_TITLE, 'UTF-8'), 'badge-default'],
         };
     };
     $formatMontant = fn ($m) => number_format((float) $m, 0, ',', ' ');
@@ -218,7 +269,7 @@
                     {{-- Titre document (rangée méta extraite en dessous, hors du <td>) --}}
                     <div style="border-top: 1px solid rgba(255,255,255,0.35); padding-top: 7px;">
                         <div style="font-size: 12px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px;">
-                            {{ strtoupper($context['title'] ?? 'TABLEAU DÉTAILLÉ DES PAIEMENTS') }}
+                            {{ mb_strtoupper($context['title'] ?? 'Tableau détaillé des paiements', 'UTF-8') }}
                         </div>
                         @if(! empty($context['subtitle_creator']))
                             <div style="font-size: 8.5px; color: {{ $hdrText }}; opacity: 0.85; margin-top: 5px; font-style: italic;">
@@ -329,10 +380,33 @@
         </tr>
     </table>
 
-    {{-- Generation info (signature document, identique à liste-complete-pdf) --}}
+    {{-- Signature & cachet (emplacement spacieux, configurable via pdf_signature_height) --}}
+    <div class="signature-section">
+        <div class="signature-cell">
+            <div class="signature-box">
+                <div class="signature-label">Signature & Cachet</div>
+                @if(!empty($pdfCfg['signature_director']) && file_exists(storage_path('app/public/' . $pdfCfg['signature_director'])))
+                    <img class="signature-img"
+                         src="data:image/{{ pathinfo($pdfCfg['signature_director'], PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $pdfCfg['signature_director']))) }}"
+                         alt="Signature directeur">
+                @endif
+                @if($directorName)
+                    <div class="signature-name">{{ $directorName }}</div>
+                    <div style="font-size: 8px; color: {{ $secondary }};">{{ $directorTitle }}</div>
+                @endif
+            </div>
+        </div>
+        <div class="signature-cell">
+            <div class="signature-box">
+                <div class="signature-label">Visa Comptabilité</div>
+            </div>
+        </div>
+    </div>
+
+    {{-- Generation info (signature document, identique à liste-complete-pdf, respecte pdf_show_generator_name) --}}
     <div class="generation-info">
         <strong>Document généré automatiquement le {{ $dateGeneration->format('d/m/Y à H:i') }}</strong>
-        @if(auth()->check())
+        @if($showGenerator && auth()->check())
             par {{ auth()->user()->name }}
         @endif
         <br>
