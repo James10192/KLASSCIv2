@@ -68,10 +68,42 @@
 .ms-msg-group .ms-msg.theirs:not(:first-child) { border-top-left-radius: 6px; }
 .ms-msg.system { align-self: center; background: rgba(245, 158, 11, 0.1); color: #92400e; border: 1px solid rgba(245,158,11,.3); font-size: .82rem; font-weight: 500; padding: .5rem .9rem; border-radius: 99px; }
 .ms-msg.action_card { align-self: flex-start; background: var(--ms-surface); border: 1px solid var(--ms-border); padding: 1rem 1.1rem; max-width: 85%; box-shadow: 0 1px 3px rgba(15,23,42,.04); border-radius: 12px; }
-.ms-msg-meta { font-size: .68rem; color: var(--ms-muted); margin: .35rem .55rem 0; display: flex; align-items: center; gap: .35rem; }
-.ms-msg-group.mine .ms-msg-meta { justify-content: flex-end; text-align: right; }
-.ms-msg-receipt { color: var(--ms-muted); font-size: .76rem; }
-.ms-msg-receipt.read { color: var(--ms-primary); }
+/* WhatsApp pattern : timestamp + receipt DANS la bulle, en bas à droite */
+.ms-msg { display: flex; flex-direction: column; }
+.ms-msg-text { word-break: break-word; }
+.ms-msg-time-inline {
+    align-self: flex-end;
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    font-size: .62rem;
+    opacity: .85;
+    margin-top: .25rem;
+    line-height: 1;
+    white-space: nowrap;
+}
+.ms-msg.theirs .ms-msg-time-inline { color: var(--ms-muted); }
+.ms-msg.mine .ms-msg-time-inline { color: rgba(255,255,255,.82); }
+.ms-msg-receipt { font-size: .72rem; }
+.ms-msg.mine .ms-msg-receipt { color: rgba(255,255,255,.65); }
+.ms-msg.mine .ms-msg-receipt.read { color: #ffffff; }
+.ms-msg.theirs .ms-msg-receipt { color: var(--ms-muted); }
+.ms-msg.theirs .ms-msg-receipt.read { color: var(--ms-primary); }
+
+/* Acard meta footer (in-card) */
+.acard-footer {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: .35rem;
+    font-size: .62rem;
+    opacity: .85;
+    padding-top: .35rem;
+    border-top: 1px solid rgba(15,23,42,.06);
+}
+.acard.mine .acard-footer { color: rgba(255,255,255,.78); border-top-color: rgba(255,255,255,.18); }
+.acard.mine .acard-footer .ms-msg-receipt { color: rgba(255,255,255,.7); }
+.acard.mine .acard-footer .ms-msg-receipt.read { color: #fff; }
 
 /* Date dividers entre messages selon le jour */
 .ms-date-divider {
@@ -626,6 +658,16 @@
                                                             <span x-text="m.cta.label"></span>
                                                         </a>
                                                     </template>
+                                                    {{-- Footer in-card style WhatsApp : timestamp + receipt --}}
+                                                    <div class="acard-footer">
+                                                        <span x-text="formatTime(m.created_at)"></span>
+                                                        <template x-if="m.mine && m.read_by_others">
+                                                            <i class="fas fa-check-double ms-msg-receipt read"></i>
+                                                        </template>
+                                                        <template x-if="m.mine && !m.read_by_others">
+                                                            <i class="fas fa-check ms-msg-receipt"></i>
+                                                        </template>
+                                                    </div>
                                                 </div>
                                             </template>
                                             <template x-if="m.type === 'action_card' && !m.payload?.kind">
@@ -640,19 +682,21 @@
                                                 </div>
                                             </template>
                                             <template x-if="m.type === 'text'">
-                                                <div :class="['ms-msg', m.mine ? 'mine' : 'theirs', m.pending ? 'pending' : '']" x-text="m.body"></div>
+                                                <div :class="['ms-msg', m.mine ? 'mine' : 'theirs', m.pending ? 'pending' : '']">
+                                                    <span class="ms-msg-text" x-text="m.body"></span>
+                                                    <span class="ms-msg-time-inline">
+                                                        <span x-text="formatTime(m.created_at)"></span>
+                                                        <template x-if="m.mine && m.read_by_others">
+                                                            <i class="fas fa-check-double ms-msg-receipt read" title="Lu"></i>
+                                                        </template>
+                                                        <template x-if="m.mine && !m.read_by_others">
+                                                            <i class="fas fa-check ms-msg-receipt" title="Envoyé"></i>
+                                                        </template>
+                                                    </span>
+                                                </div>
                                             </template>
                                         </div>
                                     </template>
-                                    <div class="ms-msg-meta">
-                                        <span x-text="(group.mine ? 'Toi' : group.sender_name) + ' · ' + formatTime(group.last_at)"></span>
-                                        <template x-if="group.mine && group.items[group.items.length - 1]?.read_by_others">
-                                            <i class="fas fa-check-double ms-msg-receipt read" title="Lu"></i>
-                                        </template>
-                                        <template x-if="group.mine && !group.items[group.items.length - 1]?.read_by_others">
-                                            <i class="fas fa-check ms-msg-receipt" title="Envoyé"></i>
-                                        </template>
-                                    </div>
                                 </div>
                                     </template>
                                 </div>

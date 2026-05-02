@@ -47,12 +47,15 @@ class ChatController extends Controller
         $conversation->participants()
             ->updateExistingPivot($viewer->id, ['last_read_at' => now()]);
 
+        // On veut les 50 derniers messages, dans l'ordre chronologique ASC pour l'affichage.
+        // sortBy après get() pour éviter le piège ORDER BY DESC + reverse() qui peut ne pas
+        // s'appliquer dans certaines configurations Eloquent.
         $messages = $conversation->messages()
             ->with('sender:id,name')
-            ->latest('created_at')
+            ->orderByDesc('created_at')
             ->limit(50)
             ->get()
-            ->reverse()
+            ->sortBy('created_at')
             ->values();
 
         $maps = $this->resolver->preload($messages);
