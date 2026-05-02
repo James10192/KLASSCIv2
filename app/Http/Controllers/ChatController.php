@@ -25,7 +25,7 @@ class ChatController extends Controller
         $conversations = ChatConversation::query()
             ->whereHas('participants', fn ($q) => $q->where('user_id', $user->id))
             ->with([
-                'participants:id,name,email',
+                'participants:id,name,email,last_seen_at',
                 // Pas de select() partiel ici : latestOfMany() construit un INNER JOIN
                 // sur subquery qui rend chat_conversation_id ambigu côté MySQL.
                 'lastMessage',
@@ -42,23 +42,33 @@ class ChatController extends Controller
     public function show(Request $request, ChatConversation $conversation)
     {
         $this->authorizeMember($conversation, $request->user());
+        $viewer = $request->user();
 
         $conversation->participants()
-            ->updateExistingPivot($request->user()->id, ['last_read_at' => now()]);
+            ->updateExistingPivot($viewer->id, ['last_read_at' => now()]);
 
+        // On veut les 50 derniers messages, dans l'ordre chronologique ASC pour l'affichage.
+        // sortBy après get() pour éviter le piège ORDER BY DESC + reverse() qui peut ne pas
+        // s'appliquer dans certaines configurations Eloquent.
         $messages = $conversation->messages()
             ->with('sender:id,name')
-            ->latest('created_at')
+            ->orderByDesc('created_at')
             ->limit(50)
             ->get()
-            ->reverse()
+            ->sortBy('created_at')
             ->values();
 
-        $viewer = $request->user();
         $maps = $this->resolver->preload($messages);
 
+        // Pour les read receipts : on calcule le min(last_read_at) des autres participants.
+        $conversation->loadMissing('participants:id,name,email,last_seen_at');
+        $others = $conversation->participants->where('id', '!=', $viewer->id);
+        $minOtherReadAt = $others->map(fn ($p) => $p->pivot->last_read_at)->filter()->min();
+
         return response()->json([
-            'conversation' => $conversation->only(['id', 'type', 'title', 'context']),
+            'conversation' => array_merge($conversation->only(['id', 'type', 'title', 'context']), [
+                'participants' => $others->map(fn ($p) => $this->mapParticipant($p))->values(),
+            ]),
             'messages' => $messages->map(fn ($m) => [
                 'id' => $m->id,
                 'sender_id' => $m->sender_id,
@@ -69,6 +79,9 @@ class ChatController extends Controller
                 'cta' => $m->type === 'action_card' ? $this->resolver->resolveCta($m, $viewer, $maps) : null,
                 'created_at' => $m->created_at->toIso8601String(),
                 'mine' => $m->sender_id === $viewer->id,
+                'read_by_others' => $m->sender_id === $viewer->id
+                    && $minOtherReadAt
+                    && $m->created_at->lte($minOtherReadAt),
             ])->all(),
         ]);
     }
@@ -130,7 +143,7 @@ class ChatController extends Controller
 
         $conversations = ChatConversation::query()
             ->whereHas('participants', fn ($q) => $q->where('user_id', $user->id))
-            ->with(['participants:id,name,email', 'lastMessage'])
+            ->with(['participants:id,name,email,last_seen_at', 'lastMessage'])
             ->orderByDesc('last_message_at')
             ->limit(50)
             ->get();
@@ -169,13 +182,27 @@ class ChatController extends Controller
                         'sender_id' => $last->sender_id,
                     ] : null,
                     'unread_count' => $unreadCount,
-                    'participants' => $c->participants->where('id', '!=', $user->id)->map(fn ($p) => [
-                        'id' => $p->id,
-                        'name' => $p->name,
-                    ])->values(),
+                    'participants' => $c->participants->where('id', '!=', $user->id)
+                        ->map(fn ($p) => $this->mapParticipant($p))->values(),
                 ];
             })->all(),
         ]);
+    }
+
+    /**
+     * Sérialise un participant avec présence (en ligne / dernière connexion).
+     * En ligne = last_seen_at < 2 minutes.
+     */
+    private function mapParticipant($p): array
+    {
+        $lastSeen = $p->last_seen_at;
+        $isOnline = $lastSeen && $lastSeen->gt(now()->subMinutes(2));
+        return [
+            'id' => $p->id,
+            'name' => $p->name,
+            'is_online' => (bool) $isOnline,
+            'last_seen_at' => $lastSeen?->toIso8601String(),
+        ];
     }
 
     public function markNotificationRead(Request $request, string $id): JsonResponse

@@ -18,14 +18,22 @@ class UpdateLastLogin
      */
     public function handle(Request $request, Closure $next)
     {
-        // Vérifier si l'utilisateur est connecté
         if (Auth::check()) {
             $user = Auth::user();
-            
-            // Mettre à jour la date de dernière connexion uniquement si elle n'a pas été mise à jour aujourd'hui
-            if (!$user->last_login_at || Carbon::parse($user->last_login_at)->toDateString() !== Carbon::now()->toDateString()) {
-                $user->last_login_at = Carbon::now();
-                $user->save();
+            $now = Carbon::now();
+
+            // last_login_at : update une fois par jour pour audit/historique.
+            if (!$user->last_login_at || Carbon::parse($user->last_login_at)->toDateString() !== $now->toDateString()) {
+                $user->last_login_at = $now;
+            }
+
+            // last_seen_at : throttled à 30s pour la présence "en ligne" sans tuer la DB.
+            if (!$user->last_seen_at || Carbon::parse($user->last_seen_at)->lt($now->copy()->subSeconds(30))) {
+                $user->last_seen_at = $now;
+            }
+
+            if ($user->isDirty(['last_login_at', 'last_seen_at'])) {
+                $user->saveQuietly();
             }
         }
 
