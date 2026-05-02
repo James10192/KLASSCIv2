@@ -1764,3 +1764,609 @@
         font-size: 0.74rem;
     }
 }
+
+/* ══════════════════════════════════════════════════════════
+   PR #3+#4 — Robustesse saisie + UX premium modal
+   (autosave, network, keyboard, toast, search, pagination,
+    absent toggle, eval header lisible, scroll indicator,
+    save & continue, restore banner)
+   ══════════════════════════════════════════════════════════ */
+
+/* ── Network badge (modal-header top-right) ─────────────── */
+.nm-modal-header {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+.nm-modal-header > .nm-header-left {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex: 1;
+    min-width: 0;
+}
+.nm-modal-header > .nm-header-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-shrink: 0;
+}
+.nm-network-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.25rem 0.6rem 0.25rem 0.5rem;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #fff;
+    transition: background 0.2s, border-color 0.2s;
+    user-select: none;
+    line-height: 1;
+}
+.nm-network-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25);
+    transition: background 0.2s, box-shadow 0.2s;
+    flex-shrink: 0;
+}
+.nm-network-badge[data-state="syncing"] .nm-network-dot {
+    background: #fbbf24;
+    box-shadow: 0 0 0 2px rgba(251, 191, 36, 0.3);
+    animation: nm-pulse 1s ease-in-out infinite;
+}
+.nm-network-badge[data-state="offline"] {
+    background: rgba(220, 38, 38, 0.22);
+    border-color: rgba(248, 113, 113, 0.4);
+}
+.nm-network-badge[data-state="offline"] .nm-network-dot {
+    background: #f87171;
+    box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.3);
+}
+@keyframes nm-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+/* ── Restore draft banner (modal body) ──────────────────── */
+.nm-restore-banner {
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(245, 158, 11, 0.06));
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 10px;
+    padding: 0.7rem 1rem;
+    margin-bottom: 0.6rem;
+    color: #92400e;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    flex-shrink: 0;
+    animation: nm-slide-down 0.25s ease-out;
+}
+.nm-restore-banner-text {
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+.nm-restore-banner-text strong {
+    font-weight: 700;
+    color: #78350f;
+}
+.nm-restore-banner-actions {
+    display: flex;
+    gap: 0.45rem;
+}
+.nm-restore-banner .btn {
+    font-size: 0.78rem;
+    padding: 0.32rem 0.75rem;
+    font-weight: 600;
+}
+@keyframes nm-slide-down {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Toast premium (top-right stack) ────────────────────── */
+.nm-toast-stack {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    z-index: 11000;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    pointer-events: none;
+    max-width: 380px;
+}
+.nm-toast {
+    background: #fff;
+    border-left: 4px solid #0453cb;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12), 0 2px 6px rgba(15, 23, 42, 0.06);
+    padding: 0.7rem 0.95rem 0.7rem 0.85rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+    color: #1e293b;
+    font-weight: 500;
+    pointer-events: auto;
+    animation: nm-toast-in 0.25s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    min-width: 240px;
+}
+.nm-toast--success { border-left-color: #10b981; }
+.nm-toast--error   { border-left-color: #dc2626; }
+.nm-toast--warning { border-left-color: #f59e0b; }
+.nm-toast--info    { border-left-color: #0453cb; }
+.nm-toast-icon {
+    font-size: 1.05rem;
+    flex-shrink: 0;
+    line-height: 1.2;
+}
+.nm-toast--success .nm-toast-icon { color: #10b981; }
+.nm-toast--error .nm-toast-icon   { color: #dc2626; }
+.nm-toast--warning .nm-toast-icon { color: #f59e0b; }
+.nm-toast--info .nm-toast-icon    { color: #0453cb; }
+.nm-toast-msg {
+    flex: 1;
+    min-width: 0;
+    line-height: 1.35;
+    word-wrap: break-word;
+}
+.nm-toast-close {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0.8rem;
+    line-height: 1;
+    flex-shrink: 0;
+    margin-top: 2px;
+}
+.nm-toast-close:hover { color: #475569; }
+.nm-toast--leaving {
+    animation: nm-toast-out 0.22s ease-in forwards;
+}
+@keyframes nm-toast-in {
+    from { transform: translateX(120%); opacity: 0; }
+    to   { transform: translateX(0); opacity: 1; }
+}
+@keyframes nm-toast-out {
+    from { transform: translateX(0); opacity: 1; }
+    to   { transform: translateX(120%); opacity: 0; }
+}
+
+/* ── Keyboard hint tooltip ──────────────────────────────── */
+.nm-kbd-hint {
+    position: absolute;
+    background: #0f172a;
+    color: #fff;
+    padding: 0.55rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.74rem;
+    font-weight: 500;
+    box-shadow: 0 8px 22px rgba(15, 23, 42, 0.25);
+    z-index: 50;
+    max-width: 320px;
+    line-height: 1.4;
+    pointer-events: auto;
+    animation: nm-kbd-in 0.25s ease-out;
+}
+.nm-kbd-hint::before {
+    content: '';
+    position: absolute;
+    top: -6px;
+    left: 18px;
+    width: 12px;
+    height: 12px;
+    background: #0f172a;
+    transform: rotate(45deg);
+}
+.nm-kbd-hint kbd {
+    background: rgba(255, 255, 255, 0.16);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    border-radius: 4px;
+    padding: 0.05rem 0.35rem;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Consolas', monospace;
+    font-size: 0.72rem;
+    color: #fff;
+}
+.nm-kbd-hint-close {
+    background: transparent;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    margin-left: 0.55rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    padding: 0;
+    line-height: 1;
+}
+.nm-kbd-hint-close:hover { color: #fff; }
+@keyframes nm-kbd-in {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Table toolbar (search + stats + load more) ─────────── */
+.nm-table-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 0.45rem;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+}
+.nm-search-wrapper {
+    position: relative;
+    flex: 1;
+    min-width: 220px;
+    max-width: 360px;
+}
+.nm-search-icon {
+    position: absolute;
+    left: 0.6rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 0.78rem;
+    pointer-events: none;
+}
+.nm-search-wrapper input.form-control {
+    padding-left: 1.95rem;
+    border-radius: 8px;
+    border: 1px solid #dde3ed;
+    font-size: 0.83rem;
+    background: #fff;
+}
+.nm-search-wrapper input.form-control:focus {
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.1);
+    outline: none;
+}
+.nm-search-clear {
+    position: absolute;
+    right: 0.45rem;
+    top: 50%;
+    transform: translateY(-50%);
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.78rem;
+    padding: 0.15rem 0.35rem;
+    line-height: 1;
+    border-radius: 4px;
+}
+.nm-search-clear:hover {
+    color: #1e293b;
+    background: rgba(15, 23, 42, 0.05);
+}
+.nm-table-stats {
+    display: flex;
+    gap: 0.4rem;
+    flex-wrap: wrap;
+    margin-left: auto;
+}
+.nm-stat-pill {
+    background: rgba(4, 83, 203, 0.06);
+    border: 1px solid rgba(4, 83, 203, 0.12);
+    color: #1e3a8a;
+    border-radius: 999px;
+    padding: 0.22rem 0.7rem;
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+.nm-stat-pill strong {
+    font-weight: 800;
+    color: #0453cb;
+    margin-right: 0.15rem;
+}
+
+/* ── Pagination "Load more" ─────────────────────────────── */
+.nm-load-more-wrap {
+    display: flex;
+    justify-content: center;
+    padding: 0.6rem 0;
+    background: #fff;
+    border-top: 1px dashed #dde3ed;
+}
+.nm-load-more-btn {
+    background: rgba(4, 83, 203, 0.08);
+    border: 1px solid rgba(4, 83, 203, 0.18);
+    color: #0453cb;
+    border-radius: 8px;
+    padding: 0.4rem 1.1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    transition: background 0.18s, border-color 0.18s;
+}
+.nm-load-more-btn:hover {
+    background: rgba(4, 83, 203, 0.14);
+    border-color: rgba(4, 83, 203, 0.28);
+}
+.nm-load-more-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* ── Eval header lisible (titre + barème + coef + edit) ── */
+.nm-eval-header-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.18rem;
+    text-align: center;
+    position: relative;
+    padding-top: 0.05rem;
+}
+.nm-eval-header-block .nm-eval-title {
+    font-weight: 700;
+    color: #1e293b;
+    font-size: 0.78rem;
+    line-height: 1.2;
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    margin: 0;
+}
+.nm-eval-meta {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.7rem;
+    color: #475569;
+    font-weight: 600;
+    line-height: 1;
+}
+.nm-eval-meta .nm-eval-bareme {
+    color: #0453cb;
+    font-variant-numeric: tabular-nums;
+}
+.nm-eval-meta .nm-eval-coef {
+    color: #475569;
+    font-variant-numeric: tabular-nums;
+}
+.nm-eval-meta .nm-eval-meta-sep {
+    color: #cbd5e1;
+}
+.nm-eval-edit-btn {
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    background: rgba(4, 83, 203, 0.08);
+    border: 1px solid rgba(4, 83, 203, 0.16);
+    color: #0453cb;
+    border-radius: 6px;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 0.2s, background 0.2s;
+    padding: 0;
+    line-height: 1;
+}
+.nm-eval-header:hover .nm-eval-edit-btn,
+.nm-eval-edit-btn:focus {
+    opacity: 1;
+}
+.nm-eval-edit-btn:hover {
+    background: rgba(4, 83, 203, 0.18);
+}
+
+/* Hide the legacy bareme/coeff inline inputs when edit button is used.
+   Display the "lisible" version instead. */
+.nm-eval-controls.nm-eval-controls--legacy {
+    display: none;
+}
+
+/* ── Scroll horizontal indicator (right gradient + arrow) ── */
+.nm-grid-wrapper {
+    position: relative;
+}
+.nm-grid-wrapper.has-overflow-right::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    width: 28px;
+    background: linear-gradient(to right, transparent, rgba(15, 23, 42, 0.07));
+    pointer-events: none;
+    z-index: 14;
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+}
+.nm-scroll-arrow {
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(4, 83, 203, 0.92);
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    z-index: 15;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(4, 83, 203, 0.32);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+    font-size: 0.85rem;
+}
+.nm-grid-wrapper.has-overflow-right .nm-scroll-arrow {
+    opacity: 1;
+    pointer-events: auto;
+}
+.nm-scroll-arrow:hover {
+    background: #0453cb;
+    transform: translateY(-50%) scale(1.08);
+}
+
+/* ── Absent toggle switch + ligne stylée ───────────────── */
+/* Replaces .nm-absence-check checkbox with a Bootstrap form-switch */
+.nm-absent-switch.form-switch {
+    padding-left: 1.6em;
+    margin: 0;
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+}
+.nm-absent-switch .form-check-input {
+    width: 1.55em;
+    height: 0.85em;
+    margin-left: -1.6em;
+    margin-top: 0;
+    background-color: #cbd5e1;
+    border-color: #cbd5e1;
+    cursor: pointer;
+    box-shadow: none;
+    transition: background-color 0.18s, border-color 0.18s, box-shadow 0.18s;
+}
+.nm-absent-switch .form-check-input:focus {
+    box-shadow: 0 0 0 2px rgba(4, 83, 203, 0.18);
+    border-color: #94a3b8;
+}
+.nm-absent-switch .form-check-input:checked {
+    background-color: #dc2626;
+    border-color: #b91c1c;
+}
+.nm-absent-switch .form-check-label {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #94a3b8;
+    margin-left: 0.3rem;
+    cursor: pointer;
+    user-select: none;
+}
+.nm-absent-switch .form-check-input:checked ~ .form-check-label {
+    color: #dc2626;
+}
+
+/* Row absent : light red wash + italic student name + badge */
+.nm-grid-table tbody tr.nm-row-absent td {
+    background: rgba(220, 38, 38, 0.04) !important;
+}
+.nm-grid-table tbody tr.nm-row-absent .notes-student-col {
+    background: rgba(220, 38, 38, 0.06) !important;
+}
+.nm-grid-table tbody tr.nm-row-absent .nm-student-fullname {
+    color: #b91c1c;
+    font-style: italic;
+}
+.nm-row-absent-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    background: rgba(220, 38, 38, 0.1);
+    color: #b91c1c;
+    border: 1px solid rgba(220, 38, 38, 0.2);
+    padding: 0.06rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.6rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.35px;
+    margin-top: 0.18rem;
+}
+
+/* ── Quick edit eval modal (subset of nm-eval-modal) ──── */
+.nm-eval-quick-modal .modal-content {
+    border: none;
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 25px 70px rgba(15, 23, 42, 0.25);
+}
+.nm-eval-quick-modal .modal-header {
+    background: var(--nm-gradient-primary);
+    color: #fff;
+    border: none;
+    padding: 0.85rem 1.15rem;
+}
+.nm-eval-quick-modal .modal-header .modal-title {
+    font-size: 0.95rem;
+    font-weight: 700;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+}
+.nm-eval-quick-modal .modal-body {
+    padding: 1rem 1.15rem;
+}
+.nm-eval-quick-modal .form-label {
+    font-size: 0.74rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    color: #475569;
+    margin-bottom: 0.3rem;
+}
+
+/* ── Save & Continue badge (eval modal) ─────────────────── */
+.nm-saved-continue-toast {
+    background: rgba(16, 185, 129, 0.1);
+    color: #047857;
+    border: 1px solid rgba(16, 185, 129, 0.22);
+    padding: 0.45rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    animation: nm-slide-down 0.25s ease-out;
+}
+
+/* ── Sticky thead reinforcement (PR #4 — guarantee) ──── */
+/* The grid wrapper already scrolls vertically (max-height = flex). The
+   thead is sticky via .nm-period-row + .nm-eval-row. We just ensure the
+   wrapper scrolls when content exceeds and that the thead repaint is
+   crisp on scroll. */
+.nm-grid-wrapper {
+    /* keep at bottom for cascading priority */
+    will-change: scroll-position;
+    -webkit-overflow-scrolling: touch;
+}
+.nm-grid-table thead th {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+}
+
+/* Mobile tweaks */
+@media (max-width: 768px) {
+    .nm-table-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .nm-search-wrapper { max-width: none; }
+    .nm-table-stats { margin-left: 0; }
+    .nm-network-badge { font-size: 0.68rem; padding: 0.2rem 0.5rem 0.2rem 0.45rem; }
+    .nm-toast-stack { left: 1rem; right: 1rem; max-width: none; }
+}
