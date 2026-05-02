@@ -4,36 +4,63 @@
     'filters' => [],
     'orientation' => 'portrait',
     'overrides' => [],
+    'signatureBlock' => null, // null|'director'|'secretary'|'both'
 ])
 @php
     $school = \App\Helpers\SettingsHelper::getSchoolInfo();
     $pdf = array_merge(\App\Helpers\SettingsHelper::getPdfSettings(), $overrides);
+
+    // Logo base64 inline (pour DomPDF + filter brightness/invert)
+    $logoBase64 = '';
+    $logoExt = 'png';
     $logoPath = $school['logo'] ?? '';
-    $logoFile = '';
     if ($pdf['show_logo'] && $logoPath) {
-        $candidate = public_path('storage/' . ltrim($logoPath, '/'));
-        if (file_exists($candidate)) {
-            $logoFile = $candidate;
-        } else {
-            $candidate = public_path($logoPath);
+        foreach ([storage_path('app/public/' . ltrim($logoPath, '/')), public_path('storage/' . ltrim($logoPath, '/')), public_path($logoPath)] as $candidate) {
             if (file_exists($candidate)) {
-                $logoFile = $candidate;
+                $logoBase64 = base64_encode(file_get_contents($candidate));
+                $logoExt = pathinfo($candidate, PATHINFO_EXTENSION) ?: 'png';
+                break;
             }
         }
     }
+
+    // Signature images
+    $signatureFiles = [];
+    if (!empty($pdf['show_director_signature']) && $signatureBlock !== null) {
+        foreach (['director' => 'signature_director', 'secretary' => 'signature_secretary'] as $sigKey => $settingKey) {
+            if (in_array($signatureBlock, [$sigKey, 'both'], true) && !empty($pdf[$settingKey])) {
+                $sigPath = storage_path('app/public/' . ltrim($pdf[$settingKey], '/'));
+                if (file_exists($sigPath)) {
+                    $signatureFiles[$sigKey] = [
+                        'b64' => base64_encode(file_get_contents($sigPath)),
+                        'ext' => pathinfo($sigPath, PATHINFO_EXTENSION) ?: 'png',
+                    ];
+                }
+            }
+        }
+    }
+
     $logoMaxHeight = max(20, min(120, (int) ($pdf['logo_size'] ?? 60)));
+    $signatureHeight = max(40, min(200, (int) ($pdf['signature_height'] ?? 80)));
     $watermarkOpacity = max(0, min(0.5, (float) ($pdf['watermark_opacity'] ?? 0.05)));
     $watermarkRotation = (int) ($pdf['watermark_rotation'] ?? -30);
     $footerText = trim((string) ($pdf['footer_custom_text'] ?? '')) !== ''
         ? $pdf['footer_custom_text']
         : ($pdf['footer_text'] ?? ($school['name'] ?? config('app.name')));
+    $hdrBg = $pdf['header_bg_color'] ?? $pdf['primary_color'] ?? '#0453cb';
+    $hdrText = $pdf['header_text_color'] ?? '#ffffff';
+    $primary = $pdf['primary_color'] ?? '#0453cb';
+    $secondary = $pdf['secondary_color'] ?? '#64748b';
+    $textColor = $pdf['text_color'] ?? '#1f2937';
+    $titleUpper = mb_strtoupper((string) $title, 'UTF-8');
+    $directorName = $school['director_name'] ?? '';
+    $directorTitle = $school['director_title'] ?? 'Directeur Général';
 @endphp
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     @include('pdf.partials.theme')
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title }}</title>
     <style>
         @page {
@@ -45,83 +72,107 @@
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
             font-size: {{ ($pdf['font_size'] ?? 11) }}px;
-            color: {{ $pdf['text_color'] ?? '#1f2937' }};
+            color: {{ $textColor }};
             margin: 0;
             line-height: 1.4;
         }
 
-        .pdf-header {
+        /* ===== Header banner premium (pattern liste-complete-pdf) ===== */
+        .pdf-banner {
             width: 100%;
-            border-bottom: 2px solid {{ $pdf['primary_color'] ?? '#0453cb' }};
-            padding-bottom: 8px;
-            margin-bottom: 16px;
+            border-collapse: collapse;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
-        .pdf-header-table {
-            width: 100%;
-            border-collapse: collapse;
-        }
-        .pdf-header-logo-cell {
-            width: 70px;
+        .pdf-banner-logo-cell {
+            width: 18%;
+            background-color: {{ $hdrBg }};
+            padding: 14px 10px;
+            text-align: center;
             vertical-align: middle;
-            padding-right: 12px;
+            border-right: 2px solid rgba(255,255,255,0.25);
         }
-        .pdf-header-logo {
+        .pdf-banner-logo {
             max-height: {{ $logoMaxHeight }}px;
-            max-width: 70px;
+            max-width: 100px;
+            filter: brightness(0) invert(1);
         }
-        .pdf-header-info-cell {
+        .pdf-banner-logo-fallback {
+            font-size: 32px;
+            font-weight: 900;
+            color: {{ $hdrText }};
+            opacity: 0.4;
+            letter-spacing: -2px;
+        }
+        .pdf-banner-info-cell {
+            width: 82%;
+            background-color: {{ $hdrBg }};
+            padding: 12px 16px;
             vertical-align: middle;
         }
         .pdf-school-name {
             font-size: 16px;
             font-weight: 700;
-            color: {{ $pdf['primary_color'] ?? '#0453cb' }};
-            margin: 0 0 2px;
-            text-transform: uppercase;
-            letter-spacing: .5px;
+            color: {{ $hdrText }};
+            margin: 0 0 3px;
         }
         .pdf-school-meta {
-            font-size: 9px;
-            color: {{ $pdf['secondary_color'] ?? '#64748b' }};
-            margin: 0;
-            line-height: 1.4;
+            font-size: 8.5px;
+            color: {{ $hdrText }};
+            opacity: 0.85;
+            margin: 0 0 8px;
+            line-height: 1.5;
         }
-        .pdf-doc-meta-cell {
-            text-align: right;
-            vertical-align: middle;
-            width: 200px;
-            font-size: 9px;
-            color: {{ $pdf['secondary_color'] ?? '#64748b' }};
+        .pdf-banner-divider {
+            border-top: 1px solid rgba(255,255,255,0.35);
+            padding-top: 7px;
         }
-        .pdf-doc-meta-cell strong {
-            color: {{ $pdf['primary_color'] ?? '#0453cb' }};
-            font-size: 10px;
-        }
-
-        .pdf-title-block {
-            margin-bottom: 14px;
-            text-align: center;
-        }
-        .pdf-title {
-            font-size: 18px;
+        .pdf-banner-title {
+            font-size: 13px;
             font-weight: 700;
-            color: {{ $pdf['primary_color'] ?? '#0453cb' }};
+            color: {{ $hdrText }};
+            letter-spacing: 0.5px;
             margin: 0 0 4px;
-            text-transform: uppercase;
-            letter-spacing: .8px;
         }
-        .pdf-subtitle {
-            font-size: 10px;
-            color: {{ $pdf['secondary_color'] ?? '#64748b' }};
-            margin: 0;
+        .pdf-banner-subtitle {
+            font-size: 9px;
+            color: {{ $hdrText }};
+            opacity: 0.85;
             font-style: italic;
+            margin: 0;
         }
 
+        /* ===== Méta-bar sous le banner (Référence | Date | Auteur) ===== */
+        .pdf-meta-bar {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 14px;
+        }
+        .pdf-meta-bar td {
+            background-color: {{ $hdrBg }};
+            padding: 6px 16px 10px;
+            font-size: 8.5px;
+            color: {{ $hdrText }};
+            border-top: 1px solid rgba(255,255,255,0.18);
+        }
+        .pdf-meta-bar td.spacer {
+            width: 18%;
+            border-right: 2px solid rgba(255,255,255,0.25);
+            padding: 6px 10px 10px;
+        }
+        .pdf-meta-label {
+            color: {{ $hdrText }};
+            opacity: 0.75;
+        }
+        .pdf-meta-value {
+            color: {{ $hdrText }};
+            font-weight: 700;
+        }
+
+        /* ===== Filtres recap ===== */
         .pdf-filters-recap {
             background: #f1f5f9;
-            border-left: 3px solid {{ $pdf['primary_color'] ?? '#0453cb' }};
+            border-left: 3px solid {{ $primary }};
             padding: 8px 12px;
             margin-bottom: 14px;
             font-size: 9px;
@@ -129,27 +180,81 @@
         }
         .pdf-filters-recap-title {
             font-weight: 700;
-            color: {{ $pdf['primary_color'] ?? '#0453cb' }};
+            color: {{ $primary }};
             margin-right: 6px;
         }
         .pdf-filters-recap-item {
-            margin-right: 10px;
-            color: {{ $pdf['text_color'] ?? '#1f2937' }};
+            margin-right: 12px;
+            color: {{ $textColor }};
         }
         .pdf-filters-recap-item strong {
-            color: {{ $pdf['secondary_color'] ?? '#64748b' }};
+            color: {{ $secondary }};
             font-weight: 600;
         }
 
+        /* ===== Body ===== */
         .pdf-body { margin-top: 8px; }
 
+        /* ===== Signature block (zone réservée) ===== */
+        .pdf-signature-block {
+            margin-top: 28px;
+            page-break-inside: avoid;
+        }
+        .pdf-signature-grid {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .pdf-signature-cell {
+            vertical-align: top;
+            padding: 0 8px;
+        }
+        .pdf-signature-card {
+            border: 1px dashed {{ $primary }};
+            border-radius: 4px;
+            padding: 10px 14px 14px;
+            min-height: {{ $signatureHeight + 36 }}px;
+            background: #ffffff;
+        }
+        .pdf-signature-label {
+            font-size: 9px;
+            font-weight: 700;
+            color: {{ $primary }};
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 8px;
+        }
+        .pdf-signature-img {
+            max-height: {{ $signatureHeight }}px;
+            max-width: 220px;
+            display: block;
+            margin: 6px 0;
+        }
+        .pdf-signature-name {
+            font-size: 10px;
+            font-weight: 600;
+            color: {{ $textColor }};
+            margin-top: 8px;
+        }
+        .pdf-signature-title-text {
+            font-size: 8.5px;
+            color: {{ $secondary }};
+            margin-top: 2px;
+        }
+        .pdf-signature-empty {
+            color: {{ $secondary }};
+            font-style: italic;
+            font-size: 9px;
+            margin-top: 18px;
+        }
+
+        /* ===== Footer paginé ===== */
         .pdf-footer {
             position: fixed;
             bottom: -12mm;
             left: 0;
             right: 0;
             font-size: 8px;
-            color: {{ $pdf['secondary_color'] ?? '#64748b' }};
+            color: {{ $secondary }};
             border-top: 1px solid #e5e7eb;
             padding-top: 4px;
             text-align: center;
@@ -174,56 +279,117 @@
         <div class="pdf-watermark">{{ $pdf['watermark'] }}</div>
     @endif
 
-    <div class="pdf-header">
-        <table class="pdf-header-table">
-            <tr>
-                @if($logoFile)
-                    <td class="pdf-header-logo-cell">
-                        <img src="{{ $logoFile }}" alt="logo" class="pdf-header-logo">
-                    </td>
+    {{-- Header banner premium : table 2-col (logo carré bg primary | infos école + titre intégré) --}}
+    <table class="pdf-banner">
+        <tr>
+            <td class="pdf-banner-logo-cell">
+                @if($logoBase64)
+                    <img src="data:image/{{ $logoExt }};base64,{{ $logoBase64 }}" alt="logo" class="pdf-banner-logo">
+                @else
+                    <div class="pdf-banner-logo-fallback">{{ mb_substr($school['acronym'] ?? 'K', 0, 1, 'UTF-8') }}</div>
                 @endif
-                <td class="pdf-header-info-cell">
-                    <p class="pdf-school-name">{{ $school['name'] ?? config('app.name') }}</p>
-                    <p class="pdf-school-meta">
+            </td>
+            <td class="pdf-banner-info-cell">
+                <div class="pdf-school-name">{{ $school['name'] ?? config('app.name') }}</div>
+                @if($school['address'] || $school['city'] || $school['phone'] || $school['email'])
+                    <div class="pdf-school-meta">
                         @if($school['address']){{ $school['address'] }}@endif
                         @if($school['city']) · {{ $school['city'] }}@endif
                         @if($school['country']) · {{ $school['country'] }}@endif
-                        <br>
-                        @if($school['phone']) Tél : {{ $school['phone'] }}@endif
-                        @if($school['email']) · {{ $school['email'] }}@endif
-                        @if($school['website']) · {{ $school['website'] }}@endif
-                    </p>
-                </td>
-                <td class="pdf-doc-meta-cell">
-                    <strong>{{ $school['acronym'] ?? '' }}</strong><br>
-                    Généré le {{ now()->locale('fr')->translatedFormat('d F Y à H:i') }}
-                    @if(!empty($pdf['show_generator_name']) && auth()->check())
-                        <br>Généré par {{ auth()->user()->name }}
+                        @if($school['phone'] || $school['email'])
+                            <br>
+                            @if($school['phone']) Tél : {{ $school['phone'] }}@endif
+                            @if($school['email']) · {{ $school['email'] }}@endif
+                            @if($school['website']) · {{ $school['website'] }}@endif
+                        @endif
+                    </div>
+                @endif
+                <div class="pdf-banner-divider">
+                    <div class="pdf-banner-title">{{ $titleUpper }}</div>
+                    @if($subtitle)
+                        <div class="pdf-banner-subtitle">{{ $subtitle }}</div>
                     @endif
-                </td>
-            </tr>
-        </table>
-    </div>
+                </div>
+            </td>
+        </tr>
+    </table>
 
-    <div class="pdf-title-block">
-        <h1 class="pdf-title">{{ $title }}</h1>
-        @if($subtitle)
-            <p class="pdf-subtitle">{{ $subtitle }}</p>
-        @endif
-    </div>
+    {{-- Méta-bar : Référence | Généré le | (Généré par) — tout dans le bleu pour cohérence --}}
+    <table class="pdf-meta-bar">
+        <tr>
+            <td class="spacer"></td>
+            <td style="text-align: left; width: 30%;">
+                <span class="pdf-meta-label">Référence :</span>
+                <span class="pdf-meta-value">{{ $school['acronym'] ?? config('app.name') }}</span>
+            </td>
+            <td style="text-align: center; width: 26%;">
+                <span class="pdf-meta-label">Généré le :</span>
+                <span class="pdf-meta-value">{{ now()->locale('fr')->translatedFormat('d F Y à H:i') }}</span>
+            </td>
+            <td style="text-align: right; width: 26%;">
+                @if(!empty($pdf['show_generator_name']) && auth()->check())
+                    <span class="pdf-meta-label">Par :</span>
+                    <span class="pdf-meta-value">{{ auth()->user()->name }}</span>
+                @endif
+            </td>
+        </tr>
+    </table>
 
+    {{-- Filtres appliqués --}}
     @if(!empty($filters))
         <x-pdf-filters-recap :filters="$filters" />
     @endif
 
+    {{-- Slot body --}}
     <div class="pdf-body">
         {{ $slot }}
     </div>
 
+    {{-- Signature block optionnel --}}
+    @if(in_array($signatureBlock, ['director', 'secretary', 'both'], true))
+        <div class="pdf-signature-block">
+            <table class="pdf-signature-grid">
+                <tr>
+                    @if(in_array($signatureBlock, ['director', 'both'], true))
+                        <td class="pdf-signature-cell" style="width: {{ $signatureBlock === 'both' ? 50 : 100 }}%;">
+                            <div class="pdf-signature-card">
+                                <div class="pdf-signature-label">Signature &amp; Cachet · {{ $directorTitle }}</div>
+                                @if(!empty($signatureFiles['director']))
+                                    <img src="data:image/{{ $signatureFiles['director']['ext'] }};base64,{{ $signatureFiles['director']['b64'] }}"
+                                         alt="Signature directeur" class="pdf-signature-img">
+                                @else
+                                    <div class="pdf-signature-empty">Espace réservé pour signature manuscrite et cachet officiel</div>
+                                @endif
+                                @if($directorName)
+                                    <div class="pdf-signature-name">{{ $directorName }}</div>
+                                    <div class="pdf-signature-title-text">{{ $directorTitle }}</div>
+                                @endif
+                            </div>
+                        </td>
+                    @endif
+                    @if(in_array($signatureBlock, ['secretary', 'both'], true))
+                        <td class="pdf-signature-cell" style="width: {{ $signatureBlock === 'both' ? 50 : 100 }}%;">
+                            <div class="pdf-signature-card">
+                                <div class="pdf-signature-label">Signature · Secrétariat</div>
+                                @if(!empty($signatureFiles['secretary']))
+                                    <img src="data:image/{{ $signatureFiles['secretary']['ext'] }};base64,{{ $signatureFiles['secretary']['b64'] }}"
+                                         alt="Signature secrétaire" class="pdf-signature-img">
+                                @else
+                                    <div class="pdf-signature-empty">Espace réservé pour signature et cachet</div>
+                                @endif
+                            </div>
+                        </td>
+                    @endif
+                </tr>
+            </table>
+        </div>
+    @endif
+
+    {{-- Footer paginé (généré automatiquement) --}}
     <div class="pdf-footer">
         {{ $footerText }}
         @if(!empty($pdf['show_director_signature']) && !empty($school['director_name']))
-            · Directeur : {{ $school['director_name'] }}
+            · {{ $directorTitle }} : {{ $school['director_name'] }}
         @endif
         @if(!empty($pdf['show_pagination']))
             · Page <span class="pdf-footer-page"></span>

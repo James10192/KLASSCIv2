@@ -15,7 +15,8 @@
         'Catégorie' => 'Scolarité annuelle',
     ]"
     orientation="portrait"
-    :overrides="$overrides ?? []">
+    :overrides="$overrides ?? []"
+    signature-block="director">
 
     <style>
         .preview-kpi-row { width: 100%; border-collapse: collapse; margin-bottom: 14px; }
