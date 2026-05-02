@@ -5,10 +5,49 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ESBTPMatiere extends Model
+class ESBTPMatiere extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
+
+    /**
+     * Colonnes auditées (whitelist).
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'name',
+        'code',
+        'nom',
+        'description',
+        'coefficient',
+        'heures_cm',
+        'heures_td',
+        'heures_tp',
+        'heures_stage',
+        'heures_perso',
+        'niveau_etude_id',
+        'filiere_id',
+        'type_formation',
+        'is_active',
+        'unite_enseignement_id',
+        'credit_ecue',
+        'coefficient_ecue',
+        'ordre_bulletin',
+    ];
+
+    /**
+     * Événements à auditer.
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+    ];
 
     /**
      * La table associée au modèle.

@@ -6,10 +6,46 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Carbon;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ESBTPEvaluation extends Model
+class ESBTPEvaluation extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
+
+    /**
+     * Colonnes auditées (whitelist — éviter explosion volume).
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'titre',
+        'matiere_id',
+        'classe_id',
+        'type',
+        'date_evaluation',
+        'coefficient',
+        'bareme',
+        'duree_minutes',
+        'periode',
+        'annee_universitaire_id',
+        'status',
+        'is_published',
+        'notes_published',
+        'enseignant_id',
+        'enseignant_externe_nom',
+    ];
+
+    /**
+     * Événements à auditer.
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+    ];
 
     /**
      * La table associée au modèle.

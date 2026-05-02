@@ -5,10 +5,45 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Carbon\Carbon;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ESBTPTeacher extends Model
+class ESBTPTeacher extends Model implements Auditable
 {
-    use HasFactory;
+    use HasFactory, \OwenIt\Auditing\Auditable;
+
+    /**
+     * Colonnes auditées (whitelist — données RH sensibles).
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'user_id',
+        'matricule',
+        'employee_id',
+        'title',
+        'specialization',
+        'status',
+        'regime',
+        'taux_horaire',
+        'date_debut_activite',
+        'diplome_principal',
+        'universite_diplome',
+        'annee_diplome',
+        'teaching_hours_due',
+        'is_active',
+        'grade',
+    ];
+
+    /**
+     * Événements à auditer (pas de SoftDeletes sur ce modèle).
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+    ];
 
     protected $table = 'esbtp_teachers';
 

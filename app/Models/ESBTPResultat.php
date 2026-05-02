@@ -6,10 +6,46 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ESBTPResultat extends Model
+class ESBTPResultat extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
+
+    /**
+     * Colonnes auditées (whitelist — résultats académiques officiels).
+     *
+     * Note : ce modèle stocke un résultat par matière (la décision
+     * finale annuelle est calculée à partir des résultats matière par
+     * matière). Le champ `appreciation` couvre la mention.
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'etudiant_id',
+        'classe_id',
+        'matiere_id',
+        'periode',
+        'annee_universitaire_id',
+        'moyenne',
+        'coefficient',
+        'rang',
+        'appreciation',
+        'enseignant_id',
+        'type',
+    ];
+
+    /**
+     * Événements à auditer.
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+    ];
 
     protected static function booted(): void
     {

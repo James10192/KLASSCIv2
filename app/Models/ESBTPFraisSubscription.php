@@ -5,11 +5,14 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Carbon\Carbon;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ESBTPFraisSubscription extends Model
+class ESBTPFraisSubscription extends Model implements Auditable
 {
+    use \OwenIt\Auditing\Auditable;
+
     protected $table = 'esbtp_frais_subscriptions';
-    
+
     protected $fillable = [
         'inscription_id',
         'frais_category_id',
@@ -25,6 +28,33 @@ class ESBTPFraisSubscription extends Model
         'amount' => 'decimal:2',
         'is_active' => 'boolean',
         'subscribed_at' => 'datetime'
+    ];
+
+    /**
+     * Colonnes auditées (whitelist — données financières sensibles).
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'inscription_id',
+        'frais_category_id',
+        'selected_option_id',
+        'amount',
+        'is_active',
+        'subscribed_at',
+        'notes',
+    ];
+
+    /**
+     * Événements à auditer.
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
     ];
 
     /**

@@ -5,10 +5,56 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ESBTPInscription extends Model
+class ESBTPInscription extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
+
+    /**
+     * Colonnes auditées (whitelist — éviter explosion volume).
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'etudiant_id',
+        'classe_id',
+        'classe_alternative_id',
+        'annee_universitaire_id',
+        'filiere_id',
+        'niveau_id',
+        'status',
+        'workflow_step',
+        'is_sous_reserve',
+        'condition_reserve',
+        'affectation_status',
+        'type_inscription',
+        'type_changement',
+        'inscription_origine_id',
+        'montant_scolarite',
+        'frais_inscription',
+        'paiement_validation_id',
+        'comptabilite_activee',
+        'date_inscription',
+        'date_validation',
+        'validated_by',
+        'reinscription_status',
+        'reinscription_validated_by',
+        'est_transfert',
+        'etablissement_origine',
+    ];
+
+    /**
+     * Événements à auditer.
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+    ];
 
     /**
      * La table associée au modèle.

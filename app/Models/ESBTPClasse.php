@@ -6,10 +6,42 @@ use App\Services\ClasseManagementService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ESBTPClasse extends Model
+class ESBTPClasse extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
+
+    /**
+     * Colonnes auditées (whitelist).
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'name',
+        'code',
+        'filiere_id',
+        'niveau_etude_id',
+        'annee_universitaire_id',
+        'places_totales',
+        'places_occupees',
+        'description',
+        'is_active',
+        'systeme_academique',
+        'parcours_id',
+    ];
+
+    /**
+     * Événements à auditer.
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+    ];
 
     protected static function booted(): void
     {

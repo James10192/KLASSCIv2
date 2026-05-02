@@ -26,6 +26,14 @@ use App\Listeners\GererSeuilAtteint;
 use App\Listeners\TraiterRelanceEnvoyee;
 use App\Listeners\MettreAJourDashboard;
 use App\Listeners\UpdatePlanificationHours;
+use App\Listeners\AuditPermissionChange;
+
+// Audit infrastructure
+use App\Models\Setting;
+use App\Models\User;
+use App\Observers\SettingObserver;
+use Spatie\Permission\Models\Permission;
+use Spatie\Permission\Models\Role;
 
 class EventServiceProvider extends ServiceProvider
 {
@@ -83,6 +91,39 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        parent::boot();
+
+        // ─── Audit infrastructure ──────────────────────────────────────────
+        // Observer custom pour les Settings (KV pairs hétéroclites,
+        // ne passe pas par le trait Auditable).
+        Setting::observe(SettingObserver::class);
+
+        // Listener pour les changements rôles/permissions Spatie.
+        // Spatie 5.x ne dispatche pas d'events natifs RoleAttached/Detached,
+        // on s'appuie sur les Eloquent pivot events.
+        $audit = app(AuditPermissionChange::class);
+
+        Event::listen('eloquent.pivotAttached: ' . User::class, function (...$args) use ($audit) {
+            // Eloquent passe (model, relation, ids, attrs)
+            $audit->handlePivotAttached($args[0] ?? null, array_slice($args, 1));
+        });
+
+        Event::listen('eloquent.pivotDetached: ' . User::class, function (...$args) use ($audit) {
+            $audit->handlePivotDetached($args[0] ?? null, array_slice($args, 1));
+        });
+
+        // CRUD direct sur Role et Permission (création/renommage/suppression).
+        Role::saved(function ($role) use ($audit) {
+            $audit->handleRoleSaved($role);
+        });
+        Role::deleted(function ($role) use ($audit) {
+            $audit->handleRoleDeleted($role);
+        });
+        Permission::saved(function ($permission) use ($audit) {
+            $audit->handlePermissionSaved($permission);
+        });
+        Permission::deleted(function ($permission) use ($audit) {
+            $audit->handlePermissionDeleted($permission);
+        });
     }
 }

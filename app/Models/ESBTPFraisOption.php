@@ -5,14 +5,50 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
 
 /**
  * Modèle pour les options de frais (remplace ESBTPFraisVariant)
  * Gère les variants spécifiques comme les arrêts de transport, types de cantine, etc.
  */
-class ESBTPFraisOption extends Model
+class ESBTPFraisOption extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
+
+    /**
+     * Colonnes auditées (whitelist — données financières sensibles).
+     *
+     * Note : ce modèle a remplacé ESBTPFraisVariant ; toute la logique
+     * de variants tarifaires passe maintenant par cette entité.
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'configuration_id',
+        'frais_category_id',
+        'name',
+        'description',
+        'additional_amount',
+        'is_default',
+        'is_active',
+        'option_type',
+        'available_from',
+        'available_to',
+        'max_selections',
+        'sort_order',
+    ];
+
+    /**
+     * Événements à auditer.
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+    ];
 
     protected $table = 'esbtp_frais_options';
 

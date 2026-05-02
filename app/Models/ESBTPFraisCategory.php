@@ -5,14 +5,44 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
 
 /**
  * Modèle pour les catégories de frais de l'établissement
  * Gère les frais obligatoires (inscription, scolarité) et optionnels (cantine, transport, etc.)
  */
-class ESBTPFraisCategory extends Model
+class ESBTPFraisCategory extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
+
+    /**
+     * Colonnes auditées (whitelist — données financières sensibles).
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'name',
+        'code',
+        'description',
+        'is_mandatory',
+        'is_active',
+        'category_type',
+        'sort_order',
+        'default_amount',
+        'payment_deadline_days',
+    ];
+
+    /**
+     * Événements à auditer.
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+    ];
 
     protected $table = 'esbtp_frais_categories';
 

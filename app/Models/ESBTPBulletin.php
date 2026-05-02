@@ -9,10 +9,52 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Collection;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ESBTPBulletin extends Model
+class ESBTPBulletin extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
+
+    /**
+     * Colonnes auditées (whitelist — résultats académiques officiels).
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'etudiant_id',
+        'classe_id',
+        'annee_universitaire_id',
+        'periode',
+        'moyenne_generale',
+        'rang',
+        'effectif_classe',
+        'mention',
+        'appreciation_generale',
+        'decision_conseil',
+        'is_published',
+        'signature_responsable',
+        'signature_directeur',
+        'signature_parent',
+        'date_signature_responsable',
+        'date_signature_directeur',
+        'date_signature_parent',
+        'note_assiduite',
+        'absences_justifiees',
+        'absences_non_justifiees',
+        'total_absences',
+    ];
+
+    /**
+     * Événements à auditer.
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+    ];
 
     protected static function booted(): void
     {

@@ -10,10 +10,47 @@ use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Support\Facades\Hash; // ✅ CORRIGÉ : Ajouté pour le hashing
+use OwenIt\Auditing\Contracts\Auditable;
 
-class User extends Authenticatable
+class User extends Authenticatable implements Auditable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles, \OwenIt\Auditing\Auditable;
+
+    /**
+     * Colonnes auditées (whitelist).
+     *
+     * Le mot de passe et les tokens sont déjà exclus globalement via
+     * config/audit.php > exclude (password, remember_token, api_token,
+     * two_factor_secret, two_factor_recovery_codes).
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'name',
+        'first_name',
+        'last_name',
+        'email',
+        'username',
+        'phone',
+        'is_active',
+        'must_change_password',
+        'employee_id',
+        'position',
+        'department',
+        'profile_photo_path',
+    ];
+
+    /**
+     * Événements à auditer.
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
+    ];
 
     protected $table = 'users';
 
