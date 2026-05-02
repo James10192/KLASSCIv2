@@ -143,16 +143,148 @@ Bouton "Envoyer par email" dans `<x-export-modal>` → POST vers route `email-pd
 
 Modèle `ExportSchedule` (id, user_id, report_class, frequency, cron, recipients, filters_json, est_actif). Job `SendScheduledExportJob` scheduled hourly check qui dispatch les exports dont `prochaine_execution <= now()`.
 
+## Composant `<x-pdf-document>` étendu (Phase 9 — mai 2026)
+
+Le composant accepte 2 nouveaux props avancés :
+
+```blade
+<x-pdf-document
+    title="Bulletin"
+    :overrides="$pdfOverrides ?? []"        {{-- merge avec SettingsHelper::getPdfSettings() --}}
+    signature-block="director">             {{-- null|'director'|'secretary'|'both' --}}
+    ...
+</x-pdf-document>
+```
+
+**`overrides`** : utilisé par la route preview `/esbtp/settings/pdf-preview` pour appliquer les paramètres en cours d'édition sans persister. Le composant fait `array_merge(SettingsHelper::getPdfSettings(), $overrides)`.
+
+**`signatureBlock`** : ajoute une zone signature OFFICIELLE (pour bulletins/certificats). Reserve `pdf_signature_height + 30px`, affiche image base64 si `pdf_signature_director` configuré, sinon zone vide. Pattern document officiel : ligne fine + nom signataire EN BAS uniquement (pas de "Espace réservé pour signature manuscrite" bavard — un vrai bulletin n'écrit jamais ça).
+
+## 6 settings PDF avancés (Phase 9 — registry)
+
+Tous lus via `SettingsHelper::getPdfSettings()` :
+- `pdf_logo_size` (int 20-120 px) — hauteur max du logo dans le header
+- `pdf_footer_custom_text` (string nullable) — texte footer override
+- `pdf_show_pagination` (bool) — affiche "Page X / Y" dans le footer
+- `pdf_show_director_signature` (bool) — toggle "Directeur : Nom" dans le footer
+- `pdf_show_generator_name` (bool default true) — toggle "Généré par {auth->user->name}" dans header/footer
+- `pdf_signature_height` (int 40-200 px) — hauteur max images signature
+- `pdf_watermark_opacity` (float 0.02-0.30) — opacité du filigrane
+- `pdf_watermark_rotation` (int -90/+90) — rotation du filigrane
+
+Permission requise pour modifier : `settings.pdf.manage` (registry).
+
+## Pattern PRÉVIEW universel (Phase 9.5 — mai 2026)
+
+**Chaque export PDF doit avoir un bouton "Aperçu PDF"** qui ouvre le PDF inline dans une nouvelle tab. Pas seulement les documents officiels — aussi les listings (paiements, classes, étudiants).
+
+### Refactor SOLID controller (extraction `buildXxxPdf`)
+
+```php
+// AVANT (download seulement)
+public function exportPdf(Request $request) {
+    $pdf = Pdf::loadView('foo', [...]);
+    return $pdf->download('foo.pdf');
+}
+
+// APRÈS (download + preview, DRY)
+public function exportPdf(Request $request) {
+    [$pdf, $filename] = $this->buildExportPdf($request);
+    return $pdf->download($filename);
+}
+public function exportPdfPreview(Request $request) {
+    [$pdf, $filename] = $this->buildExportPdf($request);
+    return new Response($pdf->output(), 200, [
+        'Content-Type' => 'application/pdf',
+        'Content-Disposition' => 'inline; filename="' . $filename . '"',
+    ]);
+}
+private function buildExportPdf(Request $request): array {
+    // Logique de construction du PDF (DRY entre download + preview)
+    return [Pdf::loadView(...), 'filename.pdf'];
+}
+```
+
+### Routes (toujours en couple)
+
+```php
+Route::get('/foo/export-pdf', [FooController::class, 'exportPdf'])->name('foo.export-pdf');
+Route::get('/foo/export-pdf/preview', [FooController::class, 'exportPdfPreview'])
+    ->middleware('throttle:60,1')  // preview = lecture, throttle généreux
+    ->name('foo.export-pdf-preview');
+```
+
+### Composant UI
+
+- `<x-export-modal>` : pour LISTINGS avec dropdown 4 actions (Aperçu / PDF / Excel / Email)
+- `<x-pdf-actions>` : pour DOCUMENTS INDIVIDUELS (bulletin, certificat) — 2 boutons inline (Aperçu + Télécharger)
+
+## Bug accents en majuscules (CRITIQUE)
+
+**JAMAIS** utiliser `strtoupper()`, `strtolower()`, `ucfirst()`, `substr()` sur du texte français dans les templates PDF — bug PHP UTF-8 historique.
+
+```php
+// ❌ INTERDIT — affiche "TABLEAU DéTAILLé" au lieu de "TABLEAU DÉTAILLÉ"
+strtoupper("Tableau détaillé")
+
+// ✅ OBLIGATOIRE — gère UTF-8
+mb_strtoupper("Tableau détaillé", 'UTF-8')
+mb_strtolower($x, 'UTF-8')
+mb_substr($x, 0, 1, 'UTF-8')
+```
+
+Aussi : éviter `text-transform: uppercase` en CSS pour DomPDF — préférer écrire le texte directement en majuscules dans le PHP via `mb_strtoupper()`.
+
+## Form spoofing PUT + `formaction` (trap connu)
+
+Si un form parent utilise `@method('PUT')` (Laravel form spoofing), un bouton avec `formaction="/preview"` envoie `POST` mais le `_method=PUT` reste dans le body → Laravel route en PUT, pas POST.
+
+**Solution** : `Route::match(['POST', 'PUT'], '/preview', ...)` pour accepter les deux. Vu sur `/esbtp/settings/pdf-preview` (mai 2026).
+
+## Settings idempotence (anti seed bugs)
+
+Dans toute méthode `update()` qui boucle sur des settings, **comparer value submitted vs value en DB AVANT de valider**. Si identique → skip silencieusement. Évite les seeds historiques pourris (ex: setting marqué `is_required=1` mais avec value vide en DB qui fail à chaque save).
+
+```php
+$currentValue = (string) ($setting->value ?? '');
+$newValue = $value === null ? '' : (string) $value;
+if ($currentValue === $newValue) {
+    continue;  // pas de modification = pas de validation
+}
+```
+
+## Permissions adaptatives sur exports paiements
+
+Pattern à reproduire pour tout export sensible avec `view` vs `view_own` :
+
+```php
+$canViewAll = $user && $user->can('paiements.view');
+$showCreatorColumn = $canViewAll;
+$creatorHeader = null;
+if (!$canViewAll && $user && $user->can('paiements.view_own')) {
+    // Afficher rôle français + nom dans le header (identifie l'auteur)
+    $roleName = optional($user->roles->first())->name;
+    $roleLabels = ['caissier' => 'Caissier', 'comptable' => 'Comptable', ...];
+    $displayRole = $roleLabels[$roleName] ?? ucfirst($roleName);
+    $creatorHeader = $displayRole . ' : ' . $user->name;
+}
+```
+
+Eager-load avec `->loadMissing('createdBy:id,name')` pour éviter N+1 sur la nouvelle colonne.
+
 ## Anti-patterns à BLOQUER en review
 
-1. ❌ `Pdf::loadView('mytemplate', ...)` direct dans un controller — utiliser ExportRenderer
+1. ❌ `Pdf::loadView('mytemplate', ...)` direct dans un controller — utiliser ExportRenderer ou pattern `buildXxxPdf` extrait
 2. ❌ Copier-coller le header `pdf-header` dans un nouveau template — utiliser `<x-pdf-document>`
 3. ❌ Excel avec téléphone sans `WithColumnFormatting('@')` — perd le `+`
-4. ❌ Export sans aperçu (download direct) — toujours offrir l'aperçu
+4. ❌ Export sans aperçu (download direct) — toujours offrir l'aperçu via `<x-pdf-actions>` ou `<x-export-modal>`
 5. ❌ Pas de garde-fou volume — DomPDF crash sur 5000+ lignes
 6. ❌ Hardcoder colors dans le template PDF — utiliser `SettingsHelper::getPdfSettings()`
-7. ❌ Pas de throttle sur routes export — abus possible
+7. ❌ Pas de throttle sur routes export — abus possible (preview: 60/min, download: 10/min)
 8. ❌ Filtres ignorés à l'export (export TOUT au lieu de la vue filtrée) — bug
+9. ❌ `strtoupper()` sur texte français → bug accents UTF-8 — toujours `mb_strtoupper(..., 'UTF-8')`
+10. ❌ Bouton signature avec label "SIGNATURE & CACHET" + texte "Espace réservé pour signature manuscrite et cachet officiel" — un vrai document officiel n'écrit JAMAIS ça, juste zone vide + nom du signataire EN BAS
+11. ❌ Hardcoder "Généré par X" sans respecter `pdf_show_generator_name` toggle — pattern `@if(($pdfCfg['show_generator_name'] ?? true) && auth()->check()) par {{ auth()->user()->name }} @endif`
 
 ## Migration des templates legacy
 
