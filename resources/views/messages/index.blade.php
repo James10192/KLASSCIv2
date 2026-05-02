@@ -71,6 +71,116 @@
 .ms-action-card-cta { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1rem; background: var(--ms-primary); color: #fff; border-radius: 8px; font-weight: 600; font-size: .85rem; text-decoration: none; transition: all .15s; }
 .ms-action-card-cta:hover { background: var(--ms-primary-d); color: #fff; transform: translateY(-1px); }
 
+/* ============================================================
+   Action cards (issue #303) — namespace acard-* — share inscription/paiement
+   ============================================================ */
+.acard {
+    align-self: flex-start;
+    background: var(--ms-surface);
+    border: 1px solid var(--ms-border);
+    border-radius: 14px;
+    padding: .85rem .95rem;
+    max-width: 380px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 4px 16px rgba(4,83,203,.04);
+    display: flex;
+    flex-direction: column;
+    gap: .65rem;
+    transition: box-shadow .15s, transform .15s;
+}
+.acard.mine { align-self: flex-end; }
+.acard:hover { box-shadow: 0 4px 16px rgba(4,83,203,.08), 0 1px 3px rgba(15,23,42,.06); transform: translateY(-1px); }
+.acard-head { display: flex; align-items: center; gap: .65rem; }
+.acard-avatar {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--ms-primary), #5e91de);
+    color: #fff; font-weight: 700; font-size: .92rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; overflow: hidden;
+}
+.acard-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.acard-head-info { flex: 1; min-width: 0; }
+.acard-title { font-weight: 700; color: var(--ms-text); font-size: .92rem; line-height: 1.2; }
+.acard-sub { color: var(--ms-muted); font-size: .76rem; margin-top: .12rem; }
+.acard-kind-badge {
+    display: inline-flex; align-items: center; gap: .3rem;
+    padding: .15rem .5rem; border-radius: 99px;
+    font-size: .68rem; font-weight: 700; letter-spacing: .02em; text-transform: uppercase;
+    background: rgba(4,83,203,.1); color: var(--ms-primary);
+    flex-shrink: 0;
+}
+.acard-kind-badge--paiement { background: rgba(16,185,129,.1); color: #047857; }
+.acard-chips { display: flex; flex-wrap: wrap; gap: .35rem; }
+.acard-chip {
+    padding: .2rem .55rem; border-radius: 99px; font-size: .72rem; font-weight: 600;
+    background: rgba(15,23,42,.05); color: var(--ms-text);
+    display: inline-flex; align-items: center; gap: .3rem;
+}
+.acard-chip--success { background: rgba(16,185,129,.12); color: #047857; }
+.acard-chip--warning { background: rgba(245,158,11,.12); color: #92400e; }
+.acard-chip--danger  { background: rgba(220,38,38,.12); color: #b91c1c; }
+.acard-meta { display: grid; grid-template-columns: auto 1fr; gap: .25rem .85rem; font-size: .8rem; }
+.acard-meta-label { color: var(--ms-muted); }
+.acard-meta-value { font-weight: 600; color: var(--ms-text); }
+.acard-cta {
+    display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+    padding: .55rem 1rem; border-radius: 10px; font-weight: 600; font-size: .85rem;
+    text-decoration: none; transition: all .15s; border: 1px solid transparent;
+}
+.acard-cta--primary { background: var(--ms-bubble-mine); color: #fff; }
+.acard-cta--primary:hover { color: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(4,83,203,.25); }
+.acard-cta--ghost { background: rgba(4,83,203,.06); color: var(--ms-primary); border-color: rgba(4,83,203,.15); }
+.acard-cta--ghost:hover { color: var(--ms-primary); background: rgba(4,83,203,.1); }
+.acard-cta--disabled { background: rgba(15,23,42,.04); color: var(--ms-muted); cursor: not-allowed; pointer-events: none; }
+.acard-note {
+    font-size: .76rem; color: var(--ms-muted); padding-top: .35rem;
+    border-top: 1px dashed var(--ms-border);
+}
+
+/* Composer 📎 attach button + dropdown */
+.ms-composer-attach { position: relative; display: flex; align-items: flex-end; }
+.ms-attach-btn {
+    background: rgba(4,83,203,.06); color: var(--ms-primary);
+    border: 1px solid rgba(4,83,203,.15);
+    width: 42px; height: 42px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .15s; flex-shrink: 0;
+}
+.ms-attach-btn:hover { background: rgba(4,83,203,.12); transform: translateY(-1px); }
+.ms-attach-menu {
+    position: absolute; bottom: calc(100% + .5rem); left: 0;
+    background: var(--ms-surface); border: 1px solid var(--ms-border);
+    border-radius: 12px; padding: .35rem; min-width: 200px;
+    box-shadow: 0 10px 30px rgba(15,23,42,.12);
+    z-index: 1000;
+}
+.ms-attach-menu button {
+    display: flex; width: 100%; align-items: center; gap: .65rem;
+    padding: .55rem .75rem; background: transparent; border: none; border-radius: 8px;
+    color: var(--ms-text); font-size: .88rem; font-weight: 500; cursor: pointer; transition: all .12s;
+    text-align: left;
+}
+.ms-attach-menu button:hover { background: rgba(4,83,203,.06); color: var(--ms-primary); }
+.ms-attach-menu button i { width: 18px; text-align: center; color: var(--ms-muted); }
+.ms-attach-menu button:hover i { color: var(--ms-primary); }
+
+/* Picker modal — réutilise .ms-modal mais avec resultat plus spécifique */
+.ms-picker-result {
+    display: flex; align-items: center; gap: .85rem;
+    padding: .75rem .9rem; cursor: pointer;
+    border: 1px solid transparent; border-radius: 10px; transition: all .12s;
+}
+.ms-picker-result:hover {
+    background: rgba(4,83,203,.05); border-color: rgba(4,83,203,.15);
+    transform: translateX(2px);
+}
+.ms-picker-meta { display: flex; gap: .35rem; flex-wrap: wrap; margin-top: .15rem; }
+.ms-picker-status {
+    padding: .12rem .45rem; border-radius: 99px; font-size: .68rem; font-weight: 700;
+    background: rgba(15,23,42,.05); color: var(--ms-muted);
+}
+.ms-picker-status--ok { background: rgba(16,185,129,.12); color: #047857; }
+.ms-picker-status--pending { background: rgba(245,158,11,.12); color: #92400e; }
+
 .ms-composer { padding: 1rem 1.5rem; border-top: 1px solid var(--ms-border); background: var(--ms-surface); display: flex; gap: .65rem; }
 .ms-composer textarea { flex: 1; resize: none; border: 1px solid var(--ms-border); border-radius: 10px; padding: .65rem .9rem; font-size: .9rem; min-height: 42px; max-height: 120px; transition: border-color .15s; font-family: inherit; }
 .ms-composer textarea:focus { outline: none; border-color: var(--ms-primary); box-shadow: 0 0 0 3px rgba(4,83,203,.08); }
@@ -271,7 +381,97 @@
                                             <template x-if="m.type === 'system'">
                                                 <div class="ms-msg system" x-text="m.body"></div>
                                             </template>
-                                            <template x-if="m.type === 'action_card'">
+                                            <template x-if="m.type === 'action_card' && m.payload?.kind">
+                                                {{-- Action card riche (issue #303) — share inscription/paiement --}}
+                                                <div class="acard" :class="{ mine: m.mine }">
+                                                    <div class="acard-head">
+                                                        <div class="acard-avatar">
+                                                            <template x-if="m.payload?.snapshot?.etudiant?.photo_url">
+                                                                <img :src="m.payload.snapshot.etudiant.photo_url" :alt="m.payload.snapshot.etudiant.name">
+                                                            </template>
+                                                            <template x-if="!m.payload?.snapshot?.etudiant?.photo_url">
+                                                                <span x-text="(m.payload?.snapshot?.etudiant?.name || '?').slice(0,2).toUpperCase()"></span>
+                                                            </template>
+                                                        </div>
+                                                        <div class="acard-head-info">
+                                                            <div class="acard-title" x-text="m.payload?.snapshot?.etudiant?.name || '—'"></div>
+                                                            <div class="acard-sub">
+                                                                <span x-text="m.payload?.snapshot?.classe || '—'"></span>
+                                                                <template x-if="m.payload?.snapshot?.matricule">
+                                                                    <span> · <span x-text="m.payload.snapshot.etudiant.matricule"></span></span>
+                                                                </template>
+                                                            </div>
+                                                        </div>
+                                                        <span class="acard-kind-badge" :class="{ 'acard-kind-badge--paiement': m.payload.kind === 'paiement' }">
+                                                            <i :class="m.payload.kind === 'paiement' ? 'fas fa-cash-register' : 'fas fa-user-graduate'"></i>
+                                                            <span x-text="m.payload.kind === 'paiement' ? 'Paiement' : 'Inscription'"></span>
+                                                        </span>
+                                                    </div>
+
+                                                    {{-- Inscription : montants + statut --}}
+                                                    <template x-if="m.payload.kind === 'inscription'">
+                                                        <div>
+                                                            <div class="acard-chips">
+                                                                <span class="acard-chip" :class="acardWorkflowChipClass(m.payload?.snapshot?.workflow_step)" x-text="acardWorkflowLabel(m.payload?.snapshot?.workflow_step)"></span>
+                                                                <span class="acard-chip" x-show="m.payload?.snapshot?.is_sous_reserve">
+                                                                    <i class="fas fa-exclamation-triangle"></i> Sous réserve
+                                                                </span>
+                                                            </div>
+                                                            <div class="acard-meta">
+                                                                <span class="acard-meta-label">Année</span>
+                                                                <span class="acard-meta-value" x-text="m.payload?.snapshot?.annee || '—'"></span>
+                                                                <span class="acard-meta-label">Total dû</span>
+                                                                <span class="acard-meta-value" x-text="formatXof(m.payload?.snapshot?.montant_total)"></span>
+                                                                <span class="acard-meta-label">Payé</span>
+                                                                <span class="acard-meta-value" x-text="formatXof(m.payload?.snapshot?.montant_paye)"></span>
+                                                                <span class="acard-meta-label">Solde</span>
+                                                                <span class="acard-meta-value" x-text="formatXof(m.payload?.snapshot?.solde_restant)"></span>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+
+                                                    {{-- Paiement : montant + mode + statut --}}
+                                                    <template x-if="m.payload.kind === 'paiement'">
+                                                        <div>
+                                                            <div class="acard-chips">
+                                                                <span class="acard-chip" :class="m.payload?.snapshot?.is_validated ? 'acard-chip--success' : 'acard-chip--warning'">
+                                                                    <i :class="m.payload?.snapshot?.is_validated ? 'fas fa-check-circle' : 'fas fa-clock'"></i>
+                                                                    <span x-text="m.payload?.snapshot?.is_validated ? 'Validé' : 'En attente'"></span>
+                                                                </span>
+                                                                <template x-if="m.payload?.snapshot?.mode_paiement">
+                                                                    <span class="acard-chip" x-text="m.payload.snapshot.mode_paiement"></span>
+                                                                </template>
+                                                            </div>
+                                                            <div class="acard-meta">
+                                                                <span class="acard-meta-label">Montant</span>
+                                                                <span class="acard-meta-value" x-text="formatXof(m.payload?.snapshot?.montant)"></span>
+                                                                <template x-if="m.payload?.snapshot?.reference">
+                                                                    <span class="acard-meta-label">Référence</span>
+                                                                </template>
+                                                                <template x-if="m.payload?.snapshot?.reference">
+                                                                    <span class="acard-meta-value" x-text="m.payload.snapshot.reference"></span>
+                                                                </template>
+                                                                <template x-if="m.payload?.snapshot?.date_paiement">
+                                                                    <span class="acard-meta-label">Date</span>
+                                                                </template>
+                                                                <template x-if="m.payload?.snapshot?.date_paiement">
+                                                                    <span class="acard-meta-value" x-text="formatDate(m.payload.snapshot.date_paiement)"></span>
+                                                                </template>
+                                                            </div>
+                                                        </div>
+                                                    </template>
+
+                                                    {{-- CTA contextuel — calculé server-side selon viewer --}}
+                                                    <template x-if="m.cta">
+                                                        <a :href="m.cta.url" class="acard-cta" :class="'acard-cta--' + m.cta.variant">
+                                                            <i :class="'fas ' + (m.cta.icon || 'fa-arrow-right')"></i>
+                                                            <span x-text="m.cta.label"></span>
+                                                        </a>
+                                                    </template>
+                                                </div>
+                                            </template>
+                                            <template x-if="m.type === 'action_card' && !m.payload?.kind">
+                                                {{-- Legacy format (notif workflow) --}}
                                                 <div class="ms-msg action_card">
                                                     <div class="ms-action-card-title" x-text="m.payload?.title || m.body"></div>
                                                     <div class="ms-action-card-body" x-text="m.payload?.body" x-show="m.payload?.body"></div>
@@ -297,6 +497,21 @@
                         </div>
 
                         <form class="ms-composer" @submit.prevent="sendMessage()">
+                            <div class="ms-composer-attach" @click.outside="attachOpen = false">
+                                <button type="button" class="ms-attach-btn" @click="attachOpen = !attachOpen" title="Partager une inscription ou un paiement" aria-label="Partager">
+                                    <i class="fas fa-paperclip"></i>
+                                </button>
+                                <div class="ms-attach-menu" x-show="attachOpen" x-cloak x-transition>
+                                    <button type="button" @click="openPicker('inscription'); attachOpen = false">
+                                        <i class="fas fa-user-graduate"></i>
+                                        <span>Partager une inscription</span>
+                                    </button>
+                                    <button type="button" @click="openPicker('paiement'); attachOpen = false">
+                                        <i class="fas fa-cash-register"></i>
+                                        <span>Partager un paiement</span>
+                                    </button>
+                                </div>
+                            </div>
                             <textarea x-model="draft" rows="1"
                                       placeholder="Écris un message… (Entrée pour envoyer, Shift+Entrée pour saut de ligne)"
                                       aria-label="Composer un message"
@@ -367,6 +582,75 @@
             </div>
         </div>
 
+        {{-- Modal picker — partager inscription/paiement (issue #303) --}}
+        <div class="modal fade ms-modal" id="pickerModal" tabindex="-1" aria-hidden="true" aria-labelledby="pickerModalLabel">
+            <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <div class="ms-modal-icon"><i class="fas" :class="pickerKind === 'paiement' ? 'fa-cash-register' : 'fa-user-graduate'"></i></div>
+                        <div class="ms-modal-title-block">
+                            <h5 id="pickerModalLabel" x-text="pickerKind === 'paiement' ? 'Partager un paiement' : 'Partager une inscription'"></h5>
+                            <p>La carte sera envoyée dans la conversation active avec un CTA contextuel.</p>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="ms-search-wrap">
+                            <i class="fas fa-search"></i>
+                            <input type="text" class="ms-modal-search-input"
+                                   x-model="pickerQuery"
+                                   x-ref="pickerInput"
+                                   @input.debounce.250="searchPicker()"
+                                   :placeholder="pickerKind === 'paiement' ? 'Nom étudiant, matricule ou référence…' : 'Nom étudiant ou matricule…'"
+                                   aria-label="Rechercher">
+                        </div>
+                        <div class="ms-modal-results">
+                            <template x-for="item in pickerItems" :key="item.id">
+                                <div class="ms-picker-result" @click="confirmShare(item)" role="button" tabindex="0" @keydown.enter="confirmShare(item)">
+                                    <div class="ms-search-avatar" x-text="(item.etudiant || '?').slice(0, 2).toUpperCase()"></div>
+                                    <div class="ms-search-info">
+                                        <strong x-text="item.etudiant"></strong>
+                                        <small>
+                                            <span x-text="item.matricule || ''"></span>
+                                            <template x-if="pickerKind === 'inscription'">
+                                                <span> · <span x-text="item.classe"></span></span>
+                                            </template>
+                                            <template x-if="pickerKind === 'paiement'">
+                                                <span> · <span x-text="formatXof(item.montant)"></span></span>
+                                            </template>
+                                        </small>
+                                        <div class="ms-picker-meta">
+                                            <template x-if="pickerKind === 'inscription'">
+                                                <span class="ms-picker-status" :class="acardWorkflowChipClass(item.workflow_step).replace('acard-chip', 'ms-picker-status')" x-text="acardWorkflowLabel(item.workflow_step)"></span>
+                                            </template>
+                                            <template x-if="pickerKind === 'paiement'">
+                                                <span class="ms-picker-status" :class="item.is_validated ? 'ms-picker-status--ok' : 'ms-picker-status--pending'" x-text="item.is_validated ? 'Validé' : 'En attente'"></span>
+                                            </template>
+                                        </div>
+                                    </div>
+                                    <i class="fas fa-arrow-right ms-search-result-arrow"></i>
+                                </div>
+                            </template>
+                            <div class="ms-modal-empty" x-show="!pickerLoading && pickerItems.length === 0 && pickerQuery.length >= 1">
+                                <i class="far fa-frown"></i>
+                                <div class="ms-empty-title">Aucun résultat</div>
+                                <div class="ms-empty-hint">Essaie un autre nom ou matricule.</div>
+                            </div>
+                            <div class="ms-modal-empty" x-show="pickerItems.length === 0 && pickerQuery.length === 0">
+                                <i class="far fa-keyboard"></i>
+                                <div class="ms-empty-title">Tape pour rechercher</div>
+                                <div class="ms-empty-hint">Ou laisse vide pour voir les <span x-text="pickerKind === 'paiement' ? 'paiements' : 'inscriptions'"></span> récents.</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="ms-modal-footer">
+                        <span><kbd>Entrée</kbd> pour partager</span>
+                        <span><kbd>Échap</kbd> pour fermer</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
 </div>
 
@@ -403,6 +687,14 @@ function messagesPage() {
         newCount: 0,           // "X new messages" banner counter
         atBottom: true,
         csrf: document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+
+        // === Action cards (issue #303) ===
+        attachOpen: false,
+        pickerKind: 'inscription',
+        pickerQuery: '',
+        pickerItems: [],
+        pickerLoading: false,
+        pickerModal: null,
 
         init() {
             this.loadNotifications();
@@ -590,6 +882,92 @@ function messagesPage() {
                 });
             }
             this.openConvo(this.conversations.find(c => c.id === data.conversation_id));
+        },
+
+        // === Action cards (issue #303) ===
+
+        openPicker(kind) {
+            if (!this.activeConvo) {
+                alert('Ouvre d\'abord une conversation pour partager.');
+                return;
+            }
+            this.pickerKind = kind;
+            this.pickerQuery = '';
+            this.pickerItems = [];
+            const el = document.getElementById('pickerModal');
+            if (!this.pickerModal) this.pickerModal = new bootstrap.Modal(el);
+            this.pickerModal.show();
+            el.addEventListener('shown.bs.modal', () => {
+                this.$refs.pickerInput?.focus();
+                this.searchPicker();
+            }, { once: true });
+        },
+
+        async searchPicker() {
+            this.pickerLoading = true;
+            try {
+                const url = `/messages/picker/${this.pickerKind === 'paiement' ? 'paiements' : 'inscriptions'}?q=${encodeURIComponent(this.pickerQuery)}`;
+                const r = await fetch(url, { headers: { Accept: 'application/json' } });
+                const data = await r.json();
+                this.pickerItems = data.items || [];
+            } catch (e) {
+                this.pickerItems = [];
+            } finally {
+                this.pickerLoading = false;
+            }
+        },
+
+        async confirmShare(item) {
+            if (!this.activeConvo) return;
+            const route = this.pickerKind === 'paiement'
+                ? `/messages/share/paiement/${item.id}`
+                : `/messages/share/inscription/${item.id}`;
+            try {
+                const r = await fetch(route, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrf, Accept: 'application/json' },
+                    body: JSON.stringify({ conversation_id: this.activeConvo.id }),
+                });
+                if (!r.ok) throw new Error('Share failed');
+                this.pickerModal.hide();
+                await this.refreshMessages();
+                this.$nextTick(() => this.scrollBottom(true));
+            } catch (e) {
+                alert('Le partage a échoué. Réessaie.');
+            }
+        },
+
+        // Helpers acard rendering
+
+        formatXof(n) {
+            if (n === null || n === undefined || isNaN(n)) return '—';
+            return new Intl.NumberFormat('fr-FR').format(Math.round(Number(n))) + ' XOF';
+        },
+
+        formatDate(iso) {
+            if (!iso) return '—';
+            const d = new Date(iso);
+            return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+        },
+
+        acardWorkflowLabel(step) {
+            return ({
+                'etudiant_cree': 'À encaisser',
+                'paiement_cree': 'Paiement à valider',
+                'paiement_valide': 'Inscription à valider',
+                'inscription_validee': 'Inscription validée',
+                'validee': 'Inscription validée',
+            })[step] || (step ? step.replace(/_/g, ' ') : 'Statut inconnu');
+        },
+
+        acardWorkflowChipClass(step) {
+            return ({
+                'etudiant_cree': 'acard-chip--warning',
+                'paiement_cree': 'acard-chip--warning',
+                'paiement_valide': 'acard-chip--warning',
+                'inscription_validee': 'acard-chip--success',
+                'validee': 'acard-chip--success',
+            })[step] || 'acard-chip';
         },
     };
 }

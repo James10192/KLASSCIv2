@@ -326,6 +326,10 @@
                     <i class="fas fa-arrow-left"></i> Retour
                 </a>
 
+                @can('messages.send')
+                    <x-share-to-chat kind="paiement" :id="$paiement->id" label="Envoyer" class="ps-btn ghost" />
+                @endcan
+
                 @if($paiement->status == 'validé')
                 <div class="dropdown ps-dropdown">
                     <button class="ps-btn primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">

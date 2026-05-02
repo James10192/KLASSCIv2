@@ -1207,6 +1207,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                         <i class="fas fa-user"></i>
                         <span class="d-none d-md-inline">Fiche étudiant</span>
                     </a>
+                    @can('messages.send')
+                        <x-share-to-chat kind="inscription" :id="$inscription->id" label="Envoyer" class="is-hero-btn" />
+                    @endcan
                     <a href="{{ route('esbtp.etudiants.index') }}" class="is-hero-btn">
                         <i class="fas fa-arrow-left"></i>
                         <span class="d-none d-sm-inline">Retour</span>
