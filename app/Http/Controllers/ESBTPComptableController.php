@@ -2,16 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResetsPersonnelPassword;
 use App\Models\User;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 use Spatie\Permission\Models\Role;
 
 class ESBTPComptableController extends Controller
 {
+    use ResetsPersonnelPassword;
+
     protected $userService;
 
     public function __construct(UserService $userService)
@@ -203,8 +205,8 @@ class ESBTPComptableController extends Controller
 
     /**
      * Lot 18d — Réinitialise le mot de passe du comptable à Bonjour@2025 et
-     * force le changement à la première connexion. Pattern aligné sur les
-     * autres rôles (coordinateur, secretaire, caissier).
+     * force le changement à la première connexion. Logique partagée via
+     * ResetsPersonnelPassword (alignée sur caissier, coordinateur, etc.).
      */
     public function resetPassword(User $user)
     {
@@ -212,47 +214,6 @@ class ESBTPComptableController extends Controller
             abort(404, 'Comptable non trouvé.');
         }
 
-        try {
-            $defaultPassword = 'Bonjour@2025';
-
-            $user->password              = Hash::make($defaultPassword);
-            $user->must_change_password  = true;
-            $user->save();
-
-            \Log::info('🔑 Password reset for comptable to default', [
-                'comptable_id'         => $user->id,
-                'comptable_name'       => $user->name,
-                'reset_by'             => auth()->user()->name,
-                'timestamp'            => now(),
-                'must_change_password' => true,
-            ]);
-
-            if (request()->wantsJson() || request()->ajax()) {
-                return response()->json([
-                    'success'  => true,
-                    'password' => $defaultPassword,
-                    'message'  => 'Mot de passe réinitialisé avec succès !',
-                ]);
-            }
-
-            return redirect()->back()
-                ->with('success', 'Mot de passe réinitialisé à Bonjour@2025 avec succès ! Le comptable devra changer son mot de passe à la première connexion.')
-                ->with('new_password', $defaultPassword);
-        } catch (\Exception $e) {
-            \Log::error('❌ Password reset failed for comptable', [
-                'comptable_id' => $user->id,
-                'error'        => $e->getMessage(),
-            ]);
-
-            if (request()->wantsJson() || request()->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Erreur lors de la réinitialisation : ' . $e->getMessage(),
-                ], 500);
-            }
-
-            return redirect()->back()
-                ->with('error', 'Erreur lors de la réinitialisation : ' . $e->getMessage());
-        }
+        return $this->resetPersonnelPassword($user, 'comptable');
     }
 }
