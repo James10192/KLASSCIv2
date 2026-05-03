@@ -1987,18 +1987,9 @@ $(document).on('click', '#nm-import-confirm-btn:not(:disabled)', function() {
 });
 
 function pr7Toast(message, type) {
-    type = type || 'success';
-    if (window.iiToast && typeof window.iiToast === 'function') {
-        window.iiToast(message, type);
-        return;
-    }
-    // Fallback simple
-    const t = document.createElement('div');
-    t.style.cssText = 'position:fixed;bottom:20px;right:20px;background:#10b981;color:#fff;padding:0.8rem 1.2rem;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;font-weight:600;';
-    if (type === 'error') t.style.background = '#dc2626';
-    t.textContent = message;
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), 4000);
+    // Délègue au stack premium nmShowToast (PR #321) — garantit cohérence visuelle
+    // et anti-stacking. La fonction est hoistée donc disponible quel que soit l'ordre.
+    nmShowToast(type || 'success', message);
 }
 
 @endcan
