@@ -375,13 +375,13 @@ class ESBTPAnnonceController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function studentMessages()
+    public function studentAnnonces()
     {
         $user = Auth::user();
         $etudiant = ESBTPEtudiant::where('user_id', $user->id)->first();
 
-        // Si l'utilisateur n'est pas un étudiant (superAdmin, secrétaire, etc.),
-        // afficher toutes les annonces publiées au lieu de crasher en 404
+        // Si l'utilisateur n'est pas un étudiant (superAdmin pour preview),
+        // afficher toutes les annonces publiées avec stats représentatives.
         if (!$etudiant) {
             $messages = ESBTPAnnonce::where('is_published', true)
                 ->where('date_publication', '<=', now())
@@ -392,7 +392,6 @@ class ESBTPAnnonceController extends Controller
                 ->orderBy('created_at', 'desc')
                 ->paginate(10);
 
-            // Hydratation cohérente pour la vue (is_read toujours présent)
             foreach ($messages as $message) {
                 $message->is_read = true;
                 $message->read_at = null;
@@ -412,7 +411,7 @@ class ESBTPAnnonceController extends Controller
                     : 0,
             ];
 
-            return view('esbtp.annonces.student-messages', compact('messages', 'stats', 'etudiant'));
+            return view('esbtp.annonces.student-annonces', compact('messages', 'stats', 'etudiant'));
         }
 
         // Récupérer la classe de l'année universitaire en cours
@@ -516,7 +515,7 @@ class ESBTPAnnonceController extends Controller
             'urgent' => $urgentCount,
         ];
 
-        return view('esbtp.annonces.student-messages', compact('messages', 'stats', 'etudiant'));
+        return view('esbtp.annonces.student-annonces', compact('messages', 'stats', 'etudiant'));
     }
 
     /**

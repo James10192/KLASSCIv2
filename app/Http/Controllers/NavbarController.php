@@ -340,7 +340,7 @@ class NavbarController extends Controller
                         'sender' => $annonce->createdBy ? explode(' ', $annonce->createdBy->name)[0].' '.(explode(' ', $annonce->createdBy->name)[1] ?? '') : 'Administration',
                         'time' => $annonce->created_at->diffForHumans(),
                         'read' => $annonce->created_at->lt(now()->subDay()), // Marquer comme lu si plus de 24h
-                        'url' => route('esbtp.mes-messages.index'),
+                        'url' => route('esbtp.mes-annonces.index'),
                         'avatar' => null,
                     ];
                 });
