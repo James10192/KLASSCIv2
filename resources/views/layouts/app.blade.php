@@ -2048,6 +2048,13 @@
                                     <span>Analytics prédictifs</span>
                                 </a>
                                 @endcan
+                                {{-- Journal de caisse OHADA (S1.3) --}}
+                                @can('comptabilite.journal.view')
+                                <a href="{{ route('esbtp.comptabilite.journal-caisse.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.journal-caisse.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Journal de caisse</span>
+                                </a>
+                                @endcan
                             </div>
                         </div>
                     @endcan
