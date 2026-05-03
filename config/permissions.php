@@ -737,6 +737,7 @@ return [
         ],
         'comptabilite.audit.view' => [
             'label' => 'Voir le journal d\'audit comptable',
+            'description' => 'Permet de consulter qui a créé/modifié/validé/rejeté les paiements et configuré les frais. Permission assignable à un rôle custom (ex: Directeur Financier, Auditeur Interne) via /esbtp/custom-roles.',
             'group' => 'Comptabilité',
             'icon' => 'fa-history',
         ],
@@ -1185,6 +1186,7 @@ return [
             'comptabilite.analytics.view', 'comptabilite.analytics.refresh',
             'comptabilite.analytics.run_now', 'comptabilite.analytics.configure',
             'comptabilite.recouvrement.access',
+            'comptabilite.audit.view',  // QW6 mai 2026 — comptable doit auditer son module
             'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.validate',
             'paiements.export',  // Lot 15
             'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
