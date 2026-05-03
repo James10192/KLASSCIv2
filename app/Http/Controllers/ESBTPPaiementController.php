@@ -1434,12 +1434,8 @@ class ESBTPPaiementController extends Controller
     /**
      * Rejeter un paiement
      */
-    public function rejeter(Request $request, $id)
+    public function rejeter(\App\Http\Requests\Paiement\RejeterPaiementRequest $request, $id)
     {
-        $request->validate([
-            'motif_rejet' => 'required|string|max:500'
-        ]);
-
         try {
             $paiement = ESBTPPaiement::findOrFail($id);
 
@@ -1710,7 +1706,11 @@ class ESBTPPaiementController extends Controller
         $request->validate([
             'paiements' => 'required|array|min:1',
             'paiements.*' => 'exists:esbtp_paiements,id',
-            'motif_rejet' => 'required|string|max:500'
+            'motif_rejet' => 'required|string|min:10|max:500',
+        ], [
+            'motif_rejet.required' => 'Le motif de rejet est obligatoire.',
+            'motif_rejet.min' => 'Le motif de rejet doit faire au moins 10 caractères.',
+            'motif_rejet.max' => 'Le motif de rejet ne peut pas dépasser 500 caractères.',
         ]);
 
         $successCount = 0;
