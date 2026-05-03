@@ -16,6 +16,16 @@ class User extends Authenticatable implements Auditable
 {
     use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles, \OwenIt\Auditing\Auditable;
 
+    /** Seuil de présence "en ligne" : last_seen_at < N minutes. */
+    public const PRESENCE_ONLINE_THRESHOLD_MINUTES = 2;
+
+    /** True si le user a été actif dans la fenêtre de présence. */
+    public function isOnline(): bool
+    {
+        return $this->last_seen_at
+            && $this->last_seen_at->gt(now()->subMinutes(self::PRESENCE_ONLINE_THRESHOLD_MINUTES));
+    }
+
     /**
      * Colonnes auditées (whitelist).
      *

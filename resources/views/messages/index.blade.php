@@ -867,44 +867,23 @@
 </div>
 
 @php
-    $previewLastMessage = function ($m) {
-        if (!$m) return null;
-        $kind = is_array($m->payload ?? null) ? ($m->payload['kind'] ?? null) : null;
-        $preview = match ($m->type) {
-            'action_card' => '📎 ' . match ($kind) {
-                'inscription' => 'Inscription partagée',
-                'paiement' => 'Paiement partagé',
-                default => 'Card partagée',
-            },
-            'system' => $m->body ?? 'Notification',
-            default => $m->body ?? '',
-        };
-        return ['body' => $m->body, 'type' => $m->type, 'preview' => $preview];
-    };
-    $conversationsPayload = $conversations->map(function ($c) use ($previewLastMessage) {
-        return [
-            'id' => $c->id,
-            'type' => $c->type,
-            'title' => $c->title,
-            'last_message_at' => $c->last_message_at?->toIso8601String(),
-            'last_message' => $previewLastMessage($c->lastMessage),
-            'participants' => $c->participants->where('id', '!=', auth()->id())->map(function ($p) {
-                $isOnline = $p->last_seen_at && $p->last_seen_at->gt(now()->subMinutes(2));
-                return [
-                    'id' => $p->id,
-                    'name' => $p->name,
-                    'is_online' => (bool) $isOnline,
-                    'last_seen_at' => $p->last_seen_at?->toIso8601String(),
-                ];
-            })->values(),
-        ];
-    });
+    $conversationsPayload = $conversations->map(fn ($c) => [
+        'id' => $c->id,
+        'type' => $c->type,
+        'title' => $c->title,
+        'last_message_at' => $c->last_message_at?->toIso8601String(),
+        'last_message' => \App\Services\ChatMessagePreview::forMessage($c->lastMessage),
+        'participants' => $c->participants
+            ->where('id', '!=', auth()->id())
+            ->map(fn ($p) => \App\Services\ChatPresenceProjector::project($p))
+            ->values(),
+    ]);
 @endphp
 <script>
 function messagesPage() {
     return {
         tab: 'all',
-        conversations: {!! json_encode($conversationsPayload) !!},
+        conversations: @json($conversationsPayload),
         activeConvo: null,
         activeOther: null,
         messages: [],
