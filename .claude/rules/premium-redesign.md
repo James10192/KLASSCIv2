@@ -208,6 +208,10 @@ Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 --shadow-lg: 0 8px 30px rgba(4,83,203,.08), 0 2px 8px rgba(15,23,42,.04);
 ```
 
+## Sélecteurs / dropdowns premium
+
+**JAMAIS de `<select>` natif visible dans une page premium.** Utiliser les composants Blade `<x-au-select>` (générique) ou `<x-au-user-picker>` (utilisateurs avec groupement par rôle), ou cloner ces composants pour un cas particulier (picker classes, matières, évaluations…). Détails complets, props, anti-patterns et checklist : voir [`.claude/rules/premium-selects.md`](premium-selects.md).
+
 ## Règles absolues
 
 1. **Copier le pattern planning-header** pour les headers de page — ne pas inventer
@@ -220,3 +224,4 @@ Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 8. **Spacing 8px grid** — `0.5rem`, `1rem`, `1.5rem`, `2rem`
 9. **Transitions** : `all .2s ease` — jamais > .3s
 10. **Border-radius** : 8-10px (petits), 12-14px (cards), 18px (hero)
+11. **Sélecteurs** — voir [`premium-selects.md`](premium-selects.md). Jamais `<select>` natif visible.
