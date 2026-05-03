@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\Paiement;
 
+use App\Helpers\SettingsHelper;
+use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StorePaiementRequest extends FormRequest
@@ -23,6 +25,34 @@ class StorePaiementRequest extends FormRequest
             'reference_paiement' => 'nullable|string',
             'tranche' => 'nullable|string',
             'commentaire' => 'nullable|string',
+            'confirmed_unusual_amount' => 'nullable|in:0,1',
         ];
+    }
+
+    /**
+     * QW3 — défense en profondeur backend : si montant > seuil tenant
+     * ET pas de confirmation explicite, on refuse le paiement.
+     *
+     * Le seuil 'comptabilite.unusual_amount_threshold' est configurable par l'école
+     * via /esbtp/settings (default 500 000 FCFA).
+     */
+    public function withValidator(Validator $validator): void
+    {
+        $validator->after(function (Validator $v) {
+            $montant = (int) $this->input('montant', 0);
+            $threshold = (int) SettingsHelper::get('comptabilite.unusual_amount_threshold', 500000);
+            $confirmed = $this->input('confirmed_unusual_amount') === '1' || $this->input('confirmed_unusual_amount') === 1;
+
+            if ($montant > $threshold && !$confirmed) {
+                $v->errors()->add(
+                    'montant',
+                    sprintf(
+                        'Montant inhabituel détecté (%s FCFA, supérieur au seuil de %s FCFA configuré). Cochez la case de confirmation pour valider ce paiement.',
+                        number_format($montant, 0, ',', ' '),
+                        number_format($threshold, 0, ',', ' '),
+                    ),
+                );
+            }
+        });
     }
 }
