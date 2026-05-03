@@ -27,11 +27,13 @@
             overflow: hidden;
         }
 
-        /* ── KPI row ── */
+        /* ── KPI row ──
+           Pas de text-transform:uppercase — DomPDF mangles les accents (rule
+           exports-pdf-excel.md anti-pattern #9). Les libellés sont déjà
+           pré-uppercase dans le HTML ("TOTAL", "VALIDÉS"…). */
         .kpi-label {
             font-size: 7.5px;
             font-weight: 600;
-            text-transform: uppercase;
             letter-spacing: 0.5px;
             color: white;
             opacity: 0.8;
@@ -97,6 +99,9 @@
             font-size: 10px;
         }
 
+        /* Status badges — labels écrits en majuscules naturelles dans le PHP
+           (mb_strtoupper UTF-8 safe pour la branche default). Pas de
+           text-transform CSS ici car DomPDF mangerait les accents. */
         .status-badge {
             display: inline-block;
             padding: 2px 6px;
@@ -104,7 +109,6 @@
             font-weight: 600;
             font-size: 7.5px;
             color: #ffffff;
-            text-transform: uppercase;
             letter-spacing: 0.3px;
         }
         .status-valid { background: #16a34a; }
@@ -113,10 +117,11 @@
         .status-default { background: #6b7280; }
 
         /* ── Stats section ── */
+        /* Section titles — pré-uppercase au besoin via mb_strtoupper côté PHP.
+           text-transform CSS retiré (DomPDF + accents = bug). */
         .section-title {
             font-size: 10px;
             font-weight: 700;
-            text-transform: uppercase;
             letter-spacing: 0.3px;
             color: #1f2937;
             margin: 12px 0 6px;
@@ -127,9 +132,10 @@
             font-size: 9px;
             border-bottom: 1px solid #f1f5f9;
         }
+        /* Filter labels — text-transform CSS retiré (cf. règle anti-accents
+           DomPDF). Si majuscules nécessaires, mb_strtoupper côté PHP. */
         .filter-label {
             font-size: 8px;
-            text-transform: uppercase;
             color: #64748b;
             letter-spacing: 0.3px;
         }
@@ -191,7 +197,10 @@
     if (!empty($filters['search'])) $filterItems[] = ['label' => 'Recherche', 'value' => $filters['search']];
     if (!empty($filters['status'])) {
         $statusMap = ['en_attente' => 'En attente', 'validé' => 'Validé', 'valide' => 'Validé', 'rejeté' => 'Rejeté', 'rejete' => 'Rejeté'];
-        $filterItems[] = ['label' => 'Statut', 'value' => $statusMap[$filters['status']] ?? ucfirst($filters['status'])];
+        // mb_strtoupper/mb_substr pour préserver les accents (UTF-8 safe).
+        $statusFallback = mb_strtoupper(mb_substr($filters['status'], 0, 1, 'UTF-8'), 'UTF-8')
+            . mb_substr($filters['status'], 1, null, 'UTF-8');
+        $filterItems[] = ['label' => 'Statut', 'value' => $statusMap[$filters['status']] ?? $statusFallback];
     }
     if (!empty($filters['date_debut'])) $filterItems[] = ['label' => 'Date début', 'value' => $formatDate($filters['date_debut'])];
     if (!empty($filters['date_fin'])) $filterItems[] = ['label' => 'Date fin', 'value' => $formatDate($filters['date_fin'])];

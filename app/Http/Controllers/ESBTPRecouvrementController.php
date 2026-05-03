@@ -105,7 +105,7 @@ class ESBTPRecouvrementController extends Controller
         }
 
         $appliedFilters = array_filter([
-            'Niveau' => $level ? ucfirst($level) : null,
+            'Niveau' => $level ? mb_strtoupper(mb_substr($level, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($level, 1, null, 'UTF-8') : null,
             'Retard min.' => $retardMin > 0 ? "{$retardMin} jours" : null,
             'Recherche' => $search !== '' ? $search : null,
             'Filière' => $context->filiereId ? optional(ESBTPFiliere::find($context->filiereId))->name : null,

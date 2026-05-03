@@ -934,10 +934,15 @@ class ESBTPSettingsController extends Controller
             }
             $shortKey = str_starts_with($key, 'pdf_') ? substr($key, 4) : $key;
 
+            // Normalisation par type. show_generator_name ajouté aux booléens
+            // (oubli initial : le toggle "Généré par X" ne s'appliquait pas en preview).
+            $booleanKeys = ['show_logo', 'show_director_signature', 'show_pagination', 'show_generator_name'];
+            $intKeys = ['logo_size', 'signature_height', 'font_size', 'margin_top', 'margin_bottom', 'margin_left', 'margin_right', 'watermark_rotation'];
+
             $overrides[$shortKey] = match (true) {
-                in_array($shortKey, ['show_logo', 'show_director_signature', 'show_pagination'], true)
+                in_array($shortKey, $booleanKeys, true)
                     => in_array($value, ['1', 1, true, 'true', 'on'], true),
-                in_array($shortKey, ['logo_size', 'font_size', 'margin_top', 'margin_bottom', 'margin_left', 'margin_right', 'watermark_rotation'], true)
+                in_array($shortKey, $intKeys, true)
                     => (int) $value,
                 $shortKey === 'watermark_opacity'
                     => (float) $value,

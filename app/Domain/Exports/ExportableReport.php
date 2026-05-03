@@ -54,12 +54,15 @@ abstract class ExportableReport
      * Hash stable des FILTRES pour clé cache PDF. N'inclut PAS viewData
      * (peut peser MB) ni les payloads — le cache est invalide si filtres
      * changent, et expiré au TTL pour les nouveaux calculs prédictifs.
+     *
+     * JSON_UNESCAPED_UNICODE pour que des filtres avec accents (ex: "Filière")
+     * produisent une clé identique entre deux runs (sinon `è` peut varier).
      */
     public function cacheKey(): string
     {
         return hash('sha256', json_encode([
             'view' => $this->pdfView(),
             'filters' => $this->filters(),
-        ]));
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
     }
 }
