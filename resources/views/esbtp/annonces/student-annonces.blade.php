@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'Mes Messages')
+@section('title', 'Mes Annonces')
 
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
 /* ══════════════════════════════════════════════
-   Mes Messages — Premium Redesign
-   Prefix: mm- (mes-messages)
+   Mes Annonces — Premium Redesign
+   Prefix: mm- (mes annonces / messaging)
    ══════════════════════════════════════════════ */
 
 .mm-page {
@@ -615,11 +615,11 @@
         <div class="mm-hero-top">
             <div class="mm-hero-left">
                 <div class="mm-hero-icon" aria-hidden="true">
-                    <i class="fas fa-envelope-open-text"></i>
+                    <i class="fas fa-bullhorn"></i>
                 </div>
                 <div class="mm-hero-info">
-                    <h1>Mes Messages</h1>
-                    <p>Consultez vos annonces et notifications de l'établissement.</p>
+                    <h1>Mes Annonces</h1>
+                    <p>Consultez les annonces et communications de votre établissement.</p>
                 </div>
             </div>
 
@@ -904,8 +904,8 @@
     'use strict';
 
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
-    const markReadUrlBase = @json(rtrim(route('esbtp.mes-messages.read', ['id' => '__ID__']), '/'));
-    const markAllReadUrl  = @json(route('esbtp.mes-messages.mark-all-read'));
+    const markReadUrlBase = @json(rtrim(route('esbtp.mes-annonces.read', ['id' => '__ID__']), '/'));
+    const markAllReadUrl  = @json(route('esbtp.mes-annonces.mark-all-read'));
 
     function showFeedback(message, type) {
         if (typeof window.showToast === 'function') {
@@ -1004,7 +1004,7 @@
         .catch(err => {
             showFeedback('Impossible de marquer le message comme lu', 'error');
             // eslint-disable-next-line no-console
-            console.error('mes-messages markAsRead', err);
+            console.error('mes-annonces markAsRead', err);
         });
     }
 
@@ -1062,7 +1062,7 @@
                     allBtn.disabled = false;
                     showFeedback('Impossible de marquer tous les messages comme lus', 'error');
                     // eslint-disable-next-line no-console
-                    console.error('mes-messages markAllRead', err);
+                    console.error('mes-annonces markAllRead', err);
                 });
             });
         }

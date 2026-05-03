@@ -584,7 +584,7 @@ class NotificationService
 
             $title = "Nouvelle annonce: " . $annonce->titre;
             $message = substr($annonce->contenu, 0, 150) . (strlen($annonce->contenu) > 150 ? '...' : '');
-            $link = route('esbtp.mes-messages.index');
+            $link = route('esbtp.mes-annonces.index');
 
             $notifiedCount = 0;
             foreach ($etudiants as $etudiant) {

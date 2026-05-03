@@ -1934,7 +1934,7 @@
                     @endcan
 
                     {{-- Chat interactif (issue #298) — réservé staff (permission messages.send).
-                         Les étudiants consultent leurs annonces via /esbtp/mes-messages
+                         Les étudiants consultent leurs annonces via /esbtp/mes-annonces
                          (section « Communication » plus bas, gated @can('identity.student')). --}}
                     @can('messages.send')
                     <div class="menu-item">
@@ -1954,15 +1954,15 @@
                     </div>
                     @endcan
 
-                    <!-- Messages Section -->
+                    {{-- Section Communication étudiant : annonces + notifications --}}
                     @can('identity.student')
                         <div class="menu-category">Communication</div>
 
-                        <!-- Messages -->
+                        {{-- Annonces reçues (broadcast admin → étudiant). --}}
                         <div class="menu-item">
-                            <a href="{{ route('esbtp.mes-messages.index') }}" class="menu-link {{ Request::routeIs('esbtp.mes-messages.*') ? 'active' : '' }}">
-                                <div class="menu-icon"><i class="fas fa-envelope"></i></div>
-                                <div class="menu-text">Messages étudiant</div>
+                            <a href="{{ route('esbtp.mes-annonces.index') }}" class="menu-link {{ Request::routeIs('esbtp.mes-annonces.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-bullhorn"></i></div>
+                                <div class="menu-text">Mes annonces</div>
                             </a>
                         </div>
 
@@ -2338,9 +2338,9 @@
                                 <li><hr class="dropdown-divider"></li>
                                 <li>
                                     @can('identity.student')
-                                        <a class="dropdown-item text-center view-all" href="{{ route('esbtp.mes-messages.index') }}">
-                                            <i class="fas fa-envelope-open me-1"></i>
-                                            Voir tous les messages
+                                        <a class="dropdown-item text-center view-all" href="{{ route('esbtp.mes-annonces.index') }}">
+                                            <i class="fas fa-bullhorn me-1"></i>
+                                            Voir toutes les annonces
                                         </a>
                                     @else
                                         <a class="dropdown-item text-center view-all" href="{{ route('esbtp.annonces.index') }}">
@@ -2435,11 +2435,11 @@
                                                 </div>
                                                 <span class="quick-action-text">Mon emploi du temps</span>
                                             </a>
-                                            <a href="{{ route('esbtp.mes-messages.index') }}" class="quick-action-item">
+                                            <a href="{{ route('esbtp.mes-annonces.index') }}" class="quick-action-item">
                                                 <div class="quick-action-icon" style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white;">
-                                                    <i class="fas fa-envelope"></i>
+                                                    <i class="fas fa-bullhorn"></i>
                                                 </div>
-                                                <span class="quick-action-text">Mes messages</span>
+                                                <span class="quick-action-text">Mes annonces</span>
                                             </a>
                                         @else
                                             <div class="dropdown-empty">

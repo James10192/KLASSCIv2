@@ -1183,18 +1183,22 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/notifications/unread-count', [ESBTPNotificationController::class, 'getUnreadCount'])
                 ->name('notifications.unreadCount');
 
-            // Routes pour les messages des étudiants (annonces consultables).
-            // Issue #315 : gate explicite sur `annonces.view` pour cohérence avec
-            // le reste des routes étudiant. Le rôle `etudiant` a déjà la permission.
-            Route::get('/mes-messages', [ESBTPAnnonceController::class, 'studentMessages'])
-                ->name('mes-messages.index')
+            // Routes annonces étudiantes (consultation des ESBTPAnnonce reçues).
+            // Sémantique : un étudiant ne reçoit pas de "messages" personnels mais des
+            // ANNONCES (broadcast admin → étudiant). D'où le naming `mes-annonces`.
+            // Gate `annonces.view` cohérent avec le reste des routes étudiant.
+            Route::get('/mes-annonces', [ESBTPAnnonceController::class, 'studentAnnonces'])
+                ->name('mes-annonces.index')
                 ->middleware('permission:annonces.view');
-            Route::post('/mes-messages/{id}/read', [ESBTPAnnonceController::class, 'markAsRead'])
-                ->name('mes-messages.read')
+            Route::post('/mes-annonces/{id}/read', [ESBTPAnnonceController::class, 'markAsRead'])
+                ->name('mes-annonces.read')
                 ->middleware('permission:annonces.view');
-            Route::post('/mes-messages/mark-all-read', [ESBTPAnnonceController::class, 'markAllAsRead'])
-                ->name('mes-messages.mark-all-read')
+            Route::post('/mes-annonces/mark-all-read', [ESBTPAnnonceController::class, 'markAllAsRead'])
+                ->name('mes-annonces.mark-all-read')
                 ->middleware('permission:annonces.view');
+
+            // Alias rétrocompat : redirige les anciens bookmarks /mes-messages → /mes-annonces.
+            Route::redirect('/mes-messages', '/esbtp/mes-annonces', 301)->name('mes-messages.index');
         });
 
         // Routes pour la suppression de ressources (protégées par permissions spécifiques)
@@ -2296,7 +2300,7 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
 | Isolation étudiants (issue #315) : le chat user-to-user est réservé aux
 | utilisateurs qui ont la permission `messages.send`. Les étudiants n'ont
 | que `messages.receive` + `annonces.view` et consultent leurs annonces via
-| la page séparée /esbtp/mes-messages. Un étudiant qui tape /messages
+| la page séparée /esbtp/mes-annonces. Un étudiant qui tape /messages
 | directement dans la barre d'adresse est bloqué en 403.
 */
 Route::middleware(['auth', 'paywall', 'permission:messages.send'])->prefix('messages')->name('chat.')->group(function () {

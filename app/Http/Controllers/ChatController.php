@@ -220,7 +220,7 @@ class ChatController extends Controller
 
         // Issue #315 : isolation étudiants — on n'expose pas les comptes étudiants
         // dans le picker du chat staff. Les étudiants ne peuvent pas recevoir de DM
-        // (ils consultent leurs annonces via /esbtp/mes-messages). On exclut donc
+        // (ils consultent leurs annonces via /esbtp/mes-annonces). On exclut donc
         // explicitement les users qui ont le rôle `etudiant` ET on conserve les
         // checks existants (auto-exclu, actifs).
         $users = User::query()

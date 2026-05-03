@@ -616,9 +616,9 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a href="{{ route('esbtp.mes-messages.index') }}" class="nav-link {{ request()->routeIs('esbtp.mes-messages.index') ? 'active' : '' }}">
-                        <i class="fas fa-inbox nav-icon"></i>
-                        <span>Mes messages</span>
+                    <a href="{{ route('esbtp.mes-annonces.index') }}" class="nav-link {{ request()->routeIs('esbtp.mes-annonces.*') ? 'active' : '' }}">
+                        <i class="fas fa-bullhorn nav-icon"></i>
+                        <span>Mes annonces</span>
                     </a>
                 </li>
                 @endrole
