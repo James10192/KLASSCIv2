@@ -1113,15 +1113,24 @@ function calculateStudentAverage(studentId) {
 
     noteInputs.each(function() {
         const evalId = $(this).data('eval-id');
-        const noteValue = parseFloat($(this).val()) || 0;
         const isAbsent = $(`#absent-${studentId}-${evalId}`).is(':checked');
+        const rawValue = $(this).val();
         const params = getEvalParams(evalId);
 
-        if (!isAbsent && !isNaN(noteValue) && noteValue > 0) {
-            const normalizedNote = (noteValue / params.bareme) * 20;
-            totalPoints += normalizedNote * params.coefficient;
-            totalCoefficients += params.coefficient;
-            hasNotes = true;
+        // Garde-fou : barème invalide → ignorer (évite division par 0)
+        if (!params.bareme || params.bareme <= 0) return;
+
+        // BUG FIX : on traite la note 0 légitime (ex: 0/20) comme valide.
+        // Avant : `noteValue > 0` excluait silencieusement 0 → moyenne fausse (10 et 0 → 10 au lieu de 5).
+        // Aligné sur calculateClassAverages() pour cohérence des deux algos.
+        if (!isAbsent && rawValue !== '') {
+            const noteValue = parseFloat(rawValue);
+            if (!isNaN(noteValue)) {
+                const normalizedNote = (noteValue / params.bareme) * 20;
+                totalPoints += normalizedNote * params.coefficient;
+                totalCoefficients += params.coefficient;
+                hasNotes = true;
+            }
         }
     });
 
