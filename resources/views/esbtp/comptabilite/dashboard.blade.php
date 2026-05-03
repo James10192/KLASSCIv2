@@ -1387,6 +1387,8 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
 
     </div>
 </div>
+
+<x-fab-encaisser />
 @endsection
 
 @push('scripts')

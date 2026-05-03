@@ -918,6 +918,7 @@
 {{-- Toast container --}}
 <div id="fi-toast-container" class="fi-toast-container" aria-live="polite" aria-atomic="true"></div>
 
+<x-fab-encaisser />
 @endsection
 
 @push('scripts')
