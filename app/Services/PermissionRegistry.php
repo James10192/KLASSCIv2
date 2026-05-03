@@ -19,7 +19,7 @@ use Throwable;
 class PermissionRegistry
 {
     /** Cache des aliases inversés : alias => canonical */
-    private ?array $aliasMap = null;
+    private ?array $aliasMapCache = null;
 
     /** Cache des rôles DB (incl. is_custom) pour la requête courante */
     private ?array $dbRolesCache = null;
@@ -116,6 +116,22 @@ class PermissionRegistry
         return $this->aliasMap()[$name] ?? $name;
     }
 
+    /**
+     * Indique si $name est l'alias legacy d'une permission canonique.
+     */
+    public function isAlias(string $name): bool
+    {
+        return isset($this->aliasMap()[$name]);
+    }
+
+    /**
+     * Indique si $name est une permission canonique connue.
+     */
+    public function isCanonical(string $name): bool
+    {
+        return $this->permissionMeta($name) !== null;
+    }
+
     public function aliasesOf(string $canonical): array
     {
         return $this->permissionMeta($canonical)['aliases'] ?? [];
@@ -126,9 +142,30 @@ class PermissionRegistry
      */
     public function allNames(): Collection
     {
-        return $this->all()->keys()->merge(
-            $this->all()->flatMap(fn ($meta) => $meta['aliases'] ?? [])
-        )->unique()->values();
+        return $this->all()->keys()->merge(array_keys($this->aliasMap()))
+            ->unique()->values();
+    }
+
+    /**
+     * Map alias => canonical, exposée publiquement pour les outils d'audit
+     * qui ont besoin de filtrer/inverser. Cachée à la première lecture.
+     *
+     * @return array<string, string>
+     */
+    public function aliasMap(): array
+    {
+        if ($this->aliasMapCache !== null) {
+            return $this->aliasMapCache;
+        }
+
+        $map = [];
+        foreach (config('permissions.permissions', []) as $canonical => $meta) {
+            foreach ($meta['aliases'] ?? [] as $alias) {
+                $map[$alias] = $canonical;
+            }
+        }
+
+        return $this->aliasMapCache = $map;
     }
 
     /**
@@ -164,30 +201,13 @@ class PermissionRegistry
     }
 
     /**
-     * Vide le cache interne (utile après création/édition d'un rôle custom).
+     * Vide les caches internes (utile après création/édition d'un rôle custom
+     * ou rechargement de config dans les tests).
      */
     public function clearCache(): void
     {
         $this->dbRolesCache = null;
-    }
-
-    /**
-     * Map alias => canonical, calculé à la demande puis caché.
-     */
-    private function aliasMap(): array
-    {
-        if ($this->aliasMap !== null) {
-            return $this->aliasMap;
-        }
-
-        $map = [];
-        foreach (config('permissions.permissions', []) as $canonical => $meta) {
-            foreach ($meta['aliases'] ?? [] as $alias) {
-                $map[$alias] = $canonical;
-            }
-        }
-
-        return $this->aliasMap = $map;
+        $this->aliasMapCache = null;
     }
 
     /**

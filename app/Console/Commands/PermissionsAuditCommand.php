@@ -25,6 +25,16 @@ class PermissionsAuditCommand extends Command
 
     protected $description = 'Audite la cohérence rôles/permissions code ↔ registry ↔ DB';
 
+    /**
+     * Policy abilities standard (Laravel) — à ignorer (gérées par Policy classes,
+     * pas par permissions Spatie).
+     */
+    private const POLICY_ABILITIES = [
+        'view', 'viewAny', 'view-any', 'create', 'update', 'delete',
+        'restore', 'forceDelete', 'force-delete', 'replicate',
+        'download', 'upload',
+    ];
+
     /** Permissions référencées en code (chaque clé = nom utilisé) */
     private array $usedInCode = [];
 
@@ -36,11 +46,8 @@ class PermissionsAuditCommand extends Command
         $this->scanCode();
 
         $registryNames = $registry->all()->keys()->all();
-        $registryAliases = collect();
-        foreach ($registryNames as $canonical) {
-            $registryAliases = $registryAliases->merge($registry->aliasesOf($canonical));
-        }
-        $allRegistryNames = collect($registryNames)->merge($registryAliases)->unique()->values()->all();
+        $aliasMap = $registry->aliasMap();
+        $allRegistryNames = $registry->allNames()->all();
 
         try {
             $dbNames = Permission::pluck('name')->all();
@@ -56,41 +63,38 @@ class PermissionsAuditCommand extends Command
         $broken = [];        // référencé en code, ni en registry ni en DB
         $offRegistry = [];   // référencé en code, en DB, mais pas dans le registry
         $aliasesUsed = [];   // alias legacy utilisé en code (à migrer)
+        $dbNamesIndex = array_flip($dbNames);
 
         foreach ($this->usedInCode as $name => $locations) {
-            $isCanonical = in_array($name, $registryNames, true);
-            $isAlias = in_array($name, $registryAliases->all(), true);
-            $inDb = in_array($name, $dbNames, true);
+            $sample = array_slice($locations, 0, 3);
 
-            if ($isAlias) {
+            if (isset($aliasMap[$name])) {
                 $aliasesUsed[$name] = [
-                    'canonical' => $registry->canonicalize($name),
-                    'locations' => array_slice($locations, 0, 3),
+                    'canonical' => $aliasMap[$name],
+                    'locations' => $sample,
                 ];
                 continue;
             }
 
-            if ($isCanonical) {
+            if ($registry->isCanonical($name)) {
                 continue; // OK, canonique utilisé directement
             }
 
             // Pas dans le registry
-            if ($inDb) {
-                $offRegistry[$name] = ['locations' => array_slice($locations, 0, 3)];
+            if (isset($dbNamesIndex[$name])) {
+                $offRegistry[$name] = ['locations' => $sample];
             } else {
-                $broken[$name] = ['locations' => array_slice($locations, 0, 3)];
+                $broken[$name] = ['locations' => $sample];
             }
         }
 
+        $allRegistryIndex = array_flip($allRegistryNames);
         $orphaned = [];
-        foreach ($dbNames as $dbName) {
-            if (! isset($this->usedInCode[$dbName]) && ! in_array($dbName, $allRegistryNames, true)) {
-                $orphaned[] = $dbName;
-            }
-        }
-
         $deprecatedAssigned = [];
         foreach ($dbNames as $dbName) {
+            if (! isset($this->usedInCode[$dbName]) && ! isset($allRegistryIndex[$dbName])) {
+                $orphaned[] = $dbName;
+            }
             if ($registry->isDeprecated($dbName)) {
                 $deprecatedAssigned[$dbName] = $registry->deprecatedReason($dbName);
             }
@@ -138,16 +142,6 @@ class PermissionsAuditCommand extends Command
 
         return empty($broken) ? self::SUCCESS : self::FAILURE;
     }
-
-    /**
-     * Policy abilities standard (Laravel) — à ignorer (gérées par Policy classes,
-     * pas par permissions Spatie).
-     */
-    private const POLICY_ABILITIES = [
-        'view', 'viewAny', 'view-any', 'create', 'update', 'delete',
-        'restore', 'forceDelete', 'force-delete', 'replicate',
-        'download', 'upload',
-    ];
 
     /**
      * Scanne tous les fichiers pertinents et collecte les permissions référencées.

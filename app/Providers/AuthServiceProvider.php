@@ -2,24 +2,20 @@
 
 namespace App\Providers;
 
+use App\Models\ESBTPBulletin;
+use App\Models\ESBTPInscription;
+use App\Models\ESBTPMatiere;
+use App\Models\ESBTPNote;
+use App\Models\ESBTPPaiement;
+use App\Models\ESBTPSeanceCours;
+use App\Policies\ESBTPBulletinPolicy;
+use App\Policies\ESBTPInscriptionPolicy;
+use App\Policies\ESBTPMatierePolicy;
+use App\Policies\ESBTPNotePolicy;
+use App\Policies\ESBTPPaiementPolicy;
+use App\Policies\ESBTPSeanceCoursPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
-use App\Models\ESBTPEmploiTemps;
-use App\Models\ESBTPSeanceCours;
-use App\Models\ESBTPMatiere;
-use App\Models\ESBTPPaiement;
-use App\Models\ESBTPNote;
-use App\Models\ESBTPInscription;
-use App\Models\ESBTPBulletin;
-use App\Models\User;
-use App\Policies\ESBTPSeanceCoursPolicy;
-use App\Policies\ESBTPMatierePolicy;
-use App\Policies\ESBTPPaiementPolicy;
-use App\Policies\ESBTPNotePolicy;
-use App\Policies\ESBTPInscriptionPolicy;
-use App\Policies\ESBTPBulletinPolicy;
-use App\Policies\UserManagementPolicy;
-use App\Services\UserManagementService;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -46,22 +42,19 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
+        // superAdmin court-circuite tous les checks (Lot 0).
         Gate::before(function ($user, $ability) {
             return $user && $user->hasRole('superAdmin') ? true : null;
         });
 
+        // `users.manage` : exposé en Gate explicite pour éviter toute ambiguïté
+        // entre les routes qui consomment Gate::* et le résolveur Spatie.
         Gate::define('users.manage', function ($user) {
             return $user && $user->hasPermissionTo('users.manage');
         });
 
-        // Lot 5 : Matrice de gestion users granulaire (qui peut gérer qui)
-        Gate::define('manage-user', function (User $actor, User $target) {
-            return app(UserManagementService::class)->canManage($actor, $target);
-        });
-
-        Gate::define('assign-role', function (User $actor, User $target, string $role) {
-            $service = app(UserManagementService::class);
-            return $service->canManage($actor, $target) && $service->canAssignRole($actor, $role);
-        });
+        // Lot 5 : la matrice "qui peut gérer qui" et l'assignation de rôle
+        // passent par UserManagementPolicy. Les anciens Gate::define
+        // 'manage-user' / 'assign-role' ont été retirés (jamais appelés).
     }
 }
