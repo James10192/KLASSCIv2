@@ -23,10 +23,43 @@
             : null),
     ], fn ($v) => $v !== null && $v !== '');
 
+    // ─────────────────────────────────────────────────────────────
+    //  ZÉRO COULEUR HARDCODÉE : tout dérive des 4 settings PDF
+    //  configurables par l'admin tenant dans /esbtp/settings →
+    //  "Couleurs des documents PDF" (header_bg / header_text /
+    //  accent / text). Toutes les nuances (bordures, fonds soft,
+    //  labels secondaires, cellules vides, marqueur ABS) sont
+    //  calculées en rgba() à partir de ces 4 couleurs.
+    // ─────────────────────────────────────────────────────────────
     $pdfCfg = \App\Helpers\SettingsHelper::getPdfSettings();
-    $primary = $pdfCfg['primary_color'] ?? '#0453cb';
-    $secondary = $pdfCfg['secondary_color'] ?? '#64748b';
-    $accent = $pdfCfg['accent_color'] ?? '#3b7ddb';
+    $cHeaderBg   = $pdfCfg['header_bg_color']   ?? '#0453cb';
+    $cHeaderText = $pdfCfg['header_text_color'] ?? '#ffffff';
+    $cAccent     = $pdfCfg['accent_color']      ?? '#0453cb';
+    $cText       = $pdfCfg['text_color']        ?? '#1f2937';
+
+    // Helper : convertit un hex (#RGB ou #RRGGBB) en rgba(r, g, b, alpha).
+    // Permet de dériver toutes les nuances depuis les couleurs tenant.
+    $rgba = function (string $hex, float $alpha = 1.0): string {
+        $h = ltrim($hex, '#');
+        if (strlen($h) === 3) {
+            $h = $h[0].$h[0].$h[1].$h[1].$h[2].$h[2];
+        }
+        if (strlen($h) !== 6) return $hex; // fallback opaque
+        $r = hexdec(substr($h, 0, 2));
+        $g = hexdec(substr($h, 2, 2));
+        $b = hexdec(substr($h, 4, 2));
+        return "rgba($r, $g, $b, $alpha)";
+    };
+
+    // Nuances dérivées du text_color tenant (structure neutre)
+    $cMuted   = $rgba($cText, 0.55); // labels secondaires
+    $cBorder  = $rgba($cText, 0.12); // bordures table/cards
+    $cBgSoft  = $rgba($cText, 0.03); // fond carte / row alternée
+    $cBgLight = $rgba($cText, 0.06); // fond hover / instructions
+    $cDashed  = $rgba($cText, 0.25); // cellules vides en attente
+    // Marqueur ABS : dérivé de accent_color (tinted bg + couleur pleine)
+    $cDangerBg = $rgba($cAccent, 0.10);
+    $cDangerFg = $cAccent;
 
     // Stats absences pré-remplies (mode évaluation existante)
     $totalEtudiants = $etudiants->count();
@@ -42,7 +75,9 @@
     orientation="portrait">
 
     <style>
-        /* ── KPI bandeau premium (cohérent avec liste-complete-pdf) ─── */
+        /* ── KPI bandeau premium ──────────────────────────────────────
+           Tous les KPIs utilisent header_bg_color (cohérent avec banner)
+           pour une identité tenant unifiée. Le texte hérite header_text. */
         .nm-kpis {
             width: 100%;
             border-collapse: separate;
@@ -52,8 +87,8 @@
             color-adjust: exact;
         }
         .nm-kpi {
-            background-color: {{ $primary }};
-            color: #fff;
+            background-color: {{ $cHeaderBg }};
+            color: {{ $cHeaderText }};
             border-radius: 6px;
             padding: 8px 10px;
             text-align: center;
@@ -87,41 +122,44 @@
             margin-top: 1px;
         }
 
-        /* ── Table notes premium ───────────────────────────────────── */
+        /* ── Table notes premium ─────────────────────────────────────
+           Le thead utilise accent_color (= titres & soulignements selon
+           le label des settings UI). Pas de "primary" caché. */
         .nm-notes-table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 4px;
             font-size: 9.5px;
+            color: {{ $cText }};
         }
         .nm-notes-table thead th {
-            background-color: {{ $primary }};
-            color: #fff;
+            background-color: {{ $cAccent }};
+            color: {{ $cHeaderText }};
             font-size: 8.5px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.4px;
             padding: 6px 5px;
             text-align: center;
-            border: 1px solid {{ $primary }};
+            border: 1px solid {{ $cAccent }};
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
         .nm-notes-table tbody td {
             padding: 5px 5px;
-            border: 1px solid #e5e7eb;
+            border: 1px solid {{ $cBorder }};
             vertical-align: middle;
         }
         .nm-notes-table tbody tr:nth-child(even) td {
-            background-color: #f9fafb;
+            background-color: {{ $cBgSoft }};
         }
         .nm-num-badge {
             display: inline-block;
             min-width: 16px;
             padding: 2px 5px;
             border-radius: 3px;
-            background: #eef4ff;
-            color: {{ $primary }};
+            background: {{ $cBgLight }};
+            color: {{ $cAccent }};
             font-weight: 700;
             font-size: 8.5px;
             text-align: center;
@@ -129,30 +167,30 @@
         .nm-matricule {
             font-family: 'Courier New', Courier, monospace;
             font-size: 8.5px;
-            color: {{ $secondary }};
+            color: {{ $cMuted }};
             letter-spacing: 0.3px;
         }
         .nm-student-name {
             font-weight: 600;
-            color: #111827;
+            color: {{ $cText }};
             font-size: 9.5px;
         }
         .nm-student-genre {
             font-size: 7.5px;
-            color: {{ $secondary }};
+            color: {{ $cMuted }};
             margin-top: 1px;
         }
         .nm-note-cell {
             text-align: center;
             font-weight: 700;
             font-size: 11px;
-            color: {{ $primary }};
+            color: {{ $cAccent }};
         }
         .nm-note-empty {
             display: inline-block;
             min-width: 28px;
             min-height: 14px;
-            border: 1px dashed #cbd5e1;
+            border: 1px dashed {{ $cDashed }};
             border-radius: 3px;
         }
         .nm-abs-cell {
@@ -162,14 +200,14 @@
             display: inline-block;
             width: 12px;
             height: 12px;
-            border: 1px solid #94a3b8;
+            border: 1px solid {{ $cMuted }};
             border-radius: 2px;
         }
         .nm-abs-marked {
             display: inline-block;
             padding: 2px 6px;
-            background: #fef2f2;
-            color: #b91c1c;
+            background: {{ $cDangerBg }};
+            color: {{ $cDangerFg }};
             border-radius: 3px;
             font-size: 8.5px;
             font-weight: 700;
@@ -179,23 +217,23 @@
         }
         .nm-obs-cell {
             min-width: 90px;
-            border-bottom: 1px dotted #cbd5e1;
+            border-bottom: 1px dotted {{ $cDashed }};
         }
 
         /* ── Empty state ──────────────────────────────────────────── */
         .nm-empty {
             text-align: center;
             padding: 40px 20px;
-            color: {{ $secondary }};
-            background: #f9fafb;
-            border: 1px dashed #d1d5db;
+            color: {{ $cMuted }};
+            background: {{ $cBgSoft }};
+            border: 1px dashed {{ $cDashed }};
             border-radius: 6px;
             margin-top: 20px;
         }
         .nm-empty-title {
             font-size: 12px;
             font-weight: 600;
-            color: {{ $primary }};
+            color: {{ $cAccent }};
             margin-bottom: 4px;
         }
 
@@ -208,22 +246,22 @@
             page-break-inside: avoid;
         }
         .nm-summary-card {
-            background: #f9fafb;
-            border: 1px solid #e5e7eb;
+            background: {{ $cBgSoft }};
+            border: 1px solid {{ $cBorder }};
             border-radius: 6px;
             padding: 8px 10px;
             font-size: 8.5px;
             vertical-align: top;
         }
         .nm-summary-title {
-            color: {{ $primary }};
+            color: {{ $cAccent }};
             font-weight: 700;
             font-size: 9px;
             text-transform: uppercase;
             letter-spacing: 0.4px;
             margin-bottom: 6px;
             padding-bottom: 4px;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid {{ $cBorder }};
         }
         .nm-summary-grid {
             width: 100%;
@@ -233,13 +271,13 @@
         .nm-summary-grid td {
             padding: 4px 2px;
             font-size: 8.5px;
-            color: {{ $secondary }};
+            color: {{ $cMuted }};
         }
         .nm-summary-num {
             display: block;
             font-size: 13px;
             font-weight: 700;
-            color: {{ $primary }};
+            color: {{ $cAccent }};
             line-height: 1.1;
         }
         .nm-info-row {
@@ -250,13 +288,13 @@
         }
         .nm-info-label {
             display: table-cell;
-            color: {{ $secondary }};
+            color: {{ $cMuted }};
             width: 50%;
             font-weight: 600;
         }
         .nm-info-value {
             display: table-cell;
-            color: #111827;
+            color: {{ $cText }};
             text-align: right;
             font-weight: 600;
         }
@@ -265,19 +303,19 @@
         .nm-instructions {
             margin-top: 12px;
             padding: 6px 10px;
-            background: #eef4ff;
-            border-left: 3px solid {{ $primary }};
+            background: {{ $cBgLight }};
+            border-left: 3px solid {{ $cAccent }};
             font-size: 8px;
-            color: {{ $secondary }};
+            color: {{ $cMuted }};
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
         .nm-instructions strong {
-            color: {{ $primary }};
+            color: {{ $cAccent }};
         }
     </style>
 
-    {{-- ── KPIs bandeau premium ─────────────────────────────────── --}}
+    {{-- ── KPIs bandeau premium — tous en header_bg_color (identité tenant) ──── --}}
     <table class="nm-kpis">
         <tr>
             <td class="nm-kpi" style="width: 25%;">
@@ -285,17 +323,17 @@
                 <span class="nm-kpi-value">{{ $totalEtudiants }}</span>
                 <span class="nm-kpi-sub">à évaluer</span>
             </td>
-            <td class="nm-kpi" style="width: 25%; background-color: {{ $accent }};">
+            <td class="nm-kpi" style="width: 25%;">
                 <span class="nm-kpi-label">Classe</span>
                 <span class="nm-kpi-value small">{{ $classeName ?: '—' }}</span>
                 <span class="nm-kpi-sub">{{ $evaluation->classe->filiere->name ?? 'Filière' }}</span>
             </td>
-            <td class="nm-kpi" style="width: 25%; background-color: {{ $blank ? $secondary : $primary }};">
+            <td class="nm-kpi" style="width: 25%;">
                 <span class="nm-kpi-label">{{ $blank ? 'Évaluation' : 'Type' }}</span>
                 <span class="nm-kpi-value small">{{ $blank ? 'à compléter' : (ucfirst($evaluation->type ?? '') ?: '—') }}</span>
                 <span class="nm-kpi-sub">{{ $blank ? '' : (isset($evaluation->coefficient) ? 'Coef '.$evaluation->coefficient : '') }}</span>
             </td>
-            <td class="nm-kpi" style="width: 25%; background-color: {{ $accent }};">
+            <td class="nm-kpi" style="width: 25%;">
                 <span class="nm-kpi-label">Barème</span>
                 <span class="nm-kpi-value">/ {{ $blank ? '____' : ($evaluation->bareme ?? '20') }}</span>
                 <span class="nm-kpi-sub">{{ $anneeCourante->name ?? 'Année courante' }}</span>
