@@ -747,6 +747,18 @@ return [
             'group' => 'Comptabilité',
             'icon' => 'fa-history',
         ],
+        'comptabilite.period.close' => [
+            'label' => 'Verrouiller / déverrouiller une période comptable',
+            'description' => 'Permet de fermer un mois (ou plus) pour empêcher toute modification rétroactive. Une fois la période verrouillée, plus aucun paiement antérieur ne peut être modifié, supprimé ou rejeté. Garantit la traçabilité comptable / fiscalité.',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-lock',
+        ],
+        'comptabilite.period.bypass_lock' => [
+            'label' => 'Contourner le verrouillage de période (exception)',
+            'description' => 'Permet de modifier un paiement antérieur à la date de verrouillage. À réserver à un cas d\'erreur exceptionnel (ex: correction d\'une faute frappe découverte tardivement). Toujours loggé.',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-key',
+        ],
         'comptabilite.sensitive.access' => [
             'label' => 'Accès aux données comptables sensibles',
             'group' => 'Comptabilité',

@@ -544,6 +544,12 @@ class ESBTPPaiementController extends Controller
                 ->with('error', 'Ce paiement a déjà été validé et ne peut plus être modifié.');
         }
 
+        // S1.4 — Garde verrouillage de période comptable
+        if ($block = $this->assertPeriodNotLocked($paiement)) {
+            return redirect()->route('esbtp.paiements.show', $paiement->id)
+                ->with('error', $block['message']);
+        }
+
         $validated = $request->validated();
 
         try {
@@ -1477,6 +1483,14 @@ class ESBTPPaiementController extends Controller
                 return redirect()->back()->with('error', 'Ce paiement est déjà rejeté.');
             }
 
+            // S1.4 — Garde verrouillage de période comptable
+            if ($block = $this->assertPeriodNotLocked($paiement)) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $block['message']], 403);
+                }
+                return redirect()->back()->with('error', $block['message']);
+            }
+
             $paiement->update([
                 'status' => 'rejeté',
                 'date_validation' => now(),
@@ -1546,6 +1560,14 @@ class ESBTPPaiementController extends Controller
         $user = $request->user();
         if (!$user || !$user->can('paiements.manage')) {
             abort(403, 'Cette action est réservée au super administrateur.');
+        }
+
+        // S1.4 — Garde verrouillage de période comptable (même superAdmin doit utiliser bypass_lock)
+        if ($block = $this->assertPeriodNotLocked($paiement)) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $block['message']], 403);
+            }
+            return redirect()->back()->with('error', $block['message']);
         }
 
         DB::beginTransaction();
@@ -1724,6 +1746,60 @@ class ESBTPPaiementController extends Controller
 
             return redirect()->back()->with('error', 'Erreur lors de la validation groupée: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * S1.4 — Garde anti-modification rétroactive (verrouillage de période comptable).
+     *
+     * Une fois qu'un mois est clôturé (setting `comptabilite.period_locked_until`),
+     * plus aucun paiement antérieur à cette date ne peut être modifié, supprimé ou rejeté.
+     * Garantit la traçabilité comptable et la conformité OHADA.
+     *
+     * Bypass possible via permission `comptabilite.period.bypass_lock` (rare,
+     * pour corrections exceptionnelles). superAdmin/serviceTechnique passent via Gate::before.
+     *
+     * @return array{message: string}|null Null si OK, ou ['message' => '...'] si bloqué.
+     */
+    private function assertPeriodNotLocked(\App\Models\ESBTPPaiement $paiement): ?array
+    {
+        $lockedUntil = \App\Helpers\SettingsHelper::get('comptabilite.period_locked_until');
+        if (empty($lockedUntil)) {
+            return null;
+        }
+
+        try {
+            $lockDate = \Carbon\Carbon::parse($lockedUntil)->endOfDay();
+        } catch (\Throwable $e) {
+            return null; // Setting mal formaté, on n'applique pas de garde
+        }
+
+        // Date de référence du paiement : date_paiement (la vraie date métier) ou created_at fallback
+        $paiementDate = $paiement->date_paiement
+            ? \Carbon\Carbon::parse($paiement->date_paiement)
+            : ($paiement->created_at ?: now());
+
+        if ($paiementDate->gt($lockDate)) {
+            return null; // Postérieur au verrouillage → modifiable
+        }
+
+        // Bypass autorisé (superAdmin via Gate::before *, ou perm explicite)
+        if (auth()->user()?->can('comptabilite.period.bypass_lock')) {
+            Log::warning('[S1.4] Bypass verrouillage période utilisé', [
+                'paiement_id' => $paiement->id,
+                'paiement_date' => $paiementDate->toDateString(),
+                'period_locked_until' => $lockDate->toDateString(),
+                'user_id' => auth()->id(),
+            ]);
+            return null;
+        }
+
+        return [
+            'message' => sprintf(
+                'Action refusée : le paiement du %s appartient à une période comptable verrouillée (jusqu\'au %s). Demandez à un comptable habilité de débloquer la période ou créez une écriture corrective sur la période courante.',
+                $paiementDate->translatedFormat('d/m/Y'),
+                $lockDate->translatedFormat('d/m/Y'),
+            ),
+        ];
     }
 
     /**
