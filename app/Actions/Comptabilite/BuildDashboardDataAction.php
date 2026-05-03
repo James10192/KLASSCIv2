@@ -51,7 +51,18 @@ class BuildDashboardDataAction
             ->whereIn('status', self::ACTIVE_INSCRIPTION_STATUSES)
             ->count();
 
+        $todayValidated = $this->paiementsQuery($filters)
+            ->where('status', self::PAYMENT_STATUS_VALIDATED)
+            ->whereDate('date_validation', Carbon::today())
+            ->selectRaw('COUNT(*) as cnt, COALESCE(SUM(montant), 0) as total')
+            ->first();
+        $countValidatedToday = (int) ($todayValidated->cnt ?? 0);
+        $totalValidatedToday = (float) ($todayValidated->total ?? 0);
+
         [$labelsMois, $dataEncaissements] = $this->buildMonthlySeries($filters, $annee);
+
+        $agingBuckets = ($this->getImpayesAging)($filters);
+        $countOverdueTotal = (int) array_sum(array_column($agingBuckets, 'count'));
 
         return [
             'totalDue' => $totalDuResult['totalDue'],
@@ -61,9 +72,13 @@ class BuildDashboardDataAction
             'countPaid' => $countPaid,
             'countPartiallyPaid' => $countPartiallyPaid,
             'countOverdue' => $countOverdue,
+            'countToValidate' => $countPartiallyPaid,
+            'countOverdueTotal' => $countOverdueTotal,
+            'countValidatedToday' => $countValidatedToday,
+            'totalValidatedToday' => $totalValidatedToday,
             'labelsMois' => $labelsMois,
             'dataEncaissements' => $dataEncaissements,
-            'agingBuckets' => ($this->getImpayesAging)($filters),
+            'agingBuckets' => $agingBuckets,
             'paiementsEnAttente' => $this->fetchPendingPayments($filters),
             // Module Dépenses supprimé — données vides pour compat backward
             'statsDepenses' => ['total' => 0, 'mensuel' => 0, 'salaires' => 0, 'fournitures' => 0],

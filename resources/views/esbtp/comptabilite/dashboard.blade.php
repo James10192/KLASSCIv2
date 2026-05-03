@@ -281,6 +281,80 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
     .filter-select.has-value { background-color: #f0f5ff; }
 }
 
+/* ── Action Feed (Aujourd'hui) ── */
+.dc-feed {
+    background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 14px 18px 16px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+}
+.dc-feed-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; margin-bottom: 12px; flex-wrap: wrap;
+}
+.dc-feed-title {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-size: .82rem; font-weight: 700; color: #1e293b;
+    letter-spacing: -.01em;
+}
+.dc-feed-title i { color: #0453cb; font-size: .9rem; }
+.dc-feed-date { font-weight: 500; color: #64748b; font-size: .78rem; }
+.dc-feed-allclear {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: rgba(16,185,129,.10); color: #059669;
+    padding: 4px 10px; border-radius: 999px;
+    font-size: .72rem; font-weight: 600;
+}
+.dc-feed-cards {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+@media (max-width: 768px) { .dc-feed-cards { grid-template-columns: 1fr; } }
+.dc-feed-card {
+    display: flex; align-items: center; gap: 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0; border-radius: 11px;
+    padding: 10px 14px;
+    text-decoration: none;
+    transition: all .15s ease;
+}
+.dc-feed-card:hover {
+    border-color: #c7d2fe;
+    box-shadow: 0 4px 14px rgba(4,83,203,.08);
+    transform: translateY(-1px);
+    text-decoration: none;
+}
+.dc-feed-card.is-active {
+    background: linear-gradient(135deg, #fff 0%, #fffbeb 100%);
+    border-color: #fde68a;
+}
+.dc-feed-card.is-active#dc-feed-card-overdue {
+    background: linear-gradient(135deg, #fff 0%, #fef2f2 100%);
+    border-color: #fecaca;
+}
+.dc-feed-card-icon {
+    width: 36px; height: 36px; border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .85rem; flex-shrink: 0;
+}
+.dc-feed-card-body { flex: 1; min-width: 0; }
+.dc-feed-card-value {
+    font-size: 1.15rem; font-weight: 800; color: #0f172a;
+    line-height: 1; letter-spacing: -.02em;
+}
+.dc-feed-card-label {
+    font-size: .72rem; font-weight: 600; color: #64748b;
+    margin-top: 2px;
+}
+.dc-feed-card-cta {
+    color: #94a3b8; font-size: .8rem;
+    transition: transform .15s ease, color .15s ease;
+}
+.dc-feed-card:hover .dc-feed-card-cta {
+    color: #0453cb; transform: translateX(2px);
+}
+
 /* ── KPI Strip ── */
 .kpi-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
 @media (max-width: 992px) { .kpi-strip { grid-template-columns: repeat(2, 1fr); } }
@@ -904,6 +978,86 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
             </div>
         </div>
 
+        {{-- ── ACTION FEED ── (Aujourd'hui : N à valider · M en retard · K validés) --}}
+        @php
+            $hasActions = ($countToValidate ?? 0) > 0 || ($countOverdueTotal ?? 0) > 0;
+            $todayLabel = \Carbon\Carbon::today()->translatedFormat('l j F');
+        @endphp
+        <div class="dc-feed" id="dc-action-feed">
+            <div class="dc-feed-head">
+                <div class="dc-feed-title">
+                    <i class="fas fa-bolt"></i>
+                    <span>Aujourd'hui</span>
+                    <span class="dc-feed-date">· {{ ucfirst($todayLabel) }}</span>
+                </div>
+                @if(!$hasActions)
+                <span class="dc-feed-allclear">
+                    <i class="fas fa-check-circle"></i>
+                    Tout est à jour, rien d'urgent
+                </span>
+                @endif
+            </div>
+            <div class="dc-feed-cards">
+                {{-- À VALIDER --}}
+                @can('paiements.validate')
+                <a href="{{ route('esbtp.paiements.index', ['status' => 'en_attente']) }}"
+                   class="dc-feed-card {{ ($countToValidate ?? 0) > 0 ? 'is-active' : '' }}"
+                   id="dc-feed-card-validate">
+                    <div class="dc-feed-card-icon" style="background:rgba(245,158,11,.12);color:#d97706;">
+                        <i class="fas fa-stamp"></i>
+                    </div>
+                    <div class="dc-feed-card-body">
+                        <div class="dc-feed-card-value" id="dc-feed-validate-count">{{ $countToValidate ?? 0 }}</div>
+                        <div class="dc-feed-card-label">à valider</div>
+                    </div>
+                    <div class="dc-feed-card-cta">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+                @endcan
+
+                {{-- EN RETARD --}}
+                @can('comptabilite.relances.send')
+                <a href="{{ route('esbtp.comptabilite.relances.index') }}"
+                   class="dc-feed-card {{ ($countOverdueTotal ?? 0) > 0 ? 'is-active' : '' }}"
+                   id="dc-feed-card-overdue">
+                    <div class="dc-feed-card-icon" style="background:rgba(220,38,38,.10);color:#dc2626;">
+                        <i class="fas fa-bell"></i>
+                    </div>
+                    <div class="dc-feed-card-body">
+                        <div class="dc-feed-card-value" id="dc-feed-overdue-count">{{ $countOverdueTotal ?? 0 }}</div>
+                        <div class="dc-feed-card-label">étudiant{{ ($countOverdueTotal ?? 0) > 1 ? 's' : '' }} en retard</div>
+                    </div>
+                    <div class="dc-feed-card-cta">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+                @endcan
+
+                {{-- VALIDÉS AUJOURD'HUI (rassurant) --}}
+                @php $todayYmd = \Carbon\Carbon::today()->format('Y-m-d'); @endphp
+                <a href="{{ route('esbtp.paiements.index', ['status' => 'validé', 'date_debut' => $todayYmd, 'date_fin' => $todayYmd]) }}"
+                   class="dc-feed-card dc-feed-card--positive"
+                   id="dc-feed-card-validated">
+                    <div class="dc-feed-card-icon" style="background:rgba(16,185,129,.12);color:#059669;">
+                        <i class="fas fa-check-double"></i>
+                    </div>
+                    <div class="dc-feed-card-body">
+                        <div class="dc-feed-card-value" id="dc-feed-validated-count">{{ $countValidatedToday ?? 0 }}</div>
+                        <div class="dc-feed-card-label">
+                            validé{{ ($countValidatedToday ?? 0) > 1 ? 's' : '' }} aujourd'hui
+                            @if(($totalValidatedToday ?? 0) > 0)
+                            · <span id="dc-feed-validated-amount">{{ number_format($totalValidatedToday, 0, ',', ' ') }}</span>&thinsp;F
+                            @endif
+                        </div>
+                    </div>
+                    <div class="dc-feed-card-cta">
+                        <i class="fas fa-arrow-right"></i>
+                    </div>
+                </a>
+            </div>
+        </div>
+
         {{-- ── KPI STRIP ── --}}
         <div class="kpi-strip" id="kpi-strip">
             @php
@@ -1346,6 +1500,31 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
         document.getElementById('kpi-count-overdue').textContent = d.countOverdue + ' étudiants concernés';
         document.getElementById('kpi-taux').textContent        = taux.toFixed(1) + '%';
         document.getElementById('kpi-recovery-bar').style.width = taux.toFixed(1) + '%';
+
+        updateActionFeed(d);
+    }
+
+    function updateActionFeed(d) {
+        const validateEl = document.getElementById('dc-feed-validate-count');
+        if (validateEl) {
+            validateEl.textContent = d.countToValidate ?? 0;
+            const card = document.getElementById('dc-feed-card-validate');
+            if (card) card.classList.toggle('is-active', (d.countToValidate ?? 0) > 0);
+        }
+
+        const overdueEl = document.getElementById('dc-feed-overdue-count');
+        if (overdueEl) {
+            overdueEl.textContent = d.countOverdueTotal ?? 0;
+            const card = document.getElementById('dc-feed-card-overdue');
+            if (card) card.classList.toggle('is-active', (d.countOverdueTotal ?? 0) > 0);
+        }
+
+        const validatedEl = document.getElementById('dc-feed-validated-count');
+        if (validatedEl) validatedEl.textContent = d.countValidatedToday ?? 0;
+        const validatedAmount = document.getElementById('dc-feed-validated-amount');
+        if (validatedAmount && (d.totalValidatedToday ?? 0) > 0) {
+            validatedAmount.textContent = fmt(d.totalValidatedToday);
+        }
     }
 
     function updateAging(buckets) {
