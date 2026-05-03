@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Services\NoteCalculationService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -21,20 +22,15 @@ use Illuminate\Support\Facades\Log;
  * Déclenché automatiquement par {@see \App\Observers\ESBTPNoteObserver}
  * (saved/deleted) et manuellement via `php artisan notes:recompute`.
  *
- * IMPORTANT — Calcul indépendant de BulletinService.
+ * Le calcul est délégué à {@see NoteCalculationService::studentMatiereAverage()}
+ * pour garantir l'unicité de la formule (même calcul que UI premier-ordre,
+ * preview impact bulletin, et bulletins finaux). Voir le service pour les
+ * garanties algorithmiques (inclusion notes 0, exclusion absents, etc.).
  *
- * On ne ré-utilise PAS volontairement
- * {@see \App\Services\BulletinService::genererDonneesBulletin()} ici,
- * pour deux raisons :
- *  1. Cette méthode exige une configuration bulletin préexistante (matières
- *     générales/techniques + professeurs) et lève une exception sinon. Ce
- *     n'est pas adapté à un trigger en background.
- *  2. Une PR sœur retravaille en parallèle la formule de moyenne dans
- *     BulletinService — y appeler maintenant créerait un conflit garanti.
- *
- * Formule appliquée localement (5 lignes) :
- *   moyenne = SUM((note / bareme) * 20 * coef_evaluation) / SUM(coef_evaluation)
- * en excluant les absents et les barèmes invalides.
+ * NB : on ne passe PAS par {@see \App\Services\BulletinService::genererDonneesBulletin()}
+ * car cette méthode exige une configuration bulletin préexistante (matières
+ * générales/techniques + professeurs) et lève une exception sinon — pas
+ * adapté à un trigger en background.
  */
 class RecomputeStudentResultatJob implements ShouldQueue
 {
@@ -43,8 +39,12 @@ class RecomputeStudentResultatJob implements ShouldQueue
     /** Nombre de tentatives en cas d'échec (transient DB error, lock, etc.). */
     public int $tries = 3;
 
-    /** Délai (secondes) entre 2 tentatives. */
-    public int $retryAfter = 30;
+    /**
+     * Délai en secondes entre tentatives (Laravel queue convention).
+     *
+     * @var array<int, int>
+     */
+    public array $backoff = [30, 60, 120];
 
     /** Timeout du job en secondes. */
     public int $timeout = 60;
@@ -82,7 +82,7 @@ class RecomputeStudentResultatJob implements ShouldQueue
         ];
     }
 
-    public function handle(): void
+    public function handle(NoteCalculationService $calc): void
     {
         try {
             $periode = $this->normalizePeriode($this->periode);
@@ -100,8 +100,9 @@ class RecomputeStudentResultatJob implements ShouldQueue
                 ->with('evaluation:id,bareme,coefficient,periode,classe_id,matiere_id,annee_universitaire_id,status')
                 ->get();
 
-            // 2. Calculer la moyenne pondérée normalisée /20
-            $moyenneApres = $this->computeMoyenne($notes);
+            // 2. Calculer la moyenne pondérée normalisée /20 via le service unifié
+            //    (même formule que l'UI temps réel et BulletinService — anti-divergence).
+            $moyenneApres = $calc->studentMatiereAverage($this->shapeNotesForService($notes));
 
             // 3. Récupérer la moyenne actuelle (avant) pour audit
             $resultatExistant = ESBTPResultat::query()
@@ -140,7 +141,7 @@ class RecomputeStudentResultatJob implements ShouldQueue
                     [
                         'moyenne' => $moyenneApres,
                         'coefficient' => $resultatExistant?->coefficient ?? 1,
-                        'appreciation' => $this->getAppreciation($moyenneApres),
+                        'appreciation' => $calc->getMention($moyenneApres),
                         'updated_by' => $this->triggeredBy,
                         'created_by' => $resultatExistant?->created_by ?? $this->triggeredBy,
                     ]
@@ -174,44 +175,27 @@ class RecomputeStudentResultatJob implements ShouldQueue
     }
 
     /**
-     * Calcule la moyenne /20 pondérée par coefficient d'évaluation,
-     * en normalisant chaque note via son barème.
+     * Convertit la collection Eloquent en payload attendu par
+     * {@see NoteCalculationService::studentMatiereAverage()}.
      *
-     * Notes absentes (is_absent=1) et barèmes invalides (<=0) sont exclues.
+     * Le service prend des arrays homogènes (note/bareme/coefficient/is_absent)
+     * — on isole la conversion pour que le job reste découplé des accesseurs
+     * du modèle.
+     *
+     * @return array<int, array{note: float, bareme: float, coefficient: float, is_absent: bool}>
      */
-    private function computeMoyenne(\Illuminate\Support\Collection $notes): float
+    private function shapeNotesForService(\Illuminate\Support\Collection $notes): array
     {
-        $totalPoints = 0.0;
-        $totalCoeffs = 0.0;
-
-        foreach ($notes as $note) {
-            if ($note->is_absent) {
-                continue;
-            }
-
+        return $notes->map(function (ESBTPNote $note) {
             $eval = $note->evaluation;
-            if (! $eval) {
-                continue;
-            }
 
-            $bareme = (float) ($eval->bareme ?? 0);
-            $coef = (float) ($eval->coefficient ?? 0);
-            if ($bareme <= 0 || $coef <= 0) {
-                continue;
-            }
-
-            $rawNote = (float) ($note->note ?? 0);
-            $note20 = ($rawNote / $bareme) * 20.0;
-
-            $totalPoints += $note20 * $coef;
-            $totalCoeffs += $coef;
-        }
-
-        if ($totalCoeffs <= 0) {
-            return 0.0;
-        }
-
-        return round($totalPoints / $totalCoeffs, 2);
+            return [
+                'note' => (float) ($note->note ?? 0),
+                'bareme' => $eval ? (float) ($eval->bareme ?? 0) : 0.0,
+                'coefficient' => $eval ? (float) ($eval->coefficient ?? 0) : 0.0,
+                'is_absent' => (bool) $note->is_absent,
+            ];
+        })->all();
     }
 
     /**
@@ -270,20 +254,6 @@ class RecomputeStudentResultatJob implements ShouldQueue
             '2' => 'semestre2',
             '' => 'semestre1',
             default => $periode,
-        };
-    }
-
-    /**
-     * Appréciation simple (alignée sur BulletinService::getAppreciation).
-     */
-    private function getAppreciation(float $moyenne): string
-    {
-        return match (true) {
-            $moyenne >= 16 => 'Très Bien',
-            $moyenne >= 14 => 'Bien',
-            $moyenne >= 12 => 'Assez Bien',
-            $moyenne >= 10 => 'Passable',
-            default => 'Insuffisant',
         };
     }
 }
