@@ -1202,15 +1202,23 @@ function messagesPage() {
                 headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrf, Accept: 'application/json' },
                 body: JSON.stringify({ user_id: u.id }),
             });
-            const data = await r.json();
+            const data = await r.json().catch(() => ({}));
+
+            if (!r.ok || !data.conversation_id) {
+                const msg = data.message || data.error || 'Impossible de démarrer cette conversation.';
+                window.showToast?.(msg, 'error');
+                return;
+            }
+
             this.dmModal.hide();
-            // Reload conversations + open new one
             const idx = this.conversations.findIndex(c => c.id === data.conversation_id);
             if (idx === -1) {
                 this.conversations.unshift({
                     id: data.conversation_id, type: 'dm',
-                    title: null, participants: [{ id: u.id, name: u.name }],
+                    title: null,
+                    participants: [{ id: u.id, name: u.name, is_online: false, last_seen_at: null }],
                     last_message_at: new Date().toISOString(), last_message: null,
+                    unread_count: 0,
                 });
             }
             this.openConvo(this.conversations.find(c => c.id === data.conversation_id));
