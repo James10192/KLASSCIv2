@@ -25,40 +25,63 @@
 
     // ─────────────────────────────────────────────────────────────
     //  ZÉRO COULEUR HARDCODÉE : tout dérive des 4 settings PDF
-    //  configurables par l'admin tenant dans /esbtp/settings →
-    //  "Couleurs des documents PDF" (header_bg / header_text /
-    //  accent / text). Toutes les nuances (bordures, fonds soft,
-    //  labels secondaires, cellules vides, marqueur ABS) sont
-    //  calculées en rgba() à partir de ces 4 couleurs.
+    //  configurables dans /esbtp/settings → "Couleurs des documents
+    //  PDF" (4 pickers, mapping vérifié en mai 2026).
+    //
+    //  Mapping UI → DB (attention, naming historique non aligné) :
+    //    • Picker "Fond de l'en-tête établissement" → pdf_header_bg_color
+    //    • Picker "Texte dans l'en-tête établissement" → pdf_header_text_color
+    //    • Picker "Couleur d'accent — titres & soulignements"
+    //                                              → pdf_PRIMARY_color  (!!)
+    //    • Picker "Texte principal du corps du document" → pdf_text_color
+    //
+    //  L'ancienne clé `pdf_accent_color` existe en DB mais n'est
+    //  liée à AUCUN picker UI : c'est un orphan. NE PAS l'utiliser
+    //  ici sinon le PDF rend une couleur invisible côté UI tenant.
     // ─────────────────────────────────────────────────────────────
     $pdfCfg = \App\Helpers\SettingsHelper::getPdfSettings();
     $cHeaderBg   = $pdfCfg['header_bg_color']   ?? '#0453cb';
     $cHeaderText = $pdfCfg['header_text_color'] ?? '#ffffff';
-    $cAccent     = $pdfCfg['accent_color']      ?? '#0453cb';
+    $cAccent     = $pdfCfg['primary_color']     ?? '#0453cb'; // = picker "Accent" UI
     $cText       = $pdfCfg['text_color']        ?? '#1f2937';
 
-    // Helper : convertit un hex (#RGB ou #RRGGBB) en rgba(r, g, b, alpha).
-    // Permet de dériver toutes les nuances depuis les couleurs tenant.
-    $rgba = function (string $hex, float $alpha = 1.0): string {
+    // Helper : "tint" une couleur hex en la mélangeant avec du blanc selon
+    // un facteur alpha [0..1]. Retourne un hex composite OPAQUE équivalent à
+    // ce qu'on verrait avec rgba(hex, alpha) sur un fond blanc.
+    //
+    // Choix volontaire vs rgba() :
+    //   • DomPDF supporte rgba() depuis v0.8 mais a des bugs documentés sur
+    //     certaines combinaisons (borders, table cells imbriquées, opacity
+    //     sur background-color avec print-color-adjust).
+    //   • PDF = papier blanc, jamais transparent : un hex composite donne
+    //     EXACTEMENT le même rendu visuel sans dépendre du moteur.
+    //   • Bonus : rendu plus rapide (pas de blending alpha à chaque pixel).
+    //
+    // Donc tout reste 100% drivé par les 4 settings tenant — on calcule juste
+    // les nuances en hex au lieu de déléguer le blending à DomPDF.
+    $tint = function (string $hex, float $alpha = 1.0): string {
         $h = ltrim($hex, '#');
         if (strlen($h) === 3) {
             $h = $h[0].$h[0].$h[1].$h[1].$h[2].$h[2];
         }
-        if (strlen($h) !== 6) return $hex; // fallback opaque
-        $r = hexdec(substr($h, 0, 2));
-        $g = hexdec(substr($h, 2, 2));
-        $b = hexdec(substr($h, 4, 2));
-        return "rgba($r, $g, $b, $alpha)";
+        if (strlen($h) !== 6) return $hex;
+        $a = max(0.0, min(1.0, $alpha));
+        $mix = fn (int $c) => (int) round($c * $a + 255 * (1 - $a));
+        return sprintf('#%02x%02x%02x',
+            $mix(hexdec(substr($h, 0, 2))),
+            $mix(hexdec(substr($h, 2, 2))),
+            $mix(hexdec(substr($h, 4, 2))),
+        );
     };
 
     // Nuances dérivées du text_color tenant (structure neutre)
-    $cMuted   = $rgba($cText, 0.55); // labels secondaires
-    $cBorder  = $rgba($cText, 0.12); // bordures table/cards
-    $cBgSoft  = $rgba($cText, 0.03); // fond carte / row alternée
-    $cBgLight = $rgba($cText, 0.06); // fond hover / instructions
-    $cDashed  = $rgba($cText, 0.25); // cellules vides en attente
+    $cMuted   = $tint($cText, 0.55); // labels secondaires
+    $cBorder  = $tint($cText, 0.12); // bordures table/cards
+    $cBgSoft  = $tint($cText, 0.03); // fond carte / row alternée
+    $cBgLight = $tint($cText, 0.06); // fond hover / instructions
+    $cDashed  = $tint($cText, 0.25); // cellules vides en attente
     // Marqueur ABS : dérivé de accent_color (tinted bg + couleur pleine)
-    $cDangerBg = $rgba($cAccent, 0.10);
+    $cDangerBg = $tint($cAccent, 0.10);
     $cDangerFg = $cAccent;
 
     // Stats absences pré-remplies (mode évaluation existante)
