@@ -1727,6 +1727,84 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
+     * S1.5 — Annuler son propre paiement créé il y a < N minutes (anti-erreur caissier).
+     *
+     * Évite que le caissier qui s'est trompé (typo cash, mauvais étudiant) doive
+     * appeler un comptable pour annuler. Soft delete + log + audit.
+     *
+     * Permission via Policy::cancelOwnRecent — vérifie auteur + statut + fenêtre temps.
+     */
+    public function cancelOwn(Request $request, ESBTPPaiement $paiement)
+    {
+        $this->authorize('cancelOwnRecent', $paiement);
+
+        try {
+            DB::beginTransaction();
+
+            // Désactive les rappels associés (cohérence avec destroy())
+            try {
+                $reminder = \App\Models\NotificationReminder::where('remindable_type', 'App\Models\ESBTPPaiement')
+                    ->where('remindable_id', $paiement->id)
+                    ->first();
+                if ($reminder) {
+                    $reminder->deactivate();
+                }
+            } catch (\Exception $e) {
+                Log::error('Erreur désactivation reminder paiement (cancel-own): ' . $e->getMessage());
+            }
+
+            $contextLog = [
+                'paiement_id' => $paiement->id,
+                'numero_recu' => $paiement->numero_recu,
+                'inscription_id' => $paiement->inscription_id,
+                'montant' => $paiement->montant,
+                'created_by' => $paiement->created_by,
+                'created_at' => $paiement->created_at?->toIso8601String(),
+                'cancelled_by' => auth()->id(),
+                'cancelled_at' => now()->toIso8601String(),
+            ];
+
+            $paiement->delete(); // Soft delete (trait SoftDeletes)
+
+            DB::commit();
+
+            Log::info('[S1.5] Paiement annulé par son auteur (fenêtre 5min)', $contextLog);
+
+            // Cache invalidation pour mettre à jour les KPIs
+            try {
+                app(\App\Services\GroupCacheInvalidator::class)->invalidate('paiement_cancelled');
+            } catch (\Throwable $e) {
+                // pas bloquant
+            }
+
+            $message = 'Paiement annulé. Vous pouvez en créer un nouveau si nécessaire.';
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'paiement_id' => $paiement->id,
+                ]);
+            }
+
+            return redirect()->route('esbtp.paiements.index')->with('success', $message);
+
+        } catch (\Throwable $e) {
+            DB::rollback();
+            Log::error('Erreur cancelOwn paiement', [
+                'paiement_id' => $paiement->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            $msg = 'Impossible d\'annuler ce paiement : ' . $e->getMessage();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 500);
+            }
+            return redirect()->back()->with('error', $msg);
+        }
+    }
+
+    /**
      * S1.1 — Garde anti-auto-validation (séparation des tâches anti-fraude).
      *
      * Refuse qu'un user valide un paiement qu'il a lui-même créé (créator == auth).
