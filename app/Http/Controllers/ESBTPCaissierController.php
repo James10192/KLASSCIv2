@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\ResetsPersonnelPassword;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Hash;
 
 /**
  * ESBTPCaissierController
@@ -20,6 +20,8 @@ use Illuminate\Support\Facades\Hash;
  */
 class ESBTPCaissierController extends Controller
 {
+    use ResetsPersonnelPassword;
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -63,19 +65,17 @@ class ESBTPCaissierController extends Controller
         ]);
 
         try {
-            DB::beginTransaction();
-
-            $caissier->name  = $validated['name'];
-            $caissier->email = $validated['email'] ?? null;
-            $caissier->phone = $validated['phone'] ?? null;
+            $caissier->fill([
+                'name'  => $validated['name'],
+                'email' => $validated['email'] ?? null,
+                'phone' => $validated['phone'] ?? null,
+            ]);
 
             if (array_key_exists('is_active', $validated)) {
                 $caissier->is_active = (bool) $validated['is_active'];
             }
 
             $caissier->save();
-
-            DB::commit();
 
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
@@ -88,8 +88,6 @@ class ESBTPCaissierController extends Controller
             return redirect()->route('esbtp.caissiers.show', $caissier)
                 ->with('success', 'Caissier mis à jour avec succès.');
         } catch (\Exception $e) {
-            DB::rollBack();
-
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => false,
@@ -160,55 +158,14 @@ class ESBTPCaissierController extends Controller
 
     /**
      * Réinitialise le mot de passe à Bonjour@2025 et force le changement
-     * à la première connexion. Pattern aligné sur ESBTPCoordinateurController.
+     * à la première connexion. Logique partagée via ResetsPersonnelPassword.
      */
     public function resetPassword(User $caissier)
     {
         $this->ensureCanManage();
         $this->ensureIsCaissier($caissier);
 
-        try {
-            $defaultPassword = 'Bonjour@2025';
-
-            $caissier->password              = Hash::make($defaultPassword);
-            $caissier->must_change_password  = true;
-            $caissier->save();
-
-            \Log::info('🔑 Password reset for caissier to default', [
-                'caissier_id'           => $caissier->id,
-                'caissier_name'         => $caissier->name,
-                'reset_by'              => auth()->user()->name,
-                'timestamp'             => now(),
-                'must_change_password'  => true,
-            ]);
-
-            if (request()->wantsJson() || request()->ajax()) {
-                return response()->json([
-                    'success'  => true,
-                    'password' => $defaultPassword,
-                    'message'  => 'Mot de passe réinitialisé avec succès !',
-                ]);
-            }
-
-            return redirect()->back()
-                ->with('success', 'Mot de passe réinitialisé à Bonjour@2025 avec succès ! Le caissier devra changer son mot de passe à la première connexion.')
-                ->with('new_password', $defaultPassword);
-        } catch (\Exception $e) {
-            \Log::error('❌ Password reset failed for caissier', [
-                'caissier_id' => $caissier->id,
-                'error'       => $e->getMessage(),
-            ]);
-
-            if (request()->wantsJson() || request()->ajax()) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Erreur lors de la réinitialisation : ' . $e->getMessage(),
-                ], 500);
-            }
-
-            return redirect()->back()
-                ->with('error', 'Erreur lors de la réinitialisation : ' . $e->getMessage());
-        }
+        return $this->resetPersonnelPassword($caissier, 'caissier');
     }
 
     /**
