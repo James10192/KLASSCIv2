@@ -911,6 +911,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('paiements.destroy')
                 ->middleware('permission:paiements.delete');
 
+            // ── CANCEL OWN RECENT (S1.5 — fenêtre 5min anti-erreur caissier)
+            Route::post('/paiements/{paiement}/cancel-own', [App\Http\Controllers\ESBTPPaiementController::class, 'cancelOwn'])
+                ->name('paiements.cancel-own')
+                ->middleware('throttle:30,1');
+
             // ── VALIDATE/REJECT (workflow comptable — throttled)
             Route::middleware(['permission:paiements.validate', 'throttle:60,1'])->group(function () {
                 Route::post('/paiements/{paiement}/valider', [App\Http\Controllers\ESBTPPaiementController::class, 'valider'])->name('paiements.valider');

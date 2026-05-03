@@ -380,6 +380,30 @@
                 </button>
                 @endcan
                 @endif
+
+                {{-- S1.5 — Bouton "Annuler ma saisie" si fenêtre 5min ouverte --}}
+                @can('cancelOwnRecent', $paiement)
+                @php
+                    $cancelWindowMin = (int) \App\Helpers\SettingsHelper::get('comptabilite.cancel_own_window_minutes', 5);
+                    $deadline = $paiement->created_at->copy()->addMinutes($cancelWindowMin);
+                    $remainingSeconds = max(0, $deadline->getTimestamp() - now()->getTimestamp());
+                    $remainingMinutes = (int) max(1, ceil($remainingSeconds / 60));
+                @endphp
+                <form id="ps-form-cancel-own-{{ $paiement->id }}" action="{{ route('esbtp.paiements.cancel-own', $paiement->id) }}" method="POST" style="margin:0">
+                    @csrf
+                    <button type="button"
+                            class="ps-btn warning"
+                            style="background:rgba(245,158,11,.12);color:#b45309;border:1px solid rgba(245,158,11,.3);"
+                            data-ii-confirm-form="ps-form-cancel-own-{{ $paiement->id }}"
+                            data-ii-confirm-title="Annuler ma saisie ?"
+                            data-ii-confirm-message="Annuler ce paiement que vous venez de créer ? Vous pourrez en saisir un nouveau si nécessaire. Cette action est tracée."
+                            data-ii-confirm-label="Oui, annuler"
+                            data-ii-confirm-cancel="Garder"
+                            title="Vous pouvez annuler votre saisie pendant encore environ {{ $remainingMinutes }} min">
+                        <i class="fas fa-undo"></i> Annuler ma saisie
+                    </button>
+                </form>
+                @endcan
             </div>
         </div>
     </div>

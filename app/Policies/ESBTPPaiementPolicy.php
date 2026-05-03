@@ -63,4 +63,39 @@ class ESBTPPaiementPolicy
     {
         return $user->can('paiements.delete');
     }
+
+    /**
+     * S1.5 — Fenêtre d'annulation 5 minutes pour le caissier qui s'est trompé.
+     *
+     * Permet d'annuler son propre paiement sans déranger un comptable, à condition que :
+     *   - Le user a saisi ce paiement (created_by == auth.id)
+     *   - Le paiement est encore en_attente (pas encore validé/rejeté)
+     *   - Saisi il y a moins de N minutes (configurable via setting tenant, default 5)
+     *
+     * C'est ANTI-ERREUR (typo cash, mauvais étudiant), pas anti-fraude — donc
+     * pas besoin de permission supplémentaire. Le caissier annule SA SAISIE.
+     *
+     * Au-delà de N min, il faut passer par paiements.delete (rare, comptable only).
+     */
+    public function cancelOwnRecent(User $user, ESBTPPaiement $paiement): bool
+    {
+        if (! $user->can('paiements.create')) {
+            return false;
+        }
+
+        if ((int) ($paiement->created_by ?? 0) !== (int) $user->id) {
+            return false;
+        }
+
+        if ($paiement->status !== 'en_attente') {
+            return false;
+        }
+
+        $windowMinutes = (int) \App\Helpers\SettingsHelper::get('comptabilite.cancel_own_window_minutes', 5);
+        if ($windowMinutes <= 0) {
+            return false;
+        }
+
+        return $paiement->created_at && $paiement->created_at->gt(now()->subMinutes($windowMinutes));
+    }
 }
