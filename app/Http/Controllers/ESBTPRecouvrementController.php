@@ -6,17 +6,17 @@ use App\Domain\Analytics\Cache\CachedPredictor;
 use App\Domain\Analytics\DTOs\AnalyticsContext;
 use App\Domain\Analytics\Predictors\DefaultRiskPredictor;
 use App\Domain\Exports\Reports\RecouvrementReport;
+use App\Domain\Notifications\ChannelDispatch;
 use App\Domain\Notifications\Channels\WhatsAppDeeplinkChannel;
 use App\Domain\Notifications\EtudiantContact;
+use App\Domain\Notifications\PhoneNormalizer;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPClasse;
-use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPInscription;
 use App\Services\ExportRenderer;
 use App\Services\RelanceActionLogger;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
@@ -41,17 +41,17 @@ class ESBTPRecouvrementController extends Controller
         $this->middleware('can:comptabilite.recouvrement.access');
     }
 
-    public function previewPdf(Request $request, DefaultRiskPredictor $predictor, ExportRenderer $renderer)
+    public function previewPdf(Request $request, DefaultRiskPredictor $predictor, ExportRenderer $renderer): \Symfony\Component\HttpFoundation\Response
     {
         return $renderer->pdfPreview($this->buildReport($request, $predictor));
     }
 
-    public function exportPdf(Request $request, DefaultRiskPredictor $predictor, ExportRenderer $renderer)
+    public function exportPdf(Request $request, DefaultRiskPredictor $predictor, ExportRenderer $renderer): \Symfony\Component\HttpFoundation\Response
     {
         return $renderer->pdfDownload($this->buildReport($request, $predictor));
     }
 
-    public function exportExcel(Request $request, DefaultRiskPredictor $predictor, ExportRenderer $renderer)
+    public function exportExcel(Request $request, DefaultRiskPredictor $predictor, ExportRenderer $renderer): \Symfony\Component\HttpFoundation\Response
     {
         return $renderer->excelDownload($this->buildReport($request, $predictor));
     }
@@ -73,21 +73,9 @@ class ESBTPRecouvrementController extends Controller
 
     private function buildReport(Request $request, DefaultRiskPredictor $predictor): RecouvrementReport
     {
-        $context = AnalyticsContext::fromRequest($request);
-        $cached = new CachedPredictor($predictor, ttlSeconds: 1800);
-        $prediction = $cached->predict($context);
+        [$context, $prediction, $topAtRisk, $contacts] = $this->loadPrediction($request, $predictor);
 
-        $topAtRisk = $prediction->metadata['top_at_risk'] ?? [];
-        $contacts = $this->loadContacts(array_column($topAtRisk, 'inscription_id'));
-
-        $rows = collect($topAtRisk)
-            ->map(function ($student) use ($contacts) {
-                $contact = $contacts[$student['inscription_id']] ?? null;
-                return array_merge($student, [
-                    'phone' => $contact?->phone,
-                    'email' => $contact?->email,
-                ]);
-            });
+        $rows = collect($topAtRisk)->map(fn ($student) => $this->enrichStudentRow($student, $contacts, withMeta: false));
 
         // Filtres UI appliqués server-side pour cohérence preview/download avec la vue
         $level = $request->query('level');
@@ -121,30 +109,11 @@ class ESBTPRecouvrementController extends Controller
 
     public function index(Request $request, DefaultRiskPredictor $predictor): View
     {
-        $context = AnalyticsContext::fromRequest($request);
-        $cached = new CachedPredictor($predictor, ttlSeconds: 1800);
-        $prediction = $cached->predict($context);
+        [$context, $prediction, $topAtRisk, $contacts] = $this->loadPrediction($request, $predictor);
 
-        $topAtRisk = $prediction->metadata['top_at_risk'] ?? [];
-        $contacts = $this->loadContacts(array_column($topAtRisk, 'inscription_id'));
-
-        $intentLogger = app(\App\Services\RelanceActionLogger::class);
+        $intentLogger = app(RelanceActionLogger::class);
         $rows = collect($topAtRisk)
-            ->map(function ($student) use ($contacts, $intentLogger) {
-                $contact = $contacts[$student['inscription_id']] ?? null;
-                if ($contact === null) {
-                    Log::warning('Recouvrement: contact introuvable pour inscription at-risk', [
-                        'inscription_id' => $student['inscription_id'],
-                    ]);
-                }
-                return array_merge($student, [
-                    'phone' => $contact?->phone,
-                    'email' => $contact?->email,
-                    'prenoms' => $contact?->prenoms ?? '',
-                    'has_valid_phone' => $contact?->hasValidPhone() ?? false,
-                    'relances_today' => $intentLogger->countIntentsToday($student['etudiant_id'] ?? 0),
-                ]);
-            })
+            ->map(fn ($student) => $this->enrichStudentRow($student, $contacts, withMeta: true, intentLogger: $intentLogger))
             ->values()
             ->all();
 
@@ -160,6 +129,60 @@ class ESBTPRecouvrementController extends Controller
             'classes' => ESBTPClasse::orderBy('name')->get(),
             'whatsappTemplate' => $this->whatsappTemplate(),
             'schoolName' => SettingsHelper::get('school_name', config('app.name', 'KLASSCI')),
+        ]);
+    }
+
+    /**
+     * Charge la prédiction (cachée 30 min) + les contacts associés. Évite la
+     * duplication entre `index()` (vue HTML) et `buildReport()` (exports PDF/Excel).
+     *
+     * @return array{0: AnalyticsContext, 1: \App\Domain\Analytics\DTOs\PredictionResult, 2: array, 3: array<int, EtudiantContact>}
+     */
+    private function loadPrediction(Request $request, DefaultRiskPredictor $predictor): array
+    {
+        $context = AnalyticsContext::fromRequest($request);
+        $cached = new CachedPredictor($predictor, ttlSeconds: 1800);
+        $prediction = $cached->predict($context);
+
+        $topAtRisk = $prediction->metadata['top_at_risk'] ?? [];
+        $contacts = $this->loadContacts(array_column($topAtRisk, 'inscription_id'));
+
+        return [$context, $prediction, $topAtRisk, $contacts];
+    }
+
+    /**
+     * Enrichit une ligne `top_at_risk` avec contact (phone/email) et,
+     * optionnellement, métadonnées UI (prénoms, validité phone, relances du jour).
+     *
+     * @param  array<int, EtudiantContact>  $contacts  Indexés par inscription_id.
+     */
+    private function enrichStudentRow(
+        array $student,
+        array $contacts,
+        bool $withMeta,
+        ?RelanceActionLogger $intentLogger = null,
+    ): array {
+        $contact = $contacts[$student['inscription_id']] ?? null;
+
+        if ($withMeta && $contact === null) {
+            Log::warning('Recouvrement: contact introuvable pour inscription at-risk', [
+                'inscription_id' => $student['inscription_id'],
+            ]);
+        }
+
+        $base = array_merge($student, [
+            'phone' => $contact?->phone,
+            'email' => $contact?->email,
+        ]);
+
+        if (!$withMeta) {
+            return $base;
+        }
+
+        return array_merge($base, [
+            'prenoms' => $contact?->prenoms ?? '',
+            'has_valid_phone' => $contact?->hasValidPhone() ?? false,
+            'relances_today' => $intentLogger?->countIntentsToday($student['etudiant_id'] ?? 0) ?? 0,
         ]);
     }
 
@@ -180,26 +203,17 @@ class ESBTPRecouvrementController extends Controller
 
         $inscription = ESBTPInscription::with('etudiant:id,nom,prenoms,telephone,email')
             ->findOrFail($validated['inscription_id']);
-        $etudiant = $inscription->etudiant;
+        $contact = EtudiantContact::fromEtudiant($inscription->etudiant);
 
-        if (!$etudiant) {
+        if ($contact === null) {
             return response()->json(['success' => false, 'error' => 'Étudiant introuvable'], 404);
         }
-
-        $contact = new EtudiantContact(
-            etudiantId: (int) $etudiant->id,
-            nomComplet: trim(($etudiant->prenoms ?? '') . ' ' . ($etudiant->nom ?? '')),
-            phone: $etudiant->telephone,
-            email: $etudiant->email,
-            prenoms: $etudiant->prenoms,
-            nom: $etudiant->nom,
-        );
 
         $dispatch = match ($validated['channel']) {
             'whatsapp_deeplink' => $whatsapp->dispatch($contact, $validated['message']),
             'email' => $this->buildEmailDispatch($contact, $validated['message']),
             'tel' => $this->buildTelDispatch($contact),
-            'manuel' => \App\Domain\Notifications\ChannelDispatch::manual('manuel', '#'),
+            'manuel' => ChannelDispatch::manual('manuel', '#'),
         };
 
         try {
@@ -262,16 +276,8 @@ class ESBTPRecouvrementController extends Controller
 
         $inscription = ESBTPInscription::with('etudiant:id,nom,prenoms,telephone,email')
             ->findOrFail($validated['inscription_id']);
-        $etudiant = $inscription->etudiant;
-
-        $contact = new EtudiantContact(
-            etudiantId: (int) ($etudiant?->id ?? 0),
-            nomComplet: trim(($etudiant?->prenoms ?? '') . ' ' . ($etudiant?->nom ?? '')),
-            phone: $etudiant?->telephone,
-            email: $etudiant?->email,
-            prenoms: $etudiant?->prenoms,
-            nom: $etudiant?->nom,
-        );
+        $contact = EtudiantContact::fromEtudiant($inscription->etudiant)
+            ?? new EtudiantContact(0, '', null, null);
 
         $relance = $logger->logSent(
             $contact,
@@ -297,22 +303,9 @@ class ESBTPRecouvrementController extends Controller
         return ESBTPInscription::with('etudiant:id,nom,prenoms,telephone,email')
             ->whereIn('id', $inscriptionIds)
             ->get()
-            ->mapWithKeys(function (ESBTPInscription $inscription) {
-                $etudiant = $inscription->etudiant;
-                if (!$etudiant) {
-                    return [$inscription->id => null];
-                }
-                return [
-                    $inscription->id => new EtudiantContact(
-                        etudiantId: (int) $etudiant->id,
-                        nomComplet: trim(($etudiant->prenoms ?? '') . ' ' . ($etudiant->nom ?? '')),
-                        phone: $etudiant->telephone,
-                        email: $etudiant->email,
-                        prenoms: $etudiant->prenoms,
-                        nom: $etudiant->nom,
-                    ),
-                ];
-            })
+            ->mapWithKeys(fn (ESBTPInscription $inscription) => [
+                $inscription->id => EtudiantContact::fromEtudiant($inscription->etudiant),
+            ])
             ->filter()
             ->all();
     }
@@ -323,25 +316,22 @@ class ESBTPRecouvrementController extends Controller
         return is_string($template) && trim($template) !== '' ? $template : self::TEMPLATE_DEFAULT;
     }
 
-    private function buildEmailDispatch(EtudiantContact $contact, string $message): \App\Domain\Notifications\ChannelDispatch
+    private function buildEmailDispatch(EtudiantContact $contact, string $message): ChannelDispatch
     {
         if (!$contact->hasEmail()) {
-            return \App\Domain\Notifications\ChannelDispatch::unavailable('email', 'Email étudiant manquant ou invalide');
+            return ChannelDispatch::unavailable('email', 'Email étudiant manquant ou invalide');
         }
         $subject = rawurlencode('Solde de scolarité');
         $body = rawurlencode($message);
-        return \App\Domain\Notifications\ChannelDispatch::manual(
-            'email',
-            "mailto:{$contact->email}?subject={$subject}&body={$body}",
-        );
+        return ChannelDispatch::manual('email', "mailto:{$contact->email}?subject={$subject}&body={$body}");
     }
 
-    private function buildTelDispatch(EtudiantContact $contact): \App\Domain\Notifications\ChannelDispatch
+    private function buildTelDispatch(EtudiantContact $contact): ChannelDispatch
     {
-        $e164 = \App\Domain\Notifications\PhoneNormalizer::toE164($contact->phone);
+        $e164 = PhoneNormalizer::toE164($contact->phone);
         if ($e164 === null) {
-            return \App\Domain\Notifications\ChannelDispatch::unavailable('tel', 'Numéro de téléphone invalide');
+            return ChannelDispatch::unavailable('tel', 'Numéro de téléphone invalide');
         }
-        return \App\Domain\Notifications\ChannelDispatch::manual('tel', "tel:{$e164}");
+        return ChannelDispatch::manual('tel', "tel:{$e164}");
     }
 }
