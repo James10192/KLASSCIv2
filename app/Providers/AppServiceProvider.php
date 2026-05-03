@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\ESBTPNote;
+use App\Observers\ESBTPNoteObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
@@ -34,6 +36,9 @@ class AppServiceProvider extends ServiceProvider
         Schema::defaultStringLength(191);
 
         \App\Services\SsoSecretValidator::validate();
+
+        // Observers
+        ESBTPNote::observe(ESBTPNoteObserver::class);
 
         // Use Bootstrap for pagination
         Paginator::useBootstrap();
