@@ -765,6 +765,12 @@ return [
             'group' => 'Comptabilité',
             'icon' => 'fa-bell',
         ],
+        'comptabilite.journal.view' => [
+            'label' => 'Consulter le journal de caisse OHADA',
+            'description' => 'Donne accès au journal des recettes chronologique, conforme aux standards OHADA. Affiche par défaut les encaissements du mois en cours avec filtres par période/filière/mode de paiement. Exportable en PDF format officiel. Permission assignable à un rôle custom (Directeur Financier, Auditeur Externe).',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-book',
+        ],
         'comptabilite.sensitive.access' => [
             'label' => 'Accès aux données comptables sensibles',
             'group' => 'Comptabilité',
@@ -1211,6 +1217,7 @@ return [
             'comptabilite.analytics.run_now', 'comptabilite.analytics.configure',
             'comptabilite.recouvrement.access',
             'comptabilite.audit.view',  // QW6 mai 2026 — comptable doit auditer son module
+            'comptabilite.journal.view',  // S1.3 mai 2026 — comptable consulte le journal de caisse OHADA
             'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.validate',
             'paiements.export',  // Lot 15
             'frais.view', 'frais.create', 'frais.edit', 'frais.configure',

@@ -916,6 +916,17 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('paiements.cancel-own')
                 ->middleware('throttle:30,1');
 
+            // ── JOURNAL DE CAISSE OHADA (S1.3)
+            Route::prefix('comptabilite/journal-caisse')->name('comptabilite.journal-caisse.')->group(function () {
+                Route::get('/', [App\Http\Controllers\ESBTPJournalCaisseController::class, 'index'])->name('index');
+                Route::get('/export-pdf', [App\Http\Controllers\ESBTPJournalCaisseController::class, 'exportPdf'])
+                    ->middleware('throttle:10,1')
+                    ->name('export-pdf');
+                Route::get('/export-pdf/preview', [App\Http\Controllers\ESBTPJournalCaisseController::class, 'exportPdfPreview'])
+                    ->middleware('throttle:30,1')
+                    ->name('export-pdf-preview');
+            });
+
             // ── VALIDATE/REJECT (workflow comptable — throttled)
             Route::middleware(['permission:paiements.validate', 'throttle:60,1'])->group(function () {
                 Route::post('/paiements/{paiement}/valider', [App\Http\Controllers\ESBTPPaiementController::class, 'valider'])->name('paiements.valider');
