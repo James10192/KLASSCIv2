@@ -1154,15 +1154,20 @@ function saveNote(studentId, evaluationId, noteValue) {
                 alert(response.message || 'Erreur lors de la sauvegarde de la note.');
                 return;
             }
-            triggerRowHighlight(studentId);
-            markBulletinSynced();
-
+            // 1. Mettre à jour le state JS et recalculer la moyenne AVANT
+            //    de dispatcher nm:note-saved : sinon le toast lit l'ancienne
+            //    valeur de .average-cell (la lecture est synchrone à l'event).
             if (!notesData[studentId]) notesData[studentId] = {};
             notesData[studentId][evaluationId] = isAbsent ? 0 : noteValue;
             notesData[studentId][evaluationId + '_absent'] = isAbsent;
 
             calculateStudentAverage(studentId);
             calculateClassAverages();
+
+            // 2. Une fois le DOM cohérent, déclencher le highlight + toast
+            //    + badge bulletin synchronisé.
+            triggerRowHighlight(studentId);
+            markBulletinSynced();
         },
         error: function(xhr) {
             console.error('Erreur lors de la sauvegarde:', xhr.responseJSON || xhr);
@@ -2461,23 +2466,30 @@ window.addEventListener('nm:save-error', () => nmSetNetworkState('offline'));
 // son comportement original. On garde le row-highlight ET on ajoute un
 // toast premium avec le nom étudiant + nouvelle moyenne.
 let _nmLastToastAt = 0;
-let _nmToastBatch = { count: 0, names: new Set(), timer: null };
+let _nmToastBatch = { count: 0, names: new Set(), timer: null, lastStudentId: null };
 window.addEventListener('nm:note-saved', function(e) {
     const studentId = e.detail && e.detail.studentId;
     if (!studentId) return;
     const $row = $(`tr[data-student-id="${studentId}"]`);
     if ($row.length === 0) return;
     const name = $row.find('.nm-student-fullname').text().trim() || 'Étudiant';
-    const avg = $row.find('.average-cell').text().trim();
 
     // Si plusieurs saves successifs (<400ms) : agréger en 1 seul toast batch.
+    // On garde la dernière ligne touchée pour relire sa moyenne quand le timer
+    // s'épuise (lecture LATE, pas closure-captured) — défense en profondeur
+    // au cas où d'autres saves arriveraient et modifieraient .average-cell
+    // entre l'event et l'affichage du toast.
     const now = Date.now();
     _nmToastBatch.names.add(name);
     _nmToastBatch.count++;
+    _nmToastBatch.lastStudentId = studentId;
     if (_nmToastBatch.timer) clearTimeout(_nmToastBatch.timer);
     _nmToastBatch.timer = setTimeout(() => {
         const total = _nmToastBatch.count;
         const namesList = Array.from(_nmToastBatch.names);
+        // Relire la moyenne au moment du toast (état le plus récent du DOM).
+        const $lastRow = $(`tr[data-student-id="${_nmToastBatch.lastStudentId}"]`);
+        const avg = $lastRow.length ? $lastRow.find('.average-cell').text().trim() : '';
         let msg;
         if (total === 1) {
             msg = avg && avg !== '--'
@@ -2489,7 +2501,7 @@ window.addEventListener('nm:note-saved', function(e) {
             msg = `${total} notes enregistrées sur ${namesList.length} étudiants`;
         }
         nmShowToast('success', msg, 2400);
-        _nmToastBatch = { count: 0, names: new Set(), timer: null };
+        _nmToastBatch = { count: 0, names: new Set(), timer: null, lastStudentId: null };
         _nmLastToastAt = now;
     }, 400);
 });
