@@ -390,6 +390,9 @@ class PaiementExportService
 
     /**
      * Label humain pour un statut.
+     * Le fallback `default` utilise mb_strtoupper/mb_substr (UTF-8 safe) pour
+     * préserver les accents : sinon `validé` rendrait `validé` au lieu de
+     * `Validé` sur DomPDF (rule exports-pdf-excel.md anti-pattern #9).
      */
     public function statusLabel(string $status): string
     {
@@ -400,7 +403,7 @@ class PaiementExportService
             'rejeté', 'rejete' => 'Rejeté',
             'annulé', 'annule' => 'Annulé',
             '' => '—',
-            default => ucfirst($status),
+            default => mb_strtoupper(mb_substr($status, 0, 1, 'UTF-8'), 'UTF-8') . mb_substr($status, 1, null, 'UTF-8'),
         };
     }
 }
