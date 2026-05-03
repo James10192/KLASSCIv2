@@ -913,14 +913,45 @@ function messagesPage() {
         pickerModal: null,
 
         init() {
-            // Seed l'état initial pour ne pas re-toaster les conversations existantes au load.
             this.conversations.forEach(c => {
                 if (c.last_message?.id) this.seenLastMessageIds.set(c.id, c.last_message.id);
             });
-            this.loadNotifications(/* silent: */ true);
+            this.loadNotifications(true);
             this.notifPollInterval = setInterval(() => this.loadNotifications(false), 30000);
             this.convPollInterval = setInterval(() => this.refreshConversations(), 30000);
             this.clockInterval = setInterval(() => { this.now = Date.now(); }, 60000);
+        },
+
+        /**
+         * Wrapper fetch unifié : check r.ok, parse JSON safely, throw AppError sur échec
+         * avec le message serveur en clair. Toast affiché sauf si silent=true.
+         */
+        async apiRequest(url, opts = {}, { silent = false } = {}) {
+            const headers = { Accept: 'application/json', ...(opts.headers || {}) };
+            if (opts.method && opts.method !== 'GET' && !headers['Content-Type']) {
+                headers['Content-Type'] = 'application/json';
+            }
+            if (opts.method && opts.method !== 'GET') {
+                headers['X-CSRF-TOKEN'] = this.csrf;
+            }
+            const r = await fetch(url, { ...opts, headers }).catch((e) => {
+                throw new Error('Connexion impossible. Vérifie ta connexion réseau.');
+            });
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok) {
+                const msg = data.message || data.error || (
+                    r.status === 403 ? 'Action non autorisée.' :
+                    r.status === 404 ? 'Ressource introuvable.' :
+                    r.status === 422 ? 'Action refusée par le serveur.' :
+                    `Erreur ${r.status}.`
+                );
+                if (!silent) window.showToast?.(msg, 'error');
+                const err = new Error(msg);
+                err.status = r.status;
+                err.data = data;
+                throw err;
+            }
+            return data;
         },
 
         // Groupement messages par sender consécutif < 5min (anti-clutter — finding research 2026)
@@ -1054,19 +1085,15 @@ function messagesPage() {
             this.$nextTick(() => this.scrollBottom(false));
             this.sending = true;
             try {
-                const r = await fetch(`/messages/conversations/${this.activeConvo.id}/messages`, {
+                const m = await this.apiRequest(`/messages/conversations/${this.activeConvo.id}/messages`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrf, Accept: 'application/json' },
                     body: JSON.stringify({ body }),
                 });
-                if (!r.ok) throw new Error('Send failed');
-                const m = await r.json();
-                // Replace temp message with confirmed one
                 const idx = this.messages.findIndex(x => x.id === tempId);
                 if (idx >= 0) this.messages[idx] = { ...m, type: 'text', payload: null, pending: false };
                 this.bumpConvPreview(this.activeConvo.id, { type: 'text', body, preview: body });
             } catch (e) {
-                // Mark as failed — keep visible avec UI dégradée
+                // Garde le message visible en mode dégradé pour permettre retry.
                 const idx = this.messages.findIndex(x => x.id === tempId);
                 if (idx >= 0) {
                     this.messages[idx].pending = false;
@@ -1197,16 +1224,17 @@ function messagesPage() {
         },
 
         async startDm(u) {
-            const r = await fetch('/messages/dm/start', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': this.csrf, Accept: 'application/json' },
-                body: JSON.stringify({ user_id: u.id }),
-            });
-            const data = await r.json().catch(() => ({}));
-
-            if (!r.ok || !data.conversation_id) {
-                const msg = data.message || data.error || 'Impossible de démarrer cette conversation.';
-                window.showToast?.(msg, 'error');
+            let data;
+            try {
+                data = await this.apiRequest('/messages/dm/start', {
+                    method: 'POST',
+                    body: JSON.stringify({ user_id: u.id }),
+                });
+            } catch (e) {
+                return; // toast déjà affiché par apiRequest
+            }
+            if (!data.conversation_id) {
+                window.showToast?.('Réponse serveur invalide.', 'error');
                 return;
             }
 
@@ -1214,8 +1242,7 @@ function messagesPage() {
             const idx = this.conversations.findIndex(c => c.id === data.conversation_id);
             if (idx === -1) {
                 this.conversations.unshift({
-                    id: data.conversation_id, type: 'dm',
-                    title: null,
+                    id: data.conversation_id, type: 'dm', title: null,
                     participants: [{ id: u.id, name: u.name, is_online: false, last_seen_at: null }],
                     last_message_at: new Date().toISOString(), last_message: null,
                     unread_count: 0,
