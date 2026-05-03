@@ -998,10 +998,10 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
 
                     @php
                         $agingConfig = [
-                            '0-30'  => ['label' => '< 30 j de retard',  'sublabel' => 'Priorité normale',  'color' => '#10b981', 'bg' => 'rgba(16,185,129,.10)',  'risk' => 'Faible',    'icon' => 'fa-circle-check'],
-                            '31-60' => ['label' => '30–60 j de retard', 'sublabel' => 'À relancer',        'color' => '#5e91de', 'bg' => 'rgba(94,145,222,.12)',  'risk' => 'Modéré',    'icon' => 'fa-clock'],
-                            '61-90' => ['label' => '60–90 j de retard', 'sublabel' => 'Relance urgente',   'color' => '#0453cb', 'bg' => 'rgba(4,83,203,.12)',    'risk' => 'Élevé',     'icon' => 'fa-triangle-exclamation'],
-                            '90+'   => ['label' => '> 90 j de retard',  'sublabel' => 'Critique',           'color' => '#1e293b', 'bg' => 'rgba(30,41,59,.12)',    'risk' => 'Critique',  'icon' => 'fa-skull'],
+                            '0-30'  => ['label' => 'Récents (moins d\'1 mois)',     'sublabel' => 'À surveiller',           'color' => '#10b981', 'bg' => 'rgba(16,185,129,.10)',  'risk' => 'Faible',   'icon' => 'fa-circle-check',          'tooltip' => 'Retard inférieur à 30 jours. Surveillez sans alerter — un rappel doux suffit en général.'],
+                            '31-60' => ['label' => 'À relancer (1 à 2 mois)',       'sublabel' => 'Relance recommandée',    'color' => '#5e91de', 'bg' => 'rgba(94,145,222,.12)',  'risk' => 'Modéré',   'icon' => 'fa-clock',                 'tooltip' => 'Retard entre 30 et 60 jours. Envoyez une relance écrite (SMS, email ou WhatsApp).'],
+                            '61-90' => ['label' => 'Critiques (2 à 3 mois)',        'sublabel' => 'Action immédiate',       'color' => '#0453cb', 'bg' => 'rgba(4,83,203,.12)',    'risk' => 'Élevé',    'icon' => 'fa-triangle-exclamation',  'tooltip' => 'Retard entre 60 et 90 jours. Contactez l\'étudiant ou le parent par téléphone.'],
+                            '90+'   => ['label' => 'Très critiques (plus de 3 mois)', 'sublabel' => 'Mise en demeure',     'color' => '#1e293b', 'bg' => 'rgba(30,41,59,.12)',    'risk' => 'Critique', 'icon' => 'fa-skull',                 'tooltip' => 'Retard supérieur à 90 jours. Considérez une mise en demeure formelle ou un agent de recouvrement.'],
                         ];
                         $agingTotalAmount = array_sum(array_column($agingBuckets, 'amount'));
                         $agingTotalCount  = array_sum(array_column($agingBuckets, 'count'));
@@ -1033,7 +1033,7 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
                             $cfg = $agingConfig[$key] ?? ['label' => $key, 'sublabel' => '', 'color' => '#64748b', 'bg' => 'rgba(100,116,139,.1)', 'risk' => '—', 'icon' => 'fa-circle'];
                             $pct = $agingTotalAmount > 0 ? round(($bucket['amount'] / $agingTotalAmount) * 100) : 0;
                         @endphp
-                        <div class="aging-row" data-aging="{{ $key }}">
+                        <div class="aging-row" data-aging="{{ $key }}" title="{{ $cfg['tooltip'] ?? '' }}">
                             {{-- Left: icon badge + labels --}}
                             <div class="aging-row-left">
                                 <div class="aging-icon-badge" style="background:{{ $cfg['bg'] }};color:{{ $cfg['color'] }};">
