@@ -8,6 +8,8 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Models\User;
 use App\Services\ChatActionResolver;
+use App\Services\ChatMessagePreview;
+use App\Services\ChatPresenceProjector;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -67,7 +69,7 @@ class ChatController extends Controller
 
         return response()->json([
             'conversation' => array_merge($conversation->only(['id', 'type', 'title', 'context']), [
-                'participants' => $others->map(fn ($p) => $this->mapParticipant($p))->values(),
+                'participants' => $others->map(fn (User $p) => ChatPresenceProjector::project($p))->values(),
             ]),
             'messages' => $messages->map(fn ($m) => [
                 'id' => $m->id,
@@ -142,68 +144,40 @@ class ChatController extends Controller
     {
         $user = $request->user();
 
+        // Sub-select corrélé : 1 query au lieu de N+1 (avant : 1 + 50 count par conv).
         $conversations = ChatConversation::query()
             ->whereHas('participants', fn ($q) => $q->where('user_id', $user->id))
             ->with(['participants:id,name,email,last_seen_at', 'lastMessage'])
+            ->select('chat_conversations.*')
+            ->selectRaw(
+                '(SELECT COUNT(*) FROM chat_messages cm
+                  INNER JOIN chat_conversation_participants ccp
+                      ON ccp.chat_conversation_id = cm.chat_conversation_id
+                      AND ccp.user_id = ?
+                  WHERE cm.chat_conversation_id = chat_conversations.id
+                    AND cm.sender_id != ?
+                    AND (ccp.last_read_at IS NULL OR cm.created_at > ccp.last_read_at)
+                ) as unread_count',
+                [$user->id, $user->id]
+            )
             ->orderByDesc('last_message_at')
             ->limit(50)
             ->get();
 
         return response()->json([
-            'items' => $conversations->map(function (ChatConversation $c) use ($user) {
-                $last = $c->lastMessage;
-                $kind = is_array($last->payload ?? null) ? ($last->payload['kind'] ?? null) : null;
-                $preview = $last ? match ($last->type) {
-                    'action_card' => '📎 ' . match ($kind) {
-                        'inscription' => 'Inscription partagée',
-                        'paiement' => 'Paiement partagé',
-                        default => 'Card partagée',
-                    },
-                    'system' => $last->body ?? 'Notification',
-                    default => $last->body ?? '',
-                } : null;
-
-                $lastReadAt = $c->participants->firstWhere('id', $user->id)?->pivot?->last_read_at;
-                $unreadCount = $last && (!$lastReadAt || $last->created_at->gt($lastReadAt))
-                    ? $c->messages()->where('sender_id', '!=', $user->id)
-                        ->when($lastReadAt, fn ($q) => $q->where('created_at', '>', $lastReadAt))
-                        ->count()
-                    : 0;
-
-                return [
-                    'id' => $c->id,
-                    'type' => $c->type,
-                    'title' => $c->title,
-                    'last_message_at' => $c->last_message_at?->toIso8601String(),
-                    'last_message' => $last ? [
-                        'id' => $last->id,
-                        'body' => $last->body,
-                        'type' => $last->type,
-                        'preview' => $preview,
-                        'sender_id' => $last->sender_id,
-                    ] : null,
-                    'unread_count' => $unreadCount,
-                    'participants' => $c->participants->where('id', '!=', $user->id)
-                        ->map(fn ($p) => $this->mapParticipant($p))->values(),
-                ];
-            })->all(),
+            'items' => $conversations->map(fn (ChatConversation $c) => [
+                'id' => $c->id,
+                'type' => $c->type,
+                'title' => $c->title,
+                'last_message_at' => $c->last_message_at?->toIso8601String(),
+                'last_message' => ChatMessagePreview::forMessage($c->lastMessage),
+                'unread_count' => (int) ($c->unread_count ?? 0),
+                'participants' => $c->participants
+                    ->where('id', '!=', $user->id)
+                    ->map(fn (User $p) => ChatPresenceProjector::project($p))
+                    ->values(),
+            ])->all(),
         ]);
-    }
-
-    /**
-     * Sérialise un participant avec présence (en ligne / dernière connexion).
-     * En ligne = last_seen_at < 2 minutes.
-     */
-    private function mapParticipant($p): array
-    {
-        $lastSeen = $p->last_seen_at;
-        $isOnline = $lastSeen && $lastSeen->gt(now()->subMinutes(2));
-        return [
-            'id' => $p->id,
-            'name' => $p->name,
-            'is_online' => (bool) $isOnline,
-            'last_seen_at' => $lastSeen?->toIso8601String(),
-        ];
     }
 
     public function markNotificationRead(Request $request, string $id): JsonResponse
@@ -218,11 +192,9 @@ class ChatController extends Controller
     {
         $q = $request->validate(['q' => 'required|string|min:2|max:100'])['q'];
 
-        // Issue #315 : isolation étudiants — on n'expose pas les comptes étudiants
-        // dans le picker du chat staff. Les étudiants ne peuvent pas recevoir de DM
-        // (ils consultent leurs annonces via /esbtp/mes-annonces). On exclut donc
-        // explicitement les users qui ont le rôle `etudiant` ET on conserve les
-        // checks existants (auto-exclu, actifs).
+        // Isolation étudiants : on n'expose pas les comptes étudiants dans le picker
+        // du chat staff. Les étudiants ne reçoivent pas de DM (ils consultent leurs
+        // annonces via /esbtp/mes-annonces).
         $users = User::query()
             ->where('id', '!=', $request->user()->id)
             ->where('is_active', true)
@@ -408,9 +380,9 @@ class ChatController extends Controller
     {
         abort_if($recipientId === $sender->id, 422, 'Vous ne pouvez pas vous envoyer un message à vous-même.');
 
-        // Issue #315 : double-check au niveau du repository d'écriture. Toute conversation
-        // existante (legacy) reste accessible — on bloque uniquement la *création* de
-        // nouvelles conversations vers un destinataire qui ne peut pas recevoir de DM.
+        // Double-check au niveau du repository d'écriture. Toute conversation existante
+        // (legacy) reste accessible — on bloque uniquement la création de nouvelles
+        // conversations vers un destinataire qui ne peut pas recevoir de DM.
         $existing = ChatConversation::where('type', 'dm')
             ->whereHas('participants', fn ($q) => $q->where('user_id', $sender->id))
             ->whereHas('participants', fn ($q) => $q->where('user_id', $recipientId))
@@ -437,8 +409,6 @@ class ChatController extends Controller
      * être éligible à un DM est `messages.send` (staff actif). On vérifie donc
      * que le destinataire dispose de cette permission, ce qui exclut nativement
      * les étudiants et tout user désactivé/sans rôle.
-     *
-     * Issue #315 : isoler les étudiants du chat user-to-user.
      */
     private function assertCanReceiveMessages(int $userId): void
     {
