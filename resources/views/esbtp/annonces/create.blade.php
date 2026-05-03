@@ -1,684 +1,625 @@
 @extends('layouts.app')
 
-@section('title', 'Créer une annonce - KLASSCI')
+@section('title', 'Créer une annonce — KLASSCI')
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<!-- Choices.js CSS -->
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css" />
 
 <style>
-    /* Styles pour les cartes */
-    .hover-card {
-        transition: all 0.3s ease;
-    }
-    .hover-card:hover {
-        box-shadow: 0 .5rem 1rem rgba(0,0,0,.08)!important;
-        transform: translateY(-2px);
-    }
-
-    /* Amélioration des form-controls */
-    .form-control, .form-select {
-        padding: 0.6rem 0.75rem;
-    }
-    .form-control:focus, .form-select:focus {
-        border-color: #0453cb;
-        box-shadow: 0 0 0 0.15rem rgba(4, 83, 203, 0.15);
-    }
-
-    /* Styles Choices.js modernes */
-    .choices {
-        margin-bottom: 0;
-        font-size: 14px;
-        position: relative;
-    }
-
-    .choices__inner {
-        background: #ffffff;
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        font-size: 14px;
-        min-height: 48px;
-        padding: 12px 16px 8px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .choices__inner::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        opacity: 0;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: -1;
-    }
-
-    .choices__inner:focus-within {
-        border-color: #0453cb;
-        transform: translateY(-2px);
-        box-shadow: 0 10px 25px rgba(4, 83, 203, 0.3);
-    }
-
-    .choices__inner:focus-within::before {
-        opacity: 0.1;
-    }
-
-    .choices__list--dropdown {
-        background: #ffffff;
-        border: 1px solid #d1d5db;
-        border-radius: 12px;
-        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
-        z-index: 9999 !important;
-        overflow: visible;
-        animation: dropdownSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: absolute !important;
-        max-height: 300px;
-        overflow-y: auto;
-    }
-
-    @keyframes dropdownSlideIn {
-        from {
-            opacity: 0;
-            transform: translateY(-10px) scale(0.95);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-    }
-
-    .choices__item--selectable {
-        padding: 12px 16px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-        border-radius: 6px;
-        margin: 2px 4px;
-        color: #374151;
-        font-weight: 500;
-        border-bottom: 1px solid #f3f4f6;
-    }
-
-    .choices__item--selectable::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: -100%;
-        width: 100%;
-        height: 100%;
-        background: #0453cb;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        z-index: -1;
-    }
-
-    .choices__item--selectable:hover {
-        background: #f8fafc;
-        color: #1e40af;
-        font-weight: 600;
-        transform: translateX(3px);
-        border-left: 3px solid #1e40af;
-    }
-
-    .choices__item--selectable:hover::before {
-        left: 0;
-        background: linear-gradient(135deg, #1e40af, #3b82f6);
-        opacity: 0.1;
-    }
-
-    .choices__item--selectable.is-highlighted {
-        background: #1e40af;
-        color: white;
-        font-weight: 600;
-        transform: translateX(3px);
-        border-left: 3px solid #1e40af;
-    }
-
-    .choices__list--multiple .choices__item {
-        background: #1e40af;
-        border: none;
-        border-radius: 20px;
-        color: white;
-        font-size: 13px;
-        font-weight: 600;
-        margin: 2px 4px 2px 0;
-        padding: 6px 12px;
-        display: inline-flex;
-        align-items: center;
-        box-shadow: 0 2px 8px rgba(30, 64, 175, 0.3);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        animation: slideInTag 0.3s ease-out;
-    }
-
-    @keyframes slideInTag {
-        from {
-            opacity: 0;
-            transform: translateX(-20px) scale(0.8);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0) scale(1);
-        }
-    }
-
-    .choices__list--multiple .choices__item:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(30, 64, 175, 0.4);
-        background: #3b82f6;
-    }
-
-    .choices__button {
-        background: rgba(255, 255, 255, 0.2);
-        border: none;
-        border-radius: 50%;
-        color: white;
-        cursor: pointer;
-        font-size: 12px;
-        height: 18px;
-        width: 18px;
-        margin-left: 6px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-
-    .choices__button:hover {
-        background: rgba(255, 255, 255, 0.3);
-        transform: scale(1.1);
-    }
-
-    .choices__placeholder {
-        color: #6b7280;
-        opacity: 1;
-        font-style: italic;
-        font-weight: 400;
-    }
-
-    .choices__input {
-        background-color: transparent;
-        border: 0;
-        font-size: 14px;
-        margin-bottom: 0;
-        padding: 0;
-        color: #374151;
-        font-weight: 500;
-    }
-
-    .choices__input:focus {
-        outline: 0;
-    }
-
-    .choices.is-invalid .choices__inner {
-        border-color: #dc3545;
-        box-shadow: 0 0 0 0.25rem rgba(220, 53, 69, 0.25);
-    }
-
-    /* Styles ACASI pour les radio buttons */
-    .form-radio-group {
-        display: flex;
-        flex-direction: column;
-        gap: 12px;
-    }
-    
-    .form-radio-option {
-        display: flex;
-        align-items: center;
-        padding: 16px;
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        background: #ffffff;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        position: relative;
-        gap: 12px;
-    }
-    
-    .form-radio-option:hover {
-        border-color: #0453cb;
-        background: #f8fafc;
-        transform: translateY(-1px);
-        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.15);
-    }
-    
-    .form-radio-option input[type="radio"] {
-        position: absolute;
-        opacity: 0;
-        width: 0;
-        height: 0;
-    }
-    
-    .form-radio-check {
-        width: 20px;
-        height: 20px;
-        border: 2px solid #d1d5db;
-        border-radius: 50%;
-        position: relative;
-        flex-shrink: 0;
-        transition: all 0.3s ease;
-    }
-    
-    .form-radio-check::after {
-        content: '';
-        width: 10px;
-        height: 10px;
-        border-radius: 50%;
-        background: #0453cb;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%) scale(0);
-        transition: transform 0.2s ease;
-    }
-    
-    .form-radio-option input[type="radio"]:checked + .form-radio-check {
-        border-color: #0453cb;
-    }
-    
-    .form-radio-option input[type="radio"]:checked + .form-radio-check::after {
-        transform: translate(-50%, -50%) scale(1);
-    }
-    
-    .form-radio-option input[type="radio"]:checked ~ .form-radio-label {
-        color: #0453cb;
-        font-weight: 600;
-    }
-    
-    .form-radio-label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-size: 14px;
-        font-weight: 500;
-        color: #374151;
-        transition: color 0.3s ease;
-    }
-    
-    .form-radio-label i {
-        font-size: 16px;
-        width: 20px;
-        text-align: center;
-    }
-
-    /* Style pour les étiquettes */
-    .form-label {
-        font-weight: 500;
-        margin-bottom: 0.5rem;
-        font-size: 0.9rem;
-    }
-
-    /* Style pour les zones de formulaire spécifiques */
-    #classes_container, #etudiants_container {
-        transition: all 0.3s ease;
-    }
-
-    /* Style pour l'alerte */
-    .alert-danger {
-        border-left: 4px solid #842029;
-    }
-
-    /* Amélioration visibilité des textes */
-    .choices__list--single .choices__item--selectable {
-        color: #374151;
-        font-weight: 500;
-    }
-
-    .choices__item[data-choice] {
-        color: #374151 !important;
-        font-weight: 500;
-    }
-
-    .choices__item--choice {
-        color: #374151 !important;
-    }
-
-    /* Styles ACASI pour tous les éléments de formulaire */
-    .form-input, .form-textarea, .form-file, .form-select-single, .form-select-multiple {
-        width: 100%;
-        padding: 12px 16px;
-        border: 2px solid #e5e7eb;
-        border-radius: 12px;
-        background: white;
-        font-size: 14px;
-        color: #374151;
-        font-weight: 500;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-    }
-
-    .form-select-single, .form-select-multiple {
-        appearance: none;
-        background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
-        background-position: right 12px center;
-        background-repeat: no-repeat;
-        background-size: 16px;
-        padding-right: 48px;
-    }
-
-    .form-input:focus, .form-textarea:focus, .form-file:focus, .form-select-single:focus, .form-select-multiple:focus {
-        outline: none;
-        border-color: #0453cb;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-        transform: translateY(-1px);
-    }
-
-    .form-input.error, .form-textarea.error, .form-file.error, .form-select-single.error, .form-select-multiple.error {
-        border-color: #ef4444;
-        box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
-    }
-
-    .form-input::placeholder, .form-textarea::placeholder {
-        color: #9ca3af;
-        font-weight: 400;
-    }
-
-    .form-textarea {
-        resize: vertical;
-        min-height: 120px;
-        line-height: 1.5;
-    }
-
-    .form-file {
-        padding: 16px;
-        border-style: dashed;
-        background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-        cursor: pointer;
-        position: relative;
-    }
-
-    .form-file:hover {
-        border-color: #0453cb;
-        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
-    }
-
-    .form-label {
-        font-weight: 600;
-        color: #374151;
-        margin-bottom: 8px;
-        font-size: 14px;
-        display: block;
-    }
-
-    .required {
-        color: #ef4444;
-        margin-left: 4px;
-    }
-
-    .form-help {
-        font-size: 12px;
-        color: #6b7280;
-        margin-top: 6px;
-        font-weight: 400;
-    }
-
-    .error-message {
-        font-size: 12px;
-        color: #ef4444;
-        margin-top: 6px;
-        font-weight: 500;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-    }
-
-    .error-message::before {
-        content: "⚠";
-        font-size: 14px;
-    }
-
-    /* Styles spécifiques pour choices.js avec ACASI */
-    .choices {
-        position: relative;
-        z-index: 1;
-    }
-
-    .choices .choices__inner {
-        background: white !important;
-        border: 2px solid #e5e7eb !important;
-        border-radius: 12px !important;
-        padding: 8px 12px !important;
-        min-height: 48px !important;
-        transition: all 0.3s ease !important;
-    }
-
-    .choices.is-focused .choices__inner {
-        border-color: #0453cb !important;
-        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1) !important;
-    }
-
-    .choices.is-open {
-        z-index: 9999 !important;
-    }
-
-    .choices .choices__list--multiple .choices__item {
-        background: #0453cb !important;
-        border-radius: 8px !important;
-        padding: 6px 12px !important;
-        margin: 2px 4px 2px 0 !important;
-        color: white !important;
-        font-size: 13px !important;
-        font-weight: 500 !important;
-        border: none !important;
-    }
-
-    /* Assurer que les conteneurs parents permettent l'overflow */
-    .dashboard-acasi .main-content {
-        overflow: visible !important;
-    }
-
-    .main-card-body {
-        overflow: visible !important;
-        position: relative;
-    }
-
-    .main-card {
-        overflow: visible !important;
-        position: relative;
-    }
-
-    .form-group {
-        overflow: visible !important;
-        position: relative;
-        z-index: 1;
-    }
-
-    /* Spécifiquement pour les conteneurs de sélection */
-    #classes_container, #etudiants_container {
-        overflow: visible !important;
-        z-index: 100;
-        position: relative;
-    }
-
-    /* Assurer que le dropdown Choices.js peut déborder */
-    .choices[data-type*="select-multiple"] {
-        z-index: 1000;
-        position: relative;
-    }
-
-    .choices[data-type*="select-multiple"].is-open {
-        z-index: 10000 !important;
-    }
-
-    /* Container pour éviter les conflits de z-index */
-    .row {
-        position: relative;
-        z-index: 1;
-    }
-
-    .col-lg-8, .col-lg-4 {
-        position: static;
-    }
-
-    /* Media queries pour la responsivité */
-    @media (max-width: 991.98px) {
-        .sticky-top {
-            position: relative;
-            top: 0 !important;
-        }
-    }
-
-    @media (max-width: 768px) {
-        .choices__list--multiple .choices__item {
-            font-size: 12px;
-            padding: 4px 8px;
-            margin: 1px 2px 1px 0;
-        }
-
-        .choices__button {
-            height: 16px;
-            width: 16px;
-            font-size: 10px;
-        }
-    }
-
-    /* Composer layout (CRM-style) */
-    .composer-grid {
-        display: grid;
-        grid-template-columns: minmax(0, 1fr) 320px;
-        gap: 24px;
-        align-items: start;
-    }
-
-    .composer-main {
-        display: grid;
-        gap: 20px;
-    }
-
-    .composer-sidebar {
-        position: sticky;
-        top: 92px;
-        display: grid;
-        gap: 16px;
-    }
-
-    .composer-actions {
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        align-items: center;
-        justify-content: flex-end;
-    }
-
-    .composer-actions .btn-acasi {
-        white-space: nowrap;
-    }
-
-    .composer-section-title {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        font-weight: 600;
-        color: #0f172a;
-    }
-
-    .composer-helper {
-        font-size: 12px;
-        color: #64748b;
-    }
-
-    .attachment-preview {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 10px 12px;
-        border: 1px dashed #cbd5f5;
-        border-radius: 10px;
-        background: #f8fafc;
-        font-size: 12px;
-        color: #334155;
-    }
-
-    .composer-picker {
-        display: none;
-        margin-top: 12px;
-        padding: 12px;
-        border: 1px dashed #cbd5f5;
-        border-radius: 12px;
-        background: #f8fafc;
-    }
-
-    .composer-picker .btn-acasi {
-        white-space: nowrap;
-    }
-
-    .composer-picker-summary {
-        font-size: 12px;
-        color: #475569;
-    }
-
-    .modal-content.main-card {
-        border: none;
-        box-shadow: none;
-    }
-
-    .modal-header.main-card-header {
-        border-bottom: none;
-        padding: 18px 20px 0;
-    }
-
-    .modal-body.main-card-body {
-        padding: 16px 20px 20px;
-    }
-
-    .modal-footer {
-        border-top: none;
-        padding: 0 20px 20px;
-        justify-content: flex-end;
-        gap: 8px;
-    }
-
-    .modal-dialog.modal-xl {
-        max-width: 50vw !important;
-        width: 50vw !important;
-    }
-
-    #classesModal .modal-body,
-    #etudiantsModal .modal-body {
-        max-height: 70vh;
-        overflow: auto;
-    }
-
-    #classesModal .choices__inner,
-    #etudiantsModal .choices__inner {
-        max-height: 140px !important;
-        overflow-y: auto !important;
-    }
-
-    #classesModal .choices__list--multiple,
-    #etudiantsModal .choices__list--multiple {
-        max-height: 140px !important;
-        overflow-y: auto !important;
-    }
-
-    @media (max-width: 991.98px) {
-        .composer-grid {
-            grid-template-columns: 1fr;
-        }
-
-        .composer-sidebar {
-            position: static;
-        }
-
-        .composer-actions {
-            justify-content: flex-start;
-        }
-    }
+/* ============================================================
+   /esbtp/annonces/create — Namespace ac-* (Annonce Composer)
+   Design system KLASSCI : monochrome bleu #0453cb, border 14px,
+   ombres multicouches, transitions <300ms, mobile-first.
+   ============================================================ */
+
+/* ----- Layout composer (form 2 colonnes) ----- */
+.ac-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: 1.25rem;
+    align-items: start;
+}
+.ac-main { display: grid; gap: 1.25rem; min-width: 0; }
+.ac-aside {
+    display: grid; gap: 1rem;
+    position: sticky; top: 92px;
+    align-self: start;
+}
+
+@media (max-width: 1199.98px) {
+    .ac-grid { grid-template-columns: 1fr; }
+    .ac-aside { position: static; top: auto; }
+}
+
+/* ----- Card premium ----- */
+.ac-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    overflow: visible;
+    transition: box-shadow .2s ease, border-color .2s ease;
+}
+.ac-card + .ac-card { margin-top: 0; }
+.ac-card:hover { border-color: #cbd5e1; }
+.ac-card-head {
+    display: flex; align-items: center; gap: .75rem;
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.ac-card-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .9rem;
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(4,83,203,.25);
+}
+.ac-card-title { font-size: .95rem; font-weight: 600; color: #0f172a; line-height: 1.2; }
+.ac-card-sub { font-size: .78rem; color: #64748b; margin-top: 2px; }
+.ac-card-body { padding: 1.25rem; display: grid; gap: 1.1rem; }
+
+/* ----- Form fields uniformisés ----- */
+.ac-field { display: flex; flex-direction: column; gap: .4rem; min-width: 0; }
+.ac-label {
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .82rem; font-weight: 600;
+    color: #0f172a;
+}
+.ac-label .ac-req { color: #dc2626; font-weight: 700; }
+.ac-help { font-size: .72rem; color: #64748b; line-height: 1.4; }
+.ac-error {
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .75rem; color: #dc2626; font-weight: 500;
+}
+.ac-error::before { content: "⚠"; font-size: .85rem; }
+
+.ac-input,
+.ac-textarea {
+    width: 100%;
+    padding: .7rem .9rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff;
+    color: #1e293b;
+    font-size: .88rem; font-weight: 500;
+    transition: border-color .15s, box-shadow .15s;
+    line-height: 1.4;
+}
+.ac-textarea {
+    resize: vertical;
+    min-height: 160px;
+    font-family: inherit;
+}
+.ac-input::placeholder,
+.ac-textarea::placeholder {
+    color: #94a3b8; font-weight: 400;
+}
+.ac-input:hover,
+.ac-textarea:hover { border-color: #cbd5e1; }
+.ac-input:focus,
+.ac-textarea:focus {
+    outline: none;
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.12);
+}
+.ac-input.is-invalid,
+.ac-textarea.is-invalid {
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220,38,38,.1);
+}
+
+/* Counter sous input/textarea */
+.ac-counter {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: .72rem; color: #64748b;
+}
+.ac-counter strong { font-weight: 600; color: #0f172a; }
+.ac-counter--warn strong { color: #d97706; }
+.ac-counter--danger strong { color: #dc2626; }
+
+/* ----- File upload zone ----- */
+.ac-file {
+    position: relative;
+    border: 2px dashed #cbd5e1;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #f8fafc, #f1f5f9);
+    padding: 1.4rem 1rem;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .2s, background .2s, transform .15s;
+}
+.ac-file:hover {
+    border-color: #0453cb;
+    background: linear-gradient(180deg, #eff6ff, #dbeafe);
+}
+.ac-file--has-file {
+    border-style: solid;
+    border-color: #0453cb;
+    background: #eff6ff;
+}
+.ac-file input[type="file"] {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    opacity: 0; cursor: pointer;
+}
+.ac-file-icon {
+    width: 44px; height: 44px;
+    margin: 0 auto .5rem;
+    border-radius: 12px;
+    background: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #0453cb; font-size: 1.1rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,.06);
+}
+.ac-file-label { font-size: .85rem; font-weight: 600; color: #0f172a; }
+.ac-file-hint { font-size: .72rem; color: #64748b; margin-top: .2rem; }
+.ac-file-pill {
+    display: none;
+    margin-top: .6rem;
+    padding: .4rem .75rem;
+    border-radius: 999px;
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    font-size: .78rem; color: #0453cb; font-weight: 500;
+}
+.ac-file--has-file .ac-file-pill { display: inline-flex; align-items: center; gap: .4rem; }
+
+/* ----- Radio cards (audience type) ----- */
+.ac-audience {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: .65rem;
+}
+@media (max-width: 768px) {
+    .ac-audience { grid-template-columns: 1fr; }
+}
+.ac-audience-opt {
+    position: relative;
+    display: flex; flex-direction: column; gap: .3rem;
+    padding: .9rem 1rem;
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s, background .15s;
+}
+.ac-audience-opt:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+}
+.ac-audience-opt input[type="radio"] {
+    position: absolute; opacity: 0; pointer-events: none;
+}
+.ac-audience-opt-head {
+    display: flex; align-items: center; gap: .5rem;
+}
+.ac-audience-opt-icon {
+    width: 32px; height: 32px;
+    border-radius: 8px;
+    background: #f1f5f9;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #475569; font-size: .85rem;
+    transition: background .15s, color .15s;
+}
+.ac-audience-opt-name {
+    font-size: .85rem; font-weight: 600; color: #0f172a;
+}
+.ac-audience-opt-desc {
+    font-size: .72rem; color: #64748b; line-height: 1.35;
+}
+.ac-audience-opt-tick {
+    position: absolute; top: 12px; right: 12px;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    border: 1.5px solid #cbd5e1;
+    background: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: transparent; font-size: .55rem;
+    transition: border-color .15s, background .15s, color .15s;
+}
+.ac-audience-opt input[type="radio"]:checked ~ .ac-audience-opt-tick {
+    border-color: #0453cb;
+    background: #0453cb;
+    color: #fff;
+}
+.ac-audience-opt input[type="radio"]:checked ~ .ac-audience-opt-head .ac-audience-opt-icon {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+}
+.ac-audience-opt:has(input[type="radio"]:checked) {
+    border-color: #0453cb;
+    background: linear-gradient(180deg, #eff6ff, #ffffff);
+    box-shadow: 0 4px 14px rgba(4,83,203,.12);
+}
+.ac-audience-opt input[type="radio"]:focus-visible ~ .ac-audience-opt-tick {
+    box-shadow: 0 0 0 3px rgba(4,83,203,.20);
+}
+
+/* ----- Pickers (classes / étudiants summary cards) ----- */
+.ac-picker {
+    display: none;
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    background: linear-gradient(180deg, #f8fafc, #ffffff);
+    padding: .85rem 1rem;
+}
+.ac-picker--show { display: block; }
+.ac-picker-row {
+    display: flex; align-items: center; gap: .75rem;
+    flex-wrap: wrap;
+}
+.ac-picker-meta { flex: 1; min-width: 0; }
+.ac-picker-title {
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .82rem; font-weight: 600; color: #0f172a;
+}
+.ac-picker-title i { color: #0453cb; }
+.ac-picker-summary {
+    margin-top: 2px;
+    font-size: .75rem; color: #64748b;
+}
+.ac-picker-count-badge {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .2rem .55rem;
+    border-radius: 999px;
+    background: #0453cb;
+    color: #fff; font-size: .72rem; font-weight: 600;
+    margin-left: .35rem;
+}
+.ac-picker-count-badge--empty {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+/* ----- Notice info brouillon ----- */
+.ac-notice {
+    display: flex; align-items: flex-start; gap: .75rem;
+    padding: .75rem 1rem;
+    background: linear-gradient(180deg, #eff6ff, #dbeafe);
+    border: 1px solid #bfdbfe;
+    border-radius: 10px;
+    color: #1e40af;
+}
+.ac-notice i {
+    color: #0453cb;
+    font-size: 1rem;
+    margin-top: 2px;
+    flex-shrink: 0;
+}
+.ac-notice-text { font-size: .8rem; line-height: 1.45; }
+.ac-notice-text strong { font-weight: 600; }
+
+/* ----- Sidebar actions ----- */
+.ac-actions {
+    display: grid; gap: .5rem;
+}
+.ac-actions .ac-btn { width: 100%; justify-content: center; }
+.ac-btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: .5rem;
+    padding: .65rem 1rem;
+    border-radius: 10px;
+    font-size: .85rem; font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform .12s ease, box-shadow .15s, background .15s, border-color .15s;
+    line-height: 1.2;
+    text-decoration: none;
+}
+.ac-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.25);
+}
+.ac-btn-primary {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    box-shadow: 0 6px 18px rgba(4,83,203,.25);
+}
+.ac-btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px rgba(4,83,203,.32);
+    color: #fff;
+}
+.ac-btn-secondary {
+    background: #fff;
+    border-color: #e2e8f0;
+    color: #0f172a;
+}
+.ac-btn-secondary:hover {
+    border-color: #cbd5e1;
+    background: #f8fafc;
+    color: #0f172a;
+}
+.ac-btn-ghost {
+    background: transparent;
+    color: #64748b;
+}
+.ac-btn-ghost:hover {
+    background: #f1f5f9;
+    color: #0f172a;
+}
+.ac-actions-help {
+    margin-top: .5rem;
+    font-size: .72rem; color: #64748b; line-height: 1.4;
+}
+
+/* ----- Tips card sidebar ----- */
+.ac-tips { display: grid; gap: .55rem; }
+.ac-tip {
+    display: flex; align-items: flex-start; gap: .6rem;
+    padding: .55rem .65rem;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+}
+.ac-tip i {
+    width: 22px; height: 22px;
+    flex-shrink: 0;
+    border-radius: 6px;
+    background: #fff;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #0453cb; font-size: .7rem;
+    border: 1px solid #e2e8f0;
+}
+.ac-tip-text { font-size: .76rem; color: #475569; line-height: 1.45; }
+.ac-tip-text strong { color: #0f172a; }
+
+/* ----- Modals premium ----- */
+.ac-modal .modal-content {
+    border: none;
+    border-radius: 16px;
+    box-shadow: 0 24px 60px rgba(15,23,42,.20);
+    overflow: hidden;
+}
+.ac-modal .modal-header {
+    background: linear-gradient(135deg, #0a3d8f, #0453cb 60%, #3b7ddb);
+    border-bottom: none;
+    padding: 1.1rem 1.25rem;
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 1rem;
+    color: #fff;
+}
+.ac-modal-titlewrap { display: flex; flex-direction: column; gap: 2px; }
+.ac-modal-title {
+    display: inline-flex; align-items: center; gap: .55rem;
+    font-size: 1rem; font-weight: 700; color: #fff;
+}
+.ac-modal-sub { font-size: .75rem; color: rgba(255,255,255,.75); }
+.ac-modal-actions { display: flex; align-items: center; gap: .5rem; }
+.ac-modal-btn-glass {
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.25);
+    color: #fff;
+    border-radius: 8px;
+    padding: .35rem .7rem;
+    font-size: .76rem; font-weight: 600;
+    display: inline-flex; align-items: center; gap: .35rem;
+    cursor: pointer; transition: background .15s;
+}
+.ac-modal-btn-glass:hover {
+    background: rgba(255,255,255,.25);
+    color: #fff;
+}
+.ac-modal-close {
+    background: rgba(255,255,255,.15);
+    border: none; color: #fff;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: background .15s;
+}
+.ac-modal-close:hover { background: rgba(255,255,255,.30); }
+.ac-modal .modal-body {
+    padding: 1.25rem;
+    max-height: 70vh;
+    overflow: auto;
+}
+.ac-modal .modal-footer {
+    border-top: 1px solid #f1f5f9;
+    padding: .85rem 1.25rem;
+    background: #fafbfc;
+    justify-content: space-between;
+    gap: .5rem;
+}
+
+/* Filtres bar inside modals */
+.ac-filters {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: .65rem;
+    margin-bottom: 1rem;
+    padding: .85rem 1rem;
+    background: #f8fafc;
+    border: 1px solid #f1f5f9;
+    border-radius: 10px;
+}
+.ac-filters--single { grid-template-columns: 1fr auto; }
+@media (max-width: 768px) {
+    .ac-filters,
+    .ac-filters--single { grid-template-columns: 1fr; }
+}
+.ac-filters select {
+    width: 100%;
+    padding: .55rem .8rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #fff;
+    color: #1e293b;
+    font-size: .82rem;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%2364748b' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 10px center;
+    background-repeat: no-repeat;
+    padding-right: 40px;
+}
+.ac-filters select:focus {
+    outline: none;
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.12);
+}
+.ac-filters-info {
+    grid-column: 1 / -1;
+    font-size: .72rem; color: #64748b;
+    margin-top: -.25rem;
+}
+
+/* Bulk toolbar for modals */
+.ac-bulk {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .5rem; flex-wrap: wrap;
+    margin-bottom: .75rem;
+}
+.ac-bulk-info {
+    display: inline-flex; align-items: center; gap: .35rem;
+    font-size: .8rem; color: #475569;
+}
+.ac-bulk-info strong { color: #0f172a; }
+.ac-bulk-actions { display: inline-flex; gap: .4rem; flex-wrap: wrap; }
+.ac-bulk-btn {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    color: #0f172a;
+    border-radius: 8px;
+    padding: .35rem .7rem;
+    font-size: .76rem; font-weight: 500;
+    display: inline-flex; align-items: center; gap: .35rem;
+    cursor: pointer; transition: border-color .15s, background .15s, color .15s;
+}
+.ac-bulk-btn:hover {
+    border-color: #0453cb;
+    color: #0453cb;
+    background: #eff6ff;
+}
+.ac-bulk-btn--ghost {
+    border-color: transparent;
+    color: #64748b;
+}
+.ac-bulk-btn--ghost:hover {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+/* ----- Choices.js — restyling pour matcher KLASSCI ----- */
+.ac-modal .choices { margin-bottom: 0; }
+.ac-modal .choices__inner {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    min-height: 50px;
+    padding: .55rem .65rem;
+    transition: border-color .15s, box-shadow .15s;
+    box-shadow: none;
+    font-size: .85rem;
+}
+.ac-modal .choices.is-focused .choices__inner,
+.ac-modal .choices.is-open .choices__inner {
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.12);
+}
+.ac-modal .choices__list--multiple .choices__item {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb) !important;
+    border: none !important;
+    border-radius: 999px !important;
+    color: #fff !important;
+    font-size: .76rem !important;
+    font-weight: 600 !important;
+    padding: .25rem .65rem !important;
+    margin: .15rem .25rem .15rem 0 !important;
+    box-shadow: 0 2px 6px rgba(4,83,203,.20);
+}
+.ac-modal .choices__list--multiple .choices__item .choices__button {
+    background-image: none !important;
+    background: rgba(255,255,255,.25) !important;
+    border-radius: 50% !important;
+    width: 16px !important; height: 16px !important;
+    margin: 0 0 0 .4rem !important; padding: 0 !important;
+    color: #fff !important;
+    border-left: none !important;
+    position: relative;
+}
+.ac-modal .choices__list--multiple .choices__item .choices__button::before {
+    content: "×";
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .9rem; line-height: 1;
+}
+.ac-modal .choices__list--dropdown {
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(15,23,42,.10);
+    margin-top: 4px;
+    z-index: 9999;
+}
+.ac-modal .choices__list--dropdown .choices__item--selectable {
+    padding: .55rem .85rem;
+    font-size: .85rem;
+    border-bottom: none;
+    border-left: 3px solid transparent;
+    border-radius: 0;
+    margin: 0;
+    color: #1e293b;
+    transition: background .12s, color .12s, border-color .12s;
+}
+.ac-modal .choices__list--dropdown .choices__item--selectable:hover,
+.ac-modal .choices__list--dropdown .choices__item--selectable.is-highlighted {
+    background: #eff6ff !important;
+    color: #0453cb !important;
+    border-left-color: #0453cb;
+    transform: none;
+}
+.ac-modal .choices__input {
+    background: transparent;
+    color: #1e293b;
+    font-size: .85rem;
+    padding: 0 .25rem;
+}
+.ac-modal .choices__placeholder {
+    color: #94a3b8;
+    opacity: 1;
+    font-style: normal;
+    font-weight: 400;
+}
+
+/* Hide the underlying native multi-select (kept for form compat) */
+.ac-multi-native {
+    position: absolute !important;
+    width: 1px !important; height: 1px !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    clip: rect(0 0 0 0) !important;
+}
+
+/* ----- Animations subtiles ----- */
+.ac-fade-enter {
+    animation: acFadeIn .2s ease-out;
+}
+@keyframes acFadeIn {
+    from { opacity: 0; transform: translateY(-4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* ----- Mobile polish ----- */
+@media (max-width: 768px) {
+    .ac-card-body { padding: 1rem; gap: .9rem; }
+    .ac-card-head { padding: .85rem 1rem; }
+    .ac-modal .modal-body { max-height: 80vh; padding: 1rem; }
+}
 </style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header Section -->
+
+        {{-- Header standard (rule premium-redesign : pages create utilisent dashboard-header) --}}
         <div class="dashboard-header">
             <div class="header-left">
-                <h1><i class="fas fa-plus-circle me-2"></i>Créer une annonce</h1>
-                <p class="header-subtitle">Diffusion d'informations aux étudiants et au personnel</p>
+                <h1><i class="fas fa-bullhorn me-2"></i>Créer une annonce</h1>
+                <p class="header-subtitle">Diffuser un message aux étudiants ciblés. Brouillon enregistré tant que vous n'envoyez pas.</p>
             </div>
             <div class="header-actions">
                 <a href="{{ route('esbtp.annonces.index') }}" class="btn-acasi secondary">
@@ -692,7 +633,7 @@
                 <i class="fas fa-exclamation-triangle"></i>
                 <div>
                     <h4>Erreur de validation</h4>
-                    <ul>
+                    <ul class="mb-0">
                         @foreach ($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
@@ -701,256 +642,409 @@
             </div>
         @endif
 
-        <form action="{{ route('esbtp.annonces.store') }}" method="POST" enctype="multipart/form-data">
+        <form action="{{ route('esbtp.annonces.store') }}" method="POST" enctype="multipart/form-data" id="annonceForm">
             @csrf
-            <div class="composer-grid">
-                <div class="composer-main">
-                    <div class="main-card">
-                        <div class="main-card-header">
-                            <div class="main-card-title">
-                                <i class="fas fa-pen-nib"></i>
-                                Message
+
+            <div class="ac-grid">
+
+                {{-- =================== COLONNE PRINCIPALE =================== --}}
+                <div class="ac-main">
+
+                    {{-- ===== Carte 1 : Message ===== --}}
+                    <div class="ac-card">
+                        <div class="ac-card-head">
+                            <span class="ac-card-icon"><i class="fas fa-pen-nib"></i></span>
+                            <div>
+                                <div class="ac-card-title">Composer le message</div>
+                                <div class="ac-card-sub">Objet, contenu et pièce jointe optionnelle</div>
                             </div>
                         </div>
-                        <div class="main-card-body">
-                            <div class="form-group">
-                                <label for="titre" class="form-label">Objet de l'annonce <span class="required">*</span></label>
-                                <input type="text" id="titre" name="titre" class="form-input @error('titre') error @enderror" 
-                                       value="{{ old('titre') }}" placeholder="Ex: Conseil pédagogique, Infos de rentrée..." required>
-                                @error('titre')
-                                    <div class="error-message">{{ $message }}</div>
-                                @enderror
-                            </div>
+                        <div class="ac-card-body">
 
-                            <div class="form-group">
-                                <label for="contenu" class="form-label">Corps du message <span class="required">*</span></label>
-                                <textarea id="contenu" name="contenu" class="form-textarea @error('contenu') error @enderror" 
-                                          rows="8" placeholder="Rédigez le contenu de l'annonce..." required>{{ old('contenu') }}</textarea>
-                                @error('contenu')
-                                    <div class="error-message">{{ $message }}</div>
-                                @enderror
-                            </div>
-
-                            <div class="form-group">
-                                <label for="piece_jointe" class="form-label">Pièce jointe (optionnel)</label>
-                                <input type="file" id="piece_jointe" name="piece_jointe" class="form-file @error('piece_jointe') error @enderror">
-                                @error('piece_jointe')
-                                    <div class="error-message">{{ $message }}</div>
-                                @enderror
-                                <div class="attachment-preview">
-                                    <i class="fas fa-paperclip"></i>
-                                    Formats acceptés: PDF, Word, Excel, Images (max 5MB)
+                            <div class="ac-field">
+                                <label for="titre" class="ac-label">
+                                    Objet de l'annonce <span class="ac-req">*</span>
+                                </label>
+                                <input type="text" id="titre" name="titre"
+                                       class="ac-input @error('titre') is-invalid @enderror"
+                                       value="{{ old('titre') }}"
+                                       placeholder="Ex : Conseil pédagogique du 15 mai, Rentrée 2026..."
+                                       maxlength="255" required>
+                                <div class="ac-counter" data-counter-for="titre" data-max="255">
+                                    Soyez clair et concis · <strong><span data-counter-current>0</span></strong>/255
                                 </div>
+                                @error('titre')<div class="ac-error">{{ $message }}</div>@enderror
                             </div>
+
+                            <div class="ac-field">
+                                <label for="contenu" class="ac-label">
+                                    Corps du message <span class="ac-req">*</span>
+                                </label>
+                                <textarea id="contenu" name="contenu"
+                                          class="ac-textarea @error('contenu') is-invalid @enderror"
+                                          rows="8" required
+                                          placeholder="Rédigez votre annonce. Soyez précis sur la date, le lieu et le public concerné.">{{ old('contenu') }}</textarea>
+                                <div class="ac-counter" data-counter-for="contenu">
+                                    <span><strong><span data-counter-current>0</span></strong> caractères</span>
+                                    <span class="ac-help">Markdown léger non interprété — texte brut</span>
+                                </div>
+                                @error('contenu')<div class="ac-error">{{ $message }}</div>@enderror
+                            </div>
+
+                            <div class="ac-field">
+                                <label for="piece_jointe" class="ac-label">Pièce jointe (optionnelle)</label>
+                                <label class="ac-file" id="ac-file-zone" for="piece_jointe">
+                                    <input type="file" id="piece_jointe" name="piece_jointe"
+                                           accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png">
+                                    <div class="ac-file-icon"><i class="fas fa-cloud-upload-alt"></i></div>
+                                    <div class="ac-file-label" id="ac-file-label">Cliquez ou déposez un fichier</div>
+                                    <div class="ac-file-hint">PDF · Word · Excel · Image — 5 MB max</div>
+                                    <div class="ac-file-pill" id="ac-file-pill">
+                                        <i class="fas fa-paperclip"></i><span id="ac-file-name"></span>
+                                    </div>
+                                </label>
+                                @error('piece_jointe')<div class="ac-error">{{ $message }}</div>@enderror
+                            </div>
+
                         </div>
                     </div>
 
-                    <div class="main-card">
-                        <div class="main-card-header">
-                            <div class="main-card-title">
-                                <i class="fas fa-users"></i>
-                                Ciblage des destinataires
+                    {{-- ===== Carte 2 : Ciblage ===== --}}
+                    <div class="ac-card">
+                        <div class="ac-card-head">
+                            <span class="ac-card-icon"><i class="fas fa-users"></i></span>
+                            <div>
+                                <div class="ac-card-title">Destinataires</div>
+                                <div class="ac-card-sub">À qui envoyer cette annonce ?</div>
                             </div>
                         </div>
-                        <div class="main-card-body">
-                            <div class="form-group">
-                                <label class="form-label">Type de destinataires <span class="required">*</span></label>
-                                <div class="form-radio-group">
-                                    <label class="form-radio-option">
-                                        <input type="radio" name="type" value="general" 
-                                               {{ old('type', 'general') == 'general' ? 'checked' : '' }} required>
-                                        <span class="form-radio-check"></span>
-                                        <span class="form-radio-label">
-                                            <i class="fas fa-globe"></i>
-                                            Tous les étudiants
+                        <div class="ac-card-body">
+
+                            <div class="ac-field">
+                                <span class="ac-label">Type de diffusion <span class="ac-req">*</span></span>
+                                <div class="ac-audience">
+                                    <label class="ac-audience-opt">
+                                        <input type="radio" name="type" value="general" required
+                                               {{ old('type', 'general') === 'general' ? 'checked' : '' }}>
+                                        <span class="ac-audience-opt-head">
+                                            <span class="ac-audience-opt-icon"><i class="fas fa-globe"></i></span>
+                                            <span class="ac-audience-opt-name">Tous les étudiants</span>
                                         </span>
+                                        <span class="ac-audience-opt-desc">Diffusion générale à l'ensemble de l'école.</span>
+                                        <span class="ac-audience-opt-tick"><i class="fas fa-check"></i></span>
                                     </label>
-                                    <label class="form-radio-option">
-                                        <input type="radio" name="type" value="classe" 
-                                               {{ old('type') == 'classe' ? 'checked' : '' }} required>
-                                        <span class="form-radio-check"></span>
-                                        <span class="form-radio-label">
-                                            <i class="fas fa-chalkboard"></i>
-                                            Classes spécifiques
+                                    <label class="ac-audience-opt">
+                                        <input type="radio" name="type" value="classe" required
+                                               {{ old('type') === 'classe' ? 'checked' : '' }}>
+                                        <span class="ac-audience-opt-head">
+                                            <span class="ac-audience-opt-icon"><i class="fas fa-chalkboard"></i></span>
+                                            <span class="ac-audience-opt-name">Classes ciblées</span>
                                         </span>
+                                        <span class="ac-audience-opt-desc">Une ou plusieurs classes spécifiques.</span>
+                                        <span class="ac-audience-opt-tick"><i class="fas fa-check"></i></span>
                                     </label>
-                                    <label class="form-radio-option">
-                                        <input type="radio" name="type" value="etudiant" 
-                                               {{ old('type') == 'etudiant' ? 'checked' : '' }} required>
-                                        <span class="form-radio-check"></span>
-                                        <span class="form-radio-label">
-                                            <i class="fas fa-user-graduate"></i>
-                                            Étudiants spécifiques
+                                    <label class="ac-audience-opt">
+                                        <input type="radio" name="type" value="etudiant" required
+                                               {{ old('type') === 'etudiant' ? 'checked' : '' }}>
+                                        <span class="ac-audience-opt-head">
+                                            <span class="ac-audience-opt-icon"><i class="fas fa-user-graduate"></i></span>
+                                            <span class="ac-audience-opt-name">Étudiants nominatifs</span>
                                         </span>
+                                        <span class="ac-audience-opt-desc">Sélection individuelle d'étudiants.</span>
+                                        <span class="ac-audience-opt-tick"><i class="fas fa-check"></i></span>
                                     </label>
                                 </div>
-                                @error('type')
-                                    <div class="error-message">{{ $message }}</div>
-                                @enderror
+                                @error('type')<div class="ac-error">{{ $message }}</div>@enderror
                             </div>
 
-                            <div id="classes_picker" class="composer-picker">
-                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                                    <div>
-                                        <div class="composer-section-title"><i class="fas fa-chalkboard"></i>Classes sélectionnées</div>
-                                        <div class="composer-picker-summary" id="classes_summary">Aucune classe sélectionnée</div>
+                            {{-- Picker Classes --}}
+                            <div id="classes_picker" class="ac-picker">
+                                <div class="ac-picker-row">
+                                    <div class="ac-picker-meta">
+                                        <span class="ac-picker-title">
+                                            <i class="fas fa-chalkboard"></i> Classes destinataires
+                                            <span class="ac-picker-count-badge ac-picker-count-badge--empty" id="classes_count_badge">0</span>
+                                        </span>
+                                        <div class="ac-picker-summary" id="classes_summary">Aucune classe sélectionnée</div>
                                     </div>
-                                    <button type="button" class="btn-acasi secondary" data-bs-toggle="modal" data-bs-target="#classesModal">
+                                    <button type="button" class="ac-btn ac-btn-secondary"
+                                            data-bs-toggle="modal" data-bs-target="#classesModal">
                                         <i class="fas fa-layer-group"></i>Choisir les classes
                                     </button>
                                 </div>
-                                @error('classes')
-                                    <div class="error-message">{{ $message }}</div>
-                                @enderror
+                                @error('classes')<div class="ac-error mt-2">{{ $message }}</div>@enderror
                             </div>
 
-                            <div id="etudiants_picker" class="composer-picker">
-                                <div class="d-flex flex-wrap justify-content-between align-items-center gap-2">
-                                    <div>
-                                        <div class="composer-section-title"><i class="fas fa-user-graduate"></i>Étudiants sélectionnés</div>
-                                        <div class="composer-picker-summary" id="etudiants_summary">Aucun étudiant sélectionné</div>
+                            {{-- Picker Étudiants --}}
+                            <div id="etudiants_picker" class="ac-picker">
+                                <div class="ac-picker-row">
+                                    <div class="ac-picker-meta">
+                                        <span class="ac-picker-title">
+                                            <i class="fas fa-user-graduate"></i> Étudiants destinataires
+                                            <span class="ac-picker-count-badge ac-picker-count-badge--empty" id="etudiants_count_badge">0</span>
+                                        </span>
+                                        <div class="ac-picker-summary" id="etudiants_summary">Aucun étudiant sélectionné</div>
                                     </div>
-                                    <button type="button" class="btn-acasi secondary" data-bs-toggle="modal" data-bs-target="#etudiantsModal">
+                                    <button type="button" class="ac-btn ac-btn-secondary"
+                                            data-bs-toggle="modal" data-bs-target="#etudiantsModal">
                                         <i class="fas fa-user-check"></i>Choisir les étudiants
                                     </button>
                                 </div>
-                                @error('etudiants')
-                                    <div class="error-message">{{ $message }}</div>
-                                @enderror
+                                @error('etudiants')<div class="ac-error mt-2">{{ $message }}</div>@enderror
                             </div>
+
                         </div>
                     </div>
+
                 </div>
 
-                <aside class="composer-sidebar">
-                    <div class="main-card">
-                        <div class="main-card-body">
-                            <div class="composer-actions">
-                                <button type="submit" name="action" value="save_draft" class="btn-acasi secondary" id="saveDraftButton">
-                                    <i class="fas fa-save"></i>Sauvegarder
-                                </button>
-                                <button type="submit" name="action" value="publish" class="btn-acasi primary">
-                                    <i class="fas fa-paper-plane"></i>Envoyer
-                                </button>
-                                <button type="reset" class="btn-acasi outline">
-                                    <i class="fas fa-undo"></i>Réinitialiser
-                                </button>
-                            </div>
-                            <div class="composer-helper mt-2">
-                                Pensez à sauvegarder si vous quittez la page sans envoyer.
-                            </div>
-                        </div>
-                    </div>
+                {{-- =================== COLONNE LATÉRALE =================== --}}
+                <aside class="ac-aside">
 
-                    <div class="main-card">
-                        <div class="main-card-header">
-                            <div class="main-card-title">
-                                <i class="fas fa-cog"></i>
-                                Publication
+                    {{-- ===== Sidebar — Actions ===== --}}
+                    <div class="ac-card">
+                        <div class="ac-card-head">
+                            <span class="ac-card-icon"><i class="fas fa-paper-plane"></i></span>
+                            <div>
+                                <div class="ac-card-title">Actions</div>
+                                <div class="ac-card-sub">Enregistrer ou diffuser maintenant</div>
                             </div>
                         </div>
-                        <div class="main-card-body">
-                            <div class="alert alert-info">
-                                <i class="fas fa-info-circle me-2"></i>
-                                <strong>Mode brouillon automatique :</strong> votre annonce reste en brouillon tant que vous ne l'envoyez pas.
+                        <div class="ac-card-body">
+
+                            <div class="ac-notice">
+                                <i class="fas fa-info-circle"></i>
+                                <div class="ac-notice-text">
+                                    <strong>Mode brouillon par défaut.</strong>
+                                    Votre annonce reste invisible aux étudiants tant que vous n'avez pas cliqué « Envoyer maintenant ».
+                                </div>
+                            </div>
+
+                            <div class="ac-actions">
+                                <button type="submit" name="action" value="publish" class="ac-btn ac-btn-primary">
+                                    <i class="fas fa-paper-plane"></i>Envoyer maintenant
+                                </button>
+                                <button type="submit" name="action" value="save_draft"
+                                        class="ac-btn ac-btn-secondary" id="saveDraftButton">
+                                    <i class="fas fa-save"></i>Sauvegarder en brouillon
+                                </button>
+                                <button type="reset" class="ac-btn ac-btn-ghost">
+                                    <i class="fas fa-undo"></i>Réinitialiser le formulaire
+                                </button>
+                            </div>
+
+                            <div class="ac-actions-help">
+                                <i class="fas fa-clock me-1"></i>
+                                Pensez à sauvegarder si vous quittez la page sans envoyer — sinon vos modifications seront perdues.
                             </div>
 
                             <input type="hidden" name="is_published" value="0">
 
-                            <div class="form-group">
-                                <label for="date_expiration" class="form-label">Date d'expiration <span class="required">*</span></label>
-                                <input type="datetime-local" id="date_expiration" name="date_expiration" 
-                                       class="form-input @error('date_expiration') error @enderror"
-                                       value="{{ old('date_expiration', now()->addMonths(1)->format('Y-m-d\TH:i')) }}">
-                                @error('date_expiration')
-                                    <div class="error-message">{{ $message }}</div>
-                                @enderror
+                        </div>
+                    </div>
+
+                    {{-- ===== Sidebar — Publication ===== --}}
+                    <div class="ac-card">
+                        <div class="ac-card-head">
+                            <span class="ac-card-icon"><i class="fas fa-cog"></i></span>
+                            <div>
+                                <div class="ac-card-title">Paramètres de publication</div>
+                                <div class="ac-card-sub">Date d'expiration & priorité</div>
+                            </div>
+                        </div>
+                        <div class="ac-card-body">
+
+                            <div class="ac-field">
+                                <label for="date_expiration" class="ac-label">
+                                    Date d'expiration <span class="ac-req">*</span>
+                                </label>
+                                <input type="datetime-local" id="date_expiration" name="date_expiration"
+                                       class="ac-input @error('date_expiration') is-invalid @enderror"
+                                       value="{{ old('date_expiration', now()->addMonths(1)->format('Y-m-d\TH:i')) }}"
+                                       required>
+                                <div class="ac-help">L'annonce sera retirée des fils étudiants après cette date.</div>
+                                @error('date_expiration')<div class="ac-error">{{ $message }}</div>@enderror
                             </div>
 
-                            <div class="form-group">
-                                <label for="priorite" class="form-label">Niveau d'urgence</label>
-                                <select id="priorite" name="priorite" class="form-select-single @error('priorite') error @enderror">
-                                    <option value="0" {{ old('priorite') == '0' ? 'selected' : '' }}>Normale</option>
-                                    <option value="1" {{ old('priorite') == '1' ? 'selected' : '' }}>Importante</option>
-                                    <option value="2" {{ old('priorite') == '2' ? 'selected' : '' }}>Urgente</option>
-                                </select>
-                                @error('priorite')
-                                    <div class="error-message">{{ $message }}</div>
-                                @enderror
+                            <div class="ac-field">
+                                <label for="priorite" class="ac-label">Niveau d'urgence</label>
+                                <x-au-select
+                                    name="priorite"
+                                    :value="old('priorite', '0')"
+                                    icon="fa-flag"
+                                    :options="[
+                                        '0' => 'Normale — visible dans le fil',
+                                        '1' => 'Importante — épinglée en haut',
+                                        '2' => 'Urgente — notification renforcée',
+                                    ]" />
+                                @error('priorite')<div class="ac-error">{{ $message }}</div>@enderror
+                            </div>
+
+                        </div>
+                    </div>
+
+                    {{-- ===== Sidebar — Conseils ===== --}}
+                    <div class="ac-card">
+                        <div class="ac-card-head">
+                            <span class="ac-card-icon"><i class="fas fa-lightbulb"></i></span>
+                            <div>
+                                <div class="ac-card-title">Bonnes pratiques</div>
+                                <div class="ac-card-sub">Pour une annonce efficace</div>
+                            </div>
+                        </div>
+                        <div class="ac-card-body">
+                            <div class="ac-tips">
+                                <div class="ac-tip">
+                                    <i class="fas fa-bullseye"></i>
+                                    <div class="ac-tip-text"><strong>Ciblez précisément</strong> — préférez « Classes » ou « Étudiants » plutôt que « Tous » pour éviter le bruit.</div>
+                                </div>
+                                <div class="ac-tip">
+                                    <i class="fas fa-clock"></i>
+                                    <div class="ac-tip-text"><strong>Date d'expiration courte</strong> — une annonce visible 6 mois perd son caractère urgent.</div>
+                                </div>
+                                <div class="ac-tip">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <div class="ac-tip-text"><strong>Urgence rare</strong> — réservez « Urgente » aux infos critiques (annulation cours, sécurité).</div>
+                                </div>
                             </div>
                         </div>
                     </div>
+
                 </aside>
             </div>
 
-            <div class="modal fade" id="classesModal" tabindex="-1" aria-labelledby="classesModalLabel" aria-hidden="true" data-bs-backdrop="true">
+            {{-- =================== MODAL CLASSES =================== --}}
+            <div class="modal fade ac-modal" id="classesModal" tabindex="-1"
+                 aria-labelledby="classesModalLabel" aria-hidden="true" data-bs-backdrop="true">
                 <div class="modal-dialog modal-xl modal-dialog-scrollable">
-                    <div class="modal-content main-card">
-                        <div class="modal-header main-card-header">
-                            <div>
-                                <div class="main-card-title" id="classesModalLabel">
-                                    <i class="fas fa-chalkboard"></i>
-                                    Sélectionner les classes
-                                </div>
-                                <div class="composer-helper">Sélection multiple avec recherche rapide.</div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div class="ac-modal-titlewrap">
+                                <span class="ac-modal-title" id="classesModalLabel">
+                                    <i class="fas fa-chalkboard"></i> Sélectionner les classes
+                                </span>
+                                <span class="ac-modal-sub">Filtrez par filière et niveau, puis cochez les classes destinataires.</span>
                             </div>
-                            <div class="d-flex align-items-center gap-2">
-                                <button type="button" class="btn-acasi outline" id="clear_classes_selection">
-                                    <i class="fas fa-eraser"></i>Tout désélectionner
+                            <div class="ac-modal-actions">
+                                <button type="button" class="ac-modal-btn-glass" id="select_all_classes">
+                                    <i class="fas fa-check-double"></i>Tout sélectionner
                                 </button>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                                <button type="button" class="ac-modal-btn-glass" id="clear_classes_selection">
+                                    <i class="fas fa-eraser"></i>Vider
+                                </button>
+                                <button type="button" class="ac-modal-close" data-bs-dismiss="modal" aria-label="Fermer">
+                                    <i class="fas fa-times"></i>
+                                </button>
                             </div>
                         </div>
-                        <div class="modal-body main-card-body">
-                            <div class="form-group">
-                                <label for="classes" class="form-label">Classes destinataires <span class="required">*</span></label>
-                                <select class="form-select-multiple @error('classes') error @enderror"
-                                    id="classes" name="classes[]" multiple>
+                        <div class="modal-body">
+
+                            <div class="ac-filters">
+                                <select id="filiere_filter" aria-label="Filtrer par filière">
+                                    <option value="">Toutes les filières</option>
+                                    @foreach($filieres as $filiere)
+                                        <option value="{{ $filiere->id }}">{{ $filiere->name }}</option>
+                                    @endforeach
+                                </select>
+                                <select id="niveau_filter" aria-label="Filtrer par niveau">
+                                    <option value="">Tous les niveaux</option>
+                                    @foreach($niveaux as $niveau)
+                                        <option value="{{ $niveau->id }}">{{ $niveau->name }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="button" class="ac-bulk-btn reset-filters" title="Réinitialiser les filtres">
+                                    <i class="fas fa-rotate-left"></i>Réinitialiser
+                                </button>
+                            </div>
+
+                            <div class="ac-bulk">
+                                <div class="ac-bulk-info">
+                                    <i class="fas fa-list"></i>
+                                    <span><strong id="classes_total_visible">{{ $classes->count() }}</strong> classes disponibles</span>
+                                </div>
+                            </div>
+
+                            <div class="ac-field">
+                                <label for="classes" class="ac-label">
+                                    Classes destinataires <span class="ac-req">*</span>
+                                </label>
+                                <select class="ac-multi-native @error('classes') is-invalid @enderror"
+                                        id="classes" name="classes[]" multiple>
                                     @foreach($classes as $classe)
                                         <option value="{{ $classe->id }}"
-                                            data-filiere="{{ $classe->filiere_id }}"
-                                            data-niveau="{{ $classe->niveau_etude_id }}"
-                                            data-current-count="{{ $classe->current_inscriptions_count ?? 0 }}"
-                                            {{ (old('classes') && in_array($classe->id, old('classes'))) ? 'selected' : '' }}>
+                                                data-filiere="{{ $classe->filiere_id }}"
+                                                data-niveau="{{ $classe->niveau_etude_id }}"
+                                                data-current-count="{{ $classe->current_inscriptions_count ?? 0 }}"
+                                                {{ (old('classes') && in_array($classe->id, old('classes'))) ? 'selected' : '' }}>
                                             {{ $classe->name }}
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('classes')
-                                    <div class="error-message">{{ $message }}</div>
-                                @enderror
+                                @error('classes')<div class="ac-error">{{ $message }}</div>@enderror
                             </div>
+
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">Terminer</button>
+                            <span class="ac-help"><i class="fas fa-info-circle me-1"></i>Vous pouvez sélectionner jusqu'à 20 classes.</span>
+                            <button type="button" class="ac-btn ac-btn-primary" data-bs-dismiss="modal">
+                                <i class="fas fa-check"></i>Terminer
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="modal fade" id="etudiantsModal" tabindex="-1" aria-labelledby="etudiantsModalLabel" aria-hidden="true" data-bs-backdrop="true">
+            {{-- =================== MODAL ÉTUDIANTS =================== --}}
+            <div class="modal fade ac-modal" id="etudiantsModal" tabindex="-1"
+                 aria-labelledby="etudiantsModalLabel" aria-hidden="true" data-bs-backdrop="true">
                 <div class="modal-dialog modal-xl modal-dialog-scrollable">
-                    <div class="modal-content main-card">
-                        <div class="modal-header main-card-header">
-                            <div>
-                                <div class="main-card-title" id="etudiantsModalLabel">
-                                    <i class="fas fa-user-graduate"></i>
-                                    Sélectionner les étudiants
-                                </div>
-                                <div class="composer-helper">Sélection multiple avec recherche rapide.</div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div class="ac-modal-titlewrap">
+                                <span class="ac-modal-title" id="etudiantsModalLabel">
+                                    <i class="fas fa-user-graduate"></i> Sélectionner les étudiants
+                                </span>
+                                <span class="ac-modal-sub">Filtrez par classe puis cochez les étudiants destinataires.</span>
                             </div>
-                            <div class="d-flex align-items-center gap-2">
-                                <button type="button" class="btn-acasi outline" id="clear_etudiants_selection">
-                                    <i class="fas fa-eraser"></i>Tout désélectionner
+                            <div class="ac-modal-actions">
+                                <button type="button" class="ac-modal-btn-glass" id="select_all_etudiants">
+                                    <i class="fas fa-check-double"></i>Tout sélectionner
                                 </button>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                                <button type="button" class="ac-modal-btn-glass" id="clear_etudiants_selection">
+                                    <i class="fas fa-eraser"></i>Vider
+                                </button>
+                                <button type="button" class="ac-modal-close" data-bs-dismiss="modal" aria-label="Fermer">
+                                    <i class="fas fa-times"></i>
+                                </button>
                             </div>
                         </div>
-                        <div class="modal-body main-card-body">
-                            <div class="form-group">
-                                <label for="etudiants" class="form-label">Étudiants destinataires <span class="required">*</span></label>
-                                <select class="form-select-multiple @error('etudiants') error @enderror"
-                                    id="etudiants" name="etudiants[]" multiple>
+                        <div class="modal-body">
+
+                            <div class="ac-filters ac-filters--single">
+                                <select id="classe_etudiant_filter" aria-label="Filtrer par classe">
+                                    <option value="">Toutes les classes</option>
+                                    @foreach($classes as $classe)
+                                        <option value="{{ $classe->id }}">{{ $classe->name }}</option>
+                                    @endforeach
+                                </select>
+                                <button type="button" class="ac-bulk-btn reset-filters" title="Réinitialiser le filtre">
+                                    <i class="fas fa-rotate-left"></i>Réinitialiser
+                                </button>
+                            </div>
+
+                            <div class="ac-bulk">
+                                <div class="ac-bulk-info">
+                                    <i class="fas fa-list"></i>
+                                    <span id="etudiants-info"><strong>{{ $etudiants->count() }}</strong> étudiant(s) disponible(s)</span>
+                                </div>
+                            </div>
+
+                            <div class="ac-field">
+                                <label for="etudiants" class="ac-label">
+                                    Étudiants destinataires <span class="ac-req">*</span>
+                                </label>
+                                <select class="ac-multi-native @error('etudiants') is-invalid @enderror"
+                                        id="etudiants" name="etudiants[]" multiple>
                                     @foreach($etudiants as $etudiant)
                                         <option value="{{ $etudiant->id }}"
                                                 data-classe="{{ optional($etudiant->inscriptions->first())->classe_id }}"
@@ -960,631 +1054,434 @@
                                         </option>
                                     @endforeach
                                 </select>
-                                @error('etudiants')
-                                    <div class="error-message">{{ $message }}</div>
-                                @enderror
+                                @error('etudiants')<div class="ac-error">{{ $message }}</div>@enderror
                             </div>
+
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">Terminer</button>
+                            <span class="ac-help"><i class="fas fa-info-circle me-1"></i>Sélection multiple jusqu'à 50 étudiants.</span>
+                            <button type="button" class="ac-btn ac-btn-primary" data-bs-dismiss="modal">
+                                <i class="fas fa-check"></i>Terminer
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="modal fade" id="leaveDraftModal" tabindex="-1" aria-labelledby="leaveDraftModalLabel" aria-hidden="true" data-bs-backdrop="static">
-                <div class="modal-dialog modal-lg">
-                    <div class="modal-content main-card">
-                        <div class="modal-header main-card-header">
-                            <div class="main-card-title" id="leaveDraftModalLabel">
-                                <i class="fas fa-exclamation-triangle"></i>
-                                Quitter la création d'annonce
+            {{-- =================== MODAL LEAVE DRAFT =================== --}}
+            <div class="modal fade ac-modal" id="leaveDraftModal" tabindex="-1"
+                 aria-labelledby="leaveDraftModalLabel" aria-hidden="true" data-bs-backdrop="static">
+                <div class="modal-dialog modal-md">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <div class="ac-modal-titlewrap">
+                                <span class="ac-modal-title" id="leaveDraftModalLabel">
+                                    <i class="fas fa-exclamation-triangle"></i> Quitter sans enregistrer ?
+                                </span>
+                                <span class="ac-modal-sub">Vos modifications ne sont pas encore sauvegardées.</span>
                             </div>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                            <button type="button" class="ac-modal-close" data-bs-dismiss="modal" aria-label="Fermer">
+                                <i class="fas fa-times"></i>
+                            </button>
                         </div>
-                        <div class="modal-body main-card-body">
-                            <p class="mb-0">
-                                Voulez-vous conserver cette annonce en brouillon avant de quitter ?
+                        <div class="modal-body">
+                            <p class="mb-0" style="font-size: .9rem; color: #475569; line-height: 1.5;">
+                                Voulez-vous conserver cette annonce en brouillon ? Vous pourrez la retrouver dans la liste des annonces et la publier plus tard.
                             </p>
                         </div>
                         <div class="modal-footer">
-                            <button type="button" class="btn-acasi secondary" id="leaveSaveDraft">
-                                <i class="fas fa-save"></i>Conserver en brouillon
+                            <button type="button" class="ac-btn ac-btn-ghost" id="leaveDiscard">
+                                Quitter sans sauver
                             </button>
-                            <button type="button" class="btn-acasi outline" id="leaveDiscard">
-                                Quitter sans enregistrer
+                            <button type="button" class="ac-btn ac-btn-primary" id="leaveSaveDraft">
+                                <i class="fas fa-save"></i>Sauvegarder le brouillon
                             </button>
                         </div>
                     </div>
                 </div>
             </div>
+
         </form>
     </div>
 </div>
 @endsection
 
 @push('scripts')
-<!-- Choices.js JavaScript -->
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 
 <script>
-    // Variables globales pour Choices.js
-    let choicesInstances = {};
+(function () {
+    'use strict';
 
-    // Configuration par défaut pour Choices.js
-    const defaultChoicesConfig = {
+    // ----- Debug helpers (corrects ReferenceError historique : debugLog/debugError) -----
+    const DEBUG = @json(config('app.debug'));
+    const debugLog   = (...args) => { if (DEBUG) console.log('[annonces:create]', ...args); };
+    const debugError = (...args) => { if (DEBUG) console.error('[annonces:create]', ...args); };
+
+    // ----- État global Choices.js -----
+    const choicesInstances = {};
+    const originalClassesOptions = [];
+    const originalEtudiantsOptions = [];
+
+    // ----- Configuration Choices.js -----
+    const baseChoicesConfig = {
         searchEnabled: true,
         searchChoices: true,
         searchFloor: 1,
-        searchResultLimit: 10,
+        searchResultLimit: 12,
         shouldSort: false,
         placeholder: true,
-        placeholderValue: "Rechercher...",
-        noResultsText: "Aucun résultat trouvé",
-        noChoicesText: "Aucun choix disponible",
-        itemSelectText: "Cliquer pour sélectionner",
-        loadingText: "Recherche en cours...",
+        noResultsText: 'Aucun résultat',
+        noChoicesText: 'Aucun choix disponible',
+        itemSelectText: '',
+        loadingText: 'Recherche…',
         removeItemButton: true,
         duplicateItemsAllowed: false,
-        maxItemCount: 50,
-        renderChoiceLimit: 20,
+        renderChoiceLimit: 30,
         position: 'bottom',
-        allowHTML: true
+        allowHTML: true,
     };
 
-    // Fonction d'initialisation de Choices.js
-    function initializeChoices(selectElement, customConfig = {}) {
-        const selectId = selectElement.id;
-        debugLog("Initialisation de Choices.js pour:", selectId);
-
-        if (!selectElement) {
-            debugError("Élément select non trouvé:", selectId);
-            return null;
+    function initChoices(selectEl, extra = {}) {
+        if (!selectEl) return null;
+        const id = selectEl.id;
+        if (choicesInstances[id]) {
+            choicesInstances[id].destroy();
+            delete choicesInstances[id];
         }
-
-        // Détruire l'instance existante si elle existe
-        if (choicesInstances[selectId]) {
-            choicesInstances[selectId].destroy();
-            delete choicesInstances[selectId];
-        }
-
-        // Fusionner la configuration
-        const config = { ...defaultChoicesConfig, ...customConfig };
-
         try {
-            const choices = new Choices(selectElement, config);
-            choicesInstances[selectId] = choices;
-            debugLog("Instance Choices.js créée avec succès pour:", selectId);
-            return choices;
-        } catch (error) {
-            debugError("Erreur lors de la création de l'instance Choices.js:", error);
+            const inst = new Choices(selectEl, { ...baseChoicesConfig, ...extra });
+            choicesInstances[id] = inst;
+            return inst;
+        } catch (err) {
+            debugError('Init Choices fail', id, err);
             return null;
         }
     }
 
-    // Configuration pour les templates personnalisés
-    const multipleSelectConfig = {
-        callbackOnCreateTemplates: function (template) {
-            return {
-                item: ({ classNames }, data) => {
-                    return template(`
-                        <div class="${classNames.item} ${
-                        data.highlighted
-                            ? classNames.highlightedState
-                            : classNames.itemSelectable
-                    }"
-                             data-item data-id="${data.id}" data-value="${data.value}">
-                            <span class="choice-item-content">
-                                ${data.label}
-                            </span>
-                            ${
-                                !data.disabled
-                                    ? `<button type="button" class="${classNames.button}" data-button><i class="fas fa-times"></i></button>`
-                                    : ""
-                            }
-                        </div>
-                    `);
-                },
-                choice: ({ classNames }, data) => {
-                    return template(`
-                        <div class="${classNames.item} ${classNames.itemChoice} ${
-                        data.disabled
-                            ? classNames.itemDisabled
-                            : classNames.itemSelectable
-                    }"
-                             data-select-text="${
-                                 this.config.itemSelectText
-                             }" data-choice
-                             ${
-                                 data.disabled
-                                     ? 'data-choice-disabled aria-disabled="true"'
-                                     : "data-choice-selectable"
-                             }
-                             data-id="${data.id}" data-value="${data.value}">
-                            <div class="choice-content">
-                                ${data.label}
-                            </div>
-                        </div>
-                    `);
-                },
-            };
-        },
-    };
+    function snapshotOriginalOptions(selectEl, target, customMapper) {
+        if (!selectEl) return;
+        Array.from(selectEl.options).forEach(opt => {
+            if (!opt.value) return;
+            target.push({
+                value: opt.value,
+                label: opt.textContent.trim(),
+                selected: opt.selected,
+                disabled: false,
+                customProperties: customMapper(opt),
+            });
+        });
+    }
 
-    document.addEventListener('DOMContentLoaded', function() {
-        window.ANNONCES_DEBUG = @json(config('app.debug'));
-        const annoncesDebug = (...args) => {
-            if (window.ANNONCES_DEBUG) {
-                console.log('[annonces:create]', ...args);
-            }
-        };
+    document.addEventListener('DOMContentLoaded', function () {
 
-        // Stocker les options originales avant initialisation de Choices.js
-        const originalClassesOptions = [];
-        const originalEtudiantsOptions = [];
-        
-        // Sauvegarder les options originales des classes
+        // --- 1. Snapshot des options originales ---
         const classesSelect = document.getElementById('classes');
-        if (classesSelect) {
-            Array.from(classesSelect.options).forEach(option => {
-                if (option.value) {
-                    originalClassesOptions.push({
-                        value: option.value,
-                        label: option.textContent,
-                        selected: option.selected,
-                        disabled: false,
-                        customProperties: {
-                            filiere: option.dataset.filiere,
-                            niveau: option.dataset.niveau,
-                            currentCount: option.dataset.currentCount
-                        }
-                    });
-                }
-            });
-            annoncesDebug('Classes options chargées', originalClassesOptions.length);
-        }
-        
-        // Sauvegarder les options originales des étudiants
         const etudiantsSelect = document.getElementById('etudiants');
-        if (etudiantsSelect) {
-            Array.from(etudiantsSelect.options).forEach(option => {
-                if (option.value) {
-                    originalEtudiantsOptions.push({
-                        value: option.value,
-                        label: option.textContent,
-                        selected: option.selected,
-                        disabled: false,
-                        customProperties: {
-                            classe: option.dataset.classe,
-                            currentYear: option.dataset.currentYear
-                        }
-                    });
-                }
-            });
-            annoncesDebug('Étudiants options chargées', originalEtudiantsOptions.length);
-        }
 
-        // Initialiser Choices.js pour les sélecteurs multiples
+        snapshotOriginalOptions(classesSelect, originalClassesOptions, opt => ({
+            filiere: opt.dataset.filiere,
+            niveau: opt.dataset.niveau,
+            currentCount: opt.dataset.currentCount,
+        }));
+        snapshotOriginalOptions(etudiantsSelect, originalEtudiantsOptions, opt => ({
+            classe: opt.dataset.classe,
+            currentYear: opt.dataset.currentYear,
+        }));
+        debugLog('Snapshots', { classes: originalClassesOptions.length, etudiants: originalEtudiantsOptions.length });
+
+        // --- 2. Init Choices.js ---
         if (classesSelect) {
-            const classesChoices = initializeChoices(classesSelect, {
-                ...multipleSelectConfig,
-                placeholderValue: "Sélectionnez une ou plusieurs classes...",
+            initChoices(classesSelect, {
+                placeholderValue: 'Tapez pour rechercher une classe…',
                 maxItemCount: 20,
             });
-            annoncesDebug('Choices classes init', !!classesChoices);
         }
-
         if (etudiantsSelect) {
-            const etudiantsChoices = initializeChoices(etudiantsSelect, {
-                ...multipleSelectConfig,
-                placeholderValue: "Sélectionnez un ou plusieurs étudiants...",
+            initChoices(etudiantsSelect, {
+                placeholderValue: 'Tapez pour rechercher un étudiant…',
                 maxItemCount: 50,
             });
-            annoncesDebug('Choices étudiants init', !!etudiantsChoices);
         }
 
-        // Fonction pour réinitialiser les filtres
-        function resetFilters() {
-            // Réinitialiser les filtres de classes
-            $('#filiere_filter, #niveau_filter').val('');
-            $('#classe_etudiant_filter').val('');
-            
-            // Restaurer manuellement toutes les options originales
-            const classesChoicesInstance = choicesInstances['classes'];
-            const etudiantsChoicesInstance = choicesInstances['etudiants'];
-            
-            if (classesChoicesInstance && originalClassesOptions.length > 0) {
-                const currentClassesSelections = classesChoicesInstance.getValue(true);
-                classesChoicesInstance.clearStore();
-                classesChoicesInstance.setChoices(originalClassesOptions, 'value', 'label', true);
-                
-                // Restaurer les sélections
-                currentClassesSelections.forEach(value => {
-                    classesChoicesInstance.setChoiceByValue(value);
-                });
+        // --- 3. Compteurs caractères live ---
+        document.querySelectorAll('[data-counter-for]').forEach(counterEl => {
+            const targetId = counterEl.getAttribute('data-counter-for');
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            const max = parseInt(counterEl.getAttribute('data-max'), 10) || null;
+            const display = counterEl.querySelector('[data-counter-current]');
+            const update = () => {
+                const len = target.value.length;
+                if (display) display.textContent = len;
+                if (max) {
+                    counterEl.classList.remove('ac-counter--warn', 'ac-counter--danger');
+                    if (len > max * 0.95) counterEl.classList.add('ac-counter--danger');
+                    else if (len > max * 0.80) counterEl.classList.add('ac-counter--warn');
+                }
+            };
+            target.addEventListener('input', update);
+            update();
+        });
+
+        // --- 4. File upload preview ---
+        const fileInput = document.getElementById('piece_jointe');
+        const fileZone = document.getElementById('ac-file-zone');
+        const fileName = document.getElementById('ac-file-name');
+        const fileLabel = document.getElementById('ac-file-label');
+        if (fileInput) {
+            fileInput.addEventListener('change', function () {
+                if (this.files && this.files.length > 0) {
+                    const file = this.files[0];
+                    const sizeKb = Math.round(file.size / 1024);
+                    fileName.textContent = `${file.name} · ${sizeKb} KB`;
+                    fileLabel.textContent = 'Fichier prêt à être envoyé';
+                    fileZone.classList.add('ac-file--has-file');
+                } else {
+                    fileLabel.textContent = 'Cliquez ou déposez un fichier';
+                    fileZone.classList.remove('ac-file--has-file');
+                }
+            });
+        }
+
+        // --- 5. Pickers : afficher selon le type radio ---
+        const classesPicker = document.getElementById('classes_picker');
+        const etudiantsPicker = document.getElementById('etudiants_picker');
+
+        function reflectAudience() {
+            const checked = document.querySelector('input[name="type"]:checked');
+            const value = checked ? checked.value : 'general';
+            if (classesPicker) {
+                classesPicker.classList.toggle('ac-picker--show', value === 'classe');
+                if (value === 'classe') classesPicker.classList.add('ac-fade-enter');
             }
-            
-            if (etudiantsChoicesInstance && originalEtudiantsOptions.length > 0) {
-                const currentEtudiantsSelections = etudiantsChoicesInstance.getValue(true);
-                etudiantsChoicesInstance.clearStore();
-                etudiantsChoicesInstance.setChoices(originalEtudiantsOptions, 'value', 'label', true);
-                
-                // Restaurer les sélections
-                currentEtudiantsSelections.forEach(value => {
-                    etudiantsChoicesInstance.setChoiceByValue(value);
-                });
-                
-                // Mettre à jour le message informatif
-                if ($('#etudiants-info').length) {
-                    $('#etudiants-info').text(`${originalEtudiantsOptions.length} étudiant(s) disponible(s)`);
+            if (etudiantsPicker) {
+                etudiantsPicker.classList.toggle('ac-picker--show', value === 'etudiant');
+                if (value === 'etudiant') etudiantsPicker.classList.add('ac-fade-enter');
+            }
+        }
+        document.querySelectorAll('input[name="type"]').forEach(r => {
+            r.addEventListener('change', reflectAudience);
+        });
+        reflectAudience();
+
+        // --- 6. Récap classes/étudiants sélectionnés ---
+        function updateRecipientSummaries() {
+            const cInst = choicesInstances['classes'];
+            const eInst = choicesInstances['etudiants'];
+
+            if (cInst) {
+                const sel = cInst.getValue(true);
+                const count = sel.length;
+                const studentCount = sel.reduce((s, v) => {
+                    const o = originalClassesOptions.find(it => String(it.value) === String(v));
+                    const c = parseInt(o?.customProperties?.currentCount || 0, 10);
+                    return s + (Number.isNaN(c) ? 0 : c);
+                }, 0);
+                const sumEl = document.getElementById('classes_summary');
+                const badge = document.getElementById('classes_count_badge');
+                if (sumEl) {
+                    sumEl.textContent = count > 0
+                        ? `${count} classe(s) • ${studentCount} étudiant(s) en année courante`
+                        : 'Aucune classe sélectionnée';
+                }
+                if (badge) {
+                    badge.textContent = count;
+                    badge.classList.toggle('ac-picker-count-badge--empty', count === 0);
+                }
+            }
+
+            if (eInst) {
+                const sel = eInst.getValue(true);
+                const count = sel.length;
+                const cyCount = sel.reduce((s, v) => {
+                    const o = originalEtudiantsOptions.find(it => String(it.value) === String(v));
+                    return s + (String(o?.customProperties?.currentYear) === '1' ? 1 : 0);
+                }, 0);
+                const sumEl = document.getElementById('etudiants_summary');
+                const badge = document.getElementById('etudiants_count_badge');
+                if (sumEl) {
+                    sumEl.textContent = count > 0
+                        ? `${count} étudiant(s) • ${cyCount} en année courante`
+                        : 'Aucun étudiant sélectionné';
+                }
+                if (badge) {
+                    badge.textContent = count;
+                    badge.classList.toggle('ac-picker-count-badge--empty', count === 0);
                 }
             }
         }
-
-        // Ajouter un bouton de réinitialisation (optionnel)
-        $(document).on('click', '.reset-filters', function() {
-            resetFilters();
-        });
-
-        // Gestion de l'affichage du champ de date de publication
-        $('#status').change(function() {
-            if ($(this).val() === 'scheduled') {
-                $('#date-publication-container').slideDown(300);
-            } else {
-                $('#date-publication-container').slideUp(300);
-            }
-        }).trigger('change');
-
-        const updateRecipientSummaries = () => {
-            const classesChoicesInstance = choicesInstances['classes'];
-            const etudiantsChoicesInstance = choicesInstances['etudiants'];
-
-            if (classesChoicesInstance) {
-                const selectedValues = classesChoicesInstance.getValue(true);
-                const classCount = selectedValues.length;
-                const studentCount = selectedValues.reduce((sum, value) => {
-                    const option = originalClassesOptions.find(item => String(item.value) === String(value));
-                    const currentCount = parseInt(option?.customProperties?.currentCount || 0, 10);
-                    return sum + (Number.isNaN(currentCount) ? 0 : currentCount);
-                }, 0);
-                const summaryText = classCount > 0
-                    ? `${classCount} classe(s) sélectionnée(s) • ${studentCount} étudiant(s) année courante`
-                    : 'Aucune classe sélectionnée';
-                $('#classes_summary').text(summaryText);
-                annoncesDebug('Résumé classes', { classCount, studentCount, selectedValues });
-            }
-
-            if (etudiantsChoicesInstance) {
-                const selectedValues = etudiantsChoicesInstance.getValue(true);
-                const totalSelected = selectedValues.length;
-                const currentYearCount = selectedValues.reduce((sum, value) => {
-                    const option = originalEtudiantsOptions.find(item => String(item.value) === String(value));
-                    return sum + (String(option?.customProperties?.currentYear) === '1' ? 1 : 0);
-                }, 0);
-                const summaryText = totalSelected > 0
-                    ? `${totalSelected} sélectionné(s) • ${currentYearCount} année courante`
-                    : 'Aucun étudiant sélectionné';
-                $('#etudiants_summary').text(summaryText);
-                annoncesDebug('Résumé étudiants', { totalSelected, currentYearCount, selectedValues });
-            }
-        };
-
-        // Animation pour l'affichage des conteneurs de destinataires
-        $('input[name="type"]').change(function() {
-            const selectedType = $('input[name="type"]:checked').val();
-
-            $('#classes_picker, #etudiants_picker').slideUp(250);
-
-            if (selectedType === 'classe') {
-                setTimeout(() => {
-                    $('#classes_picker').slideDown(250);
-                }, 300);
-            } else if (selectedType === 'etudiant') {
-                setTimeout(() => {
-                    $('#etudiants_picker').slideDown(250);
-                }, 300);
+        document.addEventListener('change', e => {
+            if (e.target.id === 'classes' || e.target.id === 'etudiants') {
+                updateRecipientSummaries();
             }
         });
-
-        // Déclencher le changement initial
-        $('input[name="type"]:checked').trigger('change');
         updateRecipientSummaries();
 
-        // Filtrage amélioré des classes avec Choices.js
-        $('#filiere_filter, #niveau_filter').change(function() {
-            const filiereId = $('#filiere_filter').val();
-            const niveauId = $('#niveau_filter').val();
-            const classesChoicesInstance = choicesInstances['classes'];
-            
-            debugLog('Filtres appliqués - Filière:', filiereId, 'Niveau:', niveauId);
+        // --- 7. Filtres modals ---
+        function applyClassesFilter() {
+            const inst = choicesInstances['classes'];
+            if (!inst || originalClassesOptions.length === 0) return;
+            const filiereId = document.getElementById('filiere_filter')?.value || '';
+            const niveauId  = document.getElementById('niveau_filter')?.value || '';
+            const current   = inst.getValue(true);
 
-            if (classesChoicesInstance && originalClassesOptions.length > 0) {
-                // Conserver les sélections actuelles
-                const currentSelections = classesChoicesInstance.getValue(true);
-                
-                // Filtrer les options originales
-                const filteredChoices = originalClassesOptions.filter(option => {
-                    let show = true;
-
-                    // Appliquer les filtres seulement si des filtres sont sélectionnés
-                    if (filiereId && option.customProperties.filiere) {
-                        // Comparaison en string pour éviter les problèmes de type
-                        if (String(option.customProperties.filiere) !== String(filiereId)) {
-                            show = false;
-                        }
-                    }
-
-                    if (niveauId && option.customProperties.niveau) {
-                        // Comparaison en string pour éviter les problèmes de type
-                        if (String(option.customProperties.niveau) !== String(niveauId)) {
-                            show = false;
-                        }
-                    }
-
-                    return show;
-                });
-
-                // Vider et remplir avec les nouvelles options
-                classesChoicesInstance.clearStore();
-                classesChoicesInstance.setChoices(filteredChoices, 'value', 'label', true);
-                
-                // Restaurer les sélections précédentes si elles sont toujours disponibles
-                currentSelections.forEach(value => {
-                    const optionExists = filteredChoices.some(choice => choice.value === value);
-                    if (optionExists) {
-                        classesChoicesInstance.setChoiceByValue(value);
-                    }
-                });
-            }
-        });
-
-        // Filtrage amélioré des étudiants avec Choices.js
-        $('#classe_etudiant_filter').change(function() {
-            const classeId = $(this).val();
-            const etudiantsChoicesInstance = choicesInstances['etudiants'];
-            
-            debugLog('Filtre classe pour étudiants:', classeId);
-
-            if (etudiantsChoicesInstance && originalEtudiantsOptions.length > 0) {
-                // Conserver les sélections actuelles
-                const currentSelections = etudiantsChoicesInstance.getValue(true);
-                
-                // Filtrer les options originales
-                const filteredChoices = originalEtudiantsOptions.filter(option => {
-                    let show = true;
-
-                    // Appliquer le filtre seulement si une classe est sélectionnée
-                    if (classeId && option.customProperties.classe) {
-                        // Comparaison en string pour éviter les problèmes de type
-                        if (String(option.customProperties.classe) !== String(classeId)) {
-                            show = false;
-                        }
-                    }
-
-                    // Debug pour voir les données
-                    if (classeId) {
-                        debugLog('Étudiant:', option.label, 'Classe:', option.customProperties.classe, 'Filtre:', classeId, 'Affiché:', show);
-                    }
-
-                    return show;
-                });
-
-                // Vider et remplir avec les nouvelles options
-                etudiantsChoicesInstance.clearStore();
-                etudiantsChoicesInstance.setChoices(filteredChoices, 'value', 'label', true);
-                
-                // Restaurer les sélections précédentes si elles sont toujours disponibles
-                currentSelections.forEach(value => {
-                    const optionExists = filteredChoices.some(choice => choice.value === value);
-                    if (optionExists) {
-                        etudiantsChoicesInstance.setChoiceByValue(value);
-                    }
-                });
-
-                // Afficher un message informatif
-                const visibleCount = filteredChoices.length;
-                const infoMessage = visibleCount > 0
-                    ? `${visibleCount} étudiant(s) disponible(s)`
-                    : "Aucun étudiant disponible avec ce filtre";
-
-                if ($('#etudiants-info').length) {
-                    $('#etudiants-info').text(infoMessage);
-                } else {
-                    $('<div id="etudiants-info" class="text-muted small mt-2 mb-2">' + infoMessage + '</div>').insertBefore('#etudiants');
-                }
-            }
-        });
-
-        // Sélection améliorée de toutes les classes
-        $('#select_all_classes').click(function() {
-            const classesChoicesInstance = choicesInstances['classes'];
-            if (classesChoicesInstance) {
-                // Sélectionner toutes les options visibles
-                const availableChoices = classesChoicesInstance._currentState.choices.filter(choice => !choice.disabled);
-                availableChoices.forEach(choice => {
-                    classesChoicesInstance._addItem({
-                        value: choice.value,
-                        label: choice.label,
-                        id: choice.id
-                    });
-                });
-
-                // Effet visuel
-            $(this).addClass('btn-success').removeClass('btn-outline-primary');
-            setTimeout(() => {
-                $(this).addClass('btn-outline-primary').removeClass('btn-success');
-            }, 1000);
-            }
-        });
-
-        // Sélection améliorée de tous les étudiants
-        $('#select_all_etudiants').click(function() {
-            const etudiantsChoicesInstance = choicesInstances['etudiants'];
-            if (etudiantsChoicesInstance) {
-                // Sélectionner toutes les options visibles
-                const availableChoices = etudiantsChoicesInstance._currentState.choices.filter(choice => !choice.disabled);
-                availableChoices.forEach(choice => {
-                    etudiantsChoicesInstance._addItem({
-                        value: choice.value,
-                        label: choice.label,
-                        id: choice.id
-                    });
-                });
-
-                // Effet visuel
-            $(this).addClass('btn-success').removeClass('btn-outline-primary');
-            setTimeout(() => {
-                $(this).addClass('btn-outline-primary').removeClass('btn-success');
-            }, 1000);
-            }
-        });
-
-        // Prévisualisation de la notification de niveau d'urgence
-        $('#priorite').change(function() {
-            const priorite = $(this).val();
-            let bgColor = 'rgba(4, 83, 203, 0.08)';
-            let textColor = '#0453cb';
-
-            if (priorite == 1) {
-                bgColor = 'rgba(94, 145, 222, 0.12)';
-                textColor = '#2563eb';
-            } else if (priorite == 2) {
-                bgColor = 'rgba(15, 23, 42, 0.08)';
-                textColor = '#0f172a';
-            }
-
-            $(this).css({
-                'background-color': bgColor,
-                'color': textColor,
-                'border-color': textColor
+            const filtered = originalClassesOptions.filter(opt => {
+                if (filiereId && opt.customProperties.filiere && String(opt.customProperties.filiere) !== String(filiereId)) return false;
+                if (niveauId && opt.customProperties.niveau && String(opt.customProperties.niveau) !== String(niveauId)) return false;
+                return true;
             });
 
-            // Revenir à la normale après 1.5 secondes
-            setTimeout(() => {
-                $(this).css({
-                    'background-color': '',
-                    'color': '',
-                    'border-color': ''
-                });
-            }, 1500);
+            inst.clearStore();
+            inst.setChoices(filtered, 'value', 'label', true);
+            current.forEach(v => {
+                if (filtered.some(c => c.value === v)) inst.setChoiceByValue(v);
+            });
+            const totalEl = document.getElementById('classes_total_visible');
+            if (totalEl) totalEl.textContent = filtered.length;
+        }
+
+        function applyEtudiantsFilter() {
+            const inst = choicesInstances['etudiants'];
+            if (!inst || originalEtudiantsOptions.length === 0) return;
+            const classeId = document.getElementById('classe_etudiant_filter')?.value || '';
+            const current  = inst.getValue(true);
+
+            const filtered = originalEtudiantsOptions.filter(opt => {
+                if (classeId && opt.customProperties.classe && String(opt.customProperties.classe) !== String(classeId)) return false;
+                return true;
+            });
+
+            inst.clearStore();
+            inst.setChoices(filtered, 'value', 'label', true);
+            current.forEach(v => {
+                if (filtered.some(c => c.value === v)) inst.setChoiceByValue(v);
+            });
+            const info = document.getElementById('etudiants-info');
+            if (info) {
+                info.innerHTML = filtered.length > 0
+                    ? `<strong>${filtered.length}</strong> étudiant(s) disponible(s)`
+                    : 'Aucun étudiant disponible avec ce filtre';
+            }
+        }
+
+        document.getElementById('filiere_filter')?.addEventListener('change', applyClassesFilter);
+        document.getElementById('niveau_filter')?.addEventListener('change', applyClassesFilter);
+        document.getElementById('classe_etudiant_filter')?.addEventListener('change', applyEtudiantsFilter);
+
+        // Reset filters buttons (both modals partagent .reset-filters)
+        document.querySelectorAll('.reset-filters').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.getElementById('filiere_filter')?.dispatchEvent(new Event('change'));
+                const f = document.getElementById('filiere_filter'); if (f) f.value = '';
+                const n = document.getElementById('niveau_filter'); if (n) n.value = '';
+                const c = document.getElementById('classe_etudiant_filter'); if (c) c.value = '';
+                applyClassesFilter();
+                applyEtudiantsFilter();
+            });
         });
 
-        // Validation du formulaire avec Choices.js
-        $('form').on('submit', function(e) {
-            const selectedType = $('input[name="type"]:checked').val();
-            let isValid = true;
-
-            if (selectedType === 'classe') {
-                const classesChoicesInstance = choicesInstances['classes'];
-                if (classesChoicesInstance && classesChoicesInstance.getValue().length === 0) {
-                    alert('Veuillez sélectionner au moins une classe.');
-                    isValid = false;
-                }
-            } else if (selectedType === 'etudiant') {
-                const etudiantsChoicesInstance = choicesInstances['etudiants'];
-                if (etudiantsChoicesInstance && etudiantsChoicesInstance.getValue().length === 0) {
-                    alert('Veuillez sélectionner au moins un étudiant.');
-                    isValid = false;
-                }
-            }
-
-            if (!isValid) {
-                e.preventDefault();
-            }
-        });
-
-        $(document).on('change', '#classes, #etudiants', function() {
+        // --- 8. Bulk : Tout sélectionner / vider ---
+        function selectAll(instKey) {
+            const inst = choicesInstances[instKey];
+            if (!inst) return;
+            const choices = inst._currentState?.choices || [];
+            choices.filter(c => !c.disabled).forEach(c => {
+                inst._addItem({ value: c.value, label: c.label, id: c.id });
+            });
+        }
+        function clearAll(instKey, source) {
+            const inst = choicesInstances[instKey];
+            if (!inst) return;
+            const cleared = source.map(o => ({ ...o, selected: false }));
+            inst.clearStore();
+            inst.setChoices(cleared, 'value', 'label', true);
             updateRecipientSummaries();
+        }
+
+        document.getElementById('select_all_classes')?.addEventListener('click', () => selectAll('classes'));
+        document.getElementById('select_all_etudiants')?.addEventListener('click', () => selectAll('etudiants'));
+        document.getElementById('clear_classes_selection')?.addEventListener('click', () => clearAll('classes', originalClassesOptions));
+        document.getElementById('clear_etudiants_selection')?.addEventListener('click', () => clearAll('etudiants', originalEtudiantsOptions));
+
+        // --- 9. Validation submit (au moins 1 classe/étudiant si type contraint) ---
+        const form = document.getElementById('annonceForm');
+        form?.addEventListener('submit', function (e) {
+            const checked = document.querySelector('input[name="type"]:checked');
+            const type = checked ? checked.value : 'general';
+
+            if (type === 'classe') {
+                const inst = choicesInstances['classes'];
+                if (inst && inst.getValue().length === 0) {
+                    e.preventDefault();
+                    alert('Veuillez sélectionner au moins une classe.');
+                    document.querySelector('[data-bs-target="#classesModal"]')?.click();
+                    return;
+                }
+            } else if (type === 'etudiant') {
+                const inst = choicesInstances['etudiants'];
+                if (inst && inst.getValue().length === 0) {
+                    e.preventDefault();
+                    alert('Veuillez sélectionner au moins un étudiant.');
+                    document.querySelector('[data-bs-target="#etudiantsModal"]')?.click();
+                    return;
+                }
+            }
         });
 
+        // --- 10. Leave-draft : intercepte navigation interne ---
         let formDirty = false;
         let isSubmitting = false;
         let pendingNavigation = null;
 
-        const setDirty = () => {
-            if (!isSubmitting) {
-                formDirty = true;
-            }
-        };
+        const setDirty = () => { if (!isSubmitting) formDirty = true; };
 
-        $('input, textarea, select').on('input change', function() {
-            if ($(this).attr('type') === 'hidden') {
-                return;
-            }
-            setDirty();
+        document.querySelectorAll('input, textarea, select').forEach(el => {
+            const t = el.getAttribute('type');
+            if (t === 'hidden') return;
+            el.addEventListener('input', setDirty);
+            el.addEventListener('change', setDirty);
         });
 
-        $('form').on('submit', function() {
-            isSubmitting = true;
-        });
+        form?.addEventListener('submit', () => { isSubmitting = true; });
 
-        $(document).on('click', 'a[href]', function(e) {
-            const href = $(this).attr('href');
-            const target = $(this).attr('target');
-            if (!href || href.startsWith('#') || href.startsWith('javascript:') || target === '_blank') {
-                return;
-            }
+        document.addEventListener('click', function (e) {
+            const a = e.target.closest('a[href]');
+            if (!a) return;
+            const href = a.getAttribute('href');
+            const target = a.getAttribute('target');
+            if (!href || href.startsWith('#') || href.startsWith('javascript:') || target === '_blank') return;
             if (formDirty && !isSubmitting) {
                 e.preventDefault();
                 pendingNavigation = href;
-                const modal = new bootstrap.Modal(document.getElementById('leaveDraftModal'));
-                modal.show();
+                const modalEl = document.getElementById('leaveDraftModal');
+                if (modalEl && window.bootstrap) {
+                    new bootstrap.Modal(modalEl).show();
+                }
             }
         });
 
-        window.addEventListener('beforeunload', function(e) {
+        window.addEventListener('beforeunload', function (e) {
             if (formDirty && !isSubmitting) {
                 e.preventDefault();
                 e.returnValue = '';
             }
         });
 
-        $('#leaveSaveDraft').on('click', function() {
+        document.getElementById('leaveSaveDraft')?.addEventListener('click', function () {
             isSubmitting = true;
-            document.getElementById('saveDraftButton').click();
+            document.getElementById('saveDraftButton')?.click();
         });
 
-        $('#leaveDiscard').on('click', function() {
+        document.getElementById('leaveDiscard')?.addEventListener('click', function () {
             formDirty = false;
             const modalEl = document.getElementById('leaveDraftModal');
-            const modal = bootstrap.Modal.getInstance(modalEl);
-            if (modal) {
-                modal.hide();
-            }
-            if (pendingNavigation) {
-                window.location.href = pendingNavigation;
-            }
+            const inst = window.bootstrap && bootstrap.Modal.getInstance(modalEl);
+            if (inst) inst.hide();
+            if (pendingNavigation) window.location.href = pendingNavigation;
         });
 
-        $('#clear_classes_selection').on('click', function() {
-            const classesChoicesInstance = choicesInstances['classes'];
-            if (classesChoicesInstance) {
-                annoncesDebug('Clear classes: before', classesChoicesInstance.getValue(true));
-                const clearedChoices = originalClassesOptions.map(option => ({
-                    ...option,
-                    selected: false
-                }));
-                classesChoicesInstance.clearStore();
-                classesChoicesInstance.setChoices(clearedChoices, 'value', 'label', true);
-                annoncesDebug('Clear classes: after', classesChoicesInstance.getValue(true));
-                updateRecipientSummaries();
-            }
-        });
-
-        $('#clear_etudiants_selection').on('click', function() {
-            const etudiantsChoicesInstance = choicesInstances['etudiants'];
-            if (etudiantsChoicesInstance) {
-                annoncesDebug('Clear étudiants: before', etudiantsChoicesInstance.getValue(true));
-                const clearedChoices = originalEtudiantsOptions.map(option => ({
-                    ...option,
-                    selected: false
-                }));
-                etudiantsChoicesInstance.clearStore();
-                etudiantsChoicesInstance.setChoices(clearedChoices, 'value', 'label', true);
-                annoncesDebug('Clear étudiants: after', etudiantsChoicesInstance.getValue(true));
-                updateRecipientSummaries();
-            }
-        });
     });
+})();
 </script>
 @endpush

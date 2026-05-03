@@ -117,7 +117,9 @@ class ESBTPAnnonceController extends Controller
             $annonce = new ESBTPAnnonce();
             $annonce->titre = $request->titre;
             $annonce->contenu = $request->contenu;
-            $annonce->date_publication = $is_published ? now() : $request->date_publication;
+            // En brouillon, on stocke quand même `now()` comme date de création logique :
+            // la colonne BDD est NOT NULL et la publication réelle réécrira cette valeur.
+            $annonce->date_publication = $is_published ? now() : ($request->date_publication ?: now());
             $annonce->date_expiration = $request->date_expiration;
             $annonce->type = $request->type;
             $annonce->priorite = $request->priorite;
