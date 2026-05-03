@@ -555,9 +555,11 @@ $evaluation = new ESBTPEvaluation;
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Récupérer tous les étudiants avec inscriptions actives sur l'année courante
+        // ET workflow_step = etudiant_cree (exclut les pré-inscriptions / prospects).
         $etudiantsAnneeCourante = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
             $query->where('classe_id', $evaluation->classe_id)
-                ->where('status', 'active');
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree');
             if ($anneeCourante) {
                 $query->where('annee_universitaire_id', $anneeCourante->id);
             }
@@ -1124,7 +1126,8 @@ $evaluation->titre = $request->titre;
 
         $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
             $query->where('classe_id', $evaluation->classe_id)
-                ->where('status', 'active');
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree');
             if ($anneeCourante) {
                 $query->where('annee_universitaire_id', $anneeCourante->id);
             }
