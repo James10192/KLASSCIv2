@@ -1,566 +1,427 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    @include('pdf.partials.theme')
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Feuille de saisie des notes{{ ($isBlank ?? false) ? '' : ' - ' . ($evaluation->titre ?? '') }}</title>
+@php
+    $blank = $isBlank ?? false;
+    $matiereName = $blank ? null : ($evaluation->matiere->name ?? null);
+    $classeName = $evaluation->classe->name ?? ($evaluation->classe ?? null);
+    $titreEval = $blank ? null : ($evaluation->titre ?? null);
+
+    $subtitle = $blank
+        ? trim('Classe ' . ($classeName ?? '—'))
+        : trim(($titreEval ? '« '.$titreEval.' » — ' : '').($matiereName ?? '').($classeName ? ' · '.$classeName : ''));
+
+    $filters = array_filter([
+        'Classe'      => $classeName ?: null,
+        'Filière'     => $evaluation->classe->filiere->name ?? null,
+        'Matière'     => $matiereName,
+        'Évaluation'  => $titreEval,
+        'Type'        => $blank ? null : (ucfirst($evaluation->type ?? '') ?: null),
+        'Barème'      => $blank ? null : (isset($evaluation->bareme) && $evaluation->bareme !== '' ? '/ '.$evaluation->bareme : null),
+        'Coefficient' => $blank ? null : (isset($evaluation->coefficient) && $evaluation->coefficient !== '' ? (string) $evaluation->coefficient : null),
+        'Période'     => $blank ? null : (ucfirst(str_replace('semestre', 'Semestre ', $evaluation->periode ?? '')) ?: null),
+        'Année'       => $anneeCourante->name ?? null,
+        'Date évaluation' => $blank ? null : (isset($evaluation->date_evaluation) && $evaluation->date_evaluation
+            ? (is_object($evaluation->date_evaluation) ? $evaluation->date_evaluation->format('d/m/Y') : $evaluation->date_evaluation)
+            : null),
+    ], fn ($v) => $v !== null && $v !== '');
+
+    $pdfCfg = \App\Helpers\SettingsHelper::getPdfSettings();
+    $primary = $pdfCfg['primary_color'] ?? '#0453cb';
+    $secondary = $pdfCfg['secondary_color'] ?? '#64748b';
+    $accent = $pdfCfg['accent_color'] ?? '#3b7ddb';
+
+    // Stats absences pré-remplies (mode évaluation existante)
+    $totalEtudiants = $etudiants->count();
+    $notesSaisies = $blank ? 0 : $notesByEtudiant->filter(fn ($n) => $n && !$n->is_absent)->count();
+    $absents = $blank ? 0 : $notesByEtudiant->filter(fn ($n) => $n && $n->is_absent)->count();
+    $vierges = $totalEtudiants - $notesSaisies - $absents;
+@endphp
+
+<x-pdf-document
+    :title="$blank ? 'Feuille de saisie des notes' : 'Feuille de saisie — ' . ($titreEval ?: 'Évaluation')"
+    :subtitle="$subtitle ?: null"
+    :filters="$filters"
+    orientation="portrait">
+
     <style>
-        body {
-            font-family: 'Arial', sans-serif;
-            font-size: 10px;
-            margin: 0;
-            padding: 0.5px;
-            color: #333;
-            line-height: 1.2;
-            background: white;
-        }
-
-        .container {
-            max-width: 100%;
-            background: white;
-            padding: 1.5px;
-        }
-
-        /* Header principal */
-        .header-section {
-            background: #007bff;
-            color: white;
-            padding: 1.5px;
-            border-radius: 4px;
-            text-align: center;
-            margin-bottom: 2px;
+        /* ── KPI bandeau premium (cohérent avec liste-complete-pdf) ─── */
+        .nm-kpis {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 6px 0;
+            margin: 8px 0 12px;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
-
-        .header-logo {
-            max-height: 24px;
-            max-width: 60px;
-            margin-bottom: 2px;
-            filter: brightness(0) invert(1);
-        }
-
-        .school-name {
-            font-size: 12px;
-            font-weight: 700;
-            margin-bottom: 2px;
-        }
-
-        .school-info {
-            font-size: 8px;
-            margin-bottom: 2px;
-            opacity: 0.9;
-        }
-
-        .document-title-section {
-            background: rgba(255,255,255,0.2);
-            padding: 2px 3px;
-            border-radius: 4px;
-            margin-top: 2px;
-        }
-
-        .document-title {
-            font-size: 10px;
-            font-weight: 600;
-            margin-bottom: 2px;
-        }
-
-        .evaluation-info-grid {
-            display: table;
-            width: 100%;
-            font-size: 8.5px;
-        }
-
-        .evaluation-info-row {
-            display: table-row;
-        }
-
-        .evaluation-info-cell {
-            display: table-cell;
-            width: 25%;
-            text-align: center;
-            padding: 0.5px;
-        }
-
-        .info-badge {
-            background: rgba(255,255,255,0.3);
-            padding: 0.5px 2px;
-            border-radius: 4px;
-            display: inline-block;
-            margin-top: 0.5px;
-        }
-
-        .date-line, .teacher-line {
-            border-bottom: 1px solid rgba(255,255,255,0.7);
-            padding: 1px 4px;
-            display: inline-block;
-            min-width: 45px;
-        }
-
-        /* KPI Section */
-        .kpi-section {
-            display: table;
-            width: 100%;
-            margin-bottom: 2px;
-        }
-
-        .kpi-row {
-            display: table-row;
-        }
-
-        .kpi-card {
-            display: table-cell;
-            width: 25%;
-            padding: 0.5px;
-            text-align: center;
-            background: #f8f9fa;
-            border: 1px solid #e9ecef;
-            vertical-align: top;
-            font-size: 8px;
-        }
-
-        .kpi-card:first-child {
-            border-radius: 4px 0 0 4px;
-        }
-
-        .kpi-card:last-child {
-            border-radius: 0 4px 4px 0;
-        }
-
-        .kpi-title {
-            font-size: 7.5px;
-            font-weight: 600;
-            color: #6b7280;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            margin-bottom: 1px;
-        }
-
-        .kpi-value {
-            font-size: 10px;
-            font-weight: bold;
-            color: #007bff;
-            margin-bottom: 1px;
-        }
-
-        .kpi-desc {
-            font-size: 7px;
-            color: #9ca3af;
-        }
-
-        /* Table moderne */
-        .notes-table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 5px;
-            background: white;
-            border-radius: 4px;
-            overflow: hidden;
-            font-size: 9px;
-        }
-
-        .notes-table th {
-            background: #007bff;
-            color: white;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.3px;
-            font-size: 8.5px;
-            padding: 1px 1px;
-            text-align: center;
-            -webkit-print-color-adjust: exact;
-            color-adjust: exact;
-        }
-
-        .notes-table td {
-            padding: 1px 0.5px;
-            border-bottom: 1px solid #e5e7eb;
+        .nm-kpi {
+            background-color: {{ $primary }};
+            color: #fff;
+            border-radius: 6px;
+            padding: 8px 10px;
             text-align: center;
             vertical-align: middle;
-            font-size: 8.5px;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
         }
-
-        .notes-table tbody tr:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-
-        .student-number {
-            background: #007bff;
-            color: white;
-            padding: 0.5px 1.5px;
-            border-radius: 50%;
-            font-weight: bold;
-            font-size: 8.5px;
-            min-width: 10px;
-            display: inline-block;
-        }
-
-        .student-matricule {
-            font-family: 'Courier New', monospace;
-            background: #f3f4f6;
-            padding: 0.5px 1.5px;
-            border-radius: 3px;
+        .nm-kpi-label {
+            display: block;
             font-size: 8px;
-            color: #374151;
-        }
-
-        .student-info-cell {
-            text-align: left !important;
-            padding-left: 2px !important;
-        }
-
-        .student-name {
-            font-weight: 600;
-            font-size: 9px;
-            color: #1f2937;
-            line-height: 1.2;
-        }
-
-        .student-gender {
-            font-size: 7px;
-            color: #6b7280;
-            margin-top: 0.5px;
-        }
-
-        .note-box {
-            width: 26px;
-            height: 10px;
-            border: 2px solid #007bff;
-            border-radius: 4px;
-            display: inline-block;
-            text-align: center;
-            font-weight: 700;
-            font-size: 8px;
-            line-height: 8px;
-            background: white;
-            margin: 0 1px;
-        }
-
-        .note-type-column {
-            width: 12%;
-        }
-
-        .observations-column {
-            width: 22%;
-            min-height: 10px;
-            border-bottom: 1px solid #d1d5db;
-        }
-
-        /* Footer section */
-        .footer-section {
-            margin-top: 4px;
-            display: table;
-            width: 100%;
-        }
-
-        .footer-left, .footer-right {
-            display: table-cell;
-            width: 50%;
-            vertical-align: top;
-            padding: 1.5px;
-        }
-
-        .summary-card {
-            background: #f8f9fa;
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
-            padding: 1.5px;
-        }
-
-        .summary-title {
-            font-size: 9px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 2px;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.85;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+        .nm-kpi-value {
+            display: block;
+            font-size: 16px;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+        .nm-kpi-value.small {
+            font-size: 11px;
+            line-height: 1.25;
+        }
+        .nm-kpi-sub {
+            display: block;
+            font-size: 7.5px;
+            opacity: 0.8;
+            margin-top: 1px;
+        }
+
+        /* ── Table notes premium ───────────────────────────────────── */
+        .nm-notes-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 4px;
+            font-size: 9.5px;
+        }
+        .nm-notes-table thead th {
+            background-color: {{ $primary }};
+            color: #fff;
+            font-size: 8.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            padding: 6px 5px;
+            text-align: center;
+            border: 1px solid {{ $primary }};
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+        }
+        .nm-notes-table tbody td {
+            padding: 5px 5px;
+            border: 1px solid #e5e7eb;
+            vertical-align: middle;
+        }
+        .nm-notes-table tbody tr:nth-child(even) td {
+            background-color: #f9fafb;
+        }
+        .nm-num-badge {
+            display: inline-block;
+            min-width: 16px;
+            padding: 2px 5px;
+            border-radius: 3px;
+            background: #eef4ff;
+            color: {{ $primary }};
+            font-weight: 700;
+            font-size: 8.5px;
+            text-align: center;
+        }
+        .nm-matricule {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 8.5px;
+            color: {{ $secondary }};
             letter-spacing: 0.3px;
         }
+        .nm-student-name {
+            font-weight: 600;
+            color: #111827;
+            font-size: 9.5px;
+        }
+        .nm-student-genre {
+            font-size: 7.5px;
+            color: {{ $secondary }};
+            margin-top: 1px;
+        }
+        .nm-note-cell {
+            text-align: center;
+            font-weight: 700;
+            font-size: 11px;
+            color: {{ $primary }};
+        }
+        .nm-note-empty {
+            display: inline-block;
+            min-width: 28px;
+            min-height: 14px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 3px;
+        }
+        .nm-abs-cell {
+            text-align: center;
+        }
+        .nm-abs-tick {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border: 1px solid #94a3b8;
+            border-radius: 2px;
+        }
+        .nm-abs-marked {
+            display: inline-block;
+            padding: 2px 6px;
+            background: #fef2f2;
+            color: #b91c1c;
+            border-radius: 3px;
+            font-size: 8.5px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+        }
+        .nm-obs-cell {
+            min-width: 90px;
+            border-bottom: 1px dotted #cbd5e1;
+        }
 
-        .summary-grid {
+        /* ── Empty state ──────────────────────────────────────────── */
+        .nm-empty {
+            text-align: center;
+            padding: 40px 20px;
+            color: {{ $secondary }};
+            background: #f9fafb;
+            border: 1px dashed #d1d5db;
+            border-radius: 6px;
+            margin-top: 20px;
+        }
+        .nm-empty-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: {{ $primary }};
+            margin-bottom: 4px;
+        }
+
+        /* ── Footer summary 2-col ─────────────────────────────────── */
+        .nm-summary {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 8px 0;
+            margin-top: 14px;
+            page-break-inside: avoid;
+        }
+        .nm-summary-card {
+            background: #f9fafb;
+            border: 1px solid #e5e7eb;
+            border-radius: 6px;
+            padding: 8px 10px;
+            font-size: 8.5px;
+            vertical-align: top;
+        }
+        .nm-summary-title {
+            color: {{ $primary }};
+            font-weight: 700;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            margin-bottom: 6px;
+            padding-bottom: 4px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .nm-summary-grid {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+        }
+        .nm-summary-grid td {
+            padding: 4px 2px;
+            font-size: 8.5px;
+            color: {{ $secondary }};
+        }
+        .nm-summary-num {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: {{ $primary }};
+            line-height: 1.1;
+        }
+        .nm-info-row {
             display: table;
             width: 100%;
+            margin: 3px 0;
+            font-size: 8.5px;
         }
-
-        .summary-row {
-            display: table-row;
-        }
-
-        .summary-cell {
+        .nm-info-label {
             display: table-cell;
-            width: 33.33%;
-            text-align: center;
-            padding: 0.5px;
-        }
-
-        .summary-value {
-            font-size: 9px;
-            font-weight: bold;
-            color: #007bff;
-        }
-
-        .summary-label {
-            font-size: 8px;
-            color: #6b7280;
-            margin-top: 0.5px;
-        }
-
-        .info-card {
-            background: #f8f9fa;
-            border: 1px solid #e5e7eb;
-            border-radius: 4px;
-            padding: 1.5px;
-            margin-left: 2px;
-        }
-
-        .info-field {
-            margin-bottom: 2px;
-        }
-
-        .info-label {
-            font-size: 8px;
-            color: #6b7280;
-            margin-bottom: 1px;
-        }
-
-        .info-value {
-            font-size: 9px;
+            color: {{ $secondary }};
+            width: 50%;
             font-weight: 600;
-            color: #374151;
+        }
+        .nm-info-value {
+            display: table-cell;
+            color: #111827;
+            text-align: right;
+            font-weight: 600;
         }
 
-        /* Informations de génération */
-        .generation-info {
-            text-align: center;
+        /* ── Instructions footer ─────────────────────────────────── */
+        .nm-instructions {
+            margin-top: 12px;
+            padding: 6px 10px;
+            background: #eef4ff;
+            border-left: 3px solid {{ $primary }};
             font-size: 8px;
-            color: #6b7280;
-            margin-top: 4px;
-            padding-top: 3px;
-            border-top: 1px solid #e5e7eb;
+            color: {{ $secondary }};
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
         }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 15px 10px;
-            color: #6b7280;
-        }
-
-        .empty-icon {
-            font-size: 18px;
-            margin-bottom: 10px;
-            color: #d1d5db;
-        }
-
-        /* Print optimizations */
-        @media print {
-            body {
-                background: white;
-                padding: 1.5px;
-            }
-
-            .container {
-                padding: 1.5px;
-            }
-
-            .header-section {
-                margin-bottom: 6px;
-            }
-
-            .kpi-section {
-                margin-bottom: 6px;
-            }
-
-            .footer-section {
-                margin-top: 6px;
-            }
-        }
-
-        @page {
-            margin: 0.5cm;
-            size: A4 portrait;
+        .nm-instructions strong {
+            color: {{ $primary }};
         }
     </style>
-</head>
-<body>
-    <div class="container">
-        <!-- Header Section -->
-        <div class="header-section">
-            @if($etablissement['logo'] && file_exists(storage_path('app/public/' . $etablissement['logo'])))
-                <img src="data:image/{{ pathinfo($etablissement['logo'], PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $etablissement['logo']))) }}" class="header-logo" alt="Logo">
-            @endif
 
-            <div class="school-name">{{ $etablissement['nom'] ?? 'KLASSCI' }}</div>
+    {{-- ── KPIs bandeau premium ─────────────────────────────────── --}}
+    <table class="nm-kpis">
+        <tr>
+            <td class="nm-kpi" style="width: 25%;">
+                <span class="nm-kpi-label">Étudiants</span>
+                <span class="nm-kpi-value">{{ $totalEtudiants }}</span>
+                <span class="nm-kpi-sub">à évaluer</span>
+            </td>
+            <td class="nm-kpi" style="width: 25%; background-color: {{ $accent }};">
+                <span class="nm-kpi-label">Classe</span>
+                <span class="nm-kpi-value small">{{ $classeName ?: '—' }}</span>
+                <span class="nm-kpi-sub">{{ $evaluation->classe->filiere->name ?? 'Filière' }}</span>
+            </td>
+            <td class="nm-kpi" style="width: 25%; background-color: {{ $blank ? $secondary : $primary }};">
+                <span class="nm-kpi-label">{{ $blank ? 'Évaluation' : 'Type' }}</span>
+                <span class="nm-kpi-value small">{{ $blank ? 'à compléter' : (ucfirst($evaluation->type ?? '') ?: '—') }}</span>
+                <span class="nm-kpi-sub">{{ $blank ? '' : (isset($evaluation->coefficient) ? 'Coef '.$evaluation->coefficient : '') }}</span>
+            </td>
+            <td class="nm-kpi" style="width: 25%; background-color: {{ $accent }};">
+                <span class="nm-kpi-label">Barème</span>
+                <span class="nm-kpi-value">/ {{ $blank ? '____' : ($evaluation->bareme ?? '20') }}</span>
+                <span class="nm-kpi-sub">{{ $anneeCourante->name ?? 'Année courante' }}</span>
+            </td>
+        </tr>
+    </table>
 
-            @if($etablissement['adresse'] || $etablissement['telephone'] || $etablissement['email'])
-            <div class="school-info">
-                @if($etablissement['adresse']){{ $etablissement['adresse'] }}@endif
-                @if($etablissement['telephone'] && $etablissement['adresse']) | @endif
-                @if($etablissement['telephone'])Tel: {{ $etablissement['telephone'] }}@endif
-                @if($etablissement['email'] && ($etablissement['adresse'] || $etablissement['telephone'])) | @endif
-                @if($etablissement['email'])Email: {{ $etablissement['email'] }}@endif
-            </div>
-            @endif
-
-            <div class="document-title-section">
-                <div class="document-title">FEUILLE DE SAISIE DES NOTES</div>
-                <div class="evaluation-info-grid">
-                    <div class="evaluation-info-row">
-                        <div class="evaluation-info-cell">
-                            <strong>Évaluation:</strong><br>
-                            <span class="info-badge">{{ ($isBlank ?? false) ? '________' : ($evaluation->titre ?: 'N/A') }}</span>
-                        </div>
-                        <div class="evaluation-info-cell">
-                            <strong>Matière:</strong><br>
-                            <span class="info-badge">{{ ($isBlank ?? false) ? '________' : ($evaluation->matiere->name ?? 'N/A') }}</span>
-                        </div>
-                        <div class="evaluation-info-cell">
-                            <strong>Date:</strong><br>
-                            <span class="date-line">__________</span>
-                        </div>
-                        <div class="evaluation-info-cell">
-                            <strong>Enseignant:</strong><br>
-                            <span class="teacher-line">____________</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- KPI Section -->
-        <div class="kpi-section">
-            <div class="kpi-row">
-                <div class="kpi-card">
-                    <div class="kpi-title">Total</div>
-                    <div class="kpi-value">{{ $etudiants->count() }}</div>
-                    <div class="kpi-desc">Étudiants</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-title">Classe</div>
-                    <div class="kpi-value" style="font-size: 8.5px; line-height: 1.1;">{{ $evaluation->classe->name ?? 'N/A' }}</div>
-                    <div class="kpi-desc">{{ $evaluation->classe->filiere->name ?? 'Filière' }}</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-title">Type</div>
-                    <div class="kpi-value" style="font-size: 8.5px; line-height: 1.1;">{{ ($isBlank ?? false) ? '____' : ucfirst($evaluation->type ?? '') }}</div>
-                    <div class="kpi-desc">{{ ($isBlank ?? false) ? '____' : ($evaluation->coefficient ?? '') }}{{ ($isBlank ?? false) ? '' : 'pts' }}</div>
-                </div>
-                <div class="kpi-card">
-                    <div class="kpi-title">Barème</div>
-                    <div class="kpi-value" style="font-size: 8.5px; line-height: 1.1;">/ {{ ($isBlank ?? false) ? '____' : ($evaluation->bareme ?? '') }}</div>
-                    <div class="kpi-desc">Points</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Liste des étudiants -->
-        @if($etudiants->count() > 0)
-            <table class="notes-table">
-                <thead>
-                    <tr>
-                        <th width="25">N°</th>
-                        <th width="60">Matricule</th>
-                        <th>Nom et Prénoms</th>
-                        <th width="60">Note</th>
-                        <th width="40">Abs.</th>
-                        <th width="100">Observations</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($etudiants as $index => $etudiant)
+    {{-- ── Tableau étudiants/notes ─────────────────────────────── --}}
+    @if($etudiants->count() > 0)
+        <table class="nm-notes-table">
+            <thead>
+                <tr>
+                    <th style="width: 6%;">N°</th>
+                    <th style="width: 14%;">Matricule</th>
+                    <th style="text-align: left;">Nom et Prénoms</th>
+                    <th style="width: 12%;">Note{{ $blank ? '' : ' / '.($evaluation->bareme ?? '20') }}</th>
+                    <th style="width: 8%;">Abs.</th>
+                    <th style="width: 26%;">Observations</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach($etudiants as $index => $etudiant)
                     @php
-                        $note = $notesByEtudiant[$etudiant->id] ?? null;
+                        $note = !$blank ? ($notesByEtudiant[$etudiant->id] ?? null) : null;
+                        $hasNote = $note && !$note->is_absent;
+                        $isAbsent = $note && $note->is_absent;
                     @endphp
                     <tr>
-                        <td>
-                            <span class="student-number">{{ $index + 1 }}</span>
+                        <td style="text-align: center;">
+                            <span class="nm-num-badge">{{ $index + 1 }}</span>
+                        </td>
+                        <td style="text-align: center;">
+                            <span class="nm-matricule">{{ $etudiant->matricule ?? '—' }}</span>
                         </td>
                         <td>
-                            <span class="student-matricule">{{ $etudiant->matricule ?? 'N/A' }}</span>
+                            <div class="nm-student-name">{{ mb_strtoupper($etudiant->nom ?? '', 'UTF-8') }} {{ $etudiant->prenoms }}</div>
+                            <div class="nm-student-genre">{{ ($etudiant->genre ?? '') === 'M' ? 'Masculin' : (($etudiant->genre ?? '') === 'F' ? 'Féminin' : '') }}</div>
                         </td>
-                        <td class="student-info-cell">
-                            <div class="student-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</div>
-                            <div class="student-gender">{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</div>
+                        <td class="nm-note-cell">
+                            @if($hasNote)
+                                {{ rtrim(rtrim(number_format((float) $note->note, 2, ',', ''), '0'), ',') }}
+                            @else
+                                <span class="nm-note-empty"></span>
+                            @endif
                         </td>
-                        <td class="note-type-column">
-                            <div class="note-box">
-                                @if(!empty($note) && !$note->is_absent)
-                                    {{ rtrim(rtrim(number_format($note->note, 2), '0'), '.') }}
-                                @endif
-                            </div>
+                        <td class="nm-abs-cell">
+                            @if($isAbsent)
+                                <span class="nm-abs-marked">ABS</span>
+                            @else
+                                <span class="nm-abs-tick"></span>
+                            @endif
                         </td>
-                        <td>
-                            <div class="note-box" style="width: 10px; height: 10px; font-size: 7px; line-height: 7px;">
-                                @if(!empty($note) && $note->is_absent)
-                                    ABS
-                                @endif
-                            </div>
+                        <td class="nm-obs-cell">
+                            {{ $note->commentaire ?? '' }}
                         </td>
-                        <td class="observations-column"></td>
                     </tr>
-                    @endforeach
-                </tbody>
-            </table>
+                @endforeach
+            </tbody>
+        </table>
 
-            <!-- Footer Section -->
-            <div class="footer-section">
-                <div class="footer-left">
-                    <div class="summary-card">
-                        <div class="summary-title">Résumé des notes</div>
-                        <div class="summary-grid">
-                            <div class="summary-row">
-                                <div class="summary-cell">
-                                    <div class="summary-value">{{ $etudiants->count() }}</div>
-                                    <div class="summary-label">Total</div>
-                                </div>
-                                <div class="summary-cell">
-                                    <div class="summary-value">___</div>
-                                    <div class="summary-label">Saisis</div>
-                                </div>
-                                <div class="summary-cell">
-                                    <div class="summary-value">___</div>
-                                    <div class="summary-label">Absents</div>
-                                </div>
-                            </div>
-                        </div>
+        {{-- ── Résumé en 2 cards ─────────────────────────────── --}}
+        <table class="nm-summary">
+            <tr>
+                <td class="nm-summary-card" style="width: 50%;">
+                    <div class="nm-summary-title">Résumé des notes</div>
+                    <table class="nm-summary-grid">
+                        <tr>
+                            <td>
+                                <span class="nm-summary-num">{{ $totalEtudiants }}</span>
+                                Total
+                            </td>
+                            <td>
+                                <span class="nm-summary-num">{{ $blank ? '___' : $notesSaisies }}</span>
+                                Saisies
+                            </td>
+                            <td>
+                                <span class="nm-summary-num">{{ $blank ? '___' : $absents }}</span>
+                                Absents
+                            </td>
+                            <td>
+                                <span class="nm-summary-num">{{ $blank ? '___' : $vierges }}</span>
+                                Vierges
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+                <td class="nm-summary-card" style="width: 50%;">
+                    <div class="nm-summary-title">Informations document</div>
+                    <div class="nm-info-row">
+                        <span class="nm-info-label">Date évaluation</span>
+                        <span class="nm-info-value">
+                            {{ $blank ? '________' : (isset($evaluation->date_evaluation) && $evaluation->date_evaluation
+                                ? (is_object($evaluation->date_evaluation) ? $evaluation->date_evaluation->format('d/m/Y') : $evaluation->date_evaluation)
+                                : 'Non renseignée') }}
+                        </span>
                     </div>
-                </div>
-                <div class="footer-right">
-                    <div class="info-card">
-                        <div class="summary-title">Informations évaluation</div>
-                        <div class="info-field">
-                            <div class="info-label">Date évaluation :</div>
-                            <div class="info-value">{{ ($isBlank ?? false) ? '________' : ($evaluation->date_evaluation ? $evaluation->date_evaluation->format('d/m/Y') : 'Non renseignée') }}</div>
-                        </div>
-                        <div class="info-field">
-                            <div class="info-label">Coefficient :</div>
-                            <div class="info-value">{{ ($isBlank ?? false) ? '____' : ($evaluation->coefficient ?? '') }}</div>
-                        </div>
-                        <div class="info-field">
-                            <div class="info-label">Durée :</div>
-                            <div class="info-value">{{ ($isBlank ?? false) ? '____' : ($evaluation->duree_minutes ? $evaluation->duree_minutes . ' min' : 'Non renseignée') }}</div>
-                        </div>
-                        <div class="info-field">
-                            <div class="info-label">Année :</div>
-                            <div class="info-value">{{ $anneeCourante->name ?? 'Courante' }}</div>
-                        </div>
+                    <div class="nm-info-row">
+                        <span class="nm-info-label">Coefficient</span>
+                        <span class="nm-info-value">{{ $blank ? '____' : ($evaluation->coefficient ?? '—') }}</span>
                     </div>
-                </div>
-            </div>
-        @else
-            <div class="empty-state">
-                <div class="empty-icon">📝</div>
-                <p>Aucun étudiant inscrit dans cette classe pour l'année {{ $anneeCourante->name ?? 'courante' }}.</p>
-            </div>
-        @endif
+                    <div class="nm-info-row">
+                        <span class="nm-info-label">Durée</span>
+                        <span class="nm-info-value">{{ $blank ? '____' : (isset($evaluation->duree_minutes) && $evaluation->duree_minutes ? $evaluation->duree_minutes.' min' : 'Non renseignée') }}</span>
+                    </div>
+                    <div class="nm-info-row">
+                        <span class="nm-info-label">Année universitaire</span>
+                        <span class="nm-info-value">{{ $anneeCourante->name ?? 'Courante' }}</span>
+                    </div>
+                </td>
+            </tr>
+        </table>
 
-        <!-- Generation Info -->
-        @php $pdfCfg = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings(); @endphp
-        <div class="generation-info">
-            <strong>Document généré automatiquement le {{ now()->format('d/m/Y à H:i') }}</strong>@if(($pdfCfg['show_generator_name'] ?? true) && auth()->check()) par {{ auth()->user()->name }}@endif<br>
-            {{ $etablissement['nom'] ?? 'KLASSCI' }} - Système de Gestion des Évaluations<br>
-            <strong>Instructions :</strong> Renseigner la note dans la case prévue · Cocher ABS si l'étudiant était absent
+        <div class="nm-instructions">
+            <strong>Instructions :</strong>
+            Renseigner la note dans la case prévue (ou cocher la case <em>Abs.</em> si l'étudiant était absent).
+            Les notes décimales sont autorisées (utiliser la virgule). Toute observation ou justification d'absence
+            doit être indiquée dans la dernière colonne.
         </div>
-    </div>
-</body>
-</html>
+    @else
+        <div class="nm-empty">
+            <div class="nm-empty-title">Aucun étudiant inscrit</div>
+            <div>
+                La classe <strong>{{ $classeName ?: 'sélectionnée' }}</strong> ne contient aucun étudiant inscrit
+                actif pour l'année universitaire {{ $anneeCourante->name ?? 'courante' }}.
+            </div>
+        </div>
+    @endif
+
+</x-pdf-document>

@@ -739,6 +739,16 @@
     letter-spacing: 1px;
     border-bottom: none;
     background: #eef2f7;
+    /* Force la couleur ici car le modal parent (.nm-modal) hérite color:#fff
+       du header bleu, ce qui rendait les libellés "Étudiants/Semestre/Synthèse"
+       blanc fantôme sur fond clair. Override explicite par classe ci-dessous. */
+    color: #475569;
+}
+.nm-grid-table .nm-period-row .notes-student-col {
+    color: #1e293b;
+}
+.nm-grid-table .nm-eval-row th {
+    color: #475569;
 }
 .nm-period-s1 {
     background: linear-gradient(135deg, rgba(4,83,203,0.1), rgba(94,145,222,0.06)) !important;

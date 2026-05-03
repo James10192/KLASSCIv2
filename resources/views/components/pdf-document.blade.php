@@ -302,19 +302,18 @@
         </tr>
     </table>
 
-    {{-- Méta-bar : Référence | Généré le | (Généré par) — tout dans le bleu pour cohérence --}}
+    {{-- Méta-bar : Généré le | (Généré par) — pas de "Référence : <acronym>"
+         car l'acronyme tenant n'est pas une référence document utile et donne
+         l'impression qu'il s'agit d'un identifiant pertinent. Le nom complet
+         de l'établissement est déjà visible dans le banner. --}}
     <table class="pdf-meta-bar">
         <tr>
             <td class="spacer"></td>
-            <td style="text-align: left; width: 30%;">
-                <span class="pdf-meta-label">Référence :</span>
-                <span class="pdf-meta-value">{{ $school['acronym'] ?? config('app.name') }}</span>
-            </td>
-            <td style="text-align: center; width: 26%;">
+            <td style="text-align: left; width: 50%;">
                 <span class="pdf-meta-label">Généré le :</span>
                 <span class="pdf-meta-value">{{ now()->locale('fr')->translatedFormat('d F Y à H:i') }}</span>
             </td>
-            <td style="text-align: right; width: 26%;">
+            <td style="text-align: right; width: 32%;">
                 @if(!empty($pdf['show_generator_name']) && auth()->check())
                     <span class="pdf-meta-label">Par :</span>
                     <span class="pdf-meta-value">{{ auth()->user()->name }}</span>
