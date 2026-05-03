@@ -18,6 +18,22 @@ use OwenIt\Auditing\Models\Audit;
 class SettingObserver
 {
     /**
+     * Fragments de clé qui marquent un setting comme sensible. Quand un de ces
+     * tokens apparaît dans `$setting->key`, la valeur n'est PAS écrite dans
+     * l'audit (on la remplace par `[REDACTED]`) — l'audit log n'est pas un
+     * canal sécurisé pour stocker des secrets.
+     */
+    private const SENSITIVE_KEY_FRAGMENTS = [
+        'password',
+        'secret',
+        'token',
+        'api_key',
+        'apikey',
+        'private_key',
+        'smtp_pass',
+    ];
+
+    /**
      * Logge la création d'un setting.
      */
     public function created(Setting $setting): void
@@ -30,9 +46,9 @@ class SettingObserver
      */
     public function updated(Setting $setting): void
     {
-        // On ne logge que si la value a réellement changé.
-        // Les autres colonnes (label, description, sort_order...) sont ignorées
-        // pour éviter d'inonder l'audit avec du bruit non-fonctionnel.
+        // On ne logge que si la value a réellement changé. Les autres colonnes
+        // (label, description, sort_order...) sont ignorées pour éviter
+        // d'inonder l'audit avec du bruit non-fonctionnel.
         if (! $setting->wasChanged('value')) {
             return;
         }
@@ -61,6 +77,17 @@ class SettingObserver
      */
     private function writeAudit(Setting $setting, string $event, $oldValue, $newValue): void
     {
+        $isSensitive = $this->isSensitive($setting->key ?? '');
+        $payload = function ($value) use ($setting, $isSensitive) {
+            return [
+                'key' => $setting->key,
+                'group' => $setting->group,
+                'value' => $isSensitive ? '[REDACTED]' : $value,
+            ];
+        };
+
+        $request = request();
+
         try {
             Audit::create([
                 'user_type' => \App\Models\User::class,
@@ -68,19 +95,11 @@ class SettingObserver
                 'event' => $event,
                 'auditable_type' => Setting::class,
                 'auditable_id' => $setting->getKey(),
-                'old_values' => json_encode([
-                    'key' => $setting->key,
-                    'group' => $setting->group,
-                    'value' => $oldValue,
-                ]),
-                'new_values' => json_encode([
-                    'key' => $setting->key,
-                    'group' => $setting->group,
-                    'value' => $newValue,
-                ]),
-                'url' => request() ? request()->fullUrl() : null,
-                'ip_address' => request() ? request()->ip() : null,
-                'user_agent' => request() ? request()->userAgent() : null,
+                'old_values' => json_encode($payload($oldValue)),
+                'new_values' => json_encode($payload($newValue)),
+                'url' => $request?->fullUrl(),
+                'ip_address' => $request?->ip(),
+                'user_agent' => $request?->userAgent(),
                 'tags' => 'settings',
             ]);
         } catch (\Throwable $e) {
@@ -91,5 +110,19 @@ class SettingObserver
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * Détecte si la clé contient un fragment sensible (case-insensitive).
+     */
+    private function isSensitive(string $key): bool
+    {
+        $lower = strtolower($key);
+        foreach (self::SENSITIVE_KEY_FRAGMENTS as $fragment) {
+            if (str_contains($lower, $fragment)) {
+                return true;
+            }
+        }
+        return false;
     }
 }
