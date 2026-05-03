@@ -1245,6 +1245,14 @@ class ESBTPPaiementController extends Controller
                 return redirect()->back()->with('error', 'Ce paiement a été rejeté et ne peut pas être validé.');
             }
 
+            // S1.1 — Garde anti-auto-validation (séparation des tâches anti-fraude)
+            if ($block = $this->assertNotSelfValidation($paiement)) {
+                if ($request->ajax()) {
+                    return response()->json(['success' => false, 'message' => $block['message']], 403);
+                }
+                return redirect()->back()->with('error', $block['message']);
+            }
+
             DB::beginTransaction();
 
             // Changer le statut du paiement
@@ -1353,6 +1361,11 @@ class ESBTPPaiementController extends Controller
                     'success' => false,
                     'message' => 'Ce paiement a été rejeté et ne peut pas être validé.'
                 ], 400);
+            }
+
+            // S1.1 — Garde anti-auto-validation (séparation des tâches anti-fraude)
+            if ($block = $this->assertNotSelfValidation($paiement)) {
+                return response()->json(['success' => false, 'message' => $block['message']], 403);
             }
 
             DB::beginTransaction();
@@ -1607,6 +1620,7 @@ class ESBTPPaiementController extends Controller
         try {
             DB::beginTransaction();
 
+            $selfBlocked = 0;
             foreach ($request->paiements as $id) {
                 $paiement = ESBTPPaiement::find($id);
 
@@ -1623,6 +1637,12 @@ class ESBTPPaiementController extends Controller
 
                 if ($paiement->status === 'rejeté') {
                     $errorCount++;
+                    continue;
+                }
+
+                // S1.1 — Garde anti-auto-validation (séparation des tâches anti-fraude)
+                if ($this->assertNotSelfValidation($paiement) !== null) {
+                    $selfBlocked++;
                     continue;
                 }
 
@@ -1665,6 +1685,9 @@ class ESBTPPaiementController extends Controller
             if ($alreadyProcessed > 0) {
                 $message .= " $alreadyProcessed paiement(s) déjà validé(s).";
             }
+            if ($selfBlocked > 0) {
+                $message .= " $selfBlocked paiement(s) bloqué(s) — vous ne pouvez pas auto-valider vos propres saisies (séparation des tâches).";
+            }
             if ($errorCount > 0) {
                 $message .= " $errorCount paiement(s) n'ont pas pu être validés.";
             }
@@ -1676,6 +1699,7 @@ class ESBTPPaiementController extends Controller
                     'message' => $message,
                     'successCount' => $successCount,
                     'alreadyProcessed' => $alreadyProcessed,
+                    'selfBlocked' => $selfBlocked,
                     'errorCount' => $errorCount
                 ]);
             }
@@ -1700,6 +1724,50 @@ class ESBTPPaiementController extends Controller
 
             return redirect()->back()->with('error', 'Erreur lors de la validation groupée: ' . $e->getMessage());
         }
+    }
+
+    /**
+     * S1.1 — Garde anti-auto-validation (séparation des tâches anti-fraude).
+     *
+     * Refuse qu'un user valide un paiement qu'il a lui-même créé (créator == auth).
+     * Bypass possible via permission `paiements.validate.self_override` (réservée
+     * aux toutes petites écoles avec un seul user comptable, fortement déconseillé).
+     *
+     * superAdmin/serviceTechnique passent automatiquement (Gate::before * couverture).
+     *
+     * @return array{message: string}|null Null si OK, ou ['message' => '...'] si bloqué.
+     */
+    private function assertNotSelfValidation(\App\Models\ESBTPPaiement $paiement): ?array
+    {
+        $userId = auth()->id();
+        $createdBy = $paiement->created_by ?? null;
+
+        // Pas de created_by (legacy data pré-audit log) → pas de garde
+        if (!$createdBy) {
+            return null;
+        }
+
+        // Permission self_override (Gate::before couvre superAdmin/serviceTechnique)
+        if (auth()->user()?->can('paiements.validate.self_override')) {
+            return null;
+        }
+
+        // Auteur != validateur → OK (séparation respectée)
+        if ((int) $createdBy !== (int) $userId) {
+            return null;
+        }
+
+        // Bloqué : self-validation tentée sans override permission
+        Log::warning('[S1.1] Tentative auto-validation paiement bloquée', [
+            'paiement_id' => $paiement->id,
+            'user_id' => $userId,
+            'created_by' => $createdBy,
+            'montant' => $paiement->montant,
+        ]);
+
+        return [
+            'message' => 'Vous ne pouvez pas valider votre propre paiement (séparation des tâches anti-fraude). Demandez à un autre comptable.',
+        ];
     }
 
     /**

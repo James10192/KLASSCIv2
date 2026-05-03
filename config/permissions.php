@@ -625,6 +625,12 @@ return [
             'group' => 'Paiements',
             'icon' => 'fa-check',
         ],
+        'paiements.validate.self_override' => [
+            'label' => 'Auto-valider ses propres paiements (exception, déconseillé)',
+            'description' => 'Permet à un user de valider un paiement qu\'il a lui-même créé. Bypasse le principe de séparation des tâches (anti-fraude). À réserver aux très petites écoles avec un seul user comptable.',
+            'group' => 'Paiements',
+            'icon' => 'fa-shield-virus',
+        ],
         'paiements.manage' => [
             'label' => 'Gérer tous les paiements (action globale)',
             'group' => 'Paiements',
