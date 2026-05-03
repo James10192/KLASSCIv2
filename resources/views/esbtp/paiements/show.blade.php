@@ -582,6 +582,25 @@
                     </div>
                 </div>
                 @endif
+
+                @if($paiement->status == 'rejeté' && $paiement->date_validation)
+                <div class="ps-tl-item">
+                    <div class="ps-tl-dot rejected" style="background:rgba(220,38,38,.12);color:#dc2626;"><i class="fas fa-times"></i></div>
+                    <div class="ps-tl-text">
+                        <strong style="color:#dc2626;">Paiement rejeté</strong>
+                        @if($paiement->validatedBy) par <strong>{{ $paiement->validatedBy->name }}</strong>@endif
+                        <br><span class="ps-tl-date"><i class="fas fa-clock me-1"></i>{{ $paiement->date_validation->format('d/m/Y à H:i') }}</span>
+                        @if($paiement->commentaire)
+                        <div class="ps-tl-reason" style="margin-top:8px;padding:10px 12px;background:#fef2f2;border-left:3px solid #dc2626;border-radius:6px;font-size:.85rem;color:#7f1d1d;line-height:1.5;">
+                            <strong style="color:#dc2626;font-size:.78rem;text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:4px;">
+                                <i class="fas fa-quote-left me-1" style="font-size:.65rem;"></i> Motif du rejet
+                            </strong>
+                            {{ $paiement->commentaire }}
+                        </div>
+                        @endif
+                    </div>
+                </div>
+                @endif
             </div>
         </div>
     </div>
@@ -614,12 +633,21 @@
                         <div><strong>Montant :</strong> {{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</div>
                         <div><strong>Réf :</strong> {{ $paiement->numero_recu }}</div>
                     </div>
-                    <label for="motif_rejet" class="form-label fw-semibold" style="font-size:.88rem;">
-                        Motif du rejet <span class="text-danger">*</span>
-                    </label>
-                    <textarea name="motif_rejet" id="motif_rejet" rows="4" class="form-control" required
-                              placeholder="Expliquez la raison du rejet..."
-                              style="border:2px solid #dee2e6; border-radius:10px; resize:none;"></textarea>
+                    <div x-data="{ count: 0 }">
+                        <label for="motif_rejet" class="form-label fw-semibold" style="font-size:.88rem;">
+                            Motif du rejet <span class="text-danger">*</span>
+                            <span style="font-weight:400; color:#64748b; font-size:.78rem;">(min. 10 caractères)</span>
+                        </label>
+                        <textarea name="motif_rejet" id="motif_rejet" rows="4" class="form-control" required
+                                  minlength="10" maxlength="500"
+                                  placeholder="Ex : Montant incorrect, doit être 50&nbsp;000 FCFA au lieu de 5&nbsp;000."
+                                  x-on:input="count = $event.target.value.length"
+                                  style="border:2px solid #dee2e6; border-radius:10px; resize:none;"></textarea>
+                        <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:.74rem; color:#94a3b8;">
+                            <span>Le caissier qui a saisi ce paiement verra ce motif pour corriger sa saisie.</span>
+                            <span x-text="count + ' / 500'" :style="count < 10 ? 'color:#dc2626;font-weight:600' : (count > 480 ? 'color:#d97706;font-weight:600' : '')">0 / 500</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="modal-footer" style="background:#f8f9fa; border-radius:0 0 15px 15px; padding:1rem 1.5rem; border:none;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius:8px; font-weight:600;">

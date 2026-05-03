@@ -2053,10 +2053,20 @@ $(document).ready(function() {
                         Vous êtes sur le point de rejeter <strong><span id="bulk-rejet-count">0</span> paiement(s)</strong>.
                     </div>
 
-                    <div class="mb-3">
-                        <label for="bulk_motif_rejet" class="form-label">Motif du rejet <span class="text-danger">*</span></label>
+                    <div class="mb-3" x-data="{ count: 0 }">
+                        <label for="bulk_motif_rejet" class="form-label">
+                            Motif du rejet <span class="text-danger">*</span>
+                            <span style="font-weight:400; color:#64748b; font-size:.78rem;">(min. 10 caractères)</span>
+                        </label>
                         <textarea class="form-control" id="bulk_motif_rejet" name="motif_rejet" rows="4"
-                                  placeholder="Expliquez pourquoi ces paiements sont rejetés..." required></textarea>
+                                  minlength="10" maxlength="500"
+                                  placeholder="Ex : Justificatifs manquants, à représenter avec preuve de virement bancaire."
+                                  x-on:input="count = $event.target.value.length"
+                                  required></textarea>
+                        <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:.74rem; color:#94a3b8;">
+                            <span>Le caissier qui a saisi ces paiements verra ce motif.</span>
+                            <span x-text="count + ' / 500'" :style="count < 10 ? 'color:#dc2626;font-weight:600' : (count > 480 ? 'color:#d97706;font-weight:600' : '')">0 / 500</span>
+                        </div>
                     </div>
 
                     <div class="form-check">
