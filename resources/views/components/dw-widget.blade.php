@@ -8,7 +8,11 @@
     'alert' => false,
 ])
 
-<div {{ $attributes->merge(['class' => 'dw-widget dw-widget--' . $color . ($alert ? ' dw-widget--alert' : '')]) }}>
+@php
+    $widgetClass = 'dw-widget dw-widget--' . $color . ($alert ? ' dw-widget--alert' : '');
+@endphp
+
+<div {{ $attributes->merge(['class' => $widgetClass]) }}>
     <div class="dw-widget-icon">
         <i class="fas {{ $icon }}"></i>
     </div>
@@ -19,6 +23,7 @@
                 {{ $value }}@if ($unit)<span class="dw-widget-unit">{{ $unit }}</span>@endif
             </div>
         @endif
+        {{-- Slot personnalisé prioritaire ; le hint sert de fallback texte court. --}}
         {{ $slot }}
         @if ($hint && $slot->isEmpty())
             <div class="dw-widget-hint">{{ $hint }}</div>

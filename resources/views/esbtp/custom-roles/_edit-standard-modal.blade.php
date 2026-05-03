@@ -87,13 +87,12 @@
                                        value="{{ old('icon', $role->icon ?? ($configMeta['icon'] ?? 'fa-user-tag')) }}"
                                        maxlength="64" data-cr-icon-input>
                             </div>
-                            <div class="cr-icon-suggestions">
-                                @foreach(['fa-user-tag', 'fa-user-shield', 'fa-user-tie', 'fa-user-cog', 'fa-cash-register', 'fa-calculator', 'fa-chalkboard-teacher', 'fa-user-graduate', 'fa-clipboard-list', 'fa-pen-fancy'] as $iconClass)
-                                    <button type="button" class="cr-icon-chip" data-cr-icon-suggest="{{ $iconClass }}" title="{{ $iconClass }}">
-                                        <i class="fas {{ $iconClass }}"></i>
-                                    </button>
-                                @endforeach
-                            </div>
+                            {{-- Set d'icônes orienté métier (caissier/comptable/enseignant…) --}}
+                            @include('esbtp.custom-roles._icon-suggestions', ['icons' => [
+                                'fa-user-tag', 'fa-user-shield', 'fa-user-tie', 'fa-user-cog',
+                                'fa-cash-register', 'fa-calculator', 'fa-chalkboard-teacher',
+                                'fa-user-graduate', 'fa-clipboard-list', 'fa-pen-fancy',
+                            ]])
                         </div>
 
                         <div class="cr-form-group">

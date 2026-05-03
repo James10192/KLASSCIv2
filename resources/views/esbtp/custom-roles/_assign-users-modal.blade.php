@@ -62,7 +62,7 @@
                                        class="cr-user-check" data-cr-user-check
                                        @checked($isAssigned)>
                                 <span class="cr-user-box"><i class="fas fa-check"></i></span>
-                                <span class="cr-user-avatar">{{ strtoupper(mb_substr($user->name, 0, 2)) }}</span>
+                                <span class="cr-user-avatar">{{ mb_strtoupper(mb_substr($user->name, 0, 2, 'UTF-8'), 'UTF-8') }}</span>
                                 <span class="cr-user-info">
                                     <span class="cr-user-name">{{ $user->name }}</span>
                                     <span class="cr-user-email">{{ $user->email }}</span>
