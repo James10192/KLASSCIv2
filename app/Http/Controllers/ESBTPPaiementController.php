@@ -451,6 +451,8 @@ class ESBTPPaiementController extends Controller
      */
     public function show($id)
     {
+        // `creator:id,name` est l'alias canonique de `createdBy` (même FK created_by),
+        // sélectionné en colonnes minimales pour réduire le payload.
         $paiement = ESBTPPaiement::with([
             'etudiant.user',
             'fraisCategory',
@@ -458,7 +460,6 @@ class ESBTPPaiementController extends Controller
             'inscription.filiere',
             'inscription.niveauEtude',
             'validatedBy',
-            'createdBy',
             'creator:id,name',
             'updatedBy'
         ])->findOrFail($id);

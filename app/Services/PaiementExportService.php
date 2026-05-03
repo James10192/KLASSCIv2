@@ -37,6 +37,18 @@ class PaiementExportService
     public const EXCEL_MAX_ROWS = 50000;
 
     /**
+     * Eager-load nominal pour le rendu PDF/Excel.
+     */
+    private const EAGER_LOAD = [
+        'etudiant:id,matricule,nom,prenoms',
+        'inscription:id,etudiant_id,classe_id,filiere_id,niveau_id',
+        'inscription.classe:id,name,filiere_id,niveau_etude_id',
+        'inscription.filiere:id,name',
+        'inscription.niveau:id,name',
+        'createdBy:id,name',
+    ];
+
+    /**
      * Construit la query Builder filtrée selon les critères et les permissions.
      *
      * @param array $filters Filtres normalisés (etudiant_id, classe_ids[], filiere_id, niveau_id, date_debut, date_fin, modes[])
@@ -44,16 +56,33 @@ class PaiementExportService
      */
     public function buildQuery(array $filters, ?User $user = null): Builder
     {
-        $query = ESBTPPaiement::query()
-            ->with([
-                'etudiant:id,matricule,nom,prenoms',
-                'inscription:id,etudiant_id,classe_id,filiere_id,niveau_id',
-                'inscription.classe:id,name,filiere_id,niveau_etude_id',
-                'inscription.filiere:id,name',
-                'inscription.niveau:id,name',
-                'createdBy:id,name',
-            ]);
+        $query = ESBTPPaiement::query()->with(self::EAGER_LOAD);
 
+        $this->applyFilters($query, $filters, $user);
+
+        // Tri par défaut : du plus récent au plus ancien
+        $query->orderByDesc('date_paiement')->orderByDesc('id');
+
+        return $query;
+    }
+
+    /**
+     * Compte le nombre de lignes correspondant aux filtres.
+     */
+    public function count(array $filters, ?User $user = null): int
+    {
+        $countQuery = ESBTPPaiement::query();
+        $this->applyFilters($countQuery, $filters, $user);
+
+        return $countQuery->count();
+    }
+
+    /**
+     * Applique l'ensemble des filtres + ownership sur le builder fourni.
+     * Centralisé pour garantir buildQuery() et count() restent synchrones.
+     */
+    private function applyFilters(Builder $query, array $filters, ?User $user): void
+    {
         // Ownership : si l'user n'a PAS paiements.view mais a paiements.view_own
         // → restreindre aux paiements qu'il a créés (created_by)
         if ($user instanceof User
@@ -68,120 +97,36 @@ class PaiementExportService
         }
 
         // Classes (multi-select via inscription)
-        if (! empty($filters['classe_ids']) && is_array($filters['classe_ids'])) {
-            $classeIds = array_values(array_filter($filters['classe_ids']));
-            if (! empty($classeIds)) {
-                $query->whereHas('inscription', function ($q) use ($classeIds) {
-                    $q->whereIn('classe_id', $classeIds);
-                });
-            }
+        $classeIds = array_values(array_filter($filters['classe_ids'] ?? []));
+        if (! empty($classeIds)) {
+            $query->whereHas('inscription', fn ($q) => $q->whereIn('classe_id', $classeIds));
         }
 
         // Filière (via inscription)
         if (! empty($filters['filiere_id'])) {
-            $query->whereHas('inscription', function ($q) use ($filters) {
-                $q->where('filiere_id', $filters['filiere_id']);
-            });
+            $filiereId = $filters['filiere_id'];
+            $query->whereHas('inscription', fn ($q) => $q->where('filiere_id', $filiereId));
         }
 
         // Niveau d'études (via inscription)
         if (! empty($filters['niveau_id'])) {
-            $query->whereHas('inscription', function ($q) use ($filters) {
-                $q->where('niveau_id', $filters['niveau_id']);
-            });
+            $niveauId = $filters['niveau_id'];
+            $query->whereHas('inscription', fn ($q) => $q->where('niveau_id', $niveauId));
         }
 
-        // Période — date début
+        // Période — date début / fin
         if (! empty($filters['date_debut'])) {
             $query->whereDate('date_paiement', '>=', $filters['date_debut']);
         }
-
-        // Période — date fin
         if (! empty($filters['date_fin'])) {
             $query->whereDate('date_paiement', '<=', $filters['date_fin']);
         }
 
         // Modes de paiement (multi)
-        if (! empty($filters['modes']) && is_array($filters['modes'])) {
-            $modes = array_values(array_filter($filters['modes']));
-            if (! empty($modes)) {
-                $query->whereIn('mode_paiement', $modes);
-            }
+        $modes = array_values(array_filter($filters['modes'] ?? []));
+        if (! empty($modes)) {
+            $query->whereIn('mode_paiement', $modes);
         }
-
-        // Tri par défaut : du plus récent au plus ancien
-        $query->orderByDesc('date_paiement')->orderByDesc('id');
-
-        return $query;
-    }
-
-    /**
-     * Compte le nombre de lignes correspondant aux filtres.
-     */
-    public function count(array $filters, ?User $user = null): int
-    {
-        // Pour le count on n'a pas besoin du eager loading
-        $countQuery = ESBTPPaiement::query();
-
-        if ($user instanceof User
-            && ! $user->can('paiements.view')
-            && $user->can('paiements.view_own')) {
-            $countQuery->where('created_by', $user->id);
-        }
-
-        if (! empty($filters['etudiant_id'])) {
-            $countQuery->where('etudiant_id', $filters['etudiant_id']);
-        }
-
-        if (! empty($filters['classe_ids']) && is_array($filters['classe_ids'])) {
-            $classeIds = array_values(array_filter($filters['classe_ids']));
-            if (! empty($classeIds)) {
-                $countQuery->whereHas('inscription', function ($q) use ($classeIds) {
-                    $q->whereIn('classe_id', $classeIds);
-                });
-            }
-        }
-
-        if (! empty($filters['filiere_id'])) {
-            $countQuery->whereHas('inscription', function ($q) use ($filters) {
-                $q->where('filiere_id', $filters['filiere_id']);
-            });
-        }
-
-        if (! empty($filters['niveau_id'])) {
-            $countQuery->whereHas('inscription', function ($q) use ($filters) {
-                $q->where('niveau_id', $filters['niveau_id']);
-            });
-        }
-
-        if (! empty($filters['date_debut'])) {
-            $countQuery->whereDate('date_paiement', '>=', $filters['date_debut']);
-        }
-
-        if (! empty($filters['date_fin'])) {
-            $countQuery->whereDate('date_paiement', '<=', $filters['date_fin']);
-        }
-
-        if (! empty($filters['modes']) && is_array($filters['modes'])) {
-            $modes = array_values(array_filter($filters['modes']));
-            if (! empty($modes)) {
-                $countQuery->whereIn('mode_paiement', $modes);
-            }
-        }
-
-        return $countQuery->count();
-    }
-
-    /**
-     * Total des montants validés correspondant aux filtres.
-     * Utilisé dans le footer du document.
-     */
-    public function totalMontant(array $filters, ?User $user = null): float
-    {
-        $query = $this->buildQuery($filters, $user);
-        $query->getQuery()->orders = null;
-        // On clone pour ne pas affecter l'instance
-        return (float) (clone $query)->sum('montant');
     }
 
     /**

@@ -841,14 +841,21 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             });
 
             // Lot 15 — Export détaillé des paiements (états financiers avec filtres + garde-fou PDF)
+            // Throttling : preview AJAX (count) 60/min, preview/generate PDF/Excel 10/min (rule exports-pdf-excel)
             Route::middleware(['permission:paiements.export'])
                 ->prefix('paiements/export-detaille')
                 ->name('paiements.export-detaille.')
                 ->group(function () {
                     Route::get('/', [App\Http\Controllers\ESBTPPaiementExportController::class, 'index'])->name('index');
-                    Route::post('/preview', [App\Http\Controllers\ESBTPPaiementExportController::class, 'preview'])->name('preview');
-                    Route::post('/preview-pdf', [App\Http\Controllers\ESBTPPaiementExportController::class, 'previewPdf'])->name('preview-pdf');
-                    Route::post('/generate', [App\Http\Controllers\ESBTPPaiementExportController::class, 'generate'])->name('generate');
+                    Route::post('/preview', [App\Http\Controllers\ESBTPPaiementExportController::class, 'preview'])
+                        ->middleware('throttle:60,1')
+                        ->name('preview');
+                    Route::post('/preview-pdf', [App\Http\Controllers\ESBTPPaiementExportController::class, 'previewPdf'])
+                        ->middleware('throttle:30,1')
+                        ->name('preview-pdf');
+                    Route::post('/generate', [App\Http\Controllers\ESBTPPaiementExportController::class, 'generate'])
+                        ->middleware('throttle:10,1')
+                        ->name('generate');
                 });
 
             // ── VIEW (lecture détail/suivi)
@@ -864,16 +871,26 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/paiements/etudiant/{etudiant}', [App\Http\Controllers\ESBTPPaiementController::class, 'paiementsEtudiant'])->name('paiements.etudiant');
             });
 
-            // ── EXPORT (Excel/CSV/PDF)
-            Route::middleware('permission:paiements.export')->group(function () {
-                Route::get('/paiements/export/excel', [App\Http\Controllers\ESBTPPaiementController::class, 'exportExcel'])->name('paiements.export.excel');
-                Route::get('/paiements/export/csv', [App\Http\Controllers\ESBTPPaiementController::class, 'exportCsv'])->name('paiements.export.csv');
-                Route::get('/paiements/export/pdf', [App\Http\Controllers\ESBTPPaiementController::class, 'exportPdf'])->name('paiements.export.pdf');
+            // ── EXPORT (Excel/CSV/PDF) — throttle:10,1 sur downloads, 60,1 sur preview (rule exports-pdf-excel)
+            Route::middleware(['permission:paiements.export'])->group(function () {
+                Route::get('/paiements/export/excel', [App\Http\Controllers\ESBTPPaiementController::class, 'exportExcel'])
+                    ->middleware('throttle:10,1')
+                    ->name('paiements.export.excel');
+                Route::get('/paiements/export/csv', [App\Http\Controllers\ESBTPPaiementController::class, 'exportCsv'])
+                    ->middleware('throttle:10,1')
+                    ->name('paiements.export.csv');
+                Route::get('/paiements/export/pdf', [App\Http\Controllers\ESBTPPaiementController::class, 'exportPdf'])
+                    ->middleware('throttle:10,1')
+                    ->name('paiements.export.pdf');
                 Route::get('/paiements/export/pdf-preview', [App\Http\Controllers\ESBTPPaiementController::class, 'exportPdfPreview'])
                     ->middleware('throttle:60,1')
                     ->name('paiements.export.pdf-preview');
-                Route::get('/paiements/suivi-categories/export/{statut}/excel', [App\Http\Controllers\ESBTPPaiementController::class, 'exportStudentsExcel'])->name('paiements.suivi-categories.export.excel');
-                Route::get('/paiements/suivi-categories/export/{statut}/pdf', [App\Http\Controllers\ESBTPPaiementController::class, 'exportStudentsPdf'])->name('paiements.suivi-categories.export.pdf');
+                Route::get('/paiements/suivi-categories/export/{statut}/excel', [App\Http\Controllers\ESBTPPaiementController::class, 'exportStudentsExcel'])
+                    ->middleware('throttle:10,1')
+                    ->name('paiements.suivi-categories.export.excel');
+                Route::get('/paiements/suivi-categories/export/{statut}/pdf', [App\Http\Controllers\ESBTPPaiementController::class, 'exportStudentsPdf'])
+                    ->middleware('throttle:10,1')
+                    ->name('paiements.suivi-categories.export.pdf');
             });
 
             // ── CREATE (encaissement)

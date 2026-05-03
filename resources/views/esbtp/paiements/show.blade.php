@@ -556,7 +556,7 @@
                     <div class="ps-tl-dot created"><i class="fas fa-plus"></i></div>
                     <div class="ps-tl-text">
                         Paiement créé
-                        @if($paiement->createdBy) par <strong>{{ $paiement->createdBy->name }}</strong>@endif
+                        @if($paiement->creator) par <strong>{{ $paiement->creator->name }}</strong>@endif
                         <br><span class="ps-tl-date"><i class="fas fa-clock me-1"></i>{{ $paiement->created_at->format('d/m/Y à H:i') }}</span>
                     </div>
                 </div>
