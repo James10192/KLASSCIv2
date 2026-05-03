@@ -339,18 +339,20 @@ class ESBTPEvaluationController extends Controller
             'colonnes_table' => \Schema::getColumnListing('esbtp_evaluations'),
         ]);
 
+        // Garde-fou critique : bareme strictement > 0 (sinon division par zéro
+        // dans ESBTPNote::getNoteVingtAttribute), coefficient strictement borné.
         $validator = \Validator::make($request->all(), [
             'titre' => 'required|string|max:255',
-            'description' => 'nullable|string',
-            'type' => 'required|string|in:devoir,examen,projet,tp,controle,quiz',
+            'description' => 'nullable|string|max:1000',
+            'type' => 'required|string|in:devoir,examen,projet,tp,controle,quiz,oral,cc',
             'date_evaluation' => 'required|date',
             'heure_debut' => 'required|date_format:H:i',
             'heure_fin' => 'required|date_format:H:i|after:heure_debut',
             'classe_id' => 'required|exists:esbtp_classes,id',
             'matiere_id' => 'required|exists:esbtp_matieres,id',
-'bareme' => 'required|numeric|min:0',
+            'bareme' => 'required|numeric|min:0.1|max:100',
             'coefficient' => 'required|numeric|min:0.1|max:10',
-            'duree_minutes' => 'nullable|integer|min:0',
+            'duree_minutes' => 'nullable|integer|min:1|max:480',
             'is_published' => 'nullable|boolean',
             'periode' => 'required|in:1,2,3,4,5,6,7,8,9,10,semestre1,semestre2,semestre3,semestre4,semestre5,semestre6,semestre7,semestre8,semestre9,semestre10,Semestre 1,Semestre 2,Semestre 3,Semestre 4,Semestre 5,Semestre 6,Semestre 7,Semestre 8,Semestre 9,Semestre 10',
         ], [
@@ -363,11 +365,14 @@ class ESBTPEvaluationController extends Controller
             'classe_id.exists' => 'La classe sélectionnée n\'existe pas',
             'matiere_id.required' => 'La matière est obligatoire',
             'matiere_id.exists' => 'La matière sélectionnée n\'existe pas',
-'bareme.required' => 'Le barème est obligatoire',
+            'bareme.required' => 'Le barème est obligatoire',
+            'bareme.min' => 'Le barème doit être strictement supérieur à zéro.',
+            'bareme.max' => 'Le barème ne peut pas dépasser 100.',
             'coefficient.required' => 'Le coefficient de l\'évaluation est obligatoire',
             'coefficient.numeric' => 'Le coefficient doit être un nombre',
-            'coefficient.min' => 'Le coefficient doit être supérieur à 0',
+            'coefficient.min' => 'Le coefficient doit être strictement supérieur à zéro.',
             'coefficient.max' => 'Le coefficient ne peut pas dépasser 10',
+            'duree_minutes.max' => 'La durée ne peut pas dépasser 480 minutes (8h).',
         ]);
 
         if ($validator->fails()) {
@@ -550,9 +555,11 @@ $evaluation = new ESBTPEvaluation;
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Récupérer tous les étudiants avec inscriptions actives sur l'année courante
+        // ET workflow_step = etudiant_cree (exclut les pré-inscriptions / prospects).
         $etudiantsAnneeCourante = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
             $query->where('classe_id', $evaluation->classe_id)
-                ->where('status', 'active');
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree');
             if ($anneeCourante) {
                 $query->where('annee_universitaire_id', $anneeCourante->id);
             }
@@ -614,17 +621,20 @@ $evaluation = new ESBTPEvaluation;
         ]);
 
         try {
+            // Garde-fou critique : bareme strictement > 0 (sinon division par zéro
+            // dans ESBTPNote::getNoteVingtAttribute), coefficient strictement borné.
             $request->validate([
                 'titre' => 'required|string|max:255',
-                'description' => 'nullable|string',
-                'type' => 'required|in:devoir,examen,projet,tp,controle,quiz',
+                'description' => 'nullable|string|max:1000',
+                'type' => 'required|in:devoir,examen,projet,tp,controle,quiz,oral,cc',
                 'date_evaluation' => 'required|date',
                 'heure_debut' => 'required|date_format:H:i',
                 'heure_fin' => 'required|date_format:H:i|after:heure_debut',
                 'classe_id' => 'required|exists:esbtp_classes,id',
                 'matiere_id' => 'required|exists:esbtp_matieres,id',
-                'bareme' => 'required|numeric|min:0',
-                'duree_minutes' => 'nullable|integer|min:0',
+                'bareme' => 'required|numeric|min:0.1|max:100',
+                'coefficient' => 'nullable|numeric|min:0.1|max:10',
+                'duree_minutes' => 'nullable|integer|min:1|max:480',
                 'periode' => 'required|in:1,2,3,4,5,6,7,8,9,10,semestre1,semestre2,semestre3,semestre4,semestre5,semestre6,semestre7,semestre8,semestre9,semestre10,Semestre 1,Semestre 2,Semestre 3,Semestre 4,Semestre 5,Semestre 6,Semestre 7,Semestre 8,Semestre 9,Semestre 10',
             ], [
                 'titre.required' => 'Le titre est obligatoire',
@@ -633,6 +643,11 @@ $evaluation = new ESBTPEvaluation;
                 'classe_id.required' => 'La classe est obligatoire',
                 'matiere_id.required' => 'La matière est obligatoire',
                 'bareme.required' => 'Le barème est obligatoire',
+                'bareme.min' => 'Le barème doit être strictement supérieur à zéro.',
+                'bareme.max' => 'Le barème ne peut pas dépasser 100.',
+                'coefficient.min' => 'Le coefficient doit être strictement supérieur à zéro.',
+                'coefficient.max' => 'Le coefficient ne peut pas dépasser 10.',
+                'duree_minutes.max' => 'La durée ne peut pas dépasser 480 minutes (8h).',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
             \Log::error('❌ ESBTPEvaluation UPDATE - Erreur de validation', [
@@ -1111,7 +1126,8 @@ $evaluation->titre = $request->titre;
 
         $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
             $query->where('classe_id', $evaluation->classe_id)
-                ->where('status', 'active');
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree');
             if ($anneeCourante) {
                 $query->where('annee_universitaire_id', $anneeCourante->id);
             }

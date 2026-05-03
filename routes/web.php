@@ -1067,9 +1067,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes API utilisées par les formulaires
 
-            // Routes pour les notes
-            Route::post('notes/save-ajax', [ESBTPNoteController::class, 'saveNoteAjax'])->name('notes.save-ajax');
-            Route::post('notes/save-ajax-bulk', [ESBTPNoteController::class, 'saveNotesAjaxBulk'])->name('notes.save-ajax-bulk');
+            // Routes pour les notes — throttle anti-abus (saisie unitaire 30/min, bulk 10/min).
+            Route::post('notes/save-ajax', [ESBTPNoteController::class, 'saveNoteAjax'])
+                ->middleware('throttle:30,1')
+                ->name('notes.save-ajax');
+            Route::post('notes/save-ajax-bulk', [ESBTPNoteController::class, 'saveNotesAjaxBulk'])
+                ->middleware('throttle:10,1')
+                ->name('notes.save-ajax-bulk');
 
             // PR #7 — Excel import/export bidirectionnel + preview impact bulletin
             Route::get('notes/export-excel', [ESBTPNoteController::class, 'exportExcel'])
@@ -1095,7 +1099,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     'destroy' => 'esbtp.notes.destroy',
                 ])
                 ->middleware(['permission:notes.view|notes.create|notes.edit|notes.delete']);
-            Route::get('evaluations/{evaluation}/saisie-rapide', [ESBTPNoteController::class, 'saisieRapide'])->name('notes.saisie-rapide');
+            Route::get('evaluations/{evaluation}/saisie-rapide', [ESBTPNoteController::class, 'saisieRapide'])
+                ->middleware('throttle:60,1')
+                ->name('notes.saisie-rapide');
             Route::get('evaluations/{evaluation}/saisie-rapide/pdf', [ESBTPNoteController::class, 'saisieRapidePDF'])->name('notes.saisie-rapide.pdf');
             Route::get('evaluations/{evaluation}/saisie-rapide/pdf/preview', [ESBTPNoteController::class, 'saisieRapidePDFPreview'])
                 ->name('notes.saisie-rapide.pdf-preview')
@@ -1104,7 +1110,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('classes/{classe}/notes/saisie-rapide/pdf/preview', [ESBTPNoteController::class, 'saisieRapideBlankPDFPreview'])
                 ->name('notes.saisie-rapide-blank.pdf-preview')
                 ->middleware('throttle:60,1');
-            Route::post('notes/store-batch', [ESBTPNoteController::class, 'enregistrerSaisieRapide'])->name('notes.store-batch');
+            Route::post('notes/store-batch', [ESBTPNoteController::class, 'enregistrerSaisieRapide'])
+                ->middleware('throttle:10,1')
+                ->name('notes.store-batch');
         });
 
         // Espace étudiant - routes accessibles pour les étudiants
@@ -2115,10 +2123,12 @@ Route::middleware(['auth', 'permission:admin.access'])->prefix('esbtp')->name('e
             ->middleware('permission:notes.delete');
         // saisie-rapide already defined in enseignant|coordinateur group (line 1347)
         
-        // API routes for new notes system
+        // API routes for new notes system — throttle généreux 60/min (lecture seule).
         Route::get('/api/evaluations/by-class-matiere/{classId}/{matiereId}', [\App\Http\Controllers\ESBTPEvaluationController::class, 'byClassMatiere'])
+            ->middleware('throttle:60,1')
             ->name('evaluations.by-class-matiere');
         Route::get('/api/classes/{classe}/students', [\App\Http\Controllers\ESBTPClasseController::class, 'students'])
+            ->middleware('throttle:60,1')
             ->name('classes.students');
     });
 
