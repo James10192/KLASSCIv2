@@ -83,27 +83,25 @@
                 <input type="text" x-model="filters.search" @input.debounce.300ms="reload()"
                        placeholder="Rechercher : ID entité, IP, contenu valeur…">
             </div>
-            <div class="au-filter-field">
-                <x-au-select
-                    x-model="filters.event"
-                    @change="reload()"
-                    placeholder="Tous les événements"
-                    :options="[
-                        'created' => 'Création',
-                        'updated' => 'Modification',
-                        'deleted' => 'Suppression',
-                        'restored' => 'Restauration',
-                        'retrieved' => 'Consultation',
-                    ]" />
-            </div>
-            <div class="au-filter-field">
-                <x-au-select
-                    x-model="filters.model_type"
-                    @change="reload()"
-                    placeholder="Tous les modèles"
-                    :searchable="count($auditableModels) > 8"
-                    :options="$auditableModels" />
-            </div>
+            <x-au-select
+                x-model="filters.event"
+                @change="reload()"
+                icon="fa-bolt"
+                placeholder="Tous les événements"
+                :options="[
+                    'created' => 'Création',
+                    'updated' => 'Modification',
+                    'deleted' => 'Suppression',
+                    'restored' => 'Restauration',
+                    'retrieved' => 'Consultation',
+                ]" />
+            <x-au-select
+                x-model="filters.model_type"
+                @change="reload()"
+                icon="fa-cubes"
+                placeholder="Tous les modèles"
+                :searchable="count($auditableModels) > 8"
+                :options="$auditableModels" />
             <div class="au-filter-field">
                 <input type="date" x-model="filters.date_from" @change="reload()" title="Date début">
             </div>

@@ -9,6 +9,8 @@
 ])
 
 @php
+    $wrapperClass = trim('au-select ' . ($attributes->get('class') ?? ''));
+    $nativeAttributes = $attributes->except(['class']);
     $normalized = collect($options)->map(function ($v, $k) {
         if (is_array($v) && array_key_exists('value', $v) && array_key_exists('label', $v)) {
             return ['value' => $v['value'], 'label' => $v['label']];
@@ -21,7 +23,7 @@
     $componentId = 'au-select-' . substr(md5(uniqid('', true)), 0, 8);
 @endphp
 
-<div class="au-select" x-data="auSelect()" x-id="['{{ $componentId }}']" @click.outside="open = false" @keydown.escape="open = false">
+<div class="{{ $wrapperClass }}" x-data="auSelect()" x-id="['{{ $componentId }}']" @click.outside="open = false" @keydown.escape="open = false">
     <button type="button"
             class="au-select-trigger"
             :class="{ 'au-select-trigger--open': open, 'au-select-trigger--has-value': currentValue !== '' }"
@@ -81,7 +83,7 @@
         </ul>
     </div>
 
-    <select {{ $attributes->class(['au-select-native']) }}
+    <select {{ $nativeAttributes->class(['au-select-native']) }}
             x-ref="native"
             @if($name) name="{{ $name }}" @endif
             aria-hidden="true"
@@ -99,6 +101,7 @@
 @push('styles')
 <style>
 .au-select { position: relative; display: inline-flex; flex: 1 1 0%; min-width: 0; }
+.au-filter-grow { flex-grow: 4; }
 .au-select-native { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; clip: rect(0 0 0 0); }
 .au-select-trigger {
     width: 100%; display: inline-flex; align-items: center; gap: .5rem;
@@ -116,12 +119,9 @@
 .au-select-value--placeholder { color: #94a3b8; font-weight: 400; }
 .au-select-caret { color: #94a3b8; font-size: .72rem; flex-shrink: 0; transition: transform .2s ease; }
 .au-select-caret--open { transform: rotate(180deg); color: #0453cb; }
-.au-filter-field > .au-select { width: 100%; }
-.au-filter-field > .au-select .au-select-trigger { background: transparent; border: none; padding: 0; box-shadow: none; }
-.au-filter-field > .au-select .au-select-trigger:focus-visible { box-shadow: none; }
-.au-filter-field > .au-select .au-select-icon { display: none; }
 .au-select-menu {
-    position: absolute; top: calc(100% + 6px); left: 0; right: 0;
+    position: absolute; top: calc(100% + 6px);
+    left: 8px; right: 8px;
     z-index: 1050;
     background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
     box-shadow: 0 12px 40px rgba(15,23,42,.12), 0 4px 12px rgba(15,23,42,.06);

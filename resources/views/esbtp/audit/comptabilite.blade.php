@@ -57,25 +57,22 @@
     {{-- ═══════════════════════════════ FILTRES ═══════════════════════════════ --}}
     <form method="GET" action="{{ route('esbtp.audit.comptabilite') }}" class="au-filters">
         <div class="au-filters-row">
-            <div class="au-filter-field au-filter-field--grow">
-                <label><i class="fas fa-filter"></i></label>
-                <x-au-select
-                    name="model_type"
-                    :value="request('model_type')"
-                    placeholder="Tous les types financiers"
-                    :options="$financialModelsLabels" />
-            </div>
-            <div class="au-filter-field">
-                <x-au-select
-                    name="event"
-                    :value="request('event')"
-                    placeholder="Tous événements"
-                    :options="[
-                        'created' => 'Création',
-                        'updated' => 'Modification',
-                        'deleted' => 'Suppression',
-                    ]" />
-            </div>
+            <x-au-select
+                class="au-filter-grow"
+                name="model_type"
+                :value="request('model_type')"
+                icon="fa-filter"
+                placeholder="Tous les types financiers"
+                :options="$financialModelsLabels" />
+            <x-au-select
+                name="event"
+                :value="request('event')"
+                placeholder="Tous événements"
+                :options="[
+                    'created' => 'Création',
+                    'updated' => 'Modification',
+                    'deleted' => 'Suppression',
+                ]" />
             <div class="au-filter-field">
                 <input type="number" name="montant_min" value="{{ request('montant_min') }}" placeholder="Montant min (FCFA)" min="0">
             </div>

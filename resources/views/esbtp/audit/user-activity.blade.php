@@ -81,14 +81,13 @@
     {{-- ═══════════════════════════════ FILTRES ═══════════════════════════════ --}}
     <div class="au-filters">
         <form action="{{ route('esbtp.audit.user-activity') }}" method="GET" class="au-filters-row">
-            <div class="au-filter-field au-filter-field--grow">
-                <x-au-user-picker
-                    name="user_id"
-                    :value="$selectedUser?->id"
-                    :users="$users"
-                    placeholder="— Tous les utilisateurs —"
-                    :submit-on-change="true" />
-            </div>
+            <x-au-user-picker
+                class="au-filter-grow"
+                name="user_id"
+                :value="$selectedUser?->id"
+                :users="$users"
+                placeholder="— Tous les utilisateurs —"
+                :submit-on-change="true" />
             <div class="au-filter-field">
                 <label><i class="fas fa-calendar"></i></label>
                 <input type="date" name="date_from" value="{{ $dateFrom->format('Y-m-d') }}">

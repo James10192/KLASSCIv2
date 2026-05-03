@@ -72,7 +72,7 @@
     $totalUsers = $usersCollection->count();
 @endphp
 
-<div class="au-up"
+<div class="au-up {{ $attributes->get('class') ?? '' }}"
      x-data="auUserPicker()"
      data-groups='@json($groupedJson)'
      data-submit-on-change="{{ $submitOnChange ? '1' : '0' }}"
@@ -199,9 +199,6 @@
 .au-up-trigger-role { font-size: .68rem; color: #64748b; text-transform: uppercase; letter-spacing: .4px; }
 .au-up-caret { color: #94a3b8; font-size: .72rem; flex-shrink: 0; transition: transform .2s; margin-left: auto; }
 .au-up-caret--open { transform: rotate(180deg); color: #0453cb; }
-.au-filter-field > .au-up { width: 100%; }
-.au-filter-field > .au-up .au-up-trigger { background: transparent; border: none; padding: 0; }
-.au-filter-field > .au-up .au-up-trigger:hover { box-shadow: none; }
 .au-up-avatar {
     width: 32px; height: 32px; border-radius: 50%;
     display: inline-flex; align-items: center; justify-content: center;
@@ -212,8 +209,11 @@
 .au-up-avatar--all { background: linear-gradient(135deg, #0a3d8f, #3b7ddb) !important; }
 .au-up-avatar--all i { color: #fff; font-size: .9rem; }
 .au-up-menu {
-    position: absolute; top: calc(100% + 6px); left: 0;
-    width: max(420px, 100%); z-index: 1050;
+    position: absolute; top: calc(100% + 6px);
+    left: 8px; right: 8px;
+    min-width: 380px;
+    max-width: calc(100% - 16px);
+    z-index: 1050;
     background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
     box-shadow: 0 16px 50px rgba(15,23,42,.14), 0 4px 12px rgba(15,23,42,.06);
     overflow: hidden; max-height: 500px;
