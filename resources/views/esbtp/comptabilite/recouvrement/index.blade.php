@@ -188,6 +188,8 @@
     </div>
 </div>
 
+<x-fab-encaisser />
+
 <script>
 function recouvrement(config) {
     const instance = {

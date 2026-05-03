@@ -795,6 +795,8 @@
 
     </div>
 </div>
+
+<x-fab-encaisser />
 @endsection
 
 @push('scripts')

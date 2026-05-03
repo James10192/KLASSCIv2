@@ -950,6 +950,8 @@
 
 {{-- Toast container (feedback post-action) --}}
 <div id="sc-toast-container" class="sc-toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<x-fab-encaisser />
 @endsection
 
 @push('scripts')

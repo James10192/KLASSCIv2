@@ -745,6 +745,8 @@
 
 {{-- Toast container (feedback post-action) --}}
 <div id="pi-toast-container" class="pi-toast-container" aria-live="polite" aria-atomic="true"></div>
+
+<x-fab-encaisser />
 @endsection
 
 @push('scripts')
