@@ -59,20 +59,22 @@
         <div class="au-filters-row">
             <div class="au-filter-field au-filter-field--grow">
                 <label><i class="fas fa-filter"></i></label>
-                <select name="model_type">
-                    <option value="">Tous les types financiers</option>
-                    @foreach($financialModelsLabels as $class => $label)
-                        <option value="{{ $class }}" @selected(request('model_type') === $class)>{{ $label }}</option>
-                    @endforeach
-                </select>
+                <x-au-select
+                    name="model_type"
+                    :value="request('model_type')"
+                    placeholder="Tous les types financiers"
+                    :options="$financialModelsLabels" />
             </div>
             <div class="au-filter-field">
-                <select name="event">
-                    <option value="">Tous événements</option>
-                    <option value="created" @selected(request('event') === 'created')>Création</option>
-                    <option value="updated" @selected(request('event') === 'updated')>Modification</option>
-                    <option value="deleted" @selected(request('event') === 'deleted')>Suppression</option>
-                </select>
+                <x-au-select
+                    name="event"
+                    :value="request('event')"
+                    placeholder="Tous événements"
+                    :options="[
+                        'created' => 'Création',
+                        'updated' => 'Modification',
+                        'deleted' => 'Suppression',
+                    ]" />
             </div>
             <div class="au-filter-field">
                 <input type="number" name="montant_min" value="{{ request('montant_min') }}" placeholder="Montant min (FCFA)" min="0">

@@ -84,22 +84,25 @@
                        placeholder="Rechercher : ID entité, IP, contenu valeur…">
             </div>
             <div class="au-filter-field">
-                <select x-model="filters.event" @change="reload()">
-                    <option value="">Tous les événements</option>
-                    <option value="created">Création</option>
-                    <option value="updated">Modification</option>
-                    <option value="deleted">Suppression</option>
-                    <option value="restored">Restauration</option>
-                    <option value="retrieved">Consultation</option>
-                </select>
+                <x-au-select
+                    x-model="filters.event"
+                    @change="reload()"
+                    placeholder="Tous les événements"
+                    :options="[
+                        'created' => 'Création',
+                        'updated' => 'Modification',
+                        'deleted' => 'Suppression',
+                        'restored' => 'Restauration',
+                        'retrieved' => 'Consultation',
+                    ]" />
             </div>
             <div class="au-filter-field">
-                <select x-model="filters.model_type" @change="reload()">
-                    <option value="">Tous les modèles</option>
-                    @foreach($auditableModels as $class => $name)
-                        <option value="{{ $class }}">{{ $name }}</option>
-                    @endforeach
-                </select>
+                <x-au-select
+                    x-model="filters.model_type"
+                    @change="reload()"
+                    placeholder="Tous les modèles"
+                    :searchable="count($auditableModels) > 8"
+                    :options="$auditableModels" />
             </div>
             <div class="au-filter-field">
                 <input type="date" x-model="filters.date_from" @change="reload()" title="Date début">
@@ -265,12 +268,10 @@
                 <div class="au-form-grid">
                     <div>
                         <label>Utilisateur</label>
-                        <select x-model="filters.user_id">
-                            <option value="">Tous les utilisateurs</option>
-                            @foreach($users as $user)
-                                <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->email }})</option>
-                            @endforeach
-                        </select>
+                        <x-au-user-picker
+                            x-model="filters.user_id"
+                            :users="$users"
+                            placeholder="Tous les utilisateurs" />
                     </div>
                     <div>
                         <label>Adresse IP</label>

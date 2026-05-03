@@ -41,7 +41,7 @@ class ESBTPAuditController extends Controller
         $auditableModels = $this->getAuditableModels();
 
         // Utilisateurs pour les filtres
-        $users = User::select('id', 'name', 'email')->get();
+        $users = User::select('id', 'name', 'email', 'username')->with('roles:id,name')->get();
 
         return view('esbtp.audit.index', compact('stats', 'auditableModels', 'users'));
     }
@@ -307,7 +307,7 @@ class ESBTPAuditController extends Controller
             'suspicious_activities' => $this->getSuspiciousActivities($dateFrom, $dateTo),
         ];
 
-        $users = User::select('id', 'name', 'email')->orderBy('name')->get();
+        $users = User::select('id', 'name', 'email', 'username')->with('roles:id,name')->orderBy('name')->get();
         $selectedUser = $userId ? User::find($userId) : null;
 
         return view('esbtp.audit.user-activity', compact(
