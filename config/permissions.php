@@ -759,6 +759,12 @@ return [
             'group' => 'Comptabilité',
             'icon' => 'fa-key',
         ],
+        'comptabilite.notifications.high_amount' => [
+            'label' => 'Recevoir une notification quand un gros paiement est validé',
+            'description' => 'Notification email + cloche déclenchée à chaque validation de paiement supérieur au seuil tenant configuré (default 5 000 000 FCFA). Vise typiquement le directeur ou le directeur financier qui surveille les grosses entrées sans être lui-même comptable. Permission assignable via UI custom roles.',
+            'group' => 'Comptabilité',
+            'icon' => 'fa-bell',
+        ],
         'comptabilite.sensitive.access' => [
             'label' => 'Accès aux données comptables sensibles',
             'group' => 'Comptabilité',

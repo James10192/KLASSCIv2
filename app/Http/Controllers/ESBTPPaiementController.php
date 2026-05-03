@@ -1287,6 +1287,9 @@ class ESBTPPaiementController extends Controller
 
             app(\App\Services\GroupCacheInvalidator::class)->invalidate('paiement_validated');
 
+            // S1.6 — Notif gros montant aux users avec permission `comptabilite.notifications.high_amount`
+            $this->notifyHighAmountIfAny($paiement, auth()->user());
+
             // Envoyer notification à l'étudiant
             try {
                 $notificationService = app(\App\Services\NotificationService::class);
@@ -1399,6 +1402,9 @@ class ESBTPPaiementController extends Controller
             }
 
             DB::commit();
+
+            // S1.6 — Notif gros montant
+            $this->notifyHighAmountIfAny($paiement, auth()->user());
 
             // Envoyer notifications
             try {
@@ -1745,6 +1751,48 @@ class ESBTPPaiementController extends Controller
             }
 
             return redirect()->back()->with('error', 'Erreur lors de la validation groupée: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * S1.6 — Notifie les users habilités quand un paiement > seuil tenant est validé.
+     *
+     * Cible : users avec permission `comptabilite.notifications.high_amount`.
+     * Seuil : `comptabilite.notify_high_amount_threshold` (default 5 000 000 FCFA).
+     * Canaux : mail + database (cloche).
+     *
+     * Échec silencieux par design — la validation du paiement ne doit pas dépendre
+     * du succès de la notification. Erreurs loggées en warning.
+     */
+    private function notifyHighAmountIfAny(\App\Models\ESBTPPaiement $paiement, ?\App\Models\User $validateur): void
+    {
+        try {
+            $threshold = (int) \App\Helpers\SettingsHelper::get('comptabilite.notify_high_amount_threshold', 5000000);
+            if ($threshold <= 0 || (float) $paiement->montant < $threshold) {
+                return;
+            }
+
+            $recipients = \App\Models\User::permission('comptabilite.notifications.high_amount')->get();
+            if ($recipients->isEmpty()) {
+                return;
+            }
+
+            \Illuminate\Support\Facades\Notification::send(
+                $recipients,
+                new \App\Notifications\PaiementHighAmountValidatedNotification($paiement, $validateur, $threshold),
+            );
+
+            Log::info('[S1.6] Notification gros paiement envoyée', [
+                'paiement_id' => $paiement->id,
+                'montant' => $paiement->montant,
+                'threshold' => $threshold,
+                'recipients_count' => $recipients->count(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('[S1.6] Échec notification gros paiement (non bloquant)', [
+                'paiement_id' => $paiement->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
