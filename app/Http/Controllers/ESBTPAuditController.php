@@ -51,29 +51,8 @@ class ESBTPAuditController extends Controller
      */
     public function getAuditData(Request $request)
     {
-        $query = Audit::with(['user'])
-            ->orderBy('created_at', 'desc');
-
-        // Filtres
-        if ($request->filled('model_type')) {
-            $query->where('auditable_type', $request->model_type);
-        }
-
-        if ($request->filled('event')) {
-            $query->where('event', $request->event);
-        }
-
-        if ($request->filled('user_id')) {
-            $query->where('user_id', $request->user_id);
-        }
-
-        if ($request->filled('date_from')) {
-            $query->whereDate('created_at', '>=', $request->date_from);
-        }
-
-        if ($request->filled('date_to')) {
-            $query->whereDate('created_at', '<=', $request->date_to);
-        }
+        $query = Audit::with(['user'])->orderBy('created_at', 'desc');
+        $this->applyCommonFilters($query, $request);
 
         if ($request->filled('search')) {
             $search = $request->search;
@@ -88,11 +67,14 @@ class ESBTPAuditController extends Controller
         // Pagination
         $audits = $query->paginate(50);
 
-        // Formatage des données pour l'affichage
+        // Formatage des données pour l'affichage. On envoie `event_raw` (slug
+        // brut Eloquent : created/updated/...) en plus de `event` (label FR)
+        // pour que le frontend puisse choisir la classe CSS sans reverse-map.
         $audits->getCollection()->transform(function ($audit) {
             return [
                 'id' => $audit->id,
                 'event' => $this->formatEvent($audit->event),
+                'event_raw' => $audit->event,
                 'auditable_type' => $this->formatModelType($audit->auditable_type),
                 'auditable_id' => $audit->auditable_id,
                 'user' => $audit->user ? $audit->user->name : 'Système',
@@ -621,48 +603,37 @@ class ESBTPAuditController extends Controller
     }
 
     /**
-     * Obtenir les heures de pointe
-     */
-    private function getPeakHours($dateFrom, $dateTo)
-    {
-        return Audit::whereBetween('created_at', [$dateFrom, $dateTo])
-            ->select(DB::raw('HOUR(created_at) as hour, COUNT(*) as count'))
-            ->groupBy('hour')
-            ->orderBy('count', 'desc')
-            ->limit(3)
-            ->get()
-            ->pluck('count', 'hour')
-            ->toArray();
-    }
-
-    /**
-     * Obtenir les audits filtrés
+     * Obtenir les audits filtrés (utilisé par les exports).
      */
     private function getFilteredAudits($request)
     {
         $query = Audit::with(['user'])->orderBy('created_at', 'desc');
+        $this->applyCommonFilters($query, $request);
+        return $query->get();
+    }
 
-        // Appliquer les filtres du request
-        if ($request->filled('model_type')) {
-            $query->where('auditable_type', $request->model_type);
-        }
-
-        if ($request->filled('event')) {
-            $query->where('event', $request->event);
-        }
-
-        if ($request->filled('user_id')) {
-            $query->where('user_id', $request->user_id);
+    /**
+     * Applique les filtres standards (model_type, event, user_id, date_from, date_to)
+     * partagés entre `getAuditData()` (UI AJAX) et `getFilteredAudits()` (exports).
+     */
+    private function applyCommonFilters($query, Request $request): void
+    {
+        $filters = [
+            'model_type' => 'auditable_type',
+            'event' => 'event',
+            'user_id' => 'user_id',
+        ];
+        foreach ($filters as $param => $column) {
+            if ($request->filled($param)) {
+                $query->where($column, $request->input($param));
+            }
         }
 
         if ($request->filled('date_from')) {
             $query->whereDate('created_at', '>=', $request->date_from);
         }
-
         if ($request->filled('date_to')) {
             $query->whereDate('created_at', '<=', $request->date_to);
         }
-
-        return $query->get();
     }
 }
