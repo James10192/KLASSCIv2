@@ -17,11 +17,80 @@ use App\Services\NotificationService;
 
 class ESBTPAnnonceController extends Controller
 {
+    /**
+     * Limites de sélection (alignées sur la config Choices.js côté front).
+     * Si on les change ici, mettre à jour aussi `maxItemCount` dans
+     * resources/views/esbtp/annonces/_form-scripts.blade.php.
+     */
+    private const MAX_CLASSES = 20;
+    private const MAX_ETUDIANTS = 50;
+
     protected $notificationService;
 
     public function __construct(NotificationService $notificationService)
     {
         $this->notificationService = $notificationService;
+    }
+
+    /**
+     * Règles de validation partagées entre store() et update().
+     * Évite la duplication des 8 règles + 9 messages personnalisés.
+     */
+    private function annonceValidationRules(): array
+    {
+        return [
+            'titre' => 'required|string|max:255',
+            'contenu' => 'required|string',
+            'date_publication' => 'nullable|date',
+            'date_expiration' => 'required|date|after_or_equal:date_publication',
+            'type' => 'required|in:general,classe,etudiant',
+            'priorite' => 'required|in:0,1,2',
+            'classes' => 'required_if:type,classe|array|max:' . self::MAX_CLASSES,
+            'classes.*' => 'integer|exists:esbtp_classes,id',
+            'etudiants' => 'required_if:type,etudiant|array|max:' . self::MAX_ETUDIANTS,
+            'etudiants.*' => 'integer|exists:esbtp_etudiants,id',
+            'piece_jointe' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:5120',
+        ];
+    }
+
+    private function annonceValidationMessages(): array
+    {
+        return [
+            'titre.required' => 'Le titre est obligatoire',
+            'contenu.required' => 'Le contenu est obligatoire',
+            'date_expiration.required' => 'La date d\'expiration est obligatoire',
+            'date_expiration.after_or_equal' => 'La date d\'expiration doit être postérieure ou égale à la date de publication',
+            'priorite.required' => 'La priorité est obligatoire',
+            'classes.required_if' => 'Veuillez sélectionner au moins une classe',
+            'classes.max' => 'Vous ne pouvez sélectionner que ' . self::MAX_CLASSES . ' classes maximum',
+            'etudiants.required_if' => 'Veuillez sélectionner au moins un étudiant',
+            'etudiants.max' => 'Vous ne pouvez sélectionner que ' . self::MAX_ETUDIANTS . ' étudiants maximum',
+            'piece_jointe.mimes' => 'Le fichier doit être au format PDF, Word, Excel ou image (JPG, PNG)',
+            'piece_jointe.max' => 'Le fichier ne doit pas dépasser 5 MB',
+        ];
+    }
+
+    /**
+     * Gère l'upload (et la suppression de l'ancien fichier le cas échéant).
+     * Mute $annonce->piece_jointe en place. Retourne true si un nouveau fichier
+     * a été stocké, false sinon (i.e. pas de fichier dans la requête).
+     */
+    private function handlePieceJointeUpload(Request $request, ESBTPAnnonce $annonce): bool
+    {
+        if (!$request->hasFile('piece_jointe')) {
+            return false;
+        }
+
+        // Suppression de l'ancien fichier (uniquement en mode update — sur store, c'est null)
+        if ($annonce->piece_jointe && \Storage::disk('public')->exists($annonce->piece_jointe)) {
+            \Storage::disk('public')->delete($annonce->piece_jointe);
+        }
+
+        $file = $request->file('piece_jointe');
+        $filename = time() . '_' . $file->getClientOriginalName();
+        $annonce->piece_jointe = $file->storeAs('annonces', $filename, 'public');
+
+        return true;
     }
 
     /**
@@ -86,27 +155,7 @@ class ESBTPAnnonceController extends Controller
      */
     public function store(Request $request)
     {
-        $request->validate([
-            'titre' => 'required|string|max:255',
-            'contenu' => 'required|string',
-            'date_publication' => 'nullable|date',
-            'date_expiration' => 'required|date|after_or_equal:date_publication',
-            'type' => 'required|in:general,classe,etudiant',
-            'priorite' => 'required|in:0,1,2',
-            'classes' => 'required_if:type,classe|array',
-            'etudiants' => 'required_if:type,etudiant|array',
-            'piece_jointe' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:5120',
-        ], [
-            'titre.required' => 'Le titre est obligatoire',
-            'contenu.required' => 'Le contenu est obligatoire',
-            'date_expiration.required' => 'La date d\'expiration est obligatoire',
-            'date_expiration.after_or_equal' => 'La date d\'expiration doit être postérieure ou égale à la date de publication',
-            'priorite.required' => 'La priorité est obligatoire',
-            'classes.required_if' => 'Veuillez sélectionner au moins une classe',
-            'etudiants.required_if' => 'Veuillez sélectionner au moins un étudiant',
-            'piece_jointe.mimes' => 'Le fichier doit être au format PDF, Word, Excel ou image (JPG, PNG)',
-            'piece_jointe.max' => 'Le fichier ne doit pas dépasser 5 MB',
-        ]);
+        $request->validate($this->annonceValidationRules(), $this->annonceValidationMessages());
 
         DB::beginTransaction();
         try {
@@ -126,13 +175,7 @@ class ESBTPAnnonceController extends Controller
             $annonce->is_published = $is_published;
             $annonce->created_by = Auth::id();
 
-            // Handle file upload
-            if ($request->hasFile('piece_jointe')) {
-                $file = $request->file('piece_jointe');
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('annonces', $filename, 'public');
-                $annonce->piece_jointe = $path;
-            }
+            $this->handlePieceJointeUpload($request, $annonce);
 
             $annonce->save();
 
@@ -254,27 +297,8 @@ class ESBTPAnnonceController extends Controller
             return redirect()->route('esbtp.annonces.show', $annonce)
                 ->with('error', 'Cette annonce ne peut plus être modifiée.');
         }
-        $request->validate([
-            'titre' => 'required|string|max:255',
-            'contenu' => 'required|string',
-            'date_publication' => 'nullable|date',
-            'date_expiration' => 'required|date|after_or_equal:date_publication',
-            'type' => 'required|in:general,classe,etudiant',
-            'priorite' => 'required|in:0,1,2',
-            'classes' => 'required_if:type,classe|array',
-            'etudiants' => 'required_if:type,etudiant|array',
-            'piece_jointe' => 'nullable|file|mimes:pdf,doc,docx,xls,xlsx,jpg,jpeg,png|max:5120',
-        ], [
-            'titre.required' => 'Le titre est obligatoire',
-            'contenu.required' => 'Le contenu est obligatoire',
-            'date_expiration.required' => 'La date d\'expiration est obligatoire',
-            'date_expiration.after_or_equal' => 'La date d\'expiration doit être postérieure ou égale à la date de publication',
-            'priorite.required' => 'La priorité est obligatoire',
-            'classes.required_if' => 'Veuillez sélectionner au moins une classe',
-            'etudiants.required_if' => 'Veuillez sélectionner au moins un étudiant',
-            'piece_jointe.mimes' => 'Le fichier doit être au format PDF, Word, Excel ou image (JPG, PNG)',
-            'piece_jointe.max' => 'Le fichier ne doit pas dépasser 5 MB',
-        ]);
+
+        $request->validate($this->annonceValidationRules(), $this->annonceValidationMessages());
 
         DB::beginTransaction();
         try {
@@ -299,19 +323,7 @@ class ESBTPAnnonceController extends Controller
             $annonce->is_published = $is_published;
             $annonce->updated_by = Auth::id();
 
-            // Handle file upload
-            if ($request->hasFile('piece_jointe')) {
-                // Delete old file if exists
-                if ($annonce->piece_jointe && \Storage::disk('public')->exists($annonce->piece_jointe)) {
-                    \Storage::disk('public')->delete($annonce->piece_jointe);
-                }
-                
-                // Upload new file
-                $file = $request->file('piece_jointe');
-                $filename = time() . '_' . $file->getClientOriginalName();
-                $path = $file->storeAs('annonces', $filename, 'public');
-                $annonce->piece_jointe = $path;
-            }
+            $this->handlePieceJointeUpload($request, $annonce);
 
             $annonce->save();
 
