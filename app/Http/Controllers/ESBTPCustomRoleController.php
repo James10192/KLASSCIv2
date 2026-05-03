@@ -32,16 +32,6 @@ use Spatie\Permission\PermissionRegistrar;
 class ESBTPCustomRoleController extends Controller
 {
     /**
-     * Whitelist des icônes Font Awesome autorisées pour les rôles custom.
-     *
-     * Empêche un acteur de saisir une classe arbitraire (ex: `fa-skull` ou `' onclick=...`)
-     * qui pourrait casser l'UI ou permettre une injection. Toute valeur hors liste est
-     * remplacée par le défaut `fa-user-tag`.
-     *
-     * Pour ajouter une icône : la déclarer ici ET dans les `cr-icon-suggestions` des
-     * modals create/edit pour qu'elle soit suggérée à l'utilisateur.
-     */
-    /**
      * Rôles système éditables depuis /esbtp/personnel/unified par les users avec
      * `users.manage` (Lot 17). superAdmin et serviceTechnique restent gérés
      * exclusivement via /esbtp/roles-permissions (Service Technique).
@@ -58,6 +48,16 @@ class ESBTPCustomRoleController extends Controller
         'etudiant',
     ];
 
+    /**
+     * Whitelist des icônes Font Awesome autorisées pour les rôles custom.
+     *
+     * Empêche un acteur de saisir une classe arbitraire (ex: `fa-skull` ou `' onclick=...`)
+     * qui pourrait casser l'UI ou permettre une injection. Toute valeur hors liste est
+     * remplacée par le défaut `fa-user-tag`.
+     *
+     * Pour ajouter une icône : la déclarer ici ET dans `_icon-suggestions.blade.php`
+     * pour qu'elle soit suggérée à l'utilisateur.
+     */
     private const ALLOWED_ICONS = [
         // Personnel & rôles
         'fa-user-tag', 'fa-user-shield', 'fa-user-tie', 'fa-user-cog', 'fa-user-check',
@@ -187,23 +187,12 @@ class ESBTPCustomRoleController extends Controller
             ], 422);
         }
 
-        // Sécurité : restreindre aux permissions que l'acteur possède
-        $requestedPerms = collect($validated['permissions'] ?? [])->unique()->values()->all();
-        $allowedPerms = $this->grantablePermissionsForActor($registry)
-            ->flatten(1)
-            ->pluck('name')
-            ->all();
-        $forbidden = array_diff($requestedPerms, $allowedPerms);
-        if (! empty($forbidden)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous ne pouvez accorder que des permissions que vous possédez. Refusées : ' . implode(', ', $forbidden),
-                'forbidden' => array_values($forbidden),
-            ], 403);
+        $requestedPerms = $this->normalizePermissionsList($validated['permissions'] ?? []);
+        if ($denial = $this->denyIfPermissionsNotGrantable($requestedPerms, $registry)) {
+            return $denial;
         }
 
-        DB::beginTransaction();
-        try {
+        return $this->runMutation($registry, 'la création', function () use ($validated, $requestedPerms) {
             $role = new Role();
             $role->name = $validated['name'];
             $role->guard_name = config('auth.defaults.guard', 'web');
@@ -218,12 +207,7 @@ class ESBTPCustomRoleController extends Controller
                 $role->syncPermissions($requestedPerms);
             }
 
-            DB::commit();
-
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
-            $registry->clearCache();
-
-            return response()->json([
+            return [
                 'success' => true,
                 'message' => "Rôle « {$validated['label_fr']} » créé avec succès.",
                 'role' => [
@@ -233,14 +217,8 @@ class ESBTPCustomRoleController extends Controller
                     'icon' => $role->icon,
                     'description' => $role->description,
                 ],
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la création : ' . $e->getMessage(),
-            ], 500);
-        }
+            ];
+        });
     }
 
     /**
@@ -289,22 +267,12 @@ class ESBTPCustomRoleController extends Controller
             'icon.in' => 'Cette icône n\'est pas autorisée. Choisissez parmi les suggestions.',
         ]);
 
-        $requestedPerms = collect($validated['permissions'] ?? [])->unique()->values()->all();
-        $allowedPerms = $this->grantablePermissionsForActor($registry)
-            ->flatten(1)
-            ->pluck('name')
-            ->all();
-        $forbidden = array_diff($requestedPerms, $allowedPerms);
-        if (! empty($forbidden)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous ne pouvez accorder que des permissions que vous possédez. Refusées : ' . implode(', ', $forbidden),
-                'forbidden' => array_values($forbidden),
-            ], 403);
+        $requestedPerms = $this->normalizePermissionsList($validated['permissions'] ?? []);
+        if ($denial = $this->denyIfPermissionsNotGrantable($requestedPerms, $registry)) {
+            return $denial;
         }
 
-        DB::beginTransaction();
-        try {
+        return $this->runMutation($registry, 'la mise à jour', function () use ($roleModel, $validated, $requestedPerms) {
             $roleModel->label_fr = $validated['label_fr'];
             $roleModel->icon = $this->normalizeIcon($validated['icon'] ?? null);
             $roleModel->description = $validated['description'] ?? null;
@@ -312,22 +280,11 @@ class ESBTPCustomRoleController extends Controller
 
             $roleModel->syncPermissions($requestedPerms);
 
-            DB::commit();
-
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
-            $registry->clearCache();
-
-            return response()->json([
+            return [
                 'success' => true,
                 'message' => "Rôle « {$validated['label_fr']} » mis à jour.",
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la mise à jour : ' . $e->getMessage(),
-            ], 500);
-        }
+            ];
+        });
     }
 
     /**
@@ -384,22 +341,12 @@ class ESBTPCustomRoleController extends Controller
 
         // Garde-fou : un acteur ne peut donner que les permissions qu'il possède
         // (sauf superAdmin via Gate::before)
-        $requestedPerms = collect($validated['permissions'] ?? [])->unique()->values()->all();
-        $allowedPerms = $this->grantablePermissionsForActor($registry)
-            ->flatten(1)
-            ->pluck('name')
-            ->all();
-        $forbidden = array_diff($requestedPerms, $allowedPerms);
-        if (! empty($forbidden)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Vous ne pouvez accorder que des permissions que vous possédez. Refusées : ' . implode(', ', $forbidden),
-                'forbidden' => array_values($forbidden),
-            ], 403);
+        $requestedPerms = $this->normalizePermissionsList($validated['permissions'] ?? []);
+        if ($denial = $this->denyIfPermissionsNotGrantable($requestedPerms, $registry)) {
+            return $denial;
         }
 
-        DB::beginTransaction();
-        try {
+        return $this->runMutation($registry, 'la mise à jour', function () use ($roleModel, $validated, $requestedPerms) {
             // Override DB metadata (le registry config sert de fallback)
             $roleModel->label_fr = $validated['label_fr'];
             $roleModel->icon = $this->normalizeIcon($validated['icon'] ?? null);
@@ -409,22 +356,11 @@ class ESBTPCustomRoleController extends Controller
 
             $roleModel->syncPermissions($requestedPerms);
 
-            DB::commit();
-
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
-            $registry->clearCache();
-
-            return response()->json([
+            return [
                 'success' => true,
                 'message' => "Rôle système « {$validated['label_fr']} » mis à jour.",
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la mise à jour : ' . $e->getMessage(),
-            ], 500);
-        }
+            ];
+        });
     }
 
     /**
@@ -450,28 +386,16 @@ class ESBTPCustomRoleController extends Controller
             ], 422);
         }
 
-        DB::beginTransaction();
-        try {
+        return $this->runMutation($registry, 'la suppression', function () use ($roleModel) {
             $label = $roleModel->label_fr ?? $roleModel->name;
             $roleModel->syncPermissions([]);
             $roleModel->delete();
 
-            DB::commit();
-
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
-            $registry->clearCache();
-
-            return response()->json([
+            return [
                 'success' => true,
                 'message' => "Rôle « {$label} » supprimé.",
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la suppression : ' . $e->getMessage(),
-            ], 500);
-        }
+            ];
+        });
     }
 
     /**
@@ -549,8 +473,7 @@ class ESBTPCustomRoleController extends Controller
             }
         }
 
-        DB::beginTransaction();
-        try {
+        return $this->runMutation($registry, 'l\'affectation', function () use ($roleModel, $requestedUserIds) {
             $currentIds = $roleModel->users()->pluck('users.id')->all();
             $toAttach = array_diff($requestedUserIds, $currentIds);
             $toDetach = array_diff($currentIds, $requestedUserIds);
@@ -563,24 +486,13 @@ class ESBTPCustomRoleController extends Controller
                 $roleModel->users()->detach($toDetach);
             }
 
-            DB::commit();
-
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
-            $registry->clearCache();
-
-            return response()->json([
+            return [
                 'success' => true,
                 'message' => 'Affectations mises à jour.',
                 'attached' => count($toAttach),
                 'detached' => count($toDetach),
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur : ' . $e->getMessage(),
-            ], 500);
-        }
+            ];
+        });
     }
 
     /**
@@ -599,26 +511,14 @@ class ESBTPCustomRoleController extends Controller
 
         $userModel = User::findOrFail($user);
 
-        DB::beginTransaction();
-        try {
+        return $this->runMutation($registry, 'le détachement', function () use ($userModel, $roleModel) {
             $userModel->removeRole($roleModel);
 
-            DB::commit();
-
-            app(PermissionRegistrar::class)->forgetCachedPermissions();
-            $registry->clearCache();
-
-            return response()->json([
+            return [
                 'success' => true,
                 'message' => "{$userModel->name} détaché du rôle.",
-            ]);
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur : ' . $e->getMessage(),
-            ], 500);
-        }
+            ];
+        });
     }
 
     // ─────────────── Helpers privés ───────────────
@@ -629,6 +529,71 @@ class ESBTPCustomRoleController extends Controller
     private function customRolesQuery()
     {
         return Role::query()->where('is_custom', true)->orderBy('label_fr')->orderBy('name');
+    }
+
+    /**
+     * Normalise un tableau brut de noms de permission : déduplique + valeurs réindexées.
+     *
+     * @param  array<int, string>  $perms
+     * @return array<int, string>
+     */
+    private function normalizePermissionsList(array $perms): array
+    {
+        return collect($perms)->unique()->values()->all();
+    }
+
+    /**
+     * Vérifie que toutes les permissions demandées sont accordables par l'acteur courant.
+     * Retourne une JsonResponse 403 listant les refusées si KO, ou null si OK.
+     *
+     * @param  array<int, string>  $requestedPerms
+     */
+    private function denyIfPermissionsNotGrantable(array $requestedPerms, PermissionRegistry $registry): ?\Illuminate\Http\JsonResponse
+    {
+        $allowedPerms = $this->grantablePermissionsForActor($registry)
+            ->flatten(1)
+            ->pluck('name')
+            ->all();
+
+        $forbidden = array_diff($requestedPerms, $allowedPerms);
+        if (empty($forbidden)) {
+            return null;
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Vous ne pouvez accorder que des permissions que vous possédez. Refusées : ' . implode(', ', $forbidden),
+            'forbidden' => array_values($forbidden),
+        ], 403);
+    }
+
+    /**
+     * Exécute une mutation DB dans une transaction + invalide les caches Spatie + registry.
+     * Retourne la JsonResponse construite à partir du payload renvoyé par le callback,
+     * ou une JsonResponse 500 en cas d'exception (rollback automatique).
+     *
+     * @param  string  $action  Nom de l'action en français (ex: "la création"), utilisé dans le message d'erreur.
+     * @param  callable  $callback  Closure qui doit retourner un array<string, mixed> à JSONifier.
+     */
+    private function runMutation(PermissionRegistry $registry, string $action, callable $callback): \Illuminate\Http\JsonResponse
+    {
+        DB::beginTransaction();
+        try {
+            $payload = $callback();
+            DB::commit();
+
+            app(PermissionRegistrar::class)->forgetCachedPermissions();
+            $registry->clearCache();
+
+            return response()->json($payload);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            return response()->json([
+                'success' => false,
+                'message' => "Erreur lors de {$action} : " . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**

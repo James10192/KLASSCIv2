@@ -66,13 +66,7 @@
                                 <input type="text" id="cr-create-icon" name="icon" class="cr-form-input cr-form-input-mono"
                                        value="fa-user-tag" maxlength="64" placeholder="fa-user-tag" data-cr-icon-input>
                             </div>
-                            <div class="cr-icon-suggestions">
-                                @foreach(['fa-user-tag', 'fa-user-shield', 'fa-user-tie', 'fa-user-cog', 'fa-user-check', 'fa-id-badge', 'fa-headset', 'fa-magnifying-glass', 'fa-key', 'fa-handshake'] as $iconClass)
-                                    <button type="button" class="cr-icon-chip" data-cr-icon-suggest="{{ $iconClass }}" title="{{ $iconClass }}">
-                                        <i class="fas {{ $iconClass }}"></i>
-                                    </button>
-                                @endforeach
-                            </div>
+                            @include('esbtp.custom-roles._icon-suggestions')
                         </div>
 
                         <div class="cr-form-group">
