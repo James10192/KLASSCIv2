@@ -290,16 +290,50 @@
                             Détails du Paiement
                         </div>
                         
-                        <div class="row">
+                        <div class="row" x-data="{
+                                montant: {{ (int) old('montant', 0) }},
+                                threshold: {{ (int) ($unusualAmountThreshold ?? 500000) }},
+                                confirmed: false,
+                                get isUnusual() { return this.montant > this.threshold; },
+                                get formattedThreshold() { return new Intl.NumberFormat('fr-FR').format(this.threshold); },
+                                get formattedMontant() { return new Intl.NumberFormat('fr-FR').format(this.montant); },
+                            }">
                             <div class="col-md-6">
                                 <div class="form-floating-modern">
                                     <div class="amount-input-group">
-                                        <input type="number" name="montant" id="montant" class="form-control" min="0" step="1" value="{{ old('montant') }}" required>
+                                        <input type="number" name="montant" id="montant" class="form-control" min="0" step="1"
+                                               value="{{ old('montant') }}" required
+                                               x-on:input="montant = parseInt($event.target.value || 0); confirmed = false"
+                                               :style="isUnusual ? 'border-color:#f59e0b;background:#fffbeb;' : ''">
                                         <span class="position-absolute end-0 top-50 translate-middle-y me-3 text-muted">FCFA</span>
                                     </div>
                                     <label>Montant <span class="text-danger">*</span></label>
                                     <div class="amount-suggestions" id="amount-suggestions">
                                         <!-- Les suggestions de montant seront générées dynamiquement -->
+                                    </div>
+
+                                    {{-- Garde-fou montant inhabituel (QW3) --}}
+                                    <div x-show="isUnusual" x-cloak x-transition.opacity
+                                         class="qw3-unusual-alert" style="margin-top:12px;padding:12px 14px;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:10px;">
+                                        <div style="display:flex;gap:10px;align-items:flex-start;">
+                                            <i class="fas fa-triangle-exclamation" style="color:#d97706;font-size:1.1rem;margin-top:2px;flex-shrink:0;"></i>
+                                            <div style="flex:1;min-width:0;">
+                                                <div style="font-weight:700;color:#92400e;font-size:.88rem;margin-bottom:4px;">
+                                                    Montant inhabituel — vérifiez avant de valider
+                                                </div>
+                                                <div style="font-size:.82rem;color:#7c2d12;line-height:1.5;">
+                                                    Le montant saisi (<strong x-text="formattedMontant + ' FCFA'"></strong>) dépasse le seuil habituel de <strong x-text="formattedThreshold + ' FCFA'"></strong> configuré pour cette école.
+                                                    Vérifiez qu'il ne s'agit pas d'une erreur de frappe (ex: 50&nbsp;000 au lieu de 5&nbsp;000).
+                                                </div>
+                                                <label class="form-check" style="margin-top:8px;display:flex;gap:8px;align-items:center;cursor:pointer;">
+                                                    <input type="checkbox" name="confirmed_unusual_amount" value="1"
+                                                           x-model="confirmed" class="form-check-input" style="margin-top:0;">
+                                                    <span style="font-size:.84rem;color:#92400e;font-weight:600;">
+                                                        Je confirme que ce montant est correct
+                                                    </span>
+                                                </label>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -769,6 +803,22 @@ $(function() {
             e.preventDefault();
             e.stopImmediatePropagation();
             debugWarn('⚠️ Clic bloqué, soumission déjà en cours');
+            return false;
+        }
+
+        // QW3 : Garde-fou montant inhabituel — bloquer si > seuil sans confirmation cochée
+        const montantVal = parseInt($('#montant').val() || 0);
+        const threshold = parseInt(@json((int) ($unusualAmountThreshold ?? 500000)));
+        const $confirmCheckbox = $('input[name="confirmed_unusual_amount"]');
+        if (montantVal > threshold && $confirmCheckbox.length > 0 && !$confirmCheckbox.is(':checked')) {
+            e.preventDefault();
+            e.stopImmediatePropagation();
+            // Scroll smooth vers le warning + focus checkbox pour faciliter
+            const $alert = $('.qw3-unusual-alert');
+            if ($alert.length) {
+                $alert[0].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                setTimeout(() => $confirmCheckbox.trigger('focus'), 400);
+            }
             return false;
         }
 

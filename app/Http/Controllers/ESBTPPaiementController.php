@@ -292,7 +292,11 @@ class ESBTPPaiementController extends Controller
         // Récupérer l'année universitaire en cours
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        return view('esbtp.paiements.create', compact('etudiant', 'inscription', 'anneeEnCours'));
+        // Seuil "montant inhabituel" — au-delà, le caissier doit confirmer explicitement
+        // Configurable par l'école via /esbtp/settings (tenant-level), default 500 000 FCFA
+        $unusualAmountThreshold = (int) \App\Helpers\SettingsHelper::get('comptabilite.unusual_amount_threshold', 500000);
+
+        return view('esbtp.paiements.create', compact('etudiant', 'inscription', 'anneeEnCours', 'unusualAmountThreshold'));
     }
 
     /**
