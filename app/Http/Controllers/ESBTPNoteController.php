@@ -715,10 +715,17 @@ class ESBTPNoteController extends Controller
 
     /**
      * Logique partagée : crée ou met à jour une note pour un étudiant/évaluation.
+     *
+     * `$entry['is_absent']` est déjà coercé en booléen par les FormRequest
+     * (StoreNoteRequest / StoreBulkNotesRequest). On garde un fallback
+     * defensif pour les call-sites legacy (ex: enregistrerSaisieRapide).
      */
     private function processNoteEntry(ESBTPEvaluation $evaluation, ?ESBTPNote $existingNote, array $entry): array
     {
-        $isAbsent = in_array($entry['is_absent'] ?? '', ['on', '1', 'true', true], true);
+        $isAbsent = filter_var(
+            $entry['is_absent'] ?? false,
+            FILTER_VALIDATE_BOOLEAN
+        );
         $isNew = false;
 
         if (! $existingNote) {

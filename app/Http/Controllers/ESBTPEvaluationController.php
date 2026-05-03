@@ -323,22 +323,6 @@ class ESBTPEvaluationController extends Controller
     {
         $isEmbedRequest = $request->boolean('embed') || $request->ajax() || $request->wantsJson();
 
-        \Log::info('🔍 ESBTPEvaluation STORE - Début de la méthode store');
-        \Log::info('🔍 ESBTPEvaluation STORE - Données reçues:', [
-            'request_all' => $request->all(),
-            'periode_value' => $request->periode,
-            'periode_type' => gettype($request->periode),
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'user_id' => auth()->id(),
-        ]);
-
-        // Log l'état de la classe ESBTPEvaluation
-        \Log::info('Attributs attendus dans ESBTPEvaluation:', [
-            'fillable' => (new \App\Models\ESBTPEvaluation)->getFillable(),
-            'colonnes_table' => \Schema::getColumnListing('esbtp_evaluations'),
-        ]);
-
         // Garde-fou critique : bareme strictement > 0 (sinon division par zéro
         // dans ESBTPNote::getNoteVingtAttribute), coefficient strictement borné.
         $validator = \Validator::make($request->all(), [
@@ -376,11 +360,9 @@ class ESBTPEvaluationController extends Controller
         ]);
 
         if ($validator->fails()) {
-            \Log::error('❌ ESBTPEvaluation STORE - Validation échouée:', [
+            \Log::warning('ESBTPEvaluation@store validation failed', [
                 'errors' => $validator->errors()->toArray(),
-                'periode_value' => $request->periode,
-                'periode_type' => gettype($request->periode),
-                'request_all' => $request->all(),
+                'user_id' => auth()->id(),
             ]);
 
             if ($isEmbedRequest) {
@@ -539,7 +521,6 @@ $evaluation = new ESBTPEvaluation;
                 ->with('error', 'Une erreur est survenue lors de la création de l\'évaluation: '.$e->getMessage())
                 ->withInput();
         }
-        \Log::info('Fin de la méthode store');
     }
 
     /**
@@ -609,17 +590,6 @@ $evaluation = new ESBTPEvaluation;
      */
     public function update(Request $request, ESBTPEvaluation $evaluation)
     {
-        // Log détaillé pour diagnostiquer l'erreur de validation
-        \Log::info('🔍 ESBTPEvaluation UPDATE - Données reçues', [
-            'request_all' => $request->all(),
-            'periode_value' => $request->periode,
-            'periode_type' => gettype($request->periode),
-            'evaluation_id' => $evaluation->id,
-            'url' => $request->fullUrl(),
-            'method' => $request->method(),
-            'user_id' => auth()->id(),
-        ]);
-
         try {
             // Garde-fou critique : bareme strictement > 0 (sinon division par zéro
             // dans ESBTPNote::getNoteVingtAttribute), coefficient strictement borné.
@@ -650,11 +620,10 @@ $evaluation = new ESBTPEvaluation;
                 'duree_minutes.max' => 'La durée ne peut pas dépasser 480 minutes (8h).',
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
-            \Log::error('❌ ESBTPEvaluation UPDATE - Erreur de validation', [
+            \Log::warning('ESBTPEvaluation@update validation failed', [
                 'errors' => $e->errors(),
-                'periode_value' => $request->periode,
-                'periode_type' => gettype($request->periode),
-                'request_all' => $request->all(),
+                'evaluation_id' => $evaluation->id,
+                'user_id' => auth()->id(),
             ]);
             throw $e; // Re-lancer l'exception pour que Laravel la gère normalement
         }

@@ -47,6 +47,10 @@ class ESBTPNoteObserver
      * On no-op silencieusement (pas d'exception) si l'évaluation est
      * orpheline ou incomplète — la saisie reste persistée, juste pas
      * de recalcul auto possible.
+     *
+     * NB : on préfère `loadMissing` à `$note->evaluation` direct pour
+     * éviter une query supplémentaire si l'évaluation est déjà eager-loadée
+     * par le caller (typique en saisie bulk).
      */
     private function dispatchRecompute(ESBTPNote $note): void
     {
@@ -55,6 +59,7 @@ class ESBTPNoteObserver
         }
 
         try {
+            $note->loadMissing('evaluation:id,classe_id,matiere_id,annee_universitaire_id,periode');
             $evaluation = $note->evaluation;
 
             if (! $evaluation) {
