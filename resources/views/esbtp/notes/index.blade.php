@@ -152,13 +152,42 @@
     <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header nm-modal-header">
-                <h5 class="modal-title" id="classSelectionModalLabel">
-                    <i class="fas fa-clipboard-check me-2"></i>
-                    Gestion des Notes — <span id="selectedClassLabel">Sélectionnez une classe</span>
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                <div class="nm-header-left">
+                    <h5 class="modal-title" id="classSelectionModalLabel">
+                        <i class="fas fa-clipboard-check me-2"></i>
+                        Gestion des Notes — <span id="selectedClassLabel">Sélectionnez une classe</span>
+                    </h5>
+                </div>
+                <div class="nm-header-right">
+                    {{-- Network badge (3 états : synced / syncing / offline) --}}
+                    <div id="nm-network-badge" class="nm-network-badge" data-state="synced"
+                         title="État de la synchronisation des notes">
+                        <span class="nm-network-dot"></span>
+                        <span class="nm-network-label">Synchronisé</span>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
             </div>
             <div class="modal-body">
+                {{-- Restore draft banner (visible only if localStorage draft detected at modal open) --}}
+                <div id="nm-restore-banner" class="nm-restore-banner" style="display:none;" role="alert">
+                    <div class="nm-restore-banner-text">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>Brouillon non sauvegardé détecté</strong>
+                        <span class="text-muted ms-1">— sauvegardé localement il y a <span id="nm-restore-time">—</span></span>
+                        <span class="ms-1">·</span>
+                        <strong id="nm-restore-count">0</strong> note(s) en attente de synchronisation
+                    </div>
+                    <div class="nm-restore-banner-actions">
+                        <button type="button" class="btn btn-warning" id="nm-restore-btn">
+                            <i class="fas fa-undo me-1"></i>Restaurer
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="nm-restore-discard">
+                            <i class="fas fa-trash me-1"></i>Ignorer
+                        </button>
+                    </div>
+                </div>
+
                 {{-- Intro callout --}}
                 <div class="nm-modal-intro">
                     <div class="nm-modal-intro-icon">
@@ -199,8 +228,32 @@
                     @endcan
                 </div>
 
+                {{-- Table toolbar : search + stats (visible when grid is loaded) --}}
+                <div class="nm-table-toolbar" id="nm-table-toolbar" style="display:none;">
+                    <div class="nm-search-wrapper">
+                        <i class="fas fa-search nm-search-icon"></i>
+                        <input type="text" id="nm-student-search"
+                               class="form-control form-control-sm"
+                               placeholder="Rechercher un étudiant (Ctrl+F)…"
+                               autocomplete="off">
+                        <button type="button" class="nm-search-clear" id="nm-search-clear"
+                                style="display:none;" title="Effacer">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="nm-table-stats">
+                        <span class="nm-stat-pill"><strong id="nm-students-count">0</strong> étudiant(s)</span>
+                        <span class="nm-stat-pill"><strong id="nm-evaluations-count">0</strong> évaluation(s)</span>
+                        <span class="nm-stat-pill" id="nm-students-visible-pill" style="display:none;"><strong id="nm-students-visible">0</strong> visible(s)</span>
+                    </div>
+                </div>
+
                 {{-- Notes grid --}}
                 <div class="nm-grid-wrapper table-responsive notes-grid-wrapper">
+                    <button type="button" class="nm-scroll-arrow" id="nm-scroll-arrow"
+                            title="Défiler vers la droite" aria-label="Défiler horizontalement">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
                     <table class="nm-grid-table table notes-grid-table" id="notesGrid">
                         <thead>
                             <tr>
@@ -221,10 +274,19 @@
                     </table>
                 </div>
 
+                {{-- Load more (pagination > 80 students) --}}
+                <div class="nm-load-more-wrap" id="nm-load-more-wrap" style="display:none;">
+                    <button type="button" class="nm-load-more-btn" id="nm-load-more-btn">
+                        <i class="fas fa-chevron-down"></i>
+                        Charger <span id="nm-load-more-count">30</span> étudiants de plus
+                    </button>
+                </div>
+
                 {{-- Auto-save info --}}
                 <div class="nm-autosave-info">
                     <i class="fas fa-info-circle"></i>
-                    Les notes sont automatiquement enregistrées à chaque modification.
+                    Les notes sont automatiquement enregistrées à chaque modification —
+                    raccourcis&nbsp;: <kbd>Tab</kbd>/<kbd>Shift+Tab</kbd>, <kbd>Enter</kbd>/<kbd>Shift+Enter</kbd>, <kbd>Ctrl+S</kbd>, <kbd>Esc</kbd>.
                 </div>
             </div>
             <div class="modal-footer nm-modal-footer">
@@ -427,9 +489,61 @@
                 <button type="button" class="btn btn-light border fw-semibold" data-bs-dismiss="modal">
                     <i class="fas fa-times me-1"></i>Annuler
                 </button>
+                <button type="button" id="evalModal_save_continue" class="btn btn-outline-primary fw-semibold"
+                        title="Créer cette évaluation puis garder le formulaire ouvert pour la suivante">
+                    <i class="fas fa-plus me-1"></i>Créer et continuer
+                </button>
                 <button type="button" id="evalModal_submit" class="btn nm-eval-submit-btn">
                     <span id="evalModal_submitSpinner" class="spinner-border spinner-border-sm me-2 d-none" role="status"></span>
                     <i class="fas fa-save me-2" id="evalModal_submitIcon"></i>Créer l'évaluation
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- ══════════════════════════════════════════════════════
+     MODAL: Édition rapide évaluation (titre + barème + coef)
+     ══════════════════════════════════════════════════════ --}}
+<div class="modal fade nm-eval-quick-modal" id="evaluationQuickEditModal" tabindex="-1"
+     aria-labelledby="evaluationQuickEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="evaluationQuickEditModalLabel">
+                    <i class="fas fa-pen"></i>Modifier l'évaluation
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <form id="nm-eval-quick-form" novalidate>
+                    <input type="hidden" id="nm-eval-quick-id" value="">
+                    <div class="mb-3">
+                        <label class="form-label" for="nm-eval-quick-titre">Titre</label>
+                        <input type="text" id="nm-eval-quick-titre" class="form-control" required maxlength="255">
+                        <div class="invalid-feedback"></div>
+                    </div>
+                    <div class="row g-2">
+                        <div class="col-6">
+                            <label class="form-label" for="nm-eval-quick-bareme">Barème</label>
+                            <input type="number" id="nm-eval-quick-bareme" class="form-control"
+                                   min="1" max="100" step="0.5" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label" for="nm-eval-quick-coefficient">Coefficient</label>
+                            <input type="number" id="nm-eval-quick-coefficient" class="form-control"
+                                   min="0.1" max="10" step="0.1" required>
+                        </div>
+                    </div>
+                    <div id="nm-eval-quick-error" class="alert alert-danger mt-3 mb-0"
+                         style="display:none; font-size:.82rem;"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-primary fw-semibold" id="nm-eval-quick-save">
+                    <span class="spinner-border spinner-border-sm me-2 d-none" id="nm-eval-quick-spinner"></span>
+                    <i class="fas fa-save me-1" id="nm-eval-quick-icon"></i>Enregistrer
                 </button>
             </div>
         </div>
@@ -481,6 +595,8 @@
      JAVASCRIPT — Preserved identically
      ══════════════════════════════════════════════════════ --}}
 @push('scripts')
+{{-- common.js fournit window.iiConfirm + window.showToast (utilisés pour la confirmation de fermeture). --}}
+<script src="{{ asset('js/inscriptions/common.js') }}" defer></script>
 <script>
 // Variables globales
 let currentClassId = null;
@@ -941,6 +1057,13 @@ function renderNotesGrid(students, sortedEvaluations) {
         const h = periodRowEl.offsetHeight;
         document.querySelector('.nm-grid-wrapper').style.setProperty('--nm-period-row-h', h + 'px');
     }
+
+    // PR #3+#4 — Hook : signaler aux upgrades visuels (toolbar, abs toggle,
+    // eval header lisible, pagination, autofocus, draft banner) que la grille
+    // est prête. Le listener est défini en bas du script.
+    window.dispatchEvent(new CustomEvent('nm:grid-rendered', {
+        detail: { students: students, evaluations: sortedEvaluations },
+    }));
 }
 
 function buildClassAveragesRow(evaluations) {
@@ -1289,6 +1412,8 @@ function triggerRowHighlight(studentId) {
     setTimeout(function() {
         row.removeClass('highlight-success');
     }, 2000);
+    // PR #4 — Toast premium (le listener est défini en bas du script).
+    window.dispatchEvent(new CustomEvent('nm:note-saved', { detail: { studentId: studentId } }));
 }
 
 $('#saveAllNotesBtn').on('click', function() {
@@ -1497,6 +1622,36 @@ function showEvaluationErrors(errors) {
 }
 
 function closeEvaluationModal() {
+    // PR #4 — "Créer et continuer" : si l'utilisateur a déclenché ce bouton,
+    // on garde le modal ouvert et on reset le formulaire (sauf classe + matiere
+    // + date + horaires + bareme + coef qu'on conserve pour l'éval suivante).
+    if (window.nmEvalSaveContinueRequested) {
+        window.nmEvalSaveContinueRequested = false;
+        const form = document.getElementById('evaluationCreateForm');
+        if (form) {
+            ['eval_titre', 'eval_description', 'eval_type'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            form.querySelectorAll('.is-invalid').forEach(el => el.classList.remove('is-invalid'));
+            form.querySelectorAll('.invalid-feedback').forEach(el => el.textContent = '');
+        }
+        const errorsEl = document.getElementById('evalModal_errors');
+        if (errorsEl) { errorsEl.style.display = 'none'; errorsEl.innerHTML = ''; }
+        const body = document.querySelector('#evaluationCreateModal .modal-body');
+        if (body && !body.querySelector('.nm-saved-continue-toast')) {
+            const t = document.createElement('div');
+            t.className = 'nm-saved-continue-toast';
+            t.innerHTML = '<i class="fas fa-check-circle"></i><span>Évaluation créée. Saisissez la suivante.</span>';
+            body.insertBefore(t, body.firstChild);
+            setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 3500);
+        }
+        const titreEl = document.getElementById('eval_titre');
+        if (titreEl) setTimeout(() => titreEl.focus(), 50);
+        evalResetSubmitBtn();
+        return;
+    }
+
     const modalEl = document.getElementById('evaluationCreateModal');
     if (!modalEl) return;
 
@@ -1990,6 +2145,905 @@ function pr7RenderImpact(studentId, data) {
     `;
     $impactRow.find('td').html(html);
 }
+
+// ════════════════════════════════════════════════════════════════════════
+// PR #3+#4 — Robustesse saisie + UX premium modal
+// ════════════════════════════════════════════════════════════════════════
+//
+// • localStorage autosave (anti-perte sur coupure réseau)
+// • Network badge 3 états (synchronisé / sauvegarde / hors ligne)
+// • Raccourcis clavier (Tab/Enter/Ctrl+S/Échap)
+// • Recherche étudiant + Ctrl+F
+// • Pagination "Charger plus"
+// • Sticky thead (CSS) + indicateur scroll horizontal
+// • Toast premium au save
+// • Absent toggle switch + ligne stylée
+// • Édition rapide évaluation
+// • Save & Continue dans modal création
+// • beforeunload + confirm fermeture
+// ════════════════════════════════════════════════════════════════════════
+
+const NM = {
+    routes: {
+        evalQuickUpdate: '{{ url("/esbtp/evaluations") }}',  // + /{id}/quick-update
+    },
+    csrf: '{{ csrf_token() }}',
+    autosaveDebounceTimer: null,
+    autosaveDebounceMs: 350,
+    draftTtlMs: 7 * 24 * 60 * 60 * 1000,  // 7 jours
+    pendingSaves: 0,
+    consecutiveErrors: 0,
+    networkBadge: null,
+    pagination: {
+        pageSize: 50,
+        chunk: 30,
+        rendered: 0,
+        all: [],
+        sortedEvaluations: [],
+    },
+    studentsCache: null,  // référence courante des étudiants pour la recherche
+    quickEditCurrentId: null,
+};
+
+window.nmHasUnsavedChanges = false;
+
+// ── 1. Toast premium (queue, max 3 visibles) ────────────────────────────
+function nmShowToast(type, message, durationMs) {
+    type = type || 'info';
+    durationMs = durationMs || 3500;
+
+    let stack = document.querySelector('.nm-toast-stack');
+    if (!stack) {
+        stack = document.createElement('div');
+        stack.className = 'nm-toast-stack';
+        stack.setAttribute('role', 'status');
+        stack.setAttribute('aria-live', 'polite');
+        document.body.appendChild(stack);
+    }
+
+    // Trim queue à 3
+    while (stack.children.length >= 3) {
+        stack.removeChild(stack.firstChild);
+    }
+
+    const iconMap = {
+        success: 'fa-check-circle',
+        error: 'fa-exclamation-circle',
+        warning: 'fa-exclamation-triangle',
+        info: 'fa-info-circle',
+    };
+    const icon = iconMap[type] || iconMap.info;
+
+    const toast = document.createElement('div');
+    toast.className = 'nm-toast nm-toast--' + type;
+    toast.innerHTML = `
+        <i class="fas ${icon} nm-toast-icon" aria-hidden="true"></i>
+        <div class="nm-toast-msg"></div>
+        <button type="button" class="nm-toast-close" aria-label="Fermer">
+            <i class="fas fa-times"></i>
+        </button>
+    `;
+    toast.querySelector('.nm-toast-msg').textContent = message;
+
+    const dismiss = () => {
+        if (toast.classList.contains('nm-toast--leaving')) return;
+        toast.classList.add('nm-toast--leaving');
+        setTimeout(() => { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 220);
+    };
+    toast.querySelector('.nm-toast-close').addEventListener('click', dismiss);
+    stack.appendChild(toast);
+    setTimeout(dismiss, durationMs);
+
+    return toast;
+}
+
+// ── 2. Network badge state ──────────────────────────────────────────────
+function nmGetBadge() {
+    if (!NM.networkBadge) {
+        NM.networkBadge = document.getElementById('nm-network-badge');
+    }
+    return NM.networkBadge;
+}
+function nmSetNetworkState(state) {
+    const badge = nmGetBadge();
+    if (!badge) return;
+    badge.dataset.state = state;
+    const label = badge.querySelector('.nm-network-label');
+    if (!label) return;
+    if (state === 'syncing') {
+        label.textContent = 'Sauvegarde…';
+    } else if (state === 'offline') {
+        label.textContent = 'Hors ligne — brouillon local';
+    } else {
+        label.textContent = 'Synchronisé';
+    }
+}
+window.addEventListener('online', function() {
+    NM.consecutiveErrors = 0;
+    nmSetNetworkState('synced');
+    nmShowToast('success', 'Connexion rétablie. Synchronisation reprise.');
+});
+window.addEventListener('offline', function() {
+    nmSetNetworkState('offline');
+    nmShowToast('warning', 'Hors ligne — vos modifications restent sauvegardées localement.');
+});
+
+// Bridge avec saveNote/saveAllNotes existants : intercepter $.ajax
+$(document).ajaxSend(function(_event, _jqxhr, settings) {
+    if (typeof settings.url === 'string' && /(save-ajax|save-ajax-bulk)/.test(settings.url)) {
+        NM.pendingSaves++;
+        if (navigator.onLine !== false) {
+            nmSetNetworkState('syncing');
+        }
+    }
+});
+$(document).ajaxSuccess(function(_event, _jqxhr, settings) {
+    if (typeof settings.url === 'string' && /(save-ajax|save-ajax-bulk)/.test(settings.url)) {
+        NM.pendingSaves = Math.max(0, NM.pendingSaves - 1);
+        NM.consecutiveErrors = 0;
+        if (NM.pendingSaves === 0 && navigator.onLine !== false) {
+            nmSetNetworkState('synced');
+        }
+    }
+});
+$(document).ajaxError(function(_event, _jqxhr, settings) {
+    if (typeof settings.url === 'string' && /(save-ajax|save-ajax-bulk)/.test(settings.url)) {
+        NM.pendingSaves = Math.max(0, NM.pendingSaves - 1);
+        NM.consecutiveErrors++;
+        if (NM.consecutiveErrors >= 3 || navigator.onLine === false) {
+            nmSetNetworkState('offline');
+        } else if (NM.pendingSaves === 0) {
+            nmSetNetworkState('synced');
+        }
+    }
+});
+
+// ── 3. localStorage autosave (anti-perte) ───────────────────────────────
+function nmDraftKey() {
+    if (!currentClassId || !currentMatiereId) return null;
+    const periode = $('#periodeFilter').val() || 'all';
+    return `nm_notes_draft_${currentClassId}_${currentMatiereId}_${periode}`;
+}
+function nmCollectDraftNotes() {
+    const out = {};
+    $('.note-input').each(function() {
+        const $i = $(this);
+        const sid = $i.data('student-id');
+        const eid = $i.data('eval-id');
+        if (!sid || !eid) return;
+        const val = $i.val();
+        const isAbsent = $(`#absent-${sid}-${eid}`).is(':checked');
+        if (val !== '' && val !== null && val !== undefined || isAbsent) {
+            if (!out[eid]) out[eid] = {};
+            out[eid][sid] = { note: isAbsent ? 0 : val, isAbsent: !!isAbsent };
+        }
+    });
+    return out;
+}
+function nmAutosaveDraft() {
+    const key = nmDraftKey();
+    if (!key) return;
+    const notes = nmCollectDraftNotes();
+    if (Object.keys(notes).length === 0) {
+        try { localStorage.removeItem(key); } catch (e) { /* quota */ }
+        return;
+    }
+    try {
+        localStorage.setItem(key, JSON.stringify({
+            savedAt: Date.now(),
+            notes: notes,
+            classLabel: currentClassname,
+            matiereLabel: currentMatiereName,
+        }));
+    } catch (e) {
+        // localStorage plein ou désactivé : silencieux
+        console.warn('NM autosave failed:', e);
+    }
+}
+function nmScheduleAutosave() {
+    if (NM.autosaveDebounceTimer) clearTimeout(NM.autosaveDebounceTimer);
+    NM.autosaveDebounceTimer = setTimeout(nmAutosaveDraft, NM.autosaveDebounceMs);
+}
+function nmPurgeOldDrafts() {
+    try {
+        const now = Date.now();
+        const keys = [];
+        for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith('nm_notes_draft_')) keys.push(k);
+        }
+        keys.forEach(k => {
+            try {
+                const obj = JSON.parse(localStorage.getItem(k) || '{}');
+                if (!obj.savedAt || (now - obj.savedAt) > NM.draftTtlMs) {
+                    localStorage.removeItem(k);
+                }
+            } catch (e) { localStorage.removeItem(k); }
+        });
+    } catch (e) { /* ignore */ }
+}
+function nmRelativeTime(timestamp) {
+    const diff = Math.max(0, Date.now() - timestamp);
+    const sec = Math.floor(diff / 1000);
+    if (sec < 60) return 'quelques secondes';
+    const min = Math.floor(sec / 60);
+    if (min < 60) return `${min} min`;
+    const h = Math.floor(min / 60);
+    if (h < 24) return `${h} h`;
+    const d = Math.floor(h / 24);
+    return `${d} j`;
+}
+function nmCheckDraftBanner() {
+    const key = nmDraftKey();
+    if (!key) return;
+    const banner = document.getElementById('nm-restore-banner');
+    if (!banner) return;
+    let raw;
+    try { raw = localStorage.getItem(key); } catch (e) { return; }
+    if (!raw) { banner.style.display = 'none'; return; }
+    let obj;
+    try { obj = JSON.parse(raw); } catch (e) { localStorage.removeItem(key); return; }
+    if (!obj || !obj.notes) { banner.style.display = 'none'; return; }
+
+    let count = 0;
+    Object.values(obj.notes).forEach(byStud => count += Object.keys(byStud).length);
+    if (count === 0) { banner.style.display = 'none'; return; }
+
+    document.getElementById('nm-restore-time').textContent = nmRelativeTime(obj.savedAt || Date.now());
+    document.getElementById('nm-restore-count').textContent = count;
+    banner.style.display = 'flex';
+}
+function nmHideDraftBanner() {
+    const banner = document.getElementById('nm-restore-banner');
+    if (banner) banner.style.display = 'none';
+}
+function nmRestoreFromDraft() {
+    const key = nmDraftKey();
+    if (!key) return;
+    let obj;
+    try { obj = JSON.parse(localStorage.getItem(key) || '{}'); } catch (e) { return; }
+    if (!obj || !obj.notes) return;
+
+    let restored = 0;
+    Object.entries(obj.notes).forEach(([eid, byStud]) => {
+        Object.entries(byStud).forEach(([sid, payload]) => {
+            const $input = $(`.note-input[data-student-id="${sid}"][data-eval-id="${eid}"]`);
+            if ($input.length === 0) return;
+
+            if (payload.isAbsent) {
+                const $checkbox = $(`#absent-${sid}-${eid}`);
+                $checkbox.prop('checked', true);
+                $input.val('0').prop('disabled', true);
+                if (typeof toggleAbsence === 'function') {
+                    // ne pas re-déclencher AJAX si déjà absent
+                }
+                saveNote(sid, eid, 0);  // persist serveur
+            } else {
+                $input.val(payload.note);
+                saveNote(sid, eid, payload.note);
+            }
+            restored++;
+        });
+    });
+    nmHideDraftBanner();
+    nmShowToast('success', `${restored} note(s) restaurée(s) depuis le brouillon local.`);
+    try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+}
+function nmDiscardDraft() {
+    const key = nmDraftKey();
+    if (!key) return;
+    try { localStorage.removeItem(key); } catch (e) { /* ignore */ }
+    nmHideDraftBanner();
+    nmShowToast('info', 'Brouillon local ignoré.');
+}
+
+$(document).on('click', '#nm-restore-btn', nmRestoreFromDraft);
+$(document).on('click', '#nm-restore-discard', nmDiscardDraft);
+
+// Hook autosave + dirty flag sur tous les inputs notes
+$(document).on('input change', '.note-input, .absence-checkbox', function() {
+    window.nmHasUnsavedChanges = true;
+    nmScheduleAutosave();
+});
+
+// Quand un save serveur réussit, ne pas garder les notes éphémères en draft :
+// on remet à jour le draft (qui ne contiendra que les inputs encore dirty)
+$(document).ajaxSuccess(function(_event, _jqxhr, settings) {
+    if (typeof settings.url === 'string' && /(save-ajax|save-ajax-bulk)/.test(settings.url)) {
+        // Reset dirty si plus aucun pending : la sauvegarde est synchrone côté serveur
+        if (NM.pendingSaves === 0) {
+            window.nmHasUnsavedChanges = false;
+        }
+        nmScheduleAutosave();
+    }
+});
+
+// ── 4. Network indicator dispatcher (compat events custom externes) ────
+window.addEventListener('nm:save-pending', () => nmSetNetworkState('syncing'));
+window.addEventListener('nm:save-success', () => {
+    if (NM.pendingSaves === 0 && navigator.onLine !== false) nmSetNetworkState('synced');
+});
+window.addEventListener('nm:save-error', () => nmSetNetworkState('offline'));
+
+// ── 5. Toast au save (vient en plus du highlight existant) ─────────────
+// `triggerRowHighlight()` (modifié plus haut) dispatch nm:note-saved après
+// son comportement original. On garde le row-highlight ET on ajoute un
+// toast premium avec le nom étudiant + nouvelle moyenne.
+let _nmLastToastAt = 0;
+let _nmToastBatch = { count: 0, names: new Set(), timer: null };
+window.addEventListener('nm:note-saved', function(e) {
+    const studentId = e.detail && e.detail.studentId;
+    if (!studentId) return;
+    const $row = $(`tr[data-student-id="${studentId}"]`);
+    if ($row.length === 0) return;
+    const name = $row.find('.nm-student-fullname').text().trim() || 'Étudiant';
+    const avg = $row.find('.average-cell').text().trim();
+
+    // Si plusieurs saves successifs (<400ms) : agréger en 1 seul toast batch.
+    const now = Date.now();
+    _nmToastBatch.names.add(name);
+    _nmToastBatch.count++;
+    if (_nmToastBatch.timer) clearTimeout(_nmToastBatch.timer);
+    _nmToastBatch.timer = setTimeout(() => {
+        const total = _nmToastBatch.count;
+        const namesList = Array.from(_nmToastBatch.names);
+        let msg;
+        if (total === 1) {
+            msg = avg && avg !== '--'
+                ? `Note enregistrée — ${namesList[0]} · moyenne ${avg}/20`
+                : `Note enregistrée — ${namesList[0]}`;
+        } else if (namesList.length <= 3) {
+            msg = `${total} notes enregistrées — ${namesList.join(', ')}`;
+        } else {
+            msg = `${total} notes enregistrées sur ${namesList.length} étudiants`;
+        }
+        nmShowToast('success', msg, 2400);
+        _nmToastBatch = { count: 0, names: new Set(), timer: null };
+        _nmLastToastAt = now;
+    }, 400);
+});
+
+// ── 6. Recherche étudiant (filtre lignes du tableau) ────────────────────
+function nmFilterStudents() {
+    const q = ($('#nm-student-search').val() || '').trim().toLowerCase();
+    const $rows = $('#studentsRows tr[data-student-id]');
+    let visible = 0;
+    if (!q) {
+        $rows.show();
+        // Hide les lignes impact orphelines
+        $('.nm-impact-row').each(function() {
+            const sid = $(this).data('impact-student');
+            $(this).toggle($(`tr[data-student-id="${sid}"]`).is(':visible'));
+        });
+        $('#nm-students-visible-pill').hide();
+        return;
+    }
+    $rows.each(function() {
+        const $r = $(this);
+        const txt = $r.find('.nm-student-fullname').text().toLowerCase()
+                  + ' ' + $r.find('.nm-student-matricule').text().toLowerCase();
+        if (txt.indexOf(q) !== -1) {
+            $r.show(); visible++;
+        } else {
+            $r.hide();
+        }
+    });
+    $('.nm-impact-row').each(function() {
+        const sid = $(this).data('impact-student');
+        $(this).toggle($(`tr[data-student-id="${sid}"]`).is(':visible'));
+    });
+    $('#nm-students-visible').text(visible);
+    $('#nm-students-visible-pill').show();
+}
+$(document).on('input', '#nm-student-search', function() {
+    clearTimeout(window._nmSearchDebounce);
+    window._nmSearchDebounce = setTimeout(nmFilterStudents, 80);
+    $('#nm-search-clear').toggle(!!$(this).val());
+});
+$(document).on('click', '#nm-search-clear', function() {
+    $('#nm-student-search').val('').focus();
+    $(this).hide();
+    nmFilterStudents();
+});
+
+// ── 7. Pagination "Load more" ───────────────────────────────────────────
+function nmEnablePaginationIfNeeded(students, sortedEvaluations) {
+    NM.pagination.all = students || [];
+    NM.pagination.sortedEvaluations = sortedEvaluations || [];
+    NM.pagination.rendered = NM.pagination.all.length;
+
+    const wrap = document.getElementById('nm-load-more-wrap');
+    if (!wrap) return;
+
+    if (NM.pagination.all.length > 80) {
+        // Hide après les 50 premiers
+        const $rows = $('#studentsRows tr[data-student-id]');
+        $rows.each(function(idx) {
+            if (idx >= NM.pagination.pageSize) {
+                $(this).addClass('nm-row-paginated').hide();
+            }
+        });
+        NM.pagination.rendered = Math.min(NM.pagination.pageSize, NM.pagination.all.length);
+        const remaining = NM.pagination.all.length - NM.pagination.rendered;
+        document.getElementById('nm-load-more-count').textContent = Math.min(NM.pagination.chunk, remaining);
+        wrap.style.display = '';
+    } else {
+        wrap.style.display = 'none';
+    }
+}
+$(document).on('click', '#nm-load-more-btn', function() {
+    const $hidden = $('#studentsRows tr.nm-row-paginated:hidden');
+    let revealed = 0;
+    $hidden.each(function() {
+        if (revealed >= NM.pagination.chunk) return false;
+        $(this).removeClass('nm-row-paginated').show();
+        revealed++;
+    });
+    NM.pagination.rendered += revealed;
+
+    const remainingHidden = $('#studentsRows tr.nm-row-paginated:hidden').length;
+    if (remainingHidden === 0) {
+        document.getElementById('nm-load-more-wrap').style.display = 'none';
+    } else {
+        document.getElementById('nm-load-more-count').textContent = Math.min(NM.pagination.chunk, remainingHidden);
+    }
+    nmFilterStudents();
+});
+
+// ── 8. Toolbar stats (étudiants + évals counters) ───────────────────────
+function nmUpdateToolbarStats(students, sortedEvaluations) {
+    const toolbar = document.getElementById('nm-table-toolbar');
+    if (!toolbar) return;
+    if (!students || students.length === 0) {
+        toolbar.style.display = 'none';
+        return;
+    }
+    toolbar.style.display = '';
+    document.getElementById('nm-students-count').textContent = students.length;
+    document.getElementById('nm-evaluations-count').textContent = (sortedEvaluations || []).length;
+}
+
+// ── 9. Indicateur scroll horizontal ─────────────────────────────────────
+function nmUpdateScrollIndicator() {
+    const wrapper = document.querySelector('.nm-grid-wrapper');
+    if (!wrapper) return;
+    const overflowRight = (wrapper.scrollWidth - wrapper.scrollLeft - wrapper.clientWidth) > 4;
+    wrapper.classList.toggle('has-overflow-right', overflowRight);
+}
+$(document).on('scroll', '.nm-grid-wrapper', nmUpdateScrollIndicator);
+$(window).on('resize', nmUpdateScrollIndicator);
+$(document).on('click', '#nm-scroll-arrow', function() {
+    const wrapper = document.querySelector('.nm-grid-wrapper');
+    if (!wrapper) return;
+    wrapper.scrollBy({ left: 220, behavior: 'smooth' });
+});
+
+// ── 10. Absent toggle switch + ligne stylée ─────────────────────────────
+// On remplace le markup checkbox par un Bootstrap form-switch APRÈS le
+// rendu de la grille (post-renderNotesGrid hook). Conserve l'id existant
+// pour rester compatible avec les sélecteurs jQuery (#absent-{s}-{e}).
+function nmUpgradeAbsenceToggles() {
+    $('#studentsRows tr[data-student-id]').each(function() {
+        const $tr = $(this);
+        const sid = $tr.data('student-id');
+
+        // Sync row class avec n'importe quel absent coché
+        const anyAbsent = $tr.find('.absence-checkbox:checked').length > 0;
+        $tr.toggleClass('nm-row-absent', anyAbsent);
+
+        // Pour chaque cellule note, transformer le markup .nm-absence-check
+        $tr.find('.nm-absence-check').each(function() {
+            const $wrap = $(this);
+            if ($wrap.hasClass('nm-absent-switch')) return;  // déjà upgradé
+
+            const $checkbox = $wrap.find('.absence-checkbox');
+            const id = $checkbox.attr('id') || '';
+            const checkedAttr = $checkbox.is(':checked') ? 'checked' : '';
+            const evalId = $checkbox.data('eval-id');
+
+            // Retire la <label><i class="fas fa-user-slash"/></label>
+            $wrap.empty();
+            $wrap.removeClass('nm-absence-check').addClass('form-check form-switch nm-absent-switch');
+            $wrap.attr('title', "Marquer comme absent — la note sera comptée 0 dans la moyenne (décocher pour saisir une note)");
+            $wrap.html(`
+                <input class="form-check-input absence-checkbox" type="checkbox"
+                       id="${id}" data-student-id="${sid}" data-eval-id="${evalId}" ${checkedAttr}
+                       onchange="toggleAbsence(${sid}, ${evalId}, this.checked)">
+                <label class="form-check-label" for="${id}">Abs</label>
+            `);
+        });
+
+        // Ajoute le badge "Absent" dans la cellule student (1 seul, supprimé si plus aucune absence)
+        const $studentCell = $tr.find('.notes-student-col .nm-student-info');
+        $studentCell.find('.nm-row-absent-badge').remove();
+        if (anyAbsent) {
+            const count = $tr.find('.absence-checkbox:checked').length;
+            const total = $tr.find('.absence-checkbox').length;
+            const label = (count === total) ? 'Absent' : `Absent ${count}/${total}`;
+            $studentCell.append(`<span class="nm-row-absent-badge"><i class="fas fa-user-slash"></i>${label}</span>`);
+        }
+    });
+}
+// Refresh row absent state quand une checkbox change (en plus du toggleAbsence existant)
+$(document).on('change', '.absence-checkbox', function() {
+    const $tr = $(this).closest('tr');
+    setTimeout(() => nmUpgradeAbsenceToggles(), 0);  // attendre que toggleAbsence ait persisté
+});
+
+// ── 11. Eval header lisible (titre + bareme + coef + edit btn) ─────────
+// Post-renderNotesGrid : transforme les inputs minuscules en affichage lisible.
+function nmUpgradeEvalHeaders() {
+    $('th.nm-eval-header').each(function() {
+        const $th = $(this);
+        if ($th.find('.nm-eval-header-block').length > 0) return;  // déjà upgradé
+
+        const $bareme = $th.find('.bareme-input');
+        const $coef = $th.find('.coeff-input');
+        const evalId = $bareme.data('eval-id') || $coef.data('eval-id');
+        if (!evalId) return;
+
+        const titre = $th.find('.nm-eval-title').first().text() || 'Éval';
+        const baremeVal = parseFloat($bareme.val()) || 20;
+        const coefVal = parseFloat($coef.val()) || 1;
+
+        // Format bareme : 20 → "20", 12.5 → "12,5"
+        const fmtNum = (n) => {
+            if (n % 1 === 0) return String(n);
+            return String(n).replace('.', ',');
+        };
+
+        // Garde les inputs dans le DOM (cachés via classe --legacy) pour compat JS calcul moyennes
+        $th.find('.nm-eval-controls').addClass('nm-eval-controls--legacy');
+
+        // Garde aussi le badge type + period existants (déplacés sous le block)
+        const $type = $th.find('.nm-eval-type').detach();
+        const $period = $th.find('.nm-eval-period').detach();
+
+        // Vide le titre original (sera dans le block)
+        $th.find('.nm-eval-title').remove();
+
+        const block = $(`
+            <div class="nm-eval-header-block" data-eval-id="${evalId}">
+                <div class="nm-eval-title" title="${titre.replace(/"/g, '&quot;')}">${titre.replace(/</g, '&lt;')}</div>
+                <div class="nm-eval-meta">
+                    <span class="nm-eval-bareme">/ ${fmtNum(baremeVal)}</span>
+                    <span class="nm-eval-meta-sep">·</span>
+                    <span class="nm-eval-coef">Coef ${fmtNum(coefVal)}</span>
+                </div>
+                <button type="button" class="nm-eval-edit-btn" data-eval-id="${evalId}"
+                        title="Modifier titre / barème / coefficient" aria-label="Modifier l'évaluation">
+                    <i class="fas fa-pen"></i>
+                </button>
+            </div>
+        `);
+
+        $th.prepend(block);
+        if ($type && $type.length) block.append($type);
+        if ($period && $period.length) block.append($period);
+    });
+}
+
+// ── 12. Quick edit modal ────────────────────────────────────────────────
+$(document).on('click', '.nm-eval-edit-btn', function(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const evalId = parseInt($(this).data('eval-id'));
+    if (!evalId) return;
+    nmOpenQuickEditModal(evalId);
+});
+function nmOpenQuickEditModal(evalId) {
+    NM.quickEditCurrentId = evalId;
+    const evalData = evaluationsData[evalId] || null;
+    const $bareme = $(`.bareme-input[data-eval-id="${evalId}"]`);
+    const $coef = $(`.coeff-input[data-eval-id="${evalId}"]`);
+    const titreNow = $(`.nm-eval-header-block[data-eval-id="${evalId}"] .nm-eval-title`).attr('title')
+                   || (evalData && evalData.titre)
+                   || '';
+
+    $('#nm-eval-quick-id').val(evalId);
+    $('#nm-eval-quick-titre').val(titreNow);
+    $('#nm-eval-quick-bareme').val($bareme.val() || (evalData && evalData.bareme) || 20);
+    $('#nm-eval-quick-coefficient').val($coef.val() || (evalData && evalData.coefficient) || 1);
+    $('#nm-eval-quick-error').hide().text('');
+
+    const modalEl = document.getElementById('evaluationQuickEditModal');
+    if (window.bootstrap && window.bootstrap.Modal) {
+        new window.bootstrap.Modal(modalEl).show();
+    } else {
+        $(modalEl).modal('show');
+    }
+}
+$(document).on('click', '#nm-eval-quick-save', function() {
+    const evalId = parseInt($('#nm-eval-quick-id').val());
+    if (!evalId) return;
+
+    const titre = ($('#nm-eval-quick-titre').val() || '').trim();
+    const bareme = parseFloat($('#nm-eval-quick-bareme').val());
+    const coefficient = parseFloat($('#nm-eval-quick-coefficient').val());
+
+    // Client-side validation
+    const errs = [];
+    if (!titre) errs.push('Le titre est obligatoire.');
+    if (isNaN(bareme) || bareme < 1 || bareme > 100) errs.push('Le barème doit être entre 1 et 100.');
+    if (isNaN(coefficient) || coefficient < 0.1 || coefficient > 10) errs.push('Le coefficient doit être entre 0,1 et 10.');
+    if (errs.length > 0) {
+        $('#nm-eval-quick-error').text(errs.join(' ')).show();
+        return;
+    }
+
+    const $btn = $(this);
+    const $spinner = $('#nm-eval-quick-spinner');
+    const $icon = $('#nm-eval-quick-icon');
+    $btn.prop('disabled', true);
+    $spinner.removeClass('d-none');
+    $icon.addClass('d-none');
+
+    $.ajax({
+        url: NM.routes.evalQuickUpdate + '/' + evalId + '/quick-update',
+        method: 'PATCH',
+        dataType: 'json',
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRF-TOKEN': NM.csrf,
+        },
+        data: { titre, bareme, coefficient, _token: NM.csrf },
+    })
+        .done(function(resp) {
+            if (resp && resp.success && resp.evaluation) {
+                // Update DOM header
+                const ev = resp.evaluation;
+                $(`.bareme-input[data-eval-id="${evalId}"]`).val(ev.bareme);
+                $(`.coeff-input[data-eval-id="${evalId}"]`).val(ev.coefficient);
+                evalParamsCache[evalId] = { bareme: parseFloat(ev.bareme) || 20, coefficient: parseFloat(ev.coefficient) || 1 };
+                if (evaluationsData[evalId]) {
+                    evaluationsData[evalId].titre = ev.titre;
+                    evaluationsData[evalId].bareme = ev.bareme;
+                    evaluationsData[evalId].coefficient = ev.coefficient;
+                }
+                // Refresh visual block
+                const $block = $(`.nm-eval-header-block[data-eval-id="${evalId}"]`);
+                $block.find('.nm-eval-title').text(ev.titre).attr('title', ev.titre);
+                const fmt = (n) => (n % 1 === 0 ? String(n) : String(n).replace('.', ','));
+                $block.find('.nm-eval-bareme').text('/ ' + fmt(parseFloat(ev.bareme)));
+                $block.find('.nm-eval-coef').text('Coef ' + fmt(parseFloat(ev.coefficient)));
+
+                calculateAllAverages();
+
+                const modalEl = document.getElementById('evaluationQuickEditModal');
+                const inst = window.bootstrap ? window.bootstrap.Modal.getInstance(modalEl) : null;
+                if (inst) inst.hide(); else $(modalEl).modal('hide');
+                nmShowToast('success', `Évaluation « ${ev.titre} » mise à jour.`);
+            } else {
+                $('#nm-eval-quick-error').text((resp && resp.message) || 'Erreur lors de la mise à jour.').show();
+            }
+        })
+        .fail(function(xhr) {
+            let msg = 'Erreur lors de la mise à jour.';
+            if (xhr.responseJSON) {
+                if (xhr.responseJSON.message) msg = xhr.responseJSON.message;
+                if (xhr.responseJSON.errors) msg = Object.values(xhr.responseJSON.errors).flat().join(' ');
+            }
+            $('#nm-eval-quick-error').text(msg).show();
+        })
+        .always(function() {
+            $btn.prop('disabled', false);
+            $spinner.addClass('d-none');
+            $icon.removeClass('d-none');
+        });
+});
+
+// ── 13. Save & Continue (modal création éval) ──────────────────────────
+// Le bouton "Créer et continuer" déclenche le submit du formulaire en
+// signalant via window.nmEvalSaveContinueRequested. La fonction
+// closeEvaluationModal() (modifiée plus haut) lit ce flag pour décider
+// si elle ferme le modal ou si elle réinitialise le formulaire pour la
+// prochaine évaluation.
+window.nmEvalSaveContinueRequested = false;
+$(document).on('click', '#evalModal_save_continue', function() {
+    window.nmEvalSaveContinueRequested = true;
+    const form = document.getElementById('evaluationCreateForm');
+    if (form) form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+});
+
+// ── 14. Raccourcis clavier (Tab/Enter/Ctrl+S/Échap) ────────────────────
+function nmGetGridInputs() {
+    return $('#studentsRows .note-input:not(:disabled):visible').toArray();
+}
+function nmGetGridGeometry() {
+    // Construire une grille [row][col] des inputs visibles
+    const rows = [];
+    $('#studentsRows tr[data-student-id]:visible').each(function() {
+        const cols = [];
+        $(this).find('.note-input').each(function() {
+            cols.push(this);
+        });
+        if (cols.length) rows.push(cols);
+    });
+    return rows;
+}
+function nmFindCellPosition(rows, target) {
+    for (let r = 0; r < rows.length; r++) {
+        for (let c = 0; c < rows[r].length; c++) {
+            if (rows[r][c] === target) return { r, c };
+        }
+    }
+    return null;
+}
+function nmFocusCell(input) {
+    if (!input) return;
+    input.focus();
+    if (typeof input.select === 'function') input.select();
+}
+$(document).on('keydown', '.note-input', function(e) {
+    const target = this;
+
+    // Échap : si modifs non sauvées, demander confirmation, sinon defocus
+    if (e.key === 'Escape') {
+        e.preventDefault();
+        target.blur();
+        return;
+    }
+    // Enter / Shift+Enter : descend / monte
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const rows = nmGetGridGeometry();
+        const pos = nmFindCellPosition(rows, target);
+        if (!pos) return;
+        const dir = e.shiftKey ? -1 : 1;
+        const nextR = pos.r + dir;
+        if (nextR >= 0 && nextR < rows.length) {
+            const next = rows[nextR][pos.c] || rows[nextR][rows[nextR].length - 1];
+            nmFocusCell(next);
+        }
+        return;
+    }
+    // Tab : on laisse le navigateur gérer (HTML order = colonne suivante).
+    // Mais on intercepte le wrap pour passer à la ligne suivante première colonne.
+    if (e.key === 'Tab') {
+        const rows = nmGetGridGeometry();
+        const pos = nmFindCellPosition(rows, target);
+        if (!pos) return;
+        if (e.shiftKey) {
+            if (pos.c === 0 && pos.r > 0) {
+                e.preventDefault();
+                const prevRow = rows[pos.r - 1];
+                nmFocusCell(prevRow[prevRow.length - 1]);
+            }
+        } else {
+            if (pos.c === rows[pos.r].length - 1 && pos.r < rows.length - 1) {
+                e.preventDefault();
+                const nextRow = rows[pos.r + 1];
+                nmFocusCell(nextRow[0]);
+            }
+        }
+    }
+});
+// Ctrl+S / Cmd+S = sauvegarder tout
+$(document).on('keydown', function(e) {
+    const isCtrlS = (e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S');
+    if (isCtrlS && $('#classSelectionModal').is(':visible')) {
+        e.preventDefault();
+        const $btn = $('#saveAllNotesBtn');
+        if ($btn.length && $btn.is(':visible') && !$btn.prop('disabled')) {
+            $btn.trigger('click');
+        }
+    }
+    // Ctrl+F : focus la barre de recherche (si modal ouvert)
+    const isCtrlF = (e.ctrlKey || e.metaKey) && (e.key === 'f' || e.key === 'F');
+    if (isCtrlF && $('#classSelectionModal').is(':visible') && $('#nm-table-toolbar').is(':visible')) {
+        e.preventDefault();
+        $('#nm-student-search').focus().select();
+    }
+});
+
+// ── 15. Tooltip raccourcis (1ère fois) ─────────────────────────────────
+function nmShowKeyboardHintIfNeeded() {
+    let seen = false;
+    try { seen = localStorage.getItem('nm_keyboard_hint_seen') === '1'; } catch (e) {}
+    if (seen) return;
+    const inputs = nmGetGridInputs();
+    if (inputs.length === 0) return;
+    const target = inputs[0];
+
+    const hint = document.createElement('div');
+    hint.className = 'nm-kbd-hint';
+    hint.innerHTML = `
+        <strong>Astuce&nbsp;:</strong>
+        <kbd>Tab</kbd> / <kbd>Shift+Tab</kbd>, <kbd>Enter</kbd> pour la cellule du bas, <kbd>Ctrl+S</kbd> pour tout sauvegarder.
+        <button type="button" class="nm-kbd-hint-close" aria-label="Fermer">&times;</button>
+    `;
+    document.body.appendChild(hint);
+
+    const rect = target.getBoundingClientRect();
+    hint.style.top = (rect.bottom + window.scrollY + 8) + 'px';
+    hint.style.left = (rect.left + window.scrollX - 14) + 'px';
+
+    const dismiss = () => {
+        if (hint.parentNode) hint.parentNode.removeChild(hint);
+        try { localStorage.setItem('nm_keyboard_hint_seen', '1'); } catch (e) {}
+        document.removeEventListener('keydown', onTab, true);
+    };
+    const onTab = (e) => { if (e.key === 'Tab') dismiss(); };
+    hint.querySelector('.nm-kbd-hint-close').addEventListener('click', dismiss);
+    document.addEventListener('keydown', onTab, true);
+    setTimeout(dismiss, 6500);
+}
+
+// ── 16. Hook nm:grid-rendered → upgrades visuels post-render ──────────
+// Le original `renderNotesGrid()` dispatch un CustomEvent en fin d'exécution
+// (cf. l'édition de la fonction principale plus haut dans ce fichier).
+window.addEventListener('nm:grid-rendered', function(e) {
+    const students = (e.detail && e.detail.students) || [];
+    const sortedEvaluations = (e.detail && e.detail.evaluations) || [];
+
+    NM.studentsCache = students;
+    nmUpdateToolbarStats(students, sortedEvaluations);
+    nmUpgradeAbsenceToggles();
+    nmUpgradeEvalHeaders();
+    nmEnablePaginationIfNeeded(students, sortedEvaluations);
+    nmFilterStudents();
+    nmCheckDraftBanner();
+
+    setTimeout(() => {
+        nmUpdateScrollIndicator();
+        const inputs = nmGetGridInputs();
+        if (inputs.length > 0) {
+            // Ne pas focus si l'utilisateur a déjà tapé qqch (ex: cherche dans la barre)
+            if (document.activeElement === document.body) {
+                nmFocusCell(inputs[0]);
+            }
+            nmShowKeyboardHintIfNeeded();
+        }
+    }, 60);
+});
+
+// ── 17. beforeunload + confirm fermeture ────────────────────────────────
+window.addEventListener('beforeunload', function(e) {
+    if (window.nmHasUnsavedChanges && NM.pendingSaves > 0) {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+    }
+});
+$('#classSelectionModal').on('hide.bs.modal', function(e) {
+    if (window.nmHasUnsavedChanges && NM.pendingSaves > 0) {
+        e.preventDefault();
+        if (typeof window.iiConfirm === 'function') {
+            window.iiConfirm({
+                title: 'Modifications non enregistrées',
+                message: 'Des notes sont en cours de sauvegarde. Fermer maintenant pourrait les perdre.',
+                confirmLabel: 'Fermer quand même',
+                cancelLabel: 'Annuler',
+                danger: true,
+            }).then((ok) => {
+                if (ok) {
+                    window.nmHasUnsavedChanges = false;
+                    $('#classSelectionModal').modal('hide');
+                }
+            });
+        } else if (confirm('Des notes sont en cours de sauvegarde. Fermer quand même ?')) {
+            window.nmHasUnsavedChanges = false;
+            $('#classSelectionModal').modal('hide');
+        }
+    }
+});
+
+// ── 18. Init au shown.bs.modal ──────────────────────────────────────────
+$(document).ready(function() {
+    nmPurgeOldDrafts();
+});
+
+$('#classSelectionModal').on('shown.bs.modal', function() {
+    nmCheckDraftBanner();
+    nmSetNetworkState(navigator.onLine === false ? 'offline' : 'synced');
+    setTimeout(nmUpdateScrollIndicator, 100);
+});
+
+// Quand on change matière OU période, reload de toolbar + draft check
+$(document).on('change', '#matiereSelect, #periodeFilter', function() {
+    setTimeout(nmCheckDraftBanner, 250);
+});
 
 </script>
 @endpush

@@ -725,6 +725,61 @@ $evaluation->titre = $request->titre;
     }
 
     /**
+     * Quick edit (titre + barème + coefficient seulement).
+     * Utilisé par le modal de saisie de notes (PR #4 — édition rapide depuis l'en-tête de colonne).
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function quickUpdate(Request $request, ESBTPEvaluation $evaluation)
+    {
+        $validated = $request->validate([
+            'titre' => 'required|string|max:255',
+            'bareme' => 'required|numeric|min:1|max:100',
+            'coefficient' => 'required|numeric|min:0.1|max:10',
+        ], [
+            'titre.required' => 'Le titre est obligatoire.',
+            'bareme.required' => 'Le barème est obligatoire.',
+            'bareme.min' => 'Le barème doit être au moins 1.',
+            'bareme.max' => 'Le barème ne peut pas dépasser 100.',
+            'coefficient.required' => 'Le coefficient est obligatoire.',
+            'coefficient.min' => 'Le coefficient doit être au moins 0,1.',
+            'coefficient.max' => 'Le coefficient ne peut pas dépasser 10.',
+        ]);
+
+        try {
+            $evaluation->fill([
+                'titre' => trim($validated['titre']),
+                'bareme' => (float) $validated['bareme'],
+                'coefficient' => (float) $validated['coefficient'],
+                'updated_by' => Auth::id(),
+            ]);
+            $evaluation->save();
+
+            return response()->json([
+                'success' => true,
+                'evaluation' => [
+                    'id' => $evaluation->id,
+                    'titre' => $evaluation->titre,
+                    'bareme' => (float) $evaluation->bareme,
+                    'coefficient' => (float) $evaluation->coefficient,
+                ],
+                'message' => 'Évaluation mise à jour.',
+            ]);
+        } catch (\Throwable $e) {
+            \Log::error('quickUpdate evaluation failed', [
+                'evaluation_id' => $evaluation->id,
+                'user_id' => Auth::id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la mise à jour de l\'évaluation.',
+            ], 500);
+        }
+    }
+
+    /**
      * Supprime une évaluation spécifique.
      *
      * @return \Illuminate\Http\Response

@@ -9,7 +9,7 @@
     /* ─── Scoped Premium — Saisie Rapide ─────────────────────────── */
 
     /* ── Header ──────────────────────────────────────────────────── */
-    .sr-header {
+    .nm-sr-header {
         background: linear-gradient(135deg, var(--primary) 0%, #5e91de 100%);
         color: #fff;
         border-radius: var(--radius-medium);
@@ -18,7 +18,7 @@
         position: relative;
         overflow: hidden;
     }
-    .sr-header::before {
+    .nm-sr-header::before {
         content: '';
         position: absolute;
         top: -40%; right: -10%;
@@ -27,7 +27,7 @@
         border-radius: 50%;
         pointer-events: none;
     }
-    .sr-header-inner {
+    .nm-sr-header-inner {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -36,8 +36,8 @@
         position: relative;
         z-index: 1;
     }
-    .sr-header-left { display: flex; align-items: center; gap: var(--space-md); }
-    .sr-header-icon {
+    .nm-sr-header-left { display: flex; align-items: center; gap: var(--space-md); }
+    .nm-sr-header-icon {
         width: 56px; height: 56px;
         border-radius: var(--radius-medium);
         background: rgba(255,255,255,0.15);
@@ -49,10 +49,10 @@
         color: #fff;
         flex-shrink: 0;
     }
-    .sr-header h1 { color: #fff; margin: 0; font-size: 1.2rem; font-weight: 700; }
-    .sr-header .sr-subtitle { color: rgba(255,255,255,0.8); margin: 3px 0 0; font-size: 0.84rem; }
-    .sr-header-actions { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
-    .sr-header-btn {
+    .nm-sr-header h1 { color: #fff; margin: 0; font-size: 1.2rem; font-weight: 700; }
+    .nm-sr-header .nm-sr-subtitle { color: rgba(255,255,255,0.8); margin: 3px 0 0; font-size: 0.84rem; }
+    .nm-sr-header-actions { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
+    .nm-sr-header-btn {
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -67,12 +67,12 @@
         background: rgba(255,255,255,0.1);
         backdrop-filter: blur(4px);
     }
-    .sr-header-btn:hover { background: rgba(255,255,255,0.25); color: #fff; }
-    .sr-header-btn--danger { background: rgba(220,38,38,0.8); border-color: rgba(220,38,38,0.6); }
-    .sr-header-btn--danger:hover { background: rgba(220,38,38,1); }
+    .nm-sr-header-btn:hover { background: rgba(255,255,255,0.25); color: #fff; }
+    .nm-sr-header-btn--danger { background: rgba(220,38,38,0.8); border-color: rgba(220,38,38,0.6); }
+    .nm-sr-header-btn--danger:hover { background: rgba(220,38,38,1); }
 
     /* ── Info Strip ───────────────────────────────────────────────── */
-    .sr-info-strip {
+    .nm-sr-info-strip {
         display: flex;
         flex-wrap: wrap;
         gap: var(--space-sm);
@@ -83,7 +83,7 @@
         margin-bottom: var(--space-lg);
         box-shadow: 0 1px 3px rgba(0,0,0,0.04);
     }
-    .sr-info-item {
+    .nm-sr-info-item {
         display: flex;
         align-items: center;
         gap: 8px;
@@ -93,18 +93,18 @@
         font-size: 0.82rem;
         white-space: nowrap;
     }
-    .sr-info-item i { color: var(--primary); font-size: 0.85rem; opacity: 0.7; }
-    .sr-info-label { color: var(--text-secondary); font-weight: 500; }
-    .sr-info-value { color: var(--text-primary); font-weight: 700; }
-    .sr-info-item--status {
+    .nm-sr-info-item i { color: var(--primary); font-size: 0.85rem; opacity: 0.7; }
+    .nm-sr-info-label { color: var(--text-secondary); font-weight: 500; }
+    .nm-sr-info-value { color: var(--text-primary); font-weight: 700; }
+    .nm-sr-info-item--status {
         background: rgba(16,185,129,0.08);
     }
-    .sr-info-item--status.warning {
+    .nm-sr-info-item--status.warning {
         background: rgba(245,158,11,0.08);
     }
 
     /* ── Alert ────────────────────────────────────────────────────── */
-    .sr-alert {
+    .nm-sr-alert {
         display: flex;
         align-items: center;
         gap: var(--space-md);
@@ -113,23 +113,23 @@
         margin-bottom: var(--space-lg);
         font-size: 0.88rem;
     }
-    .sr-alert--info {
+    .nm-sr-alert--info {
         background: rgba(4,83,203,0.05);
         border: 1px solid rgba(4,83,203,0.15);
         color: var(--text-primary);
     }
-    .sr-alert--info i { color: var(--primary); }
-    .sr-alert--success {
+    .nm-sr-alert--info i { color: var(--primary); }
+    .nm-sr-alert--success {
         background: rgba(16,185,129,0.05);
         border: 1px solid rgba(16,185,129,0.2);
     }
-    .sr-alert--success i { color: var(--success); }
-    .sr-alert--danger {
+    .nm-sr-alert--success i { color: var(--success); }
+    .nm-sr-alert--danger {
         background: rgba(239,68,68,0.05);
         border: 1px solid rgba(239,68,68,0.2);
     }
-    .sr-alert--danger i { color: #dc2626; }
-    .sr-alert-dismiss {
+    .nm-sr-alert--danger i { color: #dc2626; }
+    .nm-sr-alert-dismiss {
         margin-left: auto;
         background: none;
         border: none;
@@ -140,13 +140,13 @@
     }
 
     /* ── Card ─────────────────────────────────────────────────────── */
-    .sr-card {
+    .nm-sr-card {
         background: var(--surface);
         border-radius: var(--radius-medium);
         box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
         overflow: hidden;
     }
-    .sr-card-header {
+    .nm-sr-card-header {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -155,7 +155,7 @@
         flex-wrap: wrap;
         gap: var(--space-sm);
     }
-    .sr-card-title {
+    .nm-sr-card-title {
         font-size: 0.9rem;
         font-weight: 700;
         color: var(--text-primary);
@@ -163,9 +163,9 @@
         align-items: center;
         gap: var(--space-sm);
     }
-    .sr-card-title i { color: var(--primary); }
-    .sr-card-actions { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
-    .sr-search {
+    .nm-sr-card-title i { color: var(--primary); }
+    .nm-sr-card-actions { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
+    .nm-sr-search {
         border: 1px solid rgba(0,0,0,0.1);
         border-radius: var(--radius-small);
         padding: 7px 14px;
@@ -173,12 +173,12 @@
         width: 220px;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
-    .sr-search:focus {
+    .nm-sr-search:focus {
         outline: none;
         border-color: var(--primary);
         box-shadow: 0 0 0 3px rgba(4,83,203,0.1);
     }
-    .sr-badge-readonly {
+    .nm-sr-badge-readonly {
         display: inline-flex;
         align-items: center;
         gap: 4px;
@@ -190,7 +190,7 @@
         color: var(--primary);
         border: 1px solid rgba(4,83,203,0.15);
     }
-    .sr-btn {
+    .nm-sr-btn {
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -202,29 +202,29 @@
         cursor: pointer;
         transition: all 0.2s ease;
     }
-    .sr-btn--primary {
+    .nm-sr-btn--primary {
         background: linear-gradient(135deg, var(--primary), #3b7ddb);
         color: #fff;
         box-shadow: 0 2px 8px rgba(4,83,203,0.25);
     }
-    .sr-btn--primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(4,83,203,0.35); }
-    .sr-btn--secondary {
+    .nm-sr-btn--primary:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(4,83,203,0.35); }
+    .nm-sr-btn--secondary {
         background: rgba(0,0,0,0.04);
         color: var(--text-primary);
         border: 1px solid rgba(0,0,0,0.1);
     }
-    .sr-btn--secondary:hover { background: rgba(0,0,0,0.08); }
-    .sr-btn--success {
+    .nm-sr-btn--secondary:hover { background: rgba(0,0,0,0.08); }
+    .nm-sr-btn--success {
         background: linear-gradient(135deg, var(--success), #34d399);
         color: #fff;
         box-shadow: 0 2px 8px rgba(16,185,129,0.25);
     }
-    .sr-btn--success:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(16,185,129,0.35); }
+    .nm-sr-btn--success:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(16,185,129,0.35); }
 
     /* ── Premium Table ─────────────────────────────────────────────── */
-    .sr-table { width: 100%; border-collapse: collapse; }
-    .sr-table thead tr { background: linear-gradient(135deg, var(--primary), #3b7ddb); }
-    .sr-table th {
+    .nm-sr-table { width: 100%; border-collapse: collapse; }
+    .nm-sr-table thead tr { background: linear-gradient(135deg, var(--primary), #3b7ddb); }
+    .nm-sr-table th {
         color: #fff;
         padding: 12px 16px;
         font-size: 0.7rem;
@@ -234,20 +234,20 @@
         border: none;
         white-space: nowrap;
     }
-    .sr-table tbody tr {
+    .nm-sr-table tbody tr {
         border-bottom: 1px solid rgba(0,0,0,0.04);
         transition: background 0.15s ease;
     }
-    .sr-table tbody tr:last-child { border-bottom: none; }
-    .sr-table tbody tr:hover { background: rgba(4,83,203,0.03); }
-    .sr-table tbody tr.table-active { background: rgba(4,83,203,0.06); }
-    .sr-table td {
+    .nm-sr-table tbody tr:last-child { border-bottom: none; }
+    .nm-sr-table tbody tr:hover { background: rgba(4,83,203,0.03); }
+    .nm-sr-table tbody tr.table-active { background: rgba(4,83,203,0.06); }
+    .nm-sr-table td {
         padding: 10px 16px;
         font-size: 0.84rem;
         color: var(--text-primary);
         vertical-align: middle;
     }
-    .sr-table .sr-avatar {
+    .nm-sr-table .nm-sr-avatar {
         width: 34px; height: 34px;
         border-radius: 50%;
         display: inline-flex;
@@ -261,12 +261,12 @@
         background: rgba(4,83,203,0.1);
         color: var(--primary);
     }
-    .sr-student-info { display: flex; align-items: center; gap: 10px; }
-    .sr-student-name { font-weight: 600; font-size: 0.84rem; }
-    .sr-student-matricule { font-size: 0.72rem; color: var(--text-muted); font-family: monospace; }
+    .nm-sr-student-info { display: flex; align-items: center; gap: 10px; }
+    .nm-sr-student-name { font-weight: 600; font-size: 0.84rem; }
+    .nm-sr-student-matricule { font-size: 0.72rem; color: var(--text-muted); font-family: monospace; }
 
     /* Input note dans la table */
-    .sr-table .note-input {
+    .nm-sr-table .note-input {
         width: 90px;
         text-align: center;
         border: 1px solid rgba(0,0,0,0.12);
@@ -276,20 +276,20 @@
         font-weight: 600;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
-    .sr-table .note-input:focus {
+    .nm-sr-table .note-input:focus {
         border-color: var(--primary);
         box-shadow: 0 0 0 3px rgba(4,83,203,0.12);
         outline: none;
     }
-    .sr-table .note-input:disabled {
+    .nm-sr-table .note-input:disabled {
         background: rgba(0,0,0,0.03);
         color: var(--text-muted);
     }
-    .sr-table .note-input.is-invalid {
+    .nm-sr-table .note-input.is-invalid {
         border-color: #dc2626;
         box-shadow: 0 0 0 3px rgba(220,38,38,0.1);
     }
-    .sr-table .commentaire-input {
+    .nm-sr-table .commentaire-input {
         width: 100%;
         border: 1px solid rgba(0,0,0,0.08);
         border-radius: var(--radius-small);
@@ -297,31 +297,31 @@
         font-size: 0.82rem;
         transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
-    .sr-table .commentaire-input:focus {
+    .nm-sr-table .commentaire-input:focus {
         border-color: var(--primary);
         box-shadow: 0 0 0 3px rgba(4,83,203,0.08);
         outline: none;
     }
-    .sr-table .commentaire-input:disabled { background: rgba(0,0,0,0.02); }
+    .nm-sr-table .commentaire-input:disabled { background: rgba(0,0,0,0.02); }
 
     /* Row states */
-    .sr-table tbody tr.bg-light-success { background: rgba(16,185,129,0.04); }
-    .sr-table tbody tr.bg-light-danger { background: rgba(239,68,68,0.04); }
-    .sr-table tbody tr.modified { background: rgba(245,158,11,0.06); }
+    .nm-sr-table tbody tr.bg-light-success { background: rgba(16,185,129,0.04); }
+    .nm-sr-table tbody tr.bg-light-danger { background: rgba(239,68,68,0.04); }
+    .nm-sr-table tbody tr.modified { background: rgba(245,158,11,0.06); }
 
     /* Absent toggle */
-    .sr-table .form-check-input {
+    .nm-sr-table .form-check-input {
         width: 2.2em;
         height: 1.1em;
         cursor: pointer;
     }
-    .sr-table .form-check-input:checked {
+    .nm-sr-table .form-check-input:checked {
         background-color: #dc2626;
         border-color: #dc2626;
     }
 
     /* ── Progress Footer ──────────────────────────────────────────── */
-    .sr-footer {
+    .nm-sr-footer {
         display: flex;
         align-items: center;
         justify-content: space-between;
@@ -330,23 +330,23 @@
         flex-wrap: wrap;
         gap: var(--space-md);
     }
-    .sr-progress-wrap { flex: 1; max-width: 500px; min-width: 200px; }
-    .sr-progress {
+    .nm-sr-progress-wrap { flex: 1; max-width: 500px; min-width: 200px; }
+    .nm-sr-progress {
         height: 10px;
         background: rgba(0,0,0,0.06);
         border-radius: 5px;
         overflow: hidden;
     }
-    .sr-progress-bar {
+    .nm-sr-progress-bar {
         height: 100%;
         border-radius: 5px;
         transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1), background 0.3s ease;
     }
-    .sr-progress-bar.bg-danger { background: linear-gradient(90deg, #dc2626, #ef4444); }
-    .sr-progress-bar.bg-warning { background: linear-gradient(90deg, #d97706, #f59e0b); }
-    .sr-progress-bar.bg-info { background: linear-gradient(90deg, #0891b2, #22d3ee); }
-    .sr-progress-bar.bg-success { background: linear-gradient(90deg, var(--success), #34d399); }
-    .sr-progress-label {
+    .nm-sr-progress-bar.bg-danger { background: linear-gradient(90deg, #dc2626, #ef4444); }
+    .nm-sr-progress-bar.bg-warning { background: linear-gradient(90deg, #d97706, #f59e0b); }
+    .nm-sr-progress-bar.bg-info { background: linear-gradient(90deg, #0891b2, #22d3ee); }
+    .nm-sr-progress-bar.bg-success { background: linear-gradient(90deg, var(--success), #34d399); }
+    .nm-sr-progress-label {
         font-size: 0.72rem;
         font-weight: 600;
         color: var(--text-secondary);
@@ -364,9 +364,9 @@
         border-radius: var(--radius-small);
         box-shadow: 0 4px 20px rgba(4,83,203,0.3);
         z-index: 1050;
-        animation: sr-fadeInOut 2s forwards;
+        animation: nm-sr-fadeInOut 2s forwards;
     }
-    @keyframes sr-fadeInOut {
+    @keyframes nm-sr-fadeInOut {
         0% { opacity: 0; transform: translateY(-10px); }
         10% { opacity: 1; transform: translateY(0); }
         90% { opacity: 1; }
@@ -375,14 +375,14 @@
 
     /* ── Responsive ────────────────────────────────────────────────── */
     @media (max-width: 768px) {
-        .sr-header-inner { flex-direction: column; text-align: center; }
-        .sr-header-left { flex-direction: column; }
-        .sr-header-actions { justify-content: center; }
-        .sr-info-strip { flex-direction: column; }
-        .sr-card-header { flex-direction: column; align-items: stretch; }
-        .sr-card-actions { justify-content: stretch; }
-        .sr-search { width: 100%; }
-        .sr-footer { flex-direction: column; }
+        .nm-sr-header-inner { flex-direction: column; text-align: center; }
+        .nm-sr-header-left { flex-direction: column; }
+        .nm-sr-header-actions { justify-content: center; }
+        .nm-sr-info-strip { flex-direction: column; }
+        .nm-sr-card-header { flex-direction: column; align-items: stretch; }
+        .nm-sr-card-actions { justify-content: stretch; }
+        .nm-sr-search { width: 100%; }
+        .nm-sr-footer { flex-direction: column; }
     }
 </style>
 @endpush
@@ -392,38 +392,38 @@
     <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
 
         {{-- ── Premium Header ──────────────────────────────────────── --}}
-        <div class="sr-header">
-            <div class="sr-header-inner">
-                <div class="sr-header-left">
-                    <div class="sr-header-icon">
+        <div class="nm-sr-header">
+            <div class="nm-sr-header-inner">
+                <div class="nm-sr-header-left">
+                    <div class="nm-sr-header-icon">
                         <i class="fas fa-pen-alt"></i>
                     </div>
                     <div>
                         <h1>{{ $evaluation->titre }}</h1>
-                        <p class="sr-subtitle">
+                        <p class="nm-sr-subtitle">
                             {{ $evaluation->matiere->name ?? $evaluation->matiere->nom ?? '-' }}
                             &middot; {{ $evaluation->classe->name ?? $evaluation->classe->nom ?? '-' }}
                             &middot; {{ date('d/m/Y', strtotime($evaluation->date_evaluation)) }}
                         </p>
                     </div>
                 </div>
-                <div class="sr-header-actions">
-                    <a href="{{ route('esbtp.notes.saisie-rapide.pdf-preview', $evaluation) }}" class="sr-header-btn" target="_blank" title="Aperçu du PDF vierge dans un nouvel onglet">
+                <div class="nm-sr-header-actions">
+                    <a href="{{ route('esbtp.notes.saisie-rapide.pdf-preview', $evaluation) }}" class="nm-sr-header-btn" target="_blank" title="Aperçu du PDF vierge dans un nouvel onglet">
                         <i class="fas fa-eye"></i> Aperçu vierge
                     </a>
-                    <a href="{{ route('esbtp.notes.saisie-rapide.pdf', $evaluation) }}" class="sr-header-btn sr-header-btn--danger">
+                    <a href="{{ route('esbtp.notes.saisie-rapide.pdf', $evaluation) }}" class="nm-sr-header-btn nm-sr-header-btn--danger">
                         <i class="fas fa-file-pdf"></i> PDF vierge
                     </a>
-                    <a href="{{ route('esbtp.evaluations.pdf-preview', $evaluation) }}" class="sr-header-btn" target="_blank" title="Aperçu PDF avec notes">
+                    <a href="{{ route('esbtp.evaluations.pdf-preview', $evaluation) }}" class="nm-sr-header-btn" target="_blank" title="Aperçu PDF avec notes">
                         <i class="fas fa-eye"></i> Aperçu
                     </a>
-                    <a href="{{ route('esbtp.evaluations.pdf', $evaluation) }}" class="sr-header-btn">
+                    <a href="{{ route('esbtp.evaluations.pdf', $evaluation) }}" class="nm-sr-header-btn">
                         <i class="fas fa-file-export"></i> Exporter
                     </a>
-                    <a href="{{ route('esbtp.evaluations.show', $evaluation) }}" class="sr-header-btn">
+                    <a href="{{ route('esbtp.evaluations.show', $evaluation) }}" class="nm-sr-header-btn">
                         <i class="fas fa-eye"></i> Voir
                     </a>
-                    <a href="{{ route('esbtp.evaluations.index') }}" class="sr-header-btn">
+                    <a href="{{ route('esbtp.evaluations.index') }}" class="nm-sr-header-btn">
                         <i class="fas fa-arrow-left"></i> Retour
                     </a>
                 </div>
@@ -432,31 +432,31 @@
 
         {{-- ── Flash messages ──────────────────────────────────────── --}}
         @if (session('success'))
-            <div class="sr-alert sr-alert--success">
+            <div class="nm-sr-alert nm-sr-alert--success">
                 <i class="fas fa-check-circle"></i>
                 <span>{{ session('success') }}</span>
-                <button class="sr-alert-dismiss" onclick="this.closest('.sr-alert').remove()">&times;</button>
+                <button class="nm-sr-alert-dismiss" onclick="this.closest('.nm-sr-alert').remove()">&times;</button>
             </div>
         @endif
         @if (session('error'))
-            <div class="sr-alert sr-alert--danger">
+            <div class="nm-sr-alert nm-sr-alert--danger">
                 <i class="fas fa-exclamation-circle"></i>
                 <span>{{ session('error') }}</span>
-                <button class="sr-alert-dismiss" onclick="this.closest('.sr-alert').remove()">&times;</button>
+                <button class="nm-sr-alert-dismiss" onclick="this.closest('.nm-sr-alert').remove()">&times;</button>
             </div>
         @endif
 
         {{-- ── Info Strip ──────────────────────────────────────────── --}}
-        <div class="sr-info-strip">
-            <div class="sr-info-item">
+        <div class="nm-sr-info-strip">
+            <div class="nm-sr-info-item">
                 <i class="fas fa-users"></i>
-                <span class="sr-info-label">Classe</span>
-                <span class="sr-info-value">{{ $evaluation->classe->name ?? $evaluation->classe->nom ?? '-' }}</span>
+                <span class="nm-sr-info-label">Classe</span>
+                <span class="nm-sr-info-value">{{ $evaluation->classe->name ?? $evaluation->classe->nom ?? '-' }}</span>
             </div>
-            <div class="sr-info-item">
+            <div class="nm-sr-info-item">
                 <i class="fas fa-book"></i>
-                <span class="sr-info-label">Matiere</span>
-                <span class="sr-info-value">{{ $evaluation->matiere->name ?? $evaluation->matiere->nom ?? '-' }}</span>
+                <span class="nm-sr-info-label">Matiere</span>
+                <span class="nm-sr-info-value">{{ $evaluation->matiere->name ?? $evaluation->matiere->nom ?? '-' }}</span>
             </div>
             @php
                 $typeLabels = [
@@ -464,29 +464,29 @@
                     'projet' => 'Projet', 'controle' => 'Controle', 'rattrapage' => 'Rattrapage',
                 ];
             @endphp
-            <div class="sr-info-item">
+            <div class="nm-sr-info-item">
                 <i class="fas fa-tag"></i>
-                <span class="sr-info-label">Type</span>
-                <span class="sr-info-value">{{ $typeLabels[$evaluation->type] ?? ucfirst($evaluation->type) }}</span>
+                <span class="nm-sr-info-label">Type</span>
+                <span class="nm-sr-info-value">{{ $typeLabels[$evaluation->type] ?? ucfirst($evaluation->type) }}</span>
             </div>
-            <div class="sr-info-item">
+            <div class="nm-sr-info-item">
                 <i class="far fa-calendar-alt"></i>
-                <span class="sr-info-label">Date</span>
-                <span class="sr-info-value">{{ date('d/m/Y', strtotime($evaluation->date_evaluation)) }}</span>
+                <span class="nm-sr-info-label">Date</span>
+                <span class="nm-sr-info-value">{{ date('d/m/Y', strtotime($evaluation->date_evaluation)) }}</span>
             </div>
-            <div class="sr-info-item">
+            <div class="nm-sr-info-item">
                 <i class="fas fa-calculator"></i>
-                <span class="sr-info-label">Bareme</span>
-                <span class="sr-info-value">{{ $evaluation->bareme }} pts</span>
+                <span class="nm-sr-info-label">Bareme</span>
+                <span class="nm-sr-info-value">{{ $evaluation->bareme }} pts</span>
             </div>
-            <div class="sr-info-item">
+            <div class="nm-sr-info-item">
                 <i class="fas fa-balance-scale"></i>
-                <span class="sr-info-label">Coeff</span>
-                <span class="sr-info-value">{{ $evaluation->coefficient }}</span>
+                <span class="nm-sr-info-label">Coeff</span>
+                <span class="nm-sr-info-value">{{ $evaluation->coefficient }}</span>
             </div>
-            <div class="sr-info-item sr-info-item--status {{ $notes->count() > 0 ? '' : 'warning' }}">
+            <div class="nm-sr-info-item nm-sr-info-item--status {{ $notes->count() > 0 ? '' : 'warning' }}">
                 <i class="fas {{ $notes->count() > 0 ? 'fa-check-circle' : 'fa-exclamation-circle' }}" style="color: {{ $notes->count() > 0 ? 'var(--success)' : '#d97706' }};"></i>
-                <span class="sr-info-value" style="color: {{ $notes->count() > 0 ? '#065f46' : '#92400e' }};">
+                <span class="nm-sr-info-value" style="color: {{ $notes->count() > 0 ? '#065f46' : '#92400e' }};">
                     {{ $notes->count() > 0 ? $notes->count() . ' notes saisies' : 'Aucune note saisie' }}
                 </span>
             </div>
@@ -500,7 +500,7 @@
         @endphp
 
         @if($isReadOnly)
-            <div class="sr-alert sr-alert--info">
+            <div class="nm-sr-alert nm-sr-alert--info">
                 <i class="fas fa-lock"></i>
                 <span><strong>Consultation uniquement</strong> — Des notes existent deja. En tant que coordinateur, vous pouvez les consulter mais pas les modifier.</span>
             </div>
@@ -511,23 +511,23 @@
             @csrf
             <input type="hidden" name="evaluation_id" value="{{ $evaluation->id }}">
 
-            <div class="sr-card">
-                <div class="sr-card-header">
-                    <div class="sr-card-title">
+            <div class="nm-sr-card">
+                <div class="nm-sr-card-header">
+                    <div class="nm-sr-card-title">
                         <i class="fas fa-list-ol"></i>
                         Etudiants ({{ $etudiants->count() }})
                     </div>
-                    <div class="sr-card-actions">
-                        <input type="search" class="sr-search" id="searchStudent" placeholder="Rechercher...">
+                    <div class="nm-sr-card-actions">
+                        <input type="search" class="nm-sr-search" id="searchStudent" placeholder="Rechercher...">
                         @if(!$isReadOnly)
-                            <button type="button" class="sr-btn sr-btn--secondary" id="resetForm">
+                            <button type="button" class="nm-sr-btn nm-sr-btn--secondary" id="resetForm">
                                 <i class="fas fa-undo"></i> Reinitialiser
                             </button>
-                            <button type="submit" class="sr-btn sr-btn--primary" id="saveAllBtn">
+                            <button type="submit" class="nm-sr-btn nm-sr-btn--primary" id="saveAllBtn">
                                 <i class="fas fa-save"></i> Enregistrer
                             </button>
                         @else
-                            <span class="sr-badge-readonly">
+                            <span class="nm-sr-badge-readonly">
                                 <i class="fas fa-lock"></i> Lecture seule
                             </span>
                         @endif
@@ -535,7 +535,7 @@
                 </div>
 
                 <div class="table-responsive">
-                    <table class="sr-table" id="notesTable">
+                    <table class="nm-sr-table" id="notesTable">
                         <thead>
                             <tr>
                                 <th width="5%">#</th>
@@ -557,13 +557,13 @@
                                 <tr class="{{ $rowClass }} student-row">
                                     <td class="fw-medium" style="color: var(--text-muted);">{{ $index + 1 }}</td>
                                     <td>
-                                        <div class="sr-student-info">
-                                            <div class="sr-avatar" style="background: {{ $bgColor }}15; color: {{ $bgColor }};">
+                                        <div class="nm-sr-student-info">
+                                            <div class="nm-sr-avatar" style="background: {{ $bgColor }}15; color: {{ $bgColor }};">
                                                 {{ $initials }}
                                             </div>
                                             <div>
-                                                <div class="sr-student-name student-name">{{ $etudiant->nom_complet ?? ($etudiant->nom . ' ' . $etudiant->prenoms) }}</div>
-                                                <div class="sr-student-matricule">{{ $etudiant->matricule }}</div>
+                                                <div class="nm-sr-student-name student-name">{{ $etudiant->nom_complet ?? ($etudiant->nom . ' ' . $etudiant->prenoms) }}</div>
+                                                <div class="nm-sr-student-matricule">{{ $etudiant->matricule }}</div>
                                             </div>
                                         </div>
                                     </td>
@@ -618,15 +618,15 @@
                 </div>
 
                 {{-- ── Footer: Progress + Save ─────────────────────── --}}
-                <div class="sr-footer">
-                    <div class="sr-progress-wrap">
-                        <div class="sr-progress" id="progressBar">
-                            <div class="sr-progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
+                <div class="nm-sr-footer">
+                    <div class="nm-sr-progress-wrap">
+                        <div class="nm-sr-progress" id="progressBar">
+                            <div class="nm-sr-progress-bar bg-success" role="progressbar" style="width: 0%;"></div>
                         </div>
-                        <div class="sr-progress-label"><span id="progressText">0%</span> des notes saisies</div>
+                        <div class="nm-sr-progress-label"><span id="progressText">0%</span> des notes saisies</div>
                     </div>
                     @if(!$isReadOnly)
-                        <button type="submit" class="sr-btn sr-btn--success" id="saveAllBtnBottom">
+                        <button type="submit" class="nm-sr-btn nm-sr-btn--success" id="saveAllBtnBottom">
                             <i class="fas fa-save"></i> Enregistrer toutes les notes
                         </button>
                     @endif
@@ -656,10 +656,10 @@ $(document).ready(function() {
         });
 
         var percentage = Math.round((filledNotes / totalStudents) * 100);
-        $('#progressBar .sr-progress-bar').css('width', percentage + '%');
+        $('#progressBar .nm-sr-progress-bar').css('width', percentage + '%');
         $('#progressText').text(percentage + '%');
 
-        var $bar = $('#progressBar .sr-progress-bar');
+        var $bar = $('#progressBar .nm-sr-progress-bar');
         $bar.removeClass('bg-success bg-warning bg-info bg-danger');
         if (percentage < 25) $bar.addClass('bg-danger');
         else if (percentage < 50) $bar.addClass('bg-warning');
@@ -725,7 +725,7 @@ $(document).ready(function() {
         var value = $(this).val().toLowerCase();
         $('.student-row').each(function() {
             var name = $(this).find('.student-name').text().toLowerCase();
-            var matricule = $(this).find('.sr-student-matricule').text().toLowerCase();
+            var matricule = $(this).find('.nm-sr-student-matricule').text().toLowerCase();
             $(this).toggle(name.includes(value) || matricule.includes(value));
         });
     });
