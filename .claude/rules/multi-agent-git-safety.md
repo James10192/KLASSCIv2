@@ -129,6 +129,71 @@ Si l'agent /simplify tourne sur `presentation`, tu ne fais pas `git push origin 
 3. Sync (`git pull --rebase`)
 4. Tu peux à nouveau modifier la branche
 
+### 13. Merger une feature branch SANS perturber les autres agents (pattern PR-via-gh)
+
+Quand ta feature branch est prête à merger sur `presentation` (ou `master`/`main`) ET que d'autres agents travaillent en parallèle sur le même repo principal (modifs uncommitted, agents background, `gh` en cours), **JAMAIS** :
+
+```bash
+# ❌ INTERDIT — change la branche pour TOUS les agents qui partagent ce working tree
+git checkout feat/ma-branche
+git rebase presentation
+git push --force-with-lease
+git checkout presentation
+git merge feat/ma-branche
+git push origin presentation
+```
+
+Ces commandes touchent l'index, le working tree, et HEAD du repo principal. Tout autre agent en train de lire/écrire des fichiers va voir son contexte changer sous ses pieds. Mes modifs uncommitted peuvent être stashées silencieusement, ses fichiers untracked peuvent être en confusion sur quelle branche ils appartiennent.
+
+**Pattern correct** : tout faire côté GitHub, puis fast-forward local en lecture seule.
+
+```bash
+# 1. Vérifier l'état AVANT (preuve que les modifs des autres agents sont là)
+git status --short
+# Garder mentalement la liste des "M" et "??" qui ne sont PAS à toi
+
+# 2. Créer la PR via gh (zéro impact local)
+gh pr create --base presentation --head feat/ma-branche \
+    --title "feat: ..." --body "..."
+
+# 3. Merger côté GitHub via gh
+#    --admin pour bypass les "branch up to date" checks (GitHub fait le merge serveur-side)
+#    --merge pour créer un merge commit (résout naturellement les divergences)
+#    Alternative : --rebase si tu veux historique linéaire (mais conflits possibles côté remote)
+gh pr merge <pr-number> --merge --admin
+
+# 4. Récupérer le merge en local SANS toucher au working tree
+git fetch origin presentation
+# Cette commande ne touche que .git/refs/, pas le working tree
+
+# 5. Fast-forward UNIQUEMENT (échoue cleanly si pas possible — ne stash pas, ne merge pas)
+git merge --ff-only origin/presentation
+# Si échec ("not possible to fast-forward"), c'est qu'un autre agent a poussé entre temps.
+# → fetch à nouveau et retry. JAMAIS forcer.
+
+# 6. Vérifier que les modifs des autres agents sont préservées
+git status --short
+# La liste "M" et "??" doit être identique (modulo les fichiers TES qui ont été pushés via la PR)
+```
+
+**Pourquoi ça marche** :
+- `gh pr merge --admin` opère côté GitHub, le merge commit est créé sur le serveur
+- `git fetch` met à jour les refs locales sans toucher au working tree ni à HEAD
+- `git merge --ff-only` n'avance HEAD que si c'est un fast-forward propre — il **n'auto-stash JAMAIS** des modifs uncommitted, contrairement à `git pull` qui peut le faire
+- Les modifs uncommitted des autres agents restent intactes car le fast-forward ne touche que les fichiers qui changent entre l'ancien et le nouveau HEAD
+
+**Quand c'est inutilisable** :
+- Si la PR a des conflits avec `presentation` : `gh pr merge --admin --merge` peut quand même créer un merge commit (GitHub résout le textuel), mais si les conflits sont sémantiques il faut rebaser. Dans ce cas, créer un **worktree** dédié pour la résolution :
+  ```bash
+  git worktree add ./.claude/worktrees/feat-merge feat/ma-branche
+  cd ./.claude/worktrees/feat-merge
+  git rebase origin/presentation
+  # résoudre les conflits ici, dans le worktree, sans toucher au repo principal
+  git push --force-with-lease
+  cd -
+  git worktree remove ./.claude/worktrees/feat-merge
+  ```
+
 ## Checklist AVANT de lancer N agents en parallèle
 
 - [ ] Chaque agent a son worktree isolé (`isolation: "worktree"`)
@@ -159,6 +224,8 @@ Si l'agent /simplify tourne sur `presentation`, tu ne fais pas `git push origin 
 8. ❌ Lancer un nouvel agent sur `presentation` pendant qu'un agent /simplify ou /visual-check y tourne
 9. ❌ Merger une PR dont le contenu est déjà sur la branche cible (créer doublons + conflits)
 10. ❌ Stash drop sans avoir vérifié le contenu du stash
+11. ❌ `git checkout <feature-branch>` sur le main repo pendant qu'un autre agent travaille (change la branche pour TOUT le monde — utiliser worktree ou `gh pr merge --admin` à la place)
+12. ❌ `git pull origin <branch>` sur main repo avec modifs uncommitted d'un autre agent (peut auto-stash silencieusement) — utiliser `git fetch` + `git merge --ff-only` qui échoue cleanly
 
 ## Voir aussi
 
