@@ -15,27 +15,42 @@ use Illuminate\Support\Collection;
 class WorkflowNextStepResolver
 {
     /**
-     * Permission cible par type d'event de workflow.
+     * Étapes suivantes par type d'event de workflow.
+     *
+     * Forme : [
+     *     <event_type> => [
+     *         'permission' => string|null,  // permission requise pour l'étape suivante
+     *         'label'      => string|null,  // label humain
+     *         'route'      => string|null,  // nom de route Laravel
+     *         'param_key'  => string|null,  // clé recherchée dans le context (avec fallback sans `_id`)
+     *     ],
+     * ]
      */
-    private const NEXT_STEP_PERMISSION = [
-        'inscription.created'        => 'paiements.create',     // créer/associer paiement
-        'paiement.created'           => 'paiements.validate',   // valider paiement
-        'paiement.validated'         => 'inscriptions.validate', // valider inscription
-        'inscription.validated'      => null,                    // fin du chain
-    ];
-
-    private const NEXT_STEP_LABEL = [
-        'inscription.created'   => 'Encaisser un paiement pour cette inscription',
-        'paiement.created'      => 'Valider ce paiement',
-        'paiement.validated'    => 'Valider l\'inscription',
-        'inscription.validated' => null,
-    ];
-
-    private const NEXT_STEP_ROUTE = [
-        'inscription.created'   => ['name' => 'esbtp.paiements.create', 'param_key' => 'inscription_id'],
-        'paiement.created'      => ['name' => 'esbtp.paiements.show',  'param_key' => 'paiement'],
-        'paiement.validated'    => ['name' => 'esbtp.inscriptions.show', 'param_key' => 'inscription'],
-        'inscription.validated' => null,
+    private const NEXT_STEPS = [
+        'inscription.created' => [
+            'permission' => 'paiements.create',
+            'label'      => 'Encaisser un paiement pour cette inscription',
+            'route'      => 'esbtp.paiements.create',
+            'param_key'  => 'inscription_id',
+        ],
+        'paiement.created' => [
+            'permission' => 'paiements.validate',
+            'label'      => 'Valider ce paiement',
+            'route'      => 'esbtp.paiements.show',
+            'param_key'  => 'paiement',
+        ],
+        'paiement.validated' => [
+            'permission' => 'inscriptions.validate',
+            'label'      => 'Valider l\'inscription',
+            'route'      => 'esbtp.inscriptions.show',
+            'param_key'  => 'inscription',
+        ],
+        'inscription.validated' => [
+            'permission' => null,
+            'label'      => null,
+            'route'      => null,
+            'param_key'  => null,
+        ],
     ];
 
     /**
@@ -43,7 +58,7 @@ class WorkflowNextStepResolver
      */
     public function nextPermission(string $eventType): ?string
     {
-        return self::NEXT_STEP_PERMISSION[$eventType] ?? null;
+        return self::NEXT_STEPS[$eventType]['permission'] ?? null;
     }
 
     /**
@@ -51,7 +66,7 @@ class WorkflowNextStepResolver
      */
     public function nextLabel(string $eventType): ?string
     {
-        return self::NEXT_STEP_LABEL[$eventType] ?? null;
+        return self::NEXT_STEPS[$eventType]['label'] ?? null;
     }
 
     /**
@@ -59,17 +74,19 @@ class WorkflowNextStepResolver
      */
     public function nextActionUrl(string $eventType, array $context): ?string
     {
-        $route = self::NEXT_STEP_ROUTE[$eventType] ?? null;
-        if (!$route) {
+        $step = self::NEXT_STEPS[$eventType] ?? null;
+        if (!$step || !$step['route'] || !$step['param_key']) {
             return null;
         }
-        $key = $route['param_key'];
-        if (!isset($context[$key]) && !isset($context[str_replace('_id', '', $key)])) {
+
+        $key = $step['param_key'];
+        $fallbackKey = str_replace('_id', '', $key);
+        $value = $context[$key] ?? $context[$fallbackKey] ?? null;
+        if ($value === null) {
             return null;
         }
-        $value = $context[$key] ?? $context[str_replace('_id', '', $key)];
-        return route($route['name'], [$route['param_key'] === 'inscription_id'
-            ? 'inscription_id' : ($route['param_key'])  => $value]);
+
+        return route($step['route'], [$key => $value]);
     }
 
     /**

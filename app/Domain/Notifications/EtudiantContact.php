@@ -17,6 +17,27 @@ final class EtudiantContact
         public readonly ?string $nom = null,
     ) {}
 
+    /**
+     * Construit un contact depuis un modèle ESBTPEtudiant (ou null si absent).
+     * Centralise le mapping etudiant → contact utilisé dans tous les flows
+     * recouvrement / relances (controller + service).
+     */
+    public static function fromEtudiant(?object $etudiant): ?self
+    {
+        if ($etudiant === null) {
+            return null;
+        }
+
+        return new self(
+            etudiantId: (int) $etudiant->id,
+            nomComplet: trim(($etudiant->prenoms ?? '') . ' ' . ($etudiant->nom ?? '')),
+            phone: $etudiant->telephone ?? null,
+            email: $etudiant->email ?? null,
+            prenoms: $etudiant->prenoms ?? null,
+            nom: $etudiant->nom ?? null,
+        );
+    }
+
     public function hasValidPhone(): bool
     {
         return PhoneNormalizer::isValid($this->phone);
