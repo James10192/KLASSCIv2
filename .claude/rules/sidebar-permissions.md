@@ -45,7 +45,7 @@ Quand une section plate coexiste avec une section complète pour le même domain
 2. **JAMAIS ajouter un item dans les DEUX sections** — choisir la section plate OU complète
 3. **Toujours vérifier** si l'item existe déjà dans une autre section avant d'ajouter
 4. **Tester avec superAdmin** après modification — c'est le rôle qui révèle les doublons
-5. **Module toggles** : `@can('module.XXX.access')` = couche abonnement tenant, `@can('specific_perm')` = permission métier
+5. **Module toggles** : `@can('module.XXX.access')` = couche abonnement instance, `@can('specific_perm')` = permission métier
 
 ## Structure des modules toggles
 

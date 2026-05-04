@@ -8,7 +8,7 @@ Quand tu ajoutes/modifies une permission, un rôle, une vérif `@can(...)`, `->c
 
 - **Registry** : `config/permissions.php`
 - **Lecture** : `App\Services\PermissionRegistry` (jamais `config('permissions.xxx')` direct dans le code)
-- **Déploiement** : `bin/deploy/fix_permissions.php` lit le registry et synchronise rôles + permissions sur la DB tenant
+- **Déploiement** : `bin/deploy/fix_permissions.php` lit le registry et synchronise rôles + permissions sur la DB de l'instance
 
 Les seeders `database/seeders/*Seeder.php` sont **gitignored** (`.gitignore` contient `*Seeder.php`) et constituent du code mort en prod. Ne pas s'en servir comme référence.
 
