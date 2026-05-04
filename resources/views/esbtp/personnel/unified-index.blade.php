@@ -931,24 +931,34 @@
    modal-dialog/content/body à 90vh + flex:1 — créait un espace blanc géant
    en bas. Cible #crModal (ID = spécificité maximale) pour battre toute
    règle de classe globale, peu importe l'ordre de chargement. */
-#crModal.modal.show .modal-dialog,
-#crModal.modal.show .modal-content,
+#crModal.modal.show .modal-dialog {
+    width: min(960px, calc(100vw - 32px)) !important;
+    max-width: min(960px, calc(100vw - 32px)) !important;
+    max-height: calc(100vh - 48px) !important;
+    margin: 24px auto !important;
+}
+#crModal.modal.show .modal-content {
+    display: flex !important;
+    flex-direction: column !important;
+    max-height: calc(100vh - 48px) !important;
+    overflow: hidden !important;
+}
 #crModal.modal.show .modal-body {
-    height: auto !important;
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
     max-height: none !important;
-    flex: 0 0 auto !important;
-    overflow: visible !important;
+    overflow-y: auto !important;
 }
 /* Le picker garde son scroll INTERNE pour les longues listes de permissions */
 #crModal .cr-picker-groups {
-    max-height: 50vh !important;
+    max-height: min(340px, 38vh) !important;
     overflow-y: auto !important;
 }
 /* Cap global : si exceptionnellement la modal complète dépasse le viewport,
    c'est elle qui scroll (pas un sous-élément avec un espace blanc parasite) */
 #crModal.modal.show .modal-content {
-    max-height: 90vh !important;
-    overflow-y: auto !important;
+    max-height: calc(100vh - 48px) !important;
+    overflow: hidden !important;
 }
 .cr-modal-footer {
     background: #fff;
@@ -2478,7 +2488,7 @@ function toggleCaissierStatus(caissierId) {
 
     /* ── Form submission générique ── */
     function wireModalForm() {
-        const form = modalEl.querySelector('#cr-create-form, #cr-edit-form, #cr-assign-form');
+        const form = modalEl.querySelector('#cr-create-form, #cr-edit-form, #cr-edit-standard-form, #cr-assign-form');
         if (!form) return;
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -2507,6 +2517,10 @@ function toggleCaissierStatus(caissierId) {
                 }
                 // Succès
                 getModal().hide();
+                if (form.id === 'cr-edit-standard-form') {
+                    window.location.reload();
+                    return;
+                }
                 await refreshList();
             } catch (e2) {
                 showError('Erreur réseau : ' + e2.message);
