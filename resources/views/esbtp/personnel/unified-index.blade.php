@@ -919,13 +919,26 @@
     margin-left: .35rem;
 }
 .cr-modal-body {
+    padding: 0 !important;
+    background: #fafbfc;
+    height: auto !important;
+    min-height: 0 !important;
+    max-height: none !important;
+    overflow: hidden !important;
+    flex: initial !important;
+}
+.cr-modal-scroll {
     padding: 1.5rem;
     background: #fafbfc;
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+    scrollbar-gutter: stable;
+    overscroll-behavior: contain;
 }
 /* Fix Lot 17 : éviter espace blanc en bas du modal scrollable */
-.cr-modal-body > :last-child { margin-bottom: 0 !important; }
+.cr-modal-scroll > :last-child { margin-bottom: 0 !important; }
 .cr-modal-body .cr-error-zone:empty { display: none !important; }
-.cr-modal-body .cr-section:last-child { margin-bottom: 0; }
+.cr-modal-scroll .cr-section:last-child { margin-bottom: 0; }
 
 /* Override TOTAL des règles globales dashboard-moderne.css qui forcent
    modal-dialog/content/body à 90vh + flex:1 — créait un espace blanc géant
@@ -943,14 +956,14 @@
 #crModal.modal.show .modal-content {
     height: auto !important;
     max-height: calc(100vh - 48px) !important;
-    overflow: hidden auto !important;
+    overflow: hidden !important;
 }
 #crModal .cr-modal > form {
     display: block !important;
     height: auto !important;
     min-height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
+    max-height: inherit !important;
+    overflow: hidden !important;
 }
 #crModal .cr-modal-header,
 #crModal .cr-modal-footer {
@@ -959,10 +972,8 @@
 #crModal.modal.show .modal-body {
     height: auto !important;
     min-height: auto !important;
-    max-height: calc(100vh - 180px) !important;
-    overflow-y: auto !important;
-    scrollbar-gutter: stable !important;
-    overscroll-behavior: contain !important;
+    max-height: none !important;
+    overflow: hidden !important;
 }
 /* Le picker garde son scroll INTERNE pour les longues listes de permissions */
 #crModal .cr-picker {
@@ -975,11 +986,6 @@
 }
 /* Cap global : si exceptionnellement la modal complète dépasse le viewport,
    c'est elle qui scroll (pas un sous-élément avec un espace blanc parasite) */
-#crModal.modal.show .modal-content {
-    height: auto !important;
-    max-height: calc(100vh - 48px) !important;
-    overflow: hidden auto !important;
-}
 .cr-modal-footer {
     background: #fff;
     border-top: 1px solid #f1f5f9;

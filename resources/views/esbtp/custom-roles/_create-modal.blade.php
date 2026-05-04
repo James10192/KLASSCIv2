@@ -22,6 +22,7 @@
             </div>
 
             <div class="modal-body cr-modal-body">
+                <div class="cr-modal-scroll">
 
                 {{-- Section 1 : Infos générales --}}
                 <section class="cr-section">
@@ -94,8 +95,9 @@
                     ])
                 </section>
 
-                <div class="cr-error-zone" data-cr-error style="display:none;"></div>
+                    <div class="cr-error-zone" data-cr-error style="display:none;"></div>
 
+                </div>
             </div>
 
             <div class="modal-footer cr-modal-footer">

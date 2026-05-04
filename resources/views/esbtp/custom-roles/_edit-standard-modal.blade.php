@@ -35,6 +35,7 @@
             </div>
 
             <div class="modal-body cr-modal-body">
+                <div class="cr-modal-scroll">
 
                 {{-- Bandeau warning rôle système --}}
                 <div class="cr-info-note cr-info-note--warning" style="margin-bottom: 1rem;">
@@ -120,8 +121,9 @@
                     ])
                 </section>
 
-                <div class="cr-error-zone" data-cr-error style="display:none;"></div>
+                    <div class="cr-error-zone" data-cr-error style="display:none;"></div>
 
+                </div>
             </div>
 
             <div class="modal-footer cr-modal-footer">
