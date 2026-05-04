@@ -15,6 +15,8 @@ use Illuminate\Support\Facades\Cache;
  */
 class CachedPredictor implements PredictorInterface
 {
+    private const CACHE_VERSION = 2;
+
     public function __construct(
         private readonly PredictorInterface $inner,
         private readonly int $ttlSeconds = 3600,
@@ -52,6 +54,6 @@ class CachedPredictor implements PredictorInterface
 
     private function cacheKey(AnalyticsContext $context): string
     {
-        return sprintf('analytics:%s:%s', $this->name(), $context->hash());
+        return sprintf('analytics:v%d:%s:%s', self::CACHE_VERSION, $this->name(), $context->hash());
     }
 }

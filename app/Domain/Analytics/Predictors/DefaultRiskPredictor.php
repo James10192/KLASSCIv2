@@ -8,6 +8,7 @@ use App\Domain\Analytics\DTOs\PredictionResult;
 use App\Domain\Analytics\DTOs\StudentRiskFeatures;
 use App\Domain\Analytics\Repositories\StudentRiskRepository;
 use App\Helpers\SettingsHelper;
+use App\Services\EcheancierReadinessService;
 
 /**
  * Évalue le risque de défaut de paiement par inscription. Pour chaque étudiant
@@ -38,6 +39,7 @@ class DefaultRiskPredictor implements PredictorInterface
      */
     public function __construct(
         private readonly StudentRiskRepository $repository,
+        private readonly EcheancierReadinessService $echeancierReadiness,
         private readonly array $configOverrides = [],
     ) {}
 
@@ -53,6 +55,11 @@ class DefaultRiskPredictor implements PredictorInterface
 
     public function predict(AnalyticsContext $context): PredictionResult
     {
+        $unavailableReason = $this->echeancierReadiness->unavailableReason();
+        if ($unavailableReason !== null) {
+            return PredictionResult::unavailable(self::NAME, $unavailableReason);
+        }
+
         $students = $this->repository->activeStudents($context, max($this->topN() * 4, 200));
 
         if (empty($students)) {

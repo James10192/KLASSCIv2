@@ -8,6 +8,7 @@ use App\Models\ESBTPFraisOption;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPOptionAssignment;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 
 class EcheancierResolverService
 {
@@ -39,6 +40,10 @@ class EcheancierResolverService
 
     public function resolveByScope(string $scopeType, int $scopeId, ?string $affectationStatus): ?ESBTPEcheancierRule
     {
+        if (!Schema::hasTable('esbtp_echeancier_rules') || !Schema::hasTable('esbtp_echeancier_rule_lines')) {
+            return null;
+        }
+
         $normalized = ESBTPEcheancierRule::normalizeStatus($affectationStatus);
 
         return ESBTPEcheancierRule::query()
