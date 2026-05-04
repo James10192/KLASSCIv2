@@ -29,6 +29,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Sécurité
 
+- **Couverture de non-régression sur les flux paiements critiques (tests)** — ajout d'une suite `tests/Feature/Compta/PaiementCriticalFlowRegressionTest.php` pour verrouiller les garde-fous de routes et sécurité : présence des middlewares de permission/throttle sur create/edit/view/validate/reject/cancel-own, validation stricte du `motif_rejet` (min 10 caractères), et garde anti auto-validation S1.1 (créateur = validateur bloqué, validateur distinct autorisé). Objectif : prévenir les régressions anti-fraude lors des prochains lots comptabilité.
 - **Validation server-side des sélections d'audience d'annonce** (`/esbtp/annonces/store` et `/esbtp/annonces/{id}/update`) — le front Choices.js limitait déjà à 20 classes / 50 étudiants, mais le controller acceptait n'importe quelle taille. Ajout `array|max:20` sur `classes` et `array|max:50` sur `etudiants`, plus validation `exists:` sur chaque ID pour bloquer les soumissions forgées. Constantes `MAX_CLASSES` / `MAX_ETUDIANTS` exposées pour rester en phase avec le front.
 
 ### Améliorations
