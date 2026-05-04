@@ -16,6 +16,44 @@ use Spatie\Permission\Models\Role;
 
 class ESBTPPersonnelUnifiedController extends Controller
 {
+    private const TAB_PERMISSIONS = [
+        'coordinateurs' => [
+            'role' => 'coordinateur',
+            'view' => 'coordinateurs.view',
+            'create' => 'coordinateurs.create',
+            'edit' => 'coordinateurs.edit',
+            'delete' => 'coordinateurs.delete',
+        ],
+        'enseignants' => [
+            'role' => 'enseignant',
+            'view' => 'teachers.view',
+            'create' => 'teachers.create',
+            'edit' => 'teachers.edit',
+            'delete' => 'teachers.delete',
+        ],
+        'secretaires' => [
+            'role' => 'secretaire',
+            'view' => 'secretaires.view',
+            'create' => 'secretaires.create',
+            'edit' => 'secretaires.edit',
+            'delete' => 'secretaires.delete',
+        ],
+        'comptables' => [
+            'role' => 'comptable',
+            'view' => 'comptables.view',
+            'create' => 'comptables.create',
+            'edit' => 'comptables.edit',
+            'delete' => 'comptables.delete',
+        ],
+        'caissiers' => [
+            'role' => 'caissier',
+            'view' => 'caissiers.view',
+            'create' => 'caissiers.create',
+            'edit' => 'caissiers.edit',
+            'delete' => 'caissiers.delete',
+        ],
+    ];
+
     /**
      * Champs searchables additionnels par rôle (au-delà de name/email/telephone).
      */
@@ -44,15 +82,25 @@ class ESBTPPersonnelUnifiedController extends Controller
         $userRole = auth()->user()->getRoleNames()->first();
 
         // Coordinateurs/secrétaires masqués si l'utilisateur a ce rôle lui-même.
-        $coordinateurs = $userRole === 'coordinateur' ? collect() : $this->loadActiveByRole('coordinateur');
-        $secretaires = $userRole === 'secretaire' ? collect() : $this->loadActiveByRole('secretaire');
-        $comptables = $this->loadActiveByRole('comptable');
-        $caissiers = $this->loadActiveByRole('caissier');
+        $personnelAccess = $this->personnelAccessMatrix();
+        $visiblePersonnelTabs = collect(array_keys(self::TAB_PERMISSIONS))
+            ->filter(fn ($tab) => ($personnelAccess[$tab]['view'] ?? false)
+                && ! ($tab === 'coordinateurs' && $userRole === 'coordinateur')
+                && ! ($tab === 'secretaires' && $userRole === 'secretaire'))
+            ->values()
+            ->all();
 
-        $enseignants = ESBTPTeacher::with(['user'])
-            ->whereHas('user', fn ($q) => $q->where('is_active', true))
-            ->orderBy('created_at', 'desc')
-            ->get();
+        $coordinateurs = in_array('coordinateurs', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('coordinateur') : collect();
+        $secretaires = in_array('secretaires', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('secretaire') : collect();
+        $comptables = in_array('comptables', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('comptable') : collect();
+        $caissiers = in_array('caissiers', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('caissier') : collect();
+
+        $enseignants = in_array('enseignants', $visiblePersonnelTabs, true)
+            ? ESBTPTeacher::with(['user'])
+                ->whereHas('user', fn ($q) => $q->where('is_active', true))
+                ->orderBy('created_at', 'desc')
+                ->get()
+            : collect();
 
         $stats = [
             'coordinateurs' => $coordinateurs->count(),
@@ -141,6 +189,8 @@ class ESBTPPersonnelUnifiedController extends Controller
             'stats',
             'isCoordinateur',
             'userRole',
+            'personnelAccess',
+            'visiblePersonnelTabs',
             'customRoles',
             'standardRoles',
             'customRoleUsers'
@@ -163,6 +213,52 @@ class ESBTPPersonnelUnifiedController extends Controller
             'users_count' => $role->users_count,
             'permissions_count' => $role->permissions_count,
         ];
+    }
+
+    private function personnelAccessMatrix(): array
+    {
+        $access = [];
+        foreach (self::TAB_PERMISSIONS as $tab => $permissions) {
+            $access[$tab] = [
+                'view' => $this->canViewPersonnelTab($tab),
+                'create' => $this->canManagePersonnelTab($tab, 'create'),
+                'edit' => $this->canManagePersonnelTab($tab, 'edit'),
+                'delete' => $this->canManagePersonnelTab($tab, 'delete'),
+            ];
+        }
+
+        return $access;
+    }
+
+    private function canViewPersonnelTab(string $tab): bool
+    {
+        $user = auth()->user();
+        $permission = self::TAB_PERMISSIONS[$tab]['view'] ?? null;
+
+        return $user && ($user->can('personnel.manage') || ($permission && $user->can($permission)));
+    }
+
+    private function canManagePersonnelTab(string $tab, string $action): bool
+    {
+        $user = auth()->user();
+        $permission = self::TAB_PERMISSIONS[$tab][$action] ?? null;
+
+        return $user && ($user->can('personnel.manage') || ($permission && $user->can($permission)));
+    }
+
+    private function tabForPersonnelType(string $type): ?string
+    {
+        if ($type === 'enseignant') {
+            return 'enseignants';
+        }
+
+        foreach (self::TAB_PERMISSIONS as $tab => $permissions) {
+            if (($permissions['role'] ?? null) === $type) {
+                return $tab;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -247,6 +343,26 @@ class ESBTPPersonnelUnifiedController extends Controller
         abort(403, 'Accès non autorisé');
     }
 
+    private function ensureCanViewPersonnelType(?string $type): void
+    {
+        $tab = $type ? $this->tabForPersonnelType($type) : null;
+        if ($tab && $this->canViewPersonnelTab($tab)) {
+            return;
+        }
+
+        abort(403, 'Accès non autorisé');
+    }
+
+    private function ensureCanManagePersonnelType(?string $type, string $action): void
+    {
+        $tab = $type ? $this->tabForPersonnelType($type) : null;
+        if ($tab && $this->canManagePersonnelTab($tab, $action)) {
+            return;
+        }
+
+        abort(403, 'Accès non autorisé');
+    }
+
     /**
      * Get personnel data via AJAX for dynamic loading.
      */
@@ -255,6 +371,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         $this->ensureCanViewPersonnel();
 
         $type = $request->get('type'); // coordinateur, enseignant, secretaire, comptable, caissier
+        $this->ensureCanViewPersonnelType($type);
         $search = $request->get('search');
         $status = $request->get('status');
 
@@ -290,9 +407,8 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     public function store(Request $request)
     {
-        $this->ensureCanManagePersonnel();
-
         $type = $request->get('type');
+        $this->ensureCanManagePersonnelType($type, 'create');
 
         $rules = [
             'name' => 'required|string|max:255',
@@ -385,7 +501,7 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     public function update(Request $request, $type, $id)
     {
-        $this->ensureCanManagePersonnel();
+        $this->ensureCanManagePersonnelType($type, 'edit');
 
         [$user, $teacher] = $this->resolvePersonnel($type, $id);
 
@@ -464,7 +580,7 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     public function destroy($type, $id)
     {
-        $this->ensureCanManagePersonnel();
+        $this->ensureCanManagePersonnelType($type, 'delete');
 
         [$user, $teacher] = $this->resolvePersonnel($type, $id);
 
@@ -509,7 +625,7 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     public function toggleStatus($type, $id)
     {
-        $this->ensureCanManagePersonnel();
+        $this->ensureCanManagePersonnelType($type, 'edit');
 
         [$user, $teacher] = $this->resolvePersonnel($type, $id);
 

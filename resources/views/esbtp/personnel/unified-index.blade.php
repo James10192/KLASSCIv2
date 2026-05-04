@@ -1440,12 +1440,15 @@
 @php
     // Tabs cachés selon le rôle de l'utilisateur connecté
     $hiddenTabs = [];
+    $visiblePersonnelTabs = $visiblePersonnelTabs ?? ['coordinateurs', 'enseignants', 'secretaires', 'comptables', 'caissiers'];
+    $personnelAccess = $personnelAccess ?? [];
     $ur = $userRole ?? '';
     if ($ur === 'coordinateur') $hiddenTabs[] = 'coordinateurs';
     if ($ur === 'secretaire') $hiddenTabs[] = 'secretaires';
     // Premier tab visible = actif par défaut
     $tabOrder = ['coordinateurs', 'enseignants', 'secretaires', 'comptables', 'caissiers'];
-    $firstVisibleTab = collect($tabOrder)->first(fn($t) => !in_array($t, $hiddenTabs));
+    $canAnyCreatePersonnel = collect($tabOrder)->contains(fn($t) => $personnelAccess[$t]['create'] ?? false);
+    $firstVisibleTab = collect($tabOrder)->first(fn($t) => in_array($t, $visiblePersonnelTabs, true) && !in_array($t, $hiddenTabs));
 @endphp
 
 <div class="dashboard-acasi">
@@ -1460,62 +1463,74 @@
                     </div>
                     <div class="pu-hero-subtitle">Administration unifiée : coordinateurs, enseignants, secrétaires et comptables</div>
                 </div>
-                @can('personnel.manage')
+                @if($canAnyCreatePersonnel)
                 <div class="pu-hero-actions">
                     <div class="dropdown">
                         <button class="pu-hero-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="fas fa-plus"></i>Nouveau Personnel
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end">
-                            @if(($userRole ?? '') !== 'coordinateur')
+                            @if(($personnelAccess['coordinateurs']['create'] ?? false) && ($userRole ?? '') !== 'coordinateur')
                             <li><a class="dropdown-item" href="{{ route('esbtp.coordinateurs.create') }}">
                                 <i class="fas fa-user-tie"></i>Coordinateur
                             </a></li>
                             @endif
+                            @if($personnelAccess['enseignants']['create'] ?? false)
                             <li><a class="dropdown-item" href="{{ route('esbtp.enseignants.create') }}">
                                 <i class="fas fa-chalkboard-teacher"></i>Enseignant
                             </a></li>
-                            @if(($userRole ?? '') !== 'secretaire')
+                            @endif
+                            @if(($personnelAccess['secretaires']['create'] ?? false) && ($userRole ?? '') !== 'secretaire')
                             <li><a class="dropdown-item" href="{{ route('esbtp.secretaires.create') }}">
                                 <i class="fas fa-user-shield"></i>Secrétaire
                             </a></li>
                             @endif
+                            @if($personnelAccess['comptables']['create'] ?? false)
                             <li><a class="dropdown-item" href="{{ route('esbtp.comptables.create') }}">
                                 <i class="fas fa-calculator"></i>Comptable
                             </a></li>
+                            @endif
+                            @if($personnelAccess['caissiers']['create'] ?? false)
                             <li><a class="dropdown-item" href="{{ route('esbtp.caissiers.create') }}">
                                 <i class="fas fa-cash-register"></i>Caissier
                             </a></li>
+                            @endif
                         </ul>
                     </div>
                 </div>
-                @endcan
+                @endif
             </div>
             <div class="pu-hero-kpis">
-                @if(!in_array('coordinateurs', $hiddenTabs))
+                @if(in_array('coordinateurs', $visiblePersonnelTabs, true) && !in_array('coordinateurs', $hiddenTabs))
                 <div class="pu-hero-kpi">
                     <div class="pu-hero-kpi-value">{{ $stats['coordinateurs'] ?? 0 }}</div>
                     <div class="pu-hero-kpi-label">Coordinateurs</div>
                 </div>
                 @endif
+                @if(in_array('enseignants', $visiblePersonnelTabs, true))
                 <div class="pu-hero-kpi">
                     <div class="pu-hero-kpi-value">{{ $stats['enseignants'] ?? 0 }}</div>
                     <div class="pu-hero-kpi-label">Enseignants</div>
                 </div>
-                @if(!in_array('secretaires', $hiddenTabs))
+                @endif
+                @if(in_array('secretaires', $visiblePersonnelTabs, true) && !in_array('secretaires', $hiddenTabs))
                 <div class="pu-hero-kpi">
                     <div class="pu-hero-kpi-value">{{ $stats['secretaires'] ?? 0 }}</div>
                     <div class="pu-hero-kpi-label">Secrétaires</div>
                 </div>
                 @endif
+                @if(in_array('comptables', $visiblePersonnelTabs, true))
                 <div class="pu-hero-kpi">
                     <div class="pu-hero-kpi-value">{{ $stats['comptables'] ?? 0 }}</div>
                     <div class="pu-hero-kpi-label">Comptables</div>
                 </div>
+                @endif
+                @if(in_array('caissiers', $visiblePersonnelTabs, true))
                 <div class="pu-hero-kpi">
                     <div class="pu-hero-kpi-value">{{ $stats['caissiers'] ?? 0 }}</div>
                     <div class="pu-hero-kpi-label">Caissiers</div>
                 </div>
+                @endif
                 <div class="pu-hero-kpi">
                     <div class="pu-hero-kpi-value">{{ $stats['total'] ?? 0 }}</div>
                     <div class="pu-hero-kpi-label">Total</div>
@@ -1634,35 +1649,41 @@
         {{-- ═══ Tabs Card ═══ --}}
         <div class="pu-tabs-card pu-animate pu-delay-2">
             <div class="pu-tabs-bar">
-                @if(!in_array('coordinateurs', $hiddenTabs))
+                @if(in_array('coordinateurs', $visiblePersonnelTabs, true) && !in_array('coordinateurs', $hiddenTabs))
                 <button class="pu-tab slider-tab {{ $firstVisibleTab === 'coordinateurs' ? 'active' : '' }}" data-tab="coordinateurs">
                     <span class="pu-tab-icon"><i class="fas fa-user-tie"></i></span>
                     <span class="pu-tab-label">Coordinateurs</span>
                     <span class="pu-tab-count">{{ $stats['coordinateurs'] ?? 0 }} personnes</span>
                 </button>
                 @endif
+                @if(in_array('enseignants', $visiblePersonnelTabs, true))
                 <button class="pu-tab slider-tab {{ $firstVisibleTab === 'enseignants' ? 'active' : '' }}" data-tab="enseignants">
                     <span class="pu-tab-icon"><i class="fas fa-chalkboard-teacher"></i></span>
                     <span class="pu-tab-label">Enseignants</span>
                     <span class="pu-tab-count">{{ $stats['enseignants'] ?? 0 }} personnes</span>
                 </button>
-                @if(!in_array('secretaires', $hiddenTabs))
+                @endif
+                @if(in_array('secretaires', $visiblePersonnelTabs, true) && !in_array('secretaires', $hiddenTabs))
                 <button class="pu-tab slider-tab {{ $firstVisibleTab === 'secretaires' ? 'active' : '' }}" data-tab="secretaires">
                     <span class="pu-tab-icon"><i class="fas fa-user-shield"></i></span>
                     <span class="pu-tab-label">Secrétaires</span>
                     <span class="pu-tab-count">{{ $stats['secretaires'] ?? 0 }} personnes</span>
                 </button>
                 @endif
+                @if(in_array('comptables', $visiblePersonnelTabs, true))
                 <button class="pu-tab slider-tab {{ $firstVisibleTab === 'comptables' ? 'active' : '' }}" data-tab="comptables">
                     <span class="pu-tab-icon"><i class="fas fa-calculator"></i></span>
                     <span class="pu-tab-label">Comptables</span>
                     <span class="pu-tab-count">{{ $stats['comptables'] ?? 0 }} personnes</span>
                 </button>
+                @endif
+                @if(in_array('caissiers', $visiblePersonnelTabs, true))
                 <button class="pu-tab slider-tab {{ $firstVisibleTab === 'caissiers' ? 'active' : '' }}" data-tab="caissiers">
                     <span class="pu-tab-icon"><i class="fas fa-cash-register"></i></span>
                     <span class="pu-tab-label">Caissiers</span>
                     <span class="pu-tab-count">{{ $stats['caissiers'] ?? 0 }} personnes</span>
                 </button>
+                @endif
 
                 {{-- ═══ Lot 19 — Tabs dynamiques pour rôles custom ═══ --}}
                 @if(isset($customRoleUsers) && $customRoleUsers->count() > 0)
@@ -1679,17 +1700,17 @@
             <div class="pu-panel-content">
 
                 {{-- ═══ Panel Coordinateurs ═══ --}}
-                @if(!in_array('coordinateurs', $hiddenTabs))
+                @if(in_array('coordinateurs', $visiblePersonnelTabs, true) && !in_array('coordinateurs', $hiddenTabs))
                 <div class="pu-panel slider-panel {{ $firstVisibleTab === 'coordinateurs' ? 'active' : '' }}" id="coordinateurs-panel">
                     <div class="pu-panel-header">
                         <div class="pu-search">
                             <input type="text" placeholder="Rechercher un coordinateur..." id="search-coordinateurs">
                         </div>
-                        @can('personnel.manage')
+                        @if($personnelAccess['coordinateurs']['create'] ?? false)
                         <a href="{{ route('esbtp.coordinateurs.create') }}" class="pu-panel-btn pu-panel-btn-primary">
                             <i class="fas fa-plus"></i>Nouveau Coordinateur
                         </a>
-                        @endcan
+                        @endif
                     </div>
 
                     <div class="pu-filters">
@@ -1728,7 +1749,7 @@
                                     <a href="{{ route('esbtp.coordinateurs.show', $coordinateur) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    @can('personnel.manage')
+                                    @if($personnelAccess['coordinateurs']['edit'] ?? false)
                                     <a href="{{ route('esbtp.coordinateurs.edit', $coordinateur) }}" class="pu-action-btn pu-act-edit" title="Modifier">
                                         <i class="fas fa-pen"></i>
                                     </a>
@@ -1744,7 +1765,7 @@
                                         </button>
                                     </form>
                                     @endif
-                                    @endcan
+                                    @endif
                                 </div>
                             </div>
                             @endforeach
@@ -1753,11 +1774,11 @@
                                 <div class="pu-empty-icon"><i class="fas fa-user-tie"></i></div>
                                 <h3>Aucun coordinateur</h3>
                                 <p>Commencez par créer votre premier coordinateur.</p>
-                                @can('personnel.manage')
+                                @if($personnelAccess['coordinateurs']['create'] ?? false)
                                 <a href="{{ route('esbtp.coordinateurs.create') }}" class="pu-empty-btn">
                                     <i class="fas fa-plus"></i>Créer un coordinateur
                                 </a>
-                                @endcan
+                                @endif
                             </div>
                         @endif
                     </div>
@@ -1765,19 +1786,22 @@
                 @endif
 
                 {{-- ═══ Panel Enseignants ═══ --}}
+                @if(in_array('enseignants', $visiblePersonnelTabs, true))
                 <div class="pu-panel slider-panel {{ $firstVisibleTab === 'enseignants' ? 'active' : '' }}" id="enseignants-panel">
                     <div class="pu-panel-header">
                         <div class="pu-search">
                             <input type="text" placeholder="Rechercher un enseignant..." id="search-enseignants">
                         </div>
-                        @can('personnel.manage')
+                        @if($personnelAccess['enseignants']['edit'] ?? false)
                         <button type="button" class="pu-panel-btn pu-panel-btn-warning" data-bs-toggle="modal" data-bs-target="#bulkAvailabilityModal">
                             <i class="fas fa-calendar-check"></i>Disponibilités
                         </button>
+                        @endif
+                        @if($personnelAccess['enseignants']['create'] ?? false)
                         <a href="{{ route('esbtp.enseignants.create') }}" class="pu-panel-btn pu-panel-btn-primary">
                             <i class="fas fa-plus"></i>Nouvel Enseignant
                         </a>
-                        @endcan
+                        @endif
                     </div>
 
                     <div class="pu-filters">
@@ -1829,7 +1853,7 @@
                                     <a href="{{ route('esbtp.enseignants.show', $teacher) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    @can('personnel.manage')
+                                    @if($personnelAccess['enseignants']['edit'] ?? false)
                                     <a href="{{ route('esbtp.enseignants.edit', $teacher) }}" class="pu-action-btn pu-act-edit" title="Modifier">
                                         <i class="fas fa-pen"></i>
                                     </a>
@@ -1841,7 +1865,7 @@
                                         <i class="fas fa-{{ $teacher->status === 'active' ? 'pause' : 'play' }}"></i>
                                     </button>
                                     @endif
-                                    @endcan
+                                    @endif
                                 </div>
                             </div>
                             @endforeach
@@ -1850,28 +1874,29 @@
                                 <div class="pu-empty-icon"><i class="fas fa-chalkboard-teacher"></i></div>
                                 <h3>Aucun enseignant</h3>
                                 <p>Commencez par créer votre premier enseignant.</p>
-                                @can('personnel.manage')
+                                @if($personnelAccess['enseignants']['create'] ?? false)
                                 <a href="{{ route('esbtp.enseignants.create') }}" class="pu-empty-btn">
                                     <i class="fas fa-plus"></i>Créer un enseignant
                                 </a>
-                                @endcan
+                                @endif
                             </div>
                         @endif
                     </div>
                 </div>
 
                 {{-- ═══ Panel Secrétaires ═══ --}}
-                @if(!in_array('secretaires', $hiddenTabs))
+                @endif
+                @if(in_array('secretaires', $visiblePersonnelTabs, true) && !in_array('secretaires', $hiddenTabs))
                 <div class="pu-panel slider-panel {{ $firstVisibleTab === 'secretaires' ? 'active' : '' }}" id="secretaires-panel">
                     <div class="pu-panel-header">
                         <div class="pu-search">
                             <input type="text" placeholder="Rechercher un secrétaire..." id="search-secretaires">
                         </div>
-                        @can('personnel.manage')
+                        @if($personnelAccess['secretaires']['create'] ?? false)
                         <a href="{{ route('esbtp.secretaires.create') }}" class="pu-panel-btn pu-panel-btn-primary">
                             <i class="fas fa-plus"></i>Nouveau Secrétaire
                         </a>
-                        @endcan
+                        @endif
                     </div>
 
                     <div class="pu-filters">
@@ -1910,7 +1935,7 @@
                                     <a href="{{ route('esbtp.secretaires.show', $secretaire) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    @can('personnel.manage')
+                                    @if($personnelAccess['secretaires']['edit'] ?? false)
                                     <a href="{{ route('esbtp.secretaires.edit', $secretaire) }}" class="pu-action-btn pu-act-edit" title="Modifier">
                                         <i class="fas fa-pen"></i>
                                     </a>
@@ -1922,7 +1947,7 @@
                                         <i class="fas fa-{{ $secretaire->is_active ? 'pause' : 'play' }}"></i>
                                     </button>
                                     @endif
-                                    @endcan
+                                    @endif
                                 </div>
                             </div>
                             @endforeach
@@ -1931,11 +1956,11 @@
                                 <div class="pu-empty-icon"><i class="fas fa-user-shield"></i></div>
                                 <h3>Aucun secrétaire</h3>
                                 <p>Commencez par créer votre premier secrétaire.</p>
-                                @can('personnel.manage')
+                                @if($personnelAccess['secretaires']['create'] ?? false)
                                 <a href="{{ route('esbtp.secretaires.create') }}" class="pu-empty-btn">
                                     <i class="fas fa-plus"></i>Créer un secrétaire
                                 </a>
-                                @endcan
+                                @endif
                             </div>
                         @endif
                     </div>
@@ -1943,16 +1968,17 @@
                 @endif
 
                 {{-- ═══ Panel Comptables ═══ --}}
+                @if(in_array('comptables', $visiblePersonnelTabs, true))
                 <div class="pu-panel slider-panel {{ $firstVisibleTab === 'comptables' ? 'active' : '' }}" id="comptables-panel">
                     <div class="pu-panel-header">
                         <div class="pu-search">
                             <input type="text" placeholder="Rechercher un comptable..." id="search-comptables">
                         </div>
-                        @can('personnel.manage')
+                        @if($personnelAccess['comptables']['create'] ?? false)
                         <a href="{{ route('esbtp.comptables.create') }}" class="pu-panel-btn pu-panel-btn-primary">
                             <i class="fas fa-plus"></i>Nouveau Comptable
                         </a>
-                        @endcan
+                        @endif
                     </div>
 
                     <div class="pu-filters">
@@ -1991,7 +2017,7 @@
                                     <a href="{{ route('esbtp.comptables.show', $comptable) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    @can('personnel.manage')
+                                    @if($personnelAccess['comptables']['edit'] ?? false)
                                     @if($comptable->id !== auth()->id())
                                     <button type="button"
                                             class="pu-action-btn {{ $comptable->is_active ? 'pu-act-danger' : 'pu-act-success' }}"
@@ -2000,7 +2026,7 @@
                                         <i class="fas fa-{{ $comptable->is_active ? 'pause' : 'play' }}"></i>
                                     </button>
                                     @endif
-                                    @endcan
+                                    @endif
                                 </div>
                             </div>
                             @endforeach
@@ -2009,27 +2035,29 @@
                                 <div class="pu-empty-icon"><i class="fas fa-calculator"></i></div>
                                 <h3>Aucun comptable</h3>
                                 <p>Commencez par créer votre premier comptable.</p>
-                                @can('personnel.manage')
+                                @if($personnelAccess['comptables']['create'] ?? false)
                                 <a href="{{ route('esbtp.comptables.create') }}" class="pu-empty-btn">
                                     <i class="fas fa-plus"></i>Créer un comptable
                                 </a>
-                                @endcan
+                                @endif
                             </div>
                         @endif
                     </div>
                 </div>
+                @endif
 
                 {{-- ═══ Panel Caissiers (Lot 18e — aligne sur le pattern comptables) ═══ --}}
+                @if(in_array('caissiers', $visiblePersonnelTabs, true))
                 <div class="pu-panel slider-panel {{ $firstVisibleTab === 'caissiers' ? 'active' : '' }}" id="caissiers-panel">
                     <div class="pu-panel-header">
                         <div class="pu-search">
                             <input type="text" placeholder="Rechercher un caissier..." id="search-caissiers">
                         </div>
-                        @can('personnel.manage')
+                        @if($personnelAccess['caissiers']['create'] ?? false)
                         <a href="{{ route('esbtp.caissiers.create') }}" class="pu-panel-btn pu-panel-btn-primary">
                             <i class="fas fa-plus"></i>Nouveau Caissier
                         </a>
-                        @endcan
+                        @endif
                     </div>
 
                     <div class="pu-filters">
@@ -2065,7 +2093,7 @@
                                     <a href="{{ route('esbtp.caissiers.show', $caissier) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
                                     </a>
-                                    @can('personnel.manage')
+                                    @if($personnelAccess['caissiers']['edit'] ?? false)
                                     <a href="{{ route('esbtp.caissiers.edit', $caissier) }}" class="pu-action-btn pu-act-edit" title="Modifier">
                                         <i class="fas fa-pen"></i>
                                     </a>
@@ -2077,7 +2105,7 @@
                                         <i class="fas fa-{{ $caissier->is_active ? 'pause' : 'play' }}"></i>
                                     </button>
                                     @endif
-                                    @endcan
+                                    @endif
                                 </div>
                             </div>
                             @endforeach
@@ -2086,15 +2114,16 @@
                                 <div class="pu-empty-icon"><i class="fas fa-cash-register"></i></div>
                                 <h3>Aucun caissier</h3>
                                 <p>Commencez par créer votre premier caissier.</p>
-                                @can('personnel.manage')
+                                @if($personnelAccess['caissiers']['create'] ?? false)
                                 <a href="{{ route('esbtp.caissiers.create') }}" class="pu-empty-btn">
                                     <i class="fas fa-plus"></i>Créer un caissier
                                 </a>
-                                @endcan
+                                @endif
                             </div>
                         @endif
                     </div>
                 </div>
+                @endif
 
                 {{-- ═══ Lot 19 — Panels dynamiques pour rôles custom ═══ --}}
                 @if(isset($customRoleUsers) && $customRoleUsers->count() > 0)
@@ -2653,6 +2682,17 @@ function toggleCaissierStatus(caissierId) {
             if (managePersonnel?.checked && viewPersonnel) {
                 viewPersonnel.checked = true;
             }
+
+            ['teachers', 'coordinateurs', 'secretaires', 'comptables', 'caissiers'].forEach(scope => {
+                const view = picker.querySelector(`[data-cr-perm][value="${scope}.view"]`);
+                if (!view) return;
+                ['create', 'edit', 'delete'].forEach(action => {
+                    const perm = picker.querySelector(`[data-cr-perm][value="${scope}.${action}"]`);
+                    if (perm?.checked) {
+                        view.checked = true;
+                    }
+                });
+            });
         };
 
         const updateCounter = () => {

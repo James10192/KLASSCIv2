@@ -559,6 +559,15 @@ class ESBTPCustomRoleController extends Controller
             $set->push('personnel.view');
         }
 
+        foreach (['teachers', 'coordinateurs', 'secretaires', 'comptables', 'caissiers'] as $scope) {
+            $view = $scope.'.view';
+            foreach (['create', 'edit', 'delete'] as $action) {
+                if ($set->contains($scope.'.'.$action) && ! $set->contains($view)) {
+                    $set->push($view);
+                }
+            }
+        }
+
         return $set->unique()->values()->all();
     }
 

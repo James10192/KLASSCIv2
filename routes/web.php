@@ -2133,19 +2133,18 @@ Route::middleware(['auth', 'permission:system.manage', 'paywall'])->prefix('esbt
     Route::post('/caissiers/{caissier}/reset-password', [\App\Http\Controllers\ESBTPCaissierController::class, 'resetPassword'])->name('caissiers.reset-password');
 });
 
-// Page unifiee personnel : lecture avec personnel.view, mutations avec personnel.manage
+// Page unifiee personnel : entree avec personnel.view, tabs/actions filtres par permission metier.
 Route::middleware(['auth', 'permission:personnel.view', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
     Route::get('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'index'])->name('personnel.unified.index');
     Route::get('/personnel/unified/data', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getData'])->name('personnel.unified.data');
     Route::get('/personnel/unified/stats', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getStats'])->name('personnel.unified.stats');
-});
-
-Route::middleware(['auth', 'permission:personnel.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
     Route::post('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'store'])->name('personnel.unified.store');
     Route::put('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'update'])->name('personnel.unified.update');
     Route::delete('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'destroy'])->name('personnel.unified.destroy');
     Route::patch('/personnel/unified/{type}/{id}/toggle-status', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'toggleStatus'])->name('personnel.unified.toggle-status');
+});
 
+Route::middleware(['auth', 'permission:personnel.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
     Route::get('/custom-roles', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'index'])->name('custom-roles.index');
     Route::get('/custom-roles/create', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'create'])->name('custom-roles.create');
     Route::post('/custom-roles', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'store'])->name('custom-roles.store');
