@@ -3,7 +3,7 @@
     Variables attendues :
     - $grantablePermissions : Collection groupée des permissions accordables
 --}}
-<div class="modal-dialog modal-lg modal-dialog-centered">
+<div class="modal-dialog modal-lg cr-modal-dialog">
     <div class="modal-content cr-modal">
         <form id="cr-create-form" action="{{ route('esbtp.custom-roles.store') }}" method="POST" novalidate>
             @csrf

@@ -5,7 +5,7 @@
     - $assignableUsers : Collection<User>
     - $currentUserIds : array<int> users actuellement attribués
 --}}
-<div class="modal-dialog modal-lg modal-dialog-centered">
+<div class="modal-dialog modal-lg cr-modal-dialog">
     <div class="modal-content cr-modal">
         <form id="cr-assign-form" action="{{ route('esbtp.custom-roles.assign-users', $role->name) }}" method="POST" novalidate>
             @csrf
