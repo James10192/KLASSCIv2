@@ -921,16 +921,20 @@
 .cr-modal-body {
     padding: 0 !important;
     background: #fafbfc;
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto !important;
     height: auto !important;
     min-height: 0 !important;
     max-height: none !important;
     overflow: hidden !important;
-    flex: initial !important;
 }
 .cr-modal-scroll {
     padding: 1.5rem;
     background: #fafbfc;
-    max-height: calc(100vh - 180px);
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: none;
     overflow-y: auto;
     scrollbar-gutter: stable;
     overscroll-behavior: contain;
@@ -954,12 +958,15 @@
     justify-content: initial !important;
 }
 #crModal.modal.show .modal-content {
+    display: flex !important;
+    flex-direction: column !important;
     height: auto !important;
     max-height: calc(100vh - 48px) !important;
     overflow: hidden !important;
 }
 #crModal .cr-modal > form {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column !important;
     height: auto !important;
     min-height: auto !important;
     max-height: inherit !important;
@@ -967,11 +974,11 @@
 }
 #crModal .cr-modal-header,
 #crModal .cr-modal-footer {
-    flex: initial !important;
+    flex: 0 0 auto !important;
 }
 #crModal.modal.show .modal-body {
     height: auto !important;
-    min-height: auto !important;
+    min-height: 0 !important;
     max-height: none !important;
     overflow: hidden !important;
 }
@@ -1229,6 +1236,7 @@
 .cr-picker-group.cr-collapsed .cr-picker-group-body { display: none; }
 
 .cr-perm {
+    position: relative;
     display: flex; align-items: center; gap: .65rem;
     padding: .5rem .65rem;
     border-radius: 8px;
@@ -1239,6 +1247,9 @@
 .cr-perm:hover { background: #fff; }
 .cr-perm input[type="checkbox"] {
     position: absolute;
+    width: 1px;
+    height: 1px;
+    inset: 50% auto auto .65rem;
     opacity: 0;
     pointer-events: none;
 }
