@@ -15,7 +15,7 @@ use Illuminate\Support\Facades\Cache;
  */
 class CachedPredictor implements PredictorInterface
 {
-    private const CACHE_VERSION = 2;
+    private const CACHE_VERSION = 3;
 
     public function __construct(
         private readonly PredictorInterface $inner,

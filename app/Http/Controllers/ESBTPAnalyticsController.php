@@ -258,6 +258,13 @@ class ESBTPAnalyticsController extends Controller
                 'context' => $context->toArray(),
                 'error' => $e->getMessage(),
             ]);
+            if ($predictor->name() === 'default_risk') {
+                return PredictionResult::unavailable(
+                    $predictor->name(),
+                    "Impossible de calculer le risque de defaut pour le moment. Verifiez que les migrations et les regles d'echeance sont bien deployees.",
+                );
+            }
+
             return PredictionResult::unavailable(
                 $predictor->name(),
                 'Erreur technique — l\'équipe a été notifiée',
