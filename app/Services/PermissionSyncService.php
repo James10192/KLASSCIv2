@@ -36,7 +36,8 @@ class PermissionSyncService
      *   roles_count: int,
      *   roles_with_defaults_assigned: array<int, array{role: string, permissions_count: int}>,
      *   roles_preserved: array<int, string>,
-     *   aliases_healed: array<int, array{role: string, canonicals_added: int}>
+     *   aliases_healed: array<int, array{role: string, canonicals_added: int}>,
+     *   dependencies_healed: array<int, array{role: string, permissions_added: int}>
      * }
      */
     public function run(): array
@@ -64,7 +65,7 @@ class PermissionSyncService
             }
 
             $expanded = $this->expandWithAliases(
-                $this->registry->defaultPermissionsFor($roleName)
+                $this->applyPermissionDependencies($this->registry->defaultPermissionsFor($roleName))
             );
             $role->syncPermissions($expanded);
             $assignedRoles[] = ['role' => $roleName, 'permissions_count' => count($expanded)];
@@ -87,6 +88,18 @@ class PermissionSyncService
             }
         }
 
+        $dependenciesHealed = [];
+        foreach ($roles->keys() as $roleName) {
+            $role = $roleModels[$roleName];
+            $existingNames = $role->permissions()->pluck('name')->all();
+            $withDependencies = $this->expandWithAliases($this->applyPermissionDependencies($existingNames));
+            $toAdd = array_values(array_diff($withDependencies, $existingNames));
+            if (! empty($toAdd)) {
+                $role->givePermissionTo($toAdd);
+                $dependenciesHealed[] = ['role' => $roleName, 'permissions_added' => count($toAdd)];
+            }
+        }
+
         app(PermissionRegistrar::class)->forgetCachedPermissions();
         $this->registry->clearCache();
 
@@ -96,6 +109,7 @@ class PermissionSyncService
             'roles_with_defaults_assigned' => $assignedRoles,
             'roles_preserved' => $preservedRoles,
             'aliases_healed' => $healed,
+            'dependencies_healed' => $dependenciesHealed,
         ];
     }
 
@@ -117,5 +131,20 @@ class PermissionSyncService
             }
         }
         return array_values(array_unique($expanded));
+    }
+
+    /**
+     * Maintient les permissions dependantes dans les roles synchronises.
+     *
+     * @param  array<int, string>  $permissions
+     * @return array<int, string>
+     */
+    private function applyPermissionDependencies(array $permissions): array
+    {
+        if (in_array('personnel.manage', $permissions, true) && ! in_array('personnel.view', $permissions, true)) {
+            $permissions[] = 'personnel.view';
+        }
+
+        return array_values(array_unique($permissions));
     }
 }

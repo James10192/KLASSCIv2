@@ -2133,6 +2133,32 @@ Route::middleware(['auth', 'permission:system.manage', 'paywall'])->prefix('esbt
     Route::post('/caissiers/{caissier}/reset-password', [\App\Http\Controllers\ESBTPCaissierController::class, 'resetPassword'])->name('caissiers.reset-password');
 });
 
+// Page unifiee personnel : lecture avec personnel.view, mutations avec personnel.manage
+Route::middleware(['auth', 'permission:personnel.view', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    Route::get('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'index'])->name('personnel.unified.index');
+    Route::get('/personnel/unified/data', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getData'])->name('personnel.unified.data');
+    Route::get('/personnel/unified/stats', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getStats'])->name('personnel.unified.stats');
+});
+
+Route::middleware(['auth', 'permission:personnel.manage', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
+    Route::post('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'store'])->name('personnel.unified.store');
+    Route::put('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'update'])->name('personnel.unified.update');
+    Route::delete('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'destroy'])->name('personnel.unified.destroy');
+    Route::patch('/personnel/unified/{type}/{id}/toggle-status', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'toggleStatus'])->name('personnel.unified.toggle-status');
+
+    Route::get('/custom-roles', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'index'])->name('custom-roles.index');
+    Route::get('/custom-roles/create', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'create'])->name('custom-roles.create');
+    Route::post('/custom-roles', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'store'])->name('custom-roles.store');
+    Route::get('/custom-roles/{role}/edit', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'edit'])->name('custom-roles.edit');
+    Route::put('/custom-roles/{role}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'update'])->name('custom-roles.update');
+    Route::delete('/custom-roles/{role}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'destroy'])->name('custom-roles.destroy');
+    Route::get('/custom-roles/{role}/assign-users', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'assignUsersForm'])->name('custom-roles.assign-users.form');
+    Route::post('/custom-roles/{role}/assign-users', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'assignUsers'])->name('custom-roles.assign-users');
+    Route::delete('/custom-roles/{role}/detach-user/{user}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'detachUser'])->name('custom-roles.detach-user');
+    Route::get('/custom-roles/standard/{role}/edit', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'editStandard'])->name('custom-roles.standard.edit');
+    Route::put('/custom-roles/standard/{role}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'updateStandard'])->name('custom-roles.standard.update');
+});
+
 // Routes pour la gestion du personnel avec sliders
 Route::middleware(['auth', 'permission:admin.access', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
     // Vue combinée du personnel avec sliders
@@ -2145,32 +2171,6 @@ Route::middleware(['auth', 'permission:admin.access', 'paywall'])->prefix('esbtp
     Route::patch('/personnel/{personnel}/toggle-status', [\App\Http\Controllers\ESBTPPersonnelController::class, 'toggleStatus'])->name('personnel.toggle-status');
     Route::post('/personnel/bulk-action', [\App\Http\Controllers\ESBTPPersonnelController::class, 'bulkAction'])->name('personnel.bulk-action');
     Route::get('/personnel/export', [\App\Http\Controllers\ESBTPPersonnelController::class, 'export'])->name('personnel.export');
-
-    // Page unifiée pour la gestion du personnel
-    Route::get('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'index'])->name('personnel.unified.index');
-    Route::get('/personnel/unified/data', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getData'])->name('personnel.unified.data');
-    Route::get('/personnel/unified/stats', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'getStats'])->name('personnel.unified.stats');
-    Route::post('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'store'])->name('personnel.unified.store');
-    Route::put('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'update'])->name('personnel.unified.update');
-    Route::delete('/personnel/unified/{type}/{id}', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'destroy'])->name('personnel.unified.destroy');
-    Route::patch('/personnel/unified/{type}/{id}/toggle-status', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'toggleStatus'])->name('personnel.unified.toggle-status');
-
-    // Lot 8 — Rôles personnalisés (custom roles) gérés depuis personnel/unified
-    Route::get('/custom-roles', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'index'])->name('custom-roles.index');
-    Route::get('/custom-roles/create', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'create'])->name('custom-roles.create');
-    Route::post('/custom-roles', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'store'])->name('custom-roles.store');
-    Route::get('/custom-roles/{role}/edit', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'edit'])->name('custom-roles.edit');
-    Route::put('/custom-roles/{role}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'update'])->name('custom-roles.update');
-    Route::delete('/custom-roles/{role}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'destroy'])->name('custom-roles.destroy');
-    Route::get('/custom-roles/{role}/assign-users', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'assignUsersForm'])->name('custom-roles.assign-users.form');
-    Route::post('/custom-roles/{role}/assign-users', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'assignUsers'])->name('custom-roles.assign-users');
-    Route::delete('/custom-roles/{role}/detach-user/{user}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'detachUser'])->name('custom-roles.detach-user');
-
-    // Lot 17c — édition rôles standards (whitelist : secretaire, comptable, caissier,
-    // coordinateur, enseignant, etudiant). superAdmin/serviceTechnique restent ST-only.
-    Route::get('/custom-roles/standard/{role}/edit', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'editStandard'])->name('custom-roles.standard.edit');
-    Route::put('/custom-roles/standard/{role}', [\App\Http\Controllers\ESBTPCustomRoleController::class, 'updateStandard'])->name('custom-roles.standard.update');
-
     // Routes pour les coordinateurs (maintien de la compatibilité)
     Route::resource('coordinateurs', \App\Http\Controllers\ESBTPCoordinateurController::class);
     Route::patch('coordinateurs/{coordinateur}/toggle-status', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'toggleStatus'])->name('coordinateurs.toggle-status');

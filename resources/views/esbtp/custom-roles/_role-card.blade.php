@@ -9,7 +9,7 @@
             <div class="cr-empty-icon"><i class="fas fa-id-badge"></i></div>
             <h3>Aucun rôle personnalisé</h3>
             <p>Créez votre premier rôle métier sur mesure (ex: Agent Inscriptions, Surveillant)</p>
-            @can('users.manage')
+            @can('personnel.manage')
                 <button type="button" class="cr-empty-btn" data-cr-create-trigger>
                     <i class="fas fa-plus"></i> Créer un rôle personnalisé
                 </button>
@@ -38,7 +38,7 @@
                         </span>
                     </div>
                 </div>
-                @can('users.manage')
+                @can('personnel.manage')
                     <div class="cr-role-card-actions">
                         <button type="button" class="cr-role-action" data-cr-edit="{{ $role['name'] }}" title="Modifier">
                             <i class="fas fa-pen"></i>

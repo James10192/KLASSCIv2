@@ -35,7 +35,7 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     public function index(Request $request)
     {
-        if (! auth()->user()->can('personnel.manage')) {
+        if (! auth()->user()->can('personnel.view')) {
             abort(403, 'Accès non autorisé');
         }
 
@@ -72,7 +72,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         // Lot 19 — users assignés à chaque rôle custom, indexé par roleName, pour générer un tab par rôle
         $customRoleUsers = collect();
 
-        if (auth()->user()->can('users.manage')) {
+        if (auth()->user()->can('personnel.manage')) {
             try {
                 $registry = app(PermissionRegistry::class);
 
@@ -222,12 +222,25 @@ class ESBTPPersonnelUnifiedController extends Controller
     }
 
     /**
-     * Garde-fou commun : users.manage avec fallback admin.access.
+     * Garde-fou commun pour la lecture du personnel.
+     */
+    private function ensureCanViewPersonnel(): void
+    {
+        $user = auth()->user();
+        if ($user && $user->can('personnel.view')) {
+            return;
+        }
+
+        abort(403, 'AccÃ¨s non autorisÃ©');
+    }
+
+    /**
+     * Garde-fou commun pour les mutations du personnel.
      */
     private function ensureCanManagePersonnel(): void
     {
         $user = auth()->user();
-        if ($user && ($user->can('users.manage') || $user->can('admin.access'))) {
+        if ($user && $user->can('personnel.manage')) {
             return;
         }
 
@@ -239,7 +252,7 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     public function getData(Request $request)
     {
-        $this->ensureCanManagePersonnel();
+        $this->ensureCanViewPersonnel();
 
         $type = $request->get('type'); // coordinateur, enseignant, secretaire, comptable, caissier
         $search = $request->get('search');
@@ -520,7 +533,7 @@ class ESBTPPersonnelUnifiedController extends Controller
      */
     public function getStats()
     {
-        $this->ensureCanManagePersonnel();
+        $this->ensureCanViewPersonnel();
 
         $stats = [
             'coordinateurs' => $this->roleStats('coordinateur'),

@@ -16,7 +16,7 @@ use Spatie\Permission\PermissionRegistrar;
 /**
  * Lot 8 — Création de rôles custom via UI.
  *
- * Permet au superAdmin (ou tout utilisateur avec users.manage) de créer des rôles
+ * Permet au superAdmin (ou tout utilisateur avec personnel.manage) de créer des rôles
  * personnalisés depuis /esbtp/personnel/unified avec :
  * - nom interne (slug) + label FR + icône + description
  * - sélection des permissions (par groupe, labels FR)
@@ -33,7 +33,7 @@ class ESBTPCustomRoleController extends Controller
 {
     /**
      * Rôles système éditables depuis /esbtp/personnel/unified par les users avec
-     * `users.manage` (Lot 17). superAdmin et serviceTechnique restent gérés
+     * `personnel.manage` (Lot 17). superAdmin et serviceTechnique restent gérés
      * exclusivement via /esbtp/roles-permissions (Service Technique).
      *
      * Pour ces rôles, seuls label_fr / icon / description / permissions sont modifiables.
@@ -77,8 +77,8 @@ class ESBTPCustomRoleController extends Controller
     {
         $this->middleware('auth');
         $this->middleware(function ($request, $next) {
-            if (! Auth::check() || ! Auth::user()->can('users.manage')) {
-                abort(403, 'Vous devez avoir la permission users.manage pour gérer les rôles personnalisés.');
+            if (! Auth::check() || ! Auth::user()->can('personnel.manage')) {
+                abort(403, 'Vous devez avoir la permission personnel.manage pour gérer les rôles personnalisés.');
             }
             return $next($request);
         });
@@ -188,6 +188,7 @@ class ESBTPCustomRoleController extends Controller
         }
 
         $requestedPerms = $this->normalizePermissionsList($validated['permissions'] ?? []);
+        $requestedPerms = $this->applyPermissionDependencies($requestedPerms);
         if ($denial = $this->denyIfPermissionsNotGrantable($requestedPerms, $registry)) {
             return $denial;
         }
@@ -268,6 +269,7 @@ class ESBTPCustomRoleController extends Controller
         ]);
 
         $requestedPerms = $this->normalizePermissionsList($validated['permissions'] ?? []);
+        $requestedPerms = $this->applyPermissionDependencies($requestedPerms);
         if ($denial = $this->denyIfPermissionsNotGrantable($requestedPerms, $registry)) {
             return $denial;
         }
@@ -342,6 +344,7 @@ class ESBTPCustomRoleController extends Controller
         // Garde-fou : un acteur ne peut donner que les permissions qu'il possède
         // (sauf superAdmin via Gate::before)
         $requestedPerms = $this->normalizePermissionsList($validated['permissions'] ?? []);
+        $requestedPerms = $this->applyPermissionDependencies($requestedPerms);
         if ($denial = $this->denyIfPermissionsNotGrantable($requestedPerms, $registry)) {
             return $denial;
         }
@@ -540,6 +543,23 @@ class ESBTPCustomRoleController extends Controller
     private function normalizePermissionsList(array $perms): array
     {
         return collect($perms)->unique()->values()->all();
+    }
+
+    /**
+     * Garde les permissions dependantes coherentes dans les roles editables.
+     *
+     * @param  array<int, string>  $perms
+     * @return array<int, string>
+     */
+    private function applyPermissionDependencies(array $perms): array
+    {
+        $set = collect($perms);
+
+        if ($set->contains('personnel.manage') && ! $set->contains('personnel.view')) {
+            $set->push('personnel.view');
+        }
+
+        return $set->unique()->values()->all();
     }
 
     /**
