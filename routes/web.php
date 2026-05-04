@@ -91,6 +91,17 @@ if (app()->environment('local')) {
 // redirige vers le login pour ne plus exposer de page marketing.
 Route::get('/', fn () => redirect()->route('login'))->name('welcome');
 
+// Les routes /inscriptions/{inscription} ne doivent pas capturer les routes
+// statiques comme /inscriptions/create.
+Route::pattern('inscription', '[0-9]+');
+
+// Compatibilite anciens liens singuliers: la route canonique est
+// esbtp.inscriptions.create (/esbtp/inscriptions/create).
+Route::redirect('/inscription/create', '/esbtp/inscriptions/create')
+    ->name('inscription.create');
+Route::redirect('/esbtp/inscription/create', '/esbtp/inscriptions/create')
+    ->name('esbtp.inscription.create');
+
 // Pages publiques (docs, api-reference, changelog) — supprimées de Laravel.
 // Elles sont désormais servies en MDX par klassci-landing :
 //   https://klassci.com/docs
