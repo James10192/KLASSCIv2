@@ -1,4 +1,4 @@
-# KLASSCI — SaaS Multi-Tenant Laravel
+# KLASSCI — SaaS Multi-Instance Laravel
 
 > Historique détaillé → [CLAUDE_ARCHIVE.md](CLAUDE_ARCHIVE.md)
 
@@ -14,18 +14,18 @@
 
 ## Architecture
 
-**Type** : SaaS Multi-Tenant Laravel 12.x
+**Type** : SaaS Multi-Instance Laravel 12.x
 **Apps** :
-- `klassci-master` : Admin SaaS central (Filament v3, DB `klassci_master`)
-- `KLASSCIv2` : App métier par établissement (DB isolée par tenant)
+- `adminKlassci` : Admin SaaS central (Filament v3, DB `klassci_master`)
+- `KLASSCI` : App métier par établissement (repo `KLASSCIv2`, DB isolée par instance)
 
-**Tenants actifs** : `esbtp-abidjan` (Pro, 3000 inscriptions), `esbtp-yakro` (Essentiel, 700), `presentation` (Free, test)
+**Instances actives** : `esbtp-abidjan` (Pro, 3000 inscriptions), `esbtp-yakro` (Essentiel, 700), `presentation` (Free, test)
 
 **Stack** : Laravel 12.x · MySQL 8.x · Blade + Alpine.js + Chart.js + DataTables · DomPDF · Sanctum · Gemini 2.0 Flash
 
 ---
 
-## Tables principales (DB tenant)
+## Tables principales (DB instance)
 
 | Domaine | Tables |
 |---------|--------|

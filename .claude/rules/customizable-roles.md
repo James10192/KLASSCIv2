@@ -24,7 +24,7 @@ Marcel (3 mai 2026) — pendant le plan compta killer, j'avais suggéré « cré
 
 > « Comme tu dois voir maintenant ce sont les custom roles, ou on modifie les rôles et nous-même on donne les permissions. Normalement c'est le superAdmin qui a cette permission mais un autre rôle peut l'avoir, c'est full configurable. Tu crées juste la fonctionnalité et pour les rôles, les permissions, les settings c'est l'école qui s'en charge tout simplement. »
 
-KLASSCI étant multi-tenant (ESBTP, Hetec, ISLG Rostan, etc.), chaque école a sa propre structure RH :
+KLASSCI étant multi-instance (ESBTP, Hetec, ISLG Rostan, etc.), chaque école a sa propre structure RH :
 - Petite école → 1 directeur cumule TOUTES les responsabilités
 - Grosse école → directeur opérationnel + directeur financier + auditeur interne séparés
 - Cabinet d'audit externe → rôle custom temporaire avec accès lecture seule
@@ -62,7 +62,7 @@ if (auth()->user()->hasRole('directeur_financier')) {  // ❌ NON
 // config/permissions.php
 'permissions' => [
     'paiements.validate.high_amount' => [
-        'label' => 'Valider les paiements de gros montant (≥ seuil tenant)',
+        'label' => 'Valider les paiements de gros montant (≥ seuil instance)',
         'description' => 'Permet la double-validation requise pour les paiements > seuil défini dans Settings',
         'group' => 'Comptabilité',
         'icon' => 'fa-shield-alt',
@@ -108,12 +108,12 @@ L'école va sur `/esbtp/custom-roles` :
 
 | Besoin métier | ❌ Anti-pattern | ✅ Pattern correct |
 |---|---|---|
-| « Quelqu'un valide les gros paiements » | Rôle `directeur_financier` | Permission `paiements.validate.high_amount` + setting tenant `comptabilite.high_amount_threshold` |
+| « Quelqu'un valide les gros paiements » | Rôle `directeur_financier` | Permission `paiements.validate.high_amount` + setting instance `comptabilite.high_amount_threshold` |
 | « Auditeur externe consulte tout en lecture » | Rôle `auditeur` | Permissions `*.view` granulaires que l'école coche dans un rôle custom |
 | « Caissier responsable de caisse a + de droits » | Rôle `responsable_caisse` | Permission `comptabilite.caisse.approve` que l'école attribue à qui elle veut |
 | « Le directeur reçoit les notifications » | Rôle `directeur` | Permission `comptabilite.notifications.high_amount` + listener qui notifie tous les users avec cette perm |
 
-## Pattern : seuils via Settings tenant
+## Pattern : seuils via Settings instance
 
 Quand un rôle aurait été défini par un seuil (« le directeur valide > 5M »), c'est une permission + un setting :
 
