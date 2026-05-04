@@ -5,6 +5,7 @@
 @push('styles')
 <style>
 .ech-shell{position:relative}.ech-grid{display:grid;grid-template-columns:minmax(320px,.9fr) minmax(540px,1.35fr);gap:1.1rem;align-items:start}.ech-stack{display:grid;gap:1rem}.ech-card{background:rgba(255,255,255,.95);border:1px solid rgba(148,163,184,.3);border-radius:10px;box-shadow:0 14px 34px rgba(15,23,42,.07);overflow:hidden}.ech-card-head{padding:1rem 1.1rem;border-bottom:1px solid rgba(226,232,240,.95);display:flex;align-items:center;justify-content:space-between;gap:.8rem}.ech-title{margin:0;font-size:.92rem;font-weight:800;color:#0f172a}.ech-sub{font-size:.75rem;color:#64748b}.ech-body{padding:1rem 1.1rem}.ech-scope-list{max-height:390px;overflow:auto;display:grid;gap:.45rem;padding-right:.2rem}.ech-scope{display:grid;grid-template-columns:1fr auto;gap:.75rem;align-items:center;padding:.78rem;border:1px solid #e2e8f0;border-radius:9px;background:#fff;color:inherit;text-decoration:none;transition:background .15s ease,border-color .15s ease,box-shadow .15s ease}.ech-scope:hover{background:#f8fbff;border-color:rgba(4,83,203,.3);box-shadow:0 8px 20px rgba(15,23,42,.06);text-decoration:none}.ech-scope.is-selected{background:rgba(4,83,203,.06);border-color:rgba(4,83,203,.38);box-shadow:inset 3px 0 0 #0453cb}.ech-scope-name{font-weight:800;color:#0f172a;font-size:.82rem}.ech-scope-meta{font-size:.73rem;color:#64748b;margin-top:.12rem}.ech-badges{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.45rem}.ech-badge{display:inline-flex;align-items:center;gap:.25rem;padding:.18rem .45rem;border-radius:999px;font-size:.66rem;font-weight:800;border:1px solid transparent}.ech-badge-on{background:rgba(16,185,129,.08);color:#047857;border-color:rgba(16,185,129,.24)}.ech-badge-off{background:rgba(100,116,139,.1);color:#334155;border-color:rgba(100,116,139,.22)}.ech-scope-icon{width:2rem;height:2rem;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:rgba(4,83,203,.08);color:#0453cb}.ech-empty{border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;padding:1rem;color:#64748b;font-size:.78rem}.ech-editor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem}.ech-kicker{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0;color:#0453cb}.ech-editor-title{font-size:1rem;font-weight:900;color:#0f172a;margin:.15rem 0}.ech-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}.ech-field label,.ech-label{display:block;font-size:.72rem;font-weight:800;color:#334155;margin-bottom:.32rem}.ech-input,.ech-select,.ech-textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:.52rem .65rem;font-size:.78rem;color:#0f172a;background:#fff;min-height:2.35rem}.ech-select{padding-right:2rem;text-overflow:ellipsis}.ech-textarea{min-height:72px;resize:vertical}.ech-toggle{display:inline-flex;align-items:center;gap:.45rem;font-size:.77rem;font-weight:700;color:#334155}.ech-lines-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:10px;background:#fff}.ech-lines{width:100%;min-width:940px;border-collapse:collapse;table-layout:fixed}.ech-lines th,.ech-lines td{border-bottom:1px solid #eef2f7;padding:.55rem}.ech-lines th{background:#f8fbff;color:#475569;font-size:.66rem;font-weight:900;text-transform:uppercase;letter-spacing:0;text-align:left}.ech-lines th:nth-child(2),.ech-lines th:nth-child(4),.ech-lines th:nth-child(6),.ech-lines th:nth-child(7),.ech-lines th:nth-child(8),.ech-lines th:nth-child(9){text-align:center}.ech-lines td:nth-child(2),.ech-lines td:nth-child(7),.ech-lines td:nth-child(8),.ech-lines td:nth-child(9){text-align:center}.ech-lines .ech-input,.ech-lines .ech-select{min-height:2.2rem;padding:.45rem .55rem}.ech-actions{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;margin-top:1rem}.ech-icon-btn{width:2rem;height:2rem;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#64748b;display:inline-flex;align-items:center;justify-content:center}.ech-icon-btn:hover{color:#dc2626;border-color:rgba(220,38,38,.25);background:rgba(220,38,38,.06)}.ech-loading{position:absolute;inset:0;z-index:20;display:none;align-items:flex-start;justify-content:center;padding-top:7rem;background:rgba(241,245,249,.66);backdrop-filter:blur(3px)}.ech-shell.is-loading .ech-loading{display:flex}.ech-loader{display:inline-flex;align-items:center;gap:.55rem;padding:.72rem .95rem;border:1px solid rgba(148,163,184,.3);border-radius:10px;background:#fff;color:#0f172a;font-size:.78rem;font-weight:800;box-shadow:0 16px 36px rgba(15,23,42,.12)}.ech-loader i{color:#0453cb}.ech-help{font-size:.74rem;color:#64748b}.ech-help code{color:#be123c;background:rgba(244,63,94,.08);padding:.1rem .25rem;border-radius:5px}@media(max-width:1100px){.ech-grid{grid-template-columns:1fr}.ech-form-grid{grid-template-columns:1fr}}
+.ech-grid{grid-template-columns:minmax(430px,.95fr) minmax(560px,1.25fr)}.ech-card-head{padding:.85rem 1rem}.ech-body{padding:.8rem 1rem}.ech-scope-list{max-height:calc(100vh - 315px);min-height:260px;gap:.28rem}.ech-scope{grid-template-columns:1fr 2rem;padding:.52rem .6rem;border-radius:8px}.ech-scope-name{font-size:.78rem}.ech-scope-meta{font-size:.68rem;margin-top:.05rem}.ech-badges{margin-top:.25rem}.ech-scope-icon{width:1.75rem;height:1.75rem}.ech-scope-tools{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:center;margin-bottom:.65rem}.ech-search{position:relative}.ech-search i{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.76rem}.ech-search input{width:100%;height:2.15rem;border:1px solid #dbe3ef;border-radius:8px;padding:.45rem .7rem .45rem 1.9rem;font-size:.76rem;background:#f8fbff;color:#0f172a}.ech-count-pill{display:inline-flex;align-items:center;height:2.15rem;padding:0 .65rem;border-radius:8px;background:#eef5ff;color:#0453cb;font-size:.72rem;font-weight:800;white-space:nowrap}.ech-hidden{display:none!important}@media(max-width:1180px){.ech-grid{grid-template-columns:1fr}.ech-scope-list{max-height:430px}}
 </style>
 @endpush
 
@@ -61,6 +62,13 @@
                         <span class="ech-sub">{{ $configurations->count() }} scopes</span>
                     </div>
                     <div class="ech-body">
+                        <div class="ech-scope-tools">
+                            <label class="ech-search">
+                                <i class="fas fa-search"></i>
+                                <input type="search" data-scope-search data-target="mandatory" placeholder="Rechercher frais, filiere, niveau">
+                            </label>
+                            <span class="ech-count-pill" data-scope-count="mandatory">{{ $configurations->count() }}</span>
+                        </div>
                         <div class="ech-scope-list">
                             @forelse($configurations as $configuration)
                                 @php
@@ -68,7 +76,7 @@
                                     $scopeRules = $rulesByScope->get($scopeKey, collect());
                                     $isSelected = $selectedScopeType === 'configuration' && (int) $selectedScopeId === (int) $configuration->id;
                                 @endphp
-                                <a class="ech-scope {{ $isSelected ? 'is-selected' : '' }}" data-ech-scope-link href="{{ route('esbtp.comptabilite.echeanciers.index', ['scope_type' => 'configuration', 'scope_id' => $configuration->id, 'affectation_status' => $selectedStatus]) }}">
+                                <a class="ech-scope {{ $isSelected ? 'is-selected' : '' }}" data-scope-item="mandatory" data-search-text="{{ Str::lower(($configuration->fraisCategory->name ?? '') . ' ' . ($configuration->filiere->name ?? '') . ' ' . ($configuration->niveau->name ?? '')) }}" data-ech-scope-link href="{{ route('esbtp.comptabilite.echeanciers.index', ['scope_type' => 'configuration', 'scope_id' => $configuration->id, 'affectation_status' => $selectedStatus]) }}">
                                     <span>
                                         <span class="ech-scope-name">{{ $configuration->fraisCategory->name ?? 'Frais' }}</span>
                                         <span class="ech-scope-meta d-block">{{ $configuration->filiere->name ?? 'N/A' }} / {{ $configuration->niveau->name ?? 'N/A' }}</span>
@@ -95,6 +103,13 @@
                         <span class="ech-sub">{{ $optionAssignments->count() }} scopes</span>
                     </div>
                     <div class="ech-body">
+                        <div class="ech-scope-tools">
+                            <label class="ech-search">
+                                <i class="fas fa-search"></i>
+                                <input type="search" data-scope-search data-target="optional" placeholder="Rechercher option, filiere, niveau">
+                            </label>
+                            <span class="ech-count-pill" data-scope-count="optional">{{ $optionAssignments->count() }}</span>
+                        </div>
                         <div class="ech-scope-list">
                             @forelse($optionAssignments as $assignment)
                                 @php
@@ -102,7 +117,7 @@
                                     $scopeRules = $rulesByScope->get($scopeKey, collect());
                                     $isSelected = $selectedScopeType === 'option_assignment' && (int) $selectedScopeId === (int) $assignment->id;
                                 @endphp
-                                <a class="ech-scope {{ $isSelected ? 'is-selected' : '' }}" data-ech-scope-link href="{{ route('esbtp.comptabilite.echeanciers.index', ['scope_type' => 'option_assignment', 'scope_id' => $assignment->id, 'affectation_status' => $selectedStatus]) }}">
+                                <a class="ech-scope {{ $isSelected ? 'is-selected' : '' }}" data-scope-item="optional" data-search-text="{{ Str::lower(($assignment->option->fraisCategory->name ?? '') . ' ' . ($assignment->option->name ?? '') . ' ' . ($assignment->display_label ?? '')) }}" data-ech-scope-link href="{{ route('esbtp.comptabilite.echeanciers.index', ['scope_type' => 'option_assignment', 'scope_id' => $assignment->id, 'affectation_status' => $selectedStatus]) }}">
                                     <span>
                                         <span class="ech-scope-name">{{ $assignment->option->fraisCategory->name ?? 'Option' }} - {{ $assignment->option->name ?? 'N/A' }}</span>
                                         <span class="ech-scope-meta d-block">{{ $assignment->display_label }}</span>
@@ -283,6 +298,29 @@
                 button.closest('tr').remove();
             });
         }
+
+        root.querySelectorAll('[data-scope-search]').forEach(function (input) {
+            if (input.dataset.bound) return;
+            input.dataset.bound = '1';
+            input.addEventListener('input', function () {
+                filterScopes(root, input.dataset.target, input.value);
+            });
+        });
+    }
+
+    function filterScopes(root, target, value) {
+        const query = (value || '').trim().toLowerCase();
+        let visible = 0;
+
+        root.querySelectorAll(`[data-scope-item="${target}"]`).forEach(function (item) {
+            const haystack = item.dataset.searchText || item.textContent.toLowerCase();
+            const match = !query || haystack.includes(query);
+            item.classList.toggle('ech-hidden', !match);
+            if (match) visible++;
+        });
+
+        const counter = root.querySelector(`[data-scope-count="${target}"]`);
+        if (counter) counter.textContent = visible;
     }
 
     function lineRow(index) {
