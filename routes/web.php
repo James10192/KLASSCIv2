@@ -861,14 +861,24 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // ── VIEW (lecture détail/suivi)
             Route::middleware('permission:paiements.view|paiements.view_own')->group(function () {
                 Route::get('/paiements/test-filters', [App\Http\Controllers\ESBTPPaiementController::class, 'testFilters'])->name('paiements.test-filters');
-                Route::get('/paiements/{paiement}/refresh-ligne', [App\Http\Controllers\ESBTPPaiementController::class, 'refreshLigne'])->name('paiements.refresh-ligne');
+                Route::get('/paiements/{paiement}/refresh-ligne', [App\Http\Controllers\ESBTPPaiementController::class, 'refreshLigne'])
+                    ->whereNumber('paiement')
+                    ->name('paiements.refresh-ligne');
                 Route::get('/paiements/suivi-categories', [App\Http\Controllers\ESBTPPaiementSuiviController::class, 'suiviCategories'])->name('paiements.suivi-categories');
                 Route::get('/paiements/suivi-categories/refresh', [App\Http\Controllers\ESBTPPaiementSuiviController::class, 'suiviCategoriesRefresh'])->name('paiements.suivi-categories.refresh');
                 Route::get('/paiements/suivi-categories/load/{statut}', [App\Http\Controllers\ESBTPPaiementController::class, 'loadStudentsByStatut'])->name('paiements.suivi-categories.load');
-                Route::get('/paiements/{paiement}', [App\Http\Controllers\ESBTPPaiementController::class, 'show'])->name('paiements.show');
-                Route::get('/paiements/{paiement}/preview', [App\Http\Controllers\ESBTPPaiementController::class, 'previewRecu'])->name('paiements.preview');
-                Route::get('/paiements/{paiement}/recu', [App\Http\Controllers\ESBTPPaiementController::class, 'genererRecu'])->name('paiements.recu');
-                Route::get('/paiements/etudiant/{etudiant}', [App\Http\Controllers\ESBTPPaiementController::class, 'paiementsEtudiant'])->name('paiements.etudiant');
+                Route::get('/paiements/{paiement}', [App\Http\Controllers\ESBTPPaiementController::class, 'show'])
+                    ->whereNumber('paiement')
+                    ->name('paiements.show');
+                Route::get('/paiements/{paiement}/preview', [App\Http\Controllers\ESBTPPaiementController::class, 'previewRecu'])
+                    ->whereNumber('paiement')
+                    ->name('paiements.preview');
+                Route::get('/paiements/{paiement}/recu', [App\Http\Controllers\ESBTPPaiementController::class, 'genererRecu'])
+                    ->whereNumber('paiement')
+                    ->name('paiements.recu');
+                Route::get('/paiements/etudiant/{etudiant}', [App\Http\Controllers\ESBTPPaiementController::class, 'paiementsEtudiant'])
+                    ->whereNumber('etudiant')
+                    ->name('paiements.etudiant');
             });
 
             // ── EXPORT (Excel/CSV/PDF) — throttle:10,1 sur downloads, 60,1 sur preview (rule exports-pdf-excel)
@@ -902,17 +912,23 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // ── EDIT (modification d'un paiement existant)
             Route::middleware('permission:paiements.edit')->group(function () {
-                Route::get('/paiements/{paiement}/edit', [App\Http\Controllers\ESBTPPaiementController::class, 'edit'])->name('paiements.edit');
-                Route::put('/paiements/{paiement}', [App\Http\Controllers\ESBTPPaiementController::class, 'update'])->name('paiements.update');
+                Route::get('/paiements/{paiement}/edit', [App\Http\Controllers\ESBTPPaiementController::class, 'edit'])
+                    ->whereNumber('paiement')
+                    ->name('paiements.edit');
+                Route::put('/paiements/{paiement}', [App\Http\Controllers\ESBTPPaiementController::class, 'update'])
+                    ->whereNumber('paiement')
+                    ->name('paiements.update');
             });
 
             // ── DELETE
             Route::delete('/paiements/{paiement}', [App\Http\Controllers\ESBTPPaiementController::class, 'destroy'])
+                ->whereNumber('paiement')
                 ->name('paiements.destroy')
                 ->middleware('permission:paiements.delete');
 
             // ── CANCEL OWN RECENT (S1.5 — fenêtre 5min anti-erreur caissier)
             Route::post('/paiements/{paiement}/cancel-own', [App\Http\Controllers\ESBTPPaiementController::class, 'cancelOwn'])
+                ->whereNumber('paiement')
                 ->name('paiements.cancel-own')
                 ->middleware('throttle:30,1');
 
@@ -929,9 +945,15 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // ── VALIDATE/REJECT (workflow comptable — throttled)
             Route::middleware(['permission:paiements.validate', 'throttle:60,1'])->group(function () {
-                Route::post('/paiements/{paiement}/valider', [App\Http\Controllers\ESBTPPaiementController::class, 'valider'])->name('paiements.valider');
-                Route::post('/paiements/{paiement}/rejeter', [App\Http\Controllers\ESBTPPaiementController::class, 'rejeter'])->name('paiements.rejeter');
-                Route::post('/paiements/{paiement}/valider-rapide', [App\Http\Controllers\ESBTPPaiementController::class, 'validerRapide'])->name('paiements.valider-rapide');
+                Route::post('/paiements/{paiement}/valider', [App\Http\Controllers\ESBTPPaiementController::class, 'valider'])
+                    ->whereNumber('paiement')
+                    ->name('paiements.valider');
+                Route::post('/paiements/{paiement}/rejeter', [App\Http\Controllers\ESBTPPaiementController::class, 'rejeter'])
+                    ->whereNumber('paiement')
+                    ->name('paiements.rejeter');
+                Route::post('/paiements/{paiement}/valider-rapide', [App\Http\Controllers\ESBTPPaiementController::class, 'validerRapide'])
+                    ->whereNumber('paiement')
+                    ->name('paiements.valider-rapide');
             });
 
             // ── BULK VALIDATE/REJECT (plus strict — opère sur N lignes)

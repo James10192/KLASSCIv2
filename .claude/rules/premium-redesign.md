@@ -212,6 +212,17 @@ Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 
 **JAMAIS de `<select>` natif visible dans une page premium.** Utiliser les composants Blade `<x-au-select>` (générique) ou `<x-au-user-picker>` (utilisateurs avec groupement par rôle), ou cloner ces composants pour un cas particulier (picker classes, matières, évaluations…). Détails complets, props, anti-patterns et checklist : voir [`.claude/rules/premium-selects.md`](premium-selects.md).
 
+### Piège critique de superposition (dropdown coupé / texte au-dessus)
+
+Quand un dropdown premium s'ouvre, il doit pouvoir **déborder visuellement** de sa card.
+
+- Parent card d'un select ouvert : éviter `overflow: hidden`
+- Éviter `transform` sur hover/focus des cards qui contiennent des dropdowns (crée un nouveau stacking context)
+- Prévoir `position: relative` + `z-index` sur la card active (`:focus-within`) et sur le field du select
+- Vérifier que le menu (`.au-select-menu` / Select2 dropdown) passe au-dessus des sections suivantes
+
+Sans ça, on obtient le bug classique : menu tronqué, labels de la section d'en bas qui passent au-dessus, UX cassée.
+
 ## Règles absolues
 
 1. **Copier le pattern planning-header** pour les headers de page — ne pas inventer
@@ -225,3 +236,4 @@ Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 9. **Transitions** : `all .2s ease` — jamais > .3s
 10. **Border-radius** : 8-10px (petits), 12-14px (cards), 18px (hero)
 11. **Sélecteurs** — voir [`premium-selects.md`](premium-selects.md). Jamais `<select>` natif visible.
+12. **Dropdowns non tronqués** — aucune card contenant des select premium ne doit couper le menu (`overflow/stacking context` à contrôler explicitement).

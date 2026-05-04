@@ -1176,20 +1176,30 @@ class ESBTPFraisController extends Controller
                         $inscription->annee_universitaire_id
                     );
 
-                    // Calculer le montant avec le service
-                    $calculationResult = $this->fraisCalculationService->calculateFeeForInscription(
-                        $inscription,
-                        $category
-                    );
+                    // Calcul robuste sans dépendance legacy (ESBTPFraisRule supprimé).
+                    $affectationStatus = $inscription->affectation_status ?? \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
+                    if ($configuration && method_exists($configuration, 'getMontantByStatus')) {
+                        $montant = (float) $configuration->getMontantByStatus($affectationStatus);
+                    } elseif ($configuration) {
+                        $montant = (float) ($configuration->amount ?? 0);
+                    } else {
+                        $montant = (float) ($category->default_amount ?? 0);
+                    }
+
+                    // Fallback de sécurité si configuration incomplète.
+                    if ($montant <= 0) {
+                        $montant = (float) ($category->default_amount ?? 0);
+                    }
 
                     return [
                         'id' => $category->id,
                         'name' => $category->name,
                         'description' => $category->description ?? 'Description non définie',
                         'type' => $category->category_type ?? 'academic',
-                        'montant' => $calculationResult['final_amount'],
-                        'base_amount' => $calculationResult['base_amount'],
-                        'discounts' => $calculationResult['discounts'],
+                        'montant' => $montant,
+                        'base_amount' => $montant,
+                        'final_amount' => $montant,
+                        'discounts' => [],
                         'is_mandatory' => $category->is_mandatory ?? true,
                         'installments_allowed' => $configuration ? $configuration->allowsInstallments() : false,
                         'max_installments' => $configuration ? $configuration->max_installments : 1,

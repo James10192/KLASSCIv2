@@ -32,7 +32,7 @@
             :aria-controls="$id('{{ $componentId }}')"
             aria-haspopup="listbox">
         @if($icon)<i class="fas {{ $icon }} au-select-icon"></i>@endif
-        <span class="au-select-value" x-text="selectedLabel || '{{ $placeholder }}'"
+        <span class="au-select-value" x-text="selectedLabel || {{ \Illuminate\Support\Js::from($placeholder) }}"
               :class="{ 'au-select-value--placeholder': !selectedLabel }"></span>
         <i class="fas fa-chevron-down au-select-caret" :class="{ 'au-select-caret--open': open }"></i>
     </button>
@@ -187,8 +187,13 @@ if (typeof window.auSelect !== 'function') {
             open: false,
             search: '',
             _value: '',
+            optionsVersion: 0,
+            _optionsObserver: null,
             init() {
                 this._value = this.$refs.native.value;
+
+                this.observeNativeOptions();
+
                 this.$refs.native.addEventListener('change', () => {
                     if (this._value !== this.$refs.native.value) {
                         this._value = this.$refs.native.value;
@@ -201,6 +206,42 @@ if (typeof window.auSelect !== 'function') {
                         this.$refs.native.dispatchEvent(new Event('input', { bubbles: true }));
                     }
                 });
+
+                this.$el.addEventListener('alpine:destroy', () => {
+                    if (this._optionsObserver) {
+                        this._optionsObserver.disconnect();
+                    }
+                }, { once: true });
+            },
+            observeNativeOptions() {
+                if (!this.$refs.native || typeof MutationObserver === 'undefined') {
+                    return;
+                }
+
+                const bump = () => {
+                    this.optionsVersion++;
+
+                    const hasCurrentValue = Array.from(this.$refs.native.options || []).some(
+                        option => option.value === this._value
+                    );
+
+                    if (!hasCurrentValue) {
+                        this._value = this.$refs.native.value || '';
+                    }
+                };
+
+                bump();
+
+                this._optionsObserver = new MutationObserver(() => {
+                    bump();
+                });
+
+                this._optionsObserver.observe(this.$refs.native, {
+                    childList: true,
+                    subtree: true,
+                    attributes: true,
+                    attributeFilter: ['value', 'label', 'selected', 'data-placeholder'],
+                });
             },
             toggle() {
                 this.open = !this.open;
@@ -210,6 +251,8 @@ if (typeof window.auSelect !== 'function') {
             },
             get currentValue() { return this._value; },
             get rawOptions() {
+                this.optionsVersion;
+
                 if (!this.$refs.native) return [];
                 return Array.from(this.$refs.native.options).map(o => ({
                     value: o.value,

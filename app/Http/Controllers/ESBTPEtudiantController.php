@@ -2054,11 +2054,16 @@ class ESBTPEtudiantController extends Controller
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function($inscription) {
+                $annee = $inscription->anneeUniversitaire;
+                $anneeLabel = $annee->libelle ?? $annee->name ?? 'Non définie';
+
                 return [
                     'id' => $inscription->id,
                     'filiere' => $inscription->filiere->name ?? 'Non définie',
                     'niveau' => $inscription->niveauEtude->name ?? 'Non défini',
-                    'annee' => $inscription->anneeUniversitaire->name ?? 'Non définie'
+                    'annee' => $anneeLabel,
+                    'annee_universitaire_id' => $inscription->annee_universitaire_id,
+                    'is_current_year' => (bool) ($annee->is_current ?? false),
                 ];
             });
 
@@ -2075,6 +2080,7 @@ class ESBTPEtudiantController extends Controller
     {
         try {
             $etudiantId = $request->get('etudiant_id');
+            $requestedInscriptionId = $request->get('inscription_id');
             
             if (!$etudiantId) {
                 return response()->json([
@@ -2094,67 +2100,146 @@ class ESBTPEtudiantController extends Controller
             ]);
         }
 
-        // Récupérer l'inscription active (année en cours)
-        $inscriptionActive = $etudiant->inscriptions()
-            ->whereHas('anneeUniversitaire', function($q) {
-                $q->where('is_current', true);
-            })
-            ->with(['classe.fraisClasseConfigurations.fraisCategory'])
-            ->first();
+        // Récupérer l'inscription cible:
+        // 1) inscription explicitement demandée
+        // 2) sinon inscription de l'année courante
+        // 3) sinon dernière inscription disponible
+        $inscriptionsQuery = $etudiant->inscriptions()
+            ->with(['filiere', 'niveauEtude', 'anneeUniversitaire'])
+            ->latest('created_at');
+
+        $inscriptionActive = null;
+
+        if (!empty($requestedInscriptionId)) {
+            $inscriptionActive = (clone $inscriptionsQuery)
+                ->where('id', $requestedInscriptionId)
+                ->first();
+        }
+
+        if (!$inscriptionActive) {
+            $inscriptionActive = (clone $inscriptionsQuery)
+                ->whereHas('anneeUniversitaire', function($q) {
+                    $q->where('is_current', true);
+                })
+                ->first();
+        }
+
+        if (!$inscriptionActive) {
+            $inscriptionActive = (clone $inscriptionsQuery)->first();
+        }
 
         $soldes = [
             'academic' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'categories' => []],
             'service' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'categories' => []],
-            'administrative' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'categories' => []]
+            'administrative' => ['total' => 0, 'paid' => 0, 'remaining' => 0, 'categories' => []],
         ];
 
-        if ($inscriptionActive && $inscriptionActive->classe) {
-            // Calculer les frais totaux par catégorie basés sur la configuration de la classe
-            foreach ($inscriptionActive->classe->fraisClasseConfigurations as $config) {
-                $category = $config->fraisCategory;
-                if ($category) {
-                    $categoryType = $category->category_type ?? 'academic';
-                    
-                    if (isset($soldes[$categoryType])) {
-                        $soldes[$categoryType]['total'] += $config->montant;
-                        $soldes[$categoryType]['categories'][] = [
-                            'id' => $category->id,
-                            'name' => $category->name,
-                            'amount' => $config->montant,
-                            'is_mandatory' => $category->is_mandatory
-                        ];
+        $categoriesById = [];
+        $totalDue = 0.0;
+        $totalPaid = 0.0;
+
+        if ($inscriptionActive) {
+            $allCategories = \App\Models\ESBTPFraisCategory::query()
+                ->where('is_active', true)
+                ->ordered()
+                ->get();
+
+            $affectationStatus = $inscriptionActive->affectation_status ?? \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
+
+            foreach ($allCategories as $category) {
+                $configuration = \App\Models\ESBTPFraisConfiguration::getApplicableConfiguration(
+                    $category->id,
+                    $inscriptionActive->filiere_id,
+                    $inscriptionActive->niveau_id,
+                    $inscriptionActive->annee_universitaire_id
+                );
+
+                if ($configuration && method_exists($configuration, 'getMontantByStatus')) {
+                    $montant = (float) $configuration->getMontantByStatus($affectationStatus);
+                } elseif ($configuration) {
+                    $montant = (float) ($configuration->amount ?? 0);
+                } else {
+                    $montant = (float) ($category->default_amount ?? 0);
+                }
+
+                if ($montant <= 0) {
+                    continue;
+                }
+
+                $categoryType = $category->category_type ?? 'academic';
+
+                $categoriesById[(string) $category->id] = [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'type' => $categoryType,
+                    'total' => $montant,
+                    'paid' => 0.0,
+                    'remaining' => $montant,
+                    'percentage' => 0,
+                    'is_mandatory' => (bool) $category->is_mandatory,
+                ];
+
+                $totalDue += $montant;
+
+                if (isset($soldes[$categoryType])) {
+                    $soldes[$categoryType]['total'] += $montant;
+                    $soldes[$categoryType]['categories'][] = [
+                        'id' => $category->id,
+                        'name' => $category->name,
+                        'amount' => $montant,
+                        'is_mandatory' => (bool) $category->is_mandatory,
+                    ];
+                }
+            }
+
+            // Paiements validés de l'inscription active uniquement
+            $paiementsValides = $etudiant->paiements()
+                ->where('status', 'validé')
+                ->where('inscription_id', $inscriptionActive->id)
+                ->whereNull('deleted_at')
+                ->get(['frais_category_id', 'montant']);
+
+            foreach ($paiementsValides as $paiement) {
+                $montantPaye = (float) $paiement->montant;
+                $totalPaid += $montantPaye;
+
+                $type = 'academic';
+                if ($paiement->frais_category_id) {
+                    $categoryKey = (string) $paiement->frais_category_id;
+                    if (isset($categoriesById[$categoryKey])) {
+                        $categoriesById[$categoryKey]['paid'] += $montantPaye;
+                        $type = $categoriesById[$categoryKey]['type'] ?? 'academic';
                     }
                 }
-            }
-        }
 
-        // Calculer les paiements effectués par catégorie
-        $paiementsValides = $etudiant->paiements()
-            ->where('status', 'validé')
-            ->whereHas('inscription', function($q) {
-                $q->whereHas('anneeUniversitaire', function($subQ) {
-                    $subQ->where('is_current', true);
-                });
-            })
-            ->with('fraisCategory')
-            ->get();
-
-        foreach ($paiementsValides as $paiement) {
-            if ($paiement->fraisCategory) {
-                $categoryType = $paiement->fraisCategory->category_type ?? 'academic';
-                if (isset($soldes[$categoryType])) {
-                    $soldes[$categoryType]['paid'] += $paiement->montant;
+                if (isset($soldes[$type])) {
+                    $soldes[$type]['paid'] += $montantPaye;
                 }
             }
+
+            foreach ($categoriesById as $key => $row) {
+                $remaining = max(0.0, (float) $row['total'] - (float) $row['paid']);
+                $categoriesById[$key]['remaining'] = $remaining;
+                $categoriesById[$key]['percentage'] = (float) $row['total'] > 0
+                    ? round(((float) $row['paid'] / (float) $row['total']) * 100, 1)
+                    : 0;
+            }
         }
 
-        // Calculer les montants restants
+        // Calculer les montants restants par type
         foreach ($soldes as $type => &$solde) {
-            $solde['remaining'] = max(0, $solde['total'] - $solde['paid']);
-            $solde['percentage'] = $solde['total'] > 0 ? round(($solde['paid'] / $solde['total']) * 100, 1) : 0;
+            $solde['remaining'] = max(0, (float) $solde['total'] - (float) $solde['paid']);
+            $solde['percentage'] = (float) $solde['total'] > 0 ? round(((float) $solde['paid'] / (float) $solde['total']) * 100, 1) : 0;
         }
 
-        return response()->json($soldes);
+        return response()->json(array_merge($soldes, [
+            'categories' => $categoriesById,
+            'total_paid' => $totalPaid,
+            'total_due' => $totalDue,
+            'total_remaining' => max(0.0, $totalDue - $totalPaid),
+            'selected_inscription_id' => $inscriptionActive?->id,
+            'selected_inscription_is_current_year' => (bool) ($inscriptionActive?->anneeUniversitaire?->is_current ?? false),
+        ]));
         } catch (\Exception $e) {
             \Log::error('Erreur dans getSoldesForApi: ' . $e->getMessage());
             return response()->json([

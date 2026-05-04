@@ -4,154 +4,363 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/select2-bootstrap-5-theme@1.3.0/dist/select2-bootstrap-5-theme.min.css">
 <style>
-    .student-progress-card {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border-radius: 12px;
-        padding: 20px;
-        margin-bottom: 20px;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    .pc-page {
+        --pc-primary: #0453cb;
+        --pc-primary-d: #033a8e;
+        --pc-secondary: #5e91de;
+        --pc-dark: #0f172a;
+        --pc-text: #1e293b;
+        --pc-muted: #64748b;
+        --pc-border: #dbe4f0;
+        --pc-surface: #f8fafc;
     }
-    
-    .category-progress {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 8px;
-        padding: 15px;
-        margin-bottom: 10px;
-        backdrop-filter: blur(10px);
+
+    .pc-page .dashboard-header {
+        border: 1px solid var(--pc-border);
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.06);
+        background: linear-gradient(135deg, rgba(4, 83, 203, 0.05), rgba(94, 145, 222, 0.05));
+    }
+
+    .pc-page .header-left h1 {
+        color: var(--pc-primary);
+    }
+
+    .pc-header-shell {
+        display: flex;
+        align-items: center;
+        gap: 0.9rem;
+    }
+
+    .pc-header-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 14px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, var(--pc-primary), var(--pc-secondary));
+        color: #fff;
+        font-size: 1rem;
+        box-shadow: 0 10px 24px rgba(4, 83, 203, 0.2);
+        flex-shrink: 0;
+    }
+
+    .pc-header-meta {
+        margin-top: 0.4rem;
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+    }
+
+    .pc-header-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.28rem 0.55rem;
+        border-radius: 999px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #1e3a8a;
+        border: 1px solid rgba(4, 83, 203, 0.22);
+        background: rgba(255, 255, 255, 0.72);
+    }
+
+    .student-progress-card {
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 45%, #3b7ddb 100%);
+        color: #fff;
+        border-radius: 14px;
+        padding: 1.15rem;
+        margin-bottom: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.15);
+        box-shadow: 0 8px 30px rgba(4, 83, 203, 0.18), 0 2px 8px rgba(15, 23, 42, 0.08);
+    }
+
+    .student-progress-card h5,
+    .student-progress-card small,
+    .student-progress-card .text-muted {
+        color: #fff !important;
+    }
+
+    .student-progress-card #total-progress {
+        background: rgba(255, 255, 255, 0.16) !important;
+        color: #fff !important;
         border: 1px solid rgba(255, 255, 255, 0.2);
     }
-    
-    .category-progress:hover {
-        background: rgba(255, 255, 255, 0.15);
-        transform: translateY(-2px);
-        transition: all 0.3s ease;
+
+    .category-progress {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 0.8rem;
+        margin-bottom: 0.6rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(8px);
+        transition: all 0.2s ease;
     }
-    
+
+    .category-progress:hover {
+        background: rgba(255, 255, 255, 0.16);
+    }
+
     .progress-bar-modern {
         height: 8px;
-        border-radius: 4px;
-        background: rgba(255, 255, 255, 0.2);
+        border-radius: 999px;
+        background: rgba(255, 255, 255, 0.18);
         overflow: hidden;
     }
-    
+
     .progress-fill {
         height: 100%;
-        border-radius: 4px;
-        transition: width 0.5s ease;
+        border-radius: inherit;
+        transition: width 0.25s ease;
     }
-    
+
     .payment-form-card {
-        border-radius: 12px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-        border: none;
-        overflow: hidden;
+        border-radius: 14px;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04), 0 1px 2px rgba(15, 23, 42, 0.06);
+        border: 1px solid var(--pc-border);
+        overflow: visible;
+        position: relative;
+        z-index: 1;
     }
-    
+
+    .payment-form-card:focus-within {
+        z-index: 25;
+    }
+
+    .pc-page .section-title {
+        display: flex;
+        align-items: center;
+        gap: 0.35rem;
+        color: var(--pc-dark);
+        font-size: 0.92rem;
+        margin-bottom: 1rem;
+    }
+
     .category-selection {
         display: grid;
         grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: 15px;
-        margin-bottom: 20px;
+        gap: 0.8rem;
+        margin-bottom: 0;
     }
-    
+
     .category-option {
-        border: 2px solid #e5e7eb;
-        border-radius: 10px;
-        padding: 15px;
+        border: 1px solid var(--pc-border);
+        border-radius: 12px;
+        padding: 0.9rem;
         cursor: pointer;
-        transition: all 0.3s ease;
-        background: white;
+        transition: all 0.2s ease;
+        background: #fff;
     }
-    
+
     .category-option:hover {
-        border-color: var(--primary-color);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        border-color: var(--pc-primary);
+        box-shadow: 0 8px 20px rgba(4, 83, 203, 0.08);
+        transform: translateY(-1px);
     }
-    
+
     .category-option.selected {
-        border-color: var(--primary-color);
-        background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        color: white;
+        border-color: var(--pc-primary);
+        background: linear-gradient(135deg, rgba(4, 83, 203, 0.1), rgba(94, 145, 222, 0.1));
+        color: var(--pc-dark);
     }
-    
+
     .category-icon {
         width: 40px;
         height: 40px;
-        border-radius: 8px;
-        display: flex;
+        border-radius: 10px;
+        display: inline-flex;
         align-items: center;
         justify-content: center;
-        margin-bottom: 10px;
-        font-size: 18px;
+        margin-bottom: 0.55rem;
+        font-size: 16px;
+        background: linear-gradient(135deg, var(--pc-primary), var(--pc-secondary));
+        color: #fff;
     }
-    
+
     .form-floating-modern {
         position: relative;
-        margin-bottom: 20px;
+        margin-bottom: 1rem;
     }
-    
-    .form-floating-modern input,
-    .form-floating-modern select {
+
+    .form-floating-modern:focus-within {
+        z-index: 30;
+    }
+
+    .pc-field-label {
+        display: block;
+        color: var(--pc-muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+        margin-bottom: 0.45rem;
+    }
+
+    .pc-select-field .au-select {
         width: 100%;
-        padding: 15px;
-        border: 2px solid #e5e7eb;
-        border-radius: 8px;
-        font-size: 16px;
-        background: white;
-        transition: all 0.3s ease;
+        max-width: 100%;
     }
-    
+
+    .form-floating-modern input,
+    .form-floating-modern select,
+    .form-floating-modern textarea {
+        width: 100%;
+        padding: 0.75rem 0.95rem;
+        border: 1px solid var(--pc-border);
+        border-radius: 10px;
+        font-size: 0.95rem;
+        background: #fff;
+        color: var(--pc-text);
+        transition: all 0.2s ease;
+    }
+
     .form-floating-modern input:focus,
-    .form-floating-modern select:focus {
+    .form-floating-modern select:focus,
+    .form-floating-modern textarea:focus {
         outline: none;
-        border-color: var(--primary-color);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        border-color: var(--pc-primary);
+        box-shadow: 0 0 0 3px rgba(4, 83, 203, 0.12);
     }
-    
+
+    .form-floating-modern label {
+        color: var(--pc-muted);
+        font-size: 0.78rem;
+        font-weight: 700;
+        letter-spacing: 0.02em;
+        text-transform: uppercase;
+    }
+
     .amount-input-group {
         position: relative;
         display: flex;
         align-items: center;
     }
-    
+
+    .amount-input-group .fcfa-suffix {
+        pointer-events: none;
+        font-weight: 600;
+    }
+
+    .amount-input-group input[type="number"] {
+        padding-right: 4.6rem;
+        -moz-appearance: textfield;
+    }
+
+    .amount-input-group input[type="number"]::-webkit-outer-spin-button,
+    .amount-input-group input[type="number"]::-webkit-inner-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+    }
+
     .amount-suggestions {
         display: flex;
-        gap: 10px;
-        margin-top: 10px;
+        gap: 0.5rem;
+        margin-top: 0.6rem;
         flex-wrap: wrap;
     }
-    
+
     .amount-suggestion {
-        padding: 8px 12px;
-        background: #f3f4f6;
-        border: 1px solid #d1d5db;
-        border-radius: 6px;
+        padding: 0.38rem 0.68rem;
+        background: #f1f5f9;
+        border: 1px solid #d9e2ef;
+        border-radius: 999px;
         cursor: pointer;
-        font-size: 14px;
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: #334155;
         transition: all 0.2s ease;
     }
-    
+
     .amount-suggestion:hover {
-        background: var(--primary-color);
-        color: white;
-        border-color: var(--primary-color);
+        background: rgba(4, 83, 203, 0.12);
+        color: var(--pc-primary);
+        border-color: rgba(4, 83, 203, 0.25);
+    }
+
+    .pc-page .btn-acasi.primary.large,
+    .pc-page .btn-acasi.secondary.large {
+        border-radius: 10px;
+    }
+
+    @media (max-width: 992px) {
+        .student-progress-card {
+            padding: 1rem;
+        }
+    }
+
+    @media (max-width: 768px) {
+        .pc-header-shell {
+            align-items: flex-start;
+        }
+
+        .pc-page .main-content {
+            padding: 1rem;
+        }
+
+        .pc-page .dashboard-header {
+            padding: 1rem;
+        }
+
+        .pc-page .header-actions {
+            width: 100%;
+        }
+
+        .pc-page .header-actions .btn-acasi {
+            width: 100%;
+            justify-content: center;
+        }
+
+        .pc-page #submit-section .btn-acasi {
+            width: 100%;
+            margin: 0.35rem 0 !important;
+        }
     }
 </style>
 @endsection
 
 @section('content')
-<div class="dashboard-acasi">
+@php
+    $studentOptions = \App\Models\ESBTPEtudiant::with('user')
+        ->limit(10)
+        ->get()
+        ->mapWithKeys(function ($student) {
+            $label = ($student->matricule ?? 'N/A') . ' - ' . ($student->user->name ?? $student->nom_complet ?? 'N/A');
+
+            return [(string) $student->id => $label];
+        })
+        ->all();
+
+    $modeOptions = [
+        'Espèces' => 'Espèces',
+        'Chèque' => 'Chèque',
+        'Virement' => 'Virement bancaire',
+        'Mobile Money' => 'Mobile Money',
+        'Carte bancaire' => 'Carte bancaire',
+    ];
+
+    $trancheOptions = [
+        'Première tranche' => 'Première tranche',
+        'Deuxième tranche' => 'Deuxième tranche',
+        'Troisième tranche' => 'Troisième tranche',
+        'Paiement intégral' => 'Paiement intégral',
+    ];
+@endphp
+<div class="dashboard-acasi pc-page">
     <div class="main-content">
-        <!-- Header moderne -->
         <div class="dashboard-header">
             <div class="header-left">
-                <h1>Nouveau Paiement</h1>
-                <p class="header-subtitle">Enregistrement intelligent des paiements par catégorie de frais</p>
+                <div class="pc-header-shell">
+                    <div class="pc-header-icon"><i class="fas fa-money-check-dollar"></i></div>
+                    <div>
+                        <h1>Nouveau paiement</h1>
+                        <p class="header-subtitle">Encaissement guidé et sécurisé avec suivi en temps réel</p>
+                        <div class="pc-header-meta">
+                            <span class="pc-header-pill"><i class="fas fa-shield-check"></i> Anti-erreur actif</span>
+                            <span class="pc-header-pill"><i class="fas fa-bolt"></i> Flux rapide caissier</span>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="header-actions">
                 <a href="{{ route('esbtp.paiements.index') }}" class="btn-acasi secondary">
@@ -194,14 +403,17 @@
                             <input type="hidden" name="etudiant_id" value="{{ $etudiant->id }}">
                         </div>
                     @else
-                        <div class="form-floating-modern">
-                            <select name="etudiant_id" id="etudiant_id" class="form-control select2" required>
-                                <option value="">-- Rechercher et sélectionner un étudiant --</option>
-                                @foreach(\App\Models\ESBTPEtudiant::with('user')->limit(10)->get() as $etudiant)
-                                    <option value="{{ $etudiant->id }}">{{ $etudiant->matricule }} - {{ $etudiant->user->name ?? $etudiant->nom_complet ?? 'N/A' }}</option>
-                                @endforeach
-                            </select>
-                            <label>Étudiant <span class="text-danger">*</span></label>
+                        <div class="form-floating-modern pc-select-field">
+                            <label for="etudiant_id" class="pc-field-label">Étudiant <span class="text-danger">*</span></label>
+                            <x-au-select
+                                id="etudiant_id"
+                                name="etudiant_id"
+                                :value="(string) old('etudiant_id', request('etudiant_id', ''))"
+                                :options="$studentOptions"
+                                placeholder="Rechercher et sélectionner un étudiant"
+                                icon="fa-user-graduate"
+                                required
+                                searchable />
                         </div>
                     @endif
                 </div>
@@ -252,11 +464,19 @@
                                 </div>
                             </div>
                         @else
-                            <div class="form-floating-modern">
-                                <select name="inscription_id" id="inscription_id" class="form-control" required>
-                                    <option value="">-- Sélectionner d'abord un étudiant --</option>
-                                </select>
-                                <label>Inscription <span class="text-danger">*</span></label>
+                            <div class="form-floating-modern pc-select-field">
+                                <label for="inscription_id" class="pc-field-label">Inscription <span class="text-danger">*</span></label>
+                                <x-au-select
+                                    id="inscription_id"
+                                    name="inscription_id"
+                                    :value="(string) old('inscription_id', request('inscription_id', ''))"
+                                    :options="[]"
+                                    placeholder="Sélectionner une inscription"
+                                    icon="fa-file-signature"
+                                    required
+                                    searchable />
+
+                                <div id="inscription-auto-notice" class="alert alert-info mt-2 mb-0 py-2 px-3" style="display: none; font-size: 0.82rem;"></div>
                             </div>
                         @endif
                     </div>
@@ -276,7 +496,7 @@
                             <!-- Les catégories seront chargées dynamiquement -->
                         </div>
                         
-                        <input type="hidden" name="frais_category_id" id="selected_category_id">
+                        <input type="hidden" name="frais_category_id" id="selected_category_id" value="{{ old('frais_category_id') }}">
                     </div>
                 </div>
             </div>
@@ -305,7 +525,7 @@
                                                value="{{ old('montant') }}" required
                                                x-on:input="montant = parseInt($event.target.value || 0); confirmed = false"
                                                :style="isUnusual ? 'border-color:#f59e0b;background:#fffbeb;' : ''">
-                                        <span class="position-absolute end-0 top-50 translate-middle-y me-3 text-muted">FCFA</span>
+                                        <span class="fcfa-suffix position-absolute end-0 top-50 translate-middle-y me-3 text-muted">FCFA</span>
                                     </div>
                                     <label>Montant <span class="text-danger">*</span></label>
                                     <div class="amount-suggestions" id="amount-suggestions">
@@ -347,16 +567,17 @@
                         
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="form-floating-modern">
-                                    <select name="mode_paiement" id="mode_paiement" class="form-control" required>
-                                        <option value="">-- Sélectionner --</option>
-                                        <option value="Espèces" {{ old('mode_paiement') == 'Espèces' ? 'selected' : '' }}>💵 Espèces</option>
-                                        <option value="Chèque" {{ old('mode_paiement') == 'Chèque' ? 'selected' : '' }}>📄 Chèque</option>
-                                        <option value="Virement" {{ old('mode_paiement') == 'Virement' ? 'selected' : '' }}>🏦 Virement bancaire</option>
-                                        <option value="Mobile Money" {{ old('mode_paiement') == 'Mobile Money' ? 'selected' : '' }}>📱 Mobile Money</option>
-                                        <option value="Carte bancaire" {{ old('mode_paiement') == 'Carte bancaire' ? 'selected' : '' }}>💳 Carte bancaire</option>
-                                    </select>
-                                    <label>Mode de paiement <span class="text-danger">*</span></label>
+                                <div class="form-floating-modern pc-select-field">
+                                    <label for="mode_paiement" class="pc-field-label">Mode de paiement <span class="text-danger">*</span></label>
+                                    <x-au-select
+                                        id="mode_paiement"
+                                        name="mode_paiement"
+                                        :value="(string) old('mode_paiement', '')"
+                                        :options="$modeOptions"
+                                        placeholder="Sélectionner un mode"
+                                        icon="fa-wallet"
+                                        required
+                                        searchable />
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -370,15 +591,15 @@
                         
                         <div class="row">
                             <div class="col-md-6">
-                                <div class="form-floating-modern">
-                                    <select name="tranche" id="tranche" class="form-control">
-                                        <option value="">-- Sélectionner --</option>
-                                        <option value="Première tranche" {{ old('tranche') == 'Première tranche' ? 'selected' : '' }}>Première tranche</option>
-                                        <option value="Deuxième tranche" {{ old('tranche') == 'Deuxième tranche' ? 'selected' : '' }}>Deuxième tranche</option>
-                                        <option value="Troisième tranche" {{ old('tranche') == 'Troisième tranche' ? 'selected' : '' }}>Troisième tranche</option>
-                                        <option value="Paiement intégral" {{ old('tranche') == 'Paiement intégral' ? 'selected' : '' }}>Paiement intégral</option>
-                                    </select>
-                                    <label>Tranche de paiement</label>
+                                <div class="form-floating-modern pc-select-field">
+                                    <label for="tranche" class="pc-field-label">Tranche de paiement</label>
+                                    <x-au-select
+                                        id="tranche"
+                                        name="tranche"
+                                        :value="(string) old('tranche', '')"
+                                        :options="$trancheOptions"
+                                        placeholder="Sélectionner une tranche"
+                                        icon="fa-list-check" />
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -412,6 +633,7 @@ $(function() {
     debugLog('=== SCRIPT PRINCIPAL CHARGÉ ===');
     
     let currentStudent = null;
+    let currentInscription = null;
     let studentBalance = null;
     let categories = [];
     let selectedCategory = null;
@@ -440,9 +662,11 @@ $(function() {
         @if($inscription)
             // Inscription déjà sélectionnée, charger directement les catégories
             debugLog('Inscription pré-sélectionnée: {{ $inscription->id }}');
+            currentInscription = '{{ $inscription->id }}';
+            showInscriptionNotice('success', 'Inscription chargée automatiquement depuis le contexte courant.');
             $('#student-progress-section').show();
-            loadStudentBalance(currentStudent);
-            loadCategories('{{ $inscription->id }}');
+            loadStudentBalance(currentStudent, currentInscription);
+            loadCategories(currentInscription);
         @else
             // Étudiant sélectionné mais pas d'inscription, charger normalement
             loadStudentData(currentStudent);
@@ -452,15 +676,18 @@ $(function() {
     // Fonction pour charger les données de l'étudiant
     function loadStudentData(etudiantId) {
         debugLog('=== loadStudentData appelée avec ID:', etudiantId);
+
+        currentInscription = null;
+        studentBalance = null;
+        hideInscriptionNotice();
+        resetCategorySelection();
+        $('#student-progress-section').hide();
+        $('#category-selection-section').hide();
+        $('#payment-details-section').hide();
+        $('#submit-section').hide();
         
         // Charger les inscriptions
         loadInscriptions(etudiantId);
-        
-        // Charger les soldes et frais
-        loadStudentBalance(etudiantId);
-        
-        // Afficher la section de progression
-        $('#student-progress-section').fadeIn();
     }
     
     // Charger les inscriptions de l'étudiant
@@ -479,30 +706,86 @@ $(function() {
             },
             success: function(data) {
                 debugLog('✅ Inscriptions reçues avec succès:', data);
-                debugLog('Nombre d\'inscriptions:', data.length);
-                
-                var options = '<option value="">-- Sélectionner une inscription --</option>';
-                $.each(data, function(index, inscription) {
-                    var selected = @if($inscription) (inscription.id == '{{ $inscription->id }}') ? 'selected' : '' @else '' @endif;
-                    options += '<option value="' + inscription.id + '" ' + selected + '>' + 
-                               inscription.filiere + ' - ' + inscription.niveau + 
-                               ' (' + inscription.annee + ')</option>';
-                });
-                
-                debugLog('Options HTML générées:', options);
-                $('#inscription_id').html(options);
+                var inscriptions = Array.isArray(data) ? data : (Array.isArray(data.data) ? data.data : []);
+                debugLog('Nombre d\'inscriptions:', inscriptions.length);
+
+                var $inscriptionSelect = $('#inscription_id');
+                $inscriptionSelect.empty();
+
+                var placeholderOption = new Option('Sélectionner une inscription', '');
+                placeholderOption.setAttribute('data-placeholder', '1');
+                $inscriptionSelect.append(placeholderOption);
+
+                var selectedInscriptionId = '';
+                var noticeType = null;
+                var noticeMessage = null;
+
+                if (inscriptions.length === 0) {
+                    $inscriptionSelect.append(new Option('Aucune inscription trouvée pour cet étudiant', ''));
+                    noticeType = 'warning';
+                    noticeMessage = 'Aucune inscription disponible pour cet étudiant.';
+                } else {
+                    $.each(inscriptions, function(index, inscription) {
+                        if (!inscription || !inscription.id) {
+                            return;
+                        }
+
+                        var label = (inscription.filiere || 'Filière non définie') + ' - ' +
+                            (inscription.niveau || 'Niveau non défini') +
+                            ' (' + (inscription.annee || 'Année non définie') + ')';
+
+                        $inscriptionSelect.append(new Option(label, String(inscription.id)));
+                    });
+
+                    var preferredInscriptionId = @json($inscription->id ?? null);
+                    var preferredExists = preferredInscriptionId && inscriptions.some(function(inscription) {
+                        return String(inscription.id) === String(preferredInscriptionId);
+                    });
+
+                    if (preferredExists) {
+                        selectedInscriptionId = String(preferredInscriptionId);
+                        noticeType = 'success';
+                        noticeMessage = 'Inscription chargée automatiquement depuis le contexte courant.';
+                    } else {
+                        var currentYearInscription = inscriptions.find(function(inscription) {
+                            return Boolean(inscription && inscription.is_current_year);
+                        });
+
+                        if (currentYearInscription && currentYearInscription.id) {
+                            selectedInscriptionId = String(currentYearInscription.id);
+                            noticeType = 'info';
+                            noticeMessage = 'Inscription de l\'année courante sélectionnée automatiquement.';
+                        } else if (inscriptions[0] && inscriptions[0].id) {
+                            selectedInscriptionId = String(inscriptions[0].id);
+                            noticeType = 'warning';
+                            noticeMessage = 'Aucune inscription de l\'année courante trouvée. La plus récente a été sélectionnée automatiquement.';
+                        }
+                    }
+                }
+
+                $inscriptionSelect.val(selectedInscriptionId);
+                currentInscription = selectedInscriptionId || null;
+
+                if (noticeMessage) {
+                    showInscriptionNotice(noticeType, noticeMessage);
+                } else {
+                    hideInscriptionNotice();
+                }
+
                 debugLog('Select #inscription_id mis à jour');
-                
-                // Vérifier que le select existe et est mis à jour
-                var selectElement = $('#inscription_id');
-                debugLog('Select trouvé:', selectElement.length > 0);
-                debugLog('Nouvelles options dans le select:', selectElement.find('option').length);
-                
-                // Si une inscription est sélectionnée, charger les catégories
-                var selectedInscription = $('#inscription_id').val();
-                debugLog('Inscription pré-sélectionnée:', selectedInscription);
-                if (selectedInscription) {
-                    loadCategories(selectedInscription);
+                debugLog('Nouvelles options dans le select:', $inscriptionSelect.find('option').length);
+
+                // Important: force le composant premium à relire les options dynamiques.
+                $inscriptionSelect.trigger('input');
+
+                if (selectedInscriptionId) {
+                    $inscriptionSelect.trigger('change');
+                } else {
+                    resetProgressDisplay();
+                    $('#student-progress-section').hide();
+                    $('#category-selection-section').hide();
+                    $('#payment-details-section').hide();
+                    $('#submit-section').hide();
                 }
             },
             error: function(xhr, status, error) {
@@ -512,12 +795,15 @@ $(function() {
     }
     
     // Charger les soldes de l'étudiant
-    function loadStudentBalance(etudiantId) {
-        debugLog('=== Chargement des soldes pour étudiant:', etudiantId);
+    function loadStudentBalance(etudiantId, inscriptionId = null) {
+        debugLog('=== Chargement des soldes pour étudiant:', etudiantId, 'inscription:', inscriptionId);
         
         $.ajax({
             url: "{{ route('esbtp.api.etudiants.soldes') }}",
-            data: { etudiant_id: etudiantId },
+            data: {
+                etudiant_id: etudiantId,
+                inscription_id: inscriptionId || undefined,
+            },
             dataType: 'json',
             success: function(data) {
                 debugLog('Soldes reçus:', data);
@@ -525,6 +811,8 @@ $(function() {
                 updateProgressDisplay(data);
             },
             error: function(xhr, status, error) {
+                studentBalance = null;
+                resetProgressDisplay();
                 debugWarn('Impossible de charger les soldes:', {status, error});
             }
         });
@@ -534,10 +822,17 @@ $(function() {
     $('#inscription_id').on('change', function() {
         var inscriptionId = $(this).val();
         debugLog('Inscription sélectionnée:', inscriptionId);
+        currentInscription = inscriptionId || null;
         
         if (inscriptionId) {
+            resetCategorySelection();
+            $('#category-selection-section').hide();
+            $('#student-progress-section').fadeIn();
+            loadStudentBalance(currentStudent, inscriptionId);
             loadCategories(inscriptionId);
         } else {
+            resetProgressDisplay();
+            $('#student-progress-section').hide();
             resetCategorySelection();
         }
     });
@@ -552,9 +847,16 @@ $(function() {
             dataType: 'json',
             success: function(data) {
                 debugLog('Catégories reçues:', data);
-                categories = data;
-                displayCategories(data);
-                $('#category-selection-section').fadeIn();
+                var categoriesData = Array.isArray(data) ? data : [];
+                categories = categoriesData;
+                displayCategories(categoriesData);
+
+                if (categoriesData.length > 0) {
+                    $('#category-selection-section').fadeIn();
+                } else {
+                    resetCategorySelection();
+                    $('#category-selection-section').hide();
+                }
             },
             error: function(xhr, status, error) {
                 debugError('Erreur chargement catégories:', {status, error, response: xhr.responseText});
@@ -599,6 +901,21 @@ $(function() {
         $('.category-option').on('click', function() {
             selectCategory($(this));
         });
+
+        // Pré-sélection intelligente pour accélérer le flux d'encaissement.
+        const $allOptions = $('#category-options .category-option');
+        if ($allOptions.length > 0) {
+            const previouslySelectedId = String($('#selected_category_id').val() || '');
+            let $target = previouslySelectedId
+                ? $allOptions.filter('[data-category-id="' + previouslySelectedId + '"]').first()
+                : $();
+
+            if ($target.length === 0) {
+                $target = $allOptions.first();
+            }
+
+            selectCategory($target);
+        }
     }
     
     // Sélectionner une catégorie
@@ -623,16 +940,33 @@ $(function() {
         var suggestions = calculateAmountSuggestions(category);
         displayAmountSuggestions(suggestions);
     }
+
+    function getPaidAmountForCategory(categoryId) {
+        if (!studentBalance || !studentBalance.categories) {
+            return 0;
+        }
+
+        var key = String(categoryId);
+        var categoryBalance = studentBalance.categories[key] || studentBalance.categories[categoryId] || null;
+
+        if (typeof categoryBalance === 'number') {
+            return Number.isFinite(categoryBalance) ? categoryBalance : 0;
+        }
+
+        if (categoryBalance && typeof categoryBalance === 'object') {
+            var paid = Number(categoryBalance.paid || 0);
+            return Number.isFinite(paid) ? paid : 0;
+        }
+
+        return 0;
+    }
     
     // Calculer les suggestions de montant
     function calculateAmountSuggestions(category) {
         var suggestions = [];
-        var remaining = category.montant;
-        
-        if (studentBalance && studentBalance.categories) {
-            var paid = studentBalance.categories[category.id] || 0;
-            remaining = category.montant - paid;
-        }
+        var total = Number(category.montant || 0);
+        var paid = getPaidAmountForCategory(category.id);
+        var remaining = Math.max(0, total - paid);
         
         // Suggestions intelligentes
         if (remaining > 0) {
@@ -685,19 +1019,14 @@ $(function() {
     
     // Calculer le progrès d'une catégorie
     function calculateCategoryProgress(category) {
-        var paid = 0;
-        var total = category.montant;
-        
-        if (studentBalance && studentBalance.categories) {
-            paid = studentBalance.categories[category.id] || 0;
-        }
-        
+        var paid = getPaidAmountForCategory(category.id);
+        var total = Number(category.montant || 0);
         var percentage = total > 0 ? Math.round((paid / total) * 100) : 0;
         
         return {
             paid: paid,
             total: total,
-            remaining: total - paid,
+            remaining: Math.max(0, total - paid),
             percentage: Math.min(percentage, 100)
         };
     }
@@ -706,6 +1035,7 @@ $(function() {
     function updateProgressDisplay(balanceData) {
         if (!balanceData || !balanceData.categories) {
             debugLog('Pas de données de solde disponibles');
+            resetProgressDisplay();
             return;
         }
         
@@ -716,11 +1046,14 @@ $(function() {
         // Calculer les totaux et créer l'affichage pour chaque catégorie
         Object.keys(balanceData.categories).forEach(function(categoryId) {
             var categoryBalance = balanceData.categories[categoryId];
-            totalPaid += categoryBalance.paid || 0;
-            totalDue += categoryBalance.total || 0;
+            var paid = Number(categoryBalance.paid || 0);
+            var total = Number(categoryBalance.total || 0);
+            var remaining = Math.max(0, total - paid);
+
+            totalPaid += Number.isFinite(paid) ? paid : 0;
+            totalDue += Number.isFinite(total) ? total : 0;
             
-            var percentage = categoryBalance.total > 0 ? 
-                Math.round((categoryBalance.paid / categoryBalance.total) * 100) : 0;
+            var percentage = total > 0 ? Math.round((paid / total) * 100) : 0;
             
             html += `
                 <div class="category-progress">
@@ -732,8 +1065,8 @@ $(function() {
                         <div class="progress-fill" style="width: ${percentage}%; background: ${getProgressColor(percentage)}"></div>
                     </div>
                     <div class="d-flex justify-content-between mt-1">
-                        <small>${formatAmount(categoryBalance.paid)} FCFA payé</small>
-                        <small>${formatAmount(categoryBalance.total - categoryBalance.paid)} FCFA restant</small>
+                        <small>${formatAmount(paid)} FCFA payé</small>
+                        <small>${formatAmount(remaining)} FCFA restant</small>
                     </div>
                 </div>
             `;
@@ -744,6 +1077,11 @@ $(function() {
         // Mettre à jour le progrès total
         var totalPercentage = totalDue > 0 ? Math.round((totalPaid / totalDue) * 100) : 0;
         $('#total-progress').text(totalPercentage + '% payé');
+    }
+
+    function resetProgressDisplay() {
+        $('#categories-progress').html('');
+        $('#total-progress').text('0% payé');
     }
     
     // Obtenir l'icône pour un type de catégorie
@@ -764,14 +1102,57 @@ $(function() {
         if (percentage >= 50) return 'linear-gradient(90deg, #f59e0b, #d97706)';
         return 'linear-gradient(90deg, #ef4444, #dc2626)';
     }
+
+    function showInscriptionNotice(type, message) {
+        var $notice = $('#inscription-auto-notice');
+        if ($notice.length === 0) {
+            return;
+        }
+
+        var alertClass = 'alert-info';
+        if (type === 'success') {
+            alertClass = 'alert-success';
+        } else if (type === 'warning') {
+            alertClass = 'alert-warning';
+        }
+
+        $notice
+            .removeClass('alert-info alert-success alert-warning')
+            .addClass(alertClass)
+            .text(message || '')
+            .show();
+    }
+
+    function hideInscriptionNotice() {
+        var $notice = $('#inscription-auto-notice');
+        if ($notice.length === 0) {
+            return;
+        }
+
+        $notice
+            .hide()
+            .text('')
+            .removeClass('alert-info alert-success alert-warning')
+            .addClass('alert-info');
+    }
     
     // Formater un montant
     function formatAmount(amount) {
-        return new Intl.NumberFormat('fr-FR').format(amount);
+        var numericAmount = Number(amount || 0);
+        if (!Number.isFinite(numericAmount)) {
+            numericAmount = 0;
+        }
+
+        return new Intl.NumberFormat('fr-FR').format(numericAmount);
     }
     
     // Réinitialiser le formulaire
     function resetForm() {
+        currentInscription = null;
+        studentBalance = null;
+        hideInscriptionNotice();
+        resetProgressDisplay();
+        $('#inscription_id').val('').trigger('input');
         $('#student-progress-section').hide();
         $('#category-selection-section').hide();
         $('#payment-details-section').hide();
@@ -783,6 +1164,7 @@ $(function() {
     function resetCategorySelection() {
         $('#category-options').html('');
         $('#selected_category_id').val('');
+        $('#amount-suggestions').html('');
         selectedCategory = null;
         $('#payment-details-section').hide();
         $('#submit-section').hide();
