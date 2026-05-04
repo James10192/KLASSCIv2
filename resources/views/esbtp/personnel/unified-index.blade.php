@@ -934,7 +934,6 @@
 #crModal.modal.show .cr-modal-dialog {
     width: min(960px, calc(100vw - 32px)) !important;
     max-width: min(960px, calc(100vw - 32px)) !important;
-    height: calc(100vh - 48px) !important;
     max-height: calc(100vh - 48px) !important;
     margin: 24px auto !important;
     display: block !important;
@@ -942,73 +941,44 @@
     justify-content: initial !important;
 }
 #crModal.modal.show .modal-content {
-    display: flex !important;
-    flex-direction: column !important;
-    height: calc(100vh - 48px) !important;
+    height: auto !important;
     max-height: calc(100vh - 48px) !important;
-    overflow: hidden !important;
+    overflow: hidden auto !important;
 }
 #crModal .cr-modal > form {
-    display: flex !important;
-    flex-direction: column !important;
-    height: 100% !important;
-    min-height: 0 !important;
-    max-height: inherit !important;
-    overflow: hidden !important;
+    display: block !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
 }
 #crModal .cr-modal-header,
 #crModal .cr-modal-footer {
-    flex: 0 0 auto !important;
+    flex: initial !important;
 }
 #crModal.modal.show .modal-body {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
+    height: auto !important;
+    min-height: auto !important;
+    max-height: calc(100vh - 180px) !important;
     overflow-y: auto !important;
     scrollbar-gutter: stable !important;
     overscroll-behavior: contain !important;
 }
-#crModal .cr-modal--standard .cr-modal-body {
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-}
-#crModal .cr-modal--standard .cr-modal-body > .cr-section:last-of-type {
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    display: flex !important;
-    flex-direction: column !important;
-    overflow: hidden !important;
-}
-#crModal .cr-modal--standard .cr-modal-body > .cr-section:last-of-type > .cr-section-header {
-    flex: 0 0 auto !important;
-}
 /* Le picker garde son scroll INTERNE pour les longues listes de permissions */
 #crModal .cr-picker {
-    display: flex !important;
-    flex-direction: column !important;
-    flex: 1 1 auto !important;
-    min-height: 0 !important;
-    max-height: none !important;
-    overflow: hidden !important;
-}
-#crModal .cr-picker-toolbar {
-    flex: 0 0 auto !important;
+    display: block;
+    overflow: visible;
 }
 #crModal .cr-picker-groups {
-    flex: 1 1 auto !important;
-    min-height: 160px !important;
-    max-height: none !important;
-    overflow-y: scroll !important;
-    scrollbar-gutter: stable !important;
-    overscroll-behavior: contain !important;
+    max-height: 420px !important;
+    overflow-y: auto !important;
 }
 /* Cap global : si exceptionnellement la modal complète dépasse le viewport,
    c'est elle qui scroll (pas un sous-élément avec un espace blanc parasite) */
 #crModal.modal.show .modal-content {
-    height: calc(100vh - 48px) !important;
+    height: auto !important;
     max-height: calc(100vh - 48px) !important;
-    overflow: hidden !important;
+    overflow: hidden auto !important;
 }
 .cr-modal-footer {
     background: #fff;
