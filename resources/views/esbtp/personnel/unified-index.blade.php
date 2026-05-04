@@ -943,16 +943,43 @@
     max-height: calc(100vh - 48px) !important;
     overflow: hidden !important;
 }
+#crModal .cr-modal > form {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    max-height: inherit !important;
+    overflow: hidden !important;
+}
+#crModal .cr-modal-header,
+#crModal .cr-modal-footer {
+    flex: 0 0 auto !important;
+}
 #crModal.modal.show .modal-body {
     flex: 1 1 auto !important;
     min-height: 0 !important;
     max-height: none !important;
     overflow-y: auto !important;
+    scrollbar-gutter: stable !important;
+    overscroll-behavior: contain !important;
 }
 /* Le picker garde son scroll INTERNE pour les longues listes de permissions */
+#crModal .cr-picker {
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important;
+    max-height: min(360px, 42vh) !important;
+    overflow: hidden !important;
+}
+#crModal .cr-picker-toolbar {
+    flex: 0 0 auto !important;
+}
 #crModal .cr-picker-groups {
-    max-height: min(340px, 38vh) !important;
-    overflow-y: auto !important;
+    flex: 1 1 auto !important;
+    min-height: 160px !important;
+    max-height: none !important;
+    overflow-y: scroll !important;
+    scrollbar-gutter: stable !important;
+    overscroll-behavior: contain !important;
 }
 /* Cap global : si exceptionnellement la modal complète dépasse le viewport,
    c'est elle qui scroll (pas un sous-élément avec un espace blanc parasite) */
