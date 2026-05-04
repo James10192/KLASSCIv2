@@ -12,7 +12,7 @@
     - label_fr / icon / description peuvent être OVERRIDE par rapport au config
     - Le « Restaurer défauts » garde le pointeur vers le config registry
 --}}
-<div class="modal-dialog modal-lg modal-dialog-centered">
+<div class="modal-dialog modal-lg cr-modal-dialog">
     <div class="modal-content cr-modal cr-modal--standard">
         <form id="cr-edit-standard-form" action="{{ route('esbtp.custom-roles.standard.update', $role->name) }}" method="POST" novalidate>
             @csrf

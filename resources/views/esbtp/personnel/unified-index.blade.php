@@ -931,21 +931,27 @@
    modal-dialog/content/body à 90vh + flex:1 — créait un espace blanc géant
    en bas. Cible #crModal (ID = spécificité maximale) pour battre toute
    règle de classe globale, peu importe l'ordre de chargement. */
-#crModal.modal.show .modal-dialog {
+#crModal.modal.show .cr-modal-dialog {
     width: min(960px, calc(100vw - 32px)) !important;
     max-width: min(960px, calc(100vw - 32px)) !important;
+    height: calc(100vh - 48px) !important;
     max-height: calc(100vh - 48px) !important;
     margin: 24px auto !important;
+    display: block !important;
+    align-items: initial !important;
+    justify-content: initial !important;
 }
 #crModal.modal.show .modal-content {
     display: flex !important;
     flex-direction: column !important;
+    height: calc(100vh - 48px) !important;
     max-height: calc(100vh - 48px) !important;
     overflow: hidden !important;
 }
 #crModal .cr-modal > form {
     display: flex !important;
     flex-direction: column !important;
+    height: 100% !important;
     min-height: 0 !important;
     max-height: inherit !important;
     overflow: hidden !important;
@@ -962,12 +968,28 @@
     scrollbar-gutter: stable !important;
     overscroll-behavior: contain !important;
 }
+#crModal .cr-modal--standard .cr-modal-body {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+#crModal .cr-modal--standard .cr-modal-body > .cr-section:last-of-type {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow: hidden !important;
+}
+#crModal .cr-modal--standard .cr-modal-body > .cr-section:last-of-type > .cr-section-header {
+    flex: 0 0 auto !important;
+}
 /* Le picker garde son scroll INTERNE pour les longues listes de permissions */
 #crModal .cr-picker {
     display: flex !important;
     flex-direction: column !important;
+    flex: 1 1 auto !important;
     min-height: 0 !important;
-    max-height: min(360px, 42vh) !important;
+    max-height: none !important;
     overflow: hidden !important;
 }
 #crModal .cr-picker-toolbar {
@@ -984,6 +1006,7 @@
 /* Cap global : si exceptionnellement la modal complète dépasse le viewport,
    c'est elle qui scroll (pas un sous-élément avec un espace blanc parasite) */
 #crModal.modal.show .modal-content {
+    height: calc(100vh - 48px) !important;
     max-height: calc(100vh - 48px) !important;
     overflow: hidden !important;
 }
