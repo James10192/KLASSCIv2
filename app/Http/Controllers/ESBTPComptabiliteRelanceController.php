@@ -473,12 +473,16 @@ class ESBTPComptabiliteRelanceController extends Controller
         $calcService->preloadForInscriptions($inscriptions);
 
         $etudiantsAvecDette = $inscriptions->filter(function ($ins) use ($calcService, $seuilDette) {
-            $dette = max(0, $calcService->calculerTotalDu($ins) - $ins->paiements->sum('montant'));
+            $state = $calcService->getFinancialState($ins);
+            $dette = (float) ($state['overdue_amount'] ?? 0);
+
             return $dette >= $seuilDette;
         });
 
         $totalDette = $etudiantsAvecDette->sum(function ($ins) use ($calcService) {
-            return max(0, $calcService->calculerTotalDu($ins) - $ins->paiements->sum('montant'));
+            $state = $calcService->getFinancialState($ins);
+
+            return (float) ($state['overdue_amount'] ?? 0);
         });
 
         $count = $etudiantsAvecDette->count();
@@ -532,20 +536,19 @@ class ESBTPComptabiliteRelanceController extends Controller
             $relancesPlanifiees = 0;
 
             foreach ($inscriptions as $inscription) {
-                $totalDu   = $calcService->calculerTotalDu($inscription);
-                $totalPaye = $inscription->paiements->sum('montant');
-                $dette     = max(0, $totalDu - $totalPaye);
+                $state = $calcService->getFinancialState($inscription);
+                $dette = (float) ($state['overdue_amount'] ?? 0);
 
                 if ($dette < $critereDette) continue;
 
                 // Vérifier que l'échéance est dépassée de X jours
-                $joursRetard = $calcService->getJoursRetard($inscription);
+                $joursRetard = (int) ($state['overdue_days'] ?? 0);
                 if ($joursRetard < $critereJours) continue;
 
                 // Vérifier pas de relance récente (7 jours)
                 $relanceRecente = \App\Models\ESBTPRelance::where('etudiant_id', $inscription->etudiant_id)
                     ->where('created_at', '>', now()->subDays(7))
-                    ->where('statut', 'envoyee')
+                    ->whereIn('statut', ['planifiee', 'envoyee', 'intent'])
                     ->exists();
 
                 if ($relanceRecente) continue;
@@ -562,11 +565,19 @@ class ESBTPComptabiliteRelanceController extends Controller
 
                 \App\Models\ESBTPRelance::create([
                     'etudiant_id'      => $inscription->etudiant_id,
+                    'inscription_id'   => $inscription->id,
                     'type'             => $type,
                     'niveau'           => $niveau,
                     'template_utilise' => "relance_niveau_{$niveau}",
                     'date_envoi'       => $dateEnvoi,
                     'statut'           => 'planifiee',
+                    'response_data'    => [
+                        'montant_en_retard' => $dette,
+                        'jours_retard' => $joursRetard,
+                        'attendu_a_date' => (float) ($state['expected_due_to_date'] ?? 0),
+                        'paye_a_date' => (float) ($state['paid_due_to_date'] ?? 0),
+                        'solde_total' => (float) ($state['remaining_total'] ?? 0),
+                    ],
                 ]);
 
                 $relancesPlanifiees++;

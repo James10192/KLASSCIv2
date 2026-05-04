@@ -90,7 +90,7 @@ class EcheancierProjectionService
                 $month = (int) $m[1];
                 $day = (int) $m[2];
 
-                if ($month >= 1 && $month <= 12 && $day >= 1 && $day <= 31) {
+                if (checkdate($month, $day, (int) $referenceDate->year)) {
                     $date = Carbon::createFromDate((int) $referenceDate->year, $month, $day)->startOfDay();
                     if ($date->lt($referenceDate->copy()->startOfDay())) {
                         $date->addYear();

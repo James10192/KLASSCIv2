@@ -214,25 +214,37 @@ class NotificationService
         // Filtrer : dette >= seuil + échéance dépassée + pas de relance récente
         return $inscriptions
             ->filter(function ($ins) use ($calcService, $montantMinimum, $delaiNiveau1) {
-                $totalDu   = $calcService->calculerTotalDu($ins);
-                $totalPaye = $ins->paiements->sum('montant');
-                $dette     = max(0, $totalDu - $totalPaye);
+                $state = $calcService->getFinancialState($ins);
+                $dette = (float) ($state['overdue_amount'] ?? 0);
 
                 if ($dette < $montantMinimum) return false;
 
                 // Vérifier que l'échéance est dépassée (jours de retard >= seuil configuré)
-                $joursRetard = $calcService->getJoursRetard($ins);
+                $joursRetard = (int) ($state['overdue_days'] ?? 0);
                 if ($joursRetard < $delaiNiveau1) return false;
 
                 // Pas de relance récente (7 jours)
                 $relanceRecente = ESBTPRelance::where('etudiant_id', $ins->etudiant_id)
                     ->where('created_at', '>', Carbon::now()->subDays(7))
-                    ->where('statut', 'envoyee')
+                    ->whereIn('statut', ['planifiee', 'envoyee', 'intent'])
                     ->exists();
 
                 return !$relanceRecente;
             })
-            ->map(fn($ins) => $ins->etudiant)
+            ->map(function ($ins) use ($calcService) {
+                $state = $calcService->getFinancialState($ins);
+                $etudiant = $ins->etudiant;
+
+                if ($etudiant) {
+                    $etudiant->setAttribute('relance_inscription_id', $ins->id);
+                    $etudiant->setAttribute('relance_overdue_amount', (float) ($state['overdue_amount'] ?? 0));
+                    $etudiant->setAttribute('relance_overdue_days', (int) ($state['overdue_days'] ?? 0));
+                    $etudiant->setAttribute('relance_remaining_total', (float) ($state['remaining_total'] ?? 0));
+                }
+
+                return $etudiant;
+            })
+            ->filter()
             ->unique('id')
             ->values();
     }
@@ -343,7 +355,11 @@ class NotificationService
      */
     public function calculerDette($etudiant)
     {
-        return app(RelanceCalculationService::class)->calculerDetteEtudiant($etudiant);
+        if ($etudiant && $etudiant->getAttribute('relance_overdue_amount') !== null) {
+            return (float) $etudiant->getAttribute('relance_overdue_amount');
+        }
+
+        return app(RelanceCalculationService::class)->calculerMontantEnRetardEtudiant($etudiant);
     }
 
     /**
@@ -1250,15 +1266,19 @@ class NotificationService
 
         return ESBTPRelance::create([
             'etudiant_id' => $etudiant->id,
+            'inscription_id' => $etudiant->getAttribute('relance_inscription_id'),
             'type' => $type,
             'niveau' => $niveau,
             'template_utilise' => $templatePersonnalise,
             'date_envoi' => $dateEnvoi,
             'statut' => 'planifiee',
-            'response_data' => json_encode([
+            'response_data' => [
                 'segment' => $segment,
-                'planifiee_automatiquement' => true
-            ])
+                'planifiee_automatiquement' => true,
+                'montant_en_retard' => $etudiant->getAttribute('relance_overdue_amount'),
+                'jours_retard' => $etudiant->getAttribute('relance_overdue_days'),
+                'solde_total' => $etudiant->getAttribute('relance_remaining_total'),
+            ]
         ]);
     }
 
@@ -1298,6 +1318,10 @@ class NotificationService
      */
     private function calculerJoursRetard($etudiant)
     {
+        if ($etudiant && $etudiant->getAttribute('relance_overdue_days') !== null) {
+            return (int) $etudiant->getAttribute('relance_overdue_days');
+        }
+
         // Basé sur la première relance envoyée, ou la date d'inscription
         $premiereRelance = ESBTPRelance::where('etudiant_id', $etudiant->id)
             ->where('statut', 'envoyee')

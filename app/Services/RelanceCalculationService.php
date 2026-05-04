@@ -141,21 +141,25 @@ class RelanceCalculationService
         $totalDu            = (float) ($state['total_due'] ?? 0);
         $totalPaye          = (float) ($state['total_paid_validated'] ?? 0);
         $totalPayeEnAttente = $inscription->paiements->where('status', 'en_attente')->sum('montant');
-        $soldeRestant       = (float) ($state['remaining_total'] ?? max(0, $totalDu - $totalPaye));
+        $remainingTotal     = (float) ($state['remaining_total'] ?? max(0, $totalDu - $totalPaye));
+        $overdueAmount      = (float) ($state['overdue_amount'] ?? 0);
         $pourcentage        = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 100;
 
-        $riskInfo = $this->getRiskLevel($totalDu, $totalPaye);
+        $expectedDueToDate = (float) ($state['expected_due_to_date'] ?? 0);
+        $paidDueToDate = (float) ($state['paid_due_to_date'] ?? 0);
+        $riskInfo = $this->getRiskLevel($expectedDueToDate, $paidDueToDate);
 
         return (object) [
             'inscription'       => $inscription,
             'totalDu'           => $totalDu,
             'totalPaye'         => $totalPaye,
             'totalPayeEnAttente'=> $totalPayeEnAttente,
-            'soldeRestant'      => $soldeRestant,
+            'soldeRestant'      => $overdueAmount,
+            'remainingTotal'     => $remainingTotal,
             'pourcentage'       => $pourcentage,
-            'expectedDueToDate' => (float) ($state['expected_due_to_date'] ?? 0),
-            'paidDueToDate'     => (float) ($state['paid_due_to_date'] ?? 0),
-            'overdueAmount'     => (float) ($state['overdue_amount'] ?? 0),
+            'expectedDueToDate' => $expectedDueToDate,
+            'paidDueToDate'     => $paidDueToDate,
+            'overdueAmount'     => $overdueAmount,
             'overdueDays'       => (int) ($state['overdue_days'] ?? 0),
             'risk'              => $riskInfo['risk'],
             'riskLabel'         => $riskInfo['label'],
@@ -217,6 +221,34 @@ class RelanceCalculationService
         }
 
         return $totalDette;
+    }
+
+    /**
+     * Calcule uniquement le montant Ã©chu et impayÃ©, la vraie base des relances.
+     */
+    public function calculerMontantEnRetardEtudiant(\App\Models\ESBTPEtudiant $etudiant): float
+    {
+        $anneeActive = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (!$anneeActive) return 0;
+
+        $inscriptions = ESBTPInscription::with([
+            'fraisSubscriptions.selectedOption.assignments',
+            'paiements' => fn($q) => $q->where('status', 'validé')->whereNull('deleted_at'),
+        ])
+            ->where('etudiant_id', $etudiant->id)
+            ->where('annee_universitaire_id', $anneeActive->id)
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->get();
+
+        if ($inscriptions->isEmpty()) return 0;
+
+        $this->preloadForInscriptions($inscriptions);
+
+        return (float) $inscriptions->sum(function (ESBTPInscription $inscription) {
+            $state = $this->getFinancialState($inscription);
+            return (float) ($state['overdue_amount'] ?? 0);
+        });
     }
 
     public function getCategories(): ?Collection

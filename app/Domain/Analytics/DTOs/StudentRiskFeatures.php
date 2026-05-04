@@ -20,11 +20,14 @@ final class StudentRiskFeatures
         public readonly float $ratioPaye,
         public readonly int $joursRetard,
         public readonly int $nbPaiements,
+        public readonly float $expectedDueToDate = 0.0,
+        public readonly float $paidDueToDate = 0.0,
+        public readonly float $overdueAmount = 0.0,
     ) {}
 
     public function isPaid(): bool
     {
-        return $this->soldeRestant <= 0.0;
+        return $this->overdueAmount <= 0.0;
     }
 
     public function toArray(): array
@@ -41,6 +44,9 @@ final class StudentRiskFeatures
             'ratio_paye' => $this->ratioPaye,
             'jours_retard' => $this->joursRetard,
             'nb_paiements' => $this->nbPaiements,
+            'expected_due_to_date' => $this->expectedDueToDate,
+            'paid_due_to_date' => $this->paidDueToDate,
+            'overdue_amount' => $this->overdueAmount,
         ];
     }
 }

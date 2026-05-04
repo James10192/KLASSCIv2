@@ -95,6 +95,7 @@ class ESBTPRelance extends Model
             'email' => 'Email',
             'sms' => 'SMS',
             'courrier' => 'Courrier',
+            'recouvrement' => 'Recouvrement',
             'appel' => 'Appel téléphonique'
         ];
 
@@ -106,7 +107,8 @@ class ESBTPRelance extends Model
         $statuts = [
             'planifiee' => 'Planifiée',
             'envoyee' => 'Envoyée',
-            'echec' => 'Échec'
+            'echec' => 'Échec',
+            'intent' => 'Intent',
         ];
 
         return $statuts[$this->statut] ?? $this->statut;
@@ -117,7 +119,8 @@ class ESBTPRelance extends Model
         $classes = [
             'planifiee' => 'warning',
             'envoyee' => 'success',
-            'echec' => 'danger'
+            'echec' => 'danger',
+            'intent' => 'info',
         ];
 
         return $classes[$this->statut] ?? 'secondary';

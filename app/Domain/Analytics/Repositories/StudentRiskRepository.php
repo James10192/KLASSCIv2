@@ -50,6 +50,9 @@ class StudentRiskRepository
             $soldeRestant = (float) ($state['remaining_total'] ?? max(0.0, $totalDu - $totalPaye));
             $ratioPaye = $totalDu > 0 ? min(1.0, $totalPaye / $totalDu) : 1.0;
             $joursRetard = (int) ($state['overdue_days'] ?? 0);
+            $expectedDueToDate = (float) ($state['expected_due_to_date'] ?? 0);
+            $paidDueToDate = (float) ($state['paid_due_to_date'] ?? 0);
+            $overdueAmount = (float) ($state['overdue_amount'] ?? 0);
             $nbPaiements = $inscription->paiements->where('status', 'validé')->count();
 
             $etudiant = $inscription->etudiant;
@@ -67,6 +70,9 @@ class StudentRiskRepository
                 ratioPaye: $ratioPaye,
                 joursRetard: $joursRetard,
                 nbPaiements: $nbPaiements,
+                expectedDueToDate: $expectedDueToDate,
+                paidDueToDate: $paidDueToDate,
+                overdueAmount: $overdueAmount,
             );
         })->all();
     }

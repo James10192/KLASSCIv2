@@ -83,7 +83,7 @@ class DefaultRiskPredictor implements PredictorInterface
             $bucketCounts[$level]++;
 
             if ($level === 'haut') {
-                $totalSoldeHaut += $student->soldeRestant;
+                $totalSoldeHaut += $student->overdueAmount;
             }
 
             $scored[] = [
@@ -92,6 +92,9 @@ class DefaultRiskPredictor implements PredictorInterface
                 'etudiant_nom' => $student->etudiantNom,
                 'classe_nom' => $student->classeNom,
                 'solde_restant' => $student->soldeRestant,
+                'montant_echu' => $student->overdueAmount,
+                'attendu_a_date' => $student->expectedDueToDate,
+                'paye_a_date' => $student->paidDueToDate,
                 'jours_retard' => $student->joursRetard,
                 'ratio_paye' => $student->ratioPaye,
                 'score' => $score,
@@ -132,7 +135,9 @@ class DefaultRiskPredictor implements PredictorInterface
      */
     private function extractFeatures(StudentRiskFeatures $student): array
     {
-        $ratioSolde = $student->totalAttendu > 0 ? min(1.0, $student->soldeRestant / $student->totalAttendu) : 0.0;
+        $ratioSolde = $student->expectedDueToDate > 0
+            ? min(1.0, $student->overdueAmount / $student->expectedDueToDate)
+            : 0.0;
         $ratioRetard = min(1.0, $student->joursRetard / self::RETARD_NORMALIZATION_DAYS);
         $ratioEngagement = match (true) {
             $student->nbPaiements >= 2 => 0.0,
