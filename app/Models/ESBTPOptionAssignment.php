@@ -48,6 +48,15 @@ class ESBTPOptionAssignment extends Model
     }
 
     /**
+     * Règles d'échéancier associées à cette assignation.
+     */
+    public function echeancierRules()
+    {
+        return $this->hasMany(ESBTPEcheancierRule::class, 'scope_id')
+            ->where('scope_type', ESBTPEcheancierRule::SCOPE_OPTION_ASSIGNMENT);
+    }
+
+    /**
      * Scope pour les assignations actives
      */
     public function scopeActive($query)

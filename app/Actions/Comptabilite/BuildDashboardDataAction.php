@@ -4,7 +4,6 @@ namespace App\Actions\Comptabilite;
 
 use App\DTOs\Comptabilite\ComptabiliteFilters;
 use App\Models\ESBTPAnneeUniversitaire;
-use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -19,7 +18,6 @@ class BuildDashboardDataAction
 {
     private const PAYMENT_STATUS_VALIDATED = 'validé';
     private const PAYMENT_STATUS_PENDING = 'en_attente';
-    private const ACTIVE_INSCRIPTION_STATUSES = ['active', 'en_attente', 'validée'];
     private const PENDING_PAYMENTS_LIMIT = 10;
 
     public function __construct(
@@ -36,7 +34,9 @@ class BuildDashboardDataAction
             ->sum('montant');
 
         $totalDuResult = $this->getImpayesAging->totalDuForFilters($filters);
-        $totalOverdue = max(0.0, $totalDuResult['totalDue'] - $totalPaid);
+        $agingBuckets = ($this->getImpayesAging)($filters);
+        $countOverdueTotal = (int) array_sum(array_column($agingBuckets, 'count'));
+        $totalOverdue = (float) array_sum(array_column($agingBuckets, 'amount'));
 
         $countPaid = $this->paiementsQuery($filters)
             ->where('status', self::PAYMENT_STATUS_VALIDATED)
@@ -44,12 +44,7 @@ class BuildDashboardDataAction
         $countPartiallyPaid = $this->paiementsQuery($filters)
             ->where('status', self::PAYMENT_STATUS_PENDING)
             ->count();
-        $countOverdue = ESBTPInscription::query()
-            ->when($filters->anneeId, fn ($q) => $q->where('annee_universitaire_id', $filters->anneeId))
-            ->when($filters->filiereId, fn ($q) => $q->whereHas('classe', fn ($q2) => $q2->where('filiere_id', $filters->filiereId)))
-            ->when($filters->classeId, fn ($q) => $q->where('classe_id', $filters->classeId))
-            ->whereIn('status', self::ACTIVE_INSCRIPTION_STATUSES)
-            ->count();
+        $countOverdue = $countOverdueTotal;
 
         $todayValidated = $this->paiementsQuery($filters)
             ->where('status', self::PAYMENT_STATUS_VALIDATED)
@@ -60,9 +55,6 @@ class BuildDashboardDataAction
         $totalValidatedToday = (float) ($todayValidated->total ?? 0);
 
         [$labelsMois, $dataEncaissements] = $this->buildMonthlySeries($filters, $annee);
-
-        $agingBuckets = ($this->getImpayesAging)($filters);
-        $countOverdueTotal = (int) array_sum(array_column($agingBuckets, 'count'));
 
         return [
             'totalDue' => $totalDuResult['totalDue'],

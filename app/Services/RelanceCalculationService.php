@@ -7,6 +7,8 @@ use App\Models\ESBTPFraisConfiguration;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPPaiement;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
 class RelanceCalculationService
@@ -14,6 +16,12 @@ class RelanceCalculationService
     private ?Collection $categories = null;
     private ?Collection $subscriptions = null;
     private ?Collection $configurations = null;
+    private array $echeancierStates = [];
+
+    public function __construct(
+        private readonly EcheancierComputationService $echeancierComputation,
+        private readonly EcheancierSnapshotService $snapshotService,
+    ) {}
 
     /**
      * Charge les données de référence une seule fois pour un batch d'inscriptions.
@@ -25,7 +33,8 @@ class RelanceCalculationService
 
         $inscriptionIds = $inscriptions->pluck('id')->toArray();
 
-        $this->subscriptions = ESBTPFraisSubscription::where('is_active', true)
+        $this->subscriptions = ESBTPFraisSubscription::with(['selectedOption.assignments'])
+            ->where('is_active', true)
             ->whereIn('inscription_id', $inscriptionIds)
             ->get()
             ->groupBy('inscription_id');
@@ -35,6 +44,8 @@ class RelanceCalculationService
             ->get()
             ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
 
+        $this->echeancierStates = [];
+
         return $this;
     }
 
@@ -43,9 +54,15 @@ class RelanceCalculationService
      */
     public function preloadForSingle(ESBTPInscription $inscription): self
     {
+        $inscription->loadMissing([
+            'fraisSubscriptions.selectedOption.assignments',
+            'paiements' => fn($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
+        ]);
+
         $this->categories = ESBTPFraisCategory::where('is_active', true)->get();
 
-        $this->subscriptions = ESBTPFraisSubscription::where('is_active', true)
+        $this->subscriptions = ESBTPFraisSubscription::with(['selectedOption.assignments'])
+            ->where('is_active', true)
             ->where('inscription_id', $inscription->id)
             ->get()
             ->groupBy('inscription_id');
@@ -54,6 +71,14 @@ class RelanceCalculationService
             ->whereIn('frais_category_id', $this->categories->pluck('id'))
             ->get()
             ->groupBy(fn($c) => $c->frais_category_id . '_' . $c->filiere_id . '_' . $c->niveau_id);
+
+        $this->echeancierStates = [];
+
+        try {
+            $this->snapshotService->refreshForInscription($inscription);
+        } catch (\Throwable $e) {
+            // Silent fallback: calcul runtime only
+        }
 
         return $this;
     }
@@ -64,32 +89,7 @@ class RelanceCalculationService
      */
     public function calculerTotalDu(ESBTPInscription $inscription): float
     {
-        $inscriptionSubs = $this->subscriptions->get($inscription->id, collect());
-        $totalDu = 0;
-
-        foreach ($this->categories as $category) {
-            $sub = $inscriptionSubs->where('frais_category_id', $category->id)->first();
-
-            if ($category->is_mandatory) {
-                if ($sub) {
-                    $montant = $sub->amount;
-                } else {
-                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                    $config = $this->configurations->get($configKey, collect())->first();
-                    $montant = $config
-                        ? $config->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
-                        : $category->default_amount;
-                }
-            } else {
-                $montant = $sub ? $sub->amount : 0;
-            }
-
-            if ($montant > 0) {
-                $totalDu += $montant;
-            }
-        }
-
-        return (float) $totalDu;
+        return (float) ($this->getEcheancierState($inscription)['total_due'] ?? 0.0);
     }
 
     /**
@@ -97,40 +97,15 @@ class RelanceCalculationService
      */
     public function calculerFraisDetail(ESBTPInscription $inscription): Collection
     {
-        $inscriptionSubs = $this->subscriptions->get($inscription->id, collect());
-        $detail = [];
+        $state = $this->getEcheancierState($inscription);
 
-        foreach ($this->categories as $category) {
-            $sub = $inscriptionSubs->where('frais_category_id', $category->id)->first();
-
-            if ($category->is_mandatory) {
-                if ($sub) {
-                    $montant = $sub->amount;
-                } else {
-                    $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-                    $config = $this->configurations->get($configKey, collect())->first();
-                    $montant = $config
-                        ? $config->getMontantByStatus($inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS)
-                        : $category->default_amount;
-                }
-            } else {
-                $montant = $sub ? $sub->amount : 0;
-            }
-
-            if ($montant <= 0) continue;
-
-            $paye = $inscription->paiements
-                ->where('frais_category_id', $category->id)
-                ->sum('montant');
-
-            $detail[] = [
-                'name'   => $category->name,
-                'amount' => $montant,
-                'paye'   => $paye,
+        return collect($state['categories'] ?? [])->map(function ($category) {
+            return [
+                'name' => $category['category_name'] ?? 'N/A',
+                'amount' => (float) ($category['total_due'] ?? 0),
+                'paye' => (float) ($category['total_paid'] ?? 0),
             ];
-        }
-
-        return collect($detail);
+        });
     }
 
     /**
@@ -161,10 +136,12 @@ class RelanceCalculationService
      */
     public function buildRow(ESBTPInscription $inscription): object
     {
-        $totalDu            = $this->calculerTotalDu($inscription);
-        $totalPaye          = $inscription->paiements->where('status', 'validé')->sum('montant');
+        $state = $this->getEcheancierState($inscription);
+
+        $totalDu            = (float) ($state['total_due'] ?? 0);
+        $totalPaye          = (float) ($state['total_paid_validated'] ?? 0);
         $totalPayeEnAttente = $inscription->paiements->where('status', 'en_attente')->sum('montant');
-        $soldeRestant       = max(0, $totalDu - $totalPaye);
+        $soldeRestant       = (float) ($state['remaining_total'] ?? max(0, $totalDu - $totalPaye));
         $pourcentage        = $totalDu > 0 ? min(100, round($totalPaye / $totalDu * 100)) : 100;
 
         $riskInfo = $this->getRiskLevel($totalDu, $totalPaye);
@@ -176,6 +153,10 @@ class RelanceCalculationService
             'totalPayeEnAttente'=> $totalPayeEnAttente,
             'soldeRestant'      => $soldeRestant,
             'pourcentage'       => $pourcentage,
+            'expectedDueToDate' => (float) ($state['expected_due_to_date'] ?? 0),
+            'paidDueToDate'     => (float) ($state['paid_due_to_date'] ?? 0),
+            'overdueAmount'     => (float) ($state['overdue_amount'] ?? 0),
+            'overdueDays'       => (int) ($state['overdue_days'] ?? 0),
             'risk'              => $riskInfo['risk'],
             'riskLabel'         => $riskInfo['label'],
         ];
@@ -244,6 +225,16 @@ class RelanceCalculationService
     }
 
     /**
+     * Retourne l'état financier calculé selon l'échéancier (dette totale + retard réel).
+     *
+     * @return array<string, mixed>
+     */
+    public function getFinancialState(ESBTPInscription $inscription): array
+    {
+        return $this->getEcheancierState($inscription);
+    }
+
+    /**
      * Calcule la date d'échéance d'une inscription.
      * = inscription.created_at + min(payment_deadline_days) de toutes les catégories obligatoires.
      *
@@ -251,25 +242,20 @@ class RelanceCalculationService
      */
     public function getDateEcheance(ESBTPInscription $inscription): \Carbon\Carbon
     {
-        $minDeadline = null;
+        $state = $this->getEcheancierState($inscription);
+        $lines = collect($state['due_lines'] ?? []);
 
-        foreach ($this->categories as $category) {
-            if (!$category->is_mandatory) continue;
+        if ($lines->isNotEmpty()) {
+            $earliest = $lines->map(function ($line) {
+                return Carbon::parse($line['due_date'])->addDays((int) ($line['grace_days'] ?? 0));
+            })->sort()->first();
 
-            // Chercher l'override config filière/niveau
-            $configKey = $category->id . '_' . $inscription->filiere_id . '_' . $inscription->niveau_id;
-            $config = $this->configurations->get($configKey, collect())->first();
-
-            $deadline = $config && $config->payment_deadline_days
-                ? $config->payment_deadline_days
-                : ($category->payment_deadline_days ?? 30);
-
-            if ($minDeadline === null || $deadline < $minDeadline) {
-                $minDeadline = $deadline;
+            if ($earliest) {
+                return $earliest;
             }
         }
 
-        return $inscription->created_at->copy()->addDays($minDeadline ?? 30);
+        return $inscription->created_at->copy()->addDays(30);
     }
 
     /**
@@ -278,9 +264,8 @@ class RelanceCalculationService
      */
     public function getJoursRetard(ESBTPInscription $inscription): int
     {
-        $echeance = $this->getDateEcheance($inscription);
-        $jours = $echeance->diffInDays(now(), false);
-        return max(0, (int) $jours);
+        $state = $this->getEcheancierState($inscription);
+        return (int) ($state['overdue_days'] ?? 0);
     }
 
     /**
@@ -288,6 +273,56 @@ class RelanceCalculationService
      */
     public function isOverdue(ESBTPInscription $inscription): bool
     {
-        return $this->getJoursRetard($inscription) > 0;
+        $state = $this->getEcheancierState($inscription);
+        return (float) ($state['overdue_amount'] ?? 0) > 0;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function getEcheancierState(ESBTPInscription $inscription): array
+    {
+        $this->ensurePreloaded($inscription);
+
+        $cacheKey = (int) $inscription->id;
+        if (isset($this->echeancierStates[$cacheKey])) {
+            return $this->echeancierStates[$cacheKey];
+        }
+
+        $inscriptionSubscriptions = $this->subscriptions?->get($inscription->id, collect()) ?? collect();
+
+        $schedule = $this->echeancierComputation->buildScheduleForInscription(
+            $inscription,
+            $this->categories ?? collect(),
+            $this->configurations ?? collect(),
+            $inscriptionSubscriptions
+        );
+
+        $validatedPayments = $inscription->relationLoaded('paiements')
+            ? $inscription->paiements->where('status', 'validé')
+            : ESBTPPaiement::query()
+                ->where('inscription_id', $inscription->id)
+                ->where('status', 'validé')
+                ->whereNull('deleted_at')
+                ->get();
+
+        $state = $this->echeancierComputation->computeOverdueForSchedule(
+            $schedule,
+            $validatedPayments,
+            Carbon::now()
+        );
+
+        $this->echeancierStates[$cacheKey] = $state;
+
+        return $state;
+    }
+
+    private function ensurePreloaded(ESBTPInscription $inscription): void
+    {
+        if ($this->categories !== null && $this->subscriptions !== null && $this->configurations !== null) {
+            return;
+        }
+
+        $this->preloadForSingle($inscription);
     }
 }

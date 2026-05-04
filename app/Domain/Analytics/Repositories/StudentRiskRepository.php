@@ -44,11 +44,12 @@ class StudentRiskRepository
         $this->relances->preloadForInscriptions($inscriptions);
 
         return $inscriptions->map(function (ESBTPInscription $inscription) {
-            $totalDu = $this->relances->calculerTotalDu($inscription);
-            $totalPaye = (float) $inscription->paiements->where('status', 'validé')->sum('montant');
-            $soldeRestant = max(0.0, $totalDu - $totalPaye);
+            $state = $this->relances->getFinancialState($inscription);
+            $totalDu = (float) ($state['total_due'] ?? 0);
+            $totalPaye = (float) ($state['total_paid_validated'] ?? 0);
+            $soldeRestant = (float) ($state['remaining_total'] ?? max(0.0, $totalDu - $totalPaye));
             $ratioPaye = $totalDu > 0 ? min(1.0, $totalPaye / $totalDu) : 1.0;
-            $joursRetard = $this->relances->getJoursRetard($inscription);
+            $joursRetard = (int) ($state['overdue_days'] ?? 0);
             $nbPaiements = $inscription->paiements->where('status', 'validé')->count();
 
             $etudiant = $inscription->etudiant;

@@ -25,6 +25,7 @@ use App\Http\Controllers\ESBTPComptabiliteController;
 use App\Http\Controllers\ESBTPComptabiliteFraisController;
 use App\Http\Controllers\ESBTPComptabiliteReportController;
 use App\Http\Controllers\ESBTPComptabiliteRelanceController;
+use App\Http\Controllers\ESBTPEcheancierController;
 use App\Http\Controllers\ESBTPContinuingEducationController;
 use App\Http\Controllers\ESBTPCycleController;
 use App\Http\Controllers\ESBTPEmploiTempsController;
@@ -1679,6 +1680,14 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     Route::get('/bourses/{id}/edit', [ESBTPComptabiliteFraisController::class, 'editBourse'])->name('bourses.edit');
     Route::put('/bourses/{id}', [ESBTPComptabiliteFraisController::class, 'updateBourse'])->name('bourses.update');
     Route::delete('/bourses/{id}', [ESBTPComptabiliteFraisController::class, 'destroyBourse'])->name('bourses.destroy');
+
+    // Configuration des échéanciers de paiement
+    Route::get('/config/echeanciers', [ESBTPEcheancierController::class, 'index'])
+        ->name('echeanciers.index')
+        ->middleware(['permission:comptabilite.frais.configure']);
+    Route::post('/config/echeanciers', [ESBTPEcheancierController::class, 'upsert'])
+        ->name('echeanciers.upsert')
+        ->middleware(['permission:comptabilite.frais.configure']);
 
     // Rapports — génération + planification + templates (analytics-predictifs supprimés Sprint 9, remplacés par /esbtp/comptabilite/analytics)
     Route::prefix('rapports')->name('rapports.')->group(function () {

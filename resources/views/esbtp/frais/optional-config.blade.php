@@ -371,6 +371,9 @@ body.modal-open * {
                 <p class="header-subtitle">Configuration des services à la carte : transport, cantine, activités…</p>
             </div>
             <div class="header-actions">
+                <a href="{{ route('esbtp.comptabilite.echeanciers.index') }}" class="btn-acasi secondary">
+                    <i class="fas fa-calendar-check"></i>Échéanciers
+                </a>
                 <a href="{{ route('esbtp.frais.configure') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Frais par Classe
                 </a>
@@ -517,6 +520,17 @@ body.modal-open * {
                                                 title="Gérer les assignations">
                                             <i class="fas fa-users"></i>
                                         </button>
+                                        @if($assignments->count() > 0)
+                                            <a href="{{ route('esbtp.comptabilite.echeanciers.index', ['scope_type' => 'option_assignment', 'scope_id' => $assignments->first()->id, 'affectation_status' => 'all']) }}"
+                                               class="oc-btn-icon"
+                                               title="Configurer l'échéancier">
+                                                <i class="fas fa-calendar-alt"></i>
+                                            </a>
+                                        @else
+                                            <button type="button" class="oc-btn-icon" disabled title="Aucune assignation active">
+                                                <i class="fas fa-calendar-alt"></i>
+                                            </button>
+                                        @endif
                                         <button type="button"
                                                 class="oc-btn-icon oc-delete"
                                                 onclick="deleteOption({{ $option->id }})"

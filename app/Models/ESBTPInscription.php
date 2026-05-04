@@ -223,6 +223,14 @@ class ESBTPInscription extends Model implements Auditable
     }
 
     /**
+     * Snapshot du plan d'échéancier figé pour cette inscription.
+     */
+    public function echeancierSnapshot()
+    {
+        return $this->hasOne(ESBTPInscriptionEcheancierSnapshot::class, 'inscription_id');
+    }
+
+    /**
      * Utilisateur qui a validé l'inscription.
      *
      * @return \Illuminate\Database\Eloquent\Relations\BelongsTo

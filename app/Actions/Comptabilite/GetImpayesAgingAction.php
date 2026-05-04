@@ -45,19 +45,14 @@ class GetImpayesAgingAction
         $buckets = $this->emptyBuckets();
 
         foreach ($inscriptions as $inscription) {
-            $totalDu = $this->relanceCalc->calculerTotalDu($inscription);
-            $totalPaye = (float) $inscription->paiements->where('status', 'validé')->sum('montant');
-            $soldeRestant = max(0.0, $totalDu - $totalPaye);
+            $state = $this->relanceCalc->getFinancialState($inscription);
+            $soldeRestant = (float) ($state['overdue_amount'] ?? 0);
 
             if ($soldeRestant <= 0) {
                 continue;
             }
 
-            if ($this->relanceCalc->getDateEcheance($inscription)->isFuture()) {
-                continue;
-            }
-
-            $joursRetard = $this->relanceCalc->getJoursRetard($inscription);
+            $joursRetard = (int) ($state['overdue_days'] ?? 0);
             $bucketKey = $this->bucketKeyFor($joursRetard);
 
             $buckets[$bucketKey]['count']++;

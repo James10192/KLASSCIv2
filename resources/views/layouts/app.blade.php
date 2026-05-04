@@ -2868,6 +2868,54 @@
                             </div>
                         </div>
                     @endif
+
+                    <div class="modal fade" id="whatsNewModal" tabindex="-1" aria-labelledby="whatsNewModalLabel" aria-hidden="true" data-bs-backdrop="static" data-pref-key="whatsNew.v2026_05_04.user.{{ auth()->id() }}">
+                        <div class="modal-dialog modal-dialog-centered modal-lg">
+                            <div class="modal-content" style="border:none;border-radius:16px;overflow:hidden;box-shadow:0 18px 48px rgba(15,23,42,.2);">
+                                <div class="modal-header" style="background:linear-gradient(135deg,#0453cb,#5e91de);color:#fff;border-bottom:none;">
+                                    <h5 class="modal-title" id="whatsNewModalLabel" style="font-weight:700;">
+                                        <i class="fas fa-sparkles me-2"></i>What's New - Mai 2026
+                                    </h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer" id="whatsNewCloseBtn"></button>
+                                </div>
+                                <div class="modal-body" style="padding:1.25rem 1.35rem;">
+                                    <div style="display:flex;align-items:flex-start;gap:.8rem;margin-bottom:.9rem;padding:.7rem .8rem;border-radius:10px;background:rgba(4,83,203,.06);border:1px solid rgba(4,83,203,.15);">
+                                        <i class="fas fa-info-circle" style="margin-top:2px;color:#0453cb;"></i>
+                                        <div style="font-size:.86rem;color:#334155;line-height:1.45;">
+                                            Voici les nouveautés livrées depuis le <strong>30 avril 2026</strong> pour la comptabilité et le suivi des paiements.
+                                        </div>
+                                    </div>
+
+                                    <div style="display:grid;gap:.55rem;">
+                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Flux de paiement fiabilisé</div>
+                                            <div style="font-size:.78rem;color:#475569;">Auto-sélection de l'inscription de l'année courante, correction des NaN d'affichage, saisie montant FCFA plus stable.</div>
+                                        </div>
+                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Nouveau moteur retard basé échéancier</div>
+                                            <div style="font-size:.78rem;color:#475569;">Le retard est calculé sur les échéances attendues à date, pas sur le solde annuel brut.</div>
+                                        </div>
+                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">Configuration des tranches centralisée</div>
+                                            <div style="font-size:.78rem;color:#475569;">Nouvelle page dédiée des échéanciers accessible depuis les écrans Frais et Frais optionnels.</div>
+                                        </div>
+                                        <div style="padding:.6rem .75rem;border:1px solid #e2e8f0;border-radius:10px;background:#fff;">
+                                            <div style="font-size:.8rem;font-weight:700;color:#0453cb;margin-bottom:.2rem;">KPIs, relances et analytics alignés</div>
+                                            <div style="font-size:.78rem;color:#475569;">Les indicateurs de retard et d'ancienneté s'appuient désormais sur l'échéancier réel.</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="modal-footer" style="border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:.5rem;padding:.9rem 1rem;">
+                                    <button type="button" class="btn btn-outline-secondary" id="whatsNewRemindLaterBtn" data-bs-dismiss="modal">
+                                        <i class="fas fa-clock me-1"></i>Me le rappeler plus tard
+                                    </button>
+                                    <button type="button" class="btn" id="whatsNewDismissBtn" data-bs-dismiss="modal" style="background:#0453cb;color:#fff;">
+                                        <i class="fas fa-check me-1"></i>J'ai compris
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 @endauth
 
             {{-- Alerte expiration mot de passe --}}
@@ -3036,6 +3084,58 @@
                     evaluationPublishModalElement.addEventListener('hidden.bs.modal', function () {
                         localStorage.setItem(reminderKey, String(Date.now()));
                     });
+                }
+
+                const whatsNewModalElement = document.getElementById('whatsNewModal');
+                if (whatsNewModalElement && typeof bootstrap !== 'undefined') {
+                    const prefKey = whatsNewModalElement.dataset.prefKey || 'whatsNew.v2026_05_04';
+                    const now = Date.now();
+                    const remindDelayMs = 2 * 24 * 60 * 60 * 1000;
+
+                    let state = {};
+                    try {
+                        state = JSON.parse(localStorage.getItem(prefKey) || '{}');
+                    } catch (error) {
+                        state = {};
+                    }
+
+                    const dismissed = !!state.dismissed;
+                    const remindAt = Number(state.remindAt || 0);
+
+                    if (!dismissed && now >= remindAt) {
+                        const whatsNewModal = new bootstrap.Modal(whatsNewModalElement);
+                        whatsNewModal.show();
+                    }
+
+                    const persistState = (nextState) => {
+                        localStorage.setItem(prefKey, JSON.stringify({
+                            dismissed: !!nextState.dismissed,
+                            remindAt: Number(nextState.remindAt || 0),
+                            updatedAt: Date.now(),
+                        }));
+                    };
+
+                    const dismissBtn = document.getElementById('whatsNewDismissBtn');
+                    const closeBtn = document.getElementById('whatsNewCloseBtn');
+                    const remindLaterBtn = document.getElementById('whatsNewRemindLaterBtn');
+
+                    if (dismissBtn) {
+                        dismissBtn.addEventListener('click', function () {
+                            persistState({ dismissed: true, remindAt: 0 });
+                        });
+                    }
+
+                    if (closeBtn) {
+                        closeBtn.addEventListener('click', function () {
+                            persistState({ dismissed: true, remindAt: 0 });
+                        });
+                    }
+
+                    if (remindLaterBtn) {
+                        remindLaterBtn.addEventListener('click', function () {
+                            persistState({ dismissed: false, remindAt: Date.now() + remindDelayMs });
+                        });
+                    }
                 }
 
             debugLog('🚀 Initialisation de l\'application...');

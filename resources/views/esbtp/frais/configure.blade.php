@@ -601,6 +601,10 @@
                     </div>
                 </div>
                 <div class="fc-hero-actions">
+                    <a href="{{ route('esbtp.comptabilite.echeanciers.index') }}" class="fc-btn-ghost">
+                        <i class="fas fa-calendar-check"></i>
+                        <span>Échéanciers</span>
+                    </a>
                     <a href="{{ route('esbtp.frais.optional-config') }}" class="fc-btn-ghost">
                         <i class="fas fa-puzzle-piece"></i>
                         <span>Frais Optionnels</span>

@@ -3,6 +3,18 @@
     @php
         $existingConfig = $configurations->where('frais_category_id', $category->id)->first();
         $isConfigured = (bool) $existingConfig;
+        $echeancierUrl = $existingConfig
+            ? route('esbtp.comptabilite.echeanciers.index', [
+                'scope_type' => 'configuration',
+                'scope_id' => $existingConfig->id,
+                'affectation_status' => 'all',
+            ])
+            : route('esbtp.comptabilite.echeanciers.index', [
+                'filiere_id' => $filiereId,
+                'niveau_id' => $niveauId,
+                'frais_category_id' => $category->id,
+                'affectation_status' => 'all',
+            ]);
     @endphp
 
     <div class="fc-cat-row">
@@ -19,6 +31,12 @@
                 @if($category->description)
                     <div class="fc-cat-desc">{{ $category->description }}</div>
                 @endif
+                <div style="margin-top:.45rem;">
+                    <a href="{{ $echeancierUrl }}" target="_blank" class="fc-copy-btn" style="text-decoration:none;display:inline-flex;align-items:center;gap:.3rem;">
+                        <i class="fas fa-calendar-check"></i>
+                        Gérer échéancier
+                    </a>
+                </div>
             </div>
         </div>
 
