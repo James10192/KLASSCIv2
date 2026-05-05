@@ -245,30 +245,36 @@
                 </div>
             </div>
 
-            <div class="an-gap-chart">
+            @php
+                $compactAmount = function (float $amount): string {
+                    if ($amount >= 1_000_000_000) return number_format($amount / 1_000_000_000, 2, ',', ' ') . ' G';
+                    if ($amount >= 1_000_000) return number_format($amount / 1_000_000, 1, ',', ' ') . ' M';
+                    if ($amount >= 1_000) return number_format($amount / 1_000, 0, ',', ' ') . ' k';
+                    return number_format($amount, 0, ',', ' ');
+                };
+            @endphp
+            <div class="an-gap-rows">
                 @foreach($gapBuckets as $monthKey => $bucket)
                     @php
                         [$year, $month] = array_map('intval', explode('-', $monthKey));
                         $monthDate = \Carbon\Carbon::createFromDate($year, $month, 1);
-                        $shortLabel = ucfirst($monthDate->locale('fr')->translatedFormat('M.'));
-                        $longLabel = ucfirst($monthDate->locale('fr')->translatedFormat('F Y'));
-                        $frameHeightPct = $maxExpected > 0 ? min(100, ($bucket['expected'] / $maxExpected) * 100) : 0;
-                        $fillHeightPct = $bucket['expected'] > 0 ? min(100, ($bucket['paid'] / $bucket['expected']) * 100) : 0;
+                        $monthShort = ucfirst($monthDate->locale('fr')->translatedFormat('M Y'));
+                        $monthFull = ucfirst($monthDate->locale('fr')->translatedFormat('F Y'));
+                        $paidPct = $bucket['expected'] > 0 ? min(100, ($bucket['paid'] / $bucket['expected']) * 100) : 0;
                         $gapRatio = $bucket['gap_ratio'];
                         $tone = $gapRatio >= $gapCriticalPct ? 'critical' : ($gapRatio >= $gapWarningPct ? 'warning' : 'ok');
                     @endphp
-                    <div class="an-gap-bar an-gap-bar--{{ $tone }}" title="{{ $longLabel }} — Attendu : {{ number_format($bucket['expected'], 0, ',', ' ') }} FCFA · Reçu : {{ number_format($bucket['paid'], 0, ',', ' ') }} FCFA">
-                        <div class="an-gap-bar-amount">{{ number_format($bucket['expected'] / 1000, 0, ',', ' ') }}k</div>
-                        <div class="an-gap-bar-frame" style="height: {{ max(20, $frameHeightPct) }}%;">
-                            <div class="an-gap-bar-fill" style="height: {{ $fillHeightPct }}%;"></div>
+                    <div class="an-gap-row an-gap-row--{{ $tone }}" title="{{ $monthFull }} — Attendu : {{ number_format($bucket['expected'], 0, ',', ' ') }} FCFA · Reçu : {{ number_format($bucket['paid'], 0, ',', ' ') }} FCFA">
+                        <div class="an-gap-row-month">{{ $monthShort }}</div>
+                        <div class="an-gap-row-track">
+                            <div class="an-gap-row-fill" style="width: {{ $paidPct }}%;"></div>
+                            <span class="an-gap-row-fill-label">{{ number_format($paidPct, 0) }}%</span>
                         </div>
-                        <div class="an-gap-bar-label">{{ $shortLabel }}</div>
-                        <div class="an-gap-bar-rate">
-                            @if($bucket['expected'] > 0)
-                                {{ number_format(($bucket['paid'] / $bucket['expected']) * 100, 0) }}%
-                            @else
-                                —
-                            @endif
+                        <div class="an-gap-row-amounts">
+                            <span class="an-gap-row-amounts-paid">{{ $compactAmount($bucket['paid']) }}</span>
+                            <span class="an-gap-row-amounts-sep">/</span>
+                            <span class="an-gap-row-amounts-expected">{{ $compactAmount($bucket['expected']) }}</span>
+                            <span class="an-gap-row-amounts-unit">FCFA</span>
                         </div>
                     </div>
                 @endforeach
@@ -784,61 +790,81 @@ function analyticsPage() {
 .an-gap-summary-value--gap { color: var(--an-danger); }
 .an-gap-summary-unit { font-size: .7rem; font-weight: 500; color: var(--an-muted); }
 
-.an-gap-chart {
-    display: flex; gap: .75rem; align-items: flex-end;
-    padding: 1.25rem; background: #fafbfc;
+.an-gap-rows {
+    display: flex; flex-direction: column; gap: .65rem;
+    padding: 1rem 1.25rem; background: #fafbfc;
     border-radius: 12px; border: 1px solid var(--an-border);
-    min-height: 220px;
 }
-.an-gap-bar {
-    flex: 1; min-width: 60px;
-    display: flex; flex-direction: column; align-items: center;
-    gap: .35rem; cursor: default;
+.an-gap-row {
+    display: grid;
+    grid-template-columns: 110px 1fr 200px;
+    align-items: center; gap: 1rem;
+    padding: .25rem 0;
     transition: transform .2s ease;
 }
-.an-gap-bar:hover { transform: translateY(-2px); }
+.an-gap-row:hover { transform: translateX(2px); }
 
-.an-gap-bar-amount {
-    font-size: .68rem; font-weight: 600; color: var(--an-muted);
-    margin-bottom: .15rem; min-height: 1em;
+.an-gap-row-month {
+    font-size: .85rem; font-weight: 600; color: var(--an-text);
+    text-transform: capitalize; letter-spacing: -.01em;
+    white-space: nowrap;
 }
-.an-gap-bar-frame {
-    width: 36px;
+
+.an-gap-row-track {
+    position: relative;
+    height: 28px;
     background: rgba(4,83,203,.06);
     border: 1px solid rgba(4,83,203,.12);
     border-radius: 8px;
-    position: relative; overflow: hidden;
-    display: flex; align-items: flex-end;
-    transition: all .25s ease;
+    overflow: hidden;
 }
-.an-gap-bar-fill {
-    width: 100%;
-    background: linear-gradient(180deg, var(--an-secondary), var(--an-primary));
-    border-radius: 6px 6px 4px 4px;
-    transition: height .5s cubic-bezier(.4,0,.2,1);
+.an-gap-row-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--an-secondary), var(--an-primary));
+    border-radius: 7px 0 0 7px;
+    transition: width .6s cubic-bezier(.4,0,.2,1);
     box-shadow: inset 0 1px 0 rgba(255,255,255,.2);
+    position: relative;
 }
-.an-gap-bar--warning .an-gap-bar-frame {
+.an-gap-row-fill-label {
+    position: absolute;
+    top: 50%; left: .75rem;
+    transform: translateY(-50%);
+    font-size: .8rem; font-weight: 700; color: var(--an-text);
+    letter-spacing: -.01em;
+    pointer-events: none;
+    text-shadow: 0 1px 0 rgba(255,255,255,.6);
+}
+
+.an-gap-row--warning .an-gap-row-track {
     background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.25);
 }
-.an-gap-bar--warning .an-gap-bar-fill {
-    background: linear-gradient(180deg, #fbbf24, #d97706);
+.an-gap-row--warning .an-gap-row-fill {
+    background: linear-gradient(90deg, #fbbf24, #d97706);
 }
-.an-gap-bar--critical .an-gap-bar-frame {
+.an-gap-row--warning .an-gap-row-fill-label { color: #78350f; }
+
+.an-gap-row--critical .an-gap-row-track {
     background: rgba(220,38,38,.08); border-color: rgba(220,38,38,.3);
 }
-.an-gap-bar--critical .an-gap-bar-fill {
-    background: linear-gradient(180deg, #f87171, var(--an-danger));
+.an-gap-row--critical .an-gap-row-fill {
+    background: linear-gradient(90deg, #f87171, var(--an-danger));
 }
-.an-gap-bar-label {
-    font-size: .78rem; color: var(--an-text); font-weight: 600;
-    margin-top: .25rem;
+.an-gap-row--critical .an-gap-row-fill-label { color: #7f1d1d; }
+
+.an-gap-row-amounts {
+    font-size: .8rem;
+    color: var(--an-muted);
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
-.an-gap-bar-rate {
-    font-size: .85rem; font-weight: 700; color: var(--an-primary);
-}
-.an-gap-bar--warning .an-gap-bar-rate { color: #b45309; }
-.an-gap-bar--critical .an-gap-bar-rate { color: var(--an-danger); }
+.an-gap-row-amounts-paid { color: var(--an-text); font-weight: 700; }
+.an-gap-row--warning .an-gap-row-amounts-paid { color: #b45309; }
+.an-gap-row--critical .an-gap-row-amounts-paid { color: var(--an-danger); }
+.an-gap-row-amounts-sep { margin: 0 .2rem; opacity: .5; }
+.an-gap-row-amounts-expected { font-weight: 600; color: var(--an-text); }
+.an-gap-row-amounts-unit { margin-left: .25rem; font-size: .7rem; opacity: .65; }
 
 .an-gap-legend {
     display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;
@@ -964,12 +990,18 @@ function analyticsPage() {
     .an-hero h1 { font-size: 1.2rem; }
     .an-kpi { min-width: 140px; }
     .an-gap-summary { grid-template-columns: 1fr; }
-    .an-gap-chart { padding: 1rem .5rem; min-height: 180px; gap: .35rem; }
-    .an-gap-bar { min-width: 40px; }
-    .an-gap-bar-frame { width: 26px; }
-    .an-gap-bar-amount { font-size: .6rem; }
-    .an-gap-bar-rate { font-size: .75rem; }
-    .an-gap-bar-label { font-size: .68rem; }
+    .an-gap-rows { padding: .85rem .75rem; gap: .85rem; }
+    .an-gap-row {
+        grid-template-columns: 1fr;
+        gap: .35rem;
+    }
+    .an-gap-row-month {
+        font-size: .9rem;
+        display: flex; align-items: baseline; justify-content: space-between;
+    }
+    .an-gap-row-track { height: 24px; }
+    .an-gap-row-fill-label { font-size: .75rem; left: .5rem; }
+    .an-gap-row-amounts { font-size: .75rem; text-align: left; }
     .an-gap-legend { font-size: .72rem; gap: .65rem; }
 }
 </style>
