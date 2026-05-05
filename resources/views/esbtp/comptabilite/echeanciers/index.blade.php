@@ -8,6 +8,7 @@
 .ech-grid{grid-template-columns:minmax(430px,.95fr) minmax(560px,1.25fr)}.ech-card-head{padding:.85rem 1rem}.ech-body{padding:.8rem 1rem}.ech-scope-list{max-height:calc(100vh - 315px);min-height:260px;gap:.28rem}.ech-scope{grid-template-columns:1fr 2rem;padding:.52rem .6rem;border-radius:8px}.ech-scope-name{font-size:.78rem}.ech-scope-meta{font-size:.68rem;margin-top:.05rem}.ech-badges{margin-top:.25rem}.ech-scope-icon{width:1.75rem;height:1.75rem}.ech-scope-tools{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:center;margin-bottom:.65rem}.ech-search{position:relative}.ech-search i{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.76rem}.ech-search input{width:100%;height:2.15rem;border:1px solid #dbe3ef;border-radius:8px;padding:.45rem .7rem .45rem 1.9rem;font-size:.76rem;background:#f8fbff;color:#0f172a}.ech-count-pill{display:inline-flex;align-items:center;height:2.15rem;padding:0 .65rem;border-radius:8px;background:#eef5ff;color:#0453cb;font-size:.72rem;font-weight:800;white-space:nowrap}.ech-hidden{display:none!important}@media(max-width:1180px){.ech-grid{grid-template-columns:1fr}.ech-scope-list{max-height:430px}}
 .ech-diagnostics{display:grid;grid-template-columns:repeat(6,minmax(110px,1fr));gap:.65rem;margin-bottom:1rem}.ech-diag{background:#fff;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:.72rem .8rem}.ech-diag-value{font-size:1rem;font-weight:900;color:#0453cb}.ech-diag-label{font-size:.68rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:0}.ech-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem;margin-bottom:.65rem}.ech-filter-grid .ech-select{min-height:2.15rem;padding:.42rem .6rem;font-size:.75rem}.ech-filter-reset{height:2.15rem;border:1px solid #dbe3ef;border-radius:8px;background:#fff;color:#64748b;font-weight:800;font-size:.74rem}.ech-scope[data-status="unconfigured"]{border-color:rgba(245,158,11,.34);background:linear-gradient(90deg,rgba(245,158,11,.06),#fff 42%)}.ech-state{display:inline-flex;align-items:center;gap:.25rem;font-size:.66rem;font-weight:900;color:#92400e}.ech-panel{border:1px solid #e2e8f0;background:#f8fbff;border-radius:10px;padding:.75rem;margin:.75rem 0}.ech-panel-title{font-size:.78rem;font-weight:900;color:#0f172a;margin-bottom:.55rem}.ech-presets{display:flex;gap:.4rem;flex-wrap:wrap}.ech-chip-btn{border:1px solid rgba(4,83,203,.18);background:#fff;color:#0453cb;border-radius:999px;padding:.35rem .58rem;font-size:.72rem;font-weight:800}.ech-chip-btn:hover{background:#0453cb;color:#fff}.ech-total{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin:.65rem 0;padding:.55rem .65rem;border-radius:9px;background:#fff;border:1px solid #e2e8f0}.ech-total strong{color:#0f172a}.ech-total.is-bad{border-color:rgba(220,38,38,.35);background:rgba(254,242,242,.72)}.ech-total.is-ok{border-color:rgba(16,185,129,.35);background:rgba(240,253,244,.72)}.ech-preview-list{display:grid;gap:.35rem}.ech-preview-line{display:grid;grid-template-columns:1fr auto;gap:.75rem;padding:.45rem .55rem;border-radius:8px;background:#fff;border:1px solid #e2e8f0;font-size:.75rem}.ech-copy-grid,.ech-sim-grid{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:end}.ech-copy-grid{grid-template-columns:1fr auto}.ech-sim-result{margin-top:.55rem;display:grid;gap:.3rem;font-size:.75rem;color:#334155}.ech-sim-result div{display:flex;justify-content:space-between;gap:.75rem;border-bottom:1px dashed #dbe3ef;padding-bottom:.25rem}@media(max-width:1200px){.ech-diagnostics{grid-template-columns:repeat(3,1fr)}.ech-filter-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:680px){.ech-diagnostics,.ech-filter-grid,.ech-copy-grid,.ech-sim-grid{grid-template-columns:1fr}}
 .ech-scope-check{display:inline-flex;align-items:center;justify-content:center;margin-right:.35rem}.ech-scope-main{display:flex;align-items:flex-start;gap:.25rem}.ech-bulk{display:grid;grid-template-columns:1fr auto auto;gap:.45rem;align-items:center;margin-bottom:.65rem}.ech-bulk .ech-select{height:2.15rem;font-size:.75rem}.ech-bulk button{height:2.15rem;padding:.35rem .6rem;font-size:.72rem}@media(max-width:680px){.ech-bulk{grid-template-columns:1fr 1fr}}
+.ech-help-button{display:inline-flex;align-items:center;gap:.45rem;border-color:rgba(4,83,203,.22)!important;background:#fff!important;color:#0453cb!important}.ech-help-modal{position:fixed;inset:0;z-index:1055;display:none;align-items:center;justify-content:center;padding:1.25rem;background:rgba(15,23,42,.45);backdrop-filter:blur(4px)}.ech-help-modal.is-open{display:flex}.ech-help-dialog{width:min(920px,100%);max-height:min(760px,92vh);display:flex;flex-direction:column;background:#fff;border:1px solid rgba(148,163,184,.3);border-radius:12px;box-shadow:0 28px 70px rgba(15,23,42,.28);overflow:hidden}.ech-help-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1rem 1.15rem;border-bottom:1px solid #e2e8f0;background:linear-gradient(180deg,#f8fbff,#fff)}.ech-help-title{margin:0;font-size:1rem;font-weight:900;color:#0f172a}.ech-help-subtitle{margin:.18rem 0 0;color:#64748b;font-size:.78rem}.ech-help-close{width:2.15rem;height:2.15rem;border-radius:8px;border:1px solid #dbe3ef;background:#fff;color:#64748b;display:inline-flex;align-items:center;justify-content:center}.ech-help-close:hover{color:#dc2626;border-color:rgba(220,38,38,.28);background:#fff5f5}.ech-help-body{overflow:auto;padding:1rem 1.15rem}.ech-help-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.ech-help-section{border:1px solid #e2e8f0;border-radius:10px;background:#f8fbff;padding:.8rem}.ech-help-section h4{margin:0 0 .45rem;font-size:.82rem;font-weight:900;color:#0f172a}.ech-help-section ul{margin:0;padding-left:1rem;color:#334155;font-size:.77rem;line-height:1.55}.ech-help-section li+li{margin-top:.25rem}.ech-help-flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin-bottom:.85rem}.ech-help-step{border:1px solid rgba(4,83,203,.16);border-radius:10px;background:#fff;padding:.65rem}.ech-help-step strong{display:block;color:#0453cb;font-size:.75rem;margin-bottom:.2rem}.ech-help-step span{display:block;color:#475569;font-size:.72rem;line-height:1.35}.ech-help-note{margin-top:.85rem;border-left:3px solid #0453cb;background:#eef5ff;color:#1e3a8a;border-radius:8px;padding:.72rem .85rem;font-size:.77rem;line-height:1.45}@media(max-width:760px){.ech-help-grid,.ech-help-flow{grid-template-columns:1fr}.ech-help-dialog{max-height:94vh}.ech-help-modal{padding:.65rem}}
 </style>
 @endpush
 
@@ -30,9 +31,85 @@
                 <p class="header-subtitle">Tranches de paiement par frais obligatoire et optionnel.</p>
             </div>
             <div class="header-actions">
+                <button type="button" class="btn-acasi secondary ech-help-button" data-ech-help-open><i class="fas fa-question-circle"></i>Aide</button>
                 <a href="{{ route('esbtp.frais.configure') }}" class="btn-acasi secondary"><i class="fas fa-layer-group"></i>Frais par classe</a>
                 <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi secondary"><i class="fas fa-puzzle-piece"></i>Optionnels</a>
                 <a href="{{ route('esbtp.comptabilite.dashboard') }}" class="btn-acasi primary"><i class="fas fa-chart-line"></i>Dashboard</a>
+            </div>
+        </div>
+
+        <div class="ech-help-modal" data-ech-help-modal role="dialog" aria-modal="true" aria-labelledby="ech-help-title">
+            <div class="ech-help-dialog">
+                <div class="ech-help-head">
+                    <div>
+                        <h2 class="ech-help-title" id="ech-help-title">Comprendre les echeanciers</h2>
+                        <p class="ech-help-subtitle">Cette page sert a definir quand chaque tranche devient exigible, par type de frais et statut d'affectation.</p>
+                    </div>
+                    <button type="button" class="ech-help-close" data-ech-help-close aria-label="Fermer l'aide"><i class="fas fa-times"></i></button>
+                </div>
+                <div class="ech-help-body">
+                    <div class="ech-help-flow">
+                        <div class="ech-help-step"><strong>1. Choisir un scope</strong><span>Selectionnez un frais obligatoire ou une option a gauche.</span></div>
+                        <div class="ech-help-step"><strong>2. Choisir le statut</strong><span>Regle globale ou specifique aux affectes, reaffectes, non affectes.</span></div>
+                        <div class="ech-help-step"><strong>3. Definir les tranches</strong><span>Pourcentage ou montant fixe avec une date relative ou fixe.</span></div>
+                        <div class="ech-help-step"><strong>4. Verifier l'impact</strong><span>Utilisez la previsualisation ou la simulation inscription.</span></div>
+                    </div>
+
+                    <div class="ech-help-grid">
+                        <div class="ech-help-section">
+                            <h4>Diagnostics en haut</h4>
+                            <ul>
+                                <li><strong>Scopes</strong> : nombre total de frais ou options visibles.</li>
+                                <li><strong>Sans regle</strong> : le systeme applique encore le fallback.</li>
+                                <li><strong>A verifier</strong> : tranche inactive vide ou total pourcentage different de 100%.</li>
+                            </ul>
+                        </div>
+                        <div class="ech-help-section">
+                            <h4>Liste de gauche</h4>
+                            <ul>
+                                <li>Les filtres reduisent la liste sans recharger la page.</li>
+                                <li>Les badges indiquent les regles deja configurees par statut.</li>
+                                <li>Le badge fallback signifie qu'aucune regle active specifique n'existe encore.</li>
+                            </ul>
+                        </div>
+                        <div class="ech-help-section">
+                            <h4>Editeur de regle</h4>
+                            <ul>
+                                <li>Un total en pourcentage doit faire exactement 100%.</li>
+                                <li>Une date relative part de la date d'inscription.</li>
+                                <li>Une date fixe utilise le format <strong>MM-DD</strong>, par exemple <strong>10-15</strong>.</li>
+                            </ul>
+                        </div>
+                        <div class="ech-help-section">
+                            <h4>Actions rapides</h4>
+                            <ul>
+                                <li>Les presets remplissent les tranches les plus courantes.</li>
+                                <li>La copie propage une regle vers une filiere, un niveau ou les scopes sans regle.</li>
+                                <li>L'activation en masse agit seulement sur les scopes coches.</li>
+                            </ul>
+                        </div>
+                        <div class="ech-help-section">
+                            <h4>Previsualisation</h4>
+                            <ul>
+                                <li>Elle calcule les montants et dates sans enregistrer.</li>
+                                <li>Changez le montant de simulation pour tester BTS, Licence, Master, etc.</li>
+                                <li>Elle sert a verifier rapidement la coherence avant sauvegarde.</li>
+                            </ul>
+                        </div>
+                        <div class="ech-help-section">
+                            <h4>Simulation inscription</h4>
+                            <ul>
+                                <li>Entrez un ID d'inscription reel pour voir l'attendu a date.</li>
+                                <li>Le resultat tient compte des paiements deja connus.</li>
+                                <li>C'est le meilleur controle avant relances et analytics.</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <div class="ech-help-note">
+                        Regle pratique : configurez d'abord les frais obligatoires les plus frequents, testez avec une inscription representative, puis copiez la regle vers les scopes similaires.
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -505,7 +582,46 @@
             });
         });
 
+        root.querySelectorAll('[data-ech-help-open]').forEach(function (button) {
+            if (button.dataset.bound) return;
+            button.dataset.bound = '1';
+            button.addEventListener('click', function () {
+                openHelpModal(root);
+            });
+        });
+
+        root.querySelectorAll('[data-ech-help-close]').forEach(function (button) {
+            if (button.dataset.bound) return;
+            button.dataset.bound = '1';
+            button.addEventListener('click', function () {
+                closeHelpModal(root);
+            });
+        });
+
+        root.querySelectorAll('[data-ech-help-modal]').forEach(function (modal) {
+            if (modal.dataset.bound) return;
+            modal.dataset.bound = '1';
+            modal.addEventListener('click', function (event) {
+                if (event.target === modal) closeHelpModal(root);
+            });
+        });
+
         updateRuleDiagnostics(root);
+    }
+
+    function openHelpModal(root) {
+        const modal = root.querySelector('[data-ech-help-modal]');
+        if (!modal) return;
+        modal.classList.add('is-open');
+        document.body.style.overflow = 'hidden';
+        modal.querySelector('[data-ech-help-close]')?.focus();
+    }
+
+    function closeHelpModal(root) {
+        const modal = root.querySelector('[data-ech-help-modal]');
+        if (!modal) return;
+        modal.classList.remove('is-open');
+        document.body.style.overflow = '';
     }
 
     function filterScopes(root, target, value) {
@@ -704,6 +820,14 @@
 
     window.addEventListener('popstate', function () {
         window.location.reload();
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') return;
+        const shell = document.querySelector('[data-ech-page]');
+        if (shell?.querySelector('[data-ech-help-modal].is-open')) {
+            closeHelpModal(shell);
+        }
     });
 
     document.addEventListener('DOMContentLoaded', function () {
