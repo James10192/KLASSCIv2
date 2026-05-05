@@ -157,18 +157,76 @@
         .badge-moyen { background: rgba(245,158,11,.15); color: #b45309; }
         .badge-bas   { background: rgba(16,185,129,.15); color: #047857; }
 
-        /* ─── Anomalies ─── */
-        .anomaly {
-            margin-bottom: 6px;
+        /* ─── Anomalies (regroupées par type) ─── */
+        .anom-group {
+            margin-bottom: 10px;
+        }
+        .anom-group-header {
+            background: {{ $primary }};
+            color: #fff;
+            padding: 4px 8px;
+            font-size: 9px;
+            font-weight: 700;
+            border-radius: 3px 3px 0 0;
+        }
+        .anom-group-header-meta {
+            float: right;
+            font-weight: 400;
+            font-size: 8.5px;
+            opacity: .85;
+        }
+        .anom-group-ok {
             padding: 8px 10px;
-            border-radius: 4px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-top: none;
+            border-radius: 0 0 3px 3px;
+            font-size: 8.5px;
+            color: #047857;
+            font-style: italic;
+        }
+        .anom-item {
+            margin-bottom: 4px;
+            padding: 5px 8px;
+            border-radius: 3px;
             border-left: 3px solid #94a3b8;
             background: #f8fafc;
         }
-        .anomaly-critical { border-left-color: #dc2626; background: rgba(220,38,38,.04); }
-        .anomaly-warning  { border-left-color: #f59e0b; background: rgba(245,158,11,.04); }
-        .anomaly-meta     { font-size: 8px; color: {{ $secondary }}; text-transform: uppercase; margin-bottom: 2px; letter-spacing: 0.3px; }
-        .anomaly-message  { font-size: 9px; color: #1e293b; }
+        .anom-item-critical { border-left-color: #dc2626; background: rgba(220,38,38,.04); }
+        .anom-item-warning  { border-left-color: #f59e0b; background: rgba(245,158,11,.04); }
+        .anom-item-meta     {
+            font-size: 7.5px;
+            color: {{ $secondary }};
+            margin-bottom: 2px;
+            letter-spacing: 0.2px;
+        }
+        .anom-item-meta-type { font-weight: 700; color: #1e293b; text-transform: none; }
+        .anom-item-meta-date { color: {{ $secondary }}; margin-left: 4px; }
+        .anom-item-meta-score {
+            display: inline-block;
+            padding: 1px 5px;
+            background: rgba(15,23,42,.08);
+            color: #1e293b;
+            border-radius: 3px;
+            font-weight: 700;
+            margin-left: 4px;
+        }
+        .anom-item-critical .anom-item-meta-score { background: rgba(220,38,38,.12); color: #dc2626; }
+        .anom-item-warning  .anom-item-meta-score { background: rgba(245,158,11,.15); color: #b45309; }
+        .anom-item-meta-sev {
+            display: inline-block;
+            padding: 1px 5px;
+            background: #94a3b8;
+            color: #fff;
+            border-radius: 3px;
+            font-weight: 700;
+            font-size: 7px;
+            float: right;
+        }
+        .anom-item-critical .anom-item-meta-sev { background: #dc2626; }
+        .anom-item-warning  .anom-item-meta-sev { background: #f59e0b; }
+        .anom-item-message  { font-size: 8.5px; color: #1e293b; line-height: 1.3; }
+        .anom-overflow      { font-size: 7.5px; color: {{ $secondary }}; text-align: right; margin-top: 3px; font-style: italic; }
 
         .empty {
             text-align: center;
@@ -464,22 +522,103 @@
         </div>
 
         {{-- ===== Section Anomalies ===== --}}
+        @php
+            $pdfTypeLabels = [
+                'payment_outlier'  => 'Paiement aberrant',
+                'recouvrement_gap' => 'Écart de recouvrement',
+                'revenue_spike'    => 'Pic de recettes',
+                'revenue_drop'     => 'Chute de recettes',
+            ];
+            $pdfGroupOf = fn ($t) => match ($t) {
+                'payment_outlier'                => 'paiements',
+                'recouvrement_gap'               => 'recouvrement',
+                'revenue_spike', 'revenue_drop'  => 'revenus',
+                default                           => 'autres',
+            };
+            $pdfGroupMeta = [
+                'paiements'    => ['label' => 'Paiements aberrants',      'sub' => 'Outliers sur les paiements des 30 derniers jours'],
+                'recouvrement' => ['label' => 'Écarts de recouvrement',   'sub' => 'Mois clos avec un manque-à-gagner significatif'],
+                'revenus'      => ['label' => 'Variations mensuelles',    'sub' => 'Pics ou chutes inhabituels (Z-score)'],
+            ];
+            $pdfImpact = fn ($a) => match ($a->type) {
+                'payment_outlier'                => (float) ($a->context['montant'] ?? 0),
+                'recouvrement_gap'               => (float) ($a->context['gap'] ?? 0),
+                'revenue_spike', 'revenue_drop'  => abs(((float) ($a->context['value'] ?? 0)) - ((float) ($a->context['mean'] ?? 0))),
+                default                           => 0.0,
+            };
+            $pdfScoreLabel = fn ($a) => match ($a->type) {
+                'payment_outlier'                => number_format($a->score, 1, ',', ' ') . '× moy.',
+                'recouvrement_gap'               => number_format($a->score * 100, 0) . '% écart',
+                'revenue_spike', 'revenue_drop'  => 'Z=' . number_format($a->score, 1, ',', ' ') . 'σ',
+                default                           => number_format($a->score, 2),
+            };
+            $pdfDateLabel = function ($a) {
+                $ctx = $a->context;
+                if (!empty($ctx['date_paiement'])) {
+                    return \Carbon\Carbon::parse($ctx['date_paiement'])->locale('fr')->translatedFormat('d/m/Y');
+                }
+                if (!empty($ctx['year']) && !empty($ctx['month'])) {
+                    return ucfirst(\Carbon\Carbon::createFromDate((int) $ctx['year'], (int) $ctx['month'], 1)->locale('fr')->translatedFormat('M Y'));
+                }
+                return null;
+            };
+            $pdfAnomCollection = collect($anomalies);
+            $pdfOrderedGroups = ['paiements', 'recouvrement', 'revenus'];
+            $pdfGroupStats    = [];
+            foreach ($pdfOrderedGroups as $g) {
+                $items = $pdfAnomCollection->filter(fn ($a) => $pdfGroupOf($a->type) === $g)->values();
+                $pdfGroupStats[$g] = [
+                    'items'    => $items,
+                    'count'    => $items->count(),
+                    'critical' => $items->where('severity', 'critical')->count(),
+                    'warning'  => $items->where('severity', 'warning')->count(),
+                    'impact'   => (float) $items->sum(fn ($a) => $pdfImpact($a)),
+                ];
+            }
+            $pdfMaxItemsPerGroup = 20;
+        @endphp
         <div class="section">
-            <h2 class="section-title">Anomalies financières</h2>
-            @if(empty($anomalies))
-                <div class="empty">Aucune anomalie détectée.</div>
+            <h2 class="section-title">Anomalies financières détectées</h2>
+            @if($pdfAnomCollection->isEmpty())
+                <div class="empty">Aucune anomalie détectée. Les flux financiers sont conformes aux tendances historiques.</div>
             @else
-                @foreach(array_slice($anomalies, 0, 15) as $alert)
-                    <div class="anomaly anomaly-{{ $alert->severity }}">
-                        <div class="anomaly-meta">
-                            {{ mb_strtoupper($alert->severity, 'UTF-8') }} · {{ str_replace('_', ' ', $alert->type) }} · score {{ number_format($alert->score, 2) }}
+                @foreach($pdfOrderedGroups as $g)
+                    @php $s = $pdfGroupStats[$g]; @endphp
+                    <div class="anom-group">
+                        <div class="anom-group-header">
+                            {{ $pdfGroupMeta[$g]['label'] }}
+                            <span class="anom-group-header-meta">
+                                @if($s['count'] > 0)
+                                    {{ $s['count'] }} alerte{{ $s['count'] > 1 ? 's' : '' }} · {{ $s['critical'] }} crit. · {{ $s['warning'] }} avert. · {{ number_format($s['impact'], 0, ',', ' ') }} FCFA
+                                @else
+                                    Aucune alerte
+                                @endif
+                            </span>
                         </div>
-                        <div class="anomaly-message">{{ $alert->message }}</div>
+
+                        @if($s['count'] === 0)
+                            <div class="anom-group-ok">✓ Situation conforme — {{ $pdfGroupMeta[$g]['sub'] }}.</div>
+                        @else
+                            @foreach($s['items']->take($pdfMaxItemsPerGroup) as $alert)
+                                @php $date = $pdfDateLabel($alert); @endphp
+                                <div class="anom-item anom-item-{{ $alert->severity }}">
+                                    <div class="anom-item-meta">
+                                        <span class="anom-item-meta-sev">{{ mb_strtoupper($alert->severity, 'UTF-8') }}</span>
+                                        <span class="anom-item-meta-type">{{ $pdfTypeLabels[$alert->type] ?? $alert->type }}</span>
+                                        @if($date)
+                                            <span class="anom-item-meta-date">· {{ $date }}</span>
+                                        @endif
+                                        <span class="anom-item-meta-score">{{ $pdfScoreLabel($alert) }}</span>
+                                    </div>
+                                    <div class="anom-item-message">{{ $alert->message }}</div>
+                                </div>
+                            @endforeach
+                            @if($s['count'] > $pdfMaxItemsPerGroup)
+                                <div class="anom-overflow">… et {{ $s['count'] - $pdfMaxItemsPerGroup }} autre{{ ($s['count'] - $pdfMaxItemsPerGroup) > 1 ? 's' : '' }} alerte{{ ($s['count'] - $pdfMaxItemsPerGroup) > 1 ? 's' : '' }} (voir l'export Excel pour le détail complet)</div>
+                            @endif
+                        @endif
                     </div>
                 @endforeach
-                @if(count($anomalies) > 15)
-                    <p style="font-size:8px;color:{{ $secondary }};text-align:right;margin-top:4px;font-style:italic;">… et {{ count($anomalies) - 15 }} autres anomalies</p>
-                @endif
             @endif
         </div>
 
