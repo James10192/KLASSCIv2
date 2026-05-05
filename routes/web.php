@@ -1739,6 +1739,8 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
             ->middleware(['permission:comptabilite.reports.export']);
         Route::get('/export-pdf', [ESBTPComptabiliteRelanceController::class, 'exportRelancesPdf'])->name('export-pdf')
             ->middleware(['permission:comptabilite.reports.export']);
+        Route::get('/preview-pdf', [ESBTPComptabiliteRelanceController::class, 'previewRelancesPdf'])->name('preview-pdf')
+            ->middleware(['permission:comptabilite.reports.export', 'throttle:30,1']);
         Route::get('/{id}', [ESBTPComptabiliteRelanceController::class, 'showRelance'])->name('show')->where('id', '[0-9]+');
 
         // Actions sur les relances

@@ -696,6 +696,9 @@
                 <a href="{{ route('esbtp.comptabilite.relances.export-excel', request()->query()) }}" class="rl-btn-ghost">
                     <i class="fas fa-file-excel"></i> Excel
                 </a>
+                <a href="{{ route('esbtp.comptabilite.relances.preview-pdf', request()->query()) }}" target="_blank" class="rl-btn-ghost">
+                    <i class="fas fa-eye"></i> Aperçu PDF
+                </a>
                 <a href="{{ route('esbtp.comptabilite.relances.export-pdf', request()->query()) }}" class="rl-btn-ghost">
                     <i class="fas fa-file-pdf"></i> PDF
                 </a>

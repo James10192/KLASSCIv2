@@ -258,6 +258,13 @@ class ESBTPComptabiliteRelanceController extends Controller
     /**
      * Export PDF des relances (filtres respectés)
      */
+    public function previewRelancesPdf(Request $request)
+    {
+        $request->merge(['_preview_pdf' => '1']);
+
+        return $this->exportRelancesPdf($request);
+    }
+
     public function exportRelancesPdf(Request $request)
     {
         // Pour les gros exports (1000+ étudiants), utilise chunk+merge FPDI
@@ -334,7 +341,8 @@ class ESBTPComptabiliteRelanceController extends Controller
             'nb_total'     => $relances->count(),
         ];
 
-        $filename   = 'relances_' . now()->format('Y-m-d_Hi') . '.pdf';
+        $inline     = $request->boolean('_preview_pdf');
+        $filename   = ($inline ? 'apercu-' : '') . 'relances_' . now()->format('Y-m-d_Hi') . '.pdf';
         $pdfOptions = [
             'dpi'                     => 72,
             'defaultFont'             => 'DejaVu Sans',
@@ -353,7 +361,12 @@ class ESBTPComptabiliteRelanceController extends Controller
                 ['globalStats' => $globalStats, 'isFirstChunk' => true, 'isLastChunk' => true, 'rowOffset' => 0]
             ))->setPaper('a4', 'landscape')->setOptions($pdfOptions);
 
-            return $pdf->download($filename);
+            return $inline
+                ? response($pdf->output(), 200, [
+                    'Content-Type' => 'application/pdf',
+                    'Content-Disposition' => 'inline; filename="' . $filename . '"',
+                ])
+                : $pdf->download($filename);
         }
 
         // Gros export → chunk + merge FPDI
@@ -412,7 +425,12 @@ class ESBTPComptabiliteRelanceController extends Controller
             @unlink($file);
         }
 
-        return response()->download($finalPath, $filename)->deleteFileAfterSend(true);
+        return $inline
+            ? response()->file($finalPath, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            ])->deleteFileAfterSend(true)
+            : response()->download($finalPath, $filename)->deleteFileAfterSend(true);
     }
 
 
