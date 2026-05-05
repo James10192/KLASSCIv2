@@ -44,7 +44,10 @@ class CashFlowProjectionService
                     }
 
                     $key = $dueDate->format('Y-m');
-                    $buckets[$key] = ($buckets[$key] ?? 0.0) + (float) ($line['amount'] ?? 0);
+                    // Projection nette : on ne réannonce pas une tranche déjà encaissée.
+                    // remaining_amount est posé par EcheancierPaymentAllocationService::allocate().
+                    $remaining = $line['remaining_amount'] ?? $line['amount'] ?? 0;
+                    $buckets[$key] = ($buckets[$key] ?? 0.0) + (float) $remaining;
                 }
             }
         });

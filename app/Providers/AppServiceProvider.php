@@ -22,6 +22,10 @@ class AppServiceProvider extends ServiceProvider
         if (file_exists(app_path('Helpers/helpers.php'))) {
             require_once app_path('Helpers/helpers.php');
         }
+
+        // Une seule instance par requête pour qu'AnomalyDetector et le contrôleur
+        // analytics partagent le même cache de buckets attendu/encaissé.
+        $this->app->scoped(\App\Services\Analytics\RecouvrementGapService::class);
     }
 
 

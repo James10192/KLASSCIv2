@@ -118,7 +118,7 @@
             <div class="an-section-icon"><i class="fas fa-chart-area"></i></div>
             <div>
                 <h2 class="an-section-title">Projection cash-flow — mois prochain</h2>
-                <p class="an-section-sub">Modèle saisonnier (Holt-Winters) + régression linéaire sur 24 mois d'historique.</p>
+                <p class="an-section-sub">Tranches restantes des échéanciers actifs combinées à la saisonnalité des encaissements (jusqu'à 24 mois d'historique).</p>
             </div>
         </div>
 
@@ -180,6 +180,91 @@
             <div class="an-empty">
                 <i class="fas fa-info-circle"></i>
                 <p>{{ $cashFlow->explanation[0] ?? 'Prévision indisponible.' }}</p>
+            </div>
+        @endif
+    </div>
+
+    {{-- ============================ RECOUVREMENT GAP ============================ --}}
+    @php
+        $gapBuckets = $recouvrementGaps ?? [];
+        $totalExpected = collect($gapBuckets)->sum('expected');
+        $totalPaid = collect($gapBuckets)->sum('paid');
+        $totalGap = max(0.0, $totalExpected - $totalPaid);
+        $globalRate = $totalExpected > 0 ? round($totalPaid / $totalExpected * 100, 1) : null;
+        $maxExpected = collect($gapBuckets)->max('expected') ?: 1;
+        $analyticsSettings = \App\Helpers\SettingsHelper::getAnalyticsSettings();
+        $gapWarningPct = (float) ($analyticsSettings['anomaly']['recouvrement_gap_warning_pct'] ?? \App\Domain\Analytics\Detectors\AnomalyDetector::DEFAULT_RECOUVREMENT_GAP_WARNING_PCT) / 100;
+        $gapCriticalPct = (float) ($analyticsSettings['anomaly']['recouvrement_gap_critical_pct'] ?? \App\Domain\Analytics\Detectors\AnomalyDetector::DEFAULT_RECOUVREMENT_GAP_CRITICAL_PCT) / 100;
+    @endphp
+    <div class="an-card mt-4">
+        <div class="an-section-header">
+            <div class="an-section-icon"><i class="fas fa-balance-scale"></i></div>
+            <div>
+                <h2 class="an-section-title">Recouvrement mois par mois — attendu vs encaissé</h2>
+                <p class="an-section-sub">Sur les 6 derniers mois clos, ce que les échéanciers prévoyaient comparé à ce qui est effectivement rentré.</p>
+            </div>
+        </div>
+
+        @if(empty($gapBuckets))
+            <div class="an-empty">
+                <i class="fas fa-balance-scale-left"></i>
+                <p>Aucun montant attendu via les échéanciers sur les 6 derniers mois clos. Configurez des règles d'échéance ou attendez la prochaine échéance.</p>
+            </div>
+        @else
+            <div class="an-gap-summary">
+                <div class="an-gap-summary-item">
+                    <div class="an-gap-summary-label">Attendu cumulé</div>
+                    <div class="an-gap-summary-value">{{ number_format($totalExpected, 0, ',', ' ') }} <span class="an-gap-summary-unit">FCFA</span></div>
+                </div>
+                <div class="an-gap-summary-item">
+                    <div class="an-gap-summary-label">Encaissé cumulé</div>
+                    <div class="an-gap-summary-value">{{ number_format($totalPaid, 0, ',', ' ') }} <span class="an-gap-summary-unit">FCFA</span></div>
+                </div>
+                <div class="an-gap-summary-item">
+                    <div class="an-gap-summary-label">Écart restant</div>
+                    <div class="an-gap-summary-value an-gap-summary-value--gap">{{ number_format($totalGap, 0, ',', ' ') }} <span class="an-gap-summary-unit">FCFA</span></div>
+                </div>
+                <div class="an-gap-summary-item">
+                    <div class="an-gap-summary-label">Taux de recouvrement</div>
+                    <div class="an-gap-summary-value">{{ $globalRate !== null ? number_format($globalRate, 1, ',', ' ') . ' %' : '—' }}</div>
+                </div>
+            </div>
+
+            <div class="an-gap-chart">
+                @foreach($gapBuckets as $monthKey => $bucket)
+                    @php
+                        [$year, $month] = array_map('intval', explode('-', $monthKey));
+                        $monthDate = \Carbon\Carbon::createFromDate($year, $month, 1);
+                        $shortLabel = ucfirst($monthDate->locale('fr')->translatedFormat('M.'));
+                        $longLabel = ucfirst($monthDate->locale('fr')->translatedFormat('F Y'));
+                        $frameHeightPct = $maxExpected > 0 ? min(100, ($bucket['expected'] / $maxExpected) * 100) : 0;
+                        $fillHeightPct = $bucket['expected'] > 0 ? min(100, ($bucket['paid'] / $bucket['expected']) * 100) : 0;
+                        $gapRatio = $bucket['gap_ratio'];
+                        $tone = $gapRatio >= $gapCriticalPct ? 'critical' : ($gapRatio >= $gapWarningPct ? 'warning' : 'ok');
+                    @endphp
+                    <div class="an-gap-bar an-gap-bar--{{ $tone }}" title="{{ $longLabel }} — Attendu : {{ number_format($bucket['expected'], 0, ',', ' ') }} FCFA · Reçu : {{ number_format($bucket['paid'], 0, ',', ' ') }} FCFA">
+                        <div class="an-gap-bar-amount">{{ number_format($bucket['expected'] / 1000, 0, ',', ' ') }}k</div>
+                        <div class="an-gap-bar-frame" style="height: {{ max(20, $frameHeightPct) }}%;">
+                            <div class="an-gap-bar-fill" style="height: {{ $fillHeightPct }}%;"></div>
+                        </div>
+                        <div class="an-gap-bar-label">{{ $shortLabel }}</div>
+                        <div class="an-gap-bar-rate">
+                            @if($bucket['expected'] > 0)
+                                {{ number_format(($bucket['paid'] / $bucket['expected']) * 100, 0) }}%
+                            @else
+                                —
+                            @endif
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+
+            <div class="an-gap-legend">
+                <span class="an-gap-legend-item"><span class="an-gap-legend-dot an-gap-legend-dot--ok"></span> Sain (&lt; {{ (int) ($gapWarningPct * 100) }}% d'écart)</span>
+                <span class="an-gap-legend-item"><span class="an-gap-legend-dot an-gap-legend-dot--warning"></span> Surveillance (≥ {{ (int) ($gapWarningPct * 100) }}% d'écart)</span>
+                <span class="an-gap-legend-item"><span class="an-gap-legend-dot an-gap-legend-dot--critical"></span> Critique (≥ {{ (int) ($gapCriticalPct * 100) }}% d'écart)</span>
+                <span class="an-gap-legend-spacer"></span>
+                <a href="{{ route('esbtp.comptabilite.analytics.settings') }}#anomaly" class="an-gap-legend-link"><i class="fas fa-sliders-h"></i> Ajuster les seuils</a>
             </div>
         @endif
     </div>
@@ -292,7 +377,7 @@
             <div class="an-section-icon"><i class="fas fa-radiation"></i></div>
             <div>
                 <h2 class="an-section-title">Anomalies financières détectées</h2>
-                <p class="an-section-sub">Z-score sur les flux mensuels + détection d'outliers sur les paiements des 30 derniers jours.</p>
+                <p class="an-section-sub">Écarts entre attendu et encaissé via les échéanciers, Z-score sur les flux mensuels, et outliers sur les paiements des 30 derniers jours.</p>
             </div>
         </div>
 
@@ -391,12 +476,38 @@ function analyticsPage() {
 
 /* ===== Hero ===== */
 .an-hero {
+    position: relative;
     background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
     border-radius: 18px;
     padding: 2rem 2.5rem 1.75rem;
     color: #fff;
     margin-bottom: 1.25rem;
     box-shadow: 0 8px 30px rgba(4,83,203,.18);
+    overflow: hidden;
+    animation: an-hero-fade .5s ease-out;
+}
+.an-hero::before {
+    content: '';
+    position: absolute;
+    top: -120px; right: -80px;
+    width: 320px; height: 320px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,255,.08) 0%, transparent 65%);
+    pointer-events: none;
+}
+.an-hero::after {
+    content: '';
+    position: absolute;
+    bottom: -200px; left: -100px;
+    width: 380px; height: 380px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(94,145,222,.18) 0%, transparent 70%);
+    pointer-events: none;
+}
+.an-hero > * { position: relative; z-index: 1; }
+@keyframes an-hero-fade {
+    from { opacity: 0; transform: translateY(-12px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 .an-hero-top {
     display: flex; align-items: flex-start; justify-content: space-between;
@@ -441,6 +552,12 @@ function analyticsPage() {
     border-radius: 12px;
     padding: .9rem 1rem;
     display: flex; align-items: center; gap: .75rem;
+    transition: background .2s ease, border-color .2s ease, transform .2s ease;
+}
+.an-kpi:hover {
+    background: rgba(255,255,255,.16);
+    border-color: rgba(255,255,255,.25);
+    transform: translateY(-1px);
 }
 .an-kpi-icon {
     width: 40px; height: 40px; border-radius: 10px;
@@ -459,6 +576,11 @@ function analyticsPage() {
     border-radius: 14px;
     padding: 1.5rem 1.75rem;
     box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    transition: box-shadow .25s ease, transform .25s ease, border-color .25s ease;
+}
+.an-card:hover {
+    box-shadow: 0 8px 30px rgba(4,83,203,.07), 0 2px 8px rgba(15,23,42,.04);
+    border-color: rgba(4,83,203,.12);
 }
 
 .an-section-header {
@@ -490,8 +612,8 @@ function analyticsPage() {
     border: 1px solid rgba(4,83,203,.1);
 }
 .an-cf-value {
-    font-size: 2rem; font-weight: 700; color: var(--an-primary);
-    line-height: 1.1;
+    font-size: 2.35rem; font-weight: 800; color: var(--an-primary);
+    line-height: 1.05; letter-spacing: -.02em;
 }
 .an-cf-unit { font-size: .9rem; font-weight: 500; color: var(--an-muted); }
 .an-cf-range { margin-top: .75rem; font-size: .82rem; color: var(--an-text); }
@@ -595,6 +717,104 @@ function analyticsPage() {
 .an-level--moyen { background: rgba(245,158,11,.12); color: #b45309; }
 .an-level--bas { background: rgba(16,185,129,.12); color: #047857; }
 
+/* ===== Recouvrement Gap (attendu vs encaissé) ===== */
+.an-gap-summary {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem;
+    margin-bottom: 1.5rem;
+}
+.an-gap-summary-item {
+    padding: .9rem 1.1rem; border-radius: 12px;
+    background: #fafbfc; border: 1px solid var(--an-border);
+}
+.an-gap-summary-label {
+    font-size: .72rem; color: var(--an-muted);
+    text-transform: uppercase; letter-spacing: .04em;
+}
+.an-gap-summary-value {
+    font-size: 1.15rem; font-weight: 700; color: var(--an-dark);
+    margin-top: .2rem; line-height: 1.1;
+}
+.an-gap-summary-value--gap { color: var(--an-danger); }
+.an-gap-summary-unit { font-size: .7rem; font-weight: 500; color: var(--an-muted); }
+
+.an-gap-chart {
+    display: flex; gap: .75rem; align-items: flex-end;
+    padding: 1.25rem; background: #fafbfc;
+    border-radius: 12px; border: 1px solid var(--an-border);
+    min-height: 220px;
+}
+.an-gap-bar {
+    flex: 1; min-width: 60px;
+    display: flex; flex-direction: column; align-items: center;
+    gap: .35rem; cursor: default;
+    transition: transform .2s ease;
+}
+.an-gap-bar:hover { transform: translateY(-2px); }
+
+.an-gap-bar-amount {
+    font-size: .68rem; font-weight: 600; color: var(--an-muted);
+    margin-bottom: .15rem; min-height: 1em;
+}
+.an-gap-bar-frame {
+    width: 36px;
+    background: rgba(4,83,203,.06);
+    border: 1px solid rgba(4,83,203,.12);
+    border-radius: 8px;
+    position: relative; overflow: hidden;
+    display: flex; align-items: flex-end;
+    transition: all .25s ease;
+}
+.an-gap-bar-fill {
+    width: 100%;
+    background: linear-gradient(180deg, var(--an-secondary), var(--an-primary));
+    border-radius: 6px 6px 4px 4px;
+    transition: height .5s cubic-bezier(.4,0,.2,1);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.2);
+}
+.an-gap-bar--warning .an-gap-bar-frame {
+    background: rgba(245,158,11,.08); border-color: rgba(245,158,11,.25);
+}
+.an-gap-bar--warning .an-gap-bar-fill {
+    background: linear-gradient(180deg, #fbbf24, #d97706);
+}
+.an-gap-bar--critical .an-gap-bar-frame {
+    background: rgba(220,38,38,.08); border-color: rgba(220,38,38,.3);
+}
+.an-gap-bar--critical .an-gap-bar-fill {
+    background: linear-gradient(180deg, #f87171, var(--an-danger));
+}
+.an-gap-bar-label {
+    font-size: .78rem; color: var(--an-text); font-weight: 600;
+    margin-top: .25rem;
+}
+.an-gap-bar-rate {
+    font-size: .85rem; font-weight: 700; color: var(--an-primary);
+}
+.an-gap-bar--warning .an-gap-bar-rate { color: #b45309; }
+.an-gap-bar--critical .an-gap-bar-rate { color: var(--an-danger); }
+
+.an-gap-legend {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 1rem;
+    margin-top: 1rem; padding: .65rem 1rem;
+    border-top: 1px dashed var(--an-border);
+    font-size: .78rem; color: var(--an-muted);
+}
+.an-gap-legend-item { display: inline-flex; align-items: center; gap: .4rem; }
+.an-gap-legend-dot {
+    width: 10px; height: 10px; border-radius: 3px;
+    display: inline-block;
+}
+.an-gap-legend-dot--ok { background: linear-gradient(180deg, var(--an-secondary), var(--an-primary)); }
+.an-gap-legend-dot--warning { background: linear-gradient(180deg, #fbbf24, #d97706); }
+.an-gap-legend-dot--critical { background: linear-gradient(180deg, #f87171, var(--an-danger)); }
+.an-gap-legend-spacer { flex: 1; min-width: 0; }
+.an-gap-legend-link {
+    display: inline-flex; align-items: center; gap: .35rem;
+    color: var(--an-primary); font-weight: 600;
+    text-decoration: none; transition: color .15s;
+}
+.an-gap-legend-link:hover { color: var(--an-primary-d); }
+
 /* ===== Anomalies ===== */
 .an-anomalies { display: flex; flex-direction: column; gap: .75rem; }
 .an-anomaly {
@@ -686,6 +906,7 @@ function analyticsPage() {
 /* ===== Responsive ===== */
 @media (max-width: 992px) {
     .an-cf, .an-risk-grid { grid-template-columns: 1fr; }
+    .an-gap-summary { grid-template-columns: repeat(2, 1fr); }
 }
 @media (max-width: 768px) {
     .an-hero { padding: 1.5rem 1.25rem 1.25rem; }
@@ -693,6 +914,14 @@ function analyticsPage() {
     .an-risk-grid { grid-template-columns: repeat(2, 1fr); }
     .an-hero h1 { font-size: 1.2rem; }
     .an-kpi { min-width: 140px; }
+    .an-gap-summary { grid-template-columns: 1fr; }
+    .an-gap-chart { padding: 1rem .5rem; min-height: 180px; gap: .35rem; }
+    .an-gap-bar { min-width: 40px; }
+    .an-gap-bar-frame { width: 26px; }
+    .an-gap-bar-amount { font-size: .6rem; }
+    .an-gap-bar-rate { font-size: .75rem; }
+    .an-gap-bar-label { font-size: .68rem; }
+    .an-gap-legend { font-size: .72rem; gap: .65rem; }
 }
 </style>
 @endpush

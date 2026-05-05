@@ -8,6 +8,7 @@ use App\Domain\Analytics\DTOs\AnomalyAlert;
 use App\Domain\Analytics\Repositories\AnalyticsRepository;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPPaiement;
+use App\Services\Analytics\RecouvrementGapService;
 use Carbon\Carbon;
 
 /**
@@ -23,13 +24,19 @@ class AnomalyDetector
     private const HISTORY_LOOKBACK = 24;
     private const PAYMENT_OUTLIER_LOOKBACK_DAYS = 30;
     private const PAYMENT_OUTLIER_MIN_SAMPLE = 20;
+    private const RECOUVREMENT_GAP_LOOKBACK_MONTHS = 6;
+    private const RECOUVREMENT_GAP_ALERT_RECENCY_MONTHS = 3;
 
     public const DEFAULT_Z_WARNING = 2.0;
     public const DEFAULT_Z_CRITICAL = 3.0;
     public const DEFAULT_PAYMENT_OUTLIER_MULTIPLIER = 3.0;
+    public const DEFAULT_RECOUVREMENT_GAP_WARNING_PCT = 30.0;
+    public const DEFAULT_RECOUVREMENT_GAP_CRITICAL_PCT = 50.0;
+    public const DEFAULT_RECOUVREMENT_GAP_MIN_EXPECTED = 100_000.0;
 
     public function __construct(
         private readonly AnalyticsRepository $repository,
+        private readonly RecouvrementGapService $recouvrementGap,
     ) {}
 
     public function name(): string
@@ -45,6 +52,7 @@ class AnomalyDetector
         $alerts = [];
         $alerts = array_merge($alerts, $this->detectMonthlyRevenueAnomalies($context));
         $alerts = array_merge($alerts, $this->detectPaymentOutliers($context));
+        $alerts = array_merge($alerts, $this->detectRecouvrementGaps($context));
 
         usort($alerts, fn (AnomalyAlert $a, AnomalyAlert $b) => $this->severityRank($b->severity) <=> $this->severityRank($a->severity));
 
@@ -168,6 +176,77 @@ class AnomalyDetector
         }
 
         return $alerts;
+    }
+
+    /**
+     * Détecte les mois clos où l'encaissé est significativement inférieur
+     * au montant attendu via les échéanciers actifs.
+     *
+     * @return array<int, AnomalyAlert>
+     */
+    private function detectRecouvrementGaps(AnalyticsContext $context): array
+    {
+        $warningPct = $this->configFloat('recouvrement_gap_warning_pct', self::DEFAULT_RECOUVREMENT_GAP_WARNING_PCT) / 100;
+        $criticalPct = $this->configFloat('recouvrement_gap_critical_pct', self::DEFAULT_RECOUVREMENT_GAP_CRITICAL_PCT) / 100;
+        $minExpected = $this->configFloat('recouvrement_gap_min_expected', self::DEFAULT_RECOUVREMENT_GAP_MIN_EXPECTED);
+
+        $monthly = $this->recouvrementGap->monthlyGaps($context, self::RECOUVREMENT_GAP_LOOKBACK_MONTHS);
+        $recentCutoff = Carbon::now()->subMonthsNoOverflow(self::RECOUVREMENT_GAP_ALERT_RECENCY_MONTHS)->startOfMonth();
+
+        $alerts = [];
+        foreach ($monthly as $key => $bucket) {
+            if ($bucket['expected'] < $minExpected || $bucket['gap_ratio'] < $warningPct) {
+                continue;
+            }
+
+            [$year, $month] = array_map('intval', explode('-', $key));
+            if (Carbon::create($year, $month, 1)->lt($recentCutoff)) {
+                continue;
+            }
+
+            $severity = $bucket['gap_ratio'] >= $criticalPct
+                ? AnomalyAlert::SEVERITY_CRITICAL
+                : AnomalyAlert::SEVERITY_WARNING;
+
+            $alerts[] = $this->buildRecouvrementGapAlert($key, $bucket, $severity);
+        }
+
+        return $alerts;
+    }
+
+    /**
+     * @param  array{expected: float, paid: float, gap: float, gap_ratio: float}  $bucket
+     */
+    private function buildRecouvrementGapAlert(string $monthKey, array $bucket, string $severity): AnomalyAlert
+    {
+        [$year, $month] = array_map('intval', explode('-', $monthKey));
+        $monthLabel = ucfirst(Carbon::createFromDate($year, $month, 1)->translatedFormat('F Y'));
+
+        $message = sprintf(
+            '%s : %s FCFA attendus via les échéanciers, %s FCFA encaissés (écart de %.0f%%, soit %s FCFA)',
+            $monthLabel,
+            number_format($bucket['expected'], 0, ',', ' '),
+            number_format($bucket['paid'], 0, ',', ' '),
+            $bucket['gap_ratio'] * 100,
+            number_format($bucket['gap'], 0, ',', ' '),
+        );
+
+        return new AnomalyAlert(
+            type: 'recouvrement_gap',
+            severity: $severity,
+            entityType: 'period',
+            entityId: $year * 100 + $month,
+            score: $bucket['gap_ratio'],
+            message: $message,
+            context: [
+                'year' => $year,
+                'month' => $month,
+                'expected' => $bucket['expected'],
+                'paid' => $bucket['paid'],
+                'gap' => $bucket['gap'],
+                'gap_ratio' => $bucket['gap_ratio'],
+            ],
+        );
     }
 
     private function buildRevenueMessage(string $type, Carbon $monthDate, float $value, float $mean, float $absZ): string

@@ -14,6 +14,7 @@ use App\Domain\Exports\Reports\AnalyticsReport;
 use App\Helpers\SettingsHelper;
 use App\Jobs\ComputeAnalyticsPredictionsJob;
 use App\Jobs\DetectAnalyticsAnomaliesJob;
+use App\Services\Analytics\RecouvrementGapService;
 use App\Services\ExportRenderer;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -42,6 +43,7 @@ class ESBTPAnalyticsController extends Controller
         DefaultRiskPredictor $defaultRisk,
         AnomalyDetector $anomalyDetector,
         AccuracyEvaluator $accuracy,
+        RecouvrementGapService $recouvrementGap,
     ): View {
         $context = AnalyticsContext::fromRequest($request);
 
@@ -49,18 +51,36 @@ class ESBTPAnalyticsController extends Controller
         $defaultRiskResult = $this->safePredict(new CachedPredictor($defaultRisk), $context);
         $anomalies = $this->safeDetect($anomalyDetector, $context);
         $cashFlowAccuracy = $this->safeAccuracy($accuracy, 'cash_flow');
+        $recouvrementGaps = $this->safeRecouvrementGaps($recouvrementGap, $context);
 
         return view('esbtp.comptabilite.analytics.index', [
             'cashFlow'         => $cashFlowResult,
             'defaultRisk'      => $defaultRiskResult,
             'anomalies'        => $anomalies,
             'cashFlowAccuracy' => $cashFlowAccuracy,
+            'recouvrementGaps' => $recouvrementGaps,
             'context'          => $context,
             'annees'           => ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get(),
             'filieres'         => ESBTPFiliere::orderBy('name')->get(),
             'classes'          => ESBTPClasse::orderBy('name')->get(),
             'lastComputedAt'   => $this->lastComputedAt(),
         ]);
+    }
+
+    /**
+     * @return array<string, array{expected: float, paid: float, gap: float, gap_ratio: float}>
+     */
+    private function safeRecouvrementGaps(RecouvrementGapService $service, AnalyticsContext $context): array
+    {
+        try {
+            return $service->monthlyGaps($context, 6);
+        } catch (\Throwable $e) {
+            Log::warning('Analytics recouvrement gap fetch failed', [
+                'context' => $context->toArray(),
+                'error' => $e->getMessage(),
+            ]);
+            return [];
+        }
     }
 
     /**
@@ -199,6 +219,9 @@ class ESBTPAnalyticsController extends Controller
             'anomaly.z_warning'              => 'required|numeric|min:1|max:5',
             'anomaly.z_critical'             => 'required|numeric|min:1.5|max:6',
             'anomaly.payment_outlier_multiplier' => 'required|numeric|min:1.5|max:10',
+            'anomaly.recouvrement_gap_warning_pct'  => 'required|numeric|min:5|max:80',
+            'anomaly.recouvrement_gap_critical_pct' => 'required|numeric|min:10|max:95',
+            'anomaly.recouvrement_gap_min_expected' => 'required|numeric|min:0|max:100000000',
             'anomaly.notifications_enabled'  => 'nullable|in:0,1',
             'recouvrement.whatsapp_template' => 'nullable|string|max:1000',
         ]);
@@ -215,6 +238,9 @@ class ESBTPAnalyticsController extends Controller
             'analytics.anomaly.z_warning'                   => $validated['anomaly']['z_warning'],
             'analytics.anomaly.z_critical'                  => $validated['anomaly']['z_critical'],
             'analytics.anomaly.payment_outlier_multiplier'  => $validated['anomaly']['payment_outlier_multiplier'],
+            'analytics.anomaly.recouvrement_gap_warning_pct'  => $validated['anomaly']['recouvrement_gap_warning_pct'],
+            'analytics.anomaly.recouvrement_gap_critical_pct' => $validated['anomaly']['recouvrement_gap_critical_pct'],
+            'analytics.anomaly.recouvrement_gap_min_expected' => $validated['anomaly']['recouvrement_gap_min_expected'],
             'analytics.anomaly.notifications_enabled'       => $validated['anomaly']['notifications_enabled'] ?? '0',
             'analytics.recouvrement.whatsapp_template'      => $validated['recouvrement']['whatsapp_template'] ?? '',
         ];
@@ -319,6 +345,9 @@ class ESBTPAnalyticsController extends Controller
                 'z_warning'                  => AnomalyDetector::DEFAULT_Z_WARNING,
                 'z_critical'                 => AnomalyDetector::DEFAULT_Z_CRITICAL,
                 'payment_outlier_multiplier' => AnomalyDetector::DEFAULT_PAYMENT_OUTLIER_MULTIPLIER,
+                'recouvrement_gap_warning_pct'  => AnomalyDetector::DEFAULT_RECOUVREMENT_GAP_WARNING_PCT,
+                'recouvrement_gap_critical_pct' => AnomalyDetector::DEFAULT_RECOUVREMENT_GAP_CRITICAL_PCT,
+                'recouvrement_gap_min_expected' => AnomalyDetector::DEFAULT_RECOUVREMENT_GAP_MIN_EXPECTED,
             ],
             'recouvrement' => [
                 'whatsapp_template' => "Bonjour {prenom}, votre solde de scolarité de {solde} FCFA est en retard de {retard} jours. Merci de régulariser dès que possible. — {ecole}",

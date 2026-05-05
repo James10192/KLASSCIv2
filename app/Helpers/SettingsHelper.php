@@ -257,10 +257,13 @@ class SettingsHelper
                 'top_n'             => (int)   self::get('analytics.default_risk.top_n', 50),
             ],
             'anomaly' => [
-                'z_warning'                   => (float) self::get('analytics.anomaly.z_warning', 2.0),
-                'z_critical'                  => (float) self::get('analytics.anomaly.z_critical', 3.0),
-                'payment_outlier_multiplier'  => (float) self::get('analytics.anomaly.payment_outlier_multiplier', 3.0),
-                'notifications_enabled'       => (string) self::get('analytics.anomaly.notifications_enabled', '1') === '1',
+                'z_warning'                       => (float) self::get('analytics.anomaly.z_warning', 2.0),
+                'z_critical'                      => (float) self::get('analytics.anomaly.z_critical', 3.0),
+                'payment_outlier_multiplier'      => (float) self::get('analytics.anomaly.payment_outlier_multiplier', 3.0),
+                'recouvrement_gap_warning_pct'    => (float) self::get('analytics.anomaly.recouvrement_gap_warning_pct', 30.0),
+                'recouvrement_gap_critical_pct'   => (float) self::get('analytics.anomaly.recouvrement_gap_critical_pct', 50.0),
+                'recouvrement_gap_min_expected'   => (float) self::get('analytics.anomaly.recouvrement_gap_min_expected', 100000.0),
+                'notifications_enabled'           => (string) self::get('analytics.anomaly.notifications_enabled', '1') === '1',
             ],
             'recouvrement' => [
                 'whatsapp_template' => (string) self::get(

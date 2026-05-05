@@ -169,6 +169,9 @@
                         ['z_warning', 'Seuil Warning (Z-score)', 'Écart à la moyenne déclenchant un avertissement', 1, 5, 0.1],
                         ['z_critical', 'Seuil Critical (Z-score)', 'Écart déclenchant une alerte critique', 1.5, 6, 0.1],
                         ['payment_outlier_multiplier', 'Multiplicateur paiement aberrant', 'Un paiement > N × moyenne déclenche une alerte', 1.5, 10, 0.1],
+                        ['recouvrement_gap_warning_pct', 'Écart recouvrement — seuil warning (%)', 'Mois clos où l\'encaissé est inférieur d\'au moins X % à ce qui était attendu via les échéanciers', 5, 80, 1],
+                        ['recouvrement_gap_critical_pct', 'Écart recouvrement — seuil critique (%)', 'Au-delà de ce pourcentage, alerte critique + notification', 10, 95, 1],
+                        ['recouvrement_gap_min_expected', 'Écart recouvrement — montant minimal attendu (FCFA)', 'On ignore les mois où le montant attendu est inférieur à ce seuil (évite le bruit sur petits volumes)', 0, 100000000, 50000],
                     ];
                 @endphp
                 @foreach($anomalyFields as [$key, $label, $help, $min, $max, $step])
