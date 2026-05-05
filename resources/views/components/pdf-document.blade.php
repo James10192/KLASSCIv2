@@ -336,7 +336,7 @@
         /* ===== Footer paginé ===== */
         .pdf-footer {
             position: fixed;
-            bottom: -12mm;
+            bottom: -10mm;
             left: 0;
             right: 0;
             font-size: 8px;
@@ -346,7 +346,7 @@
             text-align: center;
         }
         .pdf-footer-page::after {
-            content: counter(page) " / " counter(pages);
+            content: counter(page);
         }
 
         @if(!empty($pdf['watermark']))
@@ -364,6 +364,17 @@
     @if(!empty($pdf['watermark']))
         <div class="pdf-watermark">{{ $pdf['watermark'] }}</div>
     @endif
+
+    {{-- Footer paginé : placé avant le contenu pour que DomPDF l'affiche aussi sur la première page. --}}
+    <div class="pdf-footer">
+        {{ $footerText }}
+        @if(!empty($pdf['show_director_signature']) && !empty($school['director_name']))
+            · {{ $directorTitle }} : {{ $school['director_name'] }}
+        @endif
+        @if(!empty($pdf['show_pagination']))
+            · Page <span class="pdf-footer-page"></span>
+        @endif
+    </div>
 
     {{-- Header banner premium : table 2-col (logo carré bg primary | infos école + titre intégré) --}}
     <table class="pdf-banner">
@@ -473,15 +484,5 @@
         </div>
     @endif
 
-    {{-- Footer paginé (généré automatiquement) --}}
-    <div class="pdf-footer">
-        {{ $footerText }}
-        @if(!empty($pdf['show_director_signature']) && !empty($school['director_name']))
-            · {{ $directorTitle }} : {{ $school['director_name'] }}
-        @endif
-        @if(!empty($pdf['show_pagination']))
-            · Page <span class="pdf-footer-page"></span>
-        @endif
-    </div>
 </body>
 </html>
