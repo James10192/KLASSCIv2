@@ -259,13 +259,28 @@ class EcheancierComputationService
             if ($group instanceof Collection) {
                 return $this->pickValidConfiguration($group);
             }
+            if ($group instanceof ESBTPFraisConfiguration) {
+                return $group;
+            }
         }
 
+        // Fallback flat-collection scan : ne s'applique que si le caller passe
+        // une collection NON groupée. RelanceCalculationService et
+        // EcheancierSnapshotService passent toujours du groupBy, donc on est
+        // safe — mais on défend contre un appelant futur.
         $matches = $configurations->filter(function ($configuration) use ($categoryId, $filiereId, $niveauId) {
+            if (! $configuration instanceof ESBTPFraisConfiguration) {
+                return false;
+            }
+
             return (int) $configuration->frais_category_id === $categoryId
                 && (int) $configuration->filiere_id === $filiereId
                 && (int) $configuration->niveau_id === $niveauId;
         });
+
+        if ($matches->isEmpty()) {
+            return null;
+        }
 
         return $this->pickValidConfiguration($matches);
     }
