@@ -36,7 +36,7 @@
     .attendance-table th,
     .table-header th,
     .header-table th {
-        background: {{ $pdfHeaderBg }} !important;
+        background: {{ $pdfAccent }} !important;
         color: {{ $pdfHeaderText }} !important;
     }
 
@@ -49,9 +49,26 @@
     }
 
     .student-number,
-    .kpi-value,
     .header-badge {
         background: {{ $pdfPrimary }} !important;
+        color: {{ $pdfHeaderText }} !important;
+    }
+
+    .kpi-value {
+        background: transparent !important;
+        color: {{ $pdfHeaderText }} !important;
+    }
+
+    .pdf-kpi-cell,
+    .pdf-detail-table th {
+        background: {{ $pdfAccent }} !important;
+        color: {{ $pdfHeaderText }} !important;
+    }
+
+    .pdf-kpi-label,
+    .pdf-kpi-value,
+    .pdf-kpi-sub,
+    .pdf-detail-table th {
         color: {{ $pdfHeaderText }} !important;
     }
 
@@ -70,7 +87,7 @@
     [style*="background:#0453cb"],
     [style*="background-color: #0453cb"],
     [style*="background-color:#0453cb"] {
-        background: {{ $pdfPrimary }} !important;
+        background: {{ $pdfAccent }} !important;
         color: {{ $pdfHeaderText }} !important;
     }
 

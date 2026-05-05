@@ -20,8 +20,8 @@
             margin-top: 8px;
         }
         .jc-pdf-table th {
-            background-color: {{ $jcAccent }};
-            color: {{ $jcHeaderText }};
+            background-color: {{ $jcAccent }} !important;
+            color: {{ $jcHeaderText }} !important;
             padding: 5px 6px;
             text-align: left;
             font-size: 7.5pt;
@@ -39,7 +39,7 @@
         }
         .jc-pdf-table .num {
             font-weight: bold;
-            color: {{ $jcAccent }};
+            color: {{ $jcAccent }} !important;
         }
         .jc-pdf-table .amount {
             font-weight: bold;
@@ -67,22 +67,22 @@
 
     <table class="pdf-kpi-table">
         <tr>
-            <td class="pdf-kpi-cell" style="width:25%;">
+            <td class="pdf-kpi-cell" style="width:25%; background-color: {{ $jcAccent }} !important; color: {{ $jcHeaderText }} !important;">
                 <div class="pdf-kpi-label">Nombre de lignes</div>
                 <div class="pdf-kpi-value">{{ number_format($totalCount, 0, ',', ' ') }}</div>
                 <div class="pdf-kpi-sub">Paiements listes</div>
             </td>
-            <td class="pdf-kpi-cell" style="width:25%;">
+            <td class="pdf-kpi-cell" style="width:25%; background-color: {{ $jcAccent }} !important; color: {{ $jcHeaderText }} !important;">
                 <div class="pdf-kpi-label">Total encaiss&eacute;</div>
                 <div class="pdf-kpi-value">{{ number_format($totalAmount, 0, ',', ' ') }}</div>
                 <div class="pdf-kpi-sub">FCFA</div>
             </td>
-            <td class="pdf-kpi-cell" style="width:25%;">
+            <td class="pdf-kpi-cell" style="width:25%; background-color: {{ $jcAccent }} !important; color: {{ $jcHeaderText }} !important;">
                 <div class="pdf-kpi-label">Modes utilis&eacute;s</div>
                 <div class="pdf-kpi-value">{{ count($totals['by_mode']) }}</div>
                 <div class="pdf-kpi-sub">Canaux</div>
             </td>
-            <td class="pdf-kpi-cell" style="width:25%;">
+            <td class="pdf-kpi-cell" style="width:25%; background-color: {{ $jcAccent }} !important; color: {{ $jcHeaderText }} !important;">
                 <div class="pdf-kpi-label">P&eacute;riode</div>
                 <div class="pdf-kpi-value" style="font-size:10pt;">{{ $dateDebut->format('d/m') }} - {{ $dateFin->format('d/m') }}</div>
                 <div class="pdf-kpi-sub">{{ $dateFin->format('Y') }}</div>

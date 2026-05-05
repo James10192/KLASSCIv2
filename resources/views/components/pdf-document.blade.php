@@ -235,8 +235,8 @@
             color-adjust: exact;
         }
         .pdf-kpi-cell {
-            background-color: {{ $accent }};
-            color: {{ $hdrText }};
+            background-color: {{ $accent }} !important;
+            color: {{ $hdrText }} !important;
             padding: 8px 10px;
             text-align: center;
             border-right: 1px solid rgba(255,255,255,.28);
@@ -251,19 +251,22 @@
             letter-spacing: .3px;
             opacity: .78;
             margin-bottom: 3px;
-            color: {{ $hdrText }};
+            color: {{ $hdrText }} !important;
+            background: transparent !important;
         }
         .pdf-kpi-value {
             font-size: 14pt;
             font-weight: bold;
             line-height: 1.1;
-            color: {{ $hdrText }};
+            color: {{ $hdrText }} !important;
+            background: transparent !important;
         }
         .pdf-kpi-sub {
             font-size: 7.5pt;
             opacity: .72;
             margin-top: 3px;
-            color: {{ $hdrText }};
+            color: {{ $hdrText }} !important;
+            background: transparent !important;
         }
         .pdf-detail-table {
             width: 100%;
@@ -272,11 +275,11 @@
             font-size: 8.5pt;
         }
         .pdf-detail-table th {
-            background-color: {{ $accent }};
-            color: {{ $hdrText }};
+            background-color: {{ $accent }} !important;
+            color: {{ $hdrText }} !important;
             text-align: left;
             padding: 5px 7px;
-            border: 1px solid #dbe3ef;
+            border: 1px solid {{ $accent }};
             text-transform: uppercase;
             font-size: 7.2pt;
         }
