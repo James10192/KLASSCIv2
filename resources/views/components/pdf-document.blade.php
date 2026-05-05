@@ -10,15 +10,22 @@
     $school = \App\Helpers\SettingsHelper::getSchoolInfo();
     $pdf = array_merge(\App\Helpers\SettingsHelper::getPdfSettings(), $overrides);
 
-    // Logo base64 inline (pour DomPDF + filter brightness/invert)
+    // Logo base64 inline pour DomPDF.
     $logoBase64 = '';
     $logoExt = 'png';
+    $logoMime = 'image/png';
     $logoPath = $school['logo'] ?? '';
     if ($pdf['show_logo'] && $logoPath) {
         foreach ([storage_path('app/public/' . ltrim($logoPath, '/')), public_path('storage/' . ltrim($logoPath, '/')), public_path($logoPath)] as $candidate) {
             if (file_exists($candidate)) {
                 $logoBase64 = base64_encode(file_get_contents($candidate));
                 $logoExt = pathinfo($candidate, PATHINFO_EXTENSION) ?: 'png';
+                $logoMime = match (strtolower($logoExt)) {
+                    'jpg', 'jpeg' => 'image/jpeg',
+                    'svg' => 'image/svg+xml',
+                    'webp' => 'image/webp',
+                    default => 'image/png',
+                };
                 break;
             }
         }
@@ -92,10 +99,17 @@
             vertical-align: middle;
             border-right: 2px solid rgba(255,255,255,0.25);
         }
+        .pdf-banner-logo-frame {
+            display: inline-block;
+            background: #ffffff;
+            border-radius: 6px;
+            padding: 6px;
+            border: 1px solid rgba(255,255,255,0.35);
+        }
         .pdf-banner-logo {
             max-height: {{ $logoMaxHeight }}px;
             max-width: 100px;
-            filter: brightness(0) invert(1);
+            display: block;
         }
         .pdf-banner-logo-fallback {
             font-size: 32px;
@@ -272,7 +286,9 @@
         <tr>
             <td class="pdf-banner-logo-cell">
                 @if($logoBase64)
-                    <img src="data:image/{{ $logoExt }};base64,{{ $logoBase64 }}" alt="logo" class="pdf-banner-logo">
+                    <span class="pdf-banner-logo-frame">
+                        <img src="data:{{ $logoMime }};base64,{{ $logoBase64 }}" alt="logo" class="pdf-banner-logo">
+                    </span>
                 @else
                     <div class="pdf-banner-logo-fallback">{{ mb_substr($school['acronym'] ?? 'K', 0, 1, 'UTF-8') }}</div>
                 @endif
