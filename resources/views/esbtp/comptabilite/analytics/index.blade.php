@@ -3,19 +3,106 @@
 @section('title', 'Analytics Prédictifs')
 
 @section('content')
+@php
+    $selectedAnnee = $context->anneeId ? $annees->firstWhere('id', $context->anneeId) : null;
+    $selectedFiliere = $context->filiereId ? $filieres->firstWhere('id', $context->filiereId) : null;
+    $selectedClasse = $context->classeId ? $classes->firstWhere('id', $context->classeId) : null;
+    $criticalCount = collect($anomalies)->where('severity', \App\Domain\Analytics\DTOs\AnomalyAlert::SEVERITY_CRITICAL)->count();
+    $warningCount = collect($anomalies)->where('severity', \App\Domain\Analytics\DTOs\AnomalyAlert::SEVERITY_WARNING)->count();
+    $scopePills = array_filter([
+        ['label' => 'Année', 'value' => $selectedAnnee?->name ?? 'Toutes'],
+        ['label' => 'Filière', 'value' => $selectedFiliere?->name ?? 'Toutes'],
+        ['label' => 'Classe', 'value' => $selectedClasse?->name ?? 'Toutes'],
+    ]);
+@endphp
 <div class="container-fluid an-page" x-data="analyticsPage()">
 
     {{-- ============================ HERO ============================ --}}
     <div class="an-hero">
-        <div class="an-hero-top">
-            <div class="an-hero-left">
-                <div class="an-hero-icon"><i class="fas fa-chart-line"></i></div>
-                <div>
-                    <h1>Analytics Prédictifs</h1>
-                    <p>Cash flow, risque de défaut et anomalies — calculs quotidiens automatiques.</p>
+        <div class="an-hero-grid">
+            <div class="an-hero-copy">
+                <div class="an-hero-kicker">
+                    <span class="an-hero-kicker-dot"></span>
+                    Pilotage financier
+                </div>
+                <div class="an-hero-left">
+                    <div class="an-hero-icon"><i class="fas fa-chart-line"></i></div>
+                    <div>
+                        <h1>Analytics Prédictifs</h1>
+                        <p>Cash flow, risque de défaut et anomalies, dans une seule vue de décision.</p>
+                    </div>
+                </div>
+                <div class="an-scope-pills">
+                    @foreach($scopePills as $pill)
+                        <div class="an-scope-pill">
+                            <span>{{ $pill['label'] }}</span>
+                            <strong>{{ $pill['value'] }}</strong>
+                        </div>
+                    @endforeach
+                    <div class="an-scope-pill an-scope-pill--soft">
+                        <span>Dernier calcul</span>
+                        <strong>{{ $lastComputedAt ? $lastComputedAt->locale('fr')->diffForHumans() : 'Jamais' }}</strong>
+                    </div>
                 </div>
             </div>
-            <div class="an-hero-right">
+
+            <div class="an-hero-panel">
+                <div class="an-hero-panel-top">
+                    <span class="an-hero-panel-title">Synthèse instantanée</span>
+                    <span class="an-hero-panel-badge">Temps réel</span>
+                </div>
+                <div class="an-hero-primary">
+                    <div class="an-hero-primary-value">
+                        @if($cashFlow->isAvailable())
+                            {{ number_format($cashFlow->value, 0, ',', ' ') }} <span>FCFA</span>
+                        @else
+                            N/D
+                        @endif
+                    </div>
+                    <div class="an-hero-primary-label">Recettes prévues le mois prochain</div>
+                    <div class="an-hero-primary-meta">
+                        @if($cashFlow->confidenceInterval)
+                            Intervalle 95% : {{ number_format($cashFlow->confidenceInterval->lower, 0, ',', ' ') }} à {{ number_format($cashFlow->confidenceInterval->upper, 0, ',', ' ') }} FCFA
+                        @else
+                            Prévision indicative
+                        @endif
+                    </div>
+                </div>
+                <div class="an-hero-stats">
+                    <div class="an-hero-stat">
+                        <div class="an-hero-stat-value">
+                            @if($defaultRisk->isAvailable())
+                                {{ (int) $defaultRisk->value }}
+                            @else
+                                N/D
+                            @endif
+                        </div>
+                        <div class="an-hero-stat-label">Étudiants à haut risque</div>
+                    </div>
+                    <div class="an-hero-stat">
+                        <div class="an-hero-stat-value">{{ $criticalCount }}</div>
+                        <div class="an-hero-stat-label">Alertes critiques</div>
+                    </div>
+                    <div class="an-hero-stat">
+                        <div class="an-hero-stat-value">{{ $warningCount }}</div>
+                        <div class="an-hero-stat-label">Alertes secondaires</div>
+                    </div>
+                    <div class="an-hero-stat">
+                        <div class="an-hero-stat-value">
+                            @if($lastComputedAt)
+                                {{ $lastComputedAt->locale('fr')->format('H:i') }}
+                            @else
+                                --
+                            @endif
+                        </div>
+                        <div class="an-hero-stat-label">Dernier run</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="an-hero-bar">
+            <div class="an-hero-actions">
                 @can('comptabilite.recouvrement.access')
                     <a href="{{ route('esbtp.comptabilite.recouvrement.index') }}" class="an-btn an-btn--glass">
                         <i class="fas fa-hand-holding-usd"></i> Recouvrement
@@ -41,61 +128,10 @@
                     </a>
                 @endcan
             </div>
-        </div>
-
-        <div class="an-kpis">
-            <div class="an-kpi">
-                <div class="an-kpi-icon"><i class="fas fa-coins"></i></div>
-                <div>
-                    <div class="an-kpi-value">
-                        @if($cashFlow->isAvailable())
-                            {{ number_format($cashFlow->value, 0, ',', ' ') }} <span class="an-kpi-unit">FCFA</span>
-                        @else
-                            N/D
-                        @endif
-                    </div>
-                    <div class="an-kpi-label">Recettes prévues le mois prochain</div>
-                </div>
-            </div>
-
-            <div class="an-kpi">
-                <div class="an-kpi-icon"><i class="fas fa-user-shield"></i></div>
-                <div>
-                    <div class="an-kpi-value">
-                        @if($defaultRisk->isAvailable())
-                            {{ (int) $defaultRisk->value }}
-                        @else
-                            N/D
-                        @endif
-                    </div>
-                    <div class="an-kpi-label">Étudiants à haut risque de défaut</div>
-                </div>
-            </div>
-
-            @php
-                $criticalCount = collect($anomalies)->where('severity', \App\Domain\Analytics\DTOs\AnomalyAlert::SEVERITY_CRITICAL)->count();
-                $warningCount = collect($anomalies)->where('severity', \App\Domain\Analytics\DTOs\AnomalyAlert::SEVERITY_WARNING)->count();
-            @endphp
-            <div class="an-kpi">
-                <div class="an-kpi-icon"><i class="fas fa-exclamation-triangle"></i></div>
-                <div>
-                    <div class="an-kpi-value">{{ $criticalCount }} <span class="an-kpi-unit">critiques</span></div>
-                    <div class="an-kpi-label">{{ $warningCount }} alertes secondaires détectées</div>
-                </div>
-            </div>
-
-            <div class="an-kpi">
-                <div class="an-kpi-icon"><i class="fas fa-clock"></i></div>
-                <div>
-                    <div class="an-kpi-value">
-                        @if($lastComputedAt)
-                            {{ $lastComputedAt->locale('fr')->diffForHumans() }}
-                        @else
-                            Jamais
-                        @endif
-                    </div>
-                    <div class="an-kpi-label">Dernier calcul automatique</div>
-                </div>
+            <div class="an-hero-links">
+                <a href="#cash-flow">Cash flow</a>
+                <a href="#risk">Risque</a>
+                <a href="#anomalies">Anomalies</a>
             </div>
         </div>
     </div>
@@ -113,7 +149,7 @@
     @endif
 
     {{-- ============================ CASH FLOW ============================ --}}
-    <div class="an-card mt-4">
+    <div class="an-card an-section-panel mt-4" id="cash-flow">
         <div class="an-section-header">
             <div class="an-section-icon"><i class="fas fa-chart-area"></i></div>
             <div>
@@ -185,7 +221,7 @@
     </div>
 
     {{-- ============================ DEFAULT RISK ============================ --}}
-    <div class="an-card mt-4">
+    <div class="an-card an-section-panel mt-4" id="risk">
         <div class="an-section-header">
             <div class="an-section-icon"><i class="fas fa-user-shield"></i></div>
             <div>
@@ -287,7 +323,7 @@
     </div>
 
     {{-- ============================ ANOMALIES ============================ --}}
-    <div class="an-card mt-4">
+    <div class="an-card an-section-panel mt-4" id="anomalies">
         <div class="an-section-header">
             <div class="an-section-icon"><i class="fas fa-radiation"></i></div>
             <div>
@@ -595,6 +631,198 @@ function analyticsPage() {
 .an-level--moyen { background: rgba(245,158,11,.12); color: #b45309; }
 .an-level--bas { background: rgba(16,185,129,.12); color: #047857; }
 
+/* ===== Premium dashboard overrides ===== */
+.an-page {
+    padding: 1rem 0 1.5rem;
+    position: relative;
+    background:
+        linear-gradient(180deg, rgba(4,83,203,.04), rgba(255,255,255,0) 220px),
+        linear-gradient(135deg, rgba(15,23,42,.02), rgba(255,255,255,0) 55%);
+}
+.an-page::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background-image: linear-gradient(rgba(148,163,184,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.08) 1px, transparent 1px);
+    background-size: 28px 28px;
+    mask-image: linear-gradient(180deg, rgba(0,0,0,.24), transparent 85%);
+    opacity: .35;
+}
+.an-hero {
+    position: relative;
+    overflow: hidden;
+    border-radius: 20px;
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    color: #fff;
+    background:
+        linear-gradient(135deg, rgba(5,39,102,.96), rgba(4,83,203,.94) 46%, rgba(20,116,226,.92)),
+        linear-gradient(180deg, rgba(255,255,255,.08), rgba(255,255,255,0));
+    box-shadow: 0 18px 40px rgba(4,83,203,.18);
+    border: 1px solid rgba(255,255,255,.14);
+}
+.an-hero::after {
+    content: '';
+    position: absolute;
+    inset: auto -15% -35% auto;
+    width: 320px;
+    height: 320px;
+    background: linear-gradient(135deg, rgba(255,255,255,.15), rgba(255,255,255,0));
+    transform: rotate(18deg);
+    pointer-events: none;
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+}
+.an-hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.35fr) minmax(320px, .95fr);
+    gap: 1rem;
+    position: relative;
+    z-index: 1;
+}
+.an-hero-copy {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.an-hero-kicker {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,.75);
+}
+.an-hero-kicker-dot {
+    width: .45rem;
+    height: .45rem;
+    border-radius: 999px;
+    background: #9be3ff;
+    box-shadow: 0 0 0 6px rgba(155,227,255,.12);
+}
+.an-hero-left { display: flex; align-items: center; gap: 1rem; }
+.an-hero-icon {
+    width: 56px; height: 56px; border-radius: 16px;
+    background: rgba(255,255,255,.12); backdrop-filter: blur(12px);
+    border: 1px solid rgba(255,255,255,.16);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; flex-shrink: 0; color: #fff;
+}
+.an-hero h1 { font-size: 1.55rem; font-weight: 800; color: #fff; margin: 0; letter-spacing: 0; }
+.an-hero p { color: rgba(255,255,255,.78); font-size: .92rem; margin: .25rem 0 0; }
+.an-scope-pills { display: flex; flex-wrap: wrap; gap: .65rem; }
+.an-scope-pill {
+    min-width: 160px;
+    padding: .75rem .9rem;
+    border-radius: 14px;
+    background: rgba(255,255,255,.1);
+    border: 1px solid rgba(255,255,255,.15);
+    backdrop-filter: blur(10px);
+}
+.an-scope-pill span {
+    display: block;
+    font-size: .68rem;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    color: rgba(255,255,255,.62);
+}
+.an-scope-pill strong {
+    display: block;
+    margin-top: .2rem;
+    font-size: .9rem;
+    font-weight: 700;
+    color: #fff;
+}
+.an-scope-pill--soft { background: rgba(255,255,255,.06); }
+.an-hero-panel {
+    padding: 1rem;
+    border-radius: 18px;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.14);
+    backdrop-filter: blur(12px);
+}
+.an-hero-panel-top {
+    display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+    margin-bottom: .85rem;
+}
+.an-hero-panel-title {
+    font-size: .75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: rgba(255,255,255,.72);
+}
+.an-hero-panel-badge {
+    padding: .25rem .55rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,.14);
+    color: #fff;
+    font-size: .68rem;
+    font-weight: 700;
+}
+.an-hero-primary {
+    padding: 1rem;
+    border-radius: 16px;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.12);
+}
+.an-hero-primary-value { font-size: 2rem; font-weight: 800; line-height: 1; color: #fff; }
+.an-hero-primary-value span { font-size: .95rem; font-weight: 600; opacity: .75; }
+.an-hero-primary-label { margin-top: .5rem; font-size: .84rem; font-weight: 600; color: rgba(255,255,255,.82); }
+.an-hero-primary-meta { margin-top: .35rem; font-size: .76rem; color: rgba(255,255,255,.68); }
+.an-hero-stats { margin-top: .85rem; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .65rem; }
+.an-hero-stat {
+    padding: .8rem .85rem;
+    border-radius: 14px;
+    background: rgba(255,255,255,.08);
+    border: 1px solid rgba(255,255,255,.12);
+}
+.an-hero-stat-value { font-size: 1rem; font-weight: 800; color: #fff; line-height: 1.1; }
+.an-hero-stat-label { margin-top: .18rem; font-size: .72rem; color: rgba(255,255,255,.68); }
+.an-hero-bar {
+    margin-top: 1rem;
+    display: flex;
+    justify-content: space-between;
+    gap: .75rem;
+    flex-wrap: wrap;
+    position: relative;
+    z-index: 1;
+}
+.an-hero-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.an-hero-links { display: flex; gap: .4rem; flex-wrap: wrap; align-items: center; }
+.an-hero-links a {
+    text-decoration: none;
+    color: rgba(255,255,255,.8);
+    font-size: .75rem;
+    font-weight: 700;
+    padding: .45rem .7rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255,255,255,.14);
+    background: rgba(255,255,255,.08);
+}
+.an-hero-links a:hover { color: #fff; background: rgba(255,255,255,.14); }
+.an-card {
+    background: rgba(255,255,255,.92);
+    border: 1px solid rgba(226,232,240,.9);
+    border-radius: 18px;
+    padding: 1.5rem 1.75rem;
+    box-shadow: 0 10px 24px rgba(15,23,42,.05);
+    backdrop-filter: blur(8px);
+}
+.an-section-panel { position: relative; }
+.an-section-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 4px;
+    border-radius: 18px 0 0 18px;
+    background: linear-gradient(180deg, var(--an-primary), var(--an-secondary));
+    opacity: .9;
+}
+.an-section-title { font-size: 1.1rem; font-weight: 800; color: var(--an-dark); margin: 0; }
 /* ===== Anomalies ===== */
 .an-anomalies { display: flex; flex-direction: column; gap: .75rem; }
 .an-anomaly {
