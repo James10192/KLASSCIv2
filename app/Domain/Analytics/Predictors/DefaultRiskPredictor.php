@@ -60,6 +60,8 @@ class DefaultRiskPredictor implements PredictorInterface
             return PredictionResult::unavailable(self::NAME, $unavailableReason);
         }
 
+        $echeancierMode = $this->echeancierReadiness->mode();
+
         $students = $this->repository->activeStudents($context, max($this->topN() * 4, 200));
 
         if (empty($students)) {
@@ -121,8 +123,10 @@ class DefaultRiskPredictor implements PredictorInterface
             value: (float) $bucketCounts['haut'],
             label: 'haut_risque_count',
             confidenceInterval: null,
-            confidenceLabel: $this->confidenceLabel($totalActifs),
-            explanation: $this->buildExplanation($bucketCounts, $totalActifs, $totalSoldeHaut, $tauxRisque),
+            confidenceLabel: $echeancierMode === \App\Services\EcheancierReadinessService::MODE_FALLBACK
+                ? 'indicatif'
+                : $this->confidenceLabel($totalActifs),
+            explanation: $this->buildExplanation($bucketCounts, $totalActifs, $totalSoldeHaut, $tauxRisque, $echeancierMode),
             metadata: [
                 'total_actifs' => $totalActifs,
                 'buckets' => $bucketCounts,
@@ -133,6 +137,8 @@ class DefaultRiskPredictor implements PredictorInterface
                     'high' => $thresholdHigh,
                     'medium' => $thresholdMedium,
                 ],
+                'echeancier_mode' => $echeancierMode,
+                'echeancier_mode_note' => $this->echeancierReadiness->noteForMode(),
             ],
         );
     }
@@ -165,7 +171,7 @@ class DefaultRiskPredictor implements PredictorInterface
      * @param  array<string, int>  $bucketCounts
      * @return array<int, string>
      */
-    private function buildExplanation(array $bucketCounts, int $totalActifs, float $totalSoldeHaut, float $tauxRisque): array
+    private function buildExplanation(array $bucketCounts, int $totalActifs, float $totalSoldeHaut, float $tauxRisque, string $echeancierMode = \App\Services\EcheancierReadinessService::MODE_CONFIGURED): array
     {
         $reasons = [
             sprintf(
@@ -190,6 +196,10 @@ class DefaultRiskPredictor implements PredictorInterface
             );
         } elseif ($tauxRisque < 5.0) {
             $reasons[] = 'Cohorte saine — situation financière sous contrôle';
+        }
+
+        if ($echeancierMode === \App\Services\EcheancierReadinessService::MODE_FALLBACK) {
+            $reasons[] = "Mode dégradé : pas de règle d'échéancier configurée — l'échéance par défaut de chaque catégorie est utilisée.";
         }
 
         return $reasons;

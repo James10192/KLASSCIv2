@@ -112,6 +112,21 @@
         </div>
     @endif
 
+    @if(($echeancierMode ?? 'configured') === 'fallback' && !empty($echeancierNote))
+        <div class="an-fallback-banner">
+            <div class="an-fallback-banner-icon"><i class="fas fa-info-circle"></i></div>
+            <div class="an-fallback-banner-body">
+                <strong>Mode dégradé actif</strong>
+                <p>{{ $echeancierNote }}</p>
+            </div>
+            @can('comptabilite.frais.configure')
+                <a href="{{ route('esbtp.comptabilite.echeanciers.index') }}" class="an-fallback-banner-cta">
+                    <i class="fas fa-sliders-h"></i> Configurer les règles
+                </a>
+            @endcan
+        </div>
+    @endif
+
     {{-- ============================ CASH FLOW ============================ --}}
     <div class="an-card mt-4">
         <div class="an-section-header">
@@ -717,6 +732,38 @@ function analyticsPage() {
 .an-level--moyen { background: rgba(245,158,11,.12); color: #b45309; }
 .an-level--bas { background: rgba(16,185,129,.12); color: #047857; }
 
+/* ===== Fallback banner (mode dégradé) ===== */
+.an-fallback-banner {
+    display: flex; align-items: center; gap: 1rem;
+    padding: .9rem 1.25rem; margin-bottom: 1rem;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(245,158,11,.08), rgba(245,158,11,.04));
+    border: 1px solid rgba(245,158,11,.25);
+}
+.an-fallback-banner-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: rgba(245,158,11,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.05rem; color: #b45309; flex-shrink: 0;
+}
+.an-fallback-banner-body { flex: 1; min-width: 0; }
+.an-fallback-banner-body strong {
+    display: block; color: #92400e; font-size: .92rem; font-weight: 700;
+    margin-bottom: .15rem;
+}
+.an-fallback-banner-body p {
+    margin: 0; font-size: .82rem; color: #78350f;
+    line-height: 1.4;
+}
+.an-fallback-banner-cta {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .55rem 1rem; border-radius: 10px;
+    background: #b45309; color: #fff; font-size: .8rem; font-weight: 600;
+    text-decoration: none; flex-shrink: 0;
+    transition: background .15s ease, transform .15s ease;
+}
+.an-fallback-banner-cta:hover { background: #92400e; color: #fff; transform: translateY(-1px); }
+
 /* ===== Recouvrement Gap (attendu vs encaissé) ===== */
 .an-gap-summary {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: .75rem;
@@ -911,6 +958,8 @@ function analyticsPage() {
 @media (max-width: 768px) {
     .an-hero { padding: 1.5rem 1.25rem 1.25rem; }
     .an-card { padding: 1.25rem 1rem; }
+    .an-fallback-banner { flex-direction: column; align-items: flex-start; gap: .75rem; }
+    .an-fallback-banner-cta { width: 100%; justify-content: center; }
     .an-risk-grid { grid-template-columns: repeat(2, 1fr); }
     .an-hero h1 { font-size: 1.2rem; }
     .an-kpi { min-width: 140px; }

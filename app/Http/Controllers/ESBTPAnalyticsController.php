@@ -15,6 +15,7 @@ use App\Helpers\SettingsHelper;
 use App\Jobs\ComputeAnalyticsPredictionsJob;
 use App\Jobs\DetectAnalyticsAnomaliesJob;
 use App\Services\Analytics\RecouvrementGapService;
+use App\Services\EcheancierReadinessService;
 use App\Services\ExportRenderer;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -44,6 +45,7 @@ class ESBTPAnalyticsController extends Controller
         AnomalyDetector $anomalyDetector,
         AccuracyEvaluator $accuracy,
         RecouvrementGapService $recouvrementGap,
+        EcheancierReadinessService $echeancierReadiness,
     ): View {
         $context = AnalyticsContext::fromRequest($request);
 
@@ -59,6 +61,8 @@ class ESBTPAnalyticsController extends Controller
             'anomalies'        => $anomalies,
             'cashFlowAccuracy' => $cashFlowAccuracy,
             'recouvrementGaps' => $recouvrementGaps,
+            'echeancierMode'   => $echeancierReadiness->mode(),
+            'echeancierNote'   => $echeancierReadiness->noteForMode(),
             'context'          => $context,
             'annees'           => ESBTPAnneeUniversitaire::orderBy('name', 'desc')->get(),
             'filieres'         => ESBTPFiliere::orderBy('name')->get(),
