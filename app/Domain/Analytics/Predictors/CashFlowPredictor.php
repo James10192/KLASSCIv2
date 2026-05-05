@@ -9,6 +9,7 @@ use App\Domain\Analytics\DTOs\AnalyticsContext;
 use App\Domain\Analytics\DTOs\ConfidenceInterval;
 use App\Domain\Analytics\DTOs\PredictionResult;
 use App\Domain\Analytics\Repositories\AnalyticsRepository;
+use App\Services\Analytics\CashFlowProjectionService;
 use Carbon\Carbon;
 
 /**
@@ -26,6 +27,7 @@ class CashFlowPredictor implements PredictorInterface
 
     public function __construct(
         private readonly AnalyticsRepository $repository,
+        private readonly CashFlowProjectionService $projectionService,
     ) {}
 
     public function name(): string
@@ -41,8 +43,9 @@ class CashFlowPredictor implements PredictorInterface
     public function predict(AnalyticsContext $context): PredictionResult
     {
         $history = $this->repository->monthlyRevenue($context, self::HISTORY_LOOKBACK);
+        $scheduledNextMonth = $this->projectionService->nextMonthRevenue($context);
 
-        if (count($history) < self::MIN_HISTORY_MONTHS) {
+        if (count($history) < self::MIN_HISTORY_MONTHS && $scheduledNextMonth <= 0) {
             return PredictionResult::unavailable(
                 self::NAME,
                 sprintf(
@@ -58,37 +61,56 @@ class CashFlowPredictor implements PredictorInterface
         $targetMonth = (int) $nextMonth->month;
 
         $seasonalSeries = array_map(fn ($p) => ['month' => $p['month'], 'value' => $p['value']], $history);
-        $forecast = ExponentialSmoothing::forecastSeasonal($seasonalSeries, $targetMonth);
+        $historicalForecast = count($history) >= self::MIN_HISTORY_MONTHS
+            ? ExponentialSmoothing::forecastSeasonal($seasonalSeries, $targetMonth)
+            : 0.0;
 
-        $tendance = LinearRegression::fit($values)['slope'];
-        $stdDev = Statistics::standardDeviation($values);
+        $forecast = $scheduledNextMonth > 0
+            ? ($historicalForecast > 0 ? round(($scheduledNextMonth * 0.8) + ($historicalForecast * 0.2), 2) : $scheduledNextMonth)
+            : $historicalForecast;
 
-        $ci = new ConfidenceInterval(
-            lower: max(0.0, $forecast - self::Z_SCORE_95 * $stdDev),
-            upper: $forecast + self::Z_SCORE_95 * $stdDev,
-            percentile: 95,
-        );
+        $tendance = count($values) >= 2 ? LinearRegression::fit($values)['slope'] : 0.0;
+        $stdDev = count($values) >= 2 ? Statistics::standardDeviation($values) : 0.0;
+
+        $ci = count($history) >= self::MIN_HISTORY_MONTHS
+            ? new ConfidenceInterval(
+                lower: max(0.0, $forecast - self::Z_SCORE_95 * $stdDev),
+                upper: $forecast + self::Z_SCORE_95 * $stdDev,
+                percentile: 95,
+            )
+            : null;
 
         return new PredictionResult(
             predictor: self::NAME,
             value: $forecast,
             label: 'forecast',
             confidenceInterval: $ci,
-            confidenceLabel: $ci->labelForValue($forecast),
-            explanation: $this->buildExplanation($history, $tendance, $targetMonth),
+            confidenceLabel: $ci?->labelForValue($forecast) ?? 'indicatif',
+            explanation: $this->buildExplanation($history, $tendance, $targetMonth, $scheduledNextMonth),
             targetDate: $nextMonth->startOfMonth(),
+            metadata: [
+                'scheduled_revenue_next_month' => $scheduledNextMonth,
+                'history_months' => count($history),
+            ],
         );
     }
 
     /**
      * @return array<int, string>
      */
-    private function buildExplanation(array $history, float $tendance, int $targetMonth): array
+    private function buildExplanation(array $history, float $tendance, int $targetMonth, float $scheduledRevenue): array
     {
         $reasons = [];
         $monthName = Carbon::create(null, $targetMonth, 1)->translatedFormat('F');
 
         $reasons[] = sprintf('Basé sur %d mois d\'historique de paiements validés', count($history));
+
+        if ($scheduledRevenue > 0) {
+            $reasons[] = sprintf(
+                'Échéanciers actifs pris en compte pour le mois cible : %s FCFA',
+                number_format($scheduledRevenue, 0, ',', ' ')
+            );
+        }
 
         $sameMonthValues = array_column(
             array_filter($history, fn ($p) => $p['month'] === $targetMonth),
