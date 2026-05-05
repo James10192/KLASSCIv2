@@ -169,7 +169,7 @@
                     </div>
                 </div>
                 <div class="jc-hero-actions">
-                    <a href="{{ route('esbtp.comptabilite.journal-caisse.export-pdf-preview', request()->query()) }}" target="_blank" class="jc-btn">
+                    <a href="{{ route('esbtp.comptabilite.journal-caisse.preview-pdf', request()->query()) }}" target="_blank" class="jc-btn">
                         <i class="fas fa-eye"></i> Aperçu PDF
                     </a>
                     <a href="{{ route('esbtp.comptabilite.journal-caisse.export-pdf', request()->query()) }}" class="jc-btn jc-btn--white">

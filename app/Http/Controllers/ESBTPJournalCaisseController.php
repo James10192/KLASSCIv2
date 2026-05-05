@@ -111,6 +111,11 @@ class ESBTPJournalCaisseController extends Controller
      */
     public function exportPdfPreview(Request $request)
     {
+        return $this->previewPdf($request);
+    }
+
+    public function previewPdf(Request $request)
+    {
         [$dateDebut, $dateFin] = $this->resolvePeriod($request);
 
         $filters = [

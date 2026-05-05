@@ -953,6 +953,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/export-pdf/preview', [App\Http\Controllers\ESBTPJournalCaisseController::class, 'exportPdfPreview'])
                     ->middleware('throttle:30,1')
                     ->name('export-pdf-preview');
+                Route::get('/preview-pdf', [App\Http\Controllers\ESBTPJournalCaisseController::class, 'previewPdf'])
+                    ->middleware('throttle:30,1')
+                    ->name('preview-pdf');
             });
 
             // ── VALIDATE/REJECT (workflow comptable — throttled)
