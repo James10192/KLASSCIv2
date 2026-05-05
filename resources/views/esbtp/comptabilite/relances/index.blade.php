@@ -693,13 +693,23 @@
             </div>
             <div class="rl-hero-actions">
                 @can('comptabilite.reports.export')
-                <a href="{{ route('esbtp.comptabilite.relances.export-excel', request()->query()) }}" class="rl-btn-ghost">
+                <a href="{{ route('esbtp.comptabilite.relances.export-excel', request()->query()) }}"
+                   class="rl-btn-ghost"
+                   data-rel-export-link
+                   data-export-base="{{ route('esbtp.comptabilite.relances.export-excel') }}">
                     <i class="fas fa-file-excel"></i> Excel
                 </a>
-                <a href="{{ route('esbtp.comptabilite.relances.preview-pdf', request()->query()) }}" target="_blank" class="rl-btn-ghost">
+                <a href="{{ route('esbtp.comptabilite.relances.preview-pdf', request()->query()) }}"
+                   target="_blank"
+                   class="rl-btn-ghost"
+                   data-rel-export-link
+                   data-export-base="{{ route('esbtp.comptabilite.relances.preview-pdf') }}">
                     <i class="fas fa-eye"></i> Aperçu PDF
                 </a>
-                <a href="{{ route('esbtp.comptabilite.relances.export-pdf', request()->query()) }}" class="rl-btn-ghost">
+                <a href="{{ route('esbtp.comptabilite.relances.export-pdf', request()->query()) }}"
+                   class="rl-btn-ghost"
+                   data-rel-export-link
+                   data-export-base="{{ route('esbtp.comptabilite.relances.export-pdf') }}">
                     <i class="fas fa-file-pdf"></i> PDF
                 </a>
                 @endcan
@@ -896,6 +906,7 @@
     const form       = document.getElementById('relances-filters-form');
     const tabs       = document.querySelectorAll('#risk-tabs .risk-tab');
     const btnReset   = document.getElementById('btn-reset');
+    const exportLinks = document.querySelectorAll('[data-rel-export-link]');
 
     function showLoader()  { loading.classList.add('visible'); }
     function hideLoader()  { loading.classList.remove('visible'); }
@@ -904,6 +915,19 @@
         tabs.forEach(btn => btn.classList.remove('active'));
         tabs.forEach(btn => {
             if (btn.dataset.risk === risk) btn.classList.add('active');
+        });
+    }
+
+    function syncExportLinks(sourceUrl) {
+        const currentUrl = sourceUrl instanceof URL ? sourceUrl : new URL(window.location.href);
+        exportLinks.forEach(link => {
+            const target = new URL(link.dataset.exportBase, window.location.origin);
+            currentUrl.searchParams.forEach((value, key) => {
+                if (key !== 'ajax' && value !== '') {
+                    target.searchParams.set(key, value);
+                }
+            });
+            link.href = target.toString();
         });
     }
 
@@ -918,6 +942,7 @@
         });
 
         window.history.pushState({}, '', url.toString());
+        syncExportLinks(url);
 
         fetch(url.toString(), {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
@@ -1025,6 +1050,7 @@
     }
 
     wirePaginationLinks();
+    syncExportLinks();
 })();
 </script>
 @endpush
