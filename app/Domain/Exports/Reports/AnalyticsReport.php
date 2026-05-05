@@ -13,11 +13,17 @@ use Maatwebsite\Excel\Concerns\FromCollection;
  */
 class AnalyticsReport extends ExportableReport
 {
+    /**
+     * @param  array<string, array{expected: float, paid: float, gap: float, gap_ratio: float}>  $recouvrementGaps
+     */
     public function __construct(
         private readonly PredictionResult $cashFlow,
         private readonly PredictionResult $defaultRisk,
         private readonly array $anomalies,
         private readonly array $appliedFilters = [],
+        private readonly array $recouvrementGaps = [],
+        private readonly string $echeancierMode = \App\Services\EcheancierReadinessService::MODE_CONFIGURED,
+        private readonly ?string $echeancierNote = null,
     ) {}
 
     public function title(): string
@@ -42,12 +48,21 @@ class AnalyticsReport extends ExportableReport
             'cashFlow' => $this->cashFlow,
             'defaultRisk' => $this->defaultRisk,
             'anomalies' => $this->anomalies,
+            'recouvrementGaps' => $this->recouvrementGaps,
+            'echeancierMode' => $this->echeancierMode,
+            'echeancierNote' => $this->echeancierNote,
         ];
     }
 
     public function excelExport(): FromCollection
     {
-        return new AnalyticsExport($this->cashFlow, $this->defaultRisk, $this->anomalies, $this->appliedFilters);
+        return new AnalyticsExport(
+            $this->cashFlow,
+            $this->defaultRisk,
+            $this->anomalies,
+            $this->appliedFilters,
+            $this->recouvrementGaps,
+        );
     }
 
     public function filters(): array

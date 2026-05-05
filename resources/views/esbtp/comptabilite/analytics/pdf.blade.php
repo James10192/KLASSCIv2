@@ -318,6 +318,88 @@
             @endif
         </div>
 
+        {{-- ===== Banner Mode dégradé ===== --}}
+        @if(($echeancierMode ?? 'configured') === 'fallback' && !empty($echeancierNote))
+            <div style="margin: 0 0 12px; padding: 8px 12px; border: 1px solid #f5a700; background: #fff8eb; border-radius: 4px; font-size: 9px; color: #92400e;">
+                <strong>Mode dégradé :</strong> {{ $echeancierNote }}
+            </div>
+        @endif
+
+        {{-- ===== Section Recouvrement mois par mois ===== --}}
+        @php
+            $gapBuckets = $recouvrementGaps ?? [];
+        @endphp
+        @if(!empty($gapBuckets))
+            @php
+                $totalExpected = array_sum(array_column($gapBuckets, 'expected'));
+                $totalPaid = array_sum(array_column($gapBuckets, 'paid'));
+                $totalGap = max(0.0, $totalExpected - $totalPaid);
+                $globalRate = $totalExpected > 0 ? round($totalPaid / $totalExpected * 100, 1) : 0;
+            @endphp
+            <div class="section">
+                <h2 class="section-title">Recouvrement mois par mois — attendu vs encaissé</h2>
+
+                <table width="100%" cellspacing="0" cellpadding="0" style="margin-bottom: 8px; border-collapse: collapse;">
+                    <tr>
+                        <td width="25%" style="padding: 6px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; vertical-align: top;">
+                            <div style="font-size: 7.5px; color: #64748b; text-transform: uppercase; letter-spacing: .03em;">Attendu cumulé</div>
+                            <div style="font-size: 11px; font-weight: 700; color: #0f172a;">{{ number_format($totalExpected, 0, ',', ' ') }} FCFA</div>
+                        </td>
+                        <td width="2%"></td>
+                        <td width="25%" style="padding: 6px 8px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 4px; vertical-align: top;">
+                            <div style="font-size: 7.5px; color: #64748b; text-transform: uppercase; letter-spacing: .03em;">Encaissé cumulé</div>
+                            <div style="font-size: 11px; font-weight: 700; color: #0f172a;">{{ number_format($totalPaid, 0, ',', ' ') }} FCFA</div>
+                        </td>
+                        <td width="2%"></td>
+                        <td width="22%" style="padding: 6px 8px; background: #fef2f2; border: 1px solid #fecaca; border-radius: 4px; vertical-align: top;">
+                            <div style="font-size: 7.5px; color: #64748b; text-transform: uppercase; letter-spacing: .03em;">Écart restant</div>
+                            <div style="font-size: 11px; font-weight: 700; color: #b91c1c;">{{ number_format($totalGap, 0, ',', ' ') }} FCFA</div>
+                        </td>
+                        <td width="2%"></td>
+                        <td width="22%" style="padding: 6px 8px; background: {{ $primary }}; border-radius: 4px; vertical-align: top;">
+                            <div style="font-size: 7.5px; color: #ffffff; opacity: .8; text-transform: uppercase; letter-spacing: .03em;">Taux recouvrement</div>
+                            <div style="font-size: 11px; font-weight: 700; color: #ffffff;">{{ number_format($globalRate, 1, ',', ' ') }} %</div>
+                        </td>
+                    </tr>
+                </table>
+
+                <table width="100%" cellspacing="0" cellpadding="0" style="border-collapse: collapse; margin-top: 4px;">
+                    <thead>
+                        <tr style="background: {{ $primary }};">
+                            <th style="padding: 5px 8px; color: #fff; font-size: 8.5px; text-align: left;">Mois</th>
+                            <th style="padding: 5px 8px; color: #fff; font-size: 8.5px; text-align: right;">Attendu</th>
+                            <th style="padding: 5px 8px; color: #fff; font-size: 8.5px; text-align: right;">Encaissé</th>
+                            <th style="padding: 5px 8px; color: #fff; font-size: 8.5px; text-align: right;">Écart</th>
+                            <th style="padding: 5px 8px; color: #fff; font-size: 8.5px; text-align: center;">Taux</th>
+                            <th style="padding: 5px 8px; color: #fff; font-size: 8.5px; text-align: center;">Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($gapBuckets as $monthKey => $bucket)
+                            @php
+                                [$y, $m] = array_map('intval', explode('-', $monthKey));
+                                $label = ucfirst(\Carbon\Carbon::createFromDate($y, $m, 1)->locale('fr')->translatedFormat('F Y'));
+                                $rate = $bucket['expected'] > 0 ? round(($bucket['paid'] / $bucket['expected']) * 100, 1) : 0;
+                                $tone = match (true) {
+                                    $bucket['gap_ratio'] >= 0.5 => ['bg' => '#fef2f2', 'fg' => '#b91c1c', 'label' => 'CRITIQUE'],
+                                    $bucket['gap_ratio'] >= 0.3 => ['bg' => '#fffbeb', 'fg' => '#b45309', 'label' => 'SURVEILLANCE'],
+                                    default => ['bg' => '#f0fdf4', 'fg' => '#047857', 'label' => 'SAIN'],
+                                };
+                            @endphp
+                            <tr style="background: {{ $tone['bg'] }}; border-bottom: 1px solid #e2e8f0;">
+                                <td style="padding: 5px 8px; font-size: 9px; color: #0f172a; font-weight: 600;">{{ $label }}</td>
+                                <td style="padding: 5px 8px; font-size: 9px; color: #1e293b; text-align: right;">{{ number_format($bucket['expected'], 0, ',', ' ') }}</td>
+                                <td style="padding: 5px 8px; font-size: 9px; color: #1e293b; text-align: right; font-weight: 600;">{{ number_format($bucket['paid'], 0, ',', ' ') }}</td>
+                                <td style="padding: 5px 8px; font-size: 9px; color: {{ $tone['fg'] }}; text-align: right; font-weight: 600;">{{ number_format($bucket['gap'], 0, ',', ' ') }}</td>
+                                <td style="padding: 5px 8px; font-size: 9px; color: {{ $tone['fg'] }}; text-align: center; font-weight: 700;">{{ $rate }}%</td>
+                                <td style="padding: 5px 8px; font-size: 8px; color: {{ $tone['fg'] }}; text-align: center; font-weight: 700;">{{ $tone['label'] }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+
         {{-- ===== Section Default Risk ===== --}}
         <div class="section">
             <h2 class="section-title">Risque de défaut de paiement</h2>

@@ -145,8 +145,10 @@ class ESBTPAnalyticsController extends Controller
         DefaultRiskPredictor $defaultRisk,
         AnomalyDetector $anomalyDetector,
         ExportRenderer $renderer,
+        RecouvrementGapService $recouvrementGap,
+        EcheancierReadinessService $echeancierReadiness,
     ) {
-        return $renderer->pdfPreview($this->buildAnalyticsReport($request, $cashFlow, $defaultRisk, $anomalyDetector));
+        return $renderer->pdfPreview($this->buildAnalyticsReport($request, $cashFlow, $defaultRisk, $anomalyDetector, $recouvrementGap, $echeancierReadiness));
     }
 
     /**
@@ -158,8 +160,10 @@ class ESBTPAnalyticsController extends Controller
         DefaultRiskPredictor $defaultRisk,
         AnomalyDetector $anomalyDetector,
         ExportRenderer $renderer,
+        RecouvrementGapService $recouvrementGap,
+        EcheancierReadinessService $echeancierReadiness,
     ) {
-        return $renderer->pdfDownload($this->buildAnalyticsReport($request, $cashFlow, $defaultRisk, $anomalyDetector));
+        return $renderer->pdfDownload($this->buildAnalyticsReport($request, $cashFlow, $defaultRisk, $anomalyDetector, $recouvrementGap, $echeancierReadiness));
     }
 
     /**
@@ -171,8 +175,10 @@ class ESBTPAnalyticsController extends Controller
         DefaultRiskPredictor $defaultRisk,
         AnomalyDetector $anomalyDetector,
         ExportRenderer $renderer,
+        RecouvrementGapService $recouvrementGap,
+        EcheancierReadinessService $echeancierReadiness,
     ) {
-        return $renderer->excelDownload($this->buildAnalyticsReport($request, $cashFlow, $defaultRisk, $anomalyDetector));
+        return $renderer->excelDownload($this->buildAnalyticsReport($request, $cashFlow, $defaultRisk, $anomalyDetector, $recouvrementGap, $echeancierReadiness));
     }
 
     private function buildAnalyticsReport(
@@ -180,11 +186,14 @@ class ESBTPAnalyticsController extends Controller
         CashFlowPredictor $cashFlow,
         DefaultRiskPredictor $defaultRisk,
         AnomalyDetector $anomalyDetector,
+        RecouvrementGapService $recouvrementGap,
+        EcheancierReadinessService $echeancierReadiness,
     ): AnalyticsReport {
         $context = AnalyticsContext::fromRequest($request);
         $cashFlowResult = $this->safePredict(new CachedPredictor($cashFlow), $context);
         $defaultRiskResult = $this->safePredict(new CachedPredictor($defaultRisk), $context);
         $anomalies = $this->safeDetect($anomalyDetector, $context);
+        $recouvrementGaps = $this->safeRecouvrementGaps($recouvrementGap, $context);
 
         $appliedFilters = array_filter([
             'Année' => $context->anneeId ? optional(ESBTPAnneeUniversitaire::find($context->anneeId))->name : null,
@@ -192,7 +201,15 @@ class ESBTPAnalyticsController extends Controller
             'Classe' => $context->classeId ? optional(ESBTPClasse::find($context->classeId))->name : null,
         ]);
 
-        return new AnalyticsReport($cashFlowResult, $defaultRiskResult, $anomalies, $appliedFilters);
+        return new AnalyticsReport(
+            $cashFlowResult,
+            $defaultRiskResult,
+            $anomalies,
+            $appliedFilters,
+            $recouvrementGaps,
+            $echeancierReadiness->mode(),
+            $echeancierReadiness->noteForMode(),
+        );
     }
 
     /**
