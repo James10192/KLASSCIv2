@@ -393,7 +393,83 @@
     </div>
 
     {{-- ============================ ANOMALIES ============================ --}}
-    <div class="an-card mt-4">
+    @php
+        // Métadonnées d'affichage par type d'anomalie. Tout est piloté par
+        // ces tables de correspondance pour éviter d'éparpiller les match()
+        // dans la vue.
+        $typeLabels = [
+            'payment_outlier'  => 'Paiement aberrant',
+            'recouvrement_gap' => 'Écart de recouvrement',
+            'revenue_spike'    => 'Pic de recettes',
+            'revenue_drop'     => 'Chute de recettes',
+        ];
+        $groupOf = fn ($type) => match ($type) {
+            'payment_outlier'                => 'paiements',
+            'recouvrement_gap'               => 'recouvrement',
+            'revenue_spike', 'revenue_drop'  => 'revenus',
+            default                           => 'autres',
+        };
+        $groupMeta = [
+            'paiements'    => ['label' => 'Paiements aberrants',      'icon' => 'fa-coins',              'sub' => 'Outliers sur les paiements des 30 derniers jours'],
+            'recouvrement' => ['label' => 'Écarts de recouvrement',   'icon' => 'fa-balance-scale-left', 'sub' => 'Mois clos avec un manque-à-gagner significatif'],
+            'revenus'      => ['label' => 'Variations mensuelles',    'icon' => 'fa-chart-line',         'sub' => 'Pics ou chutes inhabituels des encaissements (Z-score)'],
+        ];
+        $monetaryImpact = fn ($alert) => match ($alert->type) {
+            'payment_outlier'                => (float) ($alert->context['montant'] ?? 0),
+            'recouvrement_gap'               => (float) ($alert->context['gap'] ?? 0),
+            'revenue_spike', 'revenue_drop'  => abs(((float) ($alert->context['value'] ?? 0)) - ((float) ($alert->context['mean'] ?? 0))),
+            default                           => 0.0,
+        };
+        $scoreLabel = fn ($alert) => match ($alert->type) {
+            'payment_outlier'                => number_format($alert->score, 1, ',', ' ') . '× la moyenne',
+            'recouvrement_gap'               => number_format($alert->score * 100, 0) . '% d\'écart',
+            'revenue_spike', 'revenue_drop'  => 'Z = ' . number_format($alert->score, 1, ',', ' ') . 'σ',
+            default                           => number_format($alert->score, 2),
+        };
+        $dateLabel = function ($alert) {
+            $ctx = $alert->context;
+            if (!empty($ctx['date_paiement'])) {
+                return ucfirst(\Carbon\Carbon::parse($ctx['date_paiement'])->locale('fr')->translatedFormat('d M Y'));
+            }
+            if (!empty($ctx['year']) && !empty($ctx['month'])) {
+                return ucfirst(\Carbon\Carbon::createFromDate((int) $ctx['year'], (int) $ctx['month'], 1)->locale('fr')->translatedFormat('F Y'));
+            }
+            return null;
+        };
+        $actionUrl = function ($alert) {
+            if ($alert->type === 'payment_outlier' && !empty($alert->context['paiement_id']) && \Illuminate\Support\Facades\Route::has('esbtp.paiements.show')) {
+                return route('esbtp.paiements.show', ['paiement' => $alert->context['paiement_id']]);
+            }
+            if ($alert->type === 'recouvrement_gap' && \Illuminate\Support\Facades\Route::has('esbtp.comptabilite.recouvrement.index')) {
+                return route('esbtp.comptabilite.recouvrement.index');
+            }
+            return null;
+        };
+        $actionLabel = fn ($alert) => match ($alert->type) {
+            'payment_outlier'  => 'Voir le paiement',
+            'recouvrement_gap' => 'Voir le recouvrement',
+            default            => 'Voir le détail',
+        };
+
+        $anomCollection  = collect($anomalies);
+        $anomTotalCount  = $anomCollection->count();
+        $anomCriticals   = $anomCollection->where('severity', 'critical')->count();
+        $anomWarnings    = $anomCollection->where('severity', 'warning')->count();
+        $alertsByGroup   = $anomCollection->groupBy(fn ($a) => $groupOf($a->type));
+        $orderedGroups   = ['paiements', 'recouvrement', 'revenus'];
+        $groupStats      = [];
+        foreach ($orderedGroups as $g) {
+            $items = $alertsByGroup->get($g, collect());
+            $groupStats[$g] = [
+                'items'    => $items,
+                'count'    => $items->count(),
+                'critical' => $items->where('severity', 'critical')->count(),
+                'warning'  => $items->where('severity', 'warning')->count(),
+                'impact'   => (float) $items->sum(fn ($a) => $monetaryImpact($a)),
+            ];
+        }
+    @endphp
+    <div class="an-card mt-4" x-data="{ filterSev: 'all', filterGroup: 'all' }">
         <div class="an-section-header">
             <div class="an-section-icon"><i class="fas fa-radiation"></i></div>
             <div>
@@ -402,37 +478,111 @@
             </div>
         </div>
 
-        @if(empty($anomalies))
+        @if($anomTotalCount === 0)
             <div class="an-empty an-empty--ok">
                 <i class="fas fa-check-circle"></i>
                 <p>Aucune anomalie détectée. Les flux financiers sont conformes aux tendances historiques.</p>
             </div>
         @else
-            <div class="an-anomalies">
-                @foreach($anomalies as $alert)
-                    <div class="an-anomaly an-anomaly--{{ $alert->severity }}">
-                        <div class="an-anomaly-icon">
-                            @if($alert->severity === 'critical')
-                                <i class="fas fa-exclamation-circle"></i>
-                            @elseif($alert->severity === 'warning')
-                                <i class="fas fa-exclamation-triangle"></i>
+            {{-- Bandeau résumé : 3 cartes-groupes cliquables (servent de raccourci filtre) --}}
+            <div class="an-anom-summary">
+                @foreach($orderedGroups as $g)
+                    @php $s = $groupStats[$g]; @endphp
+                    <button type="button"
+                            class="an-anom-summary-card an-anom-summary-card--{{ $g }}"
+                            :class="{ 'is-active': filterGroup === '{{ $g }}' }"
+                            @click="filterGroup = (filterGroup === '{{ $g }}' ? 'all' : '{{ $g }}')">
+                        <div class="an-anom-summary-icon"><i class="fas {{ $groupMeta[$g]['icon'] }}"></i></div>
+                        <div class="an-anom-summary-body">
+                            <div class="an-anom-summary-count">
+                                <strong>{{ $s['count'] }}</strong>
+                                <span class="an-anom-summary-label">{{ $groupMeta[$g]['label'] }}</span>
+                            </div>
+                            @if($s['count'] > 0)
+                                <div class="an-anom-summary-detail">
+                                    {{ $s['critical'] }} critiques · {{ $s['warning'] }} warnings · {{ number_format($s['impact'], 0, ',', ' ') }} FCFA
+                                </div>
                             @else
-                                <i class="fas fa-info-circle"></i>
+                                <div class="an-anom-summary-detail an-anom-summary-detail--ok">
+                                    Conforme
+                                </div>
                             @endif
                         </div>
-                        <div class="an-anomaly-body">
-                            <div class="an-anomaly-meta">
-                                <span class="an-anomaly-type">{{ str_replace('_', ' ', $alert->type) }}</span>
-                                <span class="an-anomaly-severity an-anomaly-severity--{{ $alert->severity }}">
-                                    {{ strtoupper($alert->severity) }}
-                                </span>
-                            </div>
-                            <div class="an-anomaly-message">{{ $alert->message }}</div>
-                            <div class="an-anomaly-score">Score d'écart : {{ number_format($alert->score, 2) }}</div>
-                        </div>
-                    </div>
+                    </button>
                 @endforeach
             </div>
+
+            {{-- Chips filtres sévérité --}}
+            <div class="an-anom-filters">
+                <button type="button" class="an-anom-chip" :class="{ 'is-active': filterSev === 'all' }" @click="filterSev = 'all'">
+                    Toutes <span class="an-anom-chip-count">{{ $anomTotalCount }}</span>
+                </button>
+                <button type="button" class="an-anom-chip an-anom-chip--critical" :class="{ 'is-active': filterSev === 'critical' }" @click="filterSev = 'critical'">
+                    Critiques <span class="an-anom-chip-count">{{ $anomCriticals }}</span>
+                </button>
+                <button type="button" class="an-anom-chip an-anom-chip--warning" :class="{ 'is-active': filterSev === 'warning' }" @click="filterSev = 'warning'">
+                    Avertissements <span class="an-anom-chip-count">{{ $anomWarnings }}</span>
+                </button>
+                <button type="button" class="an-anom-chip an-anom-chip--reset" x-show="filterGroup !== 'all' || filterSev !== 'all'" @click="filterGroup = 'all'; filterSev = 'all'">
+                    <i class="fas fa-times"></i> Réinitialiser
+                </button>
+            </div>
+
+            {{-- Groupes --}}
+            @foreach($orderedGroups as $g)
+                @php $s = $groupStats[$g]; @endphp
+                <div class="an-anom-group an-anom-group--{{ $g }}" x-show="filterGroup === 'all' || filterGroup === '{{ $g }}'">
+                    <div class="an-anom-group-header">
+                        <div class="an-anom-group-title">
+                            <i class="fas {{ $groupMeta[$g]['icon'] }}"></i>
+                            <span>{{ $groupMeta[$g]['label'] }}</span>
+                            <span class="an-anom-group-count">{{ $s['count'] }}</span>
+                        </div>
+                        @if($s['count'] > 0)
+                            <div class="an-anom-group-meta">
+                                <span class="an-anom-group-impact">{{ number_format($s['impact'], 0, ',', ' ') }} FCFA</span>
+                                <span class="an-anom-group-sub">{{ $groupMeta[$g]['sub'] }}</span>
+                            </div>
+                        @endif
+                    </div>
+
+                    @if($s['count'] === 0)
+                        <div class="an-anom-group-ok">
+                            <i class="fas fa-check-circle"></i>
+                            <span>Aucune anomalie détectée — situation conforme.</span>
+                        </div>
+                    @else
+                        <div class="an-anom-list">
+                            @foreach($s['items'] as $alert)
+                                @php
+                                    $url   = $actionUrl($alert);
+                                    $date  = $dateLabel($alert);
+                                @endphp
+                                <div class="an-anom-item an-anom-item--{{ $alert->severity }}"
+                                     x-show="filterSev === 'all' || filterSev === '{{ $alert->severity }}'">
+                                    <div class="an-anom-item-meta">
+                                        <span class="an-anom-dot an-anom-dot--{{ $alert->severity }}"></span>
+                                        <span class="an-anom-type">{{ $typeLabels[$alert->type] ?? $alert->type }}</span>
+                                        @if($date)
+                                            <span class="an-anom-date"><i class="far fa-calendar"></i> {{ $date }}</span>
+                                        @endif
+                                        <span class="an-anom-score">{{ $scoreLabel($alert) }}</span>
+                                        <span class="an-anom-sev an-anom-sev--{{ $alert->severity }}">{{ strtoupper($alert->severity) }}</span>
+                                    </div>
+                                    <div class="an-anom-item-body">
+                                        <span class="an-anom-msg">{{ $alert->message }}</span>
+                                        @if($url)
+                                            <a href="{{ $url }}" class="an-anom-link">
+                                                <i class="fas fa-arrow-right"></i> {{ $actionLabel($alert) }}
+                                            </a>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            @endforeach
         @endif
     </div>
 
@@ -888,48 +1038,197 @@ function analyticsPage() {
 }
 .an-gap-legend-link:hover { color: var(--an-primary-d); }
 
-/* ===== Anomalies ===== */
-.an-anomalies { display: flex; flex-direction: column; gap: .75rem; }
-.an-anomaly {
-    display: flex; gap: 1rem; padding: 1rem 1.25rem;
-    border-radius: 12px; border: 1px solid var(--an-border);
-    background: #fafbfc;
-}
-.an-anomaly--critical { border-color: rgba(220,38,38,.3); background: rgba(220,38,38,.03); }
-.an-anomaly--warning { border-color: rgba(245,158,11,.3); background: rgba(245,158,11,.03); }
-.an-anomaly--info { border-color: rgba(4,83,203,.2); background: rgba(4,83,203,.03); }
+/* ===== Anomalies (regroupées par type, filtrables) ===== */
 
-.an-anomaly-icon {
-    width: 40px; height: 40px; border-radius: 10px;
+/* Summary : 3 cartes de groupe en haut, cliquables = raccourci filtre */
+.an-anom-summary {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem;
+    margin-bottom: 1.25rem;
+}
+.an-anom-summary-card {
+    display: flex; align-items: center; gap: .85rem;
+    padding: .9rem 1.1rem; border-radius: 12px;
+    background: #fafbfc; border: 1px solid var(--an-border);
+    text-align: left; cursor: pointer; font-family: inherit;
+    transition: all .2s ease;
+}
+.an-anom-summary-card:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 16px rgba(15,23,42,.06);
+}
+.an-anom-summary-card.is-active {
+    border-color: var(--an-primary);
+    background: linear-gradient(135deg, rgba(4,83,203,.05), rgba(94,145,222,.03));
+    box-shadow: 0 4px 16px rgba(4,83,203,.12);
+}
+.an-anom-summary-icon {
+    width: 38px; height: 38px; border-radius: 10px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 1.1rem; flex-shrink: 0;
+    font-size: 1rem; flex-shrink: 0;
+    background: rgba(4,83,203,.08); color: var(--an-primary);
 }
-.an-anomaly--critical .an-anomaly-icon { background: rgba(220,38,38,.15); color: var(--an-danger); }
-.an-anomaly--warning .an-anomaly-icon { background: rgba(245,158,11,.15); color: var(--an-warning); }
-.an-anomaly--info .an-anomaly-icon { background: rgba(4,83,203,.15); color: var(--an-primary); }
+.an-anom-summary-card--paiements .an-anom-summary-icon { background: rgba(4,83,203,.1); color: var(--an-primary); }
+.an-anom-summary-card--recouvrement .an-anom-summary-icon { background: rgba(245,158,11,.12); color: #b45309; }
+.an-anom-summary-card--revenus .an-anom-summary-icon { background: rgba(16,185,129,.1); color: #047857; }
+.an-anom-summary-body { flex: 1; min-width: 0; }
+.an-anom-summary-count strong {
+    font-size: 1.4rem; font-weight: 800; color: var(--an-dark);
+    line-height: 1; margin-right: .35rem;
+}
+.an-anom-summary-label {
+    font-size: .82rem; font-weight: 600; color: var(--an-text);
+}
+.an-anom-summary-detail {
+    font-size: .72rem; color: var(--an-muted); margin-top: .25rem;
+    font-variant-numeric: tabular-nums;
+}
+.an-anom-summary-detail--ok { color: var(--an-success); font-weight: 600; }
 
-.an-anomaly-body { flex: 1; }
-.an-anomaly-meta {
-    display: flex; align-items: center; gap: .5rem; margin-bottom: .35rem;
+/* Filter chips (sévérité) */
+.an-anom-filters {
+    display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: 1rem;
 }
-.an-anomaly-type {
-    font-size: .72rem; font-weight: 700; text-transform: uppercase;
-    letter-spacing: .04em; color: var(--an-muted);
+.an-anom-chip {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .4rem .85rem; border-radius: 999px;
+    background: #f1f5f9; border: 1px solid transparent;
+    font-size: .78rem; font-weight: 600; color: var(--an-text);
+    cursor: pointer; transition: all .15s ease;
+    font-family: inherit;
 }
-.an-anomaly-severity {
+.an-anom-chip:hover { background: #e2e8f0; }
+.an-anom-chip.is-active {
+    background: var(--an-primary); color: #fff;
+}
+.an-anom-chip--critical.is-active { background: var(--an-danger); }
+.an-anom-chip--warning.is-active { background: #d97706; }
+.an-anom-chip-count {
+    background: rgba(255,255,255,.25);
+    padding: .05rem .4rem; border-radius: 999px;
+    font-size: .7rem; font-weight: 700;
+}
+.an-anom-chip:not(.is-active) .an-anom-chip-count {
+    background: rgba(15,23,42,.08); color: var(--an-muted);
+}
+.an-anom-chip--reset {
+    background: transparent; border-color: var(--an-border);
+    color: var(--an-muted);
+}
+.an-anom-chip--reset:hover { background: #fef2f2; color: var(--an-danger); border-color: rgba(220,38,38,.3); }
+
+/* Groupe : header + liste */
+.an-anom-group {
+    margin-top: 1.25rem; padding-top: 1.25rem;
+    border-top: 1px dashed var(--an-border);
+}
+.an-anom-group:first-of-type { border-top: none; padding-top: 0; margin-top: 0; }
+
+.an-anom-group-header {
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: .65rem; margin-bottom: .85rem;
+}
+.an-anom-group-title {
+    display: inline-flex; align-items: center; gap: .55rem;
+    font-size: .95rem; font-weight: 700; color: var(--an-dark);
+}
+.an-anom-group-title i { color: var(--an-primary); }
+.an-anom-group--recouvrement .an-anom-group-title i { color: #b45309; }
+.an-anom-group--revenus .an-anom-group-title i { color: #047857; }
+.an-anom-group-count {
+    background: rgba(15,23,42,.06); color: var(--an-muted);
     padding: .15rem .55rem; border-radius: 999px;
-    font-size: .65rem; font-weight: 700; letter-spacing: .04em;
+    font-size: .72rem; font-weight: 700;
 }
-.an-anomaly-severity--critical { background: rgba(220,38,38,.15); color: var(--an-danger); }
-.an-anomaly-severity--warning { background: rgba(245,158,11,.15); color: #b45309; }
-.an-anomaly-severity--info { background: rgba(4,83,203,.15); color: var(--an-primary); }
+.an-anom-group-meta {
+    text-align: right; font-size: .75rem; color: var(--an-muted);
+    display: flex; flex-direction: column; gap: .15rem;
+}
+.an-anom-group-impact {
+    color: var(--an-text); font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+.an-anom-group-sub { font-style: italic; }
 
-.an-anomaly-message {
-    font-size: .92rem; color: var(--an-text); margin-bottom: .35rem;
-    line-height: 1.4;
+.an-anom-group-ok {
+    display: flex; align-items: center; gap: .65rem;
+    padding: .85rem 1rem; border-radius: 10px;
+    background: rgba(16,185,129,.06);
+    border: 1px solid rgba(16,185,129,.2);
+    font-size: .85rem; color: #047857;
 }
-.an-anomaly-score {
-    font-size: .75rem; color: var(--an-muted); font-style: italic;
+.an-anom-group-ok i { color: var(--an-success); font-size: 1rem; }
+
+/* Items : layout 2-lignes compact */
+.an-anom-list { display: flex; flex-direction: column; gap: .5rem; }
+.an-anom-item {
+    padding: .75rem 1rem; border-radius: 10px;
+    border: 1px solid var(--an-border); background: #fff;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.an-anom-item:hover {
+    transform: translateX(2px);
+    box-shadow: 0 2px 8px rgba(15,23,42,.05);
+}
+.an-anom-item--critical { border-left: 3px solid var(--an-danger); }
+.an-anom-item--warning  { border-left: 3px solid #d97706; }
+.an-anom-item--info     { border-left: 3px solid var(--an-primary); }
+
+.an-anom-item-meta {
+    display: flex; flex-wrap: wrap; align-items: center; gap: .5rem;
+    margin-bottom: .35rem;
+}
+.an-anom-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0;
+}
+.an-anom-dot--critical { background: var(--an-danger); }
+.an-anom-dot--warning  { background: #d97706; }
+.an-anom-dot--info     { background: var(--an-primary); }
+.an-anom-type {
+    font-size: .8rem; font-weight: 700; color: var(--an-text);
+}
+.an-anom-date {
+    display: inline-flex; align-items: center; gap: .25rem;
+    font-size: .72rem; color: var(--an-muted);
+    font-variant-numeric: tabular-nums;
+}
+.an-anom-date i { font-size: .68rem; }
+.an-anom-score {
+    font-size: .72rem; font-weight: 700;
+    background: rgba(15,23,42,.06); color: var(--an-text);
+    padding: .15rem .55rem; border-radius: 999px;
+    font-variant-numeric: tabular-nums;
+}
+.an-anom-item--critical .an-anom-score { background: rgba(220,38,38,.1); color: var(--an-danger); }
+.an-anom-item--warning  .an-anom-score { background: rgba(217,119,6,.12);  color: #b45309; }
+.an-anom-sev {
+    margin-left: auto;
+    font-size: .62rem; font-weight: 700; letter-spacing: .04em;
+    padding: .15rem .5rem; border-radius: 4px;
+}
+.an-anom-sev--critical { background: var(--an-danger); color: #fff; }
+.an-anom-sev--warning  { background: #d97706; color: #fff; }
+.an-anom-sev--info     { background: var(--an-primary); color: #fff; }
+
+.an-anom-item-body {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+}
+.an-anom-msg {
+    flex: 1; min-width: 250px;
+    font-size: .85rem; color: var(--an-text); line-height: 1.4;
+}
+.an-anom-link {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-size: .76rem; font-weight: 600; color: var(--an-primary);
+    text-decoration: none; flex-shrink: 0;
+    padding: .3rem .65rem; border-radius: 8px;
+    background: rgba(4,83,203,.08);
+    transition: background .15s ease, transform .15s ease;
+}
+.an-anom-link:hover {
+    background: rgba(4,83,203,.16); color: var(--an-primary-d);
+    transform: translateX(2px);
 }
 
 /* ===== Accuracy banner ===== */
@@ -980,6 +1279,7 @@ function analyticsPage() {
 @media (max-width: 992px) {
     .an-cf, .an-risk-grid { grid-template-columns: 1fr; }
     .an-gap-summary { grid-template-columns: repeat(2, 1fr); }
+    .an-anom-summary { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 768px) {
     .an-hero { padding: 1.5rem 1.25rem 1.25rem; }
@@ -990,6 +1290,15 @@ function analyticsPage() {
     .an-hero h1 { font-size: 1.2rem; }
     .an-kpi { min-width: 140px; }
     .an-gap-summary { grid-template-columns: 1fr; }
+    .an-anom-summary { grid-template-columns: 1fr; }
+    .an-anom-summary-card { padding: .75rem .85rem; }
+    .an-anom-summary-count strong { font-size: 1.15rem; }
+    .an-anom-group-header { flex-direction: column; align-items: flex-start; }
+    .an-anom-group-meta { text-align: left; }
+    .an-anom-item-meta { gap: .35rem; }
+    .an-anom-sev { margin-left: 0; }
+    .an-anom-msg { min-width: 100%; }
+    .an-anom-link { width: 100%; justify-content: center; }
     .an-gap-rows { padding: .85rem .75rem; gap: .85rem; }
     .an-gap-row {
         grid-template-columns: 1fr;
