@@ -4,15 +4,21 @@ namespace App\Http\Controllers;
 
 use App\Models\ESBTPEcheancierRule;
 use App\Models\ESBTPEcheancierRuleLine;
+use App\Models\ESBTPFiliere;
+use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisConfiguration;
+use App\Models\ESBTPInscription;
+use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPOptionAssignment;
+use App\Services\EcheancierAdminService;
+use App\Services\RelanceCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 class ESBTPEcheancierController extends Controller
 {
-    public function index(Request $request)
+    public function index(Request $request, EcheancierAdminService $echeancierAdmin)
     {
         $selectedScopeType = $request->query('scope_type');
         $selectedScopeId = $request->query('scope_id');
@@ -79,12 +85,15 @@ class ESBTPEcheancierController extends Controller
             ->get();
 
         $rulesByScope = $rules->groupBy(fn ($rule) => $rule->scope_type . ':' . $rule->scope_id);
+        $scopeDiagnostics = $echeancierAdmin->buildDiagnostics($configurations, $optionAssignments, $rulesByScope);
 
         $selectedRule = null;
         $selectedScopeDescriptor = null;
+        $selectedPreviewAmount = 150000.0;
 
         if ($selectedScopeType && $selectedScopeId && $this->scopeExists($selectedScopeType, (int) $selectedScopeId)) {
             $selectedScopeDescriptor = $this->buildScopeDescriptor($selectedScopeType, (int) $selectedScopeId);
+            $selectedPreviewAmount = $echeancierAdmin->resolvePreviewAmount($selectedScopeType, (int) $selectedScopeId, $selectedStatus);
 
             $selectedRule = ESBTPEcheancierRule::query()
                 ->with(['lines' => fn ($q) => $q->orderBy('sort_order')])
@@ -103,6 +112,11 @@ class ESBTPEcheancierController extends Controller
             'selectedStatus' => $selectedStatus,
             'selectedRule' => $selectedRule,
             'selectedScopeDescriptor' => $selectedScopeDescriptor,
+            'selectedPreviewAmount' => $selectedPreviewAmount,
+            'scopeDiagnostics' => $scopeDiagnostics,
+            'filieres' => ESBTPFiliere::orderBy('name')->get(['id', 'name']),
+            'niveaux' => ESBTPNiveauEtude::orderBy('name')->get(['id', 'name']),
+            'fraisCategories' => ESBTPFraisCategory::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -167,6 +181,16 @@ class ESBTPEcheancierController extends Controller
             }
         }
 
+        $percentTotal = collect($validated['lines'])
+            ->filter(fn ($line) => ($line['amount_mode'] ?? null) === ESBTPEcheancierRuleLine::AMOUNT_MODE_PERCENT)
+            ->sum(fn ($line) => (float) ($line['amount_value'] ?? 0));
+
+        if ($percentTotal > 0 && abs($percentTotal - 100.0) >= 0.01) {
+            return redirect()->back()->withErrors([
+                'lines' => 'Les tranches en pourcentage doivent totaliser 100%.',
+            ])->withInput();
+        }
+
         DB::transaction(function () use ($validated, $scopeType, $scopeId) {
             $rule = ESBTPEcheancierRule::updateOrCreate(
                 [
@@ -206,6 +230,104 @@ class ESBTPEcheancierController extends Controller
             'scope_id' => $scopeId,
             'affectation_status' => $validated['affectation_status'],
         ])->with('success', 'Règle d\'échéancier enregistrée avec succès.');
+    }
+
+    public function copy(Request $request, EcheancierAdminService $echeancierAdmin)
+    {
+        $validated = $request->validate([
+            'source_scope_type' => ['required', Rule::in([
+                ESBTPEcheancierRule::SCOPE_CONFIGURATION,
+                ESBTPEcheancierRule::SCOPE_OPTION_ASSIGNMENT,
+            ])],
+            'source_scope_id' => ['required', 'integer', 'min:1'],
+            'affectation_status' => ['required', Rule::in([
+                ESBTPEcheancierRule::STATUS_ALL,
+                ESBTPEcheancierRule::STATUS_AFFECTE,
+                ESBTPEcheancierRule::STATUS_REAFFECTE,
+                ESBTPEcheancierRule::STATUS_NON_AFFECTE,
+            ])],
+            'copy_mode' => ['required', Rule::in(['same_filiere', 'same_niveau', 'all_unconfigured'])],
+        ]);
+
+        $sourceRule = ESBTPEcheancierRule::query()
+            ->with(['lines' => fn ($q) => $q->orderBy('sort_order')])
+            ->where('scope_type', $validated['source_scope_type'])
+            ->where('scope_id', (int) $validated['source_scope_id'])
+            ->where('affectation_status', $validated['affectation_status'])
+            ->firstOrFail();
+
+        $copied = $echeancierAdmin->copyRule($sourceRule, $validated['copy_mode'], (int) $validated['source_scope_id'], auth()->id());
+
+        return redirect()->route('esbtp.comptabilite.echeanciers.index', [
+            'scope_type' => $validated['source_scope_type'],
+            'scope_id' => $validated['source_scope_id'],
+            'affectation_status' => $validated['affectation_status'],
+        ])->with('success', "{$copied} regle(s) copiee(s).");
+    }
+
+    public function simulate(Request $request, RelanceCalculationService $relances)
+    {
+        $validated = $request->validate([
+            'inscription_id' => ['required', 'integer', 'min:1'],
+        ]);
+
+        $inscription = ESBTPInscription::with([
+            'etudiant:id,nom,prenoms',
+            'classe:id,name',
+            'fraisSubscriptions.selectedOption.assignments',
+            'paiements' => fn ($q) => $q->whereIn('status', ['validé', 'en_attente'])->whereNull('deleted_at'),
+        ])->findOrFail((int) $validated['inscription_id']);
+
+        $relances->preloadForSingle($inscription);
+        $row = $relances->buildRow($inscription);
+
+        return response()->json([
+            'success' => true,
+            'student' => trim(($inscription->etudiant?->prenoms ?? '') . ' ' . ($inscription->etudiant?->nom ?? '')),
+            'classe' => $inscription->classe?->name,
+            'total_due' => $row->totalDu,
+            'remaining_total' => $row->remainingTotal,
+            'expected_due_to_date' => $row->expectedDueToDate,
+            'paid_due_to_date' => $row->paidDueToDate,
+            'overdue_amount' => $row->overdueAmount,
+            'overdue_days' => $row->overdueDays,
+            'risk_label' => $row->riskLabel,
+        ]);
+    }
+
+    public function bulkStatus(Request $request)
+    {
+        $validated = $request->validate([
+            'affectation_status' => ['required', Rule::in([
+                ESBTPEcheancierRule::STATUS_ALL,
+                ESBTPEcheancierRule::STATUS_AFFECTE,
+                ESBTPEcheancierRule::STATUS_REAFFECTE,
+                ESBTPEcheancierRule::STATUS_NON_AFFECTE,
+            ])],
+            'is_active' => ['required', 'boolean'],
+            'targets' => ['required', 'array', 'min:1'],
+            'targets.*' => ['required', 'string'],
+        ]);
+
+        $updated = 0;
+        foreach ($validated['targets'] as $target) {
+            [$scopeType, $scopeId] = array_pad(explode(':', $target, 2), 2, null);
+            if (!$scopeType || !$scopeId || !$this->scopeExists($scopeType, (int) $scopeId)) {
+                continue;
+            }
+
+            $updated += ESBTPEcheancierRule::query()
+                ->where('scope_type', $scopeType)
+                ->where('scope_id', (int) $scopeId)
+                ->where('affectation_status', $validated['affectation_status'])
+                ->update([
+                    'is_active' => (bool) $validated['is_active'],
+                    'updated_by' => auth()->id(),
+                    'updated_at' => now(),
+                ]);
+        }
+
+        return redirect()->back()->with('success', "{$updated} regle(s) mise(s) a jour.");
     }
 
     private function scopeExists(string $scopeType, int $scopeId): bool

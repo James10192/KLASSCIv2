@@ -1688,6 +1688,15 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     Route::post('/config/echeanciers', [ESBTPEcheancierController::class, 'upsert'])
         ->name('echeanciers.upsert')
         ->middleware(['permission:comptabilite.frais.configure']);
+    Route::post('/config/echeanciers/copy', [ESBTPEcheancierController::class, 'copy'])
+        ->name('echeanciers.copy')
+        ->middleware(['permission:comptabilite.frais.configure']);
+    Route::post('/config/echeanciers/bulk-status', [ESBTPEcheancierController::class, 'bulkStatus'])
+        ->name('echeanciers.bulk-status')
+        ->middleware(['permission:comptabilite.frais.configure']);
+    Route::get('/config/echeanciers/simulate', [ESBTPEcheancierController::class, 'simulate'])
+        ->name('echeanciers.simulate')
+        ->middleware(['permission:comptabilite.frais.configure']);
 
     // Rapports — génération + planification + templates (analytics-predictifs supprimés Sprint 9, remplacés par /esbtp/comptabilite/analytics)
     Route::prefix('rapports')->name('rapports.')->group(function () {

@@ -6,6 +6,8 @@
 <style>
 .ech-shell{position:relative}.ech-grid{display:grid;grid-template-columns:minmax(320px,.9fr) minmax(540px,1.35fr);gap:1.1rem;align-items:start}.ech-stack{display:grid;gap:1rem}.ech-card{background:rgba(255,255,255,.95);border:1px solid rgba(148,163,184,.3);border-radius:10px;box-shadow:0 14px 34px rgba(15,23,42,.07);overflow:hidden}.ech-card-head{padding:1rem 1.1rem;border-bottom:1px solid rgba(226,232,240,.95);display:flex;align-items:center;justify-content:space-between;gap:.8rem}.ech-title{margin:0;font-size:.92rem;font-weight:800;color:#0f172a}.ech-sub{font-size:.75rem;color:#64748b}.ech-body{padding:1rem 1.1rem}.ech-scope-list{max-height:390px;overflow:auto;display:grid;gap:.45rem;padding-right:.2rem}.ech-scope{display:grid;grid-template-columns:1fr auto;gap:.75rem;align-items:center;padding:.78rem;border:1px solid #e2e8f0;border-radius:9px;background:#fff;color:inherit;text-decoration:none;transition:background .15s ease,border-color .15s ease,box-shadow .15s ease}.ech-scope:hover{background:#f8fbff;border-color:rgba(4,83,203,.3);box-shadow:0 8px 20px rgba(15,23,42,.06);text-decoration:none}.ech-scope.is-selected{background:rgba(4,83,203,.06);border-color:rgba(4,83,203,.38);box-shadow:inset 3px 0 0 #0453cb}.ech-scope-name{font-weight:800;color:#0f172a;font-size:.82rem}.ech-scope-meta{font-size:.73rem;color:#64748b;margin-top:.12rem}.ech-badges{display:flex;flex-wrap:wrap;gap:.25rem;margin-top:.45rem}.ech-badge{display:inline-flex;align-items:center;gap:.25rem;padding:.18rem .45rem;border-radius:999px;font-size:.66rem;font-weight:800;border:1px solid transparent}.ech-badge-on{background:rgba(16,185,129,.08);color:#047857;border-color:rgba(16,185,129,.24)}.ech-badge-off{background:rgba(100,116,139,.1);color:#334155;border-color:rgba(100,116,139,.22)}.ech-scope-icon{width:2rem;height:2rem;border-radius:8px;display:inline-flex;align-items:center;justify-content:center;background:rgba(4,83,203,.08);color:#0453cb}.ech-empty{border:1px dashed #cbd5e1;border-radius:10px;background:#f8fafc;padding:1rem;color:#64748b;font-size:.78rem}.ech-editor-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;margin-bottom:1rem}.ech-kicker{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:0;color:#0453cb}.ech-editor-title{font-size:1rem;font-weight:900;color:#0f172a;margin:.15rem 0}.ech-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}.ech-field label,.ech-label{display:block;font-size:.72rem;font-weight:800;color:#334155;margin-bottom:.32rem}.ech-input,.ech-select,.ech-textarea{width:100%;border:1px solid #cbd5e1;border-radius:8px;padding:.52rem .65rem;font-size:.78rem;color:#0f172a;background:#fff;min-height:2.35rem}.ech-select{padding-right:2rem;text-overflow:ellipsis}.ech-textarea{min-height:72px;resize:vertical}.ech-toggle{display:inline-flex;align-items:center;gap:.45rem;font-size:.77rem;font-weight:700;color:#334155}.ech-lines-wrap{overflow:auto;border:1px solid #e2e8f0;border-radius:10px;background:#fff}.ech-lines{width:100%;min-width:940px;border-collapse:collapse;table-layout:fixed}.ech-lines th,.ech-lines td{border-bottom:1px solid #eef2f7;padding:.55rem}.ech-lines th{background:#f8fbff;color:#475569;font-size:.66rem;font-weight:900;text-transform:uppercase;letter-spacing:0;text-align:left}.ech-lines th:nth-child(2),.ech-lines th:nth-child(4),.ech-lines th:nth-child(6),.ech-lines th:nth-child(7),.ech-lines th:nth-child(8),.ech-lines th:nth-child(9){text-align:center}.ech-lines td:nth-child(2),.ech-lines td:nth-child(7),.ech-lines td:nth-child(8),.ech-lines td:nth-child(9){text-align:center}.ech-lines .ech-input,.ech-lines .ech-select{min-height:2.2rem;padding:.45rem .55rem}.ech-actions{display:flex;align-items:center;gap:.55rem;flex-wrap:wrap;margin-top:1rem}.ech-icon-btn{width:2rem;height:2rem;border-radius:8px;border:1px solid #cbd5e1;background:#fff;color:#64748b;display:inline-flex;align-items:center;justify-content:center}.ech-icon-btn:hover{color:#dc2626;border-color:rgba(220,38,38,.25);background:rgba(220,38,38,.06)}.ech-loading{position:absolute;inset:0;z-index:20;display:none;align-items:flex-start;justify-content:center;padding-top:7rem;background:rgba(241,245,249,.66);backdrop-filter:blur(3px)}.ech-shell.is-loading .ech-loading{display:flex}.ech-loader{display:inline-flex;align-items:center;gap:.55rem;padding:.72rem .95rem;border:1px solid rgba(148,163,184,.3);border-radius:10px;background:#fff;color:#0f172a;font-size:.78rem;font-weight:800;box-shadow:0 16px 36px rgba(15,23,42,.12)}.ech-loader i{color:#0453cb}.ech-help{font-size:.74rem;color:#64748b}.ech-help code{color:#be123c;background:rgba(244,63,94,.08);padding:.1rem .25rem;border-radius:5px}@media(max-width:1100px){.ech-grid{grid-template-columns:1fr}.ech-form-grid{grid-template-columns:1fr}}
 .ech-grid{grid-template-columns:minmax(430px,.95fr) minmax(560px,1.25fr)}.ech-card-head{padding:.85rem 1rem}.ech-body{padding:.8rem 1rem}.ech-scope-list{max-height:calc(100vh - 315px);min-height:260px;gap:.28rem}.ech-scope{grid-template-columns:1fr 2rem;padding:.52rem .6rem;border-radius:8px}.ech-scope-name{font-size:.78rem}.ech-scope-meta{font-size:.68rem;margin-top:.05rem}.ech-badges{margin-top:.25rem}.ech-scope-icon{width:1.75rem;height:1.75rem}.ech-scope-tools{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:center;margin-bottom:.65rem}.ech-search{position:relative}.ech-search i{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:.76rem}.ech-search input{width:100%;height:2.15rem;border:1px solid #dbe3ef;border-radius:8px;padding:.45rem .7rem .45rem 1.9rem;font-size:.76rem;background:#f8fbff;color:#0f172a}.ech-count-pill{display:inline-flex;align-items:center;height:2.15rem;padding:0 .65rem;border-radius:8px;background:#eef5ff;color:#0453cb;font-size:.72rem;font-weight:800;white-space:nowrap}.ech-hidden{display:none!important}@media(max-width:1180px){.ech-grid{grid-template-columns:1fr}.ech-scope-list{max-height:430px}}
+.ech-diagnostics{display:grid;grid-template-columns:repeat(6,minmax(110px,1fr));gap:.65rem;margin-bottom:1rem}.ech-diag{background:#fff;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:.72rem .8rem}.ech-diag-value{font-size:1rem;font-weight:900;color:#0453cb}.ech-diag-label{font-size:.68rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:0}.ech-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem;margin-bottom:.65rem}.ech-filter-grid .ech-select{min-height:2.15rem;padding:.42rem .6rem;font-size:.75rem}.ech-filter-reset{height:2.15rem;border:1px solid #dbe3ef;border-radius:8px;background:#fff;color:#64748b;font-weight:800;font-size:.74rem}.ech-scope[data-status="unconfigured"]{border-color:rgba(245,158,11,.34);background:linear-gradient(90deg,rgba(245,158,11,.06),#fff 42%)}.ech-state{display:inline-flex;align-items:center;gap:.25rem;font-size:.66rem;font-weight:900;color:#92400e}.ech-panel{border:1px solid #e2e8f0;background:#f8fbff;border-radius:10px;padding:.75rem;margin:.75rem 0}.ech-panel-title{font-size:.78rem;font-weight:900;color:#0f172a;margin-bottom:.55rem}.ech-presets{display:flex;gap:.4rem;flex-wrap:wrap}.ech-chip-btn{border:1px solid rgba(4,83,203,.18);background:#fff;color:#0453cb;border-radius:999px;padding:.35rem .58rem;font-size:.72rem;font-weight:800}.ech-chip-btn:hover{background:#0453cb;color:#fff}.ech-total{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin:.65rem 0;padding:.55rem .65rem;border-radius:9px;background:#fff;border:1px solid #e2e8f0}.ech-total strong{color:#0f172a}.ech-total.is-bad{border-color:rgba(220,38,38,.35);background:rgba(254,242,242,.72)}.ech-total.is-ok{border-color:rgba(16,185,129,.35);background:rgba(240,253,244,.72)}.ech-preview-list{display:grid;gap:.35rem}.ech-preview-line{display:grid;grid-template-columns:1fr auto;gap:.75rem;padding:.45rem .55rem;border-radius:8px;background:#fff;border:1px solid #e2e8f0;font-size:.75rem}.ech-copy-grid,.ech-sim-grid{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:end}.ech-copy-grid{grid-template-columns:1fr auto}.ech-sim-result{margin-top:.55rem;display:grid;gap:.3rem;font-size:.75rem;color:#334155}.ech-sim-result div{display:flex;justify-content:space-between;gap:.75rem;border-bottom:1px dashed #dbe3ef;padding-bottom:.25rem}@media(max-width:1200px){.ech-diagnostics{grid-template-columns:repeat(3,1fr)}.ech-filter-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:680px){.ech-diagnostics,.ech-filter-grid,.ech-copy-grid,.ech-sim-grid{grid-template-columns:1fr}}
+.ech-scope-check{display:inline-flex;align-items:center;justify-content:center;margin-right:.35rem}.ech-scope-main{display:flex;align-items:flex-start;gap:.25rem}.ech-bulk{display:grid;grid-template-columns:1fr auto auto;gap:.45rem;align-items:center;margin-bottom:.65rem}.ech-bulk .ech-select{height:2.15rem;font-size:.75rem}.ech-bulk button{height:2.15rem;padding:.35rem .6rem;font-size:.72rem}@media(max-width:680px){.ech-bulk{grid-template-columns:1fr 1fr}}
 </style>
 @endpush
 
@@ -54,6 +56,15 @@
             </div>
         @endif
 
+        <div class="ech-diagnostics">
+            <div class="ech-diag"><div class="ech-diag-value">{{ $scopeDiagnostics['total'] }}</div><div class="ech-diag-label">Scopes</div></div>
+            <div class="ech-diag"><div class="ech-diag-value">{{ $scopeDiagnostics['configured'] }}</div><div class="ech-diag-label">Configures</div></div>
+            <div class="ech-diag"><div class="ech-diag-value">{{ $scopeDiagnostics['unconfigured'] }}</div><div class="ech-diag-label">Sans regle</div></div>
+            <div class="ech-diag"><div class="ech-diag-value">{{ $scopeDiagnostics['active_rules'] }}</div><div class="ech-diag-label">Actives</div></div>
+            <div class="ech-diag"><div class="ech-diag-value">{{ $scopeDiagnostics['inactive_rules'] }}</div><div class="ech-diag-label">Inactives</div></div>
+            <div class="ech-diag"><div class="ech-diag-value">{{ $scopeDiagnostics['invalid_totals'] }}</div><div class="ech-diag-label">A verifier</div></div>
+        </div>
+
         <div class="ech-grid">
             <div class="ech-stack">
                 <div class="ech-card">
@@ -69,6 +80,19 @@
                             </label>
                             <span class="ech-count-pill" data-scope-count="mandatory">{{ $configurations->count() }}</span>
                         </div>
+                        <div class="ech-filter-grid" data-filter-group="mandatory">
+                            <select class="ech-select" data-scope-filter="filiere"><option value="">Toutes filieres</option>@foreach($filieres as $filiere)<option value="{{ $filiere->id }}">{{ $filiere->name }}</option>@endforeach</select>
+                            <select class="ech-select" data-scope-filter="niveau"><option value="">Tous niveaux</option>@foreach($niveaux as $niveau)<option value="{{ $niveau->id }}">{{ $niveau->name }}</option>@endforeach</select>
+                            <select class="ech-select" data-scope-filter="category"><option value="">Tous frais</option>@foreach($fraisCategories as $category)<option value="{{ $category->id }}">{{ $category->name }}</option>@endforeach</select>
+                            <select class="ech-select" data-scope-filter="status"><option value="">Tous etats</option><option value="configured">Configures</option><option value="unconfigured">Sans regle</option><option value="inactive">Avec inactive</option><option value="invalid">Total a verifier</option></select>
+                        </div>
+                        <form method="POST" action="{{ route('esbtp.comptabilite.echeanciers.bulk-status') }}" class="ech-bulk" data-bulk-form="mandatory">
+                            @csrf
+                            <input type="hidden" name="affectation_status" value="{{ $selectedStatus }}">
+                            <select name="is_active" class="ech-select"><option value="1">Activer selection</option><option value="0">Desactiver selection</option></select>
+                            <button type="submit" class="btn-acasi secondary"><i class="fas fa-toggle-on"></i>Appliquer</button>
+                            <button type="button" class="btn-acasi secondary" data-select-visible="mandatory"><i class="fas fa-check-square"></i>Visibles</button>
+                        </form>
                         <div class="ech-scope-list">
                             @forelse($configurations as $configuration)
                                 @php
@@ -76,16 +100,29 @@
                                     $scopeRules = $rulesByScope->get($scopeKey, collect());
                                     $isSelected = $selectedScopeType === 'configuration' && (int) $selectedScopeId === (int) $configuration->id;
                                 @endphp
-                                <a class="ech-scope {{ $isSelected ? 'is-selected' : '' }}" data-scope-item="mandatory" data-search-text="{{ Str::lower(($configuration->fraisCategory->name ?? '') . ' ' . ($configuration->filiere->name ?? '') . ' ' . ($configuration->niveau->name ?? '')) }}" data-ech-scope-link href="{{ route('esbtp.comptabilite.echeanciers.index', ['scope_type' => 'configuration', 'scope_id' => $configuration->id, 'affectation_status' => $selectedStatus]) }}">
-                                    <span>
+                                @php
+                                    $hasRules = $scopeRules->isNotEmpty();
+                                    $hasInactive = $scopeRules->where('is_active', false)->isNotEmpty();
+                                    $hasInvalid = $scopeRules->filter(function ($rule) {
+                                        $active = $rule->lines->where('is_active', true);
+                                        $percent = $active->where('amount_mode', 'percent');
+                                        return $active->isEmpty() || ($percent->isNotEmpty() && abs((float) $percent->sum('amount_value') - 100) >= 0.01);
+                                    })->isNotEmpty();
+                                    $scopeState = $hasInvalid ? 'invalid' : ($hasInactive ? 'inactive' : ($hasRules ? 'configured' : 'unconfigured'));
+                                @endphp
+                                <a class="ech-scope {{ $isSelected ? 'is-selected' : '' }}" data-scope-item="mandatory" data-filiere="{{ $configuration->filiere_id }}" data-niveau="{{ $configuration->niveau_id }}" data-category="{{ $configuration->frais_category_id }}" data-status="{{ $scopeState }}" data-search-text="{{ \Illuminate\Support\Str::lower(($configuration->fraisCategory->name ?? '') . ' ' . ($configuration->filiere->name ?? '') . ' ' . ($configuration->niveau->name ?? '')) }}" data-ech-scope-link href="{{ route('esbtp.comptabilite.echeanciers.index', ['scope_type' => 'configuration', 'scope_id' => $configuration->id, 'affectation_status' => $selectedStatus]) }}">
+                                    <span class="ech-scope-main">
+                                        <span class="ech-scope-check"><input type="checkbox" data-scope-checkbox="mandatory" data-target-value="configuration:{{ $configuration->id }}" onclick="event.stopPropagation()"></span>
+                                        <span>
                                         <span class="ech-scope-name">{{ $configuration->fraisCategory->name ?? 'Frais' }}</span>
                                         <span class="ech-scope-meta d-block">{{ $configuration->filiere->name ?? 'N/A' }} / {{ $configuration->niveau->name ?? 'N/A' }}</span>
                                         <span class="ech-badges">
                                             @forelse($scopeRules as $rule)
                                                 <span class="ech-badge {{ $rule->is_active ? 'ech-badge-on' : 'ech-badge-off' }}">{{ $statusLabels[$rule->affectation_status] ?? $rule->affectation_status }} · {{ $rule->lines->count() }}</span>
                                             @empty
-                                                <span class="ech-sub">Aucune regle</span>
+                                                <span class="ech-state"><i class="fas fa-clock"></i>Fallback J+{{ $configuration->payment_deadline_days ?? 30 }}</span>
                                             @endforelse
+                                        </span>
                                         </span>
                                     </span>
                                     <span class="ech-scope-icon"><i class="fas fa-sliders-h"></i></span>
@@ -110,6 +147,19 @@
                             </label>
                             <span class="ech-count-pill" data-scope-count="optional">{{ $optionAssignments->count() }}</span>
                         </div>
+                        <div class="ech-filter-grid" data-filter-group="optional">
+                            <select class="ech-select" data-scope-filter="filiere"><option value="">Toutes filieres</option>@foreach($filieres as $filiere)<option value="{{ $filiere->id }}">{{ $filiere->name }}</option>@endforeach</select>
+                            <select class="ech-select" data-scope-filter="niveau"><option value="">Tous niveaux</option>@foreach($niveaux as $niveau)<option value="{{ $niveau->id }}">{{ $niveau->name }}</option>@endforeach</select>
+                            <select class="ech-select" data-scope-filter="category"><option value="">Tous frais</option>@foreach($fraisCategories as $category)<option value="{{ $category->id }}">{{ $category->name }}</option>@endforeach</select>
+                            <select class="ech-select" data-scope-filter="status"><option value="">Tous etats</option><option value="configured">Configures</option><option value="unconfigured">Sans regle</option><option value="inactive">Avec inactive</option><option value="invalid">Total a verifier</option></select>
+                        </div>
+                        <form method="POST" action="{{ route('esbtp.comptabilite.echeanciers.bulk-status') }}" class="ech-bulk" data-bulk-form="optional">
+                            @csrf
+                            <input type="hidden" name="affectation_status" value="{{ $selectedStatus }}">
+                            <select name="is_active" class="ech-select"><option value="1">Activer selection</option><option value="0">Desactiver selection</option></select>
+                            <button type="submit" class="btn-acasi secondary"><i class="fas fa-toggle-on"></i>Appliquer</button>
+                            <button type="button" class="btn-acasi secondary" data-select-visible="optional"><i class="fas fa-check-square"></i>Visibles</button>
+                        </form>
                         <div class="ech-scope-list">
                             @forelse($optionAssignments as $assignment)
                                 @php
@@ -117,16 +167,29 @@
                                     $scopeRules = $rulesByScope->get($scopeKey, collect());
                                     $isSelected = $selectedScopeType === 'option_assignment' && (int) $selectedScopeId === (int) $assignment->id;
                                 @endphp
-                                <a class="ech-scope {{ $isSelected ? 'is-selected' : '' }}" data-scope-item="optional" data-search-text="{{ Str::lower(($assignment->option->fraisCategory->name ?? '') . ' ' . ($assignment->option->name ?? '') . ' ' . ($assignment->display_label ?? '')) }}" data-ech-scope-link href="{{ route('esbtp.comptabilite.echeanciers.index', ['scope_type' => 'option_assignment', 'scope_id' => $assignment->id, 'affectation_status' => $selectedStatus]) }}">
-                                    <span>
+                                @php
+                                    $hasRules = $scopeRules->isNotEmpty();
+                                    $hasInactive = $scopeRules->where('is_active', false)->isNotEmpty();
+                                    $hasInvalid = $scopeRules->filter(function ($rule) {
+                                        $active = $rule->lines->where('is_active', true);
+                                        $percent = $active->where('amount_mode', 'percent');
+                                        return $active->isEmpty() || ($percent->isNotEmpty() && abs((float) $percent->sum('amount_value') - 100) >= 0.01);
+                                    })->isNotEmpty();
+                                    $scopeState = $hasInvalid ? 'invalid' : ($hasInactive ? 'inactive' : ($hasRules ? 'configured' : 'unconfigured'));
+                                @endphp
+                                <a class="ech-scope {{ $isSelected ? 'is-selected' : '' }}" data-scope-item="optional" data-filiere="{{ $assignment->filiere_id }}" data-niveau="{{ $assignment->niveau_id }}" data-category="{{ $assignment->option->frais_category_id ?? '' }}" data-status="{{ $scopeState }}" data-search-text="{{ \Illuminate\Support\Str::lower(($assignment->option->fraisCategory->name ?? '') . ' ' . ($assignment->option->name ?? '') . ' ' . ($assignment->display_label ?? '')) }}" data-ech-scope-link href="{{ route('esbtp.comptabilite.echeanciers.index', ['scope_type' => 'option_assignment', 'scope_id' => $assignment->id, 'affectation_status' => $selectedStatus]) }}">
+                                    <span class="ech-scope-main">
+                                        <span class="ech-scope-check"><input type="checkbox" data-scope-checkbox="optional" data-target-value="option_assignment:{{ $assignment->id }}" onclick="event.stopPropagation()"></span>
+                                        <span>
                                         <span class="ech-scope-name">{{ $assignment->option->fraisCategory->name ?? 'Option' }} - {{ $assignment->option->name ?? 'N/A' }}</span>
                                         <span class="ech-scope-meta d-block">{{ $assignment->display_label }}</span>
                                         <span class="ech-badges">
                                             @forelse($scopeRules as $rule)
                                                 <span class="ech-badge {{ $rule->is_active ? 'ech-badge-on' : 'ech-badge-off' }}">{{ $statusLabels[$rule->affectation_status] ?? $rule->affectation_status }} · {{ $rule->lines->count() }}</span>
                                             @empty
-                                                <span class="ech-sub">Aucune regle</span>
+                                                <span class="ech-state"><i class="fas fa-clock"></i>Fallback J+30</span>
                                             @endforelse
+                                        </span>
                                         </span>
                                     </span>
                                     <span class="ech-scope-icon"><i class="fas fa-sliders-h"></i></span>
@@ -222,6 +285,17 @@
                                 <textarea name="notes" class="ech-textarea" placeholder="Commentaire interne optionnel">{{ old('notes', $selectedRule->notes ?? '') }}</textarea>
                             </div>
 
+                            <div class="ech-panel">
+                                <div class="ech-panel-title">Presets rapides</div>
+                                <div class="ech-presets">
+                                    <button type="button" class="ech-chip-btn" data-preset="single">Paiement unique</button>
+                                    <button type="button" class="ech-chip-btn" data-preset="half">50 / 50</button>
+                                    <button type="button" class="ech-chip-btn" data-preset="three">30 / 40 / 30</button>
+                                    <button type="button" class="ech-chip-btn" data-preset="monthly">Mensuel x4</button>
+                                    <button type="button" class="ech-chip-btn" data-preset="quarterly">Trimestriel</button>
+                                </div>
+                            </div>
+
                             <div class="mb-2" style="display:flex;align-items:center;justify-content:space-between;gap:.5rem;">
                                 <label class="ech-label" style="margin:0;">Tranches</label>
                                 <button type="button" data-add-line class="btn-acasi secondary" style="padding:.38rem .68rem;font-size:.72rem;"><i class="fas fa-plus"></i>Ajouter</button>
@@ -260,11 +334,61 @@
                                 </table>
                             </div>
 
+                            <div class="ech-total" data-total-box>
+                                <span><strong>Total pourcentage</strong> <span data-percent-total>0%</span></span>
+                                <span data-total-message>Les tranches en pourcentage doivent totaliser 100%.</span>
+                            </div>
+
+                            <div class="ech-panel">
+                                <div class="ech-panel-title">Previsualisation</div>
+                                <div class="ech-form-grid mb-2">
+                                    <div class="ech-field">
+                                        <label>Montant de simulation</label>
+                                        <input type="number" class="ech-input" data-preview-amount value="{{ round($selectedPreviewAmount) }}" min="0" step="1000">
+                                    </div>
+                                    <div class="ech-field">
+                                        <label>Date de reference</label>
+                                        <input type="date" class="ech-input" data-preview-date value="{{ now()->toDateString() }}">
+                                    </div>
+                                </div>
+                                <div class="ech-preview-list" data-preview-list></div>
+                            </div>
+
                             <div class="ech-actions">
                                 <button type="submit" class="btn-acasi primary"><i class="fas fa-save"></i>Enregistrer la regle</button>
                                 <span class="ech-help">Pour une date fixe, format attendu: <code>MM-DD</code> (ex: <code>10-15</code>).</span>
                             </div>
                         </form>
+
+                        @if($selectedRule)
+                            <div class="ech-panel">
+                                <div class="ech-panel-title">Copier cette regle</div>
+                                <form method="POST" action="{{ route('esbtp.comptabilite.echeanciers.copy') }}" class="ech-copy-grid">
+                                    @csrf
+                                    <input type="hidden" name="source_scope_type" value="{{ $selectedScopeType }}">
+                                    <input type="hidden" name="source_scope_id" value="{{ $selectedScopeId }}">
+                                    <input type="hidden" name="affectation_status" value="{{ $selectedStatus }}">
+                                    <select name="copy_mode" class="ech-select">
+                                        <option value="same_filiere">Vers la meme filiere</option>
+                                        <option value="same_niveau">Vers le meme niveau</option>
+                                        <option value="all_unconfigured">Vers toutes les configurations sans regle</option>
+                                    </select>
+                                    <button type="submit" class="btn-acasi secondary"><i class="fas fa-copy"></i>Copier</button>
+                                </form>
+                            </div>
+                        @endif
+
+                        <div class="ech-panel">
+                            <div class="ech-panel-title">Simulation inscription</div>
+                            <form class="ech-sim-grid" data-sim-form action="{{ route('esbtp.comptabilite.echeanciers.simulate') }}">
+                                <div class="ech-field">
+                                    <label>ID inscription</label>
+                                    <input type="number" class="ech-input" name="inscription_id" min="1" placeholder="Ex: 1250">
+                                </div>
+                                <button type="submit" class="btn-acasi secondary"><i class="fas fa-vial"></i>Simuler</button>
+                            </form>
+                            <div class="ech-sim-result" data-sim-result></div>
+                        </div>
                     @endif
                 </div>
             </div>
@@ -287,6 +411,8 @@
             addBtn.addEventListener('click', function () {
                 const index = linesBody.querySelectorAll('tr').length;
                 linesBody.insertAdjacentHTML('beforeend', lineRow(index));
+                initEcheanciersPage(root);
+                updateRuleDiagnostics(root);
             });
         }
 
@@ -296,6 +422,7 @@
                 const button = event.target.closest('[data-remove-line]');
                 if (!button || linesBody.querySelectorAll('tr').length <= 1) return;
                 button.closest('tr').remove();
+                updateRuleDiagnostics(root);
             });
         }
 
@@ -306,15 +433,106 @@
                 filterScopes(root, input.dataset.target, input.value);
             });
         });
+
+        root.querySelectorAll('[data-scope-filter]').forEach(function (select) {
+            if (select.dataset.bound) return;
+            select.dataset.bound = '1';
+            select.addEventListener('change', function () {
+                const group = select.closest('[data-filter-group]');
+                if (group) applyStructuredFilters(root, group.dataset.filterGroup);
+            });
+        });
+
+        root.querySelectorAll('[data-preset]').forEach(function (button) {
+            if (button.dataset.bound) return;
+            button.dataset.bound = '1';
+            button.addEventListener('click', function () {
+                applyPreset(root, button.dataset.preset);
+            });
+        });
+
+        root.querySelectorAll('[data-lines-body] input, [data-lines-body] select, [data-preview-amount], [data-preview-date]').forEach(function (field) {
+            if (field.dataset.calcBound) return;
+            field.dataset.calcBound = '1';
+            field.addEventListener('input', function () {
+                updateRuleDiagnostics(root);
+            });
+            field.addEventListener('change', function () {
+                updateRuleDiagnostics(root);
+            });
+        });
+
+        const simForm = root.querySelector('[data-sim-form]');
+        if (simForm && !simForm.dataset.bound) {
+            simForm.dataset.bound = '1';
+            simForm.addEventListener('submit', function (event) {
+                event.preventDefault();
+                simulateInscription(root, simForm);
+            });
+        }
+
+        root.querySelectorAll('[data-select-visible]').forEach(function (button) {
+            if (button.dataset.bound) return;
+            button.dataset.bound = '1';
+            button.addEventListener('click', function () {
+                const target = button.dataset.selectVisible;
+                root.querySelectorAll(`[data-scope-checkbox="${target}"]`).forEach(function (checkbox) {
+                    const item = checkbox.closest('[data-scope-item]');
+                    checkbox.checked = item && !item.classList.contains('ech-hidden');
+                });
+            });
+        });
+
+        root.querySelectorAll('[data-bulk-form]').forEach(function (form) {
+            if (form.dataset.bound) return;
+            form.dataset.bound = '1';
+            form.addEventListener('submit', function (event) {
+                form.querySelectorAll('[data-generated-target]').forEach(el => el.remove());
+                const target = form.dataset.bulkForm;
+                const selected = Array.from(root.querySelectorAll(`[data-scope-checkbox="${target}"]:checked`));
+                if (!selected.length) {
+                    event.preventDefault();
+                    return;
+                }
+                selected.forEach(function (checkbox) {
+                    const input = document.createElement('input');
+                    input.type = 'hidden';
+                    input.name = 'targets[]';
+                    input.value = checkbox.dataset.targetValue;
+                    input.dataset.generatedTarget = '1';
+                    form.appendChild(input);
+                });
+            });
+        });
+
+        updateRuleDiagnostics(root);
     }
 
     function filterScopes(root, target, value) {
-        const query = (value || '').trim().toLowerCase();
+        applyStructuredFilters(root, target, value);
+    }
+
+    function applyStructuredFilters(root, target, searchValue) {
+        const group = root.querySelector(`[data-filter-group="${target}"]`);
+        const filters = {};
+        if (group) {
+            group.querySelectorAll('[data-scope-filter]').forEach(function (field) {
+                filters[field.dataset.scopeFilter] = field.value;
+            });
+        }
+
+        const search = searchValue !== undefined
+            ? searchValue
+            : (root.querySelector(`[data-scope-search][data-target="${target}"]`)?.value || '');
         let visible = 0;
 
         root.querySelectorAll(`[data-scope-item="${target}"]`).forEach(function (item) {
             const haystack = item.dataset.searchText || item.textContent.toLowerCase();
-            const match = !query || haystack.includes(query);
+            const queryMatch = !search.trim() || haystack.includes(search.trim().toLowerCase());
+            const filterMatch = Object.entries(filters).every(function ([key, expected]) {
+                return !expected || (item.dataset[key] || '') === expected;
+            });
+            const match = queryMatch && filterMatch;
             item.classList.toggle('ech-hidden', !match);
             if (match) visible++;
         });
@@ -323,15 +541,130 @@
         if (counter) counter.textContent = visible;
     }
 
-    function lineRow(index) {
+    function applyPreset(root, preset) {
+        const presets = {
+            single: [[100, 30]],
+            half: [[50, 0], [50, 30]],
+            three: [[30, 0], [40, 30], [30, 60]],
+            monthly: [[25, 0], [25, 30], [25, 60], [25, 90]],
+            quarterly: [[34, 0], [33, 90], [33, 180]],
+        };
+        const lines = presets[preset] || presets.single;
+        const body = root.querySelector('[data-lines-body]');
+        if (!body) return;
+
+        body.innerHTML = lines.map(function (line, index) {
+            return lineRow(index, line[0], line[1]);
+        }).join('');
+
+        body.dataset.bound = '';
+        initEcheanciersPage(root);
+        updateRuleDiagnostics(root);
+    }
+
+    function updateRuleDiagnostics(root) {
+        const body = root.querySelector('[data-lines-body]');
+        if (!body) return;
+
+        const rows = Array.from(body.querySelectorAll('tr'));
+        const percentTotal = rows.reduce(function (sum, row) {
+            const mode = row.querySelector('select[name*="[amount_mode]"]')?.value;
+            const active = row.querySelector('input[name*="[is_active]"]')?.checked !== false;
+            const value = parseFloat(row.querySelector('input[name*="[amount_value]"]')?.value || '0');
+            return mode === 'percent' && active ? sum + value : sum;
+        }, 0);
+
+        const totalBox = root.querySelector('[data-total-box]');
+        const totalValue = root.querySelector('[data-percent-total]');
+        const totalMessage = root.querySelector('[data-total-message]');
+        if (totalBox && totalValue && totalMessage) {
+            totalValue.textContent = `${percentTotal.toFixed(2).replace('.00', '')}%`;
+            totalBox.classList.toggle('is-ok', Math.abs(percentTotal - 100) < 0.01);
+            totalBox.classList.toggle('is-bad', Math.abs(percentTotal - 100) >= 0.01);
+            totalMessage.textContent = Math.abs(percentTotal - 100) < 0.01
+                ? 'Total coherent.'
+                : 'Ajustez les lignes pour atteindre 100%.';
+        }
+
+        updatePreview(root, rows);
+    }
+
+    function updatePreview(root, rows) {
+        const list = root.querySelector('[data-preview-list]');
+        if (!list) return;
+
+        const amount = parseFloat(root.querySelector('[data-preview-amount]')?.value || '0');
+        const baseDateValue = root.querySelector('[data-preview-date]')?.value;
+        const baseDate = baseDateValue ? new Date(baseDateValue + 'T00:00:00') : new Date();
+
+        list.innerHTML = rows.map(function (row) {
+            const label = row.querySelector('input[name*="[label]"]')?.value || 'Tranche';
+            const amountMode = row.querySelector('select[name*="[amount_mode]"]')?.value;
+            const amountValue = parseFloat(row.querySelector('input[name*="[amount_value]"]')?.value || '0');
+            const dueMode = row.querySelector('select[name*="[due_mode]"]')?.value;
+            const dueValue = row.querySelector('input[name*="[due_value]"]')?.value || '0';
+            const lineAmount = amountMode === 'percent' ? amount * amountValue / 100 : amountValue;
+            const dueDate = resolveDueDate(baseDate, dueMode, dueValue);
+
+            return `<div class="ech-preview-line"><span>${escapeHtml(label)} · ${formatAmount(lineAmount)} FCFA</span><strong>${dueDate}</strong></div>`;
+        }).join('');
+    }
+
+    function resolveDueDate(baseDate, mode, value) {
+        if (mode === 'fixed_mm_dd' && /^\d{2}-\d{2}$/.test(value)) {
+            const year = baseDate.getFullYear();
+            return `${String(value).replace('-', '/')}/${year}`;
+        }
+        const days = parseInt(value || '0', 10);
+        const date = new Date(baseDate);
+        date.setDate(date.getDate() + (Number.isFinite(days) ? days : 0));
+        return date.toLocaleDateString('fr-FR');
+    }
+
+    async function simulateInscription(root, form) {
+        const result = root.querySelector('[data-sim-result]');
+        if (!result) return;
+        result.innerHTML = '<div><span>Simulation</span><strong>Chargement...</strong></div>';
+
+        try {
+            const params = new URLSearchParams(new FormData(form));
+            const response = await fetch(`${form.action}?${params.toString()}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } });
+            const data = await response.json();
+            if (!data.success) throw new Error('Simulation impossible');
+            result.innerHTML = [
+                ['Etudiant', data.student || 'N/A'],
+                ['Classe', data.classe || 'N/A'],
+                ['Total du', `${formatAmount(data.total_due)} FCFA`],
+                ['Attendu a date', `${formatAmount(data.expected_due_to_date)} FCFA`],
+                ['Paye a date', `${formatAmount(data.paid_due_to_date)} FCFA`],
+                ['Echu impaye', `${formatAmount(data.overdue_amount)} FCFA`],
+                ['Retard', `${data.overdue_days || 0} j`],
+                ['Risque', data.risk_label || 'N/A'],
+            ].map(([k, v]) => `<div><span>${k}</span><strong>${v}</strong></div>`).join('');
+        } catch (error) {
+            result.innerHTML = '<div><span>Erreur</span><strong>Inscription introuvable ou non simulable</strong></div>';
+        }
+    }
+
+    function formatAmount(value) {
+        return new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 }).format(Number(value || 0));
+    }
+
+    function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, function (char) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char];
+        });
+    }
+
+    function lineRow(index, percent = 0, days = 30) {
         return `
             <tr>
                 <td><input type="text" class="ech-input" name="lines[${index}][label]" value="Tranche ${index + 1}" required></td>
                 <td><input type="number" class="ech-input" name="lines[${index}][sort_order]" min="1" max="99" value="${index + 1}"></td>
                 <td><select class="ech-select" name="lines[${index}][amount_mode]"><option value="percent">Pourcentage</option><option value="fixed">Montant fixe</option></select></td>
-                <td><input type="number" step="0.01" min="0" class="ech-input" name="lines[${index}][amount_value]" value="0" required></td>
+                <td><input type="number" step="0.01" min="0" class="ech-input" name="lines[${index}][amount_value]" value="${percent}" required></td>
                 <td><select class="ech-select" name="lines[${index}][due_mode]"><option value="days_after_inscription">Apres inscription</option><option value="fixed_mm_dd">Date fixe</option></select></td>
-                <td><input type="text" class="ech-input" name="lines[${index}][due_value]" value="30" required></td>
+                <td><input type="text" class="ech-input" name="lines[${index}][due_value]" value="${days}" required></td>
                 <td><input type="number" min="0" max="365" class="ech-input" name="lines[${index}][grace_days]" value="0"></td>
                 <td><input type="checkbox" name="lines[${index}][is_active]" value="1" checked></td>
                 <td><button type="button" class="ech-icon-btn" data-remove-line title="Retirer"><i class="fas fa-times"></i></button></td>
@@ -340,6 +673,7 @@
     }
 
     document.addEventListener('click', async function (event) {
+        if (event.target.closest('[data-scope-checkbox]')) return;
         const link = event.target.closest('[data-ech-scope-link]');
         if (!link || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
 
