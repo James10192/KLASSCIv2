@@ -50,6 +50,8 @@ Le tour doit :
 - afficher la progression;
 - se fermer avec `Escape`;
 - ignorer automatiquement les etapes dont le bloc n'est pas visible;
+- couvrir aussi les actions secondaires importantes (`Appliquer`, `Visibles`, actions en masse, sections optionnelles);
+- injecter des donnees demo temporaires pendant le guide quand une liste est vide;
 - continuer a fonctionner apres navigation AJAX ou remplacement partiel du DOM.
 
 ### 3. Etapes utiles
@@ -62,6 +64,7 @@ Preferer des etapes orientees workflow :
 5. Verifier la coherence.
 6. Simuler / previsualiser.
 7. Enregistrer ou appliquer en masse.
+8. Expliquer les sections vides avec une ligne demo temporaire si necessaire.
 
 Eviter les etapes qui decrivent seulement le visuel :
 - "ceci est un bouton";
@@ -76,6 +79,8 @@ Eviter les etapes qui decrivent seulement le visuel :
 - Ne pas auto-lancer le guide sans demande utilisateur, sauf onboarding explicitement demande.
 - Sur mobile, placer la carte du guide en bas de l'ecran pour eviter les chevauchements.
 - Le highlight doit etre visible sans casser le layout.
+- Les donnees demo ne doivent jamais etre sauvegardees ni envoyees au serveur.
+- Les donnees demo doivent etre marquees visuellement comme exemples du guide.
 
 ## Implementation technique
 
@@ -84,13 +89,17 @@ Pour Blade legacy / Alpine-light :
 - garder le JS local a la vue si le pattern n'est pas encore composantise;
 - utiliser une liste declarative d'etapes `{ selector, title, text }`;
 - filtrer les etapes sans cible visible;
+- avant de calculer les etapes, injecter des demos avec `data-tour-demo` dans les listes vides utiles;
 - nettoyer les nodes du tour avant chaque nouvelle etape;
+- supprimer toutes les demos au cleanup;
 - retirer toutes les classes de highlight au cleanup.
 
 Checklist technique :
 - [ ] `Escape` ferme le guide.
 - [ ] Clic sur `Quitter` nettoie overlay + highlight.
 - [ ] Les etapes invisibles sont ignorees.
+- [ ] Les listes vides montrent une ligne demo uniquement pendant le guide.
+- [ ] Les demos portent un attribut `data-*` nettoye a la fermeture.
 - [ ] Le tour fonctionne apres AJAX / DOM replace.
 - [ ] Le guide n'ajoute pas de scroll horizontal.
 - [ ] La page compile avec `php artisan view:cache`.
@@ -104,6 +113,8 @@ Checklist technique :
 5. Laisser un overlay ou une classe highlight apres fermeture.
 6. Hardcoder des positions fixes qui cassent sur mobile.
 7. Bloquer la page avec un guide lance automatiquement a chaque visite.
+8. Laisser des donnees demo dans le DOM apres fermeture du guide.
+9. Oublier les controles secondaires importants parce qu'ils sont petits (`Appliquer`, `Visibles`, bulk actions).
 
 ## Exemple fondateur
 

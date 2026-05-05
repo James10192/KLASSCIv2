@@ -9,7 +9,7 @@
 .ech-diagnostics{display:grid;grid-template-columns:repeat(6,minmax(110px,1fr));gap:.65rem;margin-bottom:1rem}.ech-diag{background:#fff;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:.72rem .8rem}.ech-diag-value{font-size:1rem;font-weight:900;color:#0453cb}.ech-diag-label{font-size:.68rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:0}.ech-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem;margin-bottom:.65rem}.ech-filter-grid .ech-select{min-height:2.15rem;padding:.42rem .6rem;font-size:.75rem}.ech-filter-reset{height:2.15rem;border:1px solid #dbe3ef;border-radius:8px;background:#fff;color:#64748b;font-weight:800;font-size:.74rem}.ech-scope[data-status="unconfigured"]{border-color:rgba(245,158,11,.34);background:linear-gradient(90deg,rgba(245,158,11,.06),#fff 42%)}.ech-state{display:inline-flex;align-items:center;gap:.25rem;font-size:.66rem;font-weight:900;color:#92400e}.ech-panel{border:1px solid #e2e8f0;background:#f8fbff;border-radius:10px;padding:.75rem;margin:.75rem 0}.ech-panel-title{font-size:.78rem;font-weight:900;color:#0f172a;margin-bottom:.55rem}.ech-presets{display:flex;gap:.4rem;flex-wrap:wrap}.ech-chip-btn{border:1px solid rgba(4,83,203,.18);background:#fff;color:#0453cb;border-radius:999px;padding:.35rem .58rem;font-size:.72rem;font-weight:800}.ech-chip-btn:hover{background:#0453cb;color:#fff}.ech-total{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin:.65rem 0;padding:.55rem .65rem;border-radius:9px;background:#fff;border:1px solid #e2e8f0}.ech-total strong{color:#0f172a}.ech-total.is-bad{border-color:rgba(220,38,38,.35);background:rgba(254,242,242,.72)}.ech-total.is-ok{border-color:rgba(16,185,129,.35);background:rgba(240,253,244,.72)}.ech-preview-list{display:grid;gap:.35rem}.ech-preview-line{display:grid;grid-template-columns:1fr auto;gap:.75rem;padding:.45rem .55rem;border-radius:8px;background:#fff;border:1px solid #e2e8f0;font-size:.75rem}.ech-copy-grid,.ech-sim-grid{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:end}.ech-copy-grid{grid-template-columns:1fr auto}.ech-sim-result{margin-top:.55rem;display:grid;gap:.3rem;font-size:.75rem;color:#334155}.ech-sim-result div{display:flex;justify-content:space-between;gap:.75rem;border-bottom:1px dashed #dbe3ef;padding-bottom:.25rem}@media(max-width:1200px){.ech-diagnostics{grid-template-columns:repeat(3,1fr)}.ech-filter-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:680px){.ech-diagnostics,.ech-filter-grid,.ech-copy-grid,.ech-sim-grid{grid-template-columns:1fr}}
 .ech-scope-check{display:inline-flex;align-items:center;justify-content:center;margin-right:.35rem}.ech-scope-main{display:flex;align-items:flex-start;gap:.25rem}.ech-bulk{display:grid;grid-template-columns:1fr auto auto;gap:.45rem;align-items:center;margin-bottom:.65rem}.ech-bulk .ech-select{height:2.15rem;font-size:.75rem}.ech-bulk button{height:2.15rem;padding:.35rem .6rem;font-size:.72rem}@media(max-width:680px){.ech-bulk{grid-template-columns:1fr 1fr}}
 .ech-help-button{display:inline-flex;align-items:center;gap:.45rem;border-color:rgba(4,83,203,.22)!important;background:#fff!important;color:#0453cb!important}.ech-help-modal{position:fixed;inset:0;z-index:1055;display:none;align-items:center;justify-content:center;padding:1.25rem;background:rgba(15,23,42,.45);backdrop-filter:blur(4px)}.ech-help-modal.is-open{display:flex}.ech-help-dialog{width:min(920px,100%);max-height:min(760px,92vh);display:flex;flex-direction:column;background:#fff;border:1px solid rgba(148,163,184,.3);border-radius:12px;box-shadow:0 28px 70px rgba(15,23,42,.28);overflow:hidden}.ech-help-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1rem 1.15rem;border-bottom:1px solid #e2e8f0;background:linear-gradient(180deg,#f8fbff,#fff)}.ech-help-title{margin:0;font-size:1rem;font-weight:900;color:#0f172a}.ech-help-subtitle{margin:.18rem 0 0;color:#64748b;font-size:.78rem}.ech-help-close{width:2.15rem;height:2.15rem;border-radius:8px;border:1px solid #dbe3ef;background:#fff;color:#64748b;display:inline-flex;align-items:center;justify-content:center}.ech-help-close:hover{color:#dc2626;border-color:rgba(220,38,38,.28);background:#fff5f5}.ech-help-body{overflow:auto;padding:1rem 1.15rem}.ech-help-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.ech-help-section{border:1px solid #e2e8f0;border-radius:10px;background:#f8fbff;padding:.8rem}.ech-help-section h4{margin:0 0 .45rem;font-size:.82rem;font-weight:900;color:#0f172a}.ech-help-section ul{margin:0;padding-left:1rem;color:#334155;font-size:.77rem;line-height:1.55}.ech-help-section li+li{margin-top:.25rem}.ech-help-flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin-bottom:.85rem}.ech-help-step{border:1px solid rgba(4,83,203,.16);border-radius:10px;background:#fff;padding:.65rem}.ech-help-step strong{display:block;color:#0453cb;font-size:.75rem;margin-bottom:.2rem}.ech-help-step span{display:block;color:#475569;font-size:.72rem;line-height:1.35}.ech-help-note{margin-top:.85rem;border-left:3px solid #0453cb;background:#eef5ff;color:#1e3a8a;border-radius:8px;padding:.72rem .85rem;font-size:.77rem;line-height:1.45}@media(max-width:760px){.ech-help-grid,.ech-help-flow{grid-template-columns:1fr}.ech-help-dialog{max-height:94vh}.ech-help-modal{padding:.65rem}}
-.ech-tour-button{display:inline-flex;align-items:center;gap:.45rem}.ech-tour-mask{position:fixed;inset:0;z-index:1060;background:rgba(15,23,42,.52);backdrop-filter:blur(1px)}.ech-tour-highlight{position:relative!important;z-index:1061!important;box-shadow:0 0 0 4px rgba(4,83,203,.28),0 22px 55px rgba(15,23,42,.24)!important}.ech-tour-pop{position:fixed;z-index:1062;width:min(360px,calc(100vw - 24px));background:#fff;border:1px solid rgba(148,163,184,.34);border-radius:12px;box-shadow:0 28px 70px rgba(15,23,42,.28);padding:1rem}.ech-tour-kicker{font-size:.68rem;font-weight:900;color:#0453cb;text-transform:uppercase;letter-spacing:0;margin-bottom:.3rem}.ech-tour-title{margin:0;color:#0f172a;font-size:.95rem;font-weight:900}.ech-tour-text{margin:.45rem 0 0;color:#475569;font-size:.78rem;line-height:1.45}.ech-tour-actions{display:flex;align-items:center;justify-content:space-between;gap:.65rem;margin-top:.85rem}.ech-tour-actions-left,.ech-tour-actions-right{display:flex;align-items:center;gap:.45rem}.ech-tour-btn{height:2rem;border-radius:8px;border:1px solid #dbe3ef;background:#fff;color:#334155;font-size:.73rem;font-weight:800;padding:0 .65rem}.ech-tour-btn.primary{background:#0453cb;border-color:#0453cb;color:#fff}.ech-tour-btn:hover{border-color:rgba(4,83,203,.35)}.ech-tour-dots{display:flex;gap:.22rem}.ech-tour-dot{width:.42rem;height:.42rem;border-radius:999px;background:#cbd5e1}.ech-tour-dot.is-active{background:#0453cb}.ech-tour-skip{color:#64748b;background:transparent;border:0;font-size:.73rem;font-weight:800}@media(max-width:760px){.ech-tour-pop{left:12px!important;right:12px!important;top:auto!important;bottom:14px!important;width:auto}.ech-tour-highlight{box-shadow:0 0 0 3px rgba(4,83,203,.32)!important}}
+.ech-tour-button{display:inline-flex;align-items:center;gap:.45rem}.ech-tour-mask{position:fixed;inset:0;z-index:1060;background:rgba(15,23,42,.52);backdrop-filter:blur(1px)}.ech-tour-highlight{position:relative!important;z-index:1061!important;box-shadow:0 0 0 4px rgba(4,83,203,.28),0 22px 55px rgba(15,23,42,.24)!important}.ech-tour-pop{position:fixed;z-index:1062;width:min(360px,calc(100vw - 24px));background:#fff;border:1px solid rgba(148,163,184,.34);border-radius:12px;box-shadow:0 28px 70px rgba(15,23,42,.28);padding:1rem}.ech-tour-kicker{font-size:.68rem;font-weight:900;color:#0453cb;text-transform:uppercase;letter-spacing:0;margin-bottom:.3rem}.ech-tour-title{margin:0;color:#0f172a;font-size:.95rem;font-weight:900}.ech-tour-text{margin:.45rem 0 0;color:#475569;font-size:.78rem;line-height:1.45}.ech-tour-actions{display:flex;align-items:center;justify-content:space-between;gap:.65rem;margin-top:.85rem}.ech-tour-actions-left,.ech-tour-actions-right{display:flex;align-items:center;gap:.45rem}.ech-tour-btn{height:2rem;border-radius:8px;border:1px solid #dbe3ef;background:#fff;color:#334155;font-size:.73rem;font-weight:800;padding:0 .65rem}.ech-tour-btn.primary{background:#0453cb;border-color:#0453cb;color:#fff}.ech-tour-btn:hover{border-color:rgba(4,83,203,.35)}.ech-tour-dots{display:flex;gap:.22rem}.ech-tour-dot{width:.42rem;height:.42rem;border-radius:999px;background:#cbd5e1}.ech-tour-dot.is-active{background:#0453cb}.ech-tour-skip{color:#64748b;background:transparent;border:0;font-size:.73rem;font-weight:800}.ech-tour-demo-note{border:1px dashed rgba(4,83,203,.32);background:#f8fbff;color:#0453cb;border-radius:8px;padding:.45rem .55rem;font-size:.72rem;font-weight:800}.ech-tour-demo .ech-scope{border-style:dashed;background:linear-gradient(90deg,rgba(4,83,203,.05),#fff 45%)}@media(max-width:760px){.ech-tour-pop{left:12px!important;right:12px!important;top:auto!important;bottom:14px!important;width:auto}.ech-tour-highlight{box-shadow:0 0 0 3px rgba(4,83,203,.32)!important}}
 </style>
 @endpush
 
@@ -657,9 +657,24 @@
                 text: 'Combinez filière, niveau, catégorie de frais et état pour retrouver rapidement les configurations importantes.',
             },
             {
+                selector: '[data-bulk-form="mandatory"]',
+                title: 'Actions en masse',
+                text: 'Cochez plusieurs scopes, puis activez ou desactivez leurs regles pour le statut courant. Le bouton Visibles coche seulement les lignes filtrees.',
+            },
+            {
                 selector: '.ech-scope-list',
                 title: 'Comprendre les badges',
                 text: 'Fallback signifie qu’aucune règle active spécifique n’existe encore. Les badges indiquent les règles déjà créées par statut.',
+            },
+            {
+                selector: '.ech-stack .ech-card:nth-child(2)',
+                title: 'Assignations optionnelles',
+                text: 'Les options suivent le meme principe que les frais obligatoires. Pendant le guide, une ligne demo apparait si aucune option active n existe encore.',
+            },
+            {
+                selector: '[data-bulk-form="optional"]',
+                title: 'Meme logique pour les options',
+                text: 'Les actions en masse fonctionnent aussi sur les frais optionnels, avec selection visible et activation/desactivation par statut.',
             },
             {
                 selector: '.ech-grid > .ech-card:last-child',
@@ -698,6 +713,8 @@
         const shell = root.matches && root.matches('[data-ech-page]') ? root : document.querySelector('[data-ech-page]');
         if (!shell) return;
         closeHelpModal(shell);
+        cleanupTour(shell);
+        applyTourDemos(shell);
 
         const steps = tourDefinitions()
             .map(function (step) {
@@ -712,7 +729,7 @@
     }
 
     function renderTour(root, steps, index) {
-        cleanupTour(root);
+        cleanupTour(root, false);
 
         const step = steps[index];
         step.target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' });
@@ -789,12 +806,53 @@
         pop.style.left = `${left}px`;
     }
 
-    function cleanupTour(root) {
+    function cleanupTour(root, removeDemos = true) {
         document.querySelectorAll('[data-ech-tour-node]').forEach(function (node) {
             node.remove();
         });
+        if (removeDemos) {
+            root.querySelectorAll('[data-ech-tour-demo]').forEach(function (node) {
+                node.remove();
+            });
+        }
         root.querySelectorAll('.ech-tour-highlight').forEach(function (node) {
             node.classList.remove('ech-tour-highlight');
+        });
+    }
+
+    function applyTourDemos(root) {
+        root.querySelectorAll('.ech-scope-list').forEach(function (list) {
+            if (list.querySelector('[data-scope-item]')) return;
+            const empty = list.querySelector('.ech-empty');
+            if (!empty) return;
+
+            const card = list.closest('.ech-card');
+            const isOptional = card?.querySelector('[data-bulk-form="optional"]');
+            const type = isOptional ? 'optional' : 'mandatory';
+            const title = isOptional ? 'Transport mensuel - Demo' : 'Frais de scolarite - Demo';
+            const meta = isOptional ? 'Informatique / Master 2' : 'Transport et Infrastructure / Master 2';
+
+            const demo = document.createElement('div');
+            demo.className = 'ech-tour-demo';
+            demo.dataset.echTourDemo = '1';
+            demo.innerHTML = `
+                <div class="ech-tour-demo-note">Exemple affiche seulement pendant le guide</div>
+                <div class="ech-scope" data-scope-item="${type}" data-status="unconfigured">
+                    <span class="ech-scope-main">
+                        <span class="ech-scope-check"><input type="checkbox" disabled></span>
+                        <span>
+                            <span class="ech-scope-name">${escapeHtml(title)}</span>
+                            <span class="ech-scope-meta d-block">${escapeHtml(meta)}</span>
+                            <span class="ech-badges">
+                                <span class="ech-state"><i class="fas fa-clock"></i>Fallback J+30</span>
+                            </span>
+                        </span>
+                    </span>
+                    <span class="ech-scope-icon"><i class="fas fa-sliders-h"></i></span>
+                </div>
+            `;
+
+            list.prepend(demo);
         });
     }
 
