@@ -74,7 +74,8 @@
     $hdrText = $pdf['header_text_color'] ?? '#ffffff';
     $primary = $pdf['primary_color'] ?? '#0453cb';
     $secondary = $pdf['secondary_color'] ?? '#64748b';
-    $accent = $pdf['accent_color'] ?? '#f59e0b';
+    // Dans l'UI settings, "Couleur d'accent" est stockée dans pdf_primary_color.
+    $accent = $primary;
     $textColor = $pdf['text_color'] ?? '#1f2937';
     $titleUpper = mb_strtoupper((string) $title, 'UTF-8');
     $directorName = $school['director_name'] ?? '';

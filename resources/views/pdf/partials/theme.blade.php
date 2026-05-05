@@ -36,7 +36,7 @@
     .attendance-table th,
     .table-header th,
     .header-table th {
-        background: {{ $pdfAccent }} !important;
+        background: {{ $pdfPrimary }} !important;
         color: {{ $pdfHeaderText }} !important;
     }
 
@@ -61,7 +61,7 @@
 
     .pdf-kpi-cell,
     .pdf-detail-table th {
-        background: {{ $pdfAccent }} !important;
+        background: {{ $pdfPrimary }} !important;
         color: {{ $pdfHeaderText }} !important;
     }
 
@@ -87,7 +87,7 @@
     [style*="background:#0453cb"],
     [style*="background-color: #0453cb"],
     [style*="background-color:#0453cb"] {
-        background: {{ $pdfAccent }} !important;
+        background: {{ $pdfPrimary }} !important;
         color: {{ $pdfHeaderText }} !important;
     }
 

@@ -2,7 +2,7 @@
     $totalCount = $totals['count'];
     $totalAmount = $totals['total'];
     $pdfCfg = \App\Helpers\SettingsHelper::getPdfSettings();
-    $jcAccent = $pdfCfg['accent_color'] ?? '#f59e0b';
+    $jcAccent = $pdfCfg['primary_color'] ?? '#0453cb';
     $jcHeaderText = $pdfCfg['header_text_color'] ?? '#ffffff';
 @endphp
 
