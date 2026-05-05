@@ -13,7 +13,7 @@
     "parse-prd": "node scripts/dev.js parse-prd"
   },
   "devDependencies": {
-    "axios": "^0.21",
+    "axios": "^0.31",
     "laravel-mix": "^6.0.6",
     "lodash": "^4.17.19",
     "postcss": "^8.1.14"
