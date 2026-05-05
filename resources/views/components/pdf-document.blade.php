@@ -15,8 +15,24 @@
     $logoExt = 'png';
     $logoMime = 'image/png';
     $logoPath = $school['logo'] ?? '';
-    if ($pdf['show_logo'] && $logoPath) {
-        foreach ([storage_path('app/public/' . ltrim($logoPath, '/')), public_path('storage/' . ltrim($logoPath, '/')), public_path($logoPath)] as $candidate) {
+    $normalizedLogoPath = ltrim((string) $logoPath, '/');
+    $normalizedLogoPath = str_replace('\\', '/', $normalizedLogoPath);
+    $storageRelativeLogoPath = preg_replace('#^storage/#', '', $normalizedLogoPath);
+    $logoBasename = basename($storageRelativeLogoPath);
+    $shouldShowLogo = !empty($pdf['show_logo']) || \App\Helpers\SettingsHelper::get('bulletin_show_logo', '1') === '1';
+
+    if ($shouldShowLogo && $logoPath) {
+        foreach ([
+            storage_path('app/public/' . $normalizedLogoPath),
+            storage_path('app/public/' . $storageRelativeLogoPath),
+            storage_path('app/public/logos/' . $logoBasename),
+            public_path('storage/' . $normalizedLogoPath),
+            public_path('storage/' . $storageRelativeLogoPath),
+            public_path('storage/logos/' . $logoBasename),
+            public_path($normalizedLogoPath),
+            public_path('images/esbtp_logo.png'),
+            public_path('images/LOGO-KLASSCI-PNG.png'),
+        ] as $candidate) {
             if (file_exists($candidate)) {
                 $logoBase64 = base64_encode(file_get_contents($candidate));
                 $logoExt = pathinfo($candidate, PATHINFO_EXTENSION) ?: 'png';
@@ -208,6 +224,69 @@
 
         /* ===== Body ===== */
         .pdf-body { margin-top: 8px; }
+
+        /* ===== KPI blocks reutilisables ===== */
+        .pdf-kpi-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 12px 0 10px;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+        }
+        .pdf-kpi-cell {
+            background: {{ $hdrBg }};
+            color: {{ $hdrText }};
+            padding: 8px 10px;
+            text-align: center;
+            border-right: 1px solid rgba(255,255,255,.28);
+        }
+        .pdf-kpi-cell:last-child {
+            border-right: 0;
+        }
+        .pdf-kpi-label {
+            font-size: 7.5pt;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: .3px;
+            opacity: .78;
+            margin-bottom: 3px;
+            color: {{ $hdrText }};
+        }
+        .pdf-kpi-value {
+            font-size: 14pt;
+            font-weight: bold;
+            line-height: 1.1;
+            color: {{ $hdrText }};
+        }
+        .pdf-kpi-sub {
+            font-size: 7.5pt;
+            opacity: .72;
+            margin-top: 3px;
+            color: {{ $hdrText }};
+        }
+        .pdf-detail-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 8px 0 10px;
+            font-size: 8.5pt;
+        }
+        .pdf-detail-table th {
+            background: #f1f5f9;
+            color: #334155;
+            text-align: left;
+            padding: 5px 7px;
+            border: 1px solid #dbe3ef;
+            text-transform: uppercase;
+            font-size: 7.2pt;
+        }
+        .pdf-detail-table td {
+            padding: 5px 7px;
+            border: 1px solid #e2e8f0;
+        }
+        .pdf-detail-table .right {
+            text-align: right;
+            font-weight: bold;
+        }
 
         /* ===== Signature block (zone réservée) ===== */
         .pdf-signature-block {
