@@ -2,7 +2,8 @@
     $totalCount = $totals['count'];
     $totalAmount = $totals['total'];
     $pdfCfg = \App\Helpers\SettingsHelper::getPdfSettings();
-    $jcPrimary = $pdfCfg['primary_color'] ?? '#0453cb';
+    $jcAccent = $pdfCfg['accent_color'] ?? '#f59e0b';
+    $jcHeaderText = $pdfCfg['header_text_color'] ?? '#ffffff';
 @endphp
 
 <x-pdf-document
@@ -19,14 +20,14 @@
             margin-top: 8px;
         }
         .jc-pdf-table th {
-            background: {{ $jcPrimary }};
-            color: #fff;
+            background-color: {{ $jcAccent }};
+            color: {{ $jcHeaderText }};
             padding: 5px 6px;
             text-align: left;
             font-size: 7.5pt;
             font-weight: bold;
             text-transform: uppercase;
-            border: 1px solid {{ $jcPrimary }};
+            border: 1px solid {{ $jcAccent }};
         }
         .jc-pdf-table td {
             padding: 4px 6px;
@@ -38,7 +39,7 @@
         }
         .jc-pdf-table .num {
             font-weight: bold;
-            color: {{ $jcPrimary }};
+            color: {{ $jcAccent }};
         }
         .jc-pdf-table .amount {
             font-weight: bold;

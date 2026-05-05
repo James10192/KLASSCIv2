@@ -74,6 +74,7 @@
     $hdrText = $pdf['header_text_color'] ?? '#ffffff';
     $primary = $pdf['primary_color'] ?? '#0453cb';
     $secondary = $pdf['secondary_color'] ?? '#64748b';
+    $accent = $pdf['accent_color'] ?? '#f59e0b';
     $textColor = $pdf['text_color'] ?? '#1f2937';
     $titleUpper = mb_strtoupper((string) $title, 'UTF-8');
     $directorName = $school['director_name'] ?? '';
@@ -202,7 +203,7 @@
         /* ===== Filtres recap ===== */
         .pdf-filters-recap {
             background: #f1f5f9;
-            border-left: 3px solid {{ $primary }};
+            border-left: 3px solid {{ $accent }};
             padding: 8px 12px;
             margin-bottom: 14px;
             font-size: 9px;
@@ -210,7 +211,7 @@
         }
         .pdf-filters-recap-title {
             font-weight: 700;
-            color: {{ $primary }};
+            color: {{ $accent }};
             margin-right: 6px;
         }
         .pdf-filters-recap-item {
@@ -234,7 +235,7 @@
             color-adjust: exact;
         }
         .pdf-kpi-cell {
-            background: {{ $hdrBg }};
+            background-color: {{ $accent }};
             color: {{ $hdrText }};
             padding: 8px 10px;
             text-align: center;
@@ -271,8 +272,8 @@
             font-size: 8.5pt;
         }
         .pdf-detail-table th {
-            background: #f1f5f9;
-            color: #334155;
+            background-color: {{ $accent }};
+            color: {{ $hdrText }};
             text-align: left;
             padding: 5px 7px;
             border: 1px solid #dbe3ef;

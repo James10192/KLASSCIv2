@@ -129,6 +129,30 @@
 
 .jc-pagination { padding: 1rem 1.25rem; border-top: 1px solid #f1f5f9; }
 
+.jc-dynamic {
+    position: relative;
+}
+.jc-dynamic.is-loading {
+    opacity: .58;
+    pointer-events: none;
+}
+.jc-dynamic.is-loading::after {
+    content: "";
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    border: 3px solid rgba(4,83,203,.18);
+    border-top-color: #0453cb;
+    animation: jc-spin .75s linear infinite;
+    z-index: 5;
+}
+@keyframes jc-spin {
+    to { transform: rotate(360deg); }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .jc-hero { padding: 1.5rem 1.25rem 1rem; }
@@ -158,6 +182,7 @@
         </div>
         @endif
 
+        <div id="jc-dynamic" class="jc-dynamic">
         {{-- ── HERO ── --}}
         <div class="jc-hero">
             <div class="jc-hero-top">
@@ -319,9 +344,78 @@
             </div>
             @endif
         </div>
+        </div>
 
     </div>
 </div>
 
 <x-fab-encaisser />
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const dynamicSelector = '#jc-dynamic';
+
+    async function refreshJournal(url, pushState = true) {
+        const current = document.querySelector(dynamicSelector);
+        if (!current) return;
+
+        current.classList.add('is-loading');
+        current.setAttribute('aria-busy', 'true');
+
+        try {
+            const response = await fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'text/html'
+                }
+            });
+
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+            const html = await response.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+            const next = doc.querySelector(dynamicSelector);
+
+            if (!next) {
+                window.location.href = url;
+                return;
+            }
+
+            current.replaceWith(next);
+            if (pushState) window.history.pushState({}, '', url);
+        } catch (error) {
+            window.location.href = url;
+        }
+    }
+
+    document.addEventListener('submit', (event) => {
+        const form = event.target.closest('.jc-filters');
+        if (!form) return;
+
+        event.preventDefault();
+
+        const params = new URLSearchParams(new FormData(form));
+        [...params.keys()].forEach((key) => {
+            if (!params.get(key)) params.delete(key);
+        });
+
+        const query = params.toString();
+        refreshJournal(`${form.action}${query ? `?${query}` : ''}`);
+    });
+
+    document.addEventListener('click', (event) => {
+        const link = event.target.closest('.jc-btn-reset, .jc-pagination a[href]');
+        if (!link) return;
+
+        event.preventDefault();
+        refreshJournal(link.href);
+    });
+
+    window.addEventListener('popstate', () => {
+        refreshJournal(window.location.href, false);
+    });
+});
+</script>
+@endpush
