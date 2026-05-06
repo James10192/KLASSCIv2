@@ -139,7 +139,7 @@ class StudentsDemoData
                 'niveau_id'          => $classe->niveau_etude_id,
                 'affectation_status' => 'affecté',
                 'date_inscription'   => $dateInscription->toDateString(),
-                'type_inscription'   => 'premiere',
+                'type_inscription'   => 'première_inscription',
                 'status'             => 'active',
                 'workflow_step'      => 'etudiant_cree',
                 'date_validation'    => $dateInscription->toDateString(),
