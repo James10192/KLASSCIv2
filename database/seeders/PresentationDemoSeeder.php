@@ -10,6 +10,7 @@ use Database\Seeders\Demo\FraisDemoData;
 use Database\Seeders\Demo\StudentsDemoData;
 use Database\Seeders\Demo\FinanceDemoData;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
