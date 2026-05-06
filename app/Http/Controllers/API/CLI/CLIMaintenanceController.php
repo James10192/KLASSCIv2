@@ -43,6 +43,11 @@ class CLIMaintenanceController extends BaseApiController
             // Also clear settings cache
             Setting::clearCache();
             $output[] = 'settings cache cleared';
+
+            if (function_exists('opcache_reset')) {
+                @opcache_reset();
+                $output[] = 'opcache reset OK';
+            }
         } catch (\Exception $e) {
             Log::error('CLI: cache clear failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return $this->errorResponse('Operation failed. Check server logs for details.', ['completed' => $output], 500);
@@ -634,6 +639,14 @@ class CLIMaintenanceController extends BaseApiController
         }
 
         try {
+            // OPCache reset : sur prod, les fichiers PHP modifiés peuvent
+            // rester en cache bytecode tant que PHP-FPM n'est pas redémarré.
+            // On force une invalidation pour garantir que le seeder fraîchement
+            // déployé (et ses sous-classes Demo/) est bien chargé.
+            if (function_exists('opcache_reset')) {
+                @opcache_reset();
+            }
+
             Artisan::call('db:seed', [
                 '--class' => 'Database\\Seeders\\PresentationDemoSeeder',
                 '--force' => true,
