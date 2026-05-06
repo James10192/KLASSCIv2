@@ -610,4 +610,47 @@ class CLIMaintenanceController extends BaseApiController
             return $this->errorResponse('Pull failed: ' . $e->getMessage(), ['steps' => $steps], 500);
         }
     }
+
+    /**
+     * POST /api/cli/seed-demo — Run PresentationDemoSeeder.
+     *
+     * Strictly limited to the 'presentation' tenant via a double guard:
+     *  1. Server-side check on config('app.tenant_code')
+     *  2. The seeder itself re-checks before running (defense in depth)
+     */
+    public function seedDemo(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $tenant = (string) config('app.tenant_code', 'default');
+        if ($tenant !== 'presentation') {
+            return $this->errorResponse(
+                'Demo seed is only available on the "presentation" tenant. Current tenant: ' . $tenant,
+                ['tenant' => $tenant],
+                403
+            );
+        }
+
+        try {
+            Artisan::call('db:seed', [
+                '--class' => 'Database\\Seeders\\PresentationDemoSeeder',
+                '--force' => true,
+            ]);
+            $output = trim(Artisan::output());
+
+            return $this->successResponse([
+                'tenant' => $tenant,
+                'output' => $output,
+            ], 'PresentationDemoSeeder completed');
+        } catch (\Throwable $e) {
+            Log::error('CLI: seed demo failed', [
+                'tenant' => $tenant,
+                'error'  => $e->getMessage(),
+                'trace'  => $e->getTraceAsString(),
+            ]);
+            return $this->errorResponse('Seed failed: ' . $e->getMessage(), [], 500);
+        }
+    }
 }

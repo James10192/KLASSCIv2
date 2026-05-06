@@ -20,6 +20,9 @@ yarn-error.log
 /ESBTP-yAKROv3
 # Database files
 *Seeder.php
+# Exception : seeder démo officiel (tenant `presentation` uniquement,
+# protégé par double guard TENANT_CODE)
+!PresentationDemoSeeder.php
 
 # Added by Claude Task Master
 # Logs
