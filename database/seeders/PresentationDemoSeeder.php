@@ -7,6 +7,7 @@ use Database\Seeders\Demo\FraisDemoData;
 use Database\Seeders\Demo\StudentsDemoData;
 use Database\Seeders\Demo\FinanceDemoData;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -38,11 +39,40 @@ class PresentationDemoSeeder extends Seeder
             $this->command?->info('▶ 3/4 — Étudiants + inscriptions');
             $students = (new StudentsDemoData($this->command))->run($academic);
 
-            $this->command?->info('▶ 4/4 — Paiements (mix réaliste + outliers analytics)');
+            $this->command?->info('▶ 4/5 — Paiements (mix réaliste + outliers analytics)');
             (new FinanceDemoData($this->command))->run($academic, $frais, $students);
+
+            $this->command?->info('▶ 5/5 — Génération des frais subscriptions par inscription');
+            $this->regenerateFeesSubscriptions($academic['annee']->id);
         });
 
         $this->command?->info('✅ Seed presentation terminé.');
+    }
+
+    /**
+     * Sans ESBTPFraisSubscription posée pour chaque inscription, le calcul
+     * "Total attendu" reste à 0 sur la fiche étudiant. On délègue à la
+     * commande artisan officielle (esbtp:generate-fees-for-year) qui passe
+     * par InscriptionService::generateFeesForInscription pour respecter la
+     * logique métier (montant par affectation status, frais obligatoires,
+     * etc.).
+     */
+    private function regenerateFeesSubscriptions(int $anneeId): void
+    {
+        try {
+            Artisan::call('esbtp:generate-fees-for-year', [
+                'year_id'  => $anneeId,
+                '--limit'  => 1000,
+            ]);
+            $output = trim(Artisan::output());
+            $summary = preg_replace('/\s+/', ' ', $output);
+            $this->command?->line('   • ' . mb_substr($summary, 0, 220));
+        } catch (\Throwable $e) {
+            Log::warning('Demo seeder: regen fees subscriptions failed', [
+                'error' => $e->getMessage(),
+            ]);
+            $this->command?->warn('   ⚠ Régénération frais : ' . $e->getMessage());
+        }
     }
 
     private function guardTenant(): void
