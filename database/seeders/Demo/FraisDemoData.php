@@ -57,7 +57,7 @@ class FraisDemoData
                 'default_amount'        => $r['amount'],
                 'payment_deadline_days' => $r['days'],
                 'icon'                  => $r['icon'],
-                'category_type'         => $r['is_mandatory'] ? 'mandatory' : 'optional',
+                'category_type'         => $r['is_mandatory'] ? 'academic' : 'service',
             ]
         ));
     }
