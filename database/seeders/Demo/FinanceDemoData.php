@@ -93,7 +93,6 @@ class FinanceDemoData
                 'montant'                => $amount,
                 'mode_paiement'          => self::MODES_PAIEMENT[array_rand(self::MODES_PAIEMENT)],
                 'date_paiement'          => $date,
-                'statut'                 => 'validé',
                 'status'                 => 'validé',
                 'numero_recu'            => $this->makeReceiptNumber(),
                 'reference_paiement'     => 'PAY-' . strtoupper(\Illuminate\Support\Str::random(8)),
