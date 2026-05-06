@@ -144,6 +144,9 @@ class StudentsDemoData
                 'workflow_step'      => 'etudiant_cree',
                 'date_validation'    => $dateInscription->toDateString(),
                 'numero_recu'        => 'INS-' . $etu->matricule,
+                // Champs requis par le schéma legacy (NOT NULL sans default)
+                'montant_scolarite'  => 0,
+                'frais_inscription'  => 0,
             ]
         );
     }
