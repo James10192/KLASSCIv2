@@ -34,7 +34,11 @@ class FraisDemoData
             $rules->count(),
         ));
 
-        return compact('categories', 'configurations', 'rules') + ['configurations' => $configs];
+        return [
+            'categories'     => $categories,
+            'configurations' => $configs,
+            'rules'          => $rules,
+        ];
     }
 
     private function seedCategories(): Collection
