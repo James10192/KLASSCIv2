@@ -2082,7 +2082,7 @@ class ESBTPInscriptionController extends Controller
                 'status' => 'en_attente',
                 'workflow_step' => 'prospect',
                 'type_inscription' => $isReinscription ? 'réinscription' : 'première_inscription',
-                'affectation_status' => $isReinscription ? ESBTPInscription::DEFAULT_AFFECTATION_STATUS : null,
+                'affectation_status' => ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
                 'montant_scolarite' => 0,
                 'frais_inscription' => 0,
                 'created_by' => Auth::id(),
