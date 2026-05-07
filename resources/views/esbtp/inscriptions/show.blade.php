@@ -3198,7 +3198,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                         </div>
                     </div>
 
-                    {{-- Checkbox : Valider directement le paiement --}}
+                    {{-- Checkbox : Valider directement le paiement (réservé aux users avec self_override : créateur = validateur) --}}
+                    @can('paiements.validate.self_override')
                     <div style="margin-top: 1.5rem; border: 2px solid #e2e8f0; border-radius: 10px; padding: 1rem; background: #f8fafc;">
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="validate_payment" id="payment_validate_immediately" value="1"
@@ -3212,6 +3213,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             </div>
                         </div>
                     </div>
+                    @endcan
                 </div>
                 <div class="modal-footer" style="background: #f8f9fa; border-radius: 0 0 15px 15px; padding: 1.25rem 2rem; border: none;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="

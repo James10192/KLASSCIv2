@@ -6270,10 +6270,11 @@ document.addEventListener('DOMContentLoaded', function() {
                         </div>
                     </div>
 
-                    {{-- Checkbox validation directe --}}
+                    {{-- Checkbox validation directe (réservée aux users avec self_override : créateur = validateur) --}}
+                    @can('paiements.validate.self_override')
                     <div style="margin-top:1.25rem; padding:14px 16px; background:linear-gradient(135deg,#f0fdf4,#dcfce7); border:1.5px solid #86efac; border-radius:10px;">
                         <div class="form-check" style="margin:0;">
-                            <input class="form-check-input" type="checkbox" id="etd_validate_payment" name="validate_payment" value="1" checked
+                            <input class="form-check-input" type="checkbox" id="etd_validate_payment" name="validate_payment" value="1"
                                    style="width:18px; height:18px; margin-top:2px; cursor:pointer;">
                             <label class="form-check-label" for="etd_validate_payment" style="font-weight:600; color:#166534; font-size:.88rem; cursor:pointer; margin-left:4px;">
                                 <i class="fas fa-shield-alt me-1"></i>
@@ -6284,6 +6285,7 @@ document.addEventListener('DOMContentLoaded', function() {
                             </div>
                         </div>
                     </div>
+                    @endcan
                 </div>
                 <div class="modal-footer" style="background:#f8f9fa;border-radius:0 0 15px 15px;padding:1.25rem 2rem;border:none;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="padding:.65rem 1.5rem;border-radius:8px;font-weight:600;border:2px solid #6c757d;">

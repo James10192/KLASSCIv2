@@ -1117,9 +1117,16 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::middleware('permission:inscriptions.validate')->group(function () {
                 Route::put('/inscriptions/{inscription}/valider', [ESBTPInscriptionController::class, 'valider'])->name('inscriptions.valider');
                 Route::post('/inscriptions/bulk-valider', [ESBTPInscriptionController::class, 'bulkValider'])->name('inscriptions.bulk-valider');
-                Route::post('/inscriptions/{inscription}/valider-avec-paiement', [ESBTPInscriptionPaiementController::class, 'validerAvecPaiement'])->name('inscriptions.valider-avec-paiement');
                 Route::post('/inscriptions/{inscription}/valider-definitivement', [ESBTPInscriptionPaiementController::class, 'validerDefinitivement'])->name('inscriptions.valider-definitivement');
             });
+
+            // valider-avec-paiement : crée d'abord un paiement → permission paiements.create suffit.
+            // Le contrôleur exige paiements.validate.self_override pour valider le paiement
+            // (S1.1 anti-fraude : créateur = validateur), et inscriptions.validate pour
+            // auto_validate_inscription. Voir ESBTPInscriptionPaiementController::validerAvecPaiement.
+            Route::post('/inscriptions/{inscription}/valider-avec-paiement', [ESBTPInscriptionPaiementController::class, 'validerAvecPaiement'])
+                ->name('inscriptions.valider-avec-paiement')
+                ->middleware('permission:paiements.create');
 
             // ── CANCEL (annulation)
             Route::middleware('permission:inscriptions.cancel')->group(function () {

@@ -69,6 +69,17 @@ class ESBTPInscriptionPaiementController extends Controller
             "auto_validate_inscription",
         );
 
+        // S1.1 anti-fraude : créateur = validateur exige self_override.
+        // Sans la permission, on dégrade silencieusement → paiement créé en_attente.
+        if ($validatePayment && !auth()->user()?->can('paiements.validate.self_override')) {
+            $validatePayment = false;
+        }
+
+        // L'auto-validation de l'inscription exige une permission séparée.
+        if ($autoValidateInscription && !auth()->user()?->can('inscriptions.validate')) {
+            abort(403, 'Vous n\'avez pas la permission de valider cette inscription.');
+        }
+
         if ($autoValidateInscription && !$validatePayment) {
             $message =
                 'La validation de l\'inscription nécessite la validation du paiement.';
