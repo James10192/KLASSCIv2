@@ -373,13 +373,15 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class)->middleware(['role:superAdmin']);
 
             // Routes pour les filières — gates per-méthode (avant: middleware OR'd cassé qui laissait passer view → write)
-            Route::middleware('permission:filieres.view')->group(function () {
-                Route::get('filieres', [ESBTPFiliereController::class, 'index'])->name('filieres.index');
-                Route::get('filieres/{filiere}', [ESBTPFiliereController::class, 'show'])->name('filieres.show');
-            });
+            // /!\ Les routes statiques (create) DOIVENT être déclarées AVANT les routes paramétrées ({filiere})
+            // sinon Laravel matche '/filieres/create' comme '/filieres/{filiere=create}' → 404.
             Route::middleware('permission:filieres.create')->group(function () {
                 Route::get('filieres/create', [ESBTPFiliereController::class, 'create'])->name('filieres.create');
                 Route::post('filieres', [ESBTPFiliereController::class, 'store'])->name('filieres.store');
+            });
+            Route::middleware('permission:filieres.view')->group(function () {
+                Route::get('filieres', [ESBTPFiliereController::class, 'index'])->name('filieres.index');
+                Route::get('filieres/{filiere}', [ESBTPFiliereController::class, 'show'])->name('filieres.show');
             });
             Route::middleware('permission:filieres.edit')->group(function () {
                 Route::get('filieres/{filiere}/edit', [ESBTPFiliereController::class, 'edit'])->name('filieres.edit');
@@ -390,13 +392,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware('permission:filieres.delete');
 
             // Routes pour les niveaux d'études — gates per-méthode
-            Route::middleware('permission:niveaux.view')->group(function () {
-                Route::get('niveaux-etudes', [ESBTPNiveauEtudeController::class, 'index'])->name('niveaux-etudes.index');
-                Route::get('niveaux-etudes/{niveaux_etude}', [ESBTPNiveauEtudeController::class, 'show'])->name('niveaux-etudes.show');
-            });
+            // /!\ Les routes statiques (create) DOIVENT être déclarées AVANT les routes paramétrées.
             Route::middleware('permission:niveaux.create')->group(function () {
                 Route::get('niveaux-etudes/create', [ESBTPNiveauEtudeController::class, 'create'])->name('niveaux-etudes.create');
                 Route::post('niveaux-etudes', [ESBTPNiveauEtudeController::class, 'store'])->name('niveaux-etudes.store');
+            });
+            Route::middleware('permission:niveaux.view')->group(function () {
+                Route::get('niveaux-etudes', [ESBTPNiveauEtudeController::class, 'index'])->name('niveaux-etudes.index');
+                Route::get('niveaux-etudes/{niveaux_etude}', [ESBTPNiveauEtudeController::class, 'show'])->name('niveaux-etudes.show');
             });
             Route::middleware('permission:niveaux.edit')->group(function () {
                 Route::get('niveaux-etudes/{niveaux_etude}/edit', [ESBTPNiveauEtudeController::class, 'edit'])->name('niveaux-etudes.edit');
@@ -410,13 +413,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('annees-universitaires/{anneesUniversitaire}/set-current', [ESBTPAnneeUniversitaireController::class, 'setCurrent'])
                 ->name('annees-universitaires.set-current')
                 ->middleware('permission:annees.set_current');
-            Route::middleware('permission:annees.view')->group(function () {
-                Route::get('annees-universitaires', [ESBTPAnneeUniversitaireController::class, 'index'])->name('annees-universitaires.index');
-                Route::get('annees-universitaires/{anneesUniversitaire}', [ESBTPAnneeUniversitaireController::class, 'show'])->name('annees-universitaires.show');
-            });
+            // /!\ Les routes statiques (create) DOIVENT être déclarées AVANT les routes paramétrées.
             Route::middleware('permission:annees.create')->group(function () {
                 Route::get('annees-universitaires/create', [ESBTPAnneeUniversitaireController::class, 'create'])->name('annees-universitaires.create');
                 Route::post('annees-universitaires', [ESBTPAnneeUniversitaireController::class, 'store'])->name('annees-universitaires.store');
+            });
+            Route::middleware('permission:annees.view')->group(function () {
+                Route::get('annees-universitaires', [ESBTPAnneeUniversitaireController::class, 'index'])->name('annees-universitaires.index');
+                Route::get('annees-universitaires/{anneesUniversitaire}', [ESBTPAnneeUniversitaireController::class, 'show'])->name('annees-universitaires.show');
             });
             Route::middleware('permission:annees.edit')->group(function () {
                 Route::get('annees-universitaires/{anneesUniversitaire}/edit', [ESBTPAnneeUniversitaireController::class, 'edit'])->name('annees-universitaires.edit');
