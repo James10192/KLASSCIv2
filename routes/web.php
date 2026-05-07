@@ -311,7 +311,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('frais/{category}/toggle', [\App\Http\Controllers\ESBTPFraisController::class, 'toggleCategory'])->name('frais.toggle');
             Route::post('frais/{fraisCategory}/toggle-active', [\App\Http\Controllers\ESBTPFraisController::class, 'toggleActive'])->name('frais.toggle-active');
             Route::post('frais/reset-defaults', [\App\Http\Controllers\ESBTPFraisController::class, 'resetDefaults'])->name('frais.reset-defaults');
-            Route::resource('frais', \App\Http\Controllers\ESBTPFraisController::class)->except(['index']);
+            Route::resource('frais', \App\Http\Controllers\ESBTPFraisController::class)
+                ->except(['index'])
+                ->whereNumber('frai'); // évite que frais/all-variants etc. soient capturés par show
+                // /!\ Laravel auto-singularise 'frais' en 'frai' pour le param ; le controller utilise $frai.
 
             // Routes API pour les variants
             Route::get('frais/class-details/{filiere}/{niveau}', [\App\Http\Controllers\ESBTPFraisController::class, 'getClassDetails'])->name('frais.class-details');
@@ -525,6 +528,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             Route::get('classes/{classe}', [ESBTPClasseController::class, 'show'])
                 ->name('classes.show')
+                ->whereNumber('classe') // évite que classes/overcapacity soit capturé par show
                 ->middleware(['permission:classes.view']);
 
             // Route pour gérer les matières d'une classe - accessible aux superAdmin et secrétaires
@@ -659,6 +663,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour les emplois du temps standards (TimetableController)
             Route::resource('timetables', TimetableController::class)
+                ->whereNumber('timetable') // évite que timetables/today soit capturé par show
                 ->middleware(['permission:timetables.view|timetables.create|timetables.edit|timetables.delete']);
 
             // Routes supplémentaires pour les emplois du temps
@@ -994,12 +999,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/', [ESBTPBulletinController::class, 'index'])->name('index');
                 Route::get('/create', [ESBTPBulletinController::class, 'create'])->name('create');
                 Route::post('/', [ESBTPBulletinController::class, 'store'])->name('store');
-                Route::get('/{bulletin}', [ESBTPBulletinController::class, 'show'])->name('show');
-                Route::get('/{bulletin}/edit', [ESBTPBulletinController::class, 'edit'])->name('edit');
-                Route::put('/{bulletin}', [ESBTPBulletinController::class, 'update'])->name('update');
-                Route::delete('/{bulletin}', [ESBTPBulletinController::class, 'destroy'])->name('destroy');
+                // /!\ Routes statiques avant les paramétrées + whereNumber pour éviter shadowing
                 Route::get('/select', [ESBTPBulletinController::class, 'select'])->name('select');
                 Route::get('/generate', [ESBTPBulletinController::class, 'generateBulletin'])->name('generate');
+
+                Route::get('/{bulletin}', [ESBTPBulletinController::class, 'show'])->whereNumber('bulletin')->name('show');
+                Route::get('/{bulletin}/edit', [ESBTPBulletinController::class, 'edit'])->whereNumber('bulletin')->name('edit');
+                Route::put('/{bulletin}', [ESBTPBulletinController::class, 'update'])->whereNumber('bulletin')->name('update');
+                Route::delete('/{bulletin}', [ESBTPBulletinController::class, 'destroy'])->whereNumber('bulletin')->name('destroy');
 
                 // Route pour la signature des bulletins
                 Route::post('bulletins/{bulletin}/signer/{role}', [ESBTPBulletinController::class, 'signer'])
@@ -1026,7 +1033,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/cancel-code/{code}', [ESBTPTeacherAttendanceController::class, 'cancelCode'])->name('cancel-code');
                 Route::get('/report', [ESBTPTeacherAttendanceController::class, 'report'])->name('report');
                 Route::post('/', [ESBTPTeacherAttendanceController::class, 'store'])->name('store');
-                Route::put('/{attendance}', [ESBTPTeacherAttendanceController::class, 'update'])->name('update');
+                Route::put('/{attendance}', [ESBTPTeacherAttendanceController::class, 'update'])->whereNumber('attendance')->name('update');
             });
         });
 
@@ -1523,10 +1530,11 @@ Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['aut
         ->name('quick-update');
     Route::patch('/{evaluation}/cancel', [ESBTPEvaluationController::class, 'cancel'])->name('cancel');
     Route::patch('/{evaluation}/restore', [ESBTPEvaluationController::class, 'restore'])->name('restore');
-    Route::get('/{evaluation}', [ESBTPEvaluationController::class, 'show'])->name('show');
-    Route::get('/{evaluation}/edit', [ESBTPEvaluationController::class, 'edit'])->name('edit');
-    Route::put('/{evaluation}', [ESBTPEvaluationController::class, 'update'])->name('update');
-    Route::delete('/{evaluation}', [ESBTPEvaluationController::class, 'destroy'])->name('destroy');
+    // whereNumber évite que evaluations/active-external-links etc. soit capturé par show/update/destroy
+    Route::get('/{evaluation}', [ESBTPEvaluationController::class, 'show'])->whereNumber('evaluation')->name('show');
+    Route::get('/{evaluation}/edit', [ESBTPEvaluationController::class, 'edit'])->whereNumber('evaluation')->name('edit');
+    Route::put('/{evaluation}', [ESBTPEvaluationController::class, 'update'])->whereNumber('evaluation')->name('update');
+    Route::delete('/{evaluation}', [ESBTPEvaluationController::class, 'destroy'])->whereNumber('evaluation')->name('destroy');
     Route::patch('/{evaluation}/toggle-published', [ESBTPEvaluationController::class, 'togglePublished'])->name('toggle-published');
     Route::patch('/{evaluation}/toggle-notes-published', [ESBTPEvaluationController::class, 'toggleNotesPublished'])->name('toggle-notes-published');
     Route::patch('/{evaluation}/update-status', [ESBTPEvaluationController::class, 'updateStatus'])->name('update-status');
