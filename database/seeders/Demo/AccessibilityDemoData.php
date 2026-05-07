@@ -21,11 +21,23 @@ class AccessibilityDemoData
 
     public function run(): int
     {
+        // Priorité : les étudiants DEMO* (visibles dans la liste premium quand on cherche
+        // par matricule). Fallback : les 5 plus bas IDs avec inscription active.
         $etudiants = ESBTPEtudiant::query()
             ->whereHas('inscriptions', fn ($q) => $q->where('status', 'active'))
-            ->orderBy('id')
+            ->where('matricule', 'like', 'DEMO%')
+            ->orderBy('matricule')
             ->take(20)
             ->get();
+
+        if ($etudiants->isEmpty()) {
+            // Fallback si pas de matricule DEMO (autre tenant ou seed initial)
+            $etudiants = ESBTPEtudiant::query()
+                ->whereHas('inscriptions', fn ($q) => $q->where('status', 'active'))
+                ->orderBy('id')
+                ->take(20)
+                ->get();
+        }
 
         if ($etudiants->isEmpty()) {
             $this->command?->warn('   ⚠ Aucun étudiant trouvé — accessibilité démo skippée.');
@@ -34,6 +46,7 @@ class AccessibilityDemoData
 
         $cases = $this->cases();
         $created = 0;
+        $touchedMatricules = [];
 
         foreach ($cases as $i => $case) {
             $etudiant = $etudiants->get($i);
@@ -51,9 +64,14 @@ class AccessibilityDemoData
                 ])
             );
             $created++;
+            $touchedMatricules[] = $etudiant->matricule;
         }
 
-        $this->command?->line(sprintf('   • %d profils d\'accessibilité créés (sur %d étudiants disponibles).', $created, $etudiants->count()));
+        $this->command?->line(sprintf(
+            '   • %d profils d\'accessibilité créés sur : %s',
+            $created,
+            implode(', ', $touchedMatricules)
+        ));
         return $created;
     }
 
