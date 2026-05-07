@@ -502,6 +502,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Routes pour les séances de cours (accessible aux coordinateurs)
             Route::resource('seances-cours', ESBTPSeanceCoursController::class)
                 ->parameters(['seances-cours' => 'seancesCour']);
+
+            // Rapports de cours soumis par les enseignants — vue admin agrégée
+            Route::middleware('permission:session_reports.view')->group(function () {
+                Route::get('rapports-cours', [\App\Http\Controllers\ESBTP\AdminSessionReportController::class, 'index'])
+                    ->name('rapports-cours.index');
+                Route::get('rapports-cours/{report}', [\App\Http\Controllers\ESBTP\AdminSessionReportController::class, 'show'])
+                    ->name('rapports-cours.show');
+            });
         });
 
         // Routes accessibles aux superAdmin, secrétaires, coordinateurs et enseignants

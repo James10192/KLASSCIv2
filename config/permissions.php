@@ -584,6 +584,16 @@ return [
             'icon' => 'fa-chart-pie',
             'aliases' => ['view-attendance-statistics'],
         ],
+        'session_reports.view' => [
+            'label' => 'Voir tous les rapports de cours soumis par les enseignants',
+            'group' => 'Présences',
+            'icon' => 'fa-file-alt',
+        ],
+        'session_reports.view_own' => [
+            'label' => 'Voir uniquement ses propres rapports de cours',
+            'group' => 'Présences',
+            'icon' => 'fa-file-alt',
+        ],
 
         // ===== Paiements =====
         'paiements.view' => [
@@ -1262,6 +1272,7 @@ return [
             'bulletins.view', 'bulletins.generate', 'bulletins.configure',
             'attendances.view', 'attendances.create', 'attendances.edit', 'attendances.delete',
             'attendances.generate_codes',
+            'session_reports.view',
             'paiements.view', 'paiements.create', 'paiements.validate',
             'frais.view', 'frais.create', 'frais.edit',
             'teachers.view', 'teachers.create', 'teachers.edit', 'teachers.delete',
@@ -1340,6 +1351,7 @@ return [
             'bulletins.view', 'bulletins.generate', 'bulletins.edit',
             'attendances.view', 'attendances.create', 'attendances.edit', 'attendances.delete',
             'attendances.generate_codes',
+            'session_reports.view',
             'planning.view', 'planning.edit', 'planning.manage',
             'timetables.view', 'timetables.view_all', 'timetables.create', 'timetables.edit', 'timetables.delete',
             'schedules.view', 'schedules.create', 'schedules.edit',
@@ -1369,6 +1381,7 @@ return [
             'bulletins.view',
             'attendances.view', 'attendances.create', 'attendances.edit',
             'attendances.view_own', 'attendances.sign',
+            'session_reports.view_own',
             'schedules.view_own',
             'messages.send', 'messages.receive', 'annonces.view',
             'identity.teach',

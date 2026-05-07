@@ -1759,12 +1759,12 @@
 
                         <!-- Gestion des présences/absences -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') || Request::routeIs('esbtp.rapports-cours.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-calendar-check"></i></div>
                                 <div class="menu-text">Gestion des présences</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.attendances.*') || Request::routeIs('esbtp.absences.*') || Request::routeIs('esbtp.teacher-attendance.*') || Request::routeIs('esbtp.attendance-codes.*') || Request::routeIs('esbtp.rapports-cours.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.attendances.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendances.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Présences étudiants</span>
@@ -1787,6 +1787,12 @@
                                     <span class="menu-dot"></span>
                                     <span>Tableau de Bord Présences</span>
                                 </a>
+                                @can('session_reports.view')
+                                <a href="{{ route('esbtp.rapports-cours.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.rapports-cours.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Rapports de cours</span>
+                                </a>
+                                @endcan
                             </div>
                         </div>
                     @endcan
