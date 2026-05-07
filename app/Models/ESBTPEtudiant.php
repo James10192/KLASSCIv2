@@ -181,6 +181,16 @@ class ESBTPEtudiant extends Model implements Auditable
         return $this->hasMany(ESBTPRelance::class, 'etudiant_id');
     }
 
+    public function accessibilityProfile()
+    {
+        return $this->hasOne(ESBTPStudentAccessibilityProfile::class, 'etudiant_id');
+    }
+
+    public function getHasAccessibilityProfileAttribute(): bool
+    {
+        return $this->accessibilityProfile()->exists();
+    }
+
     /**
      * Obtenir l'inscription active de l'étudiant.
      *

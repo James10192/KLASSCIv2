@@ -5162,6 +5162,113 @@
     </div>
     @endif
 
+    {{-- Accessibilité --}}
+    @can('students.accessibility.view')
+    @php $accProfile = $etudiant->accessibilityProfile; @endphp
+    @if($accProfile)
+    <div class="s-card">
+        <div class="s-card-header">
+            <div class="s-card-title">
+                <div class="s-card-title-icon" style="background: linear-gradient(135deg,#0453cb,#5e91de);"><i class="fas fa-universal-access"></i></div>
+                Accessibilité &amp; aménagements
+            </div>
+            @can('students.accessibility.edit')
+                <a href="{{ route('esbtp.etudiants.edit', $etudiant) }}#accessibility-section" class="btn btn-sm btn-outline-primary" style="border-radius:8px;">
+                    <i class="fas fa-edit me-1"></i>Modifier
+                </a>
+            @endcan
+        </div>
+        <div style="padding: 18px 24px;">
+            <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;">
+                @if($accProfile->has_official_recognition)
+                    <span class="status-badge-success" style="font-size:.78rem;padding:5px 12px;border-radius:50px;">
+                        <i class="fas fa-stamp me-1"></i>Reconnaissance officielle
+                    </span>
+                @endif
+                @if($accProfile->requires_third_time)
+                    <span style="background:rgba(4,83,203,.1);color:#0453cb;padding:5px 12px;border-radius:50px;font-size:.78rem;font-weight:600;">
+                        <i class="fas fa-hourglass-half me-1"></i>Tiers-temps {{ $accProfile->third_time_percentage }}%
+                    </span>
+                @endif
+                @if($accProfile->assistant_required)
+                    <span style="background:rgba(4,83,203,.1);color:#0453cb;padding:5px 12px;border-radius:50px;font-size:.78rem;font-weight:600;">
+                        <i class="fas fa-hands-helping me-1"></i>Assistant requis
+                    </span>
+                @endif
+                @if(! $accProfile->isCurrentlyEffective())
+                    <span style="background:#fef3c7;color:#78350f;padding:5px 12px;border-radius:50px;font-size:.78rem;font-weight:600;">
+                        <i class="fas fa-exclamation-triangle me-1"></i>Hors période de validité
+                    </span>
+                @endif
+            </div>
+
+            @if($accProfile->short_description)
+                <div class="info-row" style="margin-bottom:10px;">
+                    <span class="info-lbl">Résumé</span>
+                    <span class="info-val">{{ $accProfile->short_description }}</span>
+                </div>
+            @endif
+
+            @if(! empty($accProfile->categoryLabels()))
+                <div class="info-row" style="margin-bottom:10px;">
+                    <span class="info-lbl">Catégories</span>
+                    <span class="info-val">
+                        @foreach($accProfile->categoryLabels() as $catLabel)
+                            <span style="display:inline-block;background:#eff6ff;color:#0453cb;padding:3px 10px;border-radius:50px;font-size:.78rem;margin-right:4px;margin-bottom:3px;">{{ $catLabel }}</span>
+                        @endforeach
+                    </span>
+                </div>
+            @endif
+
+            @if(! empty($accProfile->accommodationLabels()))
+                <div class="info-row" style="margin-bottom:10px;">
+                    <span class="info-lbl">Aménagements</span>
+                    <span class="info-val">
+                        @foreach($accProfile->accommodationLabels() as $accLabel)
+                            <span style="display:inline-block;background:#f0fdf4;color:#065f46;padding:3px 10px;border-radius:50px;font-size:.78rem;margin-right:4px;margin-bottom:3px;">
+                                <i class="fas fa-check me-1"></i>{{ $accLabel }}
+                            </span>
+                        @endforeach
+                    </span>
+                </div>
+            @endif
+
+            @can('students.accessibility.view_full')
+                @if($accProfile->full_description)
+                    <div class="info-row" style="margin-bottom:10px;">
+                        <span class="info-lbl">Description médicale <i class="fas fa-lock" style="font-size:.7rem;color:#64748b;"></i></span>
+                        <span class="info-val" style="white-space:pre-wrap;">{{ $accProfile->full_description }}</span>
+                    </div>
+                @endif
+                @if($accProfile->accommodations_notes)
+                    <div class="info-row" style="margin-bottom:10px;">
+                        <span class="info-lbl">Notes aménagements <i class="fas fa-lock" style="font-size:.7rem;color:#64748b;"></i></span>
+                        <span class="info-val" style="white-space:pre-wrap;">{{ $accProfile->accommodations_notes }}</span>
+                    </div>
+                @endif
+            @endcan
+
+            @if($accProfile->effective_from || $accProfile->effective_to)
+                <div class="info-row" style="margin-bottom:10px;">
+                    <span class="info-lbl">Validité</span>
+                    <span class="info-val">
+                        @if($accProfile->effective_from)Du {{ $accProfile->effective_from->format('d/m/Y') }}@endif
+                        @if($accProfile->effective_to) au {{ $accProfile->effective_to->format('d/m/Y') }}@endif
+                    </span>
+                </div>
+            @endif
+
+            @if($accProfile->recognition_reference)
+                <div class="info-row">
+                    <span class="info-lbl">Référence officielle</span>
+                    <span class="info-val">{{ $accProfile->recognition_reference }}</span>
+                </div>
+            @endif
+        </div>
+    </div>
+    @endif
+    @endcan
+
     {{-- Parents / Tuteurs --}}
     @if($etudiant->parents && $etudiant->parents->count())
     <div class="s-card">

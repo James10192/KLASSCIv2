@@ -6,6 +6,7 @@ use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
 use App\Services\ESBTPInscriptionService;
 use Database\Seeders\Demo\AcademicDemoData;
+use Database\Seeders\Demo\AccessibilityDemoData;
 use Database\Seeders\Demo\FraisDemoData;
 use Database\Seeders\Demo\StudentsDemoData;
 use Database\Seeders\Demo\FinanceDemoData;
@@ -41,11 +42,14 @@ class PresentationDemoSeeder extends Seeder
             $this->command?->info('▶ 3/4 — Étudiants + inscriptions');
             $students = (new StudentsDemoData($this->command))->run($academic);
 
-            $this->command?->info('▶ 4/5 — Paiements (mix réaliste + outliers analytics)');
+            $this->command?->info('▶ 4/6 — Paiements (mix réaliste + outliers analytics)');
             (new FinanceDemoData($this->command))->run($academic, $frais, $students);
 
-            $this->command?->info('▶ 5/5 — Génération des frais subscriptions par inscription');
+            $this->command?->info('▶ 5/6 — Génération des frais subscriptions par inscription');
             $this->regenerateFeesSubscriptions($academic['annee']->id);
+
+            $this->command?->info('▶ 6/6 — Profils accessibilité (5 cas démo)');
+            (new AccessibilityDemoData($this->command))->run();
         });
 
         $this->command?->info('✅ Seed presentation terminé.');

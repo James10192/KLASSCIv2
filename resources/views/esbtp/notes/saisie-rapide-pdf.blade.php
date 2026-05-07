@@ -392,7 +392,13 @@
                             <span class="nm-matricule">{{ $etudiant->matricule ?? '—' }}</span>
                         </td>
                         <td>
-                            <div class="nm-student-name">{{ mb_strtoupper($etudiant->nom ?? '', 'UTF-8') }} {{ $etudiant->prenoms }}</div>
+                            @php $accProfile = auth()->user()?->can('students.accessibility.export') ? $etudiant->accessibilityProfile : null; @endphp
+                            <div class="nm-student-name">
+                                {{ mb_strtoupper($etudiant->nom ?? '', 'UTF-8') }} {{ $etudiant->prenoms }}
+                                @if($accProfile)
+                                    <span style="display:inline-block; background:#0453cb; color:#fff; padding:1px 5px; border-radius:50px; font-size:7px; margin-left:3px; font-weight:600; -webkit-print-color-adjust:exact; color-adjust:exact;" title="{{ $accProfile->summaryBadge() }}">&#9881; A</span>
+                                @endif
+                            </div>
                             <div class="nm-student-genre">{{ ($etudiant->genre ?? '') === 'M' ? 'Masculin' : (($etudiant->genre ?? '') === 'F' ? 'Féminin' : '') }}</div>
                         </td>
                         <td class="nm-note-cell">

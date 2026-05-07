@@ -186,6 +186,33 @@ return [
             'aliases' => ['delete_students'],
         ],
 
+        // ===== Accessibilité étudiants (handicap, aménagements) =====
+        'students.accessibility.view' => [
+            'label' => 'Voir le résumé d\'accessibilité (aménagements, tiers-temps)',
+            'group' => 'Étudiants',
+            'icon' => 'fa-universal-access',
+        ],
+        'students.accessibility.view_full' => [
+            'label' => 'Voir le détail médical complet et documents joints',
+            'group' => 'Étudiants',
+            'icon' => 'fa-notes-medical',
+        ],
+        'students.accessibility.edit' => [
+            'label' => 'Créer ou modifier le profil d\'accessibilité d\'un étudiant',
+            'group' => 'Étudiants',
+            'icon' => 'fa-edit',
+        ],
+        'students.accessibility.export' => [
+            'label' => 'Inclure les aménagements dans les exports PDF/Excel',
+            'group' => 'Étudiants',
+            'icon' => 'fa-file-export',
+        ],
+        'students.accessibility.view_own' => [
+            'label' => 'Voir son propre profil d\'accessibilité (étudiant)',
+            'group' => 'Étudiants',
+            'icon' => 'fa-user-shield',
+        ],
+
         // ===== Inscriptions =====
         'inscriptions.view' => [
             'label' => 'Voir les inscriptions',
@@ -1261,6 +1288,7 @@ return [
         'secretaire' => [
             'dashboard.view', 'admin.access',
             'students.view', 'students.create', 'students.edit', 'students.delete',
+            'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
             'inscriptions.cancel', 'inscriptions.manage',
             'cycles.view', 'cycles.create', 'cycles.edit', 'cycles.delete',
@@ -1338,6 +1366,8 @@ return [
             'admin.access', 'dashboard.view',
             'students.view', 'students.view_own',
             'students.create', 'students.edit', 'students.delete',
+            'students.accessibility.view', 'students.accessibility.view_full',
+            'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit',
             'inscriptions.validate', 'inscriptions.cancel', 'inscriptions.reject',
             'paiements.view', 'frais.view',
@@ -1375,6 +1405,7 @@ return [
         'enseignant' => [
             'admin.access', 'dashboard.view',
             'students.view_own',
+            'students.accessibility.view', 'students.accessibility.export',
             'classes.view',
             'notes.view', 'notes.view_own', 'notes.create', 'notes.edit', 'notes.manage_own', 'notes.import_excel',
             'evaluations.view', 'evaluations.create', 'evaluations.edit',
@@ -1395,6 +1426,7 @@ return [
             'attendances.view_own',
             'schedules.view_own', 'timetables.view_own',
             'profile.view_own',
+            'students.accessibility.view_own',
             'exams.view_own',
             'messages.receive', 'annonces.view',
             'identity.student',

@@ -109,6 +109,12 @@
                     </td>
                     <td>
                         {{ $etudiant->nom }} {{ $etudiant->prenoms }}
+                        @can('students.accessibility.view')
+                            @if($etudiant->accessibilityProfile)
+                                <i class="fas fa-universal-access ms-1" style="color:#0453cb;cursor:help;"
+                                   title="{{ $etudiant->accessibilityProfile->summaryBadge() }}{{ $etudiant->accessibilityProfile->short_description ? ' — ' . $etudiant->accessibilityProfile->short_description : '' }}"></i>
+                            @endif
+                        @endcan
                         @if($pendingInscription)
                             <span class="badge bg-warning text-dark ms-2">Inscription en attente</span>
                         @endif
@@ -293,7 +299,15 @@
                         @endif
                     </div>
                     <div class="student-info-header">
-                        <h3 class="student-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</h3>
+                        <h3 class="student-name">
+                            {{ $etudiant->nom }} {{ $etudiant->prenoms }}
+                            @can('students.accessibility.view')
+                                @if($etudiant->accessibilityProfile)
+                                    <i class="fas fa-universal-access ms-1" style="color:#0453cb;font-size:.85em;"
+                                       title="{{ $etudiant->accessibilityProfile->summaryBadge() }}{{ $etudiant->accessibilityProfile->short_description ? ' — ' . $etudiant->accessibilityProfile->short_description : '' }}"></i>
+                                @endif
+                            @endcan
+                        </h3>
                         <p class="student-matricule">{{ $etudiant->matricule }}</p>
                         @if($pendingInscription)
                             <span class="badge bg-warning text-dark">Inscription en attente</span>

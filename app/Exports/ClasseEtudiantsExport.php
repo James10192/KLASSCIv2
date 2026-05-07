@@ -36,7 +36,7 @@ class ClasseEtudiantsExport implements FromCollection, WithHeadings, WithMapping
      */
     public function headings(): array
     {
-        return [
+        $h = [
             'N°',
             'Matricule',
             'Nom',
@@ -59,6 +59,19 @@ class ClasseEtudiantsExport implements FromCollection, WithHeadings, WithMapping
             'Niveau',
             'Année universitaire'
         ];
+
+        if ($this->canIncludeAccessibility()) {
+            $h[] = 'Accessibilité';
+            $h[] = 'Aménagements';
+        }
+
+        return $h;
+    }
+
+    private function canIncludeAccessibility(): bool
+    {
+        $user = auth()->user();
+        return $user !== null && $user->can('students.accessibility.export');
     }
 
     /**
@@ -69,7 +82,7 @@ class ClasseEtudiantsExport implements FromCollection, WithHeadings, WithMapping
         static $index = 0;
         $index++;
 
-        return [
+        $row = [
             $index,
             $etudiant->matricule ?? 'N/A',
             $etudiant->nom ?? '',
@@ -92,6 +105,14 @@ class ClasseEtudiantsExport implements FromCollection, WithHeadings, WithMapping
             $this->classe->niveau ? $this->classe->niveau->name : 'N/A',
             $this->anneeCourante ? $this->anneeCourante->name : 'N/A'
         ];
+
+        if ($this->canIncludeAccessibility()) {
+            $profile = $etudiant->accessibilityProfile ?? null;
+            $row[] = $profile ? $profile->summaryBadge() : '—';
+            $row[] = $profile ? implode(', ', $profile->accommodationLabels()) : '—';
+        }
+
+        return $row;
     }
 
     /**

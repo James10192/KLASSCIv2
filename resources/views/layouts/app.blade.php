@@ -1588,6 +1588,12 @@
                                     <div class="menu-text">Sous réserve</div>
                                 </a>
                                 @endcan
+                                @can('students.accessibility.view')
+                                <a href="{{ route('esbtp.accessibility.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.accessibility.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-universal-access"></i></div>
+                                    <div class="menu-text">Accessibilité</div>
+                                </a>
+                                @endcan
                             </div>
                         </div>
                     @endif

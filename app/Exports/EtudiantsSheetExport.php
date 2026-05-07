@@ -38,7 +38,7 @@ class EtudiantsSheetExport implements FromCollection, WithHeadings, WithMapping,
 
     public function headings(): array
     {
-        return [
+        $h = [
             'N°',
             'Matricule',
             'Nom',
@@ -54,6 +54,13 @@ class EtudiantsSheetExport implements FromCollection, WithHeadings, WithMapping,
             'Statut',
             'Année universitaire',
         ];
+
+        if ($this->canIncludeAccessibility()) {
+            $h[] = 'Accessibilité';
+            $h[] = 'Aménagements';
+        }
+
+        return $h;
     }
 
     public function map($item): array
@@ -63,7 +70,7 @@ class EtudiantsSheetExport implements FromCollection, WithHeadings, WithMapping,
         $etudiant = $item['etudiant'] ?? $item;
         $inscription = $item['inscription'] ?? null;
 
-        return [
+        $row = [
             $this->rowCounter,
             $etudiant->matricule ?? 'N/A',
             $etudiant->nom ?? '',
@@ -79,6 +86,20 @@ class EtudiantsSheetExport implements FromCollection, WithHeadings, WithMapping,
             $etudiant->statut ?? 'N/A',
             $inscription && $inscription->anneeUniversitaire ? $inscription->anneeUniversitaire->name : 'N/A',
         ];
+
+        if ($this->canIncludeAccessibility()) {
+            $profile = $etudiant->accessibilityProfile ?? null;
+            $row[] = $profile ? $profile->summaryBadge() : '—';
+            $row[] = $profile ? implode(', ', $profile->accommodationLabels()) : '—';
+        }
+
+        return $row;
+    }
+
+    private function canIncludeAccessibility(): bool
+    {
+        $user = auth()->user();
+        return $user !== null && $user->can('students.accessibility.export');
     }
 
     public function title(): string

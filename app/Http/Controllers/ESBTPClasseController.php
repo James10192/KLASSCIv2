@@ -1424,7 +1424,7 @@ class ESBTPClasseController extends Controller
 
         $etudiants = $classe
             ->inscriptions()
-            ->with(["etudiant"])
+            ->with(["etudiant.accessibilityProfile"])
             ->where("status", "active")
             ->where("workflow_step", "etudiant_cree")
             ->when($anneeCourante, function ($query) use ($anneeCourante) {
@@ -1477,7 +1477,7 @@ class ESBTPClasseController extends Controller
 
         $etudiants = $classe
             ->inscriptions()
-            ->with(["etudiant"])
+            ->with(["etudiant.accessibilityProfile"])
             ->where("status", "active")
             ->where("workflow_step", "etudiant_cree")
             ->when($anneeCourante, function ($query) use ($anneeCourante) {
@@ -1539,7 +1539,7 @@ class ESBTPClasseController extends Controller
 
         $etudiants = $classe
             ->inscriptions()
-            ->with(["etudiant"])
+            ->with(["etudiant.accessibilityProfile"])
             ->where("status", "active")
             ->where("workflow_step", "etudiant_cree")
             ->when($anneeCourante, function ($query) use ($anneeCourante) {
@@ -1589,7 +1589,7 @@ class ESBTPClasseController extends Controller
 
         $etudiants = $classe
             ->inscriptions()
-            ->with(["etudiant"])
+            ->with(["etudiant.accessibilityProfile"])
             ->where("status", "active")
             ->where("workflow_step", "etudiant_cree")
             ->when($anneeCourante, function ($query) use ($anneeCourante) {
@@ -1648,7 +1648,7 @@ class ESBTPClasseController extends Controller
 
         $etudiants = $classe
             ->inscriptions()
-            ->with(["etudiant"])
+            ->with(["etudiant.accessibilityProfile"])
             ->where("status", "active")
             ->where("workflow_step", "etudiant_cree")
             ->when($anneeCourante, function ($query) use ($anneeCourante) {

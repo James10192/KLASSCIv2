@@ -255,6 +255,11 @@
     </div>
 </form>
 
+{{-- ═══ SECTION 3 : Accessibilité (form séparé pour ne pas mélanger avec le form principal) ═══ --}}
+@can('students.accessibility.view')
+    @include('esbtp.etudiants.partials.accessibility-section', ['etudiant' => $etudiant])
+@endcan
+
 @if($isEmbedded)
 {{-- Panel overlay pour la version embedded (PAS un modal Bootstrap — évite le flash z-index dans iframe) --}}
 <div id="searchParentModal" class="parent-search-overlay">

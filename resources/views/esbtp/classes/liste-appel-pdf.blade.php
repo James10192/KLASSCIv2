@@ -460,6 +460,7 @@
                 </thead>
                 <tbody>
                     @foreach($etudiants as $index => $etudiant)
+                    @php $accProfile = auth()->user()?->can('students.accessibility.export') ? $etudiant->accessibilityProfile : null; @endphp
                     <tr>
                         <td>
                             <span class="student-number">{{ $index + 1 }}</span>
@@ -468,7 +469,12 @@
                             <span class="student-matricule">{{ $etudiant->matricule ?? 'N/A' }}</span>
                         </td>
                         <td class="student-info-cell">
-                            <div class="student-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</div>
+                            <div class="student-name">
+                                {{ $etudiant->nom }} {{ $etudiant->prenoms }}
+                                @if($accProfile)
+                                    <span style="display:inline-block; background:#0453cb; color:#fff; padding:1px 5px; border-radius:50px; font-size:7px; margin-left:3px; font-weight:600; -webkit-print-color-adjust:exact; color-adjust:exact;" title="{{ $accProfile->summaryBadge() }}">&#9881; A</span>
+                                @endif
+                            </div>
                             <div class="student-gender">{{ $etudiant->genre == 'M' ? 'Masculin' : 'Feminin' }}</div>
                         </td>
                         <td>
@@ -482,6 +488,35 @@
                     @endforeach
                 </tbody>
             </table>
+
+            @php
+                $accStudents = auth()->user()?->can('students.accessibility.export')
+                    ? $etudiants->filter(fn ($e) => $e->accessibilityProfile)
+                    : collect();
+            @endphp
+            @if($accStudents->isNotEmpty())
+                <div style="margin-top:6px; padding:6px 8px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; -webkit-print-color-adjust:exact; color-adjust:exact;">
+                    <div style="font-size:8px; font-weight:700; color:#0453cb; text-transform:uppercase; letter-spacing:.04em; margin-bottom:3px;">
+                        &#9881; Aménagements à respecter ({{ $accStudents->count() }})
+                    </div>
+                    <table style="width:100%; border-collapse:collapse; font-size:7.5px;">
+                        @foreach($accStudents as $accE)
+                            @php $p = $accE->accessibilityProfile; @endphp
+                            <tr>
+                                <td style="width:25%; padding:1px 4px; vertical-align:top;">
+                                    <strong style="color:#1e293b;">{{ $accE->nom }} {{ $accE->prenoms }}</strong>
+                                </td>
+                                <td style="padding:1px 4px; vertical-align:top; color:#475569;">
+                                    @if($p->requires_third_time) <span style="color:#0453cb; font-weight:700;">Tiers-temps {{ $p->third_time_percentage }}%</span> · @endif
+                                    @if($p->assistant_required) <span style="color:#0453cb; font-weight:700;">Assistant requis</span> · @endif
+                                    {{ implode(' · ', $p->accommodationLabels()) }}
+                                    @if($p->short_description) — <em>{{ $p->short_description }}</em> @endif
+                                </td>
+                            </tr>
+                        @endforeach
+                    </table>
+                </div>
+            @endif
 
             <!-- Footer Section -->
             <div class="footer-section">

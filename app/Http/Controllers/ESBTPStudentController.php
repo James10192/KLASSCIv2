@@ -58,7 +58,7 @@ class ESBTPStudentController extends Controller
         $estTransfert = $request->input('est_transfert');
 
         $baseQuery = ESBTPEtudiant::query()
-            ->with(['user', 'inscriptions' => function ($q) {
+            ->with(['user', 'accessibilityProfile', 'inscriptions' => function ($q) {
                 $q->with(['filiere', 'niveau', 'classe', 'anneeUniversitaire']);
             }]);
 
@@ -349,6 +349,7 @@ class ESBTPStudentController extends Controller
     {
         $etudiant->load([
             'user',
+            'accessibilityProfile.updatedBy',
             'parents' => fn($q) => $q->with('etudiants'),
             'inscriptions' => fn($q) => $q->with([
                     'filiere', 'niveauEtude', 'anneeUniversitaire',
@@ -653,7 +654,7 @@ class ESBTPStudentController extends Controller
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         $query = \App\Models\ESBTPInscription::query()
-            ->with(['etudiant', 'filiere', 'niveau', 'classe', 'anneeUniversitaire'])
+            ->with(['etudiant.accessibilityProfile', 'filiere', 'niveau', 'classe', 'anneeUniversitaire'])
             ->whereHas('etudiant', function ($q) use ($request) {
                 if ($request->filled('status')) {
                     $q->where('statut', $request->input('status'));

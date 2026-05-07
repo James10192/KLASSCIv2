@@ -1940,6 +1940,35 @@ Route::middleware(['auth', 'permission:admin.access', 'paywall'])->group(functio
     Route::delete('esbtp/etudiants/{etudiant}/documents/{document}', [ESBTPEtudiantController::class, 'destroyDocument'])
         ->name('esbtp.etudiants.documents.destroy')
         ->middleware('permission:students.edit');
+
+    // ===== Accessibilité (handicap, aménagements pédagogiques) =====
+    Route::get('esbtp/accessibility', [\App\Http\Controllers\ESBTPStudentAccessibilityController::class, 'index'])
+        ->name('esbtp.accessibility.index')
+        ->middleware('permission:students.accessibility.view');
+
+    Route::get('esbtp/accessibility/preview-pdf', [\App\Http\Controllers\ESBTPStudentAccessibilityController::class, 'previewPdf'])
+        ->name('esbtp.accessibility.preview-pdf')
+        ->middleware(['permission:students.accessibility.export', 'throttle:60,1']);
+
+    Route::get('esbtp/accessibility/export-pdf', [\App\Http\Controllers\ESBTPStudentAccessibilityController::class, 'exportPdf'])
+        ->name('esbtp.accessibility.export-pdf')
+        ->middleware(['permission:students.accessibility.export', 'throttle:10,1']);
+
+    Route::get('esbtp/accessibility/export-excel', [\App\Http\Controllers\ESBTPStudentAccessibilityController::class, 'exportExcel'])
+        ->name('esbtp.accessibility.export-excel')
+        ->middleware(['permission:students.accessibility.export', 'throttle:10,1']);
+
+    Route::get('esbtp/etudiants/{etudiant}/accessibility', [\App\Http\Controllers\ESBTPStudentAccessibilityController::class, 'show'])
+        ->name('esbtp.etudiants.accessibility.show')
+        ->middleware('permission:students.accessibility.view');
+
+    Route::post('esbtp/etudiants/{etudiant}/accessibility', [\App\Http\Controllers\ESBTPStudentAccessibilityController::class, 'store'])
+        ->name('esbtp.etudiants.accessibility.store')
+        ->middleware('permission:students.accessibility.edit');
+
+    Route::delete('esbtp/etudiants/{etudiant}/accessibility', [\App\Http\Controllers\ESBTPStudentAccessibilityController::class, 'destroy'])
+        ->name('esbtp.etudiants.accessibility.destroy')
+        ->middleware('permission:students.accessibility.edit');
 });
 
 // ... existing code ...

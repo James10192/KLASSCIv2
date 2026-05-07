@@ -382,7 +382,13 @@
                             <td><span class="student-number">{{ $rowOffset + $index + 1 }}</span></td>
                             <td><span class="student-matricule">{{ $etudiant->matricule ?? 'N/A' }}</span></td>
                             <td class="student-info-cell">
-                                <div class="student-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</div>
+                                @php $accProfile = auth()->user()?->can('students.accessibility.export') ? $etudiant->accessibilityProfile : null; @endphp
+                                <div class="student-name">
+                                    {{ $etudiant->nom }} {{ $etudiant->prenoms }}
+                                    @if($accProfile)
+                                        <span style="display:inline-block; background:#0453cb; color:#fff; padding:1px 5px; border-radius:50px; font-size:7px; margin-left:3px; font-weight:600; -webkit-print-color-adjust:exact; color-adjust:exact;" title="{{ $accProfile->summaryBadge() }}">&#9881; A</span>
+                                    @endif
+                                </div>
                             </td>
                             <td>
                                 <span class="genre-badge {{ in_array($etudiant->sexe, ['F', 'Féminin']) ? 'female' : '' }}">{{ $etudiant->sexe ?? '?' }}</span>

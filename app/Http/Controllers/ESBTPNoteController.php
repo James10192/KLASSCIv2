@@ -851,14 +851,15 @@ class ESBTPNoteController extends Controller
 
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
-            $query->where('classe_id', $evaluation->classe_id)
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree');
-            if ($anneeCourante) {
-                $query->where('annee_universitaire_id', $anneeCourante->id);
-            }
-        })
+        $etudiants = ESBTPEtudiant::with('accessibilityProfile')
+            ->whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
+                $query->where('classe_id', $evaluation->classe_id)
+                    ->where('status', 'active')
+                    ->where('workflow_step', 'etudiant_cree');
+                if ($anneeCourante) {
+                    $query->where('annee_universitaire_id', $anneeCourante->id);
+                }
+            })
             ->orderBy('nom')
             ->get();
 
@@ -909,14 +910,15 @@ class ESBTPNoteController extends Controller
 
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($classe, $anneeCourante) {
-            $query->where('classe_id', $classe->id)
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree');
-            if ($anneeCourante) {
-                $query->where('annee_universitaire_id', $anneeCourante->id);
-            }
-        })
+        $etudiants = ESBTPEtudiant::with('accessibilityProfile')
+            ->whereHas('inscriptions', function ($query) use ($classe, $anneeCourante) {
+                $query->where('classe_id', $classe->id)
+                    ->where('status', 'active')
+                    ->where('workflow_step', 'etudiant_cree');
+                if ($anneeCourante) {
+                    $query->where('annee_universitaire_id', $anneeCourante->id);
+                }
+            })
             ->orderBy('nom')
             ->get();
 
