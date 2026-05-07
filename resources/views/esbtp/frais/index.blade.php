@@ -308,6 +308,82 @@
     min-height: 400px;
 }
 
+/* Sous-filtre type (chips) */
+.fi-type-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .5rem;
+    margin-bottom: 1rem;
+    padding: .5rem .25rem;
+}
+.fi-type-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .35rem .8rem;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 50px;
+    background: #fff;
+    color: #475569;
+    font-size: .82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+}
+.fi-type-chip:hover:not(:disabled) {
+    border-color: #5e91de;
+    color: #0453cb;
+}
+.fi-type-chip.active {
+    background: linear-gradient(135deg, #0453cb, #5e91de);
+    border-color: #0453cb;
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(4,83,203,.25);
+}
+.fi-type-chip:disabled {
+    opacity: .45;
+    cursor: not-allowed;
+}
+.fi-type-chip-count {
+    background: rgba(0,0,0,.08);
+    padding: 1px 7px;
+    border-radius: 50px;
+    font-size: .72rem;
+    font-weight: 700;
+}
+.fi-type-chip.active .fi-type-chip-count {
+    background: rgba(255,255,255,.25);
+    color: #fff;
+}
+
+/* Pill secondaire affiché sur chaque card pour rappeler le category_type */
+.fi-type-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .25rem;
+    padding: 2px 9px;
+    background: #f1f5f9;
+    color: #475569;
+    border-radius: 50px;
+    font-size: .7rem;
+    font-weight: 600;
+    margin-left: .35rem;
+}
+.fi-type-pill i {
+    font-size: .65rem;
+    color: #64748b;
+}
+
+/* Empty state quand le sous-filtre ne match aucune card */
+.fi-type-empty {
+    display: none;
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #64748b;
+    font-size: .9rem;
+}
+.fi-type-empty.show { display: block; }
+
 .tab-pane {
     display: none;
 }
@@ -549,7 +625,7 @@
 
         {{-- Row 2 : KPIs glass (drill-down vers onglet correspondant) --}}
         <div class="fi-hero-kpis">
-            <a href="#" class="fi-hero-kpi" onclick="scrollToTab('academic'); return false;" title="Voir les frais académiques">
+            <a href="#" class="fi-hero-kpi" onclick="scrollToTab('mandatory'); return false;" title="Toutes les catégories">
                 <div class="fi-hero-kpi-head">
                     <i class="fas fa-layer-group"></i>
                     <span>Total catégories</span>
@@ -557,7 +633,7 @@
                 <div class="fi-hero-kpi-value">{{ $stats['total_categories'] }}</div>
                 <div class="fi-hero-kpi-meta">Toutes confondues</div>
             </a>
-            <a href="#" class="fi-hero-kpi" onclick="scrollToTab('academic'); return false;" title="Voir les frais obligatoires">
+            <a href="#" class="fi-hero-kpi" onclick="scrollToTab('mandatory'); return false;" title="Voir les frais obligatoires">
                 <div class="fi-hero-kpi-head">
                     <i class="fas fa-exclamation-circle"></i>
                     <span>Frais obligatoires</span>
@@ -565,15 +641,15 @@
                 <div class="fi-hero-kpi-value">{{ $stats['mandatory_categories'] }}</div>
                 <div class="fi-hero-kpi-meta">À payer par tous</div>
             </a>
-            <a href="#" class="fi-hero-kpi" onclick="scrollToTab('service'); return false;" title="Voir les services optionnels">
+            <a href="#" class="fi-hero-kpi" onclick="scrollToTab('optional'); return false;" title="Voir les frais optionnels">
                 <div class="fi-hero-kpi-head">
                     <i class="fas fa-star"></i>
-                    <span>Services optionnels</span>
+                    <span>Frais optionnels</span>
                 </div>
                 <div class="fi-hero-kpi-value">{{ $stats['optional_categories'] }}</div>
-                <div class="fi-hero-kpi-meta">Cantine & transport</div>
+                <div class="fi-hero-kpi-meta">Cantine, transport, électifs…</div>
             </a>
-            <a href="#" class="fi-hero-kpi" onclick="scrollToTab('administrative'); return false;" title="Voir les catégories actives">
+            <a href="#" class="fi-hero-kpi" onclick="scrollToTab('mandatory'); return false;" title="Voir les catégories actives">
                 <div class="fi-hero-kpi-head">
                     <i class="fas fa-check-circle"></i>
                     <span>Catégories actives</span>
@@ -600,83 +676,84 @@
 
     {{-- KPIs deplaces dans fi-hero row 2 ci-dessus (voir hero) --}}
 
-    <!-- Système d'onglets pour les catégories -->
+    <!-- Système d'onglets pour les catégories : 2 tabs basés sur is_mandatory -->
     <div class="tabs-container">
         <!-- Navigation des onglets -->
         <div class="tabs-navigation">
-            <button class="tab-button active" data-tab="academic">
-                <i class="fas fa-graduation-cap"></i>
-                Frais Académiques
-                <span class="tab-badge">{{ $categoriesByType['academic']->count() }}</span>
+            <button class="tab-button active" data-tab="mandatory">
+                <i class="fas fa-exclamation-circle"></i>
+                Frais obligatoires
+                <span class="tab-badge">{{ $categoriesByMandatory['mandatory']->count() }}</span>
             </button>
-            <button class="tab-button" data-tab="service">
-                <i class="fas fa-cogs"></i>
-                Services Optionnels
-                <span class="tab-badge">{{ $categoriesByType['service']->count() }}</span>
-            </button>
-            <button class="tab-button" data-tab="administrative">
-                <i class="fas fa-file-alt"></i>
-                Frais Administratifs
-                <span class="tab-badge">{{ $categoriesByType['administrative']->count() }}</span>
+            <button class="tab-button" data-tab="optional">
+                <i class="fas fa-star"></i>
+                Frais optionnels
+                <span class="tab-badge">{{ $categoriesByMandatory['optional']->count() }}</span>
             </button>
         </div>
 
-        <!-- Contenu des onglets -->
+        <!-- Contenu des onglets : 2 panes (mandatory / optional) avec sous-filtre par category_type -->
         <div class="tab-content">
-            <!-- Onglet Frais Académiques -->
-            <div class="tab-pane active" id="academic">
+            @php
+                $typeMeta = [
+                    'academic' => ['label' => 'Académique', 'icon' => 'fa-graduation-cap'],
+                    'service' => ['label' => 'Service', 'icon' => 'fa-cogs'],
+                    'administrative' => ['label' => 'Administratif', 'icon' => 'fa-file-alt'],
+                ];
+            @endphp
+
+            {{-- ═══ Frais obligatoires ═══ --}}
+            <div class="tab-pane active" id="mandatory">
                 <div class="tab-header">
                     <h2 class="tab-title">
-                        <i class="fas fa-graduation-cap color-success"></i>
-                        Frais Académiques
+                        <i class="fas fa-exclamation-circle color-success"></i>
+                        Frais obligatoires
                     </h2>
-                    <p class="tab-subtitle">Frais d'inscription et de scolarité obligatoires selon la filière et le niveau</p>
-                    <button class="btn-acasi primary add-category-btn" onclick="addCategoryForType('academic')">
-                        <i class="fas fa-plus"></i>Ajouter Frais Académique
+                    <p class="tab-subtitle">Frais à payer par tous les étudiants — inscription, scolarité, et autres frais réglementaires.</p>
+                    <button class="btn-acasi primary add-category-btn" onclick="addCategoryByMandatory(1)">
+                        <i class="fas fa-plus"></i>Ajouter un frais obligatoire
                     </button>
                 </div>
 
-                @if($categoriesByType['academic']->count() > 0)
+                {{-- Sous-filtre par category_type (chips JS) --}}
+                <div class="fi-type-chips" data-tab-target="mandatory">
+                    <button type="button" class="fi-type-chip active" data-type="all">
+                        <i class="fas fa-list"></i> Tous
+                        <span class="fi-type-chip-count">{{ $categoriesByMandatory['mandatory']->count() }}</span>
+                    </button>
+                    @foreach($typeMeta as $typeKey => $meta)
+                        @php $count = $categoriesByMandatory['mandatory']->where('category_type', $typeKey)->count(); @endphp
+                        <button type="button" class="fi-type-chip" data-type="{{ $typeKey }}" @if($count === 0) disabled @endif>
+                            <i class="fas {{ $meta['icon'] }}"></i> {{ $meta['label'] }}
+                            <span class="fi-type-chip-count">{{ $count }}</span>
+                        </button>
+                    @endforeach
+                </div>
+
+                @if($categoriesByMandatory['mandatory']->count() > 0)
                     <div class="category-grid">
-                        @foreach($categoriesByType['academic'] as $category)
-                            <div class="category-card">
+                        @foreach($categoriesByMandatory['mandatory'] as $category)
+                            @php $cat_type = $category->category_type ?: 'administrative'; @endphp
+                            <div class="category-card" data-type="{{ $cat_type }}">
                                 <div class="category-header">
                                     <div class="category-name">{{ $category->name }}</div>
                                     <p class="category-description">{{ $category->description }}</p>
                                 </div>
                                 <div class="category-body">
-                                    @if($category->is_mandatory)
-                                        <div class="category-amount">
-                                            <i class="fas fa-graduation-cap"></i>
-                                            Configuré par classe
+                                    <div class="category-amount">
+                                        <i class="fas fa-graduation-cap"></i>
+                                        Configuré par classe
+                                    </div>
+                                    <div class="category-meta">
+                                        <div class="category-variants">
+                                            <i class="fas fa-cogs"></i>
+                                            {{ $category->configuration_status['message'] ?? 'Aucune configuration' }}
                                         </div>
-                                        <div class="category-meta">
-                                            <div class="category-variants">
-                                                <i class="fas fa-cogs"></i>
-                                                {{ $category->configuration_status['message'] ?? 'Aucune configuration' }}
-                                            </div>
-                                            <span class="badge success">Obligatoire</span>
-                                        </div>
-                                    @else
-                                        @if($category->configuration_status['is_configured'] ?? false)
-                                            <div class="category-amount">
-                                                <i class="fas fa-check-circle color-success"></i>
-                                                Service configuré
-                                            </div>
-                                        @else
-                                            <div class="category-amount">
-                                                <i class="fas fa-exclamation-triangle color-warning"></i>
-                                                À configurer
-                                            </div>
-                                        @endif
-                                        <div class="category-meta">
-                                            <div class="category-variants">
-                                                <i class="fas fa-globe"></i>
-                                                {{ $category->configuration_status['message'] ?? 'Aucune option' }}
-                                            </div>
-                                            <span class="badge warning">Service Global</span>
-                                        </div>
-                                    @endif
+                                        <span class="badge success">Obligatoire</span>
+                                        @isset($typeMeta[$cat_type])
+                                            <span class="fi-type-pill"><i class="fas {{ $typeMeta[$cat_type]['icon'] }}"></i> {{ $typeMeta[$cat_type]['label'] }}</span>
+                                        @endisset
+                                    </div>
                                     <div class="category-actions">
                                         <a href="{{ route('esbtp.frais.show', $category->id) }}" class="btn-acasi secondary" title="Voir détails">
                                             <i class="fas fa-eye"></i>
@@ -684,15 +761,9 @@
                                         <a href="{{ route('esbtp.frais.edit', $category->id) }}" class="btn-acasi primary" title="Modifier catégorie">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        @if($category->is_mandatory)
-                                            <a href="{{ route('esbtp.frais.configure') }}" class="btn-acasi accent-blue" title="Configurer par classe">
-                                                <i class="fas fa-graduation-cap"></i>
-                                            </a>
-                                        @else
-                                            <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi success" title="Services optionnels">
-                                                <i class="fas fa-globe"></i>
-                                            </a>
-                                        @endif
+                                        <a href="{{ route('esbtp.frais.configure') }}" class="btn-acasi accent-blue" title="Configurer par classe">
+                                            <i class="fas fa-graduation-cap"></i>
+                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -700,155 +771,74 @@
                     </div>
                 @else
                     <div class="empty-state">
-                        <i class="fas fa-graduation-cap"></i>
-                        <p>Aucun frais académique configuré</p>
-                        <button class="btn-acasi primary" onclick="addCategoryForType('academic')">
-                            <i class="fas fa-plus"></i>Ajouter le premier frais académique
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Aucun frais obligatoire configuré</p>
+                        <button class="btn-acasi primary" onclick="addCategoryByMandatory(1)">
+                            <i class="fas fa-plus"></i>Ajouter le premier frais obligatoire
                         </button>
                     </div>
                 @endif
             </div>
 
-            <!-- Onglet Services Optionnels -->
-            <div class="tab-pane" id="service">
+            {{-- ═══ Frais optionnels ═══ --}}
+            <div class="tab-pane" id="optional">
                 <div class="tab-header">
                     <h2 class="tab-title">
-                        <i class="fas fa-cogs color-warning"></i>
-                        Services Optionnels
+                        <i class="fas fa-star color-warning"></i>
+                        Frais optionnels
                     </h2>
-                    <p class="tab-subtitle">Services de cantine, transport et autres prestations avec variants selon les besoins</p>
-                    <button class="btn-acasi primary add-category-btn" onclick="addCategoryForType('service')">
-                        <i class="fas fa-plus"></i>Ajouter Service
+                    <p class="tab-subtitle">Frais à la carte — l'étudiant choisit ou pas (cantine, transport, modules électifs, etc.).</p>
+                    <button class="btn-acasi primary add-category-btn" onclick="addCategoryByMandatory(0)">
+                        <i class="fas fa-plus"></i>Ajouter un frais optionnel
                     </button>
                 </div>
 
-                @if($categoriesByType['service']->count() > 0)
-                    <div class="category-grid">
-                        @foreach($categoriesByType['service'] as $category)
-                            <div class="category-card">
-                                <div class="category-header">
-                                    <div class="category-name">{{ $category->name }}</div>
-                                    <p class="category-description">{{ $category->description }}</p>
-                                </div>
-                                <div class="category-body">
-                                    @if($category->is_mandatory)
-                                        <div class="category-amount">
-                                            <i class="fas fa-graduation-cap"></i>
-                                            Configuré par classe
-                                        </div>
-                                        <div class="category-meta">
-                                            <div class="category-variants">
-                                                <i class="fas fa-cogs"></i>
-                                                {{ $category->configuration_status['message'] ?? 'Aucune configuration' }}
-                                            </div>
-                                            <span class="badge success">Obligatoire</span>
-                                        </div>
-                                    @else
-                                        @if($category->configuration_status['is_configured'] ?? false)
-                                            <div class="category-amount">
-                                                <i class="fas fa-check-circle color-success"></i>
-                                                Service configuré
-                                            </div>
-                                        @else
-                                            <div class="category-amount">
-                                                <i class="fas fa-exclamation-triangle color-warning"></i>
-                                                À configurer
-                                            </div>
-                                        @endif
-                                        <div class="category-meta">
-                                            <div class="category-variants">
-                                                <i class="fas fa-globe"></i>
-                                                {{ $category->configuration_status['message'] ?? 'Aucune option' }}
-                                            </div>
-                                            <span class="badge warning">Service Global</span>
-                                        </div>
-                                    @endif
-                                    <div class="category-actions">
-                                        <a href="{{ route('esbtp.frais.show', $category->id) }}" class="btn-acasi secondary" title="Voir détails">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a href="{{ route('esbtp.frais.edit', $category->id) }}" class="btn-acasi primary" title="Modifier catégorie">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        @if($category->is_mandatory)
-                                            <a href="{{ route('esbtp.frais.configure') }}" class="btn-acasi accent-blue" title="Configurer par classe">
-                                                <i class="fas fa-graduation-cap"></i>
-                                            </a>
-                                        @else
-                                            <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi success" title="Services optionnels">
-                                                <i class="fas fa-globe"></i>
-                                            </a>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
-                        @endforeach
-                    </div>
-                @else
-                    <div class="empty-state">
-                        <i class="fas fa-cogs"></i>
-                        <p>Aucun service optionnel configuré</p>
-                        <button class="btn-acasi primary" onclick="addCategoryForType('service')">
-                            <i class="fas fa-plus"></i>Ajouter le premier service
+                {{-- Sous-filtre par category_type (chips JS) --}}
+                <div class="fi-type-chips" data-tab-target="optional">
+                    <button type="button" class="fi-type-chip active" data-type="all">
+                        <i class="fas fa-list"></i> Tous
+                        <span class="fi-type-chip-count">{{ $categoriesByMandatory['optional']->count() }}</span>
+                    </button>
+                    @foreach($typeMeta as $typeKey => $meta)
+                        @php $count = $categoriesByMandatory['optional']->where('category_type', $typeKey)->count(); @endphp
+                        <button type="button" class="fi-type-chip" data-type="{{ $typeKey }}" @if($count === 0) disabled @endif>
+                            <i class="fas {{ $meta['icon'] }}"></i> {{ $meta['label'] }}
+                            <span class="fi-type-chip-count">{{ $count }}</span>
                         </button>
-                    </div>
-                @endif
-            </div>
-
-            <!-- Onglet Frais Administratifs -->
-            <div class="tab-pane" id="administrative">
-                <div class="tab-header">
-                    <h2 class="tab-title">
-                        <i class="fas fa-file-alt color-accent"></i>
-                        Frais Administratifs
-                    </h2>
-                    <p class="tab-subtitle">Frais de documentation, examens et autres démarches administratives</p>
-                    <button class="btn-acasi primary add-category-btn" onclick="addCategoryForType('administrative')">
-                        <i class="fas fa-plus"></i>Ajouter Frais Administratif
-                    </button>
+                    @endforeach
                 </div>
 
-                @if($categoriesByType['administrative']->count() > 0)
+                @if($categoriesByMandatory['optional']->count() > 0)
                     <div class="category-grid">
-                        @foreach($categoriesByType['administrative'] as $category)
-                            <div class="category-card">
+                        @foreach($categoriesByMandatory['optional'] as $category)
+                            @php $cat_type = $category->category_type ?: 'service'; @endphp
+                            <div class="category-card" data-type="{{ $cat_type }}">
                                 <div class="category-header">
                                     <div class="category-name">{{ $category->name }}</div>
                                     <p class="category-description">{{ $category->description }}</p>
                                 </div>
                                 <div class="category-body">
-                                    @if($category->is_mandatory)
+                                    @if($category->configuration_status['is_configured'] ?? false)
                                         <div class="category-amount">
-                                            <i class="fas fa-graduation-cap"></i>
-                                            Configuré par classe
-                                        </div>
-                                        <div class="category-meta">
-                                            <div class="category-variants">
-                                                <i class="fas fa-cogs"></i>
-                                                {{ $category->configuration_status['message'] ?? 'Aucune configuration' }}
-                                            </div>
-                                            <span class="badge success">Obligatoire</span>
+                                            <i class="fas fa-check-circle color-success"></i>
+                                            Configuré
                                         </div>
                                     @else
-                                        @if($category->configuration_status['is_configured'] ?? false)
-                                            <div class="category-amount">
-                                                <i class="fas fa-check-circle color-success"></i>
-                                                Service configuré
-                                            </div>
-                                        @else
-                                            <div class="category-amount">
-                                                <i class="fas fa-exclamation-triangle color-warning"></i>
-                                                À configurer
-                                            </div>
-                                        @endif
-                                        <div class="category-meta">
-                                            <div class="category-variants">
-                                                <i class="fas fa-globe"></i>
-                                                {{ $category->configuration_status['message'] ?? 'Aucune option' }}
-                                            </div>
-                                            <span class="badge warning">Service Global</span>
+                                        <div class="category-amount">
+                                            <i class="fas fa-exclamation-triangle color-warning"></i>
+                                            À configurer
                                         </div>
                                     @endif
+                                    <div class="category-meta">
+                                        <div class="category-variants">
+                                            <i class="fas fa-globe"></i>
+                                            {{ $category->configuration_status['message'] ?? 'Aucune option' }}
+                                        </div>
+                                        <span class="badge warning">Optionnel</span>
+                                        @isset($typeMeta[$cat_type])
+                                            <span class="fi-type-pill"><i class="fas {{ $typeMeta[$cat_type]['icon'] }}"></i> {{ $typeMeta[$cat_type]['label'] }}</span>
+                                        @endisset
+                                    </div>
                                     <div class="category-actions">
                                         <a href="{{ route('esbtp.frais.show', $category->id) }}" class="btn-acasi secondary" title="Voir détails">
                                             <i class="fas fa-eye"></i>
@@ -856,15 +846,9 @@
                                         <a href="{{ route('esbtp.frais.edit', $category->id) }}" class="btn-acasi primary" title="Modifier catégorie">
                                             <i class="fas fa-edit"></i>
                                         </a>
-                                        @if($category->is_mandatory)
-                                            <a href="{{ route('esbtp.frais.configure') }}" class="btn-acasi accent-blue" title="Configurer par classe">
-                                                <i class="fas fa-graduation-cap"></i>
-                                            </a>
-                                        @else
-                                            <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi success" title="Services optionnels">
-                                                <i class="fas fa-globe"></i>
-                                            </a>
-                                        @endif
+                                        <a href="{{ route('esbtp.frais.optional-config') }}" class="btn-acasi success" title="Frais optionnels">
+                                            <i class="fas fa-globe"></i>
+                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -872,10 +856,10 @@
                     </div>
                 @else
                     <div class="empty-state">
-                        <i class="fas fa-file-alt"></i>
-                        <p>Aucun frais administratif configuré</p>
-                        <button class="btn-acasi primary" onclick="addCategoryForType('administrative')">
-                            <i class="fas fa-plus"></i>Ajouter le premier frais administratif
+                        <i class="fas fa-star"></i>
+                        <p>Aucun frais optionnel configuré</p>
+                        <button class="btn-acasi primary" onclick="addCategoryByMandatory(0)">
+                            <i class="fas fa-plus"></i>Ajouter le premier frais optionnel
                         </button>
                     </div>
                 @endif
@@ -942,21 +926,58 @@ document.addEventListener('DOMContentLoaded', function() {
     tabButtons.forEach(button => {
         button.addEventListener('click', function() {
             const targetTab = this.getAttribute('data-tab');
-            
+
             // Désactiver tous les onglets
             tabButtons.forEach(btn => btn.classList.remove('active'));
             tabPanes.forEach(pane => pane.classList.remove('active'));
-            
+
             // Activer l'onglet cliqué
             this.classList.add('active');
             document.getElementById(targetTab).classList.add('active');
         });
     });
+
+    // Sous-filtre par category_type — chips JS dans chaque tab
+    document.querySelectorAll('.fi-type-chips').forEach(chipBar => {
+        const tabId = chipBar.getAttribute('data-tab-target');
+        const pane = document.getElementById(tabId);
+        if (!pane) return;
+
+        chipBar.querySelectorAll('.fi-type-chip').forEach(chip => {
+            chip.addEventListener('click', function () {
+                if (this.disabled) return;
+                const type = this.getAttribute('data-type');
+
+                chipBar.querySelectorAll('.fi-type-chip').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+
+                let visibleCount = 0;
+                pane.querySelectorAll('.category-card').forEach(card => {
+                    const cardType = card.getAttribute('data-type');
+                    const show = (type === 'all') || (cardType === type);
+                    card.style.display = show ? '' : 'none';
+                    if (show) visibleCount++;
+                });
+
+                // Toggle empty state si filtre ne match rien
+                let emptyHint = pane.querySelector('.fi-type-empty');
+                if (visibleCount === 0 && !emptyHint) {
+                    emptyHint = document.createElement('div');
+                    emptyHint.className = 'fi-type-empty show';
+                    emptyHint.innerHTML = '<i class="fas fa-filter"></i> Aucune catégorie de ce type dans cet onglet.';
+                    const grid = pane.querySelector('.category-grid');
+                    if (grid) grid.parentNode.insertBefore(emptyHint, grid.nextSibling);
+                } else if (emptyHint) {
+                    emptyHint.classList.toggle('show', visibleCount === 0);
+                }
+            });
+        });
+    });
 });
 
-// Fonction pour ajouter une catégorie avec un type pré-sélectionné
-function addCategoryForType(categoryType) {
-    window.location.href = `{{ route('esbtp.frais.create') }}?category_type=${categoryType}`;
+// Fonction pour ajouter une catégorie avec is_mandatory pré-sélectionné
+function addCategoryByMandatory(isMandatory) {
+    window.location.href = `{{ route('esbtp.frais.create') }}?is_mandatory=${isMandatory ? 1 : 0}`;
 }
 
 // Drill-down KPI : active l'onglet et scroll vers le contenu

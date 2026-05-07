@@ -49,21 +49,22 @@ class ESBTPFraisController extends Controller
     {
         // Utiliser le cache pour les catégories fréquemment accédées
         $categories = $this->fraisCacheService->getCategories();
-        
+
         // Ajouter les statuts de configuration pour chaque catégorie
         $categories = $categories->map(function($category) {
             $status = $this->fraisManagementService->getConfigurationStatus($category);
             $category->configuration_status = $status;
             return $category;
         });
-        
-        // Grouper les catégories par type
-        $categoriesByType = [
-            'academic' => $categories->where('category_type', 'academic'),
-            'service' => $categories->where('category_type', 'service'),
-            'administrative' => $categories->where('category_type', 'administrative'),
+
+        // Grouper les catégories par caractère obligatoire (filtrage principal pour les tabs).
+        // Le category_type (academic/service/administrative) reste accessible sur chaque
+        // catégorie en tant que badge secondaire dans la vue.
+        $categoriesByMandatory = [
+            'mandatory' => $categories->where('is_mandatory', true)->values(),
+            'optional'  => $categories->where('is_mandatory', false)->values(),
         ];
-        
+
         $stats = [
             'total_categories' => ESBTPFraisCategory::count(),
             'academic_categories' => ESBTPFraisCategory::academic()->count(),
@@ -74,7 +75,7 @@ class ESBTPFraisController extends Controller
             'active_categories' => ESBTPFraisCategory::active()->count(),
         ];
 
-        return view('esbtp.frais.index', compact('categories', 'categoriesByType', 'stats'));
+        return view('esbtp.frais.index', compact('categories', 'categoriesByMandatory', 'stats'));
     }
 
     /**

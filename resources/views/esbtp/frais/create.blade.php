@@ -387,13 +387,18 @@
                         Configuration Avancée
                     </div>
                     
+                    @php
+                        // Pré-cochage selon query string ?is_mandatory=1 venant des boutons "Ajouter" de l'index.
+                        // Précédence : old() > query string > non coché.
+                        $isMandatoryDefault = old('is_mandatory', request('is_mandatory'));
+                    @endphp
                     <div class="checkbox-modern">
-                        <input class="@error('is_mandatory') is-invalid @enderror" 
-                               type="checkbox" 
-                               id="is_mandatory" 
-                               name="is_mandatory" 
-                               value="1" 
-                               {{ old('is_mandatory') ? 'checked' : '' }}>
+                        <input class="@error('is_mandatory') is-invalid @enderror"
+                               type="checkbox"
+                               id="is_mandatory"
+                               name="is_mandatory"
+                               value="1"
+                               {{ $isMandatoryDefault ? 'checked' : '' }}>
                         <div>
                             <label for="is_mandatory">Frais obligatoire</label>
                             <div class="checkbox-description">Les frais obligatoires doivent être configurés pour toutes les classes et filières</div>
