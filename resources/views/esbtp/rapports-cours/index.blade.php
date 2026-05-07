@@ -51,18 +51,66 @@
     }
     .rc-card-body { padding: 1.5rem; }
 
-    .rc-filters { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
-    .rc-filters > * { min-width: 170px; }
-    .rc-search {
-        flex: 1 1 220px;
-        display: flex; align-items: center; gap: .5rem;
-        background: #f8fafc; border: 1px solid #e2e8f0;
-        border-radius: 10px; padding: .55rem .9rem;
-        transition: all .2s ease;
+    .rc-filters { display: flex; flex-direction: column; gap: 1rem; }
+    .rc-filter-row1 {
+        display: grid; gap: .75rem;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
-    .rc-search:focus-within { background: #fff; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.08); }
+    .rc-filter-row2 {
+        display: grid; gap: .75rem;
+        grid-template-columns: minmax(0, 1.2fr) minmax(0, 1.6fr) auto;
+        align-items: end;
+    }
+    @media (max-width: 992px) {
+        .rc-filter-row1 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .rc-filter-row2 { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 600px) {
+        .rc-filter-row1 { grid-template-columns: 1fr; }
+    }
+
+    .rc-filter-field { display: flex; flex-direction: column; min-width: 0; }
+    .rc-filter-label {
+        font-size: .7rem; font-weight: 600;
+        color: #64748b; text-transform: uppercase; letter-spacing: .04em;
+        margin-bottom: .35rem;
+    }
+    .rc-filter-actions { display: flex; gap: .5rem; align-items: center; }
+
+    .rc-date-range {
+        display: grid; grid-template-columns: 1fr 1fr; gap: .5rem;
+    }
+    .rc-date-input {
+        display: flex; align-items: center; gap: .35rem;
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
+        padding: 0 .75rem; height: 38px;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    .rc-date-input:focus-within { border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.10); }
+    .rc-date-prefix {
+        font-size: .72rem; font-weight: 600; color: #64748b;
+        text-transform: uppercase; letter-spacing: .04em;
+        padding-right: .35rem; border-right: 1px solid #e2e8f0;
+    }
+    .rc-date-input input[type="date"] {
+        border: 0; background: transparent; outline: none;
+        flex: 1; min-width: 0; font-size: .85rem; color: #1e293b;
+        padding: 0; height: 100%;
+    }
+    .rc-date-input input[type="date"]::-webkit-calendar-picker-indicator {
+        cursor: pointer; opacity: .6;
+    }
+    .rc-date-input input[type="date"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+
+    .rc-search {
+        display: flex; align-items: center; gap: .5rem;
+        background: #fff; border: 1px solid #e2e8f0;
+        border-radius: 10px; padding: 0 .9rem; height: 38px;
+        transition: border-color .15s, box-shadow .15s;
+    }
+    .rc-search:focus-within { border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.10); }
     .rc-search i { color: #64748b; font-size: .85rem; }
-    .rc-search input { border: 0; background: transparent; outline: none; flex: 1; font-size: .88rem; color: #1e293b; }
+    .rc-search input { border: 0; background: transparent; outline: none; flex: 1; min-width: 0; font-size: .88rem; color: #1e293b; }
 
     .rc-btn-reset {
         background: transparent; color: #64748b; border: 1px solid #e2e8f0;
@@ -185,51 +233,83 @@
     <div class="rc-card mb-3">
         <div class="rc-card-body">
             <form method="GET" action="{{ route('esbtp.rapports-cours.index') }}" class="rc-filters">
-                <x-au-user-picker
-                    name="teacher_id"
-                    :value="$filters['teacher_id']"
-                    :users="$teachers"
-                    placeholder="— Tous les enseignants —" />
+                <div class="rc-filter-row1">
+                    <div class="rc-filter-field">
+                        <label class="rc-filter-label">Enseignant</label>
+                        <x-au-user-picker
+                            name="teacher_id"
+                            :value="$filters['teacher_id']"
+                            :users="$teachers"
+                            placeholder="— Tous les enseignants —" />
+                    </div>
 
-                <x-au-select
-                    name="classe_id"
-                    :value="$filters['classe_id']"
-                    icon="fa-chalkboard"
-                    placeholder="Toutes les classes"
-                    :searchable="$classes->count() > 8"
-                    :options="$classes->pluck('name', 'id')->toArray()" />
+                    <div class="rc-filter-field">
+                        <label class="rc-filter-label">Classe</label>
+                        <x-au-select
+                            name="classe_id"
+                            :value="$filters['classe_id']"
+                            icon="fa-chalkboard"
+                            placeholder="Toutes les classes"
+                            :searchable="$classes->count() > 8"
+                            :options="$classes->pluck('name', 'id')->toArray()" />
+                    </div>
 
-                <x-au-select
-                    name="matiere_id"
-                    :value="$filters['matiere_id']"
-                    icon="fa-book"
-                    placeholder="Toutes les matières"
-                    :searchable="$matieres->count() > 8"
-                    :options="$matieres->pluck('name', 'id')->toArray()" />
+                    <div class="rc-filter-field">
+                        <label class="rc-filter-label">Matière</label>
+                        <x-au-select
+                            name="matiere_id"
+                            :value="$filters['matiere_id']"
+                            icon="fa-book"
+                            placeholder="Toutes les matières"
+                            :searchable="$matieres->count() > 8"
+                            :options="$matieres->pluck('name', 'id')->toArray()" />
+                    </div>
 
-                <x-au-select
-                    name="behavior"
-                    :value="$filters['behavior']"
-                    icon="fa-users"
-                    placeholder="Tous comportements"
-                    :options="$behaviors" />
-
-                <input type="date" name="date_from" value="{{ $filters['date_from'] }}" class="form-control" style="max-width:160px;" placeholder="Du">
-                <input type="date" name="date_to" value="{{ $filters['date_to'] }}" class="form-control" style="max-width:160px;" placeholder="Au">
-
-                <div class="rc-search">
-                    <i class="fas fa-search"></i>
-                    <input type="text" name="search" value="{{ $filters['search'] }}" placeholder="Rechercher dans le contenu…">
+                    <div class="rc-filter-field">
+                        <label class="rc-filter-label">Comportement</label>
+                        <x-au-select
+                            name="behavior"
+                            :value="$filters['behavior']"
+                            icon="fa-users"
+                            placeholder="Tous comportements"
+                            :options="$behaviors" />
+                    </div>
                 </div>
 
-                <button type="submit" class="rc-btn-apply">
-                    <i class="fas fa-filter"></i>Filtrer
-                </button>
-                @if(array_filter($filters))
-                    <a href="{{ route('esbtp.rapports-cours.index') }}" class="rc-btn-reset">
-                        <i class="fas fa-times"></i>Réinitialiser
-                    </a>
-                @endif
+                <div class="rc-filter-row2">
+                    <div class="rc-filter-field">
+                        <label class="rc-filter-label">Période</label>
+                        <div class="rc-date-range">
+                            <div class="rc-date-input">
+                                <span class="rc-date-prefix">Du</span>
+                                <input type="date" name="date_from" value="{{ $filters['date_from'] }}" aria-label="Date de début">
+                            </div>
+                            <div class="rc-date-input">
+                                <span class="rc-date-prefix">Au</span>
+                                <input type="date" name="date_to" value="{{ $filters['date_to'] }}" aria-label="Date de fin">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="rc-filter-field">
+                        <label class="rc-filter-label">Recherche dans le contenu</label>
+                        <div class="rc-search">
+                            <i class="fas fa-search"></i>
+                            <input type="text" name="search" value="{{ $filters['search'] }}" placeholder="Mot-clé…">
+                        </div>
+                    </div>
+
+                    <div class="rc-filter-actions">
+                        <button type="submit" class="rc-btn-apply">
+                            <i class="fas fa-filter"></i>Filtrer
+                        </button>
+                        @if(array_filter($filters))
+                            <a href="{{ route('esbtp.rapports-cours.index') }}" class="rc-btn-reset">
+                                <i class="fas fa-times"></i>Réinitialiser
+                            </a>
+                        @endif
+                    </div>
+                </div>
             </form>
         </div>
     </div>
