@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', config('app.name', 'KLASSCI') . ' - Page non trouvée')
+@section('title', \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI') . ' — Page non trouvée')
 
 @section('page_title', 'Page non trouvée')
 

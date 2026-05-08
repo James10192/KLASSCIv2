@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', config('app.name', 'KLASSCI') . ' - Erreur serveur')
+@section('title', \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI') . ' — Erreur serveur')
 
 @section('page_title', 'Erreur serveur')
 

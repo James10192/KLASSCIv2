@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', config('app.name', 'KLASSCI') . ' — Accès restreint')
+@section('title', \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI') . ' — Accès restreint')
 
 @section('page_title', 'Accès restreint')
 

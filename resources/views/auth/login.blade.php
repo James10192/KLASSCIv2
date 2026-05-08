@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
 
-    <title>{{ config('app.name', 'KLASSCI') }} - Connexion</title>
+    <title>{{ \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI') }} — Connexion</title>
 
     <!-- Fonts — same as landing page -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
