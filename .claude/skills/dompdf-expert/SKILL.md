@@ -671,6 +671,93 @@ dispatch(new GenerateBulletinPdfJob($bulletin->id));
 
 ---
 
+## 12.5. Blade Pitfalls That Crash PDF Rendering ⚠
+
+These bugs are silent at compile time (`php artisan view:cache` succeeds) but crash PHP at runtime when the PDF actually renders. They affect **all** Blade files but PDF templates are the most common victims because they use `@php(expr)` shortform for logo loading.
+
+### ❌ Pitfall #1 — `@php(expr)` shortform mixed with `@php ... @endphp` blocks
+
+**The bug** : Laravel's Blade compiler regex `(?<!@)@php(.*?)@endphp/s` does NOT distinguish the shortform `@php(expr)` (with parens, no `@endphp` after) from the block form `@php ... @endphp`. If your file uses `@php(expr)` shortform AND has any `@php ... @endphp` block later, the regex captures `@php(` of the shortform as a block opening and **eats everything until the next `@endphp`**.
+
+Symptom: the file compiles silently, but PHP runtime crashes with errors like:
+```
+syntax error, unexpected token "endforeach", expecting end of file
+```
+The `@endforeach` (or similar) appears orphaned because its `@foreach` was inside the eaten range and never compiled.
+
+Real incident (2026-05-08, KLASSCI presentation): `liste-appel-pdf.blade.php` had `@php($_logo = ...)` at line 392 and `@php $accProfile = ...; @endphp` at line 472. The regex ate L392→L472, leaving the `@foreach($etudiants)` at L470 as text. PHP crashed at L498's `<?php endforeach; ?>`. 4 PDFs were affected.
+
+**Fix** : NEVER use `@php(expr)` shortform in a file that also contains `@php ... @endphp` blocks. Always use the block form, even on a single line:
+
+```blade
+{{-- ❌ FRAGILE — eaten by next @endphp in file --}}
+@php($_logo = \App\Helpers\SettingsHelper::resolveLogoBase64())
+
+{{-- ✅ ROBUST — self-contained block --}}
+@php $_logo = \App\Helpers\SettingsHelper::resolveLogoBase64(); @endphp
+```
+
+**Detection** :
+```bash
+# Quick audit on any Blade file
+grep -n "@php(" resources/views/path/to/file.blade.php
+
+# Validate compiled output catches the bug:
+rm storage/framework/views/*.php
+php artisan view:cache
+php -l storage/framework/views/<hash>.php
+# → Should output "No syntax errors detected"
+```
+
+### ❌ Pitfall #2 — `@directive` literal in JS/HTML comments
+
+Blade scans the entire file for `@xxx` patterns, **including inside JavaScript and HTML comments**. Writing `@can`, `@if`, `@foreach`, `@endif`, etc. literally inside a comment triggers Blade's directive parser.
+
+Real incident (2026-05-07): a JS comment `// gating @can côté Blade` in `inscriptions/create.blade.php` was parsed as an unclosed `@can(...)` directive → 500 error on the entire page.
+
+**Fix** : Reformulate the comment to avoid the directive name, or escape with `@@xxx` (Blade outputs `@xxx` literal):
+
+```blade
+{{-- ❌ Triggers Blade --}}
+<script>
+    // gating @can côté Blade
+</script>
+
+{{-- ✅ Safe (reformulation) --}}
+<script>
+    // gating Blade côté serveur
+</script>
+
+{{-- ✅ Safe (escape with @@) --}}
+<script>
+    // see @@can directive in the partial
+</script>
+```
+
+### Audit checklist before deploying any new Blade
+
+```bash
+# 1. Count balanced directives
+grep -oE "@(if|endif|foreach|endforeach|php|endphp|can|endcan|push|endpush|once|endonce|section|endsection)\b" file.blade.php | sort | uniq -c
+# Each pair must have equal counts.
+
+# 2. Look for shortform @php( in files with later @endphp
+grep -n "@php(" file.blade.php
+# If found AND there's a @endphp later → convert to block form.
+
+# 3. Look for directives in comments
+grep -nE "//.*@(can|if|foreach|endif)" file.blade.php
+grep -nE "<!--.*@(can|if|foreach|endif)" file.blade.php
+# Either remove the @ from the comment text or escape with @@.
+
+# 4. Force lint compiled output (catches both pitfalls above)
+rm storage/framework/views/*.php
+php artisan view:cache
+for f in storage/framework/views/*.php; do php -l "$f" 2>&1 | grep -v "No syntax errors"; done
+```
+
+---
+
 ## 13. Debugging Tips
 
 ### Check if images load
