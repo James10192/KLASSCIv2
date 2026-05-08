@@ -38,7 +38,7 @@
                                 </div>
                                 <div class="mb-3">
                                     <label for="contactEmail" class="form-label">Email de contact</label>
-                                    <input type="email" class="form-control" id="contactEmail" value="contact@esbtp-yakro.edu.ci">
+                                    <input type="email" class="form-control" id="contactEmail" value="{{ \App\Helpers\SettingsHelper::get('school_email', '') }}" placeholder="contact@votre-ecole.com">
                                 </div>
                                 <div class="mb-3">
                                     <label for="contactPhone" class="form-label">Téléphone de contact</label>

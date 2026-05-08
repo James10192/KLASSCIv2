@@ -264,7 +264,7 @@
                                    id="email" 
                                    name="email" 
                                    value="{{ old('email', $coordinateur->email) }}" 
-                                   placeholder="coordinateur@esbtp-yakro.ci"
+                                   placeholder="coordinateur@votre-ecole.ci"
                                    required>
                             @error('email')
                                 <div class="invalid-feedback">{{ $message }}</div>

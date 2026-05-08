@@ -2,9 +2,9 @@
     'emailTitle' => 'Nouvelle Note Disponible',
     'parentName' => $parentName,
     'schoolName' => $schoolName ?? 'KLASSCI',
-    'schoolAddress' => $schoolAddress ?? 'École Supérieure du Bâtiment et des Travaux Publics',
-    'schoolPhone' => $schoolPhone ?? '+225 00 00 00 00',
-    'schoolEmail' => $schoolEmail ?? 'contact@esbtp-yakro.com',
+    'schoolAddress' => $schoolAddress ?? \App\Helpers\SettingsHelper::get('school_address', ''),
+    'schoolPhone' => $schoolPhone ?? \App\Helpers\SettingsHelper::get('school_phone', ''),
+    'schoolEmail' => $schoolEmail ?? \App\Helpers\SettingsHelper::get('school_email', ''),
     'schoolLogoPath' => $schoolLogoPath ?? null
 ])
 

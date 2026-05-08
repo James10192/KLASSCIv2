@@ -579,7 +579,7 @@
                         <input type="email" class="form-control form-control-modern @error('setting_school_email') is-invalid @enderror"
                                name="setting_school_email"
                                value="{{ old('setting_school_email', \App\Helpers\SettingsHelper::get('school_email', '')) }}"
-                               placeholder="Ex: contact@esbtp-yakro.com">
+                               placeholder="Ex: contact@votre-ecole.com">
                         @error('setting_school_email')
                             <div class="invalid-feedback">{{ $message }}</div>
                         @enderror
