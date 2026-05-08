@@ -69,6 +69,8 @@
 }
 .cs-hero-chip--status-active { background: rgba(16,185,129,.25); border-color: rgba(16,185,129,.4); }
 .cs-hero-chip--status-inactive { background: rgba(148,163,184,.25); border-color: rgba(148,163,184,.4); }
+.cs-hero-chip--warning { background: rgba(245,158,11,.22); border-color: rgba(254,215,170,.55); }
+.cs-hero-chip--warning > i:first-child { color: #fbbf24; }
 .cs-hero-actions { display: flex; gap: .5rem; flex-wrap: wrap; align-items: flex-start; }
 .cs-btn--glass, .cs-btn--white {
     display: inline-flex; align-items: center; gap: .4rem;
@@ -448,12 +450,21 @@
                             <i class="fas fa-{{ $classe->is_active ? 'check-circle' : 'times-circle' }}"></i>
                             {{ $classe->is_active ? 'Active' : 'Inactive' }}
                         </span>
-                        <span class="cs-hero-chip">
-                            <i class="fas fa-calendar-alt"></i>{{ $anneeAcademique }}
-                            <button type="button" onclick="showYearChangeInfo()" style="background:transparent;border:none;color:rgba(255,255,255,.7);padding:0;margin-left:.2rem;cursor:pointer;" title="Comment changer d'année ?">
-                                <i class="fas fa-info-circle" style="font-size:.72rem;"></i>
-                            </button>
-                        </span>
+                        @if($anneeAcademique)
+                            <span class="cs-hero-chip">
+                                <i class="fas fa-calendar-alt"></i>{{ $anneeAcademique }}
+                                <button type="button" onclick="showYearChangeInfo()" style="background:transparent;border:none;color:rgba(255,255,255,.7);padding:0;margin-left:.2rem;cursor:pointer;" title="Comment changer d'année ?">
+                                    <i class="fas fa-info-circle" style="font-size:.72rem;"></i>
+                                </button>
+                            </span>
+                        @else
+                            <span class="cs-hero-chip cs-hero-chip--warning">
+                                <i class="fas fa-exclamation-triangle"></i>Aucune année universitaire définie
+                                <button type="button" onclick="showYearChangeInfo()" style="background:transparent;border:none;color:rgba(255,255,255,.7);padding:0;margin-left:.2rem;cursor:pointer;" title="Comment définir une année courante ?">
+                                    <i class="fas fa-info-circle" style="font-size:.72rem;"></i>
+                                </button>
+                            </span>
+                        @endif
                     </div>
                 </div>
                 <div class="cs-hero-actions">

@@ -109,6 +109,12 @@
 }
 .ci-hero-chip-btn:hover { color: #fff; }
 
+.ci-hero-chip--warning {
+    background: rgba(245, 158, 11, .22);
+    border-color: rgba(254, 215, 170, .55);
+}
+.ci-hero-chip--warning > i:first-child { color: #fbbf24; }
+
 .ci-hero-actions {
     display: flex;
     gap: .5rem;
@@ -861,13 +867,23 @@
                     <div>
                         <h1>Gestion des classes</h1>
                         <p>Organisation et suivi par filière et niveau</p>
-                        <span class="ci-hero-chip">
-                            <i class="fas fa-calendar-alt"></i>
-                            Année {{ $anneeAcademique }}
-                            <button type="button" class="ci-hero-chip-btn" data-bs-toggle="modal" data-bs-target="#yearChangeModal" title="Comment changer d'année ?">
-                                <i class="fas fa-info-circle"></i>
-                            </button>
-                        </span>
+                        @if($anneeAcademique)
+                            <span class="ci-hero-chip">
+                                <i class="fas fa-calendar-alt"></i>
+                                Année {{ $anneeAcademique }}
+                                <button type="button" class="ci-hero-chip-btn" data-bs-toggle="modal" data-bs-target="#yearChangeModal" title="Comment changer d'année ?">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </span>
+                        @else
+                            <span class="ci-hero-chip ci-hero-chip--warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Aucune année universitaire définie
+                                <button type="button" class="ci-hero-chip-btn" data-bs-toggle="modal" data-bs-target="#yearChangeModal" title="Comment définir une année courante ?">
+                                    <i class="fas fa-info-circle"></i>
+                                </button>
+                            </span>
+                        @endif
                     </div>
                 </div>
                 <div class="ci-hero-actions">

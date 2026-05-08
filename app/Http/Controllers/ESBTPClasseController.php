@@ -59,9 +59,9 @@ class ESBTPClasseController extends Controller
             "is_current",
             true,
         )->first();
-        $anneeAcademique = $anneeCourante
-            ? $anneeCourante->name
-            : date("Y") . "-" . (date("Y") + 1);
+        // Pas de fallback calendaire : si aucune année n'est définie comme courante,
+        // la vue affiche explicitement « Aucune année universitaire définie ».
+        $anneeAcademique = $anneeCourante?->name;
 
         // Construction de la requête avec filtres
         $query = ESBTPClasse::with(["filiere", "niveau", "annee"]);
@@ -467,10 +467,8 @@ class ESBTPClasseController extends Controller
             $classe->load(["etudiants", "inscriptions"]);
         }
 
-        // Préparer l'année académique pour l'affichage
-        $anneeAcademique = $anneeCourante
-            ? $anneeCourante->name
-            : date("Y") . "-" . (date("Y") + 1);
+        // Préparer l'année académique pour l'affichage (null si aucune année définie)
+        $anneeAcademique = $anneeCourante?->name;
 
         // Different view rendering based on user role
         if ($user->hasRole('etudiant')) {
