@@ -102,10 +102,14 @@
             line-height: 1.4;
         }
 
-        /* ===== Header banner premium (pattern liste-complete-pdf) ===== */
+        /* ===== Header banner premium (pattern liste-complete-pdf) =====
+           table-layout: fixed garantit que les widths CSS sont respectées au
+           pixel près — sans ça DomPDF recalcule selon le contenu et le trait
+           de séparation logo/info ne s'aligne pas avec la méta-bar en dessous. */
         .pdf-banner {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
@@ -174,10 +178,13 @@
             margin: 0;
         }
 
-        /* ===== Méta-bar sous le banner (Référence | Date | Auteur) ===== */
+        /* ===== Méta-bar sous le banner (Référence | Date | Auteur) =====
+           table-layout: fixed + padding identique à .pdf-banner-logo-cell
+           pour aligner le trait vertical entre les 2 tables. */
         .pdf-meta-bar {
             width: 100%;
             border-collapse: collapse;
+            table-layout: fixed;
             margin-bottom: 14px;
         }
         .pdf-meta-bar td {
@@ -191,6 +198,7 @@
             width: 18%;
             border-right: 2px solid rgba(255,255,255,0.25);
             padding: 6px 10px 10px;
+            background-color: {{ $hdrBg }};
         }
         .pdf-meta-label {
             color: {{ $hdrText }};
