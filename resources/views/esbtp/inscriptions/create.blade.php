@@ -759,6 +759,14 @@
                 </div>
             </div>
 
+            {{-- =============================================
+                 PROFIL D'ACCESSIBILITÉ (OPTIONNEL — repliable)
+                 Namespace ia-* (Inscription Accessibility) — design system KLASSCI
+            ============================================== --}}
+            @can('students.accessibility.edit')
+            @include('esbtp.inscriptions.partials.accessibility-section')
+            @endcan
+
             <!-- =============================================
                  BOUTONS DE SOUMISSION
             ============================================== -->

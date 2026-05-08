@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Students\Accessibility\Actions\AttachAccessibilityProfile;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
@@ -551,12 +552,26 @@ class ESBTPInscriptionController extends Controller
                 ['inscription_id' => $inscription->id, 'etudiant_id' => $inscription->etudiant_id],
             );
 
-            return redirect()
+            // Profil d'accessibilité optionnel : si l'utilisateur a la permission et a
+            // rempli la section dans le formulaire. En cas d'erreur on n'annule PAS
+            // l'inscription (l'utilisateur pourra compléter via la fiche étudiant).
+            $accessibilityWarning = $this->maybeAttachAccessibilityProfile(
+                $request,
+                $inscription->etudiant_id,
+            );
+
+            $redirect = redirect()
                 ->route("esbtp.inscriptions.show", $inscription->id)
                 ->with(
                     "success",
                     'Inscription enregistrée avec succès. L\'administration pourra valider l\'inscription en associant un paiement.',
                 );
+
+            if ($accessibilityWarning !== null) {
+                $redirect->with('warning', $accessibilityWarning);
+            }
+
+            return $redirect;
         } catch (\Exception $e) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
@@ -572,6 +587,53 @@ class ESBTPInscriptionController extends Controller
                         $e->getMessage(),
                 )
                 ->withInput();
+        }
+    }
+
+    /**
+     * Tente de créer un profil d'accessibilité pour l'étudiant nouvellement
+     * inscrit, si l'utilisateur a la permission et a rempli la section
+     * optionnelle. Retourne un message d'avertissement (string) à flasher
+     * en cas d'échec, sinon null.
+     *
+     * Volontairement non bloquant : l'inscription reste sauvegardée même
+     * si le profil échoue à valider — l'utilisateur pourra compléter depuis
+     * la fiche étudiant.
+     */
+    private function maybeAttachAccessibilityProfile(Request $request, int $etudiantId): ?string
+    {
+        $user = $request->user();
+        if (! $user || ! $user->can('students.accessibility.edit') || ! $request->has('accessibility')) {
+            return null;
+        }
+
+        try {
+            $profile = app(AttachAccessibilityProfile::class)->execute(
+                $etudiantId,
+                (array) $request->input('accessibility', []),
+                $user->id,
+            );
+
+            if ($profile) {
+                Log::info('Accessibility profile attached during inscription store', [
+                    'etudiant_id' => $etudiantId,
+                    'profile_id' => $profile->id,
+                    'user_id' => $user->id,
+                ]);
+            }
+
+            return null;
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            Log::warning('Accessibility profile validation failed during inscription store', [
+                'etudiant_id' => $etudiantId,
+                'errors' => $e->errors(),
+            ]);
+            return 'Inscription enregistrée, mais le profil d\'accessibilité n\'a pas pu être sauvegardé (validation). Vous pouvez le compléter depuis la fiche de l\'étudiant.';
+        } catch (\Throwable $e) {
+            Log::error('Accessibility profile attach failed during inscription store: '.$e->getMessage(), [
+                'etudiant_id' => $etudiantId,
+            ]);
+            return 'Inscription enregistrée, mais le profil d\'accessibilité n\'a pas pu être sauvegardé (erreur technique). Vous pouvez le compléter depuis la fiche de l\'étudiant.';
         }
     }
 

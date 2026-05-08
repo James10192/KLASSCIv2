@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Exports\Reports\AccessibilityReport;
+use App\Domain\Students\Accessibility\Actions\AttachAccessibilityProfile;
 use App\Http\Requests\StoreAccessibilityProfileRequest;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -94,36 +95,21 @@ class ESBTPStudentAccessibilityController extends Controller
         ]);
     }
 
-    public function store(StoreAccessibilityProfileRequest $request, ESBTPEtudiant $etudiant): RedirectResponse
+    public function store(StoreAccessibilityProfileRequest $request, ESBTPEtudiant $etudiant, AttachAccessibilityProfile $action): RedirectResponse
     {
-        $data = $request->validated();
-        $data['categories'] = $data['categories'] ?? [];
-        $data['accommodations'] = $data['accommodations'] ?? [];
+        $existed = (bool) $etudiant->accessibilityProfile;
+        $action->execute($etudiant->id, $request->validated(), Auth::id());
 
-        $existing = $etudiant->accessibilityProfile;
-
-        if ($existing) {
-            $data['updated_by'] = Auth::id();
-            $existing->update($data);
-            $action = 'updated';
-        } else {
-            $data['etudiant_id'] = $etudiant->id;
-            $data['created_by'] = Auth::id();
-            $data['updated_by'] = Auth::id();
-            ESBTPStudentAccessibilityProfile::create($data);
-            $action = 'created';
-        }
-
-        Log::info('Accessibility profile ' . $action, [
+        Log::info('Accessibility profile ' . ($existed ? 'updated' : 'created'), [
             'etudiant_id' => $etudiant->id,
             'user_id' => Auth::id(),
         ]);
 
         return redirect()
             ->back()
-            ->with('success', $action === 'created'
-                ? 'Profil d\'accessibilité enregistré.'
-                : 'Profil d\'accessibilité mis à jour.');
+            ->with('success', $existed
+                ? 'Profil d\'accessibilité mis à jour.'
+                : 'Profil d\'accessibilité enregistré.');
     }
 
     public function destroy(ESBTPEtudiant $etudiant): RedirectResponse
