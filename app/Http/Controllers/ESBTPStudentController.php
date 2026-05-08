@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPStudentAccessibilityProfile;
 use App\Models\ESBTPDepartment;
 use App\Models\ESBTPCycle;
 use App\Models\ESBTPClass;
@@ -50,6 +51,7 @@ class ESBTPStudentController extends Controller
         $search = $request->input('search');
         $filiere = $request->input('filiere');
         $niveau = $request->input('niveau');
+        $accessibility = $request->input('accessibility');
         $annee = $request->input('annee');
         $status = $request->input('status');
         $classe = $request->input('classe');
@@ -130,6 +132,12 @@ class ESBTPStudentController extends Controller
             });
         }
 
+        // Filtre accessibility (gated par students.accessibility.view, ignoré sinon)
+        if ($accessibility !== null && $accessibility !== ''
+            && $request->user()?->can('students.accessibility.view')) {
+            $this->applyAccessibilityFilter($baseQuery, (string) $accessibility);
+        }
+
         $perPage = 15;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
 
@@ -144,6 +152,7 @@ class ESBTPStudentController extends Controller
                 'affectation_status' => $affectationStatus,
                 'inscrit_annee_courante' => $inscritAnneeCourante,
                 'est_transfert' => $estTransfert,
+                'accessibility' => $accessibility,
             ],
             'page' => $currentPage,
             'per_page' => $perPage,
@@ -314,8 +323,63 @@ class ESBTPStudentController extends Controller
             'status',
             'affectationStatus',
             'inscritAnneeCourante',
-            'estTransfert'
+            'estTransfert',
+            'accessibility'
         ));
+    }
+
+    /**
+     * Applique le filtre accessibility (single dropdown grouped) sur la query
+     * étudiants. Préfixes :
+     *   - 'with' / 'without'           → présence ou absence du profil
+     *   - 'tiers_temps' / 'assistant'  → colonnes booléennes indexées
+     *   - 'recognition'                → has_official_recognition = true
+     *   - 'cat:<key>'                  → whereJsonContains('categories', key)
+     *   - 'acc:<key>'                  → whereJsonContains('accommodations', key)
+     *
+     * Validations défensives sur les keys cat:/acc: via les enums du modèle —
+     * un préfixe inconnu est ignoré silencieusement (pas d'erreur).
+     */
+    private function applyAccessibilityFilter($query, string $value): void
+    {
+        if ($value === 'with') {
+            $query->whereHas('accessibilityProfile');
+            return;
+        }
+        if ($value === 'without') {
+            $query->whereDoesntHave('accessibilityProfile');
+            return;
+        }
+
+        $boolColumns = [
+            'tiers_temps' => 'requires_third_time',
+            'assistant'   => 'assistant_required',
+            'recognition' => 'has_official_recognition',
+        ];
+        if (isset($boolColumns[$value])) {
+            $query->whereHas('accessibilityProfile', fn ($q) => $q->where($boolColumns[$value], true));
+            return;
+        }
+
+        if (str_starts_with($value, 'cat:')) {
+            $catKey = substr($value, 4);
+            if (array_key_exists($catKey, ESBTPStudentAccessibilityProfile::CATEGORIES)) {
+                $query->whereHas('accessibilityProfile',
+                    fn ($q) => $q->whereJsonContains('categories', $catKey));
+            }
+            return;
+        }
+
+        if (str_starts_with($value, 'acc:')) {
+            $accKey = substr($value, 4);
+            if (array_key_exists($accKey, ESBTPStudentAccessibilityProfile::ACCOMMODATIONS)) {
+                $query->whereHas('accessibilityProfile',
+                    fn ($q) => $q->whereJsonContains('accommodations', $accKey));
+            }
+            return;
+        }
+
+        // Préfixe inconnu → ignoré silencieusement
     }
 
     public function create()

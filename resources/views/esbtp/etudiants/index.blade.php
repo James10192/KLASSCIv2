@@ -3160,6 +3160,16 @@
                                             <option value="0" {{ isset($estTransfert) && $estTransfert == '0' ? 'selected' : '' }}>Non (Locaux)</option>
                                         </select>
                                     </div>
+                                    @can('students.accessibility.view')
+                                    <div class="col-md-4 mb-3">
+                                        <label for="accessibility" class="form-label">
+                                            <i class="fas fa-universal-access text-primary me-1"></i>Accessibilité
+                                        </label>
+                                        <select class="form-select year-selector" id="accessibility" name="accessibility">
+                                            @include('esbtp.etudiants.partials.accessibility-filter-options', ['current' => $accessibility ?? null])
+                                        </select>
+                                    </div>
+                                    @endcan
                                     <div class="col-md-4 d-flex align-items-end mb-3">
                                         <button type="submit" class="btn-acasi primary me-2">
                                             <i class="fas fa-search"></i>Filtrer
@@ -3334,6 +3344,18 @@
                             <option value="0" {{ isset($estTransfert) && $estTransfert == '0' ? 'selected' : '' }}>Non (Locaux)</option>
                         </select>
                     </div>
+
+                    @can('students.accessibility.view')
+                    <!-- Accessibilité -->
+                    <div class="form-group">
+                        <label for="mobile-accessibility" class="form-label">
+                            <i class="fas fa-universal-access text-primary me-1"></i>Accessibilité
+                        </label>
+                        <select class="form-select" id="mobile-accessibility" name="accessibility">
+                            @include('esbtp.etudiants.partials.accessibility-filter-options', ['current' => $accessibility ?? null])
+                        </select>
+                    </div>
+                    @endcan
                 </form>
             </div>
 
@@ -4042,7 +4064,8 @@
                 'statut': 'Statut',
                 'affectation_status': 'Statut affectation',
                 'inscrit_annee_courante': 'Inscription validée',
-                'est_transfert': 'Transfert'
+                'est_transfert': 'Transfert',
+                'accessibility': 'Accessibilité'
             };
 
             // Récupérer les options de select pour avoir les labels
