@@ -1,4 +1,3 @@
-{{-- liste-appel-pdf : force recompile timestamp 2026-05-08 --}}
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -390,7 +389,7 @@
     <div class="container">
         <!-- Header Section -->
         <div class="header-section">
-            @php($_logo = \App\Helpers\SettingsHelper::resolveLogoBase64())
+            @php $_logo = \App\Helpers\SettingsHelper::resolveLogoBase64(); @endphp
             @if($_logo)
                 <span class="header-logo-frame"><img src="{{ $_logo['data_uri'] }}" class="header-logo" alt="Logo"></span>
             @endif

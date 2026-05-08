@@ -252,7 +252,7 @@
             <table width="100%" border="0" cellspacing="0" cellpadding="0">
                 <tr>
                     <td width="18%" style="background-color: {{ $hdrBg }}; padding: 14px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.25);">
-                        @php($_logo = \App\Helpers\SettingsHelper::resolveLogoBase64())
+                        @php $_logo = \App\Helpers\SettingsHelper::resolveLogoBase64(); @endphp
                         @if($_logo)
                             <span style="display:inline-block; background:#fff; padding:5px; border-radius:5px; border:1px solid rgba(255,255,255,0.35);">
                                 <img src="{{ $_logo['data_uri'] }}" style="max-height: 55px; max-width: 100px; display:block;" alt="Logo">
