@@ -269,6 +269,7 @@ class NotificationService
         }
 
         $nomEcole = \App\Models\Setting::get('school_name', config('app.name'));
+        $acronymeEcole = \App\Models\Setting::get('school_acronym', config('app.name'));
 
         $variables = [
             '{nom}' => $etudiant->nom,
@@ -280,6 +281,7 @@ class NotificationService
             '{jours_retard}' => $joursRetard,
             '{ecole}' => $nomEcole,
             '{nom_ecole}' => $nomEcole,
+            '{acronyme}' => $acronymeEcole,
         ];
 
         return str_replace(array_keys($variables), array_values($variables), $template);
@@ -307,9 +309,9 @@ class NotificationService
     private function getTemplateSMS($niveau)
     {
         $templates = [
-            1 => "ESBTP: Rappel paiement scolarité {montant_dette}. Merci de régulariser. Info: [telephone]",
-            2 => "ESBTP: 2e RAPPEL - Dette {montant_dette}. Contactez-nous rapidement. Info: [telephone]",
-            3 => "ESBTP: URGENT - Dette {montant_dette}. Paiement obligatoire sous 7j. Info: [telephone]"
+            1 => "{acronyme}: Rappel paiement scolarité {montant_dette}. Merci de régulariser. Info: [telephone]",
+            2 => "{acronyme}: 2e RAPPEL - Dette {montant_dette}. Contactez-nous rapidement. Info: [telephone]",
+            3 => "{acronyme}: URGENT - Dette {montant_dette}. Paiement obligatoire sous 7j. Info: [telephone]"
         ];
 
         return $templates[$niveau] ?? $templates[1];

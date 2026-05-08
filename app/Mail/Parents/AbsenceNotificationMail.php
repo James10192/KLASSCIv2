@@ -19,7 +19,7 @@ class AbsenceNotificationMail extends Mailable
 
     public function build()
     {
-        $subject = 'Notification d\'absence - ' . ($this->data['studentName'] ?? 'ESBTP');
+        $subject = 'Notification d\'absence - ' . ($this->data['studentName'] ?? 'votre enfant');
 
         return $this->subject($subject)
                      ->view('esbtp.emails.parents.absence-notification')

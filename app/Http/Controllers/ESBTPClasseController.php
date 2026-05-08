@@ -1463,7 +1463,7 @@ class ESBTPClasseController extends Controller
      * @param  \App\Models\ESBTPClasse  $classe
      * @return \Illuminate\Http\Response
      */
-    public function listeAppelPDF(ESBTPClasse $classe)
+    public function listeAppelPDF(ESBTPClasse $classe, Request $request)
     {
         $classe->load(["filiere", "niveau", "annee"]);
 
@@ -1515,6 +1515,13 @@ class ESBTPClasseController extends Controller
             "-" .
             date("Y-m-d") .
             ".pdf";
+
+        if ($request->boolean('inline')) {
+            return new \Illuminate\Http\Response($pdf->output(), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            ]);
+        }
 
         return $pdf->download($filename);
     }
@@ -1575,7 +1582,7 @@ class ESBTPClasseController extends Controller
      * @param  \App\Models\ESBTPClasse  $classe
      * @return \Illuminate\Http\Response
      */
-    public function listeCompletePDF(ESBTPClasse $classe)
+    public function listeCompletePDF(ESBTPClasse $classe, Request $request)
     {
         $classe->load(["filiere", "niveau", "annee"]);
 
@@ -1624,6 +1631,13 @@ class ESBTPClasseController extends Controller
             "-" .
             date("Y-m-d") .
             ".pdf";
+
+        if ($request->boolean('inline')) {
+            return new \Illuminate\Http\Response($pdf->output(), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            ]);
+        }
 
         return $pdf->download($filename);
     }

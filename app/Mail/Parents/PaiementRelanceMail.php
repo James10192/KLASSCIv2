@@ -19,7 +19,7 @@ class PaiementRelanceMail extends Mailable
 
     public function build()
     {
-        $subject = 'Rappel de paiement - ' . ($this->data['studentName'] ?? 'ESBTP');
+        $subject = 'Rappel de paiement - ' . ($this->data['studentName'] ?? 'votre enfant');
 
         return $this->subject($subject)
                      ->view('esbtp.emails.parents.paiement-relance')

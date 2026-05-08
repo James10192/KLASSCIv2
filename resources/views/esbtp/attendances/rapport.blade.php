@@ -183,9 +183,15 @@
                         <i class="fas fa-file-pdf"></i>Télécharger PDF
                     </button>
                 </form>
-                <button onclick="window.print()" class="btn-acasi primary">
-                    <i class="fas fa-print"></i>Imprimer
-                </button>
+                <form action="{{ route('esbtp.attendances.rapport-pdf-preview') }}" method="POST" target="_blank" style="display: inline;">
+                    @csrf
+                    <input type="hidden" name="classe_id" value="{{ $validatedData['classe_id'] }}">
+                    <input type="hidden" name="date_debut" value="{{ $validatedData['date_debut'] }}">
+                    <input type="hidden" name="date_fin" value="{{ $validatedData['date_fin'] }}">
+                    <button type="submit" class="btn-acasi primary">
+                        <i class="fas fa-print"></i>Imprimer
+                    </button>
+                </form>
                 <a href="{{ route('esbtp.attendances.rapport-form') }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Nouveau Rapport
                 </a>

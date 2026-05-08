@@ -13,7 +13,7 @@
         <div class="dashboard-header">
             <div class="header-left">
                 <h1>Ajouter un étudiant</h1>
-                <p class="header-subtitle">Formulaire d'inscription d'un nouvel étudiant à l'ESBTP</p>
+                <p class="header-subtitle">Formulaire d'inscription d'un nouvel étudiant</p>
             </div>
             <div class="header-actions">
                 <a href="{{ route('esbtp.etudiants.index') }}" class="btn-acasi secondary">

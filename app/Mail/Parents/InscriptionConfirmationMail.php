@@ -27,7 +27,7 @@ class InscriptionConfirmationMail extends Mailable
      */
     public function build()
     {
-        $subject = 'Confirmation d\'inscription - ' . ($this->data['studentName'] ?? 'KLASSCI');
+        $subject = 'Confirmation d\'inscription - ' . ($this->data['studentName'] ?? 'votre enfant');
 
         // Préparer le logo pour embed
         $logoPath = $this->data['schoolLogoPath'] ?? null;

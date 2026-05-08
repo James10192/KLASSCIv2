@@ -172,9 +172,9 @@
         <a href="{{ route('esbtp.etudiants.attestation-frequentation', $etudiant->id) }}" class="btn-acasi success">
             <i class="fas fa-file-pdf me-1"></i>Générer PDF
         </a>
-        <button onclick="window.print()" class="btn-acasi info">
+        <a href="{{ route('esbtp.etudiants.attestation-frequentation.preview-pdf', $etudiant->id) }}" target="_blank" rel="noopener" class="btn-acasi info">
             <i class="fas fa-print me-1"></i>Imprimer
-        </button>
+        </a>
     </div>
 </div>
 

@@ -111,11 +111,11 @@ class ESBTPPDFService
             }),
             'stats' => $stats,
             'config' => [
-                'school_name' => 'Ecole Speciale du Bâtiment et des Travaux Publics',
-                'school_logo' => 'images/esbtp_logo.png',
-                'school_address' => config('school.address', 'Yakro, Côte d\'Ivoire'),
-                'school_phone' => config('school.phone', ''),
-                'school_email' => config('school.email', '')
+                'school_name' => \App\Helpers\SettingsHelper::get('school_name', config('app.name', 'KLASSCI')),
+                'school_logo' => \App\Helpers\SettingsHelper::get('school_logo', 'images/LOGO-KLASSCI-PNG.png'),
+                'school_address' => \App\Helpers\SettingsHelper::get('school_address', ''),
+                'school_phone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
+                'school_email' => \App\Helpers\SettingsHelper::get('school_email', ''),
             ],
             'date_edition' => Carbon::now()->locale('fr')->isoFormat('LL')
         ];
@@ -337,14 +337,14 @@ class ESBTPPDFService
             }
 
             $config = [
-                'school_name' => SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics'),
-                'school_type' => SettingsHelper::get('school_type', 'Enseignement Supérieur Technique'),
+                'school_name' => SettingsHelper::get('school_name', config('app.name', 'KLASSCI')),
+                'school_type' => SettingsHelper::get('school_type', ''),
                 'school_authorization' => SettingsHelper::get('school_authorization_number', ''),
                 'school_address' => SettingsHelper::get('school_address', ''),
                 'school_phone' => SettingsHelper::get('school_phone', ''),
                 'school_email' => SettingsHelper::get('school_email', ''),
                 'school_website' => SettingsHelper::get('school_website', ''),
-                'school_city' => SettingsHelper::get('school_city', 'Yamoussoukro'),
+                'school_city' => SettingsHelper::get('school_city', ''),
                 'school_country' => SettingsHelper::get('school_country', 'Côte d\'Ivoire'),
                 'director_name' => SettingsHelper::get('director_name', ''),
                 'director_title' => SettingsHelper::get('director_title', 'Directeur'),

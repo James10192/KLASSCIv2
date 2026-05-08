@@ -174,22 +174,39 @@
 </head>
 <body>
     <!-- En-tête -->
+    @php
+        $_certLogo = \App\Helpers\SettingsHelper::resolveLogoBase64();
+        $_certAcronym = \App\Helpers\SettingsHelper::get('school_acronym', config('app.name', 'KLASSCI'));
+    @endphp
     <div class="header">
         <div class="logo">
-            <!-- Logo placeholder -->
-            <div style="width: 100px; height: 100px; border: 2px solid #2d5016; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #2d5016; font-size: 24px;">
-                ES<br>BTP
-            </div>
+            @if($_certLogo)
+                <img src="{{ $_certLogo['data_uri'] }}" alt="Logo" style="width: 100px; height: 100px; object-fit: contain;">
+            @else
+                <div style="width: 100px; height: 100px; border: 2px solid #2d5016; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; color: #2d5016; font-size: 18px;">
+                    {{ $_certAcronym }}
+                </div>
+            @endif
         </div>
-        
+
         <div class="school-info">
-            <div class="school-name">École Spéciale</div>
-            <div class="school-subtitle">Du Bâtiment et des Travaux Publics</div>
-            
+            <div class="school-name">{{ $settings['school_name'] ?? \App\Helpers\SettingsHelper::get('school_name', config('app.name', 'KLASSCI')) }}</div>
+
             <div class="school-details">
-                <strong>SIÈGE SOCIAL :</strong> {{ $settings['address'] ?? 'BP 2541 YAMOUSSSOUKRO – QUARTIER N°ZUESSY – LOT N° 15' }}<br>
-                <strong>TÉL :</strong> {{ $settings['phone'] ?? '30 64 59 93' }} - <strong>CEL :</strong> {{ $settings['mobile'] ?? '05 93 34 26 / 07 72 88 56' }}<br>
-                <strong>SITE WEB :</strong> {{ $settings['website'] ?? 'www. esbtp-ci.net' }} - <strong>E-MAIL :</strong> {{ $settings['email'] ?? 'esbtp.yamoussoukro.abidjan@gmail.com' }}
+                @if(($settings['address'] ?? null) || \App\Helpers\SettingsHelper::get('school_address'))
+                    <strong>SIÈGE SOCIAL :</strong> {{ $settings['address'] ?? \App\Helpers\SettingsHelper::get('school_address', '') }}<br>
+                @endif
+                @if(($settings['phone'] ?? null) || ($settings['mobile'] ?? null))
+                    @if($settings['phone'] ?? null)<strong>TÉL :</strong> {{ $settings['phone'] }}@endif
+                    @if(($settings['phone'] ?? null) && ($settings['mobile'] ?? null)) - @endif
+                    @if($settings['mobile'] ?? null)<strong>CEL :</strong> {{ $settings['mobile'] }}@endif
+                    <br>
+                @endif
+                @if(($settings['website'] ?? null) || ($settings['email'] ?? null))
+                    @if($settings['website'] ?? null)<strong>SITE WEB :</strong> {{ $settings['website'] }}@endif
+                    @if(($settings['website'] ?? null) && ($settings['email'] ?? null)) - @endif
+                    @if($settings['email'] ?? null)<strong>E-MAIL :</strong> {{ $settings['email'] }}@endif
+                @endif
             </div>
         </div>
     </div>

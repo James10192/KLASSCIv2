@@ -950,7 +950,7 @@ class ESBTPInscriptionPaiementController extends Controller
 
         // Settings PDF (couleurs, logo, signature)
         $settings = \App\Helpers\SettingsHelper::getPdfSettings();
-        $settings['city'] = Setting::get('school_city', 'Yamoussoukro');
+        $settings['city'] = Setting::get('school_city', '');
         $settings['director_title'] = Setting::get('director_title', 'Le Directeur');
         $settings['director_name'] = Setting::get('director_name', '');
 

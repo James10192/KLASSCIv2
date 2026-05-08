@@ -1631,14 +1631,14 @@ class ESBTPEmploiTempsController extends Controller
     {
         return [
             // Informations de l'établissement
-            'school_name' => SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics'),
-            'school_type' => SettingsHelper::get('school_type', 'Enseignement Supérieur Technique'),
+            'school_name' => SettingsHelper::get('school_name', config('app.name', 'KLASSCI')),
+            'school_type' => SettingsHelper::get('school_type', ''),
             'school_authorization' => SettingsHelper::get('school_authorization_number', ''),
             'school_address' => SettingsHelper::get('school_address', ''),
             'school_phone' => SettingsHelper::get('school_phone', ''),
             'school_email' => SettingsHelper::get('school_email', ''),
             'school_website' => SettingsHelper::get('school_website', ''),
-            'school_city' => SettingsHelper::get('school_city', 'Yamoussoukro'),
+            'school_city' => SettingsHelper::get('school_city', ''),
             'school_country' => SettingsHelper::get('school_country', 'Côte d\'Ivoire'),
             'director_name' => SettingsHelper::get('director_name', ''),
             'director_title' => SettingsHelper::get('director_title', 'Directeur'),

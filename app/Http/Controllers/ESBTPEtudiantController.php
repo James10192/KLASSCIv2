@@ -1693,11 +1693,11 @@ class ESBTPEtudiantController extends Controller
     {
         $settings = [
             // Informations de l'établissement
-            'school_name' => \App\Helpers\SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics'),
-            'school_address' => \App\Helpers\SettingsHelper::get('school_address', 'BP 2541 Yamoussoukro'),
-            'school_phone' => \App\Helpers\SettingsHelper::get('school_phone', '30 64 39 93'),
-            'school_email' => \App\Helpers\SettingsHelper::get('school_email', 'esbtp@aviso.ci'),
-            'school_city' => \App\Helpers\SettingsHelper::get('school_city', 'Yamoussoukro'),
+            'school_name' => \App\Helpers\SettingsHelper::get('school_name', config('app.name', 'KLASSCI')),
+            'school_address' => \App\Helpers\SettingsHelper::get('school_address', ''),
+            'school_phone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
+            'school_email' => \App\Helpers\SettingsHelper::get('school_email', ''),
+            'school_city' => \App\Helpers\SettingsHelper::get('school_city', ''),
             'school_country' => \App\Helpers\SettingsHelper::get('school_country', 'Côte d\'Ivoire'),
             
             // Responsable

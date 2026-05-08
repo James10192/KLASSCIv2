@@ -239,7 +239,7 @@
                 <button type="button" class="btn btn-success" onclick="downloadPDF()">
                     <i class="fas fa-download"></i> Télécharger le PDF
                 </button>
-                <button type="button" class="btn btn-info" onclick="window.print()">
+                <button type="button" class="btn btn-info" onclick="previewPDF()" title="Imprimer le vrai PDF (s'ouvre dans un nouvel onglet)">
                     <i class="fas fa-print"></i> Imprimer
                 </button>
             </div>

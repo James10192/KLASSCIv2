@@ -51,7 +51,7 @@
                         <!-- Ajout de l'état des tables ESBTP -->
                         <div class="flex items-center mt-2">
                             <i class="fas fa-table mr-2 {{ isset($dbStatus['installation_status']['esbtp_tables_exist']) && $dbStatus['installation_status']['esbtp_tables_exist'] ? 'text-green-500' : 'text-red-500' }}"></i>
-                            <span class="text-gray-700">Tables ESBTP : 
+                            <span class="text-gray-700">Tables métier : 
                                 <span class="font-medium {{ isset($dbStatus['installation_status']['esbtp_tables_exist']) && $dbStatus['installation_status']['esbtp_tables_exist'] ? 'text-green-600' : 'text-red-600' }}">
                                     {{ isset($dbStatus['installation_status']['esbtp_tables_exist']) && $dbStatus['installation_status']['esbtp_tables_exist'] ? 'Complètes' : 'Incomplètes' }}
                                 </span>
@@ -125,7 +125,7 @@
                         <div class="mt-3 p-3 bg-yellow-50 rounded-md border border-yellow-200">
                             <p class="text-sm text-gray-600">
                                 <i class="fas fa-info-circle text-yellow-500 mr-1"></i>
-                                Les tables ESBTP sont essentielles pour le fonctionnement du système, y compris les tables de rôles et permissions 
+                                Les tables métier de KLASSCI sont essentielles pour le fonctionnement du système, y compris les tables de rôles et permissions
                                 qui sont <strong>requises</strong> et non supplémentaires. Si elles ne sont pas complètes,
                                 vous devez exécuter les migrations pour assurer le bon fonctionnement de l'application.
                             </p>
@@ -147,7 +147,7 @@
                                     <div>
                                         <p class="text-sm text-green-700 font-semibold">Correspondance parfaite (100%) !</p>
                                         <p class="text-sm text-green-700 mt-1">Toutes les tables requises existent déjà dans la base de données.</p>
-                                        <p class="text-sm text-green-700 mt-1"><strong>Note:</strong> Les tables additionnelles pour les rôles et permissions sont <strong>requises</strong> pour le bon fonctionnement du module ESBTP.</p>
+                                        <p class="text-sm text-green-700 mt-1"><strong>Note:</strong> Les tables additionnelles pour les rôles et permissions sont <strong>requises</strong> pour le bon fonctionnement de KLASSCI.</p>
                                     </div>
                                 </div>
                             </div>
@@ -441,7 +441,7 @@
                     
                     <div class="flex items-center justify-between" v-if="advancedOptions.runSeeders">
                         <div>
-                            <label for="run_esbtp_seeders" class="text-sm font-medium text-gray-700">Exécuter les seeders ESBTP</label>
+                            <label for="run_esbtp_seeders" class="text-sm font-medium text-gray-700">Exécuter les seeders métier</label>
                             <p class="text-xs text-gray-500">Créer les filières, niveaux d'études et années universitaires</p>
                             <p class="text-xs text-green-600">(Recommandé pour la première installation)</p>
                         </div>
@@ -531,7 +531,7 @@
                     this.output += `🔧 Options sélectionnées :\n`;
                     this.output += `  • Exécuter les seeders : ${this.advancedOptions.runSeeders ? '✅ Oui' : '❌ Non'}\n`;
                     if (this.advancedOptions.runSeeders) {
-                        this.output += `  • Exécuter les seeders ESBTP : ${this.advancedOptions.runESBTPSeeders ? '✅ Oui' : '❌ Non'}\n`;
+                        this.output += `  • Exécuter les seeders métier : ${this.advancedOptions.runESBTPSeeders ? '✅ Oui' : '❌ Non'}\n`;
                     }
                     this.output += `  • Forcer la migration : ${this.advancedOptions.forceMigrate ? '⚠️ Oui' : '❌ Non'}\n\n`;
                     
@@ -583,13 +583,13 @@
                                     this.output += `🔄 Base de données créée automatiquement.\n`;
                                 }
                                 
-                                // Afficher un message sur les seeders ESBTP
+                                // Afficher un message sur les seeders métier
                                 if (response.data.esbtp_seeded) {
-                                    this.output += `📊 Les données ESBTP ont été initialisées.\n`;
+                                    this.output += `📊 Les données métier ont été initialisées.\n`;
                                     
-                                    // Vérifier si les données ESBTP sont complètes
+                                    // Vérifier si les données métier sont complètes
                                     if (response.data.esbtp_data_check && !response.data.esbtp_data_check.success) {
-                                        this.output += `⚠️ Attention : Certaines données ESBTP n'ont pas pu être créées : ${response.data.esbtp_data_check.missing_data.join(', ')}\n`;
+                                        this.output += `⚠️ Attention : Certaines données métier n'ont pas pu être créées : ${response.data.esbtp_data_check.missing_data.join(', ')}\n`;
                                     }
                                 }
                                 

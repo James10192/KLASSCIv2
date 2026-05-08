@@ -536,7 +536,7 @@
                         <input type="text" class="form-control form-control-modern @error('setting_school_name') is-invalid @enderror"
                                name="setting_school_name"
                                value="{{ old('setting_school_name', \App\Helpers\SettingsHelper::get('school_name', 'KLASSCI')) }}"
-                               placeholder="Ex: École Spéciale du Bâtiment et des Travaux Publics"
+                               placeholder="Nom complet de votre établissement"
                                required>
                         @error('setting_school_name')
                             <div class="invalid-feedback">{{ $message }}</div>

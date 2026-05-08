@@ -1457,6 +1457,38 @@
             font-size: 13px;
             line-height: 1.4;
         }
+
+        /* Print safety net : si l'utilisateur fait Ctrl+P sur une page web,
+           cacher le chrome de l'app pour ne garder que le contenu document.
+           Les boutons "Imprimer" pointent désormais vers la route preview-pdf
+           (target=_blank), c'est juste un filet pour les Ctrl+P accidentels. */
+        @media print {
+            .nextadmin-sidebar,
+            .sidebar-overlay,
+            .navbar,
+            #navbar,
+            .navbar-toggle,
+            .header-actions,
+            .dashboard-header .header-actions,
+            .btn-acasi,
+            .navbar-search,
+            .floating-chatbot-btn,
+            #floating-chatbot,
+            .modal,
+            .modal-backdrop {
+                display: none !important;
+            }
+            .nextadmin-main {
+                margin-left: 0 !important;
+                padding: 0 !important;
+            }
+            body {
+                background: #fff !important;
+            }
+            @page {
+                margin: 1cm;
+            }
+        }
     </style>
     @yield('styles')
     @stack('styles')

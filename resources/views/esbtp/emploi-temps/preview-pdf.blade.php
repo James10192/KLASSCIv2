@@ -280,10 +280,10 @@
                     buttonClass="btn-acasi primary"
                     downloadClass="btn-acasi danger"
                     downloadLabel="Exporter en PDF" />
-                <button onclick="window.print()" class="btn-acasi primary">
+                <a href="{{ route('esbtp.emploi-temps.preview-pdf', ['emploi_temp' => $emploiTemps->id]) }}" target="_blank" rel="noopener" class="btn-acasi primary">
                     <i class="fas fa-print"></i>
                     Imprimer
-                </button>
+                </a>
                 <a href="{{ route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTemps->id]) }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>
                     Retour au détail

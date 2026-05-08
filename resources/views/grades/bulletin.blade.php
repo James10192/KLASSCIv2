@@ -45,12 +45,25 @@
                 <div class="text-center mb-4">
                     <div class="row align-items-center">
                         <div class="col-md-3">
-                            <img src="{{ asset('images/esbtp_logo.png') }}" alt="{{ \App\Helpers\SettingsHelper::get('school_acronym', config('app.name')) }} Logo" class="img-fluid" style="max-height: 120px;">
+                            @php($_grBulLogo = \App\Helpers\SettingsHelper::resolveLogoBase64())
+                            @if($_grBulLogo)
+                                <img src="{{ $_grBulLogo['data_uri'] }}" alt="{{ \App\Helpers\SettingsHelper::get('school_acronym', config('app.name')) }} Logo" class="img-fluid" style="max-height: 120px;">
+                            @endif
                         </div>
                         <div class="col-md-9">
-                            <h4>Ecole Spéciale<br>du Bâtiment et des Travaux Publics</h4>
-                            <p class="mb-0">BP 2541 Yamoussoukro - Email: esbtp@aviso.ci</p>
-                            <p class="mb-0">Tél/Fax: 30 64 36 93 - Cel: 07 72 88 56</p>
+                            <h4>{{ \App\Helpers\SettingsHelper::get('school_name', config('app.name', 'KLASSCI')) }}</h4>
+                            @php
+                                $_addr = \App\Helpers\SettingsHelper::get('school_address', '');
+                                $_email = \App\Helpers\SettingsHelper::get('school_email', '');
+                                $_phone = \App\Helpers\SettingsHelper::get('school_phone', '');
+                                $_mobile = \App\Helpers\SettingsHelper::get('school_mobile', '');
+                            @endphp
+                            @if($_addr || $_email)
+                                <p class="mb-0">{{ $_addr }}{{ $_addr && $_email ? ' - ' : '' }}{{ $_email ? 'Email: ' . $_email : '' }}</p>
+                            @endif
+                            @if($_phone || $_mobile)
+                                <p class="mb-0">{{ $_phone ? 'Tél: ' . $_phone : '' }}{{ $_phone && $_mobile ? ' - ' : '' }}{{ $_mobile ? 'Cel: ' . $_mobile : '' }}</p>
+                            @endif
                         </div>
                     </div>
                 </div>

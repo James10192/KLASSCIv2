@@ -194,8 +194,8 @@
             <img src="{{ public_path('images/LOGO-KLASSCI-PNG.png') }}" alt="Logo" class="logo">
         </div>
         <div class="school-info">
-            <h2>Ecole Speciale du Bâtiment et des Travaux Publics</h2>
-            <h3>EMPLOI DU TEMPS - {{ strtoupper($emploiTemps->semestre) }}</h3>
+            <h2>{{ \App\Helpers\SettingsHelper::get('school_name', config('app.name', 'KLASSCI')) }}</h2>
+            <h3>EMPLOI DU TEMPS - {{ mb_strtoupper($emploiTemps->semestre, 'UTF-8') }}</h3>
         </div>
     </div>
 
@@ -373,7 +373,7 @@
         </div>
 
         <div class="footer">
-            <p>Ecole Speciale du Bâtiment et des Travaux Publics - {{ $date_edition }}</p>
+            <p>{{ \App\Helpers\SettingsHelper::get('school_name', config('app.name', 'KLASSCI')) }} - {{ $date_edition }}</p>
             <p>Ce document est généré automatiquement et ne nécessite pas de signature.</p>
         </div>
 

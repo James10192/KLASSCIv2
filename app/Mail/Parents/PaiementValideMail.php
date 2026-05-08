@@ -19,7 +19,7 @@ class PaiementValideMail extends Mailable
 
     public function build()
     {
-        $subject = 'Paiement validé - ' . ($this->data['studentName'] ?? 'ESBTP');
+        $subject = 'Paiement validé - ' . ($this->data['studentName'] ?? 'votre enfant');
 
         return $this->subject($subject)
                      ->view('esbtp.emails.parents.paiement-valide')

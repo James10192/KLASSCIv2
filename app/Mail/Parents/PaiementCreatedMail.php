@@ -19,7 +19,7 @@ class PaiementCreatedMail extends Mailable
 
     public function build()
     {
-        $subject = 'Paiement en attente - ' . ($this->data['studentName'] ?? 'ESBTP');
+        $subject = 'Paiement en attente - ' . ($this->data['studentName'] ?? 'votre enfant');
 
         return $this->subject($subject)
                      ->view('esbtp.emails.parents.paiement-created')

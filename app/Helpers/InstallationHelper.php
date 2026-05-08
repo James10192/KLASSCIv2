@@ -446,8 +446,8 @@ class InstallationHelper
             // Définir les catégories de tables (modules)
             $categories = [
                 'esbtp' => [
-                    'name' => 'ESBTP',
-                    'description' => 'Module ESBTP (École Supérieure BTP)',
+                    'name' => 'KLASSCI',
+                    'description' => 'Module métier KLASSCI (étudiants, classes, paiements, notes)',
                     'tables' => [
                         'esbtp_inscriptions',
                         'esbtp_etudiants',

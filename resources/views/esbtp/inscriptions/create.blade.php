@@ -289,7 +289,7 @@
                                        name="matricule"
                                        id="matriculeInput"
                                        value="{{ old('matricule') }}"
-                                       placeholder="Ex: MESBTP25-0001">
+                                       placeholder="Ex: MAT25-0001">
                                 <button type="button" class="btn btn-outline-primary" id="generateMatriculeBtn" style="display:none;">
                                     <i class="fas fa-magic"></i> Générer
                                 </button>
@@ -1997,7 +1997,7 @@ document.addEventListener('DOMContentLoaded', function() {
             if (matriculeHelp)  matriculeHelp.textContent = 'Saisissez manuellement le matricule (vérification anti-doublon)';
             if (generateBtn) generateBtn.style.display = 'none';
             if (checkBtn) checkBtn.style.display = 'block';
-            if (matriculeInput) { matriculeInput.readOnly = false; matriculeInput.placeholder = 'Ex: MESBTP25-0001'; }
+            if (matriculeInput) { matriculeInput.readOnly = false; matriculeInput.placeholder = 'Ex: MAT25-0001'; }
         }
     }
 

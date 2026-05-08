@@ -266,9 +266,9 @@
         <a href="{{ route('esbtp.inscriptions.situation-financiere.pdf', $inscription->id) }}" class="btn-acasi danger">
             <i class="fas fa-file-pdf"></i>Télécharger PDF
         </a>
-        <button onclick="window.print()" class="btn-acasi primary">
+        <a href="{{ route('esbtp.inscriptions.situation-financiere.pdf-preview', $inscription->id) }}" target="_blank" rel="noopener" class="btn-acasi primary">
             <i class="fas fa-print"></i>Imprimer
-        </button>
+        </a>
         @php
             $returnUrl = request()->headers->get('referer') ?: route('esbtp.etudiants.show', $inscription->etudiant->id);
             $pu = parse_url($returnUrl); $au = parse_url(config('app.url'));

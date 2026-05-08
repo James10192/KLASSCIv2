@@ -773,7 +773,7 @@ class BulletinService
     {
         return [
             // Informations de l'établissement
-            'school_name' => \App\Helpers\SettingsHelper::get('school_name', 'École Spéciale du Bâtiment et des Travaux Publics'),
+            'school_name' => \App\Helpers\SettingsHelper::get('school_name', config('app.name', 'KLASSCI')),
             'school_address' => \App\Helpers\SettingsHelper::get('school_address', ''),
             'school_phone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
             'school_email' => \App\Helpers\SettingsHelper::get('school_email', ''),

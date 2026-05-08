@@ -534,7 +534,7 @@
                 generateBtn.style.display = 'none';
                 checkBtn.style.display = 'inline-flex';
                 matriculeInput.readOnly = false;
-                matriculeInput.placeholder = 'Ex: MESBTP25-0001';
+                matriculeInput.placeholder = 'Ex: MAT25-0001';
             }
         }
 

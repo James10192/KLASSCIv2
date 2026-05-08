@@ -69,9 +69,9 @@
                 <a href="{{ route('esbtp.classes.liste-appel.pdf', $classe->id) }}" class="btn-acasi danger">
                     <i class="fas fa-file-pdf"></i>Télécharger PDF
                 </a>
-                <button onclick="window.print()" class="btn-acasi primary">
+                <a href="{{ route('esbtp.classes.liste-appel.pdf', [$classe->id, 'inline' => 1]) }}" target="_blank" rel="noopener" class="btn-acasi primary">
                     <i class="fas fa-print"></i>Imprimer
-                </button>
+                </a>
                 <a href="{{ route('esbtp.classes.show', $classe->id) }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour
                 </a>

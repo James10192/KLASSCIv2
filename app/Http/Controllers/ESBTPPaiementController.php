@@ -608,7 +608,7 @@ class ESBTPPaiementController extends Controller
      * @param  int  $id
      * @return \Illuminate\Http\Response
      */
-    public function genererRecu($id)
+    public function genererRecu($id, ?Request $request = null)
     {
         $paiement = ESBTPPaiement::with([
             'etudiant.user',
@@ -638,6 +638,14 @@ class ESBTPPaiementController extends Controller
         // Définir le nom du fichier
         $filename = 'Recu_' . $paiement->numero_recu . '.pdf';
 
+        $req = $request ?? request();
+        if ($req && $req->boolean('inline')) {
+            return new \Illuminate\Http\Response($pdf->output(), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $filename . '"',
+            ]);
+        }
+
         // Retourner le PDF pour téléchargement
         return $pdf->download($filename);
     }
@@ -648,10 +656,10 @@ class ESBTPPaiementController extends Controller
     public function getReceiptSettings()
     {
         $settings = [
-            'school_name' => \App\Helpers\SettingsHelper::get('school_name', 'Ecole Spéciale du Bâtiment et des Travaux Publics'),
-            'school_address' => \App\Helpers\SettingsHelper::get('school_address', 'BP 2541 Yamoussoukro'),
-            'school_phone' => \App\Helpers\SettingsHelper::get('school_phone', '30 64 39 93'),
-            'school_email' => \App\Helpers\SettingsHelper::get('school_email', 'esbtp@aviso.ci'),
+            'school_name' => \App\Helpers\SettingsHelper::get('school_name', config('app.name', 'KLASSCI')),
+            'school_address' => \App\Helpers\SettingsHelper::get('school_address', ''),
+            'school_phone' => \App\Helpers\SettingsHelper::get('school_phone', ''),
+            'school_email' => \App\Helpers\SettingsHelper::get('school_email', ''),
             'show_logo' => \App\Helpers\SettingsHelper::get('receipt_show_logo', '1') === '1',
         ];
 

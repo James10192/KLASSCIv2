@@ -153,7 +153,7 @@
         </div>
     </div>
 
-    <!-- Avertissement pour les données ESBTP manquantes -->
+    <!-- Avertissement pour les données métier manquantes -->
     @if(session('esbtp_warning'))
     <div class="mt-6 bg-yellow-50 border-l-4 border-yellow-400 p-4">
         <div class="flex">
@@ -162,8 +162,8 @@
             </div>
             <div class="ml-3">
                 <p class="text-sm text-yellow-700">
-                    <span class="font-medium">Attention :</span> 
-                    Certaines données ESBTP n'ont pas été correctement initialisées.
+                    <span class="font-medium">Attention :</span>
+                    Certaines données métier n'ont pas été correctement initialisées.
                 </p>
                 @if(isset(session('esbtp_missing_data')[0]))
                 <ul class="mt-2 text-sm text-yellow-700 list-disc list-inside">
@@ -173,7 +173,7 @@
                 </ul>
                 @endif
                 <p class="mt-2 text-sm text-yellow-700">
-                    Vous devrez peut-être exécuter manuellement les seeders ESBTP ou créer ces données via l'interface d'administration.
+                    Vous devrez peut-être exécuter manuellement les seeders métier ou créer ces données via l'interface d'administration.
                 </p>
             </div>
         </div>

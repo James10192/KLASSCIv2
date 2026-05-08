@@ -19,7 +19,7 @@ class NotePublishedMail extends Mailable
 
     public function build()
     {
-        $subject = 'Nouvelle note disponible - ' . ($this->data['studentName'] ?? 'ESBTP');
+        $subject = 'Nouvelle note disponible - ' . ($this->data['studentName'] ?? 'votre enfant');
 
         return $this->subject($subject)
                      ->view('esbtp.emails.parents.note-published')

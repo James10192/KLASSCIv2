@@ -19,7 +19,7 @@ class LowAttendanceMail extends Mailable
 
     public function build()
     {
-        $subject = 'Alerte taux de présence - ' . ($this->data['studentName'] ?? 'ESBTP');
+        $subject = 'Alerte taux de présence - ' . ($this->data['studentName'] ?? 'votre enfant');
 
         return $this->subject($subject)
                      ->view('esbtp.emails.parents.low-attendance')

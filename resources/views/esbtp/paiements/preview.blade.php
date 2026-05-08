@@ -462,9 +462,11 @@
                             <i class="fas fa-exclamation-triangle me-1"></i>En attente de validation
                         </span>
                     @endif
-                    <button onclick="window.print()" class="btn-acasi info">
-                        <i class="fas fa-print me-1"></i>Imprimer
-                    </button>
+                    @if($paiement->status == 'validé')
+                        <a href="{{ route('esbtp.paiements.recu', [$paiement->id, 'inline' => 1]) }}" target="_blank" rel="noopener" class="btn-acasi info">
+                            <i class="fas fa-print me-1"></i>Imprimer
+                        </a>
+                    @endif
                 </div>
             </div>
 
@@ -478,10 +480,10 @@
                         $hdrText = $pdfCfg['header_text_color'] ?? '#ffffff';
                         $primary = $pdfCfg['primary_color'] ?? '#0453cb';
 
-                        $schoolName = SettingsHelper::get('school_name', 'Ecole Spéciale du Bâtiment et des Travaux Publics');
-                        $schoolAddress = SettingsHelper::get('school_address', 'BP 2541 Yamoussoukro');
-                        $schoolEmail = SettingsHelper::get('school_email', 'esbtp@aviso.ci');
-                        $schoolPhone = SettingsHelper::get('school_phone', '30 64 39 93');
+                        $schoolName = SettingsHelper::get('school_name', config('app.name', 'KLASSCI'));
+                        $schoolAddress = SettingsHelper::get('school_address', '');
+                        $schoolEmail = SettingsHelper::get('school_email', '');
+                        $schoolPhone = SettingsHelper::get('school_phone', '');
                         $showLogo = SettingsHelper::get('receipt_show_logo', '1') === '1';
                         $logoPath = SettingsHelper::get('school_logo');
 

@@ -22,9 +22,9 @@
                 <a href="{{ route('esbtp.classes.liste-complete.excel', $classe->id) }}" class="btn-acasi success">
                     <i class="fas fa-file-excel"></i>Télécharger Excel
                 </a>
-                <button onclick="window.print()" class="btn-acasi primary">
+                <a href="{{ route('esbtp.classes.liste-complete.pdf', [$classe->id, 'inline' => 1]) }}" target="_blank" rel="noopener" class="btn-acasi primary">
                     <i class="fas fa-print"></i>Imprimer
-                </button>
+                </a>
                 <a href="{{ route('esbtp.classes.show', $classe->id) }}" class="btn-acasi secondary">
                     <i class="fas fa-arrow-left"></i>Retour
                 </a>

@@ -19,7 +19,7 @@ class PaiementRejeteMail extends Mailable
 
     public function build()
     {
-        $subject = 'Paiement rejeté - ' . ($this->data['studentName'] ?? 'ESBTP');
+        $subject = 'Paiement rejeté - ' . ($this->data['studentName'] ?? 'votre enfant');
 
         return $this->subject($subject)
                      ->view('esbtp.emails.parents.paiement-rejete')

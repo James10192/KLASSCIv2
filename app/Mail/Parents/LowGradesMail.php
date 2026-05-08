@@ -19,7 +19,7 @@ class LowGradesMail extends Mailable
 
     public function build()
     {
-        $subject = 'Alerte performance académique - ' . ($this->data['studentName'] ?? 'ESBTP');
+        $subject = 'Alerte performance académique - ' . ($this->data['studentName'] ?? 'votre enfant');
 
         return $this->subject($subject)
                      ->view('esbtp.emails.parents.low-grades')
