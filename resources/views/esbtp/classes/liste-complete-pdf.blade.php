@@ -381,7 +381,7 @@
                             <div class="student-name">
                                 {{ $etudiant->nom }} {{ $etudiant->prenoms }}
                                 @if($accProfile)
-                                    <span style="display:inline-block; background:#0453cb; color:#fff; padding:1px 5px; border-radius:50px; font-size:7px; margin-left:3px; font-weight:600; -webkit-print-color-adjust:exact; color-adjust:exact;" title="{{ $accProfile->summaryBadge() }}">&#9881; A</span>
+                                    <span style="display:inline-block; background:#0453cb; color:#fff; padding:1px 5px; border-radius:50px; font-size:9px; margin-left:3px; font-weight:600; -webkit-print-color-adjust:exact; color-adjust:exact;" title="{{ $accProfile->summaryBadge() }}">&#9855;</span>
                                 @endif
                             </div>
                         </td>
@@ -413,7 +413,7 @@
             @if($accStudents->isNotEmpty())
                 <div style="margin-top:8px; padding:6px 8px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; -webkit-print-color-adjust:exact; color-adjust:exact;">
                     <div style="font-size:8px; font-weight:700; color:#0453cb; text-transform:uppercase; letter-spacing:.04em; margin-bottom:3px;">
-                        &#9881; Aménagements à respecter ({{ $accStudents->count() }})
+                        &#9855; Aménagements à respecter ({{ $accStudents->count() }})
                     </div>
                     <table style="width:100%; border-collapse:collapse; font-size:7.5px;">
                         @foreach($accStudents as $accE)
