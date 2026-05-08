@@ -2078,11 +2078,13 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/esbtp/classes/{classe}/semestres-lmd', function (\App\Models\ESBTPClasse $classe) {
         return response()->json(['semestres' => $classe->getSemestresLMD()]);
     })->name('esbtp.classes.semestres-lmd');
-    Route::get('/esbtp/classes/{classe}/liste-appel', [ESBTPClasseController::class, 'listeAppel'])->name('esbtp.classes.liste-appel');
-    Route::get('/esbtp/classes/{classe}/liste-appel/pdf', [ESBTPClasseController::class, 'listeAppelPDF'])->name('esbtp.classes.liste-appel.pdf');
-    Route::get('/esbtp/classes/{classe}/liste-complete', [ESBTPClasseController::class, 'listeComplete'])->name('esbtp.classes.liste-complete');
-    Route::get('/esbtp/classes/{classe}/liste-complete/pdf', [ESBTPClasseController::class, 'listeCompletePDF'])->name('esbtp.classes.liste-complete.pdf');
-    Route::get('/esbtp/classes/{classe}/liste-complete/excel', [ESBTPClasseController::class, 'listeCompleteExcel'])->name('esbtp.classes.liste-complete.excel');
+    Route::middleware('permission:classes.view')->group(function () {
+        Route::get('/esbtp/classes/{classe}/liste-appel', [ESBTPClasseController::class, 'listeAppel'])->name('esbtp.classes.liste-appel');
+        Route::get('/esbtp/classes/{classe}/liste-appel/pdf', [ESBTPClasseController::class, 'listeAppelPDF'])->name('esbtp.classes.liste-appel.pdf');
+        Route::get('/esbtp/classes/{classe}/liste-complete', [ESBTPClasseController::class, 'listeComplete'])->name('esbtp.classes.liste-complete');
+        Route::get('/esbtp/classes/{classe}/liste-complete/pdf', [ESBTPClasseController::class, 'listeCompletePDF'])->name('esbtp.classes.liste-complete.pdf');
+        Route::get('/esbtp/classes/{classe}/liste-complete/excel', [ESBTPClasseController::class, 'listeCompleteExcel'])->name('esbtp.classes.liste-complete.excel');
+    });
     Route::get('/esbtp/classes-export/excel', [ESBTPClasseController::class, 'exportExcel'])->name('esbtp.classes.export.excel');
     Route::get('/esbtp/classes-export/csv', [ESBTPClasseController::class, 'exportCsv'])->name('esbtp.classes.export.csv');
     Route::get('/esbtp/classes-export/pdf', [ESBTPClasseController::class, 'exportPdf'])->name('esbtp.classes.export.pdf');

@@ -30,6 +30,8 @@ use Illuminate\Support\Str;
 
 class ESBTPClasseController extends Controller
 {
+    use \App\Http\Controllers\Concerns\RespondsWithInlinePdf;
+
     public function __construct(
         private readonly ClassPlanningService $planningService,
         private readonly ClassStudentService $studentService,
@@ -1516,14 +1518,7 @@ class ESBTPClasseController extends Controller
             date("Y-m-d") .
             ".pdf";
 
-        if ($request->boolean('inline')) {
-            return new \Illuminate\Http\Response($pdf->output(), 200, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . $filename . '"',
-            ]);
-        }
-
-        return $pdf->download($filename);
+        return $this->respondWithPdf($pdf, $filename, $request);
     }
 
     /**
@@ -1632,14 +1627,7 @@ class ESBTPClasseController extends Controller
             date("Y-m-d") .
             ".pdf";
 
-        if ($request->boolean('inline')) {
-            return new \Illuminate\Http\Response($pdf->output(), 200, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . $filename . '"',
-            ]);
-        }
-
-        return $pdf->download($filename);
+        return $this->respondWithPdf($pdf, $filename, $request);
     }
 
     /**

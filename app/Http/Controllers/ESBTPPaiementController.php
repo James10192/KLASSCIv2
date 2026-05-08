@@ -22,6 +22,8 @@ use Illuminate\Database\QueryException;
 
 class ESBTPPaiementController extends Controller
 {
+    use \App\Http\Controllers\Concerns\RespondsWithInlinePdf;
+
     protected PaymentFilterService $filterService;
     protected PaymentStatsService $statsService;
 
@@ -638,16 +640,7 @@ class ESBTPPaiementController extends Controller
         // Définir le nom du fichier
         $filename = 'Recu_' . $paiement->numero_recu . '.pdf';
 
-        $req = $request ?? request();
-        if ($req && $req->boolean('inline')) {
-            return new \Illuminate\Http\Response($pdf->output(), 200, [
-                'Content-Type' => 'application/pdf',
-                'Content-Disposition' => 'inline; filename="' . $filename . '"',
-            ]);
-        }
-
-        // Retourner le PDF pour téléchargement
-        return $pdf->download($filename);
+        return $this->respondWithPdf($pdf, $filename, $request);
     }
 
     /**

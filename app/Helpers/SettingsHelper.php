@@ -117,11 +117,18 @@ class SettingsHelper
      *
      * Tente plusieurs candidats (storage public, public/storage, fallbacks pré-bundlés)
      * pour absorber les divergences de chemin entre tenants legacy et nouveau format.
+     * Mémoïsé par requête : le base64 d'un logo (~50KB) appelé sur 8+ pages d'un même
+     * export évite les file_get_contents répétés.
      *
      * @return array{mime: string, ext: string, b64: string, data_uri: string}|null
      */
     public static function resolveLogoBase64(): ?array
     {
+        static $cache = null;
+        if ($cache !== null) {
+            return $cache === false ? null : $cache;
+        }
+
         $logoPath = self::get('school_logo', '');
         $normalized = str_replace('\\', '/', ltrim((string) $logoPath, '/'));
         $relative = preg_replace('#^storage/#', '', $normalized);
@@ -143,7 +150,11 @@ class SettingsHelper
         $candidates[] = public_path('images/LOGO-KLASSCI-PNG.png');
 
         foreach ($candidates as $candidate) {
-            if (!is_string($candidate) || $candidate === '' || !file_exists($candidate)) {
+            if (!is_string($candidate) || $candidate === '') {
+                continue;
+            }
+            $contents = @file_get_contents($candidate);
+            if ($contents === false) {
                 continue;
             }
             $ext = strtolower(pathinfo($candidate, PATHINFO_EXTENSION) ?: 'png');
@@ -154,8 +165,8 @@ class SettingsHelper
                 'gif' => 'image/gif',
                 default => 'image/png',
             };
-            $b64 = base64_encode((string) file_get_contents($candidate));
-            return [
+            $b64 = base64_encode($contents);
+            return $cache = [
                 'mime' => $mime,
                 'ext' => $ext,
                 'b64' => $b64,
@@ -163,6 +174,7 @@ class SettingsHelper
             ];
         }
 
+        $cache = false;
         return null;
     }
 
