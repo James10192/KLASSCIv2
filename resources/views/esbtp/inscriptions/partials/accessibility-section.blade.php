@@ -145,6 +145,40 @@
     margin-left: 6px;
     vertical-align: middle;
 }
+
+/* Champ numérique premium avec suffixe (pour pourcentage tiers-temps) */
+.ia-input-suffix {
+    position: relative;
+    display: block;
+}
+.ia-input-suffix .ia-input {
+    padding-right: 38px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+.ia-input-suffix__addon {
+    position: absolute;
+    right: 1px;
+    top: 1px;
+    bottom: 1px;
+    width: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: linear-gradient(135deg, rgba(4,83,203,.08), rgba(94,145,222,.05));
+    color: #0453cb;
+    font-size: .82rem;
+    font-weight: 700;
+    border-left: 1.5px solid #e2e8f0;
+    border-radius: 0 6.5px 6.5px 0;
+    pointer-events: none;
+    transition: background .2s, border-color .2s;
+}
+.ia-input-suffix .ia-input:focus + .ia-input-suffix__addon {
+    background: linear-gradient(135deg, rgba(4,83,203,.15), rgba(94,145,222,.1));
+    border-left-color: #0453cb;
+}
 </style>
 @endpush
 @endonce
@@ -252,10 +286,10 @@
             </div>
             <div class="col-md-3 ia-field-group">
                 <label class="ia-label">Pourcentage</label>
-                <div class="input-group">
-                    <input type="number" class="ia-input" name="accessibility[third_time_percentage]" min="0" max="100"
+                <div class="ia-input-suffix">
+                    <input type="number" class="ia-input" name="accessibility[third_time_percentage]" min="0" max="100" step="1"
                            value="{{ $oldAcc['third_time_percentage'] ?? 33 }}">
-                    <span class="input-group-text">%</span>
+                    <span class="ia-input-suffix__addon">%</span>
                 </div>
             </div>
             <div class="col-md-3">
