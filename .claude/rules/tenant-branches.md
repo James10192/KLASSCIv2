@@ -63,21 +63,76 @@ git checkout presentation
 
 ## Workflow de sync d'un tenant existant
 
-Quand l'utilisateur veut « mettre à jour la prod {tenant} avec les dernières features » :
+Quand l'utilisateur veut « mettre à jour la prod {tenant} avec les dernières features » ou « push presentation sur les autres tenants » :
 
-Option A — **sync via merge (preferred)** : sur le serveur prod, fast-forward depuis `presentation` :
+### ✅ Option A — push direct cross-branch (PREFERRED, le plus simple)
+
+**Une seule commande par tenant**, depuis le repo local sans changer de branche :
+
 ```bash
-cd {tenant}
-git fetch origin
-git checkout {tenant}
-git merge --ff-only origin/presentation   # ou origin/{tenant} si la branche tenant a été sync via PR/merge sur GitHub
+git push origin presentation:esbtp-abidjan
+git push origin presentation:esbtp-yakro
+git push origin presentation:ephrata
+git push origin presentation:hetec
+git push origin presentation:rostan
 ```
 
-Option B — **sync via GitHub** :
-1. En local : `git checkout {tenant} && git merge --ff-only origin/presentation && git push`
-2. Sur le serveur : `git pull origin {tenant}`
+Ou en boucle pour tous d'un coup :
+```bash
+for tenant in esbtp-abidjan esbtp-yakro ephrata hetec rostan; do
+    echo "=== $tenant ==="
+    git push origin presentation:$tenant
+done
+```
 
-→ Si la branche tenant a divergé (ex: hotfix poussé directement dessus en urgence), un rebase ou merge non-ff peut être nécessaire — à faire côté GitHub avec PR pour visibilité.
+**Pourquoi c'est le pattern à utiliser** :
+- Pas de `checkout` (pas de risque d'auto-stash de modifs en cours)
+- Pas de `merge` local (rien dans la working tree ne change)
+- Git refuse automatiquement si non-fast-forward (tenant divergent) — sécurité par défaut
+- Une seule round-trip réseau par tenant
+
+Le push est un **fast-forward serveur-side** : `presentation` doit être en avance sur `{tenant}` sans divergence. Si divergent, git renvoie l'erreur `Updates were rejected (non-fast-forward)` — voir section divergence ci-dessous.
+
+### Option B — checkout + merge local (LEGACY, à éviter sauf besoin spécifique)
+
+Plus verbeux et plus risqué (touche le working tree, peut auto-stash). À utiliser SEULEMENT si on a besoin de tester localement la branche tenant avant push :
+```bash
+git checkout {tenant}
+git merge --ff-only origin/presentation
+git push origin {tenant}
+git checkout presentation  # revenir en posture dev
+```
+
+### Si la branche tenant a divergé (hotfix direct urgent)
+
+Le `git push origin presentation:{tenant}` échoue avec `Updates were rejected (non-fast-forward)`. Workflow de récupération :
+1. **Worktree dédié** pour ne pas perturber le main repo :
+   ```bash
+   git worktree add ../KLASSCIv2-{tenant} {tenant}
+   cd ../KLASSCIv2-{tenant}
+   git rebase origin/presentation   # ou merge si on veut garder l'historique
+   # Résoudre les conflits
+   git push --force-with-lease origin {tenant}
+   cd -
+   git worktree remove ../KLASSCIv2-{tenant}
+   ```
+2. Ou créer un PR `presentation` → `{tenant}` sur GitHub pour résolution visible et reviewable.
+
+### Côté serveur prod après push
+
+Sur chaque serveur tenant :
+```bash
+git pull origin {tenant}
+php artisan view:clear && cache:clear && config:clear && permission:cache-reset
+```
+
+Ou via `klassci-cli` pour les tenants configurés (`config:list`) :
+```bash
+klassci pull {tenant}
+klassci cache:clear {tenant}
+```
+
+À ce jour configurés dans le CLI : `presentation`, `esbtp-abidjan`, `rostan`, `local`, `local-test`. Les autres (`esbtp-yakro`, `ephrata`, `hetec`) demandent une action manuelle SSH/cPanel ou doivent être ajoutés au CLI via `klassci config:set-token {tenant} {url} {token}`.
 
 ## Naming convention
 
