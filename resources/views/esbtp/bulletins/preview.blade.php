@@ -456,7 +456,7 @@
                 <!-- Pied de page -->
                 <footer class="bulletin-footer">
                     <div>{{ \App\Helpers\SettingsHelper::get('school_name', config('app.name')) }}</div>
-                    <div>{{ \App\Helpers\SettingsHelper::get('school_address', '') }}@if(\App\Helpers\SettingsHelper::get('school_phone')) - Tél: {{ \App\Helpers\SettingsHelper::get('school_phone') }}@endif@if(\App\Helpers\SettingsHelper::get('school_website')) - {{ \App\Helpers\SettingsHelper::get('school_website') }}@endif</div>
+                    <div>{{ \App\Helpers\SettingsHelper::get('school_address', '') }}@if(\App\Helpers\SettingsHelper::get('school_phone')) - Tél: {{ \App\Helpers\SettingsHelper::get('school_phone') }}@endif @if(\App\Helpers\SettingsHelper::get('school_website')) - {{ \App\Helpers\SettingsHelper::get('school_website') }}@endif</div>
                 </footer>
             </div>
         </div>

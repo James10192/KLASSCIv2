@@ -83,7 +83,7 @@
         <a href="{{ $paiementUrl }}" class="button">Effectuer un paiement</a>
     </div>
 
-    @if(isset($modesP aiement) && count($modesPaiement) > 0)
+    @if(isset($modesPaiement) && count($modesPaiement) > 0)
     <h3 style="color: #007bff; margin-top: 30px;">Modes de paiement acceptés</h3>
 
     <ul style="color: #6c757d;">

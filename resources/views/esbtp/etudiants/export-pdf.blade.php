@@ -388,7 +388,7 @@
                                 <div class="student-name">
                                     {{ $etudiant->nom }} {{ $etudiant->prenoms }}
                                     @if($accProfile)
-                                        <span style="display:inline-block; background:#0453cb; color:#fff; padding:1px 5px; border-radius:50px; font-size:9px; margin-left:3px; font-weight:600; -webkit-print-color-adjust:exact; color-adjust:exact;" title="{{ $accProfile->summaryBadge() }}">&#9855;</span>
+                                        <x-pdf-accessibility-pill :summary="$accProfile->summaryBadge()" />
                                     @endif
                                 </div>
                             </td>

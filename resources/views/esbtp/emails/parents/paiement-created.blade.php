@@ -28,6 +28,6 @@
     </div>
 
     <div class="button-container">
-        <a href="{{ $suivi Url }}" class="button">Suivre mon paiement</a>
+        <a href="{{ $suiviUrl }}" class="button">Suivre mon paiement</a>
     </div>
 @endsection

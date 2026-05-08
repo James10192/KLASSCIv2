@@ -1,499 +1,350 @@
-<!DOCTYPE html>
-<html lang="fr">
-<head>
-    @include('pdf.partials.theme')
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Liste complète - {{ $classe->name }}</title>
+@php
+    /**
+     * Liste complète classe PDF — migré vers <x-pdf-document> (mai 2026).
+     * Le composant gère : logo + banner école, title/subtitle, filtres
+     * bandeau, footer paginé, watermark, et le respect des settings tenant.
+     *
+     * Variables attendues : $classe, $etudiants, $anneeCourante, $etablissement
+     */
+    $pdfCfg    = \App\Helpers\SettingsHelper::getPdfSettings();
+    $primary   = $pdfCfg['primary_color']     ?? '#0453cb';
+    $hdrBg     = $pdfCfg['header_bg_color']   ?? $primary;
+    $hdrText   = $pdfCfg['header_text_color'] ?? '#ffffff';
+    $textColor = $pdfCfg['text_color']        ?? '#1f2937';
+
+    $filtersBandeau = array_filter([
+        'Filière' => $classe->filiere->name ?? null,
+        'Niveau'  => $classe->niveau->name ?? null,
+        'Année'   => $anneeCourante->name ?? null,
+    ]);
+
+    $accStudents = auth()->user()?->can('students.accessibility.export')
+        ? $etudiants->filter(fn ($e) => $e->accessibilityProfile)
+        : collect();
+
+    $homCount = $etudiants->where('genre', 'M')->count();
+    $femCount = $etudiants->where('genre', 'F')->count();
+@endphp
+
+<x-pdf-document
+    title="Liste complète"
+    :subtitle="$classe->name"
+    :filters="$filtersBandeau"
+    orientation="landscape">
+
     <style>
-        body {
-            font-family: DejaVu Sans, Arial, sans-serif;
-            font-size: 10px;
-            margin: 0;
-            padding: 8px;
-            color: #333;
-            line-height: 1.3;
-            background: white;
-        }
-
-        .container {
-            max-width: 100%;
-            background: white;
-            padding: 10px;
-        }
-
-        /* Header principal - structure table 2 colonnes */
-        .header-section {
-            border-radius: 6px;
-            margin-bottom: 12px;
-            -webkit-print-color-adjust: exact;
-            color-adjust: exact;
-            overflow: hidden;
-        }
-
-        /* Table moderne */
-        .students-table {
+        /* ── KPI strip ─────────────────────────────────────────── */
+        .lc-kpis {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 8px;
-            background: white;
-            border-radius: 4px;
-            overflow: hidden;
-            font-size: 9px;
-        }
-
-        .students-table th {
-            background: #007bff;
-            color: white;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.2px;
-            font-size: 9px;
-            padding: 6px 4px;
-            text-align: center;
+            border-collapse: separate;
+            border-spacing: 5px 0;
+            margin: 6px 0 10px;
             -webkit-print-color-adjust: exact;
             color-adjust: exact;
         }
-
-        .students-table td {
-            padding: 5px 4px;
-            border-bottom: 1px solid #e5e7eb;
+        .lc-kpi {
+            background-color: {{ $hdrBg }};
+            color: {{ $hdrText }};
+            border-radius: 5px;
+            padding: 7px 9px;
             text-align: center;
             vertical-align: middle;
-            font-size: 9px;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+        }
+        .lc-kpi-label {
+            display: block;
+            font-size: 7.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            opacity: 0.85;
+            margin-bottom: 2px;
+            font-weight: 600;
+        }
+        .lc-kpi-value {
+            display: block;
+            font-size: 14px;
+            font-weight: 700;
+            line-height: 1.1;
+        }
+        .lc-kpi-value.small { font-size: 10px; line-height: 1.2; }
+        .lc-kpi-sub {
+            display: block;
+            font-size: 7px;
+            opacity: 0.8;
+            margin-top: 1px;
         }
 
-        .students-table tbody tr:nth-child(even) {
+        /* ── Students table ───────────────────────────────────── */
+        .lc-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 9px;
+            margin-top: 4px;
+        }
+        .lc-table thead th {
+            background-color: {{ $primary }};
+            color: {{ $hdrText }};
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+            font-size: 8.5px;
+            padding: 6px 4px;
+            text-align: center;
+            border: 1px solid {{ $primary }};
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
+        }
+        .lc-table tbody td {
+            padding: 4px 5px;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+            vertical-align: middle;
+        }
+        .lc-table tbody tr:nth-child(even) td {
             background-color: #f8f9fa;
         }
-
-        .student-number {
-            background: #007bff;
-            color: white;
-            padding: 2px 4px;
+        .lc-num {
+            display: inline-block;
+            background: {{ $primary }};
+            color: #fff;
+            padding: 1px 5px;
             border-radius: 50%;
             font-weight: bold;
-            font-size: 9px;
-            min-width: 16px;
-            display: inline-block;
+            font-size: 8px;
+            min-width: 12px;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
         }
-
-        .student-matricule {
+        .lc-mat {
             font-family: 'Courier New', monospace;
             background: #f3f4f6;
-            padding: 2px 3px;
+            padding: 1px 4px;
             border-radius: 2px;
             font-size: 8px;
             color: #374151;
         }
-
-        .student-info-cell {
-            text-align: left !important;
-            padding-left: 4px !important;
-        }
-
-        .student-name {
+        .lc-name-cell { text-align: left !important; padding-left: 6px !important; }
+        .lc-name {
             font-weight: 600;
             font-size: 9px;
             color: #1f2937;
-            line-height: 1.3;
+            line-height: 1.25;
         }
-
-        .student-gender {
-            font-size: 8px;
-            color: #6b7280;
-            margin-top: 1px;
-        }
-
-        .genre-badge {
-            background: #007bff;
-            color: white;
-            padding: 2px 4px;
+        .lc-genre {
+            display: inline-block;
+            color: #fff;
+            padding: 1px 5px;
             border-radius: 50%;
             font-weight: bold;
             font-size: 8px;
-            min-width: 16px;
-            display: inline-block;
+            min-width: 12px;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
         }
+        .lc-genre--m { background: {{ $primary }}; }
+        .lc-genre--f { background: #e91e63; }
 
-        .genre-badge.female {
-            background: #e91e63;
-        }
-
-        /* Footer section */
-        .footer-section {
-            margin-top: 12px;
-            display: table;
-            width: 100%;
-        }
-
-        .footer-left, .footer-right {
-            display: table-cell;
-            width: 50%;
-            vertical-align: top;
-            padding: 3px;
-        }
-
-        .summary-card {
-            background: #f8f9fa;
-            border: 1px solid #e5e7eb;
+        /* ── Bloc Aménagements à respecter ─────────────────── */
+        .lc-acc-block {
+            margin-top: 8px;
+            padding: 6px 9px;
+            background: #eff6ff;
+            border: 1px solid #bfdbfe;
+            border-left: 3px solid {{ $primary }};
             border-radius: 4px;
-            padding: 9px;
+            -webkit-print-color-adjust: exact;
+            color-adjust: exact;
         }
-
-        .summary-title {
-            font-size: 10px;
-            font-weight: 600;
-            color: #374151;
-            margin-bottom: 4px;
+        .lc-acc-title {
+            font-size: 8.5px;
+            font-weight: 700;
+            color: {{ $primary }};
             text-transform: uppercase;
-            letter-spacing: 0.2px;
+            letter-spacing: 0.04em;
+            margin-bottom: 4px;
         }
-
-        .summary-grid {
-            display: table;
+        .lc-acc-table {
             width: 100%;
-        }
-
-        .summary-row {
-            display: table-row;
-        }
-
-        .summary-cell {
-            display: table-cell;
-            width: 25%;
-            text-align: center;
-            padding: 2px;
-        }
-
-        .summary-value {
-            font-size: 11px;
-            font-weight: bold;
-            color: #007bff;
-        }
-
-        .summary-label {
+            border-collapse: collapse;
             font-size: 8px;
-            color: #6b7280;
-            margin-top: 1px;
         }
+        .lc-acc-table td {
+            padding: 2px 5px;
+            vertical-align: top;
+        }
+        .lc-acc-name { color: #1e293b; font-weight: 700; width: 25%; }
+        .lc-acc-detail { color: #475569; }
+        .lc-acc-key { color: {{ $primary }}; font-weight: 700; }
 
-        .info-card {
+        /* ── Résumé statistique ───────────────────────────── */
+        .lc-summary {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        .lc-summary td {
             background: #f8f9fa;
-            border: 1px solid #e5e7eb;
+            border: 1px solid #e2e8f0;
             border-radius: 4px;
-            padding: 9px;
-            margin-left: 3px;
+            padding: 9px 12px;
+            vertical-align: top;
+            text-align: center;
         }
-
-        .info-field {
+        .lc-summary-title {
+            font-size: 9.5px;
+            font-weight: 700;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
             margin-bottom: 5px;
         }
-
-        .info-label {
+        .lc-summary-grid {
+            display: table;
+            width: 100%;
+        }
+        .lc-summary-cell {
+            display: table-cell;
+            text-align: center;
+            padding: 0 4px;
+        }
+        .lc-summary-value {
+            font-size: 14px;
+            font-weight: 700;
+            color: {{ $primary }};
+            line-height: 1.1;
+        }
+        .lc-summary-label {
             font-size: 8px;
             color: #6b7280;
-            margin-bottom: 1px;
-        }
-
-        .info-value {
-            font-size: 9px;
-            font-weight: 600;
-            color: #374151;
-        }
-
-        /* Informations de génération */
-        .generation-info {
-            text-align: center;
-            font-size: 8px;
-            color: #6b7280;
-            margin-top: 10px;
-            padding-top: 6px;
-            border-top: 1px solid #e5e7eb;
-        }
-
-        /* Empty state */
-        .empty-state {
-            text-align: center;
-            padding: 20px 10px;
-            color: #6b7280;
-        }
-
-        .empty-icon {
-            font-size: 16px;
-            margin-bottom: 6px;
-            color: #d1d5db;
-        }
-
-        /* Print optimizations */
-        @media print {
-            body {
-                background: white;
-                padding: 4px;
-                font-size: 10px;
-            }
-
-            .container {
-                padding: 8px;
-            }
-
-            .header-section {
-                margin-bottom: 10px;
-            }
-
-            .kpi-section {
-                margin-bottom: 10px;
-            }
-
-            .footer-section {
-                margin-top: 10px;
-            }
-        }
-
-        @page {
-            margin: 0.5cm;
-            size: A4 landscape;
+            margin-top: 2px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
     </style>
-</head>
-<body>
-    @php
-        $pdfCfg    = \App\Helpers\SettingsHelper::getPdfSettings();
-        $hdrBg     = $pdfCfg['header_bg_color']   ?? $pdfCfg['primary_color'] ?? '#0453cb';
-        $hdrText   = $pdfCfg['header_text_color']  ?? '#ffffff';
-        $primary   = $pdfCfg['primary_color']      ?? '#0453cb';
-    @endphp
-    <div class="container">
-        <!-- Header Section — 2 colonnes : Logo | Infos école + Titre document -->
-        <div class="header-section">
-            <table width="100%" border="0" cellspacing="0" cellpadding="0">
+
+    {{-- ═══ KPI strip ═══ --}}
+    <table class="lc-kpis">
+        <tr>
+            <td class="lc-kpi" style="width: 25%;">
+                <span class="lc-kpi-label">Total</span>
+                <span class="lc-kpi-value">{{ $etudiants->count() }}</span>
+                <span class="lc-kpi-sub">Étudiants</span>
+            </td>
+            <td class="lc-kpi" style="width: 25%;">
+                <span class="lc-kpi-label">Hommes</span>
+                <span class="lc-kpi-value">{{ $homCount }}</span>
+                <span class="lc-kpi-sub">Masculin</span>
+            </td>
+            <td class="lc-kpi" style="width: 25%;">
+                <span class="lc-kpi-label">Femmes</span>
+                <span class="lc-kpi-value">{{ $femCount }}</span>
+                <span class="lc-kpi-sub">Féminin</span>
+            </td>
+            <td class="lc-kpi" style="width: 25%;">
+                <span class="lc-kpi-label">Année</span>
+                <span class="lc-kpi-value small">{{ $anneeCourante->name ?? 'Courante' }}</span>
+                <span class="lc-kpi-sub">Universitaire</span>
+            </td>
+        </tr>
+    </table>
+
+    {{-- ═══ Students table ═══ --}}
+    @if($etudiants->count() > 0)
+        <table class="lc-table">
+            <thead>
                 <tr>
-                    <!-- Colonne gauche : Logo -->
-                    <td width="18%" style="background-color: {{ $hdrBg }}; padding: 14px 10px; text-align: center; vertical-align: middle; border-right: 2px solid rgba(255,255,255,0.25);">
-                        @php $_logo = \App\Helpers\SettingsHelper::resolveLogoBase64(); @endphp
-                        @if($_logo)
-                            <span style="display:inline-block; background:#fff; padding:5px; border-radius:5px; border:1px solid rgba(255,255,255,0.35);">
-                                <img src="{{ $_logo['data_uri'] }}" style="max-height: 55px; max-width: 100px; display:block;" alt="Logo">
-                            </span>
-                        @else
-                            <div style="font-size: 30px; font-weight: 900; color: {{ $hdrText }}; opacity: 0.4; letter-spacing: -2px;">K</div>
-                        @endif
-                    </td>
-                    <!-- Colonne droite : Nom école + contact + titre document -->
-                    <td width="82%" style="background-color: {{ $hdrBg }}; padding: 12px 16px; vertical-align: middle;">
-                        <!-- Nom établissement -->
-                        <div style="font-size: 15px; font-weight: 700; color: {{ $hdrText }}; margin-bottom: 2px;">{{ $etablissement['nom'] ?? 'KLASSCI' }}</div>
-                        <!-- Adresse | Tél | Email -->
-                        @if($etablissement['adresse'] || $etablissement['telephone'] || $etablissement['email'])
-                        <div style="font-size: 8.5px; color: {{ $hdrText }}; opacity: 0.85; margin-bottom: 8px;">
-                            @if($etablissement['adresse']){{ $etablissement['adresse'] }}@endif
-                            @if($etablissement['telephone'])
-                                @if($etablissement['adresse']) &nbsp;|&nbsp; @endif
-                                Tél: {{ $etablissement['telephone'] }}
-                            @endif
-                            @if($etablissement['email'])
-                                @if($etablissement['adresse'] || $etablissement['telephone']) &nbsp;|&nbsp; @endif
-                                Email: {{ $etablissement['email'] }}
-                            @endif
-                        </div>
-                        @endif
-                        <!-- Séparateur + titre document + infos classe -->
-                        <div style="border-top: 1px solid rgba(255,255,255,0.35); padding-top: 7px;">
-                            <div style="font-size: 12px; font-weight: 700; color: {{ $hdrText }}; letter-spacing: 0.5px; margin-bottom: 5px;">LISTE COMPLÈTE DES ÉTUDIANTS</div>
-                            <table width="100%" border="0" cellspacing="0" cellpadding="0">
-                                <tr>
-                                    <td width="33%" style="font-size: 9px; color: {{ $hdrText }};">
-                                        <span style="color: {{ $hdrText }}; opacity: 0.75;">Classe :</span>
-                                        <strong style="color: {{ $hdrText }};">{{ $classe->name }}</strong>
-                                    </td>
-                                    <td width="33%" style="font-size: 9px; color: {{ $hdrText }}; text-align: center;">
-                                        <span style="color: {{ $hdrText }}; opacity: 0.75;">Date :</span>
-                                        <strong style="color: {{ $hdrText }};">{{ now()->format('d/m/Y') }}</strong>
-                                    </td>
-                                    <td width="34%" style="font-size: 9px; color: {{ $hdrText }}; text-align: right;">
-                                        <span style="color: {{ $hdrText }}; opacity: 0.75;">Code :</span>
-                                        <strong style="color: {{ $hdrText }};">{{ $classe->code ?? 'N/A' }}</strong>
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                    </td>
+                    <th style="width: 4%;">N°</th>
+                    <th style="width: 10%;">Matricule</th>
+                    <th>Nom et Prénoms</th>
+                    <th style="width: 5%;">Genre</th>
+                    <th style="width: 9%;">Date naiss.</th>
+                    <th style="width: 11%;">Téléphone</th>
+                    <th style="width: 18%;">Email</th>
+                    <th>Adresse</th>
                 </tr>
-            </table>
-        </div>
-
-        <!-- KPI Section — 4 cellules uniformes fond bleu (pas de .kpi-value/.kpi-title pour éviter override theme) -->
-        <table width="100%" border="0" cellspacing="0" cellpadding="0" style="margin-bottom: 12px;">
-            <tr>
-                <!-- TOTAL -->
-                <td width="25%" style="background-color: {{ $primary }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">TOTAL</div>
-                    <div style="font-size: 18px; font-weight: 700; color: white; line-height: 1.1; margin-bottom: 4px;">{{ $etudiants->count() }}</div>
-                    <div style="font-size: 7px; color: white; opacity: 0.65;">Étudiants</div>
-                </td>
-                <!-- FILIÈRE -->
-                <td width="25%" style="background-color: {{ $primary }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">FILIÈRE</div>
-                    <div style="font-size: 10px; font-weight: 700; color: white; line-height: 1.25; margin-bottom: 4px;">{{ $classe->filiere->name ?? 'N/A' }}</div>
-                    <div style="font-size: 7px; color: white; opacity: 0.65;">Spécialisation</div>
-                </td>
-                <!-- NIVEAU -->
-                <td width="25%" style="background-color: {{ $primary }}; padding: 9px 8px; text-align: center; vertical-align: middle; border-right: 1px solid rgba(255,255,255,0.25);">
-                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">NIVEAU</div>
-                    <div style="font-size: 10px; font-weight: 700; color: white; line-height: 1.25; margin-bottom: 4px;">{{ $classe->niveau->name ?? 'N/A' }}</div>
-                    <div style="font-size: 7px; color: white; opacity: 0.65;">Année d'études</div>
-                </td>
-                <!-- RÉPARTITION -->
-                <td width="25%" style="background-color: {{ $primary }}; padding: 9px 8px; text-align: center; vertical-align: middle;">
-                    <div style="font-size: 7.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: white; opacity: 0.8; margin-bottom: 4px;">RÉPARTITION</div>
-                    <div style="font-size: 13px; font-weight: 700; color: white; line-height: 1.25; margin-bottom: 4px;">{{ $etudiants->where('genre', 'M')->count() }}H / {{ $etudiants->where('genre', 'F')->count() }}F</div>
-                    <div style="font-size: 7px; color: white; opacity: 0.65;">Hommes / Femmes</div>
-                </td>
-            </tr>
-        </table>
-
-        <!-- Liste des étudiants -->
-        @if($etudiants->count() > 0)
-            <table class="students-table">
-                <thead>
-                    <tr>
-                        <th width="25">N°</th>
-                        <th width="60">Matricule</th>
-                        <th>Nom et Prenoms</th>
-                        <th width="30">Genre</th>
-                        <th width="60">Date naiss.</th>
-                        <th width="70">Telephone</th>
-                        <th width="100">Email</th>
-                        <th>Adresse</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($etudiants as $index => $etudiant)
+            </thead>
+            <tbody>
+                @foreach($etudiants as $index => $etudiant)
                     @php $accProfile = auth()->user()?->can('students.accessibility.export') ? $etudiant->accessibilityProfile : null; @endphp
                     <tr>
-                        <td>
-                            <span class="student-number">{{ $index + 1 }}</span>
-                        </td>
-                        <td>
-                            <span class="student-matricule">{{ $etudiant->matricule ?? 'N/A' }}</span>
-                        </td>
-                        <td class="student-info-cell">
-                            <div class="student-name">
+                        <td><span class="lc-num">{{ $index + 1 }}</span></td>
+                        <td><span class="lc-mat">{{ $etudiant->matricule ?? 'N/A' }}</span></td>
+                        <td class="lc-name-cell">
+                            <div class="lc-name">
                                 {{ $etudiant->nom }} {{ $etudiant->prenoms }}
                                 @if($accProfile)
-                                    <span style="display:inline-block; background:#0453cb; color:#fff; padding:1px 5px; border-radius:50px; font-size:9px; margin-left:3px; font-weight:600; -webkit-print-color-adjust:exact; color-adjust:exact;" title="{{ $accProfile->summaryBadge() }}">&#9855;</span>
+                                    <x-pdf-accessibility-pill :summary="$accProfile->summaryBadge()" />
                                 @endif
                             </div>
                         </td>
                         <td>
-                            <span class="genre-badge {{ $etudiant->genre == 'F' ? 'female' : '' }}">{{ $etudiant->genre ?? 'N/A' }}</span>
+                            <span class="lc-genre {{ ($etudiant->genre ?? '') === 'F' ? 'lc-genre--f' : 'lc-genre--m' }}">
+                                {{ $etudiant->genre ?? 'N/A' }}
+                            </span>
                         </td>
-                        <td>
-                            {{ $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : 'Non renseigne' }}
-                        </td>
-                        <td>
-                            {{ $etudiant->telephone ?? 'Non renseigne' }}
-                        </td>
-                        <td style="font-size: 8px;">
-                            {{ $etudiant->email ?? 'Non renseigne' }}
-                        </td>
-                        <td style="font-size: 8px;">
-                            {{ $etudiant->adresse ?? 'Non renseigne' }}
-                        </td>
+                        <td>{{ $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : 'Non renseigné' }}</td>
+                        <td>{{ $etudiant->telephone ?? 'Non renseigné' }}</td>
+                        <td style="font-size: 8px;">{{ $etudiant->email ?? 'Non renseigné' }}</td>
+                        <td style="font-size: 8px;">{{ $etudiant->adresse ?? 'Non renseigné' }}</td>
                     </tr>
+                @endforeach
+            </tbody>
+        </table>
+
+        {{-- ═══ Bloc Aménagements à respecter ═══ --}}
+        @if($accStudents->isNotEmpty())
+            <div class="lc-acc-block">
+                <div class="lc-acc-title">
+                    <x-pdf-accessibility-pill :summary="''" :size="8" /> Aménagements à respecter ({{ $accStudents->count() }})
+                </div>
+                <table class="lc-acc-table">
+                    @foreach($accStudents as $accE)
+                        @php $p = $accE->accessibilityProfile; @endphp
+                        <tr>
+                            <td class="lc-acc-name">{{ $accE->nom }} {{ $accE->prenoms }}</td>
+                            <td class="lc-acc-detail">
+                                @if($p->requires_third_time) <span class="lc-acc-key">Tiers-temps {{ $p->third_time_percentage }}%</span> · @endif
+                                @if($p->assistant_required) <span class="lc-acc-key">Assistant requis</span> · @endif
+                                {{ implode(' · ', $p->accommodationLabels()) }}
+                                @if($p->short_description) — <em>{{ $p->short_description }}</em> @endif
+                            </td>
+                        </tr>
                     @endforeach
-                </tbody>
-            </table>
-
-            @php
-                $accStudents = auth()->user()?->can('students.accessibility.export')
-                    ? $etudiants->filter(fn ($e) => $e->accessibilityProfile)
-                    : collect();
-            @endphp
-            @if($accStudents->isNotEmpty())
-                <div style="margin-top:8px; padding:6px 8px; background:#eff6ff; border:1px solid #bfdbfe; border-radius:4px; -webkit-print-color-adjust:exact; color-adjust:exact;">
-                    <div style="font-size:8px; font-weight:700; color:#0453cb; text-transform:uppercase; letter-spacing:.04em; margin-bottom:3px;">
-                        &#9855; Aménagements à respecter ({{ $accStudents->count() }})
-                    </div>
-                    <table style="width:100%; border-collapse:collapse; font-size:7.5px;">
-                        @foreach($accStudents as $accE)
-                            @php $p = $accE->accessibilityProfile; @endphp
-                            <tr>
-                                <td style="width:25%; padding:1px 4px; vertical-align:top;">
-                                    <strong style="color:#1e293b;">{{ $accE->nom }} {{ $accE->prenoms }}</strong>
-                                </td>
-                                <td style="padding:1px 4px; vertical-align:top; color:#475569;">
-                                    @if($p->requires_third_time) <span style="color:#0453cb; font-weight:700;">Tiers-temps {{ $p->third_time_percentage }}%</span> · @endif
-                                    @if($p->assistant_required) <span style="color:#0453cb; font-weight:700;">Assistant requis</span> · @endif
-                                    {{ implode(' · ', $p->accommodationLabels()) }}
-                                    @if($p->short_description) — <em>{{ $p->short_description }}</em> @endif
-                                </td>
-                            </tr>
-                        @endforeach
-                    </table>
-                </div>
-            @endif
-
-            <!-- Footer Section -->
-            <div class="footer-section">
-                <div class="footer-left">
-                    <div class="summary-card">
-                        <div class="summary-title">Resume statistique</div>
-                        <div class="summary-grid">
-                            <div class="summary-row">
-                                <div class="summary-cell">
-                                    <div class="summary-value">{{ $etudiants->count() }}</div>
-                                    <div class="summary-label">Total</div>
-                                </div>
-                                <div class="summary-cell">
-                                    <div class="summary-value">{{ $etudiants->where('genre', 'M')->count() }}</div>
-                                    <div class="summary-label">Hommes</div>
-                                </div>
-                                <div class="summary-cell">
-                                    <div class="summary-value">{{ $etudiants->where('genre', 'F')->count() }}</div>
-                                    <div class="summary-label">Femmes</div>
-                                </div>
-                                <div class="summary-cell">
-                                    <div class="summary-value">{{ ($classe->places_totales ?? 0) - $etudiants->count() }}</div>
-                                    <div class="summary-label">Places libres</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="footer-right">
-                    @php $pdfCfg = $pdfCfg ?? \App\Helpers\SettingsHelper::getPdfSettings(); @endphp
-                    <div class="info-card">
-                        <div class="summary-title">Informations document</div>
-                        <div class="info-field">
-                            <div class="info-label">Document genere le :</div>
-                            <div class="info-value">{{ now()->format('d/m/Y à H:i') }}</div>
-                        </div>
-                        @if(($pdfCfg['show_generator_name'] ?? true) && auth()->check())
-                            <div class="info-field">
-                                <div class="info-label">Par :</div>
-                                <div class="info-value">{{ auth()->user()->name }}</div>
-                            </div>
-                        @endif
-                        <div class="info-field">
-                            <div class="info-label">Etablissement :</div>
-                            <div class="info-value">{{ $etablissement['nom'] ?? 'KLASSCI' }}</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        @else
-            <div class="empty-state">
-                <div class="empty-icon">Aucun etudiant</div>
-                <p>Aucun etudiant inscrit dans cette classe pour l'annee {{ $anneeCourante->name ?? 'courante' }}.</p>
+                </table>
             </div>
         @endif
 
-        <!-- Generation Info -->
-        <div class="generation-info">
-            <strong>Document genere automatiquement le {{ now()->format('d/m/Y a H:i') }}</strong><br>
-            {{ $etablissement['nom'] ?? 'KLASSCI' }} - Systeme de Gestion des Inscriptions
+        {{-- ═══ Résumé statistique ═══ --}}
+        <table class="lc-summary">
+            <tr>
+                <td>
+                    <div class="lc-summary-title">Résumé statistique</div>
+                    <div class="lc-summary-grid">
+                        <div class="lc-summary-cell">
+                            <div class="lc-summary-value">{{ $etudiants->count() }}</div>
+                            <div class="lc-summary-label">Total</div>
+                        </div>
+                        <div class="lc-summary-cell">
+                            <div class="lc-summary-value">{{ $homCount }}</div>
+                            <div class="lc-summary-label">Hommes</div>
+                        </div>
+                        <div class="lc-summary-cell">
+                            <div class="lc-summary-value">{{ $femCount }}</div>
+                            <div class="lc-summary-label">Femmes</div>
+                        </div>
+                        <div class="lc-summary-cell">
+                            <div class="lc-summary-value">{{ $accStudents->count() }}</div>
+                            <div class="lc-summary-label">Avec aménagements</div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </table>
+    @else
+        <div style="text-align: center; padding: 30px 10px; color: #6b7280; font-size: 10px;">
+            <p style="font-size: 16px; color: #d1d5db; margin-bottom: 6px;">Aucun étudiant</p>
+            <p>Aucun étudiant inscrit dans cette classe pour l'année {{ $anneeCourante->name ?? 'courante' }}.</p>
         </div>
-    </div>
-</body>
-</html>
+    @endif
+</x-pdf-document>
