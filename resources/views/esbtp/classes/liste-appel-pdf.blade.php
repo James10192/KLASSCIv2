@@ -34,11 +34,18 @@
             color-adjust: exact;
         }
 
+        .header-logo-frame {
+            display: inline-block;
+            background: #fff;
+            padding: 3px;
+            border-radius: 4px;
+            border: 1px solid rgba(255,255,255,0.35);
+            margin-bottom: 2px;
+        }
         .header-logo {
             max-height: 24px;
             max-width: 60px;
-            margin-bottom: 2px;
-            filter: brightness(0) invert(1);
+            display: block;
         }
 
         .school-name {
@@ -382,8 +389,9 @@
     <div class="container">
         <!-- Header Section -->
         <div class="header-section">
-            @if($etablissement['logo'] && file_exists(storage_path('app/public/' . $etablissement['logo'])))
-                <img src="data:image/{{ pathinfo($etablissement['logo'], PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $etablissement['logo']))) }}" class="header-logo" alt="Logo">
+            @php($_logo = \App\Helpers\SettingsHelper::resolveLogoBase64())
+            @if($_logo)
+                <span class="header-logo-frame"><img src="{{ $_logo['data_uri'] }}" class="header-logo" alt="Logo"></span>
             @endif
 
             <div class="school-name">{{ $etablissement['nom'] ?? 'KLASSCI' }}</div>

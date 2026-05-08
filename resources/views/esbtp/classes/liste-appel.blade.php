@@ -121,10 +121,12 @@
         <div class="main-card">
             <div class="main-card-header" style="background: #007bff; color: white; border-radius: 15px 15px 0 0;">
                 <div style="text-align: center; padding: 1rem;">
-                    @if($etablissement['logo'] && file_exists(storage_path('app/public/' . $etablissement['logo'])))
+                    @php($_logo = \App\Helpers\SettingsHelper::resolveLogoBase64())
+                    @if($_logo)
                         <div style="margin-bottom: 15px;">
-                            <img src="data:image/{{ pathinfo($etablissement['logo'], PATHINFO_EXTENSION) }};base64,{{ base64_encode(file_get_contents(storage_path('app/public/' . $etablissement['logo']))) }}"
-                                 style="max-height: 60px; max-width: 150px; filter: brightness(0) invert(1);" alt="Logo">
+                            <span style="display:inline-block; background:#fff; padding:6px; border-radius:6px; border:1px solid rgba(255,255,255,0.35);">
+                                <img src="{{ $_logo['data_uri'] }}" style="max-height: 60px; max-width: 150px; display:block;" alt="Logo">
+                            </span>
                         </div>
                     @endif
 

@@ -113,6 +113,60 @@ class SettingsHelper
     }
 
     /**
+     * Résout le logo de l'école en base64 pour inlining (DomPDF + previews web).
+     *
+     * Tente plusieurs candidats (storage public, public/storage, fallbacks pré-bundlés)
+     * pour absorber les divergences de chemin entre tenants legacy et nouveau format.
+     *
+     * @return array{mime: string, ext: string, b64: string, data_uri: string}|null
+     */
+    public static function resolveLogoBase64(): ?array
+    {
+        $logoPath = self::get('school_logo', '');
+        $normalized = str_replace('\\', '/', ltrim((string) $logoPath, '/'));
+        $relative = preg_replace('#^storage/#', '', $normalized);
+        $basename = basename($relative);
+
+        $candidates = [];
+        if ($logoPath) {
+            $candidates = [
+                storage_path('app/public/' . $normalized),
+                storage_path('app/public/' . $relative),
+                storage_path('app/public/logos/' . $basename),
+                public_path('storage/' . $normalized),
+                public_path('storage/' . $relative),
+                public_path('storage/logos/' . $basename),
+                public_path($normalized),
+            ];
+        }
+        $candidates[] = public_path('images/esbtp_logo.png');
+        $candidates[] = public_path('images/LOGO-KLASSCI-PNG.png');
+
+        foreach ($candidates as $candidate) {
+            if (!is_string($candidate) || $candidate === '' || !file_exists($candidate)) {
+                continue;
+            }
+            $ext = strtolower(pathinfo($candidate, PATHINFO_EXTENSION) ?: 'png');
+            $mime = match ($ext) {
+                'jpg', 'jpeg' => 'image/jpeg',
+                'svg' => 'image/svg+xml',
+                'webp' => 'image/webp',
+                'gif' => 'image/gif',
+                default => 'image/png',
+            };
+            $b64 = base64_encode((string) file_get_contents($candidate));
+            return [
+                'mime' => $mime,
+                'ext' => $ext,
+                'b64' => $b64,
+                'data_uri' => 'data:' . $mime . ';base64,' . $b64,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
      * Récupère les paramètres PDF
      *
      * @return array
