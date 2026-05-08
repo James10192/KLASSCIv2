@@ -146,8 +146,9 @@
     vertical-align: middle;
 }
 
-/* Help tooltip — petit ? circulaire à côté d'un label avec explication au survol */
-.ia-help {
+/* Help tooltip — petit ? circulaire à côté d'un label avec explication au survol
+   ⚠ NE PAS utiliser le nom .ia-help (déjà pris par le paragraphe d'aide sous input) */
+.ia-help-pill {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -162,8 +163,9 @@
     cursor: help;
     transition: background .15s, transform .15s;
     flex-shrink: 0;
+    line-height: 1;
 }
-.ia-help:hover { background: #0453cb; color: #fff; transform: scale(1.15); }
+.ia-help-pill:hover { background: #0453cb; color: #fff; transform: scale(1.15); }
 /* Le browser affiche déjà le title= au survol — l'icône agit comme indicateur visuel */
 
 /* ─── Toggle-row variant pour input numérique inline (pourcentage tiers-temps) ─── */
@@ -271,13 +273,13 @@
                     <label for="ia-has_official_recognition">
                         <i class="fas fa-stamp me-1 text-primary"></i> Reconnaissance officielle (CDPH ou équivalent)
                     </label>
-                    <span class="ia-help" title="Document officiel attestant du handicap, délivré par la Commission des Droits et de l'Autonomie des Personnes Handicapées (CDPH) ou un organisme équivalent.">?</span>
+                    <span class="ia-help-pill" title="Document officiel attestant du handicap, délivré par la Commission des Droits et de l'Autonomie des Personnes Handicapées (CDPH) ou un organisme équivalent.">?</span>
                 </div>
             </div>
             <div class="col-md-6 ia-field-group" style="margin-bottom:0;">
                 <label class="ia-label">
                     Référence du document officiel
-                    <span class="ia-help" title="Numéro de dossier ou code de l'attestation officielle. Utile pour retrouver le dossier en cas de contrôle.">?</span>
+                    <span class="ia-help-pill" title="Numéro de dossier ou code de l'attestation officielle. Utile pour retrouver le dossier en cas de contrôle.">?</span>
                 </label>
                 <input type="text" class="ia-input" name="accessibility[recognition_reference]"
                        value="{{ $oldAcc['recognition_reference'] ?? '' }}"
@@ -289,7 +291,7 @@
         <div class="ia-field-group">
             <label class="ia-label">
                 Catégories de handicap
-                <span class="ia-help" title="Cochez une ou plusieurs catégories qui s'appliquent à l'étudiant. Pour information uniquement — ne génère aucun affichage public ni discrimination.">?</span>
+                <span class="ia-help-pill" title="Cochez une ou plusieurs catégories qui s'appliquent à l'étudiant. Pour information uniquement — ne génère aucun affichage public ni discrimination.">?</span>
             </label>
             <div class="ia-chip-grid">
                 @foreach($categories as $key => $label)
@@ -330,7 +332,7 @@
         <div class="ia-field-group">
             <label class="ia-label">
                 Aménagements pédagogiques
-                <span class="ia-help" title="Adaptations concrètes à mettre en place : matériel adapté, modalité d'évaluation, accompagnement humain. Apparaîtront en pied des listes d'appel pour rappeler aux enseignants.">?</span>
+                <span class="ia-help-pill" title="Adaptations concrètes à mettre en place : matériel adapté, modalité d'évaluation, accompagnement humain. Apparaîtront en pied des listes d'appel pour rappeler aux enseignants.">?</span>
             </label>
             <div class="ia-chip-grid">
                 @foreach($accommodations as $key => $label)
@@ -351,7 +353,7 @@
                     <input type="checkbox" id="ia-requires_third_time" name="accessibility[requires_third_time]" value="1"
                            {{ ! empty($oldAcc['requires_third_time']) ? 'checked' : '' }}>
                     <label for="ia-requires_third_time"><i class="fas fa-hourglass-half me-1 text-primary"></i> Tiers-temps aux examens</label>
-                    <span class="ia-help" title="Temps supplémentaire accordé à l'étudiant pendant les examens. Par exemple : 33% = 20 minutes en plus pour une épreuve d'1h. Légalement applicable aux étudiants reconnus en situation de handicap (visuel, dys, moteur, chronique...).">?</span>
+                    <span class="ia-help-pill" title="Temps supplémentaire accordé à l'étudiant pendant les examens. Par exemple : 33% = 20 minutes en plus pour une épreuve d'1h. Légalement applicable aux étudiants reconnus en situation de handicap (visuel, dys, moteur, chronique...).">?</span>
                 </div>
             </div>
             <div class="col-md-3">
@@ -359,7 +361,7 @@
                     <span class="ia-toggle-row__label">
                         <i class="fas fa-percent text-primary" style="font-size:.78rem;"></i>
                         <span>Pourcentage</span>
-                        <span class="ia-help" title="Quel pourcentage de temps en plus ? Standard légal en France : 33% (= 1/3 du temps). À adapter selon les besoins de l'étudiant.">?</span>
+                        <span class="ia-help-pill" title="Quel pourcentage de temps en plus ? Standard légal en France : 33% (= 1/3 du temps). À adapter selon les besoins de l'étudiant.">?</span>
                     </span>
                     <input type="number" class="ia-toggle-row__num" name="accessibility[third_time_percentage]" min="0" max="100" step="1"
                            value="{{ $oldAcc['third_time_percentage'] ?? 33 }}">
@@ -372,7 +374,7 @@
                     <input type="checkbox" id="ia-assistant_required" name="accessibility[assistant_required]" value="1"
                            {{ ! empty($oldAcc['assistant_required']) ? 'checked' : '' }}>
                     <label for="ia-assistant_required"><i class="fas fa-hands-helping me-1 text-primary"></i> Assistant requis</label>
-                    <span class="ia-help" title="L'étudiant a-t-il besoin d'une personne dédiée pour l'aider en classe (preneur de notes, aide pédagogique, accompagnant) ? Concerne notamment les handicaps moteurs, visuels ou auditifs.">?</span>
+                    <span class="ia-help-pill" title="L'étudiant a-t-il besoin d'une personne dédiée pour l'aider en classe (preneur de notes, aide pédagogique, accompagnant) ? Concerne notamment les handicaps moteurs, visuels ou auditifs.">?</span>
                 </div>
             </div>
         </div>
@@ -393,7 +395,7 @@
             <div class="col-md-6 ia-field-group" style="margin-bottom:0;">
                 <label class="ia-label">
                     Validité du
-                    <span class="ia-help" title="Date à partir de laquelle le profil et les aménagements s'appliquent. Souvent la date de l'attestation officielle ou de la rentrée.">?</span>
+                    <span class="ia-help-pill" title="Date à partir de laquelle le profil et les aménagements s'appliquent. Souvent la date de l'attestation officielle ou de la rentrée.">?</span>
                 </label>
                 <input type="date" class="ia-input" name="accessibility[effective_from]"
                        value="{{ $oldAcc['effective_from'] ?? '' }}">
@@ -401,7 +403,7 @@
             <div class="col-md-6 ia-field-group" style="margin-bottom:0;">
                 <label class="ia-label">
                     au
-                    <span class="ia-help" title="Date de fin de validité (ex: fin de l'année universitaire, ou date d'expiration de la reconnaissance officielle). Laissez vide pour validité indéfinie.">?</span>
+                    <span class="ia-help-pill" title="Date de fin de validité (ex: fin de l'année universitaire, ou date d'expiration de la reconnaissance officielle). Laissez vide pour validité indéfinie.">?</span>
                 </label>
                 <input type="date" class="ia-input" name="accessibility[effective_to]"
                        value="{{ $oldAcc['effective_to'] ?? '' }}">
