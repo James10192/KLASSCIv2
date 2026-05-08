@@ -1875,7 +1875,7 @@ document.addEventListener('DOMContentLoaded', function() {
     (function initScrollStepper() {
         // sectionIds est aligné sur les data-step de la nav stepper.
         // Le step accessibility (6) est conditionnel : on l'inclut seulement si
-        // la section et le step existent dans le DOM (gating @can côté Blade).
+        // la section et le step existent dans le DOM (gating Blade côté serveur).
         const sectionIds = [
             'section-identite',
             'section-academique',
