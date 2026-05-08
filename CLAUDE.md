@@ -19,7 +19,14 @@
 - `adminKlassci` : Admin SaaS central (Filament v3, DB `klassci_master`)
 - `KLASSCI` : App métier par établissement (repo `KLASSCIv2`, DB isolée par instance)
 
-**Instances actives** : `esbtp-abidjan` (Pro, 3000 inscriptions), `esbtp-yakro` (Essentiel, 700), `presentation` (Free, test)
+**Instances actives** :
+- `esbtp-abidjan` — offre **Élite**, > 2000 inscriptions
+- `esbtp-yakro` — offre **Élite**, > 2000 inscriptions
+- `ephrata` — offre **Partenaire**
+- `hetec`, `rostan` — phase test (visent l'offre Élite)
+- `presentation` — instance démo (Free, test)
+
+Chaque instance a sa propre branche Git du même nom (snapshot de `presentation` synchronisé périodiquement). Voir [.claude/rules/tenant-branches.md](.claude/rules/tenant-branches.md).
 
 **Stack** : Laravel 12.x · MySQL 8.x · Blade + Alpine.js + Chart.js + DataTables · DomPDF · Sanctum · Gemini 2.0 Flash
 
