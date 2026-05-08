@@ -84,8 +84,24 @@
                         <i class="fas fa-check step-check"></i>
                     </div>
                 </div>
+                @can('students.accessibility.edit')
+                <div class="step-track" data-track="5">
+                    <div class="step-track-fill"></div>
+                    <div class="step-track-light"></div>
+                </div>
+                @endcan
+            </div>
+            @can('students.accessibility.edit')
+            <div class="step-item step-item--optional" data-step="6" id="step-accessibility">
+                <div class="step-node" data-label="Accessibilité (optionnel)">
+                    <div class="step-circle">
+                        <i class="fas fa-universal-access step-num" style="font-size:13px;"></i>
+                        <i class="fas fa-check step-check"></i>
+                    </div>
+                </div>
                 <!-- pas de track après le dernier -->
             </div>
+            @endcan
         </nav>
 
         <form id="inscriptionForm" method="POST" action="{{ route('esbtp.inscriptions.store') }}" enctype="multipart/form-data">
@@ -1857,6 +1873,9 @@ document.addEventListener('DOMContentLoaded', function() {
     //   • Animation lumière : déclenchée quand --fill passe de 0% à >5% (début du remplissage)
     // =============================================
     (function initScrollStepper() {
+        // sectionIds est aligné sur les data-step de la nav stepper.
+        // Le step accessibility (6) est conditionnel : on l'inclut seulement si
+        // la section et le step existent dans le DOM (gating @can côté Blade).
         const sectionIds = [
             'section-identite',
             'section-academique',
@@ -1864,6 +1883,9 @@ document.addEventListener('DOMContentLoaded', function() {
             'section-parents',
             'section-frais',
         ];
+        if (document.getElementById('section-accessibilite') && document.getElementById('step-accessibility')) {
+            sectionIds.push('section-accessibilite');
+        }
 
         const stepItems  = Array.from(document.querySelectorAll('.step-item[data-step]'))
                                 .sort((a, b) => +a.dataset.step - +b.dataset.step);
@@ -1907,9 +1929,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (scrollMid >= top) active = i + 1;
             });
 
-            // Met à jour les classes done/active sur les nœuds
+            // Met à jour les classes done/active sur les nœuds (steps réguliers)
             stepItems.forEach((item, i) => {
                 const step = i + 1;
+                if (item.classList.contains('step-item--optional')) return; // pilote externe
                 item.classList.remove('active', 'done');
                 if (step < active)       item.classList.add('done');
                 else if (step === active) item.classList.add('active');
@@ -1969,6 +1992,29 @@ document.addEventListener('DOMContentLoaded', function() {
         // Init
         updateTrackHeights();
         updateStepper();
+
+        // ─── Pilote externe : step Accessibilité (optionnel) ───
+        // Le step 6 ne suit PAS le scroll. Son état est piloté par les events
+        // dispatchés depuis la section accessibility (toggle open/close + saisie).
+        const accStep = document.getElementById('step-accessibility');
+        if (accStep) {
+            const accTrack = document.querySelector('.step-track[data-track="5"]'); // trait entre Frais et Accessibilité
+            document.addEventListener('ia:accessibility-state', (ev) => {
+                const { open, hasData } = ev.detail;
+                accStep.classList.remove('active', 'done');
+                if (hasData) {
+                    accStep.classList.add('done');
+                    if (accTrack) accTrack.querySelector('.step-track-fill').style.setProperty('--fill', '100%');
+                } else if (open) {
+                    accStep.classList.add('active');
+                    if (accTrack) accTrack.querySelector('.step-track-fill').style.setProperty('--fill', '50%');
+                } else {
+                    if (accTrack) accTrack.querySelector('.step-track-fill').style.setProperty('--fill', '0%');
+                }
+                // Recalc des hauteurs au cas où la section change de hauteur
+                updateTrackHeights();
+            });
+        }
     })();
 
     // =============================================

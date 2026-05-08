@@ -47,7 +47,7 @@
         100% { box-shadow: 0 0 0 0   rgba(4,83,203,0);    }
     }
 
-    /* Conteneur principal — fixed à droite, minimaliste */
+    /* Conteneur principal — fixed à droite, expand on hover */
     .form-stepper {
         position: fixed;
         top: 50%;
@@ -56,7 +56,7 @@
         z-index: 900;
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
         gap: 0;
         padding: 12px 8px;
         background: rgba(255,255,255,0.94);
@@ -67,26 +67,64 @@
         box-shadow: 0 4px 24px rgba(4,83,203,0.10), 0 1px 4px rgba(0,0,0,0.06);
         /* Largeur minimale : seulement les cercles */
         width: 48px;
+        transition: width 0.28s cubic-bezier(.2,.8,.2,1),
+                    box-shadow 0.28s ease,
+                    background 0.28s ease,
+                    padding 0.28s ease;
+        overflow: hidden;
+    }
+    .form-stepper:hover {
+        width: 220px;
+        padding: 14px 14px;
+        background: rgba(255,255,255,0.98);
+        box-shadow: 0 12px 40px rgba(4,83,203,0.18), 0 2px 8px rgba(0,0,0,0.08);
     }
 
     /* Chaque étape = nœud + trait */
     .step-item {
         display: flex;
         flex-direction: column;
-        align-items: center;
+        align-items: stretch;
         gap: 0;
         width: 100%;
     }
 
-    /* Nœud (cercle + label) */
+    /* Nœud (cercle + label inline-révélable) */
     .step-node {
         display: flex;
-        flex-direction: column;
+        flex-direction: row;
         align-items: center;
-        gap: 4px;
+        gap: 12px;
         position: relative;
         z-index: 2;
+        min-height: 32px;
     }
+    /* Label inline (révélé sur hover du stepper) */
+    .step-node[data-label]::after {
+        content: attr(data-label);
+        position: static;
+        transform: none;
+        border: none;
+        background: transparent;
+        color: var(--kl-text);
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        padding: 0;
+        opacity: 0;
+        max-width: 0;
+        overflow: hidden;
+        transition: opacity 0.22s cubic-bezier(.2,.8,.2,1) 0.05s,
+                    max-width 0.28s cubic-bezier(.2,.8,.2,1);
+        flex: 1;
+    }
+    .form-stepper:hover .step-node[data-label]::after {
+        opacity: 1;
+        max-width: 180px;
+    }
+    /* Le tooltip ::before legacy n'est plus utile en mode hover-expand */
+    .step-node::before { display: none; }
+    .step-node:hover::after { color: var(--kl-primary); }
 
     /* Cercle */
     .step-circle {
@@ -144,54 +182,27 @@
         display: none;
     }
 
-    /* Tooltip à gauche du cercle au survol */
-    .step-node {
-        position: relative;
-    }
-    .step-node::before {
-        content: attr(data-label);
-        position: absolute;
-        right: calc(100% + 10px);
-        top: 50%;
-        transform: translateY(-50%);
-        background: var(--kl-text);
-        color: #fff;
-        font-size: 10px;
-        font-weight: 600;
-        white-space: nowrap;
-        padding: 4px 8px;
-        border-radius: 6px;
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.18s ease;
-        letter-spacing: 0.4px;
-    }
-    .step-node::after {
-        content: '';
-        position: absolute;
-        right: calc(100% + 4px);
-        top: 50%;
-        transform: translateY(-50%);
-        border: 5px solid transparent;
-        border-left-color: var(--kl-text);
-        pointer-events: none;
-        opacity: 0;
-        transition: opacity 0.18s ease;
-    }
-    .step-node:hover::before,
-    .step-node:hover::after { opacity: 1; }
-
-    /* Trait entre deux nœuds */
+    /* Trait entre deux nœuds — décalé pour rester aligné avec le centre des cercles
+       qu'on soit en mode collapsed (cercles centrés) ou expanded (cercles à gauche). */
     .step-track {
         position: relative;
         width: 2px;
-        /* hauteur pilotée dynamiquement via JS : --track-height */
         height: var(--track-height, 40px);
         background: var(--kl-border);
-        margin: 0;          /* ZÉRO espace — collé directement aux cercles */
+        margin: 0 0 0 13px;     /* aligné sur le centre du cercle 28px (14px - 1px de la largeur du trait) */
         overflow: hidden;
         border-radius: 2px;
         flex-shrink: 0;
+        align-self: flex-start;
+        transition: margin 0.28s cubic-bezier(.2,.8,.2,1);
+    }
+    /* Style spécifique pour le step optionnel (Accessibilité) — légèrement atténué */
+    .step-item--optional .step-circle {
+        border-style: dashed;
+    }
+    .step-item--optional.active .step-circle,
+    .step-item--optional.done .step-circle {
+        border-style: solid;
     }
 
     /* Remplissage de progression (0% → 100% de haut en bas) */
