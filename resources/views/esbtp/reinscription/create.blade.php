@@ -577,7 +577,8 @@
                         <a href="{{ route('esbtp.reinscription.show', $analyse['etudiant']->id) }}?annee_academique={{ $anneeAcademique }}" class="btn-acasi secondary">
                             <i class="fas fa-times"></i>Annuler
                         </a>
-                        <button type="submit" class="btn-acasi primary" id="btnConfirmer">
+                        <button type="submit" class="btn-acasi primary" id="btnConfirmer"
+                                @can('students.edit') data-rqf-trigger="1" @endcan>
                             <i class="fas fa-check"></i>Confirmer la Réinscription
                         </button>
                     </div>
@@ -586,6 +587,10 @@
         </div>
     </div>
 </div>
+
+@can('students.edit')
+@include('esbtp.reinscription.partials.quick-fiche-modal', ['etudiant' => $analyse['etudiant']])
+@endcan
 @endsection
 
 @push('scripts')

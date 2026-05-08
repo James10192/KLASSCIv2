@@ -498,6 +498,13 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 // Route pour la page de finalisation de réinscription
                 Route::get('{etudiant}/finaliser', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'create'])->name('create');
 
+                // Mise à jour rapide de la fiche étudiant + parents avant validation de la réinscription
+                Route::middleware('permission:students.edit')->group(function () {
+                    Route::patch('{etudiant}/quick-update-fiche', [
+                        \App\Http\Controllers\ESBTP\ESBTPReinscriptionFicheController::class, 'update'
+                    ])->whereNumber('etudiant')->name('quick-update-fiche');
+                });
+
                 // Route AJAX pour récupérer les classes selon la décision
                 Route::get('{etudiant}/classes-by-decision', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'getClassesByDecision'])->name('classes-by-decision');
 

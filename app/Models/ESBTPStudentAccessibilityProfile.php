@@ -2,10 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Validation\Rule;
 use OwenIt\Auditing\Contracts\Auditable;
 
 class ESBTPStudentAccessibilityProfile extends Model implements Auditable
@@ -35,6 +37,53 @@ class ESBTPStudentAccessibilityProfile extends Model implements Auditable
         'repos_examen'          => 'Pauses pendant les épreuves',
         'autre'                 => 'Autre',
     ];
+
+    /** Préfixes du single-dropdown filter sur etudiants.index */
+    public const FILTER_WITH        = 'with';
+    public const FILTER_WITHOUT     = 'without';
+    public const FILTER_TIERS_TEMPS = 'tiers_temps';
+    public const FILTER_ASSISTANT   = 'assistant';
+    public const FILTER_RECOGNITION = 'recognition';
+    public const FILTER_PREFIX_CATEGORY      = 'cat:';
+    public const FILTER_PREFIX_ACCOMMODATION = 'acc:';
+
+    /**
+     * Règles de validation partagées entre StoreAccessibilityProfileRequest
+     * (édition fiche étudiant) et AttachAccessibilityProfile (inscription).
+     * Source de vérité unique pour éviter le drift.
+     */
+    public static function validationRules(): array
+    {
+        $cats = array_keys(self::CATEGORIES);
+        $accs = array_keys(self::ACCOMMODATIONS);
+
+        return [
+            'has_official_recognition' => 'sometimes|boolean',
+            'recognition_reference'    => 'nullable|string|max:100',
+            'categories'               => 'nullable|array',
+            'categories.*'             => ['string', Rule::in($cats)],
+            'short_description'        => 'nullable|string|max:200',
+            'full_description'         => 'nullable|string|max:5000',
+            'accommodations'           => 'nullable|array',
+            'accommodations.*'         => ['string', Rule::in($accs)],
+            'accommodations_notes'     => 'nullable|string|max:2000',
+            'requires_third_time'      => 'sometimes|boolean',
+            'third_time_percentage'    => 'nullable|integer|min:0|max:100',
+            'assistant_required'       => 'sometimes|boolean',
+            'effective_from'           => 'nullable|date',
+            'effective_to'             => 'nullable|date|after_or_equal:effective_from',
+        ];
+    }
+
+    public function scopeWithCategory(Builder $q, string $key): Builder
+    {
+        return $q->whereJsonContains('categories', $key);
+    }
+
+    public function scopeWithAccommodation(Builder $q, string $key): Builder
+    {
+        return $q->whereJsonContains('accommodations', $key);
+    }
 
     protected $fillable = [
         'etudiant_id',

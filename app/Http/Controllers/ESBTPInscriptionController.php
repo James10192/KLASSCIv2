@@ -591,14 +591,8 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
-     * Tente de créer un profil d'accessibilité pour l'étudiant nouvellement
-     * inscrit, si l'utilisateur a la permission et a rempli la section
-     * optionnelle. Retourne un message d'avertissement (string) à flasher
-     * en cas d'échec, sinon null.
-     *
-     * Volontairement non bloquant : l'inscription reste sauvegardée même
-     * si le profil échoue à valider — l'utilisateur pourra compléter depuis
-     * la fiche étudiant.
+     * Optionally attach an accessibility profile after inscription is saved.
+     * Never blocks the inscription — returns a warning message on failure.
      */
     private function maybeAttachAccessibilityProfile(Request $request, int $etudiantId): ?string
     {

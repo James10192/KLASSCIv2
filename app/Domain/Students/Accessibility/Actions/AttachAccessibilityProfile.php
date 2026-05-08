@@ -5,22 +5,12 @@ namespace App\Domain\Students\Accessibility\Actions;
 use App\Models\ESBTPStudentAccessibilityProfile;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 /**
  * Crée ou met à jour le profil d'accessibilité d'un étudiant à partir d'un
- * payload `accessibility[*]` (typiquement venant d'un sous-formulaire).
- *
- * Retourne null si aucun champ significatif n'est rempli (skip silencieux,
- * cas où l'utilisateur a ouvert la section optionnelle puis tout laissé vide).
- *
- * Lance ValidationException si des données invalides sont posées.
- *
- * Réutilisable depuis :
- *   - ESBTPStudentAccessibilityController::store (édition fiche étudiant)
- *   - ESBTPInscriptionController::store           (création d'inscription)
- *   - tout autre point d'entrée qui produit un payload accessibility
+ * payload `accessibility[*]`. Retourne null si rien de significatif n'est
+ * rempli (skip silencieux). Lance ValidationException sur données invalides.
  */
 class AttachAccessibilityProfile
 {
@@ -34,20 +24,20 @@ class AttachAccessibilityProfile
 
         $validated = $this->validate($payload);
 
-        $profile = ESBTPStudentAccessibilityProfile::updateOrCreate(
-            ['etudiant_id' => $etudiantId],
-            array_merge($validated, [
-                'updated_by' => $userId,
-                'created_by' => $userId,
-            ])
-        );
+        $existing = ESBTPStudentAccessibilityProfile::where('etudiant_id', $etudiantId)->first();
 
-        return $profile;
+        if ($existing) {
+            $existing->update(array_merge($validated, ['updated_by' => $userId]));
+            return $existing->refresh();
+        }
+
+        return ESBTPStudentAccessibilityProfile::create(array_merge($validated, [
+            'etudiant_id' => $etudiantId,
+            'created_by'  => $userId,
+            'updated_by'  => $userId,
+        ]));
     }
 
-    /**
-     * Cast les booléens et nettoie les arrays vides envoyés en chaînes.
-     */
     private function normalize(array $data): array
     {
         $bool = static fn ($v) => filter_var($v, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE) ?? false;
@@ -70,11 +60,6 @@ class AttachAccessibilityProfile
         ];
     }
 
-    /**
-     * Détecte si l'utilisateur a réellement saisi quelque chose, sinon on
-     * skip silencieusement (cas où la section optionnelle a été ouverte
-     * sans rien remplir).
-     */
     private function hasSignificantData(array $payload): bool
     {
         return $payload['has_official_recognition']
@@ -88,29 +73,9 @@ class AttachAccessibilityProfile
             || ! empty($payload['accommodations_notes']);
     }
 
-    /**
-     * @throws ValidationException
-     */
+    /** @throws ValidationException */
     private function validate(array $payload): array
     {
-        $categoryKeys = array_keys(ESBTPStudentAccessibilityProfile::CATEGORIES);
-        $accommodationKeys = array_keys(ESBTPStudentAccessibilityProfile::ACCOMMODATIONS);
-
-        return Validator::make($payload, [
-            'has_official_recognition' => 'boolean',
-            'recognition_reference'    => 'nullable|string|max:100',
-            'categories'               => 'nullable|array',
-            'categories.*'             => ['string', Rule::in($categoryKeys)],
-            'short_description'        => 'nullable|string|max:200',
-            'full_description'         => 'nullable|string|max:5000',
-            'accommodations'           => 'nullable|array',
-            'accommodations.*'         => ['string', Rule::in($accommodationKeys)],
-            'accommodations_notes'     => 'nullable|string|max:2000',
-            'requires_third_time'      => 'boolean',
-            'third_time_percentage'    => 'nullable|integer|min:0|max:100',
-            'assistant_required'       => 'boolean',
-            'effective_from'           => 'nullable|date',
-            'effective_to'             => 'nullable|date|after_or_equal:effective_from',
-        ])->validate();
+        return Validator::make($payload, ESBTPStudentAccessibilityProfile::validationRules())->validate();
     }
 }

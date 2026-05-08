@@ -329,57 +329,34 @@ class ESBTPStudentController extends Controller
     }
 
     /**
-     * Applique le filtre accessibility (single dropdown grouped) sur la query
-     * étudiants. Préfixes :
-     *   - 'with' / 'without'           → présence ou absence du profil
-     *   - 'tiers_temps' / 'assistant'  → colonnes booléennes indexées
-     *   - 'recognition'                → has_official_recognition = true
-     *   - 'cat:<key>'                  → whereJsonContains('categories', key)
-     *   - 'acc:<key>'                  → whereJsonContains('accommodations', key)
-     *
-     * Validations défensives sur les keys cat:/acc: via les enums du modèle —
-     * un préfixe inconnu est ignoré silencieusement (pas d'erreur).
+     * Applique le filtre accessibility (single dropdown grouped) sur la query.
+     * Préfixe inconnu ou clé invalide → ignoré silencieusement.
      */
     private function applyAccessibilityFilter($query, string $value): void
     {
-        if ($value === 'with') {
-            $query->whereHas('accessibilityProfile');
-            return;
-        }
-        if ($value === 'without') {
-            $query->whereDoesntHave('accessibilityProfile');
-            return;
-        }
-
         $boolColumns = [
-            'tiers_temps' => 'requires_third_time',
-            'assistant'   => 'assistant_required',
-            'recognition' => 'has_official_recognition',
+            ESBTPStudentAccessibilityProfile::FILTER_TIERS_TEMPS => 'requires_third_time',
+            ESBTPStudentAccessibilityProfile::FILTER_ASSISTANT   => 'assistant_required',
+            ESBTPStudentAccessibilityProfile::FILTER_RECOGNITION => 'has_official_recognition',
         ];
-        if (isset($boolColumns[$value])) {
+
+        if ($value === ESBTPStudentAccessibilityProfile::FILTER_WITH) {
+            $query->whereHas('accessibilityProfile');
+        } elseif ($value === ESBTPStudentAccessibilityProfile::FILTER_WITHOUT) {
+            $query->whereDoesntHave('accessibilityProfile');
+        } elseif (isset($boolColumns[$value])) {
             $query->whereHas('accessibilityProfile', fn ($q) => $q->where($boolColumns[$value], true));
-            return;
-        }
-
-        if (str_starts_with($value, 'cat:')) {
-            $catKey = substr($value, 4);
-            if (array_key_exists($catKey, ESBTPStudentAccessibilityProfile::CATEGORIES)) {
-                $query->whereHas('accessibilityProfile',
-                    fn ($q) => $q->whereJsonContains('categories', $catKey));
+        } elseif (str_starts_with($value, ESBTPStudentAccessibilityProfile::FILTER_PREFIX_CATEGORY)) {
+            $key = substr($value, strlen(ESBTPStudentAccessibilityProfile::FILTER_PREFIX_CATEGORY));
+            if (array_key_exists($key, ESBTPStudentAccessibilityProfile::CATEGORIES)) {
+                $query->whereHas('accessibilityProfile', fn ($q) => $q->withCategory($key));
             }
-            return;
-        }
-
-        if (str_starts_with($value, 'acc:')) {
-            $accKey = substr($value, 4);
-            if (array_key_exists($accKey, ESBTPStudentAccessibilityProfile::ACCOMMODATIONS)) {
-                $query->whereHas('accessibilityProfile',
-                    fn ($q) => $q->whereJsonContains('accommodations', $accKey));
+        } elseif (str_starts_with($value, ESBTPStudentAccessibilityProfile::FILTER_PREFIX_ACCOMMODATION)) {
+            $key = substr($value, strlen(ESBTPStudentAccessibilityProfile::FILTER_PREFIX_ACCOMMODATION));
+            if (array_key_exists($key, ESBTPStudentAccessibilityProfile::ACCOMMODATIONS)) {
+                $query->whereHas('accessibilityProfile', fn ($q) => $q->withAccommodation($key));
             }
-            return;
         }
-
-        // Préfixe inconnu → ignoré silencieusement
     }
 
     public function create()

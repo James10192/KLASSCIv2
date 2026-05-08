@@ -170,11 +170,11 @@ class ESBTPStudentAccessibilityController extends Controller
             ->with(['etudiant.inscription.classe', 'etudiant.inscription.filiere', 'etudiant.inscription.niveau']);
 
         if ($category = $request->query('category')) {
-            $query->whereJsonContains('categories', $category);
+            $query->withCategory($category);
         }
 
         if ($accommodation = $request->query('accommodation')) {
-            $query->whereJsonContains('accommodations', $accommodation);
+            $query->withAccommodation($accommodation);
         }
 
         if ($request->boolean('third_time_only')) {

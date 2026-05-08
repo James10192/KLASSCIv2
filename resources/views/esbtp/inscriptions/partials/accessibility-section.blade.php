@@ -2,8 +2,25 @@
     $canViewFull = auth()->user()->can('students.accessibility.view_full');
     $categories = \App\Models\ESBTPStudentAccessibilityProfile::CATEGORIES;
     $accommodations = \App\Models\ESBTPStudentAccessibilityProfile::ACCOMMODATIONS;
-    $oldAcc = old('accessibility', []);
-    $isOpen = ! empty($oldAcc); // ré-ouvert si validation a échoué et le user avait rempli
+    // Prop optionnelle : profil accessibilité existant (réinscription quick-fiche).
+    // Si fourni, ses valeurs servent de prefill par défaut (sauf si validation rebound via old()).
+    $accessibilityProfile = $accessibilityProfile ?? null;
+    $defaultPrefill = $accessibilityProfile ? [
+        'has_official_recognition' => $accessibilityProfile->has_official_recognition,
+        'recognition_reference'    => $accessibilityProfile->recognition_reference,
+        'categories'               => $accessibilityProfile->categories ?? [],
+        'short_description'        => $accessibilityProfile->short_description,
+        'full_description'         => $accessibilityProfile->full_description,
+        'accommodations'           => $accessibilityProfile->accommodations ?? [],
+        'accommodations_notes'     => $accessibilityProfile->accommodations_notes,
+        'requires_third_time'      => $accessibilityProfile->requires_third_time,
+        'third_time_percentage'    => $accessibilityProfile->third_time_percentage,
+        'assistant_required'       => $accessibilityProfile->assistant_required,
+        'effective_from'           => optional($accessibilityProfile->effective_from)->format('Y-m-d'),
+        'effective_to'             => optional($accessibilityProfile->effective_to)->format('Y-m-d'),
+    ] : [];
+    $oldAcc = old('accessibility', $defaultPrefill);
+    $isOpen = ! empty($oldAcc); // ré-ouvert si validation rebound OU profil pré-existant
 @endphp
 
 @once

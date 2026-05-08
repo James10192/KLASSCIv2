@@ -4,7 +4,6 @@ namespace App\Http\Requests;
 
 use App\Models\ESBTPStudentAccessibilityProfile;
 use Illuminate\Foundation\Http\FormRequest;
-use Illuminate\Validation\Rule;
 
 class StoreAccessibilityProfileRequest extends FormRequest
 {
@@ -15,30 +14,7 @@ class StoreAccessibilityProfileRequest extends FormRequest
 
     public function rules(): array
     {
-        $categoryKeys = array_keys(ESBTPStudentAccessibilityProfile::CATEGORIES);
-        $accommodationKeys = array_keys(ESBTPStudentAccessibilityProfile::ACCOMMODATIONS);
-
-        return [
-            'has_official_recognition' => 'sometimes|boolean',
-            'recognition_reference'    => 'nullable|string|max:100',
-
-            'categories'   => 'nullable|array',
-            'categories.*' => ['string', Rule::in($categoryKeys)],
-
-            'short_description' => 'nullable|string|max:200',
-            'full_description'  => 'nullable|string|max:5000',
-
-            'accommodations'   => 'nullable|array',
-            'accommodations.*' => ['string', Rule::in($accommodationKeys)],
-            'accommodations_notes' => 'nullable|string|max:2000',
-
-            'requires_third_time'    => 'sometimes|boolean',
-            'third_time_percentage'  => 'nullable|integer|min:0|max:100',
-            'assistant_required'     => 'sometimes|boolean',
-
-            'effective_from' => 'nullable|date',
-            'effective_to'   => 'nullable|date|after_or_equal:effective_from',
-        ];
+        return ESBTPStudentAccessibilityProfile::validationRules();
     }
 
     public function messages(): array
