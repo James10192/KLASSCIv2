@@ -349,8 +349,13 @@ class SettingsHelper
     {
         $defaults = [
             // Établissement
-            'school_name' => ['value' => config('app.name', 'KLASSCI'), 'group' => 'establishment'],
-            'school_acronym' => ['value' => config('app.name', 'KLASSCI'), 'group' => 'establishment'],
+            // ⚠ NE PAS pré-remplir school_name/acronym depuis APP_NAME : les .env de
+            // tenants clonés depuis yakro héritent de "ESBTP-yAKRO" et le setting
+            // se retrouve en DB de tous les nouveaux tenants. Laisser vide → le
+            // fallback runtime ('KLASSCI') s'applique tant que l'admin n'a pas
+            // configuré son école dans /esbtp/settings.
+            'school_name' => ['value' => 'KLASSCI', 'group' => 'establishment'],
+            'school_acronym' => ['value' => 'KLASSCI', 'group' => 'establishment'],
             'school_country' => ['value' => 'Côte d\'Ivoire', 'group' => 'establishment'],
             'director_title' => ['value' => 'Directeur Général', 'group' => 'establishment'],
 
