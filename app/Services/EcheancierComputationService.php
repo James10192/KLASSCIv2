@@ -56,9 +56,6 @@ class EcheancierComputationService
             }
 
             $amount = round(max(0, $amount), 2);
-            if ($amount <= 0) {
-                continue;
-            }
 
             $rule = $this->resolver->resolveForConfiguration($configuration, $inscription->affectation_status);
             $ruleLines = $rule ? $rule->lines : collect();
@@ -67,17 +64,23 @@ class EcheancierComputationService
             $itemCounter++;
             $itemKey = 'inscription:' . $inscription->id . ':mandatory:' . $category->id . ':' . $itemCounter;
 
-            $projectedLines = $this->projection->projectDueLines(
-                $amount,
-                $ruleLines,
-                $inscription->date_inscription
-                    ? Carbon::parse($inscription->date_inscription)
-                    : Carbon::parse($inscription->created_at ?? now()),
-                $fallbackDays,
-                $itemKey,
-                (int) $category->id,
-                (string) $category->name
-            );
+            // amount=0 (gratuit pour ce statut) → on émet quand même un item dans le snapshot
+            // pour que la couverture analytics voie la catégorie comme "configurée et gratuite"
+            // au lieu de "manquante / fallback". Mais on ne projette aucune tranche
+            // (rien à payer = rien à projeter — projectDueLines retourne déjà [] pour amount=0).
+            $projectedLines = $amount > 0
+                ? $this->projection->projectDueLines(
+                    $amount,
+                    $ruleLines,
+                    $inscription->date_inscription
+                        ? Carbon::parse($inscription->date_inscription)
+                        : Carbon::parse($inscription->created_at ?? now()),
+                    $fallbackDays,
+                    $itemKey,
+                    (int) $category->id,
+                    (string) $category->name
+                )
+                : [];
 
             $items[] = [
                 'item_key' => $itemKey,
@@ -88,6 +91,7 @@ class EcheancierComputationService
                 'category_name' => (string) $category->name,
                 'amount' => $amount,
                 'rule_id' => $rule?->id,
+                'is_free' => $amount === 0.0,
             ];
 
             $dueLines = array_merge($dueLines, $projectedLines);
@@ -105,9 +109,6 @@ class EcheancierComputationService
             }
 
             $amount = round(max(0, (float) $subscription->amount), 2);
-            if ($amount <= 0) {
-                continue;
-            }
 
             $option = $subscription->relationLoaded('selectedOption')
                 ? $subscription->selectedOption
@@ -121,17 +122,21 @@ class EcheancierComputationService
             $itemCounter++;
             $itemKey = 'inscription:' . $inscription->id . ':optional:' . $subscription->id . ':' . $itemCounter;
 
-            $projectedLines = $this->projection->projectDueLines(
-                $amount,
-                $ruleLines,
-                $subscription->subscribed_at
-                    ? Carbon::parse($subscription->subscribed_at)
-                    : Carbon::parse($inscription->created_at ?? now()),
-                $fallbackDays,
-                $itemKey,
-                (int) $category->id,
-                (string) $category->name
-            );
+            // Cf bloc mandatory ci-dessus : amount=0 = subscription gratuite, on émet
+            // l'item dans le snapshot mais sans tranche à projeter.
+            $projectedLines = $amount > 0
+                ? $this->projection->projectDueLines(
+                    $amount,
+                    $ruleLines,
+                    $subscription->subscribed_at
+                        ? Carbon::parse($subscription->subscribed_at)
+                        : Carbon::parse($inscription->created_at ?? now()),
+                    $fallbackDays,
+                    $itemKey,
+                    (int) $category->id,
+                    (string) $category->name
+                )
+                : [];
 
             $items[] = [
                 'item_key' => $itemKey,
@@ -143,6 +148,7 @@ class EcheancierComputationService
                 'amount' => $amount,
                 'rule_id' => $rule?->id,
                 'option_assignment_id' => $assignment?->id,
+                'is_free' => $amount === 0.0,
             ];
 
             $dueLines = array_merge($dueLines, $projectedLines);

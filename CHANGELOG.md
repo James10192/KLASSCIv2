@@ -12,6 +12,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### Corrections
+
+- **Frais — montant 0 enfin reconnu comme « gratuit »** (`/esbtp/frais/configure`) — auparavant, mettre 0 dans un champ de montant (ex: scolarité prise en charge par l'État pour les Affectés) était silencieusement ignoré côté serveur (`!empty(0) === false` en PHP) puis la catégorie était skippée dans l'enregistrement (`if ($mainAmount <= 0) continue;`), comme si l'utilisateur n'avait rien rempli. Conséquence : impossible de configurer un frais comme intentionnellement gratuit pour un statut spécifique. Désormais : le contrôleur distingue « champ vide » (skip silencieux) de « champ rempli avec 0 » (sauvegarde explicite à 0). Les valeurs 0 sont persistées dans `amount_affecte/réaffecté/non_affecté` au lieu de null, et `EcheancierComputationService` émet un item dans le snapshot avec `is_free=true` (couverture analytics correcte) tout en ne projetant aucune tranche à payer (rien à payer = rien à projeter). UI : placeholders et hints des inputs montants reformulés en `Vide = non configuré · 0 = gratuit` pour rendre la sémantique explicite. Tests unitaires `EcheancierComputationServiceFreeAmountTest` (2 tests verts) verrouillent la non-régression : 0 = item gratuit sans tranche, montant positif = item + tranches normalement.
+
 ### Améliorations
 
 - **Échéanciers de paiement — garde-fous serveur + UX renforcée + guide enrichi** (`/esbtp/comptabilite/config/echeanciers`) — chantier 4 phases pour empêcher les configurations incohérentes et accompagner l'utilisateur dans la création de règles solides.

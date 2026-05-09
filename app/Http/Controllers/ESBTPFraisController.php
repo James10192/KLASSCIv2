@@ -648,31 +648,34 @@ class ESBTPFraisController extends Controller
                     continue;
                 }
 
-                // Calculer le montant principal pour la rétrocompatibilité
-                $mainAmount = 0;
-                
-                // Priorité 1: ancien champ amount (rétrocompatibilité)
-                if (!empty($categoryData['amount'])) {
-                    $mainAmount = $categoryData['amount'];
-                }
-                // Priorité 2: nouveaux champs (ordre de préférence)
-                elseif (!empty($categoryData['amount_affecte'])) {
-                    $mainAmount = $categoryData['amount_affecte'];
-                }
-                elseif (!empty($categoryData['amount_reaffecte'])) {
-                    $mainAmount = $categoryData['amount_reaffecte'];
-                }
-                elseif (!empty($categoryData['amount_non_affecte'])) {
-                    $mainAmount = $categoryData['amount_non_affecte'];
-                }
-                
-                // Validation : au moins un montant doit être défini
-                if ($mainAmount <= 0) {
-                    Log::warning("Aucun montant défini pour la catégorie {$categoryId}", $categoryData);
-                    continue; // Ignorer cette catégorie si aucun montant n'est défini
+                // Helper local : champ "renseigné" = clé présente ET valeur numérique (0 inclus).
+                // !empty() est piégeux car !empty(0) === false → un user qui veut "gratuit"
+                // se voit silencieusement skipper.
+                $hasValue = function ($k) use ($categoryData) {
+                    return isset($categoryData[$k]) && is_numeric($categoryData[$k]);
+                };
+                $val = fn ($k) => (float) $categoryData[$k];
+
+                // Premier champ renseigné par l'utilisateur (par ordre de préférence) sert
+                // de montant principal pour rétrocompatibilité avec $configuration->amount.
+                $mainAmount = match (true) {
+                    $hasValue('amount')             => $val('amount'),
+                    $hasValue('amount_affecte')     => $val('amount_affecte'),
+                    $hasValue('amount_reaffecte')   => $val('amount_reaffecte'),
+                    $hasValue('amount_non_affecte') => $val('amount_non_affecte'),
+                    default                          => null,
+                };
+
+                // Skip uniquement si AUCUN champ n'a été renseigné (= la ligne est vide).
+                // 0 est désormais une valeur explicite valide ("gratuit pour ce statut").
+                if ($mainAmount === null) {
+                    Log::info("Aucun champ montant renseigné pour la catégorie {$categoryId}, skip", $categoryData);
+                    continue;
                 }
 
-                // Créer ou mettre à jour la configuration unifiée avec les montants différenciés
+                // Créer ou mettre à jour la configuration unifiée avec les montants différenciés.
+                // Les statuts non renseignés sont stockés à null (fallback vers $amount via getMontantByStatus),
+                // les statuts à 0 sont stockés à 0 (= gratuit pour ce statut, pas de fallback).
                 ESBTPFraisConfiguration::updateOrCreate(
                     [
                         'frais_category_id' => $categoryId,
@@ -681,10 +684,10 @@ class ESBTPFraisController extends Controller
                         'annee_universitaire_id' => null,
                     ],
                     [
-                        'amount' => $mainAmount, // Montant principal pour rétrocompatibilité
-                        'amount_affecte' => $categoryData['amount_affecte'] ?? null,
-                        'amount_reaffecte' => $categoryData['amount_reaffecte'] ?? null,
-                        'amount_non_affecte' => $categoryData['amount_non_affecte'] ?? null,
+                        'amount' => $mainAmount,
+                        'amount_affecte'     => $hasValue('amount_affecte')     ? $val('amount_affecte')     : null,
+                        'amount_reaffecte'   => $hasValue('amount_reaffecte')   ? $val('amount_reaffecte')   : null,
+                        'amount_non_affecte' => $hasValue('amount_non_affecte') ? $val('amount_non_affecte') : null,
                         'payment_deadline_days' => $categoryData['deadline_days'],
                         'installments_allowed' => $categoryData['installments_allowed'] ?? false,
                         'max_installments' => $categoryData['max_installments'] ?? 1,

@@ -48,7 +48,8 @@
             </div>
             <div class="fc-cat-section-hint">
                 <i class="fas fa-info-circle"></i>
-                Configurez des tarifs différents selon le statut d'affectation gouvernementale (MESRS)
+                Configurez des tarifs différents selon le statut d'affectation gouvernementale (MESRS).
+                <strong>Astuce&nbsp;:</strong> mettre <code>0</code> = gratuit pour ce statut (ex&nbsp;: scolarité prise en charge par l'État pour les Affectés). Champ vide = catégorie non configurée.
             </div>
 
             <div class="fc-statuts">
@@ -63,12 +64,12 @@
                                id="amount_affecte_{{ $category->id }}"
                                name="categories[{{ $category->id }}][amount_affecte]"
                                class="fc-input"
-                               value="{{ $existingConfig && $existingConfig->amount_affecte ? number_format($existingConfig->amount_affecte, 0, '', '') : '' }}"
+                               value="{{ $existingConfig && $existingConfig->amount_affecte !== null ? number_format($existingConfig->amount_affecte, 0, '', '') : '' }}"
                                min="0" step="1000"
-                               placeholder="0">
+                               placeholder="Vide = non configuré · 0 = gratuit">
                         <span class="fc-input-suffix">FCFA</span>
                     </div>
-                    <div class="fc-statut-hint">Subvention étatique possible</div>
+                    <div class="fc-statut-hint">Subvention étatique possible · 0 = gratuit</div>
                 </div>
 
                 {{-- Réaffectés --}}
@@ -82,12 +83,12 @@
                                id="amount_reaffecte_{{ $category->id }}"
                                name="categories[{{ $category->id }}][amount_reaffecte]"
                                class="fc-input"
-                               value="{{ $existingConfig && $existingConfig->amount_reaffecte ? number_format($existingConfig->amount_reaffecte, 0, '', '') : '' }}"
+                               value="{{ $existingConfig && $existingConfig->amount_reaffecte !== null ? number_format($existingConfig->amount_reaffecte, 0, '', '') : '' }}"
                                min="0" step="1000"
-                               placeholder="0">
+                               placeholder="Vide = non configuré · 0 = gratuit">
                         <span class="fc-input-suffix">FCFA</span>
                     </div>
-                    <div class="fc-statut-hint">Subvention maintenue après réaffectation</div>
+                    <div class="fc-statut-hint">Subvention maintenue · 0 = gratuit</div>
                 </div>
 
                 {{-- Non affectés --}}
@@ -101,12 +102,12 @@
                                id="amount_non_affecte_{{ $category->id }}"
                                name="categories[{{ $category->id }}][amount_non_affecte]"
                                class="fc-input"
-                               value="{{ $existingConfig && $existingConfig->amount_non_affecte ? number_format($existingConfig->amount_non_affecte, 0, '', '') : '' }}"
+                               value="{{ $existingConfig && $existingConfig->amount_non_affecte !== null ? number_format($existingConfig->amount_non_affecte, 0, '', '') : '' }}"
                                min="0" step="1000"
-                               placeholder="0">
+                               placeholder="Vide = non configuré · 0 = gratuit">
                         <span class="fc-input-suffix">FCFA</span>
                     </div>
-                    <div class="fc-statut-hint">Tarif complet sans subvention</div>
+                    <div class="fc-statut-hint">Tarif complet · 0 = gratuit</div>
                 </div>
             </div>
 
