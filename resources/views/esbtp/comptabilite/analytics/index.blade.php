@@ -127,7 +127,7 @@
         </div>
     @endif
 
-    {{-- ===== Data quality banners (Phase 1 chantier analytics) ===== --}}
+    {{-- Bandeaux qualité données : signalent saturation, auto-calibration, jamais-calculé --}}
     @php
         $riskHautPct = 0.0;
         if ($defaultRisk->isAvailable()) {

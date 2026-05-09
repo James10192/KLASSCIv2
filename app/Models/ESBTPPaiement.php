@@ -104,7 +104,6 @@ class ESBTPPaiement extends Model implements Auditable
         'metadata',
         'relance_id',
         'reliquat_detail_id',
-        // Phase 3 chantier analytics — allocation explicite à une tranche d'échéancier précise
         'target_due_line_key',
     ];
 

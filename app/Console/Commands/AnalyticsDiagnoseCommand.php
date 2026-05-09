@@ -28,9 +28,13 @@ class AnalyticsDiagnoseCommand extends Command
 
     protected $description = 'Audit complet de l\'état du sous-système Analytics (échéanciers, snapshots, calibration risque)';
 
-    public function handle(EcheancierReadinessService $readiness, DefaultRiskPredictor $riskPredictor): int
-    {
-        $report = $this->buildReport($readiness, $riskPredictor);
+    public function handle(
+        EcheancierReadinessService $readiness,
+        DefaultRiskPredictor $riskPredictor,
+        \App\Services\EcheancierCoverageService $coverage,
+    ): int {
+        $report = $this->buildReport($readiness, $riskPredictor, $coverage);
+        $report['recommendations'] = $this->computeRecommendations($report);
 
         if ($this->option('json')) {
             $this->line(json_encode($report, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE));
@@ -41,8 +45,11 @@ class AnalyticsDiagnoseCommand extends Command
         return self::SUCCESS;
     }
 
-    private function buildReport(EcheancierReadinessService $readiness, DefaultRiskPredictor $riskPredictor): array
-    {
+    private function buildReport(
+        EcheancierReadinessService $readiness,
+        DefaultRiskPredictor $riskPredictor,
+        \App\Services\EcheancierCoverageService $coverage,
+    ): array {
         $annee = $this->resolveAnnee();
         $months = (int) $this->option('months');
 
@@ -55,18 +62,33 @@ class AnalyticsDiagnoseCommand extends Command
                 'note'          => $readiness->noteForMode(),
                 'rules_summary' => $this->summarizeRules(),
             ],
-            'coverage'           => $this->snapshotCoverage($annee?->id),
+            'coverage'           => $coverage->summary($annee?->id),
             'monthly_attendu'    => $this->monthlyDistribution($annee?->id, $months),
             'risk_saturation'    => $this->riskSaturation($annee?->id, $riskPredictor),
             'top_uncovered'      => $this->topUncoveredInscriptions($annee?->id, 5),
-            'recommendations'    => [],
-        ] + $this->generateRecommendations(...);
+        ];
     }
 
-    private function generateRecommendations(): array
+    private function computeRecommendations(array $report): array
     {
-        // Wrapper pour ajouter les recommandations basées sur les autres résultats — appelé après build
-        return ['recommendations' => []];
+        $r = [];
+        $cov = $report['coverage'] ?? [];
+        $rs  = $report['risk_saturation'] ?? [];
+        $ech = $report['echeancier'] ?? [];
+
+        if (($cov['coverage_pct'] ?? 100) < 50) {
+            $r[] = sprintf('Configurer ou activer une règle d\'échéancier — couverture actuelle : %.1f %%', $cov['coverage_pct'] ?? 0);
+        }
+        if (!empty($rs['is_saturated'])) {
+            $r[] = 'Activer auto-calibration : settings(analytics.default_risk.auto_calibrate=true)';
+        }
+        if (($ech['mode'] ?? null) === EcheancierReadinessService::MODE_FALLBACK) {
+            $r[] = 'Aucune règle active — système en mode dégradé (1 tranche par catégorie)';
+        }
+        if (($cov['without_snapshot'] ?? 0) > 0) {
+            $r[] = sprintf('Re-générer les snapshots : %d inscriptions à recalculer (php artisan echeanciers:recompute)', $cov['without_snapshot']);
+        }
+        return $r ?: ['Tout est bon ✓'];
     }
 
     private function resolveAnnee(): ?ESBTPAnneeUniversitaire
@@ -91,38 +113,6 @@ class AnalyticsDiagnoseCommand extends Command
                 ->map(fn ($g, $scope) => ['scope' => $scope, 'count' => $g->count(), 'avg_lines' => round($g->avg('active_lines'), 1)])
                 ->values()
                 ->all(),
-        ];
-    }
-
-    private function snapshotCoverage(?int $anneeId): array
-    {
-        $base = ESBTPInscription::query()
-            ->where('status', 'active')
-            ->where('workflow_step', 'etudiant_cree')
-            ->whereNull('deleted_at')
-            ->when($anneeId, fn ($q) => $q->where('annee_universitaire_id', $anneeId));
-
-        $total = (clone $base)->count();
-
-        if (!\Schema::hasTable('esbtp_inscription_echeancier_snapshots')) {
-            return ['total_active' => $total, 'with_snapshot' => 0, 'without_snapshot' => $total, 'coverage_pct' => 0.0, 'note' => 'Table snapshots inexistante'];
-        }
-
-        $withSnapshot = (clone $base)
-            ->whereExists(fn ($q) => $q->selectRaw(1)
-                ->from('esbtp_inscription_echeancier_snapshots as s')
-                ->whereColumn('s.inscription_id', 'esbtp_inscriptions.id')
-                ->whereNull('s.deleted_at'))
-            ->count();
-
-        $without = $total - $withSnapshot;
-        $pct = $total > 0 ? round($withSnapshot / $total * 100, 1) : 0.0;
-
-        return [
-            'total_active'     => $total,
-            'with_snapshot'    => $withSnapshot,
-            'without_snapshot' => $without,
-            'coverage_pct'     => $pct,
         ];
     }
 
@@ -257,7 +247,8 @@ class AnalyticsDiagnoseCommand extends Command
         $this->newLine();
         $this->info('▸ Règles d\'échéancier');
         $ech = $report['echeancier'];
-        $this->line(sprintf('  Mode : <fg=%s>%s</>', $ech['mode'] === 'configured' ? 'green' : 'yellow', $ech['mode']));
+        $modeColor = $ech['mode'] === EcheancierReadinessService::MODE_CONFIGURED ? 'green' : 'yellow';
+        $this->line(sprintf('  Mode : <fg=%s>%s</>', $modeColor, $ech['mode']));
         if ($ech['note']) $this->warn('  ' . $ech['note']);
         $this->line(sprintf('  Règles actives : %d (avec lignes : %d)',
             $ech['rules_summary']['total_active'],
@@ -275,7 +266,7 @@ class AnalyticsDiagnoseCommand extends Command
         $cov = $report['coverage'];
         $color = $cov['coverage_pct'] >= 90 ? 'green' : ($cov['coverage_pct'] >= 50 ? 'yellow' : 'red');
         $this->line(sprintf('  %d / %d inscriptions ont un snapshot (<fg=%s>%.1f%%</>)',
-            $cov['with_snapshot'], $cov['total_active'], $color, $cov['coverage_pct']
+            $cov['with_snapshot'], $cov['total_actives'], $color, $cov['coverage_pct']
         ));
         if ($cov['without_snapshot'] > 0) {
             $this->warn(sprintf('  ⚠ %d inscriptions sans snapshot (mode fallback)', $cov['without_snapshot']));
@@ -321,15 +312,11 @@ class AnalyticsDiagnoseCommand extends Command
             );
         }
 
-        // Recommandations dérivées
+        // Recommandations dérivées (déjà calculées dans handle())
         $this->newLine();
         $this->info('▸ Recommandations');
-        $recos = [];
-        if ($cov['coverage_pct'] < 50) $recos[] = sprintf('Configurer ou activer une règle d\'échéancier — couverture actuelle : %.1f %%', $cov['coverage_pct']);
-        if ($rs['is_saturated'] ?? false) $recos[] = 'Activer auto-calibration : settings(analytics.default_risk.auto_calibrate=true)';
-        if ($ech['mode'] === 'fallback') $recos[] = 'Aucune règle active — système en mode dégradé (1 tranche par catégorie)';
-        if ($cov['without_snapshot'] > 0) $recos[] = sprintf('Re-générer les snapshots : %d inscriptions à recalculer (php artisan echeanciers:recompute)', $cov['without_snapshot']);
-        if (empty($recos)) $recos[] = 'Tout est bon ✓';
-        foreach ($recos as $r) $this->line('  • ' . $r);
+        foreach (($report['recommendations'] ?? ['Tout est bon ✓']) as $r) {
+            $this->line('  • ' . $r);
+        }
     }
 }

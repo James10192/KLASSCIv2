@@ -128,7 +128,7 @@ class ESBTPEcheancierController extends Controller
         ]);
     }
 
-    public function upsert(UpsertEcheancierRuleRequest $request)
+    public function upsert(UpsertEcheancierRuleRequest $request, EcheancierAdminService $echeancierAdmin)
     {
         $validated = $request->validated();
         $scopeType = $validated['scope_type'];
@@ -203,6 +203,8 @@ class ESBTPEcheancierController extends Controller
             ]);
         });
 
+        $echeancierAdmin->forgetAffectedCache($scopeType, $scopeId, $status);
+
         return redirect()->route('esbtp.comptabilite.echeanciers.index', [
             'scope_type'        => $scopeType,
             'scope_id'          => $scopeId,
@@ -235,6 +237,10 @@ class ESBTPEcheancierController extends Controller
             ->firstOrFail();
 
         $copied = $echeancierAdmin->copyRule($sourceRule, $validated['copy_mode'], (int) $validated['source_scope_id'], auth()->id());
+
+        // copyRule duplique vers d'autres scopes — invalider le cache de la source au moins,
+        // et idéalement de tous les targets (mais copyRule ne renvoie pas leur liste actuellement).
+        $echeancierAdmin->forgetAffectedCache($validated['source_scope_type'], (int) $validated['source_scope_id'], $validated['affectation_status']);
 
         return redirect()->route('esbtp.comptabilite.echeanciers.index', [
             'scope_type' => $validated['source_scope_type'],
@@ -273,7 +279,7 @@ class ESBTPEcheancierController extends Controller
         ]);
     }
 
-    public function bulkStatus(Request $request)
+    public function bulkStatus(Request $request, EcheancierAdminService $echeancierAdmin)
     {
         $validated = $request->validate([
             'affectation_status' => ['required', Rule::in([
@@ -303,6 +309,7 @@ class ESBTPEcheancierController extends Controller
                     'updated_by' => auth()->id(),
                     'updated_at' => now(),
                 ]);
+            $echeancierAdmin->forgetAffectedCache($scopeType, (int) $scopeId, $validated['affectation_status']);
         }
 
         return redirect()->back()->with('success', "{$updated} regle(s) mise(s) a jour.");

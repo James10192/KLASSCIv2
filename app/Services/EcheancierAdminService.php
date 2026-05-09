@@ -20,37 +20,53 @@ class EcheancierAdminService
      */
     public function countAffectedInscriptions(string $scopeType, int $scopeId, string $status): int
     {
+        // Résolution du scope hors cache : si introuvable, retour 0 sans empoisonner le cache
+        // pour 5 min (sinon création tardive du scope = 0 figé jusqu'à expiration).
+        $scopeFilters = match ($scopeType) {
+            ESBTPEcheancierRule::SCOPE_CONFIGURATION => $this->configurationScopeFilters($scopeId),
+            ESBTPEcheancierRule::SCOPE_OPTION_ASSIGNMENT => $this->optionAssignmentScopeFilters($scopeId),
+            default => null,
+        };
+        if ($scopeFilters === null) {
+            return 0;
+        }
+
         $cacheKey = sprintf('echeancier:affected:%s:%d:%s', $scopeType, $scopeId, $status);
 
-        return (int) Cache::remember($cacheKey, 300, function () use ($scopeType, $scopeId, $status) {
+        return (int) Cache::remember($cacheKey, 300, function () use ($scopeFilters, $status) {
             $query = ESBTPInscription::query()
                 ->where('status', 'active')
                 ->where('workflow_step', 'etudiant_cree')
                 ->whereNull('deleted_at');
 
-            // Statut d'affectation : 'all' = toutes les inscriptions, sinon filtrer
             if ($status !== ESBTPEcheancierRule::STATUS_ALL) {
                 $query->where('affectation_status', $status);
             }
-
-            // Scope = configuration → limiter aux inscriptions filiere/niveau correspondants
-            if ($scopeType === ESBTPEcheancierRule::SCOPE_CONFIGURATION) {
-                $config = ESBTPFraisConfiguration::find($scopeId);
-                if (!$config) return 0;
-                $query->where('filiere_id', $config->filiere_id)
-                      ->where('niveau_id', $config->niveau_id);
-            }
-
-            // Scope = option assignment → limiter aux inscriptions filiere/niveau de l'assignment
-            if ($scopeType === ESBTPEcheancierRule::SCOPE_OPTION_ASSIGNMENT) {
-                $assignment = ESBTPOptionAssignment::find($scopeId);
-                if (!$assignment) return 0;
-                if ($assignment->filiere_id) $query->where('filiere_id', $assignment->filiere_id);
-                if ($assignment->niveau_id) $query->where('niveau_id', $assignment->niveau_id);
+            foreach ($scopeFilters as $col => $val) {
+                $query->where($col, $val);
             }
 
             return $query->count();
         });
+    }
+
+    /** @return array<string,int>|null */
+    private function configurationScopeFilters(int $scopeId): ?array
+    {
+        $config = ESBTPFraisConfiguration::find($scopeId);
+        if (!$config) return null;
+        return ['filiere_id' => $config->filiere_id, 'niveau_id' => $config->niveau_id];
+    }
+
+    /** @return array<string,int>|null */
+    private function optionAssignmentScopeFilters(int $scopeId): ?array
+    {
+        $assignment = ESBTPOptionAssignment::find($scopeId);
+        if (!$assignment) return null;
+        $f = [];
+        if ($assignment->filiere_id) $f['filiere_id'] = $assignment->filiere_id;
+        if ($assignment->niveau_id) $f['niveau_id'] = $assignment->niveau_id;
+        return $f;
     }
 
     /**
@@ -65,6 +81,16 @@ class EcheancierAdminService
             ->where('is_active', true)
             ->pluck('affectation_status')
             ->all();
+    }
+
+    /**
+     * Invalide le cache du compteur d'impact pour un scope+statut donné.
+     * À appeler après tout upsert/copy/bulkStatus pour que le bandeau UI affiche
+     * immédiatement la valeur fraîche au prochain render.
+     */
+    public function forgetAffectedCache(string $scopeType, int $scopeId, string $status): void
+    {
+        Cache::forget(sprintf('echeancier:affected:%s:%d:%s', $scopeType, $scopeId, $status));
     }
 
 

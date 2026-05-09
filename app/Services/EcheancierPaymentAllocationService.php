@@ -25,33 +25,31 @@ class EcheancierPaymentAllocationService
             $linesByKey[(string) ($line['line_key'] ?? '')] = $i;
         }
         $preAllocated = array_fill(0, count($dueLines), 0.0);
-        $unallocatedPayments = collect();
+
+        // On construit le pool standard sous forme [category_key => sum] sans cloner d'Eloquent
+        // models. Le surplus d'un paiement targeted (montant > tranche cible) bascule dans ce
+        // pool comme amount résiduel.
+        $pools = [];
 
         foreach ($validatedPayments as $payment) {
+            $catKey = $payment->frais_category_id !== null ? (string) $payment->frais_category_id : 'global';
+            $amount = (float) $payment->montant;
             $target = (string) ($payment->target_due_line_key ?? '');
+
             if ($target !== '' && isset($linesByKey[$target])) {
                 $idx = $linesByKey[$target];
                 $lineAmount = round(max(0, (float) ($dueLines[$idx]['amount'] ?? 0)), 2);
                 $available = max(0, $lineAmount - $preAllocated[$idx]);
-                $alloc = round(min($available, (float) $payment->montant), 2);
+                $alloc = round(min($available, $amount), 2);
                 $preAllocated[$idx] += $alloc;
-                $remaining = round(max(0, (float) $payment->montant - $alloc), 2);
-                if ($remaining > 0.01) {
-                    // Surplus → versé dans le pool standard
-                    $clone = clone $payment;
-                    $clone->montant = $remaining;
-                    $unallocatedPayments->push($clone);
+                $surplus = round(max(0, $amount - $alloc), 2);
+                if ($surplus > 0.01) {
+                    $pools[$catKey] = ($pools[$catKey] ?? 0.0) + $surplus;
                 }
                 continue;
             }
-            $unallocatedPayments->push($payment);
-        }
 
-        // Étape 2 — pool standard par catégorie pour le reste, FIFO sur due_date
-        $pools = [];
-        foreach ($unallocatedPayments as $payment) {
-            $key = $payment->frais_category_id !== null ? (string) $payment->frais_category_id : 'global';
-            $pools[$key] = ($pools[$key] ?? 0.0) + (float) $payment->montant;
+            $pools[$catKey] = ($pools[$catKey] ?? 0.0) + $amount;
         }
 
         // Index original préservé pour rendre les pré-allocations
