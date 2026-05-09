@@ -116,6 +116,74 @@ grep -nE "//.*@(can|if|foreach|endif|else|elseif|endcan|endforeach|push|once|sec
 grep -nE "<!--.*@(can|if|foreach|endif|else|elseif|endcan|endforeach|push|once|section)" file.blade.php
 ```
 
+## Pitfall #3 — Composants `<x-...>` dans les commentaires CSS / JS / HTML
+
+### Le piège
+
+Blade scanne **tout le fichier** pour les invocations `<x-component-name>` — y compris à l'intérieur :
+- Commentaires CSS dans `<style>` ou `@push('styles')` (ex: `/* le hero contient <x-export-modal> */`)
+- Commentaires HTML (`<!-- <x-foo> -->`)
+- Commentaires JS (`// <x-bar> est utilisé ici`)
+- Strings JS (`"opens <x-baz>"`)
+
+Si la chaîne `<x-mon-composant>` apparaît littéralement, Blade **émet le code de rendu du composant** (`<?php if($component->shouldRender()): ?> ... <?php endif; ?>`). Si le commentaire contient SEULEMENT l'ouverture (sans `</x-mon-composant>` ni auto-close `/>`), Blade émet le `<?php if(...): ?>` mais jamais le `<?php endif; ?>` correspondant → orphelin → ParseError au runtime.
+
+### Symptôme
+
+Identique à Pitfall #2 :
+```
+syntax error, unexpected end of file, expecting "elseif" or "else" or "endif"
+```
+
+Particulièrement vicieux sur la page `/esbtp/comptabilite/analytics` (incident 2026-05-09, commit fix `b3b43e9b` après) : un commentaire CSS expliquant *pourquoi* le hero est sans overflow:hidden contenait littéralement `<x-export-modal>`, ce qui injectait un `<?php if(isset($component)) {...} ?>` orphelin dans le compiled view.
+
+### ❌ INTERDIT
+
+```blade
+@push('styles')
+<style>
+/* ===== Hero =====
+   Ce hero contient un <x-export-modal> dropdown qui doit déborder. */
+.an-hero { ... }
+</style>
+@endpush
+```
+
+```blade
+<script>
+    // L'utilisateur clique <x-confirm-modal> avant de soumettre
+    document.querySelector('button').addEventListener(...);
+</script>
+```
+
+### ✅ FIX (au choix)
+
+**Option 1** — Encadrer le nom de composant entre parenthèses ou backticks :
+```css
+/* Ce hero contient un dropdown export (composant x-export-modal) */
+/* Ce hero contient un dropdown `<x-export-modal>` */   /* backticks */
+```
+
+**Option 2** — Casser le pattern `<x-` avec un espace :
+```css
+/* Ce hero contient un < x-export-modal > qui... */
+```
+
+**Option 3** — Réécrire pour ne pas mentionner le tag :
+```css
+/* Ce hero contient un dropdown export qui doit pouvoir déborder. */
+```
+
+### Détection au quotidien
+
+```bash
+# Cherche un <x-composant> littéral dans un commentaire CSS, HTML, JS, Blade
+grep -rEn '/\*[^*]*<x-[a-z]' resources/views/
+grep -rEn '<!--[^>]*<x-[a-z]' resources/views/
+grep -rEn '//[^\n]*<x-[a-z]' resources/views/
+grep -rEn '\{\{--[^-]*<x-[a-z]' resources/views/
+```
+
 ## Audit obligatoire avant de pousser un .blade.php modifié
 
 ```bash
@@ -143,8 +211,9 @@ for f in storage/framework/views/*.php; do php -l "$f" 2>&1 | grep -v "No syntax
 
 1. ❌ `@php(expr)` shortform dans un fichier qui contient AUSSI `@php ... @endphp` block plus loin
 2. ❌ `@can`, `@if`, `@foreach`, `@endif`, etc. littéraux dans un commentaire JS (`// @can(...)`) ou HTML (`<!-- @if(...) -->`)
-3. ❌ Tester un Blade modifié uniquement avec `php artisan view:cache` sans `php -l` du compiled output
-4. ❌ Mélanger les deux formes `@php(...)` et `@php...@endphp` dans le même fichier (toujours préférer la block form pour la cohérence)
+3. ❌ `<x-mon-composant>` littéral dans un commentaire CSS (`/* <x-foo> */`), JS (`// <x-bar>`), HTML ou string
+4. ❌ Tester un Blade modifié uniquement avec `php artisan view:cache` sans `php -l` du compiled output
+5. ❌ Mélanger les deux formes `@php(...)` et `@php...@endphp` dans le même fichier (toujours préférer la block form pour la cohérence)
 
 ## Voir aussi
 

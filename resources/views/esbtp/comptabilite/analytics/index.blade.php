@@ -808,10 +808,10 @@ function analyticsPage() {
 .an-page { padding: 1rem 0; }
 
 /* ===== Hero =====
-   ⚠ Pattern KLASSCI : NE PAS mettre overflow:hidden + position:relative ici.
-   Le hero contient un <x-export-modal> dropdown qui s'ouvre vers le bas et
-   doit pouvoir déborder. Voir .claude/rules/css-stacking-pitfalls.md
-   (ex-bug analytics fixé 2026-05-09). Pour les décorations radiales,
+   /!\ Pattern KLASSCI : NE PAS mettre overflow:hidden + position:relative ici.
+   Le hero contient un dropdown export (composant x-export-modal) qui s'ouvre
+   vers le bas et doit pouvoir deborder. Voir .claude/rules/css-stacking-pitfalls.md
+   (ex-bug analytics fixe 2026-05-09). Pour les decorations radiales,
    utiliser un .an-hero-deco enfant absolute avec son propre overflow:hidden. */
 .an-hero {
     background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
