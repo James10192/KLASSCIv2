@@ -26,10 +26,15 @@ class DefaultRiskPredictor implements PredictorInterface
     public const DEFAULT_WEIGHT_RETARD = 2.5;
     public const DEFAULT_WEIGHT_ENGAGEMENT = 1.0;
     public const DEFAULT_WEIGHT_MONTANT = 0.5;
+    public const DEFAULT_WEIGHT_VELOCITY = -1.5;     // Bonne vélocité (paye en avance) → score réduit
     public const DEFAULT_BIAS = -2.5;
     public const DEFAULT_THRESHOLD_HIGH = 0.66;
     public const DEFAULT_THRESHOLD_MEDIUM = 0.33;
     public const DEFAULT_TOP_N = 50;
+    public const DEFAULT_MIN_COHORT_SIZE = 10;       // En dessous, le score perd toute pertinence statistique
+    public const DEFAULT_AUTO_CALIBRATE = true;       // Élève dynamiquement threshold_high si > 70% saturent
+    public const SATURATION_TRIGGER_PCT = 70.0;       // % au-dessus duquel l'auto-calibration kick in
+    public const AUTO_CALIBRATE_TARGET_TOP_PCT = 25.0; // En mode calibré, on garde le top 25% comme "haut"
 
     public const RETARD_NORMALIZATION_DAYS = 90;
     public const MONTANT_NORMALIZATION_FCFA = 2_000_000.0;
@@ -71,29 +76,49 @@ class DefaultRiskPredictor implements PredictorInterface
             );
         }
 
+        $minCohortSize = $this->minCohortSize();
+        if (count($students) < $minCohortSize) {
+            return PredictionResult::unavailable(
+                self::NAME,
+                sprintf(
+                    'Cohorte trop petite (%d étudiants, minimum %d requis pour un score statistiquement pertinent)',
+                    count($students),
+                    $minCohortSize,
+                ),
+            );
+        }
+
         $weights = $this->weights();
         $bias = $this->bias();
         $thresholdHigh = $this->thresholdHigh();
         $thresholdMedium = $this->thresholdMedium();
 
+        // Passe 1 : calcule les scores bruts pour tous les étudiants (sans bucketiser).
         $scored = [];
         $bucketCounts = ['haut' => 0, 'moyen' => 0, 'bas' => 0];
-        $totalSoldeHaut = 0.0;
-
         foreach ($students as $student) {
             if ($student->isPaid()) {
                 $bucketCounts['bas']++;
+                $scored[] = [
+                    'inscription_id' => $student->inscriptionId,
+                    'etudiant_id' => $student->etudiantId,
+                    'etudiant_nom' => $student->etudiantNom,
+                    'classe_nom' => $student->classeNom,
+                    'solde_restant' => $student->soldeRestant,
+                    'montant_echu' => $student->overdueAmount,
+                    'attendu_a_date' => $student->expectedDueToDate,
+                    'paye_a_date' => $student->paidDueToDate,
+                    'jours_retard' => $student->joursRetard,
+                    'ratio_paye' => $student->ratioPaye,
+                    'score' => 0.0,
+                    'level' => 'bas',
+                    'is_paid' => true,
+                ];
                 continue;
             }
 
             $features = $this->extractFeatures($student);
             $score = LogisticScoring::score($features, $weights, $bias);
-            $level = LogisticScoring::riskLabel($score, $thresholdHigh, $thresholdMedium);
-            $bucketCounts[$level]++;
-
-            if ($level === 'haut') {
-                $totalSoldeHaut += $student->overdueAmount;
-            }
 
             $scored[] = [
                 'inscription_id' => $student->inscriptionId,
@@ -107,14 +132,47 @@ class DefaultRiskPredictor implements PredictorInterface
                 'jours_retard' => $student->joursRetard,
                 'ratio_paye' => $student->ratioPaye,
                 'score' => $score,
-                'level' => $level,
+                'level' => null, // assigné en passe 2
+                'is_paid' => false,
             ];
         }
+
+        // Passe 2 : auto-calibration optionnelle si saturation détectée
+        $totalActifs = count($students);
+        $unpaidScored = array_filter($scored, fn ($s) => empty($s['is_paid']));
+        $autoCalibrated = false;
+        $effectiveThresholdHigh = $thresholdHigh;
+
+        if ($this->autoCalibrateEnabled() && !empty($unpaidScored)) {
+            $hautAtDefault = count(array_filter($unpaidScored, fn ($s) => $s['score'] >= $thresholdHigh));
+            $hautPctAtDefault = $totalActifs > 0 ? ($hautAtDefault / $totalActifs * 100) : 0.0;
+
+            if ($hautPctAtDefault >= self::SATURATION_TRIGGER_PCT) {
+                // Garde uniquement le top N% comme "haut" pour préserver le pouvoir discriminant.
+                $sortedScores = collect($unpaidScored)->pluck('score')->sortDesc()->values();
+                $cutoffIndex = (int) round(count($sortedScores) * (self::AUTO_CALIBRATE_TARGET_TOP_PCT / 100));
+                if ($cutoffIndex > 0 && $cutoffIndex < count($sortedScores)) {
+                    $effectiveThresholdHigh = max($thresholdHigh, (float) $sortedScores[$cutoffIndex - 1]);
+                    $autoCalibrated = true;
+                }
+            }
+        }
+
+        // Passe 3 : assignation des buckets avec le seuil effectif
+        $totalSoldeHaut = 0.0;
+        foreach ($scored as &$row) {
+            if (!empty($row['is_paid'])) continue;
+            $row['level'] = LogisticScoring::riskLabel($row['score'], $effectiveThresholdHigh, $thresholdMedium);
+            $bucketCounts[$row['level']]++;
+            if ($row['level'] === 'haut') {
+                $totalSoldeHaut += $row['montant_echu'];
+            }
+        }
+        unset($row);
 
         usort($scored, fn ($a, $b) => $b['score'] <=> $a['score']);
         $topN = array_slice($scored, 0, $this->topN());
 
-        $totalActifs = count($students);
         $totalARisque = $bucketCounts['haut'] + $bucketCounts['moyen'];
         $tauxRisque = $totalActifs > 0 ? round($totalARisque / $totalActifs * 100, 1) : 0.0;
 
@@ -126,7 +184,7 @@ class DefaultRiskPredictor implements PredictorInterface
             confidenceLabel: $echeancierMode === \App\Services\EcheancierReadinessService::MODE_FALLBACK
                 ? 'indicatif'
                 : $this->confidenceLabel($totalActifs),
-            explanation: $this->buildExplanation($bucketCounts, $totalActifs, $totalSoldeHaut, $tauxRisque, $echeancierMode),
+            explanation: $this->buildExplanation($bucketCounts, $totalActifs, $totalSoldeHaut, $tauxRisque, $echeancierMode, $autoCalibrated),
             metadata: [
                 'total_actifs' => $totalActifs,
                 'buckets' => $bucketCounts,
@@ -135,8 +193,10 @@ class DefaultRiskPredictor implements PredictorInterface
                 'top_at_risk' => $topN,
                 'thresholds' => [
                     'high' => $thresholdHigh,
+                    'high_effective' => $effectiveThresholdHigh,
                     'medium' => $thresholdMedium,
                 ],
+                'auto_calibrated' => $autoCalibrated,
                 'echeancier_mode' => $echeancierMode,
                 'echeancier_mode_note' => $this->echeancierReadiness->noteForMode(),
             ],
@@ -159,11 +219,19 @@ class DefaultRiskPredictor implements PredictorInterface
         };
         $ratioMontant = min(1.0, $student->totalAttendu / self::MONTANT_NORMALIZATION_FCFA);
 
+        // Vélocité de paiement : ratio (payé à date) / (attendu à date), clampé [0,1].
+        // Étudiant qui a payé 100% de l'attendu à date → velocity=1 → score réduit (poids négatif).
+        // Étudiant qui n'a rien payé → velocity=0 → pas de réduction.
+        $ratioVelocity = $student->expectedDueToDate > 0
+            ? min(1.0, max(0.0, $student->paidDueToDate / $student->expectedDueToDate))
+            : 0.0;
+
         return [
             'solde' => $ratioSolde,
             'retard' => $ratioRetard,
             'engagement' => $ratioEngagement,
             'montant' => $ratioMontant,
+            'velocity' => $ratioVelocity,
         ];
     }
 
@@ -171,7 +239,7 @@ class DefaultRiskPredictor implements PredictorInterface
      * @param  array<string, int>  $bucketCounts
      * @return array<int, string>
      */
-    private function buildExplanation(array $bucketCounts, int $totalActifs, float $totalSoldeHaut, float $tauxRisque, string $echeancierMode = \App\Services\EcheancierReadinessService::MODE_CONFIGURED): array
+    private function buildExplanation(array $bucketCounts, int $totalActifs, float $totalSoldeHaut, float $tauxRisque, string $echeancierMode = \App\Services\EcheancierReadinessService::MODE_CONFIGURED, bool $autoCalibrated = false): array
     {
         $reasons = [
             sprintf(
@@ -202,6 +270,13 @@ class DefaultRiskPredictor implements PredictorInterface
             $reasons[] = "Mode dégradé : pas de règle d'échéancier configurée — l'échéance par défaut de chaque catégorie est utilisée.";
         }
 
+        if ($autoCalibrated) {
+            $reasons[] = sprintf(
+                'Auto-calibration appliquée : seuil "haut" élevé pour préserver la discrimination (cible top %.0f%% en exposition).',
+                self::AUTO_CALIBRATE_TARGET_TOP_PCT,
+            );
+        }
+
         return $reasons;
     }
 
@@ -224,7 +299,18 @@ class DefaultRiskPredictor implements PredictorInterface
             'retard' => $this->configFloat('weight.retard', self::DEFAULT_WEIGHT_RETARD),
             'engagement' => $this->configFloat('weight.engagement', self::DEFAULT_WEIGHT_ENGAGEMENT),
             'montant' => $this->configFloat('weight.montant', self::DEFAULT_WEIGHT_MONTANT),
+            'velocity' => $this->configFloat('weight.velocity', self::DEFAULT_WEIGHT_VELOCITY),
         ];
+    }
+
+    private function minCohortSize(): int
+    {
+        return (int) $this->configFloat('min_cohort_size', (float) self::DEFAULT_MIN_COHORT_SIZE);
+    }
+
+    private function autoCalibrateEnabled(): bool
+    {
+        return (bool) $this->configFloat('auto_calibrate', self::DEFAULT_AUTO_CALIBRATE ? 1.0 : 0.0);
     }
 
     private function bias(): float

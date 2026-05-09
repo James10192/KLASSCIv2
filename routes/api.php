@@ -249,6 +249,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::post('/inscriptions/move', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'moveStudents'])->name('inscriptions.move');
     Route::post('/inscriptions/validate-bulk', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'bulkValidate'])->name('inscriptions.validate-bulk');
 
+    // Analytics diagnose (read-only) — couverture échéancier, snapshots, saturation risque
+    Route::get('/analytics/diagnose', [App\Http\Controllers\API\CLI\CLIDataController::class, 'analyticsDiagnose'])->name('analytics.diagnose');
+
     // Permissions supervision (read-only) — registry-driven
     Route::get('/permissions', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'permissions'])->name('permissions.list');
     Route::get('/permissions/audit', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'audit'])->name('permissions.audit');

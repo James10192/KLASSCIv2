@@ -234,4 +234,31 @@ class CLIDataController extends BaseApiController
             return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
         }
     }
+
+    /**
+     * GET /api/cli/analytics/diagnose — Diagnostic complet du sous-système Analytics
+     * (couverture règles, snapshots, distribution mensuelle, saturation risque).
+     */
+    public function analyticsDiagnose(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        try {
+            // Réutilise la commande artisan en mode JSON — pas de duplication de logique.
+            $exit = \Artisan::call('analytics:diagnose', ['--json' => true]);
+            $output = trim(\Artisan::output());
+            $report = json_decode($output, true);
+
+            if ($exit !== 0 || !is_array($report)) {
+                return $this->errorResponse('Diagnose command failed', ['exit_code' => $exit, 'raw_output' => $output], 500);
+            }
+
+            return $this->successResponse($report, 'Analytics diagnostic generated');
+        } catch (\Throwable $e) {
+            Log::error('CLI: analytics diagnose failed', ['error' => $e->getMessage()]);
+            return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
+        }
+    }
 }

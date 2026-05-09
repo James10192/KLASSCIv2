@@ -127,6 +127,60 @@
         </div>
     @endif
 
+    {{-- ===== Data quality banners (Phase 1 chantier analytics) ===== --}}
+    @php
+        $riskHautPct = 0.0;
+        if ($defaultRisk->isAvailable()) {
+            $bk = $defaultRisk->metadata['buckets'] ?? [];
+            $tot = $defaultRisk->metadata['total_actifs'] ?? 0;
+            $riskHautPct = $tot > 0 ? round(($bk['haut'] ?? 0) / $tot * 100, 1) : 0;
+        }
+        $riskSaturated = $riskHautPct >= 70.0;
+        $autoCalibrated = (bool) ($defaultRisk->metadata['auto_calibrated'] ?? false);
+        $neverComputed = !$lastComputedAt;
+    @endphp
+
+    @if($riskSaturated && !$autoCalibrated)
+        <div class="an-quality-banner an-quality-banner--warn">
+            <div class="an-quality-banner-icon"><i class="fas fa-exclamation-triangle"></i></div>
+            <div class="an-quality-banner-body">
+                <strong>Saturation détectée — {{ $riskHautPct }} % à haut risque</strong>
+                <p>Quand quasiment toute la cohorte sature un bucket, le score de risque perd son pouvoir discriminant. Active l'auto-calibration pour que le seuil s'adapte dynamiquement, ou vérifie la complétude de tes règles d'échéancier.</p>
+            </div>
+            @can('comptabilite.analytics.configure')
+                <a href="{{ route('esbtp.comptabilite.analytics.settings') }}" class="an-quality-banner-cta">
+                    <i class="fas fa-sliders-h"></i> Calibration
+                </a>
+            @endcan
+        </div>
+    @endif
+
+    @if($autoCalibrated)
+        <div class="an-quality-banner an-quality-banner--info">
+            <div class="an-quality-banner-icon"><i class="fas fa-magic"></i></div>
+            <div class="an-quality-banner-body">
+                <strong>Auto-calibration appliquée</strong>
+                <p>Le seuil "haut risque" a été élevé automatiquement (cohorte saturée). Le Top {{ count($defaultRisk->metadata['top_at_risk'] ?? []) }} reste les plus prioritaires en valeur d'exposition.</p>
+            </div>
+        </div>
+    @endif
+
+    @if($neverComputed)
+        <div class="an-quality-banner an-quality-banner--info">
+            <div class="an-quality-banner-icon"><i class="fas fa-clock"></i></div>
+            <div class="an-quality-banner-body">
+                <strong>Calcul automatique jamais lancé</strong>
+                <p>Le scheduler ne semble pas avoir tourné. Lance un recalcul manuel pour initier l'historique de précision.</p>
+            </div>
+            @can('comptabilite.analytics.run_now')
+                <button type="button" @click="recalculer()" :disabled="recalcul.loading" class="an-quality-banner-cta">
+                    <i class="fas fa-sync-alt" :class="recalcul.loading ? 'fa-spin' : ''"></i>
+                    <span x-text="recalcul.loading ? 'Lancement…' : 'Lancer maintenant'"></span>
+                </button>
+            @endcan
+        </div>
+    @endif
+
     {{-- ============================ CASH FLOW ============================ --}}
     <div class="an-card mt-4">
         <div class="an-section-header">
@@ -252,7 +306,39 @@
                     if ($amount >= 1_000) return number_format($amount / 1_000, 0, ',', ' ') . ' k';
                     return number_format($amount, 0, ',', ' ');
                 };
+
+                // "Pourquoi ce pic ?" — détecte un mois > 60% de l'attendu cumulé et propose
+                // une lecture rapide pour éviter le faux signal "tous les autres mois sont morts".
+                $peakInsight = null;
+                if ($totalExpected > 0 && !empty($gapBuckets)) {
+                    $peakKey = collect($gapBuckets)->sortByDesc('expected')->keys()->first();
+                    $peakExpected = (float) ($gapBuckets[$peakKey]['expected'] ?? 0);
+                    $peakShare = $peakExpected > 0 ? round(($peakExpected / $totalExpected) * 100, 1) : 0;
+                    if ($peakShare >= 60) {
+                        [$peakYear, $peakMonth] = array_map('intval', explode('-', $peakKey));
+                        $peakDate = \Carbon\Carbon::createFromDate($peakYear, $peakMonth, 1);
+                        $peakInsight = [
+                            'month_label' => ucfirst($peakDate->locale('fr')->translatedFormat('F Y')),
+                            'expected'    => $peakExpected,
+                            'share_pct'   => $peakShare,
+                        ];
+                    }
+                }
             @endphp
+
+            @if($peakInsight)
+                <div class="an-peak-insight">
+                    <div class="an-peak-insight-icon"><i class="fas fa-lightbulb"></i></div>
+                    <div class="an-peak-insight-body">
+                        <strong>Pic concentré sur {{ $peakInsight['month_label'] }}</strong>
+                        <p>
+                            {{ number_format($peakInsight['expected'], 0, ',', ' ') }} FCFA attendus ce mois-là, soit <strong>{{ $peakInsight['share_pct'] }} %</strong> de l'attendu cumulé sur la fenêtre.
+                            Souvent dû à des inscriptions concentrées dans le temps + une règle d'échéancier qui fait tomber la même tranche pour tout le monde au même moment.
+                            Si tes inscriptions sont bien étalées sur l'année, vérifie tes règles d'échéancier (tranches en pourcentage avec délais variés).
+                        </p>
+                    </div>
+                </div>
+            @endif
             <div class="an-gap-rows">
                 @foreach($gapBuckets as $monthKey => $bucket)
                     @php
@@ -346,43 +432,119 @@
             </div>
 
             @if(!empty($topAtRisk))
-                <h3 class="an-subtitle mt-4">Top {{ count($topAtRisk) }} étudiants prioritaires</h3>
-                <div class="table-responsive">
+                @php
+                    // Classes uniques pour le filtre Top 50
+                    $topClasses = collect($topAtRisk)->pluck('classe_nom')->unique()->filter()->values();
+                @endphp
+
+                <div class="d-flex justify-content-between align-items-center mt-4 mb-2 flex-wrap gap-2">
+                    <h3 class="an-subtitle mb-0">Top {{ count($topAtRisk) }} étudiants prioritaires</h3>
+                    <div class="an-top-controls" x-data="{ classFilter: '', sortKey: 'score', sortDir: 'desc' }">
+                        <select class="form-select form-select-sm an-top-select" x-model="classFilter" @change="$dispatch('top-filter', { classe: classFilter })">
+                            <option value="">Toutes classes</option>
+                            @foreach($topClasses as $cn)
+                                <option value="{{ $cn }}">{{ $cn }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                </div>
+
+                <div class="table-responsive" x-data="topRiskTable()">
                     <table class="table table-modern an-risk-table">
                         <thead>
                             <tr>
-                                <th>Étudiant</th>
-                                <th>Classe</th>
-                                <th class="text-end">Solde restant</th>
-                                <th class="text-center">Retard</th>
-                                <th class="text-center">% payé</th>
-                                <th class="text-center">Score</th>
+                                <th @click="setSort('etudiant_nom')" style="cursor:pointer;">Étudiant <i class="fas fa-sort an-sort-icon"></i></th>
+                                <th @click="setSort('classe_nom')" style="cursor:pointer;">Classe <i class="fas fa-sort an-sort-icon"></i></th>
+                                <th class="text-end" @click="setSort('solde_restant')" style="cursor:pointer;">Solde restant <i class="fas fa-sort an-sort-icon"></i></th>
+                                <th class="text-center" @click="setSort('jours_retard')" style="cursor:pointer;">Retard <i class="fas fa-sort an-sort-icon"></i></th>
+                                <th class="text-center" @click="setSort('ratio_paye')" style="cursor:pointer;">% payé <i class="fas fa-sort an-sort-icon"></i></th>
+                                <th class="text-center" @click="setSort('score')" style="cursor:pointer;">Score <i class="fas fa-sort an-sort-icon"></i></th>
                                 <th class="text-center">Niveau</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach($topAtRisk as $student)
+                            <template x-for="student in displayed" :key="student.inscription_id">
                                 <tr>
-                                    <td><strong>{{ $student['etudiant_nom'] }}</strong></td>
-                                    <td>{{ $student['classe_nom'] }}</td>
-                                    <td class="text-end">{{ number_format($student['solde_restant'], 0, ',', ' ') }} FCFA</td>
+                                    <td><strong x-text="student.etudiant_nom"></strong></td>
+                                    <td x-text="student.classe_nom"></td>
+                                    <td class="text-end" x-text="formatFcfa(student.solde_restant)"></td>
                                     <td class="text-center">
-                                        @if($student['jours_retard'] > 0)
-                                            <span class="an-chip an-chip--retard">{{ $student['jours_retard'] }} j</span>
-                                        @else
+                                        <template x-if="student.jours_retard > 0">
+                                            <span class="an-chip an-chip--retard" x-text="student.jours_retard + ' j'"></span>
+                                        </template>
+                                        <template x-if="!student.jours_retard">
                                             <span class="text-muted">—</span>
-                                        @endif
+                                        </template>
                                     </td>
-                                    <td class="text-center">{{ number_format($student['ratio_paye'] * 100, 0) }}%</td>
-                                    <td class="text-center">{{ number_format($student['score'], 2) }}</td>
+                                    <td class="text-center" x-text="Math.round(student.ratio_paye * 100) + '%'"></td>
+                                    <td class="text-center" x-text="(+student.score).toFixed(2)"></td>
                                     <td class="text-center">
-                                        <span class="an-level an-level--{{ $student['level'] }}">{{ ucfirst($student['level']) }}</span>
+                                        <span class="an-level" :class="'an-level--' + student.level" x-text="student.level.charAt(0).toUpperCase() + student.level.slice(1)"></span>
                                     </td>
                                 </tr>
-                            @endforeach
+                            </template>
+                            <template x-if="displayed.length === 0">
+                                <tr><td colspan="7" class="text-center text-muted py-4">Aucun étudiant ne correspond au filtre.</td></tr>
+                            </template>
                         </tbody>
                     </table>
                 </div>
+
+                <script>
+                window.topRiskTable = function() {
+                    return {
+                        rows: @json($topAtRisk),
+                        classFilter: '',
+                        sortKey: 'score',
+                        sortDir: 'desc',
+                        init() {
+                            // Restore from localStorage si présent
+                            try {
+                                const saved = JSON.parse(localStorage.getItem('an_top_state') || '{}');
+                                if (saved.classFilter !== undefined) this.classFilter = saved.classFilter;
+                                if (saved.sortKey) this.sortKey = saved.sortKey;
+                                if (saved.sortDir) this.sortDir = saved.sortDir;
+                            } catch(e) {}
+                            // Listen to external filter
+                            window.addEventListener('top-filter', e => {
+                                this.classFilter = e.detail.classe || '';
+                                this.persist();
+                            });
+                        },
+                        persist() {
+                            try {
+                                localStorage.setItem('an_top_state', JSON.stringify({
+                                    classFilter: this.classFilter, sortKey: this.sortKey, sortDir: this.sortDir
+                                }));
+                            } catch(e) {}
+                        },
+                        setSort(key) {
+                            if (this.sortKey === key) {
+                                this.sortDir = this.sortDir === 'asc' ? 'desc' : 'asc';
+                            } else {
+                                this.sortKey = key;
+                                this.sortDir = 'desc';
+                            }
+                            this.persist();
+                        },
+                        formatFcfa(n) {
+                            return new Intl.NumberFormat('fr-FR').format(Math.round(n)) + ' FCFA';
+                        },
+                        get displayed() {
+                            let rows = this.rows;
+                            if (this.classFilter) {
+                                rows = rows.filter(r => r.classe_nom === this.classFilter);
+                            }
+                            const dir = this.sortDir === 'asc' ? 1 : -1;
+                            return [...rows].sort((a, b) => {
+                                const av = a[this.sortKey], bv = b[this.sortKey];
+                                if (typeof av === 'number') return (av - bv) * dir;
+                                return String(av || '').localeCompare(String(bv || '')) * dir;
+                            });
+                        },
+                    };
+                };
+                </script>
             @endif
         @else
             <div class="an-empty">
@@ -855,6 +1017,13 @@ body:has(.export-menu:not([style*="display: none"])) .an-kpi:hover { transform: 
     font-size: 1.15rem; font-weight: 700; color: var(--an-dark); margin-top: .15rem;
 }
 
+.an-top-controls { display: flex; gap: .5rem; align-items: center; }
+.an-top-select {
+    border-radius: 8px; border: 1px solid #e2e8f0; font-size: .82rem;
+    padding: .35rem .65rem; min-width: 180px;
+}
+.an-sort-icon { font-size: .65rem; color: #94a3b8; margin-left: .25rem; opacity: .7; }
+.an-risk-table thead th:hover .an-sort-icon { color: #0453cb; opacity: 1; }
 .an-risk-table { font-size: .88rem; margin-top: .5rem; }
 .an-risk-table thead th {
     background: #fafbfc; font-weight: 600; color: var(--an-text);
@@ -908,6 +1077,73 @@ body:has(.export-menu:not([style*="display: none"])) .an-kpi:hover { transform: 
     transition: background .15s ease, transform .15s ease;
 }
 .an-fallback-banner-cta:hover { background: #92400e; color: #fff; transform: translateY(-1px); }
+
+/* ===== Quality banners (saturation risque, never-computed, auto-calibration) ===== */
+.an-quality-banner {
+    display: flex; align-items: center; gap: 1rem;
+    padding: .9rem 1.25rem; margin-bottom: 1rem;
+    border-radius: 12px;
+}
+.an-quality-banner--warn {
+    background: linear-gradient(135deg, rgba(220,38,38,.07), rgba(220,38,38,.03));
+    border: 1px solid rgba(220,38,38,.22);
+}
+.an-quality-banner--warn .an-quality-banner-icon { background: rgba(220,38,38,.14); color: #b91c1c; }
+.an-quality-banner--warn .an-quality-banner-body strong { color: #991b1b; }
+.an-quality-banner--warn .an-quality-banner-body p { color: #7f1d1d; }
+.an-quality-banner--warn .an-quality-banner-cta { background: #b91c1c; }
+.an-quality-banner--warn .an-quality-banner-cta:hover { background: #991b1b; }
+
+.an-quality-banner--info {
+    background: linear-gradient(135deg, rgba(4,83,203,.06), rgba(94,145,222,.04));
+    border: 1px solid rgba(4,83,203,.18);
+}
+.an-quality-banner--info .an-quality-banner-icon { background: rgba(4,83,203,.12); color: #0453cb; }
+.an-quality-banner--info .an-quality-banner-body strong { color: #033a8e; }
+.an-quality-banner--info .an-quality-banner-body p { color: #1e3a8a; }
+.an-quality-banner--info .an-quality-banner-cta { background: #0453cb; }
+.an-quality-banner--info .an-quality-banner-cta:hover { background: #033a8e; }
+
+.an-quality-banner-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.05rem; flex-shrink: 0;
+}
+.an-quality-banner-body { flex: 1; min-width: 0; }
+.an-quality-banner-body strong {
+    display: block; font-size: .92rem; font-weight: 700; margin-bottom: .15rem;
+}
+.an-quality-banner-body p { margin: 0; font-size: .82rem; line-height: 1.4; }
+.an-quality-banner-cta {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .55rem 1rem; border-radius: 10px;
+    color: #fff; font-size: .8rem; font-weight: 600;
+    text-decoration: none; border: none; cursor: pointer; flex-shrink: 0;
+    transition: background .15s ease, transform .15s ease;
+}
+.an-quality-banner-cta:hover { color: #fff; transform: translateY(-1px); }
+
+/* ===== Peak insight (Pourquoi ce pic ?) ===== */
+.an-peak-insight {
+    display: flex; align-items: flex-start; gap: 1rem;
+    padding: .9rem 1.25rem; margin: 1rem 0;
+    border-radius: 12px;
+    background: linear-gradient(135deg, rgba(245,158,11,.08), rgba(252,211,77,.04));
+    border: 1px dashed rgba(245,158,11,.3);
+}
+.an-peak-insight-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: rgba(245,158,11,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1rem; color: #b45309; flex-shrink: 0;
+}
+.an-peak-insight-body { flex: 1; min-width: 0; }
+.an-peak-insight-body strong {
+    display: block; color: #92400e; font-size: .9rem; font-weight: 700; margin-bottom: .15rem;
+}
+.an-peak-insight-body p {
+    margin: 0; font-size: .82rem; color: #78350f; line-height: 1.5;
+}
 
 /* ===== Recouvrement Gap (attendu vs encaissé) ===== */
 .an-gap-summary {

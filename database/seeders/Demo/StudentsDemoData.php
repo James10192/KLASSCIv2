@@ -126,7 +126,16 @@ class StudentsDemoData
 
     private function createInscription(ESBTPEtudiant $etu, ESBTPClasse $classe, $annee): ESBTPInscription
     {
-        $dateInscription = Carbon::parse($annee->start_date)->addDays(mt_rand(0, 21));
+        // Étalement réaliste sur 4 mois (sept→déc) pour éviter le pic isolé en analytics.
+        // Mix : 40% rentrée (0-30j), 35% étalé (30-60j), 20% tardif (60-90j), 5% retardataire (90-120j).
+        $roll = mt_rand(1, 100);
+        $offsetDays = match (true) {
+            $roll <= 40  => mt_rand(0,  30),
+            $roll <= 75  => mt_rand(31, 60),
+            $roll <= 95  => mt_rand(61, 90),
+            default      => mt_rand(91, 120),
+        };
+        $dateInscription = Carbon::parse($annee->start_date)->addDays($offsetDays);
 
         return ESBTPInscription::firstOrCreate(
             [
