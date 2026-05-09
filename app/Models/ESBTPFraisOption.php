@@ -92,6 +92,19 @@ class ESBTPFraisOption extends Model implements Auditable
         return $this->belongsTo(ESBTPFraisCategory::class, 'frais_category_id');
     }
 
+    /**
+     * Catégorie de frais effective : priorise le lien direct (option globale),
+     * puis fallback sur la catégorie de la configuration parent (option class_based).
+     * Évite que les options class_based affichent "Option" au lieu du nom réel.
+     *
+     * Pour utiliser sans N+1 : `with(['fraisCategory', 'configuration.fraisCategory'])`.
+     */
+    public function getResolvedCategoryAttribute(): ?ESBTPFraisCategory
+    {
+        return $this->fraisCategory
+            ?? $this->configuration?->fraisCategory
+            ?? null;
+    }
 
     public function createdBy()
     {

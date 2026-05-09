@@ -293,11 +293,18 @@
                                     })->isNotEmpty();
                                     $scopeState = $hasInvalid ? 'invalid' : ($hasInactive ? 'inactive' : ($hasRules ? 'configured' : 'unconfigured'));
                                 @endphp
-                                <a class="ech-scope {{ $isSelected ? 'is-selected' : '' }}" data-scope-item="optional" data-filiere="{{ $assignment->filiere_id }}" data-niveau="{{ $assignment->niveau_id }}" data-category="{{ $assignment->option->frais_category_id ?? '' }}" data-status="{{ $scopeState }}" data-search-text="{{ \Illuminate\Support\Str::lower(($assignment->option->fraisCategory->name ?? '') . ' ' . ($assignment->option->name ?? '') . ' ' . ($assignment->display_label ?? '')) }}" data-ech-scope-link href="{{ route('esbtp.comptabilite.echeanciers.index', ['scope_type' => 'option_assignment', 'scope_id' => $assignment->id, 'affectation_status' => $selectedStatus]) }}">
+                                @php
+                                    // Catégorie effective : priorité au lien direct, sinon via configuration parent.
+                                    // Cf ESBTPFraisOption::getResolvedCategoryAttribute() — eager-load fait au niveau controller.
+                                    $resolvedCat = $assignment->option?->resolved_category;
+                                    $catName = $resolvedCat?->name ?? 'Option';
+                                    $catId = $resolvedCat?->id ?? '';
+                                @endphp
+                                <a class="ech-scope {{ $isSelected ? 'is-selected' : '' }}" data-scope-item="optional" data-filiere="{{ $assignment->filiere_id }}" data-niveau="{{ $assignment->niveau_id }}" data-category="{{ $catId }}" data-status="{{ $scopeState }}" data-search-text="{{ \Illuminate\Support\Str::lower($catName . ' ' . ($assignment->option->name ?? '') . ' ' . ($assignment->display_label ?? '')) }}" data-ech-scope-link href="{{ route('esbtp.comptabilite.echeanciers.index', ['scope_type' => 'option_assignment', 'scope_id' => $assignment->id, 'affectation_status' => $selectedStatus]) }}">
                                     <span class="ech-scope-main">
                                         <span class="ech-scope-check"><input type="checkbox" data-scope-checkbox="optional" data-target-value="option_assignment:{{ $assignment->id }}" onclick="event.stopPropagation()"></span>
                                         <span>
-                                        <span class="ech-scope-name">{{ $assignment->option->fraisCategory->name ?? 'Option' }} - {{ $assignment->option->name ?? 'N/A' }}</span>
+                                        <span class="ech-scope-name">{{ $catName }} - {{ $assignment->option->name ?? 'N/A' }}</span>
                                         <span class="ech-scope-meta d-block">{{ $assignment->display_label }}</span>
                                         <span class="ech-badges">
                                             @forelse($scopeRules as $rule)

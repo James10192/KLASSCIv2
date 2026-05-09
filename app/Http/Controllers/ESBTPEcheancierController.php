@@ -50,7 +50,7 @@ class ESBTPEcheancierController extends Controller
             ->get();
 
         $optionAssignments = ESBTPOptionAssignment::query()
-            ->with(['option.fraisCategory', 'filiere', 'niveau'])
+            ->with(['option.fraisCategory', 'option.configuration.fraisCategory', 'filiere', 'niveau'])
             ->where('is_active', true)
             ->orderByDesc('updated_at')
             ->limit(300)
@@ -346,14 +346,14 @@ class ESBTPEcheancierController extends Controller
         }
 
         if ($scopeType === ESBTPEcheancierRule::SCOPE_OPTION_ASSIGNMENT) {
-            $assignment = ESBTPOptionAssignment::with(['option.fraisCategory', 'filiere', 'niveau'])->find($scopeId);
+            $assignment = ESBTPOptionAssignment::with(['option.fraisCategory', 'option.configuration.fraisCategory', 'filiere', 'niveau'])->find($scopeId);
             if (!$assignment) {
                 return null;
             }
 
             return [
                 'title' => 'Assignation optionnelle',
-                'subtitle' => ($assignment->option->fraisCategory->name ?? 'Option') . ' - ' . ($assignment->option->name ?? 'N/A') . ' (' . $assignment->display_label . ')',
+                'subtitle' => ($assignment->option?->resolved_category?->name ?? 'Option') . ' - ' . ($assignment->option->name ?? 'N/A') . ' (' . $assignment->display_label . ')',
             ];
         }
 
