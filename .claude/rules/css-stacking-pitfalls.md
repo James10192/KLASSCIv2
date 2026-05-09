@@ -78,6 +78,87 @@ Voir mémoire `modal-backdrop-stacking-fix.md` : modal derrière backdrop quand 
 
 Voir mémoire `select2-modal-pattern.md` : `dropdownParent: $('body')` + `z-index: 1075`.
 
+## ⚠ Variante critique — Hero premium contenant un `<x-export-modal>` ou dropdown
+
+Pattern KLASSCI fréquent : la page commence par un hero gradient bleu (`.xx-hero` namespace) avec à droite un bouton `<x-export-modal>` qui ouvre un dropdown vers le bas. Ce dropdown DOIT pouvoir déborder sous le hero.
+
+### Référence canonique : `recouvrement/index.blade.php` `.re-hero`
+
+```css
+.re-hero {
+    background: linear-gradient(135deg, ...);
+    border-radius: 18px;
+    padding: 2rem 2.5rem 1.75rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 8px 30px rgba(4,83,203,.18);
+    /* AUCUN overflow:hidden, AUCUN position:relative, AUCUN ::before/::after */
+}
+```
+
+→ Le dropdown export sort librement du hero, aucun stacking context concurrent. **Ce pattern marche, à utiliser en référence.**
+
+### Anti-pattern observé (incident analytics 9 mai 2026)
+
+```css
+/* ❌ MAUVAIS — c'est ce qui était sur .an-hero */
+.an-hero {
+    position: relative;       /* ← crée stacking context */
+    overflow: hidden;         /* ← clippe le dropdown qui dépasse */
+}
+.an-hero::before {            /* ← décoration radiale qui */
+    position: absolute;       /*   nécessite overflow:hidden parent */
+    top: -120px; right: -80px;
+    /* ... */
+}
+.an-kpi:hover {
+    transform: translateY(-1px);   /* ← stacking context concurrent
+                                       qui passe AU-DESSUS du dropdown */
+}
+```
+
+Symptômes : dropdown clippé en bas du hero, KPIs hovered passent au-dessus du menu, items inférieurs du dropdown non cliquables.
+
+### Solution canonique pour hero + dropdown
+
+```css
+/* 1. Hero minimaliste (matche .re-hero) */
+.an-hero {
+    background: linear-gradient(...);
+    border-radius: 18px;
+    padding: 2rem 2.5rem 1.75rem;
+    /* PAS d'overflow:hidden, PAS de position:relative */
+}
+
+/* 2. Si décorations radiales souhaitées, dans un wrapper enfant clippé */
+.an-hero {
+    position: relative;       /* OK car wrapper deco contient lui-même overflow:hidden */
+}
+.an-hero-deco {
+    position: absolute; inset: 0;
+    border-radius: 18px;
+    overflow: hidden;          /* ← clippe SEULEMENT les decorations, pas le dropdown qui est ailleurs */
+    pointer-events: none;
+    z-index: 0;
+}
+.an-hero > *:not(.an-hero-deco) { position: relative; z-index: 1; }
+/* HTML : <div class="an-hero"><div class="an-hero-deco"><span class="deco-1"></span><span class="deco-2"></span></div>...content...</div> */
+
+/* 3. Désactive le transform sur KPIs hovered tant qu'un dropdown export est ouvert */
+body:has(.export-menu:not([style*="display: none"])) .an-kpi:hover {
+    transform: none;
+}
+
+/* 4. .export-menu z-index: 1100 (déjà fait dans le composant global) */
+```
+
+### Anti-patterns spécifiques aux heros à BLOQUER en review
+
+1. ❌ `overflow: hidden` sur un hero contenant `<x-export-modal>` ou tout dropdown qui s'ouvre vers le bas
+2. ❌ Décorations `::before`/`::after` avec position absolute negative sans wrapper clippé séparé — préférer un `<div class="hero-deco">` enfant
+3. ❌ `transform` sur `:hover` des KPIs internes au hero sans la garde `body:has(.export-menu...)` désactivant
+4. ❌ Pages premium qui copient `.an-hero` ancien (avec overflow:hidden + ::before/::after) au lieu de `.re-hero` (minimaliste)
+
 ## Voir aussi
 
 - Mémoire projet : `feedback_dropdown_stacking_card_hover.md` (PR #310 #312 #313 — recette complète)

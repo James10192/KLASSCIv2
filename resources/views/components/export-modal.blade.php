@@ -97,7 +97,7 @@ window.askEmailExport = function (emailUrl) {
 @push('styles')
 <style>
 .export-menu {
-    position: absolute; top: calc(100% + 6px); right: 0; z-index: 100;
+    position: absolute; top: calc(100% + 6px); right: 0; z-index: 1100;
     background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
     box-shadow: 0 8px 30px rgba(15,23,42,.12);
     min-width: 280px; padding: .5rem;

@@ -645,37 +645,21 @@ function analyticsPage() {
 
 .an-page { padding: 1rem 0; }
 
-/* ===== Hero ===== */
+/* ===== Hero =====
+   ⚠ Pattern KLASSCI : NE PAS mettre overflow:hidden + position:relative ici.
+   Le hero contient un <x-export-modal> dropdown qui s'ouvre vers le bas et
+   doit pouvoir déborder. Voir .claude/rules/css-stacking-pitfalls.md
+   (ex-bug analytics fixé 2026-05-09). Pour les décorations radiales,
+   utiliser un .an-hero-deco enfant absolute avec son propre overflow:hidden. */
 .an-hero {
-    position: relative;
     background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
     border-radius: 18px;
     padding: 2rem 2.5rem 1.75rem;
     color: #fff;
     margin-bottom: 1.25rem;
     box-shadow: 0 8px 30px rgba(4,83,203,.18);
-    overflow: hidden;
     animation: an-hero-fade .5s ease-out;
 }
-.an-hero::before {
-    content: '';
-    position: absolute;
-    top: -120px; right: -80px;
-    width: 320px; height: 320px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,255,255,.08) 0%, transparent 65%);
-    pointer-events: none;
-}
-.an-hero::after {
-    content: '';
-    position: absolute;
-    bottom: -200px; left: -100px;
-    width: 380px; height: 380px;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(94,145,222,.18) 0%, transparent 70%);
-    pointer-events: none;
-}
-.an-hero > * { position: relative; z-index: 1; }
 @keyframes an-hero-fade {
     from { opacity: 0; transform: translateY(-12px); }
     to { opacity: 1; transform: translateY(0); }
@@ -730,6 +714,11 @@ function analyticsPage() {
     border-color: rgba(255,255,255,.25);
     transform: translateY(-1px);
 }
+/* Désactive le transform hover des KPIs quand un dropdown export est ouvert
+   ailleurs sur la page : sinon le transform crée un stacking context qui
+   passe au-dessus du menu dropdown et bloque les clics. Pattern KLASSCI
+   documenté dans .claude/rules/css-stacking-pitfalls.md. */
+body:has(.export-menu:not([style*="display: none"])) .an-kpi:hover { transform: none; }
 .an-kpi-icon {
     width: 40px; height: 40px; border-radius: 10px;
     background: rgba(255,255,255,.15);
