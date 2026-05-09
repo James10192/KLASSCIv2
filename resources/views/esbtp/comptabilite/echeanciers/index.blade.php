@@ -9,6 +9,34 @@
 .ech-diagnostics{display:grid;grid-template-columns:repeat(6,minmax(110px,1fr));gap:.65rem;margin-bottom:1rem}.ech-diag{background:#fff;border:1px solid rgba(148,163,184,.28);border-radius:10px;padding:.72rem .8rem}.ech-diag-value{font-size:1rem;font-weight:900;color:#0453cb}.ech-diag-label{font-size:.68rem;color:#64748b;font-weight:800;text-transform:uppercase;letter-spacing:0}.ech-filter-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.45rem;margin-bottom:.65rem}.ech-filter-grid .ech-select{min-height:2.15rem;padding:.42rem .6rem;font-size:.75rem}.ech-filter-reset{height:2.15rem;border:1px solid #dbe3ef;border-radius:8px;background:#fff;color:#64748b;font-weight:800;font-size:.74rem}.ech-scope[data-status="unconfigured"]{border-color:rgba(245,158,11,.34);background:linear-gradient(90deg,rgba(245,158,11,.06),#fff 42%)}.ech-state{display:inline-flex;align-items:center;gap:.25rem;font-size:.66rem;font-weight:900;color:#92400e}.ech-panel{border:1px solid #e2e8f0;background:#f8fbff;border-radius:10px;padding:.75rem;margin:.75rem 0}.ech-panel-title{font-size:.78rem;font-weight:900;color:#0f172a;margin-bottom:.55rem}.ech-presets{display:flex;gap:.4rem;flex-wrap:wrap}.ech-chip-btn{border:1px solid rgba(4,83,203,.18);background:#fff;color:#0453cb;border-radius:999px;padding:.35rem .58rem;font-size:.72rem;font-weight:800}.ech-chip-btn:hover{background:#0453cb;color:#fff}.ech-total{display:flex;align-items:center;justify-content:space-between;gap:.8rem;margin:.65rem 0;padding:.55rem .65rem;border-radius:9px;background:#fff;border:1px solid #e2e8f0}.ech-total strong{color:#0f172a}.ech-total.is-bad{border-color:rgba(220,38,38,.35);background:rgba(254,242,242,.72)}.ech-total.is-ok{border-color:rgba(16,185,129,.35);background:rgba(240,253,244,.72)}.ech-preview-list{display:grid;gap:.35rem}.ech-preview-line{display:grid;grid-template-columns:1fr auto;gap:.75rem;padding:.45rem .55rem;border-radius:8px;background:#fff;border:1px solid #e2e8f0;font-size:.75rem}.ech-copy-grid,.ech-sim-grid{display:grid;grid-template-columns:1fr auto;gap:.5rem;align-items:end}.ech-copy-grid{grid-template-columns:1fr auto}.ech-sim-result{margin-top:.55rem;display:grid;gap:.3rem;font-size:.75rem;color:#334155}.ech-sim-result div{display:flex;justify-content:space-between;gap:.75rem;border-bottom:1px dashed #dbe3ef;padding-bottom:.25rem}@media(max-width:1200px){.ech-diagnostics{grid-template-columns:repeat(3,1fr)}.ech-filter-grid{grid-template-columns:repeat(2,1fr)}}@media(max-width:680px){.ech-diagnostics,.ech-filter-grid,.ech-copy-grid,.ech-sim-grid{grid-template-columns:1fr}}
 .ech-scope-check{display:inline-flex;align-items:center;justify-content:center;margin-right:.35rem}.ech-scope-main{display:flex;align-items:flex-start;gap:.25rem}.ech-bulk{display:grid;grid-template-columns:1fr auto auto;gap:.45rem;align-items:center;margin-bottom:.65rem}.ech-bulk .ech-select{height:2.15rem;font-size:.75rem}.ech-bulk button{height:2.15rem;padding:.35rem .6rem;font-size:.72rem}@media(max-width:680px){.ech-bulk{grid-template-columns:1fr 1fr}}
 .ech-help-button{display:inline-flex;align-items:center;gap:.45rem;border-color:rgba(4,83,203,.22)!important;background:#fff!important;color:#0453cb!important}.ech-help-modal{position:fixed;inset:0;z-index:1055;display:none;align-items:center;justify-content:center;padding:1.25rem;background:rgba(15,23,42,.45);backdrop-filter:blur(4px)}.ech-help-modal.is-open{display:flex}.ech-help-dialog{width:min(920px,100%);max-height:min(760px,92vh);display:flex;flex-direction:column;background:#fff;border:1px solid rgba(148,163,184,.3);border-radius:12px;box-shadow:0 28px 70px rgba(15,23,42,.28);overflow:hidden}.ech-help-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1rem 1.15rem;border-bottom:1px solid #e2e8f0;background:linear-gradient(180deg,#f8fbff,#fff)}.ech-help-title{margin:0;font-size:1rem;font-weight:900;color:#0f172a}.ech-help-subtitle{margin:.18rem 0 0;color:#64748b;font-size:.78rem}.ech-help-close{width:2.15rem;height:2.15rem;border-radius:8px;border:1px solid #dbe3ef;background:#fff;color:#64748b;display:inline-flex;align-items:center;justify-content:center}.ech-help-close:hover{color:#dc2626;border-color:rgba(220,38,38,.28);background:#fff5f5}.ech-help-body{overflow:auto;padding:1rem 1.15rem}.ech-help-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.75rem}.ech-help-section{border:1px solid #e2e8f0;border-radius:10px;background:#f8fbff;padding:.8rem}.ech-help-section h4{margin:0 0 .45rem;font-size:.82rem;font-weight:900;color:#0f172a}.ech-help-section ul{margin:0;padding-left:1rem;color:#334155;font-size:.77rem;line-height:1.55}.ech-help-section li+li{margin-top:.25rem}.ech-help-flow{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:.5rem;margin-bottom:.85rem}.ech-help-step{border:1px solid rgba(4,83,203,.16);border-radius:10px;background:#fff;padding:.65rem}.ech-help-step strong{display:block;color:#0453cb;font-size:.75rem;margin-bottom:.2rem}.ech-help-step span{display:block;color:#475569;font-size:.72rem;line-height:1.35}.ech-help-note{margin-top:.85rem;border-left:3px solid #0453cb;background:#eef5ff;color:#1e3a8a;border-radius:8px;padding:.72rem .85rem;font-size:.77rem;line-height:1.45}@media(max-width:760px){.ech-help-grid,.ech-help-flow{grid-template-columns:1fr}.ech-help-dialog{max-height:94vh}.ech-help-modal{padding:.65rem}}
+/* Phase B garde-fous UI ajoutée 2026-05-09 */
+.ech-th-info{font-size:.6rem;color:#94a3b8;margin-left:.2rem;cursor:help;opacity:.65}
+.ech-th-info:hover{color:#0453cb;opacity:1}
+.ech-impact-banner{background:linear-gradient(135deg,rgba(4,83,203,.05),rgba(94,145,222,.03));border:1px solid rgba(4,83,203,.2);border-radius:10px;padding:.75rem .9rem;margin-bottom:1rem;display:grid;gap:.55rem}
+.ech-impact-row{display:flex;align-items:center;gap:.55rem;font-size:.82rem;color:#1e3a8a}
+.ech-impact-row i{color:#0453cb}
+.ech-impact-row strong{color:#0453cb;font-weight:800}
+.ech-impact-row em{font-style:normal;font-weight:700;color:#0f172a;text-transform:capitalize}
+.ech-status-checklist{display:flex;align-items:center;flex-wrap:wrap;gap:.45rem;font-size:.72rem;color:#64748b;border-top:1px dashed rgba(4,83,203,.18);padding-top:.5rem}
+.ech-status-checklist-label{font-weight:700;color:#475569;text-transform:uppercase;font-size:.65rem;letter-spacing:.04em;margin-right:.25rem}
+.ech-status-pill{display:inline-flex;align-items:center;gap:.3rem;padding:.22rem .55rem;border-radius:999px;font-size:.7rem;font-weight:700;border:1px solid #e2e8f0}
+.ech-status-pill--on{background:rgba(16,185,129,.1);color:#047857;border-color:rgba(16,185,129,.32)}
+.ech-status-pill--on i{color:#10b981}
+.ech-status-pill--off{background:#f8fafc;color:#94a3b8;border-color:#e2e8f0}
+.ech-status-pill--off i{color:#cbd5e1;font-size:.5rem;align-self:center}
+.ech-total-delta{font-weight:800;color:#dc2626;font-size:.78rem}
+.ech-total.is-ok .ech-total-delta{color:#047857}
+.ech-overwrite-modal{position:fixed;inset:0;z-index:2000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.6);backdrop-filter:blur(4px);padding:1rem;animation:ech-fade-in .15s ease-out}
+@keyframes ech-fade-in{from{opacity:0}to{opacity:1}}
+.ech-overwrite-card{background:#fff;border-radius:14px;padding:1.5rem 1.75rem;max-width:520px;box-shadow:0 24px 60px rgba(15,23,42,.25);animation:ech-pop .2s ease-out}
+@keyframes ech-pop{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+.ech-overwrite-card h3{display:flex;align-items:center;gap:.55rem;color:#b45309;margin:0 0 .75rem;font-size:1.05rem;font-weight:800}
+.ech-overwrite-card h3 i{color:#f59e0b}
+.ech-overwrite-card p{color:#334155;font-size:.88rem;line-height:1.5;margin:0 0 .65rem}
+.ech-overwrite-card p strong{color:#0f172a}
+.ech-overwrite-impact{background:rgba(245,158,11,.08);border-left:3px solid #f59e0b;padding:.55rem .75rem;border-radius:6px;font-size:.82rem;color:#78350f}
+.ech-overwrite-actions{display:flex;justify-content:flex-end;gap:.55rem;margin-top:1rem}
+/* fin Phase B */
 .ech-tour-button{display:inline-flex;align-items:center;gap:.45rem}.ech-tour-mask{position:fixed;inset:0;z-index:1060;background:rgba(15,23,42,.52);backdrop-filter:blur(1px)}.ech-tour-highlight{position:relative!important;z-index:1061!important;box-shadow:0 0 0 4px rgba(4,83,203,.28),0 22px 55px rgba(15,23,42,.24)!important}.ech-tour-pop{position:fixed;z-index:1062;width:min(360px,calc(100vw - 24px));background:#fff;border:1px solid rgba(148,163,184,.34);border-radius:12px;box-shadow:0 28px 70px rgba(15,23,42,.28);padding:1rem}.ech-tour-kicker{font-size:.68rem;font-weight:900;color:#0453cb;text-transform:uppercase;letter-spacing:0;margin-bottom:.3rem}.ech-tour-title{margin:0;color:#0f172a;font-size:.95rem;font-weight:900}.ech-tour-text{margin:.45rem 0 0;color:#475569;font-size:.78rem;line-height:1.45}.ech-tour-actions{display:flex;align-items:center;justify-content:space-between;gap:.65rem;margin-top:.85rem}.ech-tour-actions-left,.ech-tour-actions-right{display:flex;align-items:center;gap:.45rem}.ech-tour-btn{height:2rem;border-radius:8px;border:1px solid #dbe3ef;background:#fff;color:#334155;font-size:.73rem;font-weight:800;padding:0 .65rem}.ech-tour-btn.primary{background:#0453cb;border-color:#0453cb;color:#fff}.ech-tour-btn:hover{border-color:rgba(4,83,203,.35)}.ech-tour-dots{display:flex;gap:.22rem}.ech-tour-dot{width:.42rem;height:.42rem;border-radius:999px;background:#cbd5e1}.ech-tour-dot.is-active{background:#0453cb}.ech-tour-skip{color:#64748b;background:transparent;border:0;font-size:.73rem;font-weight:800}.ech-tour-demo-note{border:1px dashed rgba(4,83,203,.32);background:#f8fbff;color:#0453cb;border-radius:8px;padding:.45rem .55rem;font-size:.72rem;font-weight:800}.ech-tour-demo .ech-scope{border-style:dashed;background:linear-gradient(90deg,rgba(4,83,203,.05),#fff 45%)}@media(max-width:760px){.ech-tour-pop{left:12px!important;right:12px!important;top:auto!important;bottom:14px!important;width:auto}.ech-tour-highlight{box-shadow:0 0 0 3px rgba(4,83,203,.32)!important}}
 </style>
 @endpush
@@ -104,6 +132,16 @@
                                 <li>Entrez un ID d'inscription reel pour voir l'attendu a date.</li>
                                 <li>Le resultat tient compte des paiements deja connus.</li>
                                 <li>C'est le meilleur controle avant relances et analytics.</li>
+                            </ul>
+                        </div>
+                        <div class="ech-help-section" style="grid-column:1/-1">
+                            <h4>Cas d'usage typiques</h4>
+                            <ul>
+                                <li><strong>BTS standard 30/30/40</strong> : tranche 1 = 30 % à +15 j (rentrée), tranche 2 = 30 % à +120 j (mi-année), tranche 3 = 40 % à +240 j (fin d'année). Adapté aux scolarités annuelles classiques.</li>
+                                <li><strong>LMD trimestriel 25/25/25/25</strong> : 4 tranches égales à +0, +90, +180, +270 j. Aligné sur le rythme de paiement par semestre/trimestre.</li>
+                                <li><strong>Frais d'examen unique</strong> : 1 tranche 100 % à +15 j de l'inscription. Mode "Paiement unique" du preset.</li>
+                                <li><strong>Assurance scolaire fixe</strong> : 1 tranche en montant fixe (ex 25 000 FCFA) à date fixe MM-DD (ex 10-01 = 1er octobre chaque année). Évite la confusion avec le pourcentage de la scolarité.</li>
+                                <li><strong>Bonnes pratiques</strong> : 3 à 6 tranches max, éviter les tranches < 5 % qui parasitent la lecture, équilibrer les montants (ex 30/40/30 plutôt que 5/5/90), espacer les dates d'au moins 30 j pour éviter les chevauchements de relance.</li>
                             </ul>
                         </div>
                     </div>
@@ -324,10 +362,68 @@
                             </div>
                         </div>
 
-                        <form method="POST" action="{{ route('esbtp.comptabilite.echeanciers.upsert') }}">
+                        {{-- Bandeau impact + checklist statuts ────────────────────── --}}
+                        @php
+                            $statusList = ['affecté' => 'Affecté', 'réaffecté' => 'Réaffecté', 'non_affecté' => 'Non affecté', 'all' => 'Tous statuts'];
+                            $activeStatuses = $selectedScopeStatusesActive ?? [];
+                        @endphp
+                        <div class="ech-impact-banner">
+                            <div class="ech-impact-row">
+                                <i class="fas fa-users"></i>
+                                <span>
+                                    Cette règle impactera potentiellement
+                                    <strong>{{ number_format($selectedAffectedCount ?? 0, 0, ',', ' ') }}</strong>
+                                    inscription(s) active(s) sur ce scope (statut <em>{{ $statusList[$selectedStatus] ?? $selectedStatus }}</em>).
+                                </span>
+                            </div>
+                            <div class="ech-status-checklist">
+                                <span class="ech-status-checklist-label">Règles actives sur ce scope :</span>
+                                @foreach($statusList as $key => $label)
+                                    <span class="ech-status-pill ech-status-pill--{{ in_array($key, $activeStatuses, true) ? 'on' : 'off' }}"
+                                          title="{{ in_array($key, $activeStatuses, true) ? 'Règle active configurée pour ' . $label : 'Aucune règle active pour ' . $label }}">
+                                        @if(in_array($key, $activeStatuses, true))
+                                            <i class="fas fa-check-circle"></i>
+                                        @else
+                                            <i class="fas fa-circle"></i>
+                                        @endif
+                                        {{ $label }}
+                                    </span>
+                                @endforeach
+                            </div>
+                        </div>
+
+                        {{-- Modal confirmation overwrite ────────────────────────── --}}
+                        @if($overwrite = session('overwrite_warning'))
+                            <div class="ech-overwrite-modal" id="echOverwriteModal" data-ech-overwrite>
+                                <div class="ech-overwrite-card">
+                                    <h3><i class="fas fa-exclamation-triangle"></i>Une règle active existe déjà</h3>
+                                    <p>
+                                        Cette règle a {{ $overwrite['existing_lines'] }} tranche(s) configurée(s),
+                                        modifiée pour la dernière fois le {{ $overwrite['updated_at'] ?? '—' }}.
+                                        L'enregistrement va <strong>remplacer toutes les tranches existantes</strong>.
+                                    </p>
+                                    <p class="ech-overwrite-impact">
+                                        Cela peut affecter les snapshots d'échéancier de
+                                        <strong>{{ $selectedAffectedCount ?? 0 }}</strong>
+                                        inscription(s) active(s).
+                                    </p>
+                                    <div class="ech-overwrite-actions">
+                                        <button type="button" class="btn-acasi secondary" data-ech-overwrite-cancel>
+                                            <i class="fas fa-times"></i>Annuler
+                                        </button>
+                                        <button type="button" class="btn-acasi primary" data-ech-overwrite-confirm>
+                                            <i class="fas fa-check"></i>Confirmer l'écrasement
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        @endif
+
+                        <form method="POST" action="{{ route('esbtp.comptabilite.echeanciers.upsert') }}" data-ech-form>
                             @csrf
                             <input type="hidden" name="scope_type" value="{{ $selectedScopeType }}">
                             <input type="hidden" name="scope_id" value="{{ $selectedScopeId }}">
+                            <input type="hidden" name="confirm_overwrite" value="0" data-ech-confirm-overwrite>
 
                             <div class="ech-form-grid mb-2">
                                 <div class="ech-field">
@@ -384,14 +480,14 @@
                                 <table class="ech-lines">
                                     <thead>
                                         <tr>
-                                            <th style="width:145px;">Libelle</th>
-                                            <th style="width:75px;">Ordre</th>
-                                            <th style="width:145px;">Montant</th>
-                                            <th style="width:115px;">Valeur</th>
-                                            <th style="width:160px;">Echeance</th>
-                                            <th style="width:115px;">Valeur</th>
-                                            <th style="width:90px;">Grace</th>
-                                            <th style="width:70px;">Actif</th>
+                                            <th style="width:145px;" title="Libellé court visible dans la fiche financière de l'étudiant et la liste des paiements (max 120 caractères).">Libellé <i class="fas fa-info-circle ech-th-info"></i></th>
+                                            <th style="width:75px;" title="Ordre d'affichage des tranches (1 = première). Les paiements FIFO consomment les tranches dans cet ordre.">Ordre <i class="fas fa-info-circle ech-th-info"></i></th>
+                                            <th style="width:145px;" title="Pourcentage du montant total (somme = 100 %) OU montant fixe en FCFA. Ne mixez pas les deux modes dans une même règle.">Mode <i class="fas fa-info-circle ech-th-info"></i></th>
+                                            <th style="width:115px;" title="La valeur du mode choisi : 30 (= 30 %) en mode pourcentage, 50000 (= 50 000 FCFA) en mode fixe.">Valeur <i class="fas fa-info-circle ech-th-info"></i></th>
+                                            <th style="width:160px;" title="Comment la date d'échéance est calculée : nombre de jours après l'inscription de l'étudiant (durée flexible) ou date fixe MM-DD chaque année (rythme calendaire).">Échéance <i class="fas fa-info-circle ech-th-info"></i></th>
+                                            <th style="width:115px;" title="Pour 'jours après inscription' : entrez un nombre (ex: 60). Pour 'date fixe' : format MM-DD (ex: 10-15 = 15 octobre). Maximum 365 jours.">Valeur <i class="fas fa-info-circle ech-th-info"></i></th>
+                                            <th style="width:90px;" title="Jours de tolérance après l'échéance avant de marquer l'étudiant en retard (ex: 7 j).">Grâce <i class="fas fa-info-circle ech-th-info"></i></th>
+                                            <th style="width:70px;" title="Si décoché, la tranche est ignorée pour le calcul du total et l'allocation des paiements. Utile pour suspendre temporairement.">Actif <i class="fas fa-info-circle ech-th-info"></i></th>
                                             <th style="width:62px;"></th>
                                         </tr>
                                     </thead>
@@ -414,8 +510,9 @@
                             </div>
 
                             <div class="ech-total" data-total-box>
-                                <span><strong>Total pourcentage</strong> <span data-percent-total>0%</span></span>
-                                <span data-total-message>Les tranches en pourcentage doivent totaliser 100%.</span>
+                                <span><strong>Total pourcentage actif</strong> <span data-percent-total>0%</span></span>
+                                <span data-total-message>Les tranches actives en pourcentage doivent totaliser 100 %.</span>
+                                <span class="ech-total-delta" data-total-delta hidden></span>
                             </div>
 
                             <div class="ech-panel">
@@ -616,6 +713,7 @@
             });
         });
 
+        bindOverwriteModal(root);
         updateRuleDiagnostics(root);
     }
 
@@ -682,9 +780,24 @@
                 text: 'La zone de droite sert à régler le statut d’affectation, la priorité, les dates d’activité et les notes internes.',
             },
             {
+                selector: '.ech-impact-banner',
+                title: 'Lire l’impact d’abord',
+                text: 'Avant toute modification, regarde combien d’inscriptions seront affectées et quelles règles existent déjà sur ce scope (4 statuts d’affectation possibles). Une école peut avoir besoin de règles différentes pour Affecté / Réaffecté / Non affecté.',
+            },
+            {
                 selector: '.ech-presets',
                 title: 'Accélérer avec les presets',
-                text: 'Les presets créent les découpages courants. Vous pouvez ensuite ajuster les montants, dates et jours de grâce.',
+                text: 'Les presets créent les découpages courants. Vous pouvez ensuite ajuster les montants, dates et jours de grâce. Une confirmation s’affiche si vous avez déjà des tranches pour éviter une perte involontaire.',
+            },
+            {
+                selector: '.ech-lines th:nth-child(3)',
+                title: 'Pourcentage vs Montant fixe',
+                text: 'Choisissez UN seul mode par règle. Le pourcentage convient à la scolarité (varie selon affectation) ; le fixe convient aux frais constants (assurance, examen). Mixer les deux dans une même règle est désormais bloqué côté serveur.',
+            },
+            {
+                selector: '.ech-lines th:nth-child(5)',
+                title: 'Date fixe vs Jours après inscription',
+                text: 'Date fixe (MM-DD, ex 10-15) tombe chaque année à la même date — cale sur le rythme calendaire de l’école. Jours après inscription (ex 60) suit la date d’inscription de chaque étudiant — flexible si les inscriptions sont étalées dans le temps. Maximum 365 jours.',
             },
             {
                 selector: '.ech-lines-wrap',
@@ -694,12 +807,12 @@
             {
                 selector: '[data-total-box]',
                 title: 'Bloquer les incohérences',
-                text: 'Le total est recalculé en direct et le serveur refuse aussi l’enregistrement si les pourcentages sont incohérents.',
+                text: 'Le total est recalculé en direct, le bouton "Enregistrer" se désactive si différent de 100 %, et le serveur refuse en double sécurité. La différence (manque/excès) s’affiche chiffrée pour t’aider à corriger vite.',
             },
             {
                 selector: '[data-preview-amount]',
                 title: 'Tester un montant réel',
-                text: 'Changez le montant de simulation pour vérifier les cas BTS, Licence, Master, affecté ou non affecté avant sauvegarde.',
+                text: 'Changez le montant de simulation pour vérifier les cas BTS, Licence, Master, affecté ou non affecté avant sauvegarde. Bonne pratique : 3 à 6 tranches max, éviter les tranches < 5 % qui parasitent la lecture.',
             },
             {
                 selector: '[data-sim-form]',
@@ -901,6 +1014,15 @@
         const body = root.querySelector('[data-lines-body]');
         if (!body) return;
 
+        // Confirmation si tranches existantes — préserve l'utilisateur d'écraser involontairement
+        const existingCount = body.querySelectorAll('tr').length;
+        if (existingCount > 0) {
+            const ok = window.confirm(
+                `Cela remplacera vos ${existingCount} tranche(s) actuelle(s) par le preset choisi. Continuer ?`
+            );
+            if (!ok) return;
+        }
+
         body.innerHTML = lines.map(function (line, index) {
             return lineRow(index, line[0], line[1]);
         }).join('');
@@ -908,6 +1030,26 @@
         body.dataset.bound = '';
         initEcheanciersPage(root);
         updateRuleDiagnostics(root);
+    }
+
+    // Phase B — Modal confirmation overwrite : si le serveur a renvoyé overwrite_warning,
+    // on bind les boutons du modal pour soit fermer, soit poser confirm_overwrite=1 + soumettre.
+    function bindOverwriteModal(root) {
+        const modal = root.querySelector('[data-ech-overwrite]');
+        if (!modal || modal.dataset.bound) return;
+        modal.dataset.bound = '1';
+        const cancel = modal.querySelector('[data-ech-overwrite-cancel]');
+        const confirm = modal.querySelector('[data-ech-overwrite-confirm]');
+        cancel?.addEventListener('click', () => modal.remove());
+        confirm?.addEventListener('click', () => {
+            const form = root.querySelector('[data-ech-form]');
+            const flag = form?.querySelector('[data-ech-confirm-overwrite]');
+            if (flag) flag.value = '1';
+            modal.remove();
+            form?.submit();
+        });
+        // Click outside ferme
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
     }
 
     function updateRuleDiagnostics(root) {
@@ -925,13 +1067,31 @@
         const totalBox = root.querySelector('[data-total-box]');
         const totalValue = root.querySelector('[data-percent-total]');
         const totalMessage = root.querySelector('[data-total-message]');
+        const totalDelta = root.querySelector('[data-total-delta]');
         if (totalBox && totalValue && totalMessage) {
             totalValue.textContent = `${percentTotal.toFixed(2).replace('.00', '')}%`;
-            totalBox.classList.toggle('is-ok', Math.abs(percentTotal - 100) < 0.01);
-            totalBox.classList.toggle('is-bad', Math.abs(percentTotal - 100) >= 0.01);
-            totalMessage.textContent = Math.abs(percentTotal - 100) < 0.01
-                ? 'Total coherent.'
-                : 'Ajustez les lignes pour atteindre 100%.';
+            const isOk = Math.abs(percentTotal - 100) < 0.01;
+            const noPercent = percentTotal === 0; // mode "tout en fixe" → pas d'erreur
+            totalBox.classList.toggle('is-ok', isOk);
+            totalBox.classList.toggle('is-bad', !isOk && !noPercent);
+            if (totalDelta) {
+                totalDelta.hidden = isOk || noPercent;
+                if (!isOk && !noPercent) {
+                    const diff = (percentTotal - 100).toFixed(2).replace('.00', '');
+                    totalDelta.textContent = (percentTotal < 100 ? `Manque ${(100 - percentTotal).toFixed(2).replace('.00', '')} %` : `Excès de ${diff} %`);
+                }
+            }
+            totalMessage.textContent = noPercent
+                ? 'Tranches en montant fixe — total non applicable.'
+                : (isOk ? 'Total cohérent ✓' : 'Ajustez les lignes pour atteindre 100 %.');
+        }
+
+        // Désactive le bouton submit si total invalide (UX feedback immédiat)
+        const submitBtn = root.querySelector('[data-ech-form] button[type="submit"]');
+        if (submitBtn) {
+            const valid = percentTotal === 0 || Math.abs(percentTotal - 100) < 0.01;
+            submitBtn.disabled = !valid;
+            submitBtn.title = valid ? '' : 'Le total des tranches en pourcentage doit être 100 % avant de pouvoir enregistrer.';
         }
 
         updatePreview(root, rows);

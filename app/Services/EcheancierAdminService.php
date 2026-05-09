@@ -5,12 +5,69 @@ namespace App\Services;
 use App\Models\ESBTPEcheancierRule;
 use App\Models\ESBTPEcheancierRuleLine;
 use App\Models\ESBTPFraisConfiguration;
+use App\Models\ESBTPInscription;
 use App\Models\ESBTPOptionAssignment;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class EcheancierAdminService
 {
+    /**
+     * Compte les inscriptions actives potentiellement impactées par une règle d'échéancier.
+     * Utilisé en bandeau UI pour afficher "Cette règle s'appliquera à X étudiants".
+     * Cache 5 min pour éviter le coût sur tenants 3000+ inscriptions.
+     */
+    public function countAffectedInscriptions(string $scopeType, int $scopeId, string $status): int
+    {
+        $cacheKey = sprintf('echeancier:affected:%s:%d:%s', $scopeType, $scopeId, $status);
+
+        return (int) Cache::remember($cacheKey, 300, function () use ($scopeType, $scopeId, $status) {
+            $query = ESBTPInscription::query()
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
+                ->whereNull('deleted_at');
+
+            // Statut d'affectation : 'all' = toutes les inscriptions, sinon filtrer
+            if ($status !== ESBTPEcheancierRule::STATUS_ALL) {
+                $query->where('affectation_status', $status);
+            }
+
+            // Scope = configuration → limiter aux inscriptions filiere/niveau correspondants
+            if ($scopeType === ESBTPEcheancierRule::SCOPE_CONFIGURATION) {
+                $config = ESBTPFraisConfiguration::find($scopeId);
+                if (!$config) return 0;
+                $query->where('filiere_id', $config->filiere_id)
+                      ->where('niveau_id', $config->niveau_id);
+            }
+
+            // Scope = option assignment → limiter aux inscriptions filiere/niveau de l'assignment
+            if ($scopeType === ESBTPEcheancierRule::SCOPE_OPTION_ASSIGNMENT) {
+                $assignment = ESBTPOptionAssignment::find($scopeId);
+                if (!$assignment) return 0;
+                if ($assignment->filiere_id) $query->where('filiere_id', $assignment->filiere_id);
+                if ($assignment->niveau_id) $query->where('niveau_id', $assignment->niveau_id);
+            }
+
+            return $query->count();
+        });
+    }
+
+    /**
+     * Statuts d'affectation pour lesquels une règle ACTIVE existe sur un scope donné.
+     * Sert au bandeau UI "checklist 4 statuts" pour signaler les règles manquantes.
+     */
+    public function activeStatusesForScope(string $scopeType, int $scopeId): array
+    {
+        return ESBTPEcheancierRule::query()
+            ->where('scope_type', $scopeType)
+            ->where('scope_id', $scopeId)
+            ->where('is_active', true)
+            ->pluck('affectation_status')
+            ->all();
+    }
+
+
     public function buildDiagnostics(Collection $configurations, Collection $optionAssignments, Collection $rulesByScope): array
     {
         $allScopes = collect();

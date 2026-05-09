@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UpsertEcheancierRuleRequest;
 use App\Models\ESBTPEcheancierRule;
 use App\Models\ESBTPEcheancierRuleLine;
 use App\Models\ESBTPFiliere;
@@ -14,6 +15,7 @@ use App\Services\EcheancierAdminService;
 use App\Services\RelanceCalculationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\Rule;
 
 class ESBTPEcheancierController extends Controller
@@ -90,10 +92,14 @@ class ESBTPEcheancierController extends Controller
         $selectedRule = null;
         $selectedScopeDescriptor = null;
         $selectedPreviewAmount = 150000.0;
+        $selectedAffectedCount = 0;
+        $selectedScopeStatusesActive = [];
 
         if ($selectedScopeType && $selectedScopeId && $this->scopeExists($selectedScopeType, (int) $selectedScopeId)) {
             $selectedScopeDescriptor = $this->buildScopeDescriptor($selectedScopeType, (int) $selectedScopeId);
             $selectedPreviewAmount = $echeancierAdmin->resolvePreviewAmount($selectedScopeType, (int) $selectedScopeId, $selectedStatus);
+            $selectedAffectedCount = $echeancierAdmin->countAffectedInscriptions($selectedScopeType, (int) $selectedScopeId, $selectedStatus);
+            $selectedScopeStatusesActive = $echeancierAdmin->activeStatusesForScope($selectedScopeType, (int) $selectedScopeId);
 
             $selectedRule = ESBTPEcheancierRule::query()
                 ->with(['lines' => fn ($q) => $q->orderBy('sort_order')])
@@ -113,6 +119,8 @@ class ESBTPEcheancierController extends Controller
             'selectedRule' => $selectedRule,
             'selectedScopeDescriptor' => $selectedScopeDescriptor,
             'selectedPreviewAmount' => $selectedPreviewAmount,
+            'selectedAffectedCount' => $selectedAffectedCount,
+            'selectedScopeStatusesActive' => $selectedScopeStatusesActive,
             'scopeDiagnostics' => $scopeDiagnostics,
             'filieres' => ESBTPFiliere::orderBy('name')->get(['id', 'name']),
             'niveaux' => ESBTPNiveauEtude::orderBy('name')->get(['id', 'name']),
@@ -120,92 +128,51 @@ class ESBTPEcheancierController extends Controller
         ]);
     }
 
-    public function upsert(Request $request)
+    public function upsert(UpsertEcheancierRuleRequest $request)
     {
-        $validated = $request->validate([
-            'scope_type' => ['required', Rule::in([
-                ESBTPEcheancierRule::SCOPE_CONFIGURATION,
-                ESBTPEcheancierRule::SCOPE_OPTION_ASSIGNMENT,
-            ])],
-            'scope_id' => ['required', 'integer', 'min:1'],
-            'affectation_status' => ['required', Rule::in([
-                ESBTPEcheancierRule::STATUS_ALL,
-                ESBTPEcheancierRule::STATUS_AFFECTE,
-                ESBTPEcheancierRule::STATUS_REAFFECTE,
-                ESBTPEcheancierRule::STATUS_NON_AFFECTE,
-            ])],
-            'priority' => ['nullable', 'integer', 'min:1', 'max:9999'],
-            'is_active' => ['nullable', 'boolean'],
-            'effective_from' => ['nullable', 'date'],
-            'effective_to' => ['nullable', 'date', 'after_or_equal:effective_from'],
-            'notes' => ['nullable', 'string', 'max:2000'],
-            'lines' => ['required', 'array', 'min:1'],
-            'lines.*.label' => ['required', 'string', 'max:120'],
-            'lines.*.sort_order' => ['nullable', 'integer', 'min:1', 'max:99'],
-            'lines.*.amount_mode' => ['required', Rule::in([
-                ESBTPEcheancierRuleLine::AMOUNT_MODE_PERCENT,
-                ESBTPEcheancierRuleLine::AMOUNT_MODE_FIXED,
-            ])],
-            'lines.*.amount_value' => ['required', 'numeric', 'min:0'],
-            'lines.*.due_mode' => ['required', Rule::in([
-                ESBTPEcheancierRuleLine::DUE_MODE_DAYS_AFTER_INSCRIPTION,
-                ESBTPEcheancierRuleLine::DUE_MODE_FIXED_MM_DD,
-            ])],
-            'lines.*.due_value' => ['required', 'string', 'max:20'],
-            'lines.*.grace_days' => ['nullable', 'integer', 'min:0', 'max:365'],
-            'lines.*.is_active' => ['nullable', 'boolean'],
-        ]);
-
+        $validated = $request->validated();
         $scopeType = $validated['scope_type'];
-        $scopeId = (int) $validated['scope_id'];
-        if (!$this->scopeExists($scopeType, $scopeId)) {
-            return redirect()->back()->withErrors([
-                'scope_id' => 'Le scope sélectionné est introuvable.',
-            ])->withInput();
+        $scopeId   = (int) $validated['scope_id'];
+        $status    = $validated['affectation_status'];
+        $confirmOverwrite = (bool) ($validated['confirm_overwrite'] ?? false);
+
+        // Garde-fou overwrite : si une règle ACTIVE existe déjà sur ce scope+statut et que
+        // l'utilisateur n'a pas confirmé, on retourne avec un drapeau pour afficher le modal.
+        $existingActive = ESBTPEcheancierRule::query()
+            ->where('scope_type', $scopeType)
+            ->where('scope_id', $scopeId)
+            ->where('affectation_status', $status)
+            ->where('is_active', true)
+            ->first();
+
+        if ($existingActive && !$confirmOverwrite) {
+            $existingLinesCount = $existingActive->lines()->count();
+            return redirect()->back()
+                ->with('overwrite_warning', [
+                    'scope_type'        => $scopeType,
+                    'scope_id'          => $scopeId,
+                    'affectation_status' => $status,
+                    'existing_lines'    => $existingLinesCount,
+                    'updated_at'        => $existingActive->updated_at?->format('d/m/Y H:i'),
+                ])
+                ->withInput();
         }
 
-        foreach ($validated['lines'] as $index => $line) {
-            if (
-                $line['due_mode'] === ESBTPEcheancierRuleLine::DUE_MODE_FIXED_MM_DD
-                && !preg_match('/^(\d{2})-(\d{2})$/', $line['due_value'])
-            ) {
-                return redirect()->back()->withErrors([
-                    'lines.' . $index . '.due_value' => 'Format attendu pour date fixe: MM-DD (ex: 10-15).',
-                ])->withInput();
-            }
-
-            if ($line['due_mode'] === ESBTPEcheancierRuleLine::DUE_MODE_DAYS_AFTER_INSCRIPTION && !is_numeric($line['due_value'])) {
-                return redirect()->back()->withErrors([
-                    'lines.' . $index . '.due_value' => 'Pour un délai en jours, entrez une valeur numérique.',
-                ])->withInput();
-            }
-        }
-
-        $percentTotal = collect($validated['lines'])
-            ->filter(fn ($line) => ($line['amount_mode'] ?? null) === ESBTPEcheancierRuleLine::AMOUNT_MODE_PERCENT)
-            ->sum(fn ($line) => (float) ($line['amount_value'] ?? 0));
-
-        if ($percentTotal > 0 && abs($percentTotal - 100.0) >= 0.01) {
-            return redirect()->back()->withErrors([
-                'lines' => 'Les tranches en pourcentage doivent totaliser 100%.',
-            ])->withInput();
-        }
-
-        DB::transaction(function () use ($validated, $scopeType, $scopeId) {
+        DB::transaction(function () use ($validated, $scopeType, $scopeId, $status) {
             $rule = ESBTPEcheancierRule::updateOrCreate(
                 [
-                    'scope_type' => $scopeType,
-                    'scope_id' => $scopeId,
-                    'affectation_status' => $validated['affectation_status'],
+                    'scope_type'        => $scopeType,
+                    'scope_id'          => $scopeId,
+                    'affectation_status' => $status,
                 ],
                 [
-                    'priority' => (int) ($validated['priority'] ?? 100),
-                    'is_active' => (bool) ($validated['is_active'] ?? false),
+                    'priority'       => (int) ($validated['priority'] ?? 100),
+                    'is_active'      => (bool) ($validated['is_active'] ?? false),
                     'effective_from' => $validated['effective_from'] ?? null,
-                    'effective_to' => $validated['effective_to'] ?? null,
-                    'notes' => $validated['notes'] ?? null,
-                    'updated_by' => auth()->id(),
-                    'created_by' => auth()->id(),
+                    'effective_to'   => $validated['effective_to'] ?? null,
+                    'notes'          => $validated['notes'] ?? null,
+                    'updated_by'     => auth()->id(),
+                    'created_by'     => auth()->id(),
                 ]
             );
 
@@ -213,22 +180,33 @@ class ESBTPEcheancierController extends Controller
 
             foreach ($validated['lines'] as $index => $line) {
                 $rule->lines()->create([
-                    'label' => trim($line['label']),
-                    'sort_order' => (int) ($line['sort_order'] ?? ($index + 1)),
-                    'amount_mode' => $line['amount_mode'],
+                    'label'        => trim($line['label']),
+                    'sort_order'   => (int) ($line['sort_order'] ?? ($index + 1)),
+                    'amount_mode'  => $line['amount_mode'],
                     'amount_value' => round((float) $line['amount_value'], 2),
-                    'due_mode' => $line['due_mode'],
-                    'due_value' => trim((string) $line['due_value']),
-                    'grace_days' => (int) ($line['grace_days'] ?? 0),
-                    'is_active' => (bool) ($line['is_active'] ?? true),
+                    'due_mode'     => $line['due_mode'],
+                    'due_value'    => trim((string) $line['due_value']),
+                    'grace_days'   => (int) ($line['grace_days'] ?? 0),
+                    'is_active'    => (bool) ($line['is_active'] ?? true),
                 ]);
             }
+
+            Log::info('echeancier rule upserted', [
+                'rule_id'       => $rule->id,
+                'scope_type'    => $scopeType,
+                'scope_id'      => $scopeId,
+                'status'        => $status,
+                'lines_count'   => count($validated['lines']),
+                'is_active'     => $rule->is_active,
+                'user_id'       => auth()->id(),
+                'overwrite'     => false,
+            ]);
         });
 
         return redirect()->route('esbtp.comptabilite.echeanciers.index', [
-            'scope_type' => $scopeType,
-            'scope_id' => $scopeId,
-            'affectation_status' => $validated['affectation_status'],
+            'scope_type'        => $scopeType,
+            'scope_id'          => $scopeId,
+            'affectation_status' => $status,
         ])->with('success', 'Règle d\'échéancier enregistrée avec succès.');
     }
 
