@@ -59,6 +59,39 @@ class ESBTPLMDPlanningController extends Controller
     }
 
     /**
+     * GET /esbtp/lmd/planning/partial — returns just the listing fragment for AJAX reload.
+     */
+    public function partial(Request $request): View
+    {
+        $parcours = ESBTPLMDParcours::with(['filiere', 'mention.domaine'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        $filters = [
+            'parcours_id' => $request->integer('parcours_id') ?: null,
+            'niveau_id' => $request->integer('niveau_id') ?: null,
+            'semestre' => $request->integer('semestre') ?: null,
+        ];
+
+        $parcoursSelected = $filters['parcours_id']
+            ? $parcours->firstWhere('id', $filters['parcours_id'])
+            : null;
+
+        $rows = $parcoursSelected
+            ? $this->buildPlanningRows($parcoursSelected, $filters)
+            : collect();
+
+        $kpis = [
+            'ue_count' => $rows->count(),
+            'ecue_count' => $rows->sum(fn ($row) => $row['ecues']->count()),
+            'cect_total' => $rows->sum('cect'),
+        ];
+
+        return view('esbtp.lmd.planning._listing', compact('parcours', 'parcoursSelected', 'rows', 'kpis', 'filters'));
+    }
+
+    /**
      * @return Collection<int, array{ue: ESBTPUniteEnseignement, cect: int, ecues: Collection<int, array>}>
      */
     private function buildPlanningRows(ESBTPLMDParcours $parcours, array $filters): Collection
