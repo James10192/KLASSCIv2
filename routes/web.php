@@ -2441,6 +2441,11 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
         ->middleware('throttle:60,1');
     Route::put('bulletins/{bulletin}/toggle-publication', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'togglePublication'])->name('bulletins.toggle-publication');
     Route::delete('bulletins/{bulletin}', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'destroy'])->name('bulletins.destroy');
+
+    // --- Planning LMD (UEMOA) ---
+    Route::get('planning', [\App\Http\Controllers\ESBTPLMDPlanningController::class, 'index'])
+        ->middleware('permission:lmd.planning.view')
+        ->name('planning.index');
 });
 
 /*
