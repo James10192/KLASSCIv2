@@ -258,6 +258,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/roles', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'roles'])->name('roles.list');
     Route::get('/roles/{role}', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'roleShow'])->name('roles.show');
 
+    // LMD hierarchy (read)
+    Route::get('/lmd/tree', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'tree'])->name('lmd.tree');
+
     // Admin endpoints (strict throttle)
     Route::middleware('throttle:5,1')->group(function () {
         // Maintenance
@@ -269,6 +272,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/migrate', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'migrate'])->name('migrate');
         Route::post('/pull', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'pull'])->name('pull');
         Route::post('/seed-demo', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'seedDemo'])->name('seed-demo');
+
+        // LMD hierarchy (write — bulk setup of Domaine + Mention + Parcours + optional Filiere)
+        Route::post('/lmd/setup', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'setup'])->name('lmd.setup');
 
         // Settings
         Route::put('/settings/{key}', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settingsUpdate'])->name('settings.update');
