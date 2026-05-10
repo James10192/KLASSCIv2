@@ -233,7 +233,7 @@
         box-shadow: 0 4px 12px rgba(4,83,203,.25);
     }
 
-    @media (max-width: 768px) {
+    @@media (max-width: 768px) {
         .lp-hero { padding: 1.5rem 1.25rem 1rem; }
         .lp-hero h1 { font-size: 1.2rem; }
         .lp-table th, .lp-table td { padding: .5rem .75rem; font-size: .8rem; }
