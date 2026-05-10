@@ -447,7 +447,10 @@ class CLIMaintenanceController extends BaseApiController
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
-        return app(CLIPermissionController::class)->sync($request);
+        return app(CLIPermissionController::class)->sync(
+            $request,
+            app(\App\Services\PermissionSyncService::class)
+        );
     }
 
     /**
