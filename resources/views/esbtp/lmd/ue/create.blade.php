@@ -209,7 +209,8 @@
                 </div>
                 <div class="col-md-4">
                     <label class="form-label fw-semibold">Type UE</label>
-                    <select name="type_ue" class="form-select @error('type_ue') is-invalid @enderror">
+                    <select name="type_ue" class="form-select @error('type_ue') is-invalid @enderror"
+                            @change="autoFillNameFromType($event)">
                         <option value="">-- Choisir --</option>
                         @php
                             $currentTypeUe = old('type_ue', $ue->type_ue?->value ?? '');
@@ -421,6 +422,13 @@
                 const words = this.ueName.trim().split(/\s+/).filter(w => w.length > 0);
                 const abbr = words.map(w => w.substring(0, 3).toUpperCase()).slice(0, 3).join('-');
                 this.ueCode = 'UE-' + abbr;
+            },
+
+            // UE virtuelle UEMOA : si Code et Intitulé vides, utiliser le label du Type comme Intitulé
+            autoFillNameFromType(event) {
+                if (!this.ueCode.trim() && !this.ueName.trim() && event.target.value) {
+                    this.ueName = event.target.options[event.target.selectedIndex].text;
+                }
             },
 
             addEcue() {
