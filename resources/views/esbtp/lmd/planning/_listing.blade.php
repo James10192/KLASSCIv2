@@ -96,31 +96,5 @@
             </table>
         </div>
 
-        @once
-        @push('styles')
-        <style>
-        /* Subtle column tinting for LMD planning maquette — opacity ≤ 6% to preserve KLASSCI monochrome */
-        .lp-table .lp-col-cm     { background: rgba(4, 83, 203, .04); }
-        .lp-table .lp-col-td     { background: rgba(59, 125, 219, .05); }
-        .lp-table .lp-col-tp     { background: rgba(94, 145, 222, .05); }
-        .lp-table .lp-col-projet { background: rgba(99, 102, 241, .04); }
-        .lp-table .lp-col-tpe    { background: rgba(244, 114, 182, .04); }
-        .lp-table .lp-col-total  { background: rgba(16, 185, 129, .06); }
-        .lp-table .lp-col-cect   { background: rgba(245, 158, 11, .06); }
-        .lp-table .lp-th-tip {
-            cursor: help;
-            border-bottom: 1px dotted #cbd5e1;
-        }
-        /* Slightly stronger tint on header so the column "rail" reads from the top */
-        .lp-table thead .lp-col-cm     { background: rgba(4, 83, 203, .07); }
-        .lp-table thead .lp-col-td     { background: rgba(59, 125, 219, .08); }
-        .lp-table thead .lp-col-tp     { background: rgba(94, 145, 222, .08); }
-        .lp-table thead .lp-col-projet { background: rgba(99, 102, 241, .07); }
-        .lp-table thead .lp-col-tpe    { background: rgba(244, 114, 182, .07); }
-        .lp-table thead .lp-col-total  { background: rgba(16, 185, 129, .09); }
-        .lp-table thead .lp-col-cect   { background: rgba(245, 158, 11, .09); }
-        </style>
-        @endpush
-        @endonce
     </div>
 @endif
