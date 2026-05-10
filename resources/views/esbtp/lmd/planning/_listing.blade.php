@@ -43,9 +43,14 @@
             <table class="lp-table" id="lpListing">
                 <thead><tr>
                     <th style="width: 35%;">Intitulé</th><th>Type</th>
-                    <th class="lp-th-num">CM</th><th class="lp-th-num">TD</th><th class="lp-th-num">TP</th>
-                    <th class="lp-th-num">Projet</th><th class="lp-th-num">TPE</th><th class="lp-th-num">Total</th>
-                    <th class="lp-th-num">CECT</th><th>Enseignant</th>
+                    <th class="lp-th-num lp-col-cm lp-th-tip" title="Cours Magistraux — Heures théoriques en grand groupe">CM</th>
+                    <th class="lp-th-num lp-col-td lp-th-tip" title="Travaux Dirigés — Heures pratiques en petit groupe">TD</th>
+                    <th class="lp-th-num lp-col-tp lp-th-tip" title="Travaux Pratiques — Heures en laboratoire / atelier">TP</th>
+                    <th class="lp-th-num lp-col-projet lp-th-tip" title="Heures dédiées au projet pédagogique">Projet</th>
+                    <th class="lp-th-num lp-col-tpe lp-th-tip" title="Travail Personnel Étudiant — Travail individuel hors cours">TPE</th>
+                    <th class="lp-th-num lp-col-total lp-th-tip" title="Volume horaire total = CM + TD + TP + Projet + TPE">Total</th>
+                    <th class="lp-th-num lp-col-cect lp-th-tip" title="Crédits ECTS UEMOA">CECT</th>
+                    <th>Enseignant</th>
                 </tr></thead>
                 <tbody>
                     @foreach($rows as $idx => $row)
@@ -58,8 +63,8 @@
                             </td>
                             <td><span class="lp-type-chip">{{ $typeLabel }}</span></td>
                             <td colspan="5" class="lp-volume">{{ $row['ecues']->count() }} ECUE</td>
-                            <td class="lp-volume lp-volume-total">—</td>
-                            <td class="lp-volume lp-volume-total">{{ $row['cect'] }}</td>
+                            <td class="lp-volume lp-volume-total lp-col-total">—</td>
+                            <td class="lp-volume lp-volume-total lp-col-cect">{{ $row['cect'] }}</td>
                             <td><span class="lp-no-planif">UE</span></td>
                         </tr>
                         @foreach($row['ecues'] as $entry)
@@ -71,17 +76,17 @@
                                 </td>
                                 <td>—</td>
                                 @if($planif)
-                                    <td class="lp-volume @if(!$planif->volume_horaire_cm) lp-volume-zero @endif">{{ $planif->volume_horaire_cm ?? 0 }}</td>
-                                    <td class="lp-volume @if(!$planif->volume_horaire_td) lp-volume-zero @endif">{{ $planif->volume_horaire_td ?? 0 }}</td>
-                                    <td class="lp-volume @if(!$planif->volume_horaire_tp) lp-volume-zero @endif">{{ $planif->volume_horaire_tp ?? 0 }}</td>
-                                    <td class="lp-volume @if(!$planif->volume_horaire_projet) lp-volume-zero @endif">{{ $planif->volume_horaire_projet ?? 0 }}</td>
-                                    <td class="lp-volume @if(!$planif->volume_horaire_tpe) lp-volume-zero @endif">{{ $planif->volume_horaire_tpe ?? 0 }}</td>
-                                    <td class="lp-volume lp-volume-total">{{ $planif->volume_horaire_total }}</td>
-                                    <td class="lp-volume">{{ $ecue->credit_ecue ?? '—' }}</td>
+                                    <td class="lp-volume lp-col-cm @if(!$planif->volume_horaire_cm) lp-volume-zero @endif">{{ $planif->volume_horaire_cm ?? 0 }}</td>
+                                    <td class="lp-volume lp-col-td @if(!$planif->volume_horaire_td) lp-volume-zero @endif">{{ $planif->volume_horaire_td ?? 0 }}</td>
+                                    <td class="lp-volume lp-col-tp @if(!$planif->volume_horaire_tp) lp-volume-zero @endif">{{ $planif->volume_horaire_tp ?? 0 }}</td>
+                                    <td class="lp-volume lp-col-projet @if(!$planif->volume_horaire_projet) lp-volume-zero @endif">{{ $planif->volume_horaire_projet ?? 0 }}</td>
+                                    <td class="lp-volume lp-col-tpe @if(!$planif->volume_horaire_tpe) lp-volume-zero @endif">{{ $planif->volume_horaire_tpe ?? 0 }}</td>
+                                    <td class="lp-volume lp-volume-total lp-col-total">{{ $planif->volume_horaire_total }}</td>
+                                    <td class="lp-volume lp-col-cect">{{ $ecue->credit_ecue ?? '—' }}</td>
                                     <td>{{ $planif->enseignantPrincipal?->name ?? '—' }}</td>
                                 @else
                                     <td colspan="6" class="lp-no-planif">Non planifié</td>
-                                    <td class="lp-volume">{{ $ecue->credit_ecue ?? '—' }}</td>
+                                    <td class="lp-volume lp-col-cect">{{ $ecue->credit_ecue ?? '—' }}</td>
                                     <td class="lp-no-planif">—</td>
                                 @endif
                             </tr>
@@ -90,5 +95,32 @@
                 </tbody>
             </table>
         </div>
+
+        @once
+        @push('styles')
+        <style>
+        /* Subtle column tinting for LMD planning maquette — opacity ≤ 6% to preserve KLASSCI monochrome */
+        .lp-table .lp-col-cm     { background: rgba(4, 83, 203, .04); }
+        .lp-table .lp-col-td     { background: rgba(59, 125, 219, .05); }
+        .lp-table .lp-col-tp     { background: rgba(94, 145, 222, .05); }
+        .lp-table .lp-col-projet { background: rgba(99, 102, 241, .04); }
+        .lp-table .lp-col-tpe    { background: rgba(244, 114, 182, .04); }
+        .lp-table .lp-col-total  { background: rgba(16, 185, 129, .06); }
+        .lp-table .lp-col-cect   { background: rgba(245, 158, 11, .06); }
+        .lp-table .lp-th-tip {
+            cursor: help;
+            border-bottom: 1px dotted #cbd5e1;
+        }
+        /* Slightly stronger tint on header so the column "rail" reads from the top */
+        .lp-table thead .lp-col-cm     { background: rgba(4, 83, 203, .07); }
+        .lp-table thead .lp-col-td     { background: rgba(59, 125, 219, .08); }
+        .lp-table thead .lp-col-tp     { background: rgba(94, 145, 222, .08); }
+        .lp-table thead .lp-col-projet { background: rgba(99, 102, 241, .07); }
+        .lp-table thead .lp-col-tpe    { background: rgba(244, 114, 182, .07); }
+        .lp-table thead .lp-col-total  { background: rgba(16, 185, 129, .09); }
+        .lp-table thead .lp-col-cect   { background: rgba(245, 158, 11, .09); }
+        </style>
+        @endpush
+        @endonce
     </div>
 @endif
