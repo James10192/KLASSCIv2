@@ -3,6 +3,7 @@
 namespace App\Services\LMD;
 
 use App\Enums\TypeUE;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPLMDDomaine;
 use App\Models\ESBTPLMDMention;
@@ -34,6 +35,11 @@ class LMDImportService
     public function import(array $spec, ?int $userId = null): array
     {
         return DB::transaction(function () use ($spec, $userId) {
+            $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first()
+                ?? ESBTPAnneeUniversitaire::where('is_active', true)->orderByDesc('start_date')->first();
+            if (!$annee) {
+                throw new \RuntimeException("Aucune année universitaire courante/active trouvée. Créez-en une d'abord.");
+            }
             $domaine = $this->upsertDomaine($spec['domaine'], $userId);
             $mention = $this->upsertMention($spec['mention'], $domaine, $userId);
             $filiere = isset($spec['filiere']) ? $this->upsertFiliere($spec['filiere'], $userId) : null;
@@ -69,7 +75,7 @@ class LMDImportService
                     [$ecue, $ecueCreated] = $this->upsertECUE($ecueSpec, $ue, $filiere, $niveau, $userId);
                     $stats[$ecueCreated ? 'ecues_attached' : 'ecues_updated']++;
 
-                    [, $planifCreated] = $this->upsertPlanification($ecueSpec, $ecue, $filiere, $niveau, (int) $ueSpec['semestre']);
+                    [, $planifCreated] = $this->upsertPlanification($ecueSpec, $ecue, $filiere, $niveau, (int) $ueSpec['semestre'], $annee);
                     $stats[$planifCreated ? 'planifs_attached' : 'planifs_updated']++;
                 }
             }
@@ -170,14 +176,15 @@ class LMDImportService
         $existing = $code ? ESBTPMatiere::where('code', $code)->first() : null;
         $created = $existing === null;
 
+        // Note: filiere_id was dropped from esbtp_matieres in 2025-04 cleanup migration —
+        // the relationship lives in pivot esbtp_matiere_filiere now (see linkMatiereFiliere).
         $payload = [
             'name' => $data['name'],
             'code' => $code,
             'unite_enseignement_id' => $ue->id,
-            'filiere_id' => $filiere?->id,
             'niveau_etude_id' => $niveau->id,
             'coefficient' => (int) ($data['credit_ecue'] ?? 1),
-            'type_formation' => 'lmd',
+            'type_formation' => 'generale',
             'is_active' => true,
             'created_by' => $existing?->created_by ?? $userId,
             'updated_by' => $userId,
@@ -185,12 +192,30 @@ class LMDImportService
 
         $matiere = $existing ?? new ESBTPMatiere();
         $matiere->fill($payload);
+        // LMD-specific columns added in 2026-03 migration; not in $fillable, set directly.
+        $matiere->credit_ecue = (int) ($data['credit_ecue'] ?? 1);
+        $matiere->coefficient_ecue = (float) ($data['credit_ecue'] ?? 1);
         $matiere->save();
+
+        if ($filiere) {
+            $this->linkMatiereFiliere($matiere->id, $filiere->id);
+        }
+
         return [$matiere, $created];
     }
 
+    private function linkMatiereFiliere(int $matiereId, int $filiereId): void
+    {
+        $now = now();
+        DB::table('esbtp_matiere_filiere')->upsert(
+            [['matiere_id' => $matiereId, 'filiere_id' => $filiereId, 'is_active' => true, 'created_at' => $now, 'updated_at' => $now]],
+            ['matiere_id', 'filiere_id'],
+            ['is_active', 'updated_at']
+        );
+    }
+
     /** @return array{0: ESBTPPlanificationAcademique, 1: bool} */
-    private function upsertPlanification(array $data, ESBTPMatiere $matiere, ?ESBTPFiliere $filiere, ESBTPNiveauEtude $niveau, int $semestre): array
+    private function upsertPlanification(array $data, ESBTPMatiere $matiere, ?ESBTPFiliere $filiere, ESBTPNiveauEtude $niveau, int $semestre, ESBTPAnneeUniversitaire $annee): array
     {
         if (!$filiere) {
             throw new \InvalidArgumentException("Planification requiert une filière (matière {$matiere->name})");
@@ -202,7 +227,8 @@ class LMDImportService
         $projet = (int) ($data['projet'] ?? 0);
         $tpe = (int) ($data['tpe'] ?? 0);
 
-        $existing = ESBTPPlanificationAcademique::where('filiere_id', $filiere->id)
+        $existing = ESBTPPlanificationAcademique::where('annee_universitaire_id', $annee->id)
+            ->where('filiere_id', $filiere->id)
             ->where('niveau_etude_id', $niveau->id)
             ->where('semestre', $semestre)
             ->where('matiere_id', $matiere->id)
@@ -210,6 +236,7 @@ class LMDImportService
         $created = $existing === null;
 
         $payload = [
+            'annee_universitaire_id' => $annee->id,
             'filiere_id' => $filiere->id,
             'niveau_etude_id' => $niveau->id,
             'semestre' => $semestre,
