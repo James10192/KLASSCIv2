@@ -30,6 +30,9 @@ class ESBTPPlanningGeneralController extends Controller
     protected $planningConfigService;
     protected $planningStatsService;
 
+    /** Types LMD exclus du planning général BTS (Licence/Master/Doctorat). */
+    private const LMD_TYPES = ['Licence', 'Master', 'Doctorat'];
+
     public function __construct(
         PlanningConfigurationService $planningConfigService,
         PlanningStatisticsService $planningStatsService,
@@ -109,7 +112,8 @@ class ESBTPPlanningGeneralController extends Controller
         }
         $filieres = $filieres->orderBy("name")->get();
 
-        $niveaux = ESBTPNiveauEtude::where("is_active", true);
+        $niveaux = ESBTPNiveauEtude::where("is_active", true)
+            ->whereNotIn("type", self::LMD_TYPES);
         if ($niveauFilter) {
             $niveaux->where("id", $niveauFilter);
         }
@@ -452,7 +456,7 @@ class ESBTPPlanningGeneralController extends Controller
 
         // Filières et niveaux pour les selects de filtrage
         $filieres = ESBTPFiliere::orderBy("name")->get();
-        $niveaux = ESBTPNiveauEtude::orderBy("name")->get();
+        $niveaux = ESBTPNiveauEtude::whereNotIn("type", self::LMD_TYPES)->orderBy("name")->get();
 
         // Construire la liste des classes filtrées
         $filteredClassIds = null;
@@ -1825,6 +1829,7 @@ class ESBTPPlanningGeneralController extends Controller
             ->orderBy("name")
             ->get();
         $niveaux = ESBTPNiveauEtude::where("is_active", true)
+            ->whereNotIn("type", self::LMD_TYPES)
             ->orderBy("year")
             ->get();
 

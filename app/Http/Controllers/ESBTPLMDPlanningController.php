@@ -17,6 +17,9 @@ use Illuminate\View\View;
  */
 class ESBTPLMDPlanningController extends Controller
 {
+    /** Types `esbtp_niveau_etudes.type` identifiant les niveaux LMD (valeurs canoniques de niveaux-etudes/create). */
+    private const LMD_TYPES = ['Licence', 'Master', 'Doctorat'];
+
     public function index(Request $request): View
     {
         $parcours = ESBTPLMDParcours::with(['filiere', 'mention.domaine'])
@@ -24,7 +27,7 @@ class ESBTPLMDPlanningController extends Controller
             ->orderBy('name')
             ->get();
 
-        $niveaux = ESBTPNiveauEtude::orderBy('year')->orderBy('name')->get();
+        $niveaux = ESBTPNiveauEtude::whereIn('type', self::LMD_TYPES)->orderBy('year')->orderBy('name')->get();
         $semestres = range(1, 10);
 
         $filters = [

@@ -136,8 +136,10 @@ class LMDImportService
 
     private function upsertNiveau(array $data): ESBTPNiveauEtude
     {
+        // Match by (year + type) — multiple niveaux can share a year (BTS 1ère, Licence 1ère, etc.).
+        // Defaulting to 'Licence' since this service is LMD-only.
         return ESBTPNiveauEtude::firstOrCreate(
-            ['year' => (int) $data['year']],
+            ['year' => (int) $data['year'], 'type' => $data['type'] ?? 'Licence'],
             ['name' => $data['name'], 'libelle' => $data['libelle'] ?? $data['name'], 'is_active' => true]
         );
     }
