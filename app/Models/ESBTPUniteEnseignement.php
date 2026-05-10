@@ -29,7 +29,7 @@ class ESBTPUniteEnseignement extends Model
         'description',
         'credit',
         'semestre',
-        'type_ue',          // fondamentale|methodologique|decouverte|transversale
+        'type_ue',          // App\Enums\TypeUE — 7 catégories UEMOA
         'filiere_id',
         'niveau_id',
         'parcours_id',

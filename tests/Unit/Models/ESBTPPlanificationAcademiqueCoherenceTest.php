@@ -101,4 +101,21 @@ class ESBTPPlanificationAcademiqueCoherenceTest extends TestCase
 
         $this->assertSame(50, $planif->volume_horaire_total_calcule);
     }
+
+    public function test_missing_enseignant_principal_returns_error(): void
+    {
+        // BTS legacy rows commonly have enseignant_principal_id = NULL.
+        // The validator should consistently flag this rather than silently passing.
+        $planif = new ESBTPPlanificationAcademique([
+            'volume_horaire_total' => 30,
+            'volume_horaire_cm' => 10,
+            'volume_horaire_td' => 10,
+            'volume_horaire_tp' => 10,
+            'enseignant_principal_id' => null,
+        ]);
+
+        $erreurs = $planif->validerCoherence();
+
+        $this->assertContains('Un enseignant principal doit être assigné', $erreurs);
+    }
 }

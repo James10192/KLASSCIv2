@@ -222,10 +222,9 @@
             <label class="lu-filter-label">Type UE</label>
             <select class="lu-filter-control" x-model="filters.type_ue" @change="loadUes()">
                 <option value="">Tous</option>
-                <option value="fondamentale">Fondamentale</option>
-                <option value="methodologique">Méthodologique</option>
-                <option value="decouverte">Découverte</option>
-                <option value="transversale">Transversale</option>
+                @foreach(\App\Enums\TypeUE::cases() as $type)
+                    <option value="{{ $type->value }}">{{ $type->label() }}</option>
+                @endforeach
             </select>
         </div>
     </div>
@@ -409,10 +408,9 @@
                             <div>
                                 <label for="ue_type_ue"><i class="fas fa-tag"></i> Type UE <span class="text-danger">*</span></label>
                                 <select class="form-select" id="ue_type_ue" name="type_ue" required>
-                                    <option value="fondamentale">Fondamentale</option>
-                                    <option value="methodologique">Méthodologique</option>
-                                    <option value="decouverte">Découverte</option>
-                                    <option value="transversale">Transversale</option>
+                                    @foreach(\App\Enums\TypeUE::cases() as $type)
+                                        <option value="{{ $type->value }}">{{ $type->label() }}</option>
+                                    @endforeach
                                 </select>
                             </div>
                         </div>
@@ -699,7 +697,7 @@ function ueManager() {
                 document.getElementById('ue_name').value = data.name || '';
                 document.getElementById('ue_code').value = data.code || '';
                 document.getElementById('ue_credit').value = data.credit || '';
-                document.getElementById('ue_type_ue').value = data.type_ue || 'fondamentale';
+                document.getElementById('ue_type_ue').value = data.type_ue || '';
                 document.getElementById('ue_description').value = data.description || '';
             } catch (e) { console.error(e); }
 
