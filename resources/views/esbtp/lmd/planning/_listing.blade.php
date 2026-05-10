@@ -26,11 +26,10 @@
     <div class="lp-card">
         <div class="lp-card-header">
             <h2 class="lp-card-title"><span class="lp-card-title-icon"><i class="fas fa-book"></i></span>{{ $parcoursSelected->name }}</h2>
-            <div style="display:flex; align-items:center; gap:1rem;">
+            <div class="lp-card-actions">
                 <span class="lp-card-meta">{{ $rows->count() }} UE · {{ $kpis['ecue_count'] }} ECUE</span>
                 <button type="button"
-                    class="lp-empty-cta"
-                    style="padding:.4rem .85rem; font-size:.8rem;"
+                    class="lp-empty-cta lp-empty-cta-sm"
                     onclick="window.dispatchEvent(new CustomEvent('lpm:open', { detail: { parcoursId: {{ $parcoursSelected->id }}, parcoursName: {!! json_encode($parcoursSelected->name) !!} } }))">
                     <i class="fas fa-edit"></i> Modifier les UE
                 </button>

@@ -3,6 +3,7 @@
 namespace App\Services\LMD;
 
 use App\Models\ESBTPLMDParcours;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -25,11 +26,15 @@ class ParcoursUeSyncService
      */
     public function sync(ESBTPLMDParcours $parcours, array $links, bool $detachMissing = true): array
     {
-        $current = $this->loadCurrentPivot($parcours);
         $desired = $this->normalizeDesired($links);
-        $diff = $this->computeDiff($current, $desired, $detachMissing);
 
-        return DB::transaction(function () use ($parcours, $diff) {
+        return DB::transaction(function () use ($parcours, $desired, $detachMissing) {
+            // Lock pivot rows for this parcours so a concurrent sync waits its turn —
+            // prevents two admins computing diffs against the same snapshot then both
+            // attaching, which would 1062 on the unique (parcours_id, ue_id, semestre).
+            $current = $this->loadCurrentPivot($parcours, lockForUpdate: true);
+            $diff = $this->computeDiff($current, $desired, $detachMissing);
+
             foreach ($diff['attach'] as $row) {
                 $parcours->unitesEnseignement()->attach($row['ue_id'], [
                     'semestre' => $row['semestre'],
@@ -104,11 +109,13 @@ class ParcoursUeSyncService
     /**
      * @return array<string, array{ue_id:int, semestre:int, is_optional:bool, ordre:int}>
      */
-    private function loadCurrentPivot(ESBTPLMDParcours $parcours): array
+    private function loadCurrentPivot(ESBTPLMDParcours $parcours, bool $lockForUpdate = false): array
     {
-        $rows = DB::table('esbtp_lmd_parcours_ue')
-            ->where('parcours_id', $parcours->id)
-            ->get(['unite_enseignement_id', 'semestre', 'is_optional', 'ordre']);
+        $query = DB::table('esbtp_lmd_parcours_ue')->where('parcours_id', $parcours->id);
+        if ($lockForUpdate) {
+            $query->lockForUpdate();
+        }
+        $rows = $query->get(['unite_enseignement_id', 'semestre', 'is_optional', 'ordre']);
 
         $map = [];
         foreach ($rows as $row) {

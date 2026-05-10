@@ -297,7 +297,7 @@ document.addEventListener('alpine:init', () => {
     x-data="lpmModal"
     x-show="open"
     x-cloak
-    @keydown.escape.window="open && close()"
+    @keydown.escape.window="open && !saving && close()"
     x-transition.opacity.duration.150ms
     class="lpm-overlay"
     role="dialog"
