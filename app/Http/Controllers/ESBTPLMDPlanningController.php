@@ -32,7 +32,7 @@ class ESBTPLMDPlanningController extends Controller
 
         $filters = [
             'parcours_id' => $request->integer('parcours_id') ?: null,
-            'niveau_id' => $request->integer('niveau_id') ?: null,
+            'niveau_id' => $this->validateNiveauId($request->integer('niveau_id'), $niveaux),
             'semestre' => $request->integer('semestre') ?: null,
         ];
 
@@ -71,9 +71,10 @@ class ESBTPLMDPlanningController extends Controller
             ->orderBy('name')
             ->get();
 
+        $niveaux = ESBTPNiveauEtude::whereIn('type', self::LMD_TYPES)->get();
         $filters = [
             'parcours_id' => $request->integer('parcours_id') ?: null,
-            'niveau_id' => $request->integer('niveau_id') ?: null,
+            'niveau_id' => $this->validateNiveauId($request->integer('niveau_id'), $niveaux),
             'semestre' => $request->integer('semestre') ?: null,
         ];
 
@@ -96,6 +97,19 @@ class ESBTPLMDPlanningController extends Controller
             'kpis' => view('esbtp.lmd.planning._kpis', $viewData)->render(),
             'listing' => view('esbtp.lmd.planning._listing', $viewData)->render(),
         ]);
+    }
+
+    /**
+     * Defensively reject a niveau_id from URL/query that is NOT in the LMD set
+     * (typically a stale URL after the type-filter shipped). Falls back to null
+     * (= "tous niveaux") rather than silently returning empty results.
+     */
+    private function validateNiveauId(?int $niveauId, $allowedNiveaux): ?int
+    {
+        if (!$niveauId) {
+            return null;
+        }
+        return $allowedNiveaux->firstWhere('id', $niveauId) ? $niveauId : null;
     }
 
     /**
