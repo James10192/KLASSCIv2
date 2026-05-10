@@ -47,7 +47,7 @@ class ESBTPLMDPlanningController extends Controller
             'cect_total' => $rows->sum('cect'),
         ];
 
-        return view('esbtp.lmd.planning.index', compact(
+        return view('esbtp.lmd.planning.show', compact(
             'parcours',
             'niveaux',
             'semestres',
