@@ -1110,5 +1110,19 @@ document.getElementById('ecue_form').addEventListener('submit', async function(e
     btn.disabled = false;
     updateCreditGauge();
 });
+
+// ── UE virtuelle UEMOA : auto-fill Intitulé depuis Type quand Code est vide ──
+(function () {
+    const codeEl = document.getElementById('ue_code');
+    const nameEl = document.getElementById('ue_name');
+    const typeEl = document.getElementById('ue_type_ue');
+    if (!codeEl || !nameEl || !typeEl) return;
+
+    typeEl.addEventListener('change', () => {
+        if (!codeEl.value.trim() && !nameEl.value.trim() && typeEl.value) {
+            nameEl.value = typeEl.options[typeEl.selectedIndex]?.text || '';
+        }
+    });
+})();
 </script>
 @endpush
