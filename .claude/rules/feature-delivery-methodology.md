@@ -107,6 +107,20 @@ Pattern UX critique quand une directrice doit saisir manuellement des dizaines/c
 4. **Hiérarchie expandable** plutôt que flat (Alpine `x-show` + caret animée)
 5. **Saisie progressive** : sauvegarde par UE, pas validation globale qui bloque tout. KPIs visibles (« 12 UE saisies, 35 ECUE, 90 cr / 180 attendus »).
 
+## Pièges Blade silencieux (cause des erreurs « expecting elseif/else/endif »)
+
+Blade scanne TOUT le contenu d'un fichier `.blade.php` y compris dans `<style>` et `<script>`. Tout `@<word>(...)` est candidat à être interprété comme directive. Échapper avec `@@` :
+
+| Pattern | Doit être | Pourquoi |
+|---|---|---|
+| `@media (...)` (CSS) | `@@media (...)` | Blade tente de matcher `@media` comme directive ouvrante |
+| `@keyframes name { ... }` | `@@keyframes name { ... }` | Idem |
+| `@import url(...)` | `@@import url(...)` | Idem |
+| `@font-face { ... }` | `@@font-face { ... }` | Idem |
+| `@click="..."` (Alpine HTML attr) | `x-on:click="..."` OU `@@click="..."` | Blade peut matcher comme directive |
+
+Symptôme : `syntax error, unexpected end of file, expecting "elseif" or "else" or "endif"` côté `storage/framework/views/<hash>.php`. Le compiled view est corrompu et persiste après `view:clear` car régénéré à partir de la source bugguée à la requête suivante.
+
 ## Anti-patterns à BLOQUER en review
 
 1. ❌ Coder sans /plan-and-confirm pour une feature multi-PR
