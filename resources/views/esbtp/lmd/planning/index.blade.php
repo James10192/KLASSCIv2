@@ -11,12 +11,12 @@
     .lp-hero-icon { width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.15); display: flex; align-items: center; justify-content: center; font-size: 1.35rem; flex-shrink: 0; color: #fff; }
     .lp-hero h1 { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; }
     .lp-hero p { color: rgba(255,255,255,.7); font-size: .88rem; margin: 0; }
-    .lp-kpis-card { display: flex; gap: .75rem; margin-bottom: 1rem; flex-wrap: wrap; background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1rem; box-shadow: 0 1px 3px rgba(15,23,42,.04); transition: opacity .2s ease; }
-    .lp-loading .lp-kpis-card, .lp-loading .lp-content-area { opacity: .55; pointer-events: none; }
-    .lp-kpi-block { flex: 1; min-width: 140px; background: rgba(4,83,203,.04); border: 1px solid rgba(4,83,203,.1); border-radius: 12px; padding: .9rem 1rem; display: flex; align-items: center; gap: .75rem; }
-    .lp-kpi-icon { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg,#0453cb,#3b7ddb); display: flex; align-items: center; justify-content: center; color: #fff; font-size: .95rem; }
-    .lp-kpi-value { font-size: 1.35rem; font-weight: 700; color: #0f172a; line-height: 1; }
-    .lp-kpi-label { font-size: .72rem; color: #64748b; margin-top: .15rem; }
+    .lp-loading .lp-kpis, .lp-loading .lp-content-area { opacity: .55; pointer-events: none; }
+    .lp-kpis { display: flex; gap: .75rem; margin-top: 1.5rem; flex-wrap: wrap; transition: opacity .2s ease; }
+    .lp-kpi { flex: 1; min-width: 140px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; padding: .9rem 1rem; display: flex; align-items: center; gap: .75rem; }
+    .lp-kpi-icon { width: 36px; height: 36px; border-radius: 10px; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; color: #fff; font-size: .95rem; }
+    .lp-kpi-value { font-size: 1.35rem; font-weight: 700; color: #fff; line-height: 1; }
+    .lp-kpi-label { font-size: .72rem; color: rgba(255,255,255,.65); margin-top: .15rem; }
     .lp-filters { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 1rem 1.25rem; margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(15,23,42,.04); position: relative; }
     .lp-filters-row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: flex-end; }
     .lp-filter-group { flex: 1 1 220px; min-width: 200px; display: flex; flex-direction: column; }
@@ -67,6 +67,9 @@
                     <p>Maquette pédagogique UE / ECUE par parcours et semestre</p>
                 </div>
             </div>
+        </div>
+        <div class="lp-kpis" id="lpKpis">
+            @include('esbtp.lmd.planning._kpis')
         </div>
     </div>
 
@@ -140,11 +143,12 @@ document.addEventListener('alpine:init', () => {
                     if (v !== null && v !== '') params.append(k, v);
                 });
                 const resp = await fetch(this.partialUrl + '?' + params.toString(), {
-                    headers: { 'Accept': 'text/html', 'X-Requested-With': 'XMLHttpRequest' },
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
                 });
                 if (!resp.ok) throw new Error('HTTP ' + resp.status);
-                const html = await resp.text();
-                document.getElementById('lpContent').innerHTML = html;
+                const json = await resp.json();
+                document.getElementById('lpKpis').innerHTML = json.kpis || '';
+                document.getElementById('lpContent').innerHTML = json.listing || '';
             } catch (e) {
                 console.error('Planning fetch failed:', e);
             } finally {

@@ -118,6 +118,9 @@ Blade scanne TOUT le contenu d'un fichier `.blade.php` y compris dans `<style>` 
 | `@import url(...)` | `@@import url(...)` | Idem |
 | `@font-face { ... }` | `@@font-face { ... }` | Idem |
 | `@click="..."` (Alpine HTML attr) | `x-on:click="..."` OU `@@click="..."` | Blade peut matcher comme directive |
+| `:class="{ 'foo': cond[{{ $idx }}] }"` (Alpine `:class` object literal avec `{{ $idx }}`) | Ternary `:class="cond[{{ $idx }}] ? 'foo' : ''"` | Blade régex confond `{` JS et `{{` Blade, miscount brace depth |
+| `x-data="{ key: {{ $idx }} }"` (interpolation dans object literal Alpine) | Registration via `<script>` : `Alpine.data('cmp', () => ({...}))` + `x-data="cmp"` (string ref). État initial via `@json($var)` dans la factory, jamais en interpolation directe | Idem brace miscount |
+| `x-data="{ items: @json($items) }"` (peut casser quote-escaping HTML) | `data-items='@json($items)'` + dans factory : `JSON.parse(this.$root.dataset.items)` | HTML attribute escaping conflict avec JSON inline |
 
 Symptôme : `syntax error, unexpected end of file, expecting "elseif" or "else" or "endif"` côté `storage/framework/views/<hash>.php`. Le compiled view est corrompu et persiste après `view:clear` car régénéré à partir de la source bugguée à la requête suivante.
 

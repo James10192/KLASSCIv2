@@ -1,10 +1,3 @@
-{{-- KPIs (rendered server-side, replaced via AJAX) --}}
-<div class="lp-kpis-card" id="lpKpis">
-    <div class="lp-kpi-block"><div class="lp-kpi-icon"><i class="fas fa-cubes"></i></div><div><div class="lp-kpi-value">{{ $kpis['ue_count'] }}</div><div class="lp-kpi-label">Unités d'enseignement</div></div></div>
-    <div class="lp-kpi-block"><div class="lp-kpi-icon"><i class="fas fa-list"></i></div><div><div class="lp-kpi-value">{{ $kpis['ecue_count'] }}</div><div class="lp-kpi-label">ECUE / matières</div></div></div>
-    <div class="lp-kpi-block"><div class="lp-kpi-icon"><i class="fas fa-award"></i></div><div><div class="lp-kpi-value">{{ $kpis['cect_total'] }}</div><div class="lp-kpi-label">Crédits CECT total</div></div></div>
-</div>
-
 @if($parcours->isEmpty())
     <div class="lp-empty">
         <div class="lp-empty-icon"><i class="fas fa-route"></i></div>

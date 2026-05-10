@@ -59,9 +59,9 @@ class ESBTPLMDPlanningController extends Controller
     }
 
     /**
-     * GET /esbtp/lmd/planning/partial — returns just the listing fragment for AJAX reload.
+     * GET /esbtp/lmd/planning/partial — returns JSON {kpis, listing} for AJAX reload.
      */
-    public function partial(Request $request): View
+    public function partial(Request $request)
     {
         $parcours = ESBTPLMDParcours::with(['filiere', 'mention.domaine'])
             ->where('is_active', true)
@@ -88,7 +88,11 @@ class ESBTPLMDPlanningController extends Controller
             'cect_total' => $rows->sum('cect'),
         ];
 
-        return view('esbtp.lmd.planning._listing', compact('parcours', 'parcoursSelected', 'rows', 'kpis', 'filters'));
+        $viewData = compact('parcours', 'parcoursSelected', 'rows', 'kpis', 'filters');
+        return response()->json([
+            'kpis' => view('esbtp.lmd.planning._kpis', $viewData)->render(),
+            'listing' => view('esbtp.lmd.planning._listing', $viewData)->render(),
+        ]);
     }
 
     /**
