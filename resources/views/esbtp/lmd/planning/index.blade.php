@@ -375,7 +375,7 @@
                                 $hasCode = !empty($ue->code);
                                 $typeLabel = $ue->type_ue?->label() ?? '—';
                             @endphp
-                            <tr class="lp-ue-row" @click="expanded[{{ $idx }}] = !expanded[{{ $idx }}]">
+                            <tr class="lp-ue-row" x-on:click="expanded[{{ $idx }}] = !expanded[{{ $idx }}]">
                                 <td>
                                     <span class="lp-ue-caret" :class="{ 'lp-ue-caret--open': expanded[{{ $idx }}] }">
                                         <i class="fas fa-chevron-right"></i>
