@@ -8,6 +8,7 @@ use App\Models\ESBTPLMDDomaine;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPUniteEnseignement;
+use App\Services\LMD\LMDImportService;
 use App\Services\LMD\ParcoursUeSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -176,6 +177,71 @@ class CLILMDSetupController extends BaseApiController
             $stats['updated'],
             $stats['detached'],
             $stats['unchanged'],
+        ));
+    }
+
+    /**
+     * POST /api/cli/lmd/import
+     *
+     * Bulk import a full LMD maquette (Domaine + Mention + Parcours + Filière + UEs +
+     * ECUEs + Planifications) from a JSON spec. Idempotent — re-runs upsert silently.
+     *
+     * Body: see LMDImportService::import() docblock for the spec schema.
+     * Returns: { domaine, mention, parcours, filiere, niveaux, stats: {ues_attached, ecues_updated, ...} }
+     */
+    public function import(Request $request, LMDImportService $importer): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'domaine.name' => 'required|string|max:255',
+            'domaine.code' => 'nullable|string|max:50',
+            'mention.name' => 'required|string|max:255',
+            'mention.code' => 'nullable|string|max:50',
+            'parcours.name' => 'required|string|max:255',
+            'parcours.code' => 'nullable|string|max:50',
+            'parcours.credits_licence' => 'nullable|integer|min:0|max:600',
+            'parcours.credits_master' => 'nullable|integer|min:0|max:600',
+            'filiere.name' => 'nullable|string|max:255',
+            'filiere.code' => 'nullable|string|max:50',
+            'niveaux' => 'required|array|min:1',
+            'niveaux.*.name' => 'required|string|max:50',
+            'niveaux.*.year' => 'required|integer|between:1,8',
+            'ues' => 'required|array|min:1',
+            'ues.*.code' => 'nullable|string|max:50',
+            'ues.*.name' => 'required|string|max:255',
+            'ues.*.type_ue' => 'required|string',
+            'ues.*.credit' => 'required|integer|min:0|max:60',
+            'ues.*.niveau_year' => 'required|integer|between:1,8',
+            'ues.*.semestre' => 'required|integer|between:1,10',
+            'ues.*.is_optional' => 'sometimes|boolean',
+            'ues.*.ordre' => 'sometimes|integer|min:0|max:65535',
+            'ues.*.ecues' => 'required|array|min:1',
+            'ues.*.ecues.*.code' => 'nullable|string|max:50',
+            'ues.*.ecues.*.name' => 'required|string|max:255',
+            'ues.*.ecues.*.credit_ecue' => 'required|integer|min:0|max:60',
+            'ues.*.ecues.*.cm' => 'sometimes|integer|min:0|max:1000',
+            'ues.*.ecues.*.td' => 'sometimes|integer|min:0|max:1000',
+            'ues.*.ecues.*.tp' => 'sometimes|integer|min:0|max:1000',
+            'ues.*.ecues.*.projet' => 'sometimes|integer|min:0|max:1000',
+            'ues.*.ecues.*.tpe' => 'sometimes|integer|min:0|max:1000',
+        ]);
+
+        $result = $importer->import($validated, $request->user()->id);
+
+        return $this->successResponse($result, sprintf(
+            'Maquette importée : %d UE (+%d/~%d), %d ECUE (+%d/~%d), %d planif (+%d/~%d)',
+            $result['stats']['ues_attached'] + $result['stats']['ues_updated'],
+            $result['stats']['ues_attached'],
+            $result['stats']['ues_updated'],
+            $result['stats']['ecues_attached'] + $result['stats']['ecues_updated'],
+            $result['stats']['ecues_attached'],
+            $result['stats']['ecues_updated'],
+            $result['stats']['planifs_attached'] + $result['stats']['planifs_updated'],
+            $result['stats']['planifs_attached'],
+            $result['stats']['planifs_updated'],
         ));
     }
 
