@@ -57,7 +57,10 @@
 @endpush
 
 @section('content')
-<div class="lp-page" x-data="lpPlanning" :class="loading ? 'lp-loading' : ''">
+<div class="lp-page"
+     x-data="lpPlanning"
+     :class="loading ? 'lp-loading' : ''"
+     @lpm:saved.window="fetchPartial()">
     <div class="lp-hero">
         <div class="lp-hero-top">
             <div class="lp-hero-left">
@@ -114,6 +117,8 @@
         @include('esbtp.lmd.planning._listing')
     </div>
 </div>
+
+@include('esbtp.lmd.planning._link_ue_modal')
 @endsection
 
 @push('scripts')
