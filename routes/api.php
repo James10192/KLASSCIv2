@@ -276,6 +276,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // LMD hierarchy (write — bulk setup of Domaine + Mention + Parcours + optional Filiere)
         Route::post('/lmd/setup', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'setup'])->name('lmd.setup');
 
+        // LMD UE linking (idempotent — append by default, sync mode opt-in)
+        Route::post('/lmd/parcours/{parcours}/link-ues', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'linkUes'])->name('lmd.link-ues');
+
         // Settings
         Route::put('/settings/{key}', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settingsUpdate'])->name('settings.update');
 
