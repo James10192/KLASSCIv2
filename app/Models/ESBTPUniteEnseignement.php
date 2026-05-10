@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TypeUE;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -28,7 +29,7 @@ class ESBTPUniteEnseignement extends Model
         'description',
         'credit',
         'semestre',
-        'type_ue',          // fondamentale|methodologique|decouverte|transversale
+        'type_ue',          // App\Enums\TypeUE — 7 catégories UEMOA
         'filiere_id',
         'niveau_id',
         'parcours_id',
@@ -46,13 +47,8 @@ class ESBTPUniteEnseignement extends Model
         'credit' => 'integer',
         'semestre' => 'integer',
         'is_active' => 'boolean',
+        'type_ue' => TypeUE::class,
     ];
-
-    // Types d'UE dans le systeme LMD
-    const TYPE_FONDAMENTALE  = 'fondamentale';
-    const TYPE_METHODOLOGIQUE = 'methodologique';
-    const TYPE_DECOUVERTE    = 'decouverte';
-    const TYPE_TRANSVERSALE  = 'transversale';
 
     /**
      * Relation avec les matières appartenant à cette UE.

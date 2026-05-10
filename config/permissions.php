@@ -975,6 +975,19 @@ return [
             'icon' => 'fa-tasks',
             'aliases' => ['manage-planning'],
         ],
+
+        // ===== Planning LMD (UEMOA) =====
+        'lmd.planning.view' => [
+            'label' => 'Voir le planning LMD (UE/ECUE par parcours)',
+            'group' => 'LMD',
+            'icon' => 'fa-graduation-cap',
+        ],
+        'lmd.planning.edit' => [
+            'label' => 'Modifier le planning LMD (volumes, crédits, coefficients)',
+            'group' => 'LMD',
+            'icon' => 'fa-edit',
+        ],
+
         'timetables.view' => [
             'label' => 'Voir les emplois du temps',
             'group' => 'Planning',
@@ -1383,6 +1396,7 @@ return [
             'attendances.generate_codes',
             'session_reports.view',
             'planning.view', 'planning.edit', 'planning.manage',
+            'lmd.planning.view', 'lmd.planning.edit',
             'timetables.view', 'timetables.view_all', 'timetables.create', 'timetables.edit', 'timetables.delete',
             'schedules.view', 'schedules.create', 'schedules.edit',
             'personnel.view', 'personnel.manage',

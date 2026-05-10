@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TypeUE;
 use App\Models\ESBTPUniteEnseignement;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPLMDParcours;
@@ -9,6 +10,7 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ESBTPLMDUEController extends Controller
 {
@@ -140,15 +142,10 @@ class ESBTPLMDUEController extends Controller
     {
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
-            'code'        => 'required|string|max:50|unique:esbtp_unites_enseignement,code',
+            'code'        => 'nullable|string|max:50|unique:esbtp_unites_enseignement,code',
             'description' => 'nullable|string',
             'credit'      => 'nullable|integer|min:1',
-            'type_ue'     => 'required|in:' . implode(',', [
-                \App\Models\ESBTPUniteEnseignement::TYPE_FONDAMENTALE,
-                \App\Models\ESBTPUniteEnseignement::TYPE_METHODOLOGIQUE,
-                \App\Models\ESBTPUniteEnseignement::TYPE_DECOUVERTE,
-                \App\Models\ESBTPUniteEnseignement::TYPE_TRANSVERSALE,
-            ]),
+            'type_ue'     => ['required', Rule::in(TypeUE::values())],
         ]);
 
         $validated['created_by'] = auth()->id();
@@ -194,15 +191,10 @@ class ESBTPLMDUEController extends Controller
     {
         $validated = $request->validate([
             'name'        => 'required|string|max:255',
-            'code'        => 'required|string|max:50|unique:esbtp_unites_enseignement,code,' . $ue->id,
+            'code'        => 'nullable|string|max:50|unique:esbtp_unites_enseignement,code,' . $ue->id,
             'description' => 'nullable|string',
             'credit'      => 'nullable|integer|min:1',
-            'type_ue'     => 'required|in:' . implode(',', [
-                \App\Models\ESBTPUniteEnseignement::TYPE_FONDAMENTALE,
-                \App\Models\ESBTPUniteEnseignement::TYPE_METHODOLOGIQUE,
-                \App\Models\ESBTPUniteEnseignement::TYPE_DECOUVERTE,
-                \App\Models\ESBTPUniteEnseignement::TYPE_TRANSVERSALE,
-            ]),
+            'type_ue'     => ['required', Rule::in(TypeUE::values())],
         ]);
 
         $validated['updated_by'] = auth()->id();
