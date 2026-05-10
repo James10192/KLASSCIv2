@@ -18,7 +18,9 @@
         <p>Le parcours <strong>{{ $parcoursSelected->name }}</strong> n'a pas encore d'unités d'enseignement associées.</p>
         <button type="button"
             class="lp-empty-cta"
-            onclick="window.dispatchEvent(new CustomEvent('lpm:open', { detail: { parcoursId: {{ $parcoursSelected->id }}, parcoursName: {!! json_encode($parcoursSelected->name) !!} } }))">
+            data-parcours-id="{{ $parcoursSelected->id }}"
+            data-parcours-name="{{ $parcoursSelected->name }}"
+            onclick="window.dispatchEvent(new CustomEvent('lpm:open', { detail: { parcoursId: parseInt(this.dataset.parcoursId, 10), parcoursName: this.dataset.parcoursName } }))">
             <i class="fas fa-link"></i> Lier des UE au parcours
         </button>
     </div>
@@ -30,7 +32,9 @@
                 <span class="lp-card-meta">{{ $rows->count() }} UE · {{ $kpis['ecue_count'] }} ECUE</span>
                 <button type="button"
                     class="lp-empty-cta lp-empty-cta-sm"
-                    onclick="window.dispatchEvent(new CustomEvent('lpm:open', { detail: { parcoursId: {{ $parcoursSelected->id }}, parcoursName: {!! json_encode($parcoursSelected->name) !!} } }))">
+                    data-parcours-id="{{ $parcoursSelected->id }}"
+                    data-parcours-name="{{ $parcoursSelected->name }}"
+                    onclick="window.dispatchEvent(new CustomEvent('lpm:open', { detail: { parcoursId: parseInt(this.dataset.parcoursId, 10), parcoursName: this.dataset.parcoursName } }))">
                     <i class="fas fa-edit"></i> Modifier les UE
                 </button>
             </div>
