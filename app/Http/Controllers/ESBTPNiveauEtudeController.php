@@ -13,14 +13,30 @@ class ESBTPNiveauEtudeController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
-        $niveauxEtudes = ESBTPNiveauEtude::with(['filieres', 'matieres', 'classes.etudiants'])
+        $query = ESBTPNiveauEtude::with(['filieres', 'matieres', 'classes'])
+            ->orderBy('type')
             ->orderBy('year')
-            ->orderBy('name')
-            ->get();
+            ->orderBy('name');
 
-        return view('esbtp.niveaux-etudes.index', compact('niveauxEtudes'));
+        if ($request->filled('type')) {
+            $query->where('type', $request->type);
+        }
+        if ($request->filled('status')) {
+            $query->where('is_active', $request->status === 'active');
+        }
+
+        $niveauxEtudes = $query->get();
+        $lmdTypes      = ['Licence', 'Master', 'Doctorat', 'Bachelor'];
+        $totalCount    = $niveauxEtudes->count();
+        $lmdCount      = $niveauxEtudes->whereIn('type', $lmdTypes)->count();
+        $btsCount      = $niveauxEtudes->where('type', 'BTS')->count();
+        $untypedCount  = $niveauxEtudes->whereNull('type')->count();
+
+        return view('esbtp.niveaux-etudes.index', compact(
+            'niveauxEtudes', 'totalCount', 'lmdCount', 'btsCount', 'untypedCount'
+        ));
     }
 
     /**
