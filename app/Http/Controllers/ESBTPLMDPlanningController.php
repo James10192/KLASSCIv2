@@ -24,7 +24,7 @@ class ESBTPLMDPlanningController extends Controller
             ->orderBy('name')
             ->get();
 
-        $niveaux = ESBTPNiveauEtude::orderBy('ordre')->get();
+        $niveaux = ESBTPNiveauEtude::orderBy('year')->orderBy('name')->get();
         $semestres = range(1, 10);
 
         $filters = [
