@@ -2446,6 +2446,9 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
     Route::get('planning', [\App\Http\Controllers\ESBTPLMDPlanningController::class, 'index'])
         ->middleware('permission:lmd.planning.view')
         ->name('planning.index');
+    Route::get('planning/partial', [\App\Http\Controllers\ESBTPLMDPlanningController::class, 'partial'])
+        ->middleware('permission:lmd.planning.view')
+        ->name('planning.partial');
 });
 
 /*
