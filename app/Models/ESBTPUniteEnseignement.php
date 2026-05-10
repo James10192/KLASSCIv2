@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\TypeUE;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -46,13 +47,17 @@ class ESBTPUniteEnseignement extends Model
         'credit' => 'integer',
         'semestre' => 'integer',
         'is_active' => 'boolean',
+        'type_ue' => TypeUE::class,
     ];
 
-    // Types d'UE dans le systeme LMD
-    const TYPE_FONDAMENTALE  = 'fondamentale';
+    // Constantes legacy (rétrocompat) — préférer App\Enums\TypeUE pour les nouveaux usages.
+    const TYPE_FONDAMENTALE   = 'fondamentale';
     const TYPE_METHODOLOGIQUE = 'methodologique';
-    const TYPE_DECOUVERTE    = 'decouverte';
-    const TYPE_TRANSVERSALE  = 'transversale';
+    const TYPE_DECOUVERTE     = 'decouverte';
+    const TYPE_TRANSVERSALE   = 'transversale';
+    const TYPE_CULTURE_GENERALE = 'culture_generale';
+    const TYPE_SPECIALITE     = 'specialite';
+    const TYPE_LIBRE          = 'libre';
 
     /**
      * Relation avec les matières appartenant à cette UE.

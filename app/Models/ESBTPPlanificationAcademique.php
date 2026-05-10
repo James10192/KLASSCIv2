@@ -26,8 +26,10 @@ class ESBTPPlanificationAcademique extends Model
         'matiere_id',
         'volume_horaire_total',
         'volume_horaire_cm', // Cours Magistraux
-        'volume_horaire_td', // Travaux Dirigés  
+        'volume_horaire_td', // Travaux Dirigés
         'volume_horaire_tp', // Travaux Pratiques
+        'volume_horaire_projet', // Projet (UEMOA LMD)
+        'volume_horaire_tpe', // Travail Personnel Étudiant (UEMOA LMD)
         'coefficient',
         'credits_ects',
         'periode_debut',
@@ -58,6 +60,8 @@ class ESBTPPlanificationAcademique extends Model
         'volume_horaire_cm' => 'integer',
         'volume_horaire_td' => 'integer',
         'volume_horaire_tp' => 'integer',
+        'volume_horaire_projet' => 'integer',
+        'volume_horaire_tpe' => 'integer',
         'coefficient' => 'decimal:2',
         'credits_ects' => 'integer',
         'enseignants_secondaires' => 'array',
@@ -211,13 +215,16 @@ class ESBTPPlanificationAcademique extends Model
     }
 
     /**
-     * Obtenir le volume horaire total calculé
+     * Obtenir le volume horaire total calculé.
+     * Inclut Projet + TPE (UEMOA LMD) — restent à 0 pour les rangs BTS legacy.
      */
     public function getVolumeHoraireTotalCalculeAttribute()
     {
-        return ($this->volume_horaire_cm ?? 0) + 
-               ($this->volume_horaire_td ?? 0) + 
-               ($this->volume_horaire_tp ?? 0);
+        return ($this->volume_horaire_cm ?? 0)
+            + ($this->volume_horaire_td ?? 0)
+            + ($this->volume_horaire_tp ?? 0)
+            + ($this->volume_horaire_projet ?? 0)
+            + ($this->volume_horaire_tpe ?? 0);
     }
 
     /**
@@ -226,15 +233,17 @@ class ESBTPPlanificationAcademique extends Model
     public function getRepartitionVolumeHoraireAttribute()
     {
         $total = $this->volume_horaire_total_calcule;
-        
+
         if ($total == 0) {
-            return ['cm' => 0, 'td' => 0, 'tp' => 0];
+            return ['cm' => 0, 'td' => 0, 'tp' => 0, 'projet' => 0, 'tpe' => 0];
         }
 
         return [
-            'cm' => round(($this->volume_horaire_cm / $total) * 100, 1),
-            'td' => round(($this->volume_horaire_td / $total) * 100, 1),
-            'tp' => round(($this->volume_horaire_tp / $total) * 100, 1),
+            'cm' => round((($this->volume_horaire_cm ?? 0) / $total) * 100, 1),
+            'td' => round((($this->volume_horaire_td ?? 0) / $total) * 100, 1),
+            'tp' => round((($this->volume_horaire_tp ?? 0) / $total) * 100, 1),
+            'projet' => round((($this->volume_horaire_projet ?? 0) / $total) * 100, 1),
+            'tpe' => round((($this->volume_horaire_tpe ?? 0) / $total) * 100, 1),
         ];
     }
 
@@ -280,17 +289,16 @@ class ESBTPPlanificationAcademique extends Model
     }
 
     /**
-     * Valider la cohérence de la planification
+     * Valider la cohérence de la planification.
+     * La somme des volumes détaillés (CM+TD+TP+Projet+TPE) doit égaler le total.
+     * Les rangs BTS legacy ont Projet=0 et TPE=0 — la somme reste cohérente.
      */
     public function validerCoherence()
     {
         $erreurs = [];
 
-        // Vérifier que la somme CM + TD + TP = Total
-        $somme = ($this->volume_horaire_cm ?? 0) + 
-                 ($this->volume_horaire_td ?? 0) + 
-                 ($this->volume_horaire_tp ?? 0);
-        
+        $somme = $this->volume_horaire_total_calcule;
+
         if ($somme != $this->volume_horaire_total) {
             $erreurs[] = "La somme des volumes horaires détaillés ({$somme}h) ne correspond pas au total ({$this->volume_horaire_total}h)";
         }

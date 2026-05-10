@@ -163,20 +163,20 @@
                     @enderror
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label fw-semibold">Code <span class="text-danger">*</span></label>
+                    <label class="form-label fw-semibold">Code</label>
                     <div class="lmd-auto-code">
                         <input type="text"
                                name="code"
                                class="form-control @error('code') is-invalid @enderror"
                                value="{{ old('code', $ue->code ?? '') }}"
-                               required
-                               placeholder="UE-MAT-FOND"
+                               placeholder="MAG2001 (laisser vide pour UE virtuelle)"
                                x-model="ueCode">
                         <span class="lmd-auto-hint">auto</span>
                     </div>
                     @error('code')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
+                    <small class="text-muted">Optionnel — laisser vide pour les UE virtuelles UEMOA (ex: <em>UE de Méthodologie</em> sans code formel).</small>
                 </div>
             </div>
 
@@ -211,9 +211,12 @@
                     <label class="form-label fw-semibold">Type UE</label>
                     <select name="type_ue" class="form-select @error('type_ue') is-invalid @enderror">
                         <option value="">-- Choisir --</option>
-                        @foreach(['fondamentale' => 'Fondamentale', 'methodologique' => 'Methodologique', 'decouverte' => 'Decouverte', 'transversale' => 'Transversale'] as $val => $label)
-                            <option value="{{ $val }}" {{ old('type_ue', $ue->type_ue ?? '') == $val ? 'selected' : '' }}>
-                                {{ $label }}
+                        @php
+                            $currentTypeUe = old('type_ue', isset($ue) ? ($ue->type_ue?->value ?? $ue->type_ue ?? '') : '');
+                        @endphp
+                        @foreach(\App\Enums\TypeUE::cases() as $type)
+                            <option value="{{ $type->value }}" {{ $currentTypeUe == $type->value ? 'selected' : '' }}>
+                                {{ $type->label() }}
                             </option>
                         @endforeach
                     </select>
