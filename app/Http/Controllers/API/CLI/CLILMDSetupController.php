@@ -7,6 +7,8 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPLMDDomaine;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
+use App\Models\ESBTPUniteEnseignement;
+use App\Services\LMD\ParcoursUeSyncService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -128,6 +130,53 @@ class CLILMDSetupController extends BaseApiController
                 'parcours' => $domaines->sum(fn ($d) => collect($d['mentions'])->sum(fn ($m) => count($m['parcours']))),
             ],
         ], 'LMD hierarchy retrieved');
+    }
+
+    /**
+     * POST /api/cli/lmd/parcours/{parcours}/link-ues
+     *
+     * Body (JSON):
+     *   {
+     *     "ues": [
+     *       {"id": 12, "semestres": [1], "is_optional": false, "ordre": 0},
+     *       {"id": 13, "semestres": [1, 2], "is_optional": true}
+     *     ],
+     *     "mode": "append"  // optional, default "append" (CLI safe). Use "sync" to detach missing.
+     *   }
+     *
+     * Resolves UEs by id. Idempotent (re-runs are no-ops if pivot data unchanged).
+     * Default mode is APPEND for safety — automation never silently detaches existing links.
+     */
+    public function linkUes(Request $request, ESBTPLMDParcours $parcours, ParcoursUeSyncService $sync): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'ues' => 'required|array|min:1',
+            'ues.*.id' => 'required|integer|exists:esbtp_unites_enseignement,id',
+            'ues.*.semestres' => 'required|array|min:1',
+            'ues.*.semestres.*' => 'integer|between:1,10',
+            'ues.*.is_optional' => 'sometimes|boolean',
+            'ues.*.ordre' => 'sometimes|integer|min:0|max:65535',
+            'mode' => 'sometimes|in:append,sync',
+        ]);
+
+        $detachMissing = ($validated['mode'] ?? 'append') === 'sync';
+        $stats = $sync->sync($parcours, $validated['ues'], $detachMissing);
+
+        return $this->successResponse([
+            'parcours' => $parcours->only(['id', 'name', 'code']),
+            'mode' => $detachMissing ? 'sync' : 'append',
+            'stats' => $stats,
+        ], sprintf(
+            '%d ajout(s), %d màj, %d suppr, %d inchangé(s)',
+            $stats['attached'],
+            $stats['updated'],
+            $stats['detached'],
+            $stats['unchanged'],
+        ));
     }
 
     private function upsertDomaine(array $data, ?int $userId): ESBTPLMDDomaine

@@ -16,13 +16,24 @@
         <div class="lp-empty-icon"><i class="fas fa-cubes"></i></div>
         <h3>Aucune UE liée à ce parcours</h3>
         <p>Le parcours <strong>{{ $parcoursSelected->name }}</strong> n'a pas encore d'unités d'enseignement associées.</p>
-        <a href="{{ route('esbtp.lmd.ue.index', ['parcours_id' => $parcoursSelected->id]) }}" class="lp-empty-cta"><i class="fas fa-link"></i> Lier des UE au parcours</a>
+        <button type="button"
+            class="lp-empty-cta"
+            onclick="window.dispatchEvent(new CustomEvent('lpm:open', { detail: { parcoursId: {{ $parcoursSelected->id }}, parcoursName: {!! json_encode($parcoursSelected->name) !!} } }))">
+            <i class="fas fa-link"></i> Lier des UE au parcours
+        </button>
     </div>
 @else
     <div class="lp-card">
         <div class="lp-card-header">
             <h2 class="lp-card-title"><span class="lp-card-title-icon"><i class="fas fa-book"></i></span>{{ $parcoursSelected->name }}</h2>
-            <span class="lp-card-meta">{{ $rows->count() }} UE · {{ $kpis['ecue_count'] }} ECUE</span>
+            <div class="lp-card-actions">
+                <span class="lp-card-meta">{{ $rows->count() }} UE · {{ $kpis['ecue_count'] }} ECUE</span>
+                <button type="button"
+                    class="lp-empty-cta lp-empty-cta-sm"
+                    onclick="window.dispatchEvent(new CustomEvent('lpm:open', { detail: { parcoursId: {{ $parcoursSelected->id }}, parcoursName: {!! json_encode($parcoursSelected->name) !!} } }))">
+                    <i class="fas fa-edit"></i> Modifier les UE
+                </button>
+            </div>
         </div>
         <div style="overflow-x: auto;">
             <table class="lp-table" id="lpListing">

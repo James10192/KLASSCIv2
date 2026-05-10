@@ -2406,7 +2406,7 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
     Route::post('parcours/{parcours}/sync-classes', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'syncClasses'])->name('parcours.sync-classes');
     Route::post('parcours/{parcours}/classe-rapide', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'storeClasseRapide'])->name('parcours.classe-rapide');
     Route::get('parcours/{parcours}/ues-disponibles', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'getUesDisponibles'])->name('parcours.ues-disponibles');
-    Route::post('parcours/{parcours}/sync-ues', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'syncUes'])->name('parcours.sync-ues');
+    Route::post('parcours/{parcours}/sync-ues', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'syncUes'])->middleware('throttle:10,1')->name('parcours.sync-ues');
 
     // --- Unites d'Enseignement ---
     Route::resource('ue', \App\Http\Controllers\ESBTPLMDUEController::class)->parameters(['ue' => 'ue']);

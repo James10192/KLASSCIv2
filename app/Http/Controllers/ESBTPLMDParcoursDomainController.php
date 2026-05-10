@@ -11,6 +11,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\User;
+use App\Services\LMD\ParcoursUeSyncService;
 use Illuminate\Http\Request;
 
 class ESBTPLMDParcoursDomainController extends Controller
@@ -450,31 +451,31 @@ class ESBTPLMDParcoursDomainController extends Controller
 
     /**
      * Synchroniser les UEs d'un parcours (multi-semestres via pivot).
+     * Idempotent : préserve is_optional/ordre des liens existants non touchés.
      */
-    public function syncUes(Request $request, ESBTPLMDParcours $parcours)
+    public function syncUes(Request $request, ESBTPLMDParcours $parcours, ParcoursUeSyncService $sync)
     {
-        $request->validate([
+        $validated = $request->validate([
             'ues' => 'present|array',
             'ues.*.id' => 'required|exists:esbtp_unites_enseignement,id',
             'ues.*.semestres' => 'required|array|min:1',
             'ues.*.semestres.*' => 'integer|between:1,10',
+            'ues.*.is_optional' => 'sometimes|boolean',
+            'ues.*.ordre' => 'sometimes|integer|min:0|max:65535',
         ]);
 
-        $count = DB::transaction(function () use ($request, $parcours) {
-            $parcours->unitesEnseignement()->detach();
-            $count = 0;
-            foreach ($request->input('ues', []) as $item) {
-                foreach ($item['semestres'] as $sem) {
-                    $parcours->unitesEnseignement()->attach($item['id'], [
-                        'semestre' => $sem,
-                        'ordre' => $item['ordre'] ?? 0,
-                    ]);
-                    $count++;
-                }
-            }
-            return $count;
-        });
+        $stats = $sync->sync($parcours, $validated['ues'], detachMissing: true);
 
-        return response()->json(['success' => true, 'message' => $count . ' lien(s) UE-semestre créé(s).']);
+        return response()->json([
+            'success' => true,
+            'message' => sprintf(
+                '%d ajout(s), %d mise(s) à jour, %d suppression(s), %d inchangé(s).',
+                $stats['attached'],
+                $stats['updated'],
+                $stats['detached'],
+                $stats['unchanged'],
+            ),
+            'stats' => $stats,
+        ]);
     }
 }

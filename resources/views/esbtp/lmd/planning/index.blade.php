@@ -51,13 +51,18 @@
     .lp-empty-icon { width: 64px; height: 64px; border-radius: 16px; background: rgba(4,83,203,.08); color: #0453cb; display: inline-flex; align-items: center; justify-content: center; font-size: 1.5rem; margin-bottom: 1rem; }
     .lp-empty h3 { font-size: 1.15rem; font-weight: 600; color: #1e293b; margin: 0 0 .5rem; }
     .lp-empty p { color: #64748b; font-size: .9rem; margin: 0 0 1.25rem; max-width: 480px; margin-left: auto; margin-right: auto; }
-    .lp-empty-cta { display: inline-flex; align-items: center; gap: .5rem; padding: .55rem 1.1rem; background: #0453cb; color: #fff; font-size: .85rem; font-weight: 600; border-radius: 10px; text-decoration: none; }
+    .lp-empty-cta { display: inline-flex; align-items: center; gap: .5rem; padding: .55rem 1.1rem; background: #0453cb; color: #fff; font-size: .85rem; font-weight: 600; border-radius: 10px; text-decoration: none; border: none; cursor: pointer; }
     .lp-empty-cta:hover { background: #033a8e; color: #fff; }
+    .lp-empty-cta-sm { padding: .4rem .85rem; font-size: .8rem; }
+    .lp-card-actions { display: flex; align-items: center; gap: 1rem; }
 </style>
 @endpush
 
 @section('content')
-<div class="lp-page" x-data="lpPlanning" :class="loading ? 'lp-loading' : ''">
+<div class="lp-page"
+     x-data="lpPlanning"
+     :class="loading ? 'lp-loading' : ''"
+     @lpm:saved.window="fetchPartial()">
     <div class="lp-hero">
         <div class="lp-hero-top">
             <div class="lp-hero-left">
@@ -114,6 +119,8 @@
         @include('esbtp.lmd.planning._listing')
     </div>
 </div>
+
+@include('esbtp.lmd.planning._link_ue_modal')
 @endsection
 
 @push('scripts')
