@@ -1757,6 +1757,12 @@
                                     <span class="menu-dot"></span>
                                     <span>Bulletins LMD</span>
                                 </a>
+                                @can('lmd.planning.view')
+                                <a href="{{ route('esbtp.lmd.planning.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.planning.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Planning LMD</span>
+                                </a>
+                                @endcan
                             </div>
                         </div>
                     @endcan
