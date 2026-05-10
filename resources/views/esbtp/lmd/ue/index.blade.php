@@ -393,8 +393,9 @@
                                 <input type="text" class="form-control" id="ue_name" name="name" required placeholder="Ex: Technologie de Construction">
                             </div>
                             <div>
-                                <label for="ue_code"><i class="fas fa-hashtag"></i> Code <span class="text-danger">*</span></label>
-                                <input type="text" class="form-control" id="ue_code" name="code" required placeholder="Ex: UE:BTCB1" style="font-family: 'SF Mono', 'Consolas', monospace;">
+                                <label for="ue_code"><i class="fas fa-hashtag"></i> Code</label>
+                                <input type="text" class="form-control" id="ue_code" name="code" placeholder="Ex: MAG2001" style="font-family: 'SF Mono', 'Consolas', monospace;">
+                                <small class="text-muted" style="font-size:.72rem;">Optionnel — laisser vide pour une UE virtuelle UEMOA (ex: <em>UE de Méthodologie</em>).</small>
                             </div>
                         </div>
                     </div>
