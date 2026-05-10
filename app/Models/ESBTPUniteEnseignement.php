@@ -50,15 +50,6 @@ class ESBTPUniteEnseignement extends Model
         'type_ue' => TypeUE::class,
     ];
 
-    // Constantes legacy (rétrocompat) — préférer App\Enums\TypeUE pour les nouveaux usages.
-    const TYPE_FONDAMENTALE   = 'fondamentale';
-    const TYPE_METHODOLOGIQUE = 'methodologique';
-    const TYPE_DECOUVERTE     = 'decouverte';
-    const TYPE_TRANSVERSALE   = 'transversale';
-    const TYPE_CULTURE_GENERALE = 'culture_generale';
-    const TYPE_SPECIALITE     = 'specialite';
-    const TYPE_LIBRE          = 'libre';
-
     /**
      * Relation avec les matières appartenant à cette UE.
      *

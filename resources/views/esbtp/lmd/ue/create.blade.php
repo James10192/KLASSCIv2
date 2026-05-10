@@ -169,7 +169,7 @@
                                name="code"
                                class="form-control @error('code') is-invalid @enderror"
                                value="{{ old('code', $ue->code ?? '') }}"
-                               placeholder="MAG2001 (laisser vide pour UE virtuelle)"
+                               placeholder="MAG2001"
                                x-model="ueCode">
                         <span class="lmd-auto-hint">auto</span>
                     </div>
@@ -212,10 +212,10 @@
                     <select name="type_ue" class="form-select @error('type_ue') is-invalid @enderror">
                         <option value="">-- Choisir --</option>
                         @php
-                            $currentTypeUe = old('type_ue', isset($ue) ? ($ue->type_ue?->value ?? $ue->type_ue ?? '') : '');
+                            $currentTypeUe = old('type_ue', $ue->type_ue?->value ?? '');
                         @endphp
                         @foreach(\App\Enums\TypeUE::cases() as $type)
-                            <option value="{{ $type->value }}" {{ $currentTypeUe == $type->value ? 'selected' : '' }}>
+                            <option value="{{ $type->value }}" {{ $currentTypeUe === $type->value ? 'selected' : '' }}>
                                 {{ $type->label() }}
                             </option>
                         @endforeach

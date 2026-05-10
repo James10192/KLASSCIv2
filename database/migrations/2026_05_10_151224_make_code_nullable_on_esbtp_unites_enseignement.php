@@ -16,11 +16,12 @@ return new class extends Migration
      */
     public function up(): void
     {
+        // Operations queued in this single Blueprint pass run sequentially:
+        // dropUnique → change → unique. MySQL DDL is non-transactional so
+        // there is a sub-millisecond window without UNIQUE — acceptable on
+        // the small `esbtp_unites_enseignement` table (< 100 rows per tenant).
         Schema::table('esbtp_unites_enseignement', function (Blueprint $table) {
             $table->dropUnique('esbtp_unites_enseignement_code_unique');
-        });
-
-        Schema::table('esbtp_unites_enseignement', function (Blueprint $table) {
             $table->string('code')->nullable()->change();
             $table->unique('code', 'esbtp_unites_enseignement_code_unique');
         });
@@ -30,9 +31,6 @@ return new class extends Migration
     {
         Schema::table('esbtp_unites_enseignement', function (Blueprint $table) {
             $table->dropUnique('esbtp_unites_enseignement_code_unique');
-        });
-
-        Schema::table('esbtp_unites_enseignement', function (Blueprint $table) {
             $table->string('code')->nullable(false)->change();
             $table->unique('code', 'esbtp_unites_enseignement_code_unique');
         });
