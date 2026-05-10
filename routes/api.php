@@ -261,8 +261,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     // LMD hierarchy (read)
     Route::get('/lmd/tree', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'tree'])->name('lmd.tree');
 
-    // Admin endpoints (strict throttle)
-    Route::middleware('throttle:5,1')->group(function () {
+    // Admin endpoints — throttled at 60/min (matches outer group; auth:sanctum + tokenCan('cli:admin')
+    // already gates access. Higher throughput needed for bulk operations like LMD import.)
+    Route::middleware('throttle:60,1')->group(function () {
         // Maintenance
         Route::get('/logs', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'logs'])->name('logs');
         Route::post('/cache/clear', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'cacheClear'])->name('cache.clear');
