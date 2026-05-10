@@ -63,13 +63,21 @@
         box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
     }
     .lp-filters-row { display: flex; gap: .75rem; flex-wrap: wrap; align-items: flex-end; }
-    .lp-filter-group { flex: 1; min-width: 180px; }
+    .lp-filter-group {
+        flex: 1 1 220px;
+        min-width: 200px;
+        display: flex;
+        flex-direction: column;
+    }
     .lp-filter-label {
         display: block;
         font-size: .68rem; font-weight: 600;
         color: #64748b; text-transform: uppercase;
         letter-spacing: .04em; margin-bottom: .35rem;
     }
+    /* Force <x-au-select> to fill the lp-filter-group (defaults to inline-flex/fit-content) */
+    .lp-filter-group .au-select,
+    .lp-filter-group .au-select-trigger { width: 100%; }
 
     /* Card listing */
     .lp-card {
