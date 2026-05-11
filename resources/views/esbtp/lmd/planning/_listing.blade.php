@@ -39,9 +39,15 @@
                 </button>
             </div>
         </div>
+        @php $bulkEnabled = auth()->user()?->can('lmd.planning.edit') && $filters['niveau_id'] && $filters['semestre']; @endphp
         <div style="overflow-x: auto;">
             <table class="lp-table" id="lpListing">
                 <thead><tr>
+                    @if($bulkEnabled)
+                        <th class="lpb-check-cell">
+                            <input type="checkbox" class="lpb-check lpb-check-all" title="Tout selectionner / desselectionner" aria-label="Tout selectionner">
+                        </th>
+                    @endif
                     <th style="width: 35%;">Intitulé</th><th>Type</th>
                     <th class="lp-th-num lp-col-cm lp-th-tip" title="Cours Magistraux — Heures théoriques en grand groupe">CM</th>
                     <th class="lp-th-num lp-col-td lp-th-tip" title="Travaux Dirigés — Heures pratiques en petit groupe">TD</th>
@@ -56,6 +62,7 @@
                     @foreach($rows as $idx => $row)
                         @php $ue = $row['ue']; $hasCode = !empty($ue->code); $typeLabel = $ue->type_ue?->label() ?? '—'; @endphp
                         <tr class="lp-ue-row js-ue-row" data-idx="{{ $idx }}">
+                            @if($bulkEnabled)<td class="lpb-check-cell"></td>@endif
                             <td>
                                 <span class="lp-ue-caret js-ue-caret"><i class="fas fa-chevron-right"></i></span>
                                 @if($hasCode)<span class="lp-ue-code">{{ $ue->code }}</span>@else<span class="lp-ue-code lp-ue-code-virtual">virtuelle</span>@endif
@@ -77,6 +84,15 @@
                                 $ecueLabel = trim((!empty($ecue->code) ? $ecue->code . ' · ' : '') . $ecue->name);
                             @endphp
                             <tr class="lp-ecue-row js-ecue-row" data-parent-idx="{{ $idx }}" style="display:none;">
+                                @if($bulkEnabled)
+                                    <td class="lpb-check-cell">
+                                        <input type="checkbox"
+                                               class="lpb-check"
+                                               data-lpb-ecue-id="{{ $ecue->id }}"
+                                               data-lpb-ecue-label="{{ $ecueLabel }}"
+                                               aria-label="Selectionner {{ $ecueLabel }}">
+                                    </td>
+                                @endif
                                 <td class="lp-ecue-indent">
                                     @if(!empty($ecue->code))<span class="lp-ecue-code">{{ $ecue->code }}</span>@endif
                                     {{ $ecue->name }}

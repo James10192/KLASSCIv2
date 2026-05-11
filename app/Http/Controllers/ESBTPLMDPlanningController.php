@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\BulkUpdatePlanificationRequest;
 use App\Http\Requests\UpdatePlanificationRequest;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPLMDParcours;
@@ -140,6 +141,153 @@ class ESBTPLMDPlanningController extends Controller
     {
         $user = User::find($userId);
         return $user !== null && $user->hasRole('enseignant');
+    }
+
+    /**
+     * POST /esbtp/lmd/planifications/bulk-update — applique une serie de
+     * champs (volumes, credits, coefficient, enseignant) a un ensemble
+     * d'ECUE en une seule transaction.
+     *
+     * Securites :
+     *   - max 50 ECUE par appel (validation FormRequest + abort_if defensive)
+     *   - chaque ECUE est valide individuellement (LMD only, filiere derivee
+     *     server-side via deriveFiliereIdFromEcue) — meme protection IDOR
+     *     que updatePlanification
+     *   - enseignant valide une seule fois si present
+     *   - transaction unique : si un ECUE plante, on continue les autres et
+     *     on remonte les erreurs partielles dans la reponse JSON
+     *   - audit log automatique via le trait Auditable du modele (Agent A)
+     */
+    public function bulkUpdatePlanification(BulkUpdatePlanificationRequest $request): JsonResponse
+    {
+        $ecueIds = $request->validated('ecue_ids');
+        $fields  = $request->validated('fields');
+
+        abort_if(count($ecueIds) > 50, 422, 'Maximum 50 ECUE par operation en masse.');
+        abort_if(empty($fields), 422, 'Aucun champ a appliquer.');
+
+        if (array_key_exists('enseignant_principal_id', $fields)
+            && !empty($fields['enseignant_principal_id'])
+            && !$this->teacherExists((int) $fields['enseignant_principal_id'])) {
+            return response()->json([
+                'success' => false,
+                'message' => "L'utilisateur selectionne n'est pas un enseignant.",
+            ], 422);
+        }
+
+        $context = $this->resolvePlanificationContext($request, null);
+        if (!$context['niveau_id'] || !$context['semestre']) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Contexte niveau/semestre manquant — selectionnez un niveau et un semestre avant l\'edition en masse.',
+            ], 422);
+        }
+
+        $updated = 0;
+        $errors  = [];
+
+        DB::transaction(function () use ($ecueIds, $fields, $context, &$updated, &$errors) {
+            foreach ($ecueIds as $ecueId) {
+                try {
+                    $this->upsertPlanificationFields((int) $ecueId, $fields, $context);
+                    $updated++;
+                } catch (\Throwable $e) {
+                    $errors[] = ['ecue_id' => $ecueId, 'message' => $e->getMessage()];
+                    Log::warning('LMD bulk planif failed for ECUE', [
+                        'ecue_id'   => $ecueId,
+                        'user_id'   => auth()->id(),
+                        'context'   => $context,
+                        'exception' => $e->getMessage(),
+                    ]);
+                }
+            }
+        });
+
+        return response()->json([
+            'success' => empty($errors),
+            'partial' => $updated > 0 && !empty($errors),
+            'updated' => $updated,
+            'total'   => count($ecueIds),
+            'errors'  => $errors,
+        ]);
+    }
+
+    /**
+     * Variante de `upsertPlanification()` qui prend directement un tableau de
+     * champs (au lieu d'un FormRequest) pour servir le bulk-update. Reutilise
+     * la meme strategie : derivation filiere server-side, lockForUpdate, fill
+     * controle, recalcul du total, audit auto via le modele Auditable.
+     */
+    private function upsertPlanificationFields(int $ecueId, array $fields, array $contextHint): void
+    {
+        $matiere = ESBTPMatiere::find($ecueId);
+        if (!$matiere || !$matiere->unite_enseignement_id) {
+            throw new \RuntimeException("ECUE {$ecueId} non LMD ou introuvable.");
+        }
+
+        $filiereId = $this->deriveFiliereIdFromEcue($matiere) ?: ($contextHint['filiere_id'] ?? null);
+        if (!$filiereId) {
+            throw new \RuntimeException("Filiere indisponible pour ECUE {$ecueId}.");
+        }
+
+        [$planif, $wasCreated] = $this->lockOrInitPlanification($ecueId, $filiereId, $contextHint);
+
+        // Whitelist des champs editables en bulk — meme set que la FormRequest.
+        $allowed = [
+            'volume_horaire_cm', 'volume_horaire_td', 'volume_horaire_tp',
+            'volume_horaire_projet', 'volume_horaire_tpe',
+            'coefficient', 'credits_ects', 'enseignant_principal_id',
+        ];
+        foreach ($allowed as $key) {
+            if (array_key_exists($key, $fields)) {
+                $planif->{$key} = $fields[$key];
+            }
+        }
+
+        if ($wasCreated) {
+            $planif->created_by = auth()->id();
+        }
+        $planif->updated_by = auth()->id();
+
+        $planif->volume_horaire_total = ($planif->volume_horaire_cm ?? 0)
+            + ($planif->volume_horaire_td ?? 0)
+            + ($planif->volume_horaire_tp ?? 0)
+            + ($planif->volume_horaire_projet ?? 0)
+            + ($planif->volume_horaire_tpe ?? 0);
+
+        $planif->save();
+    }
+
+    /**
+     * Lock or init a planification row for the given (ecue, filiere, contexte)
+     * triple. Returns [$planif, $wasCreated]. Used by bulk path only.
+     */
+    private function lockOrInitPlanification(int $ecueId, int $filiereId, array $ctx): array
+    {
+        $planif = ESBTPPlanificationAcademique::query()
+            ->where('matiere_id', $ecueId)
+            ->where('filiere_id', $filiereId)
+            ->where('niveau_etude_id', $ctx['niveau_id'])
+            ->where('semestre', $ctx['semestre'])
+            ->where('annee_universitaire_id', $ctx['annee_id'])
+            ->lockForUpdate()
+            ->first();
+
+        if ($planif) {
+            return [$planif, false];
+        }
+
+        $planif = new ESBTPPlanificationAcademique([
+            'matiere_id'             => $ecueId,
+            'filiere_id'             => $filiereId,
+            'niveau_etude_id'        => $ctx['niveau_id'],
+            'semestre'               => $ctx['semestre'],
+            'annee_universitaire_id' => $ctx['annee_id'],
+        ]);
+        $planif->statut    = ESBTPPlanificationAcademique::STATUT_PLANIFIE;
+        $planif->is_active = true;
+
+        return [$planif, true];
     }
 
     /**

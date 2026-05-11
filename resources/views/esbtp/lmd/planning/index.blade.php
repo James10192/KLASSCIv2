@@ -4,6 +4,7 @@
 
 @include('esbtp.lmd.planning._styles')
 @include('esbtp.lmd.planning._edit_styles')
+@include('esbtp.lmd.planning._bulk_styles')
 
 @php
     $lpeContext = [
@@ -82,8 +83,11 @@
 @include('esbtp.lmd.planning._help_modal')
 @include('esbtp.lmd.planning._link_ue_modal')
 @include('esbtp.lmd.planning._teacher_modal')
+@include('esbtp.lmd.planning._bulk_action_bar')
+@include('esbtp.lmd.planning._bulk_modal')
 @endsection
 
 @include('esbtp.lmd.planning._scripts')
 @include('esbtp.lmd.planning._tour_help_scripts')
 @include('esbtp.lmd.planning._edit_scripts')
+@include('esbtp.lmd.planning._bulk_scripts')

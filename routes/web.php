@@ -2456,6 +2456,9 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
         ->middleware(['permission:lmd.planning.edit', 'throttle:60,1'])
         ->whereNumber('ecueId')
         ->name('planifications.update');
+    Route::post('planifications/bulk-update', [\App\Http\Controllers\ESBTPLMDPlanningController::class, 'bulkUpdatePlanification'])
+        ->middleware(['permission:lmd.planning.edit', 'throttle:10,1'])
+        ->name('planifications.bulk-update');
 });
 
 /*
