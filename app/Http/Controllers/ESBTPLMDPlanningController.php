@@ -8,7 +8,6 @@ use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPUniteEnseignement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
@@ -56,13 +55,20 @@ class ESBTPLMDPlanningController extends Controller
         $parcours = ESBTPLMDParcours::with(['filiere', 'mention.domaine'])
             ->where('is_active', true)->orderBy('name')->get();
 
+        // Charge TOUS les niveaux LMD actifs (Licence/Master/Doctorat) — la liste
+        // doit être indépendante du parcours sélectionné, sinon L3 (et autres
+        // niveaux dont le parcours n'a pas encore d'UE liée) disparaît du dropdown.
         $niveaux = ESBTPNiveauEtude::whereIn('type', self::LMD_TYPES)
-            ->orderBy('year')->orderBy('name')->get();
+            ->where('is_active', true)
+            ->orderBy('type')->orderBy('year')->get();
 
         $parcoursId = $request->integer('parcours_id') ?: null;
         $parcoursSelected = $parcoursId ? $parcours->firstWhere('id', $parcoursId) : null;
 
-        $semestresMap = $this->buildSemestresMap($parcoursSelected);
+        // Map des semestres VALIDES pour chaque niveau selon le standard UEMOA
+        // (year * 2 - 1, year * 2). On NE filtre PAS par "UEs déjà liées" sinon
+        // S5/S6 disparaissent quand le parcours TC Droit n'a d'UEs que sur L1/L2.
+        $semestresMap = $this->buildSemestresMap($niveaux);
         $niveauId = $this->validateNiveauId($request->integer('niveau_id'), $niveaux);
 
         // Server-side cascade : the semestres allowed depend on the niveau_id.
@@ -71,11 +77,11 @@ class ESBTPLMDPlanningController extends Controller
             ? $semestresMap[$niveauId]
             : ($semestresMap['all'] ?? []);
 
-        // Defensive fallback : if the parcours pivot has no semestre data
-        // (legacy or mid-import), expose the canonical 1..10 range so the
-        // user can still pick something rather than facing an empty dropdown.
+        // Defensive fallback : si la map ne contient rien (cas pathologique),
+        // expose la plage canonique 1..6 (couverture L1 à M2 standard UEMOA)
+        // pour que le user puisse toujours sélectionner quelque chose.
         if (empty($availableSemestres)) {
-            $availableSemestres = range(1, 10);
+            $availableSemestres = range(1, 6);
         }
 
         $filters = [
@@ -122,48 +128,48 @@ class ESBTPLMDPlanningController extends Controller
     }
 
     /**
-     * Build the cascade map for the Semestre dropdown.
+     * Build the cascade map for the Semestre dropdown — basée sur le standard
+     * UEMOA (year * 2 - 1, year * 2) et NON sur les UEs déjà liées au parcours.
+     *
+     * Pourquoi : si on filtre par "UEs liées", S5/S6 disparaissent dès que le
+     * parcours TC Droit n'a d'UEs que sur L1/L2 (les L3 spé sont sur parcours
+     * séparés Droit Privé/Public). On veut que la directrice puisse SAISIR des
+     * UEs sur L3 même si aucune n'existe encore — donc map data-driven UEMOA.
      *
      * Returns shape:
      *   [
-     *     'all'      => [1, 2, 3, ...],   // union across all niveaux for this parcours
-     *     <niveauId> => [1, 2],            // semestres on UEs whose niveau_id = <niveauId>
+     *     'all'      => [1, 2, 3, 4, 5, 6, ...],  // union de tous les niveaux LMD
+     *     <niveauId> => [year*2 - 1, year*2],     // UEMOA : L1=[1,2], L2=[3,4], L3=[5,6]
+     *                                              // M1=[1,2] (M1 redémarre), M2=[3,4]
      *     ...
      *   ]
      *
-     * When parcours is null, returns ['all' => []] (no parcours selected → no
-     * semestres should be selectable).
+     * Note : pour Master/Doctorat la numérotation des semestres redémarre (M1 = S1+S2)
+     * conformément à la convention LMD UEMOA — d'où le calcul basé uniquement sur
+     * `year` du niveau.
      */
-    private function buildSemestresMap(?ESBTPLMDParcours $parcours): array
+    private function buildSemestresMap(Collection $niveaux): array
     {
-        if (!$parcours) {
-            return ['all' => []];
-        }
-
-        $rows = DB::table('esbtp_lmd_parcours_ue as pivot')
-            ->join('esbtp_unites_enseignement as ue', 'ue.id', '=', 'pivot.unite_enseignement_id')
-            ->where('pivot.parcours_id', $parcours->id)
-            ->where('ue.is_active', true)
-            ->whereNotNull('pivot.semestre')
-            ->select('pivot.semestre', 'ue.niveau_id')
-            ->distinct()
-            ->get();
-
         $map = ['all' => []];
         $allSet = [];
 
-        foreach ($rows as $row) {
-            $sem = (int) $row->semestre;
-            if ($sem <= 0) continue;
-            $allSet[$sem] = true;
-            if ($row->niveau_id === null) continue;
-            $key = (int) $row->niveau_id;
-            $map[$key] ??= [];
-            if (!in_array($sem, $map[$key], true)) $map[$key][] = $sem;
+        foreach ($niveaux as $niveau) {
+            $year = (int) ($niveau->year ?? 0);
+            if ($year > 0) {
+                $semestres = [$year * 2 - 1, $year * 2];
+            } else {
+                // Niveau sans year défini → fallback large (rare, défensif).
+                $semestres = range(1, 6);
+            }
+
+            $map[(int) $niveau->id] = $semestres;
+            foreach ($semestres as $sem) {
+                $allSet[$sem] = true;
+            }
         }
 
         $map['all'] = array_keys($allSet);
-        foreach ($map as $k => $_) sort($map[$k]);
+        sort($map['all']);
 
         return $map;
     }
