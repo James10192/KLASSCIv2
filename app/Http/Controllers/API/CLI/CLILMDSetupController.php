@@ -7,7 +7,6 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPLMDDomaine;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
-use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPUniteEnseignement;
 use App\Services\LMD\LMDImportService;
 use App\Services\LMD\ParcoursUeSyncService;
@@ -132,55 +131,6 @@ class CLILMDSetupController extends BaseApiController
                 'parcours' => $domaines->sum(fn ($d) => collect($d['mentions'])->sum(fn ($m) => count($m['parcours']))),
             ],
         ], 'LMD hierarchy retrieved');
-    }
-
-    /**
-     * GET /api/cli/lmd/niveaux-debug
-     *
-     * TEMPORARY diagnostic endpoint to investigate the "Licence 3" dropdown bug.
-     * Returns raw ESBTPNiveauEtude rows incl. soft-deleted, with byte-level hex
-     * dumps of the `name` field to expose any invisible/control characters.
-     *
-     * REMOVE THIS ENDPOINT AFTER DIAGNOSIS.
-     */
-    public function niveauxDebug(Request $request): JsonResponse
-    {
-        if (!$request->user()->tokenCan('cli:read')) {
-            return $this->errorResponse('Token missing cli:read ability', [], 403);
-        }
-
-        $niveaux = ESBTPNiveauEtude::withTrashed()
-            ->orderBy('type')
-            ->orderBy('year')
-            ->orderBy('id')
-            ->get()
-            ->map(function (ESBTPNiveauEtude $n) {
-                $name = (string) $n->name;
-                $libelle = (string) ($n->libelle ?? '');
-
-                return [
-                    'id' => $n->id,
-                    'name' => $name,
-                    'name_bytes_hex' => bin2hex($name),
-                    'name_len_chars' => mb_strlen($name),
-                    'name_len_bytes' => strlen($name),
-                    'libelle' => $libelle,
-                    'libelle_bytes_hex' => bin2hex($libelle),
-                    'code' => $n->code,
-                    'type' => $n->type,
-                    'year' => $n->year,
-                    'description' => $n->description,
-                    'is_active' => (bool) $n->is_active,
-                    'deleted_at' => $n->deleted_at?->toIso8601String(),
-                    'created_at' => $n->created_at?->toIso8601String(),
-                    'updated_at' => $n->updated_at?->toIso8601String(),
-                ];
-            });
-
-        return $this->successResponse([
-            'niveaux' => $niveaux,
-            'total' => $niveaux->count(),
-        ], 'Niveaux debug retrieved');
     }
 
     /**
