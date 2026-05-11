@@ -2,18 +2,29 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\UpdatePlanificationRequest;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPLMDParcours;
+use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPUniteEnseignement;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 /**
- * Page lecture-seule du Planning LMD : pour un parcours / niveau / semestre,
- * affiche la hiérarchie UE -> ECUE avec volumes horaires UEMOA depuis
- * `esbtp_planifications_academiques`. L'édition arrive en PR LMD-2 Phase 2.
+ * Planning LMD : affichage hiérarchie UE -> ECUE par parcours/niveau/semestre
+ * (volumes horaires UEMOA depuis `esbtp_planifications_academiques`).
+ *
+ * Édition inline (PR LMD-2 Phase 2) :
+ *   - PATCH /esbtp/lmd/planifications/{ecueId} → updatePlanification()
+ *     Met à jour ou crée la planification de l'ECUE ; recalcule
+ *     volume_horaire_total automatiquement depuis CM+TD+TP+Projet+TPE.
+ *   - GET /esbtp/lmd/planning/enseignants → enseignants()
+ *     JSON liste des users role=enseignant pour le picker.
  */
 class ESBTPLMDPlanningController extends Controller
 {
@@ -23,6 +34,17 @@ class ESBTPLMDPlanningController extends Controller
     public function index(Request $request): View
     {
         $ctx = $this->buildContext($request);
+
+        // Pour le modal d'assignation enseignant : charger une fois les users
+        // role=enseignant. Si la perm `lmd.planning.edit` n'est pas accordée,
+        // on n'envoie pas la liste (la vue ne rendra pas le picker).
+        $ctx['enseignants'] = $request->user()?->can('lmd.planning.edit')
+            ? User::role('enseignant')
+                ->select('id', 'name', 'email', 'username')
+                ->with('roles:id,name')
+                ->orderBy('name')
+                ->get()
+            : collect();
 
         return view('esbtp.lmd.planning.index', $ctx);
     }
@@ -43,7 +65,108 @@ class ESBTPLMDPlanningController extends Controller
             'listing' => view('esbtp.lmd.planning._listing', $ctx)->render(),
             'filters_semestre' => view('esbtp.lmd.planning._filter_semestre', $ctx)->render(),
             'filters' => $ctx['filters'],
+            'filiere_id' => $ctx['parcoursSelected']?->filiere_id,
         ]);
+    }
+
+    /**
+     * PATCH /esbtp/lmd/planifications/{ecueId} — édition inline d'un champ
+     * de la planification LMD (volume CM/TD/TP/Projet/TPE, coefficient,
+     * crédits ECTS, enseignant principal).
+     *
+     * Le paramètre {ecueId} est l'ID de la matière/ECUE. Si aucune
+     * planification n'existe pour le triplet (filière, niveau, semestre)
+     * passé en query string, on la crée avec les valeurs envoyées.
+     *
+     * Recalcule volume_horaire_total = CM+TD+TP+Projet+TPE après chaque save.
+     */
+    public function updatePlanification(UpdatePlanificationRequest $request, int $ecueId): JsonResponse
+    {
+        ESBTPMatiere::findOrFail($ecueId);
+
+        $context = $this->resolvePlanificationContext($request);
+        if (!$context['filiere_id'] || !$context['niveau_id']) {
+            return response()->json(['success' => false, 'message' => 'Contexte filière/niveau manquant — sélectionnez un niveau et un semestre avant l\'édition.'], 422);
+        }
+
+        if ($request->filled('enseignant_principal_id')) {
+            $teacher = User::find($request->integer('enseignant_principal_id'));
+            if (!$teacher || !$teacher->hasRole('enseignant')) {
+                return response()->json(['success' => false, 'message' => "L'utilisateur sélectionné n'est pas un enseignant."], 422);
+            }
+        }
+
+        $planif = ESBTPPlanificationAcademique::firstOrNew([
+            'matiere_id' => $ecueId,
+            'filiere_id' => $context['filiere_id'],
+            'niveau_etude_id' => $context['niveau_id'],
+            'semestre' => $context['semestre'],
+            'annee_universitaire_id' => $context['annee_id'],
+        ]);
+
+        if (!$planif->exists) {
+            $planif->statut = ESBTPPlanificationAcademique::STATUT_PLANIFIE;
+            $planif->is_active = true;
+            $planif->created_by = auth()->id();
+        }
+        $planif->updated_by = auth()->id();
+        $planif->fill($request->validated());
+
+        // Recalcul total = somme des cinq sous-volumes (UEMOA).
+        $planif->volume_horaire_total = ($planif->volume_horaire_cm ?? 0)
+            + ($planif->volume_horaire_td ?? 0)
+            + ($planif->volume_horaire_tp ?? 0)
+            + ($planif->volume_horaire_projet ?? 0)
+            + ($planif->volume_horaire_tpe ?? 0);
+
+        $planif->save();
+        $planif->load('enseignantPrincipal:id,name');
+
+        return response()->json(['success' => true, 'planification' => $this->serializePlanification($planif)]);
+    }
+
+    private function resolvePlanificationContext(Request $request): array
+    {
+        return [
+            'filiere_id' => $request->integer('filiere_id') ?: null,
+            'niveau_id' => $request->integer('niveau_id') ?: null,
+            'semestre' => $request->integer('semestre') ?: 1,
+            'annee_id' => $request->integer('annee_universitaire_id')
+                ?: optional(ESBTPAnneeUniversitaire::where('is_current', true)->first())->id,
+        ];
+    }
+
+    private function serializePlanification(ESBTPPlanificationAcademique $planif): array
+    {
+        return [
+            'id' => $planif->id,
+            'volume_horaire_cm' => $planif->volume_horaire_cm,
+            'volume_horaire_td' => $planif->volume_horaire_td,
+            'volume_horaire_tp' => $planif->volume_horaire_tp,
+            'volume_horaire_projet' => $planif->volume_horaire_projet,
+            'volume_horaire_tpe' => $planif->volume_horaire_tpe,
+            'volume_horaire_total' => $planif->volume_horaire_total,
+            'coefficient' => $planif->coefficient,
+            'credits_ects' => $planif->credits_ects,
+            'enseignant_principal_id' => $planif->enseignant_principal_id,
+            'enseignant_name' => $planif->enseignantPrincipal?->name,
+        ];
+    }
+
+    /**
+     * GET /esbtp/lmd/planning/enseignants — JSON liste des users role=enseignant
+     * pour alimenter le picker. Triés par nom, eager-load roles pour le
+     * groupement par rôle dans `<x-au-user-picker>`.
+     */
+    public function enseignants(): JsonResponse
+    {
+        $users = User::role('enseignant')
+            ->select('id', 'name', 'email', 'username')
+            ->with('roles:id,name')
+            ->orderBy('name')
+            ->get();
+
+        return response()->json(['users' => $users]);
     }
 
     /**

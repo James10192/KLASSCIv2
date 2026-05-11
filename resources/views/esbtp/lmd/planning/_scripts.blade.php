@@ -56,6 +56,18 @@ document.addEventListener('alpine:init', () => {
                 if (json.filters && json.filters.semestre !== undefined) {
                     this.filters.semestre = json.filters.semestre;
                 }
+
+                // Sync data-lpe-context avec le nouveau filiere_id (parcours peut avoir changé).
+                const root = document.querySelector('[data-lpe-context]');
+                if (root) {
+                    try {
+                        const ctx = JSON.parse(root.dataset.lpeContext || '{}');
+                        ctx.filiere_id = json.filiere_id ?? null;
+                        ctx.niveau_id = this.filters.niveau_id;
+                        ctx.semestre = this.filters.semestre;
+                        root.dataset.lpeContext = JSON.stringify(ctx);
+                    } catch (e) { /* noop */ }
+                }
             } catch (e) {
                 console.error('Planning fetch failed:', e);
             } finally {
@@ -70,6 +82,17 @@ document.addEventListener('alpine:init', () => {
             });
             const newUrl = this.pageUrl + (params.toString() ? '?' + params : '');
             history.replaceState({}, '', newUrl);
+            // Garder data-lpe-context synchro pour l'edition inline (filtres
+            // niveau/semestre changent → la planif cible change aussi).
+            const root = document.querySelector('[data-lpe-context]');
+            if (root) {
+                try {
+                    const ctx = JSON.parse(root.dataset.lpeContext || '{}');
+                    ctx.niveau_id = this.filters.niveau_id;
+                    ctx.semestre = this.filters.semestre;
+                    root.dataset.lpeContext = JSON.stringify(ctx);
+                } catch (e) { /* noop */ }
+            }
         },
     }));
 });

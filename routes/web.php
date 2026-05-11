@@ -2449,6 +2449,13 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
     Route::get('planning/partial', [\App\Http\Controllers\ESBTPLMDPlanningController::class, 'partial'])
         ->middleware('permission:lmd.planning.view')
         ->name('planning.partial');
+    Route::get('planning/enseignants', [\App\Http\Controllers\ESBTPLMDPlanningController::class, 'enseignants'])
+        ->middleware(['permission:lmd.planning.edit', 'throttle:60,1'])
+        ->name('planning.enseignants');
+    Route::patch('planifications/{ecueId}', [\App\Http\Controllers\ESBTPLMDPlanningController::class, 'updatePlanification'])
+        ->middleware(['permission:lmd.planning.edit', 'throttle:60,1'])
+        ->whereNumber('ecueId')
+        ->name('planifications.update');
 });
 
 /*

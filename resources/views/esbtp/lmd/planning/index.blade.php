@@ -3,10 +3,21 @@
 @section('title', 'Planning LMD')
 
 @include('esbtp.lmd.planning._styles')
+@include('esbtp.lmd.planning._edit_styles')
+
+@php
+    $lpeContext = [
+        'filiere_id' => $parcoursSelected?->filiere_id,
+        'niveau_id' => $filters['niveau_id'],
+        'semestre' => $filters['semestre'],
+        'annee_universitaire_id' => optional(\App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first())->id,
+    ];
+@endphp
 
 @section('content')
 <div class="lp-page"
      x-data="lpPlanning"
+     data-lpe-context='@json($lpeContext)'
      :class="loading ? 'lp-loading' : ''"
      @lpm:saved.window="fetchPartial()">
     <div class="lp-hero">
@@ -70,7 +81,9 @@
 
 @include('esbtp.lmd.planning._help_modal')
 @include('esbtp.lmd.planning._link_ue_modal')
+@include('esbtp.lmd.planning._teacher_modal')
 @endsection
 
 @include('esbtp.lmd.planning._scripts')
 @include('esbtp.lmd.planning._tour_help_scripts')
+@include('esbtp.lmd.planning._edit_scripts')

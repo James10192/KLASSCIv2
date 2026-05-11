@@ -68,26 +68,81 @@
                             <td><span class="lp-no-planif">UE</span></td>
                         </tr>
                         @foreach($row['ecues'] as $entry)
-                            @php $ecue = $entry['ecue']; $planif = $entry['planif']; @endphp
+                            @php
+                                $ecue = $entry['ecue'];
+                                $planif = $entry['planif'];
+                                $canEdit = auth()->user()?->can('lmd.planning.edit') && $filters['niveau_id'] && $filters['semestre'];
+                                $teacherName = $planif?->enseignantPrincipal?->name;
+                                $teacherId = $planif?->enseignant_principal_id;
+                                $ecueLabel = trim((!empty($ecue->code) ? $ecue->code . ' · ' : '') . $ecue->name);
+                            @endphp
                             <tr class="lp-ecue-row js-ecue-row" data-parent-idx="{{ $idx }}" style="display:none;">
                                 <td class="lp-ecue-indent">
                                     @if(!empty($ecue->code))<span class="lp-ecue-code">{{ $ecue->code }}</span>@endif
                                     {{ $ecue->name }}
                                 </td>
                                 <td>—</td>
-                                @if($planif)
-                                    <td class="lp-volume lp-col-cm @if(!$planif->volume_horaire_cm) lp-volume-zero @endif">{{ $planif->volume_horaire_cm ?? 0 }}</td>
-                                    <td class="lp-volume lp-col-td @if(!$planif->volume_horaire_td) lp-volume-zero @endif">{{ $planif->volume_horaire_td ?? 0 }}</td>
-                                    <td class="lp-volume lp-col-tp @if(!$planif->volume_horaire_tp) lp-volume-zero @endif">{{ $planif->volume_horaire_tp ?? 0 }}</td>
-                                    <td class="lp-volume lp-col-projet @if(!$planif->volume_horaire_projet) lp-volume-zero @endif">{{ $planif->volume_horaire_projet ?? 0 }}</td>
-                                    <td class="lp-volume lp-col-tpe @if(!$planif->volume_horaire_tpe) lp-volume-zero @endif">{{ $planif->volume_horaire_tpe ?? 0 }}</td>
-                                    <td class="lp-volume lp-volume-total lp-col-total">{{ $planif->volume_horaire_total }}</td>
-                                    <td class="lp-volume lp-col-cect">{{ $ecue->credit_ecue ?? '—' }}</td>
-                                    <td>{{ $planif->enseignantPrincipal?->name ?? '—' }}</td>
+                                @foreach(['cm', 'td', 'tp', 'projet', 'tpe'] as $vol)
+                                    @php $val = $planif?->{'volume_horaire_'.$vol} ?? 0; @endphp
+                                    @if($canEdit)
+                                        <td class="lp-volume lp-col-{{ $vol }} lpe-cell @if(!$val) lp-volume-zero @endif"
+                                            data-lpe-ecue-id="{{ $ecue->id }}"
+                                            data-lpe-field="volume_horaire_{{ $vol }}"
+                                            data-lpe-value="{{ $val }}"
+                                            x-data="lpeCell()"
+                                            @click="startEdit()"
+                                            :class="{ 'lpe-cell--editing': editing, 'lpe-cell--saving': saving }">
+                                            <span x-show="!editing" x-text="displayValue"></span>
+                                            <input x-show="editing" x-cloak x-ref="input" type="number"
+                                                   min="0" max="500" class="lpe-input"
+                                                   x-model="value"
+                                                   @blur="commit()"
+                                                   @keydown.enter.prevent="commit()"
+                                                   @keydown.escape.prevent="cancel()"
+                                                   @click.stop>
+                                        </td>
+                                    @else
+                                        <td class="lp-volume lp-col-{{ $vol }} @if(!$val) lp-volume-zero @endif">{{ $val }}</td>
+                                    @endif
+                                @endforeach
+                                <td class="lp-volume lp-volume-total lp-col-total">{{ $planif?->volume_horaire_total ?? 0 }}</td>
+                                @php $credit = $planif?->credits_ects ?? $ecue->credit_ecue; @endphp
+                                @if($canEdit)
+                                    <td class="lp-volume lp-col-cect lpe-cell @if(!$credit) lp-volume-zero @endif"
+                                        data-lpe-ecue-id="{{ $ecue->id }}"
+                                        data-lpe-field="credits_ects"
+                                        data-lpe-value="{{ $credit ?? '' }}"
+                                        x-data="lpeCell()"
+                                        @click="startEdit()"
+                                        :class="{ 'lpe-cell--editing': editing, 'lpe-cell--saving': saving }">
+                                        <span x-show="!editing" x-text="displayValue || '—'"></span>
+                                        <input x-show="editing" x-cloak x-ref="input" type="number"
+                                               min="0" max="30" class="lpe-input"
+                                               x-model="value"
+                                               @blur="commit()"
+                                               @keydown.enter.prevent="commit()"
+                                               @keydown.escape.prevent="cancel()"
+                                               @click.stop>
+                                    </td>
                                 @else
-                                    <td colspan="6" class="lp-no-planif">Non planifié</td>
-                                    <td class="lp-volume lp-col-cect">{{ $ecue->credit_ecue ?? '—' }}</td>
-                                    <td class="lp-no-planif">—</td>
+                                    <td class="lp-volume lp-col-cect">{{ $credit ?? '—' }}</td>
+                                @endif
+                                @if($canEdit)
+                                    <td>
+                                        <button type="button"
+                                                class="lpe-teacher-btn @if($teacherName) lpe-teacher-btn--assigned @endif"
+                                                data-lpe-ecue-id="{{ $ecue->id }}"
+                                                data-lpe-teacher-id="{{ $teacherId ?? '' }}"
+                                                data-lpe-teacher-name="{{ $teacherName ?? '' }}"
+                                                data-lpe-ecue-label="{{ $ecueLabel }}"
+                                                x-data="lpeTeacherTrigger()"
+                                                @click="openPicker()">
+                                            <i class="fas {{ $teacherName ? 'fa-user-check' : 'fa-user-plus' }}"></i>
+                                            <span class="lpe-teacher-name">{{ $teacherName ?: '+ Assigner' }}</span>
+                                        </button>
+                                    </td>
+                                @else
+                                    <td>{{ $teacherName ?? '—' }}</td>
                                 @endif
                             </tr>
                         @endforeach
