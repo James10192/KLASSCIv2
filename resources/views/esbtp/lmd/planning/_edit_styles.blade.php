@@ -7,6 +7,7 @@
 .lpe-cell {
     cursor: pointer;
     position: relative;
+    z-index: 0;
     transition: background-color .12s ease, box-shadow .12s ease;
 }
 .lpe-cell:hover {

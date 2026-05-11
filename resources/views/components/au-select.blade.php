@@ -122,13 +122,14 @@
 .au-select-menu {
     position: absolute; top: calc(100% + 6px);
     left: 8px; right: 8px;
-    z-index: 1050;
+    z-index: 1100;
     background: #fff; border: 1px solid #e2e8f0; border-radius: 12px;
     box-shadow: 0 12px 40px rgba(15,23,42,.12), 0 4px 12px rgba(15,23,42,.06);
     overflow: hidden; max-height: 360px;
     display: flex; flex-direction: column;
     transform-origin: top center;
 }
+.au-select-options, .au-select-option { position: relative; z-index: 1; }
 .au-select-menu--enter-start { opacity: 0; transform: translateY(-6px) scale(.98); transition: opacity .14s ease, transform .14s ease; }
 .au-select-menu--enter-end { opacity: 1; transform: translateY(0) scale(1); }
 .au-select-search {
