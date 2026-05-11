@@ -10,57 +10,16 @@ document.addEventListener('alpine:init', () => {
             niveau_id: @json($filters['niveau_id']),
             semestre: @json($filters['semestre']),
         },
-        semestresMap: {},
         partialUrl: @json(route('esbtp.lmd.planning.partial')),
         pageUrl: @json(route('esbtp.lmd.planning.index')),
 
-        init() {
-            try {
-                this.semestresMap = JSON.parse(this.$root.dataset.semestresMap || '{}') || {};
-            } catch (e) { this.semestresMap = {}; }
-        },
-
-        availableSemestres() {
-            const niveau = this.filters.niveau_id;
-            if (niveau && Array.isArray(this.semestresMap[niveau])) {
-                return this.semestresMap[niveau];
-            }
-            return Array.isArray(this.semestresMap.all) ? this.semestresMap.all : [];
-        },
-
-        // Hide options of the semestre native select outside the niveau scope.
-        // The au-select component watches the native select and re-renders.
-        syncSemestreOptions() {
-            const wrap = this.$refs.semestreWrap;
-            if (!wrap) return;
-            const native = wrap.querySelector('select.au-select-native');
-            if (!native) return;
-            const allowed = this.availableSemestres();
-            const allowedSet = new Set(allowed.map(String));
-            Array.from(native.options).forEach(opt => {
-                if (opt.value === '' || opt.dataset.placeholder === '1') return;
-                opt.hidden = !allowedSet.has(String(opt.value));
-                opt.disabled = !allowedSet.has(String(opt.value));
-            });
-            const cur = String(this.filters.semestre ?? '');
-            if (cur !== '' && !allowedSet.has(cur)) {
-                this.filters.semestre = null;
-                native.value = '';
-                native.dispatchEvent(new Event('change', { bubbles: true }));
-            }
-        },
+        init() {},
 
         async reload(value, key) {
-            const newVal = value || null;
-            if (key === 'niveau_id') {
-                this.filters.niveau_id = newVal;
-                const allowed = this.availableSemestres().map(String);
-                if (this.filters.semestre && !allowed.includes(String(this.filters.semestre))) {
-                    this.filters.semestre = null;
-                }
-            } else {
-                this.filters[key] = newVal;
-            }
+            // Server-side cascade : just fetch with the new filter, the
+            // backend computes the available semestres for the new niveau
+            // and re-renders the semestre dropdown HTML accordingly.
+            this.filters[key] = value || null;
             await this.fetchPartial();
             this.syncUrl();
         },
@@ -79,9 +38,21 @@ document.addEventListener('alpine:init', () => {
                 const json = await resp.json();
                 document.getElementById('lpKpis').innerHTML = json.kpis || '';
                 document.getElementById('lpContent').innerHTML = json.listing || '';
-                if (json.semestresMap) {
-                    this.semestresMap = json.semestresMap;
+
+                // Replace the semestre filter HTML and re-init Alpine on it
+                // so the new au-select component options take effect.
+                const semestreWrap = document.getElementById('lpFilterSemestre');
+                if (semestreWrap && json.filters_semestre) {
+                    // Keep the label, only replace the select component (which
+                    // sits after it). Easiest : full innerHTML swap restores
+                    // the label too because the partial doesn't include it.
+                    const label = semestreWrap.querySelector('.lp-filter-label');
+                    semestreWrap.innerHTML = (label ? label.outerHTML : '<label class="lp-filter-label">Semestre</label>') + json.filters_semestre;
+                    if (window.Alpine && typeof window.Alpine.initTree === 'function') {
+                        window.Alpine.initTree(semestreWrap);
+                    }
                 }
+
                 if (json.filters && json.filters.semestre !== undefined) {
                     this.filters.semestre = json.filters.semestre;
                 }

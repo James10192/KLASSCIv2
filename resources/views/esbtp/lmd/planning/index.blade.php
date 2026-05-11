@@ -8,7 +8,6 @@
 <div class="lp-page"
      x-data="lpPlanning"
      :class="loading ? 'lp-loading' : ''"
-     data-semestres-map='@json($semestresMap)'
      @lpm:saved.window="fetchPartial()">
     <div class="lp-hero">
         <div class="lp-hero-top">
@@ -57,17 +56,9 @@
                     :options="$niveaux->mapWithKeys(fn ($n) => [$n->id => $n->name])->all()"
                     x-on:change="reload($event.target.value, 'niveau_id')" />
             </div>
-            <div class="lp-filter-group" data-tour-node="filter-semestre">
+            <div class="lp-filter-group" data-tour-node="filter-semestre" id="lpFilterSemestre">
                 <label class="lp-filter-label">Semestre</label>
-                <x-au-select
-                    name="semestre"
-                    icon="fa-calendar-alt"
-                    placeholder="Tous semestres"
-                    :value="$filters['semestre']"
-                    :options="collect($semestres)->mapWithKeys(fn ($s) => [$s => 'Semestre ' . $s])->all()"
-                    x-ref="semestreWrap"
-                    x-effect="syncSemestreOptions()"
-                    x-on:change="reload($event.target.value, 'semestre')" />
+                @include('esbtp.lmd.planning._filter_semestre')
             </div>
         </div>
     </div>

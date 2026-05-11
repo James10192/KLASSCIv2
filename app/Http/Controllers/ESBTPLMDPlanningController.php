@@ -24,13 +24,16 @@ class ESBTPLMDPlanningController extends Controller
     public function index(Request $request): View
     {
         $ctx = $this->buildContext($request);
-        $semestres = range(1, 10);
 
-        return view('esbtp.lmd.planning.index', array_merge($ctx, compact('semestres')));
+        return view('esbtp.lmd.planning.index', $ctx);
     }
 
     /**
-     * GET /esbtp/lmd/planning/partial — returns JSON {kpis, listing, semestresMap, filters} for AJAX reload.
+     * GET /esbtp/lmd/planning/partial — returns JSON {kpis, listing, filters_semestre, filters} for AJAX reload.
+     *
+     * `filters_semestre` is the rendered HTML of the semestre filter dropdown,
+     * already filtered server-side to the semestres available for the current
+     * niveau_id (server-side cascade — no Alpine option mutation magic needed).
      */
     public function partial(Request $request)
     {
@@ -39,7 +42,7 @@ class ESBTPLMDPlanningController extends Controller
         return response()->json([
             'kpis' => view('esbtp.lmd.planning._kpis', $ctx)->render(),
             'listing' => view('esbtp.lmd.planning._listing', $ctx)->render(),
-            'semestresMap' => $ctx['semestresMap'],
+            'filters_semestre' => view('esbtp.lmd.planning._filter_semestre', $ctx)->render(),
             'filters' => $ctx['filters'],
         ]);
     }
@@ -60,12 +63,25 @@ class ESBTPLMDPlanningController extends Controller
         $parcoursSelected = $parcoursId ? $parcours->firstWhere('id', $parcoursId) : null;
 
         $semestresMap = $this->buildSemestresMap($parcoursSelected);
-        $allowedSemestres = $semestresMap['all'] ?? [];
+        $niveauId = $this->validateNiveauId($request->integer('niveau_id'), $niveaux);
+
+        // Server-side cascade : the semestres allowed depend on the niveau_id.
+        // If a niveau is picked, restrict to its semestres ; else union of all.
+        $availableSemestres = $niveauId && isset($semestresMap[$niveauId])
+            ? $semestresMap[$niveauId]
+            : ($semestresMap['all'] ?? []);
+
+        // Defensive fallback : if the parcours pivot has no semestre data
+        // (legacy or mid-import), expose the canonical 1..10 range so the
+        // user can still pick something rather than facing an empty dropdown.
+        if (empty($availableSemestres)) {
+            $availableSemestres = range(1, 10);
+        }
 
         $filters = [
             'parcours_id' => $parcoursId,
-            'niveau_id' => $this->validateNiveauId($request->integer('niveau_id'), $niveaux),
-            'semestre' => $this->validateSemestre($request->integer('semestre'), $allowedSemestres),
+            'niveau_id' => $niveauId,
+            'semestre' => $this->validateSemestre($request->integer('semestre'), $availableSemestres),
         ];
 
         $rows = $parcoursSelected ? $this->buildPlanningRows($parcoursSelected, $filters) : collect();
@@ -76,7 +92,7 @@ class ESBTPLMDPlanningController extends Controller
             'cect_total' => $rows->sum('cect'),
         ];
 
-        return compact('parcours', 'niveaux', 'parcoursSelected', 'semestresMap', 'filters', 'rows', 'kpis');
+        return compact('parcours', 'niveaux', 'parcoursSelected', 'semestresMap', 'availableSemestres', 'filters', 'rows', 'kpis');
     }
 
     /**
