@@ -121,8 +121,9 @@
 .lpt-modal {
     background: #fff;
     border-radius: 16px;
-    max-width: 520px;
+    max-width: 540px;
     width: 100%;
+    min-height: min(420px, 85vh);
     max-height: calc(100vh - 4rem);
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(15, 23, 42, .25);
@@ -168,10 +169,28 @@
 }
 .lpt-close:hover { background: rgba(255, 255, 255, .25); }
 .lpt-body {
-    padding: 1.25rem 1.5rem;
+    padding: 1.5rem 2rem;
     overflow-y: auto;
+    flex: 1 1 auto;
+    min-height: 240px;
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
 }
 .lpt-body .au-up { width: 100%; }
+.lpt-body .au-up-trigger { width: 100%; }
+.lpt-empty-hint {
+    color: #94a3b8;
+    font-size: .8rem;
+    padding-top: 1rem;
+    border-top: 1px dashed #e2e8f0;
+    margin-top: .5rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-style: italic;
+}
+.lpt-empty-hint i { color: #cbd5e1; font-size: .9rem; }
 .lpt-actions {
     padding: .85rem 1.5rem;
     border-top: 1px solid #f1f5f9;
@@ -238,6 +257,18 @@
 }
 .lpt-toast--success { background: linear-gradient(135deg, #059669, #10b981); }
 .lpt-toast--error { background: linear-gradient(135deg, #b91c1c, #dc2626); }
+
+@@media (max-width: 640px) {
+    .lpt-modal {
+        min-height: 0;
+        height: auto;
+        max-height: 90vh;
+        border-radius: 14px;
+    }
+    .lpt-header { padding: 1rem 1.15rem; }
+    .lpt-body { padding: 1.15rem; min-height: 200px; }
+    .lpt-actions { padding: .75rem 1.15rem; }
+}
 </style>
 @endpush
 @endonce

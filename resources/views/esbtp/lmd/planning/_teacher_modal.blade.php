@@ -25,6 +25,10 @@
                 name="lpt_user_id"
                 :users="$enseignants"
                 placeholder="— Sélectionner un enseignant —" />
+            <div class="lpt-empty-hint" x-show="!currentTeacherId" x-cloak>
+                <i class="fas fa-info-circle"></i>
+                <span>L'enseignant assigné apparaîtra ici une fois sélectionné.</span>
+            </div>
         </div>
         <div class="lpt-actions">
             <button type="button" class="lpt-btn lpt-btn-secondary" @click="open = false">
