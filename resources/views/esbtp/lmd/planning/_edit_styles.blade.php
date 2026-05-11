@@ -121,9 +121,9 @@
 .lpt-modal {
     background: #fff;
     border-radius: 16px;
-    max-width: 540px;
+    max-width: 560px;
     width: 100%;
-    min-height: min(420px, 85vh);
+    min-height: min(480px, 85vh);
     max-height: calc(100vh - 4rem);
     overflow: hidden;
     box-shadow: 0 20px 60px rgba(15, 23, 42, .25);
@@ -169,22 +169,23 @@
 }
 .lpt-close:hover { background: rgba(255, 255, 255, .25); }
 .lpt-body {
-    padding: 1.5rem 2rem;
+    padding: 1.75rem 2rem;
     overflow-y: auto;
     flex: 1 1 auto;
-    min-height: 240px;
-    display: flex;
-    flex-direction: column;
-    gap: .75rem;
+    min-height: 280px;
 }
-.lpt-body .au-up { width: 100%; }
+.lpt-body .au-up {
+    width: 100%;
+    margin-bottom: 1rem;
+}
 .lpt-body .au-up-trigger { width: 100%; }
 .lpt-empty-hint {
-    color: #94a3b8;
+    background: #f8fafc;
+    padding: .75rem 1rem;
+    border-radius: 8px;
+    border: 1px dashed #e2e8f0;
+    color: #64748b;
     font-size: .8rem;
-    padding-top: 1rem;
-    border-top: 1px dashed #e2e8f0;
-    margin-top: .5rem;
     display: flex;
     align-items: center;
     gap: .5rem;
@@ -266,7 +267,7 @@
         border-radius: 14px;
     }
     .lpt-header { padding: 1rem 1.15rem; }
-    .lpt-body { padding: 1.15rem; min-height: 200px; }
+    .lpt-body { padding: 1.25rem 1.15rem; min-height: 220px; }
     .lpt-actions { padding: .75rem 1.15rem; }
 }
 </style>
