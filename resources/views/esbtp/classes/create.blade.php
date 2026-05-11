@@ -35,7 +35,25 @@
                     </div>
                 @endif
 
-                <form action="{{ route('esbtp.classes.store') }}" method="POST">
+                @php
+                    $niveauTypes = $niveaux->pluck('type', 'id')->all();
+                    $parcoursOptions = $parcours->mapWithKeys(function ($p) {
+                        $domaine = optional(optional($p->mention)->domaine)->name;
+                        $mention = optional($p->mention)->name;
+                        $label = trim(implode(' > ', array_filter([$domaine, $mention, $p->name])));
+                        return [$p->id => $label ?: $p->name];
+                    })->all();
+                    $oldFiliere = old('filiere_id');
+                    $oldNiveau = old('niveau_etude_id');
+                    $oldParcours = old('parcours_id');
+                @endphp
+
+                <form action="{{ route('esbtp.classes.store') }}" method="POST"
+                      x-data="classeFormMode({
+                          niveauTypes: @js($niveauTypes),
+                          niveauId: @js($oldNiveau ?? ''),
+                          parcoursId: @js($oldParcours ?? ''),
+                      })">
                     @csrf
                     <div class="row mb-4">
                         <div class="col-12">
@@ -68,8 +86,30 @@
 
                                     <div class="row">
                                         <div class="col-md-4 mb-3">
+                                            <label for="niveau_etude_id" class="form-label">Niveau d'études <span class="text-danger">*</span></label>
+                                            <select class="form-select @error('niveau_etude_id') is-invalid @enderror" id="niveau_etude_id" name="niveau_etude_id" required
+                                                    @change="niveauId = $event.target.value; onModeChanged()">
+                                                <option value="">Sélectionner un niveau</option>
+                                                @foreach($niveaux as $niveau)
+                                                    <option value="{{ $niveau->id }}" {{ old('niveau_etude_id') == $niveau->id ? 'selected' : '' }}>
+                                                        {{ $niveau->name }} ({{ $niveau->type }} - Année {{ $niveau->year }})
+                                                    </option>
+                                                @endforeach
+                                            </select>
+                                            @error('niveau_etude_id')
+                                                <div class="invalid-feedback">{{ $message }}</div>
+                                            @enderror
+                                            <small class="form-text text-muted">
+                                                <span x-show="!systemeAcademique" x-cloak>Système académique : auto-déterminé après choix du niveau</span>
+                                                <span x-show="systemeAcademique === 'BTS'" x-cloak><i class="fas fa-graduation-cap"></i> Système : <strong>BTS</strong></span>
+                                                <span x-show="systemeAcademique === 'LMD'" x-cloak><i class="fas fa-university"></i> Système : <strong>LMD</strong> (UEMOA)</span>
+                                            </small>
+                                        </div>
+
+                                        {{-- BTS mode OR neutral mode (niveau pas encore choisi) : afficher Filiere --}}
+                                        <div class="col-md-4 mb-3" x-show="systemeAcademique !== 'LMD'" x-cloak>
                                             <label for="filiere_id" class="form-label">Filière <span class="text-danger">*</span></label>
-                                            <select class="form-select @error('filiere_id') is-invalid @enderror" id="filiere_id" name="filiere_id" required>
+                                            <select class="form-select @error('filiere_id') is-invalid @enderror" id="filiere_id" name="filiere_id" :required="systemeAcademique !== 'LMD'" :disabled="systemeAcademique === 'LMD'">
                                                 <option value="">Sélectionner une filière</option>
                                                 @foreach($filieres as $filiere)
                                                     <option value="{{ $filiere->id }}" {{ old('filiere_id') == $filiere->id ? 'selected' : '' }}>
@@ -82,19 +122,24 @@
                                             @enderror
                                         </div>
 
-                                        <div class="col-md-4 mb-3">
-                                            <label for="niveau_etude_id" class="form-label">Niveau d'études <span class="text-danger">*</span></label>
-                                            <select class="form-select @error('niveau_etude_id') is-invalid @enderror" id="niveau_etude_id" name="niveau_etude_id" required>
-                                                <option value="">Sélectionner un niveau</option>
-                                                @foreach($niveaux as $niveau)
-                                                    <option value="{{ $niveau->id }}" {{ old('niveau_etude_id') == $niveau->id ? 'selected' : '' }}>
-                                                        {{ $niveau->name }} ({{ $niveau->type }} - Année {{ $niveau->year }})
+                                        {{-- LMD mode : afficher Parcours (Domaine > Mention > Parcours) --}}
+                                        <div class="col-md-4 mb-3" x-show="systemeAcademique === 'LMD'" x-cloak>
+                                            <label for="parcours_id" class="form-label">Parcours LMD <span class="text-danger">*</span></label>
+                                            <select class="form-select @error('parcours_id') is-invalid @enderror" id="parcours_id" name="parcours_id" :required="systemeAcademique === 'LMD'" :disabled="systemeAcademique !== 'LMD'"
+                                                    @change="parcoursId = $event.target.value">
+                                                <option value="">Sélectionner un parcours</option>
+                                                @foreach($parcoursOptions as $id => $label)
+                                                    <option value="{{ $id }}" {{ old('parcours_id') == $id ? 'selected' : '' }}>
+                                                        {{ $label }}
                                                     </option>
                                                 @endforeach
                                             </select>
-                                            @error('niveau_etude_id')
+                                            @error('parcours_id')
                                                 <div class="invalid-feedback">{{ $message }}</div>
                                             @enderror
+                                            <small class="form-text text-muted">
+                                                Hiérarchie UEMOA : Domaine &gt; Mention &gt; Parcours. La filière sera dérivée automatiquement.
+                                            </small>
                                         </div>
 
                                         <div class="col-md-4 mb-3">
@@ -170,19 +215,35 @@
     document.addEventListener('DOMContentLoaded', function() {
         // Améliorer les sélecteurs avec select2 si disponible
         if (typeof $.fn.select2 !== 'undefined') {
-            $('#filiere_id, #niveau_etude_id, #annee_universitaire_id').select2({
+            $('#filiere_id, #parcours_id, #niveau_etude_id, #annee_universitaire_id').select2({
                 theme: 'bootstrap4',
                 placeholder: 'Sélectionner une option',
                 allowClear: true
             });
+
+            // Quand Alpine change la value du select natif (BTS/LMD switch),
+            // Select2 doit rafraichir son affichage
+            const reSelect2 = function (id) {
+                const $el = $('#' + id);
+                if ($el.length && $el.hasClass('select2-hidden-accessible')) {
+                    $el.trigger('change.select2');
+                }
+            };
+
+            // Sync Alpine -> Select2 quand le mode change
+            $('#niveau_etude_id').on('change', function () {
+                setTimeout(function () {
+                    reSelect2('filiere_id');
+                    reSelect2('parcours_id');
+                }, 50);
+            });
         }
 
-        // Auto-génération du code de classe basé sur le nom
+        // Auto-genere code de classe depuis le nom
         $('#name').on('blur', function() {
             if ($('#code').val() === '') {
                 const name = $(this).val();
                 if (name) {
-                    // Extraire les premières lettres de chaque mot et les convertir en majuscules
                     const code = name.split(' ')
                         .map(word => word.charAt(0).toUpperCase())
                         .join('');
@@ -191,5 +252,35 @@
             }
         });
     });
+
+    // Alpine factory : detecte BTS vs LMD selon le type du niveau choisi
+    window.classeFormMode = function (config) {
+        return {
+            niveauTypes: config.niveauTypes || {},
+            niveauId: String(config.niveauId || ''),
+            parcoursId: String(config.parcoursId || ''),
+            lmdTypes: ['Licence', 'Master', 'Doctorat', 'Bachelor'],
+            get systemeAcademique() {
+                if (!this.niveauId) return null;
+                const type = this.niveauTypes[this.niveauId] || this.niveauTypes[Number(this.niveauId)];
+                if (!type) return null;
+                return this.lmdTypes.includes(type) ? 'LMD' : 'BTS';
+            },
+            onModeChanged() {
+                // Quand bascule BTS<->LMD, vider la valeur du select cache pour
+                // eviter qu'un filiere_id reste envoye en mode LMD (et inversement).
+                // Le select disabled est exclu du submit native, mais le user peut
+                // avoir des residus si Select2 est actif.
+                if (this.systemeAcademique === 'LMD') {
+                    const fil = document.getElementById('filiere_id');
+                    if (fil) fil.value = '';
+                } else if (this.systemeAcademique === 'BTS') {
+                    const par = document.getElementById('parcours_id');
+                    if (par) par.value = '';
+                    this.parcoursId = '';
+                }
+            },
+        };
+    };
 </script>
 @endsection

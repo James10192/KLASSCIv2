@@ -15,10 +15,14 @@ class StoreClasseRequest extends FormRequest
 
     public function rules(): array
     {
+        // En mode LMD, parcours_id est fourni et filiere_id sera dérivé server-side.
+        // En mode BTS, filiere_id est requis directement.
+        $isLmd = $this->filled('parcours_id');
+
         return [
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:esbtp_classes,code',
-            'filiere_id' => 'required|exists:esbtp_filieres,id',
+            'filiere_id' => $isLmd ? 'nullable|exists:esbtp_filieres,id' : 'required|exists:esbtp_filieres,id',
             'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'places_totales' => 'required|integer|min:1',

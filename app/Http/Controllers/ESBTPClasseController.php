@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\ESBTPLMDParcours;
 use Illuminate\Support\Str;
 
 class ESBTPClasseController extends Controller
@@ -288,6 +289,10 @@ class ESBTPClasseController extends Controller
         $filieres = ESBTPFiliere::where("is_active", true)->get();
         $niveaux = ESBTPNiveauEtude::where("is_active", true)->get();
         $annees = ESBTPAnneeUniversitaire::where("is_active", true)->get();
+        $parcours = ESBTPLMDParcours::with('mention.domaine')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
         // Si c'est une requête AJAX (pour le modal), retourner seulement le partial
         if ($request->ajax() || $request->input("ajax") === "1") {
@@ -295,14 +300,15 @@ class ESBTPClasseController extends Controller
                 "filieres" => $filieres,
                 "niveaux" => $niveaux,
                 "annees" => $annees,
+                "parcours" => $parcours,
                 "isModal" => true,
-                "classe" => null, // Pas de classe pour création
+                "classe" => null,
             ]);
         }
 
         return view(
             "esbtp.classes.create",
-            compact("filieres", "niveaux", "annees"),
+            compact("filieres", "niveaux", "annees", "parcours"),
         );
     }
 
@@ -315,6 +321,12 @@ class ESBTPClasseController extends Controller
     public function store(StoreClasseRequest $request)
     {
         $validatedData = $request->validated();
+
+        // Mode LMD : dériver filiere_id depuis le parcours sélectionné
+        if (!empty($validatedData['parcours_id'])) {
+            $parcours = ESBTPLMDParcours::findOrFail($validatedData['parcours_id']);
+            $validatedData['filiere_id'] = $parcours->filiere_id;
+        }
 
         // Ajouter les champs de traçabilité
         $validatedData["created_by"] = Auth::id();
@@ -521,6 +533,10 @@ class ESBTPClasseController extends Controller
         $filieres = ESBTPFiliere::where("is_active", true)->get();
         $niveaux = ESBTPNiveauEtude::where("is_active", true)->get();
         $annees = ESBTPAnneeUniversitaire::where("is_active", true)->get();
+        $parcours = ESBTPLMDParcours::with('mention.domaine')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
         // Si c'est une requête AJAX (pour le modal), retourner seulement le partial
         if ($request->ajax() || $request->input("ajax") === "1") {
@@ -528,14 +544,15 @@ class ESBTPClasseController extends Controller
                 "filieres" => $filieres,
                 "niveaux" => $niveaux,
                 "annees" => $annees,
+                "parcours" => $parcours,
                 "isModal" => true,
-                "classe" => $classe, // Classe existante pour édition
+                "classe" => $classe,
             ]);
         }
 
         return view(
             "esbtp.classes.edit",
-            compact("classe", "filieres", "niveaux", "annees"),
+            compact("classe", "filieres", "niveaux", "annees", "parcours"),
         );
     }
 
@@ -550,19 +567,21 @@ class ESBTPClasseController extends Controller
     {
         // Valider les données du formulaire
         try {
+            // En mode LMD, parcours_id est fourni et filiere_id sera dérivé server-side.
+            $isLmd = $request->filled('parcours_id');
+
             $validatedData = $request->validate([
                 "name" => "required|string|max:255",
                 "code" =>
                     "required|string|max:50|unique:esbtp_classes,code," .
                     $classe->id,
-                "filiere_id" => "required|exists:esbtp_filieres,id",
+                "filiere_id" => $isLmd ? "nullable|exists:esbtp_filieres,id" : "required|exists:esbtp_filieres,id",
                 "niveau_etude_id" => "required|exists:esbtp_niveau_etudes,id",
                 "annee_universitaire_id" =>
                     "required|exists:esbtp_annee_universitaires,id",
                 "places_totales" => "required|integer|min:1",
                 "description" => "nullable|string",
                 "is_active" => "boolean",
-                // systeme_academique is auto-set by ESBTPClasse::booted() from niveau_etude_id
                 "parcours_id" => "nullable|exists:esbtp_lmd_parcours,id",
             ]);
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -577,6 +596,12 @@ class ESBTPClasseController extends Controller
                 );
             }
             throw $e;
+        }
+
+        // Mode LMD : dériver filiere_id depuis le parcours sélectionné
+        if (!empty($validatedData['parcours_id'])) {
+            $parcoursModel = ESBTPLMDParcours::findOrFail($validatedData['parcours_id']);
+            $validatedData['filiere_id'] = $parcoursModel->filiere_id;
         }
 
         // Mettre à jour les champs de traçabilité
