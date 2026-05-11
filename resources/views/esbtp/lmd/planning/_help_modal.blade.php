@@ -30,6 +30,15 @@
                 <li>Chaque ligne UE est dépliable : clique dessus pour voir ses ECUE et leurs volumes horaires.</li>
                 <li>Les colonnes CM / TD / TP / Projet / TPE / Total viennent des planifications académiques. Si une ECUE n'a pas de planification, elle apparaît avec « non planifié ».</li>
             </ol>
+            <h4>Modifier les volumes horaires</h4>
+            <p>Pour modifier les volumes horaires (CM, TD, TP, Projet, TPE) et les crédits ECTS d'un ECUE en cliquant directement sur la cellule, <strong>3 conditions cumulatives</strong> doivent être réunies :</p>
+            <ol class="lp-help-conditions">
+                <li><i class="fas fa-key"></i> Vous avez la <strong>permission <code>lmd.planning.edit</code></strong> (accordée par défaut aux <em>SuperAdmin</em>, <em>Service Technique</em> et <em>Coordinateurs</em>).</li>
+                <li><i class="fas fa-layer-group"></i> Un <strong>niveau</strong> est sélectionné dans le filtre (Licence 1, Licence 2, Licence 3, Master 1, Master 2, etc.).</li>
+                <li><i class="fas fa-calendar-week"></i> Un <strong>sémestre</strong> est sélectionné dans le filtre (S1 à S6 selon le niveau).</li>
+            </ol>
+            <p class="lp-help-tip"><i class="fas fa-lightbulb"></i> <strong>Astuce.</strong> Un encart bleu apparaît au-dessus du tableau si l'édition est désactivée à cause de filtres manquants.</p>
+
             <h4>Importer une maquette</h4>
             <p>Les UE et ECUE sont importées via la commande CLI dédiée :</p>
             <ul>

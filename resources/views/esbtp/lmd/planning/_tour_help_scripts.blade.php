@@ -23,6 +23,8 @@
           text: 'L1, L2, L3, M1... Le filtre semestre se restreint automatiquement.' },
         { selector: '[data-tour-node="filter-semestre"]', icon: 'fa-calendar-alt', title: 'Choisis le semestre',
           text: 'Seuls les semestres réellement importés pour cette année apparaissent.' },
+        { selector: '[data-tour-node="filter-niveau"]', icon: 'fa-edit', title: 'Édition inline des volumes',
+          text: 'Pour activer l\'édition inline (clic sur cellule pour modifier CM/TD/TP/Projet/TPE/crédits), sélectionnez OBLIGATOIREMENT un niveau ET un sémestre. Sans cela, le tableau reste en lecture seule.' },
         { selector: '[data-tour-node="listing"] .lp-card-actions', icon: 'fa-link', title: 'Modifier les UE',
           text: 'Lie ou délie des UE à ce parcours·semestre. Changements visibles immédiatement.' },
         { selector: '[data-tour-node="listing"] .lp-table tbody', icon: 'fa-sitemap', title: 'Hiérarchie UE → ECUE',

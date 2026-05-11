@@ -53,7 +53,8 @@
     .lpm-counter { font-size: .78rem; color: #64748b; font-weight: 600; white-space: nowrap; }
     .lpm-counter strong { color: #0453cb; font-weight: 700; }
 
-    .lpm-body { flex: 1 1 auto; overflow-y: auto; padding: 0; max-height: 60vh; }
+    .lpm-body { flex: 1 1 auto; overflow-y: auto; padding: 0; max-height: 80vh; }
+    @@media (max-width: 768px) { .lpm-body { max-height: 90vh; } }
     .lpm-table { width: 100%; border-collapse: collapse; }
     .lpm-table th {
         text-align: left; font-size: .68rem; font-weight: 600; color: #64748b;

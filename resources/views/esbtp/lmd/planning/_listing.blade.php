@@ -25,6 +25,15 @@
         </button>
     </div>
 @else
+    @if(auth()->user()?->can('lmd.planning.edit') && (!$filters['niveau_id'] || !$filters['semestre']))
+        <div class="lp-edit-hint" role="status">
+            <i class="fas fa-info-circle"></i>
+            <div class="lp-edit-hint-text">
+                <strong>Édition désactivée.</strong>
+                Sélectionnez un <strong>niveau</strong> ET un <strong>sémestre</strong> dans les filtres pour modifier les volumes horaires (CM, TD, TP, Projet, TPE) et les crédits ECTS en cliquant sur les cellules.
+            </div>
+        </div>
+    @endif
     <div class="lp-card">
         <div class="lp-card-header">
             <h2 class="lp-card-title"><span class="lp-card-title-icon"><i class="fas fa-book"></i></span>{{ $parcoursSelected->name }}</h2>

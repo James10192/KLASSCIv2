@@ -59,6 +59,12 @@
     .lp-btn-glass { display: inline-flex; align-items: center; gap: .5rem; padding: .5rem .95rem; border-radius: 10px; background: rgba(255,255,255,.12); color: #fff; border: 1px solid rgba(255,255,255,.2); font-size: .82rem; font-weight: 600; cursor: pointer; transition: background .15s, border-color .15s; }
     .lp-btn-glass:hover { background: rgba(255,255,255,.22); border-color: rgba(255,255,255,.32); }
 
+    /* Edit hint banner — shown when user has edit perm but missing niveau/semestre filters */
+    .lp-edit-hint { display: flex; align-items: center; gap: .65rem; background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.18); padding: .75rem 1.1rem; border-radius: 10px; color: #1e293b; font-size: .87rem; margin-bottom: 1rem; }
+    .lp-edit-hint i { color: #0453cb; font-size: 1.1rem; flex-shrink: 0; }
+    .lp-edit-hint-text { line-height: 1.4; }
+    .lp-edit-hint-text strong { color: #0453cb; font-weight: 700; }
+
     /* Subtle column tinting (loaded once in head — survives AJAX innerHTML replace) */
     .lp-table .lp-col-cm     { background: rgba(4, 83, 203, .04); }
     .lp-table .lp-col-td     { background: rgba(59, 125, 219, .05); }
@@ -93,6 +99,12 @@
     .lp-help-body code { background: #f1f5f9; padding: .12rem .4rem; border-radius: 5px; font-size: .82rem; color: #0f172a; }
     .lp-help-body ul, .lp-help-body ol { padding-left: 1.25rem; margin: .35rem 0 .75rem; }
     .lp-help-body li { margin-bottom: .35rem; }
+    .lp-help-conditions { list-style: none; padding-left: 0; counter-reset: cond; }
+    .lp-help-conditions li { position: relative; padding: .55rem .75rem .55rem 2.5rem; margin-bottom: .5rem; background: rgba(4,83,203,.04); border: 1px solid rgba(4,83,203,.12); border-radius: 8px; counter-increment: cond; }
+    .lp-help-conditions li::before { content: counter(cond); position: absolute; left: .65rem; top: 50%; transform: translateY(-50%); width: 22px; height: 22px; border-radius: 50%; background: #0453cb; color: #fff; font-size: .72rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; }
+    .lp-help-conditions li i { color: #0453cb; margin-right: .35rem; }
+    .lp-help-tip { background: rgba(4,83,203,.04); border-left: 3px solid #0453cb; padding: .55rem .85rem; border-radius: 6px; font-size: .85rem; color: #1e293b; margin-top: .5rem; }
+    .lp-help-tip i { color: #0453cb; margin-right: .25rem; }
 
     /* Tour overlay */
     .lp-tour-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.55); z-index: 1990; pointer-events: none; opacity: 0; transition: opacity .2s ease; }
