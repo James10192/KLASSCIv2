@@ -138,9 +138,25 @@ class LMDImportService
     {
         // Match by (year + type) — multiple niveaux can share a year (BTS 1ère, Licence 1ère, etc.).
         // Defaulting to 'Licence' since this service is LMD-only.
+        $type = $data['type'] ?? 'Licence';
+        $year = (int) $data['year'];
+
+        // Generate a unique code per type×year for LMD niveaux, prefixed to avoid collision
+        // with legacy niveau codes (BTS '1A', '2A', or legacy untyped 'L1', 'L2' etc.).
+        $baseCode = $data['code'] ?? ('LMD-' . strtoupper(substr($type, 0, 1)) . $year);
+        $code = $baseCode;
+        $suffix = 1;
+        while (ESBTPNiveauEtude::where('code', $code)
+            ->where(function ($q) use ($year, $type) {
+                $q->where('year', '!=', $year)->orWhere('type', '!=', $type);
+            })
+            ->exists()) {
+            $code = $baseCode . '-' . $suffix++;
+        }
+
         return ESBTPNiveauEtude::firstOrCreate(
-            ['year' => (int) $data['year'], 'type' => $data['type'] ?? 'Licence'],
-            ['name' => $data['name'], 'libelle' => $data['libelle'] ?? $data['name'], 'is_active' => true]
+            ['year' => $year, 'type' => $type],
+            ['name' => $data['name'], 'libelle' => $data['libelle'] ?? $data['name'], 'code' => $code, 'is_active' => true]
         );
     }
 
