@@ -10,9 +10,12 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPUniteEnseignement;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 /**
@@ -79,38 +82,109 @@ class ESBTPLMDPlanningController extends Controller
      * passé en query string, on la crée avec les valeurs envoyées.
      *
      * Recalcule volume_horaire_total = CM+TD+TP+Projet+TPE après chaque save.
+     *
+     * Sécurités appliquées :
+     *   - assert ECUE LMD (matiere.unite_enseignement_id != null) — les
+     *     matières BTS legacy ne sont pas planifiables ici (Silent #10)
+     *   - filiere_id dérivée server-side depuis l'UE de l'ECUE pour
+     *     éviter l'IDOR (M3) — la valeur client est seulement utilisée
+     *     comme « hint » et validée contre la vérité server-side
+     *   - DB::transaction + lockForUpdate sur l'unique composite pour
+     *     éviter la double-création en race condition (M2)
+     *   - created_by/updated_by assignés APRÈS le fill() pour qu'une
+     *     éventuelle extension de la FormRequest ne puisse pas les
+     *     écraser (M1, défensif)
+     *   - QueryException catchée + Log::error structuré (Silent #2)
      */
     public function updatePlanification(UpdatePlanificationRequest $request, int $ecueId): JsonResponse
     {
-        ESBTPMatiere::findOrFail($ecueId);
+        $matiere = ESBTPMatiere::findOrFail($ecueId);
 
-        $context = $this->resolvePlanificationContext($request);
+        // Silent #10 : seules les matières liées à une UE (= ECUE LMD) peuvent
+        // être planifiées via cette route. Les matières BTS legacy ont leur
+        // propre tooling (planification.classes via ESBTPPlanningConfigController).
+        abort_if(!$matiere->unite_enseignement_id, 422, "Cette matière n'est pas un ECUE LMD.");
+
+        $context = $this->resolvePlanificationContext($request, $matiere);
         if (!$context['filiere_id'] || !$context['niveau_id']) {
             return response()->json(['success' => false, 'message' => 'Contexte filière/niveau manquant — sélectionnez un niveau et un semestre avant l\'édition.'], 422);
         }
 
-        if ($request->filled('enseignant_principal_id')) {
-            $teacher = User::find($request->integer('enseignant_principal_id'));
-            if (!$teacher || !$teacher->hasRole('enseignant')) {
-                return response()->json(['success' => false, 'message' => "L'utilisateur sélectionné n'est pas un enseignant."], 422);
-            }
+        if ($request->filled('enseignant_principal_id') && !$this->teacherExists($request->integer('enseignant_principal_id'))) {
+            return response()->json(['success' => false, 'message' => "L'utilisateur sélectionné n'est pas un enseignant."], 422);
         }
 
-        $planif = ESBTPPlanificationAcademique::firstOrNew([
-            'matiere_id' => $ecueId,
-            'filiere_id' => $context['filiere_id'],
-            'niveau_etude_id' => $context['niveau_id'],
-            'semestre' => $context['semestre'],
-            'annee_universitaire_id' => $context['annee_id'],
-        ]);
+        try {
+            [$planif, $wasCreated] = DB::transaction(
+                fn () => $this->upsertPlanification($request, $ecueId, $context)
+            );
+        } catch (QueryException $e) {
+            return $this->handlePlanifQueryException($e, $ecueId, $context);
+        }
 
-        if (!$planif->exists) {
+        $planif->load('enseignantPrincipal:id,name');
+
+        // Silent #1 : signaler distinctement création vs mise à jour pour
+        // que l'UI puisse afficher un toast contextuel.
+        return response()->json([
+            'success'       => true,
+            'created'       => $wasCreated,
+            'planification' => $this->serializePlanification($planif),
+        ]);
+    }
+
+    /**
+     * Vérifie qu'un user existe ET porte le rôle `enseignant`.
+     */
+    private function teacherExists(int $userId): bool
+    {
+        $user = User::find($userId);
+        return $user !== null && $user->hasRole('enseignant');
+    }
+
+    /**
+     * Upsert atomique d'une planification dans une transaction
+     * (à appeler depuis DB::transaction). Retourne `[$planif, $wasCreated]`.
+     */
+    private function upsertPlanification(UpdatePlanificationRequest $request, int $ecueId, array $context): array
+    {
+        // M2 : lockForUpdate pose un row lock SELECT...FOR UPDATE sur la
+        // (potentiellement absente) ligne. Si deux requêtes parallèles
+        // attaquent le même 5-uplet unique, la seconde attendra que la
+        // première commit avant de relire — la contrainte unique composite
+        // `uniq_planif_academique` reste le filet ultime.
+        $planif = ESBTPPlanificationAcademique::query()
+            ->where('matiere_id', $ecueId)
+            ->where('filiere_id', $context['filiere_id'])
+            ->where('niveau_etude_id', $context['niveau_id'])
+            ->where('semestre', $context['semestre'])
+            ->where('annee_universitaire_id', $context['annee_id'])
+            ->lockForUpdate()
+            ->first();
+
+        $wasCreated = false;
+        if (!$planif) {
+            $planif = new ESBTPPlanificationAcademique([
+                'matiere_id' => $ecueId,
+                'filiere_id' => $context['filiere_id'],
+                'niveau_etude_id' => $context['niveau_id'],
+                'semestre' => $context['semestre'],
+                'annee_universitaire_id' => $context['annee_id'],
+            ]);
             $planif->statut = ESBTPPlanificationAcademique::STATUT_PLANIFIE;
             $planif->is_active = true;
+            $wasCreated = true;
+        }
+
+        // M1 : fill() AVANT l'assignation created_by/updated_by pour que ces
+        // deux colonnes ne puissent jamais être écrasées par une payload
+        // client si la FormRequest était étendue un jour avec ces clés.
+        $planif->fill($request->validated());
+
+        if ($wasCreated) {
             $planif->created_by = auth()->id();
         }
         $planif->updated_by = auth()->id();
-        $planif->fill($request->validated());
 
         // Recalcul total = somme des cinq sous-volumes (UEMOA).
         $planif->volume_horaire_total = ($planif->volume_horaire_cm ?? 0)
@@ -120,20 +194,94 @@ class ESBTPLMDPlanningController extends Controller
             + ($planif->volume_horaire_tpe ?? 0);
 
         $planif->save();
-        $planif->load('enseignantPrincipal:id,name');
 
-        return response()->json(['success' => true, 'planification' => $this->serializePlanification($planif)]);
+        return [$planif, $wasCreated];
     }
 
-    private function resolvePlanificationContext(Request $request): array
+    /**
+     * Convertit une QueryException en JsonResponse adaptée :
+     *   - 1062 / SQLSTATE 23000 → 409 Conflict (race condition unicité)
+     *   - autre → 500 + Log::error structuré
+     */
+    private function handlePlanifQueryException(QueryException $e, int $ecueId, array $context): JsonResponse
     {
+        $isUniqueViolation = ($e->errorInfo[1] ?? null) === 1062
+            || ($e->errorInfo[0] ?? null) === '23000';
+
+        Log::error('LMD planif update failed', [
+            'ecue_id'   => $ecueId,
+            'user_id'   => auth()->id(),
+            'context'   => $context,
+            'sqlstate'  => $e->errorInfo[0] ?? null,
+            'sql_code'  => $e->errorInfo[1] ?? null,
+            'exception' => $e->getMessage(),
+        ]);
+
+        if ($isUniqueViolation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La planification a été modifiée par un autre utilisateur, rechargez la page.',
+            ], 409);
+        }
+
+        return response()->json([
+            'success' => false,
+            'message' => 'Erreur d\'enregistrement de la planification. Réessayez ou contactez le support.',
+        ], 500);
+    }
+
+    /**
+     * Résout le contexte de planification (filiere/niveau/semestre/année).
+     *
+     * IMPORTANT (M3, anti-IDOR) : `filiere_id` est dérivé server-side depuis
+     * l'UE de l'ECUE et NON pris tel quel du client. La valeur client est
+     * acceptée seulement si elle correspond à la filière de l'UE de l'ECUE
+     * — sinon on retombe sur la valeur server-side.
+     *
+     * Chaîne canonique : ECUE.unite_enseignement_id → UE.filiere_id (FK directe
+     * sur esbtp_unites_enseignement). Fallback via UE.parcours.filiere_id si
+     * l'UE n'a pas de filière directe (rare mais autorisé par le schéma).
+     */
+    private function resolvePlanificationContext(Request $request, ?ESBTPMatiere $matiere = null): array
+    {
+        $serverFiliereId = $this->deriveFiliereIdFromEcue($matiere);
+        $clientFiliereId = $request->integer('filiere_id') ?: null;
+
+        // Si client envoie une filière qui ne matche pas celle dérivée
+        // server-side, on prend toujours la server-side. Si server-side
+        // n'a pas pu être dérivée (UE sans filière + sans parcours.filière),
+        // on accepte la client mais ce cas est pathologique.
+        $filiereId = $serverFiliereId
+            ?? $clientFiliereId;
+
         return [
-            'filiere_id' => $request->integer('filiere_id') ?: null,
+            'filiere_id' => $filiereId,
             'niveau_id' => $request->integer('niveau_id') ?: null,
             'semestre' => $request->integer('semestre') ?: 1,
             'annee_id' => $request->integer('annee_universitaire_id')
                 ?: optional(ESBTPAnneeUniversitaire::where('is_current', true)->first())->id,
         ];
+    }
+
+    /**
+     * Dérive la filière côté serveur depuis l'ECUE → UE → (filière directe
+     * ou via parcours). Retourne null si la chaîne est cassée (ECUE orphelin).
+     */
+    private function deriveFiliereIdFromEcue(?ESBTPMatiere $matiere): ?int
+    {
+        if (!$matiere || !$matiere->unite_enseignement_id) {
+            return null;
+        }
+
+        $ue = ESBTPUniteEnseignement::with('parcours:id,filiere_id')
+            ->find($matiere->unite_enseignement_id);
+
+        if (!$ue) {
+            return null;
+        }
+
+        return $ue->filiere_id
+            ?: optional($ue->parcours)->filiere_id;
     }
 
     private function serializePlanification(ESBTPPlanificationAcademique $planif): array

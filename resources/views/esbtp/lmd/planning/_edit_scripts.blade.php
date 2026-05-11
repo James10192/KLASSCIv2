@@ -52,9 +52,25 @@
         let json = {};
         try { json = await resp.json(); } catch (e) { json = {}; }
         if (!resp.ok || !json.success) {
-            throw new Error(json.message || 'Erreur HTTP ' + resp.status);
+            // Silent #3 : handling explicite des codes HTTP critiques pour
+            // afficher des messages utilisateur lisibles plutôt qu'un brut
+            // "Erreur HTTP 419" qui ne dit rien à la directrice.
+            let detail = json.message || ('Erreur HTTP ' + resp.status);
+            if (resp.status === 419) {
+                detail = 'Votre session a expiré. Rechargez la page.';
+            } else if (resp.status === 403) {
+                detail = 'Vous n\'avez plus la permission d\'éditer.';
+            } else if (resp.status === 422 && json.errors) {
+                detail = Object.values(json.errors).flat().join(' · ');
+            } else if (resp.status === 409) {
+                detail = json.message || 'Conflit de modification, rechargez la page.';
+            }
+            console.error('lpe save failed', resp.status, json);
+            const err = new Error(detail);
+            err.status = resp.status;
+            throw err;
         }
-        return json.planification;
+        return { planification: json.planification, created: !!json.created };
     };
 
     document.addEventListener('alpine:init', () => {
@@ -108,13 +124,17 @@
                 this.editing = false;
                 this.saving = true;
                 try {
-                    const planif = await window.lpeSavePlanification(this.ecueId, { [this.field]: newVal });
+                    const { planification: planif, created } = await window.lpeSavePlanification(this.ecueId, { [this.field]: newVal });
                     this.value = planif[this.field] ?? '';
                     this.originalValue = this.value;
                     this.$el.classList.add('lpe-cell--saved');
                     setTimeout(() => this.$el.classList.remove('lpe-cell--saved'), 700);
+                    // Silent #1 : toast distinct création vs mise à jour
+                    if (created) {
+                        window.lpeShowToast('Planification créée', 'success');
+                    }
                     window.dispatchEvent(new CustomEvent('lpe:planif-updated', {
-                        detail: { ecueId: this.ecueId, planif },
+                        detail: { ecueId: this.ecueId, planif, created },
                     }));
                 } catch (e) {
                     window.lpeShowToast(e.message || 'Erreur d\'enregistrement', 'error');
@@ -208,7 +228,7 @@
             async save(teacherId) {
                 this.saving = true;
                 try {
-                    const planif = await window.lpeSavePlanification(this.ecueId, { enseignant_principal_id: teacherId });
+                    const { planification: planif, created } = await window.lpeSavePlanification(this.ecueId, { enseignant_principal_id: teacherId });
                     if (this.triggerEl) {
                         const name = planif.enseignant_name || '';
                         this.triggerEl.dataset.lpeTeacherId = planif.enseignant_principal_id || '';
@@ -225,10 +245,18 @@
                             this.triggerEl._x_dataStack[0].currentTeacherName = name;
                         }
                     }
-                    window.lpeShowToast(teacherId ? 'Enseignant assigné' : 'Assignation supprimée', 'success');
+                    // Silent #1 : si la planif vient d'être créée par cette même
+                    // assignation, on l'annonce explicitement plutôt que "Enseignant assigné".
+                    let toastMsg;
+                    if (created) {
+                        toastMsg = teacherId ? 'Planification créée et enseignant assigné' : 'Planification créée';
+                    } else {
+                        toastMsg = teacherId ? 'Enseignant assigné' : 'Assignation supprimée';
+                    }
+                    window.lpeShowToast(toastMsg, 'success');
                     this.open = false;
                     window.dispatchEvent(new CustomEvent('lpe:planif-updated', {
-                        detail: { ecueId: this.ecueId, planif },
+                        detail: { ecueId: this.ecueId, planif, created },
                     }));
                 } catch (e) {
                     window.lpeShowToast(e.message || 'Erreur d\'enregistrement', 'error');

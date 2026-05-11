@@ -5,10 +5,45 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ESBTPPlanificationAcademique extends Model
+class ESBTPPlanificationAcademique extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
+
+    /**
+     * Colonnes auditées (whitelist — sinon log toutes les colonnes JSON
+     * et les FK techniques ce qui pollue l'audit log inutilement).
+     *
+     * @var array
+     */
+    protected $auditInclude = [
+        'volume_horaire_cm',
+        'volume_horaire_td',
+        'volume_horaire_tp',
+        'volume_horaire_projet',
+        'volume_horaire_tpe',
+        'volume_horaire_total',
+        'credits_ects',
+        'coefficient',
+        'enseignant_principal_id',
+        'is_active',
+    ];
+
+    /**
+     * Événements à auditer.
+     *
+     * On exclut volontairement 'created' pour éviter le spam audit pendant
+     * les bulk imports LMD (klassci lmd:import génère plusieurs centaines de
+     * planifications d'un coup). On garde 'updated' et 'deleted' qui sont
+     * les actions humaines significatives.
+     *
+     * @var array
+     */
+    protected $auditEvents = [
+        'updated',
+        'deleted',
+    ];
 
     /**
      * La table associée au modèle.
