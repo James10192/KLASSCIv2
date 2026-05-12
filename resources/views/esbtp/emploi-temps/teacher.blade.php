@@ -71,14 +71,15 @@
 
                                                 @if($seancesDuCreneau->isNotEmpty())
                                                     @foreach($seancesDuCreneau as $seance)
-                                                        <div class="course-card p-2 mb-1 rounded" 
-                                                            style="background-color: {{ $seance->type_seance == 'cours' ? 'rgba(99, 102, 241, 0.1)' : ($seance->type_seance == 'td' ? 'rgba(236, 72, 153, 0.1)' : 'rgba(34, 197, 94, 0.1)') }}">
+                                                        <div class="course-card p-2 mb-1 rounded"
+                                                            style="background-color: rgba(4,83,203,.06); border-left: 3px solid rgba(4,83,203,.3)">
                                                             <div class="course-title fw-semibold">
                                                                 {{ $seance->matiere->name ?? 'Matière non définie' }}
                                                             </div>
                                                             <div class="course-details small">
-                                                                <span class="badge {{ $seance->type_seance == 'cours' ? 'bg-primary' : ($seance->type_seance == 'td' ? 'bg-secondary' : 'bg-success') }}">
-                                                                    {{ strtoupper($seance->type_seance) }}
+                                                                @php $ts = $seance->type_seance instanceof \App\Enums\TypeSeance ? $seance->type_seance : \App\Enums\TypeSeance::fromLegacy($seance->getRawOriginal('type_seance')); @endphp
+                                                                <span class="badge" style="background:rgba(4,83,203,.12);color:#0453cb;border:1px solid rgba(4,83,203,.25)">
+                                                                    {{ $ts->value }}
                                                                 </span>
                                                                 <div class="mt-1">
                                                                     <i class="fas fa-clock me-1"></i>
