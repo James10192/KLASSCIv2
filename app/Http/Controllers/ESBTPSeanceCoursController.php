@@ -399,6 +399,7 @@ class ESBTPSeanceCoursController extends Controller
             $baseValidator = Validator::make($request->all(), [
                 'emploi_temps_id' => 'required|exists:esbtp_emploi_temps,id',
                 'type' => 'required|in:course,homework,break,lunch',
+                'type_seance' => ['nullable', \Illuminate\Validation\Rule::enum(\App\Enums\TypeSeance::class)],
                 'jour' => 'required|integer|min:1|max:7',
                 'heure_debut' => 'required|date_format:H:i',
                 'heure_fin' => 'required|date_format:H:i|after:heure_debut',
