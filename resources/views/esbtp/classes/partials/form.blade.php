@@ -253,12 +253,12 @@
 @endphp
 <script>
 (function() {
-    var niveauTypes_{{ str_replace('-', '_', $formId) }} = {!! $niveauTypes !!};
+    window['niveauTypes_{{ str_replace('-', '_', $formId) }}'] = {!! $niveauTypes !!};
 
     var niveauSelect = document.getElementById('{{ $formId }}_niveau_etude_id');
     if (niveauSelect) {
         niveauSelect.addEventListener('change', function() {
-            var type = niveauTypes_{{ str_replace('-', '_', $formId) }}[this.value] || '';
+            var type = (window['niveauTypes_{{ str_replace('-', '_', $formId) }}'] || {})[this.value] || '';
             var isLMD = (type === 'Licence' || type === 'Master' || type === 'Doctorat');
             var badge = document.getElementById('{{ $formId }}_systeme_badge');
             if (badge) {
