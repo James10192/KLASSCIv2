@@ -292,6 +292,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
 
         // Users
         Route::post('/user/{id}/reset-password-expiry', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userResetPasswordExpiry'])->name('user.reset-password-expiry');
+        Route::post('/user/{id}/reset-password', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userResetPassword'])->name('user.reset-password');
         Route::post('/user/create', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userCreate'])->name('user.create');
         Route::post('/user/{id}/delete', [App\Http\Controllers\API\CLI\CLIUserController::class, 'userDelete'])->name('user.delete');
     });
