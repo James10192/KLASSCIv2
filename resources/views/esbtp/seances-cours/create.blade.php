@@ -377,7 +377,7 @@
                                     @enderror
                                 </div>
 
-                                @if(!is_null($emploiTemps->classe->parcours_id))
+                                @if(in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat', 'Bachelor']))
                                 <div class="form-group">
                                     <label class="form-label">Type de séance <span class="text-danger">*</span></label>
                                     <x-au-select
