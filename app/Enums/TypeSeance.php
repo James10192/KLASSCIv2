@@ -59,4 +59,14 @@ enum TypeSeance: string
     {
         return in_array($this, [self::CM, self::TD, self::TP], true);
     }
+
+    /** Returns ['VALUE' => 'Label'] array for <x-au-select> :options prop. */
+    public static function selectOptions(): array
+    {
+        $options = [];
+        foreach (self::cases() as $case) {
+            $options[$case->value] = $case->label();
+        }
+        return $options;
+    }
 }

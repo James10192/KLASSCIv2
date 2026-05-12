@@ -1319,21 +1319,9 @@ class ESBTPEmploiTempsController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function storeSession(Request $request, ESBTPEmploiTemps $emploi_temp)
+    public function storeSession(\App\Http\Requests\StoreSeanceCoursRequest $request, ESBTPEmploiTemps $emploi_temp)
     {
-        $this->authorize('create', ESBTPSeanceCours::class);
-
-        $validated = $request->validate([
-            'matiere_id' => 'required|exists:esbtp_matieres,id',
-            'enseignant_id' => 'required|exists:users,id',
-            'jour' => 'required|string|max:20',
-            'heure_debut' => 'required|date_format:H:i',
-            'heure_fin' => 'required|date_format:H:i|after:heure_debut',
-            'salle' => 'nullable|string|max:50',
-            'description' => 'nullable|string',
-            'classe_id' => 'required|exists:esbtp_classes,id',
-            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
-        ]);
+        $validated = $request->validated();
 
         $validated['emploi_temps_id'] = $emploi_temp->id;
 
@@ -1369,6 +1357,7 @@ class ESBTPEmploiTempsController extends Controller
         $seance->classe_id = $validated['classe_id'];
         $seance->matiere_id = $validated['matiere_id'];
         $seance->enseignant_id = $validated['enseignant_id'];
+        $seance->type_seance = $validated['type_seance'];
         $seance->jour = $validated['jour'];
         $seance->heure_debut = $validated['heure_debut'];
         $seance->heure_fin = $validated['heure_fin'];

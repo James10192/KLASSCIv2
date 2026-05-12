@@ -37,6 +37,19 @@
                     </div>
                     <div class="main-card-body">
                         <div class="form-group">
+                            <label class="form-label">Type de séance <span class="text-danger">*</span></label>
+                            <x-au-select
+                                name="type_seance"
+                                :value="old('type_seance', 'CM')"
+                                icon="fa-tag"
+                                placeholder="Sélectionner un type"
+                                :options="\App\Enums\TypeSeance::selectOptions()" />
+                            @error('type_seance')
+                                <div class="form-error">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="form-group">
                             <label for="matiere_id" class="form-label">Matière <span class="text-danger">*</span></label>
                             <select name="matiere_id" id="matiere_id" class="form-select @error('matiere_id') error @enderror" required>
                                 <option value="">Sélectionner une matière</option>
