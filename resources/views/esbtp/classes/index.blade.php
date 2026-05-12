@@ -1443,6 +1443,27 @@ function initClasseFormScripts(formId) {
             allowClear: true,
             dropdownParent: formId.includes('modal') ? $(`#${formId}`).closest('.modal') : undefined
         });
+
+        // Select2 change events don't always propagate to native addEventListener.
+        // Wire the niveau toggle explicitly so the parcours group and badge update correctly.
+        $(`#${formId}_niveau_etude_id`).on('change', function() {
+            var niveauTypesKey = 'niveauTypes_' + formId.replace(/-/g, '_');
+            var niveauTypes = window[niveauTypesKey] || {};
+            var type = niveauTypes[this.value] || '';
+            var isLMD = (type === 'Licence' || type === 'Master' || type === 'Doctorat');
+            var badge = document.getElementById(formId + '_systeme_badge');
+            if (badge) {
+                badge.innerHTML = '<span class="badge ' + (isLMD ? 'bg-primary' : 'bg-secondary') + '" style="font-size:0.85rem;padding:0.4em 0.8em;">' + (isLMD ? 'LMD' : (type ? 'BTS' : '—')) + '</span>';
+            }
+            var parcoursGroup = document.getElementById(formId + '_parcours_group');
+            if (parcoursGroup) {
+                parcoursGroup.style.display = isLMD ? '' : 'none';
+                if (!isLMD) {
+                    var sel = document.getElementById(formId + '_parcours_id');
+                    if (sel) sel.value = '';
+                }
+            }
+        });
     }
 
     $(`#${formId}_name`).on('blur', function() {
