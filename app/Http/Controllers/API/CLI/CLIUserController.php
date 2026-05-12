@@ -199,4 +199,31 @@ class CLIUserController extends BaseApiController
             return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
         }
     }
+
+    public function userResetPassword(Request $request, $id): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $user = User::find($id);
+        if (!$user) {
+            return $this->errorResponse("User #{$id} not found", [], 404);
+        }
+
+        $validated = $request->validate(['password' => 'required|string|min:8']);
+
+        $user->update([
+            'password'             => bcrypt($validated['password']),
+            'must_change_password' => false,
+            'password_changed_at'  => now(),
+        ]);
+
+        Log::info('CLI: password reset', ['user_id' => $user->id, 'by' => $request->user()->id]);
+
+        return $this->successResponse(
+            ['name' => $user->name, 'email' => $user->email, 'username' => $user->username],
+            'Password reset successfully.'
+        );
+    }
 }
