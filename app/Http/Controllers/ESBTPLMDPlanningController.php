@@ -5,12 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Requests\BulkUpdatePlanificationRequest;
 use App\Http\Requests\UpdatePlanificationRequest;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPClasse;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPUniteEnseignement;
 use App\Models\User;
+use App\Services\VolumeBudgetService;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -463,6 +465,31 @@ class ESBTPLMDPlanningController extends Controller
             ->get();
 
         return response()->json(['users' => $users]);
+    }
+
+    /**
+     * GET /esbtp/lmd/planning/volumes
+     * Returns realized vs planned hours per ECUE for the current filters,
+     * aggregated across all LMD classes of the filière.
+     * Used by the lpv-* widget in _listing.blade.php.
+     */
+    public function volumes(Request $request, VolumeBudgetService $service): JsonResponse
+    {
+        $this->authorize('lmd.planning.view');
+
+        $filiereId = $request->integer('filiere_id');
+        $niveauId  = $request->integer('niveau_id');
+        $semestre  = $request->integer('semestre');
+        $anneeId   = $request->integer('annee_id')
+            ?: optional(ESBTPAnneeUniversitaire::where('is_current', true)->first())->id;
+
+        if (!$filiereId || !$niveauId || !$semestre || !$anneeId) {
+            return response()->json(['budgets' => []]);
+        }
+
+        $budgets = $service->forFiliere($filiereId, $niveauId, $semestre, $anneeId);
+
+        return response()->json(['budgets' => $budgets]);
     }
 
     /**
