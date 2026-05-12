@@ -259,6 +259,70 @@
 .lpt-toast--success { background: linear-gradient(135deg, #059669, #10b981); }
 .lpt-toast--error { background: linear-gradient(135deg, #b91c1c, #dc2626); }
 
+/* ============ Widget progression volumes (lpv-*) ============ */
+.lpv-cell {
+    padding: .6rem 1rem .6rem 2rem;
+    background: #f8fafc;
+    border-top: 1px solid #f1f5f9;
+}
+.lpv-bars {
+    display: flex;
+    gap: 1.25rem;
+    flex-wrap: wrap;
+}
+.lpv-bar-group {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    min-width: 200px;
+    flex: 1;
+}
+.lpv-bar-label {
+    font-size: .72rem;
+    font-weight: 600;
+    color: #475569;
+    width: 80px;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: space-between;
+}
+.lpv-bar-nums {
+    font-size: .68rem;
+    color: #94a3b8;
+    font-weight: 400;
+}
+.lpv-bar-sep { margin: 0 .15rem; }
+.lpv-bar-track {
+    flex: 1;
+    height: 6px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+}
+.lpv-bar-fill {
+    height: 100%;
+    background: #0453cb;
+    border-radius: 999px;
+    transition: width .4s ease;
+}
+.lpv-bar-fill--warn { background: #f59e0b; }
+.lpv-bar-fill--done { background: #10b981; }
+.lpv-bar-pct {
+    font-size: .68rem;
+    color: #64748b;
+    width: 34px;
+    text-align: right;
+    flex-shrink: 0;
+}
+.lpv-loading {
+    font-size: .75rem;
+    color: #94a3b8;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    padding: .25rem 0;
+}
+
 @@media (max-width: 640px) {
     .lpt-modal {
         min-height: 0;

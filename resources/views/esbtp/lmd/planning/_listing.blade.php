@@ -170,6 +170,40 @@
                                     <td>{{ $teacherName ?? '—' }}</td>
                                 @endif
                             </tr>
+                            @if($bulkEnabled)
+                            {{-- lpv-* widget: volume budget row (CM/TD/TP réalisé vs planifié) --}}
+                            <tr class="lpv-row js-ecue-row" data-parent-idx="{{ $idx }}" style="display:none;">
+                                <td></td>{{-- bulk checkbox spacer --}}
+                                <td colspan="10" class="lpv-cell"
+                                    x-data="lpvRow()"
+                                    data-lpv-ecue-id="{{ $ecue->id }}">
+                                    <div class="lpv-bars" x-show="loaded" x-cloak>
+                                        <template x-for="bar in bars" :key="bar.type">
+                                            <div class="lpv-bar-group">
+                                                <div class="lpv-bar-label">
+                                                    <span x-text="bar.type"></span>
+                                                    <span class="lpv-bar-nums">
+                                                        <span x-text="bar.realise + 'h'"></span>
+                                                        <span class="lpv-bar-sep">/</span>
+                                                        <span x-text="bar.planifie + 'h'"></span>
+                                                    </span>
+                                                </div>
+                                                <div class="lpv-bar-track">
+                                                    <div class="lpv-bar-fill"
+                                                         :class="bar.pct >= 100 ? 'lpv-bar-fill--done' : (bar.pct >= 70 ? 'lpv-bar-fill--warn' : '')"
+                                                         :style="'width:' + Math.min(bar.pct, 100) + '%'"></div>
+                                                </div>
+                                                <span class="lpv-bar-pct" x-text="bar.pct + '%'"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                    <div class="lpv-loading" x-show="!loaded" x-cloak>
+                                        <i class="fas fa-circle-notch fa-spin"></i>
+                                        <span>Chargement des heures réalisées…</span>
+                                    </div>
+                                </td>
+                            </tr>
+                            @endif
                         @endforeach
                     @endforeach
                 </tbody>
