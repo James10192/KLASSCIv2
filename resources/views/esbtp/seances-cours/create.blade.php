@@ -113,6 +113,13 @@
     .teacher-availability-panel .availability-cell.unavailable {
         cursor: pointer;
     }
+    /* Allow au-select dropdown to escape the main-card overflow:hidden */
+    #courseFields {
+        overflow: visible;
+    }
+    #courseFields .main-card-header {
+        border-radius: var(--radius-medium) var(--radius-medium) 0 0;
+    }
 </style>
 @endsection
 
@@ -370,6 +377,7 @@
                                     @enderror
                                 </div>
 
+                                @if(!is_null($emploiTemps->classe->parcours_id))
                                 <div class="form-group">
                                     <label class="form-label">Type de séance <span class="text-danger">*</span></label>
                                     <x-au-select
@@ -382,6 +390,7 @@
                                         <div class="form-error">{{ $message }}</div>
                                     @enderror
                                 </div>
+                                @endif
 
                                 <div class="form-group" id="teacherFieldGroup">
                                     <label for="teacher_id" class="form-label">Enseignant assigné <span class="text-danger">*</span></label>
