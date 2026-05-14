@@ -440,7 +440,22 @@
                     </div>
                     <h1>{{ $classe->name }}</h1>
                     <div class="cs-hero-chips">
-                        @if($classe->filiere)
+                        @php $isLmd = ($classe->systeme_academique ?? '') === 'LMD'; @endphp
+                        @if($isLmd && $classe->parcours && optional($classe->parcours->mention)->domaine)
+                            <span class="cs-hero-chip" title="Domaine UEMOA"><i class="fas fa-folder-open"></i>{{ $classe->parcours->mention->domaine->name }}</span>
+                            <span class="cs-hero-chip" title="Mention"><i class="fas fa-graduation-cap"></i>{{ $classe->parcours->mention->name }}</span>
+                            <span class="cs-hero-chip" title="Parcours"><i class="fas fa-route"></i>{{ $classe->parcours->name }}@if($classe->parcours->code) ({{ $classe->parcours->code }})@endif</span>
+                            <span class="cs-hero-chip" style="background:rgba(255,255,255,.18);font-weight:700;letter-spacing:.5px;"><i class="fas fa-university"></i>LMD</span>
+                        @elseif($isLmd && optional($classe->parcours)->mention)
+                            <span class="cs-hero-chip"><i class="fas fa-graduation-cap"></i>{{ $classe->parcours->mention->name }}</span>
+                            @if($classe->parcours->name)
+                                <span class="cs-hero-chip"><i class="fas fa-route"></i>{{ $classe->parcours->name }}</span>
+                            @endif
+                            <span class="cs-hero-chip" style="background:rgba(255,255,255,.18);font-weight:700;"><i class="fas fa-university"></i>LMD</span>
+                        @elseif($isLmd && $classe->filiere)
+                            <span class="cs-hero-chip" title="Mention (filière)"><i class="fas fa-graduation-cap"></i>{{ $classe->filiere->name }}</span>
+                            <span class="cs-hero-chip" style="background:rgba(255,255,255,.18);font-weight:700;"><i class="fas fa-university"></i>LMD tronc commun</span>
+                        @elseif($classe->filiere)
                             <span class="cs-hero-chip"><i class="fas fa-layer-group"></i>{{ $classe->filiere->name }}</span>
                         @endif
                         @if($classe->niveau)
@@ -523,6 +538,64 @@
                 </div>
             </div>
         </div>
+
+        @if(($classe->systeme_academique ?? '') === 'LMD' && !empty($lmdVolumeBudget))
+            @php
+                // Agreger CM/TD/TP/Projet/TPE (sommes par categorie sur toutes les ECUEs de la classe)
+                $vbTotals = ['cm'=>['p'=>0,'r'=>0],'td'=>['p'=>0,'r'=>0],'tp'=>['p'=>0,'r'=>0]];
+                foreach ($lmdVolumeBudget as $matiereId => $budget) {
+                    foreach (['cm','td','tp'] as $k) {
+                        $vbTotals[$k]['p'] += (float) ($budget[$k]['planifie'] ?? 0);
+                        $vbTotals[$k]['r'] += (float) ($budget[$k]['realise'] ?? 0);
+                    }
+                }
+                $vbLabels = ['cm'=>'Cours Magistral','td'=>'Travaux Dirigés','tp'=>'Travaux Pratiques'];
+                $vbIcons  = ['cm'=>'fa-chalkboard-user','td'=>'fa-pen-ruler','tp'=>'fa-flask-vial'];
+            @endphp
+            <div class="cs-card" style="margin-top:1rem;">
+                <div class="cs-card-head" style="display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.25rem;border-bottom:1px solid #f1f5f9;">
+                    <div style="display:flex;align-items:center;gap:.65rem;">
+                        <div style="width:36px;height:36px;border-radius:9px;background:linear-gradient(135deg,#0453cb,#3b7ddb);color:#fff;display:flex;align-items:center;justify-content:center;"><i class="fas fa-chart-bar"></i></div>
+                        <div>
+                            <div style="font-weight:700;color:#0f172a;font-size:1rem;">Volume horaire LMD — planifié vs réalisé</div>
+                            <div style="font-size:.78rem;color:#64748b;">Suivi par catégorie pédagogique (UEMOA) sur toutes les ECUEs de la classe</div>
+                        </div>
+                    </div>
+                    <a href="{{ route('esbtp.lmd.planning.index') }}{{ optional($classe->parcours)->id ? '?parcours_id='.$classe->parcours->id : '' }}" class="cs-btn--ghost" style="font-size:.78rem;">
+                        <i class="fas fa-external-link-alt"></i> Voir maquette LMD
+                    </a>
+                </div>
+                <div class="cs-card-body" style="padding:1.25rem;">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;">
+                        @foreach(['cm','td','tp'] as $k)
+                            @php
+                                $p = $vbTotals[$k]['p']; $r = $vbTotals[$k]['r'];
+                                $pct = $p > 0 ? min(100, round($r / $p * 100)) : ($r > 0 ? 100 : 0);
+                                $tone = $pct >= 100 ? '#10b981' : ($pct >= 70 ? '#f59e0b' : '#0453cb');
+                            @endphp
+                            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:.85rem 1rem;">
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem;">
+                                    <div style="display:flex;align-items:center;gap:.5rem;">
+                                        <i class="fas {{ $vbIcons[$k] }}" style="color:#0453cb;font-size:.85rem;"></i>
+                                        <span style="font-weight:700;color:#0f172a;font-size:.85rem;">{{ $vbLabels[$k] }}</span>
+                                    </div>
+                                    <span style="font-size:.72rem;color:#64748b;font-weight:600;">{{ rtrim(rtrim(number_format($r,1,',','') ,'0'),',') ?: '0' }}h / {{ rtrim(rtrim(number_format($p,1,',',''),'0'),',') ?: '0' }}h</span>
+                                </div>
+                                <div style="background:rgba(4,83,203,.08);border-radius:6px;height:8px;overflow:hidden;">
+                                    <div style="background:{{ $tone }};height:100%;width:{{ $pct }}%;transition:width .3s ease;"></div>
+                                </div>
+                                <div style="margin-top:.35rem;font-size:.7rem;color:{{ $tone }};font-weight:700;">{{ $pct }}%</div>
+                            </div>
+                        @endforeach
+                    </div>
+                    @if(count($lmdVolumeBudget) === 0)
+                        <div style="margin-top:1rem;padding:.75rem;background:#fef3c7;border:1px solid #fde68a;border-radius:8px;font-size:.82rem;color:#92400e;">
+                            <i class="fas fa-info-circle me-1"></i>Aucune planification académique pour cette classe LMD ({{ optional($classe->parcours)->name ?? 'parcours non défini' }} · S1). Configurez la maquette dans <a href="{{ route('esbtp.lmd.planning.index') }}" style="color:#92400e;text-decoration:underline;">Planning LMD</a>.
+                        </div>
+                    @endif
+                </div>
+            </div>
+        @endif
 
         @if(session('success'))
             <div class="cs-alert cs-alert--success">

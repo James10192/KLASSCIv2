@@ -406,17 +406,36 @@ class ESBTPClasseController extends Controller
             true,
         )->first();
 
-        // Charger les relations de base
+        // Charger les relations de base (+ hierarchie LMD si classe LMD)
         $classe->load([
             "filiere",
             "niveau",
             "annee",
             "matieres",
             "emploisDuTemps",
+            "parcours.mention.domaine",
         ]);
 
         $classeFiliereId = $classe->filiere_id;
         $classeNiveauId = $classe->niveau_etude_id;
+
+        // LMD volume budget : compare planifie vs realise par type_seance (CM/TD/TP)
+        // Reutilise le service deja en place pour LMD planning. Renvoie array vide pour BTS.
+        $lmdVolumeBudget = [];
+        if ($classe->systeme_academique === 'LMD' && $anneeCourante) {
+            try {
+                $volumeBudgetService = app(\App\Services\VolumeBudgetService::class);
+                $lmdVolumeBudget = $volumeBudgetService->forClasse(
+                    $classe,
+                    $classe->niveau_etude_id,
+                    1,
+                    $anneeCourante->id,
+                );
+            } catch (\Throwable $e) {
+                \Log::warning('VolumeBudgetService failed on classes.show: ' . $e->getMessage());
+                $lmdVolumeBudget = [];
+            }
+        }
 
         $combinationMatieres = ESBTPMatiere::with([
             "filieres:id,name,code",
@@ -524,6 +543,7 @@ class ESBTPClasseController extends Controller
                     "planningMatiere",
                     "periode",
                     "autresClasses",
+                    "lmdVolumeBudget",
                 ),
             );
         }
