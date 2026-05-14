@@ -133,35 +133,75 @@
 }
 .cs-info-row:last-child { border-bottom: none; }
 .cs-info-label { color: var(--cs-muted); font-size: .78rem; font-weight: 500; }
-.cs-lmd-tree { display: flex; flex-direction: column; gap: 0; position: relative; padding-left: .25rem; }
-.cs-lmd-tree-node { display: flex; align-items: flex-start; gap: .65rem; position: relative; padding: .55rem .25rem .55rem 1.85rem; }
-.cs-lmd-tree-node::before {
-    content: ''; position: absolute; left: .85rem; top: 0; bottom: 0;
-    width: 2px; background: linear-gradient(180deg, rgba(4,83,203,.35), rgba(4,83,203,.15));
+/* Row pleine largeur (pour Hierarchie LMD tree, etc.) */
+.cs-info-row--full { display: flex; flex-direction: column; align-items: stretch; gap: .65rem; padding: .85rem 0; }
+.cs-info-full-header { display: flex; align-items: center; justify-content: space-between; gap: .65rem; }
+/* Tree premium UEMOA — pleine largeur du panneau */
+.cs-lmd-tree {
+    position: relative;
+    background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06));
+    border: 1px solid rgba(4,83,203,.18);
+    border-radius: 12px;
+    padding: .75rem .85rem .75rem 1.65rem;
+    display: flex; flex-direction: column;
+    gap: .55rem;
 }
-.cs-lmd-tree-node:first-child::before { top: 50%; }
-.cs-lmd-tree-node:last-child::before { bottom: 50%; }
+.cs-lmd-tree::before {
+    content: ''; position: absolute;
+    left: 1.65rem; top: 1.4rem; bottom: 1.4rem;
+    width: 2px;
+    background: linear-gradient(180deg, #033a8e, #5e91de);
+    border-radius: 2px;
+}
+.cs-lmd-tree-node {
+    position: relative;
+    display: flex; align-items: center;
+    gap: .8rem;
+    padding-left: 0;
+}
 .cs-lmd-tree-node::after {
-    content: ''; position: absolute; left: .85rem; top: 50%;
-    width: .9rem; height: 2px; background: rgba(4,83,203,.35);
+    content: ''; position: absolute;
+    left: -.85rem; top: 50%;
+    width: .85rem; height: 2px;
+    background: rgba(4,83,203,.35);
     transform: translateY(-1px);
 }
-.cs-lmd-tree-node:first-child:last-child::before { display: none; }
 .cs-lmd-tree-icon {
-    width: 30px; height: 30px; border-radius: 8px;
+    width: 32px; height: 32px; border-radius: 9px;
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: .78rem; flex-shrink: 0;
-    box-shadow: 0 2px 6px rgba(4,83,203,.25);
-    position: relative; z-index: 1; margin-left: -.85rem;
+    color: #fff; font-size: .8rem; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(4,83,203,.3);
+    position: relative; z-index: 1;
 }
 .cs-lmd-tree-node--domaine .cs-lmd-tree-icon { background: linear-gradient(135deg, #033a8e, #0453cb); }
 .cs-lmd-tree-node--mention .cs-lmd-tree-icon { background: linear-gradient(135deg, #0453cb, #3b7ddb); }
 .cs-lmd-tree-node--parcours .cs-lmd-tree-icon { background: linear-gradient(135deg, #3b7ddb, #5e91de); }
-.cs-lmd-tree-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .15rem; padding-top: .15rem; }
-.cs-lmd-tree-label { font-size: .65rem; color: var(--cs-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
-.cs-lmd-tree-name { font-size: .92rem; font-weight: 700; color: var(--cs-text); }
-.cs-lmd-tree-code { display: inline-block; font-size: .65rem; color: #0453cb; background: rgba(4,83,203,.08); padding: .1rem .4rem; border-radius: 5px; font-weight: 600; letter-spacing: .3px; align-self: flex-start; margin-top: .15rem; font-family: 'Courier New', monospace; }
-.cs-lmd-tree-badge { display: inline-flex; align-items: center; gap: .25rem; background: rgba(4,83,203,.12); color: #0453cb; border: 1px solid rgba(4,83,203,.25); padding: .12rem .45rem; border-radius: 5px; font-size: .65rem; font-weight: 700; letter-spacing: .4px; align-self: flex-start; margin-top: .2rem; }
+.cs-lmd-tree-body {
+    flex: 1; min-width: 0;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: .15rem .65rem;
+}
+.cs-lmd-tree-label { grid-column: 1; font-size: .62rem; color: var(--cs-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+.cs-lmd-tree-name { grid-column: 1; font-size: .92rem; font-weight: 700; color: var(--cs-text); line-height: 1.2; }
+.cs-lmd-tree-code {
+    grid-column: 2; grid-row: 1 / span 2;
+    align-self: center;
+    font-size: .64rem; color: #0453cb;
+    background: rgba(4,83,203,.08);
+    padding: .15rem .5rem; border-radius: 5px;
+    font-weight: 700; letter-spacing: .3px;
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+}
+.cs-lmd-tree-badge {
+    display: inline-flex; align-items: center; gap: .3rem;
+    background: rgba(4,83,203,.12); color: #0453cb;
+    border: 1px solid rgba(4,83,203,.25);
+    padding: .2rem .55rem; border-radius: 6px;
+    font-size: .68rem; font-weight: 700; letter-spacing: .4px;
+}
 .cs-info-value { color: var(--cs-text); font-weight: 600; text-align: right; }
 
 /* Teachers chips */
@@ -594,7 +634,7 @@
                             <div style="font-size:.78rem;color:#64748b;">Suivi par catégorie pédagogique (UEMOA) sur toutes les ECUEs de la classe</div>
                         </div>
                     </div>
-                    <a href="{{ route('esbtp.lmd.planning.index') }}{{ optional($classe->parcours)->id ? '?parcours_id='.$classe->parcours->id : '' }}" class="cs-btn--ghost" style="font-size:.78rem;">
+                    <a href="{{ route('esbtp.lmd.planning.index', array_filter(['parcours_id' => optional($classe->parcours)->id, 'niveau_id' => $classe->niveau_etude_id, 'semestre' => !empty($lmdSemestres) ? ($lmdSemestres[0] ?? null) : null])) }}" class="cs-btn--ghost" style="font-size:.78rem;">
                         <i class="fas fa-external-link-alt"></i> Voir maquette LMD
                     </a>
                 </div>
@@ -655,40 +695,40 @@
                     </div>
                     @php $isLmdInfo = ($classe->systeme_academique ?? '') === 'LMD'; @endphp
                     @if($isLmdInfo && optional($classe->parcours)->mention && optional($classe->parcours->mention)->domaine)
-                        <div class="cs-info-row" style="align-items:flex-start;">
-                            <span class="cs-info-label">Hiérarchie LMD</span>
-                            <div class="cs-info-value" style="font-weight:500;">
-                                <div class="cs-lmd-tree">
-                                    <div class="cs-lmd-tree-node cs-lmd-tree-node--domaine">
-                                        <div class="cs-lmd-tree-icon"><i class="fas fa-folder-open"></i></div>
-                                        <div class="cs-lmd-tree-body">
-                                            <div class="cs-lmd-tree-label">Domaine</div>
-                                            <div class="cs-lmd-tree-name">{{ $classe->parcours->mention->domaine->name }}</div>
-                                            @if($classe->parcours->mention->domaine->code)
-                                                <span class="cs-lmd-tree-code">{{ $classe->parcours->mention->domaine->code }}</span>
-                                            @endif
-                                        </div>
+                        <div class="cs-info-row cs-info-row--full">
+                            <div class="cs-info-full-header">
+                                <span class="cs-info-label">Hiérarchie LMD</span>
+                                <span class="cs-lmd-tree-badge"><i class="fas fa-university"></i>LMD</span>
+                            </div>
+                            <div class="cs-lmd-tree">
+                                <div class="cs-lmd-tree-node cs-lmd-tree-node--domaine">
+                                    <div class="cs-lmd-tree-icon"><i class="fas fa-folder-open"></i></div>
+                                    <div class="cs-lmd-tree-body">
+                                        <div class="cs-lmd-tree-label">Domaine</div>
+                                        <div class="cs-lmd-tree-name">{{ $classe->parcours->mention->domaine->name }}</div>
+                                        @if($classe->parcours->mention->domaine->code)
+                                            <span class="cs-lmd-tree-code">{{ $classe->parcours->mention->domaine->code }}</span>
+                                        @endif
                                     </div>
-                                    <div class="cs-lmd-tree-node cs-lmd-tree-node--mention">
-                                        <div class="cs-lmd-tree-icon"><i class="fas fa-graduation-cap"></i></div>
-                                        <div class="cs-lmd-tree-body">
-                                            <div class="cs-lmd-tree-label">Mention</div>
-                                            <div class="cs-lmd-tree-name">{{ $classe->parcours->mention->name }}</div>
-                                            @if($classe->parcours->mention->code)
-                                                <span class="cs-lmd-tree-code">{{ $classe->parcours->mention->code }}</span>
-                                            @endif
-                                        </div>
+                                </div>
+                                <div class="cs-lmd-tree-node cs-lmd-tree-node--mention">
+                                    <div class="cs-lmd-tree-icon"><i class="fas fa-graduation-cap"></i></div>
+                                    <div class="cs-lmd-tree-body">
+                                        <div class="cs-lmd-tree-label">Mention</div>
+                                        <div class="cs-lmd-tree-name">{{ $classe->parcours->mention->name }}</div>
+                                        @if($classe->parcours->mention->code)
+                                            <span class="cs-lmd-tree-code">{{ $classe->parcours->mention->code }}</span>
+                                        @endif
                                     </div>
-                                    <div class="cs-lmd-tree-node cs-lmd-tree-node--parcours">
-                                        <div class="cs-lmd-tree-icon"><i class="fas fa-route"></i></div>
-                                        <div class="cs-lmd-tree-body">
-                                            <div class="cs-lmd-tree-label">Parcours</div>
-                                            <div class="cs-lmd-tree-name">{{ $classe->parcours->name }}</div>
-                                            @if($classe->parcours->code)
-                                                <span class="cs-lmd-tree-code">{{ $classe->parcours->code }}</span>
-                                            @endif
-                                            <span class="cs-lmd-tree-badge"><i class="fas fa-university"></i>LMD</span>
-                                        </div>
+                                </div>
+                                <div class="cs-lmd-tree-node cs-lmd-tree-node--parcours">
+                                    <div class="cs-lmd-tree-icon"><i class="fas fa-route"></i></div>
+                                    <div class="cs-lmd-tree-body">
+                                        <div class="cs-lmd-tree-label">Parcours</div>
+                                        <div class="cs-lmd-tree-name">{{ $classe->parcours->name }}</div>
+                                        @if($classe->parcours->code)
+                                            <span class="cs-lmd-tree-code">{{ $classe->parcours->code }}</span>
+                                        @endif
                                     </div>
                                 </div>
                             </div>
@@ -863,7 +903,7 @@
                                 <div style="font-size:.75rem;color:#64748b;">{{ $ecuesByUe->count() }} unité{{ $ecuesByUe->count() > 1 ? 's' : '' }} · {{ $lmdMatieres->count() }} ECUE · {{ $sommeCredits }} crédits ECTS · {{ rtrim(rtrim(number_format($sommeHeures,1,',',''),'0'),',') }}h totales</div>
                             </div>
                         </div>
-                        <a href="{{ route('esbtp.lmd.planning.index') }}{{ optional($classe->parcours)->id ? '?parcours_id='.$classe->parcours->id : '' }}" style="display:inline-flex;align-items:center;gap:.35rem;background:#0453cb;color:#fff;padding:.45rem .85rem;border-radius:8px;text-decoration:none;font-size:.78rem;font-weight:600;">
+                        <a href="{{ route('esbtp.lmd.planning.index', array_filter(['parcours_id' => optional($classe->parcours)->id, 'niveau_id' => $classe->niveau_etude_id, 'semestre' => !empty($lmdSemestres) ? ($lmdSemestres[0] ?? null) : null])) }}" style="display:inline-flex;align-items:center;gap:.35rem;background:#0453cb;color:#fff;padding:.45rem .85rem;border-radius:8px;text-decoration:none;font-size:.78rem;font-weight:600;">
                             <i class="fas fa-edit"></i> Configurer dans Planning LMD
                         </a>
                     </div>
@@ -913,7 +953,7 @@
                         <i class="fas fa-exclamation-triangle"></i>
                         <div>
                             Aucune planification académique LMD configurée pour {{ optional($classe->parcours)->name ?: 'cette classe' }} ({{ $classe->niveau->name ?? 'niveau non défini' }}).
-                            La maquette pédagogique se configure dans <a href="{{ route('esbtp.lmd.planning.index') }}{{ optional($classe->parcours)->id ? '?parcours_id='.$classe->parcours->id : '' }}" style="color:#92400e;text-decoration:underline;">Planning LMD</a> en définissant les UE, ECUE et volumes par semestre.
+                            La maquette pédagogique se configure dans <a href="{{ route('esbtp.lmd.planning.index', array_filter(['parcours_id' => optional($classe->parcours)->id, 'niveau_id' => $classe->niveau_etude_id, 'semestre' => !empty($lmdSemestres) ? ($lmdSemestres[0] ?? null) : null])) }}" style="color:#92400e;text-decoration:underline;">Planning LMD</a> en définissant les UE, ECUE et volumes par semestre.
                         </div>
                     </div>
                 @elseif(($combinationMatieres ?? collect())->isNotEmpty())
@@ -964,8 +1004,15 @@
                         <p style="margin:.15rem 0 0;font-size:.78rem;color:var(--cs-muted);">Heures planifiées vs réalisées — année courante</p>
                     </div>
                     <div class="cs-periode-toggle" id="classe-periode-form" data-url="{{ route('esbtp.classes.show', ['classe' => $classe->id]) }}">
-                        <button type="button" class="cs-periode-btn periode-btn {{ ($periode ?? 'annee') === 'semestre1' ? 'active' : '' }}" data-periode="semestre1">Semestre 1</button>
-                        <button type="button" class="cs-periode-btn periode-btn {{ ($periode ?? 'annee') === 'semestre2' ? 'active' : '' }}" data-periode="semestre2">Semestre 2</button>
+                        @php
+                            $semLabelA = 'Semestre 1'; $semLabelB = 'Semestre 2';
+                            if (($classe->systeme_academique ?? '') === 'LMD' && !empty($lmdSemestres) && count($lmdSemestres) >= 2) {
+                                $semLabelA = 'Semestre '.$lmdSemestres[0];
+                                $semLabelB = 'Semestre '.$lmdSemestres[1];
+                            }
+                        @endphp
+                        <button type="button" class="cs-periode-btn periode-btn {{ ($periode ?? 'annee') === 'semestre1' ? 'active' : '' }}" data-periode="semestre1">{{ $semLabelA }}</button>
+                        <button type="button" class="cs-periode-btn periode-btn {{ ($periode ?? 'annee') === 'semestre2' ? 'active' : '' }}" data-periode="semestre2">{{ $semLabelB }}</button>
                         <button type="button" class="cs-periode-btn periode-btn {{ ($periode ?? 'annee') === 'annee' ? 'active' : '' }}" data-periode="annee">Année</button>
                     </div>
                 </div>
@@ -1016,7 +1063,7 @@
                                     <i class="fas fa-university" style="color:#0453cb;"></i>
                                     <strong style="color:#0f172a;font-size:.92rem;">Répartition par catégorie pédagogique LMD (UEMOA)</strong>
                                 </div>
-                                <a href="{{ route('esbtp.lmd.planning.index') }}{{ optional($classe->parcours)->id ? '?parcours_id='.$classe->parcours->id : '' }}" style="font-size:.75rem;color:#0453cb;text-decoration:none;font-weight:600;">
+                                <a href="{{ route('esbtp.lmd.planning.index', array_filter(['parcours_id' => optional($classe->parcours)->id, 'niveau_id' => $classe->niveau_etude_id, 'semestre' => !empty($lmdSemestres) ? ($lmdSemestres[0] ?? null) : null])) }}" style="font-size:.75rem;color:#0453cb;text-decoration:none;font-weight:600;">
                                     <i class="fas fa-external-link-alt"></i> Maquette LMD complète
                                 </a>
                             </div>
