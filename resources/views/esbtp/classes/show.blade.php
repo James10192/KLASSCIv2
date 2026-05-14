@@ -421,7 +421,11 @@
             $nombreEtudiants = $classe->etudiants->count();
             $pourcentage = $classe->places_totales > 0 ? round(($nombreEtudiants / $classe->places_totales) * 100, 1) : 0;
             $placesLibres = max(0, $classe->places_totales - $nombreEtudiants);
-            $nbMatieres = ($combinationMatieres ?? collect())->count();
+            // LMD : compter les ECUE depuis ESBTPPlanificationAcademique (source canonique)
+            // BTS : compter via le pivot $combinationMatieres classique.
+            $nbMatieres = (($classe->systeme_academique ?? '') === 'LMD' && isset($lmdMatieres))
+                ? $lmdMatieres->count()
+                : ($combinationMatieres ?? collect())->count();
             $kpiTaux = $planningMatiere['stats']['taux_realisation'] ?? 0;
             $nbEnseignants = isset($planningMatiere['enseignants']) ? $planningMatiere['enseignants']->count() : 0;
             $queryParams = request()->query();
