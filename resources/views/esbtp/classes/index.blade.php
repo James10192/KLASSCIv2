@@ -1437,15 +1437,22 @@ function exportClasses(format) {
 
 function initClasseFormScripts(formId) {
     if (typeof $ !== 'undefined' && typeof $.fn.select2 !== 'undefined') {
-        $(`#${formId}_filiere_id, #${formId}_niveau_etude_id, #${formId}_annee_universitaire_id`).select2({
+        // Wrap les selects natifs du form LMD-aware :
+        // - niveau_etude_id et annee_universitaire_id : toujours présents
+        // - filiere_id_bts : présent en mode BTS (Filière classique)
+        // - parcours_id    : présent en mode LMD (cascade depuis Mention via Alpine)
+        // Le picker Mention <x-au-mention-picker> a sa propre UI premium et ne doit PAS recevoir Select2.
+        $(`#${formId}_filiere_id_bts, #${formId}_niveau_etude_id, #${formId}_annee_universitaire_id, #${formId}_parcours_id`).select2({
             theme: 'bootstrap4',
             placeholder: 'Sélectionner une option',
             allowClear: true,
             dropdownParent: formId.includes('modal') ? $(`#${formId}`).closest('.modal') : undefined
         });
 
-        // Select2 change events don't always propagate to native addEventListener.
-        // Wire the niveau toggle explicitly so the parcours group and badge update correctly.
+        // Alpine (x-data="classeLmdForm()") gère le mode BTS/LMD + badge système + cascade Mention→Parcours.
+        // Le handler legacy ci-dessous reste pour rétro-compat si Alpine n'a pas booté (ex: erreur JS upstream).
+        // Il cherche des IDs qui n'existent plus dans le nouveau partial (systeme_badge, parcours_group)
+        // donc il est inoffensif (early return sur null) — à supprimer une fois Alpine confirmé stable en prod.
         $(`#${formId}_niveau_etude_id`).on('change', function() {
             var niveauTypes = JSON.parse(this.dataset.niveauTypes || '{}');
             var type = niveauTypes[this.value] || '';
