@@ -620,17 +620,76 @@
                         <span class="cs-info-label">Code</span>
                         <span class="cs-info-value" style="font-family:'Courier New',monospace;">{{ $classe->code }}</span>
                     </div>
-                    <div class="cs-info-row">
-                        <span class="cs-info-label">Filière</span>
-                        <span class="cs-info-value">
-                            @if($classe->filiere)
-                                {{ $classe->filiere->name }}
-                                @if($classe->filiere->parent)<br><small style="font-weight:400;color:var(--cs-muted);">Option de {{ $classe->filiere->parent->name }}</small>@endif
-                            @else
-                                <span style="color:var(--cs-muted);">Non assignée</span>
-                            @endif
-                        </span>
-                    </div>
+                    @php $isLmdInfo = ($classe->systeme_academique ?? '') === 'LMD'; @endphp
+                    @if($isLmdInfo && optional($classe->parcours)->mention && optional($classe->parcours->mention)->domaine)
+                        <div class="cs-info-row">
+                            <span class="cs-info-label">Domaine</span>
+                            <span class="cs-info-value">
+                                {{ $classe->parcours->mention->domaine->name }}
+                                @if($classe->parcours->mention->domaine->code)
+                                    <small style="font-weight:400;color:var(--cs-muted);display:block;">{{ $classe->parcours->mention->domaine->code }}</small>
+                                @endif
+                            </span>
+                        </div>
+                        <div class="cs-info-row">
+                            <span class="cs-info-label">Mention</span>
+                            <span class="cs-info-value">
+                                {{ $classe->parcours->mention->name }}
+                                @if($classe->parcours->mention->code)
+                                    <small style="font-weight:400;color:var(--cs-muted);display:block;">{{ $classe->parcours->mention->code }}</small>
+                                @endif
+                            </span>
+                        </div>
+                        <div class="cs-info-row">
+                            <span class="cs-info-label">Parcours</span>
+                            <span class="cs-info-value">
+                                {{ $classe->parcours->name }}
+                                @if($classe->parcours->code)
+                                    <small style="font-weight:400;color:var(--cs-muted);display:block;">{{ $classe->parcours->code }}</small>
+                                @endif
+                            </span>
+                        </div>
+                        <div class="cs-info-row">
+                            <span class="cs-info-label">Système</span>
+                            <span class="cs-info-value">
+                                <span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(4,83,203,.12);color:#0453cb;border:1px solid rgba(4,83,203,.25);padding:.15rem .5rem;border-radius:6px;font-size:.75rem;font-weight:700;letter-spacing:.4px;">
+                                    <i class="fas fa-university"></i>LMD
+                                </span>
+                            </span>
+                        </div>
+                    @elseif($isLmdInfo)
+                        <div class="cs-info-row">
+                            <span class="cs-info-label">Mention</span>
+                            <span class="cs-info-value">
+                                @if($classe->filiere)
+                                    {{ $classe->filiere->name }}
+                                    <small style="font-weight:400;color:var(--cs-muted);display:block;">Tronc commun mention (sans parcours)</small>
+                                @else
+                                    <span style="color:var(--cs-muted);">Non assignée</span>
+                                @endif
+                            </span>
+                        </div>
+                        <div class="cs-info-row">
+                            <span class="cs-info-label">Système</span>
+                            <span class="cs-info-value">
+                                <span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(4,83,203,.12);color:#0453cb;border:1px solid rgba(4,83,203,.25);padding:.15rem .5rem;border-radius:6px;font-size:.75rem;font-weight:700;letter-spacing:.4px;">
+                                    <i class="fas fa-university"></i>LMD tronc commun
+                                </span>
+                            </span>
+                        </div>
+                    @else
+                        <div class="cs-info-row">
+                            <span class="cs-info-label">Filière</span>
+                            <span class="cs-info-value">
+                                @if($classe->filiere)
+                                    {{ $classe->filiere->name }}
+                                    @if($classe->filiere->parent)<br><small style="font-weight:400;color:var(--cs-muted);">Option de {{ $classe->filiere->parent->name }}</small>@endif
+                                @else
+                                    <span style="color:var(--cs-muted);">Non assignée</span>
+                                @endif
+                            </span>
+                        </div>
+                    @endif
                     <div class="cs-info-row">
                         <span class="cs-info-label">Niveau</span>
                         <span class="cs-info-value">
@@ -746,7 +805,83 @@
 
             {{-- TAB MATIÈRES --}}
             <div class="cs-tab-panel" x-show="tab === 'matieres'">
-                @if(($combinationMatieres ?? collect())->isNotEmpty())
+                @php $isLmdTab = ($classe->systeme_academique ?? '') === 'LMD'; @endphp
+
+                @if($isLmdTab && ($lmdMatieres ?? collect())->isNotEmpty())
+                    {{-- MODE LMD : ECUEs depuis ESBTPPlanificationAcademique (source canonique) --}}
+                    @php
+                        // Grouper par Unite d'Enseignement (UE) si possible
+                        $ecuesByUe = $lmdMatieres->groupBy(function ($row) {
+                            $ue = optional($row['matiere'])->uniteEnseignement;
+                            return $ue ? $ue->id : '__nope__';
+                        });
+                        $sommeCredits = $lmdMatieres->sum('credits_ects');
+                        $sommeHeures = $lmdMatieres->sum('volume_horaire_total');
+                    @endphp
+
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;padding:.85rem 1.1rem;background:linear-gradient(135deg,rgba(4,83,203,.06),rgba(59,125,219,.08));border:1px solid rgba(4,83,203,.2);border-radius:12px;">
+                        <div style="display:flex;align-items:center;gap:.6rem;">
+                            <i class="fas fa-university" style="color:#0453cb;"></i>
+                            <div>
+                                <strong style="color:#0f172a;font-size:.9rem;">Maquette pédagogique LMD</strong>
+                                <div style="font-size:.75rem;color:#64748b;">{{ $ecuesByUe->count() }} unité{{ $ecuesByUe->count() > 1 ? 's' : '' }} · {{ $lmdMatieres->count() }} ECUE · {{ $sommeCredits }} crédits ECTS · {{ rtrim(rtrim(number_format($sommeHeures,1,',',''),'0'),',') }}h totales</div>
+                            </div>
+                        </div>
+                        <a href="{{ route('esbtp.lmd.planning.index') }}{{ optional($classe->parcours)->id ? '?parcours_id='.$classe->parcours->id : '' }}" style="display:inline-flex;align-items:center;gap:.35rem;background:#0453cb;color:#fff;padding:.45rem .85rem;border-radius:8px;text-decoration:none;font-size:.78rem;font-weight:600;">
+                            <i class="fas fa-edit"></i> Configurer dans Planning LMD
+                        </a>
+                    </div>
+
+                    <div class="cs-matieres-grid">
+                        @foreach($lmdMatieres as $row)
+                            @php
+                                $matiere = $row['matiere'];
+                                $ue = optional($matiere)->uniteEnseignement;
+                            @endphp
+                            <div class="cs-matiere-card" style="border-left:3px solid #0453cb;">
+                                <div class="cs-matiere-head">
+                                    <div style="flex:1;min-width:0;">
+                                        <div class="cs-matiere-name">{{ $matiere->name }}</div>
+                                        <div style="display:flex;align-items:center;gap:.35rem;flex-wrap:wrap;margin-top:.2rem;">
+                                            @if($matiere->code)<span class="cs-matiere-code">{{ $matiere->code }}</span>@endif
+                                            @if($ue)
+                                                <span style="background:rgba(4,83,203,.1);color:#0453cb;padding:.1rem .4rem;border-radius:5px;font-size:.65rem;font-weight:700;letter-spacing:.3px;">UE · {{ $ue->name }}</span>
+                                            @endif
+                                            @foreach($row['semestres'] as $sem)
+                                                <span style="background:rgba(148,163,184,.18);color:#475569;padding:.1rem .4rem;border-radius:5px;font-size:.65rem;font-weight:700;">S{{ $sem }}</span>
+                                            @endforeach
+                                        </div>
+                                    </div>
+                                    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:.2rem;">
+                                        <span class="cs-matiere-coef" title="Coefficient">×{{ number_format($row['coefficient'], 2) }}</span>
+                                        @if($row['credits_ects'] > 0)
+                                            <span style="background:#10b981;color:#fff;padding:.1rem .45rem;border-radius:5px;font-size:.65rem;font-weight:700;">{{ $row['credits_ects'] }} ECTS</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-top:.65rem;font-size:.72rem;">
+                                    @if($row['cm'] > 0)<span style="background:rgba(4,83,203,.08);color:#033a8e;padding:.15rem .45rem;border-radius:5px;font-weight:600;"><i class="fas fa-chalkboard-user" style="font-size:.65rem;"></i> CM {{ rtrim(rtrim(number_format($row['cm'],1,',',''),'0'),',') }}h</span>@endif
+                                    @if($row['td'] > 0)<span style="background:rgba(4,83,203,.08);color:#033a8e;padding:.15rem .45rem;border-radius:5px;font-weight:600;"><i class="fas fa-pen-ruler" style="font-size:.65rem;"></i> TD {{ rtrim(rtrim(number_format($row['td'],1,',',''),'0'),',') }}h</span>@endif
+                                    @if($row['tp'] > 0)<span style="background:rgba(4,83,203,.08);color:#033a8e;padding:.15rem .45rem;border-radius:5px;font-weight:600;"><i class="fas fa-flask-vial" style="font-size:.65rem;"></i> TP {{ rtrim(rtrim(number_format($row['tp'],1,',',''),'0'),',') }}h</span>@endif
+                                    <span style="margin-left:auto;color:#64748b;font-weight:600;">{{ rtrim(rtrim(number_format($row['volume_horaire_total'],1,',',''),'0'),',') }}h total</span>
+                                </div>
+                                @if($matiere->description)
+                                    <p class="cs-matiere-desc" style="margin-top:.55rem;">{{ \Illuminate\Support\Str::limit($matiere->description, 110) }}</p>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                @elseif($isLmdTab)
+                    {{-- LMD mais aucune planification configuree --}}
+                    <div class="cs-warn-box">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            Aucune planification académique LMD configurée pour {{ optional($classe->parcours)->name ?: 'cette classe' }} ({{ $classe->niveau->name ?? 'niveau non défini' }}).
+                            La maquette pédagogique se configure dans <a href="{{ route('esbtp.lmd.planning.index') }}{{ optional($classe->parcours)->id ? '?parcours_id='.$classe->parcours->id : '' }}" style="color:#92400e;text-decoration:underline;">Planning LMD</a> en définissant les UE, ECUE et volumes par semestre.
+                        </div>
+                    </div>
+                @elseif(($combinationMatieres ?? collect())->isNotEmpty())
+                    {{-- MODE BTS : pivot classique inchange --}}
                     <div class="cs-info-box" style="margin-top:0;margin-bottom:1rem;">
                         <i class="fas fa-info-circle"></i>
                         <div>
@@ -826,6 +961,53 @@
                             <div class="cs-planning-kpi-label">Taux</div>
                         </div>
                     </div>
+
+                    @if(($classe->systeme_academique ?? '') === 'LMD' && !empty($lmdVolumeBudget))
+                        @php
+                            $vbTotalsTab = ['cm'=>['p'=>0,'r'=>0],'td'=>['p'=>0,'r'=>0],'tp'=>['p'=>0,'r'=>0]];
+                            foreach ($lmdVolumeBudget as $budget) {
+                                foreach (['cm','td','tp'] as $k) {
+                                    $vbTotalsTab[$k]['p'] += (float) ($budget[$k]['planifie'] ?? 0);
+                                    $vbTotalsTab[$k]['r'] += (float) ($budget[$k]['realise'] ?? 0);
+                                }
+                            }
+                            $vbLabelsTab = ['cm'=>'Cours Magistral','td'=>'Travaux Dirigés','tp'=>'Travaux Pratiques'];
+                            $vbIconsTab  = ['cm'=>'fa-chalkboard-user','td'=>'fa-pen-ruler','tp'=>'fa-flask-vial'];
+                        @endphp
+                        <div style="margin:1.25rem 0;padding:1rem 1.15rem;background:linear-gradient(135deg,rgba(4,83,203,.04),rgba(59,125,219,.06));border:1px solid rgba(4,83,203,.18);border-radius:14px;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.85rem;flex-wrap:wrap;">
+                                <div style="display:flex;align-items:center;gap:.6rem;">
+                                    <i class="fas fa-university" style="color:#0453cb;"></i>
+                                    <strong style="color:#0f172a;font-size:.92rem;">Répartition par catégorie pédagogique LMD (UEMOA)</strong>
+                                </div>
+                                <a href="{{ route('esbtp.lmd.planning.index') }}{{ optional($classe->parcours)->id ? '?parcours_id='.$classe->parcours->id : '' }}" style="font-size:.75rem;color:#0453cb;text-decoration:none;font-weight:600;">
+                                    <i class="fas fa-external-link-alt"></i> Maquette LMD complète
+                                </a>
+                            </div>
+                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.85rem;">
+                                @foreach(['cm','td','tp'] as $k)
+                                    @php
+                                        $p = $vbTotalsTab[$k]['p']; $r = $vbTotalsTab[$k]['r'];
+                                        $pct = $p > 0 ? min(100, round($r / $p * 100)) : ($r > 0 ? 100 : 0);
+                                        $tone = $pct >= 100 ? '#10b981' : ($pct >= 70 ? '#f59e0b' : '#0453cb');
+                                    @endphp
+                                    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:.7rem .85rem;">
+                                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;">
+                                            <div style="display:flex;align-items:center;gap:.45rem;">
+                                                <i class="fas {{ $vbIconsTab[$k] }}" style="color:#0453cb;font-size:.8rem;"></i>
+                                                <span style="font-weight:700;color:#0f172a;font-size:.8rem;">{{ $vbLabelsTab[$k] }}</span>
+                                            </div>
+                                            <span style="font-size:.7rem;color:#64748b;font-weight:600;">{{ rtrim(rtrim(number_format($r,1,',',''),'0'),',') ?: '0' }}h / {{ rtrim(rtrim(number_format($p,1,',',''),'0'),',') ?: '0' }}h</span>
+                                        </div>
+                                        <div style="background:rgba(4,83,203,.08);border-radius:6px;height:7px;overflow:hidden;">
+                                            <div style="background:{{ $tone }};height:100%;width:{{ $pct }}%;transition:width .3s ease;"></div>
+                                        </div>
+                                        <div style="margin-top:.3rem;font-size:.68rem;color:{{ $tone }};font-weight:700;">{{ $pct }}%</div>
+                                    </div>
+                                @endforeach
+                            </div>
+                        </div>
+                    @endif
 
                     @if(!empty($planningMatiere['matieres']) && $planningMatiere['matieres']->isNotEmpty())
                         @foreach($planningMatiere['matieres'] as $item)

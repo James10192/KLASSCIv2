@@ -422,6 +422,7 @@ class ESBTPClasseController extends Controller
         // LMD volume budget : compare planifie vs realise par type_seance (CM/TD/TP)
         // Reutilise le service deja en place pour LMD planning. Renvoie array vide pour BTS.
         $lmdVolumeBudget = [];
+        $lmdMatieres = collect();
         if ($classe->systeme_academique === 'LMD' && $anneeCourante) {
             try {
                 $volumeBudgetService = app(\App\Services\VolumeBudgetService::class);
@@ -434,6 +435,44 @@ class ESBTPClasseController extends Controller
             } catch (\Throwable $e) {
                 \Log::warning('VolumeBudgetService failed on classes.show: ' . $e->getMessage());
                 $lmdVolumeBudget = [];
+            }
+
+            // Charger les ECUE de la classe via planifications academiques (source canonique
+            // pour LMD - voir rule klassci-classe-matieres.md). Le pivot esbtp_classe_matiere
+            // est VIDE pour LMD donc on derive depuis (filiere_id+niveau_etude_id+semestre).
+            try {
+                $filiereResolvedId = $classe->parcours && $classe->parcours->filiere_id
+                    ? $classe->parcours->filiere_id
+                    : $classe->filiere_id;
+
+                $lmdMatieres = \App\Models\ESBTPPlanificationAcademique::query()
+                    ->where('filiere_id', $filiereResolvedId)
+                    ->where('niveau_etude_id', $classe->niveau_etude_id)
+                    ->whereNotNull('matiere_id')
+                    ->with(['matiere.uniteEnseignement'])
+                    ->orderBy('semestre')
+                    ->get()
+                    ->groupBy('matiere_id')
+                    ->map(function ($planifs) {
+                        $first = $planifs->first();
+                        $totalH = $planifs->sum('volume_horaire_total');
+                        $semestres = $planifs->pluck('semestre')->unique()->sort()->values()->all();
+                        return [
+                            'matiere' => $first->matiere,
+                            'volume_horaire_total' => $totalH,
+                            'coefficient' => (float) ($first->coefficient ?? 0),
+                            'credits_ects' => (int) ($first->credits_ects ?? 0),
+                            'semestres' => $semestres,
+                            'cm' => $planifs->sum('volume_horaire_cm'),
+                            'td' => $planifs->sum('volume_horaire_td'),
+                            'tp' => $planifs->sum('volume_horaire_tp'),
+                        ];
+                    })
+                    ->filter(fn ($row) => $row['matiere'] !== null)
+                    ->values();
+            } catch (\Throwable $e) {
+                \Log::warning('LMD matieres loader failed on classes.show: ' . $e->getMessage());
+                $lmdMatieres = collect();
             }
         }
 
@@ -544,6 +583,7 @@ class ESBTPClasseController extends Controller
                     "periode",
                     "autresClasses",
                     "lmdVolumeBudget",
+                    "lmdMatieres",
                 ),
             );
         }
