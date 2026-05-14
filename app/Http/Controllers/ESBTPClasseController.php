@@ -26,6 +26,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use Illuminate\Support\Str;
 
@@ -289,7 +290,11 @@ class ESBTPClasseController extends Controller
         $filieres = ESBTPFiliere::where("is_active", true)->get();
         $niveaux = ESBTPNiveauEtude::where("is_active", true)->get();
         $annees = ESBTPAnneeUniversitaire::where("is_active", true)->get();
-        $parcours = ESBTPLMDParcours::with('mention.domaine')
+        $mentions = ESBTPLMDMention::with('domaine')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        $parcours = ESBTPLMDParcours::with('mention.domaine', 'filiere')
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -300,6 +305,7 @@ class ESBTPClasseController extends Controller
                 "filieres" => $filieres,
                 "niveaux" => $niveaux,
                 "annees" => $annees,
+                "mentions" => $mentions,
                 "parcours" => $parcours,
                 "isModal" => true,
                 "classe" => null,
@@ -308,7 +314,7 @@ class ESBTPClasseController extends Controller
 
         return view(
             "esbtp.classes.create",
-            compact("filieres", "niveaux", "annees", "parcours"),
+            compact("filieres", "niveaux", "annees", "mentions", "parcours"),
         );
     }
 
@@ -533,7 +539,11 @@ class ESBTPClasseController extends Controller
         $filieres = ESBTPFiliere::where("is_active", true)->get();
         $niveaux = ESBTPNiveauEtude::where("is_active", true)->get();
         $annees = ESBTPAnneeUniversitaire::where("is_active", true)->get();
-        $parcours = ESBTPLMDParcours::with('mention.domaine')
+        $mentions = ESBTPLMDMention::with('domaine')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        $parcours = ESBTPLMDParcours::with('mention.domaine', 'filiere')
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -544,6 +554,7 @@ class ESBTPClasseController extends Controller
                 "filieres" => $filieres,
                 "niveaux" => $niveaux,
                 "annees" => $annees,
+                "mentions" => $mentions,
                 "parcours" => $parcours,
                 "isModal" => true,
                 "classe" => $classe,
@@ -552,7 +563,7 @@ class ESBTPClasseController extends Controller
 
         return view(
             "esbtp.classes.edit",
-            compact("classe", "filieres", "niveaux", "annees", "parcours"),
+            compact("classe", "filieres", "niveaux", "annees", "mentions", "parcours"),
         );
     }
 
