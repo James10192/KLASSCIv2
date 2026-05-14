@@ -565,7 +565,7 @@
                 <div class="cs-hero-actions">
                     @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']))
                         @if(($classe->systeme_academique ?? '') === 'LMD')
-                            <a href="{{ route('esbtp.lmd.ue.index') }}" class="cs-btn--glass" title="Gérer les Unités d'Enseignement et leurs ECUEs">
+                            <a href="{{ route('esbtp.lmd.ue.index', array_filter(['parcours_id' => $classe->parcours_id, 'niveau_id' => $classe->niveau_etude_id, 'filiere_id' => $classe->filiere_id])) }}" class="cs-btn--glass" title="Gérer les Unités d'Enseignement et leurs ECUEs pour cette classe">
                                 <i class="fas fa-cubes"></i>Gérer UE / ECUE
                             </a>
                         @else
