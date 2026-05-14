@@ -1,60 +1,77 @@
 @extends(request()->boolean('embed') ? 'layouts.embedded' : 'layouts.app')
 
-@section('title', 'Ajouter une évaluation - KLASSCI')
+@section('title', 'Nouvelle évaluation - KLASSCI')
 
-@section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-@endsection
+@php
+    $isEmbed = request()->boolean('embed');
+    $isResubmit = old('titre') !== null;
+    $publishedChecked = $isResubmit ? old('is_published') !== null : true;
+    $classesOptions = $classes->mapWithKeys(fn($c) => [
+        $c->id => $c->name . ' (' . ($c->filiere->name ?? '—') . ' · ' . ($c->niveau->name ?? '—') . ')',
+    ])->all();
+    $matieresOptions = $matieres->mapWithKeys(fn($m) => [
+        $m->id => $m->nom ?? $m->name ?? 'Matière ' . $m->id,
+    ])->all();
+    $preClasse = !empty($classe_id) ? $classes->firstWhere('id', $classe_id) : null;
+    $preMatiere = !empty($matiere_id) ? $matieres->firstWhere('id', $matiere_id) : null;
+@endphp
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header Section -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1><i class="fas fa-plus-circle me-2"></i>Nouvelle Évaluation</h1>
-                <p class="header-subtitle">Créer une nouvelle évaluation pour vos étudiants</p>
-            </div>
-            <div class="header-actions">
-                @if(!empty($anneeUniversitaire))
-                <span class="badge rounded-pill bg-light text-dark">
-                    <i class="fas fa-calendar me-1"></i>
-                    Année courante: {{ $anneeUniversitaire->name }}
-                </span>
-                @endif
-                @if(auth()->check() && auth()->user() && !auth()->user()->can('identity.teach'))
-                <a href="{{ route('esbtp.evaluations.index') }}" class="btn-acasi secondary">
-                    <i class="fas fa-arrow-left"></i>Retour à la liste
-                </a>
-                @else
-                <a href="{{ route('teacher.dashboard') }}" class="btn-acasi secondary">
-                    <i class="fas fa-arrow-left"></i>Retour au tableau de bord
-                </a>
-                @endif
+        @unless($isEmbed)
+        <div class="ec-hero">
+            <div class="ec-hero-top">
+                <div class="ec-hero-left">
+                    <div class="ec-hero-icon"><i class="fas fa-plus-circle"></i></div>
+                    <div>
+                        <h1>Nouvelle évaluation</h1>
+                        <p>Créer une évaluation pour une classe et une matière</p>
+                    </div>
+                </div>
+                <div class="ec-hero-actions">
+                    @if(!empty($anneeUniversitaire))
+                        <span class="ec-chip">
+                            <i class="far fa-calendar"></i>
+                            {{ $anneeUniversitaire->name }}
+                        </span>
+                    @endif
+                    @if(auth()->check() && !auth()->user()->can('identity.teach'))
+                        <a href="{{ route('esbtp.evaluations.index') }}" class="ec-btn ec-btn--glass">
+                            <i class="fas fa-arrow-left"></i> Retour à la liste
+                        </a>
+                    @else
+                        <a href="{{ route('teacher.dashboard') }}" class="ec-btn ec-btn--glass">
+                            <i class="fas fa-arrow-left"></i> Tableau de bord
+                        </a>
+                    @endif
+                </div>
             </div>
         </div>
+        @endunless
 
-        @if ($errors->any())
-            <div class="alert alert-danger border-start border-danger border-4 mb-4">
-                <div class="d-flex">
-                    <div class="me-3">
-                        <i class="fas fa-exclamation-circle fs-4"></i>
-                    </div>
-                    <div>
-                        <h5 class="alert-heading">Erreur de validation</h5>
-                        <ul class="mb-0 ps-3">
-                            @foreach ($errors->all() as $error)
-                                <li>{{ $error }}</li>
-                            @endforeach
-                        </ul>
-                    </div>
+        @if($errors->any())
+            <div class="ec-alert ec-alert--error">
+                <i class="fas fa-exclamation-circle"></i>
+                <div>
+                    <strong>Erreur de validation</strong>
+                    <ul>
+                        @foreach($errors->all() as $error)
+                            <li>{{ $error }}</li>
+                        @endforeach
+                    </ul>
                 </div>
             </div>
         @endif
 
-        <form action="{{ route('esbtp.evaluations.store') }}" method="POST" id="evaluationCreateForm">
+        <form action="{{ route('esbtp.evaluations.store') }}"
+              method="POST"
+              id="evaluationCreateForm"
+              data-matieres-json='@json($matieresJson)'
+              data-load-matieres-url="{{ route('esbtp.evaluations.load-matieres') }}"
+              data-coeff-check-url="{{ route('esbtp.evaluations.coefficients.check') }}">
             @csrf
-            @if(request()->boolean('embed'))
+            @if($isEmbed)
                 <input type="hidden" name="embed" value="1">
                 @if(!empty($classe_id))
                     <input type="hidden" name="classe_id" value="{{ $classe_id }}">
@@ -64,303 +81,297 @@
                 @endif
             @endif
 
-            <div class="form-sections">
-                <!-- Section 1: Informations générales -->
-                <div class="main-card">
-                    <div class="main-card-header">
-                        <div class="main-card-title">
-                            <i class="fas fa-info-circle"></i>
-                            Informations générales
+            <div class="ec-sections">
+                {{-- Section 1 : Informations générales --}}
+                <div class="ec-card">
+                    <div class="ec-card-header">
+                        <div class="ec-section-icon"><i class="fas fa-info-circle"></i></div>
+                        <div>
+                            <h2 class="ec-card-title">Informations générales</h2>
+                            <p class="ec-card-subtitle">Détails de base de l'évaluation</p>
                         </div>
-                        <div class="main-card-subtitle">Détails de base de l'évaluation</div>
                     </div>
-                    <div class="main-card-body">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="titre" class="form-label">Titre de l'évaluation <span class="text-danger">*</span></label>
-                                <input type="text" class="form-input @error('titre') error @enderror" 
+                    <div class="ec-card-body">
+                        <div class="ec-grid">
+                            <div class="ec-field ec-field--wide">
+                                <label for="titre" class="ec-label">Titre de l'évaluation <span class="ec-required">*</span></label>
+                                <input type="text" class="ec-input @error('titre') ec-input--error @enderror"
                                        id="titre" name="titre" value="{{ old('titre') }}"
-                                       placeholder="Ex: Examen final de mathématiques" required>
-                                @error('titre')
-                                    <div class="form-error">{{ $message }}</div>
-                                @enderror
+                                       placeholder="Ex : Examen final de mathématiques" required>
+                                @error('titre')<div class="ec-error">{{ $message }}</div>@enderror
                             </div>
 
-                            <div class="form-group">
-                                <label for="type" class="form-label">Type d'évaluation <span class="text-danger">*</span></label>
-                                <select class="form-select @error('type') error @enderror" id="type" name="type" required>
-                                    <option value="">-- Sélectionner un type --</option>
-                                    @foreach($types as $typeKey => $typeValue)
-                                        <option value="{{ $typeKey }}" {{ old('type') == $typeKey ? 'selected' : '' }}>
-                                            {{ $typeValue }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('type')
-                                    <div class="form-error">{{ $message }}</div>
-                                @enderror
+                            <div class="ec-field">
+                                <label class="ec-label">Type d'évaluation <span class="ec-required">*</span></label>
+                                <x-au-select
+                                    name="type"
+                                    id="type"
+                                    icon="fa-tag"
+                                    :value="old('type', '')"
+                                    placeholder="Sélectionner un type"
+                                    :options="$types"
+                                    required />
+                                @error('type')<div class="ec-error">{{ $message }}</div>@enderror
                             </div>
 
-                            <div class="form-group">
-                                <label for="periode" class="form-label">Période <span class="text-danger">*</span></label>
-                                <select class="form-select @error('periode') error @enderror" id="periode" name="periode" required>
-                                    <option value="">-- Sélectionner une période --</option>
-                                    <option value="semestre1" {{ old('periode') == 'semestre1' ? 'selected' : '' }}>Semestre 1</option>
-                                    <option value="semestre2" {{ old('periode') == 'semestre2' ? 'selected' : '' }}>Semestre 2</option>
-                                </select>
-                                @error('periode')
-                                    <div class="form-error">{{ $message }}</div>
-                                @enderror
+                            <div class="ec-field">
+                                <label class="ec-label">Période <span class="ec-required">*</span></label>
+                                <x-au-select
+                                    name="periode"
+                                    id="periode"
+                                    icon="fa-calendar-alt"
+                                    :value="old('periode', '')"
+                                    placeholder="Sélectionner une période"
+                                    :options="['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2']"
+                                    required />
+                                @error('periode')<div class="ec-error">{{ $message }}</div>@enderror
                             </div>
 
-                            <div class="form-group">
-                                <label for="date_evaluation" class="form-label">Date d'évaluation <span class="text-danger">*</span></label>
-                                <input type="date" class="form-input @error('date_evaluation') error @enderror" 
+                            <div class="ec-field">
+                                <label for="date_evaluation" class="ec-label">Date d'évaluation <span class="ec-required">*</span></label>
+                                <input type="date" class="ec-input @error('date_evaluation') ec-input--error @enderror"
                                        id="date_evaluation" name="date_evaluation" value="{{ old('date_evaluation') }}" required>
-                                @error('date_evaluation')
-                                    <div class="form-error">{{ $message }}</div>
-                                @enderror
+                                @error('date_evaluation')<div class="ec-error">{{ $message }}</div>@enderror
                             </div>
 
-                            <div class="form-group">
-                                <label for="heure_debut" class="form-label">Heure de début <span class="text-danger">*</span></label>
-                                <input type="time" class="form-input @error('heure_debut') error @enderror"
+                            <div class="ec-field">
+                                <label for="heure_debut" class="ec-label">Heure de début <span class="ec-required">*</span></label>
+                                <input type="time" class="ec-input @error('heure_debut') ec-input--error @enderror"
                                        id="heure_debut" name="heure_debut"
                                        value="{{ old('heure_debut', '08:00') }}" required>
-                                @error('heure_debut')
-                                    <div class="form-error">{{ $message }}</div>
-                                @enderror
+                                @error('heure_debut')<div class="ec-error">{{ $message }}</div>@enderror
                             </div>
 
-                            <div class="form-group">
-                                <label for="heure_fin" class="form-label">Heure de fin <span class="text-danger">*</span></label>
-                                <input type="time" class="form-input @error('heure_fin') error @enderror"
+                            <div class="ec-field">
+                                <label for="heure_fin" class="ec-label">Heure de fin <span class="ec-required">*</span></label>
+                                <input type="time" class="ec-input @error('heure_fin') ec-input--error @enderror"
                                        id="heure_fin" name="heure_fin"
                                        value="{{ old('heure_fin', '10:00') }}" required>
-                                @error('heure_fin')
-                                    <div class="form-error">{{ $message }}</div>
-                                @enderror
+                                @error('heure_fin')<div class="ec-error">{{ $message }}</div>@enderror
                             </div>
 
-                            <div class="form-group">
-                                <label for="duree_minutes" class="form-label">Durée (en minutes)</label>
-                                <input type="number" class="form-input @error('duree_minutes') error @enderror" 
-                                       id="duree_minutes" name="duree_minutes" value="{{ old('duree_minutes') }}" 
-                                       min="15" max="720" placeholder="Ex: 120 (calculée automatiquement si vide)">
-                                @error('duree_minutes')
-                                    <div class="form-error">{{ $message }}</div>
-                                @enderror
-                                <small class="form-hint">Laissez vide pour calculer automatiquement la durée à partir des horaires.</small>
+                            <div class="ec-field">
+                                <label for="duree_minutes" class="ec-label">Durée (minutes)</label>
+                                <input type="number" class="ec-input @error('duree_minutes') ec-input--error @enderror"
+                                       id="duree_minutes" name="duree_minutes" value="{{ old('duree_minutes') }}"
+                                       min="15" max="720" placeholder="Calculée auto si vide">
+                                @error('duree_minutes')<div class="ec-error">{{ $message }}</div>@enderror
+                                <div class="ec-hint">Laissez vide pour calculer automatiquement à partir des horaires.</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Section 2: Classe et Matière -->
-                <div class="main-card">
-                    <div class="main-card-header">
-                        <div class="main-card-title">
-                            <i class="fas fa-users"></i>
-                            Classe et Matière
+                {{-- Section 2 : Classe, Matière, Coefficient, Barème --}}
+                <div class="ec-card">
+                    <div class="ec-card-header">
+                        <div class="ec-section-icon"><i class="fas fa-users"></i></div>
+                        <div>
+                            <h2 class="ec-card-title">Classe et matière</h2>
+                            <p class="ec-card-subtitle">Sélection de la classe et de la matière concernées</p>
                         </div>
-                        <div class="main-card-subtitle">Sélection de la classe et de la matière</div>
                     </div>
-                    <div class="main-card-body">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="classe_id" class="form-label">Classe <span class="text-danger">*</span></label>
-                                <select class="form-select @error('classe_id') error @enderror" id="classe_id" name="classe_id" required @if(request()->boolean('embed') && !empty($classe_id)) disabled @endif>
-                                    <option value="">-- Sélectionner une classe --</option>
-                                    @foreach($classes as $classe)
-                                        <option value="{{ $classe->id }}" {{ old('classe_id', $classe_id) == $classe->id ? 'selected' : '' }}>
-                                            {{ $classe->name }} ({{ $classe->filiere->name ?? '' }} - {{ $classe->niveau->name ?? '' }})
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('classe_id')
-                                    <div class="form-error">{{ $message }}</div>
-                                @enderror
+                    <div class="ec-card-body">
+                        <div class="ec-grid">
+                            <div class="ec-field">
+                                <label class="ec-label">Classe <span class="ec-required">*</span></label>
+                                @if($isEmbed && $preClasse)
+                                    <div class="ec-readonly">
+                                        <i class="fas fa-users"></i>
+                                        <span>{{ $preClasse->name }} ({{ $preClasse->filiere->name ?? '—' }} · {{ $preClasse->niveau->name ?? '—' }})</span>
+                                        <span class="ec-readonly-tag">Pré-sélectionnée</span>
+                                    </div>
+                                @else
+                                    <x-au-select
+                                        name="classe_id"
+                                        id="classe_id"
+                                        icon="fa-users"
+                                        :value="old('classe_id', $classe_id)"
+                                        placeholder="Sélectionner une classe"
+                                        :options="$classesOptions"
+                                        :searchable="count($classesOptions) > 8"
+                                        required />
+                                @endif
+                                @error('classe_id')<div class="ec-error">{{ $message }}</div>@enderror
                             </div>
 
-                            <div class="form-group">
-                                <label for="matiere_id" class="form-label">Matière <span class="text-danger">*</span></label>
-                                <select id="matiere_id" name="matiere_id" class="form-select @error('matiere_id') error @enderror" required @if(request()->boolean('embed') && !empty($matiere_id)) disabled @endif>
-                                    <option value="">-- Sélectionner une matière --</option>
-                                    @foreach($matieres as $matiere)
-                                        <option value="{{ $matiere->id }}" {{ (old('matiere_id', $matiere_id) == $matiere->id) ? 'selected' : '' }}>
-                                            {{ $matiere->nom ?? $matiere->name ?? 'Matière ' . $matiere->id }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('matiere_id')
-                                    <div class="form-error">{{ $message }}</div>
-                                @enderror
-                                <div class="form-hint mt-2" style="background: #f1f5f9; border-left: 3px solid var(--primary); padding: 10px 12px; border-radius: 6px;">
-                                    <i class="fas fa-info-circle me-1"></i>
-                                    @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.coordinate', 'identity.school_manager']))
-                                        Pour rattacher une matière à une classe (via filière + niveau),
-                                        allez sur <a href="{{ route('esbtp.matieres.index') }}" class="text-decoration-underline">Matières</a>
-                                        puis cliquez sur <strong>Configurer les liaisons</strong> (icône <i class="fas fa-link"></i>) sur la matière,
-                                        ou sélectionnez plusieurs matières et utilisez <strong>Attacher aux combinaisons</strong> dans la barre d’actions.
-                                    @else
-                                        Si une matière manque, signalez-le à la direction afin d'ajouter ou retirer des matières pour la classe.
-                                    @endif
+                            <div class="ec-field">
+                                <label class="ec-label">
+                                    Matière <span class="ec-required">*</span>
+                                    <span class="ec-loading" id="matiere-loading" style="display:none">
+                                        <i class="fas fa-spinner fa-spin"></i>
+                                    </span>
+                                </label>
+                                @if($isEmbed && $preMatiere)
+                                    <div class="ec-readonly">
+                                        <i class="fas fa-book"></i>
+                                        <span>{{ $preMatiere->nom ?? $preMatiere->name }}</span>
+                                        <span class="ec-readonly-tag">Pré-sélectionnée</span>
+                                    </div>
+                                @else
+                                    <x-au-select
+                                        name="matiere_id"
+                                        id="matiere_id"
+                                        icon="fa-book"
+                                        :value="old('matiere_id', $matiere_id)"
+                                        placeholder="Sélectionner une matière"
+                                        :options="$matieresOptions"
+                                        :searchable="count($matieresOptions) > 8"
+                                        required />
+                                @endif
+                                @error('matiere_id')<div class="ec-error">{{ $message }}</div>@enderror
+
+                                <div class="ec-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span>
+                                        @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.coordinate', 'identity.school_manager']))
+                                            Pour rattacher une matière, allez sur
+                                            <a href="{{ route('esbtp.matieres.index') }}" class="ec-link">Matières</a>
+                                            puis cliquez sur <strong>Configurer les liaisons</strong>.
+                                        @else
+                                            Si une matière manque, signalez-le à la direction pour la rattacher à la classe.
+                                        @endif
+                                    </span>
                                 </div>
                             </div>
 
-<div class="form-group">
-                                <label for="coefficient" class="form-label">Coefficient de l'évaluation <span class="text-danger">*</span></label>
-                                <div class="d-flex gap-2 align-items-center">
-                                    <input type="number" class="form-input flex-grow-1 @error('coefficient') error @enderror" 
-                                           id="coefficient" name="coefficient" value="{{ old('coefficient', 1) }}" 
+                            <div class="ec-field">
+                                <label for="coefficient" class="ec-label">Coefficient <span class="ec-required">*</span></label>
+                                <div class="ec-input-group">
+                                    <input type="number" class="ec-input @error('coefficient') ec-input--error @enderror"
+                                           id="coefficient" name="coefficient" value="{{ old('coefficient', 1) }}"
                                            step="0.1" min="0.1" max="10" required>
-                                    <button type="button" class="btn btn-sm btn-outline-secondary" 
-                                            id="btn-use-matiere-coefficient" 
-                                            title="Utiliser le coefficient de la matière">
+                                    <button type="button" class="ec-icon-btn"
+                                            id="btn-use-matiere-coefficient"
+                                            title="Reprendre le coefficient de la matière">
                                         <i class="fas fa-sync-alt"></i>
                                     </button>
                                 </div>
-                                <div class="form-hint mt-2" style="background: #f8f9fa; border-left: 3px solid var(--secondary); padding: 10px 12px; border-radius: 6px;">
-                                    <i class="fas fa-lightbulb me-1 text-warning"></i>
-                                    <strong>Logique :</strong> Le coefficient de l'évaluation peut être différent du coefficient de la matière.
-                                    <br><small class="text-muted">
-                                        • Ex: Matière coefficient 3, mais évaluation coefficient 1 (quiz)<br>
-                                        • Ex: Matière coefficient 2, mais évaluation coefficient 2 (examen final)<br>
-                                        • Utilisez le bouton <i class="fas fa-sync-alt"></i> pour copier le coefficient de la matière
-                                    </small>
+                                <div id="coeff-matiere-info" class="ec-info" style="display:none">
+                                    <i class="fas fa-info-circle"></i>
+                                    <span id="coeff-matiere-info-text"></span>
                                 </div>
-                                <div id="coeff-matiere-info" style="display: none;"></div>
-                                @error('coefficient')
-                                    <div class="form-error mt-1">{{ $message }}</div>
-                                @enderror
+                                <div class="ec-hint">Le coefficient de l'évaluation peut différer de celui de la matière (ex : quiz vs examen).</div>
+                                @error('coefficient')<div class="ec-error">{{ $message }}</div>@enderror
                             </div>
 
-                            <div class="form-group">
-                                <label for="bareme" class="form-label">Barème <span class="text-danger">*</span></label>
-                                <input type="number" class="form-input @error('bareme') error @enderror" 
-                                       id="bareme" name="bareme" value="{{ old('bareme', 20) }}" 
+                            <div class="ec-field">
+                                <label for="bareme" class="ec-label">Barème <span class="ec-required">*</span></label>
+                                <input type="number" class="ec-input @error('bareme') ec-input--error @enderror"
+                                       id="bareme" name="bareme" value="{{ old('bareme', 20) }}"
                                        step="0.1" min="1" required>
-                                @error('bareme')
-                                    <div class="form-error">{{ $message }}</div>
-                                @enderror
+                                @error('bareme')<div class="ec-error">{{ $message }}</div>@enderror
+                                <div class="ec-hint">Note maximale possible (par défaut 20).</div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Section 3: Description -->
-                <div class="main-card">
-                    <div class="main-card-header">
-                        <div class="main-card-title">
-                            <i class="fas fa-align-left"></i>
-                            Description et options
+                {{-- Section 3 : Description et publication --}}
+                <div class="ec-card">
+                    <div class="ec-card-header">
+                        <div class="ec-section-icon"><i class="fas fa-align-left"></i></div>
+                        <div>
+                            <h2 class="ec-card-title">Description et publication</h2>
+                            <p class="ec-card-subtitle">Contenu et statut de l'évaluation</p>
                         </div>
-                        <div class="main-card-subtitle">Informations complémentaires</div>
                     </div>
-                    <div class="main-card-body">
-                        <div class="form-group">
-                            <label for="description" class="form-label">Description (optionnelle)</label>
-                            <textarea class="form-textarea @error('description') error @enderror" 
+                    <div class="ec-card-body">
+                        <div class="ec-field ec-field--wide">
+                            <label for="description" class="ec-label">Description (optionnelle)</label>
+                            <textarea class="ec-input @error('description') ec-input--error @enderror"
                                       id="description" name="description" rows="4"
-                                      placeholder="Décrivez le contenu de l'évaluation, les chapitres couverts, etc...">{{ old('description') }}</textarea>
-                            @error('description')
-                                <div class="form-error">{{ $message }}</div>
-                            @enderror
+                                      placeholder="Décrivez le contenu, les chapitres couverts...">{{ old('description') }}</textarea>
+                            @error('description')<div class="ec-error">{{ $message }}</div>@enderror
                         </div>
 
-                        <div class="form-toggle">
-                            <input type="checkbox" id="is_published" name="is_published" value="1" 
-                                   {{ old('is_published') ? 'checked' : '' }}>
-                            <label for="is_published">
-                                <span class="toggle-title">Publier immédiatement</span>
-                                <span class="toggle-description">Une évaluation publiée est visible par les enseignants et permet la saisie des notes.</span>
-                            </label>
-                        </div>
-                        <div class="info-box mt-3">
+                        <label for="is_published" class="ec-switch">
+                            <input type="checkbox" id="is_published" name="is_published" value="1"
+                                   {{ $publishedChecked ? 'checked' : '' }}>
+                            <span class="ec-switch-toggle"></span>
+                            <span class="ec-switch-text">
+                                <span class="ec-switch-title">Publier immédiatement</span>
+                                <span class="ec-switch-desc">L'évaluation sera visible par les enseignants et permettra la saisie des notes. Décochez pour la garder en brouillon.</span>
+                            </span>
+                        </label>
+
+                        <div class="ec-info ec-info--tip">
                             <i class="fas fa-lightbulb"></i>
-                            <div>
-                                <strong>Astuce :</strong>
-                                tant que l'évaluation n'est pas publiée, elle reste en brouillon (invisible aux étudiants) et la saisie des notes est bloquée.
-                                Une fois publiée, le statut passe automatiquement à <strong>Planifiée</strong>, <strong>En cours</strong>, puis <strong>Terminée</strong> selon la date et la durée.
-                            </div>
+                            <span>
+                                <strong>Astuce :</strong> tant qu'elle n'est pas publiée, l'évaluation reste en brouillon (invisible aux étudiants).
+                                Une fois publiée, son statut passe automatiquement à <strong>Planifiée</strong>, puis <strong>En cours</strong>, puis <strong>Terminée</strong> selon la date et la durée.
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                <!-- Section 4: Assignation d'enseignant (non-enseignants uniquement) -->
-                @if(auth()->check() && auth()->user() && !auth()->user()->can('identity.teach'))
-                <div class="main-card">
-                    <div class="main-card-header">
-                        <div class="main-card-title">
-                            <i class="fas fa-user-tie"></i>
-                            Assignation d'enseignant
+                {{-- Section 4 : Assignation enseignant (non-enseignants uniquement) --}}
+                @if(auth()->check() && !auth()->user()->can('identity.teach'))
+                <div class="ec-card">
+                    <div class="ec-card-header">
+                        <div class="ec-section-icon"><i class="fas fa-user-tie"></i></div>
+                        <div>
+                            <h2 class="ec-card-title">Assignation d'enseignant</h2>
+                            <p class="ec-card-subtitle">Attribuer l'évaluation à un enseignant</p>
                         </div>
-                        <div class="main-card-subtitle">Attribution de l'évaluation à un enseignant</div>
                     </div>
-                    <div class="main-card-body">
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label for="enseignant_id" class="form-label">Enseignant de la plateforme</label>
-                                <select class="form-select" id="enseignant_id" name="enseignant_id">
-                                    <option value="">-- Sélectionner un enseignant --</option>
-                                    @foreach($enseignants as $enseignant)
-                                        <option value="{{ $enseignant->id }}" {{ old('enseignant_id') == $enseignant->id ? 'selected' : '' }}>
-                                            {{ $enseignant->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <small class="form-hint">L'enseignant pourra saisir les notes directement</small>
+                    <div class="ec-card-body">
+                        <div class="ec-grid">
+                            <div class="ec-field">
+                                <label class="ec-label">Enseignant de la plateforme</label>
+                                <x-au-user-picker
+                                    name="enseignant_id"
+                                    :value="old('enseignant_id')"
+                                    :users="$enseignants"
+                                    placeholder="— Sélectionner un enseignant —" />
+                                <div class="ec-hint">L'enseignant pourra saisir les notes directement.</div>
                             </div>
-                            
-                            <div class="form-group">
-                                <label for="enseignant_externe_nom" class="form-label">Enseignant externe</label>
-                                <input type="text" class="form-input" id="enseignant_externe_nom" 
-                                       name="enseignant_externe_nom" value="{{ old('enseignant_externe_nom') }}"
-                                       placeholder="Nom de l'enseignant externe">
-                                <small class="form-hint">Si l'enseignant n'a pas de compte</small>
+
+                            <div class="ec-field">
+                                <label for="enseignant_externe_nom" class="ec-label">Enseignant externe</label>
+                                <input type="text" class="ec-input"
+                                       id="enseignant_externe_nom" name="enseignant_externe_nom"
+                                       value="{{ old('enseignant_externe_nom') }}"
+                                       placeholder="Nom complet de l'enseignant">
+                                <div class="ec-hint">Si l'enseignant n'a pas de compte sur la plateforme.</div>
                             </div>
                         </div>
 
-                        <div class="form-toggle">
-                            <input type="checkbox" id="generer_lien_externe" name="generer_lien_externe" value="1" 
+                        <label for="generer_lien_externe" class="ec-switch">
+                            <input type="checkbox" id="generer_lien_externe" name="generer_lien_externe" value="1"
                                    {{ old('generer_lien_externe') ? 'checked' : '' }}>
-                            <label for="generer_lien_externe">
-                                <span class="toggle-title">Générer un lien de saisie pour l'enseignant externe</span>
-                                <span class="toggle-description">Un lien temporaire sera créé pour permettre la saisie des notes (valable 30 jours)</span>
-                            </label>
-                        </div>
+                            <span class="ec-switch-toggle"></span>
+                            <span class="ec-switch-text">
+                                <span class="ec-switch-title">Générer un lien de saisie pour l'enseignant externe</span>
+                                <span class="ec-switch-desc">Un lien temporaire (valable 30 jours) sera créé pour permettre la saisie des notes.</span>
+                            </span>
+                        </label>
 
-                        <div class="info-box">
+                        <div class="ec-info ec-info--tip">
                             <i class="fas fa-lightbulb"></i>
-                            <div>
-                                <strong>Options d'assignation :</strong>
-                                <ul class="mt-2 mb-0">
-                                    <li><strong>Enseignant de la plateforme :</strong> Peut se connecter et saisir les notes</li>
-                                    <li><strong>Enseignant externe :</strong> Traçabilité du nom seulement</li>
-                                    <li><strong>Lien externe :</strong> Envoyez le lien à l'enseignant pour qu'il saisisse les notes</li>
-                                </ul>
-                            </div>
+                            <span>
+                                <strong>Options :</strong> Enseignant plateforme → connexion + saisie · Enseignant externe → traçabilité du nom · Lien externe → envoi du lien pour saisie sans compte.
+                            </span>
                         </div>
                     </div>
                 </div>
                 @endif
 
-                <!-- Section 5: Actions -->
-                <div class="form-actions">
-                    <button type="reset" class="btn-acasi secondary">
-                        <i class="fas fa-undo"></i>Réinitialiser
+                {{-- Actions --}}
+                <div class="ec-actions">
+                    <button type="reset" class="ec-btn ec-btn--ghost">
+                        <i class="fas fa-undo"></i> Réinitialiser
                     </button>
-                    <button type="submit" class="btn-acasi primary" id="evaluation-submit">
-                        <i class="fas fa-save"></i>Enregistrer l'évaluation
+                    <button type="submit" class="ec-btn ec-btn--primary" id="evaluation-submit">
+                        <i class="fas fa-save"></i> Enregistrer l'évaluation
                     </button>
                 </div>
             </div>
         </form>
     </div>
-    </div>
 </div>
-@endsection
 
+{{-- Modal coefficient manquant (conservé pour rétro-compat) --}}
 <div class="modal fade" id="coeffMissingModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
@@ -373,477 +384,499 @@
     </div>
 </div>
 
+{{-- Toast container --}}
+<div class="ec-toast-container" id="ec-toast-container" aria-live="polite" aria-atomic="true"></div>
+@endsection
+
+@push('styles')
 <style>
-/* Formulaire moderne avec dashboard-moderne.css */
-.form-sections {
-    display: grid;
-    gap: var(--space-xl);
-    max-width: none;
+/* ============================================================
+   ec-* — Namespace évaluations.create (premium KLASSCI)
+   ============================================================ */
+.ec-hero {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 2rem 2.5rem 1.75rem;
+    color: #fff;
+    margin-bottom: 1.5rem;
+    box-shadow: 0 8px 30px rgba(4,83,203,.18);
+}
+.ec-hero-top {
+    display: flex; align-items: flex-start; justify-content: space-between;
+    flex-wrap: wrap; gap: 1rem;
+}
+.ec-hero-left { display: flex; align-items: center; gap: 1rem; }
+.ec-hero-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; flex-shrink: 0; color: #fff;
+}
+.ec-hero h1 { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; }
+.ec-hero p { color: rgba(255,255,255,.7); font-size: .88rem; margin: .15rem 0 0; }
+.ec-hero-actions { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+.ec-chip {
+    display: inline-flex; align-items: center; gap: .4rem;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2);
+    color: #fff; font-size: .8rem; font-weight: 500;
+    padding: .4rem .75rem; border-radius: 10px;
 }
 
-.form-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-    gap: var(--space-lg);
-}
-
-.form-group {
-    display: flex;
-    flex-direction: column;
-}
-
-.form-label {
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: var(--space-sm);
-    font-size: var(--text-small);
+.ec-btn {
+    display: inline-flex; align-items: center; gap: .5rem;
+    padding: .55rem 1rem; border-radius: 10px;
+    font-size: .85rem; font-weight: 600;
+    cursor: pointer; border: 1px solid transparent;
+    transition: all .2s ease; text-decoration: none;
     line-height: 1.2;
 }
-
-.form-input, .form-select, .form-textarea {
-    padding: var(--space-md);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-small);
-    background: var(--card-background);
-    color: var(--text);
-    font-size: var(--text-base);
-    transition: all 0.2s ease;
-    line-height: 1.5;
+.ec-btn--glass {
+    background: rgba(255,255,255,.15); color: #fff;
+    border-color: rgba(255,255,255,.2);
 }
-
-.form-input:focus, .form-select:focus, .form-textarea:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
-    background: white;
+.ec-btn--glass:hover { background: rgba(255,255,255,.25); color: #fff; }
+.ec-btn--primary {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff; border-color: transparent;
+    box-shadow: 0 4px 12px rgba(4,83,203,.25);
+    padding: .65rem 1.25rem;
 }
-
-.form-input.error, .form-select.error, .form-textarea.error {
-    border-color: var(--danger);
-    box-shadow: 0 0 0 3px rgba(var(--danger-rgb), 0.1);
+.ec-btn--primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 20px rgba(4,83,203,.35);
+    color: #fff;
 }
-
-.form-error {
-    color: var(--danger);
-    font-size: var(--text-small);
-    margin-top: var(--space-xs);
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
+.ec-btn--ghost {
+    background: #fff; color: #475569;
+    border-color: #e2e8f0;
+    padding: .65rem 1.25rem;
 }
+.ec-btn--ghost:hover { background: #f8fafc; color: #0f172a; }
 
-.form-error::before {
-    content: "⚠";
-    font-weight: bold;
+.ec-alert {
+    display: flex; gap: .9rem; align-items: flex-start;
+    padding: 1rem 1.15rem;
+    border-radius: 12px;
+    margin-bottom: 1rem;
+    border-left: 4px solid;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04);
 }
+.ec-alert i { font-size: 1.2rem; margin-top: .15rem; flex-shrink: 0; }
+.ec-alert strong { display: block; margin-bottom: .35rem; }
+.ec-alert ul { margin: 0; padding-left: 1.1rem; }
+.ec-alert li { font-size: .85rem; line-height: 1.5; }
+.ec-alert--error { background: #fef2f2; color: #991b1b; border-left-color: #dc2626; }
+.ec-alert--error i { color: #dc2626; }
 
-.form-hint {
-    color: var(--muted);
-    font-size: var(--text-small);
-    margin-top: var(--space-xs);
-    font-style: italic;
+.ec-sections { display: grid; gap: 1.25rem; max-width: none; }
+
+.ec-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    overflow: visible;
+    transition: box-shadow .2s ease;
 }
-
-.form-toggle {
-    display: flex;
-    gap: var(--space-md);
-    align-items: flex-start;
-    padding: var(--space-lg);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-medium);
-    background: rgba(var(--primary-rgb), 0.02);
-    margin-top: var(--space-md);
+.ec-card:hover {
+    box-shadow: 0 8px 30px rgba(4,83,203,.06), 0 2px 8px rgba(15,23,42,.04);
 }
+.ec-card-header {
+    display: flex; align-items: center; gap: .85rem;
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+}
+.ec-section-icon {
+    width: 40px; height: 40px; border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .95rem; flex-shrink: 0;
+}
+.ec-card-title { font-size: 1.02rem; font-weight: 700; color: #0f172a; margin: 0; line-height: 1.2; }
+.ec-card-subtitle { font-size: .8rem; color: #64748b; margin: .15rem 0 0; }
+.ec-card-body { padding: 1.25rem 1.5rem 1.5rem; }
 
-.form-toggle input[type="checkbox"] {
-    margin: 0;
+.ec-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1rem 1.25rem;
+}
+.ec-field { display: flex; flex-direction: column; min-width: 0; }
+.ec-field--wide { grid-column: 1 / -1; }
+.ec-label {
+    font-size: .82rem; font-weight: 600; color: #1e293b;
+    margin-bottom: .4rem;
+    display: inline-flex; align-items: center; gap: .35rem;
+}
+.ec-required { color: #dc2626; font-weight: 700; }
+.ec-loading { color: #0453cb; font-size: .78rem; margin-left: .35rem; }
+
+.ec-input {
+    padding: .55rem .85rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    background: #fff; color: #1e293b;
+    font-size: .88rem; line-height: 1.4;
+    transition: border-color .15s, box-shadow .15s;
+    font-family: inherit;
+    width: 100%;
+}
+.ec-input:focus {
+    outline: none; border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.12);
+}
+.ec-input--error { border-color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.10); }
+.ec-input:disabled, .ec-input[readonly] { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
+textarea.ec-input { resize: vertical; min-height: 90px; }
+
+.ec-readonly {
+    display: flex; align-items: center; gap: .55rem;
+    padding: .55rem .85rem;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #475569; font-size: .88rem; font-weight: 500;
+}
+.ec-readonly i { color: #64748b; }
+.ec-readonly span:first-of-type { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ec-readonly-tag {
+    font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .5px;
+    padding: .2rem .5rem; border-radius: 6px;
+    background: #e0e7ff; color: #3730a3;
     flex-shrink: 0;
-    width: 18px;
-    height: 18px;
-    margin-top: 2px;
 }
 
-.form-toggle input[type="checkbox"]:checked {
-    background-color: var(--primary);
-    border-color: var(--primary);
+.ec-error {
+    color: #dc2626; font-size: .78rem; margin-top: .3rem;
+    display: flex; align-items: center; gap: .3rem;
 }
+.ec-error::before { content: "⚠"; font-weight: bold; }
+.ec-hint { color: #64748b; font-size: .76rem; margin-top: .3rem; font-style: italic; }
 
-.form-toggle label {
-    display: flex;
-    flex-direction: column;
-    margin: 0;
+.ec-input-group { display: flex; gap: .5rem; align-items: stretch; }
+.ec-input-group .ec-input { flex: 1; }
+.ec-icon-btn {
+    background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 10px; padding: 0 .85rem;
+    color: #0453cb; cursor: pointer;
+    transition: all .2s ease;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .82rem;
+}
+.ec-icon-btn:hover { background: #eff6ff; border-color: #0453cb; transform: translateY(-1px); }
+.ec-icon-btn:disabled { background: #f8fafc; color: #cbd5e1; cursor: not-allowed; transform: none; border-color: #e2e8f0; }
+
+.ec-info {
+    display: flex; align-items: flex-start; gap: .5rem;
+    background: #eff6ff;
+    border-left: 3px solid #0453cb;
+    padding: .65rem .85rem;
+    border-radius: 8px;
+    color: #1e293b;
+    font-size: .8rem; line-height: 1.5;
+    margin-top: .55rem;
+}
+.ec-info i { color: #0453cb; flex-shrink: 0; margin-top: .15rem; }
+.ec-info--tip { background: #fffbeb; border-left-color: #f59e0b; margin-top: 1rem; }
+.ec-info--tip i { color: #f59e0b; }
+.ec-info--success { background: #ecfdf5; border-left-color: #10b981; }
+.ec-info--success i { color: #10b981; }
+.ec-info--warning { background: #fffbeb; border-left-color: #f59e0b; }
+.ec-info--warning i { color: #f59e0b; }
+
+.ec-link { color: #0453cb; font-weight: 600; text-decoration: underline; }
+.ec-link:hover { color: #033a8e; }
+
+.ec-switch {
+    display: flex; align-items: flex-start; gap: .85rem;
+    padding: 1rem 1.15rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #f8fafc;
+    margin-top: 1rem;
     cursor: pointer;
+    transition: border-color .15s, background .15s;
 }
-
-.toggle-title {
-    font-weight: 600;
-    color: var(--text);
-    margin-bottom: var(--space-xs);
-    font-size: var(--text-base);
+.ec-switch:hover { border-color: #cbd5e1; background: #f1f5f9; }
+.ec-switch input[type="checkbox"] {
+    position: absolute; opacity: 0; pointer-events: none;
+    width: 0; height: 0;
 }
-
-.toggle-description {
-    color: var(--muted);
-    font-size: var(--text-small);
-    line-height: 1.4;
+.ec-switch-toggle {
+    width: 40px; height: 22px;
+    background: #cbd5e1; border-radius: 999px;
+    position: relative;
+    transition: background .2s ease;
+    flex-shrink: 0; margin-top: 2px;
 }
-
-.info-box {
-    display: flex;
-    gap: var(--space-md);
-    padding: var(--space-lg);
-    background: rgba(var(--info-rgb), 0.08);
-    border: 1px solid rgba(var(--info-rgb), 0.2);
-    border-radius: var(--radius-medium);
-    color: var(--text);
-    margin-top: var(--space-lg);
+.ec-switch-toggle::before {
+    content: ''; position: absolute;
+    top: 2px; left: 2px;
+    width: 18px; height: 18px;
+    background: #fff; border-radius: 50%;
+    transition: transform .2s ease;
+    box-shadow: 0 1px 3px rgba(15,23,42,.2);
 }
-
-.info-box i {
-    flex-shrink: 0;
-    margin-top: var(--space-xs);
-    color: var(--info);
-    font-size: 1.1rem;
+.ec-switch input[type="checkbox"]:checked + .ec-switch-toggle {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
 }
-
-.info-box ul {
-    margin: var(--space-sm) 0 0 var(--space-md);
-    padding: 0;
+.ec-switch input[type="checkbox"]:checked + .ec-switch-toggle::before {
+    transform: translateX(18px);
 }
-
-.info-box li {
-    margin-bottom: var(--space-xs);
-    line-height: 1.4;
+.ec-switch input[type="checkbox"]:focus-visible + .ec-switch-toggle {
+    box-shadow: 0 0 0 3px rgba(4,83,203,.20);
 }
+.ec-switch-text {
+    display: flex; flex-direction: column; gap: .15rem;
+    flex: 1; min-width: 0;
+}
+.ec-switch-title { font-size: .9rem; font-weight: 600; color: #0f172a; }
+.ec-switch-desc { color: #64748b; font-size: .78rem; line-height: 1.45; }
 
-.form-actions {
-    display: flex;
-    gap: var(--space-md);
+.ec-actions {
+    display: flex; gap: .75rem;
     justify-content: flex-end;
-    padding: var(--space-xl) 0;
-    border-top: 1px solid var(--border);
-    margin-top: var(--space-lg);
+    padding: 1rem 0;
+    margin-top: .5rem;
 }
 
-/* Amélioration des cards principales */
-.main-card {
-    background: var(--card-background);
-    border-radius: var(--radius-medium);
-    box-shadow: var(--shadow-card);
-    border: 1px solid rgba(var(--border-rgb), 0.1);
-    transition: all 0.2s ease;
+.ec-toast-container {
+    position: fixed;
+    top: 20px; right: 20px;
+    z-index: 2000;
+    display: flex; flex-direction: column;
+    gap: .5rem;
+    pointer-events: none;
 }
-
-.main-card:hover {
-    box-shadow: var(--shadow-hover);
+.ec-toast {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-left: 4px solid #0453cb;
+    border-radius: 12px;
+    padding: .85rem 1.1rem;
+    box-shadow: 0 12px 40px rgba(15,23,42,.12), 0 4px 12px rgba(15,23,42,.06);
+    display: flex; align-items: flex-start; gap: .75rem;
+    max-width: 380px;
+    pointer-events: auto;
+    transition: opacity .25s ease, transform .25s ease;
 }
-
-.main-card-header {
-    padding: var(--space-lg);
-    background: linear-gradient(135deg, rgba(30, 58, 138, 0.03), rgba(30, 64, 175, 0.01));
-    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
-    border-radius: var(--radius-medium) var(--radius-medium) 0 0;
+.ec-toast--error { border-left-color: #dc2626; }
+.ec-toast--error .ec-toast-icon { color: #dc2626; }
+.ec-toast--warning { border-left-color: #f59e0b; }
+.ec-toast--warning .ec-toast-icon { color: #f59e0b; }
+.ec-toast--success { border-left-color: #10b981; }
+.ec-toast--success .ec-toast-icon { color: #10b981; }
+.ec-toast-icon { color: #0453cb; font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+.ec-toast-body { flex: 1; min-width: 0; }
+.ec-toast-title { font-weight: 600; color: #0f172a; font-size: .88rem; margin-bottom: .15rem; }
+.ec-toast-message { color: #475569; font-size: .82rem; line-height: 1.4; }
+.ec-toast-close {
+    background: transparent; border: none;
+    color: #94a3b8; cursor: pointer; padding: 0;
+    font-size: .85rem; flex-shrink: 0;
 }
+.ec-toast-close:hover { color: #0f172a; }
 
-.main-card-title {
-    font-size: 1.1rem;
-    font-weight: 700;
-    color: var(--primary);
-    margin-bottom: var(--space-xs);
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-}
-
-.main-card-subtitle {
-    font-size: var(--text-small);
-    color: var(--muted);
-    margin: 0;
-}
-
-.main-card-body {
-    padding: var(--space-xl);
-}
-
-/* Responsive */
 @media (max-width: 768px) {
-    .form-grid {
-        grid-template-columns: 1fr;
-    }
-    
-    .form-actions {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    
-    .form-toggle {
-        flex-direction: column;
-        gap: var(--space-sm);
-    }
-    
-    .main-card-body {
-        padding: var(--space-lg);
-    }
-}
-
-/* Couleurs personnalisées */
-:root {
-    --primary: #01632f;
-    --primary-rgb: 1, 99, 47;
-    --danger: #dc3545;
-    --danger-rgb: 220, 53, 69;
-    --info: #0dcaf0;
-    --info-rgb: 13, 202, 240;
+    .ec-hero { padding: 1.5rem 1.25rem 1.25rem; }
+    .ec-hero h1 { font-size: 1.2rem; }
+    .ec-card-header { padding: .85rem 1rem; }
+    .ec-card-body { padding: 1rem 1rem 1.25rem; }
+    .ec-grid { grid-template-columns: 1fr; }
+    .ec-actions { flex-direction: column; }
+    .ec-actions .ec-btn { width: 100%; justify-content: center; }
+    .ec-toast-container { top: 10px; right: 10px; left: 10px; }
+    .ec-toast { max-width: none; }
 }
 </style>
+@endpush
 
+@push('scripts')
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Pattern AJAX classe → matières (identique à attendances.create pour cohérence)
-    const classeSelect = document.getElementById('classe_id');
-    const matiereSelect = document.getElementById('matiere_id');
-    const coeffInput = document.getElementById('coefficient');
-    const submitBtn = document.getElementById('evaluation-submit');
-    const coeffCheckUrl = '{{ route("esbtp.evaluations.coefficients.check") }}';
-    const coeffMissingModal = document.getElementById('coeffMissingModal');
-    const coeffMissingBody = document.getElementById('coeffMissingModalBody');
+(function() {
+    'use strict';
 
-    if (classeSelect && matiereSelect) {
-        classeSelect.addEventListener('change', function(e) {
-            e.preventDefault();
-            const classeId = this.value;
+    document.addEventListener('DOMContentLoaded', function() {
+        var form = document.getElementById('evaluationCreateForm');
+        if (!form) return;
 
-            debugLog('📚 [AJAX] Classe sélectionnée:', classeId);
+        var matieresJson = [];
+        try {
+            matieresJson = JSON.parse(form.dataset.matieresJson || '[]');
+        } catch (e) {
+            matieresJson = [];
+        }
+        var loadMatieresUrl = form.dataset.loadMatieresUrl;
+        var coeffCheckUrl = form.dataset.coeffCheckUrl;
 
-            // Reset matière select
-            matiereSelect.innerHTML = '<option value="">-- Sélectionner une matière --</option>';
-            matiereSelect.disabled = true;
+        var classeSelect = document.getElementById('classe_id');
+        var matiereSelect = document.getElementById('matiere_id');
+        var coeffInput = document.getElementById('coefficient');
+        var submitBtn = document.getElementById('evaluation-submit');
+        var matiereLoading = document.getElementById('matiere-loading');
+        var btnUseMatiereCoefficient = document.getElementById('btn-use-matiere-coefficient');
+        var coeffInfoDiv = document.getElementById('coeff-matiere-info');
+        var coeffInfoText = document.getElementById('coeff-matiere-info-text');
+        var toastContainer = document.getElementById('ec-toast-container');
 
-            if (classeId) {
-                loadMatieres(classeId);
-            }
-
-            return false;
-        });
-    }
-
-    /**
-     * Charge les matières disponibles pour une classe via AJAX
-     * Utilise les combinaisons globales (filière + niveau)
-     */
-    function loadMatieres(classeId) {
-        debugLog('🔄 [AJAX] Chargement matières pour classe:', classeId);
-
-        // Supprimer tous les spinners existants pour éviter les doublons
-        const label = document.querySelector('label[for="matiere_id"]');
-        const existingSpinners = label.querySelectorAll('.loading-spinner');
-        existingSpinners.forEach(s => s.remove());
-
-        // Créer un nouveau spinner
-        const spinner = document.createElement('span');
-        spinner.className = 'loading-spinner';
-        spinner.innerHTML = ' <i class="fas fa-spinner fa-spin text-primary"></i>';
-        label.appendChild(spinner);
-
-        const url = '{{ route("esbtp.evaluations.load-matieres") }}?classe_id=' + classeId;
-
-        fetch(url, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-        .then(response => {
-            if (!response.ok) {
-                throw new Error('HTTP error! status: ' + response.status);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (spinner) spinner.remove();
-
-            if (data.success) {
-                debugLog('✅ [AJAX] Matières reçues:', data.count, 'pour', data.classe.nom);
-
-                // Mettre à jour le select avec les options HTML
-                matiereSelect.innerHTML = data.options;
-                matiereSelect.disabled = false;
-
-                if (matiereSelect.value) {
-                    checkCombinationCoefficient();
-                }
-
-                // Message si aucune matière
-                if (data.count === 0) {
-                    matiereSelect.innerHTML = '<option value="">Aucune matière disponible pour cette classe</option>';
-
-                    // Alert utilisateur
-                    alert('Attention: Aucune matière n\'est configurée pour la combinaison ' +
-                          data.classe.filiere + ' / ' + data.classe.niveau + '. ' +
-                          'Veuillez d\'abord ajouter des matières via la page "Matières de classe".');
-                }
-            } else {
-                debugError('❌ Erreur:', data.message);
-                alert('Erreur: ' + data.message);
-                matiereSelect.disabled = false;
-            }
-        })
-        .catch(error => {
-            if (spinner) spinner.remove();
-            debugError('❌ Erreur AJAX:', error);
-            alert('Une erreur est survenue lors du chargement des matières: ' + error.message);
-            matiereSelect.disabled = false;
-        });
-    }
-
-    function checkCombinationCoefficient() {
-        if (!classeSelect || !matiereSelect) {
-            return;
+        function toast(opts) {
+            opts = opts || {};
+            if (!toastContainer) return;
+            var type = opts.type || 'info';
+            var icons = { error: 'fa-exclamation-circle', warning: 'fa-exclamation-triangle', success: 'fa-check-circle', info: 'fa-info-circle' };
+            var t = document.createElement('div');
+            t.className = 'ec-toast ec-toast--' + type;
+            t.innerHTML =
+                '<i class="fas ' + icons[type] + ' ec-toast-icon"></i>' +
+                '<div class="ec-toast-body">' +
+                    (opts.title ? '<div class="ec-toast-title">' + opts.title + '</div>' : '') +
+                    '<div class="ec-toast-message"></div>' +
+                '</div>' +
+                '<button type="button" class="ec-toast-close" aria-label="Fermer">' +
+                    '<i class="fas fa-times"></i>' +
+                '</button>';
+            // Inject message safely via textContent (no XSS from server data)
+            t.querySelector('.ec-toast-message').textContent = opts.message || '';
+            toastContainer.appendChild(t);
+            var close = function() {
+                t.style.opacity = '0';
+                t.style.transform = 'translateX(20px)';
+                setTimeout(function() { t.remove(); }, 250);
+            };
+            t.querySelector('.ec-toast-close').addEventListener('click', close);
+            setTimeout(close, opts.duration || 5000);
         }
 
-        const classeId = classeSelect.value;
-        const matiereId = matiereSelect.value;
-        const coeffInfoDiv = document.getElementById('coeff-matiere-info');
-
-        if (!classeId || !matiereId) {
-            if (coeffInfoDiv) coeffInfoDiv.style.display = 'none';
-            return;
-        }
-
-        fetch(`${coeffCheckUrl}?classe_id=${classeId}&matiere_id=${matiereId}`, {
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json'
-            }
-        })
-            .then(response => response.json())
-            .then(data => {
-                if (data.success) {
-                    if (coeffInput) {
-                        coeffInput.value = data.coefficient;
-                    }
-                    if (coeffInfoDiv) {
-                        coeffInfoDiv.style.display = 'block';
-                        coeffInfoDiv.className = 'mt-2';
-                        coeffInfoDiv.innerHTML = `
-                            <div style="background: linear-gradient(135deg, #d1ecf1 0%, #bee5eb 100%); border-left: 3px solid #17a2b8; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem;">
-                                <i class="fas fa-info-circle text-info me-1"></i>
-                                Coefficient matière : <strong>${data.coefficient}</strong> (pré-rempli, vous pouvez le modifier)
-                            </div>
-                        `;
-                    }
-                } else {
-                    // Coefficient matière non trouvé : laisser la valeur actuelle, ne PAS bloquer
-                    if (coeffInput && (!coeffInput.value || coeffInput.value <= 0)) {
-                        coeffInput.value = 1;
-                    }
-                    if (coeffInfoDiv) {
-                        coeffInfoDiv.style.display = 'block';
-                        coeffInfoDiv.className = 'mt-2';
-                        coeffInfoDiv.innerHTML = `
-                            <div style="background: linear-gradient(135deg, #fff3cd 0%, #ffeeba 100%); border-left: 3px solid #ffc107; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem;">
-                                <i class="fas fa-exclamation-triangle text-warning me-1"></i>
-                                Aucun coefficient matière configuré pour cette combinaison. Vous pouvez saisir le coefficient manuellement.
-                                ${data.config_url ? `<br><small><a href="${data.config_url}" class="text-primary">Configurer les coefficients matière</a></small>` : ''}
-                            </div>
-                        `;
-                    }
-                }
-                // Le bouton submit reste TOUJOURS actif
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                }
-            })
-            .catch(() => {
-                // En cas d'erreur réseau, ne pas bloquer non plus
-                if (submitBtn) {
-                    submitBtn.disabled = false;
-                }
-                if (coeffInfoDiv) {
-                    coeffInfoDiv.style.display = 'none';
-                }
+        // Cascade classe → matières
+        if (classeSelect && matiereSelect) {
+            classeSelect.addEventListener('change', function() {
+                var classeId = this.value;
+                matiereSelect.innerHTML = '<option value="" data-placeholder="1">Sélectionner une matière</option>';
+                matiereSelect.disabled = true;
+                if (classeId) loadMatieres(classeId);
             });
-    }
+            matiereSelect.addEventListener('change', checkCombinationCoefficient);
+        }
 
-if (classeSelect && matiereSelect) {
-        matiereSelect.addEventListener('change', checkCombinationCoefficient);
-    }
+        function loadMatieres(classeId) {
+            if (matiereLoading) matiereLoading.style.display = 'inline-block';
+            var url = loadMatieresUrl + '?classe_id=' + encodeURIComponent(classeId);
+            fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } })
+                .then(function(r) {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    return r.json();
+                })
+                .then(function(data) {
+                    if (matiereLoading) matiereLoading.style.display = 'none';
+                    if (!data.success) {
+                        toast({ type: 'error', title: 'Erreur', message: data.message || 'Impossible de charger les matières.' });
+                        matiereSelect.disabled = false;
+                        return;
+                    }
+                    matiereSelect.innerHTML = data.options;
+                    matiereSelect.disabled = false;
+                    if (data.count === 0) {
+                        matiereSelect.innerHTML = '<option value="" data-placeholder="1">Aucune matière disponible</option>';
+                        toast({
+                            type: 'warning',
+                            title: 'Aucune matière',
+                            message: 'La combinaison ' + (data.classe ? data.classe.filiere : '') + ' / ' + (data.classe ? data.classe.niveau : '') + " n'a aucune matière configurée."
+                        });
+                    } else if (matiereSelect.value) {
+                        checkCombinationCoefficient();
+                    }
+                })
+                .catch(function(err) {
+                    if (matiereLoading) matiereLoading.style.display = 'none';
+                    toast({ type: 'error', title: 'Erreur réseau', message: err.message || 'Impossible de charger les matières.' });
+                    matiereSelect.disabled = false;
+                });
+        }
 
-    // Gérer le bouton de synchronisation du coefficient de la matière
-    const btnUseMatiereCoefficient = document.getElementById('btn-use-matiere-coefficient');
-    const coefficientInput = document.getElementById('coefficient');
-
-    if (btnUseMatiereCoefficient && coefficientInput) {
-        btnUseMatiereCoefficient.addEventListener('click', function() {
-            const matiereSelect = document.getElementById('matiere_id');
-            const classeSelect = document.getElementById('classe_id');
-            
-            if (!matiereSelect.value || !classeSelect.value) {
-                alert('Veuillez d\'abord sélectionner une classe et une matière.');
+        function checkCombinationCoefficient() {
+            if (!classeSelect || !matiereSelect) return;
+            var classeId = classeSelect.value;
+            var matiereId = matiereSelect.value;
+            if (!classeId || !matiereId) {
+                if (coeffInfoDiv) coeffInfoDiv.style.display = 'none';
                 return;
             }
+            fetch(coeffCheckUrl + '?classe_id=' + encodeURIComponent(classeId) + '&matiere_id=' + encodeURIComponent(matiereId), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' }
+            })
+                .then(function(r) { return r.json(); })
+                .then(function(data) {
+                    if (data.success) {
+                        if (coeffInput) coeffInput.value = data.coefficient;
+                        if (coeffInfoDiv && coeffInfoText) {
+                            coeffInfoDiv.className = 'ec-info ec-info--success';
+                            coeffInfoDiv.style.display = 'flex';
+                            coeffInfoText.textContent = 'Coefficient matière pré-rempli : ' + data.coefficient + ' (modifiable).';
+                        }
+                    } else {
+                        if (coeffInput && (!coeffInput.value || coeffInput.value <= 0)) coeffInput.value = 1;
+                        if (coeffInfoDiv && coeffInfoText) {
+                            coeffInfoDiv.className = 'ec-info ec-info--warning';
+                            coeffInfoDiv.style.display = 'flex';
+                            // Build content safely
+                            coeffInfoText.textContent = 'Aucun coefficient matière configuré. Saisissez-le manuellement.';
+                            if (data.config_url) {
+                                var link = document.createElement('a');
+                                link.href = data.config_url;
+                                link.className = 'ec-link';
+                                link.textContent = ' Configurer';
+                                coeffInfoText.appendChild(link);
+                            }
+                        }
+                    }
+                    if (submitBtn) submitBtn.disabled = false;
+                })
+                .catch(function() {
+                    if (submitBtn) submitBtn.disabled = false;
+                    if (coeffInfoDiv) coeffInfoDiv.style.display = 'none';
+                });
+        }
 
-            // Récupérer les matières avec coefficients
-            const matiere = matieresJson.find(m => m.id == matiereSelect.value);
-            
-            if (matiere && matiere.coefficient) {
-                coefficientInput.value = matiere.coefficient;
-                
-                // Feedback visuel temporaire
-                const originalText = btnUseMatiereCoefficient.innerHTML;
-                btnUseMatiereCoefficient.innerHTML = '<i class="fas fa-check text-success"></i>';
-                btnUseMatiereCoefficient.classList.add('btn-success');
-                btnUseMatiereCoefficient.classList.remove('btn-outline-secondary');
-                
-                setTimeout(() => {
-                    btnUseMatiereCoefficient.innerHTML = originalText;
-                    btnUseMatiereCoefficient.classList.remove('btn-success');
-                    btnUseMatiereCoefficient.classList.add('btn-outline-secondary');
-                }, 1500);
-                
-                // Mettre à jour l'info-bulle
-                btnUseMatiereCoefficient.title = `Coefficient ${matiere.coefficient} copié depuis la matière`;
-            } else {
-                alert('Cette matière n\'a pas de coefficient défini.');
-            }
-        });
+        // Sync coefficient depuis la matière
+        if (btnUseMatiereCoefficient && coeffInput && matiereSelect) {
+            btnUseMatiereCoefficient.addEventListener('click', function() {
+                if (!matiereSelect.value || (classeSelect && !classeSelect.value)) {
+                    toast({ type: 'warning', message: 'Sélectionnez d’abord une classe et une matière.' });
+                    return;
+                }
+                var matiere = matieresJson.find(function(m) { return String(m.id) === String(matiereSelect.value); });
+                if (matiere && matiere.coefficient) {
+                    coeffInput.value = matiere.coefficient;
+                    var originalHtml = btnUseMatiereCoefficient.innerHTML;
+                    btnUseMatiereCoefficient.innerHTML = '<i class="fas fa-check"></i>';
+                    btnUseMatiereCoefficient.style.color = '#10b981';
+                    btnUseMatiereCoefficient.style.borderColor = '#10b981';
+                    setTimeout(function() {
+                        btnUseMatiereCoefficient.innerHTML = originalHtml;
+                        btnUseMatiereCoefficient.style.color = '';
+                        btnUseMatiereCoefficient.style.borderColor = '';
+                    }, 1500);
+                } else {
+                    toast({ type: 'warning', message: 'Cette matière n’a pas de coefficient défini.' });
+                }
+            });
 
-        // Mettre à jour le titre du bouton selon la matière sélectionnée
-        matiereSelect.addEventListener('change', function() {
-            const matiere = matieresJson.find(m => m.id == this.value);
-            if (matiere && matiere.coefficient) {
-                btnUseMatiereCoefficient.title = `Utiliser le coefficient de la matière (${matiere.coefficient})`;
-                btnUseMatiereCoefficient.disabled = false;
-            } else {
-                btnUseMatiereCoefficient.title = 'Aucun coefficient défini pour cette matière';
-                btnUseMatiereCoefficient.disabled = true;
-            }
-        });
-    }
-});
+            matiereSelect.addEventListener('change', function() {
+                var matiere = matieresJson.find(function(m) { return String(m.id) === String(matiereSelect.value); });
+                if (matiere && matiere.coefficient) {
+                    btnUseMatiereCoefficient.title = 'Reprendre le coefficient de la matière (' + matiere.coefficient + ')';
+                    btnUseMatiereCoefficient.disabled = false;
+                } else {
+                    btnUseMatiereCoefficient.title = 'Aucun coefficient défini pour cette matière';
+                    btnUseMatiereCoefficient.disabled = true;
+                }
+            });
+        }
+    });
+})();
 </script>
-
-<style>
-.loading-spinner {
-    margin-left: 8px;
-    display: inline-block;
-    animation: fadeIn 0.3s ease;
-}
-
-.loading-spinner i {
-    font-size: 1rem;
-    color: var(--primary, #01632f);
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-/* Désactiver visuellement le select pendant le chargement */
-#matiere_id:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-    background-color: #f5f5f5;
-}
-</style>
+@endpush

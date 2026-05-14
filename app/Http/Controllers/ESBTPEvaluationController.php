@@ -298,7 +298,7 @@ class ESBTPEvaluationController extends Controller
         if (! $currentUser->can('identity.teach')) {
             $enseignants = User::whereHas('roles', function ($query) {
                 $query->whereIn('name', ['teacher', 'enseignant']);
-            })->orderBy('name')->get();
+            })->with('roles:id,name')->orderBy('name')->get();
         }
 
         // Prepare subjects for JavaScript
