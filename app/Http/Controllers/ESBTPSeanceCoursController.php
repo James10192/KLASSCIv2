@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TypeSeance;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPEvaluation;
@@ -59,14 +60,17 @@ class ESBTPSeanceCoursController extends Controller
             // Récupérer tous les enseignants pour le filtre
             $enseignants = User::role('enseignant')->where('is_active', true)->orderBy('name')->get();
 
-            // Calculer les statistiques par type de séance
-            $statsCours = [
-                'cours' => ESBTPSeanceCours::where('type_seance', 'cours')->count(),
-                'td' => ESBTPSeanceCours::where('type_seance', 'td')->count(),
-                'tp' => ESBTPSeanceCours::where('type_seance', 'tp')->count(),
-                'examen' => ESBTPSeanceCours::where('type_seance', 'examen')->count(),
-                'autre' => ESBTPSeanceCours::whereNotIn('type_seance', ['cours', 'td', 'tp', 'examen'])->count(),
-            ];
+            // Statistiques par type de séance (single aggregated query, keys UPPERCASE per TypeSeance enum)
+            $rawCounts = ESBTPSeanceCours::query()
+                ->select('type_seance', DB::raw('COUNT(*) AS total'))
+                ->groupBy('type_seance')
+                ->pluck('total', 'type_seance')
+                ->toArray();
+
+            $statsCours = [];
+            foreach (TypeSeance::cases() as $case) {
+                $statsCours[$case->value] = (int) ($rawCounts[$case->value] ?? 0);
+            }
 
             // Calculer les statistiques par jour
             $statsJours = ESBTPSeanceCours::select('jour', DB::raw('count(*) as total'))

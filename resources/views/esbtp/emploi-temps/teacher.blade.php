@@ -78,8 +78,8 @@
                                                             </div>
                                                             <div class="course-details small">
                                                                 @php $ts = $seance->type_seance instanceof \App\Enums\TypeSeance ? $seance->type_seance : \App\Enums\TypeSeance::fromLegacy($seance->getRawOriginal('type_seance')); @endphp
-                                                                <span class="badge" style="background:rgba(4,83,203,.12);color:#0453cb;border:1px solid rgba(4,83,203,.25)">
-                                                                    {{ $ts->value }}
+                                                                <span class="badge" style="{{ $ts->badgeInlineStyle() }}" title="{{ $ts->label() }}">
+                                                                    <i class="fas {{ $ts->badgeIcon() }} me-1"></i>{{ $ts->value }}
                                                                 </span>
                                                                 <div class="mt-1">
                                                                     <i class="fas fa-clock me-1"></i>

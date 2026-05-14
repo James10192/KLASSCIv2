@@ -58,11 +58,9 @@
                                     <label for="type_seance" class="form-label">Type de séance</label>
                                     <select class="form-select select2" id="type_seance" name="type_seance">
                                         <option value="">Tous les types</option>
-                                        <option value="cours" {{ request('type_seance') == 'cours' ? 'selected' : '' }}>Cours magistral</option>
-                                        <option value="td" {{ request('type_seance') == 'td' ? 'selected' : '' }}>Travaux dirigés</option>
-                                        <option value="tp" {{ request('type_seance') == 'tp' ? 'selected' : '' }}>Travaux pratiques</option>
-                                        <option value="examen" {{ request('type_seance') == 'examen' ? 'selected' : '' }}>Examen</option>
-                                        <option value="autre" {{ request('type_seance') == 'autre' ? 'selected' : '' }}>Autre</option>
+                                        @foreach(\App\Enums\TypeSeance::selectOptions() as $tsValue => $tsLabel)
+                                            <option value="{{ $tsValue }}" {{ request('type_seance') === $tsValue ? 'selected' : '' }}>{{ $tsLabel }}</option>
+                                        @endforeach
                                     </select>
                                 </div>
                                 <div class="col-md-3">
@@ -114,19 +112,13 @@
                                         <td>{{ $seance->enseignant }}</td>
                                         <td>{{ $seance->salle }}</td>
                                         <td>
-                                            <span class="badge
-                                                @if($seance->type_seance == 'cours') bg-primary
-                                                @elseif($seance->type_seance == 'td') bg-success
-                                                @elseif($seance->type_seance == 'tp') bg-purple
-                                                @elseif($seance->type_seance == 'examen') bg-danger
-                                                @else bg-warning
-                                                @endif">
-                                                @if($seance->type_seance == 'cours') Cours magistral
-                                                @elseif($seance->type_seance == 'td') Travaux dirigés
-                                                @elseif($seance->type_seance == 'tp') Travaux pratiques
-                                                @elseif($seance->type_seance == 'examen') Examen
-                                                @else Autre
-                                                @endif
+                                            @php
+                                                $ts = $seance->type_seance instanceof \App\Enums\TypeSeance
+                                                    ? $seance->type_seance
+                                                    : \App\Enums\TypeSeance::fromLegacy($seance->type_seance ?? null);
+                                            @endphp
+                                            <span class="badge rounded-pill" style="{{ $ts->badgeInlineStyle() }}padding:.35rem .65rem;font-weight:600;">
+                                                <i class="fas {{ $ts->badgeIcon() }} me-1"></i>{{ $ts->label() }}
                                             </span>
                                         </td>
                                         <td>
@@ -207,26 +199,14 @@
                         <div class="col-md-6">
                             <h6>Répartition par type</h6>
                             <ul class="list-group">
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Cours magistraux
-                                    <span class="badge bg-primary rounded-pill">{{ $statsCours['cours'] }}</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Travaux dirigés
-                                    <span class="badge bg-success rounded-pill">{{ $statsCours['td'] }}</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Travaux pratiques
-                                    <span class="badge bg-purple rounded-pill">{{ $statsCours['tp'] }}</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Examens
-                                    <span class="badge bg-danger rounded-pill">{{ $statsCours['examen'] }}</span>
-                                </li>
-                                <li class="list-group-item d-flex justify-content-between align-items-center">
-                                    Autres
-                                    <span class="badge bg-warning rounded-pill">{{ $statsCours['autre'] }}</span>
-                                </li>
+                                @foreach(\App\Enums\TypeSeance::cases() as $ts)
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>
+                                            <i class="fas {{ $ts->badgeIcon() }} me-1" style="color:{{ $ts->badgeStyle()['color'] }};"></i>{{ $ts->label() }}
+                                        </span>
+                                        <span class="badge rounded-pill" style="{{ $ts->badgeInlineStyle() }}">{{ $statsCours[$ts->value] ?? 0 }}</span>
+                                    </li>
+                                @endforeach
                             </ul>
                         </div>
                         <div class="col-md-6">
