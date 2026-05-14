@@ -281,17 +281,17 @@ class CreateLmdAwareFormTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('data-mode="unknown"', false);
 
-        // Old() input : niveau LMD pre-rempli (via session())
-        session()->flash('_old_input', ['niveau_etude_id' => (string) $lmdNiveau->id]);
-        $response = $this->get(route('esbtp.classes.create'));
+        // Old() input : niveau LMD pre-rempli via withSession
+        $response = $this->withSession(['_old_input' => ['niveau_etude_id' => (string) $lmdNiveau->id]])
+            ->get(route('esbtp.classes.create'));
         $response->assertStatus(200);
         $response->assertSee('data-mode="lmd"', false);
-        // Le label "Mention" doit etre present, le label "Filière" du BTS doit etre masque (fieldset disabled SSR)
+        // Le label "Mode LMD activé" doit etre present (rendu SSR)
         $response->assertSee('Mode LMD activé', false);
 
         // Old() input : niveau BTS pre-rempli
-        session()->flash('_old_input', ['niveau_etude_id' => (string) $btsNiveau->id]);
-        $response = $this->get(route('esbtp.classes.create'));
+        $response = $this->withSession(['_old_input' => ['niveau_etude_id' => (string) $btsNiveau->id]])
+            ->get(route('esbtp.classes.create'));
         $response->assertStatus(200);
         $response->assertSee('data-mode="bts"', false);
         $response->assertSee('Mode BTS', false);

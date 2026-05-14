@@ -54,8 +54,8 @@ class MentionAvailabilityTest extends TestCase
         ]);
 
         // Aucune mention creee. Pre-remplir le niveau LMD via old input.
-        session()->flash('_old_input', ['niveau_etude_id' => (string) $lmdNiveau->id]);
-        $response = $this->get(route('esbtp.classes.create'));
+        $response = $this->withSession(['_old_input' => ['niveau_etude_id' => (string) $lmdNiveau->id]])
+            ->get(route('esbtp.classes.create'));
 
         $response->assertStatus(200);
         $response->assertSee('Aucune mention LMD configurée', false);
@@ -88,8 +88,8 @@ class MentionAvailabilityTest extends TestCase
             'is_current' => true,
         ]);
 
-        session()->flash('_old_input', ['niveau_etude_id' => (string) $lmdNiveau->id]);
-        $response = $this->get(route('esbtp.classes.create'));
+        $response = $this->withSession(['_old_input' => ['niveau_etude_id' => (string) $lmdNiveau->id]])
+            ->get(route('esbtp.classes.create'));
 
         $response->assertStatus(200);
         $response->assertDontSee('Aucune mention LMD configurée', false);
@@ -121,8 +121,8 @@ class MentionAvailabilityTest extends TestCase
             'is_current' => true,
         ]);
 
-        session()->flash('_old_input', ['niveau_etude_id' => (string) $lmdNiveau->id]);
-        $response = $this->get(route('esbtp.classes.create'));
+        $response = $this->withSession(['_old_input' => ['niveau_etude_id' => (string) $lmdNiveau->id]])
+            ->get(route('esbtp.classes.create'));
 
         $response->assertStatus(200);
         // Comme la seule mention est inactive, mentions est vide => alerte affichee
