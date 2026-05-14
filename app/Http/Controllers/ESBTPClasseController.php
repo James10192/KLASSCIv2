@@ -535,6 +535,10 @@ class ESBTPClasseController extends Controller
             $classe,
             $anneeCourante,
             $periode,
+            // Pour LMD : passe les vrais semestres applicables au niveau (ex: L3 = [5,6]) pour que
+            // le service query bien semestre=5/6 en DB au lieu du fallback BTS [1,2]. Sinon
+            // la vue "Semestre 5" retourne 0 ECUE car les données sont stockées avec semestre=5.
+            !empty($lmdSemestres) ? $lmdSemestres : null,
         );
 
         // Charger les étudiants et inscriptions FILTRÉS par année courante

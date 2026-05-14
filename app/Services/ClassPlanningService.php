@@ -18,12 +18,14 @@ class ClassPlanningService
      * @param ESBTPClasse $classe
      * @param ESBTPAnneeUniversitaire|null $anneeCourante
      * @param string $periode  'annee', 'semestre1', or 'semestre2'
+     * @param array|null $lmdSemestres  Optional [semA, semB] mapping for LMD classes (ex: [5,6] for L3). If null, defaults to [1,2] (BTS legacy).
      * @return array{matieres: \Illuminate\Support\Collection, enseignants?: \Illuminate\Support\Collection, stats: array}
      */
     public function buildPlanningMatierePourClasse(
         ESBTPClasse $classe,
         ?ESBTPAnneeUniversitaire $anneeCourante,
         string $periode,
+        ?array $lmdSemestres = null,
     ): array {
         if (!$anneeCourante) {
             return [
@@ -37,6 +39,15 @@ class ClassPlanningService
             ];
         }
 
+        // Mapping niveau-aware : L3 LMD → [5,6], L1 LMD → [1,2], BTS → [1,2] par défaut.
+        $sem1Number = (int) ($lmdSemestres[0] ?? 1);
+        $sem2Number = (int) ($lmdSemestres[1] ?? 2);
+
+        // Pour le filtre séances, on accepte de multiples formats stockés en historique
+        // (entier, string, "S1", "Semestre 1", etc.) — d'où la fonction helper.
+        $sem1Variants = $this->semestreVariants($sem1Number);
+        $sem2Variants = $this->semestreVariants($sem2Number);
+
         $planificationsQuery = ESBTPPlanificationAcademique::with(['matiere'])
             ->where('annee_universitaire_id', $anneeCourante->id)
             ->where('filiere_id', $classe->filiere_id)
@@ -48,9 +59,9 @@ class ClassPlanningService
             ->groupBy('matiere_id');
 
         if ($periode === 'semestre1') {
-            $planificationsQuery->where('semestre', 1);
+            $planificationsQuery->where('semestre', $sem1Number);
         } elseif ($periode === 'semestre2') {
-            $planificationsQuery->where('semestre', 2);
+            $planificationsQuery->where('semestre', $sem2Number);
         }
 
         $planifications = $planificationsQuery->get()->keyBy('matiere_id');
@@ -121,13 +132,9 @@ class ClassPlanningService
             )');
 
         if ($periode === 'semestre1') {
-            $seancesQuery->whereIn('esbtp_emploi_temps.semestre', [
-                '1', 1, 'S1', 'Semestre 1', 'semestre1', 'SEMESTRE 1', 'Semestre1', 's1',
-            ]);
+            $seancesQuery->whereIn('esbtp_emploi_temps.semestre', $sem1Variants);
         } elseif ($periode === 'semestre2') {
-            $seancesQuery->whereIn('esbtp_emploi_temps.semestre', [
-                '2', 2, 'S2', 'Semestre 2', 'semestre2', 'SEMESTRE 2', 'Semestre2', 's2',
-            ]);
+            $seancesQuery->whereIn('esbtp_emploi_temps.semestre', $sem2Variants);
         }
 
         $seancesRealisees = $seancesQuery->get();
@@ -275,6 +282,20 @@ class ClassPlanningService
                 'nb_seances' => (int) $totalSeances,
                 'taux_realisation' => $taux,
             ],
+        ];
+    }
+
+    /**
+     * Génère les variantes string acceptées pour le filtre `esbtp_emploi_temps.semestre`.
+     * L'historique BTS stocke des formats hétérogènes ('1', 1, 'S1', 'Semestre 1', etc.).
+     */
+    private function semestreVariants(int $n): array
+    {
+        return [
+            (string) $n, $n,
+            "S{$n}", "s{$n}",
+            "Semestre {$n}", "semestre{$n}", "Semestre{$n}",
+            "SEMESTRE {$n}",
         ];
     }
 }

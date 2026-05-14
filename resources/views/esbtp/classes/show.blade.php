@@ -157,15 +157,17 @@
 /* INDENTATION TREE - chaque enfant décalé à droite de son parent */
 .cs-lmd-tree-node--mention  { margin-left: 1.6rem; }
 .cs-lmd-tree-node--parcours { margin-left: 3.2rem; }
-/* L-CONNECTOR pour chaque node enfant : ligne verticale qui part du milieu vertical du parent + tourne horizontalement au milieu vertical du current */
+/* L-CONNECTOR : vertical aligné sur le CENTRE HORIZONTAL de l'icône parent, horizontal arrivant au bord gauche de l'icône enfant.
+   Calcul : icône parent centrée à `1.65rem` du bord gauche du node parent (padding-left .65rem + 32px/2 = 1rem).
+   Le node enfant est décalé de `margin-left: 1.6rem` à droite du parent. Donc le centre icône parent = 1.65 - 1.6 = .05rem du bord gauche du node enfant ≈ left:0 (~0.8px d'erreur, invisible). */
 .cs-lmd-tree-node--mention::before,
 .cs-lmd-tree-node--parcours::before {
     content: '';
     position: absolute;
-    left: -.85rem;
-    top: calc(-50% - .25rem);  /* milieu vertical du node précédent (height 44px + margin .25rem) */
-    bottom: calc(50% - 1px);   /* milieu vertical de l'icône courante */
-    width: .85rem;
+    left: 0;                      /* trait vertical pile sous le centre horizontal icône parent */
+    top: calc(-50% - .25rem);     /* part du milieu vertical du parent (height 44px + margin .25rem) */
+    bottom: calc(50% - 1px);      /* arrive au milieu vertical de l'icône courante */
+    width: .65rem;                /* segment horizontal jusqu'au bord gauche icône enfant (= padding-left .65rem) */
     border-left: 2px solid rgba(4,83,203,.42);
     border-bottom: 2px solid rgba(4,83,203,.42);
     border-bottom-left-radius: 7px;
