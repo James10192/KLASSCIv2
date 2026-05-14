@@ -133,6 +133,35 @@
 }
 .cs-info-row:last-child { border-bottom: none; }
 .cs-info-label { color: var(--cs-muted); font-size: .78rem; font-weight: 500; }
+.cs-lmd-tree { display: flex; flex-direction: column; gap: 0; position: relative; padding-left: .25rem; }
+.cs-lmd-tree-node { display: flex; align-items: flex-start; gap: .65rem; position: relative; padding: .55rem .25rem .55rem 1.85rem; }
+.cs-lmd-tree-node::before {
+    content: ''; position: absolute; left: .85rem; top: 0; bottom: 0;
+    width: 2px; background: linear-gradient(180deg, rgba(4,83,203,.35), rgba(4,83,203,.15));
+}
+.cs-lmd-tree-node:first-child::before { top: 50%; }
+.cs-lmd-tree-node:last-child::before { bottom: 50%; }
+.cs-lmd-tree-node::after {
+    content: ''; position: absolute; left: .85rem; top: 50%;
+    width: .9rem; height: 2px; background: rgba(4,83,203,.35);
+    transform: translateY(-1px);
+}
+.cs-lmd-tree-node:first-child:last-child::before { display: none; }
+.cs-lmd-tree-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .78rem; flex-shrink: 0;
+    box-shadow: 0 2px 6px rgba(4,83,203,.25);
+    position: relative; z-index: 1; margin-left: -.85rem;
+}
+.cs-lmd-tree-node--domaine .cs-lmd-tree-icon { background: linear-gradient(135deg, #033a8e, #0453cb); }
+.cs-lmd-tree-node--mention .cs-lmd-tree-icon { background: linear-gradient(135deg, #0453cb, #3b7ddb); }
+.cs-lmd-tree-node--parcours .cs-lmd-tree-icon { background: linear-gradient(135deg, #3b7ddb, #5e91de); }
+.cs-lmd-tree-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .15rem; padding-top: .15rem; }
+.cs-lmd-tree-label { font-size: .65rem; color: var(--cs-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .5px; }
+.cs-lmd-tree-name { font-size: .92rem; font-weight: 700; color: var(--cs-text); }
+.cs-lmd-tree-code { display: inline-block; font-size: .65rem; color: #0453cb; background: rgba(4,83,203,.08); padding: .1rem .4rem; border-radius: 5px; font-weight: 600; letter-spacing: .3px; align-self: flex-start; margin-top: .15rem; font-family: 'Courier New', monospace; }
+.cs-lmd-tree-badge { display: inline-flex; align-items: center; gap: .25rem; background: rgba(4,83,203,.12); color: #0453cb; border: 1px solid rgba(4,83,203,.25); padding: .12rem .45rem; border-radius: 5px; font-size: .65rem; font-weight: 700; letter-spacing: .4px; align-self: flex-start; margin-top: .2rem; }
 .cs-info-value { color: var(--cs-text); font-weight: 600; text-align: right; }
 
 /* Teachers chips */
@@ -626,40 +655,43 @@
                     </div>
                     @php $isLmdInfo = ($classe->systeme_academique ?? '') === 'LMD'; @endphp
                     @if($isLmdInfo && optional($classe->parcours)->mention && optional($classe->parcours->mention)->domaine)
-                        <div class="cs-info-row">
-                            <span class="cs-info-label">Domaine</span>
-                            <span class="cs-info-value">
-                                {{ $classe->parcours->mention->domaine->name }}
-                                @if($classe->parcours->mention->domaine->code)
-                                    <small style="font-weight:400;color:var(--cs-muted);display:block;">{{ $classe->parcours->mention->domaine->code }}</small>
-                                @endif
-                            </span>
-                        </div>
-                        <div class="cs-info-row">
-                            <span class="cs-info-label">Mention</span>
-                            <span class="cs-info-value">
-                                {{ $classe->parcours->mention->name }}
-                                @if($classe->parcours->mention->code)
-                                    <small style="font-weight:400;color:var(--cs-muted);display:block;">{{ $classe->parcours->mention->code }}</small>
-                                @endif
-                            </span>
-                        </div>
-                        <div class="cs-info-row">
-                            <span class="cs-info-label">Parcours</span>
-                            <span class="cs-info-value">
-                                {{ $classe->parcours->name }}
-                                @if($classe->parcours->code)
-                                    <small style="font-weight:400;color:var(--cs-muted);display:block;">{{ $classe->parcours->code }}</small>
-                                @endif
-                            </span>
-                        </div>
-                        <div class="cs-info-row">
-                            <span class="cs-info-label">Système</span>
-                            <span class="cs-info-value">
-                                <span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(4,83,203,.12);color:#0453cb;border:1px solid rgba(4,83,203,.25);padding:.15rem .5rem;border-radius:6px;font-size:.75rem;font-weight:700;letter-spacing:.4px;">
-                                    <i class="fas fa-university"></i>LMD
-                                </span>
-                            </span>
+                        <div class="cs-info-row" style="align-items:flex-start;">
+                            <span class="cs-info-label">Hiérarchie LMD</span>
+                            <div class="cs-info-value" style="font-weight:500;">
+                                <div class="cs-lmd-tree">
+                                    <div class="cs-lmd-tree-node cs-lmd-tree-node--domaine">
+                                        <div class="cs-lmd-tree-icon"><i class="fas fa-folder-open"></i></div>
+                                        <div class="cs-lmd-tree-body">
+                                            <div class="cs-lmd-tree-label">Domaine</div>
+                                            <div class="cs-lmd-tree-name">{{ $classe->parcours->mention->domaine->name }}</div>
+                                            @if($classe->parcours->mention->domaine->code)
+                                                <span class="cs-lmd-tree-code">{{ $classe->parcours->mention->domaine->code }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="cs-lmd-tree-node cs-lmd-tree-node--mention">
+                                        <div class="cs-lmd-tree-icon"><i class="fas fa-graduation-cap"></i></div>
+                                        <div class="cs-lmd-tree-body">
+                                            <div class="cs-lmd-tree-label">Mention</div>
+                                            <div class="cs-lmd-tree-name">{{ $classe->parcours->mention->name }}</div>
+                                            @if($classe->parcours->mention->code)
+                                                <span class="cs-lmd-tree-code">{{ $classe->parcours->mention->code }}</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                    <div class="cs-lmd-tree-node cs-lmd-tree-node--parcours">
+                                        <div class="cs-lmd-tree-icon"><i class="fas fa-route"></i></div>
+                                        <div class="cs-lmd-tree-body">
+                                            <div class="cs-lmd-tree-label">Parcours</div>
+                                            <div class="cs-lmd-tree-name">{{ $classe->parcours->name }}</div>
+                                            @if($classe->parcours->code)
+                                                <span class="cs-lmd-tree-code">{{ $classe->parcours->code }}</span>
+                                            @endif
+                                            <span class="cs-lmd-tree-badge"><i class="fas fa-university"></i>LMD</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     @elseif($isLmdInfo)
                         <div class="cs-info-row">
