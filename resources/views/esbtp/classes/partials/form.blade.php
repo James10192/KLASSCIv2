@@ -273,26 +273,19 @@
                             </div>
 
                             <div class="col-md-12 mb-3">
-                                <label for="{{ $formId }}_parcours_id" class="form-label">
+                                <label class="form-label">
                                     Parcours
                                     <span class="text-muted small ms-2">(optionnel — vide = tronc commun mention)</span>
                                 </label>
-                                <select class="form-select @error('parcours_id') is-invalid @enderror"
-                                        id="{{ $formId }}_parcours_id"
-                                        name="parcours_id"
-                                        x-ref="parcoursSelect"
-                                        :disabled="mode !== 'LMD' || !mentionId">
-                                    <option value="">— Aucun parcours (tronc commun mention) —</option>
-                                    @foreach($parcoursCollection as $p)
-                                        <option value="{{ $p->id }}"
-                                                data-mention-id="{{ $p->mention_id }}"
-                                                {{ $oldParcoursId == $p->id ? 'selected' : '' }}>
-                                            {{ $p->name }}@if($p->code) ({{ $p->code }}) @endif
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <x-au-parcours-picker
+                                    :name="'parcours_id'"
+                                    :value="$oldParcoursId"
+                                    :parcours="$parcoursCollection"
+                                    :mention-filter="$initialMentionId ?: $oldFiliereId"
+                                    x-ref="parcoursPicker"
+                                />
                                 @error('parcours_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
+                                    <div class="text-danger small mt-1">{{ $message }}</div>
                                 @enderror
                                 <small class="form-text text-muted">Spécialisation au sein de la mention. Laisser vide pour une classe au niveau de la mention.</small>
                             </div>
@@ -422,11 +415,11 @@
                 this._mentionChangedHandler = (ev) => {
                     this.mentionId = ev.detail.mentionId ? String(ev.detail.mentionId) : '';
                     this.domaineName = ev.detail.domaineName || '';
-                    this.filterParcoursOptions();
+                    // La cascade Parcours est maintenant interne au composant
+                    // `x-au-parcours-picker` qui ecoute lui-meme le meme event
+                    // mention:changed (rule premium-selects.md).
                 };
                 window.addEventListener('mention:changed', this._mentionChangedHandler);
-
-                this.$nextTick(() => this.filterParcoursOptions());
             },
 
             destroy() {
@@ -459,34 +452,16 @@
                 if (newMode === 'BTS') {
                     this.mentionId = '';
                     this.domaineName = '';
-                    if (this.$refs.parcoursSelect) {
-                        this.$refs.parcoursSelect.value = '';
-                    }
+                    // Reset mention picker via Alpine (expose reset())
                     if (this.$refs.mentionPicker && this.$refs.mentionPicker._x_dataStack) {
-                        var data = this.$refs.mentionPicker._x_dataStack[0];
-                        if (data && typeof data.reset === 'function') data.reset();
+                        var mp = this.$refs.mentionPicker._x_dataStack[0];
+                        if (mp && typeof mp.reset === 'function') mp.reset();
                     }
-                }
-            },
-
-            filterParcoursOptions() {
-                if (!this.$refs.parcoursSelect) return;
-                var sel = this.$refs.parcoursSelect;
-                var currentMention = this.mentionId;
-
-                Array.from(sel.options).forEach(function (opt) {
-                    if (!opt.value) {
-                        opt.hidden = false;
-                        return;
+                    // Reset parcours picker (cascade interne au composant)
+                    if (this.$refs.parcoursPicker && this.$refs.parcoursPicker._x_dataStack) {
+                        var pp = this.$refs.parcoursPicker._x_dataStack[0];
+                        if (pp && typeof pp.reset === 'function') pp.reset();
                     }
-                    var optMention = opt.getAttribute('data-mention-id');
-                    var matches = currentMention && String(optMention) === String(currentMention);
-                    opt.hidden = !matches;
-                });
-
-                var selectedOpt = sel.options[sel.selectedIndex];
-                if (selectedOpt && selectedOpt.hidden) {
-                    sel.value = '';
                 }
             },
         };
