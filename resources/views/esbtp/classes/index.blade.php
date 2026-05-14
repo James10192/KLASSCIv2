@@ -1441,7 +1441,7 @@ function initClasseFormScripts(formId) {
         // - niveau_etude_id et annee_universitaire_id : toujours présents
         // - filiere_id_bts : présent en mode BTS (Filière classique)
         // - parcours_id    : présent en mode LMD (cascade depuis Mention via Alpine)
-        // Le picker Mention <x-au-mention-picker> a sa propre UI premium et ne doit PAS recevoir Select2.
+        // Le picker Mention (composant `x-au-mention-picker`) a sa propre UI premium et ne doit PAS recevoir Select2.
         $(`#${formId}_filiere_id_bts, #${formId}_niveau_etude_id, #${formId}_annee_universitaire_id, #${formId}_parcours_id`).select2({
             theme: 'bootstrap4',
             placeholder: 'Sélectionner une option',
