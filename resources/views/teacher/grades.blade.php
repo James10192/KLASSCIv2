@@ -4,166 +4,885 @@
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+<style>
+/* ══════════════════════════════════════════════
+   Teacher Grades — Premium
+   Prefix: tg- (teacher-grades)
+   Aligned with planning-header / KLASSCI design system
+   ══════════════════════════════════════════════ */
+.tg-wrap {
+    padding: 1.5rem;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* ───────── HERO ───────── */
+.tg-hero {
+    position: relative;
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 2rem 2.5rem 1.75rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 8px 30px rgba(4, 83, 203, .18);
+    animation: tg-fade-down .5s ease-out;
+}
+@keyframes tg-fade-down {
+    from { opacity: 0; transform: translateY(-12px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.tg-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.tg-hero-left { display: flex; align-items: center; gap: 1rem; }
+
+.tg-hero-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255, 255, 255, .12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, .18);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; color: #fff; flex-shrink: 0;
+}
+
+.tg-hero-info h1 {
+    font-size: 1.45rem;
+    font-weight: 700;
+    margin: 0 0 .2rem;
+    color: #fff;
+    letter-spacing: -.02em;
+}
+.tg-hero-info p { margin: 0; opacity: .75; font-size: .88rem; }
+
+.tg-hero-actions {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem;
+}
+
+.tg-badge-year {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .45rem .8rem;
+    background: rgba(255, 255, 255, .12);
+    border: 1px solid rgba(255, 255, 255, .2);
+    border-radius: 10px;
+    font-size: .8rem; font-weight: 600;
+    color: rgba(255, 255, 255, .92);
+}
+.tg-badge-year i { opacity: .8; }
+
+.tg-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .5rem 1rem;
+    border-radius: 10px;
+    font-size: .82rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all .2s ease;
+    border: 1px solid rgba(255, 255, 255, .2);
+    cursor: pointer;
+    line-height: 1;
+}
+.tg-btn--glass {
+    background: rgba(255, 255, 255, .15);
+    color: #fff;
+}
+.tg-btn--glass:hover { background: rgba(255, 255, 255, .22); color: #fff; }
+
+.tg-btn--white {
+    background: #fff;
+    color: #0453cb;
+    border-color: transparent;
+}
+.tg-btn--white:hover { background: #f0f4ff; color: #033a8e; }
+
+/* KPIs in hero (row 2) */
+.tg-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: .75rem;
+    margin-top: 1.5rem;
+    position: relative;
+}
+
+.tg-kpi {
+    background: rgba(255, 255, 255, .1);
+    border: 1px solid rgba(255, 255, 255, .15);
+    border-radius: 12px;
+    padding: .9rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    transition: background .2s ease, transform .2s ease;
+}
+.tg-kpi:hover { background: rgba(255, 255, 255, .15); transform: translateY(-1px); }
+
+.tg-kpi-icon {
+    width: 38px; height: 38px;
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .95rem;
+    flex-shrink: 0;
+    background: rgba(255, 255, 255, .18);
+    color: #fff;
+}
+.tg-kpi--pub    .tg-kpi-icon { background: rgba(255, 255, 255, .22); }
+.tg-kpi--draft  .tg-kpi-icon { background: rgba(255, 255, 255, .14); color: rgba(255, 255, 255, .85); }
+.tg-kpi--recent .tg-kpi-icon { background: rgba(255, 255, 255, .22); }
+
+.tg-kpi-body { min-width: 0; }
+.tg-kpi-value {
+    font-size: 1.35rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+}
+.tg-kpi-label {
+    font-size: .72rem;
+    color: rgba(255, 255, 255, .65);
+    margin-top: .2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* ───────── LAYOUT ───────── */
+.tg-layout {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+/* ───────── CARDS ───────── */
+.tg-card {
+    background: #fff;
+    border: 1px solid #e8ecf1;
+    border-radius: 16px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .04);
+    overflow: hidden;
+}
+
+.tg-card-head {
+    padding: 1.1rem 1.5rem;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+.tg-card-head-left {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+}
+.tg-card-icon {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .95rem;
+    box-shadow: 0 4px 12px rgba(4, 83, 203, .25);
+}
+.tg-card-title {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+    letter-spacing: -.01em;
+}
+.tg-card-sub {
+    margin: .1rem 0 0;
+    font-size: .8rem;
+    color: #64748b;
+}
+.tg-card-body { padding: 1.25rem 1.5rem 1.5rem; }
+
+/* ───────── EVALUATION GRID ───────── */
+.tg-eval-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1rem;
+}
+
+.tg-eval {
+    position: relative;
+    background: #fff;
+    border: 1px solid #e8ecf1;
+    border-radius: 14px;
+    padding: 1.15rem 1.2rem 1.05rem;
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+.tg-eval::after {
+    content: '';
+    position: absolute;
+    left: 0; top: 14px; bottom: 14px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: linear-gradient(180deg, #0453cb, #3b7ddb);
+    opacity: .55;
+    transition: opacity .2s ease;
+}
+.tg-eval:hover {
+    border-color: rgba(4, 83, 203, .35);
+    box-shadow: 0 8px 24px rgba(4, 83, 203, .1), 0 2px 6px rgba(15, 23, 42, .04);
+    transform: translateY(-2px);
+}
+.tg-eval:hover::after { opacity: 1; }
+
+.tg-eval-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .75rem;
+}
+
+/* Monochrome bleu tonal — l'icône distingue les types, pas la couleur */
+.tg-eval-type {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .32rem .65rem;
+    border-radius: 999px;
+    background: rgba(4, 83, 203, .08);
+    border: 1px solid rgba(4, 83, 203, .18);
+    color: #033a8e;
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+}
+.tg-eval-type i { font-size: .78rem; color: #0453cb; }
+.tg-eval-type--examen     { background: rgba(4, 83, 203, .14); border-color: rgba(4, 83, 203, .3); }
+.tg-eval-type--rattrapage { background: rgba(4, 83, 203, .12); border-style: dashed; }
+.tg-eval-type--projet     { background: rgba(4, 83, 203, .06); }
+
+.tg-eval-date {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .78rem;
+    font-weight: 600;
+    color: #475569;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    padding: .28rem .55rem;
+    border-radius: 8px;
+}
+.tg-eval-date i { font-size: .72rem; color: #64748b; }
+
+.tg-eval-title {
+    font-size: 1.02rem;
+    font-weight: 700;
+    color: #0f172a;
+    margin: 0;
+    line-height: 1.3;
+    letter-spacing: -.005em;
+}
+
+.tg-eval-meta {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .4rem;
+}
+.tg-eval-meta li {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .3rem .55rem;
+    border-radius: 8px;
+    background: #f8fafc;
+    border: 1px solid #eef2f7;
+    font-size: .75rem;
+    color: #334155;
+    font-weight: 500;
+}
+.tg-eval-meta li i { color: #0453cb; font-size: .72rem; }
+
+.tg-eval-foot {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: .65rem;
+    padding-top: .65rem;
+    border-top: 1px dashed #eef2f7;
+    flex-wrap: wrap;
+}
+
+.tg-eval-status { display: flex; gap: .35rem; flex-wrap: wrap; }
+.tg-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .28rem .55rem;
+    border-radius: 999px;
+    font-size: .72rem;
+    font-weight: 600;
+    line-height: 1;
+}
+.tg-pill i { font-size: .68rem; }
+.tg-pill--ok    { background: rgba(16, 185, 129, .12); color: #047857; border: 1px solid rgba(16, 185, 129, .25); }
+.tg-pill--draft { background: rgba(148, 163, 184, .14); color: #475569; border: 1px solid rgba(148, 163, 184, .3); }
+.tg-pill--count { background: rgba(4, 83, 203, .08); color: #033a8e;  border: 1px solid rgba(4, 83, 203, .18); }
+
+.tg-eval-actions {
+    display: flex;
+    gap: .4rem;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+}
+.tg-eval-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .45rem .8rem;
+    border-radius: 9px;
+    font-size: .78rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all .2s ease;
+    border: 1px solid transparent;
+    cursor: pointer;
+    line-height: 1;
+}
+.tg-eval-btn--ghost {
+    background: #fff;
+    color: #0453cb;
+    border-color: rgba(4, 83, 203, .25);
+}
+.tg-eval-btn--ghost:hover { background: rgba(4, 83, 203, .07); border-color: rgba(4, 83, 203, .4); color: #033a8e; }
+
+.tg-eval-btn--primary {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(4, 83, 203, .22);
+}
+.tg-eval-btn--primary:hover {
+    background: linear-gradient(135deg, #033a8e, #2c69cf);
+    box-shadow: 0 6px 16px rgba(4, 83, 203, .3);
+    color: #fff;
+}
+.tg-eval-btn.is-disabled {
+    background: #f1f5f9;
+    color: #94a3b8;
+    box-shadow: none;
+    cursor: not-allowed;
+    border-color: #e2e8f0;
+}
+
+.tg-eval-helper {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .4rem .65rem;
+    border-radius: 8px;
+    background: rgba(251, 191, 36, .1);
+    border: 1px solid rgba(251, 191, 36, .25);
+    color: #92400e;
+    font-size: .74rem;
+    font-weight: 500;
+    width: 100%;
+    margin-top: .25rem;
+}
+.tg-eval-helper i { color: #b45309; }
+
+/* Flash success */
+.card-flash-success { animation: tg-flash-success 1.2s ease; }
+@keyframes tg-flash-success {
+    0%   { box-shadow: 0 0 0 rgba(16, 185, 129, 0);   transform: translateY(-2px) scale(1.01); }
+    40%  { box-shadow: 0 0 0 6px rgba(16, 185, 129, .22); }
+    100% { box-shadow: 0 0 0 rgba(16, 185, 129, 0);   transform: translateY(0) scale(1); }
+}
+
+/* ───────── PAGINATION ───────── */
+.tg-pagination {
+    margin-top: 1.5rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f1f5f9;
+}
+.tg-pagination .pagination {
+    margin: 0;
+    justify-content: center;
+    gap: .25rem;
+}
+.tg-pagination .page-item .page-link {
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    color: #0453cb;
+    font-size: .82rem;
+    font-weight: 600;
+    padding: .4rem .75rem;
+}
+.tg-pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    border-color: transparent;
+    color: #fff;
+}
+
+/* ───────── RECENT NOTES ───────── */
+.tg-recent {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+}
+.tg-recent-item {
+    display: grid;
+    grid-template-columns: 44px 1fr auto;
+    gap: .9rem;
+    align-items: center;
+    padding: .8rem 1rem;
+    background: #fff;
+    border: 1px solid #eef2f7;
+    border-radius: 12px;
+    transition: border-color .15s ease, background .15s ease;
+}
+.tg-recent-item:hover { background: #f8fafc; border-color: rgba(4, 83, 203, .2); }
+
+.tg-recent-avatar {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .95rem;
+    font-weight: 700;
+    box-shadow: 0 3px 8px rgba(4, 83, 203, .25);
+}
+
+.tg-recent-info { min-width: 0; }
+.tg-recent-name {
+    font-weight: 700;
+    color: #0f172a;
+    font-size: .9rem;
+    line-height: 1.2;
+    margin-bottom: .2rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.tg-recent-sub {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .55rem;
+    font-size: .75rem;
+    color: #64748b;
+}
+.tg-recent-sub span { display: inline-flex; align-items: center; gap: .3rem; }
+.tg-recent-sub i { color: #0453cb; opacity: .75; font-size: .68rem; }
+.tg-recent-eval { color: #475569; font-weight: 500; }
+
+.tg-recent-meta {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .35rem;
+    flex-shrink: 0;
+}
+
+.tg-score {
+    display: inline-flex;
+    align-items: baseline;
+    gap: .15rem;
+    padding: .3rem .6rem;
+    border-radius: 999px;
+    font-weight: 700;
+    font-size: .9rem;
+    line-height: 1;
+    border: 1px solid transparent;
+}
+.tg-score small { font-weight: 500; font-size: .72rem; opacity: .8; }
+.tg-score--pass {
+    background: rgba(16, 185, 129, .12);
+    color: #047857;
+    border-color: rgba(16, 185, 129, .25);
+}
+.tg-score--fail {
+    background: rgba(220, 38, 38, .1);
+    color: #b91c1c;
+    border-color: rgba(220, 38, 38, .22);
+}
+.tg-score--absent {
+    background: rgba(148, 163, 184, .14);
+    color: #475569;
+    border-color: rgba(148, 163, 184, .3);
+    font-size: .78rem;
+}
+.tg-score--absent i { margin-right: .3rem; }
+
+.tg-recent-date {
+    font-size: .72rem;
+    color: #94a3b8;
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+}
+.tg-recent-date i { font-size: .68rem; }
+
+/* ───────── EMPTY STATES ───────── */
+.tg-empty {
+    text-align: center;
+    padding: 3rem 1.5rem;
+    border: 1px dashed #e2e8f0;
+    border-radius: 14px;
+    background: linear-gradient(180deg, #f8fafc, #ffffff);
+}
+.tg-empty-icon {
+    width: 72px; height: 72px;
+    margin: 0 auto 1rem;
+    border-radius: 18px;
+    background: linear-gradient(135deg, rgba(4, 83, 203, .1), rgba(59, 125, 219, .12));
+    display: flex; align-items: center; justify-content: center;
+    color: #0453cb;
+    font-size: 1.75rem;
+    border: 1px solid rgba(4, 83, 203, .15);
+}
+.tg-empty h3 {
+    margin: 0 0 .35rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+.tg-empty p {
+    margin: 0 0 1.25rem;
+    font-size: .88rem;
+    color: #64748b;
+}
+.tg-empty--small { padding: 2rem 1rem; }
+.tg-empty--small h4 {
+    margin: 0 0 .25rem;
+    font-size: .95rem;
+    font-weight: 700;
+    color: #0f172a;
+}
+.tg-empty--small p { margin: 0; font-size: .82rem; color: #64748b; }
+.tg-empty-icon--small {
+    width: 56px; height: 56px;
+    font-size: 1.4rem;
+    border-radius: 14px;
+}
+
+.tg-btn-cta {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .65rem 1.2rem;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    font-size: .88rem;
+    font-weight: 600;
+    text-decoration: none;
+    box-shadow: 0 6px 16px rgba(4, 83, 203, .25);
+    transition: all .2s ease;
+}
+.tg-btn-cta:hover {
+    color: #fff;
+    box-shadow: 0 8px 22px rgba(4, 83, 203, .35);
+    transform: translateY(-1px);
+}
+
+/* ───────── MODAL preserved ───────── */
+.modal-premium-shell {
+    border-radius: 24px;
+    border: none;
+    overflow: hidden;
+    background: linear-gradient(135deg, rgba(4, 83, 203, .08), rgba(255, 255, 255, .95));
+}
+.modal-premium {
+    padding: 2rem;
+    background:
+        radial-gradient(circle at top left, rgba(4, 83, 203, .08), transparent 55%),
+        radial-gradient(circle at bottom right, rgba(94, 145, 222, .08), transparent 55%),
+        #fff;
+}
+.modal-premium-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+.modal-premium-title {
+    font-weight: 700;
+    font-size: 1.25rem;
+    margin-bottom: .25rem;
+    color: #0f172a;
+}
+.modal-premium-subtitle { color: #64748b; margin: 0; }
+.modal-premium-badges { display: flex; gap: .5rem; flex-wrap: wrap; }
+.modal-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .4rem .7rem;
+    border-radius: 999px;
+    background: rgba(4, 83, 203, .12);
+    color: #0453cb;
+    font-size: .85rem;
+    border: 1px solid rgba(4, 83, 203, .2);
+}
+.modal-pill-neutral {
+    background: rgba(59, 130, 246, .12);
+    color: #1d4ed8;
+    border: 1px solid rgba(59, 130, 246, .25);
+}
+.modal-pill-warning {
+    background: rgba(245, 158, 11, .12);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, .25);
+}
+.modal-premium-body { display: flex; flex-direction: column; gap: 1.5rem; }
+.modal-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1rem;
+}
+.modal-section {
+    background: rgba(15, 23, 42, .03);
+    padding: 1rem;
+    border-radius: 16px;
+    border: 1px solid rgba(148, 163, 184, .2);
+}
+.modal-section-title {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    font-weight: 600;
+    margin-bottom: .75rem;
+    color: #0f172a;
+}
+.modal-premium-footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: .75rem;
+    margin-top: 1.5rem;
+}
+
+/* ───────── RESPONSIVE ───────── */
+@media (max-width: 992px) {
+    .tg-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 768px) {
+    .tg-wrap { padding: 1rem; }
+    .tg-hero {
+        padding: 1.5rem 1.5rem 1.25rem;
+        border-radius: 14px;
+    }
+    .tg-hero-top { flex-direction: column; align-items: stretch; }
+    .tg-hero-actions { justify-content: flex-start; }
+    .tg-hero-info h1 { font-size: 1.2rem; }
+    .tg-card-head, .tg-card-body { padding-left: 1.1rem; padding-right: 1.1rem; }
+    .tg-eval-grid { grid-template-columns: 1fr; }
+    .tg-recent-item {
+        grid-template-columns: 40px 1fr;
+        grid-template-rows: auto auto;
+        gap: .55rem .8rem;
+    }
+    .tg-recent-meta {
+        grid-column: 1 / -1;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+    }
+}
+@media (max-width: 480px) {
+    .tg-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .55rem; }
+    .tg-kpi { padding: .7rem .8rem; }
+    .tg-kpi-value { font-size: 1.15rem; }
+    .tg-eval-foot { flex-direction: column; align-items: stretch; }
+    .tg-eval-actions { justify-content: stretch; }
+    .tg-eval-btn { flex: 1; justify-content: center; }
+}
+</style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
-    <div class="main-content" style="padding: 1.5rem; max-width: 100%; overflow-x: hidden;">
-        <!-- Header -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1><i class="fas fa-edit me-2"></i>Gestion des notes</h1>
-                <p class="header-subtitle">Gérer les évaluations et les notes de vos étudiants</p>
-            </div>
-            <div class="header-actions">
-                <span class="badge rounded-pill bg-light text-dark me-2">
-                    <i class="fas fa-calendar me-1"></i>
-                    {{ $anneeEnCours->name ?? 'Année non définie' }}
-                </span>
-                <span class="text-muted me-3">{{ \Carbon\Carbon::now()->isoFormat('dddd D MMMM YYYY') }}</span>
-                <a href="{{ route('teacher.dashboard') }}" class="btn-acasi secondary">
-                    <i class="fas fa-arrow-left"></i>Retour
-                </a>
-                <a href="{{ route('esbtp.evaluations.create') }}" class="btn-acasi primary">
-                    <i class="fas fa-plus-circle"></i>Nouvelle évaluation
-                </a>
-            </div>
-        </div>
-        <!-- Statistiques rapides -->
-        <div class="dashboard-stats">
-            <div class="stat-card">
-                <div class="stat-icon bg-primary">
-                    <i class="fas fa-clipboard-list"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-number">{{ $evaluations->total() ?? 0 }}</div>
-                    <div class="stat-label">Évaluations totales</div>
-                </div>
-            </div>
-            
-            <div class="stat-card">
-                <div class="stat-icon bg-success">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-number">{{ $evaluations->where('is_published', true)->count() }}</div>
-                    <div class="stat-label">Évaluations publiées</div>
-                </div>
-            </div>
+    <div class="main-content tg-wrap">
 
-            <div class="stat-card">
-                <div class="stat-icon bg-info">
-                    <i class="fas fa-edit"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-number">{{ $recentGrades->count() ?? 0 }}</div>
-                    <div class="stat-label">Notes récentes</div>
-                </div>
-            </div>
-
-            <div class="stat-card">
-                <div class="stat-icon bg-warning">
-                    <i class="fas fa-hourglass-half"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-number">{{ $evaluations->where('is_published', false)->count() }}</div>
-                    <div class="stat-label">En attente</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="grades-layout">
-            <!-- Mes évaluations -->
-            <div class="main-card">
-                <div class="main-card-header">
-                    <div class="main-card-title">
-                        <i class="fas fa-clipboard-list"></i>
-                        Mes évaluations
+        {{-- HERO --}}
+        <section class="tg-hero">
+            <div class="tg-hero-top">
+                <div class="tg-hero-left">
+                    <div class="tg-hero-icon"><i class="fa-solid fa-pen-ruler"></i></div>
+                    <div class="tg-hero-info">
+                        <h1>Gestion des notes</h1>
+                        <p>Vos évaluations et la saisie des notes en un coup d'œil</p>
                     </div>
-                    <div class="main-card-subtitle">{{ $evaluations->total() }} évaluation(s) au total</div>
                 </div>
-                <div class="main-card-body">
+                <div class="tg-hero-actions">
+                    <span class="tg-badge-year">
+                        <i class="fa-regular fa-calendar"></i>
+                        {{ $anneeEnCours->name ?? 'Année non définie' }}
+                    </span>
+                    <a href="{{ route('teacher.dashboard') }}" class="tg-btn tg-btn--glass">
+                        <i class="fa-solid fa-arrow-left"></i> Retour
+                    </a>
+                    <a href="{{ route('esbtp.evaluations.create') }}" class="tg-btn tg-btn--white">
+                        <i class="fa-solid fa-circle-plus"></i> Nouvelle évaluation
+                    </a>
+                </div>
+            </div>
+
+            <div class="tg-kpis">
+                <div class="tg-kpi tg-kpi--total">
+                    <div class="tg-kpi-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+                    <div class="tg-kpi-body">
+                        <div class="tg-kpi-value">{{ $evaluations->total() ?? 0 }}</div>
+                        <div class="tg-kpi-label">Évaluations totales</div>
+                    </div>
+                </div>
+                <div class="tg-kpi tg-kpi--pub">
+                    <div class="tg-kpi-icon"><i class="fa-solid fa-circle-check"></i></div>
+                    <div class="tg-kpi-body">
+                        <div class="tg-kpi-value">{{ $evaluations->where('is_published', true)->count() }}</div>
+                        <div class="tg-kpi-label">Publiées (page)</div>
+                    </div>
+                </div>
+                <div class="tg-kpi tg-kpi--draft">
+                    <div class="tg-kpi-icon"><i class="fa-solid fa-circle-minus"></i></div>
+                    <div class="tg-kpi-body">
+                        <div class="tg-kpi-value">{{ $evaluations->where('is_published', false)->count() }}</div>
+                        <div class="tg-kpi-label">En brouillon (page)</div>
+                    </div>
+                </div>
+                <div class="tg-kpi tg-kpi--recent">
+                    <div class="tg-kpi-icon"><i class="fa-solid fa-pen-fancy"></i></div>
+                    <div class="tg-kpi-body">
+                        <div class="tg-kpi-value">{{ $recentGrades->count() ?? 0 }}</div>
+                        <div class="tg-kpi-label">Notes saisies récemment</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {{-- LAYOUT VERTICAL --}}
+        <div class="tg-layout">
+
+            {{-- MES EVALUATIONS --}}
+            <section class="tg-card">
+                <header class="tg-card-head">
+                    <div class="tg-card-head-left">
+                        <div class="tg-card-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+                        <div>
+                            <h2 class="tg-card-title">Mes évaluations</h2>
+                            <p class="tg-card-sub">{{ $evaluations->total() }} évaluation{{ $evaluations->total() > 1 ? 's' : '' }} au total</p>
+                        </div>
+                    </div>
+                </header>
+                <div class="tg-card-body">
                     @if($evaluations->count() > 0)
-                        <div class="evaluations-grid">
+                        <div class="tg-eval-grid">
                             @foreach($evaluations as $evaluation)
                                 @include('teacher.partials.evaluation-card', ['evaluation' => $evaluation])
                             @endforeach
                         </div>
-
-                        <!-- Pagination -->
-                        <div class="pagination-container">
+                        <nav class="tg-pagination">
                             {{ $evaluations->links() }}
-                        </div>
+                        </nav>
                     @else
-                        <div class="empty-state">
-                            <i class="fas fa-clipboard-list"></i>
-                            <h3>Aucune évaluation</h3>
-                            <p>Vous n'avez pas encore créé d'évaluations.</p>
-                            <a href="{{ route('esbtp.evaluations.create') }}" class="btn-acasi primary">
-                                <i class="fas fa-plus-circle"></i> Créer une évaluation
+                        <div class="tg-empty">
+                            <div class="tg-empty-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+                            <h3>Aucune évaluation pour l'instant</h3>
+                            <p>Créez votre première évaluation pour commencer à saisir les notes de vos étudiants.</p>
+                            <a href="{{ route('esbtp.evaluations.create') }}" class="tg-btn-cta">
+                                <i class="fa-solid fa-circle-plus"></i> Créer une évaluation
                             </a>
                         </div>
                     @endif
                 </div>
-            </div>
+            </section>
 
-            <!-- Notes récentes -->
-            <div class="main-card">
-                <div class="main-card-header">
-                    <div class="main-card-title">
-                        <i class="fas fa-chart-bar"></i>
-                        Notes récemment saisies
-                    </div>
-                    <div class="main-card-subtitle">Activité récente</div>
-                </div>
-                <div class="main-card-body">
-                    @if($recentGrades->count() > 0)
-                        <div class="recent-grades-list">
-                            @foreach($recentGrades as $note)
-                            <div class="grade-item">
-                                <div class="grade-student">
-                                    <div class="student-avatar">
-                                        <i class="fas fa-user"></i>
-                                    </div>
-                                    <div class="student-info">
-                                        <div class="student-name">
-                                            {{ $note->etudiant->nom ?? '' }} {{ $note->etudiant->prenoms ?? '' }}
-                                        </div>
-                                        <div class="student-class">
-                                            {{ $note->evaluation->classe->name ?? 'Classe inconnue' }}
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="grade-details">
-                                    <div class="grade-evaluation">
-                                        {{ $note->evaluation->titre ?? 'Évaluation inconnue' }}
-                                    </div>
-                                    <div class="grade-score">
-                                        <span class="score">{{ $note->note }}</span>
-                                        <span class="max-score">/{{ $note->evaluation->bareme ?? 20 }}</span>
-                                    </div>
-                                </div>
-                                
-                                <div class="grade-date">
-                                    <i class="fas fa-clock text-muted"></i>
-                                    {{ $note->created_at ? $note->created_at->diffForHumans() : 'Date inconnue' }}
-                                </div>
-                            </div>
-                            @endforeach
+            {{-- NOTES RECENTES --}}
+            <section class="tg-card">
+                <header class="tg-card-head">
+                    <div class="tg-card-head-left">
+                        <div class="tg-card-icon"><i class="fa-solid fa-clock-rotate-left"></i></div>
+                        <div>
+                            <h2 class="tg-card-title">Notes récemment saisies</h2>
+                            <p class="tg-card-sub">Les 10 dernières notes que vous avez enregistrées</p>
                         </div>
+                    </div>
+                </header>
+                <div class="tg-card-body">
+                    @if($recentGrades->count() > 0)
+                        <ul class="tg-recent">
+                            @foreach($recentGrades as $note)
+                                @php
+                                    $score = (float) ($note->note ?? 0);
+                                    $bareme = (float) ($note->evaluation->bareme ?? 20);
+                                    $isAbsent = (int) ($note->is_absent ?? 0) === 1;
+                                    $pct = $bareme > 0 ? ($score / $bareme) * 100 : 0;
+                                    $tone = $isAbsent ? 'absent' : ($pct >= 50 ? 'pass' : 'fail');
+                                    $nomRaw = trim(($note->etudiant->nom ?? '') . ' ' . ($note->etudiant->prenoms ?? ''));
+                                    $initial = mb_strtoupper(mb_substr($nomRaw !== '' ? $nomRaw : '?', 0, 1, 'UTF-8'), 'UTF-8');
+                                    $scoreFmt = rtrim(rtrim(number_format($score, 2, ',', ''), '0'), ',');
+                                    if ($scoreFmt === '' || $scoreFmt === '-') { $scoreFmt = '0'; }
+                                @endphp
+                                <li class="tg-recent-item">
+                                    <div class="tg-recent-avatar">{{ $initial }}</div>
+                                    <div class="tg-recent-info">
+                                        <div class="tg-recent-name">{{ $nomRaw !== '' ? $nomRaw : 'Étudiant·e' }}</div>
+                                        <div class="tg-recent-sub">
+                                            <span><i class="fa-solid fa-people-group"></i>{{ $note->evaluation->classe->name ?? 'Classe' }}</span>
+                                            <span class="tg-recent-eval">
+                                                <i class="fa-solid fa-book"></i>
+                                                {{ $note->evaluation->matiere->name ?? '' }}
+                                                @if(!empty($note->evaluation->titre))
+                                                    · {{ $note->evaluation->titre }}
+                                                @endif
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="tg-recent-meta">
+                                        <span class="tg-score tg-score--{{ $tone }}">
+                                            @if($isAbsent)
+                                                <i class="fa-solid fa-user-xmark"></i> Absent
+                                            @else
+                                                <strong>{{ $scoreFmt }}</strong><small>/{{ (int) $bareme }}</small>
+                                            @endif
+                                        </span>
+                                        <span class="tg-recent-date">
+                                            <i class="fa-regular fa-clock"></i>
+                                            {{ $note->created_at ? $note->created_at->diffForHumans() : '—' }}
+                                        </span>
+                                    </div>
+                                </li>
+                            @endforeach
+                        </ul>
                     @else
-                        <div class="empty-state small">
-                            <i class="fas fa-chart-bar"></i>
+                        <div class="tg-empty tg-empty--small">
+                            <div class="tg-empty-icon tg-empty-icon--small"><i class="fa-solid fa-chart-line"></i></div>
                             <h4>Aucune note récente</h4>
-                            <p>Commencez à saisir des notes pour voir l'activité ici.</p>
+                            <p>Vos saisies de notes apparaîtront ici en temps réel.</p>
                         </div>
                     @endif
                 </div>
-            </div>
+            </section>
         </div>
     </div>
 
+    {{-- MODAL Saisie de notes (préservé) --}}
     <div class="modal fade" id="teacherNoteModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-xl modal-dialog-centered">
             <div class="modal-content modal-premium-shell">
@@ -178,611 +897,6 @@
     </div>
 </div>
 @endsection
-
-<style>
-/* Layout vertical pour grades */
-.grades-layout {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-xl);
-}
-
-.dashboard-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: var(--space-lg);
-    margin-bottom: var(--space-xl);
-}
-
-.stat-card {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-    padding: var(--space-lg);
-    background: var(--card-background);
-    border-radius: var(--radius-medium);
-    border: 1px solid var(--border);
-    box-shadow: var(--shadow-subtle);
-}
-
-.stat-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: var(--radius-medium);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.5rem;
-}
-
-.stat-icon.bg-primary { background: var(--primary); }
-.stat-icon.bg-success { background: var(--success); }
-.stat-icon.bg-info { background: var(--info); }
-.stat-icon.bg-warning { background: var(--warning); }
-
-.stat-content {
-    flex-grow: 1;
-}
-
-.stat-number {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--text);
-    line-height: 1;
-    margin-bottom: var(--space-xs);
-}
-
-.stat-label {
-    color: var(--muted);
-    font-size: var(--text-small);
-    font-weight: 500;
-}
-
-.evaluations-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: var(--space-lg);
-}
-
-.evaluation-card {
-    background: var(--card-background);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-medium);
-    padding: var(--space-lg);
-    position: relative;
-    overflow: hidden;
-    transition: all 0.25s ease;
-    background-image: radial-gradient(circle at 20% 0%, rgba(4, 83, 203, 0.12), transparent 55%),
-        radial-gradient(circle at 100% 20%, rgba(94, 145, 222, 0.12), transparent 50%),
-        linear-gradient(180deg, rgba(255, 255, 255, 0.65), rgba(255, 255, 255, 0.9));
-}
-
-.evaluation-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: linear-gradient(135deg, rgba(4, 83, 203, 0.08), rgba(94, 145, 222, 0));
-    opacity: 0;
-    transition: opacity 0.25s ease;
-    pointer-events: none;
-}
-
-.evaluation-card:hover {
-    box-shadow: var(--shadow-hover);
-    transform: translateY(-4px);
-    border-color: rgba(4, 83, 203, 0.35);
-    box-shadow: 0 18px 36px rgba(15, 23, 42, 0.18);
-}
-
-.evaluation-card:hover::before {
-    opacity: 1;
-}
-
-.evaluation-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: var(--space-md);
-    gap: var(--space-md);
-}
-
-.type-badge {
-    padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--radius-large);
-    font-size: var(--text-small);
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xs);
-}
-
-.type-badge.type-examen {
-    background: rgba(239, 68, 68, 0.12);
-    color: #b91c1c;
-    border: 1px solid rgba(239, 68, 68, 0.35);
-}
-
-.type-badge.type-devoir {
-    background: rgba(245, 158, 11, 0.12);
-    color: #b45309;
-    border: 1px solid rgba(245, 158, 11, 0.3);
-}
-
-.type-badge.type-projet {
-    background: rgba(14, 165, 233, 0.12);
-    color: #0369a1;
-    border: 1px solid rgba(14, 165, 233, 0.3);
-}
-
-.type-badge.type-tp {
-    background: rgba(16, 185, 129, 0.12);
-    color: #047857;
-    border: 1px solid rgba(16, 185, 129, 0.3);
-}
-
-.type-badge.type-oral {
-    background: rgba(148, 163, 184, 0.18);
-    color: #475569;
-    border: 1px solid rgba(148, 163, 184, 0.4);
-}
-
-.type-badge.type-controle {
-    background: rgba(79, 70, 229, 0.12);
-    color: #4338ca;
-    border: 1px solid rgba(79, 70, 229, 0.3);
-}
-
-.type-badge.type-rattrapage {
-    background: rgba(236, 72, 153, 0.12);
-    color: #be185d;
-    border: 1px solid rgba(236, 72, 153, 0.3);
-}
-
-.evaluation-date {
-    color: var(--muted);
-    font-size: var(--text-small);
-    font-weight: 600;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: 0.35rem 0.6rem;
-    border-radius: var(--radius-large);
-    background: rgba(148, 163, 184, 0.12);
-    border: 1px solid rgba(148, 163, 184, 0.28);
-}
-
-.evaluation-title {
-    font-size: 1.15rem;
-    font-weight: 700;
-    color: var(--text);
-    margin: 0 0 var(--space-md) 0;
-    line-height: 1.3;
-}
-
-.evaluation-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-sm);
-    margin-bottom: var(--space-lg);
-}
-
-.meta-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xs);
-    padding: 0.4rem 0.65rem;
-    border-radius: var(--radius-large);
-    background: rgba(4, 83, 203, 0.08);
-    color: var(--text);
-    font-size: var(--text-small);
-    font-weight: 500;
-    border: 1px solid rgba(4, 83, 203, 0.15);
-}
-
-.meta-pill i {
-    color: var(--primary);
-}
-
-.evaluation-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding-top: var(--space-md);
-    border-top: 1px solid var(--border);
-    gap: var(--space-md);
-    flex-wrap: wrap;
-}
-
-.evaluation-helper {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.8rem;
-    color: #64748b;
-    padding: 0.35rem 0.6rem;
-    border-radius: 10px;
-    background: rgba(148, 163, 184, 0.12);
-    border: 1px solid rgba(148, 163, 184, 0.2);
-}
-
-.status-badge {
-    padding: var(--space-xs) var(--space-sm);
-    border-radius: var(--radius-small);
-    font-size: var(--text-small);
-    font-weight: 500;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xs);
-}
-
-.status-badge.published {
-    background: rgba(16, 185, 129, 0.12);
-    color: #047857;
-    border: 1px solid rgba(16, 185, 129, 0.25);
-}
-
-.status-badge.draft {
-    background: rgba(148, 163, 184, 0.18);
-    color: #475569;
-    border: 1px solid rgba(148, 163, 184, 0.35);
-}
-
-.status-badge.neutral {
-    background: rgba(59, 130, 246, 0.12);
-    color: #1d4ed8;
-    border: 1px solid rgba(59, 130, 246, 0.25);
-}
-
-.evaluation-actions {
-    display: flex;
-    gap: var(--space-md);
-    flex-wrap: wrap;
-    justify-content: flex-end;
-}
-
-.btn-action {
-    padding: 0.55rem 0.9rem;
-    border-radius: var(--radius-medium);
-    font-size: var(--text-small);
-    font-weight: 500;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    gap: var(--space-xs);
-    min-width: 92px;
-    justify-content: center;
-}
-
-.btn-action.primary {
-    background: rgba(var(--primary-rgb), 0.1);
-    color: var(--primary);
-    border: 1px solid rgba(var(--primary-rgb), 0.2);
-    box-shadow: 0 8px 16px rgba(4, 83, 203, 0.1);
-}
-
-.btn-action.primary:hover {
-    background: var(--primary);
-    color: white;
-}
-
-.btn-action.success {
-    background: rgba(var(--success-rgb), 0.1);
-    color: var(--success);
-    border: 1px solid rgba(var(--success-rgb), 0.2);
-    box-shadow: 0 8px 16px rgba(16, 185, 129, 0.12);
-}
-
-.btn-action.disabled {
-    opacity: 0.55;
-    cursor: not-allowed;
-    box-shadow: none;
-}
-
-.modal-premium-shell {
-    border-radius: 24px;
-    border: none;
-    overflow: hidden;
-    background: linear-gradient(135deg, rgba(4, 83, 203, 0.08), rgba(255, 255, 255, 0.95));
-}
-
-.modal-premium {
-    padding: 2rem;
-    background: radial-gradient(circle at top left, rgba(4, 83, 203, 0.08), transparent 55%),
-        radial-gradient(circle at bottom right, rgba(94, 145, 222, 0.08), transparent 55%),
-        #fff;
-}
-
-.modal-premium-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
-.modal-premium-title {
-    font-weight: 700;
-    font-size: 1.25rem;
-    margin-bottom: 0.25rem;
-}
-
-.modal-premium-subtitle {
-    color: var(--muted);
-    margin: 0;
-}
-
-.modal-premium-badges {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-
-.modal-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    padding: 0.4rem 0.7rem;
-    border-radius: 999px;
-    background: rgba(4, 83, 203, 0.12);
-    color: var(--primary);
-    font-size: 0.85rem;
-    border: 1px solid rgba(4, 83, 203, 0.2);
-}
-
-.modal-pill-neutral {
-    background: rgba(59, 130, 246, 0.12);
-    color: #1d4ed8;
-    border: 1px solid rgba(59, 130, 246, 0.25);
-}
-
-.modal-pill-warning {
-    background: rgba(245, 158, 11, 0.12);
-    color: #b45309;
-    border: 1px solid rgba(245, 158, 11, 0.25);
-}
-
-.modal-premium-body {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
-}
-
-.modal-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-    gap: 1rem;
-}
-
-.modal-section {
-    background: rgba(15, 23, 42, 0.03);
-    padding: 1rem;
-    border-radius: 16px;
-    border: 1px solid rgba(148, 163, 184, 0.2);
-}
-
-.modal-section-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-weight: 600;
-    margin-bottom: 0.75rem;
-    color: var(--text);
-}
-
-.modal-premium-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: 0.75rem;
-    margin-top: 1.5rem;
-}
-
-.card-flash-success {
-    animation: cardFlashSuccess 1.2s ease;
-}
-
-@keyframes cardFlashSuccess {
-    0% {
-        box-shadow: 0 0 0 rgba(16, 185, 129, 0.0);
-        transform: translateY(-4px) scale(1.01);
-    }
-    40% {
-        box-shadow: 0 0 0 6px rgba(16, 185, 129, 0.2);
-    }
-    100% {
-        box-shadow: 0 0 0 rgba(16, 185, 129, 0.0);
-        transform: translateY(0) scale(1);
-    }
-}
-
-.btn-action.success:hover {
-    background: var(--success);
-    color: white;
-}
-
-.recent-grades-list {
-    display: flex;
-    flex-direction: column;
-    gap: var(--space-md);
-}
-
-.grade-item {
-    display: flex;
-    align-items: center;
-    gap: var(--space-md);
-    padding: var(--space-md);
-    background: rgba(var(--muted-rgb), 0.02);
-    border-radius: var(--radius-small);
-    border: 1px solid var(--border);
-}
-
-.grade-student {
-    display: flex;
-    align-items: center;
-    gap: var(--space-sm);
-    min-width: 0;
-    flex: 1;
-}
-
-.student-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-medium);
-    background: var(--primary);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-}
-
-.student-info {
-    min-width: 0;
-}
-
-.student-name {
-    font-weight: 600;
-    color: var(--text);
-    font-size: var(--text-small);
-}
-
-.student-class {
-    color: var(--muted);
-    font-size: var(--text-small);
-}
-
-.grade-details {
-    flex: 1;
-    min-width: 0;
-}
-
-.grade-evaluation {
-    font-weight: 500;
-    color: var(--text);
-    font-size: var(--text-small);
-    margin-bottom: var(--space-xs);
-}
-
-.grade-score {
-    color: var(--muted);
-    font-size: var(--text-small);
-}
-
-.score {
-    font-weight: 700;
-    color: var(--primary);
-    font-size: 1rem;
-}
-
-.grade-date {
-    color: var(--muted);
-    font-size: var(--text-small);
-    display: flex;
-    align-items: center;
-    gap: var(--space-xs);
-    flex-shrink: 0;
-}
-
-.pagination-container {
-    margin-top: var(--space-xl);
-    padding-top: var(--space-lg);
-    border-top: 1px solid var(--border);
-}
-
-.empty-state.small {
-    padding: var(--space-lg);
-    text-align: center;
-}
-
-.empty-state.small i {
-    font-size: 2rem;
-    color: var(--muted);
-    margin-bottom: var(--space-sm);
-}
-
-.empty-state.small h4 {
-    font-size: 1.1rem;
-    color: var(--text);
-    margin: 0 0 var(--space-sm) 0;
-}
-
-.empty-state.small p {
-    color: var(--muted);
-    margin: 0;
-}
-
-/* Amélioration de l'empty-state pour les boutons */
-.empty-state .btn-acasi {
-    margin-top: var(--space-lg);
-    padding: var(--space-md) var(--space-xl);
-    font-size: var(--text-normal);
-    font-weight: 600;
-    box-shadow: var(--shadow-elevated);
-    border-radius: var(--radius-medium);
-}
-
-.empty-state .btn-acasi:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-hover);
-}
-
-.empty-state h3 {
-    color: var(--text-primary);
-    margin-bottom: var(--space-sm);
-    font-size: 1.25rem;
-    font-weight: 600;
-}
-
-.empty-state p {
-    margin-bottom: 0;
-    color: var(--text-secondary);
-}
-
-@media (max-width: 768px) {
-    .grades-layout {
-        gap: var(--space-lg);
-    }
-    
-    .dashboard-stats {
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--space-md);
-    }
-    
-    .evaluations-grid {
-        grid-template-columns: 1fr;
-        gap: var(--space-md);
-    }
-    
-    .evaluation-footer {
-        flex-direction: column;
-        gap: var(--space-sm);
-        align-items: stretch;
-    }
-    
-    .evaluation-actions {
-        justify-content: stretch;
-    }
-    
-    .btn-action {
-        width: 100%;
-    }
-    
-    .grade-item {
-        flex-direction: column;
-        align-items: stretch;
-        text-align: center;
-        gap: var(--space-sm);
-    }
-    
-    .main-card-body {
-        padding: var(--space-md);
-    }
-}
-</style>
 
 @section('scripts')
 <script>
@@ -805,7 +919,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         `;
-        const mainContent = document.querySelector('.main-content');
+        const mainContent = document.querySelector('.tg-wrap');
         if (mainContent) {
             mainContent.insertAdjacentHTML('afterbegin', alertHtml);
             setTimeout(() => {
