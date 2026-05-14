@@ -14,6 +14,9 @@
     $formId = $isModal ? ($isEdit ? 'modal-edit-classe-form' : 'modal-create-classe-form') : ($isEdit ? 'edit-classe-form' : 'create-classe-form');
     $formAction = $isEdit ? route('esbtp.classes.update', ['classe' => $classe->id]) : route('esbtp.classes.store');
     $formMethod = $isEdit ? 'PUT' : 'POST';
+    // Map niveau types pour le JS (data-niveau-types attribute + window global pour rétro-compat).
+    // DOIT être défini AVANT la première utilisation dans le <select> ligne ~101.
+    $niveauTypes = $niveaux->mapWithKeys(fn($n) => [$n->id => $n->type])->toJson();
 @endphp
 
 <form id="{{ $formId }}" action="{{ $formAction }}" method="POST">
@@ -248,10 +251,7 @@
 </form>
 
 {{-- JavaScript pour auto-détection système académique + toggle parcours LMD --}}
-@php
-    // Map niveau types pour le JS
-    $niveauTypes = $niveaux->mapWithKeys(fn($n) => [$n->id => $n->type])->toJson();
-@endphp
+{{-- $niveauTypes est défini dans le @php du haut (utilisé aussi par data-niveau-types L101) --}}
 <script>
 (function() {
     window['niveauTypes_{{ str_replace('-', '_', $formId) }}'] = {!! $niveauTypes !!};
