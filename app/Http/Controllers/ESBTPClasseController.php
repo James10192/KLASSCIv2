@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\Classe\AddStudentsRequest;
 use App\Http\Requests\Classe\RemoveStudentsRequest;
 use App\Http\Requests\Classe\StoreClasseRequest;
+use App\Http\Requests\Classe\UpdateClasseRequest;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -574,40 +575,10 @@ class ESBTPClasseController extends Controller
      * @param  \App\Models\ESBTPClasse  $classe
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, ESBTPClasse $classe)
+    public function update(UpdateClasseRequest $request, ESBTPClasse $classe)
     {
-        // Valider les données du formulaire
-        try {
-            // En mode LMD, parcours_id est fourni et filiere_id sera dérivé server-side.
-            $isLmd = $request->filled('parcours_id');
-
-            $validatedData = $request->validate([
-                "name" => "required|string|max:255",
-                "code" =>
-                    "required|string|max:50|unique:esbtp_classes,code," .
-                    $classe->id,
-                "filiere_id" => $isLmd ? "nullable|exists:esbtp_filieres,id" : "required|exists:esbtp_filieres,id",
-                "niveau_etude_id" => "required|exists:esbtp_niveau_etudes,id",
-                "annee_universitaire_id" =>
-                    "required|exists:esbtp_annee_universitaires,id",
-                "places_totales" => "required|integer|min:1",
-                "description" => "nullable|string",
-                "is_active" => "boolean",
-                "parcours_id" => "nullable|exists:esbtp_lmd_parcours,id",
-            ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            // Si c'est une requête AJAX, retourner les erreurs en JSON
-            if ($request->ajax() || $request->input("is_ajax") === "1") {
-                return response()->json(
-                    [
-                        "success" => false,
-                        "errors" => $e->errors(),
-                    ],
-                    422,
-                );
-            }
-            throw $e;
-        }
+        // Validation centralisee dans UpdateClasseRequest (LMD-aware).
+        $validatedData = $request->validated();
 
         // Mode LMD : dériver filiere_id depuis le parcours sélectionné
         if (!empty($validatedData['parcours_id'])) {
