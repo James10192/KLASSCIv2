@@ -77,7 +77,7 @@
 <form id="{{ $formId }}"
       action="{{ $formAction }}"
       method="POST"
-      data-mode="{{ $renderedMode ?: 'unknown' }}"
+      data-mode="{{ strtolower($renderedMode ?: 'unknown') }}"
       x-data="classeLmdForm()"
       x-init="init()">
     @csrf
