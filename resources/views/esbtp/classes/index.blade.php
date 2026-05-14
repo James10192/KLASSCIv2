@@ -1515,6 +1515,32 @@ function showSuccessMessage(message) {
     }
 }
 
+/**
+ * Inject HTML in target element AND execute embedded <script> tags.
+ *
+ * Native innerHTML insertion does NOT execute scripts (browser security since 1999).
+ * For AJAX-loaded Blade partials that include factory definitions (window.classeLmdForm,
+ * window.auMentionPicker, etc.) the script blocks must be re-created as live elements
+ * so they execute, OTHERWISE Alpine x-data references die with ReferenceError.
+ *
+ * After injection, call Alpine.initTree(target) to parse newly inserted x-data/x-init.
+ * Idempotency guards inside each factory prevent double-registration.
+ */
+function injectHtmlWithScripts(target, html) {
+    target.innerHTML = html;
+    target.querySelectorAll('script').forEach(function(oldScript) {
+        const newScript = document.createElement('script');
+        Array.from(oldScript.attributes).forEach(function(attr) {
+            newScript.setAttribute(attr.name, attr.value);
+        });
+        newScript.textContent = oldScript.textContent;
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+    });
+    if (window.Alpine && typeof window.Alpine.initTree === 'function') {
+        window.Alpine.initTree(target);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const btnOpenCreateModal = document.getElementById('btn-open-create-modal');
     const createModalEl = document.getElementById('createClasseModal');
@@ -1549,7 +1575,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return response.text();
             })
             .then(html => {
-                modalCreateBody.innerHTML = html;
+                injectHtmlWithScripts(modalCreateBody, html);
                 initClasseFormScripts('modal-create-classe-form');
                 modalCreateSubmitBtn.disabled = false;
                 createClasseModal.show();
@@ -1650,7 +1676,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return response.text();
         })
         .then(html => {
-            modalEditBody.innerHTML = html;
+            injectHtmlWithScripts(modalEditBody, html);
             initClasseFormScripts('modal-edit-classe-form');
             modalEditSubmitBtn.disabled = false;
             editClasseModal.show();

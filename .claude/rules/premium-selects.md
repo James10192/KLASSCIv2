@@ -5,6 +5,7 @@
 Cette rule s'active automatiquement quand :
 - Tu écris ou modifies une vue Blade qui contient `<select>`, `<option>`, ou un dropdown
 - Tu crées une page de filtres, un formulaire, ou un modal avec un sélecteur
+- Tu **réutilises un partial Blade contenant un picker** (`<x-au-mention-picker>`, `<x-au-user-picker>`, `<x-au-select>`) dans un **modal AJAX** chargé via `fetch + innerHTML`
 - Tu es dans une page namespace premium (`au-*`, `pi-*`, `mi-*`, `ee-*`, `ec-*`, `is-*`, `nm-*`, `rl-*`, `dc-*`, `fc-*`, `ps-*`, `ph-*`, `bav-*`, `ie-*`, `ci-*`, `cs-*`, `mc-*`, `sc-*`, `fi-*`, `sf-*`, `cr-*`, `gp-*`, `et-*`, ...)
 - Tu vois un `<select class="form-select">`, `<select class="form-control">`, ou `<select>` raw dans le diff
 
@@ -201,11 +202,110 @@ Règles à respecter pour un nouveau composant picker :
 - [ ] Mobile testé (< 768px) — menu fullwidth, pas de débordement horizontal
 - [ ] Si `searchable="true"` : test avec une query qui retourne 0 résultats (empty state)
 
+## ⚠ Pattern AJAX-safe pour pickers premium dans un modal
+
+**Incident fondateur** : 14 mai 2026 — le modal "Nouvelle classe" / "Modifier classe" sur `/esbtp/classes` ne basculait pas en mode LMD quand l'utilisateur choisissait niveau Licence/Master/Doctorat. La page standalone `/esbtp/classes/create` marchait parfaitement. Bug invisible aux 4 agents (Critic + Codebase + Docs + DevAdvocate) lors du premier `/plan-and-confirm`.
+
+### Le piège du `@push('scripts')` + `innerHTML` (3 couches indépendantes)
+
+Quand un partial Blade contient un picker premium (`<x-au-mention-picker>`, `<x-au-user-picker>`, `<x-au-parcours-picker>`, etc.) ET est chargé via AJAX dans un modal :
+
+1. **`@push('scripts')` sans `@stack('scripts')` parent → contenu DROPPÉ silencieusement**. Le partial AJAX est rendu seul (pas dans un layout), donc le `@stack('scripts')` du layout n'est jamais exécuté. Toute factory définie dans `@push('scripts')` est silently lost.
+2. **`<script>` injecté via `element.innerHTML = html` N'EST PAS EXÉCUTÉ**. Comportement standard du navigateur depuis 1999. Le `<script>` reste dans le DOM mais inerte.
+3. **Alpine 3 NE SCANNE PAS** automatiquement le DOM injecté via `innerHTML`. `x-data="myFactory()"` n'est pas évalué tant que `Alpine.initTree(target)` n'est pas appelé.
+
+### Solution canonique (3 mai 2026 onwards)
+
+**Côté composants picker** (au-mention-picker, au-user-picker, futur au-parcours-picker) :
+- **NE PAS utiliser** `@once @push('styles')` ni `@once @push('scripts')` pour les factories Alpine
+- **À LA PLACE** : inline `<style>` + `<script>` avec **idempotency guards** :
+
+```blade
+<style>
+.au-mp { ... }
+</style>
+
+<script>
+if (typeof window.auMentionPicker !== 'function') {
+    window.auMentionPicker = function () { return { /* ... */ }; };
+}
+</script>
+```
+
+L'idempotency guard `if (typeof window.X !== 'function')` empêche le double-register quand le composant est rendu plusieurs fois sur la même page (ex: modal create + modal edit coexistent dans `classes.index`).
+
+**Côté handler modal AJAX** (caller, ex: `index.blade.php`) :
+- **NE PAS faire** `modalBody.innerHTML = html` directement
+- **À LA PLACE** : utiliser un helper qui re-crée les `<script>` tags pour qu'ils s'exécutent ET appelle `Alpine.initTree()` :
+
+```js
+function injectHtmlWithScripts(target, html) {
+    target.innerHTML = html;
+    target.querySelectorAll('script').forEach(function(oldScript) {
+        const newScript = document.createElement('script');
+        Array.from(oldScript.attributes).forEach(function(attr) {
+            newScript.setAttribute(attr.name, attr.value);
+        });
+        newScript.textContent = oldScript.textContent;
+        oldScript.parentNode.replaceChild(newScript, oldScript);
+    });
+    if (window.Alpine && typeof window.Alpine.initTree === 'function') {
+        window.Alpine.initTree(target);
+    }
+}
+```
+
+Appel : `injectHtmlWithScripts(modalCreateBody, html)` au lieu de `modalCreateBody.innerHTML = html`.
+
+**Côté Alpine factory** (anti memory leak) :
+Si la factory ajoute des `window.addEventListener` dans `init()`, **OBLIGATOIRE** d'implémenter `destroy()` pour cleanup. Alpine appelle `destroy()` automatiquement quand le composant est retiré du DOM (modal close + innerHTML replace).
+
+```js
+window.classeLmdForm = function () {
+    return {
+        _mentionChangedHandler: null,
+        init() {
+            this._mentionChangedHandler = (ev) => { /* ... */ };
+            window.addEventListener('mention:changed', this._mentionChangedHandler);
+        },
+        destroy() {
+            if (this._mentionChangedHandler) {
+                window.removeEventListener('mention:changed', this._mentionChangedHandler);
+                this._mentionChangedHandler = null;
+            }
+        }
+    };
+};
+```
+
+Sans `destroy()`, chaque re-open de modal ajoute un handler supplémentaire → memory leak + double-fire.
+
+### Checklist obligatoire AVANT push pour TOUT partial Blade utilisé en modal AJAX
+
+- [ ] `grep "@push\|@once" mon_partial.blade.php` → 0 occurrence (sauf à l'intérieur de `{{-- ... --}}` comments)
+- [ ] Le `<script>` factory du partial a une **idempotency guard** (`if (typeof window.X !== 'function')`)
+- [ ] Le caller modal utilise `injectHtmlWithScripts(target, html)` PAS `target.innerHTML = html`
+- [ ] Si Alpine listener `window.addEventListener` dans `init()` → méthode `destroy()` correspondante
+- [ ] **Audit blade-pitfalls** : `grep "<x-" dans commentaires JS` → 0 occurrence (rule `blade-pitfalls.md` Pitfall #3 — bug live prod 14 mai 2026, 500 sur `/esbtp/classes`)
+- [ ] Test Feature minimal : `assertSee('window.X', false)` dans la réponse AJAX
+
+### Anti-patterns à BLOQUER en review (suite)
+
+11. ❌ `@push('scripts')` dans un partial utilisé en modal AJAX (drop silent)
+12. ❌ `@once` autour d'une factory globale (inutile en AJAX, fausse sécurité)
+13. ❌ `innerHTML = html` sans `injectHtmlWithScripts` quand le HTML contient des `<script>` qui doivent exécuter
+14. ❌ `window.addEventListener` dans Alpine `init()` sans `destroy()` cleanup → memory leak
+15. ❌ Refactor d'un picker sans audit blade-pitfalls AVANT push (`<x-` dans commentaire = 500 prod)
+
 ## Voir aussi
 
 - `<x-au-select>` : `resources/views/components/au-select.blade.php`
 - `<x-au-user-picker>` : `resources/views/components/au-user-picker.blade.php`
+- `<x-au-mention-picker>` : `resources/views/components/au-mention-picker.blade.php` (AJAX-safe depuis 14 mai 2026)
 - Rule sœur : `.claude/rules/premium-redesign.md` (palette KLASSCI, namespace, hero pattern)
 - Rule sœur : `.claude/rules/no-mvp-only-premium.md` (interdit le MVP, exige le production-grade)
+- Rule sœur : `.claude/rules/blade-pitfalls.md` (Pitfall #3 : `<x-` dans commentaire JS = 500)
+- Rule sœur : `.claude/rules/pre-merge-checklist.md` (discipline tests + visual-check pre-merge)
 - Mémoire incident fondateur : session 3 mai 2026, PR #323 + commit `1cc85d0f` (fix trigger transparent dans `.au-filter-field`)
+- Mémoire incident PR #393 (14 mai 2026) : modal LMD switch + listener leak Critic discovery
 - Rule globale : `~/.claude/rules/marcel-global-preferences.md` (no AI slop, monochrome bleu)

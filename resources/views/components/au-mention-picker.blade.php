@@ -144,8 +144,13 @@
     <input type="hidden" name="{{ $name }}" :value="currentValue" x-ref="native">
 </div>
 
-@once
-@push('styles')
+{{--
+    INLINE <style> + <script> (pas @once @push) pour que le composant soit AJAX-safe.
+    En reponse AJAX standalone (modal load via fetch + injectHtmlWithScripts), @push
+    sans @stack parent = drop silencieux. Idempotency guards `if (typeof window.X
+    !== 'function')` empechent le double-register au render multiple sur la meme page.
+    Voir rule .claude/rules/premium-selects.md section "AJAX-safe pattern".
+--}}
 <style>
 .au-mp { position: relative; flex: 1; min-width: 0; display: flex; }
 .au-mp-trigger {
@@ -262,9 +267,7 @@
     .au-mp-menu { width: calc(100vw - 2rem); min-width: 0; max-height: 70vh; }
 }
 </style>
-@endpush
 
-@push('scripts')
 <script>
 if (typeof window.auMentionPicker !== 'function') {
     window.auMentionPicker = function () {
@@ -348,5 +351,3 @@ if (typeof window.auMentionPicker !== 'function') {
     };
 }
 </script>
-@endpush
-@endonce

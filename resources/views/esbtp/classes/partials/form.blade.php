@@ -384,7 +384,16 @@
     @endif
 </form>
 
-@push('scripts')
+{{--
+    INLINE <script> (pas @push('scripts')) pour que la factory soit incluse dans la
+    reponse AJAX standalone (modal load via fetch + injectHtmlWithScripts helper).
+
+    @push sans @stack parent = drop silencieux du contenu en reponse AJAX. Voir rule
+    .claude/rules/premium-selects.md section "AJAX-safe pattern". Idempotency guard
+    `if typeof window.classeLmdForm === 'function'` empeche le double-register quand
+    le partial est rendu plusieurs fois sur la meme page (create + edit modals
+    coexistent dans classes.index).
+--}}
 <script>
 (function () {
     if (typeof window.classeLmdForm === 'function') return;
@@ -396,9 +405,9 @@
             domaineName: @json($initialDomaineName),
             niveauTypes: {},
             previousMode: '',
+            _mentionChangedHandler: null,
 
             init() {
-                // Charger niveau types depuis data attribute
                 var sel = this.$el.querySelector('select[name="niveau_etude_id"]');
                 if (sel) {
                     try { this.niveauTypes = JSON.parse(sel.getAttribute('data-niveau-types') || '{}'); }
@@ -407,14 +416,27 @@
                 this.previousMode = this.mode;
 
                 // Listener cascade mention -> domaine + parcours
-                window.addEventListener('mention:changed', (ev) => {
+                // Stocker la reference pour cleanup dans destroy() (anti memory leak
+                // quand modal est ouvert/ferme plusieurs fois — bug bonus identifie
+                // par critic durant /plan-and-confirm depth=5).
+                this._mentionChangedHandler = (ev) => {
                     this.mentionId = ev.detail.mentionId ? String(ev.detail.mentionId) : '';
                     this.domaineName = ev.detail.domaineName || '';
                     this.filterParcoursOptions();
-                });
+                };
+                window.addEventListener('mention:changed', this._mentionChangedHandler);
 
-                // Init initial filter
                 this.$nextTick(() => this.filterParcoursOptions());
+            },
+
+            destroy() {
+                // Alpine appelle destroy() automatiquement quand le composant est
+                // retire du DOM (modal close + innerHTML replace). Cleanup obligatoire
+                // sinon chaque re-open ajoute un handler supplementaire.
+                if (this._mentionChangedHandler) {
+                    window.removeEventListener('mention:changed', this._mentionChangedHandler);
+                    this._mentionChangedHandler = null;
+                }
             },
 
             onNiveauChange(niveauId) {
@@ -422,7 +444,6 @@
                 var newMode = (type === 'Licence' || type === 'Master' || type === 'Doctorat') ? 'LMD' : (type ? 'BTS' : '');
 
                 if (this.previousMode && newMode !== this.previousMode) {
-                    // Mode change -> reset cross-mode fields
                     this.resetCrossModeFields(newMode);
                 }
                 this.mode = newMode;
@@ -430,20 +451,17 @@
             },
 
             resetCrossModeFields(newMode) {
-                // Reset BTS filiere si on bascule vers LMD
                 if (newMode === 'LMD') {
                     if (this.$refs.filiereBts) {
                         this.$refs.filiereBts.value = '';
                     }
                 }
-                // Reset LMD mention + parcours si on bascule vers BTS
                 if (newMode === 'BTS') {
                     this.mentionId = '';
                     this.domaineName = '';
                     if (this.$refs.parcoursSelect) {
                         this.$refs.parcoursSelect.value = '';
                     }
-                    // Reset mention picker via Alpine
                     if (this.$refs.mentionPicker && this.$refs.mentionPicker._x_dataStack) {
                         var data = this.$refs.mentionPicker._x_dataStack[0];
                         if (data && typeof data.reset === 'function') data.reset();
@@ -455,22 +473,17 @@
                 if (!this.$refs.parcoursSelect) return;
                 var sel = this.$refs.parcoursSelect;
                 var currentMention = this.mentionId;
-                var currentValue = sel.value;
-                var matchedAny = false;
 
                 Array.from(sel.options).forEach(function (opt) {
                     if (!opt.value) {
-                        // Toujours afficher "Aucun parcours"
                         opt.hidden = false;
                         return;
                     }
                     var optMention = opt.getAttribute('data-mention-id');
                     var matches = currentMention && String(optMention) === String(currentMention);
                     opt.hidden = !matches;
-                    if (matches) matchedAny = true;
                 });
 
-                // Si la valeur courante n'est plus visible, reset
                 var selectedOpt = sel.options[sel.selectedIndex];
                 if (selectedOpt && selectedOpt.hidden) {
                     sel.value = '';
@@ -490,4 +503,3 @@
     });
 </script>
 @endif
-@endpush
