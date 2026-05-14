@@ -136,41 +136,46 @@
 /* Row pleine largeur (pour Hierarchie LMD tree, etc.) */
 .cs-info-row--full { display: flex; flex-direction: column; align-items: stretch; gap: .65rem; padding: .85rem 0; }
 .cs-info-full-header { display: flex; align-items: center; justify-content: space-between; gap: .65rem; }
-/* Tree premium UEMOA — pleine largeur du panneau */
+/* Tree premium UEMOA — style IDE (indentation progressive + L-connectors VSCode-style) */
 .cs-lmd-tree {
-    position: relative;
     background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06));
     border: 1px solid rgba(4,83,203,.18);
     border-radius: 12px;
-    padding: .75rem .85rem .75rem 1.65rem;
-    display: flex; flex-direction: column;
-    gap: .55rem;
-}
-.cs-lmd-tree::before {
-    content: ''; position: absolute;
-    left: 1.65rem; top: 1.4rem; bottom: 1.4rem;
-    width: 2px;
-    background: linear-gradient(180deg, #033a8e, #5e91de);
-    border-radius: 2px;
+    padding: .85rem;
 }
 .cs-lmd-tree-node {
     position: relative;
     display: flex; align-items: center;
-    gap: .8rem;
-    padding-left: 0;
+    gap: .7rem;
+    padding: 0 .65rem;
+    border-radius: 7px;
+    height: 44px;
+    transition: background .15s;
 }
-.cs-lmd-tree-node::after {
-    content: ''; position: absolute;
-    left: -.85rem; top: 50%;
-    width: .85rem; height: 2px;
-    background: rgba(4,83,203,.35);
-    transform: translateY(-1px);
+.cs-lmd-tree-node + .cs-lmd-tree-node { margin-top: .25rem; }
+.cs-lmd-tree-node:hover { background: rgba(4,83,203,.06); }
+/* INDENTATION TREE - chaque enfant décalé à droite de son parent */
+.cs-lmd-tree-node--mention  { margin-left: 1.6rem; }
+.cs-lmd-tree-node--parcours { margin-left: 3.2rem; }
+/* L-CONNECTOR pour chaque node enfant : ligne verticale qui part du milieu vertical du parent + tourne horizontalement au milieu vertical du current */
+.cs-lmd-tree-node--mention::before,
+.cs-lmd-tree-node--parcours::before {
+    content: '';
+    position: absolute;
+    left: -.85rem;
+    top: calc(-50% - .25rem);  /* milieu vertical du node précédent (height 44px + margin .25rem) */
+    bottom: calc(50% - 1px);   /* milieu vertical de l'icône courante */
+    width: .85rem;
+    border-left: 2px solid rgba(4,83,203,.42);
+    border-bottom: 2px solid rgba(4,83,203,.42);
+    border-bottom-left-radius: 7px;
+    pointer-events: none;
 }
 .cs-lmd-tree-icon {
-    width: 32px; height: 32px; border-radius: 9px;
+    width: 32px; height: 32px; border-radius: 8px;
     display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: .8rem; flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(4,83,203,.3);
+    color: #fff; font-size: .82rem; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(4,83,203,.25);
     position: relative; z-index: 1;
 }
 .cs-lmd-tree-node--domaine .cs-lmd-tree-icon { background: linear-gradient(135deg, #033a8e, #0453cb); }
