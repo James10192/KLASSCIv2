@@ -1031,6 +1031,17 @@
                 </div>
 
                 <div id="classe-planning-content">
+                    @if(($classe->systeme_academique ?? '') === 'LMD')
+                        @include('esbtp.classes.partials._suivi_heures_lmd', [
+                            'classe' => $classe,
+                            'planningMatiere' => $planningMatiere,
+                            'lmdVolumeBudget' => $lmdVolumeBudget,
+                            'lmdUesAvecEcues' => $lmdUesAvecEcues,
+                            'lmdSemestres' => $lmdSemestres,
+                            'periode' => $periode,
+                            'kpiTaux' => $kpiTaux,
+                        ])
+                    @else
                     @php
                         $kpiTauxColor = $kpiTaux >= 70 ? 'var(--cs-success)' : ($kpiTaux >= 30 ? 'var(--cs-warn)' : 'var(--cs-danger)');
                     @endphp
@@ -1057,53 +1068,6 @@
                             <div class="cs-planning-kpi-label">Taux</div>
                         </div>
                     </div>
-
-                    @if(($classe->systeme_academique ?? '') === 'LMD' && !empty($lmdVolumeBudget))
-                        @php
-                            $vbTotalsTab = ['cm'=>['p'=>0,'r'=>0],'td'=>['p'=>0,'r'=>0],'tp'=>['p'=>0,'r'=>0]];
-                            foreach ($lmdVolumeBudget as $budget) {
-                                foreach (['cm','td','tp'] as $k) {
-                                    $vbTotalsTab[$k]['p'] += (float) ($budget[$k]['planifie'] ?? 0);
-                                    $vbTotalsTab[$k]['r'] += (float) ($budget[$k]['realise'] ?? 0);
-                                }
-                            }
-                            $vbLabelsTab = ['cm'=>'Cours Magistral','td'=>'Travaux Dirigés','tp'=>'Travaux Pratiques'];
-                            $vbIconsTab  = ['cm'=>'fa-chalkboard-user','td'=>'fa-pen-ruler','tp'=>'fa-flask-vial'];
-                        @endphp
-                        <div style="margin:1.25rem 0;padding:1rem 1.15rem;background:linear-gradient(135deg,rgba(4,83,203,.04),rgba(59,125,219,.06));border:1px solid rgba(4,83,203,.18);border-radius:14px;">
-                            <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem;margin-bottom:.85rem;flex-wrap:wrap;">
-                                <div style="display:flex;align-items:center;gap:.6rem;">
-                                    <i class="fas fa-university" style="color:#0453cb;"></i>
-                                    <strong style="color:#0f172a;font-size:.92rem;">Répartition par catégorie pédagogique LMD (UEMOA)</strong>
-                                </div>
-                                <a href="{{ route('esbtp.lmd.planning.index', array_filter(['parcours_id' => optional($classe->parcours)->id, 'niveau_id' => $classe->niveau_etude_id, 'semestre' => !empty($lmdSemestres) ? ($lmdSemestres[0] ?? null) : null])) }}" style="font-size:.75rem;color:#0453cb;text-decoration:none;font-weight:600;">
-                                    <i class="fas fa-external-link-alt"></i> Maquette LMD complète
-                                </a>
-                            </div>
-                            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:.85rem;">
-                                @foreach(['cm','td','tp'] as $k)
-                                    @php
-                                        $p = $vbTotalsTab[$k]['p']; $r = $vbTotalsTab[$k]['r'];
-                                        $pct = $p > 0 ? min(100, round($r / $p * 100)) : ($r > 0 ? 100 : 0);
-                                        $tone = $pct >= 100 ? '#10b981' : ($pct >= 70 ? '#f59e0b' : '#0453cb');
-                                    @endphp
-                                    <div style="background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:.7rem .85rem;">
-                                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.4rem;">
-                                            <div style="display:flex;align-items:center;gap:.45rem;">
-                                                <i class="fas {{ $vbIconsTab[$k] }}" style="color:#0453cb;font-size:.8rem;"></i>
-                                                <span style="font-weight:700;color:#0f172a;font-size:.8rem;">{{ $vbLabelsTab[$k] }}</span>
-                                            </div>
-                                            <span style="font-size:.7rem;color:#64748b;font-weight:600;">{{ rtrim(rtrim(number_format($r,1,',',''),'0'),',') ?: '0' }}h / {{ rtrim(rtrim(number_format($p,1,',',''),'0'),',') ?: '0' }}h</span>
-                                        </div>
-                                        <div style="background:rgba(4,83,203,.08);border-radius:6px;height:7px;overflow:hidden;">
-                                            <div style="background:{{ $tone }};height:100%;width:{{ $pct }}%;transition:width .3s ease;"></div>
-                                        </div>
-                                        <div style="margin-top:.3rem;font-size:.68rem;color:{{ $tone }};font-weight:700;">{{ $pct }}%</div>
-                                    </div>
-                                @endforeach
-                            </div>
-                        </div>
-                    @endif
 
                     @if(!empty($planningMatiere['matieres']) && $planningMatiere['matieres']->isNotEmpty())
                         @foreach($planningMatiere['matieres'] as $item)
@@ -1163,6 +1127,7 @@
                             <div class="cs-empty-text">Aucune séance trouvée pour cette classe sur la période sélectionnée.</div>
                         </div>
                     @endif
+                    @endif {{-- end if LMD/BTS --}}
                 </div>
             </div>
         </div>
