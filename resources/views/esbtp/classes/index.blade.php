@@ -1447,8 +1447,7 @@ function initClasseFormScripts(formId) {
         // Select2 change events don't always propagate to native addEventListener.
         // Wire the niveau toggle explicitly so the parcours group and badge update correctly.
         $(`#${formId}_niveau_etude_id`).on('change', function() {
-            var niveauTypesKey = 'niveauTypes_' + formId.replace(/-/g, '_');
-            var niveauTypes = window[niveauTypesKey] || {};
+            var niveauTypes = JSON.parse(this.dataset.niveauTypes || '{}');
             var type = niveauTypes[this.value] || '';
             var isLMD = (type === 'Licence' || type === 'Master' || type === 'Doctorat');
             var badge = document.getElementById(formId + '_systeme_badge');

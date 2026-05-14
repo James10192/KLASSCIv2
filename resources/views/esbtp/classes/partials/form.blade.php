@@ -98,6 +98,7 @@
                             <select class="form-select @error('niveau_etude_id') is-invalid @enderror"
                                     id="{{ $formId }}_niveau_etude_id"
                                     name="niveau_etude_id"
+                                    data-niveau-types='{!! $niveauTypes !!}'
                                     required>
                                 <option value="">Sélectionner un niveau</option>
                                 @foreach($niveaux as $niveau)
