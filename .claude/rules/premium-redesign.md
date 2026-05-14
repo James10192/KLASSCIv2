@@ -208,6 +208,141 @@ Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 --shadow-lg: 0 8px 30px rgba(4,83,203,.08), 0 2px 8px rgba(15,23,42,.04);
 ```
 
+## Tree hiérarchique IDE-style (Domaine → Mention → Parcours, parent → enfant, etc.)
+
+**Quand l'utiliser** : pour afficher une hiérarchie 2-N niveaux dans un panneau (page show d'une entité, fiche détail, modal info). Référence canonique : `classes.show` section Informations générales (`/esbtp/classes/{id}`) qui affiche Domaine → Mention → Parcours d'une classe LMD.
+
+**Le pattern** : indentation progressive + L-connectors VSCode-style. Chaque enfant est décalé à droite de son parent et un L (`└──`) connecte le centre horizontal de l'icône parent au centre vertical de l'icône enfant.
+
+### Anti-pattern (à éviter)
+
+```css
+/* MAUVAIS — ligne verticale globale + 3 nodes alignés à gauche */
+.tree { padding-left: 1.65rem; }
+.tree::before { /* ligne verticale UNIQUE qui traverse */ }
+.tree-node::after { /* tiret horizontal de 0.85rem */ }
+```
+→ Donne 3 nodes empilés avec une ligne unique à gauche. Ce n'est PAS un tree IDE.
+
+### Pattern correct (utilisé sur classes.show)
+
+```blade
+<div class="xx-tree">
+    <div class="xx-tree-node xx-tree-node--lvl0">
+        <div class="xx-tree-icon"><i class="fas fa-folder-open"></i></div>
+        <div class="xx-tree-body">
+            <div class="xx-tree-label">Domaine</div>
+            <div class="xx-tree-name">Sciences Juridiques</div>
+            <span class="xx-tree-code">DROIT</span>
+        </div>
+    </div>
+    <div class="xx-tree-node xx-tree-node--lvl1">
+        <div class="xx-tree-icon"><i class="fas fa-graduation-cap"></i></div>
+        <div class="xx-tree-body">...</div>
+    </div>
+    <div class="xx-tree-node xx-tree-node--lvl2">
+        <div class="xx-tree-icon"><i class="fas fa-route"></i></div>
+        <div class="xx-tree-body">...</div>
+    </div>
+</div>
+```
+
+```css
+.xx-tree {
+    background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06));
+    border: 1px solid rgba(4,83,203,.18);
+    border-radius: 12px;
+    padding: .85rem;
+}
+.xx-tree-node {
+    position: relative;
+    display: flex; align-items: center;
+    gap: .7rem;
+    padding: 0 .65rem;
+    border-radius: 7px;
+    height: 44px;                 /* HEIGHT FIXE OBLIGATOIRE pour calculs L précis */
+    transition: background .15s;
+}
+.xx-tree-node + .xx-tree-node { margin-top: .25rem; }
+.xx-tree-node:hover { background: rgba(4,83,203,.06); }
+
+/* INDENTATION TREE — chaque enfant décalé à droite de son parent */
+.xx-tree-node--lvl1 { margin-left: 1.6rem; }
+.xx-tree-node--lvl2 { margin-left: 3.2rem; }
+
+/* L-CONNECTOR : trait vertical PILE sous le centre horizontal de l'icône parent,
+   tournant au centre vertical de l'icône enfant.
+   Calcul : centre icône parent = padding-left .65rem + 32px/2 (mi-icône) = 1.65rem
+   du parent left. Le node enfant a margin-left 1.6rem → centre parent en coord
+   enfant = 1.65 - 1.6 = .05rem ≈ left:0 (offset ~0.8px, invisible). */
+.xx-tree-node--lvl1::before,
+.xx-tree-node--lvl2::before {
+    content: '';
+    position: absolute;
+    left: 0;                      /* trait vertical aligné sur centre icône parent */
+    top: calc(-50% - .25rem);     /* part du milieu vertical du parent (height 44px + margin .25rem) */
+    bottom: calc(50% - 1px);      /* arrive au milieu vertical de l'icône courante */
+    width: .65rem;                /* segment horizontal jusqu'au bord gauche icône enfant */
+    border-left: 2px solid rgba(4,83,203,.42);
+    border-bottom: 2px solid rgba(4,83,203,.42);
+    border-bottom-left-radius: 7px;
+    pointer-events: none;
+}
+
+.xx-tree-icon {
+    width: 32px; height: 32px;     /* TAILLE FIXE 32px obligatoire pour le calcul .65rem du L */
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .82rem; flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(4,83,203,.25);
+    position: relative; z-index: 1;
+}
+/* Gradient progressif par niveau pour une hiérarchie visuelle */
+.xx-tree-node--lvl0 .xx-tree-icon { background: linear-gradient(135deg, #033a8e, #0453cb); }
+.xx-tree-node--lvl1 .xx-tree-icon { background: linear-gradient(135deg, #0453cb, #3b7ddb); }
+.xx-tree-node--lvl2 .xx-tree-icon { background: linear-gradient(135deg, #3b7ddb, #5e91de); }
+
+.xx-tree-body {
+    flex: 1; min-width: 0;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: .15rem .65rem;
+}
+.xx-tree-label { grid-column: 1; font-size: .62rem; color: #64748b; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
+.xx-tree-name { grid-column: 1; font-size: .92rem; font-weight: 700; color: #1e293b; line-height: 1.2; }
+.xx-tree-code {
+    grid-column: 2; grid-row: 1 / span 2;
+    align-self: center;
+    font-size: .64rem; color: #0453cb;
+    background: rgba(4,83,203,.08);
+    padding: .15rem .5rem; border-radius: 5px;
+    font-weight: 700; letter-spacing: .3px;
+    font-family: 'Courier New', monospace;
+    white-space: nowrap;
+}
+```
+
+### Règles d'extension
+
+- **Pour N niveaux** : ajouter `margin-left: N * 1.6rem` à chaque `--lvl{N}` et la même règle `::before` (le calcul `left:0` reste valide car chaque enfant a son parent à 1.6rem à gauche).
+- **Pour des icônes plus grandes/petites** : ajuster `width/height` des icons ET le `width` du L horizontal proportionnellement (icon left edge = padding-left + 0, donc largeur L = padding-left).
+- **Pour des indentations plus larges** (ex: tree profond) : changer `1.6rem` partout (margin-left ET formule). Le pattern reste valide car le L démarre toujours à `left:0` (= bord gauche enfant = centre parent moins .05rem).
+- **Pour rendre le tree foldable** (Alpine x-show), wrapper chaque sous-branche dans `<div x-data="{ open: true }">` — voir Planning LMD pour un exemple de tree expandable.
+
+### Anti-patterns à BLOQUER en review
+
+1. ❌ Ligne verticale globale via `.tree::before` qui traverse tous les nodes (= pas un tree IDE)
+2. ❌ Nodes empilés sans `margin-left` progressif (= pas d'indentation hiérarchique)
+3. ❌ L-connector avec `left: -X` calculé approximativement (le `left: 0` exact est mathématiquement aligné sur le centre icône parent)
+4. ❌ `height: auto` sur les nodes (les calculs `top/bottom: calc(-50%...)` ne marchent que si height est fixe)
+5. ❌ Réinventer le pattern dans chaque page — copier le bloc CSS et changer juste le namespace (xx → cs/pl/etc.)
+
+### Référence canonique
+
+- `resources/views/esbtp/classes/show.blade.php` (namespace `cs-lmd-tree-*`) — implémentation de référence depuis commit `6d242434` (14 mai 2026)
+- Calcul de l'alignement L-connector : commit message `6d242434` détaille la formule complète
+
 ## Sélecteurs / dropdowns premium
 
 **JAMAIS de `<select>` natif visible dans une page premium.** Utiliser les composants Blade `<x-au-select>` (générique) ou `<x-au-user-picker>` (utilisateurs avec groupement par rôle), ou cloner ces composants pour un cas particulier (picker classes, matières, évaluations…). Détails complets, props, anti-patterns et checklist : voir [`.claude/rules/premium-selects.md`](premium-selects.md).
