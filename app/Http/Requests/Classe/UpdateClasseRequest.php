@@ -2,16 +2,14 @@
 
 namespace App\Http\Requests\Classe;
 
-use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
 use App\Services\ClasseManagementService;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\Exceptions\HttpResponseException;
-use Illuminate\Validation\Rule;
 
-class StoreClasseRequest extends FormRequest
+class UpdateClasseRequest extends FormRequest
 {
     public function authorize(): bool
     {
@@ -20,16 +18,15 @@ class StoreClasseRequest extends FormRequest
 
     public function rules(): array
     {
-        // En mode LMD, filiere_id sert semantiquement de Mention (Option A).
-        // Si parcours_id est fourni : filiere_id sera derive depuis parcours.filiere_id
-        // (cf. ESBTPClasseController::store L325-329). Donc nullable dans ce cas.
-        // Si parcours_id absent (tronc commun mention) : filiere_id required (= mention).
+        // Meme logique que StoreClasseRequest mais avec exception du code unique pour cette classe.
         $isLmd = $this->detectLmdMode();
         $hasParcours = $this->filled('parcours_id');
 
+        $classeId = $this->route('classe')?->id ?? $this->route('classe');
+
         return [
             'name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:esbtp_classes,code',
+            'code' => 'required|string|max:50|unique:esbtp_classes,code,' . $classeId,
             'filiere_id' => ($isLmd && $hasParcours)
                 ? 'nullable|exists:esbtp_filieres,id'
                 : 'required|exists:esbtp_filieres,id',
@@ -56,7 +53,7 @@ class StoreClasseRequest extends FormRequest
         $validator->after(function (Validator $validator) {
             $niveauId = $this->input('niveau_etude_id');
             if (!$niveauId) {
-                return; // validation principale gere l'absence de niveau
+                return;
             }
 
             $niveau = ESBTPNiveauEtude::find($niveauId);
@@ -69,7 +66,6 @@ class StoreClasseRequest extends FormRequest
             $parcoursId = $this->input('parcours_id');
 
             if ($isLmdNiveau) {
-                // LMD : doit avoir au moins une mention (filiere_id sert de mention) OU un parcours
                 if (empty($filiereId) && empty($parcoursId)) {
                     $validator->errors()->add(
                         'filiere_id',
@@ -78,7 +74,6 @@ class StoreClasseRequest extends FormRequest
                     return;
                 }
 
-                // Si parcours fourni : verifier coherence avec la mention (filiere_id = mention en LMD)
                 if ($parcoursId && $filiereId) {
                     $parcours = ESBTPLMDParcours::find($parcoursId);
                     if ($parcours && (int) $parcours->mention_id !== (int) $filiereId) {
@@ -92,10 +87,6 @@ class StoreClasseRequest extends FormRequest
         });
     }
 
-    /**
-     * Heuristique pour determiner si la requete est en mode LMD.
-     * Utilise le type du niveau d'etudes (source de verite).
-     */
     private function detectLmdMode(): bool
     {
         $niveauId = $this->input('niveau_etude_id');
