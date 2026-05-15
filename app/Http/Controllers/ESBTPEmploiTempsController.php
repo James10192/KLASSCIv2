@@ -1015,6 +1015,39 @@ class ESBTPEmploiTempsController extends Controller
                 $lmdUesAvecEcues = app(\App\Services\LMD\MatiereTreeBuilder::class)
                     ->forClasse($lmdMatieres, $lmdVolumeBudget);
             }
+
+            // [DEBUG TEMPORAIRE 15/05/2026] : tracer pourquoi "Détail par UE" affiche 0/0
+            // alors que "Répartition par catégorie" totalise 620h. À retirer après diagnostic.
+            $lmdMatieresIds = $lmdMatieres->pluck('matiere.id')->all();
+            $lmdVolumeBudgetIds = array_keys($lmdVolumeBudget);
+            $intersect = array_intersect($lmdMatieresIds, $lmdVolumeBudgetIds);
+            $sampleBudget = !empty($lmdVolumeBudget) ? array_slice($lmdVolumeBudget, 0, 2, true) : [];
+            $totalCmFromBudget = 0; $totalCmFromMatieres = 0;
+            foreach ($lmdVolumeBudget as $b) {
+                $totalCmFromBudget += (float) ($b['cm']['planifie'] ?? 0);
+            }
+            foreach ($lmdMatieres as $row) {
+                $totalCmFromMatieres += (float) ($row['cm'] ?? 0);
+            }
+            \Log::info('[DEBUG-LMD-SUIVI] buildSuiviHeuresData', [
+                'classe_id' => $classe->id,
+                'classe_systeme' => $classe->systeme_academique,
+                'classe_filiere_id' => $classe->filiere_id,
+                'classe_parcours_id' => $classe->parcours_id,
+                'parcours_filiere_id' => optional($classe->parcours)->filiere_id,
+                'lmd_semestres' => $lmdSemestres,
+                'periode' => $periode,
+                'lmdMatieres_count' => count($lmdMatieresIds),
+                'lmdMatieres_first_5_ids' => array_slice($lmdMatieresIds, 0, 5),
+                'lmdVolumeBudget_count' => count($lmdVolumeBudgetIds),
+                'lmdVolumeBudget_first_5_ids' => array_slice($lmdVolumeBudgetIds, 0, 5),
+                'intersect_count' => count($intersect),
+                'union_count' => count(array_unique(array_merge($lmdMatieresIds, $lmdVolumeBudgetIds))),
+                'sample_budget' => $sampleBudget,
+                'total_cm_from_budget' => $totalCmFromBudget,
+                'total_cm_from_matieres' => $totalCmFromMatieres,
+                'lmdUesAvecEcues_count' => $lmdUesAvecEcues->count(),
+            ]);
         }
 
         return [
