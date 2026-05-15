@@ -428,7 +428,7 @@ class ESBTPEmploiTempsController extends Controller
                     }
                 })
                 ->active()
-                ->with(['matiere', 'enseignantPrincipal', 'teachers.user', 'teachers.availabilities'])
+                ->with(['matiere.uniteEnseignement', 'enseignantPrincipal', 'teachers.user', 'teachers.availabilities'])
                 ->first();
 
             if ($planification) {

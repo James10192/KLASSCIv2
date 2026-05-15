@@ -120,23 +120,205 @@
     #courseFields .main-card-header {
         border-radius: var(--radius-medium) var(--radius-medium) 0 0;
     }
+
+    /* ═══════════════════════════════════════════════════════════════
+       SCE (Seance Creation Edit) — premium namespace, monochrome bleu
+       Pattern hero+cards inspire de planning-header (ph-*) + premium-redesign rule
+       ═══════════════════════════════════════════════════════════════ */
+    .sce-hero {
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+        border-radius: 18px;
+        padding: 1.65rem 2rem 1.4rem;
+        color: #fff;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 8px 30px rgba(4,83,203,.18);
+    }
+    .sce-hero-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+    .sce-hero-left { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+    .sce-hero-icon {
+        width: 52px; height: 52px; border-radius: 14px;
+        background: rgba(255,255,255,.12); backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,.15);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.35rem; flex-shrink: 0; color: #fff;
+    }
+    .sce-hero h1 { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; }
+    .sce-hero p { color: rgba(255,255,255,.78); font-size: .88rem; margin: .25rem 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: .35rem; }
+    .sce-hero-sep { opacity: .55; }
+    .sce-hero-badge {
+        display: inline-flex; align-items: center; gap: .3rem;
+        background: rgba(255,255,255,.16); color: #fff;
+        border: 1px solid rgba(255,255,255,.22);
+        padding: .22rem .55rem; border-radius: 6px;
+        font-size: .68rem; font-weight: 700; letter-spacing: .4px; margin-left: .3rem;
+    }
+    .sce-hero-actions { display: flex; align-items: center; gap: .6rem; flex-shrink: 0; }
+    .sce-btn {
+        display: inline-flex; align-items: center; gap: .5rem;
+        padding: .55rem 1rem; border-radius: 10px;
+        font-size: .82rem; font-weight: 600; text-decoration: none;
+        border: 1px solid transparent; transition: all .15s;
+    }
+    .sce-btn--glass { background: rgba(255,255,255,.15); color: #fff; border-color: rgba(255,255,255,.2); }
+    .sce-btn--glass:hover { background: rgba(255,255,255,.22); color: #fff; }
+    .sce-hero-kpis { display: flex; gap: .75rem; margin-top: 1.4rem; flex-wrap: wrap; }
+    .sce-hero-kpi {
+        flex: 1; min-width: 160px;
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.15);
+        border-radius: 12px;
+        padding: .85rem 1rem;
+        display: flex; align-items: center; gap: .75rem;
+    }
+    .sce-hero-kpi-icon {
+        width: 36px; height: 36px; border-radius: 9px;
+        background: rgba(255,255,255,.14);
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: .9rem; flex-shrink: 0;
+    }
+    .sce-hero-kpi-value { font-size: 1.25rem; font-weight: 700; color: #fff; line-height: 1.1; }
+    .sce-hero-kpi-label { font-size: .68rem; color: rgba(255,255,255,.7); margin-top: .12rem; text-transform: uppercase; letter-spacing: .5px; font-weight: 600; }
+
+    /* Type seance LMD radio cards */
+    .sce-type-seance { margin-top: .25rem; }
+    .sce-type-radio-group { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: .75rem; }
+    .sce-type-radio {
+        position: relative;
+        display: flex; align-items: flex-start; gap: .65rem;
+        padding: .85rem 1rem;
+        background: #fff;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        cursor: pointer;
+        text-align: left;
+        transition: all .15s;
+    }
+    .sce-type-radio:hover { border-color: rgba(4,83,203,.4); background: rgba(4,83,203,.02); }
+    .sce-type-radio.is-active {
+        border-color: #0453cb;
+        background: rgba(4,83,203,.04);
+        box-shadow: 0 4px 16px rgba(4,83,203,.08);
+    }
+    .sce-type-radio-icon {
+        width: 36px; height: 36px; border-radius: 9px;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: .85rem; flex-shrink: 0;
+    }
+    .sce-type-radio--primary .sce-type-radio-icon { background: linear-gradient(135deg, #033a8e, #0453cb); }
+    .sce-type-radio--accent  .sce-type-radio-icon { background: linear-gradient(135deg, #0453cb, #3b7ddb); }
+    .sce-type-radio--muted   .sce-type-radio-icon { background: linear-gradient(135deg, #3b7ddb, #5e91de); }
+    .sce-type-radio-body { flex: 1; min-width: 0; }
+    .sce-type-radio-label { font-family: 'Courier New', monospace; font-size: .72rem; font-weight: 700; color: #0453cb; background: rgba(4,83,203,.08); padding: .12rem .4rem; border-radius: 4px; display: inline-block; margin-bottom: .25rem; }
+    .sce-type-radio-name { font-size: .9rem; font-weight: 700; color: #1e293b; line-height: 1.2; }
+    .sce-type-radio-desc { font-size: .72rem; color: #64748b; margin-top: .2rem; }
+    .sce-type-radio-check { position: absolute; top: .6rem; right: .65rem; color: #0453cb; font-size: 1rem; }
+
+    /* Matiere select premium custom */
+    .sce-form-label { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; font-size: .82rem; font-weight: 600; color: #1e293b; margin-bottom: .5rem; }
+    .sce-form-label-chip {
+        display: inline-flex; align-items: center; gap: .3rem;
+        background: rgba(4,83,203,.08); color: #0453cb;
+        border: 1px solid rgba(4,83,203,.2);
+        padding: .15rem .5rem; border-radius: 5px;
+        font-size: .65rem; font-weight: 700; letter-spacing: .3px;
+    }
+    .sce-select-wrap { position: relative; }
+    .sce-select-icon { position: absolute; left: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: .85rem; pointer-events: none; z-index: 2; }
+    .sce-select-caret { position: absolute; right: 1rem; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: .75rem; pointer-events: none; }
+    .sce-matiere-select {
+        width: 100%;
+        padding: .75rem 2.5rem .75rem 2.65rem;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        font-size: .88rem;
+        color: #1e293b;
+        font-weight: 500;
+        appearance: none;
+        cursor: pointer;
+        transition: all .15s;
+    }
+    .sce-matiere-select:hover { border-color: rgba(4,83,203,.35); }
+    .sce-matiere-select:focus {
+        outline: none;
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4,83,203,.12);
+    }
+    .sce-form-info {
+        display: inline-flex; align-items: center; gap: .4rem;
+        background: rgba(16,185,129,.08); color: #047857;
+        border: 1px solid rgba(16,185,129,.25);
+        padding: .35rem .65rem; border-radius: 6px;
+        font-size: .76rem; font-weight: 500; margin-top: .55rem;
+    }
+
+    @media (max-width: 768px) {
+        .sce-hero { padding: 1.25rem; }
+        .sce-hero h1 { font-size: 1.2rem; }
+        .sce-hero-kpis { gap: .5rem; }
+        .sce-type-radio-group { grid-template-columns: 1fr; }
+    }
 </style>
 @endsection
 
 @section('content')
 <div class="dashboard-acasi">
     <div class="main-content">
-        <!-- Header Section -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1><i class="fas fa-plus-circle me-2"></i>Nouvelle Séance de Cours</h1>
-                <p class="header-subtitle">Créer une nouvelle séance pour {{ $emploiTemps->classe->name }}</p>
+        @php
+            $isClasseLmd = ($emploiTemps->classe->systeme_academique ?? '') === 'LMD';
+        @endphp
+        {{-- Hero premium namespace sce-* (Seance Creation Edit) --}}
+        <div class="sce-hero">
+            <div class="sce-hero-top">
+                <div class="sce-hero-left">
+                    <div class="sce-hero-icon"><i class="fas fa-plus-circle"></i></div>
+                    <div>
+                        <h1>Nouvelle séance de cours</h1>
+                        <p>
+                            {{ $emploiTemps->classe->name }}
+                            @if($emploiTemps->classe->filiere)
+                                <span class="sce-hero-sep">·</span> {{ $emploiTemps->classe->filiere->name }}
+                            @endif
+                            @if($emploiTemps->classe->niveau)
+                                <span class="sce-hero-sep">·</span> {{ $emploiTemps->classe->niveau->name }}
+                            @endif
+                            @if($isClasseLmd)
+                                <span class="sce-hero-badge"><i class="fas fa-university"></i>LMD</span>
+                            @endif
+                        </p>
+                    </div>
+                </div>
+                <div class="sce-hero-actions">
+                    <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}" class="sce-btn sce-btn--glass">
+                        <i class="fas fa-arrow-left"></i>Retour à l'emploi du temps
+                    </a>
+                </div>
             </div>
-            <div class="header-actions">
-                <a href="{{ route('esbtp.emploi-temps.show', $emploiTemps->id) }}" class="btn-acasi secondary">
-                    <i class="fas fa-arrow-left"></i>Retour à l'emploi du temps
-                </a>
-            </div>
+            @if(($planificationData['planifications_configurees'] ?? false))
+                <div class="sce-hero-kpis">
+                    <div class="sce-hero-kpi">
+                        <div class="sce-hero-kpi-icon"><i class="fas fa-book-open"></i></div>
+                        <div class="sce-hero-kpi-body">
+                            <div class="sce-hero-kpi-value">{{ $matieres->count() }}</div>
+                            <div class="sce-hero-kpi-label">{{ $isClasseLmd ? 'ECUE configurées' : 'Matières configurées' }}</div>
+                        </div>
+                    </div>
+                    <div class="sce-hero-kpi">
+                        <div class="sce-hero-kpi-icon"><i class="fas fa-clock"></i></div>
+                        <div class="sce-hero-kpi-body">
+                            <div class="sce-hero-kpi-value">{{ $planificationData['heures_totales'] }}h</div>
+                            <div class="sce-hero-kpi-label">Volume horaire total</div>
+                        </div>
+                    </div>
+                    <div class="sce-hero-kpi">
+                        <div class="sce-hero-kpi-icon"><i class="fas fa-chart-line"></i></div>
+                        <div class="sce-hero-kpi-body">
+                            <div class="sce-hero-kpi-value">{{ $planificationData['heures_restantes'] }}h</div>
+                            <div class="sce-hero-kpi-label">Heures restantes</div>
+                        </div>
+                    </div>
+                </div>
+            @endif
         </div>
 
         @if ($errors->any())
@@ -349,48 +531,20 @@
                                 </div>
                             </div>
 
-                            <div class="form-grid">
-                                <div class="form-group">
-                                    <label for="matiere_id" class="form-label">Matière <span class="text-danger">*</span></label>
-                                    <select name="matiere_id" id="matiere_id" class="form-select @error('matiere_id') error @enderror" onchange="updateTeachersForSubject()" required>
-                                        <option value="">Sélectionner une matière</option>
-                                        @foreach($matieres as $matiere)
-                                            <option value="{{ $matiere['matiere']->id }}"
-                                                    data-heures-restantes="{{ $matiere['heures_restantes'] }}"
-                                                    data-heures-restantes-formatted="{{ $matiere['heures_restantes_formatted'] ?? $matiere['heures_restantes'] }}"
-                                                    data-volume-total="{{ $matiere['volume_horaire_total'] }}"
-                                                    data-volume-total-formatted="{{ $matiere['volume_horaire_total_formatted'] ?? $matiere['volume_horaire_total'] }}"
-                                                    data-enseignants="{{ ($matiere['enseignants_selectables'] ?? collect())->pluck('id')->toJson() }}"
-                                                    data-planification-id="{{ $matiere['planification_id'] ?? '' }}"
-                                                    {{ old('matiere_id') == $matiere['matiere']->id ? 'selected' : '' }}>
-                                                {{ $matiere['matiere']->name }}
-                                                ({{ $matiere['heures_restantes_formatted'] ?? $matiere['heures_restantes'] }} restantes / {{ $matiere['volume_horaire_total_formatted'] ?? $matiere['volume_horaire_total'] }})
-                                            </option>
-                                        @endforeach
-                                    </select>
-                                    <div id="matiere-info" class="form-info" style="display: none;">
-                                        <i class="fas fa-clock"></i>
-                                        <span id="heures-restantes-text"></span>
-                                    </div>
-                                    @error('matiere_id')
-                                        <div class="form-error">{{ $message }}</div>
-                                    @enderror
+                            {{-- Type seance LMD : radio cards premium CM/TD/TP (LMD uniquement) --}}
+                            @if(in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat', 'Bachelor']))
+                                <div class="form-group" style="margin-bottom: 1.5rem;">
+                                    <label class="sce-form-label">
+                                        Type de séance <span class="text-danger">*</span>
+                                        <span class="sce-form-label-chip"><i class="fas fa-university"></i>LMD — UEMOA</span>
+                                    </label>
+                                    @include('esbtp.seances-cours.partials._form_type_seance_lmd')
                                 </div>
+                            @endif
 
-                                @if(in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat', 'Bachelor']))
-                                <div class="form-group">
-                                    <label class="form-label">Type de séance <span class="text-danger">*</span></label>
-                                    <x-au-select
-                                        name="type_seance"
-                                        :value="old('type_seance', 'CM')"
-                                        icon="fa-tag"
-                                        placeholder="Sélectionner un type"
-                                        :options="\App\Enums\TypeSeance::selectOptions()" />
-                                    @error('type_seance')
-                                        <div class="form-error">{{ $message }}</div>
-                                    @enderror
-                                </div>
-                                @endif
+                            <div class="form-grid">
+                                {{-- Picker matiere (LMD enrichi vs BTS flat) --}}
+                                @include('esbtp.seances-cours.partials._form_matiere')
 
                                 <div class="form-group" id="teacherFieldGroup">
                                     <label for="teacher_id" class="form-label">Enseignant assigné <span class="text-danger">*</span></label>
