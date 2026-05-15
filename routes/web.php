@@ -2462,6 +2462,12 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
     Route::post('planifications/bulk-update', [\App\Http\Controllers\ESBTPLMDPlanningController::class, 'bulkUpdatePlanification'])
         ->middleware(['permission:lmd.planning.edit', 'throttle:10,1'])
         ->name('planifications.bulk-update');
+
+    // W1.2 — Responsable d'UE (directive UEMOA 03/2007/CM : 1 responsable par UE)
+    Route::patch('ues/{ueId}/responsable', [\App\Http\Controllers\ESBTPLMDPlanningController::class, 'updateUeResponsable'])
+        ->middleware(['permission:lmd.planning.edit', 'throttle:60,1'])
+        ->whereNumber('ueId')
+        ->name('ues.update-responsable');
 });
 
 /*
