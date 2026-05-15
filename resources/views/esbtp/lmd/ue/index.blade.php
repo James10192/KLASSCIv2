@@ -635,7 +635,11 @@ function ueManager() {
         ues: [],
         loading: true,
         openRow: null,
-        filters: { search: '', parcours_id: '', type_ue: '' },
+        filters: {
+            search: @json(request('search', '')),
+            parcours_id: @json((string) request('parcours_id', '')),
+            type_ue: @json(request('type_ue', '')),
+        },
         pagination: { current_page: 1, last_page: 1, total: 0 },
         toast: { show: false, message: '', type: 'success' },
 
