@@ -655,18 +655,49 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                            autocomplete="off">
                 </div>
 
-                <select name="systeme" id="systeme" class="ii-filter-select" aria-label="Système académique">
-                    <option value="" @selected(!request('systeme'))>Tous systèmes</option>
-                    <option value="BTS" @selected(request('systeme') === 'BTS')>BTS</option>
-                    <option value="LMD" @selected(request('systeme') === 'LMD')>LMD</option>
-                </select>
+                {{-- Système BTS/LMD : pilote l'affichage du 2e filtre.
+                     - Tous systèmes / BTS → <select> filière BTS classique
+                     - LMD               → mention picker + parcours picker (premium)
+                     Au change, le wrapper Alpine bascule via x-show. --}}
+                @php
+                    $iiSysteme = in_array(request('systeme'), ['BTS', 'LMD'], true) ? request('systeme') : '';
+                @endphp
+                <div x-data="{ systeme: '{{ $iiSysteme }}' }" style="display:contents;">
+                    <select name="systeme" id="systeme" class="ii-filter-select" aria-label="Système académique"
+                            x-model="systeme" @change="$nextTick(() => document.getElementById('inscriptions-filter-form').submit())">
+                        <option value="" @selected(!request('systeme'))>Tous systèmes</option>
+                        <option value="BTS" @selected(request('systeme') === 'BTS')>BTS</option>
+                        <option value="LMD" @selected(request('systeme') === 'LMD')>LMD</option>
+                    </select>
 
-                <select name="filiere" id="filiere" class="ii-filter-select" aria-label="Filière / Mention">
-                    <option value="">Toutes filières / mentions</option>
-                    @foreach($filieres as $fil)
-                        <option value="{{ $fil->id }}" @selected(request('filiere') == $fil->id)>{{ $fil->name }}</option>
-                    @endforeach
-                </select>
+                    {{-- BTS / Tous systèmes : select filière BTS classique --}}
+                    <select name="filiere" id="filiere" class="ii-filter-select" aria-label="Filière BTS"
+                            x-show="systeme !== 'LMD'" x-cloak>
+                        <option value="">Toutes les filières</option>
+                        @foreach($filieres as $fil)
+                            <option value="{{ $fil->id }}" @selected(request('filiere') == $fil->id)>{{ $fil->name }}</option>
+                        @endforeach
+                    </select>
+
+                    {{-- LMD : mention picker + parcours picker (premium au-mp / au-pp).
+                         Pickers émettent des inputs hidden name="mention" / "parcours" lus côté backend. --}}
+                    <div x-show="systeme === 'LMD'" x-cloak style="min-width:220px;">
+                        <x-au-mention-picker
+                            name="mention"
+                            :value="request('mention')"
+                            :mentions="$mentions"
+                            placeholder="Toutes les mentions"
+                        />
+                    </div>
+                    <div x-show="systeme === 'LMD'" x-cloak style="min-width:220px;">
+                        <x-au-parcours-picker
+                            name="parcours"
+                            :value="request('parcours')"
+                            :parcours="$parcoursList"
+                            :mention-filter="request('mention')"
+                        />
+                    </div>
+                </div>
 
                 <select name="niveau" id="niveau" class="ii-filter-select" aria-label="Niveau">
                     <option value="">Tous les niveaux</option>
@@ -709,6 +740,33 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                 <span class="ii-chips-active" id="ii-active-filters"></span>
             </div>
         </form>
+
+        {{-- Sync filtres LMD : les pickers premium (au-mp / au-pp) émettent des events
+             custom (mention:changed) et écrivent dans des inputs hidden. Le handler générique
+             de public/js/inscriptions/index.js ne capte que les <select> au change ; on relaie
+             manuellement vers submitFilterForm via le submit event du form. --}}
+        <script>
+        (function () {
+            var form = document.getElementById('inscriptions-filter-form');
+            if (!form) return;
+            var triggerSubmit = function () {
+                if (typeof form.requestSubmit === 'function') {
+                    form.requestSubmit();
+                } else {
+                    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+                }
+            };
+            window.addEventListener('mention:changed', triggerSubmit);
+            // Le parcours picker n'a pas de custom event dédié — on watch les input events
+            // sur l'input hidden name="parcours" (Alpine peut écrire via .value mais aussi
+            // dispatcher input event selon implémentation).
+            document.addEventListener('input', function (ev) {
+                if (ev.target && (ev.target.name === 'parcours' || ev.target.name === 'mention')) {
+                    triggerSubmit();
+                }
+            });
+        })();
+        </script>
 
         {{-- RÉSULTATS --}}
         <div class="ii-results-card">
