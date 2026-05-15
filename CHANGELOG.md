@@ -12,6 +12,11 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### W1.3 — Import Enseignants 4 PDFs UEMOA (en cours, branche `feat/lmd-import-enseignants-uemoa`)
+
+#### Ajouts
+- **Commande Artisan `php artisan lmd:import-enseignants {filiere}`** + endpoint Sanctum `POST /api/cli/lmd/import-enseignants` pour importer les enseignants UEMOA des 4 maquettes PDF (DROIT/LETTRES-MOD/SVT/SEG) dans les tenants Ephrata + Presentation. 138 UE / 213 ECUE / 127 enseignants distincts attendus. Mode `--dry-run` par défaut pour preview avant commit DB. Option `--include-inferred-responsable` pour assigner les Responsables UE inférés depuis les PDFs (skip par défaut). Service `App\Services\LMD\LMDEnseignantsImporter` (350 LOC) : transaction DB par fichier, dédup users par `mb_strtolower(trim(name))` strict, génération username `prenom.nom` + collision suffix, MdP temporaire `Enseignant!XXXX` + `must_change_password=true`, détection junk (artefacts d'extraction PDF) via regex + cap 60 chars. UPDATE planifications conditionnel (où `enseignant_principal_id` null OU différent) pour préserver assignations manuelles existantes. Rôle Spatie `enseignant` assigné automatiquement.
+
 ### W1 — LMD Enseignants UEMOA (en cours, branche `feat/lmd-enseignants-uemoa`)
 
 #### Corrections
