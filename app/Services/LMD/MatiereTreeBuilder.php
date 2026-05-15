@@ -98,6 +98,7 @@ class MatiereTreeBuilder
                 'cm' => $planifsEcue->sum('volume_horaire_cm'),
                 'td' => $planifsEcue->sum('volume_horaire_td'),
                 'tp' => $planifsEcue->sum('volume_horaire_tp'),
+                'tpe' => $planifsEcue->sum('volume_horaire_tpe'),
             ];
         })->values();
     }
@@ -127,6 +128,7 @@ class MatiereTreeBuilder
                     'cm' => $planifs->sum('volume_horaire_cm'),
                     'td' => $planifs->sum('volume_horaire_td'),
                     'tp' => $planifs->sum('volume_horaire_tp'),
+                    'tpe' => $planifs->sum('volume_horaire_tpe'),
                 ];
             })
             ->filter(fn ($row) => $row['matiere'] !== null)
@@ -190,7 +192,8 @@ class MatiereTreeBuilder
                 $ue = $firstMatiere->uniteEnseignement;
                 $isOrphan = ! $ue;
 
-                $totaux = ['cm_p' => 0.0, 'cm_r' => 0.0, 'td_p' => 0.0, 'td_r' => 0.0, 'tp_p' => 0.0, 'tp_r' => 0.0];
+                // tpe_p : volume theorique TPE alloue par ECUE (lecture seule, jamais realise en seance).
+                $totaux = ['cm_p' => 0.0, 'cm_r' => 0.0, 'td_p' => 0.0, 'td_r' => 0.0, 'tp_p' => 0.0, 'tp_r' => 0.0, 'tpe_p' => 0.0];
                 $totalCredits = 0;
                 $totalCoef = 0;
 
@@ -203,6 +206,7 @@ class MatiereTreeBuilder
                     $cmP = (float) ($row['cm'] ?? 0);
                     $tdP = (float) ($row['td'] ?? 0);
                     $tpP = (float) ($row['tp'] ?? 0);
+                    $tpeP = (float) ($row['tpe'] ?? 0);
 
                     $totaux['cm_p'] += $cmP;
                     $totaux['cm_r'] += $cmR;
@@ -210,6 +214,7 @@ class MatiereTreeBuilder
                     $totaux['td_r'] += $tdR;
                     $totaux['tp_p'] += $tpP;
                     $totaux['tp_r'] += $tpR;
+                    $totaux['tpe_p'] += $tpeP;
                     $totalCredits += (int) ($row['credits_ects'] ?? 0);
                     $totalCoef += (float) ($row['coefficient'] ?? 0);
 
@@ -218,6 +223,7 @@ class MatiereTreeBuilder
                         'cm_p' => $cmP, 'cm_r' => $cmR,
                         'td_p' => $tdP, 'td_r' => $tdR,
                         'tp_p' => $tpP, 'tp_r' => $tpR,
+                        'tpe_p' => $tpeP,
                         'total_p' => $cmP + $tdP + $tpP,
                         'total_r' => $cmR + $tdR + $tpR,
                         'coefficient' => (float) ($row['coefficient'] ?? 0),

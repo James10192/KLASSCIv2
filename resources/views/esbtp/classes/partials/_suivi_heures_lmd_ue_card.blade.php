@@ -4,6 +4,7 @@
     $totaux = $ueRow['totaux'];
     $totalP = $totaux['cm_p'] + $totaux['td_p'] + $totaux['tp_p'];
     $totalR = $totaux['cm_r'] + $totaux['td_r'] + $totaux['tp_r'];
+    $tpeTotal = (float) ($totaux['tpe_p'] ?? 0);
     $pct = $ueRow['pct_realise'];
 
     $progressColor = $pct >= 80 ? '#10b981' : ($pct >= 40 ? '#f59e0b' : ($pct > 0 ? '#3b7ddb' : '#94a3b8'));
@@ -53,6 +54,11 @@
             <span class="sh-ue-tot-chip"><i class="fas fa-chalkboard-user"></i>CM <strong>{{ $fmt($totaux['cm_r']) }}h</strong>/{{ $fmt($totaux['cm_p']) }}h</span>
             <span class="sh-ue-tot-chip"><i class="fas fa-pen-ruler"></i>TD <strong>{{ $fmt($totaux['td_r']) }}h</strong>/{{ $fmt($totaux['td_p']) }}h</span>
             <span class="sh-ue-tot-chip"><i class="fas fa-flask-vial"></i>TP <strong>{{ $fmt($totaux['tp_r']) }}h</strong>/{{ $fmt($totaux['tp_p']) }}h</span>
+            @if($tpeTotal > 0)
+                <span class="sh-ue-tot-chip sh-ue-tot-chip--tpe" title="Travail Personnel Étudiant — volume théorique alloué (autonome, hors séances).">
+                    <i class="fas fa-user-clock"></i>TPE <strong>{{ $fmt($tpeTotal) }}h</strong>
+                </span>
+            @endif
             <span class="sh-ue-tot-chip sh-ue-tot-chip--strong"><i class="fas fa-clock"></i>Total <strong>{{ $fmt($totalR) }}h</strong>/{{ $fmt($totalP) }}h</span>
         </div>
     </div>
@@ -65,6 +71,7 @@
                     <th class="sh-num">CM</th>
                     <th class="sh-num">TD</th>
                     <th class="sh-num">TP</th>
+                    <th class="sh-num sh-hide-sm" title="Travail Personnel Étudiant — alloué (lecture seule)">TPE</th>
                     <th class="sh-num">Total</th>
                     <th class="sh-num sh-hide-sm">Coef</th>
                     <th class="sh-num sh-hide-sm">ECTS</th>
@@ -86,6 +93,13 @@
                         <td class="sh-num"><strong>{{ $fmt($ecue['cm_r']) }}</strong>h <span class="sh-num-muted">/ {{ $fmt($ecue['cm_p']) }}h</span></td>
                         <td class="sh-num"><strong>{{ $fmt($ecue['td_r']) }}</strong>h <span class="sh-num-muted">/ {{ $fmt($ecue['td_p']) }}h</span></td>
                         <td class="sh-num"><strong>{{ $fmt($ecue['tp_r']) }}</strong>h <span class="sh-num-muted">/ {{ $fmt($ecue['tp_p']) }}h</span></td>
+                        <td class="sh-num sh-hide-sm sh-num-tpe">
+                            @if(($ecue['tpe_p'] ?? 0) > 0)
+                                <strong>{{ $fmt($ecue['tpe_p']) }}</strong>h
+                            @else
+                                <span class="sh-num-muted">—</span>
+                            @endif
+                        </td>
                         <td class="sh-num sh-num-strong"><strong>{{ $fmt($ecue['total_r']) }}</strong>h <span class="sh-num-muted">/ {{ $fmt($ecue['total_p']) }}h</span></td>
                         <td class="sh-num sh-hide-sm">{{ $fmt($ecue['coefficient']) }}</td>
                         <td class="sh-num sh-hide-sm">{{ $ecue['credits_ects'] ?: '—' }}</td>
