@@ -2,24 +2,137 @@
 
 namespace App\Services\LMD;
 
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPPlanificationAcademique;
 use Illuminate\Support\Collection;
 
 /**
  * Groupe une collection de matieres LMD (ECUEs) par Unite d'Enseignement
  * avec agregats CM/TD/TP par UE + bucket "Hors UE" pour orphans.
  *
- * Source canonique des matieres : ESBTPPlanificationAcademique (cf rule
- * klassci-classe-matieres.md).
+ * Source canonique :
+ * - Pour classe LMD avec parcours : pattern Planning LMD (parcours->unitesEnseignement)
+ * - Pour classe LMD sans parcours (tronc commun) : fallback ESBTPPlanificationAcademique
+ *   par filiere+niveau (cf rule klassci-classe-matieres.md).
  *
  * Consumers :
  * - ESBTPClasseController::show() tab Suivi heures (classes.show LMD)
  * - ESBTPEmploiTempsController::show() tab Suivi heures (emploi-temps/show)
- *
- * Extrait de la methode privee ESBTPClasseController::buildLmdUesAvecEcues()
- * (commit 359929a8) suite a l'arrivee d'un 2e consumer = rule of three respectee.
  */
 class MatiereTreeBuilder
 {
+    /**
+     * Charge les matieres LMD pour une classe en privilegiant le pattern Planning LMD
+     * (parcours.unitesEnseignement) si parcours existe, sinon fallback filiere+niveau.
+     *
+     * Retourne la structure $lmdMatieres compatible avec forClasse() :
+     * [matiere_id => ['matiere' => ..., 'cm' => X, 'td' => X, 'tp' => X, 'coefficient' => X, 'credits_ects' => X, 'volume_horaire_total' => X, 'semestres' => []]]
+     */
+    public function loadLmdMatieresForClasse(ESBTPClasse $classe): Collection
+    {
+        if ($classe->parcours_id && $classe->parcours) {
+            return $this->loadFromParcours($classe);
+        }
+
+        // Fallback LMD tronc commun (sans parcours) ou cas legacy : utiliser filiere+niveau
+        return $this->loadFromFiliereNiveau($classe);
+    }
+
+    /**
+     * Pattern Planning LMD : charge UEs via parcours -> ECUEs effectifs -> planifications.
+     * Strict scope : seulement les ECUEs effectivement attachees au parcours de la classe.
+     */
+    private function loadFromParcours(ESBTPClasse $classe): Collection
+    {
+        $parcours = $classe->parcours;
+
+        // 1. Charger les UEs du parcours (via pivot esbtp_lmd_parcours_unites_enseignement)
+        $ues = $parcours->unitesEnseignement()
+            ->with(['ecues', 'matieres'])
+            ->where('esbtp_unites_enseignement.is_active', true)
+            ->get();
+
+        if ($ues->isEmpty()) {
+            return collect();
+        }
+
+        // 2. Recolter les ECUEs effectifs (priorite pivot esbtp_ue_matiere, fallback FK direct)
+        $ecuesByMatiereId = collect();
+        foreach ($ues as $ue) {
+            foreach ($ue->getEcuesEffectifs() as $ecue) {
+                if ($ecue && ! $ecuesByMatiereId->has($ecue->id)) {
+                    // Force l'association UE -> ECUE pour le grouping par UE
+                    $ecue->setRelation('uniteEnseignement', $ue);
+                    $ecuesByMatiereId->put($ecue->id, $ecue);
+                }
+            }
+        }
+
+        if ($ecuesByMatiereId->isEmpty()) {
+            return collect();
+        }
+
+        // 3. Charger les planifications pour ces ECUEs uniquement
+        $matiereIds = $ecuesByMatiereId->keys();
+        $filiereResolvedId = $parcours->filiere_id ?: $classe->filiere_id;
+
+        $planifs = ESBTPPlanificationAcademique::query()
+            ->where('filiere_id', $filiereResolvedId)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->whereIn('matiere_id', $matiereIds)
+            ->orderBy('semestre')
+            ->get()
+            ->groupBy('matiere_id');
+
+        // 4. Construire la structure $lmdMatieres
+        return $ecuesByMatiereId->map(function ($ecue) use ($planifs) {
+            $planifsEcue = $planifs->get($ecue->id, collect());
+            $first = $planifsEcue->first();
+
+            return [
+                'matiere' => $ecue,
+                'volume_horaire_total' => $planifsEcue->sum('volume_horaire_total'),
+                'coefficient' => (float) ($first->coefficient ?? 0),
+                'credits_ects' => (int) ($first->credits_ects ?? 0),
+                'semestres' => $planifsEcue->pluck('semestre')->unique()->sort()->values()->all(),
+                'cm' => $planifsEcue->sum('volume_horaire_cm'),
+                'td' => $planifsEcue->sum('volume_horaire_td'),
+                'tp' => $planifsEcue->sum('volume_horaire_tp'),
+            ];
+        })->values();
+    }
+
+    /**
+     * Fallback LMD tronc commun (sans parcours_id) : charge toutes les planifs filiere+niveau.
+     * Comportement legacy avant fix scope parcours (15/05/2026).
+     */
+    private function loadFromFiliereNiveau(ESBTPClasse $classe): Collection
+    {
+        return ESBTPPlanificationAcademique::query()
+            ->where('filiere_id', $classe->filiere_id)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->whereNotNull('matiere_id')
+            ->with(['matiere.uniteEnseignement'])
+            ->orderBy('semestre')
+            ->get()
+            ->groupBy('matiere_id')
+            ->map(function ($planifs) {
+                $first = $planifs->first();
+                return [
+                    'matiere' => $first->matiere,
+                    'volume_horaire_total' => $planifs->sum('volume_horaire_total'),
+                    'coefficient' => (float) ($first->coefficient ?? 0),
+                    'credits_ects' => (int) ($first->credits_ects ?? 0),
+                    'semestres' => $planifs->pluck('semestre')->unique()->sort()->values()->all(),
+                    'cm' => $planifs->sum('volume_horaire_cm'),
+                    'td' => $planifs->sum('volume_horaire_td'),
+                    'tp' => $planifs->sum('volume_horaire_tp'),
+                ];
+            })
+            ->filter(fn ($row) => $row['matiere'] !== null)
+            ->values();
+    }
+
     /**
      * @param Collection $lmdMatieres Collection issue de PlanificationAcademique groupee par matiere_id
      *                                avec keys [matiere, cm, td, tp, coefficient, credits_ects, volume_horaire_total, semestres]

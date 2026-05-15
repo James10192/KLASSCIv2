@@ -787,33 +787,9 @@ class ESBTPEmploiTempsController extends Controller
             }
 
             try {
-                $filiereResolvedId = $classe->parcours && $classe->parcours->filiere_id
-                    ? $classe->parcours->filiere_id
-                    : $classe->filiere_id;
-
-                $lmdMatieres = \App\Models\ESBTPPlanificationAcademique::query()
-                    ->where('filiere_id', $filiereResolvedId)
-                    ->where('niveau_etude_id', $classe->niveau_etude_id)
-                    ->whereNotNull('matiere_id')
-                    ->with(['matiere.uniteEnseignement'])
-                    ->orderBy('semestre')
-                    ->get()
-                    ->groupBy('matiere_id')
-                    ->map(function ($planifs) {
-                        $first = $planifs->first();
-                        return [
-                            'matiere' => $first->matiere,
-                            'volume_horaire_total' => $planifs->sum('volume_horaire_total'),
-                            'coefficient' => (float) ($first->coefficient ?? 0),
-                            'credits_ects' => (int) ($first->credits_ects ?? 0),
-                            'semestres' => $planifs->pluck('semestre')->unique()->sort()->values()->all(),
-                            'cm' => $planifs->sum('volume_horaire_cm'),
-                            'td' => $planifs->sum('volume_horaire_td'),
-                            'tp' => $planifs->sum('volume_horaire_tp'),
-                        ];
-                    })
-                    ->filter(fn ($row) => $row['matiere'] !== null)
-                    ->values();
+                // Pattern Planning LMD strict si parcours_id existe (sinon fallback filiere+niveau)
+                $lmdMatieres = app(\App\Services\LMD\MatiereTreeBuilder::class)
+                    ->loadLmdMatieresForClasse($classe);
             } catch (\Throwable $e) {
                 \Log::warning('LMD matieres loader failed on emploi-temps.show: '.$e->getMessage());
             }
