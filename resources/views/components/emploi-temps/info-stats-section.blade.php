@@ -169,6 +169,51 @@
         letter-spacing: .3px;
         margin-top: .3rem;
     }
+
+    /* Card LMD : Types pédagogiques UEMOA */
+    .eis-card--lmd {
+        background: linear-gradient(135deg, rgba(4,83,203,.03), rgba(59,125,219,.05));
+        border-color: rgba(4,83,203,.18);
+    }
+    .eis-card-chip {
+        display: inline-flex; align-items: center; gap: .3rem;
+        background: rgba(4,83,203,.08); color: #0453cb;
+        border: 1px solid rgba(4,83,203,.2);
+        padding: .12rem .45rem; border-radius: 5px;
+        font-size: .6rem; font-weight: 700; letter-spacing: .3px;
+        text-transform: uppercase; margin-left: .4rem;
+    }
+    .eis-lmd-types {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: .55rem;
+    }
+    .eis-lmd-type {
+        display: flex; align-items: center; gap: .7rem;
+        padding: .65rem .75rem;
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 10px;
+        transition: all .15s;
+    }
+    .eis-lmd-type:hover { border-color: rgba(4,83,203,.3); box-shadow: 0 2px 8px rgba(4,83,203,.06); }
+    .eis-lmd-type-icon {
+        width: 32px; height: 32px; border-radius: 8px;
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: .75rem; flex-shrink: 0;
+    }
+    .eis-lmd-type--primary .eis-lmd-type-icon { background: linear-gradient(135deg, #033a8e, #0453cb); }
+    .eis-lmd-type--accent  .eis-lmd-type-icon { background: linear-gradient(135deg, #0453cb, #3b7ddb); }
+    .eis-lmd-type--muted   .eis-lmd-type-icon { background: linear-gradient(135deg, #3b7ddb, #5e91de); }
+    .eis-lmd-type-body { flex: 1; min-width: 0; }
+    .eis-lmd-type-code { font-family: 'Courier New', monospace; font-size: .68rem; font-weight: 700; color: #0453cb; }
+    .eis-lmd-type-name { font-size: .75rem; color: #64748b; line-height: 1.2; margin-top: .12rem; }
+    .eis-lmd-type-value {
+        font-size: 1.2rem; font-weight: 800; color: #0f172a;
+        background: rgba(4,83,203,.06);
+        padding: .25rem .6rem; border-radius: 7px;
+        min-width: 40px; text-align: center;
+    }
 </style>
 @endonce
 
@@ -192,6 +237,34 @@
         'break' => 'fa-coffee',
         'lunch' => 'fa-utensils',
     ];
+
+    // Detection LMD pour afficher la card "Types pedagogiques UEMOA"
+    $isLmd = optional($emploiTemps->classe)->systeme_academique === 'LMD';
+    $countTypesSeance = [];
+    $typeSeanceLabels = [
+        'CM'     => 'Cours Magistral',
+        'TD'     => 'Travaux Dirigés',
+        'TP'     => 'Travaux Pratiques',
+        'PROJET' => 'Projet',
+        'TPE'    => 'Travail Personnel',
+        'EXAMEN' => 'Examen',
+        'AUTRE'  => 'Autre',
+    ];
+    $typeSeanceIcons = [
+        'CM'     => 'fa-chalkboard-user',
+        'TD'     => 'fa-pen-ruler',
+        'TP'     => 'fa-flask-vial',
+        'PROJET' => 'fa-diagram-project',
+        'TPE'    => 'fa-user-pen',
+        'EXAMEN' => 'fa-file-pen',
+        'AUTRE'  => 'fa-ellipsis',
+    ];
+    if ($isLmd) {
+        foreach (array_keys($typeSeanceLabels) as $tk) {
+            $countTypesSeance[$tk] = $seances->where('type_seance', $tk)->count();
+        }
+    }
+
     $totalSeances = $seances->count();
     $activesCount = $seances->where('is_active', 1)->count();
     $statut = ($emploiTemps->is_active ?? false) ? 'Actif' : 'Inactif';
@@ -273,6 +346,37 @@
             </div>
         </div>
     </div>
+
+    {{-- Card LMD : Types pédagogiques UEMOA (CM/TD/TP/PROJET/TPE/EXAMEN/AUTRE) --}}
+    @if($isLmd)
+    <div class="eis-card eis-card--lmd">
+        <div class="eis-card-title">
+            <i class="fas fa-university"></i> Types pédagogiques LMD
+            <span class="eis-card-chip"><i class="fas fa-graduation-cap"></i>UEMOA</span>
+        </div>
+
+        <div class="eis-lmd-types">
+            @foreach($countTypesSeance as $tk => $count)
+                @php
+                    // 3 tones monochrome bleu (rule premium-redesign)
+                    $tone = match($tk) {
+                        'CM', 'TD'           => 'primary',
+                        'TP', 'PROJET'       => 'accent',
+                        default               => 'muted',
+                    };
+                @endphp
+                <div class="eis-lmd-type eis-lmd-type--{{ $tone }}">
+                    <div class="eis-lmd-type-icon"><i class="fas {{ $typeSeanceIcons[$tk] }}"></i></div>
+                    <div class="eis-lmd-type-body">
+                        <div class="eis-lmd-type-code">{{ $tk }}</div>
+                        <div class="eis-lmd-type-name">{{ $typeSeanceLabels[$tk] }}</div>
+                    </div>
+                    <div class="eis-lmd-type-value">{{ $count }}</div>
+                </div>
+            @endforeach
+        </div>
+    </div>
+    @endif
 
     {{-- Card 3 : Séances par matière (if any) --}}
     @if(!empty($matiereStats))

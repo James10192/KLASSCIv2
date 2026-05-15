@@ -22,26 +22,26 @@
 
 <div class="sh-lmd" x-data="{ openIds: [] }">
     {{-- KPIs identiques au pattern existant --}}
-    <div class="cs-planning-kpis">
-        <div class="cs-planning-kpi" style="--kpi-color:#0453cb;">
-            <div class="cs-planning-kpi-icon"><i class="fas fa-calendar-alt"></i></div>
-            <div class="cs-planning-kpi-value">{{ number_format($planningMatiere['stats']['heures_planifiees'] ?? 0, 1) }}h</div>
-            <div class="cs-planning-kpi-label">Planifiées</div>
+    <div class="sh-planning-kpis">
+        <div class="sh-planning-kpi" style="--kpi-color:#0453cb;">
+            <div class="sh-planning-kpi-icon"><i class="fas fa-calendar-alt"></i></div>
+            <div class="sh-planning-kpi-value">{{ number_format($planningMatiere['stats']['heures_planifiees'] ?? 0, 1) }}h</div>
+            <div class="sh-planning-kpi-label">Planifiées</div>
         </div>
-        <div class="cs-planning-kpi" style="--kpi-color:#10b981;">
-            <div class="cs-planning-kpi-icon"><i class="fas fa-check-circle"></i></div>
-            <div class="cs-planning-kpi-value">{{ number_format($planningMatiere['stats']['heures_realisees'] ?? 0, 1) }}h</div>
-            <div class="cs-planning-kpi-label">Réalisées</div>
+        <div class="sh-planning-kpi" style="--kpi-color:#10b981;">
+            <div class="sh-planning-kpi-icon"><i class="fas fa-check-circle"></i></div>
+            <div class="sh-planning-kpi-value">{{ number_format($planningMatiere['stats']['heures_realisees'] ?? 0, 1) }}h</div>
+            <div class="sh-planning-kpi-label">Réalisées</div>
         </div>
-        <div class="cs-planning-kpi" style="--kpi-color:#3b7ddb;">
-            <div class="cs-planning-kpi-icon"><i class="fas fa-layer-group"></i></div>
-            <div class="cs-planning-kpi-value">{{ $planningMatiere['stats']['nb_seances'] ?? 0 }}</div>
-            <div class="cs-planning-kpi-label">Séances</div>
+        <div class="sh-planning-kpi" style="--kpi-color:#3b7ddb;">
+            <div class="sh-planning-kpi-icon"><i class="fas fa-layer-group"></i></div>
+            <div class="sh-planning-kpi-value">{{ $planningMatiere['stats']['nb_seances'] ?? 0 }}</div>
+            <div class="sh-planning-kpi-label">Séances</div>
         </div>
-        <div class="cs-planning-kpi" style="--kpi-color:{{ $kpiTauxColor }};">
-            <div class="cs-planning-kpi-icon"><i class="fas fa-chart-pie"></i></div>
-            <div class="cs-planning-kpi-value" style="color:{{ $kpiTauxColor }};">{{ $kpiTaux }}%</div>
-            <div class="cs-planning-kpi-label">Taux</div>
+        <div class="sh-planning-kpi" style="--kpi-color:{{ $kpiTauxColor }};">
+            <div class="sh-planning-kpi-icon"><i class="fas fa-chart-pie"></i></div>
+            <div class="sh-planning-kpi-value" style="color:{{ $kpiTauxColor }};">{{ $kpiTaux }}%</div>
+            <div class="sh-planning-kpi-label">Taux</div>
         </div>
     </div>
 
@@ -105,10 +105,38 @@
 
 @push('styles')
 <style>
-/* SUIVI HEURES LMD - namespace sh-* */
+/* SUIVI HEURES LMD - namespace sh-* (self-contained, reusable on classes.show + emploi-temps/show) */
 [x-cloak] { display: none !important; }
 
 .sh-lmd { margin-top: 1rem; }
+
+/* KPIs row (autonome, ex-sh-planning-kpi*) */
+.sh-planning-kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: .75rem; margin-bottom: 1.25rem;
+}
+.sh-planning-kpi {
+    background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 12px; padding: .85rem 1rem;
+    position: relative; overflow: hidden;
+}
+.sh-planning-kpi::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--kpi-color, #0453cb);
+    border-radius: 12px 12px 0 0;
+}
+.sh-planning-kpi-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .88rem;
+    background: color-mix(in srgb, var(--kpi-color, #0453cb) 12%, transparent);
+    color: var(--kpi-color, #0453cb);
+    margin-bottom: .35rem;
+}
+.sh-planning-kpi-value { font-size: 1.4rem; font-weight: 800; color: #1e293b; line-height: 1; }
+.sh-planning-kpi-label { font-size: .68rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: #64748b; margin-top: .25rem; }
 
 /* Repartition pedagogique */
 .sh-pedago { margin:1.25rem 0;padding:1rem 1.15rem;background:linear-gradient(135deg,rgba(4,83,203,.04),rgba(59,125,219,.06));border:1px solid rgba(4,83,203,.18);border-radius:14px; }
