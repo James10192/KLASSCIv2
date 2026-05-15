@@ -343,6 +343,249 @@ Pour une nouvelle page : choisir un préfixe 2-3 lettres unique, documenter ici.
 - `resources/views/esbtp/classes/show.blade.php` (namespace `cs-lmd-tree-*`) — implémentation de référence depuis commit `6d242434` (14 mai 2026)
 - Calcul de l'alignement L-connector : commit message `6d242434` détaille la formule complète
 
+## Hiérarchie collapse/expand parent → enfant (UE → ECUE, catégorie → items, etc.)
+
+**Quand l'utiliser** : pour afficher une liste de N parents qui contiennent chacun M enfants, où l'utilisateur veut un scan rapide des parents + drill-down sélectif. Référence canonique : `classes.show` tab "Suivi des heures" LMD (`/esbtp/classes/{id}` namespace `sh-*`) qui groupe les ECUEs par UE avec collapse/expand, chip catégorie, et agrégats CM/TD/TP au niveau parent.
+
+**Différence avec le tree IDE-style** : le tree est pour une hiérarchie LINÉAIRE 2-3 niveaux où chaque niveau a UNE seule entrée (Domaine → Mention → Parcours). Le collapse/expand est pour une liste de PLUSIEURS parents avec PLUSIEURS enfants chacun.
+
+### Pattern Alpine — un seul `x-data` parent avec `openIds: []` array
+
+**Anti-pattern à éviter** : `x-data="{ open: false }"` sur CHAQUE carte parent.
+
+```blade
+{{-- ❌ MAUVAIS — N instances Alpine, mobile lag, listeners multipliés --}}
+@foreach ($parents as $idx => $parent)
+    <div class="card" x-data="{ open: false }">
+        <button @click="open = !open">...</button>
+        <div x-show="open">...</div>
+    </div>
+@endforeach
+```
+
+**Pattern correct** : un seul `x-data` au container parent qui maintient un Array `openIds`.
+
+```blade
+{{-- ✅ BON — 1 instance Alpine, scaleable à N parents --}}
+<div class="xx-list" x-data="{ openIds: [] }">
+    <button @click="openIds = openIds.length === {{ count($parents) }} ? [] : Array.from({length: {{ count($parents) }}}, (_, i) => i)">
+        <span x-show="openIds.length !== {{ count($parents) }}">Tout déplier</span>
+        <span x-show="openIds.length === {{ count($parents) }}" x-cloak>Tout replier</span>
+    </button>
+
+    @foreach ($parents as $idx => $parent)
+        <div class="xx-card" :class="openIds.includes({{ $idx }}) ? 'xx-card--open' : ''">
+            <button @click="openIds.includes({{ $idx }}) ? openIds = openIds.filter(i => i !== {{ $idx }}) : openIds.push({{ $idx }})">
+                <i class="fas fa-chevron-right xx-caret" :class="openIds.includes({{ $idx }}) ? 'xx-caret--open' : ''"></i>
+                {{ $parent['name'] }}
+            </button>
+            <div class="xx-card-body" x-show="openIds.includes({{ $idx }})" x-cloak x-transition.opacity>
+                {{-- enfants détail --}}
+            </div>
+        </div>
+    @endforeach
+</div>
+```
+
+### CSS du caret animé
+
+```css
+.xx-caret {
+    color: #94a3b8; font-size: .75rem;
+    width: 14px; text-align: center;
+    transition: transform .2s ease;
+}
+.xx-caret--open {
+    transform: rotate(90deg);
+    color: #0453cb;
+}
+```
+
+### Chip catégorie monochrome bleu (3 tones max)
+
+Pour différencier les catégories visuellement SANS casser la palette monochrome (rule globale : pas de multicolore décoratif), grouper sémantiquement en 3 tones par opacity :
+
+```blade
+@php
+    $toneClass = match ($parent['categorie']) {
+        'important_A', 'important_B' => 'xx-chip--primary',   // catégories importantes
+        'normal_A', 'normal_B'       => 'xx-chip--accent',    // catégories normales
+        default                      => 'xx-chip--muted',     // catégories complémentaires
+    };
+@endphp
+<span class="xx-chip {{ $toneClass }}">{{ $parent['categorie_label'] }}</span>
+```
+
+```css
+.xx-chip { display: inline-flex; align-items: center; padding: .22rem .55rem; border-radius: 6px; font-size: .68rem; font-weight: 700; text-transform: uppercase; }
+.xx-chip--primary { background: rgba(4,83,203,.10); color: #0453cb; border: 1px solid rgba(4,83,203,.25); }
+.xx-chip--accent  { background: rgba(59,125,219,.10); color: #3b7ddb; border: 1px solid rgba(59,125,219,.25); }
+.xx-chip--muted   { background: rgba(94,145,222,.08); color: #5e91de; border: 1px solid rgba(94,145,222,.20); }
+.xx-chip--orphan  { background: rgba(245,158,11,.10); color: #b45309; border: 1px solid rgba(245,158,11,.25); } /* exception sémantique fallback */
+```
+
+### Agrégats parent — chips totaux dans le header
+
+Pour qu'un coup d'œil sur la liste suffise sans déplier, le header parent affiche les agrégats clés sous forme de chips :
+
+```blade
+<div class="xx-card-totaux">
+    <div class="xx-progress-wrap" title="{{ $pct }}% réalisé">
+        <div class="xx-progress" style="width:{{ $pct }}%;background:{{ $progressColor }};"></div>
+    </div>
+    <div class="xx-totaux-row">
+        <span class="xx-tot-chip"><i class="fas fa-chalkboard-user"></i>CM <strong>{{ $cm_r }}h</strong>/{{ $cm_p }}h</span>
+        <span class="xx-tot-chip"><i class="fas fa-pen-ruler"></i>TD <strong>{{ $td_r }}h</strong>/{{ $td_p }}h</span>
+        <span class="xx-tot-chip"><i class="fas fa-flask-vial"></i>TP <strong>{{ $tp_r }}h</strong>/{{ $tp_p }}h</span>
+        <span class="xx-tot-chip xx-tot-chip--strong"><i class="fas fa-clock"></i>Total <strong>{{ $total_r }}h</strong>/{{ $total_p }}h</span>
+    </div>
+</div>
+```
+
+**Progress bar avec couleur sémantique** : `≥80% = success #10b981`, `≥40% = warning #f59e0b`, `>0% = primary #0453cb`, `0% = muted #94a3b8`. Ces couleurs sont autorisées car elles portent un sens fonctionnel (statut de réalisation), pas décoratif.
+
+### Bouton "Tout déplier / Tout replier" bulk toggle
+
+Top-right de la section, toggle l'array `openIds` :
+
+```blade
+<button @click="openIds = openIds.length === {{ $count }} ? [] : Array.from({length: {{ $count }}}, (_, i) => i)">
+    <i class="fas fa-arrows-up-down"></i>
+    <span x-show="openIds.length !== {{ $count }}">Tout déplier</span>
+    <span x-show="openIds.length === {{ $count }}" x-cloak>Tout replier</span>
+</button>
+```
+
+### Empty state gracieux
+
+Si aucun parent à afficher, ne PAS afficher le container vide. Afficher un warn-box avec lien d'action :
+
+```blade
+@if ($parents->isEmpty())
+    <div class="xx-warn">
+        <i class="fas fa-exclamation-triangle"></i>
+        <div>
+            Aucun élément configuré pour ce scope. Configurez-le dans <a href="{{ route('xxx.config') }}">la page Configuration</a>.
+        </div>
+    </div>
+@else
+    {{-- liste --}}
+@endif
+```
+
+### Bucket "Hors X" pour les enfants orphelins (FK nullable)
+
+Si certains enfants n'ont pas de parent assigné (FK nullable), grouper dans un bucket spécial `Hors UE` / `Hors catégorie` avec chip `--orphan` pour signaler visuellement le cas.
+
+```php
+$rows = $children
+    ->groupBy(fn ($row) => optional($row['matiere']->uniteEnseignement)->id ?? 0)
+    ->map(function ($items, $parentId) {
+        $isOrphan = $parentId === 0;
+        return [
+            'is_orphan' => $isOrphan,
+            'name' => $isOrphan ? 'Hors UE' : $items->first()['matiere']->uniteEnseignement->name,
+            // ...
+        ];
+    });
+```
+
+### Anti-patterns à BLOQUER en review
+
+1. ❌ `x-data="{ open: false }"` sur chaque carte parent (N instances Alpine, mobile lag, premortem incident)
+2. ❌ Persistance localStorage du collapse state — état session-only suffit, cohérent avec rest of codebase
+3. ❌ Couleurs multicolores pour différencier les catégories — utiliser 3 tones bleu par opacity (monochrome strict)
+4. ❌ Pas de progress bar de pourcentage dans le header parent — l'utilisateur doit pouvoir scanner sans déplier
+5. ❌ Ignorer les enfants orphelins (FK nullable) — toujours grouper dans bucket `Hors X` avec chip warning
+6. ❌ Vanilla JS pour le toggle quand le reste du codebase est en Alpine — dette technique gratuite
+7. ❌ État initial expanded sur N parents — préférer collapsed par défaut + bouton "Tout déplier" si vue d'ensemble souhaitée
+
+### Référence canonique
+
+- `resources/views/esbtp/classes/partials/_suivi_heures_lmd.blade.php` (orchestrateur, namespace `sh-*`)
+- `resources/views/esbtp/classes/partials/_suivi_heures_lmd_ue_card.blade.php` (carte parent pliable)
+- `app/Http/Controllers/ESBTPClasseController.php::buildLmdUesAvecEcues()` (méthode privée groupby + agrégats)
+- Commit `359929a8` (14 mai 2026) — implémentation de référence
+- Pattern Alpine `openIds` validé suite à premortem session 14/05/2026 : ~30 instances Alpine sur mobile = lag scroll, le pattern Array unique scale à 100+ parents sans dégradation
+
+## Pré-remplir un filtre UI depuis query string (cross-page navigation)
+
+**Quand l'utiliser** : quand on navigue d'une page A vers une page B avec contexte (ex: bouton "Gérer UE/ECUE" sur classes.show → /esbtp/lmd/ue pré-filtré sur le parcours de la classe).
+
+### Pattern Alpine — init filters depuis `request()`
+
+```blade
+{{-- ❌ MAUVAIS — filters init hardcoded, l'utilisateur arrive sur la page B et voit les selects vides --}}
+function pageManager() {
+    return {
+        filters: { search: '', parcours_id: '', type_ue: '' },
+        // ...
+    };
+}
+
+{{-- ✅ BON — init depuis query string, l'utilisateur voit les selects PRÉ-REMPLIS --}}
+function pageManager() {
+    return {
+        filters: {
+            search: @json(request('search', '')),
+            parcours_id: @json((string) request('parcours_id', '')),
+            type_ue: @json(request('type_ue', '')),
+        },
+        // ...
+    };
+}
+```
+
+### Pourquoi `@json()` et pas interpolation directe
+
+- `@json()` génère du JSON valide, donc safe contre les caractères spéciaux (apostrophes, accents)
+- Cohérent avec rule `premium-selects.md` section AJAX-safe
+- Le `(string)` cast assure que les ID numériques DB ne créent pas un mismatch type entre `<option value="123">` (string) et `filters.parcours_id` (number) qui empêcherait Alpine de pré-sélectionner l'option
+
+### Côté navigation source
+
+Toujours utiliser `array_filter()` pour ne pas envoyer de params vides ni `null` :
+
+```blade
+<a href="{{ route('target.index', array_filter([
+    'parcours_id' => $classe->parcours_id,    // null pour tronc commun
+    'niveau_id' => $classe->niveau_etude_id,
+    'filiere_id' => $classe->filiere_id,
+])) }}" class="cs-btn--glass">
+    Filtrer cette ressource
+</a>
+```
+
+### Côté backend controller
+
+Le controller doit appliquer les filtres conditionnellement :
+
+```php
+if ($request->filled('parcours_id')) {
+    $query->where('parcours_id', $request->parcours_id);
+}
+if ($request->filled('niveau_id')) {
+    $query->where('niveau_id', $request->niveau_id);
+}
+```
+
+### Auto-load au mount
+
+Si le `x-init="loadData()"` existe déjà, il va automatiquement utiliser les filters pré-remplis pour le premier fetch — aucune action supplémentaire nécessaire.
+
+### Anti-patterns à BLOQUER en review
+
+1. ❌ Bouton de navigation contextuelle qui pointe vers la page cible SANS query string contextuelle
+2. ❌ Page cible avec filters init hardcoded `''` quand un bouton externe envoie déjà le contexte
+3. ❌ Oublier le cast `(string)` sur les ID numériques (mismatch type Alpine vs `<option value="">` strict)
+4. ❌ `<a href="?param=null">` au lieu d'utiliser `array_filter()` côté navigation
+
+### Référence canonique
+
+- Source : `resources/views/esbtp/classes/show.blade.php:567` (bouton "Gérer UE/ECUE" hero LMD)
+- Cible : `resources/views/esbtp/lmd/ue/index.blade.php:638-642` (filters init `@json(request(...))`)
+- Commits : `fed1a3bf` (navigation source) + `fe9bac13` (cible Alpine prefill) — 14-15 mai 2026
+
 ## Sélecteurs / dropdowns premium
 
 **JAMAIS de `<select>` natif visible dans une page premium.** Utiliser les composants Blade `<x-au-select>` (générique) ou `<x-au-user-picker>` (utilisateurs avec groupement par rôle), ou cloner ces composants pour un cas particulier (picker classes, matières, évaluations…). Détails complets, props, anti-patterns et checklist : voir [`.claude/rules/premium-selects.md`](premium-selects.md).
