@@ -12,6 +12,14 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### W1 — LMD Enseignants UEMOA (en cours, branche `feat/lmd-enseignants-uemoa`)
+
+#### Corrections
+- **Fix assignation enseignant ECUE qui ne sauvegardait pas** (`/esbtp/lmd/planning`) — le modal "+ Assigner" ouvrait, permettait la sélection d'un enseignant, mais le clic "Enregistrer" fermait le modal sans persister la valeur en DB. Cause probable : race condition entre `Alpine :value="currentValue"` binding et le `querySelector('input').value` polling au commit. Fix : remplacement du polling DOM par un event listener `change` en capture sur le hidden input (déjà dispatché par `auUserPicker.select()`). Refacto `lptModal` : ajout `init()/destroy()` pour cleanup memory leak, état `selectedId` réactif. (Commit `da0e5139`)
+
+#### Ajouts
+- **Colonne `responsable_ue_id` sur `esbtp_unites_enseignement`** — conformité directive UEMOA 03/2007/CM : chaque UE a un Responsable d'UE (1 par UE) distinct des Enseignants chargés ECUE. FK `users.id` avec `onDelete('set null')`. Migration idempotente multi-instance via `Schema::hasColumn`. Model `ESBTPUniteEnseignement` désormais Auditable (whitelist `name/code/credit/semestre/type_ue/responsable_ue_id/is_active`) + relation `responsableUe()`. (Commit `91391c7f`)
+
 ### Ajouts
 
 - **W3 — Emploi-temps Chips Type Séance LMD** (`/esbtp/emploi-temps/{id}#liste`) — la tab « Liste des séances » d'une classe LMD affiche désormais une nouvelle colonne « Pédagogie » avec un chip type_seance UEMOA (CM/TD/TP/PROJET/TPE/EXAMEN/AUTRE) monochrome bleu (3 tones par opacity selon l'intensité pédagogique). Un dropdown filtre premium `<x-au-select>` permet de scoper la liste à un type pédagogique précis, avec compteur live des séances visibles et empty state si aucune séance ne match. La card « Types pédagogiques LMD » (tab Informations) devient interactive : chaque type est un bouton qui dispatche un événement `et:filter-by-type`. Le système de tabs Alpine écoute l'événement, switch automatiquement vers la tab « Liste des séances » et applique le filtre — un seul clic depuis la synthèse Informations vers la liste filtrée. Types avec 0 séance sont désactivés (gris). Pour les classes BTS legacy, aucun chip ni filtre ne s'affiche (rétro-compat 100%).

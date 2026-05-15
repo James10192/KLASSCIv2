@@ -187,12 +187,38 @@
             ecueId: null,
             ecueLabel: '',
             currentTeacherId: '',
+            // selectedId : id séléctionné CET INSTANT par le picker (peut différer
+            // de currentTeacherId qui est l'id assigné avant l'ouverture du modal).
+            // Tracké via listener `change` sur l'input hidden du picker (dispatché
+            // par auUserPicker.select()) — plus fiable que querySelector au commit.
+            selectedId: '',
             triggerEl: null,
+            _nativeChangeHandler: null,
+
+            init() {
+                // Listener « change » sur l'input hidden du picker : auUserPicker
+                // émet un Event('change',{bubbles:true}) à chaque select(). On
+                // capture la nouvelle valeur ici sans dépendre de _x_dataStack.
+                this._nativeChangeHandler = (ev) => {
+                    if (ev.target && ev.target.matches && ev.target.matches('input[name="lpt_user_id"]')) {
+                        this.selectedId = String(ev.target.value || '');
+                    }
+                };
+                this.$el.addEventListener('change', this._nativeChangeHandler, true);
+            },
+
+            destroy() {
+                if (this._nativeChangeHandler) {
+                    this.$el.removeEventListener('change', this._nativeChangeHandler, true);
+                    this._nativeChangeHandler = null;
+                }
+            },
 
             onOpen(detail) {
                 this.ecueId = detail.ecueId;
                 this.ecueLabel = detail.ecueLabel || '';
                 this.currentTeacherId = String(detail.currentTeacherId || '');
+                this.selectedId = this.currentTeacherId;
                 this.triggerEl = detail.triggerEl || null;
                 this.open = true;
                 this.$nextTick(() => {
@@ -206,6 +232,12 @@
             },
 
             getSelectedId() {
+                // Priorité 1 : selectedId tracké par le listener change (source réactive)
+                if (this.selectedId !== '' || this.currentTeacherId === '') {
+                    return this.selectedId;
+                }
+                // Fallback : lire l'input hidden (au cas où le listener n'aurait pas
+                // fire — défensif pour les corner cases Alpine où l'event ne bubble pas)
                 const native = this.$el.querySelector('input[name="lpt_user_id"]');
                 return native ? String(native.value || '') : '';
             },
