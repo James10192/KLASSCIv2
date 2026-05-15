@@ -8,6 +8,8 @@ use App\Models\ESBTPLMDDomaine;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPUniteEnseignement;
+use App\Console\Commands\LMDImportEnseignantsCommand;
+use App\Services\LMD\LMDEnseignantsImporter;
 use App\Services\LMD\LMDImportService;
 use App\Services\LMD\ParcoursUeSyncService;
 use Illuminate\Http\JsonResponse;
@@ -243,6 +245,107 @@ class CLILMDSetupController extends BaseApiController
             $result['stats']['planifs_attached'],
             $result['stats']['planifs_updated'],
         ));
+    }
+
+    /**
+     * POST /api/cli/lmd/import-enseignants
+     *
+     * Bulk-import enseignants UEMOA (assignation Users + planifications) depuis
+     * les JSONs présents dans database/seeds-data/lmd-enseignants/.
+     *
+     * Body :
+     *   {
+     *     "filiere": "droit|lettres-modernes|svt|economie|all",
+     *     "dry_run": true,                  // défaut true (sécurité)
+     *     "include_inferred": false         // défaut false
+     *   }
+     *
+     * Permission token : cli:admin (équivalent à `lmd.planning.edit` web).
+     *
+     * Retour : stats agrégées par fichier traité + total cumulé. Warnings
+     * inclus (premiers 50 max) pour debug + audit MdP temporaires.
+     */
+    public function importEnseignants(Request $request, LMDEnseignantsImporter $importer = null): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'filiere' => 'required|string|in:droit,lettres-modernes,svt,economie,all',
+            'dry_run' => 'sometimes|boolean',
+            'include_inferred' => 'sometimes|boolean',
+        ]);
+
+        $dryRun = $request->boolean('dry_run', true); // défaut SAFE : dry-run
+        $includeInferred = $request->boolean('include_inferred', false);
+
+        // Résolution des fichiers via la source unique de vérité (Command)
+        $filiere = $validated['filiere'];
+        $files = $filiere === 'all'
+            ? array_values(LMDImportEnseignantsCommand::FILIERE_FILES)
+            : [LMDImportEnseignantsCommand::FILIERE_FILES[$filiere] ?? null];
+        $files = array_filter($files);
+
+        if (empty($files)) {
+            return $this->errorResponse("Filière invalide : {$filiere}", [], 422);
+        }
+
+        // Le service est instancié manuellement car il prend des args constructeur
+        // (DI auto ne fonctionne pas avec readonly bool dryRun par tenant).
+        $service = new LMDEnseignantsImporter($dryRun, $includeInferred);
+
+        $perFile = [];
+        $totalStats = [
+            'users_created' => 0,
+            'users_matched' => 0,
+            'ecues_assigned' => 0,
+            'ecues_not_found' => 0,
+            'ues_assigned_responsable' => 0,
+            'ues_not_found' => 0,
+            'warnings' => [],
+        ];
+
+        foreach ($files as $file) {
+            $path = database_path("seeds-data/lmd-enseignants/{$file}");
+            if (!is_file($path)) {
+                return $this->errorResponse("JSON introuvable : {$file}", ['path' => $path], 500);
+            }
+
+            try {
+                $service->resetStats();
+                $stats = $service->importFile($path);
+            } catch (\Throwable $e) {
+                Log::error('CLI lmd:import-enseignants failed', [
+                    'file' => $file,
+                    'exception' => $e->getMessage(),
+                ]);
+                return $this->errorResponse("Erreur import {$file} : " . $e->getMessage(), [], 500);
+            }
+
+            $perFile[$file] = $stats;
+            foreach (['users_created', 'users_matched', 'ecues_assigned', 'ecues_not_found', 'ues_assigned_responsable', 'ues_not_found'] as $k) {
+                $totalStats[$k] += $stats[$k];
+            }
+            $totalStats['warnings'] = array_merge($totalStats['warnings'], $stats['warnings']);
+        }
+
+        $message = $dryRun
+            ? "Dry-run : {$totalStats['users_created']} users créables, {$totalStats['ecues_assigned']} ECUEs assignables (aucun commit DB)"
+            : "Import terminé : {$totalStats['users_created']} users créés, {$totalStats['ecues_assigned']} ECUEs assignés";
+
+        // Limite warnings à 50 pour ne pas faire exploser le payload (les MdP
+        // temporaires complets restent en logs côté serveur).
+        $totalStats['warnings_truncated'] = count($totalStats['warnings']) > 50;
+        $totalStats['warnings'] = array_slice($totalStats['warnings'], 0, 50);
+
+        return $this->successResponse([
+            'dry_run' => $dryRun,
+            'include_inferred' => $includeInferred,
+            'filiere' => $filiere,
+            'per_file' => $perFile,
+            'total' => $totalStats,
+        ], $message);
     }
 
     private function upsertDomaine(array $data, ?int $userId): ESBTPLMDDomaine
