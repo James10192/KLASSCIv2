@@ -1,5 +1,7 @@
-{{-- Modal d'assignation enseignant à une planification ECUE.
-     S'ouvre via window CustomEvent `lpt:open` avec detail.
+{{-- Modal d'assignation enseignant — polymorphe (mode dual W1.2) :
+     - role='enseignant_ecue' : assigne un enseignant principal à une planification ECUE
+     - role='responsable_ue'  : assigne le responsable d'une UE (UEMOA 03/2007/CM)
+     S'ouvre via window CustomEvent `lpt:open` avec detail.role + detail.targetLabel.
      Reuses <x-au-user-picker> pour la sélection (recherche + groupement par rôle). --}}
 @can('lmd.planning.edit')
 <div id="lptBackdrop"
@@ -13,8 +15,12 @@
     <div class="lpt-modal" role="dialog" aria-labelledby="lptTitle">
         <div class="lpt-header">
             <div>
-                <h3 id="lptTitle"><i class="fas fa-chalkboard-teacher"></i> Assigner un enseignant</h3>
-                <div class="lpt-header-meta" x-text="ecueLabel"></div>
+                <h3 id="lptTitle">
+                    <i class="fas fa-chalkboard-teacher"></i>
+                    <span x-show="role === 'responsable_ue'">Assigner le responsable de l'UE</span>
+                    <span x-show="role !== 'responsable_ue'">Assigner un enseignant</span>
+                </h3>
+                <div class="lpt-header-meta" x-text="targetLabel"></div>
             </div>
             <button type="button" class="lpt-close" @click="open = false" aria-label="Fermer">
                 <i class="fas fa-times"></i>
