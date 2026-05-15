@@ -283,6 +283,11 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // LMD bulk import (Domaine + Mention + Parcours + Filière + UEs + ECUEs + Planifications)
         Route::post('/lmd/import', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'import'])->name('lmd.import');
 
+        // LMD bulk import — enseignants UEMOA (W1.3) — assigne Users + planifications
+        // depuis JSONs `database/seeds-data/lmd-enseignants/*.json`. Throttle hérité
+        // 60/min suffit (1 appel par filière ou 1 appel `all` par tenant).
+        Route::post('/lmd/import-enseignants', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'importEnseignants'])->name('lmd.import-enseignants');
+
         // Settings
         Route::put('/settings/{key}', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settingsUpdate'])->name('settings.update');
 

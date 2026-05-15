@@ -1,0 +1,1097 @@
+{
+  "_comment": "Enseignants ECUE + responsables UE (inférés) extraits de LICENCE SCIENCES ECONOMIQUES ET DE GESTION MAQUETTES.pdf.",
+  "_pdf_source": "LICENCE SCIENCES ECONOMIQUES ET DE GESTION MAQUETTES.pdf",
+  "filiere": "SEG",
+  "filiere_name": "Économie et Gestion",
+  "domaine_name": "Sciences Économiques et de Gestion",
+  "page_semester_map": {
+    "2": 1,
+    "3": 1,
+    "5": 3,
+    "6": 4,
+    "8": 5,
+    "9": 6,
+    "11": 5,
+    "12": 6,
+    "14": 5,
+    "15": 6
+  },
+  "page_level_map": {
+    "2": "L1",
+    "3": "L1",
+    "5": "L2",
+    "6": "L2",
+    "8": "L3",
+    "9": "L3",
+    "11": "L3",
+    "12": "L3",
+    "14": "L3",
+    "15": "L3"
+  },
+  "stats": {
+    "ecues_total": 50,
+    "ecues_with_teacher": 50,
+    "ues_count": 39,
+    "distinct_teachers": 39
+  },
+  "note": "responsable_ue_inferred = most frequent teacher across the UE's ECUEs (heuristic). The PDF's UE summary block is too scrambled to parse reliably. Manual validation recommended before DB import.",
+  "ues": [
+    {
+      "ue_code": "AAG4001",
+      "responsable_ue_inferred": {
+        "name": "Sangaré Moustapha",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "AAG4001.1",
+          "name": "Activités Pratiques",
+          "enseignants": [
+            {
+              "name": "Sangaré Moustapha",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "AEI4002",
+      "responsable_ue_inferred": {
+        "name": "Abogni Kouadio",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "AEI4002.2",
+          "name": "Microéconomie Intermédiaire",
+          "enseignants": [
+            {
+              "name": "Abogni Kouadio",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "BMA4001",
+      "responsable_ue_inferred": {
+        "name": "Tapé Jean Georges",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "BMA4001.1",
+          "name": "Algèbre",
+          "enseignants": [
+            {
+              "name": "Tapé Jean Georges",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "BMA4001.2",
+          "name": "Statistique Descriptive I",
+          "enseignants": [
+            {
+              "name": "Dongui Kouamé Bini",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DGE4002",
+      "responsable_ue_inferred": {
+        "name": "Kouassi Yao Martial",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "DGE4002.1",
+          "name": "Géographie Economique",
+          "enseignants": [
+            {
+              "name": "Kouassi Yao Martial",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DGE4002.2",
+          "name": "Démographie",
+          "enseignants": [
+            {
+              "name": "Koffi Binette Laurène",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "HEC4001",
+      "responsable_ue_inferred": {
+        "name": "Abogni kouadio Augustin",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "HEC4001.1",
+          "name": "Histoire des Faits Economique",
+          "enseignants": [
+            {
+              "name": "Abogni kouadio Augustin",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "IAE4001",
+      "responsable_ue_inferred": {
+        "name": "Abogni kouadio Augustin",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "IAE4001.1",
+          "name": "Initiation à la Macroéconomie",
+          "enseignants": [
+            {
+              "name": "Abogni kouadio Augustin",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "IAE4001.2",
+          "name": "Initiation à la Microéconomie",
+          "enseignants": [
+            {
+              "name": "Gbamé Hervé",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "IGE4001",
+      "responsable_ue_inferred": {
+        "name": "Koffi Kouadio Bini Pacôme",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "IGE4001.1",
+          "name": "Initiation à la Comptabilité Générale",
+          "enseignants": [
+            {
+              "name": "Koffi Kouadio Bini Pacôme",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "IGE4001.2",
+          "name": "Initiation à la Gestion",
+          "enseignants": [
+            {
+              "name": "Soro Pehouolossin",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "INF4002",
+      "responsable_ue_inferred": {
+        "name": "Traoré Ismael",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "INF4002",
+          "name": "INFORMATIQUE INF4002.1 Informatique 0",
+          "enseignants": [
+            {
+              "name": "Traoré Ismael",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "LGC7002",
+      "responsable_ue_inferred": {
+        "name": "N'dri Jean Marc",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "LGC7002.2",
+          "name": "Statistiques Descriptives II",
+          "enseignants": [
+            {
+              "name": "N'dri Jean Marc",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "LVI4001",
+      "responsable_ue_inferred": {
+        "name": "Bogui N'drin Ezechiel",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "LVI4001",
+          "name": "ANGLAIS LVI7001.1 Anglais 14",
+          "enseignants": [
+            {
+              "name": "Bogui N'drin Ezechiel",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MEC4002",
+      "responsable_ue_inferred": {
+        "name": "Dibi Ahou Flore",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "MEC4002.2",
+          "name": "Comptabilité Nationale",
+          "enseignants": [
+            {
+              "name": "Dibi Ahou Flore",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MEQ4002",
+      "responsable_ue_inferred": {
+        "name": "Tapé Jean Georges",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "MEQ4002.1",
+          "name": "Analyses Mathématiques",
+          "enseignants": [
+            {
+              "name": "Tapé Jean Georges",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "SOD4002",
+      "responsable_ue_inferred": {
+        "name": "Kouassi Yao Martial",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "SOD4002",
+          "name": "SOCIOLOGIE ET DROIT SOD4002.1 Sociologie des Organisations 18",
+          "enseignants": [
+            {
+              "name": "Kouassi Yao Martial",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "SOD4002.2",
+          "name": "Droit Administratif 10",
+          "enseignants": [
+            {
+              "name": "Sanogo Mousso",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "AEA4004",
+      "responsable_ue_inferred": {
+        "name": "Etien Amani Elysée",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "AEA4004.2",
+          "name": "Politiques Monétaires",
+          "enseignants": [
+            {
+              "name": "Etien Amani Elysée",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ICA4004",
+      "responsable_ue_inferred": {
+        "name": "Dagnogo Pissio",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "ICA4004.1",
+          "name": "Comptabilité Analytique",
+          "enseignants": [
+            {
+              "name": "Dagnogo Pissio",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MAA4004",
+      "responsable_ue_inferred": {
+        "name": "Gbamé Hervé David",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "MAA4004.2",
+          "name": "Optimisation Statique",
+          "enseignants": [
+            {
+              "name": "Gbamé Hervé David",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "STA4004",
+      "responsable_ue_inferred": {
+        "name": "N'dri Jean Marc",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "STA4004.1",
+          "name": "Statistiques Différentielles",
+          "enseignants": [
+            {
+              "name": "N'dri Jean Marc",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "CDL4005",
+      "responsable_ue_inferred": {
+        "name": "N'da Christian",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "CDL4005.1",
+          "name": "Croissance",
+          "enseignants": [
+            {
+              "name": "N'da Christian",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "COF4005",
+      "responsable_ue_inferred": {
+        "name": "Koffi Kouadio Bini Pacome",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "COF4005.1",
+          "name": "Comptabilité des Sociétés",
+          "enseignants": [
+            {
+              "name": "Koffi Kouadio Bini Pacome",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "COF4005.2",
+          "name": "Fiscalité des Entreprises",
+          "enseignants": [
+            {
+              "name": "Silué Tenema",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "EEM4005",
+      "responsable_ue_inferred": {
+        "name": "Kokola Eric",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "EEM4005.2",
+          "name": "Entrepreneuriat Agricole",
+          "enseignants": [
+            {
+              "name": "Kokola Eric",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "EIM4005",
+      "responsable_ue_inferred": {
+        "name": "Gniza Daniel",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "EIM4005.2",
+          "name": "Economie des Marchés Agricoles",
+          "enseignants": [
+            {
+              "name": "Gniza Daniel",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ENA4005",
+      "responsable_ue_inferred": {
+        "name": "Kouidi Frederic",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "ENA4005.2",
+          "name": "Agrobusiness Management",
+          "enseignants": [
+            {
+              "name": "Kouidi Frederic",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "EPA4005",
+      "responsable_ue_inferred": {
+        "name": "Yaya Ouattara",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "EPA4005.2",
+          "name": "Politique Agricola Ivoirienne",
+          "enseignants": [
+            {
+              "name": "Yaya Ouattara",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ERH4005",
+      "responsable_ue_inferred": {
+        "name": "Abou Pokou",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "ERH4005.2",
+          "name": "Economie de la Santé",
+          "enseignants": [
+            {
+              "name": "Abou Pokou",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ERI4005",
+      "responsable_ue_inferred": {
+        "name": "Gbame Herve",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "ERI4005.2",
+          "name": "Economie Industrielle",
+          "enseignants": [
+            {
+              "name": "Gbame Herve",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MAQ4005",
+      "responsable_ue_inferred": {
+        "name": "Ouattara Brice",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "MAQ4005.1",
+          "name": "Marketing Fondamental",
+          "enseignants": [
+            {
+              "name": "Ouattara Brice",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MQA4005",
+      "responsable_ue_inferred": {
+        "name": "Silue Gnougenho Dr Diomandé Lanciné",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "MQA4005.1",
+          "name": "Econométrie et Applications 20",
+          "enseignants": [
+            {
+              "name": "Silue Gnougenho Dr Diomandé Lanciné",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "MQA4005.2",
+          "name": "Analyse des Données",
+          "enseignants": [
+            {
+              "name": "Diomandé Lanciné",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "OTD4005",
+      "responsable_ue_inferred": {
+        "name": "Kokola Eric",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "OTD4005.2",
+          "name": "Logiciel Econométrique",
+          "enseignants": [
+            {
+              "name": "Kokola Eric",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ACG4006",
+      "responsable_ue_inferred": {
+        "name": "Dagnogo Pissio",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "ACG4006.1",
+          "name": "Introduction à l'Audit",
+          "enseignants": [
+            {
+              "name": "Dagnogo Pissio",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "ACG4006.2",
+          "name": "Introduction au Contrôle de Gestion",
+          "enseignants": [
+            {
+              "name": "Dagnogo Pissio",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "BGP4006",
+      "responsable_ue_inferred": {
+        "name": "Kouassi Yao Martial",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "BGP4006.2",
+          "name": "Banques et Assurance",
+          "enseignants": [
+            {
+              "name": "Kouassi Yao Martial",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "CIA4006",
+      "responsable_ue_inferred": {
+        "name": "Kore Adele",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "CIA4006.2",
+          "name": "Commerce International",
+          "enseignants": [
+            {
+              "name": "Kore Adele",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DDA4006",
+      "responsable_ue_inferred": {
+        "name": "Adou Kabran Georges",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "DDA4006.2",
+          "name": "Principes de l'Agroforesterie",
+          "enseignants": [
+            {
+              "name": "Adou Kabran Georges",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "DFA4006",
+      "responsable_ue_inferred": {
+        "name": "Silue Holoh",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "DFA4006.1",
+          "name": "Economie de l'Agroforesterie",
+          "enseignants": [
+            {
+              "name": "Silue Holoh",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "DFA4006.2",
+          "name": "Droit Foncier",
+          "enseignants": [
+            {
+              "name": "Tra Bi Zae",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ERO4006",
+      "responsable_ue_inferred": {
+        "name": "Diabate Nabongo",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "ERO4006.1",
+          "name": "Recherche Opérationnelle",
+          "enseignants": [
+            {
+              "name": "Diabate Nabongo",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "FAC4006",
+      "responsable_ue_inferred": {
+        "name": "Yaya Ouattara",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "FAC4006.1",
+          "name": "Analyse des Filières Agricoles",
+          "enseignants": [
+            {
+              "name": "Yaya Ouattara",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "FAC4006.2",
+          "name": "Théorie des Contrats",
+          "enseignants": [
+            {
+              "name": "Ouattara Kifory",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "FVR4006",
+      "responsable_ue_inferred": {
+        "name": "Gniza Daniel",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "FVR4006.1",
+          "name": "Financement Agricole",
+          "enseignants": [
+            {
+              "name": "Gniza Daniel",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MFP4006",
+      "responsable_ue_inferred": {
+        "name": "Silué Temena",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "MFP4006.2",
+          "name": "Elaboration de Projet",
+          "enseignants": [
+            {
+              "name": "Silué Temena",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ROE4006",
+      "responsable_ue_inferred": {
+        "name": "Diabate Nabongo",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "ROE4006.1",
+          "name": "Recherche Opérationnelle",
+          "enseignants": [
+            {
+              "name": "Diabate Nabongo",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "ROE4006.2",
+          "name": "Analyse Coût-Bénéfice",
+          "enseignants": [
+            {
+              "name": "Diallo Mamadou",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "TEF4006",
+      "responsable_ue_inferred": {
+        "name": "Diarrassouba Salini",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "TEF4006.1",
+          "name": "Théorie des Contrats",
+          "enseignants": [
+            {
+              "name": "Diarrassouba Salini",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
