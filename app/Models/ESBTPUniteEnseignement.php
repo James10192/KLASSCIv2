@@ -6,10 +6,27 @@ use App\Enums\TypeUE;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ESBTPUniteEnseignement extends Model
+class ESBTPUniteEnseignement extends Model implements Auditable
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
+
+    /**
+     * Whitelist des colonnes auditees (rule pre-merge-checklist + feedback Owen-IT).
+     *
+     * Sans cette whitelist, table audits exploserait avec metadata sur chaque
+     * touch (updated_at, etc.). On ne suit que les colonnes business-critical.
+     */
+    protected array $auditInclude = [
+        'name',
+        'code',
+        'credit',
+        'semestre',
+        'type_ue',
+        'responsable_ue_id',
+        'is_active',
+    ];
 
     /**
      * La table associée au modèle.
@@ -33,6 +50,7 @@ class ESBTPUniteEnseignement extends Model
         'filiere_id',
         'niveau_id',
         'parcours_id',
+        'responsable_ue_id', // FK users — directive UEMOA 03/2007/CM (1 responsable par UE)
         'is_active',
         'created_by',
         'updated_by',
@@ -110,6 +128,20 @@ class ESBTPUniteEnseignement extends Model
     public function parcours()
     {
         return $this->belongsTo(ESBTPLMDParcours::class, 'parcours_id');
+    }
+
+    /**
+     * Relation Responsable de l'UE (directive UEMOA 03/2007/CM).
+     *
+     * 1 responsable par UE — distinct des Enseignants charges ECUE qui sont
+     * stockes sur esbtp_planifications_academiques.enseignant_principal_id.
+     *
+     * Le responsable doit avoir le role enseignant (verifie cote controller
+     * via teacherExists() — pas en model pour eviter une dependance Spatie ici).
+     */
+    public function responsableUe()
+    {
+        return $this->belongsTo(User::class, 'responsable_ue_id');
     }
 
     /**
