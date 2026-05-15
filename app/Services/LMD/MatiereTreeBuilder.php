@@ -3,6 +3,7 @@
 namespace App\Services\LMD;
 
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPMatiere;
 use App\Models\ESBTPPlanificationAcademique;
 use Illuminate\Support\Collection;
 
@@ -187,7 +188,29 @@ class MatiereTreeBuilder
      */
     public function forClasse(Collection $lmdMatieres, array $lmdVolumeBudget): Collection
     {
-        return $lmdMatieres
+        // Union des matiere_id : ECUE du parcours (via pivot UE-matiere) + ECUE présents
+        // dans les planifs filiere+niveau+semestre (source du $lmdVolumeBudget). Les 2 sources
+        // peuvent être disjointes si le pivot esbtp_ue_matiere n'est pas peuplé pour des
+        // ECUE qui ont des planifications. Dans ce cas, on charge la matiere depuis la DB
+        // pour récupérer son uniteEnseignement et la grouper avec les autres ECUE de la même UE.
+        $byMatiereId = $lmdMatieres->keyBy(fn ($row) => $row['matiere']->id);
+        $missingIds = collect(array_keys($lmdVolumeBudget))->diff($byMatiereId->keys());
+        if ($missingIds->isNotEmpty()) {
+            $extras = ESBTPMatiere::with('uniteEnseignement')
+                ->whereIn('id', $missingIds->all())
+                ->get();
+            foreach ($extras as $matiere) {
+                $byMatiereId->put($matiere->id, [
+                    'matiere' => $matiere,
+                    'cm' => 0, 'td' => 0, 'tp' => 0, 'tpe' => 0,
+                    'coefficient' => 0, 'credits_ects' => 0,
+                    'volume_horaire_total' => 0,
+                    'semestres' => [],
+                ]);
+            }
+        }
+
+        return $byMatiereId->values()
             ->groupBy(fn ($row) => optional($row['matiere']->uniteEnseignement)->id ?? 0)
             ->map(function ($ecues, $ueId) use ($lmdVolumeBudget) {
                 $firstMatiere = $ecues->first()['matiere'];
