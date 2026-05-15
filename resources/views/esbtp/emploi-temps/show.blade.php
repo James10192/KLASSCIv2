@@ -974,6 +974,15 @@
                     <i class="fas fa-list-ul"></i> Liste des séances
                     <span class="ets-tab-count">{{ $emploiTemps->seances->count() }}</span>
                 </button>
+                <button type="button"
+                        class="ets-tab"
+                        role="tab"
+                        :aria-selected="tab === 'heures' ? 'true' : 'false'"
+                        :class="{ 'is-active': tab === 'heures' }"
+                        @click="setTab('heures')"
+                        id="ets-tab-heures">
+                    <i class="fas fa-chart-line"></i> Suivi des heures
+                </button>
             </div>
 
             {{-- Tab: Infos (fusion infos + stats) --}}
@@ -1007,6 +1016,31 @@
                 <x-emploi-temps.liste-seances
                     :seances="$emploiTemps->seances ?? collect()"
                     :emploiTemps="$emploiTemps" />
+            </div>
+
+            {{-- Tab: Suivi des heures (LMD = partial UE grouping, BTS = partial flat) --}}
+            <div class="ets-tab-panel"
+                 x-show="tab === 'heures'"
+                 x-cloak
+                 role="tabpanel"
+                 aria-labelledby="ets-tab-heures">
+                @if(($classe->systeme_academique ?? '') === 'LMD')
+                    @include('esbtp.classes.partials._suivi_heures_lmd', [
+                        'classe' => $classe,
+                        'planningMatiere' => $planningMatiere,
+                        'lmdVolumeBudget' => $lmdVolumeBudget,
+                        'lmdUesAvecEcues' => $lmdUesAvecEcues,
+                        'lmdSemestres' => $lmdSemestres,
+                        'periode' => $periode,
+                        'kpiTaux' => $kpiTaux,
+                    ])
+                @else
+                    @include('esbtp.emploi-temps.partials._suivi_heures_bts', [
+                        'classe' => $classe,
+                        'planningMatiere' => $planningMatiere,
+                        'kpiTaux' => $kpiTaux,
+                    ])
+                @endif
             </div>
         </div>
     </div>

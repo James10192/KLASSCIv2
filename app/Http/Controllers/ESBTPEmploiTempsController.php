@@ -715,6 +715,115 @@ class ESBTPEmploiTempsController extends Controller
             );
         }
 
+        // ════════════════════════════════════════════════════════════════
+        // Tab "Suivi des heures" : variables LMD/BTS pour @include partiels
+        // (cohérent avec ESBTPClasseController::show() — voir Service partagé)
+        // ════════════════════════════════════════════════════════════════
+        $classe = $emploiTemps->classe;
+        $anneeCourante = $emploiTemps->annee;
+        $isLmd = ($classe->systeme_academique ?? '') === 'LMD';
+
+        // Période = scope de l'emploi du temps (pas de toggle visible utilisateur)
+        $periode = 'annee';
+
+        // $planningMatiere : KPI heures planifiees / realisees / nb_seances / taux
+        $planningMatiere = ['stats' => ['heures_planifiees' => 0, 'heures_realisees' => 0, 'nb_seances' => 0, 'taux_realisation' => 0], 'matieres' => collect()];
+        if ($classe && $anneeCourante) {
+            try {
+                $planningService = app(\App\Services\ClassPlanningService::class);
+                $planningMatiere = $planningService->buildPlanningMatierePourClasse(
+                    $classe,
+                    $anneeCourante,
+                    $periode,
+                );
+            } catch (\Throwable $e) {
+                \Log::warning('ClassPlanningService failed on emploi-temps.show: '.$e->getMessage());
+            }
+        }
+        $kpiTaux = $planningMatiere['stats']['taux_realisation'] ?? 0;
+
+        // Données LMD : volume budget + matières par UE
+        $lmdVolumeBudget = [];
+        $lmdMatieres = collect();
+        $lmdSemestres = [];
+        $lmdUesAvecEcues = collect();
+
+        if ($isLmd && $anneeCourante) {
+            // Mapping niveau → semestres applicables (L1=[1,2], L2=[3,4], L3=[5,6], etc.)
+            $niveauType = optional($classe->niveau)->type ?? '';
+            $niveauYear = (int) (optional($classe->niveau)->year ?? 1);
+            $baseSem = 0;
+            if ($niveauType === 'Licence') {
+                $baseSem = ($niveauYear - 1) * 2;
+            } elseif ($niveauType === 'Master') {
+                $baseSem = 6 + ($niveauYear - 1) * 2;
+            } elseif ($niveauType === 'Doctorat') {
+                $baseSem = 10 + ($niveauYear - 1) * 2;
+            }
+            $lmdSemestres = [$baseSem + 1, $baseSem + 2];
+
+            try {
+                $volumeBudgetService = app(\App\Services\VolumeBudgetService::class);
+                foreach ($lmdSemestres as $sem) {
+                    $semBudget = $volumeBudgetService->forClasse(
+                        $classe,
+                        $classe->niveau_etude_id,
+                        $sem,
+                        $anneeCourante->id,
+                    );
+                    foreach ($semBudget as $matiereId => $budget) {
+                        if (! isset($lmdVolumeBudget[$matiereId])) {
+                            $lmdVolumeBudget[$matiereId] = $budget;
+                        } else {
+                            foreach (['cm', 'td', 'tp'] as $k) {
+                                $lmdVolumeBudget[$matiereId][$k]['planifie'] = ($lmdVolumeBudget[$matiereId][$k]['planifie'] ?? 0) + ($budget[$k]['planifie'] ?? 0);
+                                $lmdVolumeBudget[$matiereId][$k]['realise']  = ($lmdVolumeBudget[$matiereId][$k]['realise']  ?? 0) + ($budget[$k]['realise']  ?? 0);
+                            }
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                \Log::warning('VolumeBudgetService failed on emploi-temps.show: '.$e->getMessage());
+            }
+
+            try {
+                $filiereResolvedId = $classe->parcours && $classe->parcours->filiere_id
+                    ? $classe->parcours->filiere_id
+                    : $classe->filiere_id;
+
+                $lmdMatieres = \App\Models\ESBTPPlanificationAcademique::query()
+                    ->where('filiere_id', $filiereResolvedId)
+                    ->where('niveau_etude_id', $classe->niveau_etude_id)
+                    ->whereNotNull('matiere_id')
+                    ->with(['matiere.uniteEnseignement'])
+                    ->orderBy('semestre')
+                    ->get()
+                    ->groupBy('matiere_id')
+                    ->map(function ($planifs) {
+                        $first = $planifs->first();
+                        return [
+                            'matiere' => $first->matiere,
+                            'volume_horaire_total' => $planifs->sum('volume_horaire_total'),
+                            'coefficient' => (float) ($first->coefficient ?? 0),
+                            'credits_ects' => (int) ($first->credits_ects ?? 0),
+                            'semestres' => $planifs->pluck('semestre')->unique()->sort()->values()->all(),
+                            'cm' => $planifs->sum('volume_horaire_cm'),
+                            'td' => $planifs->sum('volume_horaire_td'),
+                            'tp' => $planifs->sum('volume_horaire_tp'),
+                        ];
+                    })
+                    ->filter(fn ($row) => $row['matiere'] !== null)
+                    ->values();
+            } catch (\Throwable $e) {
+                \Log::warning('LMD matieres loader failed on emploi-temps.show: '.$e->getMessage());
+            }
+
+            if ($lmdMatieres->isNotEmpty()) {
+                $lmdUesAvecEcues = app(\App\Services\LMD\MatiereTreeBuilder::class)
+                    ->forClasse($lmdMatieres, $lmdVolumeBudget);
+            }
+        }
+
         return [
             'emploiTemps' => $emploiTemps,
             'seances' => $seances,
@@ -723,6 +832,15 @@ class ESBTPEmploiTempsController extends Controller
             'days' => $days,
             'matiereStats' => $matiereStats,
             'planificationData' => $planificationData,
+            // Variables tab Suivi heures
+            'classe' => $classe,
+            'planningMatiere' => $planningMatiere,
+            'kpiTaux' => $kpiTaux,
+            'periode' => $periode,
+            'lmdVolumeBudget' => $lmdVolumeBudget,
+            'lmdMatieres' => $lmdMatieres,
+            'lmdSemestres' => $lmdSemestres,
+            'lmdUesAvecEcues' => $lmdUesAvecEcues,
         ];
     }
 
