@@ -104,21 +104,51 @@
         </div>
     </header>
 
-    {{-- Meta : filière + niveau --}}
-    <div class="ci-card-meta">
-        @if($classe->filiere)
-            <div class="ci-card-meta-line">
-                <i class="fas fa-layer-group"></i>
-                <span><strong>{{ $classe->filiere->name }}</strong>@if($classe->filiere->parent)<span class="ci-card-meta-parent"> · Option de {{ $classe->filiere->parent->name }}</span>@endif</span>
-            </div>
-        @endif
-        @if($classe->niveau)
-            <div class="ci-card-meta-line">
-                <i class="fas fa-level-up-alt"></i>
-                <span>{{ $classe->niveau->name }}</span>
-            </div>
-        @endif
-    </div>
+    {{-- Meta : filière + niveau (BTS) ou tree premium hiérarchie LMD (Domaine → Mention → Parcours).
+         Le tree compact s'affiche pour les classes LMD avec parcours OU mention rattachée
+         (cas tronc commun où classe.filiere_id stocke en réalité mention_id, cf rule
+         classe-lmd-filiere-as-mention). --}}
+    @php
+        $cardIsLmd = ($classe->systeme_academique ?? '') === 'LMD';
+        $cardLmdParcours = $cardIsLmd && $classe->parcours && $classe->parcours->mention && $classe->parcours->mention->domaine
+            ? $classe->parcours
+            : null;
+    @endphp
+
+    @if($cardLmdParcours)
+        <div class="ci-card-meta">
+            <x-lmd-hierarchy-tree :parcours="$cardLmdParcours" compact />
+            @if($classe->niveau)
+                <div class="ci-card-meta-line" style="margin-top:.5rem;">
+                    <i class="fas fa-level-up-alt"></i>
+                    <span>{{ $classe->niveau->name }}</span>
+                </div>
+            @endif
+        </div>
+    @else
+        <div class="ci-card-meta">
+            @if($classe->filiere)
+                <div class="ci-card-meta-line">
+                    <i class="fas fa-layer-group"></i>
+                    <span>
+                        <strong>{{ $classe->filiere->name }}</strong>
+                        @if($classe->filiere->parent)
+                            <span class="ci-card-meta-parent"> · Option de {{ $classe->filiere->parent->name }}</span>
+                        @endif
+                        @if($cardIsLmd)
+                            <span class="ci-card-meta-parent">· Mention LMD (tronc commun)</span>
+                        @endif
+                    </span>
+                </div>
+            @endif
+            @if($classe->niveau)
+                <div class="ci-card-meta-line">
+                    <i class="fas fa-level-up-alt"></i>
+                    <span>{{ $classe->niveau->name }}</span>
+                </div>
+            @endif
+        </div>
+    @endif
 
     {{-- Stats : capacité + barre d'occupation --}}
     <div class="ci-card-stats">

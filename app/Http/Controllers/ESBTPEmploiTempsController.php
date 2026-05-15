@@ -804,7 +804,7 @@ class ESBTPEmploiTempsController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function show(ESBTPEmploiTemps $emploi_temp)
+    public function show(Request $request, ESBTPEmploiTemps $emploi_temp)
     {
         // No policy-based authorization
         // Charger les séances pour cet emploi du temps
@@ -896,7 +896,14 @@ class ESBTPEmploiTempsController extends Controller
         $emploiTemps = $emploi_temp;
 
         // Variables pour le tab "Suivi des heures" (LMD/BTS)
-        $suiviData = $this->buildSuiviHeuresData($emploiTemps);
+        // Le toggle Semestre 1/2/Année est lu depuis ?periode= (cohérent avec classes.show).
+        // Pour LMD : 'semestre1'/'semestre2' sont mappés sur les vrais semestres du niveau
+        // (ex L2 → S3+S4) côté buildSuiviHeuresData via lmdSemestres.
+        $suiviPeriode = $request->input('periode', 'annee');
+        if (!in_array($suiviPeriode, ['annee', 'semestre1', 'semestre2'], true)) {
+            $suiviPeriode = 'annee';
+        }
+        $suiviData = $this->buildSuiviHeuresData($emploiTemps, $suiviPeriode);
         $classe = $suiviData['classe'];
         $planningMatiere = $suiviData['planningMatiere'];
         $kpiTaux = $suiviData['kpiTaux'];
@@ -919,31 +926,22 @@ class ESBTPEmploiTempsController extends Controller
     /**
      * Construit les variables LMD/BTS pour le tab "Suivi des heures" de emploi-temps/show.
      * Utilise par show() et buildEmploiTempsViewData() (DRY).
+     *
+     * @param  string  $periode  'annee' | 'semestre1' | 'semestre2'.
+     *                           Pour LMD : 'semestre1'/'semestre2' sont mappés vers
+     *                           les vrais semestres du niveau (ex L2 → S3+S4).
      */
-    private function buildSuiviHeuresData(ESBTPEmploiTemps $emploiTemps): array
+    private function buildSuiviHeuresData(ESBTPEmploiTemps $emploiTemps, string $periode = 'annee'): array
     {
         $classe = $emploiTemps->classe;
         $anneeCourante = $emploiTemps->annee;
         $isLmd = ($classe->systeme_academique ?? '') === 'LMD';
-        $periode = 'annee';
 
-        $planningMatiere = ['stats' => ['heures_planifiees' => 0, 'heures_realisees' => 0, 'nb_seances' => 0, 'taux_realisation' => 0], 'matieres' => collect()];
-        if ($classe && $anneeCourante) {
-            try {
-                $planningService = app(\App\Services\ClassPlanningService::class);
-                $planningMatiere = $planningService->buildPlanningMatierePourClasse($classe, $anneeCourante, $periode);
-            } catch (\Throwable $e) {
-                \Log::warning('ClassPlanningService failed on emploi-temps.show: '.$e->getMessage());
-            }
-        }
-        $kpiTaux = $planningMatiere['stats']['taux_realisation'] ?? 0;
-
-        $lmdVolumeBudget = [];
-        $lmdMatieres = collect();
+        // Mapping niveau-aware : L1 LMD → [1,2], L2 → [3,4], L3 → [5,6], M1 → [7,8], M2 → [9,10].
+        // Calculé en amont pour pouvoir le passer à ClassPlanningService (KPI Heures planifiées
+        // doit aussi filtrer par semestre quand periode='semestre1'/'semestre2').
         $lmdSemestres = [];
-        $lmdUesAvecEcues = collect();
-
-        if ($isLmd && $anneeCourante) {
+        if ($isLmd) {
             $niveauType = optional($classe->niveau)->type ?? '';
             $niveauYear = (int) (optional($classe->niveau)->year ?? 1);
             $baseSem = 0;
@@ -955,10 +953,42 @@ class ESBTPEmploiTempsController extends Controller
                 $baseSem = 10 + ($niveauYear - 1) * 2;
             }
             $lmdSemestres = [$baseSem + 1, $baseSem + 2];
+        }
+
+        $planningMatiere = ['stats' => ['heures_planifiees' => 0, 'heures_realisees' => 0, 'nb_seances' => 0, 'taux_realisation' => 0], 'matieres' => collect()];
+        if ($classe && $anneeCourante) {
+            try {
+                $planningService = app(\App\Services\ClassPlanningService::class);
+                $planningMatiere = $planningService->buildPlanningMatierePourClasse(
+                    $classe,
+                    $anneeCourante,
+                    $periode,
+                    !empty($lmdSemestres) ? $lmdSemestres : null,
+                );
+            } catch (\Throwable $e) {
+                \Log::warning('ClassPlanningService failed on emploi-temps.show: '.$e->getMessage());
+            }
+        }
+        $kpiTaux = $planningMatiere['stats']['taux_realisation'] ?? 0;
+
+        $lmdVolumeBudget = [];
+        $lmdMatieres = collect();
+        $lmdUesAvecEcues = collect();
+
+        if ($isLmd && $anneeCourante) {
+            // Semestres effectivement chargés selon periode :
+            //  - 'annee'      → tous les semestres du niveau (ex L2 → [3,4])
+            //  - 'semestre1'  → 1er semestre du niveau (ex L2 → [3])
+            //  - 'semestre2'  → 2e semestre du niveau (ex L2 → [4])
+            $semestresToLoad = match ($periode) {
+                'semestre1' => isset($lmdSemestres[0]) ? [$lmdSemestres[0]] : [],
+                'semestre2' => isset($lmdSemestres[1]) ? [$lmdSemestres[1]] : [],
+                default => $lmdSemestres,
+            };
 
             try {
                 $volumeBudgetService = app(\App\Services\VolumeBudgetService::class);
-                foreach ($lmdSemestres as $sem) {
+                foreach ($semestresToLoad as $sem) {
                     $semBudget = $volumeBudgetService->forClasse($classe, $classe->niveau_etude_id, $sem, $anneeCourante->id);
                     foreach ($semBudget as $matiereId => $budget) {
                         if (! isset($lmdVolumeBudget[$matiereId])) {

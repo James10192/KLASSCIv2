@@ -46,53 +46,136 @@
         // Stocker toutes les options de classes pour le filtrage
         var allClassesOptions = $('#classe_id option').clone();
 
-        // Filtrer les classes selon la combinaison filière + niveau
+        // Section LMD-aware : récupère le mode courant + filtres LMD (mention/parcours).
+        // En BTS : filtre par filiere_id + niveau_id (legacy)
+        // En LMD : filtre par mention_id (optionnel) + parcours_id (optionnel) + niveau_id, scope LMD
+        function getCurrentMode() {
+            var section = document.getElementById('inscription-academic-section');
+            return section ? (section.dataset.mode || 'unknown').toUpperCase() : 'UNKNOWN';
+        }
+
+        function getLmdFilters() {
+            // Les pickers premium au-mention-picker / au-parcours-picker exposent un input
+            // hidden name="lmd_filter_mention_id" / "lmd_filter_parcours_id" en interne.
+            // Lecture directe du DOM via name pour découplage du composant Alpine.
+            var mention = document.querySelector('input[name="lmd_filter_mention_id"]');
+            var parcours = document.querySelector('input[name="lmd_filter_parcours_id"]');
+            return {
+                mention_id: mention ? mention.value : '',
+                parcours_id: parcours ? parcours.value : '',
+            };
+        }
+
+        // Filtrer les classes selon le mode + filtres
         function filterClasses() {
-            var filiereId = $('#filiere_id').val();
+            var mode = getCurrentMode();
             var niveauId = $('#niveau_id').val();
             var currentClasseId = $('#classe_id').val();
 
-            // Vider la liste des classes
             $('#classe_id').empty();
             $('#classe_id').append('<option value="">Sélectionner une classe</option>');
 
-            if (filiereId && niveauId) {
-                // Filtrer les classes qui correspondent à la combinaison filière + niveau
+            if (!niveauId) {
+                // Pas de niveau choisi : on remet toutes les classes (état "non filtré")
+                allClassesOptions.each(function() {
+                    $('#classe_id').append($(this).clone());
+                });
+                if (currentClasseId) $('#classe_id').val(currentClasseId);
+                return;
+            }
+
+            if (mode === 'LMD') {
+                var lmdFilters = getLmdFilters();
                 allClassesOptions.each(function() {
                     var $option = $(this);
-                    if ($option.val() === '') {
-                        return; // Skip l'option par défaut
-                    }
+                    if ($option.val() === '') return;
 
+                    var systeme = ($option.data('systeme') || 'BTS').toString().toUpperCase();
+                    var optionNiveauId = $option.data('niveau-id');
+                    var optionMentionId = $option.data('mention-id');
+                    var optionParcoursId = $option.data('parcours-id');
+
+                    if (systeme !== 'LMD') return;
+                    if (optionNiveauId != niveauId) return;
+                    if (lmdFilters.mention_id && optionMentionId != lmdFilters.mention_id) return;
+                    if (lmdFilters.parcours_id && optionParcoursId != lmdFilters.parcours_id) return;
+
+                    $('#classe_id').append($option.clone());
+                });
+            } else {
+                // BTS classique : filtre filiere_id + niveau_id
+                var filiereId = $('#filiere_id').val();
+                allClassesOptions.each(function() {
+                    var $option = $(this);
+                    if ($option.val() === '') return;
+
+                    var systeme = ($option.data('systeme') || 'BTS').toString().toUpperCase();
                     var optionFiliereId = $option.data('filiere-id');
                     var optionNiveauId = $option.data('niveau-id');
 
-                    if (optionFiliereId == filiereId && optionNiveauId == niveauId) {
-                        $('#classe_id').append($option.clone());
-                    }
-                });
+                    if (systeme === 'LMD') return; // exclure LMD du listing BTS
+                    if (filiereId && optionFiliereId != filiereId) return;
+                    if (optionNiveauId != niveauId) return;
 
-                // Réselectionner la classe actuelle si elle est toujours disponible
-                if (currentClasseId && $('#classe_id option[value="' + currentClasseId + '"]').length > 0) {
-                    $('#classe_id').val(currentClasseId);
-                }
-            } else if (!filiereId && !niveauId) {
-                // Si aucune sélection, afficher toutes les classes
-                allClassesOptions.each(function() {
-                    var $option = $(this);
                     $('#classe_id').append($option.clone());
                 });
-                if (currentClasseId) {
-                    $('#classe_id').val(currentClasseId);
-                }
+            }
+
+            // Réselectionner la classe actuelle si toujours disponible
+            if (currentClasseId && $('#classe_id option[value="' + currentClasseId + '"]').length > 0) {
+                $('#classe_id').val(currentClasseId);
             }
         }
 
-        // Événements : Filière OU Niveau → filtrer Classes
+        // Switch BTS|LMD selon type du niveau choisi.
+        function applyModeFromNiveau() {
+            var niveauOption = document.querySelector('#niveau_id option:checked');
+            if (!niveauOption) return;
+            var niveauType = niveauOption.dataset.type || '';
+            var newMode = (niveauType === 'Licence' || niveauType === 'Master' || niveauType === 'Doctorat') ? 'LMD' : (niveauType ? 'BTS' : '');
+
+            var section = document.getElementById('inscription-academic-section');
+            if (section) section.dataset.mode = newMode.toLowerCase() || 'unknown';
+
+            var btsField = document.querySelector('.ins-bts-fieldset');
+            var lmdField = document.querySelector('.ins-lmd-fieldset');
+            if (btsField) {
+                btsField.disabled = newMode !== 'BTS';
+                btsField.style.display = newMode === 'BTS' ? '' : 'none';
+            }
+            if (lmdField) {
+                lmdField.disabled = newMode !== 'LMD';
+                lmdField.style.display = newMode === 'LMD' ? '' : 'none';
+            }
+            var badge = document.getElementById('ins-mode-badge');
+            if (badge) {
+                badge.textContent = newMode || '—';
+                badge.style.background = newMode === 'LMD' ? '#0453cb' : (newMode === 'BTS' ? '#64748b' : '#cbd5e1');
+            }
+        }
+
+        // Événements : Filière (BTS) OU Niveau → recalc mode + filterClasses.
+        // Listener sur les pickers LMD via custom event 'mention:changed' (cf composant au-mention-picker).
         $('#filiere_id, #niveau_id').change(function() {
+            applyModeFromNiveau();
             filterClasses();
             updatePlacesInfo($('#classe_id').val());
         });
+        window.addEventListener('mention:changed', function() {
+            filterClasses();
+            updatePlacesInfo($('#classe_id').val());
+        });
+        // Le parcours picker n'a pas de custom event mais expose un input hidden — on watch via MutationObserver
+        // léger sur l'input value (Alpine update via .value=). Fallback : input event.
+        document.addEventListener('input', function(ev) {
+            if (ev.target && (ev.target.name === 'lmd_filter_parcours_id' || ev.target.name === 'lmd_filter_mention_id')) {
+                filterClasses();
+                updatePlacesInfo($('#classe_id').val());
+            }
+        });
+
+        // État initial
+        applyModeFromNiveau();
 
         // Avertissement si le statut est modifié à "terminée"
         $('#status').change(function() {

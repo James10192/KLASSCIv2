@@ -395,7 +395,9 @@ class ESBTPStudentController extends Controller
             'inscriptions' => fn($q) => $q->with([
                     'filiere', 'niveauEtude', 'anneeUniversitaire',
                     'paiements', 'fraisSubscriptions.fraisCategory',
-                    'classe' => fn($cq) => $cq->with(['filiere', 'niveauEtude']),
+                    // classe.parcours.mention.domaine pour le tree LMD compact dans
+                    // les cards d'inscription (cf etudiants/show.blade.php tab Inscriptions).
+                    'classe' => fn($cq) => $cq->with(['filiere', 'niveauEtude', 'parcours.mention.domaine']),
                 ])
                 ->orderByDesc('created_at'),
             'paiements' => fn($q) => $q->with(['inscription', 'fraisCategory', 'categorie', 'validatedBy'])

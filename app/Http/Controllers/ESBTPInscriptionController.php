@@ -9,6 +9,8 @@ use App\Models\ESBTPFiliere;
 use App\Models\ESBTPFraisCategory;
 use App\Models\ESBTPFraisSubscription;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPLMDMention;
+use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPParent;
@@ -93,6 +95,11 @@ class ESBTPInscriptionController extends Controller
         $niveau = $request->input("niveau");
         $annee = $request->input("annee");
         $status = $request->input("status", "active");
+        // Filtre Système : 'BTS' | 'LMD' | null (= Tous). Filtré côté inscription via classe.systeme_academique.
+        $systemeFilter = $request->input("systeme");
+        if (!in_array($systemeFilter, ['BTS', 'LMD'], true)) {
+            $systemeFilter = null;
+        }
 
         // Tri (whitelist pour éviter SQL injection)
         $allowedSorts = ["created_at", "date_inscription", "status", "filiere_id", "niveau_id", "nom"];
@@ -123,6 +130,12 @@ class ESBTPInscriptionController extends Controller
 
         if ($niveau) {
             $baseQuery->where("niveau_id", $niveau);
+        }
+
+        if ($systemeFilter) {
+            // Filtrage par système académique de la classe rattachée à l'inscription.
+            // Si l'inscription n'a pas de classe (en attente d'affectation), elle est exclue.
+            $baseQuery->whereHas('classe', fn($q) => $q->where('systeme_academique', $systemeFilter));
         }
 
         if ($annee) {
@@ -195,6 +208,10 @@ class ESBTPInscriptionController extends Controller
 
         if ($niveau) {
             $statsQuery->where("niveau_id", $niveau);
+        }
+
+        if ($systemeFilter) {
+            $statsQuery->whereHas('classe', fn($q) => $q->where('systeme_academique', $systemeFilter));
         }
 
         if ($annee) {
@@ -638,12 +655,14 @@ class ESBTPInscriptionController extends Controller
     {
         $this->authorize('view', $inscription);
 
-        // Charger toutes les relations nécessaires, y compris payments
+        // Charger toutes les relations nécessaires, y compris payments.
+        // classe.parcours.mention.domaine pour le tree LMD premium dans la zone
+        // "Informations académiques" (cf inscriptions/show.blade.php).
         $inscription->load([
             "etudiant.parents",
             "filiere",
             "niveau",
-            "classe",
+            "classe.parcours.mention.domaine",
             "anneeUniversitaire",
             "paiements",
             "payments",
@@ -970,12 +989,14 @@ class ESBTPInscriptionController extends Controller
                 );
         }
 
-        // Charger les relations nécessaires
+        // Charger les relations nécessaires.
+        // classe.parcours.mention.domaine pour résoudre le mode initial LMD du form
+        // (cf inscriptions/partials/edit-form.blade.php : init script qui détecte BTS|LMD).
         $inscription->load([
             "etudiant",
             "filiere",
             "niveau",
-            "classe",
+            "classe.parcours.mention.domaine",
             "anneeUniversitaire",
         ]);
 
@@ -988,9 +1009,24 @@ class ESBTPInscriptionController extends Controller
             ->orderBy("name")
             ->get();
 
-        // Charger toutes les classes actives pour permettre le changement de filière/niveau
+        // Données LMD pour le picker mention + cascade parcours.
+        // Cf rule classe-lmd-filiere-as-mention : en LMD, le picker mention sert à filtrer
+        // les classes affichées dans le <select> classe (le filiere_id final est dérivé de
+        // la classe sélectionnée, pas du picker — pas de submit additionnel).
+        $mentions = ESBTPLMDMention::with('domaine')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        $parcours = ESBTPLMDParcours::with(['mention.domaine', 'filiere'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+
+        // Charger toutes les classes actives pour permettre le changement de filière/niveau.
+        // Eager-load parcours pour exposer les data-attrs LMD (parcours_id, mention_id)
+        // sur les <option> côté JS (filterClasses étendu pour LMD).
         $classes = ESBTPClasse::where("is_active", true)
-            ->with(["filiere", "niveauEtude"])
+            ->with(["filiere", "niveauEtude", "parcours.mention.domaine"])
             ->orderBy("name")
             ->get();
 
@@ -1005,13 +1041,15 @@ class ESBTPInscriptionController extends Controller
                     "niveaux",
                     "classes",
                     "annees",
+                    "mentions",
+                    "parcours",
                 ),
             );
         }
 
         return view(
             "esbtp.inscriptions.edit",
-            compact("inscription", "filieres", "niveaux", "classes", "annees"),
+            compact("inscription", "filieres", "niveaux", "classes", "annees", "mentions", "parcours"),
         );
     }
 
@@ -1028,6 +1066,16 @@ class ESBTPInscriptionController extends Controller
                     "error",
                     "Les inscriptions terminées ne peuvent pas être modifiées.",
                 );
+        }
+
+        // En mode LMD : le form n'envoie PAS filiere_id (le fieldset BTS est disabled).
+        // Dériver filiere_id depuis classe.filiere_id AVANT validation pour que le
+        // exists:esbtp_filieres,id passe (cf rule classe-lmd-filiere-as-mention).
+        if (!$request->filled('filiere_id') && $request->filled('classe_id')) {
+            $classeChoisie = ESBTPClasse::find($request->input('classe_id'));
+            if ($classeChoisie) {
+                $request->merge(['filiere_id' => $classeChoisie->filiere_id]);
+            }
         }
 
         // Validation des données

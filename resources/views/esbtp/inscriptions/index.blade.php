@@ -655,8 +655,14 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                            autocomplete="off">
                 </div>
 
-                <select name="filiere" id="filiere" class="ii-filter-select" aria-label="Filière">
-                    <option value="">Toutes les filières</option>
+                <select name="systeme" id="systeme" class="ii-filter-select" aria-label="Système académique">
+                    <option value="" @selected(!request('systeme'))>Tous systèmes</option>
+                    <option value="BTS" @selected(request('systeme') === 'BTS')>BTS</option>
+                    <option value="LMD" @selected(request('systeme') === 'LMD')>LMD</option>
+                </select>
+
+                <select name="filiere" id="filiere" class="ii-filter-select" aria-label="Filière / Mention">
+                    <option value="">Toutes filières / mentions</option>
                     @foreach($filieres as $fil)
                         <option value="{{ $fil->id }}" @selected(request('filiere') == $fil->id)>{{ $fil->name }}</option>
                     @endforeach
@@ -665,7 +671,7 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                 <select name="niveau" id="niveau" class="ii-filter-select" aria-label="Niveau">
                     <option value="">Tous les niveaux</option>
                     @foreach($niveaux as $niv)
-                        <option value="{{ $niv->id }}" @selected(request('niveau') == $niv->id)>{{ $niv->name }}</option>
+                        <option value="{{ $niv->id }}" @selected(request('niveau') == $niv->id)>{{ $niv->name }} ({{ $niv->type }})</option>
                     @endforeach
                 </select>
 

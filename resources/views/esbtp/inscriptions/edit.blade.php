@@ -228,6 +228,8 @@
                     'niveaux' => $niveaux,
                     'classes' => $classes,
                     'annees' => $annees,
+                    'mentions' => $mentions ?? collect(),
+                    'parcours' => $parcours ?? collect(),
                     'formId' => 'inscription-edit-form-page-' . $inscription->id,
                     'isEmbedded' => false,
                 ])

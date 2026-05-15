@@ -1544,15 +1544,33 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 <div class="is-section-icon"><i class="fas fa-graduation-cap"></i></div>
                                 <div class="is-section-title">Informations académiques</div>
                             </div>
-                            <div class="is-info-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
-                                <div class="is-info-row">
-                                    <span class="is-info-lbl">Filière</span>
-                                    <span class="is-info-val">{{ $inscription->filiere->name }}</span>
+                            @php
+                                $insIsLmd = ($inscription->classe?->systeme_academique ?? '') === 'LMD';
+                                $insLmdParcours = $insIsLmd && $inscription->classe?->parcours
+                                    && $inscription->classe->parcours->mention
+                                    && $inscription->classe->parcours->mention->domaine
+                                    ? $inscription->classe->parcours
+                                    : null;
+                            @endphp
+                            @if($insLmdParcours)
+                                {{-- LMD avec parcours : tree premium hiérarchique
+                                     Domaine → Mention → Parcours → Classe (cf rule premium-redesign tree IDE-style) --}}
+                                <div style="margin-bottom:1rem;">
+                                    <x-lmd-hierarchy-tree :parcours="$insLmdParcours" :classe="$inscription->classe" />
                                 </div>
+                            @endif
+                            <div class="is-info-grid" style="grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));">
+                                @if(!$insLmdParcours)
+                                    <div class="is-info-row">
+                                        <span class="is-info-lbl">Filière</span>
+                                        <span class="is-info-val">{{ $inscription->filiere->name ?? '—' }}</span>
+                                    </div>
+                                @endif
                                 <div class="is-info-row">
                                     <span class="is-info-lbl">Niveau</span>
-                                    <span class="is-info-val">{{ $inscription->niveau->name }}</span>
+                                    <span class="is-info-val">{{ $inscription->niveau->name ?? '—' }}</span>
                                 </div>
+                                @if(!$insLmdParcours)
                                 <div class="is-info-row">
                                     <span class="is-info-lbl">Classe</span>
                                     <span class="is-info-val" id="classe-name-desktop">
@@ -1568,6 +1586,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                         @endif
                                     </span>
                                 </div>
+                                @endif
                                 <div class="is-info-row">
                                     <span class="is-info-lbl">Année universitaire</span>
                                     <span class="is-info-val">{{ $inscription->anneeUniversitaire->name }}</span>

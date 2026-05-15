@@ -5,6 +5,31 @@
                 $formWrapperId = $formIdentifier . '-wrapper';
                 $successNoticeId = $formIdentifier . '-success';
                 $embeddedSuccessMessage = $isEmbedded ? session('embedded_success_inscription') : null;
+
+                // LMD switch : déterminer le mode initial depuis la classe en cours.
+                // Source de vérité = classe.systeme_academique (rule classe-lmd-filiere-as-mention).
+                // Si pas de classe : utiliser le type du niveau de l'inscription comme indicateur.
+                $mentionsCollection = isset($mentions) ? $mentions : collect();
+                $parcoursCollection = isset($parcours) ? $parcours : collect();
+                $niveauTypesJson = $niveaux->mapWithKeys(fn($n) => [$n->id => $n->type])->toJson();
+
+                $insRenderedMode = '';
+                $insInitialMentionId = '';
+                $insInitialParcoursId = '';
+                if ($inscription->classe?->systeme_academique === 'LMD') {
+                    $insRenderedMode = 'LMD';
+                    if ($inscription->classe->parcours) {
+                        $insInitialParcoursId = $inscription->classe->parcours_id;
+                        $insInitialMentionId = $inscription->classe->parcours->mention_id ?? '';
+                    } else {
+                        // Tronc commun mention : convention Option A → classe.filiere_id stocke mention_id
+                        $insInitialMentionId = $inscription->classe->filiere_id ?? '';
+                    }
+                } elseif ($inscription->classe?->systeme_academique === 'BTS' || ($inscription->niveau && in_array($inscription->niveau->type, ['BTS', 'BAC+2', 'DUT'], true))) {
+                    $insRenderedMode = 'BTS';
+                } elseif ($inscription->niveau && in_array($inscription->niveau->type, ['Licence', 'Master', 'Doctorat'], true)) {
+                    $insRenderedMode = 'LMD';
+                }
             @endphp
 
             @if($isEmbedded && $embeddedSuccessMessage)
@@ -145,12 +170,49 @@
                     </div>
                 </div>
 
-                <div class="row mb-3">
-                    @if($inscription->status !== 'active' || auth()->user()->can('admin.access'))
+                @if($inscription->status !== 'active' || auth()->user()->can('admin.access'))
+                    {{-- ZONE LMD-AWARE :
+                         - Niveau d'études (commun) — son type détermine BTS|LMD
+                         - Mode BTS : <select name="filiere_id"> classique
+                         - Mode LMD : <x-au-mention-picker> + <x-au-parcours-picker> (filtres uniquement)
+                         - <select name="classe_id"> filtré par JS selon mode + filtres LMD
+                         - filiere_id final : en BTS depuis le select, en LMD dérivé serveur-side
+                           depuis classe.filiere_id (cf controller update + rule classe-lmd-filiere-as-mention).
+                    --}}
+                    <div class="row mb-3" id="inscription-academic-section"
+                         data-mode="{{ strtolower($insRenderedMode ?: 'unknown') }}"
+                         data-niveau-types='{!! $niveauTypesJson !!}'>
                         <div class="col-md-4">
                             <div class="form-group">
+                                <label for="niveau_id">Niveau d'études <span class="text-danger">*</span></label>
+                                <select class="form-control @error('niveau_id') is-invalid @enderror" id="niveau_id" name="niveau_id" required>
+                                    <option value="">Sélectionner un niveau</option>
+                                    @foreach($niveaux as $niveau)
+                                        <option value="{{ $niveau->id }}" data-type="{{ $niveau->type }}" {{ old('niveau_id', $inscription->niveau_id) == $niveau->id ? 'selected' : '' }}>
+                                            {{ $niveau->name }} ({{ $niveau->type }})
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @error('niveau_id')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="form-text text-muted">
+                                    Mode :
+                                    <span id="ins-mode-badge" class="badge ms-1" style="background:{{ $insRenderedMode === 'LMD' ? '#0453cb' : ($insRenderedMode === 'BTS' ? '#64748b' : '#cbd5e1') }};color:#fff;">
+                                        {{ $insRenderedMode ?: '—' }}
+                                    </span>
+                                </small>
+                            </div>
+                        </div>
+
+                        {{-- BTS : Filière classique. Wrappé en <fieldset disabled> pour que le browser
+                             n'inclue PAS filiere_id dans le POST quand on est en mode LMD. --}}
+                        <fieldset class="col-md-4 ins-bts-fieldset"
+                                  {{ $insRenderedMode !== 'BTS' ? 'disabled' : '' }}
+                                  style="border:0;padding:0;margin:0;{{ $insRenderedMode !== 'BTS' ? 'display:none;' : '' }}">
+                            <div class="form-group">
                                 <label for="filiere_id">Filière <span class="text-danger">*</span></label>
-                                <select class="form-control @error('filiere_id') is-invalid @enderror" id="filiere_id" name="filiere_id" required>
+                                <select class="form-control @error('filiere_id') is-invalid @enderror" id="filiere_id" name="filiere_id">
                                     <option value="">Sélectionner une filière</option>
                                     @foreach($filieres as $filiere)
                                         <option value="{{ $filiere->id }}" {{ old('filiere_id', $inscription->filiere_id) == $filiere->id ? 'selected' : '' }}>
@@ -162,56 +224,62 @@
                                     <div class="invalid-feedback">{{ $message }}</div>
                                 @enderror
                             </div>
-                        </div>
+                        </fieldset>
 
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="niveau_id">Niveau d'études <span class="text-danger">*</span></label>
-                                <select class="form-control @error('niveau_id') is-invalid @enderror" id="niveau_id" name="niveau_id" required>
-                                    <option value="">Sélectionner un niveau</option>
-                                    @foreach($niveaux as $niveau)
-                                        <option value="{{ $niveau->id }}" {{ old('niveau_id', $inscription->niveau_id) == $niveau->id ? 'selected' : '' }}>
-                                            {{ $niveau->name }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                @error('niveau_id')
-                                    <div class="invalid-feedback">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        </div>
-                    @elseif($inscription->status === 'active' && !auth()->user()->can('admin.access'))
-                        <!-- Champs hidden pour conserver les valeurs non modifiables (sauf pour superAdmin) -->
-                        <input type="hidden" name="filiere_id" value="{{ $inscription->filiere_id }}">
-                        <input type="hidden" name="niveau_id" value="{{ $inscription->niveau_id }}">
+                        {{-- LMD : Mention picker + Parcours picker. Pickers servent UNIQUEMENT à filtrer
+                             les classes affichées dans le <select classe_id>. Pas de submit (name avec
+                             prefix lmd_filter_*). filiere_id final dérivé serveur-side depuis classe.filiere_id. --}}
+                        <fieldset class="col-md-8 ins-lmd-fieldset"
+                                  {{ $insRenderedMode !== 'LMD' ? 'disabled' : '' }}
+                                  style="border:0;padding:0;margin:0;{{ $insRenderedMode !== 'LMD' ? 'display:none;' : '' }}">
+                            @if($mentionsCollection->isEmpty())
+                                <div class="alert alert-warning d-flex align-items-start gap-2 mb-0">
+                                    <i class="fas fa-exclamation-triangle mt-1"></i>
+                                    <div>
+                                        <strong>Aucune mention LMD configurée pour cette instance.</strong>
+                                        <div class="small mt-1">L'utilisateur peut quand même choisir une classe LMD ci-dessous ; mais le filtrage par mention/parcours est désactivé.</div>
+                                    </div>
+                                </div>
+                            @else
+                                <div class="row">
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Mention LMD <small class="text-muted">(filtre)</small></label>
+                                        <x-au-mention-picker
+                                            name="lmd_filter_mention_id"
+                                            :value="$insInitialMentionId"
+                                            :mentions="$mentionsCollection"
+                                            placeholder="Toutes les mentions"
+                                        />
+                                        <small class="form-text text-muted">Filtre les classes LMD affichées ci-dessous.</small>
+                                    </div>
+                                    <div class="col-md-6 mb-3">
+                                        <label class="form-label">Parcours <small class="text-muted">(filtre, optionnel)</small></label>
+                                        <x-au-parcours-picker
+                                            name="lmd_filter_parcours_id"
+                                            :value="$insInitialParcoursId"
+                                            :parcours="$parcoursCollection"
+                                            :mention-filter="$insInitialMentionId"
+                                        />
+                                        <small class="form-text text-muted">Spécialisation au sein de la mention.</small>
+                                    </div>
+                                </div>
+                            @endif
+                        </fieldset>
+                    </div>
 
-                        <div class="col-md-4">
+                    <div class="row mb-3">
+                        <div class="col-md-12">
                             <div class="form-group">
-                                <label class="form-label">Filière</label>
-                                <input type="text" class="form-control" value="{{ $inscription->filiere->name }}" disabled>
-                                <div class="alert alert-warning mt-2">La filière ne peut plus être modifiée après activation de l'inscription.</div>
-                            </div>
-                        </div>
-
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label class="form-label">Niveau d'études</label>
-                                <input type="text" class="form-control" value="{{ $inscription->niveau->name }}" disabled>
-                                <div class="alert alert-warning mt-2">Le niveau ne peut plus être modifié après activation de l'inscription.</div>
-                            </div>
-                        </div>
-                    @endif
-
-                    @if($inscription->status !== 'active' || auth()->user()->can('admin.access'))
-                        <div class="col-md-4">
-                            <div class="form-group">
-                                <label for="classe_id" class="form-label">Classe</label>
+                                <label for="classe_id" class="form-label">Classe <span class="text-danger">*</span></label>
                                 <select name="classe_id" id="classe_id" class="form-select" required data-places-indicator="{{ $placesInfoId }}">
                                     <option value="">Sélectionner une classe</option>
                                     @foreach($classes as $classe)
                                         <option value="{{ $classe->id }}"
                                                 data-filiere-id="{{ $classe->filiere_id }}"
                                                 data-niveau-id="{{ $classe->niveau_etude_id }}"
+                                                data-systeme="{{ $classe->systeme_academique ?? 'BTS' }}"
+                                                data-mention-id="{{ optional($classe->parcours)->mention_id ?? '' }}"
+                                                data-parcours-id="{{ $classe->parcours_id ?? '' }}"
                                                 @if($inscription->classe_id == $classe->id) selected @endif>
                                             {{ $classe->name }}
                                             @if($classe->filiere && $classe->niveauEtude)
@@ -224,10 +292,28 @@
                                 <div class="form-text text-muted">Vous pouvez changer la classe tant que l'inscription n'est pas activée.</div>
                             </div>
                         </div>
-                    @elseif($inscription->status === 'active' && !auth()->user()->can('admin.access'))
-                        <!-- Champ hidden pour conserver la valeur de la classe (sauf pour superAdmin) -->
-                        <input type="hidden" name="classe_id" value="{{ $inscription->classe_id }}">
+                    </div>
+                @else
+                    {{-- Status = active + non-admin : tout est en lecture seule --}}
+                    <input type="hidden" name="filiere_id" value="{{ $inscription->filiere_id }}">
+                    <input type="hidden" name="niveau_id" value="{{ $inscription->niveau_id }}">
+                    <input type="hidden" name="classe_id" value="{{ $inscription->classe_id }}">
 
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label">Filière</label>
+                                <input type="text" class="form-control" value="{{ $inscription->filiere->name ?? '—' }}" disabled>
+                                <div class="alert alert-warning mt-2">La filière ne peut plus être modifiée après activation de l'inscription.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label class="form-label">Niveau d'études</label>
+                                <input type="text" class="form-control" value="{{ $inscription->niveau->name ?? '—' }}" disabled>
+                                <div class="alert alert-warning mt-2">Le niveau ne peut plus être modifié après activation de l'inscription.</div>
+                            </div>
+                        </div>
                         <div class="col-md-4">
                             <div class="form-group">
                                 <label class="form-label">Classe</label>
@@ -236,8 +322,8 @@
                                 <div class="alert alert-warning mt-2">La classe ne peut plus être modifiée après activation de l'inscription.</div>
                             </div>
                         </div>
-                    @endif
-                </div>
+                    </div>
+                @endif
 
                 <div class="row mb-3">
                     <div class="col-md-12">

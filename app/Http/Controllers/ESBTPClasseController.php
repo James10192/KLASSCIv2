@@ -68,8 +68,10 @@ class ESBTPClasseController extends Controller
         // la vue affiche explicitement « Aucune année universitaire définie ».
         $anneeAcademique = $anneeCourante?->name;
 
-        // Construction de la requête avec filtres
-        $query = ESBTPClasse::with(["filiere", "niveau", "annee"]);
+        // Construction de la requête avec filtres.
+        // Eager-load parcours.mention.domaine pour le tree LMD compact dans les cards
+        // (cf classe-card.blade.php). Sans ça, chaque card LMD déclenche 3 queries N+1.
+        $query = ESBTPClasse::with(["filiere", "niveau", "annee", "parcours.mention.domaine"]);
 
         // Filtres disponibles
         if ($request->filled("filiere_id")) {
@@ -419,6 +421,15 @@ class ESBTPClasseController extends Controller
         $classeFiliereId = $classe->filiere_id;
         $classeNiveauId = $classe->niveau_etude_id;
 
+        // Periode du toggle Suivi des heures (Semestre 1 / Semestre 2 / Année).
+        // Lu en amont pour pouvoir filtrer $lmdVolumeBudget côté serveur — sinon les blocs
+        // "Répartition par catégorie" et "Détail par UE" affichent l'année entière même
+        // quand l'utilisateur a sélectionné un seul semestre.
+        $periode = $request->input("periode", "annee");
+        if (!in_array($periode, ['annee', 'semestre1', 'semestre2'], true)) {
+            $periode = 'annee';
+        }
+
         // LMD volume budget : compare planifie vs realise par type_seance (CM/TD/TP)
         // Reutilise le service deja en place pour LMD planning. Renvoie array vide pour BTS.
         $lmdVolumeBudget = [];
@@ -435,10 +446,19 @@ class ESBTPClasseController extends Controller
             elseif ($niveauType === 'Doctorat') $baseSem = 10 + ($niveauYear - 1) * 2;
             $lmdSemestres = [$baseSem + 1, $baseSem + 2];
 
+            // Semestres effectivement chargés selon periode :
+            //  - 'annee'      → tous les semestres du niveau (ex L2 → [3,4])
+            //  - 'semestre1'  → 1er semestre du niveau (ex L2 → [3])
+            //  - 'semestre2'  → 2e semestre du niveau (ex L2 → [4])
+            $semestresToLoad = match ($periode) {
+                'semestre1' => isset($lmdSemestres[0]) ? [$lmdSemestres[0]] : [],
+                'semestre2' => isset($lmdSemestres[1]) ? [$lmdSemestres[1]] : [],
+                default => $lmdSemestres,
+            };
+
             try {
                 $volumeBudgetService = app(\App\Services\VolumeBudgetService::class);
-                // Merger les budgets des 2 semestres applicables au niveau.
-                foreach ($lmdSemestres as $sem) {
+                foreach ($semestresToLoad as $sem) {
                     $semBudget = $volumeBudgetService->forClasse(
                         $classe,
                         $classe->niveau_etude_id,
@@ -513,7 +533,6 @@ class ESBTPClasseController extends Controller
                 return $matiere;
             });
 
-        $periode = $request->input("periode", "annee");
         $planningMatiere = $this->planningService->buildPlanningMatierePourClasse(
             $classe,
             $anneeCourante,

@@ -136,72 +136,8 @@
 /* Row pleine largeur (pour Hierarchie LMD tree, etc.) */
 .cs-info-row--full { display: flex; flex-direction: column; align-items: stretch; gap: .65rem; padding: .85rem 0; }
 .cs-info-full-header { display: flex; align-items: center; justify-content: space-between; gap: .65rem; }
-/* Tree premium UEMOA — style IDE (indentation progressive + L-connectors VSCode-style) */
-.cs-lmd-tree {
-    background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06));
-    border: 1px solid rgba(4,83,203,.18);
-    border-radius: 12px;
-    padding: .85rem;
-}
-.cs-lmd-tree-node {
-    position: relative;
-    display: flex; align-items: center;
-    gap: .7rem;
-    padding: 0 .65rem;
-    border-radius: 7px;
-    height: 44px;
-    transition: background .15s;
-}
-.cs-lmd-tree-node + .cs-lmd-tree-node { margin-top: .25rem; }
-.cs-lmd-tree-node:hover { background: rgba(4,83,203,.06); }
-/* INDENTATION TREE - chaque enfant décalé à droite de son parent */
-.cs-lmd-tree-node--mention  { margin-left: 1.6rem; }
-.cs-lmd-tree-node--parcours { margin-left: 3.2rem; }
-/* L-CONNECTOR : vertical aligné sur le CENTRE HORIZONTAL de l'icône parent, horizontal arrivant au bord gauche de l'icône enfant.
-   Calcul : icône parent centrée à `1.65rem` du bord gauche du node parent (padding-left .65rem + 32px/2 = 1rem).
-   Le node enfant est décalé de `margin-left: 1.6rem` à droite du parent. Donc le centre icône parent = 1.65 - 1.6 = .05rem du bord gauche du node enfant ≈ left:0 (~0.8px d'erreur, invisible). */
-.cs-lmd-tree-node--mention::before,
-.cs-lmd-tree-node--parcours::before {
-    content: '';
-    position: absolute;
-    left: 0;                      /* trait vertical pile sous le centre horizontal icône parent */
-    top: calc(-50% - .25rem);     /* part du milieu vertical du parent (height 44px + margin .25rem) */
-    bottom: calc(50% - 1px);      /* arrive au milieu vertical de l'icône courante */
-    width: .65rem;                /* segment horizontal jusqu'au bord gauche icône enfant (= padding-left .65rem) */
-    border-left: 2px solid rgba(4,83,203,.42);
-    border-bottom: 2px solid rgba(4,83,203,.42);
-    border-bottom-left-radius: 7px;
-    pointer-events: none;
-}
-.cs-lmd-tree-icon {
-    width: 32px; height: 32px; border-radius: 8px;
-    display: flex; align-items: center; justify-content: center;
-    color: #fff; font-size: .82rem; flex-shrink: 0;
-    box-shadow: 0 2px 8px rgba(4,83,203,.25);
-    position: relative; z-index: 1;
-}
-.cs-lmd-tree-node--domaine .cs-lmd-tree-icon { background: linear-gradient(135deg, #033a8e, #0453cb); }
-.cs-lmd-tree-node--mention .cs-lmd-tree-icon { background: linear-gradient(135deg, #0453cb, #3b7ddb); }
-.cs-lmd-tree-node--parcours .cs-lmd-tree-icon { background: linear-gradient(135deg, #3b7ddb, #5e91de); }
-.cs-lmd-tree-body {
-    flex: 1; min-width: 0;
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: .15rem .65rem;
-}
-.cs-lmd-tree-label { grid-column: 1; font-size: .62rem; color: var(--cs-muted); font-weight: 700; text-transform: uppercase; letter-spacing: .6px; }
-.cs-lmd-tree-name { grid-column: 1; font-size: .92rem; font-weight: 700; color: var(--cs-text); line-height: 1.2; }
-.cs-lmd-tree-code {
-    grid-column: 2; grid-row: 1 / span 2;
-    align-self: center;
-    font-size: .64rem; color: #0453cb;
-    background: rgba(4,83,203,.08);
-    padding: .15rem .5rem; border-radius: 5px;
-    font-weight: 700; letter-spacing: .3px;
-    font-family: 'Courier New', monospace;
-    white-space: nowrap;
-}
+/* Tree premium LMD : extrait dans le composant lmd-hierarchy-tree (namespace lht-*).
+   Seul le badge reste local car réutilisé dans le header de la row. */
 .cs-lmd-tree-badge {
     display: inline-flex; align-items: center; gap: .3rem;
     background: rgba(4,83,203,.12); color: #0453cb;
@@ -713,38 +649,7 @@
                                 <span class="cs-info-label">Hiérarchie LMD</span>
                                 <span class="cs-lmd-tree-badge"><i class="fas fa-university"></i>LMD</span>
                             </div>
-                            <div class="cs-lmd-tree">
-                                <div class="cs-lmd-tree-node cs-lmd-tree-node--domaine">
-                                    <div class="cs-lmd-tree-icon"><i class="fas fa-folder-open"></i></div>
-                                    <div class="cs-lmd-tree-body">
-                                        <div class="cs-lmd-tree-label">Domaine</div>
-                                        <div class="cs-lmd-tree-name">{{ $classe->parcours->mention->domaine->name }}</div>
-                                        @if($classe->parcours->mention->domaine->code)
-                                            <span class="cs-lmd-tree-code">{{ $classe->parcours->mention->domaine->code }}</span>
-                                        @endif
-                                    </div>
-                                </div>
-                                <div class="cs-lmd-tree-node cs-lmd-tree-node--mention">
-                                    <div class="cs-lmd-tree-icon"><i class="fas fa-graduation-cap"></i></div>
-                                    <div class="cs-lmd-tree-body">
-                                        <div class="cs-lmd-tree-label">Mention</div>
-                                        <div class="cs-lmd-tree-name">{{ $classe->parcours->mention->name }}</div>
-                                        @if($classe->parcours->mention->code)
-                                            <span class="cs-lmd-tree-code">{{ $classe->parcours->mention->code }}</span>
-                                        @endif
-                                    </div>
-                                </div>
-                                <div class="cs-lmd-tree-node cs-lmd-tree-node--parcours">
-                                    <div class="cs-lmd-tree-icon"><i class="fas fa-route"></i></div>
-                                    <div class="cs-lmd-tree-body">
-                                        <div class="cs-lmd-tree-label">Parcours</div>
-                                        <div class="cs-lmd-tree-name">{{ $classe->parcours->name }}</div>
-                                        @if($classe->parcours->code)
-                                            <span class="cs-lmd-tree-code">{{ $classe->parcours->code }}</span>
-                                        @endif
-                                    </div>
-                                </div>
-                            </div>
+                            <x-lmd-hierarchy-tree :parcours="$classe->parcours" />
                         </div>
                     @elseif($isLmdInfo)
                         <div class="cs-info-row">

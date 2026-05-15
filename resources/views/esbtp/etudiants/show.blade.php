@@ -2953,24 +2953,49 @@
                     </div>
                 </div>
 
-                <div class="insc-data-grid">
-                    <div class="insc-data-row">
-                        <span class="insc-data-lbl"><i class="fas fa-project-diagram"></i> Filière</span>
-                        <span class="insc-data-val">{{ $insc->classe?->filiere?->name ?? '—' }}</span>
+                @php
+                    $inscIsLmd = ($insc->classe?->systeme_academique ?? '') === 'LMD';
+                    $inscLmdParcours = $inscIsLmd && $insc->classe?->parcours
+                        && $insc->classe->parcours->mention
+                        && $insc->classe->parcours->mention->domaine
+                        ? $insc->classe->parcours
+                        : null;
+                @endphp
+                @if($inscLmdParcours)
+                    {{-- Tree premium hiérarchique LMD compact (Domaine → Mention → Parcours → Classe) --}}
+                    <div style="margin-bottom:.75rem;">
+                        <x-lmd-hierarchy-tree :parcours="$inscLmdParcours" :classe="$insc->classe" compact />
                     </div>
-                    <div class="insc-data-row">
-                        <span class="insc-data-lbl"><i class="fas fa-layer-group"></i> Niveau</span>
-                        <span class="insc-data-val">{{ $insc->classe?->niveau?->name ?? '—' }}</span>
+                    <div class="insc-data-grid">
+                        <div class="insc-data-row">
+                            <span class="insc-data-lbl"><i class="fas fa-layer-group"></i> Niveau</span>
+                            <span class="insc-data-val">{{ $insc->classe?->niveau?->name ?? '—' }}</span>
+                        </div>
+                        <div class="insc-data-row">
+                            <span class="insc-data-lbl"><i class="fas fa-calendar-plus"></i> Date inscription</span>
+                            <span class="insc-data-val">{{ $insc->created_at?->format('d/m/Y') ?? '—' }}</span>
+                        </div>
                     </div>
-                    <div class="insc-data-row">
-                        <span class="insc-data-lbl"><i class="fas fa-chalkboard"></i> Classe</span>
-                        <span class="insc-data-val">{{ $insc->classe?->name ?? '—' }}</span>
+                @else
+                    <div class="insc-data-grid">
+                        <div class="insc-data-row">
+                            <span class="insc-data-lbl"><i class="fas fa-project-diagram"></i> Filière</span>
+                            <span class="insc-data-val">{{ $insc->classe?->filiere?->name ?? '—' }}</span>
+                        </div>
+                        <div class="insc-data-row">
+                            <span class="insc-data-lbl"><i class="fas fa-layer-group"></i> Niveau</span>
+                            <span class="insc-data-val">{{ $insc->classe?->niveau?->name ?? '—' }}</span>
+                        </div>
+                        <div class="insc-data-row">
+                            <span class="insc-data-lbl"><i class="fas fa-chalkboard"></i> Classe</span>
+                            <span class="insc-data-val">{{ $insc->classe?->name ?? '—' }}</span>
+                        </div>
+                        <div class="insc-data-row">
+                            <span class="insc-data-lbl"><i class="fas fa-calendar-plus"></i> Date inscription</span>
+                            <span class="insc-data-val">{{ $insc->created_at?->format('d/m/Y') ?? '—' }}</span>
+                        </div>
                     </div>
-                    <div class="insc-data-row">
-                        <span class="insc-data-lbl"><i class="fas fa-calendar-plus"></i> Date inscription</span>
-                        <span class="insc-data-val">{{ $insc->created_at?->format('d/m/Y') ?? '—' }}</span>
-                    </div>
-                </div>
+                @endif
 
                 <div class="insc-affectation">
                     @if(in_array($affStatus, ['affecté', 'réaffecté']))
@@ -5121,25 +5146,29 @@
 {{-- ─── TAB: PROFIL ─────────────────────────────────────────────── --}}
 <div class="tab-panel" id="tab-profil">
 
-    {{-- Parcours LMD (visible même si pas inscrit cette année — crédits capitalisés à vie) --}}
+    {{-- Parcours LMD (visible même si pas inscrit cette année — crédits capitalisés à vie).
+         Refondu en tree premium bleu KLASSCI (rule premium-redesign monochrome bleu).
+         Avant : couleurs vertes #059669 hardcodées (violation palette). --}}
     @if($parcours)
     <div class="s-card" style="margin-bottom:16px;">
         <div class="s-card-header">
             <div class="s-card-title">
-                <div class="s-card-title-icon" style="background:#ecfdf5; color:#059669;"><i class="fas fa-sitemap"></i></div>
+                <div class="s-card-title-icon" style="background:rgba(4,83,203,.08); color:#0453cb;"><i class="fas fa-sitemap"></i></div>
                 Parcours académique LMD
             </div>
-            <span style="display:inline-block; padding:3px 10px; border-radius:6px; font-size:.72rem; font-weight:600; color:#fff; background:linear-gradient(135deg, #059669, #34d399);">LMD</span>
+            <span style="display:inline-flex;align-items:center;gap:.3rem;background:rgba(4,83,203,.12);color:#0453cb;border:1px solid rgba(4,83,203,.25);padding:.2rem .55rem;border-radius:6px;font-size:.68rem;font-weight:700;letter-spacing:.4px;">
+                <i class="fas fa-university"></i>LMD
+            </span>
+        </div>
+        <div style="padding:0 16px 14px;">
+            <x-lmd-hierarchy-tree :parcours="$parcours" />
         </div>
         <div class="info-grid">
-            @if($parcours->mention && $parcours->mention->domaine)
-                <div class="info-row"><span class="info-lbl">Domaine</span><span class="info-val" style="font-weight:600;">{{ $parcours->mention->domaine->name }}</span></div>
-                <div class="info-row"><span class="info-lbl">Mention</span><span class="info-val" style="font-weight:600;">{{ $parcours->mention->name }}</span></div>
+            @if($parcours->filiere)
+                <div class="info-row"><span class="info-lbl">Filière équivalente</span><span class="info-val">{{ $parcours->filiere->name }}</span></div>
             @endif
-            <div class="info-row"><span class="info-lbl">Parcours</span><span class="info-val" style="font-weight:600; color:#059669;">{{ $parcours->name }}</span></div>
-            <div class="info-row"><span class="info-lbl">Filière</span><span class="info-val">{{ $parcours->filiere?->name ?? $kpiInscActive?->classe?->filiere?->name ?? '—' }}</span></div>
             @if($lmdCredits)
-                <div class="info-row"><span class="info-lbl">Crédits capitalisés</span><span class="info-val mono" style="font-weight:600; color:#059669;">{{ $lmdCredits['capitalises'] }} / {{ $lmdCredits['totaux'] }} CECT</span></div>
+                <div class="info-row"><span class="info-lbl">Crédits capitalisés</span><span class="info-val mono" style="font-weight:600; color:#0453cb;">{{ $lmdCredits['capitalises'] }} / {{ $lmdCredits['totaux'] }} CECT</span></div>
                 @if(count($lmdCredits['semestres']) === 2)
                     <div class="info-row"><span class="info-lbl">Semestres en cours</span><span class="info-val">S{{ $lmdCredits['semestres'][0] }} — S{{ $lmdCredits['semestres'][1] }}</span></div>
                 @endif

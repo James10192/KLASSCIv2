@@ -181,6 +181,8 @@ class MatiereTreeBuilder
      * @param Collection $lmdMatieres Collection issue de PlanificationAcademique groupee par matiere_id
      *                                avec keys [matiere, cm, td, tp, coefficient, credits_ects, volume_horaire_total, semestres]
      * @param array      $lmdVolumeBudget Keyed by matiere_id avec ['cm' => ['planifie', 'realise'], 'td' => ..., 'tp' => ...]
+     *                                    Source de vérité pour les volumes planifiés (semestre-filtrés au niveau LMD du
+     *                                    cours, ex L2 → S3+S4). Garantit la cohérence avec la "Répartition par catégorie".
      * @return Collection<array{ue, is_orphan, code, name, type_ue, type_label, ecues, totaux, total_credits, total_coef, pct_realise, nb_ecues}>
      */
     public function forClasse(Collection $lmdMatieres, array $lmdVolumeBudget): Collection
@@ -203,9 +205,14 @@ class MatiereTreeBuilder
                     $cmR = (float) ($budget['cm']['realise'] ?? 0);
                     $tdR = (float) ($budget['td']['realise'] ?? 0);
                     $tpR = (float) ($budget['tp']['realise'] ?? 0);
-                    $cmP = (float) ($row['cm'] ?? 0);
-                    $tdP = (float) ($row['td'] ?? 0);
-                    $tpP = (float) ($row['tp'] ?? 0);
+                    // Planifié : prioritaire depuis $lmdVolumeBudget (semestre-filtré au niveau LMD)
+                    // pour cohérence avec "Répartition par catégorie pédagogique LMD" qui agrège
+                    // sur cette même source. Fallback sur $row[k] (sans filtre semestre) si le matiere_id
+                    // n'est pas dans $lmdVolumeBudget — ex: ECUE rattachée au parcours via le pivot
+                    // mais sans planification configurée pour le semestre courant.
+                    $cmP = isset($budget['cm']) ? (float) ($budget['cm']['planifie'] ?? 0) : (float) ($row['cm'] ?? 0);
+                    $tdP = isset($budget['td']) ? (float) ($budget['td']['planifie'] ?? 0) : (float) ($row['td'] ?? 0);
+                    $tpP = isset($budget['tp']) ? (float) ($budget['tp']['planifie'] ?? 0) : (float) ($row['tp'] ?? 0);
                     $tpeP = (float) ($row['tpe'] ?? 0);
 
                     $totaux['cm_p'] += $cmP;
