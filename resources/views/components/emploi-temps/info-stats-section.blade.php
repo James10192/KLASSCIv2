@@ -214,6 +214,44 @@
         padding: .25rem .6rem; border-radius: 7px;
         min-width: 40px; text-align: center;
     }
+
+    /* Card LMD interactive : chips cliquables qui filtrent l'onglet Liste seances */
+    .eis-lmd-type {
+        cursor: pointer;
+        background: none;
+        text-align: left;
+        width: 100%;
+        font-family: inherit;
+        color: inherit;
+    }
+    .eis-lmd-type:disabled {
+        cursor: not-allowed;
+        opacity: .6;
+    }
+    .eis-lmd-type:not(:disabled):hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(4,83,203,.1);
+    }
+    .eis-lmd-type:not(:disabled):focus-visible {
+        outline: 2px solid #0453cb;
+        outline-offset: 2px;
+    }
+    .eis-lmd-hint {
+        display: flex;
+        align-items: center;
+        gap: .5rem;
+        margin-top: .85rem;
+        padding: .55rem .75rem;
+        background: rgba(4,83,203,.05);
+        border: 1px dashed rgba(4,83,203,.2);
+        border-radius: 8px;
+        font-size: .76rem;
+        color: #475569;
+    }
+    .eis-lmd-hint i {
+        color: #0453cb;
+        font-size: .85rem;
+    }
 </style>
 @endonce
 
@@ -365,15 +403,24 @@
                         default               => 'muted',
                     };
                 @endphp
-                <div class="eis-lmd-type eis-lmd-type--{{ $tone }}">
+                <button type="button"
+                        class="eis-lmd-type eis-lmd-type--{{ $tone }}"
+                        @if($count === 0) disabled @endif
+                        @click="$dispatch('et:filter-by-type', { type: '{{ $tk }}' })"
+                        aria-label="Filtrer les séances par type {{ $typeSeanceLabels[$tk] }}">
                     <div class="eis-lmd-type-icon"><i class="fas {{ $typeSeanceIcons[$tk] }}"></i></div>
                     <div class="eis-lmd-type-body">
                         <div class="eis-lmd-type-code">{{ $tk }}</div>
                         <div class="eis-lmd-type-name">{{ $typeSeanceLabels[$tk] }}</div>
                     </div>
                     <div class="eis-lmd-type-value">{{ $count }}</div>
-                </div>
+                </button>
             @endforeach
+        </div>
+
+        <div class="eis-lmd-hint">
+            <i class="fas fa-mouse-pointer"></i>
+            Cliquez sur un type pour voir uniquement ces séances dans la liste.
         </div>
     </div>
     @endif

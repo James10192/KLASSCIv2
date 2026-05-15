@@ -942,6 +942,7 @@
                 }
              }"
              x-init="window.addEventListener('hashchange', () => { tab = window.location.hash.replace('#','') || 'infos'; })"
+             @et:filter-by-type.window="setTab('liste')"
              @keydown.arrow-left.prevent="$refs.tablist && (() => { const b = $refs.tablist.querySelectorAll('[role=tab]'); const i = [...b].findIndex(x => x.getAttribute('aria-selected') === 'true'); const prev = b[(i - 1 + b.length) % b.length]; prev.focus(); prev.click(); })()"
              @keydown.arrow-right.prevent="$refs.tablist && (() => { const b = $refs.tablist.querySelectorAll('[role=tab]'); const i = [...b].findIndex(x => x.getAttribute('aria-selected') === 'true'); const next = b[(i + 1) % b.length]; next.focus(); next.click(); })()">
 
@@ -1015,7 +1016,8 @@
                  aria-labelledby="ets-tab-liste">
                 <x-emploi-temps.liste-seances
                     :seances="$emploiTemps->seances ?? collect()"
-                    :emploiTemps="$emploiTemps" />
+                    :emploiTemps="$emploiTemps"
+                    :classe="$classe ?? null" />
             </div>
 
             {{-- Tab: Suivi des heures (LMD = partial UE grouping, BTS = partial flat) --}}

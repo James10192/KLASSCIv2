@@ -1,4 +1,21 @@
-@props(['seances' => collect(), 'emploiTemps'])
+@props(['seances' => collect(), 'emploiTemps', 'classe' => null])
+
+@php
+    // Detection LMD : si classe LMD on affiche chips type_seance + filtre
+    $isClasseLmd = $classe ? (($classe->systeme_academique ?? '') === 'LMD') : false;
+
+    // Labels pour le filtre dropdown (UEMOA)
+    $typeSeanceFilterOptions = [
+        ''       => 'Tous les types',
+        'CM'     => 'CM — Cours Magistral',
+        'TD'     => 'TD — Travaux Dirigés',
+        'TP'     => 'TP — Travaux Pratiques',
+        'PROJET' => 'Projet',
+        'TPE'    => 'TPE — Travail Personnel',
+        'EXAMEN' => 'Examen',
+        'AUTRE'  => 'Autre',
+    ];
+@endphp
 
 @once
 <style>
@@ -116,12 +133,110 @@
         border: 1px solid #e2e8f0;
         border-radius: 14px;
         box-shadow: 0 1px 3px rgba(15,23,42,.04);
-        overflow: hidden;
+        overflow: visible;
     }
+
+    /* ===== Chips type_seance UEMOA (monochrome bleu, 3 tones) ===== */
+    .ets-chip {
+        display: inline-flex;
+        align-items: center;
+        padding: .22rem .55rem;
+        border-radius: 6px;
+        font-size: .68rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: .3px;
+        white-space: nowrap;
+    }
+    .ets-chip--primary {
+        background: rgba(4,83,203,.10);
+        color: #0453cb;
+        border: 1px solid rgba(4,83,203,.25);
+    }
+    .ets-chip--accent {
+        background: rgba(59,125,219,.10);
+        color: #3b7ddb;
+        border: 1px solid rgba(59,125,219,.25);
+    }
+    .ets-chip--muted {
+        background: rgba(94,145,222,.08);
+        color: #5e91de;
+        border: 1px solid rgba(94,145,222,.20);
+    }
+
+    /* ===== Bandeau filtre (LMD) ===== */
+    .ets-seances-filter {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: .85rem 1.25rem;
+        background: linear-gradient(135deg, rgba(4,83,203,.03), rgba(59,125,219,.05));
+        border-bottom: 1px solid #e2e8f0;
+        flex-wrap: wrap;
+    }
+    .ets-seances-filter > .au-select {
+        flex: 1;
+        min-width: 240px;
+        max-width: 360px;
+    }
+    .ets-seances-count {
+        font-size: .82rem;
+        color: #64748b;
+        font-weight: 500;
+        display: inline-flex;
+        align-items: center;
+        gap: .35rem;
+    }
+    .ets-count-value {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-width: 28px;
+        height: 24px;
+        padding: 0 .55rem;
+        background: rgba(4,83,203,.1);
+        color: #0453cb;
+        border-radius: 99px;
+        font-size: .78rem;
+        font-weight: 700;
+    }
+    .ets-seances-empty-filter {
+        text-align: center;
+        padding: 2rem 1rem;
+        color: #64748b;
+        font-size: .9rem;
+        background: #f8fafc;
+        border-top: 1px solid #f1f5f9;
+    }
+    .ets-seances-empty-filter i {
+        font-size: 1.5rem;
+        color: #94a3b8;
+        margin-bottom: .5rem;
+        display: block;
+    }
+    [x-cloak] { display: none !important; }
 </style>
 @endonce
 
-<div class="els-wrap">
+<div class="els-wrap"
+     x-data="{
+        filterType: '',
+        filteredCount: 0,
+        recomputeCount() {
+            this.$nextTick(() => {
+                const rows = this.$root.querySelectorAll('tbody tr[data-seance-row]');
+                let visible = 0;
+                rows.forEach(r => {
+                    if (r.offsetParent !== null) visible++;
+                });
+                this.filteredCount = visible;
+            });
+        }
+     }"
+     x-init="recomputeCount(); $watch('filterType', () => recomputeCount());"
+     @et:filter-by-type.window="filterType = $event.detail.type || ''">
+
     <div style="padding: 1rem 1.25rem; border-bottom: 1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:.5rem;">
         <div style="display:flex; align-items:center; gap:.55rem; font-weight:700; color:#0f172a; font-size:.9rem;">
             <i class="fas fa-list-ul" style="color:#0453cb;"></i>
@@ -134,6 +249,24 @@
         </a>
         @endcan
     </div>
+
+    {{-- Bandeau filtre (LMD seulement) --}}
+    @if($isClasseLmd && $seances && $seances->count() > 0)
+    <div class="ets-seances-filter">
+        <x-au-select
+            name="filterType"
+            x-model="filterType"
+            :options="$typeSeanceFilterOptions"
+            placeholder="Filtrer par type pédagogique"
+            icon="fa-filter" />
+        <div class="ets-seances-count">
+            <span x-text="filteredCount" class="ets-count-value">{{ $seances->count() }}</span>
+            <span x-show="!filterType">séance(s) au total</span>
+            <span x-show="filterType" x-cloak>séance(s) filtrée(s)</span>
+        </div>
+    </div>
+    @endif
+
     <div style="padding: 0 1.25rem 1rem;">
         @if($seances && $seances->count() > 0)
             <div class="table-responsive">
@@ -144,16 +277,30 @@
                             <th width="22%">Matière</th>
                             <th width="18%">Enseignant</th>
                             <th width="10%">Type</th>
+                            @if($isClasseLmd)
+                            <th width="9%">Pédagogie</th>
+                            @endif
                             <th width="10%">Jour</th>
-                            <th width="12%">Heure</th>
-                            <th width="7%">Durée</th>
-                            <th width="8%">Statut</th>
+                            <th width="{{ $isClasseLmd ? '10%' : '12%' }}">Heure</th>
+                            <th width="6%">Durée</th>
+                            <th width="7%">Statut</th>
                             <th width="7%" class="text-end">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
                         @foreach($seances->sortBy([['jour', 'asc'], ['heure_debut', 'asc']]) as $index => $seance)
-                        <tr>
+                            @php
+                                $typeSeanceValue = null;
+                                if ($seance->type_seance) {
+                                    $typeSeanceValue = $seance->type_seance instanceof \App\Enums\TypeSeance
+                                        ? $seance->type_seance->value
+                                        : (string) $seance->type_seance;
+                                }
+                            @endphp
+                        <tr data-seance-row
+                            data-type-seance="{{ $typeSeanceValue }}"
+                            x-show="!filterType || '{{ $typeSeanceValue }}' === filterType"
+                            x-cloak>
                             <td class="text-center fw-bold text-muted">{{ $index + 1 }}</td>
                             <td>
                                 <div class="d-flex align-items-center gap-2">
@@ -190,11 +337,27 @@
                                     {{ $typeLabel }}
                                 </span>
                             </td>
+                            @if($isClasseLmd)
+                            <td>
+                                @if($typeSeanceValue)
+                                    @php
+                                        $tone = match (true) {
+                                            in_array($typeSeanceValue, ['CM', 'TD'], true)        => 'primary',
+                                            in_array($typeSeanceValue, ['TP', 'PROJET'], true)    => 'accent',
+                                            default                                                => 'muted',
+                                        };
+                                    @endphp
+                                    <span class="ets-chip ets-chip--{{ $tone }}">{{ $typeSeanceValue }}</span>
+                                @else
+                                    <small class="text-muted">—</small>
+                                @endif
+                            </td>
+                            @endif
                             <td>
                                 @php
                                     $joursMapping = [
                                         1 => 'Lundi',
-                                        2 => 'Mardi', 
+                                        2 => 'Mardi',
                                         3 => 'Mercredi',
                                         4 => 'Jeudi',
                                         5 => 'Vendredi',
@@ -209,7 +372,7 @@
                             <td>
                                 <small>
                                     <i class="fas fa-clock text-muted me-1"></i>
-                                    {{ \Carbon\Carbon::parse($seance->heure_debut)->format('H:i') }} - 
+                                    {{ \Carbon\Carbon::parse($seance->heure_debut)->format('H:i') }} -
                                     {{ \Carbon\Carbon::parse($seance->heure_fin)->format('H:i') }}
                                 </small>
                             </td>
@@ -255,7 +418,18 @@
                     </tbody>
                 </table>
             </div>
-            
+
+            {{-- Empty state quand filtre ne renvoie rien (LMD only) --}}
+            @if($isClasseLmd)
+            <div class="ets-seances-empty-filter"
+                 x-show="filterType && filteredCount === 0"
+                 x-cloak>
+                <i class="fas fa-filter-circle-xmark"></i>
+                Aucune séance pour le type <strong x-text="filterType"></strong>.
+                <a href="#" @click.prevent="filterType = ''" style="color:#0453cb; font-weight:600;">Réinitialiser le filtre</a>
+            </div>
+            @endif
+
             <!-- Résumé par type de séance -->
             <div class="els-repartition">
                 <h6 class="mb-3" style="color: #0453cb; font-size: .88rem; font-weight: 700;">
