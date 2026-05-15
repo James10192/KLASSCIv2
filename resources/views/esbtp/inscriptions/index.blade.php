@@ -663,8 +663,12 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                     $iiSysteme = in_array(request('systeme'), ['BTS', 'LMD'], true) ? request('systeme') : '';
                 @endphp
                 <div x-data="{ systeme: '{{ $iiSysteme }}' }" style="display:contents;">
+                    {{-- Note : pas de @change qui force submit — le handler générique de
+                         public/js/inscriptions/index.js capte déjà tous les <select>.change
+                         et fait du AJAX (submitFilterForm). Ajouter un .submit() forcerait
+                         un reload page complète, ce qu'on veut éviter. --}}
                     <select name="systeme" id="systeme" class="ii-filter-select" aria-label="Système académique"
-                            x-model="systeme" @change="$nextTick(() => document.getElementById('inscriptions-filter-form').submit())">
+                            x-model="systeme">
                         <option value="" @selected(!request('systeme'))>Tous systèmes</option>
                         <option value="BTS" @selected(request('systeme') === 'BTS')>BTS</option>
                         <option value="LMD" @selected(request('systeme') === 'LMD')>LMD</option>

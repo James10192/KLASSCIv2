@@ -121,12 +121,15 @@ class ESBTPInscriptionController extends Controller
             ? (int) $request->input("per_page")
             : 15;
 
-        // Construire la requête avec les filtres
+        // Construire la requête avec les filtres.
+        // classe.parcours.mention.domaine eager-loaded pour la cellule LMD-aware
+        // dans ligne-inscription.blade.php (affichage Mention + Parcours au lieu
+        // du filiere->name plat). Anti N+1 : sans ça, chaque ligne LMD déclenche 3 queries.
         $baseQuery = ESBTPInscription::query()->with([
             "etudiant",
             "filiere",
             "niveau",
-            "classe",
+            "classe.parcours.mention.domaine",
             "anneeUniversitaire",
         ]);
 
@@ -1877,10 +1880,11 @@ class ESBTPInscriptionController extends Controller
     public function refreshLigne(ESBTPInscription $inscription)
     {
         try {
-            // Charger toutes les relations nécessaires
+            // Charger toutes les relations nécessaires.
+            // classe.parcours.mention.domaine pour la cellule LMD-aware (cf ligne-inscription.blade.php).
             $inscription->load([
                 "etudiant",
-                "classe",
+                "classe.parcours.mention.domaine",
                 "filiere",
                 "niveau",
                 "anneeUniversitaire",

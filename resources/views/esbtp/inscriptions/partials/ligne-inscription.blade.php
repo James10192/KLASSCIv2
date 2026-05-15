@@ -91,11 +91,47 @@
         </div>
     </td>
 
-    {{-- Filière / Niveau (fusionnés) --}}
+    {{-- Filière / Niveau (fusionnés) — LMD-aware.
+         En LMD avec parcours : Mention en haut + Parcours en sous-texte (chip "LMD").
+         En LMD tronc commun : Mention + "Tronc commun" en sous-texte.
+         En BTS : filiere->name + niveau->name (pattern legacy). --}}
     <td class="ii-col-filiere">
+        @php
+            $rowIsLmd = ($inscription->classe?->systeme_academique ?? '') === 'LMD';
+            $rowParcours = $rowIsLmd ? $inscription->classe?->parcours : null;
+            $rowMention = $rowParcours?->mention;
+            // Cas tronc commun : pas de parcours mais classe.filiere_id stocke mention_id (Option A)
+            // → l'inscription.filiere_id est la même valeur. Affichage : récupérer la mention via classe.filiere_id.
+            $rowTroncCommunMention = ($rowIsLmd && !$rowParcours && $inscription->classe?->filiere)
+                ? $inscription->classe->filiere->name  // legacy : si filiere_id pointe vers une vraie filière
+                : null;
+        @endphp
         <div class="ii-filiere-cell">
-            <div class="ii-filiere-name">{{ $inscription->filiere->name ?? ($inscription->filiere->nom ?? 'N/A') }}</div>
-            <div class="ii-filiere-niveau">{{ $inscription->niveau->name ?? ($inscription->niveau->nom ?? '') }}</div>
+            @if($rowParcours && $rowMention)
+                {{-- LMD avec parcours --}}
+                <div class="ii-filiere-name" style="display:flex;align-items:center;gap:.4rem;">
+                    <span>{{ $rowMention->name }}</span>
+                    <span style="font-size:.62rem;font-weight:700;color:#0453cb;background:rgba(4,83,203,.1);border:1px solid rgba(4,83,203,.25);padding:.1rem .35rem;border-radius:4px;letter-spacing:.4px;">LMD</span>
+                </div>
+                <div class="ii-filiere-niveau">
+                    <i class="fas fa-route" style="font-size:.65rem;opacity:.7;margin-right:.2rem;"></i>{{ $rowParcours->name }}
+                    @if($inscription->niveau)<span style="opacity:.55;"> · {{ $inscription->niveau->name }}</span>@endif
+                </div>
+            @elseif($rowIsLmd)
+                {{-- LMD tronc commun mention --}}
+                <div class="ii-filiere-name" style="display:flex;align-items:center;gap:.4rem;">
+                    <span>{{ $rowTroncCommunMention ?? ($inscription->filiere->name ?? 'N/A') }}</span>
+                    <span style="font-size:.62rem;font-weight:700;color:#0453cb;background:rgba(4,83,203,.1);border:1px solid rgba(4,83,203,.25);padding:.1rem .35rem;border-radius:4px;letter-spacing:.4px;">LMD</span>
+                </div>
+                <div class="ii-filiere-niveau">
+                    <span style="opacity:.7;">Tronc commun</span>
+                    @if($inscription->niveau)<span style="opacity:.55;"> · {{ $inscription->niveau->name }}</span>@endif
+                </div>
+            @else
+                {{-- BTS legacy --}}
+                <div class="ii-filiere-name">{{ $inscription->filiere->name ?? ($inscription->filiere->nom ?? 'N/A') }}</div>
+                <div class="ii-filiere-niveau">{{ $inscription->niveau->name ?? ($inscription->niveau->nom ?? '') }}</div>
+            @endif
         </div>
     </td>
 
