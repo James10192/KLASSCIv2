@@ -8,6 +8,8 @@ use App\Models\ESBTPDepartment;
 use App\Models\ESBTPCycle;
 use App\Models\ESBTPClass;
 use App\Models\ESBTPFiliere;
+use App\Models\ESBTPLMDMention;
+use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -58,17 +60,27 @@ class ESBTPStudentController extends Controller
         $affectationStatus = $request->input('affectation_status');
         $inscritAnneeCourante = $request->input('inscrit_annee_courante');
         $estTransfert = $request->input('est_transfert');
+        // Filtres BTS/LMD switch (cf rule classe-lmd-filiere-as-mention).
+        $systemeFilter = $request->input('systeme');
+        if (!in_array($systemeFilter, ['BTS', 'LMD'], true)) {
+            $systemeFilter = null;
+        }
+        $mentionFilter = $request->input('mention');
+        $parcoursFilter = $request->input('parcours');
 
+        // Eager-load classe.parcours.mention.domaine pour la cellule LMD-aware
+        // (cf etudiants/partials/results.blade.php). Sans ça, chaque ligne LMD
+        // déclenche 3 queries N+1 sur le listing.
         $baseQuery = ESBTPEtudiant::query()
             ->with(['user', 'accessibilityProfile', 'inscriptions' => function ($q) {
-                $q->with(['filiere', 'niveau', 'classe', 'anneeUniversitaire']);
+                $q->with(['filiere', 'niveau', 'classe.parcours.mention.domaine', 'anneeUniversitaire']);
             }]);
 
         // Charger l'inscription de l'année courante pour afficher le statut d'affectation
         if ($anneeCourante) {
             $baseQuery->with(['inscriptions' => function ($q) use ($anneeCourante) {
                 $q->where('annee_universitaire_id', $anneeCourante->id)
-                  ->with(['filiere', 'niveau', 'classe', 'anneeUniversitaire']);
+                  ->with(['filiere', 'niveau', 'classe.parcours.mention.domaine', 'anneeUniversitaire']);
             }]);
         }
 
@@ -76,9 +88,12 @@ class ESBTPStudentController extends Controller
             $baseQuery->where('statut', $status);
         }
 
-        if ($filiere || $niveau || $annee || $classe) {
-            $baseQuery->whereHas('inscriptions', function ($q) use ($filiere, $niveau, $annee, $classe) {
-                if ($filiere) {
+        // Filtre Filière BTS : ne s'applique qu'en mode BTS ou Tous systèmes.
+        // En LMD, les filtres mention + parcours prennent le relais.
+        $applyFiliereFilter = $filiere && $systemeFilter !== 'LMD';
+        if ($applyFiliereFilter || $niveau || $annee || $classe) {
+            $baseQuery->whereHas('inscriptions', function ($q) use ($applyFiliereFilter, $filiere, $niveau, $annee, $classe) {
+                if ($applyFiliereFilter) {
                     $q->where('filiere_id', $filiere);
                 }
                 if ($niveau) {
@@ -90,6 +105,34 @@ class ESBTPStudentController extends Controller
                 if ($classe) {
                     $q->where('classe_id', $classe);
                 }
+            });
+        }
+
+        // Filtre Système BTS/LMD via classe rattachée à l'inscription.
+        if ($systemeFilter) {
+            $baseQuery->whereHas('inscriptions', function ($q) use ($systemeFilter) {
+                $q->whereHas('classe', fn($c) => $c->where('systeme_academique', $systemeFilter));
+            });
+        }
+
+        // Filtres LMD additionnels (cf rule classe-lmd-filiere-as-mention) :
+        //  - mention : couvre tronc commun (classe.filiere_id = mention_id Option A)
+        //              + parcours rattaché (parcours.mention_id = X)
+        //  - parcours : exact match classe.parcours_id
+        if ($systemeFilter === 'LMD' && $mentionFilter) {
+            $baseQuery->whereHas('inscriptions', function ($q) use ($mentionFilter) {
+                $q->whereHas('classe', function ($c) use ($mentionFilter) {
+                    $c->where('systeme_academique', 'LMD')
+                      ->where(function ($cc) use ($mentionFilter) {
+                          $cc->where('filiere_id', $mentionFilter)
+                             ->orWhereHas('parcours', fn($p) => $p->where('mention_id', $mentionFilter));
+                      });
+                });
+            });
+        }
+        if ($systemeFilter === 'LMD' && $parcoursFilter) {
+            $baseQuery->whereHas('inscriptions', function ($q) use ($parcoursFilter) {
+                $q->whereHas('classe', fn($c) => $c->where('parcours_id', $parcoursFilter));
             });
         }
 
@@ -281,6 +324,15 @@ class ESBTPStudentController extends Controller
             ->with(['filiere', 'niveauEtude'])
             ->orderBy('name')
             ->get();
+        // Données LMD pour le picker mention + cascade parcours dans la toolbar.
+        $mentions = ESBTPLMDMention::with('domaine')
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
+        $parcoursList = ESBTPLMDParcours::with(['mention.domaine', 'filiere'])
+            ->where('is_active', true)
+            ->orderBy('name')
+            ->get();
 
         \Log::info('ESBTPStudentController@index completed', array_merge($baseLogContext, [
             'timestamp' => now()->toIso8601String(),
@@ -324,7 +376,9 @@ class ESBTPStudentController extends Controller
             'affectationStatus',
             'inscritAnneeCourante',
             'estTransfert',
-            'accessibility'
+            'accessibility',
+            'mentions',
+            'parcoursList'
         ));
     }
 

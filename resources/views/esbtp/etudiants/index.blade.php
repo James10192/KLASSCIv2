@@ -3041,14 +3041,27 @@
                             <i class="fas fa-sliders-h"></i> Filtres avancés <i class="fas fa-chevron-down" style="font-size:0.6rem;"></i>
                         </button>
                     </div>
-                    <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="search-form">
+                    @php
+                        $etSysteme = in_array(request('systeme'), ['BTS', 'LMD'], true) ? request('systeme') : '';
+                    @endphp
+                    <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="search-form" x-data="{ etSysteme: '{{ $etSysteme }}' }">
                                 <div class="row">
-                                    <div class="col-md-4 mb-3">
+                                    <div class="col-md-3 mb-3">
                                         <label for="search" class="form-label">Recherche</label>
                                         <input type="text" class="form-control search-bar" id="search" name="search" value="{{ $search ?? '' }}" placeholder="Matricule, nom, prénom, téléphone...">
                                     </div>
-                                    <div class="col-md-4 mb-3">
-                                        <label for="filiere" class="form-label">Filière</label>
+                                    <div class="col-md-2 mb-3">
+                                        {{-- Switch Système BTS/LMD : pilote l'affichage du 2e filtre. --}}
+                                        <label for="systeme" class="form-label">Système</label>
+                                        <select class="form-select year-selector" id="systeme" name="systeme" x-model="etSysteme">
+                                            <option value="" @selected(!request('systeme'))>Tous</option>
+                                            <option value="BTS" @selected(request('systeme') === 'BTS')>BTS</option>
+                                            <option value="LMD" @selected(request('systeme') === 'LMD')>LMD</option>
+                                        </select>
+                                    </div>
+                                    {{-- BTS / Tous : Filière BTS classique --}}
+                                    <div class="col-md-3 mb-3" x-show="etSysteme !== 'LMD'" x-cloak>
+                                        <label for="filiere" class="form-label">Filière BTS</label>
                                         <select class="form-select year-selector" id="filiere" name="filiere">
                                             <option value="">Toutes les filières</option>
                                             @foreach($filieres as $f)
@@ -3058,13 +3071,32 @@
                                             @endforeach
                                         </select>
                                     </div>
-                                    <div class="col-md-4 mb-3">
+                                    {{-- LMD : Mention picker + Parcours picker premium --}}
+                                    <div class="col-md-3 mb-3" x-show="etSysteme === 'LMD'" x-cloak>
+                                        <label class="form-label">Mention LMD</label>
+                                        <x-au-mention-picker
+                                            name="mention"
+                                            :value="request('mention')"
+                                            :mentions="$mentions"
+                                            placeholder="Toutes les mentions"
+                                        />
+                                    </div>
+                                    <div class="col-md-2 mb-3" x-show="etSysteme === 'LMD'" x-cloak>
+                                        <label class="form-label">Parcours</label>
+                                        <x-au-parcours-picker
+                                            name="parcours"
+                                            :value="request('parcours')"
+                                            :parcours="$parcoursList"
+                                            :mention-filter="request('mention')"
+                                        />
+                                    </div>
+                                    <div class="col-md-2 mb-3">
                                         <label for="niveau" class="form-label">Niveau d'études</label>
                                         <select class="form-select year-selector" id="niveau" name="niveau">
                                             <option value="">Tous les niveaux</option>
                                             @foreach($niveaux as $n)
                                                 <option value="{{ $n->id }}" {{ isset($niveau) && $niveau == $n->id ? 'selected' : '' }}>
-                                                    {{ $n->name }} ({{ $n->type }} - Année {{ $n->year }})
+                                                    {{ $n->name }} ({{ $n->type }})
                                                 </option>
                                             @endforeach
                                         </select>
@@ -3212,16 +3244,26 @@
 
             <!-- Body scrollable avec tous les filtres -->
             <div class="filter-drawer-body">
-                <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="mobile-search-form">
+                <form method="GET" action="{{ route('esbtp.etudiants.index') }}" id="mobile-search-form" x-data="{ etSysteme: '{{ $etSysteme }}' }">
                     <!-- Recherche -->
                     <div class="form-group">
                         <label for="mobile-search" class="form-label">Recherche</label>
                         <input type="text" class="form-control" id="mobile-search" name="search" value="{{ $search ?? '' }}" placeholder="Matricule, nom, prénom, téléphone...">
                     </div>
 
-                    <!-- Filière -->
+                    <!-- Système BTS/LMD -->
                     <div class="form-group">
-                        <label for="mobile-filiere" class="form-label">Filière</label>
+                        <label for="mobile-systeme" class="form-label">Système</label>
+                        <select class="form-select" id="mobile-systeme" name="systeme" x-model="etSysteme">
+                            <option value="" @selected(!request('systeme'))>Tous</option>
+                            <option value="BTS" @selected(request('systeme') === 'BTS')>BTS</option>
+                            <option value="LMD" @selected(request('systeme') === 'LMD')>LMD</option>
+                        </select>
+                    </div>
+
+                    <!-- Filière BTS (mode BTS / Tous) -->
+                    <div class="form-group" x-show="etSysteme !== 'LMD'" x-cloak>
+                        <label for="mobile-filiere" class="form-label">Filière BTS</label>
                         <select class="form-select" id="mobile-filiere" name="filiere">
                             <option value="">Toutes les filières</option>
                             @foreach($filieres as $f)
@@ -3230,6 +3272,26 @@
                                 </option>
                             @endforeach
                         </select>
+                    </div>
+
+                    <!-- Mention LMD + Parcours (mode LMD) -->
+                    <div class="form-group" x-show="etSysteme === 'LMD'" x-cloak>
+                        <label class="form-label">Mention LMD</label>
+                        <x-au-mention-picker
+                            name="mention"
+                            :value="request('mention')"
+                            :mentions="$mentions"
+                            placeholder="Toutes les mentions"
+                        />
+                    </div>
+                    <div class="form-group" x-show="etSysteme === 'LMD'" x-cloak>
+                        <label class="form-label">Parcours</label>
+                        <x-au-parcours-picker
+                            name="parcours"
+                            :value="request('parcours')"
+                            :parcours="$parcoursList"
+                            :mention-filter="request('mention')"
+                        />
                     </div>
 
                     <!-- Niveau d'études -->
@@ -4281,6 +4343,24 @@
                 // Utiliser window.fetchResultsGlobal pour déclencher l'update automatique
                 window.fetchResultsGlobal(targetUrl, { pushState: true });
             });
+        });
+
+        // Relai AJAX pour les pickers LMD premium (au-mention-picker / au-parcours-picker).
+        // Ces composants exposent des <input type="hidden" name="mention" / "parcours">
+        // qui ne sont PAS captés par filterInputs (qui ne sélectionne que les <select>).
+        // Custom event 'mention:changed' (cf composant) + input event natif sur hidden.
+        const triggerLmdRefresh = () => {
+            if (!form) return;
+            const formData = new FormData(form);
+            const params = new URLSearchParams(formData);
+            const targetUrl = `${form.action}?${params.toString()}`;
+            window.fetchResultsGlobal(targetUrl, { pushState: true });
+        };
+        window.addEventListener('mention:changed', triggerLmdRefresh);
+        document.addEventListener('input', (ev) => {
+            if (ev.target && (ev.target.name === 'mention' || ev.target.name === 'parcours')) {
+                triggerLmdRefresh();
+            }
         });
 
         if (window.history && window.history.replaceState) {

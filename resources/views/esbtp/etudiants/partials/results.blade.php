@@ -132,15 +132,51 @@
                         @endif
                     </td>
                     <td>
+                        @php
+                            // Helper LMD-aware : produit l'affichage classe/contexte académique
+                            // selon que l'inscription est BTS ou LMD (avec/sans parcours).
+                            // Renvoie un tuple [titrePrincipal, sousTitre, isLmd].
+                            $renderInscBlock = function ($insc) {
+                                $isLmd = ($insc->classe?->systeme_academique ?? '') === 'LMD';
+                                $parcours = $isLmd ? $insc->classe?->parcours : null;
+                                $mention = $parcours?->mention;
+                                $classeName = $insc->classe?->name ?? 'Non assigné';
+                                $niveauName = $insc->niveau?->name ?? '';
+                                if ($parcours && $mention) {
+                                    return [
+                                        'main' => $classeName,
+                                        'sub' => $mention->name . ' · ' . $parcours->name . ($niveauName ? ' · ' . $niveauName : ''),
+                                        'isLmd' => true,
+                                    ];
+                                }
+                                if ($isLmd) {
+                                    $mentionTronc = $insc->classe?->filiere?->name;
+                                    return [
+                                        'main' => $classeName,
+                                        'sub' => ($mentionTronc ?: 'Mention LMD') . ' · Tronc commun' . ($niveauName ? ' · ' . $niveauName : ''),
+                                        'isLmd' => true,
+                                    ];
+                                }
+                                $filiereName = $insc->filiere?->name ?? '';
+                                return [
+                                    'main' => $classeName,
+                                    'sub' => trim($filiereName . ($niveauName ? ' - ' . $niveauName : ''), ' -'),
+                                    'isLmd' => false,
+                                ];
+                            };
+                        @endphp
                         @if($inscriptionCouranteClasse)
+                            @php $insBlock = $renderInscBlock($inscriptionCouranteClasse); @endphp
                             <div class="d-flex align-items-center">
                                 <div class="flex-grow-1">
-                                    {{ $inscriptionCouranteClasse->classe ? $inscriptionCouranteClasse->classe->name : 'Non assigné' }}
+                                    <span style="display:inline-flex;align-items:center;gap:.4rem;">
+                                        <span>{{ $insBlock['main'] }}</span>
+                                        @if($insBlock['isLmd'])
+                                            <span style="font-size:.62rem;font-weight:700;color:#0453cb;background:rgba(4,83,203,.1);border:1px solid rgba(4,83,203,.25);padding:.1rem .35rem;border-radius:4px;letter-spacing:.4px;">LMD</span>
+                                        @endif
+                                    </span>
                                     <br>
-                                    <small>
-                                        {{ $inscriptionCouranteClasse->filiere ? $inscriptionCouranteClasse->filiere->name : '' }}
-                                        {{ $inscriptionCouranteClasse->niveau ? ' - '.$inscriptionCouranteClasse->niveau->name : '' }}
-                                    </small>
+                                    <small>{{ $insBlock['sub'] }}</small>
                                 </div>
                                 @if($inscriptionCouranteClasse->workflow_step == 'etudiant_cree')
                                     <div class="ms-2" title="Inscription validée - Workflow terminé">
@@ -154,12 +190,17 @@
                             </div>
                         @elseif($etudiant->inscriptions->count() > 0)
                             <?php $derniere = $etudiant->inscriptions->sortByDesc('created_at')->first(); ?>
+                            @php $insBlock = $renderInscBlock($derniere); @endphp
                             <div>
-                                {{ $derniere->classe ? $derniere->classe->name : 'Non assigné' }}
+                                <span style="display:inline-flex;align-items:center;gap:.4rem;">
+                                    <span>{{ $insBlock['main'] }}</span>
+                                    @if($insBlock['isLmd'])
+                                        <span style="font-size:.62rem;font-weight:700;color:#0453cb;background:rgba(4,83,203,.1);border:1px solid rgba(4,83,203,.25);padding:.1rem .35rem;border-radius:4px;letter-spacing:.4px;">LMD</span>
+                                    @endif
+                                </span>
                                 <br>
                                 <small class="text-muted">
-                                    {{ $derniere->filiere ? $derniere->filiere->name : '' }}
-                                    {{ $derniere->niveau ? ' - '.$derniere->niveau->name : '' }}
+                                    {{ $insBlock['sub'] }}
                                     ({{ $derniere->anneeUniversitaire ? $derniere->anneeUniversitaire->name : '' }})
                                 </small>
                             </div>
@@ -348,29 +389,49 @@
                         <i class="fas fa-graduation-cap text-primary"></i>
                         <div class="info-content">
                             <span class="info-label">Classe actuelle</span>
+                            @php
+                                $renderInscBlockMobile = function ($insc) {
+                                    $isLmd = ($insc->classe?->systeme_academique ?? '') === 'LMD';
+                                    $parcours = $isLmd ? $insc->classe?->parcours : null;
+                                    $mention = $parcours?->mention;
+                                    $classeName = $insc->classe?->name ?? 'Non assigné';
+                                    $niveauName = $insc->niveau?->name ?? '';
+                                    if ($parcours && $mention) {
+                                        return ['main' => $classeName, 'sub' => $mention->name . ' · ' . $parcours->name . ($niveauName ? ' · ' . $niveauName : ''), 'isLmd' => true];
+                                    }
+                                    if ($isLmd) {
+                                        $mentionTronc = $insc->classe?->filiere?->name;
+                                        return ['main' => $classeName, 'sub' => ($mentionTronc ?: 'Mention LMD') . ' · Tronc commun' . ($niveauName ? ' · ' . $niveauName : ''), 'isLmd' => true];
+                                    }
+                                    $filiereName = $insc->filiere?->name ?? '';
+                                    return ['main' => $classeName, 'sub' => trim($filiereName . ($niveauName ? ' - ' . $niveauName : ''), ' -'), 'isLmd' => false];
+                                };
+                            @endphp
                             @if($inscriptionCouranteClasse)
-                                <span class="info-value">
-                                    {{ $inscriptionCouranteClasse->classe ? $inscriptionCouranteClasse->classe->name : 'Non assigné' }}
+                                @php $insBlock = $renderInscBlockMobile($inscriptionCouranteClasse); @endphp
+                                <span class="info-value" style="display:inline-flex;align-items:center;gap:.35rem;">
+                                    <span>{{ $insBlock['main'] }}</span>
+                                    @if($insBlock['isLmd'])
+                                        <span style="font-size:.6rem;font-weight:700;color:#0453cb;background:rgba(4,83,203,.1);border:1px solid rgba(4,83,203,.25);padding:.05rem .3rem;border-radius:4px;">LMD</span>
+                                    @endif
                                     @if($inscriptionCouranteClasse->workflow_step == 'etudiant_cree')
                                         <i class="fas fa-check-circle text-success ms-1"></i>
                                     @else
                                         <i class="fas fa-hourglass-half text-warning ms-1"></i>
                                     @endif
                                 </span>
-                                @if($inscriptionCouranteClasse->filiere || $inscriptionCouranteClasse->niveau)
-                                <small class="text-muted d-block">
-                                    {{ $inscriptionCouranteClasse->filiere ? $inscriptionCouranteClasse->filiere->name : '' }}
-                                    {{ $inscriptionCouranteClasse->niveau ? ' - '.$inscriptionCouranteClasse->niveau->name : '' }}
-                                </small>
-                                @endif
+                                <small class="text-muted d-block">{{ $insBlock['sub'] }}</small>
                             @elseif($etudiant->inscriptions->count() > 0)
                                 <?php $derniere = $etudiant->inscriptions->sortByDesc('created_at')->first(); ?>
-                                <span class="info-value">
-                                    {{ $derniere->classe ? $derniere->classe->name : 'Non assigné' }}
+                                @php $insBlock = $renderInscBlockMobile($derniere); @endphp
+                                <span class="info-value" style="display:inline-flex;align-items:center;gap:.35rem;">
+                                    <span>{{ $insBlock['main'] }}</span>
+                                    @if($insBlock['isLmd'])
+                                        <span style="font-size:.6rem;font-weight:700;color:#0453cb;background:rgba(4,83,203,.1);border:1px solid rgba(4,83,203,.25);padding:.05rem .3rem;border-radius:4px;">LMD</span>
+                                    @endif
                                 </span>
                                 <small class="text-muted d-block">
-                                    {{ $derniere->filiere ? $derniere->filiere->name : '' }}
-                                    {{ $derniere->niveau ? ' - '.$derniere->niveau->name : '' }}
+                                    {{ $insBlock['sub'] }}
                                     ({{ $derniere->anneeUniversitaire ? $derniere->anneeUniversitaire->name : '' }})
                                 </small>
                             @else
