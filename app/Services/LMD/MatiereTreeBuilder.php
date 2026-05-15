@@ -134,6 +134,48 @@ class MatiereTreeBuilder
     }
 
     /**
+     * Pour une classe LMD : produit la structure $planificationData['matieres_planifiees']
+     * attendue par les UIs legacy (composant <x-emploi-temps.planification-section>,
+     * seances-cours/create form, etc.) MAIS avec le scope strict parcours.unitesEnseignement
+     * (au lieu de la pivot esbtp_matiere_filiere qui est vide pour LMD).
+     */
+    public function overridePlanificationForLmd(array $planificationData, ESBTPClasse $classe): array
+    {
+        $lmdMatieres = $this->loadLmdMatieresForClasse($classe);
+        if ($lmdMatieres->isEmpty()) {
+            return $planificationData;
+        }
+
+        $fmt = fn ($n) => rtrim(rtrim(number_format((float) $n, 1, ',', ''), '0'), ',').'h';
+        $matieresPlanifiees = $lmdMatieres->map(function ($row) use ($fmt) {
+            $totalPlanifie = (float) ($row['volume_horaire_total'] ?? 0);
+            return [
+                'matiere' => $row['matiere'],
+                'planification_id' => null,
+                'volume_horaire_total' => $totalPlanifie,
+                'volume_horaire_total_formatted' => $fmt($totalPlanifie),
+                'heures_restantes' => $totalPlanifie,
+                'heures_restantes_formatted' => $fmt($totalPlanifie),
+                'pourcentage_utilise' => 0,
+                'enseignant_affiche' => null,
+                'enseignants_selectables' => collect(),
+            ];
+        });
+
+        $totalHeures = (float) $matieresPlanifiees->sum('volume_horaire_total');
+
+        return array_merge($planificationData, [
+            'planifications_configurees' => true,
+            'matieres_planifiees' => $matieresPlanifiees,
+            'heures_totales' => $totalHeures,
+            'heures_totales_formatted' => $fmt($totalHeures),
+            'heures_restantes' => $totalHeures,
+            'heures_restantes_formatted' => $fmt($totalHeures),
+            'message_configuration' => null,
+        ]);
+    }
+
+    /**
      * @param Collection $lmdMatieres Collection issue de PlanificationAcademique groupee par matiere_id
      *                                avec keys [matiere, cm, td, tp, coefficient, credits_ects, volume_horaire_total, semestres]
      * @param array      $lmdVolumeBudget Keyed by matiere_id avec ['cm' => ['planifie', 'realise'], 'td' => ..., 'tp' => ...]

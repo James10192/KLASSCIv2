@@ -320,7 +320,12 @@
                 </div>
                 @if($logoBase64)
                     <div class="text-center">
-                        <img src="{{ $logoBase64 }}" alt="Logo établissement" style="max-height: 70px; max-width: 160px; object-fit: contain; filter: brightness(0) invert(1);">
+                        {{-- Pas de filter:brightness/invert pour preserver les couleurs originales du logo
+                             (qui peut etre colore avec une marque cohérente). Background card semi-transparent
+                             pour assurer la visibilite sur n'importe quel logo (clair OU sombre) sur fond bleu KLASSCI. --}}
+                        <div style="background: rgba(255,255,255,.92); border-radius: 10px; padding: 6px 10px; display: inline-block;">
+                            <img src="{{ $logoBase64 }}" alt="Logo établissement" style="max-height: 60px; max-width: 150px; object-fit: contain; display: block;">
+                        </div>
                     </div>
                 @endif
             </div>

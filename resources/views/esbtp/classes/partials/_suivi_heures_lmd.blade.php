@@ -1,6 +1,7 @@
 {{-- Partial LMD pour la tab "Suivi des heures" de classes.show --}}
 {{-- Recoit : $classe, $planningMatiere, $lmdVolumeBudget, $lmdUesAvecEcues, $lmdSemestres, $periode, $kpiTaux --}}
 @php
+    // CM/TD/TP : volume reel suivi via VolumeBudgetService (planifie vs realise par seance)
     $vbTotalsTab = ['cm'=>['p'=>0,'r'=>0],'td'=>['p'=>0,'r'=>0],'tp'=>['p'=>0,'r'=>0]];
     foreach ($lmdVolumeBudget as $budget) {
         foreach (['cm','td','tp'] as $k) {
@@ -8,6 +9,22 @@
             $vbTotalsTab[$k]['r'] += (float) ($budget[$k]['realise'] ?? 0);
         }
     }
+    // PROJET / TPE : volumes theoriques alloues via planifications (cf migration 2026_05_10_151230).
+    // PROJET = peut etre planifie en seance ; TPE = jamais (metadonnee ECUE pure cf standards UEMOA Apogee).
+    $allocProjet = 0.0;
+    $allocTpe = 0.0;
+    try {
+        $planifSums = \App\Models\ESBTPPlanificationAcademique::query()
+            ->where('filiere_id', $classe->parcours && $classe->parcours->filiere_id ? $classe->parcours->filiere_id : $classe->filiere_id)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->selectRaw('SUM(COALESCE(volume_horaire_projet,0)) as tot_projet, SUM(COALESCE(volume_horaire_tpe,0)) as tot_tpe')
+            ->first();
+        $allocProjet = (float) ($planifSums->tot_projet ?? 0);
+        $allocTpe = (float) ($planifSums->tot_tpe ?? 0);
+    } catch (\Throwable $e) {
+        // colonnes absentes (migration pas executee) : silently fallback a 0
+    }
+
     $vbLabelsTab = ['cm'=>'Cours Magistral','td'=>'Travaux Dirigés','tp'=>'Travaux Pratiques'];
     $vbIconsTab  = ['cm'=>'fa-chalkboard-user','td'=>'fa-pen-ruler','tp'=>'fa-flask-vial'];
 
@@ -70,6 +87,29 @@
                 </div>
             @endforeach
         </div>
+
+        {{-- Allocation théorique PROJET / TPE (volumes non-trackés en séances) --}}
+        @if($allocProjet > 0 || $allocTpe > 0)
+            <div class="sh-alloc-row">
+                <div class="sh-alloc-label">
+                    <i class="fas fa-book-bookmark"></i> Allocations théoriques (configurées via Planning LMD)
+                </div>
+                <div class="sh-alloc-chips">
+                    @if($allocProjet > 0)
+                        <span class="sh-alloc-chip">
+                            <i class="fas fa-diagram-project"></i> Projet
+                            <strong>{{ rtrim(rtrim(number_format($allocProjet,1,',',''),'0'),',') }}h</strong>
+                        </span>
+                    @endif
+                    @if($allocTpe > 0)
+                        <span class="sh-alloc-chip sh-alloc-chip--tpe" title="Travail Personnel Étudiant — volume théorique alloué par ECUE (standards UEMOA)">
+                            <i class="fas fa-user-pen"></i> TPE
+                            <strong>{{ rtrim(rtrim(number_format($allocTpe,1,',',''),'0'),',') }}h</strong>
+                        </span>
+                    @endif
+                </div>
+            </div>
+        @endif
     </div>
 
     {{-- Detail par UE --}}
@@ -154,6 +194,17 @@
 .sh-pedago-cell-bar-wrap { background:#e2e8f0;border-radius:99px;height:6px;overflow:hidden; }
 .sh-pedago-cell-bar { height:100%;border-radius:99px;transition:width .3s ease; }
 .sh-pedago-cell-pct { margin-top:.35rem;font-size:.72rem;font-weight:700; }
+
+/* Allocation theorique PROJET/TPE (volumes non-trackes en seances) */
+.sh-alloc-row { margin-top: .95rem; padding-top: .85rem; border-top: 1px dashed rgba(4,83,203,.18); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .65rem; }
+.sh-alloc-label { font-size: .76rem; color: #475569; display: inline-flex; align-items: center; gap: .45rem; font-weight: 500; }
+.sh-alloc-label i { color: #0453cb; }
+.sh-alloc-chips { display: inline-flex; gap: .5rem; flex-wrap: wrap; }
+.sh-alloc-chip { display: inline-flex; align-items: center; gap: .4rem; padding: .35rem .7rem; background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.2); border-radius: 8px; font-size: .76rem; color: #64748b; }
+.sh-alloc-chip i { color: #0453cb; font-size: .78rem; }
+.sh-alloc-chip strong { color: #0f172a; font-weight: 700; margin-left: .15rem; }
+.sh-alloc-chip--tpe { background: rgba(94,145,222,.08); border-color: rgba(94,145,222,.25); }
+.sh-alloc-chip--tpe i { color: #5e91de; }
 
 /* Section detail UE */
 .sh-ue-section { margin-top:1.25rem; }

@@ -213,6 +213,21 @@
     .sce-type-radio-desc { font-size: .72rem; color: #64748b; margin-top: .2rem; }
     .sce-type-radio-check { position: absolute; top: .6rem; right: .65rem; color: #0453cb; font-size: 1rem; }
 
+    /* TPE info box (TPE retiré du form car métadonnée ECUE — standards UEMOA Apogée/Cocktail) */
+    .sce-tpe-info {
+        margin-top: 1rem;
+        display: flex; align-items: flex-start; gap: .65rem;
+        padding: .75rem 1rem;
+        background: rgba(4,83,203,.04);
+        border: 1px solid rgba(4,83,203,.18);
+        border-left: 3px solid #0453cb;
+        border-radius: 10px;
+        font-size: .82rem; color: #475569;
+    }
+    .sce-tpe-info i { color: #0453cb; font-size: 1rem; margin-top: .15rem; flex-shrink: 0; }
+    .sce-tpe-info strong { color: #0453cb; }
+    .sce-tpe-info a { color: #0453cb; font-weight: 600; text-decoration: underline; }
+
     /* Matiere select premium custom */
     .sce-form-label { display: flex; align-items: center; gap: .55rem; flex-wrap: wrap; font-size: .82rem; font-weight: 600; color: #1e293b; margin-bottom: .5rem; }
     .sce-form-label-chip {
@@ -347,7 +362,8 @@
             <input type="hidden" name="embed" value="{{ request()->boolean('embed') ? 1 : 0 }}">
 
             <div class="form-sections">
-                <!-- Section 1: Type de séance -->
+                <!-- Section 1: Type de séance (BTS uniquement — LMD utilise type_seance UEMOA) -->
+                @if(!$isClasseLmd)
                 <div class="main-card">
                     <div class="main-card-header">
                         <div class="main-card-title">
@@ -378,6 +394,11 @@
                         <input type="hidden" name="type" id="sessionType" required>
                     </div>
                 </div>
+                @else
+                {{-- LMD : type derive serveur-side depuis type_seance UEMOA (CM/TD/TP/PROJET/AUTRE → course, EXAMEN → homework). --}}
+                {{-- L'utilisateur ne voit qu'un seul selecteur radio cards LMD plus bas dans Section 3. --}}
+                <input type="hidden" name="type" id="sessionType" value="course">
+                @endif
 
                 <!-- Section 2: Informations de base -->
                 <div class="main-card">
@@ -494,8 +515,8 @@
                     </div>
                 </div>
 
-                <!-- Section 3: Matières et Enseignants -->
-                <div class="main-card" id="courseFields" style="display: none;">
+                <!-- Section 3: Matières et Enseignants (LMD : visible par defaut car type=course implicit) -->
+                <div class="main-card" id="courseFields" style="display: {{ $isClasseLmd ? 'block' : 'none' }};">
                     <div class="main-card-header">
                         <div class="main-card-title">
                             <i class="fas fa-graduation-cap"></i>

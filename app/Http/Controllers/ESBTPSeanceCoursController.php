@@ -221,6 +221,14 @@ class ESBTPSeanceCoursController extends Controller
                 $emploiTemps->semestre
             );
 
+            // OVERRIDE LMD : pour classe LMD avec parcours, le pivot esbtp_matiere_filiere
+            // utilise par getPlanificationDataForClasse() est VIDE donc 0 matières.
+            // On override via le scope strict parcours.unitesEnseignement (Service partage).
+            if (($emploiTemps->classe->systeme_academique ?? '') === 'LMD') {
+                $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)
+                    ->overridePlanificationForLmd($planificationData, $emploiTemps->classe);
+            }
+
             // Récupérer les matières configurées pour cette combinaison filière/niveau
             $matieres = $planificationData['matieres_planifiees'];
 
@@ -399,6 +407,27 @@ class ESBTPSeanceCoursController extends Controller
             // Log des données reçues
             \Log::info('Création séance - Données reçues', $request->all());
 
+            // ════════════════════════════════════════════════════════════════
+            // LMD-aware : derive le `type` (creneau emploi-temps) depuis le
+            // `type_seance` UEMOA si la classe est LMD. La directrice LMD ne
+            // choisit qu'un seul selecteur (type_seance), le `type` est calcule.
+            // TPE n'est jamais plannable (volume theorique ECUE, pas seance).
+            // ════════════════════════════════════════════════════════════════
+            $isLmdClasse = ($emploiTemps->classe->systeme_academique ?? '') === 'LMD';
+            if ($isLmdClasse && $request->filled('type_seance')) {
+                $typeSeanceEnum = \App\Enums\TypeSeance::tryFrom($request->input('type_seance'));
+                if ($typeSeanceEnum) {
+                    $derivedType = $typeSeanceEnum->mapToType();
+                    if ($derivedType === null) {
+                        // TPE n'est pas plannable
+                        throw ValidationException::withMessages([
+                            'type_seance' => 'Le TPE n\'est pas planifiable en emploi du temps. C\'est une métadonnée de l\'ECUE configurée dans /esbtp/lmd/planning.',
+                        ]);
+                    }
+                    $request->merge(['type' => $derivedType]);
+                }
+            }
+
             // Validate the basic required fields first
             $baseValidator = Validator::make($request->all(), [
                 'emploi_temps_id' => 'required|exists:esbtp_emploi_temps,id',
@@ -521,8 +550,14 @@ class ESBTPSeanceCoursController extends Controller
                     \Log::info('Séance simple créée', ['id' => $session->id, 'jour' => $data['jour']]);
                 }
 
-                // Création automatique d'évaluations pour les séances de type "homework"
-                if ($request->type === 'homework') {
+                // Création automatique d'évaluations :
+                // - LMD : uniquement si type_seance === EXAMEN (TPE/TD/TP ne génèrent PAS d'évaluation)
+                // - BTS legacy : si type === homework (comportement preserve, zero régression)
+                $shouldGenerateEvaluation = $isLmdClasse
+                    ? ($request->input('type_seance') === 'EXAMEN')
+                    : ($request->type === 'homework');
+
+                if ($shouldGenerateEvaluation) {
                     $createdEvaluations = [];
                     foreach ($createdSessions as $sessionId) {
                         $seance = ESBTPSeanceCours::with('matiere')->find($sessionId);

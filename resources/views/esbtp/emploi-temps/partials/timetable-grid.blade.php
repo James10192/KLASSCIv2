@@ -244,6 +244,12 @@
         $backgroundColor = $seance->color ?: $style['bg'];
         $textColor = $computeTextColor($backgroundColor, $style['text']);
 
+        // LMD : afficher type_seance UEMOA (CM/TD/TP/EXAMEN/...) au lieu du type generique "COURS".
+        // BTS : fallback sur le type generique (Cours/Devoir/Récréation/Pause).
+        $classeLmd = ($seance->classe?->systeme_academique ?? null) === 'LMD'
+            || (isset($emploiTemps) && ($emploiTemps->classe?->systeme_academique ?? null) === 'LMD');
+        $typeSeanceValue = $classeLmd && $seance->type_seance ? $seance->type_seance->value : null;
+
         $matiere = $seance->matiere->name ?? 'Matière';
         $enseignant = $seance->enseignant_nom ?? optional(optional($seance->teacher)->user)->name;
         $salle = $seance->salle;
@@ -265,7 +271,9 @@
         $timelineSessions[$jourSlug][] = [
             'id' => $seance->id,
             'type' => $type,
-            'typeLabel' => strtoupper($labelMap[$type] ?? 'Séance'),
+            // LMD : affiche type_seance UEMOA (CM/TD/TP/EXAMEN/PROJET/AUTRE) en priorite.
+            // BTS : fallback type generique (Cours/Devoir/Récréation/Pause).
+            'typeLabel' => $typeSeanceValue ?: strtoupper($labelMap[$type] ?? 'Séance'),
             'background' => $backgroundColor,
             'textColor' => $textColor,
             'matiere' => $matiere,

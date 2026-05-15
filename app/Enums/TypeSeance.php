@@ -60,6 +60,34 @@ enum TypeSeance: string
         return in_array($this, [self::CM, self::TD, self::TP], true);
     }
 
+    /**
+     * Map UEMOA type_seance vers le `type` (creneau emploi-temps) attendu par ESBTPSeanceCours.
+     *
+     * - CM, TD, TP, PROJET, AUTRE → 'course' (seances avec prof en presentiel)
+     * - TPE → null (travail personnel etudiant, JAMAIS planifie en emploi du temps,
+     *   c'est une metadonnee de l'ECUE — cf standards Apogee, Cocktail, HOPSY)
+     * - EXAMEN → 'homework' (genere automatiquement une ESBTPEvaluation)
+     */
+    public function mapToType(): ?string
+    {
+        return match ($this) {
+            self::CM, self::TD, self::TP, self::PROJET, self::AUTRE => 'course',
+            self::TPE                                                => null,
+            self::EXAMEN                                             => 'homework',
+        };
+    }
+
+    /**
+     * Cases plannables dans l'emploi du temps (TPE exclus car metadonnee ECUE).
+     * Utilise pour le formulaire seances-cours/create LMD.
+     *
+     * @return array<int, self>
+     */
+    public static function plannableCases(): array
+    {
+        return [self::CM, self::TD, self::TP, self::PROJET, self::EXAMEN, self::AUTRE];
+    }
+
     /** Returns ['VALUE' => 'Label'] array for <x-au-select> :options prop. */
     public static function selectOptions(): array
     {
