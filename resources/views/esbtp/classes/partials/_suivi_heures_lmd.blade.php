@@ -250,6 +250,10 @@
 .sh-ue-tot-chip strong { color:#0f172a;font-weight:700; }
 .sh-ue-tot-chip--strong { background:rgba(4,83,203,.06);border-color:rgba(4,83,203,.18); }
 .sh-ue-tot-chip--strong strong { color:#0453cb; }
+/* Chip TPE : monochrome bleu clair (volume theorique, jamais realise) */
+.sh-ue-tot-chip--tpe { background:rgba(94,145,222,.08);border-color:rgba(94,145,222,.25); }
+.sh-ue-tot-chip--tpe i { color:#5e91de; }
+.sh-num-tpe strong { color:#5e91de; }
 
 /* Body table ECUE */
 .sh-ue-body { padding:0 1rem 1rem;border-top:1px dashed #e2e8f0; }

@@ -327,6 +327,62 @@
 .mat-note.bad    { color: var(--k-danger); }
 
 /* ═══════════════════════════════════════════════════════════════════
+   CARD TPE — Travail Personnel Etudiant (lecture seule UEMOA)
+═══════════════════════════════════════════════════════════════════ */
+.et-tpe-card {
+    background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(94,145,222,.08));
+    border: 1px solid rgba(4,83,203,.18);
+    border-radius: 14px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 16px;
+}
+.et-tpe-header {
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+}
+.et-tpe-icon {
+    width: 44px; height: 44px; border-radius: 11px;
+    background: linear-gradient(135deg, #0453cb, #5e91de);
+    color: #fff; font-size: 1.1rem;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; box-shadow: 0 4px 12px rgba(4,83,203,.2);
+}
+.et-tpe-body {
+    flex: 1; min-width: 0; display: flex; flex-direction: column;
+    gap: .15rem;
+}
+.et-tpe-label {
+    font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .5px; color: #64748b;
+}
+.et-tpe-value {
+    font-size: 1.6rem; font-weight: 800; color: #0453cb; line-height: 1;
+}
+.et-tpe-hint {
+    font-size: .76rem; color: #64748b; margin-top: .15rem;
+}
+.et-tpe-breakdown {
+    display: flex; gap: .5rem; flex-wrap: wrap; flex-shrink: 0;
+}
+.et-tpe-sem {
+    display: inline-flex; flex-direction: column; align-items: center;
+    padding: .4rem .7rem; background: #fff;
+    border: 1px solid rgba(4,83,203,.2); border-radius: 10px;
+    min-width: 60px;
+}
+.et-tpe-sem-label {
+    font-size: .68rem; font-weight: 700; color: #64748b;
+    text-transform: uppercase; letter-spacing: .4px;
+}
+.et-tpe-sem-value {
+    font-size: .92rem; font-weight: 700; color: #0453cb;
+    margin-top: .15rem;
+}
+@media (max-width: 600px) {
+    .et-tpe-header { flex-direction: column; align-items: flex-start; }
+    .et-tpe-breakdown { width: 100%; justify-content: flex-start; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    TAB ACADÉMIQUE — PREMIUM REDESIGN
 ═══════════════════════════════════════════════════════════════════ */
 
@@ -3190,6 +3246,34 @@
 @endphp
 
 @if($acadInscs->count())
+
+    {{-- ══ BLOC TPE — Travail Personnel Etudiant attendu (lecture seule UEMOA) ══ --}}
+    @if(($isLMD ?? false) && ($tpeAttendu ?? 0) > 0)
+        @php
+            $tpeFmt = fn ($n) => rtrim(rtrim(number_format((float) $n, 1, ',', ''), '0'), ',') ?: '0';
+            $tpeSemestres = collect($tpeParSemestre ?? [])->filter(fn ($v) => $v > 0)->sortKeys();
+        @endphp
+        <div class="et-tpe-card">
+            <div class="et-tpe-header">
+                <div class="et-tpe-icon"><i class="fas fa-user-clock"></i></div>
+                <div class="et-tpe-body">
+                    <div class="et-tpe-label">TPE attendu cette année</div>
+                    <div class="et-tpe-value">{{ $tpeFmt($tpeAttendu) }}h</div>
+                    <div class="et-tpe-hint">Travail personnel étudiant — heures autonomes hors séances (standards UEMOA).</div>
+                </div>
+                @if($tpeSemestres->count() > 1)
+                    <div class="et-tpe-breakdown">
+                        @foreach($tpeSemestres as $sem => $heures)
+                            <div class="et-tpe-sem">
+                                <span class="et-tpe-sem-label">S{{ $sem }}</span>
+                                <span class="et-tpe-sem-value">{{ $tpeFmt($heures) }}h</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
+    @endif
 
     {{-- ══ BLOC LMD — Résultats par UE/ECUE avec onglets semestres ══ --}}
     @if($isLMD && $bulletinsLMD->count())
