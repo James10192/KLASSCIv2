@@ -495,10 +495,39 @@ class ESBTPStudentController extends Controller
             ];
         }
 
+        // ── TPE attendu (volume horaire Travail Personnel Etudiant) ──
+        // Lecture seule depuis esbtp_planifications_academiques.volume_horaire_tpe.
+        // Standards UEMOA : le TPE est une metadonnee theorique par ECUE, jamais suivie en seance.
+        // - $tpeAttendu : total annuel (somme S1+S2 du niveau)
+        // - $tpeParSemestre : breakdown par semestre (clef = numero semestre, valeur = heures)
+        $tpeAttendu = 0.0;
+        $tpeParSemestre = [];
+        if ($isLMD && $classeCourante) {
+            try {
+                $filiereTpeId = $classeCourante->parcours && $classeCourante->parcours->filiere_id
+                    ? $classeCourante->parcours->filiere_id
+                    : $classeCourante->filiere_id;
+
+                $tpeRows = \App\Models\ESBTPPlanificationAcademique::query()
+                    ->where('filiere_id', $filiereTpeId)
+                    ->where('niveau_etude_id', $classeCourante->niveau_etude_id)
+                    ->whereNotNull('matiere_id')
+                    ->selectRaw('semestre, SUM(COALESCE(volume_horaire_tpe, 0)) as tot_tpe')
+                    ->groupBy('semestre')
+                    ->pluck('tot_tpe', 'semestre');
+
+                $tpeParSemestre = $tpeRows->map(fn ($v) => (float) $v)->toArray();
+                $tpeAttendu = array_sum($tpeParSemestre);
+            } catch (\Throwable $e) {
+                // colonne absente ou erreur DB : silently fallback a 0
+            }
+        }
+
         return view('esbtp.etudiants.show', compact(
             'etudiant', 'dossier', 'anneeCourante',
             'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits',
-            'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais'
+            'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
+            'tpeAttendu', 'tpeParSemestre'
         ));
     }
 
