@@ -100,6 +100,63 @@
     font-style: italic;
 }
 
+/* ============ Responsable UE chip (lpe-resp-*) ============ */
+/* W1.2 — directive UEMOA 03/2007/CM : 1 responsable par UE.
+   Namespace dédié (lpe-resp-*) pour distinguer visuellement de
+   l'assignation enseignant ECUE (lpe-teacher-*) ; même palette
+   monochrome bleu KLASSCI mais bouton plus distinctif (border solide,
+   icon user-tie). */
+.lpe-resp-btn {
+    background: transparent;
+    border: 1px dashed rgba(4, 83, 203, .35);
+    color: #0453cb;
+    padding: .25rem .65rem;
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    transition: all .15s ease;
+    max-width: 100%;
+}
+.lpe-resp-btn:hover {
+    border-color: #0453cb;
+    background: rgba(4, 83, 203, .08);
+    color: #033a8e;
+}
+.lpe-resp-btn--assigned {
+    border: 1px solid rgba(4, 83, 203, .4);
+    background: rgba(4, 83, 203, .1);
+    color: #033a8e;
+    border-style: solid;
+}
+.lpe-resp-btn--assigned:hover {
+    border-color: #0453cb;
+    background: rgba(4, 83, 203, .15);
+}
+.lpe-resp-btn i {
+    font-size: .72rem;
+    flex-shrink: 0;
+}
+.lpe-resp-btn .lpe-resp-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.lpe-resp-readonly {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    font-size: .75rem;
+    color: #64748b;
+}
+.lpe-resp-readonly i {
+    color: #94a3b8;
+    font-size: .72rem;
+}
+
 /* ============ Modal teacher picker (lpt-*) ============ */
 .lpt-backdrop {
     position: fixed;

@@ -12,6 +12,7 @@
 
     const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const updateUrlTpl = @json(route('esbtp.lmd.planifications.update', ['ecueId' => '__ID__']));
+    const updateUeRespUrlTpl = @json(route('esbtp.lmd.ues.update-responsable', ['ueId' => '__ID__']));
 
     function buildContextParams() {
         const root = document.querySelector('[data-lpe-context]');
@@ -33,6 +34,39 @@
         toast.innerHTML = (type === 'success' ? '<i class="fas fa-check-circle"></i>' : '<i class="fas fa-exclamation-triangle"></i>') + ' ' + message;
         clearTimeout(toast._t);
         toast._t = setTimeout(() => { toast.classList.remove('lpt-toast--show'); }, 2400);
+    };
+
+    // W1.2 — Sauvegarde du responsable d'UE (mode dual du lptModal).
+    // Endpoint distinct de lpeSavePlanification car cible une UE entière
+    // (esbtp_unites_enseignement.responsable_ue_id) et non une planification ECUE.
+    window.lpeSaveUeResponsable = async function (ueId, responsableId) {
+        const url = updateUeRespUrlTpl.replace('__ID__', ueId);
+        const resp = await fetch(url, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrf,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify({ responsable_ue_id: responsableId }),
+        });
+        let json = {};
+        try { json = await resp.json(); } catch (e) { json = {}; }
+        if (!resp.ok || !json.success) {
+            let detail = json.message || ('Erreur HTTP ' + resp.status);
+            if (resp.status === 419) {
+                detail = 'Votre session a expiré. Rechargez la page.';
+            } else if (resp.status === 403) {
+                detail = 'Vous n\'avez plus la permission d\'éditer.';
+            } else if (resp.status === 422 && json.errors) {
+                detail = Object.values(json.errors).flat().join(' · ');
+            }
+            const err = new Error(detail);
+            err.status = resp.status;
+            throw err;
+        }
+        return { ue: json.ue };
     };
 
     window.lpeSavePlanification = async function (ecueId, payload) {
@@ -152,7 +186,7 @@
             },
         }));
 
-        // ---------- Bouton trigger modal teacher ----------
+        // ---------- Bouton trigger modal teacher (mode enseignant_ecue) ----------
         Alpine.data('lpeTeacherTrigger', () => ({
             ecueId: null,
             currentTeacherId: '',
@@ -171,21 +205,59 @@
                 if (!this.ecueId) return;
                 window.dispatchEvent(new CustomEvent('lpt:open', {
                     detail: {
+                        role: 'enseignant_ecue',
                         ecueId: this.ecueId,
                         currentTeacherId: this.currentTeacherId,
-                        ecueLabel: this.ecueLabel,
+                        targetLabel: this.ecueLabel ? ('ECUE : ' + this.ecueLabel) : '',
                         triggerEl: this.$el,
                     },
                 }));
             },
         }));
 
-        // ---------- Modal teacher picker ----------
+        // ---------- Bouton trigger modal responsable UE (mode responsable_ue) ----------
+        // W1.2 — directive UEMOA 03/2007/CM : 1 responsable par UE.
+        Alpine.data('lpeResponsableTrigger', () => ({
+            ueId: null,
+            currentTeacherId: '',
+            currentTeacherName: '',
+            ueLabel: '',
+
+            init() {
+                const ds = this.$el.dataset;
+                this.ueId = parseInt(ds.lpeUeId, 10) || null;
+                this.currentTeacherId = ds.lpeTeacherId || '';
+                this.currentTeacherName = ds.lpeTeacherName || '';
+                this.ueLabel = ds.lpeUeLabel || '';
+            },
+
+            openPicker() {
+                if (!this.ueId) return;
+                window.dispatchEvent(new CustomEvent('lpt:open', {
+                    detail: {
+                        role: 'responsable_ue',
+                        ueId: this.ueId,
+                        currentTeacherId: this.currentTeacherId,
+                        targetLabel: this.ueLabel ? ('UE : ' + this.ueLabel) : '',
+                        triggerEl: this.$el,
+                    },
+                }));
+            },
+        }));
+
+        // ---------- Modal teacher picker (polymorphe : enseignant_ecue | responsable_ue) ----------
+        // W1.2 — mode dual :
+        //   role='enseignant_ecue' → save sur PATCH /esbtp/lmd/planifications/{ecueId}
+        //   role='responsable_ue'  → save sur PATCH /esbtp/lmd/ues/{ueId}/responsable
+        // Le label d'en-tête (`targetLabel`) est passé par le trigger pour distinguer
+        // "ECUE : ..." vs "UE : ..." dans l'UI.
         Alpine.data('lptModal', () => ({
             open: false,
             saving: false,
+            role: 'enseignant_ecue',
             ecueId: null,
-            ecueLabel: '',
+            ueId: null,
+            targetLabel: '',
             currentTeacherId: '',
             // selectedId : id séléctionné CET INSTANT par le picker (peut différer
             // de currentTeacherId qui est l'id assigné avant l'ouverture du modal).
@@ -215,8 +287,11 @@
             },
 
             onOpen(detail) {
-                this.ecueId = detail.ecueId;
-                this.ecueLabel = detail.ecueLabel || '';
+                this.role = detail.role || 'enseignant_ecue';
+                this.ecueId = detail.ecueId || null;
+                this.ueId = detail.ueId || null;
+                // Rétro-compat : si l'ancien event utilise ecueLabel au lieu de targetLabel
+                this.targetLabel = detail.targetLabel || detail.ecueLabel || '';
                 this.currentTeacherId = String(detail.currentTeacherId || '');
                 this.selectedId = this.currentTeacherId;
                 this.triggerEl = detail.triggerEl || null;
@@ -260,41 +335,71 @@
             async save(teacherId) {
                 this.saving = true;
                 try {
-                    const { planification: planif, created } = await window.lpeSavePlanification(this.ecueId, { enseignant_principal_id: teacherId });
-                    if (this.triggerEl) {
-                        const name = planif.enseignant_name || '';
-                        this.triggerEl.dataset.lpeTeacherId = planif.enseignant_principal_id || '';
-                        this.triggerEl.dataset.lpeTeacherName = name;
-                        const span = this.triggerEl.querySelector('.lpe-teacher-name');
-                        if (span) span.textContent = name || '+ Assigner';
-                        if (planif.enseignant_principal_id) {
-                            this.triggerEl.classList.add('lpe-teacher-btn--assigned');
-                        } else {
-                            this.triggerEl.classList.remove('lpe-teacher-btn--assigned');
-                        }
-                        if (this.triggerEl._x_dataStack && this.triggerEl._x_dataStack[0]) {
-                            this.triggerEl._x_dataStack[0].currentTeacherId = String(planif.enseignant_principal_id || '');
-                            this.triggerEl._x_dataStack[0].currentTeacherName = name;
-                        }
-                    }
-                    // Silent #1 : si la planif vient d'être créée par cette même
-                    // assignation, on l'annonce explicitement plutôt que "Enseignant assigné".
-                    let toastMsg;
-                    if (created) {
-                        toastMsg = teacherId ? 'Planification créée et enseignant assigné' : 'Planification créée';
+                    if (this.role === 'responsable_ue') {
+                        await this._saveUeResponsable(teacherId);
                     } else {
-                        toastMsg = teacherId ? 'Enseignant assigné' : 'Assignation supprimée';
+                        await this._saveEcueEnseignant(teacherId);
                     }
-                    window.lpeShowToast(toastMsg, 'success');
                     this.open = false;
-                    window.dispatchEvent(new CustomEvent('lpe:planif-updated', {
-                        detail: { ecueId: this.ecueId, planif, created },
-                    }));
                 } catch (e) {
                     window.lpeShowToast(e.message || 'Erreur d\'enregistrement', 'error');
                 } finally {
                     this.saving = false;
                 }
+            },
+
+            async _saveEcueEnseignant(teacherId) {
+                const { planification: planif, created } = await window.lpeSavePlanification(this.ecueId, { enseignant_principal_id: teacherId });
+                if (this.triggerEl) {
+                    const name = planif.enseignant_name || '';
+                    this.triggerEl.dataset.lpeTeacherId = planif.enseignant_principal_id || '';
+                    this.triggerEl.dataset.lpeTeacherName = name;
+                    const span = this.triggerEl.querySelector('.lpe-teacher-name');
+                    if (span) span.textContent = name || '+ Assigner';
+                    if (planif.enseignant_principal_id) {
+                        this.triggerEl.classList.add('lpe-teacher-btn--assigned');
+                    } else {
+                        this.triggerEl.classList.remove('lpe-teacher-btn--assigned');
+                    }
+                    if (this.triggerEl._x_dataStack && this.triggerEl._x_dataStack[0]) {
+                        this.triggerEl._x_dataStack[0].currentTeacherId = String(planif.enseignant_principal_id || '');
+                        this.triggerEl._x_dataStack[0].currentTeacherName = name;
+                    }
+                }
+                let toastMsg;
+                if (created) {
+                    toastMsg = teacherId ? 'Planification créée et enseignant assigné' : 'Planification créée';
+                } else {
+                    toastMsg = teacherId ? 'Enseignant assigné' : 'Assignation supprimée';
+                }
+                window.lpeShowToast(toastMsg, 'success');
+                window.dispatchEvent(new CustomEvent('lpe:planif-updated', {
+                    detail: { ecueId: this.ecueId, planif, created },
+                }));
+            },
+
+            async _saveUeResponsable(teacherId) {
+                const { ue } = await window.lpeSaveUeResponsable(this.ueId, teacherId);
+                if (this.triggerEl) {
+                    const name = ue.responsable_name || '';
+                    this.triggerEl.dataset.lpeTeacherId = ue.responsable_ue_id || '';
+                    this.triggerEl.dataset.lpeTeacherName = name;
+                    const span = this.triggerEl.querySelector('.lpe-resp-name');
+                    if (span) span.textContent = name || '+ Assigner responsable UE';
+                    if (ue.responsable_ue_id) {
+                        this.triggerEl.classList.add('lpe-resp-btn--assigned');
+                    } else {
+                        this.triggerEl.classList.remove('lpe-resp-btn--assigned');
+                    }
+                    if (this.triggerEl._x_dataStack && this.triggerEl._x_dataStack[0]) {
+                        this.triggerEl._x_dataStack[0].currentTeacherId = String(ue.responsable_ue_id || '');
+                        this.triggerEl._x_dataStack[0].currentTeacherName = name;
+                    }
+                }
+                window.lpeShowToast(teacherId ? 'Responsable UE assigné' : 'Responsable UE retiré', 'success');
+                window.dispatchEvent(new CustomEvent('lpe:ue-responsable-updated', {
+                    detail: { ueId: this.ueId, ue },
+                }));
             },
         }));
     });

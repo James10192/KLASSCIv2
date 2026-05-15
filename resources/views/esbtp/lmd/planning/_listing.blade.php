@@ -69,7 +69,15 @@
                 </tr></thead>
                 <tbody>
                     @foreach($rows as $idx => $row)
-                        @php $ue = $row['ue']; $hasCode = !empty($ue->code); $typeLabel = $ue->type_ue?->label() ?? '—'; @endphp
+                        @php
+                            $ue = $row['ue'];
+                            $hasCode = !empty($ue->code);
+                            $typeLabel = $ue->type_ue?->label() ?? '—';
+                            $respName = $ue->responsableUe?->name;
+                            $respId = $ue->responsable_ue_id;
+                            $ueLabel = trim(($hasCode ? $ue->code . ' · ' : '') . $ue->name);
+                            $canEditUe = auth()->user()?->can('lmd.planning.edit');
+                        @endphp
                         <tr class="lp-ue-row js-ue-row" data-idx="{{ $idx }}">
                             @if($bulkEnabled)<td class="lpb-check-cell"></td>@endif
                             <td>
@@ -81,7 +89,27 @@
                             <td colspan="5" class="lp-volume">{{ $row['ecues']->count() }} ECUE</td>
                             <td class="lp-volume lp-volume-total lp-col-total">—</td>
                             <td class="lp-volume lp-volume-total lp-col-cect">{{ $row['cect'] }}</td>
-                            <td><span class="lp-no-planif">UE</span></td>
+                            <td>
+                                @if($canEditUe)
+                                    <button type="button"
+                                            class="lpe-resp-btn @if($respName) lpe-resp-btn--assigned @endif"
+                                            title="Responsable de l'UE (UEMOA)"
+                                            data-lpe-ue-id="{{ $ue->id }}"
+                                            data-lpe-teacher-id="{{ $respId ?? '' }}"
+                                            data-lpe-teacher-name="{{ $respName ?? '' }}"
+                                            data-lpe-ue-label="{{ $ueLabel }}"
+                                            x-data="lpeResponsableTrigger()"
+                                            @click="openPicker()">
+                                        <i class="fas {{ $respName ? 'fa-user-tie' : 'fa-user-plus' }}"></i>
+                                        <span class="lpe-resp-name">{{ $respName ?: '+ Assigner responsable UE' }}</span>
+                                    </button>
+                                @else
+                                    <span class="lpe-resp-readonly">
+                                        <i class="fas fa-user-tie"></i>
+                                        {{ $respName ?? '—' }}
+                                    </span>
+                                @endif
+                            </td>
                         </tr>
                         @foreach($row['ecues'] as $entry)
                             @php

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\BulkUpdatePlanificationRequest;
 use App\Http\Requests\UpdatePlanificationRequest;
+use App\Http\Requests\UpdateUeResponsableRequest;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPLMDParcours;
@@ -143,6 +144,49 @@ class ESBTPLMDPlanningController extends Controller
     {
         $user = User::find($userId);
         return $user !== null && $user->hasRole('enseignant');
+    }
+
+    /**
+     * PATCH /esbtp/lmd/ues/{ue}/responsable — assigne / désassigne le
+     * responsable d'une UE (directive UEMOA 03/2007/CM : 1 responsable par UE).
+     *
+     * Le payload accepte `responsable_ue_id` (entier user) ou null pour
+     * désassigner. La permission `lmd.planning.edit` est vérifiée côté
+     * FormRequest (authorize). On vérifie aussi que l'utilisateur cible
+     * porte le rôle `enseignant` (cohérent avec updatePlanification).
+     *
+     * Audit automatique via le trait Auditable du modèle
+     * (whitelist `$auditInclude` inclut `responsable_ue_id`).
+     */
+    public function updateUeResponsable(UpdateUeResponsableRequest $request, int $ueId): JsonResponse
+    {
+        $ue = ESBTPUniteEnseignement::findOrFail($ueId);
+
+        $responsableId = $request->filled('responsable_ue_id')
+            ? $request->integer('responsable_ue_id')
+            : null;
+
+        if ($responsableId !== null && !$this->teacherExists($responsableId)) {
+            return response()->json([
+                'success' => false,
+                'message' => "L'utilisateur sélectionné n'est pas un enseignant.",
+            ], 422);
+        }
+
+        $ue->responsable_ue_id = $responsableId;
+        $ue->updated_by = $request->user()?->id;
+        $ue->save();
+
+        $ue->load('responsableUe:id,name');
+
+        return response()->json([
+            'success' => true,
+            'ue' => [
+                'id'                  => $ue->id,
+                'responsable_ue_id'   => $ue->responsable_ue_id,
+                'responsable_name'    => $ue->responsableUe?->name,
+            ],
+        ]);
     }
 
     /**
@@ -660,7 +704,7 @@ class ESBTPLMDPlanningController extends Controller
     private function loadUesForParcours(ESBTPLMDParcours $parcours, ?int $semestre, ?int $niveauId = null): Collection
     {
         $query = $parcours->unitesEnseignement()
-            ->with(['ecues', 'matieres'])
+            ->with(['ecues', 'matieres', 'responsableUe:id,name'])
             ->where('esbtp_unites_enseignement.is_active', true);
 
         if ($semestre) {
