@@ -1,0 +1,740 @@
+{
+  "_comment": "Enseignants ECUE + responsables UE (inférés) extraits de LICENCE LETTRES MODERNES MAQUETTE.pdf.",
+  "_pdf_source": "LICENCE LETTRES MODERNES MAQUETTE.pdf",
+  "filiere": "LETTRES-MOD",
+  "filiere_name": "Lettres Modernes",
+  "domaine_name": "Arts, Lettres et Langues",
+  "page_semester_map": {
+    "2": 1,
+    "3": 2,
+    "5": 3,
+    "6": 4,
+    "8": 5,
+    "9": 6
+  },
+  "page_level_map": {
+    "2": "L1",
+    "3": "L1",
+    "5": "L2",
+    "6": "L2",
+    "8": "L3",
+    "9": "L3"
+  },
+  "stats": {
+    "ecues_total": 36,
+    "ecues_with_teacher": 36,
+    "ues_count": 24,
+    "distinct_teachers": 20
+  },
+  "note": "responsable_ue_inferred = most frequent teacher across the UE's ECUEs (heuristic). The PDF's UE summary block is too scrambled to parse reliably. Manual validation recommended before DB import.",
+  "ues": [
+    {
+      "ue_code": "MAC7001",
+      "responsable_ue_inferred": {
+        "name": "Guei Loua Fabrice",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "MAC7001.2",
+          "name": "Socioritique",
+          "enseignants": [
+            {
+              "name": "Guei Loua Fabrice",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "TEC7001",
+      "responsable_ue_inferred": {
+        "name": "e Yao Kre Kouabena Arnaud",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 1,
+      "ecues": [
+        {
+          "code": "TEC7001.2",
+          "name": "Résumé de texte",
+          "enseignants": [
+            {
+              "name": "e Yao Kre Kouabena Arnaud",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "TEC7001",
+          "name": "COMMUNICATION TEC7001.1 Introduction à la Communication 12",
+          "enseignants": [
+            {
+              "name": "Koffi N'zoumana Dr Sanogo Mousa",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "GLI7002",
+      "responsable_ue_inferred": {
+        "name": "Bini Kouadio Seraphin",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "GLI7002.1",
+          "name": "Histoire de la Grammaire",
+          "enseignants": [
+            {
+              "name": "Bini Kouadio Seraphin",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "INF7002",
+      "responsable_ue_inferred": {
+        "name": "Traoré Ismael",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "INF7002.1",
+          "name": "Initiation à l'Informatique",
+          "enseignants": [
+            {
+              "name": "Traoré Ismael",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "INF7002.2",
+          "name": "Traitement de Texte",
+          "enseignants": [
+            {
+              "name": "Traoré Ismael",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "IST7002",
+      "responsable_ue_inferred": {
+        "name": "e Gboko Aman Diane",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "IST7002.1",
+          "name": "Stylistique et Rhétorique",
+          "enseignants": [
+            {
+              "name": "e Gboko Aman Diane",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "IST7002.2",
+          "name": "Stylistique et Linguistique",
+          "enseignants": [
+            {
+              "name": "e Gboko Aman Diane",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "LAN7002",
+      "responsable_ue_inferred": {
+        "name": "Yapo Ludovic Mousso",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "LAN7002.1",
+          "name": "Latin",
+          "enseignants": [
+            {
+              "name": "Yapo Ludovic Mousso",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "LAN7002.2",
+          "name": "Ancien Français",
+          "enseignants": [
+            {
+              "name": "Yapo Ludovic Mousso",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "LGC7002",
+      "responsable_ue_inferred": {
+        "name": "Guei Loua Fabrice",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L1",
+      "semestre": 2,
+      "ecues": [
+        {
+          "code": "LGC7002.2",
+          "name": "Francophonie et Littérature",
+          "enseignants": [
+            {
+              "name": "Guei Loua Fabrice",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MAC7003",
+      "responsable_ue_inferred": {
+        "name": "Koffi Konan Roméo",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "MAC7003.1",
+          "name": "Critique Thématique",
+          "enseignants": [
+            {
+              "name": "Koffi Konan Roméo",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "MAC7003.2",
+          "name": "Narratologie",
+          "enseignants": [
+            {
+              "name": "Horo Brigitte",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "TCO7003",
+      "responsable_ue_inferred": {
+        "name": "e Gboko Aman Diane",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 3,
+      "ecues": [
+        {
+          "code": "TCO7003.1",
+          "name": "Dissertation",
+          "enseignants": [
+            {
+              "name": "e Gboko Aman Diane",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "TCO7003.2",
+          "name": "Commentaire Composé",
+          "enseignants": [
+            {
+              "name": "e Gboko Aman Diane",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "COD7004",
+      "responsable_ue_inferred": {
+        "name": "Traoré Ismael",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "COD7004",
+          "name": "COMMUNICATION COD7004.1 Système de communication 10",
+          "enseignants": [
+            {
+              "name": "Traoré Ismael",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "INF7004",
+      "responsable_ue_inferred": {
+        "name": "Traoré Ismael",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "INF7004.1",
+          "name": "Internet",
+          "enseignants": [
+            {
+              "name": "Traoré Ismael",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "INF7004.2",
+          "name": "PowerPoint",
+          "enseignants": [
+            {
+              "name": "Bedje Akou Simplice",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "LGC7004",
+      "responsable_ue_inferred": {
+        "name": "Guei Loua Fabrice",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "LGC7004.1",
+          "name": "Comparatisme et altérité",
+          "enseignants": [
+            {
+              "name": "Guei Loua Fabrice",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "PHL7004",
+      "responsable_ue_inferred": {
+        "name": "Djilé Dadié Rodrigue",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "PHL7004.1",
+          "name": "Philologie",
+          "enseignants": [
+            {
+              "name": "Djilé Dadié Rodrigue",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "PHL7004.2",
+          "name": "Lexicologie",
+          "enseignants": [
+            {
+              "name": "Djilé Dadié Rodrigue",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "PST7004",
+      "responsable_ue_inferred": {
+        "name": "e Gboko Aman Diane",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L2",
+      "semestre": 4,
+      "ecues": [
+        {
+          "code": "PST7004.1",
+          "name": "Le poste de la caractérisation",
+          "enseignants": [
+            {
+              "name": "e Gboko Aman Diane",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "HLI7005",
+      "responsable_ue_inferred": {
+        "name": "Loua Celestin",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "HLI7005.2",
+          "name": "Histoire Littéraire Ivoirienne",
+          "enseignants": [
+            {
+              "name": "Loua Celestin",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MAC7005",
+      "responsable_ue_inferred": {
+        "name": "Kouadio Blaise",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "MAC7005.1",
+          "name": "Eco-critique",
+          "enseignants": [
+            {
+              "name": "Kouadio Blaise",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "MAC7005.2",
+          "name": "Géo-critique",
+          "enseignants": [
+            {
+              "name": "Kouadio Blaise",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "POE7005",
+      "responsable_ue_inferred": {
+        "name": "Kouassi Oswald",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "POE7005.2",
+          "name": "Poésie Ivoirienne",
+          "enseignants": [
+            {
+              "name": "Kouassi Oswald",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ROM7005",
+      "responsable_ue_inferred": {
+        "name": "Ulrich Kouassi",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "ROM7005.2",
+          "name": "Roman Ivoirien OS",
+          "enseignants": [
+            {
+              "name": "Ulrich Kouassi",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "TCO7005",
+      "responsable_ue_inferred": {
+        "name": "Dji Charles",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "TCO7005.1",
+          "name": "Notes de synthyèse",
+          "enseignants": [
+            {
+              "name": "Dji Charles",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "TCO7005.2",
+          "name": "Psychopédagogie",
+          "enseignants": [
+            {
+              "name": "Dji Charles",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "THE7005",
+      "responsable_ue_inferred": {
+        "name": "Blede",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 5,
+      "ecues": [
+        {
+          "code": "THE7005.2",
+          "name": "Théâtre Ivoirien",
+          "enseignants": [
+            {
+              "name": "Blede",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "ALI7006",
+      "responsable_ue_inferred": {
+        "name": "Loua Celestin",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "ALI7006.1",
+          "name": "Littérature Magrhrébine",
+          "enseignants": [
+            {
+              "name": "Loua Celestin",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "ALI7006.2",
+          "name": "Littérature de la Diaspora",
+          "enseignants": [
+            {
+              "name": "Loua Celestin",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "INF7006",
+      "responsable_ue_inferred": {
+        "name": "Tago Ange Landry",
+        "grade": "M.",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "INF7006.1",
+          "name": "Access",
+          "enseignants": [
+            {
+              "name": "Tago Ange Landry",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        },
+        {
+          "code": "INF7006.2",
+          "name": "Excel",
+          "enseignants": [
+            {
+              "name": "Tago Ange Landry",
+              "grade": "M.",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "LIO7006",
+      "responsable_ue_inferred": {
+        "name": "Kounandy Yao",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "LIO7006.2",
+          "name": "Etudes pratiques des proverbes",
+          "enseignants": [
+            {
+              "name": "Kounandy Yao",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "ue_code": "MES7006",
+      "responsable_ue_inferred": {
+        "name": "Dao Sory",
+        "grade": "Dr",
+        "email": null,
+        "_inferred": true
+      },
+      "niveau": "L3",
+      "semestre": 6,
+      "ecues": [
+        {
+          "code": "MES7006.1",
+          "name": "Méthodes d'analyse styllistique",
+          "enseignants": [
+            {
+              "name": "Dao Sory",
+              "grade": "Dr",
+              "email": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
