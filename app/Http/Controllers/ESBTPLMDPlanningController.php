@@ -436,6 +436,15 @@ class ESBTPLMDPlanningController extends Controller
 
     private function serializePlanification(ESBTPPlanificationAcademique $planif): array
     {
+        // Force le reload de la relation enseignantPrincipal pour que le nom soit
+        // a jour APRES un save() (sinon la relation peut etre stale et retourner
+        // null, ce qui empechait le refresh realtime du bouton + Assigner sur UI).
+        if ($planif->enseignant_principal_id) {
+            $planif->load('enseignantPrincipal:id,name');
+        } else {
+            $planif->setRelation('enseignantPrincipal', null);
+        }
+
         return [
             'id' => $planif->id,
             'volume_horaire_cm' => $planif->volume_horaire_cm,
