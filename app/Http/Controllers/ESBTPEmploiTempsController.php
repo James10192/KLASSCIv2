@@ -807,7 +807,7 @@ class ESBTPEmploiTempsController extends Controller
     public function show(Request $request, ESBTPEmploiTemps $emploi_temp)
     {
         // [DEBUG TEMPORAIRE 15/05/2026] : confirmer que show() est invoqué
-        \Log::warning('[DEBUG-LMD-SHOW] EmploiTemps::show invoked', [
+        \Log::error('[DEBUG-LMD-SHOW] EmploiTemps::show invoked', [
             'emploi_temp_id' => $emploi_temp->id,
             'classe_id' => $emploi_temp->classe_id,
             'classe_systeme' => optional($emploi_temp->classe)->systeme_academique,
@@ -1039,7 +1039,7 @@ class ESBTPEmploiTempsController extends Controller
             foreach ($lmdMatieres as $row) {
                 $totalCmFromMatieres += (float) ($row['cm'] ?? 0);
             }
-            \Log::warning('[DEBUG-LMD-SUIVI] buildSuiviHeuresData', [
+            \Log::error('[DEBUG-LMD-SUIVI] buildSuiviHeuresData', [
                 'classe_id' => $classe->id,
                 'classe_systeme' => $classe->systeme_academique,
                 'classe_filiere_id' => $classe->filiere_id,
