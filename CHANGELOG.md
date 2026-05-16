@@ -12,6 +12,42 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### W5 — Justification d'absences : Foundation + Redesign premium — 16 mai 2026
+
+#### Ajouts
+- **Enum `JustificationStatus`** (`pending` / `approved` / `rejected`) — source de vérité pour le workflow, remplace le pattern legacy SUBSTRING dans `commentaire`. Méthodes `label()`, `badgeClass()`, `icon()`, `isEditableByStudent()`, `isPendingTeacherAction()`.
+- **Schéma `esbtp_attendances`** — 4 nouvelles colonnes : `justification_status` (indexée), `admin_comment`, `processed_at`, `processed_by_id` (FK users, nullOnDelete). Migration idempotente avec **backfill regex** (extrait `Commentaire de l'administration: ...` du `commentaire` legacy, mappe `excuse → APPROVED`, `absent+justified_at → PENDING`).
+- **Service `AbsenceJustificationService`** (~190 LOC) — workflow centralisé : `submitJustification`, `processJustification`, `canResubmit`, `viewDocumentSignedUrl`, `streamDocument`. Toutes les écritures DB en `DB::transaction`. Disque PRIVÉ `local` au lieu de `public` (anti fuite RGPD certificats médicaux).
+- **Policy `AbsenceJustificationPolicy`** + 3 Gate abilities (`submit`, `process`, `viewDocument`) — autorisation centralisée, l'étudiant ne peut soumettre que pour ses propres absences non encore validées.
+- **Page étudiant `/esbtp/mes-absences`** (namespace `ja-*`) — refonte premium : hero gradient KLASSCI avec 4 KPIs (Total / Validées / En attente / À justifier), filter chips Alpine (5 statuts), cards d'absence avec date-block + matière + badge statut, bouton « Justifier » / « Re-soumettre » selon statut, bandeau admin_comment visible sur REJECTED, modal upload Alpine 3 (pas Bootstrap natif), liens document via URL signée 5 min.
+- **Page admin `/esbtp/justifications`** (namespace `jap-*`) — nouvelle page admin processing : hero 4 KPIs (pending/approved/rejected/total), tabs par statut, filtres recherche + dates, cards avatar + nom + métadonnées + actions inline Valider/Rejeter, modal commentaire de rejet (min 5 chars), pagination paginée.
+- **Sidebar** — item « Justifications à traiter » sous l'accordéon « Gestion des présences » gating `@can('attendances.justify_process')`.
+
+#### Sécurité
+- **Permissions canoniques** — 2 nouvelles permissions dans le registry : `attendances.justify_own` (étudiant) et `attendances.justify_process` (secrétaire + superAdmin). Remplace les vérifications non-registry `admin.access` / `identity.school_manager` qui étaient utilisées dans le controller.
+- **Disque privé pour les documents** — `storage/app/absences/justifications/` au lieu de `storage/app/public/`. Plus d'URL publique énumérable. Accès via route signée 5 min + Policy::viewDocument.
+- **Throttle anti-spam** — 6 requêtes/min sur l'upload étudiant `/esbtp/mes-absences/{id}/justify`, 30/min sur le traitement admin, 30/min sur le download document.
+- **FormRequest `JustifyAbsenceRequest`** — validation `min:5 max:1000` sur la justification, `mimes:pdf,jpg,jpeg,png` ET `mimetypes` (MIME magic bytes, plus seulement l'extension), `max:5120` Ko (5 MB au lieu de 2 MB précédent — adapté aux certificats médicaux scannés).
+- **FormRequest `ProcessJustificationRequest`** — `decision in:approve,reject` + `admin_comment required_if:decision,reject` (min 5 chars) pour qu'un rejet documenté soit obligatoire.
+
+#### Suppressions
+- **`AbsenceJustificationController`** (216 LOC) — code mort qui utilisait des modèles `Student`/`Attendance` non-ESBTP, jamais référencé par aucune route active.
+- **`Models\AbsenceJustification`** — modèle dead associé.
+- **`resources/views/absences/justifications/*`** (4 vues) — toutes les vues legacy non utilisées par le système ESBTP actuel.
+- **`resources/views/etudiants/attendances.blade.php`** (1205 LOC) — vue mes-absences legacy remplacée par `esbtp.attendances.mes-absences` premium.
+
+#### Corrections
+- **Variables vue undefined** — `studentAttendance()` passe désormais explicitement `$anneeCourante`, `$anneesUniversitaires`, `$totalAbsences`, `$absencesJustifiees/EnAttente/Rejetees/NonJustifiees`, `$moisLabels`, `$absencesData`, `$inscription`, `$etudiant` (la vue antérieure crashait sur référence à des `$x ?? null` mal initialisés).
+- **Eager-loading N+1** — la requête ESBTPAttendance précharge `seanceCours.matiere:id,name`, `matiere:id,name`, `processedBy:id,name` (évite N requêtes par row à l'affichage).
+- **Re-soumission après rejet** — l'étudiant peut désormais re-soumettre une justification rejetée. Bouton « Re-soumettre » visible avec admin_comment affiché. Avant, le bouton « Justifier » disparaissait silencieusement après rejet, bloquant l'étudiant.
+- **Champ `motif` du formulaire ignoré** — supprimé du form (jamais persisté côté controller). Maintenant le champ `justification` est correctement validé.
+
+#### Tests
+- **`tests/Unit/Enums/JustificationStatusTest.php`** — 9 tests sur `values()`, `tryFrom`, `label`/`badgeClass`/`icon`, `isEditableByStudent`, `isPendingTeacherAction`, format DB.
+- **`tests/Unit/Services/AbsenceJustificationServiceTest.php`** — tests sans DB sur `canResubmit()`, `viewDocumentSignedUrl()`, exception sur status invalide, constante `MAX_DOCUMENT_SIZE_KB`.
+- **`tests/Unit/Policies/AbsenceJustificationPolicyTest.php`** — 14 tests sur `submit()` / `process()` / `viewDocument()` couvrant tous les cas (admin, étudiant propriétaire, étudiant tiers, sans permissions, statuts terminaux).
+- Tests Feature (DB integration) **différés** au-delà de W5 — voir PR body pour le rationale.
+
 ### W4 — TPE Journal + Workflow validation (Options 2+3 opt-in) — 16 mai 2026
 
 #### Ajouts

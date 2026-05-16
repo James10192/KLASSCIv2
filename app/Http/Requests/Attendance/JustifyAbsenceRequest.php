@@ -14,6 +14,11 @@ use Illuminate\Support\Facades\Gate;
  */
 class JustifyAbsenceRequest extends FormRequest
 {
+    /**
+     * Modèle résolu durant authorize(), accessible ensuite via absenceModel().
+     */
+    public ?ESBTPAttendance $absenceModel = null;
+
     public function authorize(): bool
     {
         $absence = $this->route('absence');
@@ -57,11 +62,6 @@ class JustifyAbsenceRequest extends FormRequest
             'document.max' => "Le document ne peut dépasser {$maxMb} Mo.",
         ];
     }
-
-    /**
-     * Accès rapide au modèle résolu durant authorize().
-     */
-    public ?ESBTPAttendance $absenceModel = null;
 
     public function absenceModel(): ESBTPAttendance
     {

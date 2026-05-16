@@ -14,6 +14,11 @@ use Illuminate\Validation\Rule;
  */
 class ProcessJustificationRequest extends FormRequest
 {
+    /**
+     * Modèle résolu durant authorize(), accessible ensuite via absenceModel().
+     */
+    public ?ESBTPAttendance $absenceModel = null;
+
     public function authorize(): bool
     {
         $absence = $this->route('absence');
@@ -45,8 +50,6 @@ class ProcessJustificationRequest extends FormRequest
             'admin_comment.max' => 'Le commentaire ne peut dépasser 500 caractères.',
         ];
     }
-
-    public ?ESBTPAttendance $absenceModel = null;
 
     public function absenceModel(): ESBTPAttendance
     {
