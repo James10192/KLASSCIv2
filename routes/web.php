@@ -836,7 +836,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
                 Route::post('/attendances/{absenceId}/process-justification', [ESBTPAttendanceController::class, 'processJustification'])
                     ->name('process-justification')
-                    ->middleware('permission:attendances.edit');
+                    ->middleware(['permission:attendances.justify_process', 'throttle:30,1']);
+
+                // Admin: list of pending justifications to process
+                Route::get('/justifications', [ESBTPAttendanceController::class, 'adminProcessing'])
+                    ->name('justifications.admin')
+                    ->middleware('permission:attendances.justify_process');
             });
 
             // Routes pour le planning général
@@ -1257,10 +1262,15 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('mes-absences.index')
                 ->middleware(['permission:attendances.view_own|attendances.view']);
 
-            // Route pour justifier une absence
+            // Route pour justifier une absence (throttle 6/min anti spam upload)
             Route::post('/esbtp/mes-absences/{absenceId}/justify', [ESBTPAttendanceController::class, 'justifyAbsence'])
                 ->name('mes-absences.justify')
-                ->middleware(['permission:attendances.view_own|attendances.view']);
+                ->middleware(['permission:attendances.justify_own|attendances.justify_process', 'throttle:6,1']);
+
+            // Download signed URL — Policy::viewDocument authorize, private disk
+            Route::get('/esbtp/justifications/{absence}/document', [ESBTPAttendanceController::class, 'downloadJustificationDocument'])
+                ->name('justifications.document')
+                ->middleware(['signed', 'throttle:30,1']);
 
             // Route de debug pour les absences (accessible uniquement en développement)
             Route::get('/mes-absences/debug', [ESBTPAttendanceController::class, 'studentAttendance'])

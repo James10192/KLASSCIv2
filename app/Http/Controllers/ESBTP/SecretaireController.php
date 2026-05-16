@@ -39,9 +39,12 @@ class SecretaireController extends Controller
             $pendingAttendances = 0;
         }
         
-        // Récupérer les justificatifs d'absence en attente
+        // Récupérer les justificatifs d'absence en attente (W5 : workflow status sur ESBTPAttendance)
         try {
-            $justificationsEnAttente = \App\Models\AbsenceJustification::where('status', 'pending')->count();
+            $justificationsEnAttente = \App\Models\ESBTPAttendance::where(
+                'justification_status',
+                \App\Enums\JustificationStatus::PENDING->value
+            )->count();
         } catch (\Exception $e) {
             $justificationsEnAttente = 0;
         }
