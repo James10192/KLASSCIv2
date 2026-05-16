@@ -154,6 +154,25 @@ class LMDEnseignantsImporter
 
         // 1. Trouver l'UE par code
         $ue = ESBTPUniteEnseignement::where('code', $ueCode)->first();
+
+        // Fallback UE-via-ECUE-prefix : si l'UE du JSON enseignants n'existe pas
+        // en DB, le code UE est probablement un pseudo-code généré par le parser
+        // PDF à partir du préfixe d'un ECUE (ex: JSON ue_code=ACN5001 alors que
+        // la vraie UE-mère est COG5001 contenant ECUE ACN5001.1). On retrouve
+        // l'UE réelle en cherchant un ECUE dont le code commence par {ueCode}.
+        if (!$ue) {
+            $matiere = ESBTPMatiere::where('code', 'LIKE', $ueCode.'.%')
+                ->orWhere('code', 'LIKE', $ueCode.'-%')
+                ->whereNotNull('unite_enseignement_id')
+                ->first();
+            if ($matiere) {
+                $ue = ESBTPUniteEnseignement::find($matiere->unite_enseignement_id);
+                if ($ue) {
+                    $this->stats['warnings'][] = "Fallback UE-via-ECUE: PDF UE={$ueCode} → DB UE={$ue->code} (via ECUE {$matiere->code})";
+                }
+            }
+        }
+
         if (!$ue) {
             $this->stats['ues_not_found']++;
             $this->stats['warnings'][] = "UE introuvable: code={$ueCode}";
