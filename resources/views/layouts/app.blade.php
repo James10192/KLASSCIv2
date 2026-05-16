@@ -1851,6 +1851,12 @@
                                     <span class="menu-dot"></span>
                                     <span>Tableau de Bord Présences</span>
                                 </a>
+                                @can('attendances.justify_process')
+                                <a href="{{ route('esbtp.attendances.justifications.admin') }}" class="menu-sublink {{ Request::routeIs('esbtp.attendances.justifications.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Justifications à traiter</span>
+                                </a>
+                                @endcan
                                 @can('session_reports.view')
                                 <a href="{{ route('esbtp.rapports-cours.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.rapports-cours.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
