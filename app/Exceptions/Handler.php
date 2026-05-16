@@ -69,6 +69,18 @@ class Handler extends ExceptionHandler
                     'message' => 'Vous n\'avez pas la permission d\'effectuer cette action.',
                 ], 403);
             }
+
+            // Guests (non-authenticated) hitting a role/permission gate should be
+            // redirected to /login rather than receiving a confusing 403/404.
+            // Spatie throws UnauthorizedException::notLoggedIn() before auth() check,
+            // which without this branch falls through to parent::render() and can
+            // surface as 404 depending on edge caching / fallback route resolution.
+            if (! auth()->check()) {
+                return redirect()->guest(route('login'));
+            }
+
+            // Authenticated but missing the required role/permission → 403 page.
+            return response()->view('errors.403', ['exception' => $e], 403);
         }
 
         if ($e instanceof CoefficientMissingException) {
