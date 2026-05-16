@@ -193,6 +193,24 @@ class LMDEnseignantsImporter
         }
 
         $ecue = ESBTPMatiere::where('code', $ecueCode)->first();
+
+        // Fallback prefix-match : les maquettes UEMOA PDFs ont des inconsistances
+        // entre code UE-mère et code ECUE child (ex: ECUE `ACN5001.1` sous UE
+        // `COG5001`, ECUE `ENA4005-AGRO.1` sous UE `ENA4005`). L'extracteur
+        // enseignants génère parfois le code parent au lieu du code ECUE complet.
+        // On cherche donc `{ecueCode}.%` (suffixe `.1/.2`) ou `{ecueCode}-%`
+        // (suffixe parcours `-AGRO/-ECO/-GES`) avant de warner.
+        // Rattrape ~15 cas par tenant (cf agent PDF re-extraction 16/05/2026).
+        if (!$ecue && !str_contains($ecueCode, '.')) {
+            $ecue = ESBTPMatiere::where('code', 'LIKE', $ecueCode.'.%')
+                ->orWhere('code', 'LIKE', $ecueCode.'-%')
+                ->orderBy('id')
+                ->first();
+            if ($ecue) {
+                $this->stats['warnings'][] = "Fallback prefix-match: PDF code={$ecueCode} → DB ECUE={$ecue->code}";
+            }
+        }
+
         if (!$ecue) {
             $this->stats['ecues_not_found']++;
             $this->stats['warnings'][] = "ECUE introuvable: code={$ecueCode} (UE={$ueCodeForContext})";
