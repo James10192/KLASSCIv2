@@ -33,6 +33,10 @@ class ESBTPAttendance extends Model implements Auditable
         'commentaire',
         'document_path',
         'justified_at',
+        'justification_status',
+        'admin_comment',
+        'processed_at',
+        'processed_by_id',
     ];
 
     /**
@@ -76,6 +80,10 @@ class ESBTPAttendance extends Model implements Auditable
         'commentaire',
         'document_path',
         'justified_at',
+        'justification_status',
+        'admin_comment',
+        'processed_at',
+        'processed_by_id',
         'created_by',
         'updated_by',
         // Video conference tracking columns
@@ -92,9 +100,19 @@ class ESBTPAttendance extends Model implements Auditable
     protected $casts = [
         'date' => 'date',
         'justified_at' => 'datetime',
+        'processed_at' => 'datetime',
+        'justification_status' => \App\Enums\JustificationStatus::class,
         'video_joined_at' => 'datetime',
         'video_left_at' => 'datetime',
     ];
+
+    /**
+     * Relation vers l'utilisateur qui a traité la justification (admin).
+     */
+    public function processedBy()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'processed_by_id');
+    }
 
     /**
      * Relation avec la séance de cours.
