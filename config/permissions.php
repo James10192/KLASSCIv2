@@ -1196,6 +1196,35 @@ return [
             'group' => 'Modules',
             'icon' => 'fa-tools',
         ],
+        'module.tpe.access' => [
+            'label' => 'Module : TPE — Journal & validation (LMD)',
+            'description' => 'Auto-déclaration étudiant des heures de Travail Personnel Étudiant. '
+                . 'Workflow validation prof activable via Setting tpe.validation.enabled.',
+            'group' => 'Modules',
+            'icon' => 'fa-book-reader',
+        ],
+
+        // ===== TPE (Travail Personnel Étudiant — LMD UEMOA) =====
+        'tpe.declare' => [
+            'label' => 'Déclarer ses heures TPE',
+            'description' => 'Permet à un étudiant de saisir des heures TPE par ECUE et par semaine.',
+            'group' => 'TPE',
+            'icon' => 'fa-pen-to-square',
+        ],
+        'tpe.validate' => [
+            'label' => 'Valider les heures TPE des étudiants',
+            'description' => 'Permet à un enseignant de valider/rejeter les déclarations TPE '
+                . 'des étudiants pour les ECUE dont il est responsable. '
+                . 'Workflow activé uniquement quand Setting tpe.validation.enabled = true.',
+            'group' => 'TPE',
+            'icon' => 'fa-check-double',
+        ],
+        'tpe.view_all' => [
+            'label' => 'Voir toutes les déclarations TPE',
+            'description' => 'Vue admin/coordinateur : toutes les déclarations toutes ECUE confondues.',
+            'group' => 'TPE',
+            'icon' => 'fa-list-check',
+        ],
 
         // ===== Service Technique (paywall) =====
         'paywall.configure' => [
@@ -1338,6 +1367,8 @@ return [
             'module.academique.access', 'module.etudiants.access', 'module.enseignants.access',
             'module.notes_evaluations.access', 'module.emploi_temps.access', 'module.presences.access',
             'module.lmd.access', 'module.comptabilite.access', 'module.communication.access',
+            // TPE — admin observe toutes les déclarations (dormant tant que module désactivé)
+            'tpe.view_all',
         ],
 
         'comptable' => [
@@ -1414,6 +1445,8 @@ return [
             'module.academique.access', 'module.etudiants.access', 'module.enseignants.access',
             'module.notes_evaluations.access', 'module.emploi_temps.access', 'module.presences.access',
             'module.lmd.access', 'module.communication.access',
+            // TPE — coordinateur observe toutes les déclarations (dormant)
+            'tpe.view_all',
         ],
 
         'enseignant' => [
@@ -1431,6 +1464,8 @@ return [
             'messages.send', 'messages.receive', 'annonces.view',
             'identity.teach',
             'module.notes_evaluations.access', 'module.presences.access', 'module.communication.access',
+            // TPE — workflow validation (dormant tant que tpe.validation.enabled = false)
+            'tpe.validate',
         ],
 
         'etudiant' => [
@@ -1444,6 +1479,8 @@ return [
             'exams.view_own',
             'messages.receive', 'annonces.view',
             'identity.student',
+            // TPE — déclaration auto (dormant tant que module.tpe.access désactivé)
+            'tpe.declare',
         ],
     ],
 
