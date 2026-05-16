@@ -1037,21 +1037,35 @@
                         $etsBaseUrl = route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTemps->id]);
                     @endphp
                     {{-- Toggle Semestre / Annee AJAX (sans full reload) --}}
-                    <div x-data="etsSuiviToggle(@js($periode ?? 'annee'), @js($etsPartialUrl), @js($etsBaseUrl))" style="margin-bottom:1rem;">
-                        <div style="display:flex;justify-content:flex-end;align-items:center;gap:.5rem;">
-                            <span x-show="loading" x-cloak style="font-size:.75rem;color:#64748b;">
+                    <style>
+                        .ets-period-wrap { display:flex; justify-content:flex-end; align-items:center; gap:.5rem; margin-bottom:1rem; }
+                        .ets-period-loading { font-size:.75rem; color:#64748b; }
+                        .ets-period-group {
+                            display:inline-flex; background:#f1f5f9; border:1px solid #e2e8f0;
+                            border-radius:10px; padding:.25rem; gap:.15rem;
+                        }
+                        .ets-period-btn {
+                            padding:.45rem .85rem; border-radius:7px;
+                            font-size:.78rem; font-weight:600;
+                            border:none; cursor:pointer;
+                            background:transparent; color:#475569;
+                            transition:background .15s, color .15s;
+                        }
+                        .ets-period-btn:hover:not(.ets-period-btn--active):not(:disabled) {
+                            background:rgba(4,83,203,.06); color:#0453cb;
+                        }
+                        .ets-period-btn--active { background:#0453cb; color:#fff; }
+                        .ets-period-btn:disabled { opacity:.6; cursor:wait; }
+                    </style>
+                    <div x-data="etsSuiviToggle(@js($periode ?? 'annee'), @js($etsPartialUrl), @js($etsBaseUrl))">
+                        <div class="ets-period-wrap">
+                            <span x-show="loading" x-cloak class="ets-period-loading">
                                 <i class="fas fa-spinner fa-spin"></i> Mise a jour...
                             </span>
-                            <div style="display:inline-flex;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:10px;padding:.25rem;gap:.15rem;">
-                                <button type="button" @click="load('semestre1')" :disabled="loading"
-                                        :style="current === 'semestre1' ? 'background:#0453cb;color:#fff' : 'background:transparent;color:#475569'"
-                                        style="padding:.45rem .85rem;border-radius:7px;font-size:.78rem;font-weight:600;border:none;cursor:pointer;transition:all .15s;">{{ $etsSemA }}</button>
-                                <button type="button" @click="load('semestre2')" :disabled="loading"
-                                        :style="current === 'semestre2' ? 'background:#0453cb;color:#fff' : 'background:transparent;color:#475569'"
-                                        style="padding:.45rem .85rem;border-radius:7px;font-size:.78rem;font-weight:600;border:none;cursor:pointer;transition:all .15s;">{{ $etsSemB }}</button>
-                                <button type="button" @click="load('annee')" :disabled="loading"
-                                        :style="current === 'annee' ? 'background:#0453cb;color:#fff' : 'background:transparent;color:#475569'"
-                                        style="padding:.45rem .85rem;border-radius:7px;font-size:.78rem;font-weight:600;border:none;cursor:pointer;transition:all .15s;">Annee</button>
+                            <div class="ets-period-group">
+                                <button type="button" class="ets-period-btn" :class="current === 'semestre1' ? 'ets-period-btn--active' : ''" @click="load('semestre1')" :disabled="loading">{{ $etsSemA }}</button>
+                                <button type="button" class="ets-period-btn" :class="current === 'semestre2' ? 'ets-period-btn--active' : ''" @click="load('semestre2')" :disabled="loading">{{ $etsSemB }}</button>
+                                <button type="button" class="ets-period-btn" :class="current === 'annee' ? 'ets-period-btn--active' : ''" @click="load('annee')" :disabled="loading">Annee</button>
                             </div>
                         </div>
                     </div>
