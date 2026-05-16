@@ -12,6 +12,27 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### W4 — TPE Journal + Workflow validation (Options 2+3 opt-in) — 16 mai 2026
+
+#### Ajouts
+- **Module TPE (Travail Personnel Étudiant — UEMOA LMD)** — nouveau module configurable `module.tpe.access`. Permet aux étudiants de déclarer leurs heures TPE par ECUE et par semaine, et aux enseignants de valider/rejeter quand le workflow est activé. Option 2 (journal auto-déclaratif) par défaut, Option 3 (workflow validation prof) **dormante** — code 100% présent mais inactif tant que le tenant ne flip pas le Setting `tpe.validation.enabled = true`.
+- **Strategy pattern `TpeValidationStrategy`** (AutoValidate / TeacherValidate) — pilotage runtime via container binding lisant le Setting tenant. Bascule Option 2 ↔ Option 3 sans redéploiement ni migration.
+- **Page étudiant `/esbtp/tpe-journal`** (namespace `tj-*`) — hero premium KLASSCI avec 4 KPIs (heures déclarées / volume attendu / progression / total), progress bar colorée sémantiquement, formulaire de saisie inline avec `<x-au-select>` ECUE + plafond hebdomadaire configurable, historique groupé par semaine avec badges statuts (Validé / En attente / Rejeté) et motif de rejet inline.
+- **Page enseignant `/esbtp/tpe-validation`** (namespace `tv-*`) — hero + 4 KPIs (en attente / validées semaine / rejetées mois / mes ECUEs), liste déclarations filtrée via scope `pourEnseignant()` (planification académique `enseignant_principal_id`), boutons Valider / Rejeter inline, modal Alpine pour commentaire de rejet (5-500 chars).
+- **Settings TPE** — 5 paramètres tenant configurables via `/esbtp/settings` : `tpe.module.enabled` (active le module), `tpe.validation.enabled` (active Option 3), `tpe.max_hours_per_week_per_ecue` (plafond, défaut 10), `tpe.declaration_window_weeks` (fenêtre rétroactive, défaut 2), `tpe.notify_email` (email opt-in, sinon DB only).
+- **Permissions TPE** dans le registry : `module.tpe.access`, `tpe.declare` (étudiant par défaut), `tpe.validate` (enseignant par défaut), `tpe.view_all` (secrétaire + coordinateur par défaut). Tous configurables via `/esbtp/custom-roles`.
+- **Notification `TpeDeclarationStatusChangedNotification`** — déclenchée à la validation/rejet, channels `database` toujours + `mail` opt-in via setting. Inclut motif de rejet pour que l'étudiant sache comment corriger.
+
+#### Sécurité
+- **Throttle TPE** — 60 requêtes/min sur les routes journal étudiant, 30 requêtes/min sur les routes validation enseignant.
+- **Validation cross-référence ECUE/classe** — `StoreTpeDeclarationRequest` vérifie que la matière (ECUE) déclarée est bien planifiée pour la classe de l'étudiant courant via `esbtp_planifications_academiques` (anti-bypass via ID arbitraire).
+- **Ownership étudiant** — `UpdateTpeDeclarationRequest::authorize()` vérifie `etudiant.user_id === user.id` ET `statut.isEditableByStudent()`. Une déclaration validée/rejetée devient immuable.
+- **Ownership enseignant** — `RejectTpeDeclarationRequest::authorize()` appelle `canBeValidatedBy($user)` qui vérifie que l'enseignant est `enseignant_principal_id` de l'ECUE dans la planification académique active.
+- **Whitelist audit log** — `$auditInclude` sur `ESBTPTpeDeclaration` (heures / description / statut / validated_by / commentaire_rejet) — anti audit-explosion.
+
+#### Tests
+- 3 fichiers de tests Unit ajoutés (`TpeDeclarationStatutTest`, `AutoValidateStrategyTest`, `TeacherValidateStrategyTest`) — 14 tests couvrant cycle de vie statut + contrat Strategy + edge cases (casse, espaces, valeurs inconnues).
+
 ### Switch BTS/LMD étendu aux pages clés + fix UE 0h + tree premium réutilisable (15 mai 2026)
 
 #### Ajouts

@@ -1768,6 +1768,26 @@
                     @endcan
                     @endcan
 
+                    {{-- TPE — Travail Personnel Etudiant (LMD UEMOA) --}}
+                    @can('module.tpe.access')
+                        @can('tpe.declare')
+                            <div class="menu-item">
+                                <a href="{{ route('esbtp.tpe-journal.index') }}" class="menu-link {{ Request::routeIs('esbtp.tpe-journal.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-book-reader"></i></div>
+                                    <div class="menu-text">Mon journal TPE</div>
+                                </a>
+                            </div>
+                        @endcan
+                        @can('tpe.validate')
+                            <div class="menu-item">
+                                <a href="{{ route('esbtp.tpe-validation.index') }}" class="menu-link {{ Request::routeIs('esbtp.tpe-validation.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-check-double"></i></div>
+                                    <div class="menu-text">Valider les heures TPE</div>
+                                </a>
+                            </div>
+                        @endcan
+                    @endcan
+
                     <!-- Administration Section -->
                     @can('personnel.view')
                         <div class="menu-category">Administration</div>
