@@ -1039,6 +1039,14 @@ class ESBTPEmploiTempsController extends Controller
             foreach ($lmdMatieres as $row) {
                 $totalCmFromMatieres += (float) ($row['cm'] ?? 0);
             }
+            $top5Ues = $lmdUesAvecEcues->take(5)->map(fn($u) => [
+                'name' => $u['name'],
+                'nb_ecues' => $u['nb_ecues'],
+                'is_orphan' => $u['is_orphan'],
+                'totaux' => $u['totaux'],
+                'first_ecue_id' => $u['ecues']->first()['matiere']->id ?? null,
+                'first_ecue_cm_p' => $u['ecues']->first()['cm_p'] ?? null,
+            ])->all();
             \Log::error('[DEBUG-LMD-SUIVI] buildSuiviHeuresData', [
                 'classe_id' => $classe->id,
                 'classe_systeme' => $classe->systeme_academique,
@@ -1057,6 +1065,7 @@ class ESBTPEmploiTempsController extends Controller
                 'total_cm_from_budget' => $totalCmFromBudget,
                 'total_cm_from_matieres' => $totalCmFromMatieres,
                 'lmdUesAvecEcues_count' => $lmdUesAvecEcues->count(),
+                'top5_ues' => $top5Ues,
             ]);
         }
 
