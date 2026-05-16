@@ -1029,7 +1029,7 @@ class ESBTPEmploiTempsController extends Controller
             foreach ($lmdMatieres as $row) {
                 $totalCmFromMatieres += (float) ($row['cm'] ?? 0);
             }
-            \Log::info('[DEBUG-LMD-SUIVI] buildSuiviHeuresData', [
+            \Log::warning('[DEBUG-LMD-SUIVI] buildSuiviHeuresData', [
                 'classe_id' => $classe->id,
                 'classe_systeme' => $classe->systeme_academique,
                 'classe_filiere_id' => $classe->filiere_id,
