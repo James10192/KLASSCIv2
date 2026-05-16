@@ -82,7 +82,7 @@ class ESBTPTpeValidationController extends Controller
     /**
      * Valide une déclaration. Notifie l'étudiant.
      */
-    public function validate(Request $request, ESBTPTpeDeclaration $declaration): RedirectResponse
+    public function approve(Request $request, ESBTPTpeDeclaration $declaration): RedirectResponse
     {
         $user = $request->user();
 

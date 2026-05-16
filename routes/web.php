@@ -2551,7 +2551,7 @@ Route::middleware(['auth', 'permission:module.tpe.access'])->group(function () {
     Route::middleware(['permission:tpe.validate', 'throttle:30,1'])->group(function () {
         Route::get('esbtp/tpe-validation', [\App\Http\Controllers\ESBTPTpeValidationController::class, 'index'])
             ->name('esbtp.tpe-validation.index');
-        Route::patch('esbtp/tpe-validation/{declaration}/validate', [\App\Http\Controllers\ESBTPTpeValidationController::class, 'validate'])
+        Route::patch('esbtp/tpe-validation/{declaration}/validate', [\App\Http\Controllers\ESBTPTpeValidationController::class, 'approve'])
             ->whereNumber('declaration')
             ->name('esbtp.tpe-validation.validate');
         Route::patch('esbtp/tpe-validation/{declaration}/reject', [\App\Http\Controllers\ESBTPTpeValidationController::class, 'reject'])
