@@ -839,7 +839,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->middleware(['permission:attendances.justify_process', 'throttle:30,1']);
 
                 // Admin: list of pending justifications to process
-                Route::get('/justifications', [ESBTPAttendanceController::class, 'adminProcessing'])
+                // Path: /esbtp/attendances/justifications (under the esbtp prefix group)
+                Route::get('/attendances/justifications', [ESBTPAttendanceController::class, 'adminProcessing'])
                     ->name('justifications.admin')
                     ->middleware('permission:attendances.justify_process');
             });
