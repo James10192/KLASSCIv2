@@ -26,17 +26,27 @@ use Carbon\Carbon;
 use App\Models\User;
 use App\Notifications\AbsenceJustificationNotification;
 use App\Notifications\ESBTPNotification;
+use App\Enums\JustificationStatus;
+use App\Http\Requests\Attendance\JustifyAbsenceRequest;
+use App\Http\Requests\Attendance\ProcessJustificationRequest;
+use App\Services\AbsenceJustificationService;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Gate;
 
 class ESBTPAttendanceController extends Controller
 {
     protected $matiereService;
     protected $notificationService;
+    protected AbsenceJustificationService $justificationService;
 
-    public function __construct(MatiereService $matiereService, NotificationService $notificationService)
-    {
+    public function __construct(
+        MatiereService $matiereService,
+        NotificationService $notificationService,
+        AbsenceJustificationService $justificationService
+    ) {
         $this->matiereService = $matiereService;
         $this->notificationService = $notificationService;
+        $this->justificationService = $justificationService;
     }
 
     /**
@@ -1270,8 +1280,9 @@ class ESBTPAttendanceController extends Controller
             abort(403, 'Profil étudiant non trouvé');
         }
 
-        // Check if student has an active inscription for current year
+        // Current academic year + inscription
         $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $anneesUniversitaires = \App\Models\ESBTPAnneeUniversitaire::orderByDesc('date_debut')->get();
         $inscription = null;
 
         if ($anneeCourante) {
@@ -1282,71 +1293,106 @@ class ESBTPAttendanceController extends Controller
                 ->first();
         }
 
-        if (!$inscription) {
-            return view('etudiants.attendances', [
-                'absences' => collect(),
-                'presences' => collect(),
-                'retards' => collect(),
-                'excuses' => collect(),
-                'matieres' => collect(),
-                'absencesParMatiere' => [],
-                'absencesMensuelles' => collect(),
-                'inscription' => null,
-                'anneeCourante' => $anneeCourante,
-                'etudiant' => $etudiant,
-                'error' => 'Vous n\'avez pas d\'inscription active pour l\'année en cours.'
-            ])->with('warning', 'Vous n\'avez pas d\'inscription active pour l\'année en cours. Veuillez contacter l\'administration.');
-        }
-
-        // Build the base query
-        $query = ESBTPAttendance::with(['seanceCours.matiere'])
+        // Build base query with eager-loading to avoid N+1
+        $query = ESBTPAttendance::with([
+                'seanceCours.matiere:id,name',
+                'matiere:id,name',
+                'processedBy:id,name',
+            ])
             ->where('etudiant_id', $etudiant->id);
 
-        // Apply date filters
+        // Year filter (default = current)
+        $anneeId = $request->filled('annee_universitaire_id')
+            ? (int) $request->annee_universitaire_id
+            : ($anneeCourante?->id);
+        if ($anneeId) {
+            $query->where('annee_universitaire_id', $anneeId);
+        }
+
+        // Date filters
         if ($request->filled('date_debut')) {
             $query->whereDate('date', '>=', $request->date_debut);
         }
         if ($request->filled('date_fin')) {
             $query->whereDate('date', '<=', $request->date_fin);
         }
-
-        // Apply matiere filter
+        // Mois (YYYY-MM) — utilisé par le filtre rapide en UI
+        if ($request->filled('mois')) {
+            try {
+                $mois = $request->mois;
+                $query->whereYear('date', substr($mois, 0, 4))
+                      ->whereMonth('date', substr($mois, 5, 2));
+            } catch (\Throwable $e) {
+                // ignore invalid format
+            }
+        }
+        // Matière filter
         if ($request->filled('matiere_id')) {
-            $query->whereHas('seanceCours', function ($q) use ($request) {
-                $q->where('matiere_id', $request->matiere_id);
+            $matiereId = (int) $request->matiere_id;
+            $query->where(function ($q) use ($matiereId) {
+                $q->where('matiere_id', $matiereId)
+                  ->orWhereHas('seanceCours', function ($q2) use ($matiereId) {
+                      $q2->where('matiere_id', $matiereId);
+                  });
+            });
+        }
+        // Statut justifié filter (all / yes / no)
+        $justifie = $request->get('justifie');
+        if ($justifie === 'yes') {
+            $query->whereIn('justification_status', [
+                JustificationStatus::APPROVED->value,
+                JustificationStatus::PENDING->value,
+            ]);
+        } elseif ($justifie === 'no') {
+            $query->where(function ($q) {
+                $q->whereNull('justification_status')
+                  ->orWhere('justification_status', JustificationStatus::REJECTED->value);
             });
         }
 
-        // Get all attendances
-        $allAttendances = $query->get();
+        // All matching attendances (raw, then split)
+        $allAttendances = $query->orderByDesc('date')->orderBy('heure_debut')->get();
 
-        // Group attendances by status
+        // Group by status
         $presences = $allAttendances->where('statut', 'present');
         $absences = $allAttendances->where('statut', 'absent');
         $retards = $allAttendances->whereIn('statut', ['retard', 'late']);
         $excuses = $allAttendances->where('statut', 'excuse');
 
-        // Calculate absences by month
-        $absencesMensuelles = $absences->groupBy(function($absence) {
-            return $absence->date->format('Y-m');
-        })->map->count();
+        // Combined "all absences" for the new mes-absences view (absent + excuse)
+        $absencesAll = $allAttendances->whereIn('statut', ['absent', 'excuse']);
 
-        // Get list of subjects for filtering using the service
+        // KPIs
+        $totalAbsences = $absencesAll->count();
+        $absencesJustifiees = $absencesAll->filter(fn ($a) =>
+            $a->justification_status === JustificationStatus::APPROVED
+            || $a->statut === 'excuse'
+        )->count();
+        $absencesEnAttente = $absencesAll->filter(fn ($a) =>
+            $a->justification_status === JustificationStatus::PENDING
+        )->count();
+        $absencesRejetees = $absencesAll->filter(fn ($a) =>
+            $a->justification_status === JustificationStatus::REJECTED
+        )->count();
+        $absencesNonJustifiees = max(0, $totalAbsences - $absencesJustifiees - $absencesEnAttente - $absencesRejetees);
+
+        // Monthly stats (last 12 months)
+        $absencesMensuelles = $absencesAll->groupBy(fn ($absence) =>
+            optional($absence->date)->format('Y-m') ?? 'unknown'
+        )->map->count();
+        $moisLabels = $absencesMensuelles->keys()->values()->all();
+        $absencesData = $absencesMensuelles->values()->all();
+        $mois = $request->get('mois', '');
+
+        // Matières for the filter
         $matieres = $this->matiereService->getMatieresForSelect($etudiant);
-
-        // Extract all unique subject IDs from the attendances
-        $matiereIds = $allAttendances->map(function ($attendance) {
-            // Vérifier que seanceCours et matiere_id existent pour éviter des erreurs
-            return $attendance->seanceCours->matiere_id ?? null;
-        })->filter()->unique()->values()->toArray();
-
-        // Get all subjects related to the attendances
+        $matiereIds = $allAttendances->map(fn ($a) =>
+            $a->matiere_id ?? ($a->seanceCours->matiere_id ?? null)
+        )->filter()->unique()->values()->toArray();
         $matieresFromAttendances = ESBTPMatiere::whereIn('id', $matiereIds)->get();
-
-        // Create a dictionary of all subjects (from both service and attendances)
         $allMatieres = [];
         foreach ($matieres as $id => $name) {
-            if ($id !== 'all') { // Ignorer l'entrée 'all' => 'Toutes les matières'
+            if ($id !== 'all') {
                 $allMatieres[$id] = $name;
             }
         }
@@ -1354,181 +1400,180 @@ class ESBTPAttendanceController extends Controller
             $allMatieres[$matiere->id] = $matiere->name;
         }
 
-        // Calculate statistics by subject
+        // Stats by matière
         $absencesParMatiere = [];
         foreach ($allMatieres as $matiereId => $matiereName) {
-            $matiereAttendances = $allAttendances->filter(function ($attendance) use ($matiereId) {
-                return ($attendance->seanceCours->matiere_id ?? null) == $matiereId;
-            });
-
+            $matiereAttendances = $allAttendances->filter(fn ($a) =>
+                ($a->matiere_id ?? ($a->seanceCours->matiere_id ?? null)) == $matiereId
+            );
             $total = $matiereAttendances->count();
             if ($total > 0) {
                 $present = $matiereAttendances->where('statut', 'present')->count();
                 $absent = $matiereAttendances->where('statut', 'absent')->count();
                 $retard = $matiereAttendances->whereIn('statut', ['retard', 'late'])->count();
                 $excuse = $matiereAttendances->where('statut', 'excuse')->count();
-
                 $absencesParMatiere[$matiereId] = [
-                    'nom' => $matiereName, // Conserver 'nom' pour la compatibilité
+                    'nom' => $matiereName,
                     'name' => $matiereName,
                     'total' => $total,
                     'present' => $present,
                     'absent' => $absent,
                     'retard' => $retard,
                     'excuse' => $excuse,
-                    'taux_presence' => round(($present / $total) * 100)
+                    'taux_presence' => round(($present / $total) * 100),
                 ];
             }
         }
 
-        return view('etudiants.attendances', compact(
-            'absences',
-            'presences',
-            'retards',
-            'excuses',
-            'matieres',
-            'absencesParMatiere',
-            'absencesMensuelles'
-        ));
-    }
+        // Sorted absences list for premium UI (chronological recent first)
+        $absencesList = $absencesAll->sortByDesc('date')->values();
 
-    /**
-     * Permet à un étudiant de justifier une absence
-     */
-    public function justifyAbsence(Request $request, $absenceId)
-    {
-        // Récupérer l'absence
-        $absence = ESBTPAttendance::findOrFail($absenceId);
-
-        // Vérifier que l'absence appartient bien à l'étudiant connecté
-        $etudiant = auth()->user()->etudiant;
-
-        if (!$etudiant || $absence->etudiant_id != $etudiant->id) {
-            abort(403, 'Vous n\'êtes pas autorisé à justifier cette absence');
-        }
-
-        // Vérifier si l'absence a déjà un commentaire administratif
-        $hasAdminComment = false;
-        if (strpos($absence->commentaire, "Commentaire de l'administration:") !== false) {
-            $hasAdminComment = true;
-        }
-
-        // Vérifications pour éviter les justifications en double:
-        // 1. Si l'absence a déjà une date de justification (en attente de validation) et pas de commentaire admin
-        if ($absence->justified_at && !$hasAdminComment) {
-            return redirect()->back()->with('warning', 'Cette absence est déjà justifiée et en attente de validation par l\'administration');
-        }
-
-        // 2. Si l'absence a déjà été validée (statut 'excuse')
-        if ($absence->statut == 'excuse') {
-            return redirect()->back()->with('info', 'Cette absence a déjà été justifiée et validée par l\'administration');
-        }
-
-        // Validation des données
-        $request->validate([
-            'justification' => 'required|string|max:500',
-            'document' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
+        return view('esbtp.attendances.mes-absences', [
+            'absences' => $absencesList,            // canonical list rendered as cards
+            'absencesAll' => $absencesAll,
+            'presences' => $presences,
+            'retards' => $retards,
+            'excuses' => $excuses,
+            'matieres' => $matieres,
+            'absencesParMatiere' => $absencesParMatiere,
+            'absencesMensuelles' => $absencesMensuelles,
+            'inscription' => $inscription,
+            'anneeCourante' => $anneeCourante,
+            'anneesUniversitaires' => $anneesUniversitaires,
+            'anneeId' => $anneeId,
+            'mois' => $mois,
+            'justifie' => $justifie,
+            'etudiant' => $etudiant,
+            'totalAbsences' => $totalAbsences,
+            'absencesJustifiees' => $absencesJustifiees,
+            'absencesEnAttente' => $absencesEnAttente,
+            'absencesRejetees' => $absencesRejetees,
+            'absencesNonJustifiees' => $absencesNonJustifiees,
+            'moisLabels' => $moisLabels,
+            'absencesData' => $absencesData,
         ]);
-
-        // Traitement du document justificatif
-        $documentPath = $absence->document_path; // Conserver le document existant par défaut
-        if ($request->hasFile('document') && $request->file('document')->isValid()) {
-            $documentPath = $request->file('document')->store('absences/justifications', 'public');
-        }
-
-        // Si c'est une re-soumission après rejet, ne garder que la partie commentaire de l'étudiant
-        if ($hasAdminComment) {
-            $parts = explode("Commentaire de l'administration:", $absence->commentaire);
-            $oldStudentComment = trim($parts[0] ?? '');
-            // On ajoute un préfixe pour indiquer qu'il s'agit d'une re-soumission
-            $absence->commentaire = $request->justification;
-        } else {
-            // Mise à jour des informations mais on garde le statut comme 'absent'
-            $absence->commentaire = $request->justification;
-        }
-
-        // Mettre à jour le chemin du document si un nouveau document a été soumis
-        if ($documentPath) {
-            $absence->document_path = $documentPath;
-        }
-
-        $absence->justified_at = now();
-        $absence->save();
-
-        // Envoyer une notification aux administrateurs
-        $this->sendJustificationNotificationToAdmins($absence, $etudiant, $request->justification, $documentPath);
-
-        if ($hasAdminComment) {
-            return redirect()->back()->with('success', 'Votre justification a été re-soumise avec succès et est en attente de validation par l\'administration');
-        } else {
-            return redirect()->back()->with('success', 'Votre justification a été soumise avec succès et est en attente de validation par l\'administration');
-        }
     }
 
     /**
-     * Permet à un administrateur de traiter une justification d'absence
-     */
-    public function processJustification(Request $request, $absenceId)
-    {
-        // Vérifier que l'utilisateur est admin ou secrétaire
-        if (!auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
-            abort(403, 'Vous n\'êtes pas autorisé à traiter les justifications d\'absence');
-        }
-
-        // Récupérer l'absence
-        $absence = ESBTPAttendance::findOrFail($absenceId);
-
-        // Vérifier que l'absence a bien été justifiée
-        if (!$absence->justified_at) {
-            return redirect()->back()->with('error', 'Cette absence n\'a pas été justifiée');
-        }
-
-        // Validation des données
-        $request->validate([
-            'decision' => 'required|in:approve,reject',
-            'admin_comment' => 'nullable|string|max:500',
-        ]);
-
-        $etudiant = ESBTPEtudiant::find($absence->etudiant_id);
-
-        // Traiter la décision
-        if ($request->decision === 'approve') {
-            // Approuver la justification
-            $absence->statut = 'excuse';
-            $absence->save();
-
-            // Utiliser le service de notifications
-            $this->notificationService->notifyAbsenceJustificationApproved($absence, $etudiant, auth()->user());
-
-            return redirect()->back()->with('success', 'La justification d\'absence a été approuvée');
-        } else {
-            // Rejeter la justification - le statut reste 'absent'
-            // Ajouter un commentaire admin si fourni
-            if ($request->filled('admin_comment')) {
-                $absence->commentaire .= "\n\nCommentaire de l'administration: " . $request->admin_comment;
-                $absence->save();
-            }
-
-            // Utiliser le service de notifications
-            $this->notificationService->notifyAbsenceJustificationRejected($absence, $etudiant, $request->admin_comment, auth()->user());
-
-            return redirect()->back()->with('info', 'La justification d\'absence a été rejetée');
-        }
-    }
-
-    /**
-     * Envoie une notification aux administrateurs concernant une justification d'absence
+     * Permet à un étudiant de justifier une absence.
+     * Délègue à AbsenceJustificationService (Service + Policy + FormRequest).
      *
-     * @param ESBTPAttendance $absence
-     * @param ESBTPEtudiant $etudiant
-     * @param string $justification
-     * @param string|null $documentPath
-     * @return void
+     * @param  \App\Http\Requests\Attendance\JustifyAbsenceRequest  $request
+     * @param  int|string  $absenceId  Route param (kept for backward compat with URL)
      */
-    private function sendJustificationNotificationToAdmins(ESBTPAttendance $absence, ESBTPEtudiant $etudiant, string $justification, ?string $documentPath = null)
+    public function justifyAbsence(JustifyAbsenceRequest $request, $absenceId)
     {
-        // Utiliser le service de notifications centralisé
-        $this->notificationService->notifyAbsenceJustificationSubmitted($absence, $etudiant);
+        $absence = $request->absenceModel();
+
+        $data = [
+            'justification' => $request->validated('justification'),
+        ];
+        if ($request->hasFile('document') && $request->file('document')->isValid()) {
+            $data['document'] = $request->file('document');
+        }
+
+        $this->justificationService->submitJustification(
+            $absence,
+            $request->user(),
+            $data
+        );
+
+        $message = $absence->wasChanged('justification_status') && $absence->getOriginal('justification_status') === JustificationStatus::REJECTED->value
+            ? 'Votre justification a été re-soumise avec succès et est en attente de validation par l\'administration.'
+            : 'Votre justification a été soumise avec succès et est en attente de validation par l\'administration.';
+
+        return redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * Permet à un administrateur de traiter une justification d'absence.
+     * Délègue à AbsenceJustificationService.
+     */
+    public function processJustification(ProcessJustificationRequest $request, $absenceId)
+    {
+        $absence = $request->absenceModel();
+        $decision = $request->validated('decision');
+        $newStatus = $decision === 'approve'
+            ? JustificationStatus::APPROVED
+            : JustificationStatus::REJECTED;
+
+        $this->justificationService->processJustification(
+            $absence,
+            $request->user(),
+            $newStatus,
+            $request->validated('admin_comment')
+        );
+
+        $message = $newStatus === JustificationStatus::APPROVED
+            ? 'La justification d\'absence a été approuvée.'
+            : 'La justification d\'absence a été rejetée.';
+        $type = $newStatus === JustificationStatus::APPROVED ? 'success' : 'info';
+
+        return redirect()->back()->with($type, $message);
+    }
+
+    /**
+     * Stream du document de justification via URL signée (5 min TTL par défaut).
+     *
+     * Policy::viewDocument autorise étudiant proprio OU admin avec
+     * permission attendances.justify_process. Le disk est PRIVÉ.
+     */
+    public function downloadJustificationDocument(ESBTPAttendance $absence)
+    {
+        Gate::authorize('viewDocument', $absence);
+        return $this->justificationService->streamDocument($absence);
+    }
+
+    /**
+     * Page admin : liste les justifications PENDING à traiter.
+     */
+    public function adminProcessing(Request $request)
+    {
+        abort_unless(auth()->user()?->can('attendances.justify_process'), 403);
+
+        $query = ESBTPAttendance::with([
+                'etudiant:id,nom,prenoms,user_id,photo',
+                'matiere:id,name',
+                'seanceCours.matiere:id,name',
+                'processedBy:id,name',
+            ])
+            ->whereNotNull('justification_status');
+
+        $statusFilter = $request->get('status', JustificationStatus::PENDING->value);
+        if (in_array($statusFilter, JustificationStatus::values(), true)) {
+            $query->where('justification_status', $statusFilter);
+        }
+        if ($request->filled('search')) {
+            $search = '%' . $request->search . '%';
+            $query->whereHas('etudiant', function ($q) use ($search) {
+                $q->where('nom', 'like', $search)->orWhere('prenoms', 'like', $search);
+            });
+        }
+        if ($request->filled('matiere_id')) {
+            $query->where('matiere_id', $request->matiere_id);
+        }
+        if ($request->filled('date_debut')) {
+            $query->whereDate('date', '>=', $request->date_debut);
+        }
+        if ($request->filled('date_fin')) {
+            $query->whereDate('date', '<=', $request->date_fin);
+        }
+
+        $absences = $query->orderByDesc('justified_at')->paginate(20)->withQueryString();
+
+        // KPIs (counts par statut)
+        $kpis = [
+            'pending' => ESBTPAttendance::where('justification_status', JustificationStatus::PENDING->value)->count(),
+            'approved' => ESBTPAttendance::where('justification_status', JustificationStatus::APPROVED->value)->count(),
+            'rejected' => ESBTPAttendance::where('justification_status', JustificationStatus::REJECTED->value)->count(),
+        ];
+        $kpis['total'] = array_sum($kpis);
+
+        $matieres = ESBTPMatiere::orderBy('name')->get(['id', 'name']);
+
+        return view('esbtp.attendances.admin-processing', compact(
+            'absences', 'kpis', 'matieres', 'statusFilter'
+        ));
     }
 
     /**

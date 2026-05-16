@@ -1,611 +1,628 @@
 @extends('layouts.app')
 
-@section('title', 'Mes Absences')
+@section('title', 'Mes absences')
 
 @push('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <style>
-    /* Styles spécifiques pour la page absences */
-    .absences-container {
-        --absences-primary: var(--primary);
-        --absences-secondary: var(--secondary);
-        --absences-surface: var(--surface);
-        --absences-border: rgba(0, 0, 0, 0.08);
-    }
+/* =========================================================
+   MES ABSENCES — Premium (namespace ja-*)
+   Etudiant : visualisation + justification d'absences
+   Design system KLASSCI monochrome bleu.
+   ========================================================= */
+[x-cloak] { display: none !important; }
 
-    .filter-section {
-        background: white;
-        border-radius: var(--radius-large);
-        padding: var(--space-lg);
-        margin-bottom: var(--space-xl);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        border: 1px solid var(--absences-border);
-    }
+.ja-page { padding: 0 0 2rem; }
 
-    .filter-section h5 {
-        font-weight: 700;
-        font-size: var(--text-lg);
-        color: var(--text-primary);
-        margin-bottom: var(--space-md);
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-    }
+/* ----- HERO (planning-header pattern) ----- */
+.ja-hero {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 2rem 2.5rem 1.75rem;
+    color: #fff;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 8px 30px rgba(4,83,203,.18);
+}
+.ja-hero-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+.ja-hero-left { display: flex; align-items: center; gap: 1rem; }
+.ja-hero-icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: rgba(255,255,255,.12);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.35rem; color: #fff; flex-shrink: 0;
+}
+.ja-hero h1 { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; }
+.ja-hero p { color: rgba(255,255,255,.72); font-size: .88rem; margin: 0; line-height: 1.4; }
+.ja-hero-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.ja-btn--glass {
+    background: rgba(255,255,255,.15); color: #fff;
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: 10px; padding: .5rem 1rem;
+    font-size: .82rem; font-weight: 600;
+    text-decoration: none; display: inline-flex; align-items: center; gap: .4rem;
+    transition: background .15s, transform .15s;
+}
+.ja-btn--glass:hover { background: rgba(255,255,255,.22); color: #fff; }
 
-    .stats-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-        gap: var(--space-lg);
-        margin-bottom: var(--space-xl);
-    }
+/* ----- KPIs ----- */
+.ja-kpis {
+    display: flex; gap: .75rem; margin-top: 1.5rem; flex-wrap: wrap;
+}
+.ja-kpi {
+    flex: 1; min-width: 160px;
+    background: rgba(255,255,255,.10);
+    border: 1px solid rgba(255,255,255,.15);
+    border-radius: 12px;
+    padding: .9rem 1rem;
+    display: flex; align-items: center; gap: .75rem;
+}
+.ja-kpi-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: rgba(255,255,255,.12);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .9rem; flex-shrink: 0;
+}
+.ja-kpi-value { font-size: 1.35rem; font-weight: 700; color: #fff; line-height: 1; }
+.ja-kpi-label { font-size: .72rem; color: rgba(255,255,255,.7); margin-top: .15rem; }
 
-    .stat-card {
-        background: white;
-        border-radius: var(--radius-large);
-        padding: var(--space-lg);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        border: 1px solid var(--absences-border);
-        position: relative;
-        overflow: hidden;
-        transition: all 0.3s ease;
-    }
+/* ----- Filter chips ----- */
+.ja-filters {
+    display: flex; gap: .5rem; flex-wrap: wrap;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: .75rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04);
+    margin-bottom: 1rem;
+}
+.ja-chip {
+    padding: .5rem .9rem;
+    border-radius: 10px;
+    border: 1px solid #e2e8f0;
+    background: #fff;
+    color: #475569;
+    font-size: .8rem; font-weight: 600;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: .4rem;
+    transition: all .15s;
+}
+.ja-chip:hover { border-color: #0453cb; color: #0453cb; }
+.ja-chip--active {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff; border-color: transparent;
+    box-shadow: 0 2px 8px rgba(4,83,203,.25);
+}
+.ja-chip-count {
+    display: inline-block; min-width: 22px; padding: 0 .4rem;
+    border-radius: 999px;
+    background: rgba(255,255,255,.25);
+    font-size: .68rem; font-weight: 700;
+    text-align: center;
+}
+.ja-chip:not(.ja-chip--active) .ja-chip-count { background: #f1f5f9; color: #475569; }
 
-    .stat-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-    }
+/* ----- Card de l'absence ----- */
+.ja-list { display: flex; flex-direction: column; gap: .75rem; }
+.ja-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+    transition: box-shadow .2s, transform .2s;
+}
+.ja-card:hover {
+    box-shadow: 0 8px 30px rgba(4,83,203,.08), 0 2px 8px rgba(15,23,42,.04);
+    transform: translateY(-1px);
+}
+.ja-card-top {
+    display: flex; align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+}
+.ja-card-left {
+    display: flex; align-items: flex-start; gap: .9rem;
+    min-width: 0; flex: 1;
+}
+.ja-date-block {
+    background: linear-gradient(135deg, rgba(4,83,203,.06), rgba(59,125,219,.10));
+    border: 1px solid rgba(4,83,203,.16);
+    border-radius: 12px;
+    padding: .55rem .7rem .65rem;
+    text-align: center; min-width: 64px; flex-shrink: 0;
+}
+.ja-date-block-day { font-size: 1.45rem; font-weight: 700; color: #0453cb; line-height: 1; }
+.ja-date-block-mois { font-size: .65rem; font-weight: 700; text-transform: uppercase; color: #64748b; margin-top: .15rem; }
+.ja-date-block-year { font-size: .65rem; color: #94a3b8; margin-top: .1rem; }
 
-    .stat-card.primary::before {
-        background: linear-gradient(135deg, var(--primary), var(--secondary));
-    }
+.ja-card-info { min-width: 0; }
+.ja-card-matiere {
+    font-size: 1rem; font-weight: 700; color: #1e293b;
+    margin: 0 0 .2rem;
+    overflow: hidden; text-overflow: ellipsis;
+}
+.ja-card-meta {
+    display: flex; gap: .9rem; flex-wrap: wrap;
+    font-size: .75rem; color: #64748b;
+}
+.ja-card-meta i { color: #94a3b8; }
 
-    .stat-card.success::before {
-        background: linear-gradient(135deg, var(--success), #10b981);
-    }
+.ja-card-right { display: flex; flex-direction: column; align-items: flex-end; gap: .5rem; }
 
-    .stat-card.danger::before {
-        background: linear-gradient(135deg, var(--danger), #f43f5e);
-    }
+/* Badges statut */
+.ja-badge {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .35rem .65rem;
+    border-radius: 8px;
+    font-size: .72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .3px;
+}
+.ja-badge--muted     { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
+.ja-badge--warning   { background: rgba(245,158,11,.10); color: #b45309; border: 1px solid rgba(245,158,11,.30); }
+.ja-badge--success   { background: rgba(16,185,129,.10); color: #047857; border: 1px solid rgba(16,185,129,.30); }
+.ja-badge--danger    { background: rgba(220,38,38,.08); color: #b91c1c; border: 1px solid rgba(220,38,38,.30); }
 
-    .stat-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(var(--primary-rgb), 0.15);
-    }
+.ja-card-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+.ja-action-btn {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .45rem .85rem;
+    border-radius: 9px;
+    font-size: .78rem; font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer; transition: all .15s;
+    text-decoration: none;
+}
+.ja-action-btn--primary {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff; border: none;
+    box-shadow: 0 2px 8px rgba(4,83,203,.25);
+}
+.ja-action-btn--primary:hover { transform: translateY(-1px); color: #fff; box-shadow: 0 4px 12px rgba(4,83,203,.35); }
+.ja-action-btn--ghost {
+    background: #fff; color: #0453cb; border-color: #0453cb;
+}
+.ja-action-btn--ghost:hover { background: rgba(4,83,203,.05); color: #0453cb; }
 
-    .stat-card-content {
-        display: flex;
-        align-items: center;
-        gap: var(--space-md);
-    }
+.ja-admin-comment {
+    margin-top: .75rem;
+    padding: .7rem .85rem;
+    border-radius: 10px;
+    background: rgba(220,38,38,.04);
+    border: 1px solid rgba(220,38,38,.18);
+    border-left: 3px solid #dc2626;
+    color: #7f1d1d;
+    font-size: .82rem;
+    display: flex; gap: .5rem; align-items: flex-start;
+}
+.ja-admin-comment i { color: #dc2626; flex-shrink: 0; margin-top: .15rem; }
 
-    .stat-icon {
-        width: 60px;
-        height: 60px;
-        border-radius: var(--radius-large);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 1.5rem;
-        flex-shrink: 0;
-    }
+.ja-doc-link {
+    display: inline-flex; align-items: center; gap: .4rem;
+    margin-top: .5rem;
+    padding: .4rem .6rem;
+    border-radius: 8px;
+    background: rgba(4,83,203,.06);
+    color: #0453cb;
+    font-size: .75rem; font-weight: 600;
+    text-decoration: none;
+    border: 1px dashed rgba(4,83,203,.30);
+}
+.ja-doc-link:hover { background: rgba(4,83,203,.12); color: #0453cb; }
 
-    .stat-card.primary .stat-icon {
-        background: rgba(var(--primary-rgb), 0.1);
-        color: var(--primary);
-    }
+/* ----- Empty state ----- */
+.ja-empty {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: #94a3b8;
+}
+.ja-empty-icon {
+    width: 64px; height: 64px;
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(4,83,203,.06), rgba(59,125,219,.12));
+    color: #0453cb;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+}
+.ja-empty h3 { font-size: 1rem; color: #1e293b; margin: 0 0 .35rem; font-weight: 700; }
+.ja-empty p { font-size: .85rem; color: #64748b; margin: 0; }
 
-    .stat-card.success .stat-icon {
-        background: rgba(var(--success-rgb), 0.1);
-        color: var(--success);
-    }
+/* ----- Modal upload (Alpine 3) ----- */
+.ja-modal-backdrop {
+    position: fixed; inset: 0;
+    background: rgba(15,23,42,.55);
+    backdrop-filter: blur(2px);
+    z-index: 1050;
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem;
+}
+.ja-modal {
+    background: #fff;
+    border-radius: 16px;
+    width: 100%; max-width: 540px;
+    max-height: 90vh; overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(15,23,42,.30);
+}
+.ja-modal-header {
+    background: linear-gradient(135deg, #0a3d8f, #0453cb 70%);
+    color: #fff;
+    padding: 1.25rem 1.5rem;
+    border-radius: 16px 16px 0 0;
+    display: flex; align-items: center; gap: .75rem;
+}
+.ja-modal-header h3 { margin: 0; font-size: 1.1rem; font-weight: 700; color: #fff; }
+.ja-modal-header-icon {
+    width: 36px; height: 36px; border-radius: 10px;
+    background: rgba(255,255,255,.18);
+    display: flex; align-items: center; justify-content: center;
+}
+.ja-modal-body { padding: 1.5rem; }
+.ja-modal-row { margin-bottom: 1rem; }
+.ja-modal-row label { font-size: .82rem; font-weight: 600; color: #334155; margin-bottom: .35rem; display: block; }
+.ja-modal-row textarea, .ja-modal-row input[type=file] {
+    width: 100%;
+    padding: .65rem .85rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    font-size: .9rem;
+    color: #1e293b;
+    transition: border-color .15s, box-shadow .15s;
+}
+.ja-modal-row textarea:focus, .ja-modal-row input[type=file]:focus {
+    outline: none;
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.12);
+}
+.ja-modal-row .ja-hint { font-size: .72rem; color: #94a3b8; margin-top: .3rem; }
+.ja-modal-context {
+    background: rgba(4,83,203,.04);
+    border: 1px solid rgba(4,83,203,.15);
+    border-radius: 10px;
+    padding: .75rem .9rem;
+    margin-bottom: 1rem;
+    font-size: .85rem; color: #334155;
+}
+.ja-modal-context strong { color: #0453cb; }
+.ja-modal-footer {
+    padding: 1rem 1.5rem;
+    border-top: 1px solid #f1f5f9;
+    display: flex; gap: .5rem; justify-content: flex-end;
+}
+.ja-btn--secondary {
+    background: #f1f5f9; color: #475569;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: .55rem 1.1rem;
+    font-size: .85rem; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+}
+.ja-btn--secondary:hover { background: #e2e8f0; }
+.ja-btn--primary {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff; border: none;
+    border-radius: 10px;
+    padding: .55rem 1.3rem;
+    font-size: .85rem; font-weight: 600;
+    cursor: pointer; transition: all .15s;
+    box-shadow: 0 2px 8px rgba(4,83,203,.25);
+}
+.ja-btn--primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(4,83,203,.35); }
 
-    .stat-card.danger .stat-icon {
-        background: rgba(var(--danger-rgb), 0.1);
-        color: var(--danger);
-    }
-
-    .stat-info h6 {
-        font-size: var(--text-xs);
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        color: var(--text-secondary);
-        margin-bottom: var(--space-xs);
-    }
-
-    .stat-value {
-        font-size: 2rem;
-        font-weight: 700;
-        color: var(--text-primary);
-        line-height: 1;
-        margin-bottom: var(--space-xs);
-    }
-
-    .stat-description {
-        font-size: var(--text-xs);
-        color: var(--text-secondary);
-    }
-
-    .absences-table-card {
-        background: white;
-        border-radius: var(--radius-large);
-        padding: var(--space-lg);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        border: 1px solid var(--absences-border);
-    }
-
-    .absences-table-card h5 {
-        font-weight: 700;
-        font-size: var(--text-lg);
-        color: var(--text-primary);
-        margin-bottom: var(--space-md);
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-    }
-
-    .table-modern {
-        width: 100%;
-        margin-bottom: 0;
-    }
-
-    .table-modern thead th {
-        background: rgba(var(--primary-rgb), 0.05);
-        color: var(--text-primary);
-        font-weight: 600;
-        font-size: var(--text-sm);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        padding: var(--space-md);
-        border: none;
-    }
-
-    .table-modern tbody td {
-        padding: var(--space-md);
-        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-        color: var(--text-primary);
-        font-size: var(--text-sm);
-    }
-
-    .table-modern tbody tr:last-child td {
-        border-bottom: none;
-    }
-
-    .table-modern tbody tr:hover {
-        background: rgba(var(--primary-rgb), 0.02);
-    }
-
-    .badge-status {
-        padding: var(--space-xs) var(--space-sm);
-        border-radius: var(--radius-small);
-        font-size: var(--text-xs);
-        font-weight: 600;
-        text-transform: uppercase;
-    }
-
-    .badge-status.success {
-        background: rgba(var(--success-rgb), 0.1);
-        color: var(--success);
-    }
-
-    .badge-status.danger {
-        background: rgba(var(--danger-rgb), 0.1);
-        color: var(--danger);
-    }
-
-    .info-card {
-        background: white;
-        border-radius: var(--radius-large);
-        padding: var(--space-lg);
-        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-        border: 1px solid var(--absences-border);
-        margin-bottom: var(--space-lg);
-    }
-
-    .info-card h5 {
-        font-weight: 700;
-        font-size: var(--text-base);
-        color: var(--text-primary);
-        margin-bottom: var(--space-md);
-        display: flex;
-        align-items: center;
-        gap: var(--space-sm);
-    }
-
-    .alert-modern {
-        padding: var(--space-md);
-        border-radius: var(--radius-medium);
-        margin-bottom: var(--space-md);
-        display: flex;
-        align-items: flex-start;
-        gap: var(--space-sm);
-    }
-
-    .alert-modern.info {
-        background: rgba(var(--primary-rgb), 0.1);
-        color: var(--primary);
-    }
-
-    .alert-modern.warning {
-        background: rgba(var(--warning-rgb), 0.1);
-        color: var(--warning);
-    }
-
-    .alert-modern i {
-        flex-shrink: 0;
-        margin-top: 2px;
-    }
-
-    .chart-container {
-        position: relative;
-        height: 300px;
-    }
-
-    /* Responsive Design */
-    @media (max-width: 768px) {
-        .stats-grid {
-            grid-template-columns: 1fr;
-            gap: var(--space-md);
-        }
-
-        .student-header .d-flex {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-            gap: var(--space-md);
-        }
-
-        .student-header h1 {
-            font-size: 1.5rem !important;
-        }
-
-        .student-header .header-subtitle {
-            font-size: 0.875rem !important;
-        }
-
-        .student-header .text-end {
-            text-align: left !important;
-            width: 100%;
-        }
-
-        .student-header .badge {
-            display: inline-block;
-            width: auto;
-        }
-
-        .filter-section .row > div {
-            margin-bottom: var(--space-sm);
-        }
-
-        .table-modern {
-            font-size: var(--text-xs);
-        }
-
-        .stat-card-content {
-            flex-direction: column;
-            text-align: center;
-        }
-    }
+/* Mobile */
+@media (max-width: 768px) {
+    .ja-hero { padding: 1.5rem 1.25rem 1.25rem; }
+    .ja-hero h1 { font-size: 1.2rem; }
+    .ja-kpis { gap: .5rem; }
+    .ja-kpi { min-width: calc(50% - .25rem); }
+    .ja-card-top { flex-direction: column; align-items: stretch; }
+    .ja-card-right { align-items: flex-start; }
+    .ja-modal { max-width: 95vw; }
+}
+@media (max-width: 576px) {
+    .ja-kpi { min-width: 100%; }
+    .ja-chip { font-size: .72rem; padding: .4rem .7rem; }
+}
 </style>
 @endpush
 
 @section('content')
-<div class="dashboard-acasi absences-container">
-    <div class="main-content">
-        <!-- Header Étudiant Moderne -->
-        <div class="student-header">
-            <div class="d-flex align-items-center justify-content-between">
+<div class="ja-page"
+     x-data="mesAbsencesPage()"
+     x-cloak>
+    {{-- HERO --}}
+    <div class="ja-hero">
+        <div class="ja-hero-top">
+            <div class="ja-hero-left">
+                <div class="ja-hero-icon"><i class="fas fa-file-medical"></i></div>
                 <div>
-                    <h1>
-                        <i class="fas fa-calendar-times me-3"></i>
-                        Mes Absences
-                    </h1>
-                    <p class="header-subtitle">
-                        Consultez vos absences et justifiez-les
+                    <h1>Mes absences</h1>
+                    <p>
+                        Consultez vos absences et justifiez-les en joignant un certificat médical ou tout autre document
+                        @if(!empty($anneeCourante))
+                            — Année universitaire <strong>{{ $anneeCourante->libelle ?? ('en cours') }}</strong>
+                        @endif
                     </p>
                 </div>
-                <div class="text-end">
-                    <div class="badge" style="background: rgba(255, 255, 255, 0.2); color: white; padding: var(--space-sm) var(--space-md); border-radius: var(--radius-medium); font-size: var(--text-sm);">
-                        <i class="fas fa-calendar me-2"></i>
-                        Année {{ $anneeCourante->name ?? (date('Y').'-'.(date('Y')+1)) }}
-                    </div>
-                </div>
+            </div>
+            <div class="ja-hero-actions">
+                <a href="{{ route('dashboard') }}" class="ja-btn--glass">
+                    <i class="fas fa-arrow-left"></i> Retour
+                </a>
             </div>
         </div>
 
-        @if(session('success'))
-            <div class="alert alert-success" style="margin: var(--space-lg) 0;">
-                <i class="fas fa-check-circle me-2"></i>
-                {{ session('success') }}
-            </div>
-        @endif
-
-        @if(session('error'))
-            <div class="alert alert-danger" style="margin: var(--space-lg) 0;">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                {{ session('error') }}
-            </div>
-        @endif
-
-        <!-- Filtres -->
-        <div class="filter-section">
-            <h5>
-                <i class="fas fa-filter"></i>
-                Filtres de recherche
-            </h5>
-            <form action="{{ route('esbtp.mes-absences.index') }}" method="GET" class="row">
-                <div class="col-md-3">
-                    <label for="annee_universitaire_id" class="form-label">Année Universitaire</label>
-                    <select name="annee_universitaire_id" id="annee_universitaire_id" class="form-control">
-                        @foreach($anneesUniversitaires as $annee)
-                            <option value="{{ $annee->id }}" {{ $anneeId == $annee->id ? 'selected' : '' }}>
-                                {{ $annee->annee_debut }}-{{ $annee->annee_fin }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="mois" class="form-label">Mois</label>
-                    <select name="mois" id="mois" class="form-control">
-                        <option value="">Tous les mois</option>
-                        @foreach(range(1, 12) as $m)
-                            <option value="{{ $m }}" {{ $mois == $m ? 'selected' : '' }}>
-                                {{ date('F', mktime(0, 0, 0, $m, 1)) }}
-                            </option>
-                        @endforeach
-                    </select>
-                </div>
-                <div class="col-md-3">
-                    <label for="justifie" class="form-label">Justification</label>
-                    <select name="justifie" id="justifie" class="form-control">
-                        <option value="">Toutes les absences</option>
-                        <option value="1" {{ $justifie === '1' ? 'selected' : '' }}>Justifiées</option>
-                        <option value="0" {{ $justifie === '0' ? 'selected' : '' }}>Non justifiées</option>
-                    </select>
-                </div>
-                <div class="col-md-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-primary me-2">
-                        <i class="fas fa-search"></i>
-                        Filtrer
-                    </button>
-                    <a href="{{ route('esbtp.mes-absences.index') }}" class="btn btn-secondary">
-                        <i class="fas fa-redo"></i>
-                        Réinitialiser
-                    </a>
-                </div>
-            </form>
-        </div>
-
-        <!-- Statistiques -->
-        <div class="stats-grid">
-            <div class="stat-card primary">
-                <div class="stat-card-content">
-                    <div class="stat-icon">
-                        <i class="fas fa-calendar-times"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h6>Total des absences</h6>
-                        <div class="stat-value">{{ $totalAbsences }}</div>
-                        <div class="stat-description">Toutes les absences enregistrées</div>
-                    </div>
+        <div class="ja-kpis">
+            <div class="ja-kpi">
+                <div class="ja-kpi-icon"><i class="fas fa-calendar-times"></i></div>
+                <div>
+                    <div class="ja-kpi-value">{{ (int) ($totalAbsences ?? 0) }}</div>
+                    <div class="ja-kpi-label">Total absences</div>
                 </div>
             </div>
-
-            <div class="stat-card success">
-                <div class="stat-card-content">
-                    <div class="stat-icon">
-                        <i class="fas fa-check-circle"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h6>Absences justifiées</h6>
-                        <div class="stat-value">{{ $absencesJustifiees }}</div>
-                        <div class="stat-description">{{ $totalAbsences > 0 ? round(($absencesJustifiees / $totalAbsences) * 100, 2) : 0 }}% du total</div>
-                    </div>
+            <div class="ja-kpi">
+                <div class="ja-kpi-icon"><i class="fas fa-check-circle"></i></div>
+                <div>
+                    <div class="ja-kpi-value">{{ (int) ($absencesJustifiees ?? 0) }}</div>
+                    <div class="ja-kpi-label">Validées</div>
                 </div>
             </div>
-
-            <div class="stat-card danger">
-                <div class="stat-card-content">
-                    <div class="stat-icon">
-                        <i class="fas fa-exclamation-triangle"></i>
-                    </div>
-                    <div class="stat-info">
-                        <h6>Absences non justifiées</h6>
-                        <div class="stat-value">{{ $absencesNonJustifiees }}</div>
-                        <div class="stat-description">{{ $totalAbsences > 0 ? round(($absencesNonJustifiees / $totalAbsences) * 100, 2) : 0 }}% du total</div>
-                    </div>
+            <div class="ja-kpi">
+                <div class="ja-kpi-icon"><i class="fas fa-clock"></i></div>
+                <div>
+                    <div class="ja-kpi-value">{{ (int) ($absencesEnAttente ?? 0) }}</div>
+                    <div class="ja-kpi-label">En attente</div>
                 </div>
             </div>
-        </div>
-
-        <!-- Contenu principal -->
-        <div class="row">
-            <div class="col-lg-8">
-                <!-- Liste des absences -->
-                <div class="absences-table-card">
-                    <h5>
-                        <i class="fas fa-list"></i>
-                        Liste de mes absences
-                    </h5>
-                    <div class="table-responsive">
-                        <table class="table table-modern">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Matière</th>
-                                    <th>Heure</th>
-                                    <th>Justifiée</th>
-                                    <th>Commentaire</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($absences as $absence)
-                                    <tr>
-                                        <td>{{ $absence->seance->date ? $absence->seance->date->format('d/m/Y') : 'N/A' }}</td>
-                                        <td>{{ $absence->seance->matiere->nom ?? 'N/A' }}</td>
-                                        <td>{{ $absence->seance->heure_debut ? $absence->seance->heure_debut->format('H:i') : 'N/A' }} - {{ $absence->seance->heure_fin ? $absence->seance->heure_fin->format('H:i') : 'N/A' }}</td>
-                                        <td>
-                                            @if($absence->justifie)
-                                                <span class="badge-status success">Oui</span>
-                                            @else
-                                                <span class="badge-status danger">Non</span>
-                                            @endif
-                                        </td>
-                                        <td>{{ $absence->commentaire ?? 'Aucun commentaire' }}</td>
-                                        <td>
-                                            @if(!$absence->justifie)
-                                                <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#justifierModal{{ $absence->id }}">
-                                                    <i class="fas fa-file-upload"></i>
-                                                    Justifier
-                                                </button>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="6" class="text-center" style="padding: var(--space-xl);">
-                                            <i class="fas fa-inbox" style="font-size: 3rem; color: var(--text-muted); margin-bottom: var(--space-md);"></i>
-                                            <p style="color: var(--text-secondary); margin: 0;">Aucune absence trouvée.</p>
-                                        </td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <div class="d-flex justify-content-center mt-4">
-                        {{ $absences->appends(request()->query())->links() }}
-                    </div>
-                </div>
-            </div>
-
-            <div class="col-lg-4">
-                <!-- Graphique des absences -->
-                <div class="info-card">
-                    <h5>
-                        <i class="fas fa-chart-bar"></i>
-                        Évolution des absences
-                    </h5>
-                    <div class="chart-container">
-                        <canvas id="absencesChart"></canvas>
-                    </div>
-                </div>
-
-                <!-- Règlement des absences -->
-                <div class="info-card">
-                    <h5>
-                        <i class="fas fa-info-circle"></i>
-                        Règlement des absences
-                    </h5>
-                    <div class="alert-modern info">
-                        <i class="fas fa-question-circle"></i>
-                        <div>
-                            <strong>Comment justifier une absence :</strong>
-                            <ol style="margin: var(--space-xs) 0 0; padding-left: var(--space-lg);">
-                                <li>Cliquez sur le bouton "Justifier" à côté de l'absence concernée.</li>
-                                <li>Téléchargez un document justificatif (certificat médical, convocation administrative, etc.).</li>
-                                <li>Ajoutez un commentaire expliquant la raison de votre absence.</li>
-                                <li>Soumettez votre demande de justification.</li>
-                            </ol>
-                        </div>
-                    </div>
-                    <div class="alert-modern warning">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <div>
-                            <strong>Attention :</strong> Les justifications sont soumises à validation par l'administration.
-                        </div>
-                    </div>
+            <div class="ja-kpi">
+                <div class="ja-kpi-icon"><i class="fas fa-exclamation-circle"></i></div>
+                <div>
+                    <div class="ja-kpi-value">{{ (int) ($absencesNonJustifiees ?? 0) }}</div>
+                    <div class="ja-kpi-label">À justifier</div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Modals pour justifier les absences -->
-@foreach($absences as $absence)
-    @if(!$absence->justifie)
-        <div class="modal fade" id="justifierModal{{ $absence->id }}" tabindex="-1" aria-labelledby="justifierModalLabel{{ $absence->id }}" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="justifierModalLabel{{ $absence->id }}">Justifier l'absence du {{ $absence->seance->date ? $absence->seance->date->format('d/m/Y') : 'N/A' }}</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <form action="{{ route('esbtp.mes-absences.justify', $absence->id) }}" method="POST" enctype="multipart/form-data">
-                        @csrf
-                        <input type="hidden" name="attendance_id" value="{{ $absence->id }}">
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label for="motif{{ $absence->id }}" class="form-label">Motif de l'absence</label>
-                                <select name="motif" id="motif{{ $absence->id }}" class="form-control" required>
-                                    <option value="">Sélectionnez un motif</option>
-                                    <option value="Maladie">Maladie</option>
-                                    <option value="Accident">Accident</option>
-                                    <option value="Rendez-vous médical">Rendez-vous médical</option>
-                                    <option value="Problème de transport">Problème de transport</option>
-                                    <option value="Cas de force majeure">Cas de force majeure</option>
-                                    <option value="Autre">Autre</option>
-                                </select>
-                            </div>
-                            <div class="mb-3">
-                                <label for="commentaire{{ $absence->id }}" class="form-label">Détails / Commentaire</label>
-                                <textarea name="commentaire" id="commentaire{{ $absence->id }}" class="form-control" rows="3" required></textarea>
-                            </div>
-                            <div class="mb-3">
-                                <label for="document{{ $absence->id }}" class="form-label">Document justificatif (PDF, JPG, PNG)</label>
-                                <input type="file" name="document" id="document{{ $absence->id }}" class="form-control" required>
-                                <small class="form-text text-muted">Téléchargez un certificat médical ou tout autre document justifiant votre absence.</small>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                            <button type="submit" class="btn btn-primary">
-                                <i class="fas fa-paper-plane"></i>
-                                Soumettre la justification
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
+    {{-- Flash messages --}}
+    @if(session('success'))
+        <div class="alert alert-success" role="alert">{{ session('success') }}</div>
+    @endif
+    @if(session('warning'))
+        <div class="alert alert-warning" role="alert">{{ session('warning') }}</div>
+    @endif
+    @if(session('info'))
+        <div class="alert alert-info" role="alert">{{ session('info') }}</div>
+    @endif
+    @if(session('error'))
+        <div class="alert alert-danger" role="alert">{{ session('error') }}</div>
+    @endif
+    @if($errors->any())
+        <div class="alert alert-danger" role="alert">
+            <ul class="mb-0">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
         </div>
     @endif
-@endforeach
+
+    {{-- FILTER CHIPS --}}
+    <div class="ja-filters">
+        <button type="button" class="ja-chip" :class="{ 'ja-chip--active': statusFilter === 'all' }" @click="statusFilter = 'all'">
+            <i class="fas fa-list"></i> Toutes <span class="ja-chip-count">{{ (int) ($totalAbsences ?? 0) }}</span>
+        </button>
+        <button type="button" class="ja-chip" :class="{ 'ja-chip--active': statusFilter === 'to_justify' }" @click="statusFilter = 'to_justify'">
+            <i class="fas fa-exclamation-circle"></i> À justifier <span class="ja-chip-count">{{ (int) ($absencesNonJustifiees ?? 0) }}</span>
+        </button>
+        <button type="button" class="ja-chip" :class="{ 'ja-chip--active': statusFilter === 'pending' }" @click="statusFilter = 'pending'">
+            <i class="fas fa-clock"></i> En attente <span class="ja-chip-count">{{ (int) ($absencesEnAttente ?? 0) }}</span>
+        </button>
+        <button type="button" class="ja-chip" :class="{ 'ja-chip--active': statusFilter === 'approved' }" @click="statusFilter = 'approved'">
+            <i class="fas fa-check-circle"></i> Validées <span class="ja-chip-count">{{ (int) ($absencesJustifiees ?? 0) }}</span>
+        </button>
+        <button type="button" class="ja-chip" :class="{ 'ja-chip--active': statusFilter === 'rejected' }" @click="statusFilter = 'rejected'">
+            <i class="fas fa-times-circle"></i> Rejetées <span class="ja-chip-count">{{ (int) ($absencesRejetees ?? 0) }}</span>
+        </button>
+    </div>
+
+    {{-- LIST --}}
+    @php
+        $rows = $absences ?? collect();
+    @endphp
+
+    @if($rows->isEmpty())
+        <div class="ja-empty">
+            <div class="ja-empty-icon"><i class="fas fa-check-double"></i></div>
+            <h3>Aucune absence enregistrée</h3>
+            <p>Vous n'avez pas d'absence pour la période sélectionnée. Continuez comme ça !</p>
+        </div>
+    @else
+        <div class="ja-list">
+            @foreach($rows as $abs)
+                @php
+                    $status = $abs->justification_status;
+                    $statusVal = $status instanceof \App\Enums\JustificationStatus ? $status->value : null;
+                    $matiereName = optional($abs->matiere)->name ?? optional($abs->seanceCours->matiere ?? null)->name ?? '—';
+                    $rowFlag = match ($statusVal) {
+                        'approved' => 'approved',
+                        'pending'  => 'pending',
+                        'rejected' => 'rejected',
+                        default    => ($abs->statut === 'excuse' ? 'approved' : 'to_justify'),
+                    };
+                    $canSubmit = in_array($rowFlag, ['to_justify', 'rejected'], true);
+                    $hasDoc = !empty($abs->document_path);
+                @endphp
+
+                <div class="ja-card"
+                     x-show="statusFilter === 'all' || statusFilter === '{{ $rowFlag }}'"
+                     x-transition.opacity>
+                    <div class="ja-card-top">
+                        <div class="ja-card-left">
+                            <div class="ja-date-block">
+                                <div class="ja-date-block-day">{{ optional($abs->date)->format('d') ?? '—' }}</div>
+                                <div class="ja-date-block-mois">{{ optional($abs->date)->translatedFormat('M') ?? '' }}</div>
+                                <div class="ja-date-block-year">{{ optional($abs->date)->format('Y') ?? '' }}</div>
+                            </div>
+                            <div class="ja-card-info">
+                                <div class="ja-card-matiere">{{ $matiereName }}</div>
+                                <div class="ja-card-meta">
+                                    @if($abs->heure_debut)
+                                        <span><i class="fas fa-clock"></i> {{ \Illuminate\Support\Str::limit((string) $abs->heure_debut, 5, '') }}@if($abs->heure_fin) — {{ \Illuminate\Support\Str::limit((string) $abs->heure_fin, 5, '') }}@endif</span>
+                                    @endif
+                                    @if($statusVal === 'pending' && $abs->justified_at)
+                                        <span><i class="fas fa-paper-plane"></i> Soumis le {{ $abs->justified_at->format('d/m/Y') }}</span>
+                                    @elseif($statusVal === 'approved' && $abs->processed_at)
+                                        <span><i class="fas fa-check"></i> Validé le {{ $abs->processed_at->format('d/m/Y') }}</span>
+                                    @elseif($statusVal === 'rejected' && $abs->processed_at)
+                                        <span><i class="fas fa-times"></i> Rejeté le {{ $abs->processed_at->format('d/m/Y') }}</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                        <div class="ja-card-right">
+                            @if($rowFlag === 'approved')
+                                <span class="ja-badge ja-badge--success"><i class="fas fa-check-circle"></i> Validée</span>
+                            @elseif($rowFlag === 'pending')
+                                <span class="ja-badge ja-badge--warning"><i class="fas fa-clock"></i> En attente</span>
+                            @elseif($rowFlag === 'rejected')
+                                <span class="ja-badge ja-badge--danger"><i class="fas fa-times-circle"></i> Rejetée</span>
+                            @else
+                                <span class="ja-badge ja-badge--muted"><i class="fas fa-exclamation"></i> Non justifiée</span>
+                            @endif
+
+                            <div class="ja-card-actions">
+                                @if($canSubmit)
+                                    <button type="button"
+                                            class="ja-action-btn ja-action-btn--primary"
+                                            @click="openModal(
+                                                {{ $abs->id }},
+                                                '{{ optional($abs->date)->format('d/m/Y') }}',
+                                                @js($matiereName),
+                                                {{ $rowFlag === 'rejected' ? 'true' : 'false' }},
+                                                @js($abs->commentaire ?? '')
+                                            )">
+                                        <i class="fas fa-file-medical"></i>
+                                        {{ $rowFlag === 'rejected' ? 'Re-soumettre' : 'Justifier' }}
+                                    </button>
+                                @endif
+                                @if($hasDoc)
+                                    <a class="ja-action-btn ja-action-btn--ghost"
+                                       href="{{ \Illuminate\Support\Facades\URL::temporarySignedRoute('esbtp.justifications.document', now()->addMinutes(5), ['absence' => $abs->id]) }}"
+                                       target="_blank" rel="noopener">
+                                        <i class="fas fa-eye"></i> Document
+                                    </a>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+
+                    @if($rowFlag === 'rejected' && !empty($abs->admin_comment))
+                        <div class="ja-admin-comment">
+                            <i class="fas fa-info-circle"></i>
+                            <div>
+                                <strong>Motif du rejet :</strong>
+                                {{ $abs->admin_comment }}
+                            </div>
+                        </div>
+                    @endif
+                </div>
+            @endforeach
+        </div>
+    @endif
+
+    {{-- MODAL JUSTIFICATION --}}
+    <div class="ja-modal-backdrop"
+         x-show="modalOpen"
+         x-cloak
+         x-transition.opacity
+         @keydown.escape.window="closeModal()"
+         @click.self="closeModal()">
+        <div class="ja-modal" @click.stop>
+            <div class="ja-modal-header">
+                <div class="ja-modal-header-icon"><i class="fas fa-file-medical"></i></div>
+                <h3 x-text="modalContext.isResubmit ? 'Re-soumettre la justification' : 'Justifier l\'absence'"></h3>
+            </div>
+            <form :action="modalAction()" method="POST" enctype="multipart/form-data" @submit="submitting = true">
+                @csrf
+                <div class="ja-modal-body">
+                    <div class="ja-modal-context">
+                        Absence du <strong x-text="modalContext.date"></strong>
+                        — <strong x-text="modalContext.matiere"></strong>
+                    </div>
+                    <div class="ja-modal-row">
+                        <label>Justification <span style="color:#dc2626">*</span></label>
+                        <textarea name="justification"
+                                  rows="4"
+                                  required
+                                  minlength="5"
+                                  maxlength="1000"
+                                  placeholder="Expliquez le motif de votre absence (maladie, événement familial, etc.)"
+                                  x-model="modalContext.justification"></textarea>
+                        <div class="ja-hint">5 à 1000 caractères.</div>
+                    </div>
+                    <div class="ja-modal-row">
+                        <label>Document justificatif (optionnel)</label>
+                        <input type="file" name="document" accept=".pdf,.jpg,.jpeg,.png">
+                        <div class="ja-hint">
+                            Formats acceptés : PDF, JPG, PNG — 5 Mo maximum.
+                            Recommandé : certificat médical scanné.
+                        </div>
+                    </div>
+                </div>
+                <div class="ja-modal-footer">
+                    <button type="button" class="ja-btn--secondary" @click="closeModal()" :disabled="submitting">
+                        Annuler
+                    </button>
+                    <button type="submit" class="ja-btn--primary" :disabled="submitting">
+                        <i class="fas" :class="submitting ? 'fa-spinner fa-spin' : 'fa-paper-plane'"></i>
+                        <span x-text="submitting ? 'Envoi...' : (modalContext.isResubmit ? 'Re-soumettre' : 'Soumettre')"></span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var ctx = document.getElementById('absencesChart').getContext('2d');
-        var chart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: @json($moisLabels),
-                datasets: [{
-                    label: 'Nombre d\'absences',
-                    data: @json($absencesData),
-                    backgroundColor: 'rgba(255, 99, 132, 0.5)',
-                    borderColor: 'rgba(255, 99, 132, 1)',
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                }
-            }
-        });
-    });
+function mesAbsencesPage() {
+    return {
+        statusFilter: 'all',
+        modalOpen: false,
+        submitting: false,
+        modalContext: { id: null, date: '', matiere: '', isResubmit: false, justification: '' },
+        baseJustifyUrl: @json(rtrim(route('esbtp.mes-absences.index'), '/')),
+        openModal(id, date, matiere, isResubmit, oldComment) {
+            this.modalContext = {
+                id: id,
+                date: date,
+                matiere: matiere,
+                isResubmit: !!isResubmit,
+                justification: isResubmit ? (oldComment || '') : ''
+            };
+            this.modalOpen = true;
+            this.submitting = false;
+        },
+        closeModal() {
+            if (this.submitting) return;
+            this.modalOpen = false;
+        },
+        modalAction() {
+            return this.baseJustifyUrl + '/' + this.modalContext.id + '/justify';
+        }
+    };
+}
 </script>
 @endpush

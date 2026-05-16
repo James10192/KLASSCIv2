@@ -2,12 +2,14 @@
 
 namespace App\Providers;
 
+use App\Models\ESBTPAttendance;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPSeanceCours;
+use App\Policies\AbsenceJustificationPolicy;
 use App\Policies\ESBTPBulletinPolicy;
 use App\Policies\ESBTPInscriptionPolicy;
 use App\Policies\ESBTPMatierePolicy;
@@ -51,6 +53,19 @@ class AuthServiceProvider extends ServiceProvider
         // entre les routes qui consomment Gate::* et le résolveur Spatie.
         Gate::define('users.manage', function ($user) {
             return $user && $user->hasPermissionTo('users.manage');
+        });
+
+        // W5 : workflow justification d'absence (3 abilities sur ESBTPAttendance).
+        // ESBTPAttendance n'a pas de Policy dédiée (CRUD vit ailleurs), donc on
+        // route ces abilities explicitement vers AbsenceJustificationPolicy.
+        Gate::define('submit', function ($user, ESBTPAttendance $absence) {
+            return app(AbsenceJustificationPolicy::class)->submit($user, $absence);
+        });
+        Gate::define('process', function ($user, ESBTPAttendance $absence) {
+            return app(AbsenceJustificationPolicy::class)->process($user, $absence);
+        });
+        Gate::define('viewDocument', function ($user, ESBTPAttendance $absence) {
+            return app(AbsenceJustificationPolicy::class)->viewDocument($user, $absence);
         });
 
         // Lot 5 : la matrice "qui peut gérer qui" et l'assignation de rôle
