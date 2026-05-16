@@ -806,16 +806,6 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function show(Request $request, ESBTPEmploiTemps $emploi_temp)
     {
-        // [DEBUG TEMPORAIRE 15/05/2026] : confirmer que show() est invoqué
-        \Log::error('[DEBUG-LMD-SHOW] EmploiTemps::show invoked', [
-            'emploi_temp_id' => $emploi_temp->id,
-            'classe_id' => $emploi_temp->classe_id,
-            'classe_systeme' => optional($emploi_temp->classe)->systeme_academique,
-            'periode' => $request->input('periode', 'annee'),
-            'url' => $request->fullUrl(),
-            'code_marker' => 'DEBUG-MARKER-7B8CB98A-PLUS',
-        ]);
-
         // No policy-based authorization
         // Charger les séances pour cet emploi du temps
         $emploi_temp->load([
@@ -1025,48 +1015,6 @@ class ESBTPEmploiTempsController extends Controller
                 $lmdUesAvecEcues = app(\App\Services\LMD\MatiereTreeBuilder::class)
                     ->forClasse($lmdMatieres, $lmdVolumeBudget);
             }
-
-            // [DEBUG TEMPORAIRE 15/05/2026] : tracer pourquoi "Détail par UE" affiche 0/0
-            // alors que "Répartition par catégorie" totalise 620h. À retirer après diagnostic.
-            $lmdMatieresIds = $lmdMatieres->pluck('matiere.id')->all();
-            $lmdVolumeBudgetIds = array_keys($lmdVolumeBudget);
-            $intersect = array_intersect($lmdMatieresIds, $lmdVolumeBudgetIds);
-            $sampleBudget = !empty($lmdVolumeBudget) ? array_slice($lmdVolumeBudget, 0, 2, true) : [];
-            $totalCmFromBudget = 0; $totalCmFromMatieres = 0;
-            foreach ($lmdVolumeBudget as $b) {
-                $totalCmFromBudget += (float) ($b['cm']['planifie'] ?? 0);
-            }
-            foreach ($lmdMatieres as $row) {
-                $totalCmFromMatieres += (float) ($row['cm'] ?? 0);
-            }
-            $top5Ues = $lmdUesAvecEcues->take(5)->map(fn($u) => [
-                'name' => $u['name'],
-                'nb_ecues' => $u['nb_ecues'],
-                'is_orphan' => $u['is_orphan'],
-                'totaux' => $u['totaux'],
-                'first_ecue_id' => $u['ecues']->first()['matiere']->id ?? null,
-                'first_ecue_cm_p' => $u['ecues']->first()['cm_p'] ?? null,
-            ])->all();
-            \Log::error('[DEBUG-LMD-SUIVI] buildSuiviHeuresData', [
-                'classe_id' => $classe->id,
-                'classe_systeme' => $classe->systeme_academique,
-                'classe_filiere_id' => $classe->filiere_id,
-                'classe_parcours_id' => $classe->parcours_id,
-                'parcours_filiere_id' => optional($classe->parcours)->filiere_id,
-                'lmd_semestres' => $lmdSemestres,
-                'periode' => $periode,
-                'lmdMatieres_count' => count($lmdMatieresIds),
-                'lmdMatieres_first_5_ids' => array_slice($lmdMatieresIds, 0, 5),
-                'lmdVolumeBudget_count' => count($lmdVolumeBudgetIds),
-                'lmdVolumeBudget_first_5_ids' => array_slice($lmdVolumeBudgetIds, 0, 5),
-                'intersect_count' => count($intersect),
-                'union_count' => count(array_unique(array_merge($lmdMatieresIds, $lmdVolumeBudgetIds))),
-                'sample_budget' => $sampleBudget,
-                'total_cm_from_budget' => $totalCmFromBudget,
-                'total_cm_from_matieres' => $totalCmFromMatieres,
-                'lmdUesAvecEcues_count' => $lmdUesAvecEcues->count(),
-                'top5_ues' => $top5Ues,
-            ]);
         }
 
         return [
