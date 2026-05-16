@@ -2515,3 +2515,36 @@ Route::middleware(['auth', 'paywall', 'permission:messages.send'])->prefix('mess
         ->middleware('throttle:30,1')
         ->name('share.paiement');
 });
+
+// ============================================================
+// Routes TPE — Travail Personnel Étudiant (LMD UEMOA)
+// Options 2 (journal étudiant) + 3 (workflow validation prof opt-in)
+// ============================================================
+Route::middleware(['auth', 'permission:module.tpe.access'])->group(function () {
+
+    // --- Journal étudiant (Option 2 — toujours actif si module enabled) ---
+    Route::middleware(['permission:tpe.declare', 'throttle:60,1'])->group(function () {
+        Route::get('esbtp/tpe-journal', [\App\Http\Controllers\ESBTPTpeDeclarationController::class, 'index'])
+            ->name('esbtp.tpe-journal.index');
+        Route::post('esbtp/tpe-journal', [\App\Http\Controllers\ESBTPTpeDeclarationController::class, 'store'])
+            ->name('esbtp.tpe-journal.store');
+        Route::put('esbtp/tpe-journal/{declaration}', [\App\Http\Controllers\ESBTPTpeDeclarationController::class, 'update'])
+            ->whereNumber('declaration')
+            ->name('esbtp.tpe-journal.update');
+        Route::delete('esbtp/tpe-journal/{declaration}', [\App\Http\Controllers\ESBTPTpeDeclarationController::class, 'destroy'])
+            ->whereNumber('declaration')
+            ->name('esbtp.tpe-journal.destroy');
+    });
+
+    // --- Validation enseignant (Option 3 — dormant tant que Setting tpe.validation.enabled = false) ---
+    Route::middleware(['permission:tpe.validate', 'throttle:30,1'])->group(function () {
+        Route::get('esbtp/tpe-validation', [\App\Http\Controllers\ESBTPTpeValidationController::class, 'index'])
+            ->name('esbtp.tpe-validation.index');
+        Route::patch('esbtp/tpe-validation/{declaration}/validate', [\App\Http\Controllers\ESBTPTpeValidationController::class, 'validate'])
+            ->whereNumber('declaration')
+            ->name('esbtp.tpe-validation.validate');
+        Route::patch('esbtp/tpe-validation/{declaration}/reject', [\App\Http\Controllers\ESBTPTpeValidationController::class, 'reject'])
+            ->whereNumber('declaration')
+            ->name('esbtp.tpe-validation.reject');
+    });
+});

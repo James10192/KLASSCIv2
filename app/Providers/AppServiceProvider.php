@@ -26,6 +26,21 @@ class AppServiceProvider extends ServiceProvider
         // Une seule instance par requête pour qu'AnomalyDetector et le contrôleur
         // analytics partagent le même cache de buckets attendu/encaissé.
         $this->app->scoped(\App\Services\Analytics\RecouvrementGapService::class);
+
+        // TPE — Strategy de validation pilotée par Setting tenant.
+        // Setting `tpe.validation.enabled` = false (defaut) → AutoValidateStrategy (Option 2)
+        // Setting `tpe.validation.enabled` = true            → TeacherValidateStrategy (Option 3)
+        // Opt-in dormant : 100% du code Option 3 est présent mais inactif tant
+        // que l'école ne flip pas le toggle via /esbtp/settings.
+        $this->app->bind(
+            \App\Services\LMD\Tpe\TpeValidationStrategy::class,
+            function ($app) {
+                $enabled = (bool) \App\Helpers\SettingsHelper::get('tpe.validation.enabled', false);
+                return $enabled
+                    ? new \App\Services\LMD\Tpe\TeacherValidateStrategy()
+                    : new \App\Services\LMD\Tpe\AutoValidateStrategy();
+            }
+        );
     }
 
 
