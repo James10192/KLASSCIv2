@@ -642,6 +642,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('emploi-temps/create', [ESBTPEmploiTempsController::class, 'create'])->name('emploi-temps.create')->middleware('permission:timetables.create');
             Route::post('emploi-temps', [ESBTPEmploiTempsController::class, 'store'])->name('emploi-temps.store')->middleware('permission:timetables.create');
             Route::get('emploi-temps/{emploi_temp}', [ESBTPEmploiTempsController::class, 'show'])->name('emploi-temps.show')->middleware('permission:timetables.view');
+            // Endpoint AJAX: retourne uniquement le partial Suivi heures (toggle Semestre/Année sans full reload)
+            Route::get('emploi-temps/{emploi_temp}/suivi-heures-partial', [ESBTPEmploiTempsController::class, 'suiviHeuresPartial'])
+                ->name('emploi-temps.suivi-heures-partial')
+                ->middleware(['permission:timetables.view', 'throttle:60,1']);
             Route::get('emploi-temps/{emploi_temp}/edit', [ESBTPEmploiTempsController::class, 'edit'])->name('emploi-temps.edit')->middleware('permission:timetables.edit');
             Route::put('emploi-temps/{emploi_temp}', [ESBTPEmploiTempsController::class, 'update'])->name('emploi-temps.update')->middleware('permission:timetables.edit');
             Route::delete('emploi-temps/{emploi_temp}', [ESBTPEmploiTempsController::class, 'destroy'])->name('emploi-temps.destroy')->middleware('permission:timetables.delete');

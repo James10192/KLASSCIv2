@@ -924,6 +924,36 @@ class ESBTPEmploiTempsController extends Controller
     }
 
     /**
+     * GET /esbtp/emploi-temps/{id}/suivi-heures-partial?periode=X
+     * Retourne UNIQUEMENT le HTML du partial Suivi heures LMD (sans le layout)
+     * pour permettre un toggle Semestre/Année sans full page reload.
+     */
+    public function suiviHeuresPartial(Request $request, ESBTPEmploiTemps $emploi_temp)
+    {
+        $emploiTemps = $emploi_temp;
+
+        $suiviPeriode = $request->input('periode', 'annee');
+        if (!in_array($suiviPeriode, ['annee', 'semestre1', 'semestre2'], true)) {
+            $suiviPeriode = 'annee';
+        }
+
+        $suiviData = $this->buildSuiviHeuresData($emploiTemps, $suiviPeriode);
+        $classe = $suiviData['classe'];
+        $planningMatiere = $suiviData['planningMatiere'];
+        $kpiTaux = $suiviData['kpiTaux'];
+        $periode = $suiviData['periode'];
+        $lmdVolumeBudget = $suiviData['lmdVolumeBudget'];
+        $lmdMatieres = $suiviData['lmdMatieres'];
+        $lmdSemestres = $suiviData['lmdSemestres'];
+        $lmdUesAvecEcues = $suiviData['lmdUesAvecEcues'];
+
+        return view('esbtp.classes.partials._suivi_heures_lmd', compact(
+            'classe', 'planningMatiere', 'kpiTaux', 'periode',
+            'lmdVolumeBudget', 'lmdMatieres', 'lmdSemestres', 'lmdUesAvecEcues'
+        ))->render();
+    }
+
+    /**
      * Construit les variables LMD/BTS pour le tab "Suivi des heures" de emploi-temps/show.
      * Utilise par show() et buildEmploiTempsViewData() (DRY).
      *

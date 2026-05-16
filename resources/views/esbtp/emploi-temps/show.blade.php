@@ -1027,33 +1027,84 @@
                  role="tabpanel"
                  aria-labelledby="ets-tab-heures">
                 @if(($classe->systeme_academique ?? '') === 'LMD')
-                    {{-- Toggle Semestre 1 / Semestre 2 / Année (cohérent avec classes.show).
-                         En LMD, les libellés affichent les vrais semestres du niveau (ex L2 → S3 / S4)
-                         car les données sont stockées sous semestre=3,4 en DB. --}}
-                    <div style="display:flex;justify-content:flex-end;margin-bottom:1rem;">
-                        @php
-                            $etsSemA = 'Semestre 1'; $etsSemB = 'Semestre 2';
-                            if (!empty($lmdSemestres) && count($lmdSemestres) >= 2) {
-                                $etsSemA = 'Semestre '.$lmdSemestres[0];
-                                $etsSemB = 'Semestre '.$lmdSemestres[1];
-                            }
-                            $etsBaseUrl = route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTemps->id]);
-                        @endphp
-                        <div style="display:inline-flex;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:10px;padding:.25rem;gap:.15rem;">
-                            <a href="{{ $etsBaseUrl }}?periode=semestre1#heures" style="padding:.45rem .85rem;border-radius:7px;font-size:.78rem;font-weight:600;text-decoration:none;color:{{ ($periode ?? 'annee') === 'semestre1' ? '#fff' : '#475569' }};background:{{ ($periode ?? 'annee') === 'semestre1' ? '#0453cb' : 'transparent' }};">{{ $etsSemA }}</a>
-                            <a href="{{ $etsBaseUrl }}?periode=semestre2#heures" style="padding:.45rem .85rem;border-radius:7px;font-size:.78rem;font-weight:600;text-decoration:none;color:{{ ($periode ?? 'annee') === 'semestre2' ? '#fff' : '#475569' }};background:{{ ($periode ?? 'annee') === 'semestre2' ? '#0453cb' : 'transparent' }};">{{ $etsSemB }}</a>
-                            <a href="{{ $etsBaseUrl }}?periode=annee#heures" style="padding:.45rem .85rem;border-radius:7px;font-size:.78rem;font-weight:600;text-decoration:none;color:{{ ($periode ?? 'annee') === 'annee' ? '#fff' : '#475569' }};background:{{ ($periode ?? 'annee') === 'annee' ? '#0453cb' : 'transparent' }};">Année</a>
+                    @php
+                        $etsSemA = 'Semestre 1'; $etsSemB = 'Semestre 2';
+                        if (!empty($lmdSemestres) && count($lmdSemestres) >= 2) {
+                            $etsSemA = 'Semestre '.$lmdSemestres[0];
+                            $etsSemB = 'Semestre '.$lmdSemestres[1];
+                        }
+                        $etsPartialUrl = route('esbtp.emploi-temps.suivi-heures-partial', ['emploi_temp' => $emploiTemps->id]);
+                        $etsBaseUrl = route('esbtp.emploi-temps.show', ['emploi_temp' => $emploiTemps->id]);
+                    @endphp
+                    {{-- Toggle Semestre / Annee AJAX (sans full reload) --}}
+                    <div x-data="etsSuiviToggle(@js($periode ?? 'annee'), @js($etsPartialUrl), @js($etsBaseUrl))" style="margin-bottom:1rem;">
+                        <div style="display:flex;justify-content:flex-end;align-items:center;gap:.5rem;">
+                            <span x-show="loading" x-cloak style="font-size:.75rem;color:#64748b;">
+                                <i class="fas fa-spinner fa-spin"></i> Mise a jour...
+                            </span>
+                            <div style="display:inline-flex;background:#f1f5f9;border:1px solid #e2e8f0;border-radius:10px;padding:.25rem;gap:.15rem;">
+                                <button type="button" @click="load('semestre1')" :disabled="loading"
+                                        :style="current === 'semestre1' ? 'background:#0453cb;color:#fff' : 'background:transparent;color:#475569'"
+                                        style="padding:.45rem .85rem;border-radius:7px;font-size:.78rem;font-weight:600;border:none;cursor:pointer;transition:all .15s;">{{ $etsSemA }}</button>
+                                <button type="button" @click="load('semestre2')" :disabled="loading"
+                                        :style="current === 'semestre2' ? 'background:#0453cb;color:#fff' : 'background:transparent;color:#475569'"
+                                        style="padding:.45rem .85rem;border-radius:7px;font-size:.78rem;font-weight:600;border:none;cursor:pointer;transition:all .15s;">{{ $etsSemB }}</button>
+                                <button type="button" @click="load('annee')" :disabled="loading"
+                                        :style="current === 'annee' ? 'background:#0453cb;color:#fff' : 'background:transparent;color:#475569'"
+                                        style="padding:.45rem .85rem;border-radius:7px;font-size:.78rem;font-weight:600;border:none;cursor:pointer;transition:all .15s;">Annee</button>
+                            </div>
                         </div>
                     </div>
-                    @include('esbtp.classes.partials._suivi_heures_lmd', [
-                        'classe' => $classe,
-                        'planningMatiere' => $planningMatiere,
-                        'lmdVolumeBudget' => $lmdVolumeBudget,
-                        'lmdUesAvecEcues' => $lmdUesAvecEcues,
-                        'lmdSemestres' => $lmdSemestres,
-                        'periode' => $periode,
-                        'kpiTaux' => $kpiTaux,
-                    ])
+                    <div id="ets-suivi-heures-container">
+                        @include('esbtp.classes.partials._suivi_heures_lmd', [
+                            'classe' => $classe,
+                            'planningMatiere' => $planningMatiere,
+                            'lmdVolumeBudget' => $lmdVolumeBudget,
+                            'lmdUesAvecEcues' => $lmdUesAvecEcues,
+                            'lmdSemestres' => $lmdSemestres,
+                            'periode' => $periode,
+                            'kpiTaux' => $kpiTaux,
+                        ])
+                    </div>
+                    @push('scripts')
+                    <script>
+                    if (typeof window.etsSuiviToggle !== 'function') {
+                        window.etsSuiviToggle = function (initialPeriode, partialUrl, baseUrl) {
+                            return {
+                                current: initialPeriode || 'annee',
+                                loading: false,
+                                async load(periode) {
+                                    if (this.loading || this.current === periode) return;
+                                    this.loading = true;
+                                    try {
+                                        const url = partialUrl + '?periode=' + encodeURIComponent(periode);
+                                        const response = await fetch(url, {
+                                            headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' },
+                                            credentials: 'same-origin',
+                                        });
+                                        if (!response.ok) throw new Error('HTTP ' + response.status);
+                                        const html = await response.text();
+                                        const container = document.getElementById('ets-suivi-heures-container');
+                                        if (container) {
+                                            container.innerHTML = html;
+                                            if (window.Alpine && typeof window.Alpine.initTree === 'function') {
+                                                window.Alpine.initTree(container);
+                                            }
+                                        }
+                                        this.current = periode;
+                                        const newUrl = baseUrl + '?periode=' + encodeURIComponent(periode) + '#heures';
+                                        history.pushState({ periode: periode }, '', newUrl);
+                                    } catch (e) {
+                                        console.error('ets suivi toggle failed', e);
+                                    } finally {
+                                        this.loading = false;
+                                    }
+                                },
+                            };
+                        };
+                    }
+                    </script>
+                    @endpush
                 @else
                     @include('esbtp.emploi-temps.partials._suivi_heures_bts', [
                         'classe' => $classe,
