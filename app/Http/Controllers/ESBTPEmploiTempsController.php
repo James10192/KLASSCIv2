@@ -806,6 +806,16 @@ class ESBTPEmploiTempsController extends Controller
      */
     public function show(Request $request, ESBTPEmploiTemps $emploi_temp)
     {
+        // [DEBUG TEMPORAIRE 15/05/2026] : confirmer que show() est invoqué
+        \Log::warning('[DEBUG-LMD-SHOW] EmploiTemps::show invoked', [
+            'emploi_temp_id' => $emploi_temp->id,
+            'classe_id' => $emploi_temp->classe_id,
+            'classe_systeme' => optional($emploi_temp->classe)->systeme_academique,
+            'periode' => $request->input('periode', 'annee'),
+            'url' => $request->fullUrl(),
+            'code_marker' => 'DEBUG-MARKER-7B8CB98A-PLUS',
+        ]);
+
         // No policy-based authorization
         // Charger les séances pour cet emploi du temps
         $emploi_temp->load([
