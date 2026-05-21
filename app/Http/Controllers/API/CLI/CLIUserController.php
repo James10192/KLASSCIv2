@@ -211,6 +211,30 @@ class CLIUserController extends BaseApiController
             return $this->errorResponse("User #{$id} not found", [], 404);
         }
 
+        // Guard target = superAdmin/serviceTechnique (audit sécurité 2026-05-21).
+        // Avant ce fix : un token cli:admin volé pouvait reset le mot de passe
+        // d'un superAdmin et compromettre tout le tenant. Seul un superAdmin
+        // (via son propre token) peut désormais reset un compte privilégié.
+        $caller = $request->user();
+        $targetIsPrivileged = $user->hasAnyRole(['superAdmin', 'serviceTechnique']);
+        $callerIsSuperAdmin = $caller->hasRole('superAdmin');
+
+        if ($targetIsPrivileged && !$callerIsSuperAdmin) {
+            Log::warning('CLI: reset-password DENIED on privileged target', [
+                'target_user_id' => $user->id,
+                'target_roles' => $user->getRoleNames()->toArray(),
+                'caller_user_id' => $caller->id,
+                'caller_roles' => $caller->getRoleNames()->toArray(),
+                'ip' => $request->ip(),
+            ]);
+
+            return $this->errorResponse(
+                'Cannot reset password of a privileged user (superAdmin or serviceTechnique) without superAdmin caller.',
+                [],
+                403
+            );
+        }
+
         $validated = $request->validate(['password' => 'required|string|min:8']);
 
         $user->update([
@@ -219,7 +243,16 @@ class CLIUserController extends BaseApiController
             'password_changed_at'  => now(),
         ]);
 
-        Log::info('CLI: password reset', ['user_id' => $user->id, 'by' => $request->user()->id]);
+        // Audit log enrichi pour traçabilité forensique (les tokens du target
+        // sont automatiquement révoqués par User::booted, voir audit Phase B1).
+        Log::info('CLI: password reset', [
+            'target_user_id' => $user->id,
+            'target_roles' => $user->getRoleNames()->toArray(),
+            'caller_user_id' => $caller->id,
+            'caller_roles' => $caller->getRoleNames()->toArray(),
+            'ip' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+        ]);
 
         return $this->successResponse(
             ['name' => $user->name, 'email' => $user->email, 'username' => $user->username],
