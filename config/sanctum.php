@@ -38,13 +38,20 @@ return [
     | Expiration Minutes
     |--------------------------------------------------------------------------
     |
-    | This value controls the number of minutes until an issued token will be
-    | considered expired. If this value is null, personal access tokens do
-    | not expire. This won't tweak the lifetime of first-party sessions.
+    | Tokens Sanctum expirent après ce nombre de minutes. Sans `expires_at` explicite
+    | en DB, Sanctum applique CETTE valeur (=> tokens ANCIENS sont impactés !).
+    |
+    | RECOMMANDATION audit 2026-05-21 :
+    |   - Production tenants : SANCTUM_EXPIRATION=43200 (30 jours) dans .env
+    |   - CLI tokens longue durée : passer --expires=365 (1 an) à la création
+    |   - Token volé = accès limité par le timeout
+    |
+    | Default null = backward compat avec tokens existants (créés avant l'audit).
+    | À retirer une fois tous les CLI tokens existants migrés / régénérés.
     |
     */
 
-    'expiration' => null,
+    'expiration' => env('SANCTUM_EXPIRATION', null),
 
     /*
     |--------------------------------------------------------------------------

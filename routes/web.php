@@ -109,8 +109,9 @@ Route::redirect('/esbtp/inscription/create', '/esbtp/inscriptions/create')
 //   https://klassci.com/docs/api-reference
 //   https://klassci.com/docs/changelog
 
-// Routes pour l'installation
-Route::prefix('install')->group(function () {
+// Routes pour l'installation — verrouillées par install.lock dès que l'app est installée
+// (DB OK + superAdmin présent + APP_INSTALLED=true). Sinon 404. Voir BlockInstallIfReady.
+Route::prefix('install')->middleware('install.lock')->group(function () {
     Route::get('/', [InstallController::class, 'index'])->name('install.index');
     Route::get('/database', [InstallController::class, 'database'])->name('install.database');
     Route::post('/database', [InstallController::class, 'setupDatabase'])->name('install.setup-database');
@@ -128,8 +129,10 @@ Route::prefix('install')->group(function () {
 Route::get('/csrf-token-refresh', fn () => response()->json(['token' => csrf_token()]))->name('csrf.refresh');
 
 // Routes d'authentification simplifiées
+// POST /login : anti brute-force via rate limiter 'login' (5/min par email + 10/min par IP)
+// défini dans RouteServiceProvider::configureRateLimiting().
 Route::get('/login', [LoginController::class, 'showLoginForm'])->name('login')->middleware('guest');
-Route::post('/login', [LoginController::class, 'login'])->middleware('guest');
+Route::post('/login', [LoginController::class, 'login'])->middleware(['guest', 'throttle:login']);
 Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 
 // SSO depuis le portail groupe adminKlassci (token HMAC-SHA256 signé par master).
@@ -137,15 +140,26 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 Route::get('/auth/sso-from-group', \App\Http\Controllers\Auth\GroupPortalSsoController::class)
     ->name('auth.sso-from-group');
 
-// Routes d'enregistrement
-Route::get('/register', [RegisterController::class, 'showRegistrationForm'])->name('register')->middleware('guest');
-Route::post('/register', [RegisterController::class, 'register']);
+// Routes d'enregistrement publiques supprimées (audit sécurité 2026-05-21).
+// KLASSCI étant un SaaS supérieur/universitaire, les inscriptions étudiantes
+// passent par /esbtp/inscriptions/create (secrétaire/caissier) et les staffs
+// par /esbtp/users/create (admin). Toute création de compte est gatée par
+// permission users.create — pas d'inscription publique.
+//
+// Si une feature self-service future est introduite, la rebrancher derrière
+// auth + permission:users.create + throttle dédié + captcha.
 
 // Routes de réinitialisation de mot de passe
+// Password reset — throttle anti-spam + anti user enumeration (audit 2026-05-21).
+// 3 tentatives par minute sur les 2 POST sensibles (send link + reset).
 Route::get('/password/reset', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
-Route::post('/password/email', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+Route::post('/password/email', [ForgotPasswordController::class, 'sendResetLinkEmail'])
+    ->middleware('throttle:3,1')
+    ->name('password.email');
 Route::get('/password/reset/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
-Route::post('/password/reset', [ResetPasswordController::class, 'reset'])->name('password.update');
+Route::post('/password/reset', [ResetPasswordController::class, 'reset'])
+    ->middleware('throttle:3,1')
+    ->name('password.update');
 
 // Routes de changement de mot de passe forcé
 Route::middleware(['auth'])->group(function () {
@@ -215,8 +229,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::post('/reset', [\App\Http\Controllers\DashboardWidgetController::class, 'reset'])->name('reset');
     });
 
-    // Route de test debug mode (uniquement en développement)
-    if (config('app.debug')) {
+    // Route de test debug mode — local environment only (audit 2026-05-21).
+    // Avant: gated by config('app.debug') qui peut être true en prod par erreur de config.
+    if (app()->environment('local')) {
         Route::get('/test-debug-mode', function () {
             return view('test-debug-mode');
         })->name('test.debug.mode');
@@ -433,9 +448,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('annees-universitaires.destroy')
                 ->middleware('permission:annees.delete');
 
-            // Debug route
-            Route::get('debug-annees', [ESBTPAnneeUniversitaireController::class, 'debug'])
-                ->name('debug-annees');
+            // Debug route — local environment only (audit 2026-05-21)
+            if (app()->environment('local')) {
+                Route::get('debug-annees', [ESBTPAnneeUniversitaireController::class, 'debug'])
+                    ->name('debug-annees');
+            }
 
             // Routes pour les cycles de formation
             Route::resource('cycles', ESBTPCycleController::class);
@@ -906,7 +923,10 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // ── VIEW (lecture détail/suivi)
             Route::middleware('permission:paiements.view|paiements.view_own')->group(function () {
-                Route::get('/paiements/test-filters', [App\Http\Controllers\ESBTPPaiementController::class, 'testFilters'])->name('paiements.test-filters');
+                // Route de test des filtres — local environment only (audit 2026-05-21)
+                if (app()->environment('local')) {
+                    Route::get('/paiements/test-filters', [App\Http\Controllers\ESBTPPaiementController::class, 'testFilters'])->name('paiements.test-filters');
+                }
                 Route::get('/paiements/{paiement}/refresh-ligne', [App\Http\Controllers\ESBTPPaiementController::class, 'refreshLigne'])
                     ->whereNumber('paiement')
                     ->name('paiements.refresh-ligne');
@@ -1277,11 +1297,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('justifications.document')
                 ->middleware(['signed', 'throttle:30,1']);
 
-            // Route de debug pour les absences (accessible uniquement en développement)
-            Route::get('/mes-absences/debug', [ESBTPAttendanceController::class, 'studentAttendance'])
-                ->name('mes-absences.debug')
-                ->middleware(['role:etudiant'])
-                ->defaults('debug', true);
+            // Route de debug pour les absences — local environment only (audit 2026-05-21).
+            // Avant: visible en prod (la "documentation" ne suffisait pas comme gating).
+            if (app()->environment('local')) {
+                Route::get('/mes-absences/debug', [ESBTPAttendanceController::class, 'studentAttendance'])
+                    ->name('mes-absences.debug')
+                    ->middleware(['role:etudiant'])
+                    ->defaults('debug', true);
+            }
 
             Route::get('/mes-evaluations', [ESBTPEvaluationController::class, 'studentEvaluations'])
                 ->name('mes-evaluations.index')
@@ -2030,39 +2053,43 @@ Route::middleware(['auth', 'permission:admin.access', 'paywall'])->group(functio
 // ... existing code ...
 // ... existing code ...
 
-// Route de diagnostic temporaire (à supprimer après résolution)
-Route::get('/debug-permissions', function () {
-    $user = auth()->user();
+// Route de diagnostic temporaire — local environment only (audit 2026-05-21).
+// Avant: accessible en prod, exposait la matrice complète rôles/permissions de l'user
+// connecté → leak d'info sensible.
+if (app()->environment('local')) {
+    Route::get('/debug-permissions', function () {
+        $user = auth()->user();
 
-    if (! $user) {
-        return response()->json(['error' => 'Aucun utilisateur connecté']);
-    }
+        if (! $user) {
+            return response()->json(['error' => 'Aucun utilisateur connecté']);
+        }
 
-    $data = [
-        'user' => [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-        ],
-        'roles' => $user->getRoleNames()->toArray(),
-        'has_superAdmin_role' => $user->hasRole('superAdmin'),
-        'permissions' => $user->getAllPermissions()->pluck('name')->toArray(),
-    ];
-
-    // Test des permissions pour les matières
-    $matiere = \App\Models\ESBTPMatiere::first();
-    if ($matiere) {
-        $data['matiere_permissions'] = [
-            'matiere_id' => $matiere->id,
-            'matiere_nom' => $matiere->nom,
-            'can_view' => $user->can('view', $matiere),
-            'can_update' => $user->can('update', $matiere),
-            'can_delete' => $user->can('delete', $matiere),
+        $data = [
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+            ],
+            'roles' => $user->getRoleNames()->toArray(),
+            'has_superAdmin_role' => $user->hasRole('superAdmin'),
+            'permissions' => $user->getAllPermissions()->pluck('name')->toArray(),
         ];
-    }
 
-    return response()->json($data, 200, [], JSON_PRETTY_PRINT);
-})->middleware('auth');
+        // Test des permissions pour les matières
+        $matiere = \App\Models\ESBTPMatiere::first();
+        if ($matiere) {
+            $data['matiere_permissions'] = [
+                'matiere_id' => $matiere->id,
+                'matiere_nom' => $matiere->nom,
+                'can_view' => $user->can('view', $matiere),
+                'can_update' => $user->can('update', $matiere),
+                'can_delete' => $user->can('delete', $matiere),
+            ];
+        }
+
+        return response()->json($data, 200, [], JSON_PRETTY_PRINT);
+    })->middleware('auth');
+}
 
 // Routes spéciales pour le workflow des bulletins — PROTÉGÉES
 Route::middleware(['auth', 'permission:admin.access'])->group(function () {
@@ -2123,9 +2150,11 @@ Route::middleware(['auth'])->group(function () {
 
 // Routes pour le système de bulletin configurable
 Route::middleware(['auth'])->group(function () {
-    // Test des paramètres de bulletin
-    Route::get('/test-bulletin-parameters', [ESBTPBulletinController::class, 'testBulletinParameters'])
-        ->name('test.bulletin.parameters');
+    // Test des paramètres de bulletin — local environment only (audit 2026-05-21)
+    if (app()->environment('local')) {
+        Route::get('/test-bulletin-parameters', [ESBTPBulletinController::class, 'testBulletinParameters'])
+            ->name('test.bulletin.parameters');
+    }
 
     // Génération de bulletin configurable
     Route::post('/bulletin/configurable/generate', [ESBTPBulletinController::class, 'generateConfigurableBulletin'])
@@ -2135,10 +2164,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/bulletin/configurable/preview', [ESBTPBulletinController::class, 'previewConfigurableBulletin'])
         ->name('bulletin.configurable.preview');
 
-    // Interface de test pour bulletin configurable
-    Route::get('/bulletin/configurable/test', function () {
-        return view('esbtp.bulletins.test-configurable');
-    })->name('bulletin.configurable.test');
+    // Interface de test pour bulletin configurable — local environment only (audit 2026-05-21)
+    if (app()->environment('local')) {
+        Route::get('/bulletin/configurable/test', function () {
+            return view('esbtp.bulletins.test-configurable');
+        })->name('bulletin.configurable.test');
+    }
 });
 
 // ... existing code ...
