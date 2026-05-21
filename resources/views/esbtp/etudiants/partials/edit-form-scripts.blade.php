@@ -467,18 +467,8 @@
         const niveauEtudeCodeFromInscription = @json($niveauEtudeCode ?? null);
         const filiereIdFromInscription = @json($filiereIdForMatricule ?? null);
 
-        // DEBUG CONSOLE - À SUPPRIMER APRÈS DIAGNOSTIC
-        console.log('=== DEBUG MATRICULE EDIT ===');
-        console.log('niveauEtudeCodeFromInscription:', niveauEtudeCodeFromInscription);
-        console.log('filiereIdFromInscription:', filiereIdFromInscription);
-        console.log('Variables PHP brutes - $niveauEtudeCode:', '@php echo json_encode($niveauEtudeCode ?? "UNDEFINED"); @endphp');
-        console.log('Variables PHP brutes - $filiereIdForMatricule:', '@php echo json_encode($filiereIdForMatricule ?? "UNDEFINED"); @endphp');
-        console.log('Variables PHP brutes - $inscriptionRecente:', '@php echo isset($inscriptionRecente) && $inscriptionRecente ? "ID=" . $inscriptionRecente->id : "NON DEFINI"; @endphp');
-        console.log('============================');
-
         // Initialiser niveauConfig directement si on a les infos depuis l'inscription la plus récente
         let niveauConfig = niveauEtudeCodeFromInscription ? { code: niveauEtudeCodeFromInscription } : null;
-        console.log('niveauConfig initialisé:', niveauConfig);
 
         fetch('/esbtp/matricule-config/mode-info', {
             method: 'GET',
@@ -725,12 +715,12 @@
             const genre = genreSelect ? genreSelect.value : null;
 
             if (!genre) {
-                console.log('Genre non renseigné pour la génération auto');
+                debugLog('Genre non renseigné pour la génération auto');
                 return null;
             }
 
             if (!niveauConfig) {
-                console.log('Niveau config non trouvé pour la génération auto');
+                debugLog('Niveau config non trouvé pour la génération auto');
                 return null;
             }
 
@@ -752,7 +742,7 @@
                 const data = await response.json();
 
                 if (data.success && data.matricule) {
-                    console.log('Matricule généré avec succès:', data.matricule);
+                    debugLog('Matricule généré avec succès:', data.matricule);
                     matriculeInput.value = data.matricule;
                     showMatriculeStatus('Matricule généré avec succès', 'success');
                     return data.matricule;

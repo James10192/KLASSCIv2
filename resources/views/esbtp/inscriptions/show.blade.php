@@ -4139,26 +4139,26 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
     // ========================================
     @if(isset($inscription) && $inscription)
     window.updateMontantRestant = function() {
-        console.log('🔍 DEBUG updateMontantRestant() appelée (version globale)');
+        debugLog('🔍 DEBUG updateMontantRestant() appelée (version globale)');
 
         const inscriptionId = {{ $inscription->id ?? 'null' }};
         const feeCategorySelect = document.getElementById('fee_category_id');
         const montantInput = document.getElementById('montant');
         const categoryId = feeCategorySelect ? feeCategorySelect.value : null;
 
-        console.log('  - categoryId:', categoryId);
-        console.log('  - montantInput exists:', !!montantInput);
-        console.log('  - window.isSubscribedToCategory (avant):', window.isSubscribedToCategory);
+        debugLog('  - categoryId:', categoryId);
+        debugLog('  - montantInput exists:', !!montantInput);
+        debugLog('  - window.isSubscribedToCategory (avant):', window.isSubscribedToCategory);
 
         // ✅ Réinitialiser si aucune catégorie sélectionnée
         if (!categoryId || !montantInput) {
-            console.log('  ❌ Pas de categoryId ou pas de montantInput - RÉINITIALISATION');
+            debugLog('  ❌ Pas de categoryId ou pas de montantInput - RÉINITIALISATION');
             window.isSubscribedToCategory = false;
 
             if (montantInput) {
                 montantInput.setAttribute('disabled', 'disabled');
                 montantInput.value = '';
-                console.log('  - montantInput DÉSACTIVÉ');
+                debugLog('  - montantInput DÉSACTIVÉ');
             }
 
             const messageDiv = document.getElementById('montant-validation-message');
@@ -4168,26 +4168,26 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
             return;
         }
 
-        console.log('  ✅ Appel AJAX pour catégorie:', categoryId);
+        debugLog('  ✅ Appel AJAX pour catégorie:', categoryId);
 
         // Appel AJAX pour récupérer le montant restant
         fetch(`/esbtp/inscriptions/${inscriptionId}/frais/${categoryId}/montant-restant`)
             .then(response => response.json())
             .then(data => {
-                console.log('  📡 Réponse API:', data);
+                debugLog('  📡 Réponse API:', data);
                 const messageDiv = document.getElementById('montant-validation-message');
 
                 if (data.success && data.is_subscribed) {
-                    console.log('  ✅ ÉTUDIANT SOUSCRIT - Activation validation');
+                    debugLog('  ✅ ÉTUDIANT SOUSCRIT - Activation validation');
                     window.isSubscribedToCategory = true;
 
                     // ✅ Réactiver l'input montant si précédemment désactivé
                     montantInput.removeAttribute('disabled');
-                    console.log('  - montantInput RÉACTIVÉ');
+                    debugLog('  - montantInput RÉACTIVÉ');
 
                     // ✅ Pré-remplir automatiquement avec le montant restant
                     montantInput.value = data.montant_restant;
-                    console.log('  - montantInput.value pré-rempli avec:', data.montant_restant, 'FCFA');
+                    debugLog('  - montantInput.value pré-rempli avec:', data.montant_restant, 'FCFA');
 
                     // Mettre à jour l'attribut max de l'input montant
                     montantInput.setAttribute('max', data.montant_restant);
@@ -4230,9 +4230,9 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                         }
                     });
                 } else {
-                    console.log('  ❌ ÉTUDIANT NON SOUSCRIT - Blocage paiement');
+                    debugLog('  ❌ ÉTUDIANT NON SOUSCRIT - Blocage paiement');
                     window.isSubscribedToCategory = false;
-                    console.log('  - window.isSubscribedToCategory mis à FALSE');
+                    debugLog('  - window.isSubscribedToCategory mis à FALSE');
 
                     if (messageDiv) {
                         messageDiv.style.display = 'block';
@@ -4258,8 +4258,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     montantInput.setAttribute('disabled', 'disabled');
                     montantInput.value = '';
                     montantInput.removeAttribute('max');
-                    console.log('  - montantInput DÉSACTIVÉ (disabled=true)');
-                    console.log('  - montantInput.disabled:', montantInput.disabled);
+                    debugLog('  - montantInput DÉSACTIVÉ (disabled=true)');
+                    debugLog('  - montantInput.disabled:', montantInput.disabled);
                 }
             })
             .catch(error => {
@@ -4299,8 +4299,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
     window.isSubscribedToCategory = false;
 
     // 🔍 DEBUG: Vérifier que la fonction est bien définie
-    console.log('✅ window.updateMontantRestant définie:', typeof window.updateMontantRestant);
-    console.log('✅ window.updateMontantRestant === function:', typeof window.updateMontantRestant === 'function');
+    debugLog('✅ window.updateMontantRestant définie:', typeof window.updateMontantRestant);
+    debugLog('✅ window.updateMontantRestant === function:', typeof window.updateMontantRestant === 'function');
     @else
     // ⚠️ $inscription n'est pas définie - fonction updateMontantRestant non créée
     console.error('⚠️ ERREUR BLADE: $inscription non définie - window.updateMontantRestant ne sera pas créée');
