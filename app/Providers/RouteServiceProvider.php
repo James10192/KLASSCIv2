@@ -112,10 +112,13 @@ class RouteServiceProvider extends ServiceProvider
             ];
         });
 
-        // Login : anti brute-force
+        // Login : anti brute-force.
+        // KLASSCI accepte username OU email dans le champ 'username' (LoginController::credentials).
+        // On normalise en lower pour ne pas pouvoir bypasser via casse.
         RateLimiter::for('login', function (Request $request) {
+            $identifier = strtolower((string) $request->input('username', $request->input('email', '')));
             return [
-                Limit::perMinute(5)->by((string) $request->input('email')),
+                Limit::perMinute(5)->by($identifier ?: $request->ip()),
                 Limit::perMinute(10)->by($request->ip()),
             ];
         });
@@ -132,8 +135,9 @@ class RouteServiceProvider extends ServiceProvider
     protected function checkInstallation()
     {
         try {
-            // Ne pas rediriger si on est déjà sur la page d'accueil ou les routes d'authentification
-            if (request()->is('/') || request()->is('login') || request()->is('register')) {
+            // Ne pas rediriger si on est déjà sur la page d'accueil ou les routes d'authentification.
+            // (register retiré — route supprimée pour des raisons de sécurité, audit 2026-05-21)
+            if (request()->is('/') || request()->is('login')) {
                 return;
             }
 

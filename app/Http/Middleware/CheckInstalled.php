@@ -17,9 +17,10 @@ class CheckInstalled
      */
     public function handle(Request $request, Closure $next)
     {
-        // Toujours autoriser l'accès aux pages marketing publiques et aux assets
+        // Toujours autoriser l'accès aux pages marketing publiques et aux assets.
+        // (register exclu — route supprimée pour des raisons de sécurité, audit 2026-05-21)
         if ($request->is('/') || $request->is('assets/*') || $request->is('css/*') || $request->is('js/*') ||
-            $request->is('logout') || $request->is('register') ||
+            $request->is('logout') ||
             $request->is('changelog') || $request->is('docs') || $request->is('docs/*') ||
             $request->is('api-reference') || $request->is('robots.txt') || $request->is('sitemap.xml')) {
             return $next($request);
