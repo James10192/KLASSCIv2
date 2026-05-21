@@ -128,6 +128,31 @@ class User extends Authenticatable implements Auditable
         }
     }
 
+    /**
+     * Hook Eloquent : révoque TOUS les tokens Sanctum quand le password change
+     * (audit sécurité 2026-05-21).
+     *
+     * Pourquoi : un token Sanctum volé survivait au changement de mot de passe.
+     * Avec cette révocation, dès qu'un user (ou un admin pour lui) change son
+     * password, tous les tokens existants sont invalidés et il faut s'en
+     * générer de nouveaux.
+     *
+     * Impact pratique :
+     *   - Auth web (session) : pas d'impact (la session reste valide).
+     *   - klassci-cli (Sanctum token) : le user devra régénérer un token via
+     *     `php artisan klassci:create-token` après reset.
+     */
+    protected static function booted(): void
+    {
+        static::updated(function (User $user) {
+            if ($user->wasChanged('password')) {
+                // tokens() est défini par HasApiTokens (Laravel\Sanctum).
+                // Ne touche pas aux sessions HTTP — uniquement aux PAT.
+                $user->tokens()->delete();
+            }
+        });
+    }
+
     public function getFullNameAttribute()
     {
         return "{$this->first_name} {$this->last_name}";

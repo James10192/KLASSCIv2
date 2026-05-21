@@ -112,14 +112,17 @@ class InstallController extends Controller
                 // Clear config cache and regenerate config cache
                 Artisan::call('config:clear');
                 
-                // Store database configuration in session to ensure it's available
+                // Store database configuration in session to ensure it's available.
+                // Note (audit sécurité 2026-05-21) : db_password retiré de la session.
+                // Le mot de passe est déjà persisté dans .env via updateEnvironmentFile()
+                // ci-dessus, inutile de le stocker en plus dans le session file (driver
+                // file = lisible si compromission FS).
                 session([
                     'db_configured' => true,
                     'db_host' => $request->host,
                     'db_port' => $request->port,
                     'db_database' => $request->database,
                     'db_username' => $request->username,
-                    'db_password' => $request->password,
                 ]);
                 
                 // Debug information
@@ -140,12 +143,18 @@ class InstallController extends Controller
                 'message' => $connection['message']
             ], 422);
         } catch (Exception $e) {
-            // Debug information
-            \Log::error('Database connection failed: ' . $e->getMessage());
-            
+            // Log détaillé uniquement en local — pas exposer le contenu d'erreur DB
+            // au client en prod (peut révéler version MySQL, structure, etc.).
+            \Log::error('Database connection failed', [
+                'error' => app()->environment('local') ? $e->getMessage() : 'redacted',
+            ]);
+
             return response()->json([
                 'status' => 'error',
-                'message' => 'Database connection failed: ' . $e->getMessage()
+                // Pas de $e->getMessage() en prod — détail de l'erreur DB seulement en local.
+                'message' => app()->environment('local')
+                    ? 'Database connection failed: ' . $e->getMessage()
+                    : 'Database connection failed. Verify the credentials and host reachability.',
             ], 422);
         }
     }

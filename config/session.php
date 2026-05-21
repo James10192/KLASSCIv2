@@ -44,9 +44,15 @@ return [
     | should be encrypted before it is stored. All encryption will be run
     | automatically by Laravel and you can use the Session like normal.
     |
+    | KLASSCI : activé suite à audit 2026-05-21 — la session contient des
+    | générés (generated_password / account_info) lors de la création de
+    | comptes étudiants. Sans chiffrement, le driver file stocke ces données
+    | en plain text dans storage/framework/sessions/.
+    | Override via SESSION_ENCRYPT=false dans .env si besoin (déconseillé prod).
+    |
     */
 
-    'encrypt' => false,
+    'encrypt' => env('SESSION_ENCRYPT', true),
 
     /*
     |--------------------------------------------------------------------------

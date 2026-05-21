@@ -40,10 +40,12 @@ class AdminProfileController extends Controller
      */
     public function update(Request $request)
     {
+        // Logs minimaux pour traçabilité — JAMAIS de $request->all() qui leak
+        // name/email/phone/address en plain log (audit sécurité 2026-05-21).
         \Log::info('Début de la mise à jour du profil admin', [
             'user_id' => auth()->id(),
             'has_file' => $request->hasFile('profile_photo'),
-            'all_data' => $request->all()
+            'fields_provided' => array_keys($request->except(['_token', 'password', 'password_confirmation', 'profile_photo'])),
         ]);
 
         try {
@@ -137,19 +139,22 @@ class AdminProfileController extends Controller
 
             return redirect()->back()->with('success', 'Profil mis à jour avec succès');
         } catch (\Exception $e) {
+            // Trace seulement en local — éviter leak chemin/structure en prod.
             \Log::error('Erreur lors de la mise à jour du profil', [
+                'user_id' => auth()->id(),
                 'error' => $e->getMessage(),
-                'trace' => config('app.debug') ? $e->getTraceAsString() : null
+                'trace' => app()->environment('local') ? $e->getTraceAsString() : null,
             ]);
-            
+
             // Pour les requêtes AJAX, renvoyer une erreur JSON
+            // (jamais $e->getMessage() en prod — peut leak du contexte technique)
             if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Une erreur est survenue lors de la mise à jour du profil'
                 ], 500);
             }
-            
+
             return redirect()->back()->with('error', 'Une erreur est survenue lors de la mise à jour du profil');
         }
     }
