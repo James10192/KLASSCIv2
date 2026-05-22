@@ -728,7 +728,17 @@ class AuditEntityResolver
         if (! $etudiant) {
             return null;
         }
-        $fullName = trim(($etudiant->nom ?? '').' '.($etudiant->prenom ?? '')) ?: ('Étudiant #'.$etudiant->id);
+        // ESBTPEtudiant utilise `prenoms` (avec s) — pas `prenom`. L'accesseur
+        // `nom_complet` renvoie déjà "prenoms nom" mais on garde la composition
+        // manuelle pour conserver le contrôle de l'ordre (nom en majuscules,
+        // prénoms en titre — convention ivoirienne pour l'identité officielle).
+        $nom = trim((string) ($etudiant->nom ?? ''));
+        $prenoms = trim((string) ($etudiant->prenoms ?? ''));
+        if ($nom !== '' && $prenoms !== '') {
+            $fullName = $nom.' '.$prenoms;
+        } else {
+            $fullName = ($nom !== '' ? $nom : $prenoms) ?: ('Étudiant #'.$etudiant->id);
+        }
         return [
             'key' => 'etudiant',
             'label' => 'Étudiant',
