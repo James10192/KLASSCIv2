@@ -88,6 +88,12 @@
 
     <div class="exp-show-meta">
         <div class="exp-show-meta-item">
+            <div class="exp-show-meta-label">Système</div>
+            <div class="exp-show-meta-value">
+                <x-systeme-chip :systeme="$examen->hasConsistentSysteme() ? $examen->systeme : 'MIXTE'" size="md" />
+            </div>
+        </div>
+        <div class="exp-show-meta-item">
             <div class="exp-show-meta-label">Type</div>
             <div class="exp-show-meta-value">{{ TypeExamen::labelFor($examen->type_examen) }}</div>
         </div>

@@ -77,6 +77,8 @@ class ESBTPExamenPlanifie extends Model implements Auditable
         'notes_locked_by',
         'scope_type',
         'scope_id',
+        'classe_id',
+        'matiere_id',
         'unite_enseignement_id',
         'parcours_ids',
     ];
@@ -249,5 +251,46 @@ class ESBTPExamenPlanifie extends Model implements Auditable
     public function isFinished(): bool
     {
         return $this->date_fin?->isPast() ?? false;
+    }
+
+    /**
+     * Système académique dérivé de l'examen — BTS ou LMD.
+     *
+     * Heuristique (ordre de priorité) :
+     *   1. `unite_enseignement_id` non null → LMD certain (ECUE UEMOA dénormalisé)
+     *   2. Pivot legacy `matiere.uniteEnseignements()` non vide → LMD (cas pré-migration)
+     *   3. Classe principale `systeme_academique = 'LMD'` (case-insensitive) → LMD
+     *   4. Sinon → BTS
+     *
+     * Coût : 0 query supplémentaire grâce eager-load standard (`classe`, `matiere`).
+     */
+    public function getSystemeAttribute(): string
+    {
+        if ($this->unite_enseignement_id !== null) {
+            return 'LMD';
+        }
+        // Fallback secondaire : matières LMD pré-migration via pivot `esbtp_ue_matiere`
+        if ($this->relationLoaded('matiere') && $this->matiere
+            && method_exists($this->matiere, 'uniteEnseignements')
+            && $this->matiere->uniteEnseignements()->exists()
+        ) {
+            return 'LMD';
+        }
+        $systeme = strtoupper((string) ($this->classe?->systeme_academique ?? ''));
+        return $systeme === 'LMD' ? 'LMD' : 'BTS';
+    }
+
+    /**
+     * Indique si TOUTES les classes du pivot ont le même système académique.
+     * False si multi-classes mixte BTS+LMD (configuration invalide UEMOA).
+     */
+    public function hasConsistentSysteme(): bool
+    {
+        $classes = $this->relationLoaded('classes') ? $this->classes : $this->classes()->get();
+        $systemes = $classes->pluck('systeme_academique')
+            ->filter()
+            ->map(fn ($s) => strtoupper((string) $s))
+            ->unique();
+        return $systemes->count() <= 1;
     }
 }

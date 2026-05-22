@@ -46,6 +46,24 @@ class ESBTPExamenPlanifieController extends Controller
         if ($status = $request->string('status')->trim()->value()) {
             $query->where('status', $status);
         }
+        if ($systeme = strtoupper($request->string('systeme')->trim()->value())) {
+            $query->where(function ($q) use ($systeme) {
+                if ($systeme === 'LMD') {
+                    // LMD : soit ECUE dénormalisé, soit classe principale LMD, soit pivot LMD
+                    $q->whereNotNull('unite_enseignement_id')
+                      ->orWhereHas('classes', fn ($c) => $c->whereRaw('UPPER(systeme_academique) = ?', ['LMD']))
+                      ->orWhereHas('classe', fn ($c) => $c->whereRaw('UPPER(systeme_academique) = ?', ['LMD']));
+                } else {
+                    // BTS : pas d'ECUE ET aucune classe LMD
+                    $q->whereNull('unite_enseignement_id')
+                      ->whereDoesntHave('classes', fn ($c) => $c->whereRaw('UPPER(systeme_academique) = ?', ['LMD']))
+                      ->where(function ($cq) {
+                          $cq->whereHas('classe', fn ($c) => $c->whereRaw('UPPER(systeme_academique) != ?', ['LMD']))
+                             ->orWhereDoesntHave('classe');
+                      });
+                }
+            });
+        }
         if ($from = $request->date('from')) {
             $query->where('date_debut', '>=', $from);
         }
@@ -60,6 +78,17 @@ class ESBTPExamenPlanifieController extends Controller
         $classes = ESBTPClasse::orderBy('name')->get(['id', 'name']);
         $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'name', 'is_current']);
 
+        // Auto-hide filtre Système si tenant mono-système (0 ou 1 valeur distincte)
+        $systemesPresents = ESBTPClasse::query()
+            ->whereNotNull('systeme_academique')
+            ->distinct()
+            ->pluck('systeme_academique')
+            ->map(fn ($s) => strtoupper((string) $s))
+            ->filter()
+            ->unique()
+            ->values();
+        $hasMixedSystemes = $systemesPresents->count() >= 2;
+
         // Données pour le modal de création (chargées server-side pour que les
         // pickers premium au-select soient rendus directement — pas d'AJAX
         // post-mount).
@@ -73,7 +102,8 @@ class ESBTPExamenPlanifieController extends Controller
 
         return view('esbtp.examens.index', compact(
             'examens', 'kpis', 'classes', 'annee', 'annees',
-            'matieres', 'parcours', 'sessions'
+            'matieres', 'parcours', 'sessions',
+            'hasMixedSystemes'
         ));
     }
 
@@ -178,6 +208,33 @@ class ESBTPExamenPlanifieController extends Controller
             return response()->json([
                 'message' => 'Validation échouée',
                 'errors' => ['classe_ids' => ['Aucune classe ciblée — précisez un scope ou une classe.']],
+            ], 422);
+        }
+
+        // Validation cohérence système BTS/LMD sur les classes ciblées
+        $systemes = ESBTPClasse::whereIn('id', $classeIds)
+            ->pluck('systeme_academique')
+            ->map(fn ($s) => strtoupper((string) ($s ?? '')))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($systemes->count() >= 2) {
+            return response()->json([
+                'message' => 'Validation échouée',
+                'errors' => ['classe_ids' => [
+                    'Mélange BTS + LMD non autorisé sur un même examen — un examen ne peut cibler que des classes du même système académique.',
+                ]],
+            ], 422);
+        }
+
+        // Validation cohérence ECUE LMD ↔ classes BTS
+        if (! empty($data['unite_enseignement_id']) && $systemes->first() === 'BTS') {
+            return response()->json([
+                'message' => 'Validation échouée',
+                'errors' => ['matiere_id' => [
+                    'Cette matière est un ECUE (LMD) — elle ne peut pas être assignée à des classes BTS.',
+                ]],
             ], 422);
         }
 
@@ -515,6 +572,22 @@ class ESBTPExamenPlanifieController extends Controller
         if ($status = $request->string('status')->trim()->value()) {
             $query->where('status', $status);
         }
+        if ($systeme = strtoupper($request->string('systeme')->trim()->value())) {
+            $query->where(function ($q) use ($systeme) {
+                if ($systeme === 'LMD') {
+                    $q->whereNotNull('unite_enseignement_id')
+                      ->orWhereHas('classes', fn ($c) => $c->whereRaw('UPPER(systeme_academique) = ?', ['LMD']))
+                      ->orWhereHas('classe', fn ($c) => $c->whereRaw('UPPER(systeme_academique) = ?', ['LMD']));
+                } else {
+                    $q->whereNull('unite_enseignement_id')
+                      ->whereDoesntHave('classes', fn ($c) => $c->whereRaw('UPPER(systeme_academique) = ?', ['LMD']))
+                      ->where(function ($cq) {
+                          $cq->whereHas('classe', fn ($c) => $c->whereRaw('UPPER(systeme_academique) != ?', ['LMD']))
+                             ->orWhereDoesntHave('classe');
+                      });
+                }
+            });
+        }
         if ($from = $request->date('from')) {
             $query->where('date_debut', '>=', $from);
         }
@@ -544,9 +617,13 @@ class ESBTPExamenPlanifieController extends Controller
                 $color = '#94a3b8';
             }
 
+            // Distinction système : préfixe titre + classNames + extendedProps
+            // WCAG 1.4.1 : texte + couleur (border-left CSS) + icône (légende)
+            $systeme = $e->systeme;  // 'BTS' | 'LMD' via accessor
+
             return [
                 'id' => $e->id,
-                'title' => $e->titre,
+                'title' => '[' . $systeme . '] ' . $e->titre,
                 'start' => $e->date_debut?->toIso8601String(),
                 'end' => $e->date_fin?->toIso8601String(),
                 'backgroundColor' => $color,
@@ -555,12 +632,14 @@ class ESBTPExamenPlanifieController extends Controller
                 'classNames' => [
                     'exp-event',
                     'exp-event--' . strtolower($e->type_examen),
+                    'exp-event--sys-' . strtolower($systeme),
                     $e->notes_locked ? 'exp-event--locked' : '',
                     $e->status === 'cancelled' ? 'exp-event--cancelled' : '',
                 ],
                 'extendedProps' => [
                     'type_examen' => $e->type_examen,
                     'type_label' => TypeExamen::labelFor($e->type_examen),
+                    'systeme' => $systeme,
                     'status' => $e->status,
                     'status_label' => ExamenStatus::labelFor($e->status),
                     'numero_convocation' => $e->numero_convocation,

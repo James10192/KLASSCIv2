@@ -27,6 +27,8 @@
     $parcoursListAvailable = ($parcours ?? collect())->mapWithKeys(fn ($p) => [
         $p->id => $p->name . ($p->code ? ' · '.$p->code : ''),
     ])->all();
+    $systemeOptions = ['BTS' => 'BTS', 'LMD' => 'LMD'];
+    $hasMixedSystemes = $hasMixedSystemes ?? false;
 @endphp
 
 @push('styles')
@@ -323,6 +325,19 @@
 }
 .exp-event--cancelled { opacity: .55; text-decoration: line-through; }
 .exp-event--locked::before { content: '🔒 '; font-size: .65rem; }
+
+/* Distinction système académique (WCAG : texte préfixe titre + border + couleur fond) */
+.exp-event--sys-lmd { border-left: 3px solid rgba(255,255,255,.7) !important; }
+.exp-event--sys-bts {
+    border-left: 3px dashed rgba(255,255,255,.55) !important;
+    background-image: repeating-linear-gradient(
+        45deg,
+        transparent,
+        transparent 5px,
+        rgba(255,255,255,.06) 5px,
+        rgba(255,255,255,.06) 10px
+    );
+}
 .exp-calendar-card .fc-list-event:hover td { background: rgba(4,83,203,.05) !important; }
 .exp-calendar-card .fc-list-day-cushion { background: #f8fafc !important; color: #0f172a; font-weight: 700; }
 .exp-calendar-card .fc-event-title { font-weight: 600; }
@@ -454,6 +469,17 @@
                 placeholder="Tous"
                 onchange="this.form.submit()" />
         </div>
+        @if ($hasMixedSystemes)
+        <div>
+            <label class="exp-filter-label">Système</label>
+            <x-au-select name="systeme"
+                :value="request('systeme')"
+                :options="$systemeOptions"
+                icon="fa-graduation-cap"
+                placeholder="Tous"
+                onchange="this.form.submit()" />
+        </div>
+        @endif
         <div>
             <label class="exp-filter-label">Du</label>
             <input type="date" name="from" value="{{ request('from') }}" class="exp-filter-date" onchange="this.form.submit()">
@@ -495,6 +521,22 @@
             <span class="exp-calendar-legend-item">
                 <span class="exp-calendar-legend-dot" style="background:#033a8e;"></span> Soutenance
             </span>
+            @if ($hasMixedSystemes)
+            <span class="exp-calendar-legend-item" style="margin-left:.5rem;">
+                <span style="display:inline-flex;align-items:center;gap:.2rem;">
+                    <span style="display:inline-block;width:12px;height:12px;border-left:3px solid #0453cb;background:rgba(4,83,203,.15);"></span>
+                    <i class="fas fa-graduation-cap" style="font-size:.65rem;color:#0453cb;"></i>
+                    LMD
+                </span>
+            </span>
+            <span class="exp-calendar-legend-item">
+                <span style="display:inline-flex;align-items:center;gap:.2rem;">
+                    <span style="display:inline-block;width:12px;height:12px;border-left:3px dashed #64748b;background:repeating-linear-gradient(45deg,#cbd5e1,#cbd5e1 3px,#e2e8f0 3px,#e2e8f0 6px);"></span>
+                    <i class="fas fa-screwdriver-wrench" style="font-size:.65rem;color:#64748b;"></i>
+                    BTS
+                </span>
+            </span>
+            @endif
             <span class="exp-calendar-legend-item" style="margin-left:auto;color:#94a3b8;">
                 <i class="fas fa-lock"></i> Notes verrouillées
             </span>
@@ -546,11 +588,15 @@
                                 $primaryClasse = $classeNames->first() ?? $e->classe?->name ?? '—';
                                 $extras = max(0, $classeNames->count() - 1);
                                 $ueName = $e->uniteEnseignement?->name;
+                                $examenSysteme = $e->hasConsistentSysteme() ? $e->systeme : 'MIXTE';
                             @endphp
-                            <div style="font-weight:600;">
-                                {{ $primaryClasse }}
+                            <div style="font-weight:600;display:inline-flex;align-items:center;gap:.4rem;flex-wrap:wrap;">
+                                <span>{{ $primaryClasse }}</span>
                                 @if($extras > 0)
-                                    <span title="{{ $classeNames->skip(1)->join(', ') }}" style="display:inline-block;padding:.05rem .35rem;background:rgba(4,83,203,.10);color:#0453cb;border-radius:5px;font-size:.65rem;margin-left:.25rem;font-weight:700;">+{{ $extras }}</span>
+                                    <span title="{{ $classeNames->skip(1)->join(', ') }}" style="display:inline-block;padding:.05rem .35rem;background:rgba(4,83,203,.10);color:#0453cb;border-radius:5px;font-size:.65rem;font-weight:700;">+{{ $extras }}</span>
+                                @endif
+                                @if ($hasMixedSystemes || $examenSysteme === 'MIXTE')
+                                    <x-systeme-chip :systeme="$examenSysteme" size="sm" />
                                 @endif
                             </div>
                             <div style="color:#64748b;font-size:.75rem;">
