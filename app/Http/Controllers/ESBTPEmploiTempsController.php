@@ -1421,20 +1421,63 @@ class ESBTPEmploiTempsController extends Controller
     {
         $this->authorize('create', ESBTPSeanceCours::class);
 
-        // NOUVELLE LOGIQUE : Utiliser la même approche que la planification générale
-        // 1. Récupérer les matières réellement liées à cette combinaison filière/niveau
-        $matieresLiees = ESBTPMatiere::where('is_active', true)
-            ->whereHas('filieres', function ($query) use ($emploi_temp) {
-                $query->where('esbtp_filieres.id', $emploi_temp->classe->filiere_id);
-            })
-            ->whereHas('niveaux', function ($query) use ($emploi_temp) {
-                $query->where('esbtp_niveau_etudes.id', $emploi_temp->classe->niveau_etude_id);
-            })
-            ->with(['filieres', 'niveaux'])
-            ->get();
+        // PR3 chantier emploi-temps-lmd-unification (2026-05-22) :
+        // REDIRECTION vers seances-cours/create — l'ancienne vue add-session.blade.php
+        // utilisait <select> natif (viole rule premium-selects) et logique BTS-only
+        // (whereHas('filieres') ne fonctionnait pas pour LMD).
+        //
+        // La route /emploi-temps/{id}/add-session reste fonctionnelle mais redirige
+        // vers /seances-cours/create?emploi_temps_id=X qui supporte BTS+LMD de maniere
+        // canonique via MatiereTreeBuilder + UI premium namespace sce-*.
+        //
+        // Pour reactiver l'ancien partial premium : restaurer la logique ci-dessous
+        // (avec override MatiereTreeBuilder applique).
+        if (request()->boolean('use_legacy_partial')) {
+            return $this->addSessionLegacyPartial($emploi_temp);
+        }
 
-        // 2. Pour chaque matière liée, récupérer sa planification académique
-        $matieres = $matieresLiees->map(function ($matiere) use ($emploi_temp) {
+        return redirect()->route('esbtp.seances-cours.create', [
+            'emploi_temps_id' => $emploi_temp->id,
+            'jour' => request('jour'),
+            'heure_debut' => request('heure_debut'),
+        ]);
+    }
+
+    /**
+     * Ancien comportement `addSession()` preserve en methode privee pour rollback rapide
+     * si necessaire. Use ?use_legacy_partial=1 sur l'URL pour la reactiver.
+     *
+     * PR3 chantier emploi-temps-lmd-unification : refactor LMD-aware via MatiereTreeBuilder.
+     * Garde le partial add-session.blade.php fonctionnel (rule strangler fig).
+     */
+    private function addSessionLegacyPartial(ESBTPEmploiTemps $emploi_temp)
+    {
+        // PR3 fix : utilise MatiereTreeBuilder canonical (SSOT) au lieu de whereHas('filieres')
+        // BTS-only qui retournait 0 matieres pour LMD.
+        $planificationData = [];
+        if ($emploi_temp->classe && $emploi_temp->annee) {
+            $planificationData = $this->getPlanificationDataForClasse(
+                $emploi_temp->classe,
+                $emploi_temp->annee,
+                $emploi_temp->semestre
+            );
+
+            if (($emploi_temp->classe->systeme_academique ?? '') === 'LMD') {
+                $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)
+                    ->buildForPlanning($planificationData, $emploi_temp->classe);
+            }
+        }
+
+        $matieresPlanifiees = $planificationData['matieres_planifiees'] ?? collect();
+
+        // Extraire les ESBTPMatiere depuis les matieresPlanifiees (compat avec view legacy).
+        // PR3 : utilise la structure $row['matiere'] retournee par MatiereTreeBuilder.
+        $matieres = collect($matieresPlanifiees)->map(function ($row) use ($emploi_temp) {
+            $matiere = is_array($row) ? ($row['matiere'] ?? null) : $row;
+            if (!$matiere) {
+                return null;
+            }
+
             $planification = ESBTPPlanificationAcademique::where('annee_universitaire_id', $emploi_temp->annee_universitaire_id)
                 ->where('filiere_id', $emploi_temp->classe->filiere_id)
                 ->where('niveau_etude_id', $emploi_temp->classe->niveau_etude_id)
@@ -1442,21 +1485,16 @@ class ESBTPEmploiTempsController extends Controller
                 ->with('enseignantPrincipal')
                 ->first();
 
+            $formatHeures = function ($heures) {
+                $h = floor($heures);
+                $m = round(($heures - $h) * 60);
+                return ($m > 0) ? $h.'h'.($m < 10 ? '0' : '').$m : $h.'h';
+            };
+
             if ($planification) {
                 $heuresEffectuees = $planification->heures_effectuees ?? 0;
                 $volumeTotal = $planification->volume_horaire_total;
                 $heuresRestantes = max(0, $volumeTotal - $heuresEffectuees);
-
-                // Fonction helper pour formater les heures en XXh YYmin
-                $formatHeures = function ($heures) {
-                    $h = floor($heures);
-                    $m = round(($heures - $h) * 60);
-                    if ($m > 0) {
-                        return $h.'h'.($m < 10 ? '0' : '').$m;
-                    }
-
-                    return $h.'h';
-                };
 
                 $matiere->volume_info = [
                     'volume_total' => $volumeTotal,
@@ -1470,7 +1508,6 @@ class ESBTPEmploiTempsController extends Controller
                     'enseignant_principal' => $planification->enseignantPrincipal,
                 ];
             } else {
-                // Matière liée mais pas encore configurée
                 $matiere->volume_info = [
                     'volume_total' => 0,
                     'heures_effectuees' => 0,
@@ -1486,7 +1523,7 @@ class ESBTPEmploiTempsController extends Controller
             }
 
             return $matiere;
-        });
+        })->filter()->values();
 
         // Récupérer les enseignants avec leurs disponibilités
         $enseignants = ESBTPTeacher::with(['user', 'availabilities'])->get();
