@@ -589,11 +589,74 @@ presentation (dev canonical)
 
 ## 7. Journal d'exécution <a id="journal"></a>
 
-| Date | PR | Action | Commits | Tests | Visual-check | Statut |
-|---|---|---|---|---|---|---|
-| 2026-05-22 | PR0 | Branche feature créée | — | — | — | 🟡 En cours |
+| Date | PR | Action | Commit | Tests | Statut |
+|---|---|---|---|---|---|
+| 2026-05-22 | PR0 | Infrastructure (master plan + rules + skills + scripts) | `92c28e90` | — | ✅ Done |
+| 2026-05-22 | PR1 | MatiereTreeBuilder canonical (2 méthodes publiques) | `9c6c7df5` | 7 Unit + 3 Feature placeholder | ✅ Done |
+| 2026-05-22 | PR2 | bulkEdit LMD-aware + suppression duplication (-90 LOC) | `f81ea03f` | 5 Feature | ✅ Done |
+| 2026-05-22 | PR3 | addSession + edit LMD-aware + redirect vers seances-cours/create | `89ab30fd` | 3 Feature | ✅ Done |
+| 2026-05-22 | PR4 | Fix embedded styles `@push` instead of `@section` + fallback `@yield` | `005e2060` | Visual-check needed | ✅ Done |
+| 2026-05-22 | PR5 | Types reactive BTS-aware + partial BTS séparé | `4c8daa12` | 4 Feature | ✅ Done |
+| 2026-05-22 | PR6 | Section examens P1 + extension TypeSeance enum (PARTIEL/RATTRAPAGE/SOUTENANCE) | `0287e09b` | 1 Feature | ✅ Done |
+| 2026-05-22 | PR7 | Bulletin BTS guard 422 contre classes LMD (3 sites) + audit LMDBulletinService | `599e26df` | 2 Feature | ✅ Done |
+| _pending_ | PR8 | Migration table `esbtp_examens_planifies` + `esbtp_examen_surveillants` | — | — | ⏳ Next |
+| _pending_ | PR9 | Workflow examens complet (CRUD + scheduling + convocations) | — | — | ⏳ |
+| _pending_ | PR10 | Workflow rattrapage | — | — | ⏳ |
+| _pending_ | PR11 | Jury foundation (tables + service) | — | — | ⏳ |
+| _pending_ | PR12 | Jury UI premium AJAX `juy-*` | — | — | ⏳ |
+| _pending_ | PR13 | PV PDF officiel + archivage légal 5 ans | — | — | ⏳ |
+| _pending_ | PR14 | Tests E2E exhaustifs Pest Browser | — | — | ⏳ |
+| _pending_ | PR15 | Documentation (CHANGELOG + landing FR/EN + docs API) | — | — | ⏳ |
+| _pending_ | PR16 | Bonus features (pre-commit hook, doctor, dashboard) | — | — | ⏳ |
+| _pending_ | PR17 | Déploiement coordonné 6 tenants | — | — | ⏳ |
 
-(Mis à jour à chaque PR mergée)
+### Progression : 7/18 PRs (39%)
+
+**Sprint 1 (PR0-7) shippé** : foundation + bugs racines BTS/LMD résolus + examens P1
+- ✅ Single Source of Truth (MatiereTreeBuilder)
+- ✅ bulkEdit + sections AJAX + addSession + seances-cours/edit LMD-aware
+- ✅ Embedded styles fix
+- ✅ Types reactive BTS/LMD partials séparés
+- ✅ Section examens (scope query type_seance IN evaluationCases())
+- ✅ Bulletin BTS guard
+
+**Sprint 2 (PR8-13) à lancer** : workflow examens complet + rattrapage + jury + PV
+- Table dédiée `esbtp_examens_planifies` + workflow scolarité Apogée
+- Sessions rattrapage UEMOA
+- Jury de délibération (composition, calcul auto décisions, override motivé)
+- PV PDF officiel numérotation thread-safe + archivage 5 ans
+- UI premium AJAX no-reload partout
+
+**Sprint 3 (PR14-17)** : tests + docs + bonus + deploy
+- Tests E2E Pest Browser exhaustifs
+- Documentation complète FR/EN
+- Bonus pre-commit hook + dashboard + doctor command
+- Déploiement coordonné 6 tenants
+
+### Branche
+
+`feat/emploi-temps-lmd-master` (poussée sur GitHub origin)
+
+### Commands utiles pour la reprise
+
+```bash
+# Reprendre le travail
+git checkout feat/emploi-temps-lmd-master
+git pull origin feat/emploi-temps-lmd-master
+
+# Voir les commits
+git log --oneline feat/emploi-temps-lmd-master ^presentation
+
+# Audit canonical patterns
+.\scripts\lmd\audit-callsites.ps1
+
+# Tests matrix (quand vendor installed)
+composer install
+.\scripts\lmd\run-bts-lmd-matrix.ps1
+
+# Voir le master plan
+cat docs/MASTER-PLAN-emploi-temps-lmd-unification.md
+```
 
 ---
 
