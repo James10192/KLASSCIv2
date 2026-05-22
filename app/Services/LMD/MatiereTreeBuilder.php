@@ -47,21 +47,21 @@ class MatiereTreeBuilder
      * Retourne la structure $lmdMatieres compatible avec forClasse() :
      * [matiere_id => ['matiere' => ..., 'cm' => X, 'td' => X, 'tp' => X, 'coefficient' => X, 'credits_ects' => X, 'volume_horaire_total' => X, 'semestres' => []]]
      */
-    public function loadLmdMatieresForClasse(ESBTPClasse $classe): Collection
+    public function loadLmdMatieresForClasse(ESBTPClasse $classe, ?int $semestre = null): Collection
     {
         if ($classe->parcours_id && $classe->parcours) {
-            return $this->loadFromParcours($classe);
+            return $this->loadFromParcours($classe, $semestre);
         }
 
         // Fallback LMD tronc commun (sans parcours) ou cas legacy : utiliser filiere+niveau
-        return $this->loadFromFiliereNiveau($classe);
+        return $this->loadFromFiliereNiveau($classe, $semestre);
     }
 
     /**
      * Pattern Planning LMD : charge UEs via parcours -> ECUEs effectifs -> planifications.
      * Strict scope : seulement les ECUEs effectivement attachees au parcours de la classe.
      */
-    private function loadFromParcours(ESBTPClasse $classe): Collection
+    private function loadFromParcours(ESBTPClasse $classe, ?int $semestre = null): Collection
     {
         $parcours = $classe->parcours;
 
@@ -92,6 +92,7 @@ class MatiereTreeBuilder
         }
 
         // 3. Charger les planifications pour ces ECUEs uniquement
+        // PR17.5 : filtrage optionnel par semestre (bulk-edit + show passent $emploi_temp->semestre)
         $matiereIds = $ecuesByMatiereId->keys();
         $filiereResolvedId = $parcours->filiere_id ?: $classe->filiere_id;
 
@@ -99,12 +100,16 @@ class MatiereTreeBuilder
             ->where('filiere_id', $filiereResolvedId)
             ->where('niveau_etude_id', $classe->niveau_etude_id)
             ->whereIn('matiere_id', $matiereIds)
+            ->when($semestre !== null, fn ($q) => $q->where('semestre', $semestre))
             ->orderBy('semestre')
             ->get()
             ->groupBy('matiere_id');
 
         // 4. Construire la structure $lmdMatieres
-        return $ecuesByMatiereId->map(function ($ecue) use ($planifs) {
+        //    Si semestre fourni : ne garder que les ECUE qui ont au moins une planif a ce semestre.
+        return $ecuesByMatiereId
+            ->filter(fn ($ecue) => $semestre === null || $planifs->has($ecue->id))
+            ->map(function ($ecue) use ($planifs) {
             $planifsEcue = $planifs->get($ecue->id, collect());
             $first = $planifsEcue->first();
 
@@ -126,12 +131,13 @@ class MatiereTreeBuilder
      * Fallback LMD tronc commun (sans parcours_id) : charge toutes les planifs filiere+niveau.
      * Comportement legacy avant fix scope parcours (15/05/2026).
      */
-    private function loadFromFiliereNiveau(ESBTPClasse $classe): Collection
+    private function loadFromFiliereNiveau(ESBTPClasse $classe, ?int $semestre = null): Collection
     {
         return ESBTPPlanificationAcademique::query()
             ->where('filiere_id', $classe->filiere_id)
             ->where('niveau_etude_id', $classe->niveau_etude_id)
             ->whereNotNull('matiere_id')
+            ->when($semestre !== null, fn ($q) => $q->where('semestre', $semestre))
             ->with(['matiere.uniteEnseignement'])
             ->orderBy('semestre')
             ->get()
@@ -167,9 +173,9 @@ class MatiereTreeBuilder
      * @param ESBTPClasse $classe Classe LMD (filtrée par le caller via systeme_academique === 'LMD')
      * @return array Structure $planificationData mise à jour avec matieres_planifiees LMD
      */
-    public function buildForPlanning(array $planificationData, ESBTPClasse $classe): array
+    public function buildForPlanning(array $planificationData, ESBTPClasse $classe, ?int $semestre = null): array
     {
-        $lmdMatieres = $this->loadLmdMatieresForClasse($classe);
+        $lmdMatieres = $this->loadLmdMatieresForClasse($classe, $semestre);
         if ($lmdMatieres->isEmpty()) {
             return $planificationData;
         }
@@ -222,9 +228,10 @@ class MatiereTreeBuilder
     public function buildWithVolumeBudget(
         array $planificationData,
         ESBTPClasse $classe,
-        ?ESBTPAnneeUniversitaire $annee = null
+        ?ESBTPAnneeUniversitaire $annee = null,
+        ?int $semestre = null
     ): array {
-        $lmdMatieres = $this->loadLmdMatieresForClasse($classe);
+        $lmdMatieres = $this->loadLmdMatieresForClasse($classe, $semestre);
         if ($lmdMatieres->isEmpty()) {
             return $planificationData;
         }
