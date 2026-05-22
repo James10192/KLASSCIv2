@@ -1,7 +1,8 @@
-@props(['planificationData' => null, 'emploiTemps'])
+@props(['planificationData' => null, 'emploiTemps', 'open' => true])
 
 @once
 <style>
+    [x-cloak] { display: none !important; }
     .epl-card {
         background: #fff;
         border: 1px solid #e2e8f0;
@@ -11,13 +12,18 @@
     }
     .epl-header {
         padding: 1rem 1.25rem;
-        border-bottom: 1px solid #e2e8f0;
+        border-bottom: 1px solid transparent;
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
         gap: .5rem;
+        cursor: pointer;
+        user-select: none;
+        transition: background .15s ease;
     }
+    .epl-header:hover { background: #f8fafc; }
+    .epl-header--open { border-bottom-color: #e2e8f0; }
     .epl-header-title {
         display: flex;
         align-items: center;
@@ -25,6 +31,18 @@
         color: #0f172a;
         font-weight: 700;
         font-size: .92rem;
+    }
+    .epl-caret {
+        margin-left: .5rem;
+        color: #94a3b8;
+        font-size: .75rem;
+        transition: transform .2s ease;
+        width: 14px;
+        text-align: center;
+    }
+    .epl-caret--open {
+        transform: rotate(90deg);
+        color: #0453cb;
     }
     .epl-header-title i {
         width: 28px;
@@ -203,11 +221,12 @@
 </style>
 @endonce
 
-<div class="epl-card">
-    <div class="epl-header">
+<div class="epl-card" x-data="{ open: @json((bool) $open) }">
+    <div class="epl-header" :class="open ? 'epl-header--open' : ''" @click="open = !open" role="button" tabindex="0" :aria-expanded="open ? 'true' : 'false'" @keydown.enter.prevent="open = !open" @keydown.space.prevent="open = !open">
         <div class="epl-header-title">
             <i class="fas fa-calendar-check"></i>
             Suivi par matière
+            <i class="fas fa-chevron-right epl-caret" :class="open ? 'epl-caret--open' : ''"></i>
         </div>
 
         @if(isset($planificationData['planifications_configurees']) && $planificationData['planifications_configurees'])
@@ -224,7 +243,7 @@
         @endif
     </div>
 
-    <div class="epl-body">
+    <div class="epl-body" x-show="open" x-cloak x-transition.opacity>
         @if(empty($planificationData) || empty($planificationData['planifications_configurees']))
             <div class="epl-empty">
                 <div class="epl-empty-icon">
