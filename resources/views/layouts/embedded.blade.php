@@ -245,6 +245,10 @@
             padding: 3px 8px;
         }
     </style>
+    {{-- PR4 chantier emploi-temps-lmd-unification : fallback @yield('styles') pour retrocompat
+         double — vues qui utilisent encore @section('styles') au lieu de @push('styles') sont
+         rendues correctement. Rule .claude/rules/embedded-styles-pattern.md --}}
+    @yield('styles')
     @stack('styles')
 </head>
 <body>

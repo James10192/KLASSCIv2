@@ -179,8 +179,16 @@ class ESBTPBulletinController extends Controller
             $bulletin->user_id = Auth::id();
             $bulletin->save();
 
-            // Récupérer toutes les matières de la classe
+            // PR7 chantier emploi-temps-lmd-unification : GUARD bulletin BTS vs LMD.
+            // ESBTPBulletinController est BTS-only. Les classes LMD doivent passer par
+            // ESBTPLMDBulletinController + LMDBulletinService (architecture separee).
+            // Rule .claude/rules/lmd-bts-bulletin-separation.md
             $classe = ESBTPClasse::with('matieres')->findOrFail($request->classe_id);
+            abort_if(
+                ($classe->systeme_academique ?? '') === 'LMD',
+                422,
+                'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour générer des bulletins LMD.'
+            );
             $matieres = $classe->matieres;
 
             // Précharger toutes les évaluations pour cette classe et période
@@ -786,6 +794,15 @@ class ESBTPBulletinController extends Controller
         try {
             Log::info('Début de la génération des bulletins', $request->all());
             $classe = ESBTPClasse::findOrFail($request->classe_id);
+
+            // PR7 chantier emploi-temps-lmd-unification : GUARD bulletin BTS vs LMD (bulk generation).
+            // Rule .claude/rules/lmd-bts-bulletin-separation.md
+            abort_if(
+                ($classe->systeme_academique ?? '') === 'LMD',
+                422,
+                'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour générer des bulletins LMD en masse.'
+            );
+
             $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($request->annee_universitaire_id);
 
             // Récupérer tous les étudiants inscrits dans cette classe pour cette année
@@ -1177,6 +1194,15 @@ class ESBTPBulletinController extends Controller
             // Récupérer les données
             $etudiant = ESBTPEtudiant::findOrFail($request->etudiant);
             $classe = ESBTPClasse::with(['filiere', 'niveauEtude'])->findOrFail($request->classe);
+
+            // PR7 chantier emploi-temps-lmd-unification : GUARD bulletin BTS vs LMD (preview).
+            // Rule .claude/rules/lmd-bts-bulletin-separation.md
+            abort_if(
+                ($classe->systeme_academique ?? '') === 'LMD',
+                422,
+                'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour les bulletins LMD.'
+            );
+
             $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($request->annee);
 
             // Essayer de récupérer un bulletin existant pour avoir les configurations

@@ -1000,6 +1000,57 @@ return [
             'icon' => 'fa-edit',
         ],
 
+        // ===== Examens LMD (PR9 — workflow UEMOA scolarité) =====
+        'lmd.examens.view' => [
+            'label' => 'Voir les examens planifiés',
+            'group' => 'LMD',
+            'icon' => 'fa-pen-ruler',
+        ],
+        'lmd.examens.manage' => [
+            'label' => 'Gérer les examens (créer, modifier, supprimer, assigner surveillants)',
+            'group' => 'LMD',
+            'icon' => 'fa-edit',
+        ],
+        'lmd.examens.notes_lock' => [
+            'label' => 'Verrouiller les notes d\'un examen (anti-tampering)',
+            'group' => 'LMD',
+            'icon' => 'fa-lock',
+        ],
+
+        // ===== Rattrapage LMD (PR10 — sessions 2e session) =====
+        'lmd.rattrapage.view' => [
+            'label' => 'Voir les sessions de rattrapage',
+            'group' => 'LMD',
+            'icon' => 'fa-rotate-right',
+        ],
+        'lmd.rattrapage.manage' => [
+            'label' => 'Gérer les sessions de rattrapage (génération, recalcul)',
+            'group' => 'LMD',
+            'icon' => 'fa-cog',
+        ],
+
+        // ===== Jury de délibération LMD (PR11-PR13) =====
+        'lmd.jury.view' => [
+            'label' => 'Voir les jurys de délibération',
+            'group' => 'LMD',
+            'icon' => 'fa-gavel',
+        ],
+        'lmd.jury.preside' => [
+            'label' => 'Présider un jury (composition, validation quorum)',
+            'group' => 'LMD',
+            'icon' => 'fa-user-tie',
+        ],
+        'lmd.jury.deliberate' => [
+            'label' => 'Délibérer (override décision étudiant avec motif)',
+            'group' => 'LMD',
+            'icon' => 'fa-scale-balanced',
+        ],
+        'lmd.jury.publish' => [
+            'label' => 'Publier décisions jury + générer PV PDF officiel',
+            'group' => 'LMD',
+            'icon' => 'fa-file-signature',
+        ],
+
         'timetables.view' => [
             'label' => 'Voir les emplois du temps',
             'group' => 'Planning',
@@ -1440,6 +1491,9 @@ return [
             'session_reports.view',
             'planning.view', 'planning.edit', 'planning.manage',
             'lmd.planning.view', 'lmd.planning.edit',
+            'lmd.examens.view', 'lmd.examens.manage', 'lmd.examens.notes_lock',
+            'lmd.rattrapage.view', 'lmd.rattrapage.manage',
+            'lmd.jury.view', 'lmd.jury.preside', 'lmd.jury.deliberate', 'lmd.jury.publish',
             'timetables.view', 'timetables.view_all', 'timetables.create', 'timetables.edit', 'timetables.delete',
             'schedules.view', 'schedules.create', 'schedules.edit',
             'personnel.view', 'personnel.manage',

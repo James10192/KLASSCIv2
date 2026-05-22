@@ -17,6 +17,9 @@ class ESBTPLMDResultatECUE extends Model
         'bulletin_id', 'resultat_ue_id', 'matiere_id', 'etudiant_id',
         'moyenne', 'credit', 'rang', 'enseignant_id',
         'stat_min', 'stat_moy', 'stat_max',
+        // PR10 rattrapage
+        'note_session_normale', 'note_rattrapage', 'note_finale',
+        'rattrapage_eligible', 'rattrapage_inscrit',
         'created_by', 'updated_by',
     ];
 
@@ -27,6 +30,12 @@ class ESBTPLMDResultatECUE extends Model
         'stat_min' => 'decimal:2',
         'stat_moy' => 'decimal:2',
         'stat_max' => 'decimal:2',
+        // PR10 rattrapage
+        'note_session_normale' => 'decimal:2',
+        'note_rattrapage' => 'decimal:2',
+        'note_finale' => 'decimal:2',
+        'rattrapage_eligible' => 'boolean',
+        'rattrapage_inscrit' => 'boolean',
     ];
 
     public function bulletin()

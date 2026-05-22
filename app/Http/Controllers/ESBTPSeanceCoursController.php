@@ -223,10 +223,12 @@ class ESBTPSeanceCoursController extends Controller
 
             // OVERRIDE LMD : pour classe LMD avec parcours, le pivot esbtp_matiere_filiere
             // utilise par getPlanificationDataForClasse() est VIDE donc 0 matières.
-            // On override via le scope strict parcours.unitesEnseignement (Service partage).
+            // On override via le scope strict parcours.unitesEnseignement (Service SSOT).
+            // PR1 chantier emploi-temps-lmd-unification : bascule vers buildForPlanning()
+            // (sans volumeBudget car create form n'affiche pas les heures realisees).
             if (($emploiTemps->classe->systeme_academique ?? '') === 'LMD') {
                 $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)
-                    ->overridePlanificationForLmd($planificationData, $emploiTemps->classe);
+                    ->buildForPlanning($planificationData, $emploiTemps->classe);
             }
 
             // Récupérer les matières configurées pour cette combinaison filière/niveau
@@ -834,6 +836,14 @@ class ESBTPSeanceCoursController extends Controller
                     $emploiTemps->annee,
                     $emploiTemps->semestre
                 );
+
+                // PR3 chantier emploi-temps-lmd-unification : applique override LMD via service
+                // canonical (SSOT). buildForPlanning() sans volumeBudget car edit form n'affiche
+                // pas les KPIs heures realisees.
+                if (($emploiTemps->classe->systeme_academique ?? '') === 'LMD') {
+                    $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)
+                        ->buildForPlanning($planificationData, $emploiTemps->classe);
+                }
 
                 $planificationConfigured = $planificationData['planifications_configurees'] ?? false;
                 $matieres = collect($planificationData['matieres_planifiees'] ?? []);

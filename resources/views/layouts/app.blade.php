@@ -1763,6 +1763,24 @@
                                     <span>Planning LMD</span>
                                 </a>
                                 @endcan
+                                @can('lmd.examens.view')
+                                <a href="{{ route('esbtp.examens.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.examens.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Examens planifiés</span>
+                                </a>
+                                @endcan
+                                @can('lmd.rattrapage.view')
+                                <a href="{{ route('esbtp.lmd.rattrapage.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.rattrapage.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Sessions &amp; Rattrapage</span>
+                                </a>
+                                @endcan
+                                @can('lmd.jury.view')
+                                <a href="{{ route('esbtp.lmd.jurys.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.jurys.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Jurys de délibération</span>
+                                </a>
+                                @endcan
                             </div>
                         </div>
                     @endcan
