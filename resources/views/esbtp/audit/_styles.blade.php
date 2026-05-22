@@ -146,6 +146,12 @@
 }
 .au-table tbody tr { border-bottom: 1px solid #f1f5f9; transition: background .15s; }
 .au-table tbody tr:hover { background: #f8fafc; }
+.au-table--clickable tbody tr,
+.au-table--expandable tbody tr.au-row:not(.au-row--inert) { cursor: pointer; }
+.au-table--clickable tbody tr:hover,
+.au-table--expandable tbody tr.au-row:not(.au-row--inert):hover { background: #eff6ff; }
+.au-table--expandable tbody tr.au-row--inert { cursor: default; }
+.au-table--expandable tbody tr.au-row--inert .au-toggle { cursor: not-allowed; }
 .au-table tbody tr:last-child { border-bottom: none; }
 .au-table tbody td { padding: .85rem 1rem; font-size: .85rem; color: #1e293b; vertical-align: middle; }
 .au-th-actions, .au-td-actions { text-align: center; width: 60px; }

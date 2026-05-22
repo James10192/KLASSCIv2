@@ -134,11 +134,15 @@
                                 $rowLinks = $entityLinksMap[$a->id] ?? [];
                                 $rowLinksCount = count($rowLinks);
                             @endphp
-                            <tr class="au-row" :class="openIds.includes({{ $a->id }}) ? 'au-row--open' : ''">
+                            <tr class="au-row {{ $rowLinksCount === 0 ? 'au-row--inert' : '' }}"
+                                :class="openIds.includes({{ $a->id }}) ? 'au-row--open' : ''"
+                                @if($rowLinksCount > 0)
+                                @click="openIds.includes({{ $a->id }}) ? openIds = openIds.filter(i => i !== {{ $a->id }}) : openIds.push({{ $a->id }})"
+                                @endif>
                                 <td class="au-cell-toggle">
                                     <button type="button" class="au-toggle"
                                             :class="openIds.includes({{ $a->id }}) ? 'au-toggle--open' : ''"
-                                            @click="openIds.includes({{ $a->id }}) ? openIds = openIds.filter(i => i !== {{ $a->id }}) : openIds.push({{ $a->id }})"
+                                            @click.stop="openIds.includes({{ $a->id }}) ? openIds = openIds.filter(i => i !== {{ $a->id }}) : openIds.push({{ $a->id }})"
                                             :title="openIds.includes({{ $a->id }}) ? 'Replier' : 'Voir les liens'"
                                             @disabled($rowLinksCount === 0)>
                                         <i class="fas fa-chevron-right au-toggle-caret"></i>
@@ -176,7 +180,7 @@
                                         <span class="au-meta-empty">—</span>
                                     @endif
                                 </td>
-                                <td>
+                                <td @click.stop>
                                     @if($rowLinksCount > 0)
                                         <button type="button" class="au-links-pill"
                                                 @click="openIds.includes({{ $a->id }}) ? openIds = openIds.filter(i => i !== {{ $a->id }}) : openIds.push({{ $a->id }})"
@@ -188,7 +192,7 @@
                                         <span class="au-meta-empty">—</span>
                                     @endif
                                 </td>
-                                <td class="au-td-actions">
+                                <td class="au-td-actions" @click.stop>
                                     <a href="{{ route('esbtp.audit.show', $a->id) }}" class="au-icon-btn au-icon-btn--primary" title="Voir détail">
                                         <i class="fas fa-eye"></i>
                                     </a>

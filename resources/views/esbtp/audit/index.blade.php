@@ -141,7 +141,7 @@
             </div>
 
             {{-- Table --}}
-            <table class="au-table" x-show="!loading && audits.length > 0" x-cloak>
+            <table class="au-table au-table--clickable" x-show="!loading && audits.length > 0" x-cloak>
                 <thead>
                     <tr>
                         <th>Date / Heure</th>
