@@ -452,6 +452,12 @@
 }
 .au-warning i { color: #b45309; }
 
+.au-info {
+    background: #eff6ff; border: 1px solid #dbeafe; border-radius: 10px; padding: .75rem .9rem;
+    color: #1e3a8a; font-size: .85rem; display: flex; align-items: flex-start; gap: .55rem;
+}
+.au-info i { color: #0453cb; padding-top: .15rem; }
+
 /* ───── TIMELINE (show) ───── */
 .au-timeline { list-style: none; padding: 0; margin: 0; }
 .au-timeline-item { display: flex; gap: 1rem; padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9; align-items: flex-start; }

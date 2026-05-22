@@ -114,8 +114,12 @@ class ESBTPAuditController extends Controller
         // Calcul niveau de risque pour la vue
         $riskLevel = $this->calculateRiskLevel($audit);
 
-        // URL vers l'entité auditée si possible
-        $entityUrl = $this->resolveEntityUrl($audit);
+        // URL vers l'entité auditée + statut existence (pour différencier
+        // "supprimée" — alerte rouge — de "pas de route show configurée"
+        // — silencieux, le panneau Liens donne déjà le contexte).
+        $entityState = $this->resolveEntityState($audit);
+        $entityUrl = $entityState['url'];
+        $entityExists = $entityState['exists'];
 
         // Diff field-by-field
         $changes = $this->formatChanges($audit);
@@ -123,7 +127,9 @@ class ESBTPAuditController extends Controller
         // Liens vers les entités liées (étudiant, inscription, catégorie de frais, …)
         $entityLinks = $this->entityResolver->resolve($audit);
 
-        return view('esbtp.audit.show', compact('audit', 'relatedAudits', 'riskLevel', 'entityUrl', 'changes', 'entityLinks'));
+        return view('esbtp.audit.show', compact(
+            'audit', 'relatedAudits', 'riskLevel', 'entityUrl', 'entityExists', 'changes', 'entityLinks'
+        ));
     }
 
     /**
@@ -451,8 +457,8 @@ class ESBTPAuditController extends Controller
             if ($oldValue !== $newValue) {
                 $changes[] = [
                     'field' => $this->formatFieldName($field),
-                    'old' => $this->formatValue($oldValue),
-                    'new' => $this->formatValue($newValue),
+                    'old' => $this->formatValue($oldValue, $field),
+                    'new' => $this->formatValue($newValue, $field),
                 ];
             }
         }
@@ -553,9 +559,14 @@ class ESBTPAuditController extends Controller
     }
 
     /**
-     * Formater une valeur pour l'affichage
+     * Formater une valeur pour l'affichage. Le nom du champ est passé pour
+     * détecter les colonnes monétaires (amount, montant, frais_*, salaire,
+     * etc.) et toujours les rendre en `N N N FCFA` cohérent — au lieu de la
+     * vieille heuristique `strlen > 6` qui formatait "150000.00" (8 chars
+     * après cast decimal:2) mais pas "50000" (5 chars), créant un diff
+     * visuellement incohérent dans la modal d'audit.
      */
-    private function formatValue($value)
+    private function formatValue($value, ?string $field = null)
     {
         if (is_null($value)) {
             return 'N/A';
@@ -565,11 +576,40 @@ class ESBTPAuditController extends Controller
             return $value ? 'Oui' : 'Non';
         }
 
-        if (is_numeric($value) && strlen($value) > 6) {
-            return number_format($value, 0, ',', ' ') . ' FCFA';
+        if (is_numeric($value) && $this->isMonetaryField($field)) {
+            return number_format((float) $value, 0, ',', ' ') . ' FCFA';
         }
 
         return $value;
+    }
+
+    /**
+     * Détecte les champs DB qui contiennent des montants en FCFA (amount,
+     * montant, montant_*, frais, salaire, taux_horaire, etc.). Les FK
+     * `*_id` sont explicitement exclues pour ne pas formater des IDs
+     * comme des montants.
+     */
+    private function isMonetaryField(?string $field): bool
+    {
+        if (! $field) {
+            return false;
+        }
+        // Exclusion : FK (frais_category_id, classe_id, etudiant_id…)
+        if (str_ends_with($field, '_id')) {
+            return false;
+        }
+        $monetaryPatterns = [
+            'amount', 'montant', 'prix', 'total', 'cout', 'cost',
+            'frais', 'salaire', 'taux_horaire', 'reliquat',
+            'reduction', 'bourse', 'caisse',
+        ];
+        $needle = strtolower($field);
+        foreach ($monetaryPatterns as $pattern) {
+            if (str_contains($needle, $pattern)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -591,31 +631,57 @@ class ESBTPAuditController extends Controller
     }
 
     /**
-     * Résoudre l'URL de l'entité auditée si elle existe encore.
-     * Retourne null si modèle inconnu ou entité supprimée.
+     * Résoudre l'état de l'entité auditée — distingue trois cas :
+     *  - exists=true + url=string  → entité présente et navigable
+     *  - exists=true + url=null    → entité présente mais pas de route show
+     *                                 dédiée (les liens du panneau "Liens vers
+     *                                 les entités liées" donnent déjà le
+     *                                 contexte, pas d'alerte rouge)
+     *  - exists=false              → vraie suppression (alerte rouge)
+     *
+     * @return array{url:?string,exists:bool}
      */
-    private function resolveEntityUrl($audit): ?string
+    private function resolveEntityState($audit): array
     {
-        if (!class_exists($audit->auditable_type)) {
-            return null;
+        if (! class_exists($audit->auditable_type)) {
+            return ['url' => null, 'exists' => false];
         }
         $modelClass = $audit->auditable_type;
-        $instance = $modelClass::find($audit->auditable_id);
-        if (!$instance) {
-            return null;
+        // Inclut soft-deleted si le modèle utilise SoftDeletes — un audit
+        // sur une entité soft-deleted reste légitimement consultable.
+        $query = $modelClass::query();
+        if (in_array(\Illuminate\Database\Eloquent\SoftDeletes::class, class_uses_recursive($modelClass), true)) {
+            $query->withTrashed();
+        }
+        $instance = $query->find($audit->auditable_id);
+        if (! $instance) {
+            return ['url' => null, 'exists' => false];
         }
 
-        // Mapping route show par modèle (best-effort, retourne null si pas de route)
+        $routeMap = [
+            \App\Models\ESBTPPaiement::class => 'esbtp.paiements.show',
+            \App\Models\ESBTPEtudiant::class => 'esbtp.etudiants.show',
+            \App\Models\ESBTPInscription::class => 'esbtp.inscriptions.show',
+            \App\Models\ESBTPClasse::class => 'esbtp.classes.show',
+            \App\Models\ESBTPMatiere::class => 'esbtp.matieres.show',
+            \App\Models\ESBTPNote::class => 'esbtp.notes.show',
+            \App\Models\ESBTPAttendance::class => 'esbtp.attendances.show',
+            \App\Models\ESBTPBulletin::class => 'esbtp.bulletins.show',
+            \App\Models\ESBTPLMDJury::class => 'esbtp.lmd.jurys.show',
+            \App\Models\ESBTPLMDSession::class => 'esbtp.lmd.sessions.show',
+            \App\Models\ESBTPExamenPlanifie::class => 'esbtp.examens-planifies.show',
+            \App\Models\ESBTPUniteEnseignement::class => 'esbtp.lmd.ue.show',
+        ];
+
+        $routeName = $routeMap[$audit->auditable_type] ?? null;
+        if (! $routeName) {
+            return ['url' => null, 'exists' => true];
+        }
+
         try {
-            return match ($audit->auditable_type) {
-                'App\\Models\\ESBTPPaiement' => route('esbtp.paiements.show', $instance->id),
-                'App\\Models\\ESBTPEtudiant' => route('esbtp.etudiants.show', $instance->id),
-                'App\\Models\\ESBTPInscription' => route('esbtp.inscriptions.show', $instance->id),
-                'App\\Models\\User' => route('esbtp.users.show', $instance->id),
-                default => null,
-            };
+            return ['url' => route($routeName, $instance->id), 'exists' => true];
         } catch (\Throwable) {
-            return null;
+            return ['url' => null, 'exists' => true];
         }
     }
 

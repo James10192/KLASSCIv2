@@ -167,10 +167,15 @@
                     <a href="{{ $entityUrl }}" class="au-btn au-btn--primary mt-3">
                         <i class="fas fa-external-link-alt"></i> Ouvrir l'entité
                     </a>
-                @else
+                @elseif(!$entityExists)
                     <div class="au-warning mt-3">
                         <i class="fas fa-exclamation-triangle"></i>
-                        Cette entité n'est plus accessible (supprimée ou modèle non navigable).
+                        Cette entité a été <strong>supprimée définitivement</strong> et n'est plus consultable.
+                    </div>
+                @else
+                    <div class="au-info mt-3">
+                        <i class="fas fa-info-circle"></i>
+                        Pas de page de détail dédiée pour ce type. Voir le panneau <strong>« Liens vers les entités liées »</strong> ci-dessous pour le contexte.
                     </div>
                 @endif
             </div>
