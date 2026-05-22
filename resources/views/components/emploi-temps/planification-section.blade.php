@@ -266,52 +266,140 @@
                 @endif
             </div>
         @else
-            @foreach($planificationData['matieres_planifiees'] as $matiere)
-                @php
-                    $volumeTotal = (int) ($matiere['volume_horaire_total'] ?? 0);
-                    $heuresRestantes = (int) ($matiere['heures_restantes'] ?? 0);
-                    $pourcentageUtilise = (int) ($matiere['pourcentage_utilise'] ?? 0);
-                    $heuresUtilisees = max(0, $volumeTotal - $heuresRestantes);
-                    $isComplete = $pourcentageUtilise >= 100;
-                    $enseignantPrincipal = $matiere['enseignant_affiche'] ?? null;
-                    $enseignantsDispo = collect($matiere['enseignants_selectables'] ?? []);
-                @endphp
-                <div class="epl-matiere">
-                    <div class="epl-matiere-top">
-                        <div class="epl-matiere-name">
-                            <div class="epl-matiere-icon"><i class="fas fa-book"></i></div>
-                            <div>
-                                <div class="epl-matiere-label">{{ $matiere['matiere']->name }}</div>
-                                <div class="epl-matiere-meta epl-matiere-teacher">
-                                    @if($enseignantPrincipal)
-                                        <i class="fas fa-user-tie"></i> {{ $enseignantPrincipal->name }}
-                                    @else
-                                        <i class="fas fa-user-slash"></i> <span class="text-muted">Aucun enseignant assigné</span>
-                                    @endif
+            @php
+                // PR17.4 : grouping par UE pour LMD (ECUE.uniteEnseignement chargee par MatiereTreeBuilder).
+                // BTS fallback : groupe unique "matieres" (pas d'UE).
+                $hasUeGrouping = collect($planificationData['matieres_planifiees'])
+                    ->contains(fn ($m) => isset($m['matiere']->uniteEnseignement) && $m['matiere']->uniteEnseignement);
+                $groups = collect($planificationData['matieres_planifiees'])
+                    ->groupBy(fn ($m) => optional($m['matiere']->uniteEnseignement ?? null)->id ?? 0);
+            @endphp
+
+            @if($hasUeGrouping)
+                <div x-data="{ openUes: {} }">
+                    @foreach($groups as $ueId => $matieres)
+                        @php
+                            $firstUe = $matieres->first()['matiere']->uniteEnseignement ?? null;
+                            $ueLabel = $firstUe?->name ?? 'Hors UE';
+                            $ueCode = $firstUe?->code ?? '';
+                            $ueType = $firstUe && $firstUe->type_ue ? ($firstUe->type_ue->label() ?? 'UE') : 'UE';
+                            $ueTotalPlanif = $matieres->sum(fn ($m) => (int) ($m['volume_horaire_total'] ?? 0));
+                            $ueTotalRestant = $matieres->sum(fn ($m) => (int) ($m['heures_restantes'] ?? 0));
+                            $ueUsed = max(0, $ueTotalPlanif - $ueTotalRestant);
+                            $uePct = $ueTotalPlanif > 0 ? (int) round($ueUsed / $ueTotalPlanif * 100) : 0;
+                            $ueKey = (string) $ueId;
+                        @endphp
+                        <div style="border-bottom: 1px solid #f1f5f9; padding: .25rem 0;">
+                            <div style="display:flex; align-items:center; justify-content:space-between; padding:.6rem 0; cursor:pointer; gap:.65rem;"
+                                 @click="openUes['{{ $ueKey }}'] = !openUes['{{ $ueKey }}']"
+                                 role="button" tabindex="0"
+                                 @keydown.enter.prevent="openUes['{{ $ueKey }}'] = !openUes['{{ $ueKey }}']"
+                                 @keydown.space.prevent="openUes['{{ $ueKey }}'] = !openUes['{{ $ueKey }}']">
+                                <div style="display:flex; align-items:center; gap:.55rem; flex:1; min-width:0;">
+                                    <i class="fas fa-chevron-right" :class="openUes['{{ $ueKey }}'] ? 'epl-caret--open' : ''" style="color:#94a3b8; font-size:.7rem; width:12px; transition:transform .2s;" :style="openUes['{{ $ueKey }}'] ? 'transform: rotate(90deg); color:#0453cb;' : ''"></i>
+                                    <span style="font-family:'Courier New',monospace; font-size:.7rem; font-weight:700; color:#0453cb; background:rgba(4,83,203,.08); padding:.15rem .45rem; border-radius:4px;">{{ $ueCode ?: $ueType }}</span>
+                                    <span style="font-weight:700; color:#1e293b; font-size:.92rem;">{{ $ueLabel }}</span>
+                                    <span style="font-size:.65rem; color:#64748b; text-transform:uppercase; letter-spacing:.4px; padding:.1rem .4rem; background:#f1f5f9; border-radius:4px;">{{ $ueType }}</span>
+                                    <span style="font-size:.7rem; color:#64748b; margin-left:.3rem;">({{ $matieres->count() }} ECUE)</span>
+                                </div>
+                                <div style="font-size:.78rem; color:#64748b; white-space:nowrap;">
+                                    <strong style="color:#0f172a; font-size:.9rem;">{{ $ueUsed }}h</strong>/{{ $ueTotalPlanif }}h
+                                    <span style="color:#0453cb; font-weight:700; margin-left:.3rem;">{{ $uePct }}%</span>
                                 </div>
                             </div>
+                            <div x-show="openUes['{{ $ueKey }}']" x-cloak x-transition.opacity style="padding-left:1.65rem;">
+                                @foreach($matieres as $matiere)
+                                    @php
+                                        $volumeTotal = (int) ($matiere['volume_horaire_total'] ?? 0);
+                                        $heuresRestantes = (int) ($matiere['heures_restantes'] ?? 0);
+                                        $pourcentageUtilise = (int) ($matiere['pourcentage_utilise'] ?? 0);
+                                        $heuresUtilisees = max(0, $volumeTotal - $heuresRestantes);
+                                        $isComplete = $pourcentageUtilise >= 100;
+                                        $enseignantPrincipal = $matiere['enseignant_affiche'] ?? null;
+                                        $b = $matiere['volume_budget'] ?? null;
+                                    @endphp
+                                    <div class="epl-matiere">
+                                        <div class="epl-matiere-top">
+                                            <div class="epl-matiere-name">
+                                                <div class="epl-matiere-icon"><i class="fas fa-book"></i></div>
+                                                <div>
+                                                    <div class="epl-matiere-label">{{ $matiere['matiere']->name }}</div>
+                                                    <div class="epl-matiere-meta epl-matiere-teacher">
+                                                        @if($enseignantPrincipal)
+                                                            <i class="fas fa-user-tie"></i> {{ $enseignantPrincipal->name }}
+                                                        @else
+                                                            <i class="fas fa-user-slash"></i> <span class="text-muted">Aucun enseignant assigné</span>
+                                                        @endif
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="epl-matiere-numbers">
+                                                <span><strong>{{ $heuresUtilisees }}h</strong> / {{ $volumeTotal }}h</span>
+                                                <span class="epl-matiere-pct">{{ $pourcentageUtilise }}%</span>
+                                            </div>
+                                        </div>
+                                        <div class="epl-progress">
+                                            <div class="epl-progress-bar {{ $isComplete ? 'epl-progress-bar--complete' : '' }}" style="width:{{ min(100,max(0,$pourcentageUtilise)) }}%;"></div>
+                                        </div>
+                                        @if($b)
+                                        <div style="display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.4rem; font-size:.7rem;">
+                                            <span style="background:rgba(4,83,203,.08); color:#0453cb; padding:.15rem .5rem; border-radius:5px; font-weight:600;">CM <strong>{{ (int) ($b['cm']['realise'] ?? 0) }}h</strong>/{{ (int) ($b['cm']['planifie'] ?? 0) }}h</span>
+                                            <span style="background:rgba(59,125,219,.08); color:#3b7ddb; padding:.15rem .5rem; border-radius:5px; font-weight:600;">TD <strong>{{ (int) ($b['td']['realise'] ?? 0) }}h</strong>/{{ (int) ($b['td']['planifie'] ?? 0) }}h</span>
+                                            <span style="background:rgba(94,145,222,.08); color:#5e91de; padding:.15rem .5rem; border-radius:5px; font-weight:600;">TP <strong>{{ (int) ($b['tp']['realise'] ?? 0) }}h</strong>/{{ (int) ($b['tp']['planifie'] ?? 0) }}h</span>
+                                        </div>
+                                        @endif
+                                    </div>
+                                @endforeach
+                            </div>
                         </div>
-                        <div class="epl-matiere-numbers">
-                            <span><strong>{{ $heuresUtilisees }}h</strong> / {{ $volumeTotal }}h</span>
-                            <span class="epl-matiere-pct">{{ $pourcentageUtilise }}%</span>
-                        </div>
-                    </div>
-
-                    <div class="epl-progress" role="progressbar" aria-valuenow="{{ $pourcentageUtilise }}" aria-valuemin="0" aria-valuemax="100" aria-label="Volume horaire utilisé pour {{ $matiere['matiere']->name }}">
-                        <div class="epl-progress-bar {{ $isComplete ? 'epl-progress-bar--complete' : '' }}"
-                             style="width: {{ min(100, max(0, $pourcentageUtilise)) }}%;"></div>
-                    </div>
-
-                    @if($enseignantsDispo->count() > 1)
-                        <div class="epl-teachers-chips" title="Enseignants pouvant intervenir sur cette matière">
-                            @foreach($enseignantsDispo as $ens)
-                                @php $nom = optional($ens->user)->name ?? $ens->name ?? 'Enseignant'; @endphp
-                                <span class="epl-teachers-chip">{{ $nom }}</span>
-                            @endforeach
-                        </div>
-                    @endif
+                    @endforeach
                 </div>
-            @endforeach
+            @else
+                {{-- BTS : liste plate sans groupement UE --}}
+                @foreach($planificationData['matieres_planifiees'] as $matiere)
+                    @php
+                        $volumeTotal = (int) ($matiere['volume_horaire_total'] ?? 0);
+                        $heuresRestantes = (int) ($matiere['heures_restantes'] ?? 0);
+                        $pourcentageUtilise = (int) ($matiere['pourcentage_utilise'] ?? 0);
+                        $heuresUtilisees = max(0, $volumeTotal - $heuresRestantes);
+                        $isComplete = $pourcentageUtilise >= 100;
+                        $enseignantPrincipal = $matiere['enseignant_affiche'] ?? null;
+                        $enseignantsDispo = collect($matiere['enseignants_selectables'] ?? []);
+                    @endphp
+                    <div class="epl-matiere">
+                        <div class="epl-matiere-top">
+                            <div class="epl-matiere-name">
+                                <div class="epl-matiere-icon"><i class="fas fa-book"></i></div>
+                                <div>
+                                    <div class="epl-matiere-label">{{ $matiere['matiere']->name }}</div>
+                                    <div class="epl-matiere-meta epl-matiere-teacher">
+                                        @if($enseignantPrincipal)
+                                            <i class="fas fa-user-tie"></i> {{ $enseignantPrincipal->name }}
+                                        @else
+                                            <i class="fas fa-user-slash"></i> <span class="text-muted">Aucun enseignant assigné</span>
+                                        @endif
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="epl-matiere-numbers">
+                                <span><strong>{{ $heuresUtilisees }}h</strong> / {{ $volumeTotal }}h</span>
+                                <span class="epl-matiere-pct">{{ $pourcentageUtilise }}%</span>
+                            </div>
+                        </div>
+                        <div class="epl-progress">
+                            <div class="epl-progress-bar {{ $isComplete ? 'epl-progress-bar--complete' : '' }}" style="width:{{ min(100,max(0,$pourcentageUtilise)) }}%;"></div>
+                        </div>
+                        @if($enseignantsDispo->count() > 1)
+                            <div class="epl-teachers-chips">
+                                @foreach($enseignantsDispo as $ens)
+                                    @php $nom = optional($ens->user)->name ?? $ens->name ?? 'Enseignant'; @endphp
+                                    <span class="epl-teachers-chip">{{ $nom }}</span>
+                                @endforeach
+                            </div>
+                        @endif
+                    </div>
+                @endforeach
+            @endif
         @endif
     </div>
 </div>

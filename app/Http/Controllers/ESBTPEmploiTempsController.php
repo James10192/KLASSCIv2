@@ -714,13 +714,13 @@ class ESBTPEmploiTempsController extends Controller
                 $emploiTemps->semestre
             );
 
-            // PR2 chantier emploi-temps-lmd-unification : applique override LMD via service
-            // canonical MatiereTreeBuilder. buildForPlanning() sans volumeBudget car bulk-edit
-            // et sections AJAX n'affichent pas les KPIs "heures restantes" (uniquement la grille).
-            // Sans cette ligne, le bulkEdit affichait "Planification non configuree" pour classes LMD.
-            if (($emploiTemps->classe->systeme_academique ?? '') === 'LMD') {
+            // PR17.4 : utilise buildWithVolumeBudget (au lieu de buildForPlanning) pour que
+            // bulk-edit affiche les heures CM/TD/TP realisees comme emploi-temps/show.
+            // Feedback Marcel : "Dans bulk-edit il n'y a pas budgetisation par CM tp etc"
+            if (($emploiTemps->classe->systeme_academique ?? '') === 'LMD'
+                || in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true)) {
                 $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)
-                    ->buildForPlanning($planificationData, $emploiTemps->classe);
+                    ->buildWithVolumeBudget($planificationData, $emploiTemps->classe, $emploiTemps->annee);
             }
         }
 

@@ -258,6 +258,21 @@ class MatiereTreeBuilder
                 'pourcentage_utilise' => $pct,
                 'enseignant_affiche' => null,
                 'enseignants_selectables' => collect(),
+                // PR17.4 : expose budget CM/TD/TP detail pour planification-section component
+                'volume_budget' => [
+                    'cm' => [
+                        'planifie' => $row['cm'] ?? 0,
+                        'realise' => $b['cm']['realise'] ?? 0,
+                    ],
+                    'td' => [
+                        'planifie' => $row['td'] ?? 0,
+                        'realise' => $b['td']['realise'] ?? 0,
+                    ],
+                    'tp' => [
+                        'planifie' => $row['tp'] ?? 0,
+                        'realise' => $b['tp']['realise'] ?? 0,
+                    ],
+                ],
             ];
         });
 
