@@ -197,7 +197,7 @@
     opacity: .5; cursor: pointer;
 }
 
-/* Force <x-au-select> à occuper toute la cellule grid */
+/* Force au-select à occuper toute la cellule grid */
 .exp-modal-grid .field .au-select,
 .exp-modal-grid .field .au-select-trigger { width: 100%; }
 .exp-modal-grid .field .au-select-trigger { box-sizing: border-box; }
