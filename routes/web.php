@@ -2482,6 +2482,62 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
 });
 
 // ============================================================
+// Routes Jury de délibération LMD (PR12 — UI premium juy-*)
+// ============================================================
+Route::prefix('esbtp/lmd/jurys')->name('esbtp.lmd.jurys.')
+    ->middleware(['auth', 'permission:admin.access', 'permission:module.lmd.access', 'paywall'])
+    ->group(function () {
+        Route::get('/', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'index'])
+            ->middleware('permission:lmd.jury.view')
+            ->name('index');
+        Route::post('/', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'store'])
+            ->middleware(['permission:lmd.jury.preside', 'throttle:30,1'])
+            ->name('store');
+        Route::get('/{jury}', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'show'])
+            ->middleware('permission:lmd.jury.view')
+            ->name('show');
+        Route::delete('/{jury}', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'destroy'])
+            ->middleware('permission:lmd.jury.preside')
+            ->name('destroy');
+
+        // Membres
+        Route::post('/{jury}/membres', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'addMembre'])
+            ->middleware(['permission:lmd.jury.preside', 'throttle:60,1'])
+            ->name('membres.store');
+        Route::delete('/{jury}/membres/{membre}', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'removeMembre'])
+            ->middleware('permission:lmd.jury.preside')
+            ->name('membres.destroy');
+        Route::post('/{jury}/membres/{membre}/signer', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'signerMembre'])
+            ->middleware(['permission:lmd.jury.deliberate', 'throttle:30,1'])
+            ->name('membres.signer');
+
+        // Délibération
+        Route::post('/{jury}/decisions/auto', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'appliquerAuto'])
+            ->middleware(['permission:lmd.jury.deliberate', 'throttle:10,1'])
+            ->name('decisions.auto');
+        Route::patch('/{jury}/decisions/{etudiant}', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'overrideDecision'])
+            ->middleware(['permission:lmd.jury.deliberate', 'throttle:60,1'])
+            ->name('decisions.override');
+        Route::get('/{jury}/kpis', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'kpis'])
+            ->middleware(['permission:lmd.jury.view', 'throttle:120,1'])
+            ->name('kpis');
+
+        // PV
+        Route::post('/{jury}/pv/generer', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'genererPv'])
+            ->middleware(['permission:lmd.jury.publish', 'throttle:10,1'])
+            ->name('pv.generer');
+        Route::get('/{jury}/pv/preview', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'pvPreview'])
+            ->middleware(['permission:lmd.jury.view', 'throttle:60,1'])
+            ->name('pv-preview');
+        Route::get('/{jury}/pv/download', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'pvDownload'])
+            ->middleware(['permission:lmd.jury.view', 'throttle:30,1'])
+            ->name('pv-download');
+        Route::post('/{jury}/publier', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'publier'])
+            ->middleware(['permission:lmd.jury.publish', 'throttle:10,1'])
+            ->name('publier');
+    });
+
+// ============================================================
 // Routes Rattrapage LMD (PR10 — sessions 2e session UEMOA)
 // ============================================================
 Route::prefix('esbtp/lmd/rattrapage')->name('esbtp.lmd.rattrapage.')
