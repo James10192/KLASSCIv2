@@ -12,6 +12,23 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### Audit — Liens vers entités liées sur toutes les pages — 22 mai 2026
+
+Le journal d'audit (`/esbtp/audit`) ne disait pas à quel **étudiant**, **inscription**, **catégorie de frais** ou **classe** un événement était rattaché — exemple emblématique : un événement `ESBTPFraisSubscription` se contentait d'un `auditable_id` sans contexte métier. Cette livraison ajoute un panneau premium « Liens vers les entités liées » avec navigation directe.
+
+#### Ajouts
+
+- **Service `App\Services\Audit\AuditEntityResolver`** — résout pour chaque `auditable_type` (25 modèles couverts : `ESBTPFraisSubscription`, `ESBTPPaiement`, `ESBTPInscription`, `ESBTPNote`, `ESBTPEvaluation`, `ESBTPBulletin`, `ESBTPAttendance`, `ESBTPLMDJury`, etc.) les liens vers étudiant, inscription, classe, catégorie de frais, option choisie, matière, jury, créé par. Fallback sur `old_values`/`new_values` pour reconstruire le contexte des entités supprimées.
+- **Composant Blade `<x-audit-links>`** — grid premium monochrome bleu KLASSCI (namespace `al-*`), avec mode compact pour inline dans tableaux/timeline.
+- **Page `show` enrichie** — section dédiée « Liens vers les entités liées » entre Entité concernée et Différences.
+- **Page `index` (journal principal)** — modal « Aperçu rapide » charge les liens via AJAX (`/esbtp/audit/{id}/related-links`) pour éviter le N+1 sur la pagination.
+- **Page `comptabilite` (audit comptable)** — colonne « Liens » avec pill cliquable + row expander Alpine (`x-data="{ openIds: [] }"`).
+- **Page `user-activity` (surveillance utilisateur)** — pill toggleable sous chaque item timeline avec section liens repliable.
+
+#### Améliorations
+
+- Tests Unit (`AuditEntityResolverTest`) + Feature (`AuditEntityLinksTest`) — routing, throttle 60/min, rendu composant, mode compact, smoke instantiation.
+
 ### Chantier Emploi-Temps & LMD Unification UEMOA (PR0–PR14) — 22 mai 2026
 
 Refonte profonde du système emploi du temps + examens + rattrapage + jury de délibération pour aligner BTS legacy et LMD UEMOA sur 6 tenants. 14 PRs livrées sur la branche `feat/emploi-temps-lmd-master`. Voir [docs/MASTER-PLAN-emploi-temps-lmd-unification.md](docs/MASTER-PLAN-emploi-temps-lmd-unification.md).

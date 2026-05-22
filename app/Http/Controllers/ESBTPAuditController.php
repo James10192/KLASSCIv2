@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPDepense;
 use App\Models\ESBTPFacture;
+use App\Services\Audit\AuditEntityResolver;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Response;
@@ -20,10 +21,10 @@ class ESBTPAuditController extends Controller
     /**
      * Constructeur avec middleware de permissions
      */
-    public function __construct()
+    public function __construct(private readonly AuditEntityResolver $entityResolver = new AuditEntityResolver())
     {
         $this->middleware('auth');
-        $this->middleware('permission:security.audit.view')->only(['index', 'show', 'getAuditData']);
+        $this->middleware('permission:security.audit.view')->only(['index', 'show', 'getAuditData', 'relatedLinks']);
         $this->middleware('permission:security.audit.export')->only(['export', 'exportPdf', 'exportExcel']);
         $this->middleware('permission:comptabilite.audit.view')->only(['comptabiliteAudits']);
         $this->middleware('permission:security.users.monitor')->only(['userActivity']);
@@ -119,7 +120,29 @@ class ESBTPAuditController extends Controller
         // Diff field-by-field
         $changes = $this->formatChanges($audit);
 
-        return view('esbtp.audit.show', compact('audit', 'relatedAudits', 'riskLevel', 'entityUrl', 'changes'));
+        // Liens vers les entités liées (étudiant, inscription, catégorie de frais, …)
+        $entityLinks = $this->entityResolver->resolve($audit);
+
+        return view('esbtp.audit.show', compact('audit', 'relatedAudits', 'riskLevel', 'entityUrl', 'changes', 'entityLinks'));
+    }
+
+    /**
+     * Endpoint AJAX — retourne les liens entités liées pour un audit donné.
+     * Utilisé par le modal "Aperçu rapide" de /esbtp/audit/index pour ne pas
+     * résoudre les relations en bulk sur 50 lignes paginées (coût N+1 fort).
+     */
+    public function relatedLinks($id)
+    {
+        $audit = Audit::findOrFail($id);
+
+        if ($this->isSensitiveData($audit) && !auth()->user()->can('comptabilite.sensitive.access')) {
+            abort(403, 'Accès aux données sensibles non autorisé');
+        }
+
+        return response()->json([
+            'audit_id' => $audit->id,
+            'links' => $this->entityResolver->resolve($audit),
+        ]);
     }
 
     /**
@@ -201,7 +224,15 @@ class ESBTPAuditController extends Controller
             'App\Models\ESBTPBourse' => 'Bourses',
         ];
 
-        return view('esbtp.audit.comptabilite', compact('audits', 'kpis', 'financialModelsLabels'));
+        // Précalcule les liens entités liées pour chaque audit de la page courante.
+        // Le resolver eager-load les relations par audit ; sur 25 lignes c'est
+        // acceptable et évite de bombarder le serveur depuis le client.
+        $entityLinksMap = [];
+        foreach ($audits as $a) {
+            $entityLinksMap[$a->id] = $this->entityResolver->resolve($a);
+        }
+
+        return view('esbtp.audit.comptabilite', compact('audits', 'kpis', 'financialModelsLabels', 'entityLinksMap'));
     }
 
     /**
@@ -292,6 +323,12 @@ class ESBTPAuditController extends Controller
         $users = User::select('id', 'name', 'email', 'username')->with('roles:id,name')->orderBy('name')->get();
         $selectedUser = $userId ? User::find($userId) : null;
 
+        // Précalcule les liens entités liées pour chaque audit de la page (50 max).
+        $entityLinksMap = [];
+        foreach ($activities as $a) {
+            $entityLinksMap[$a->id] = $this->entityResolver->resolve($a);
+        }
+
         return view('esbtp.audit.user-activity', compact(
             'activities',
             'stats',
@@ -301,7 +338,8 @@ class ESBTPAuditController extends Controller
             'topIps',
             'hourlyDistribution',
             'dateFrom',
-            'dateTo'
+            'dateTo',
+            'entityLinksMap'
         ));
     }
 

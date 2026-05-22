@@ -226,13 +226,15 @@
             @if($activities->isEmpty())
                 <div class="au-empty"><i class="fas fa-inbox"></i> Aucune action sur la période</div>
             @else
-                <div class="au-timeline">
+                <div class="au-timeline" x-data="{ openIds: [] }">
                     @php $lastDay = null; @endphp
                     @foreach($activities as $audit)
                         @php
                             $day = $audit->created_at->format('Y-m-d');
                             $event = $audit->event;
                             $modelLabel = class_basename($audit->auditable_type);
+                            $rowLinks = $entityLinksMap[$audit->id] ?? [];
+                            $rowLinksCount = count($rowLinks);
                         @endphp
                         @if($day !== $lastDay)
                             <div class="au-timeline-day">
@@ -255,9 +257,25 @@
                                         <span class="au-timeline-ip"><i class="fas fa-network-wired"></i> {{ $audit->ip_address }}</span>
                                     @endif
                                 </div>
-                                <a href="{{ route('esbtp.audit.show', $audit->id) }}" class="au-timeline-link">
-                                    Détail <i class="fas fa-arrow-right"></i>
-                                </a>
+                                <div class="au-timeline-actions-row">
+                                    @if($rowLinksCount > 0)
+                                        <button type="button" class="au-links-pill au-links-pill--sm"
+                                                @click="openIds.includes({{ $audit->id }}) ? openIds = openIds.filter(i => i !== {{ $audit->id }}) : openIds.push({{ $audit->id }})">
+                                            <i class="fas fa-project-diagram"></i>
+                                            <span x-show="!openIds.includes({{ $audit->id }})">{{ $rowLinksCount }} lien{{ $rowLinksCount > 1 ? 's' : '' }}</span>
+                                            <span x-show="openIds.includes({{ $audit->id }})" x-cloak>Replier</span>
+                                            <i class="fas fa-chevron-down au-toggle-caret" :class="openIds.includes({{ $audit->id }}) ? 'au-toggle-caret--open' : ''"></i>
+                                        </button>
+                                    @endif
+                                    <a href="{{ route('esbtp.audit.show', $audit->id) }}" class="au-timeline-link">
+                                        Détail <i class="fas fa-arrow-right"></i>
+                                    </a>
+                                </div>
+                                @if($rowLinksCount > 0)
+                                    <div class="au-timeline-links" x-show="openIds.includes({{ $audit->id }})" x-cloak x-transition.opacity>
+                                        <x-audit-links :links="$rowLinks" :compact="true" />
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     @endforeach

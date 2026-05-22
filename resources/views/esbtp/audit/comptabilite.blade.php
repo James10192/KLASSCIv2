@@ -108,15 +108,17 @@
                     <p>Essayez de modifier vos critères de recherche.</p>
                 </div>
             @else
-                <table class="au-table">
+                <table class="au-table au-table--expandable" x-data="{ openIds: [] }">
                     <thead>
                         <tr>
+                            <th style="width:42px"></th>
                             <th>Date / Heure</th>
                             <th>Utilisateur</th>
                             <th>Action</th>
                             <th>Type</th>
                             <th>ID</th>
                             <th>Montant (avant → après)</th>
+                            <th>Liens</th>
                             <th class="au-th-actions">Détails</th>
                         </tr>
                     </thead>
@@ -129,8 +131,19 @@
                                 $oldMontant = $oldValues['montant'] ?? null;
                                 $newMontant = $newValues['montant'] ?? null;
                                 $modelLabel = $financialModelsLabels[$a->auditable_type] ?? class_basename($a->auditable_type);
+                                $rowLinks = $entityLinksMap[$a->id] ?? [];
+                                $rowLinksCount = count($rowLinks);
                             @endphp
-                            <tr>
+                            <tr class="au-row" :class="openIds.includes({{ $a->id }}) ? 'au-row--open' : ''">
+                                <td class="au-cell-toggle">
+                                    <button type="button" class="au-toggle"
+                                            :class="openIds.includes({{ $a->id }}) ? 'au-toggle--open' : ''"
+                                            @click="openIds.includes({{ $a->id }}) ? openIds = openIds.filter(i => i !== {{ $a->id }}) : openIds.push({{ $a->id }})"
+                                            :title="openIds.includes({{ $a->id }}) ? 'Replier' : 'Voir les liens'"
+                                            @disabled($rowLinksCount === 0)>
+                                        <i class="fas fa-chevron-right au-toggle-caret"></i>
+                                    </button>
+                                </td>
                                 <td>
                                     <div class="au-cell-date">
                                         <i class="far fa-clock"></i>
@@ -163,12 +176,32 @@
                                         <span class="au-meta-empty">—</span>
                                     @endif
                                 </td>
+                                <td>
+                                    @if($rowLinksCount > 0)
+                                        <button type="button" class="au-links-pill"
+                                                @click="openIds.includes({{ $a->id }}) ? openIds = openIds.filter(i => i !== {{ $a->id }}) : openIds.push({{ $a->id }})"
+                                                title="Voir les {{ $rowLinksCount }} entité{{ $rowLinksCount > 1 ? 's' : '' }} liée{{ $rowLinksCount > 1 ? 's' : '' }}">
+                                            <i class="fas fa-project-diagram"></i>
+                                            {{ $rowLinksCount }} lien{{ $rowLinksCount > 1 ? 's' : '' }}
+                                        </button>
+                                    @else
+                                        <span class="au-meta-empty">—</span>
+                                    @endif
+                                </td>
                                 <td class="au-td-actions">
                                     <a href="{{ route('esbtp.audit.show', $a->id) }}" class="au-icon-btn au-icon-btn--primary" title="Voir détail">
                                         <i class="fas fa-eye"></i>
                                     </a>
                                 </td>
                             </tr>
+                            @if($rowLinksCount > 0)
+                                <tr class="au-row-expand" x-show="openIds.includes({{ $a->id }})" x-cloak x-transition.opacity>
+                                    <td></td>
+                                    <td colspan="8" class="au-row-expand-cell">
+                                        <x-audit-links :links="$rowLinks" :compact="true" />
+                                    </td>
+                                </tr>
+                            @endif
                         @endforeach
                     </tbody>
                 </table>

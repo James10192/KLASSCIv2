@@ -193,6 +193,40 @@
 .au-amount-arrow { color: #94a3b8; font-size: .75rem; }
 .au-meta-empty { color: #94a3b8; font-style: italic; font-size: .82rem; }
 
+/* ───── EXPANDABLE ROW (audit-links inline) ───── */
+.au-table--expandable .au-row td { transition: background .15s ease; }
+.au-table--expandable .au-row--open td { background: #f8faff; }
+.au-cell-toggle { width: 42px; text-align: center; padding-left: .5rem !important; padding-right: 0 !important; }
+.au-toggle {
+    width: 28px; height: 28px; border-radius: 8px;
+    border: 1px solid #e2e8f0; background: #fff; color: #64748b;
+    display: inline-flex; align-items: center; justify-content: center;
+    cursor: pointer; transition: all .15s ease;
+}
+.au-toggle:hover:not(:disabled) { background: #eff6ff; color: #0453cb; border-color: #dbeafe; }
+.au-toggle:disabled { opacity: .35; cursor: not-allowed; background: #f8fafc; }
+.au-toggle--open { background: #eff6ff; border-color: #dbeafe; color: #0453cb; }
+.au-toggle-caret { transition: transform .2s ease; font-size: .75rem; }
+.au-toggle--open .au-toggle-caret { transform: rotate(90deg); }
+.au-toggle-caret--open { transform: rotate(180deg); }
+
+.au-row-expand td { padding: 0; }
+.au-row-expand-cell { padding: .65rem 1rem 1rem !important; background: #f8faff; border-top: 1px dashed rgba(4,83,203,.16); }
+
+.au-links-pill {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .3rem .65rem; border-radius: 999px;
+    background: #eff6ff; border: 1px solid #dbeafe; color: #0453cb;
+    font-size: .72rem; font-weight: 700; cursor: pointer;
+    transition: all .15s ease;
+}
+.au-links-pill:hover { background: #dbeafe; border-color: #93c5fd; color: #033a8e; }
+.au-links-pill i { font-size: .7rem; }
+.au-links-pill--sm { padding: .22rem .55rem; font-size: .68rem; }
+
+.au-timeline-actions-row { display: flex; align-items: center; gap: .5rem; flex-wrap: wrap; margin-top: .4rem; }
+.au-timeline-links { margin-top: .65rem; padding-left: 0; }
+
 /* ───── PAGINATION ───── */
 .au-pagination {
     padding: 1rem 1.25rem; display: flex; align-items: center; justify-content: space-between; gap: 1rem;
@@ -281,6 +315,16 @@
 .au-diff-old--block, .au-diff-new--block { display: block; padding: .65rem; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
 .au-link-btn { background: none; border: none; color: #0453cb; font-size: .78rem; font-weight: 600; cursor: pointer; padding: .3rem 0; margin-top: .35rem; display: inline-flex; align-items: center; gap: .25rem; text-decoration: none; }
 .au-link-btn:hover { color: #033a8e; text-decoration: underline; }
+
+/* ───── QUICK LINKS (quickModal AJAX) ───── */
+.au-quick-links-section { margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid #f1f5f9; }
+.au-quick-links-section h4 {
+    font-size: .9rem; font-weight: 700; color: #0f172a; margin: 0 0 .85rem;
+    display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+}
+.au-quick-links-section h4 i { color: #0453cb; }
+.au-quick-links-loading { display: flex; align-items: center; gap: .65rem; padding: 1rem; color: #64748b; font-size: .85rem; }
+.au-spinner--sm { width: 20px; height: 20px; border-width: 2px; }
 
 .au-form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; }
 .au-form-grid label { display: block; font-size: .8rem; font-weight: 600; color: #475569; margin-bottom: .35rem; }

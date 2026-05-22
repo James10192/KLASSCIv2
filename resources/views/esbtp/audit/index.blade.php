@@ -245,6 +245,39 @@
                     <i class="fas fa-info"></i>
                     <p>Aucun changement enregistré</p>
                 </div>
+
+                {{-- ═══════════════════════════════ LIENS ENTITÉS LIÉES (AJAX) ═══════════════════════════════ --}}
+                <div class="au-quick-links-section">
+                    <h4>
+                        <i class="fas fa-project-diagram"></i> Liens vers les entités liées
+                        <span class="au-meta-sub" x-show="quickLinks.length > 0" x-cloak>
+                            • <span x-text="quickLinks.length"></span>
+                        </span>
+                    </h4>
+                    <div class="au-quick-links-loading" x-show="quickLinksLoading" x-cloak>
+                        <div class="au-spinner au-spinner--sm"></div>
+                        <span>Chargement des liens…</span>
+                    </div>
+                    <div class="al-grid al-grid--compact" x-show="!quickLinksLoading && quickLinks.length > 0" x-cloak>
+                        <template x-for="link in quickLinks" :key="link.key + '_' + (link.value || '')">
+                            <a :href="link.route || null"
+                               :class="'al-item al-item--' + (link.emphasis || 'normal') + (link.route ? ' al-item--linkable' : '')"
+                               :title="link.route ? ('Ouvrir : ' + link.value) : ''">
+                                <span class="al-icon"><i class="fas" :class="link.icon || 'fa-link'"></i></span>
+                                <div class="al-body">
+                                    <div class="al-label" x-text="link.label"></div>
+                                    <div class="al-value" x-text="link.value"></div>
+                                    <div class="al-sub" x-show="link.sublabel" x-text="link.sublabel"></div>
+                                </div>
+                                <span class="al-arrow" x-show="link.route"><i class="fas fa-arrow-up-right-from-square"></i></span>
+                            </a>
+                        </template>
+                    </div>
+                    <div class="au-empty au-empty--small" x-show="!quickLinksLoading && quickLinks.length === 0" x-cloak>
+                        <i class="fas fa-link-slash"></i>
+                        <p>Aucune entité liée détectée</p>
+                    </div>
+                </div>
             </div>
             <div class="au-modal-footer">
                 <button type="button" class="au-btn au-btn--ghost" @click="quickModalOpen = false">Fermer</button>
@@ -331,6 +364,8 @@ function auditPage() {
         advancedFiltersOpen: false,
         quickModalOpen: false,
         quickModalAudit: null,
+        quickLinks: [],
+        quickLinksLoading: false,
 
         init() {
             this.reload();
@@ -393,6 +428,24 @@ function auditPage() {
         openQuickModal(audit) {
             this.quickModalAudit = audit;
             this.quickModalOpen = true;
+            this.fetchQuickLinks(audit.id);
+        },
+
+        fetchQuickLinks(auditId) {
+            this.quickLinks = [];
+            this.quickLinksLoading = true;
+            fetch(`/esbtp/audit/${auditId}/related-links`, {
+                headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+            })
+                .then(r => r.ok ? r.json() : Promise.reject(r))
+                .then(data => {
+                    this.quickLinks = data.links || [];
+                    this.quickLinksLoading = false;
+                })
+                .catch(() => {
+                    this.quickLinks = [];
+                    this.quickLinksLoading = false;
+                });
         },
 
         exportData(format) {

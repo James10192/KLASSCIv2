@@ -2165,6 +2165,12 @@ Route::middleware(['auth', 'throttle:audit'])->prefix('esbtp/audit')->name('esbt
         Route::get('/export/pdf', [ESBTPAuditController::class, 'exportPdf'])->name('export.pdf');
     });
 
+    // Liens entités liées d'un audit (AJAX, pour modal "Aperçu rapide")
+    Route::get('/{id}/related-links', [ESBTPAuditController::class, 'relatedLinks'])
+        ->where('id', '[0-9]+')
+        ->middleware('throttle:60,1')
+        ->name('related-links');
+
     // Détails d'un audit spécifique (en dernier pour éviter conflit avec routes nommées ci-dessus)
     Route::get('/{id}', [ESBTPAuditController::class, 'show'])
         ->where('id', '[0-9]+')

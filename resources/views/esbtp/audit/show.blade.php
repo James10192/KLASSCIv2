@@ -177,6 +177,21 @@
         </div>
     </div>
 
+    {{-- ═══════════════════════════════ LIENS ENTITÉS LIÉES ═══════════════════════════════ --}}
+    @if(!empty($entityLinks) && count($entityLinks) > 0)
+        <div class="au-card">
+            <div class="au-card-header">
+                <div class="au-card-title">
+                    <i class="fas fa-project-diagram"></i> Liens vers les entités liées
+                    <span class="au-meta-sub">Tracer le contexte métier de cet événement</span>
+                </div>
+            </div>
+            <div class="au-card-body">
+                <x-audit-links :links="$entityLinks" title="Entités liées à cet audit" />
+            </div>
+        </div>
+    @endif
+
     {{-- ═══════════════════════════════ DIFFÉRENCES ═══════════════════════════════ --}}
     <div class="au-card">
         <div class="au-card-header">
