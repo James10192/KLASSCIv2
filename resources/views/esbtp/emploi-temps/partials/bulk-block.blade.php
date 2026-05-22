@@ -31,7 +31,8 @@
         @if(!empty($planificationData) && ($planificationData['planifications_configurees'] ?? false))
             <x-emploi-temps.planification-section
                 :planificationData="$planificationData"
-                :emploiTemps="$emploiTemps" />
+                :emploiTemps="$emploiTemps"
+                :open="false" />
         @elseif(!empty($planificationData))
             <div class="alert alert-warning mb-4">
                 <div class="d-flex align-items-center">
