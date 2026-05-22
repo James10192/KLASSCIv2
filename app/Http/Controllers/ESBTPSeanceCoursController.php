@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TypeSeance;
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPEvaluation;
