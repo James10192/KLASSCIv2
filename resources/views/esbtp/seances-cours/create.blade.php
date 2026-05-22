@@ -285,7 +285,12 @@
 <div class="dashboard-acasi">
     <div class="main-content">
         @php
-            $isClasseLmd = ($emploiTemps->classe->systeme_academique ?? '') === 'LMD';
+            // PR17.1 hotfix : unifier detection LMD (etait 2 helpers contradictoires lines 288 vs 565).
+            // Bug observe par Marcel : si systeme_academique = NULL mais niveau.type = Licence,
+            // les 2 sets de types (BTS legacy + LMD UEMOA) s'affichaient simultanement.
+            // Solution : detection inclusive partout = (systeme_academique='LMD' OR niveau.type IN [Licence/Master/Doctorat]).
+            $isClasseLmd = ($emploiTemps->classe->systeme_academique ?? '') === 'LMD'
+                || in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true);
         @endphp
         {{-- Hero premium namespace sce-* (Seance Creation Edit) --}}
         <div class="sce-hero">
@@ -340,6 +345,40 @@
                 </div>
             @endif
         </div>
+
+        {{-- PR17.1 LMD B : warning explicite si classe LMD sans parcours_id configure.
+             Sinon le fallback charge des planifs BTS generiques de la combinaison filiere+niveau
+             et l'utilisateur voit des matieres BTS au lieu d'ECUE LMD. --}}
+        @if($isClasseLmd && empty($emploiTemps->classe->parcours_id))
+            <div class="alert alert-warning border-start border-warning border-4 mb-4">
+                <div class="d-flex">
+                    <div class="me-3">
+                        <i class="fas fa-triangle-exclamation fs-4"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5 class="alert-heading mb-1">Classe LMD sans parcours configuré</h5>
+                        <p class="mb-2">
+                            La classe <strong>{{ $emploiTemps->classe->name }}</strong> est en système LMD
+                            ({{ $emploiTemps->classe->niveau->name ?? 'niveau' }}) mais n'a ni
+                            <strong>parcours</strong>, ni <strong>mention</strong>, ni <strong>domaine</strong>
+                            assigné. Les matières affichées ci-dessous sont issues du <em>fallback BTS générique</em>
+                            (filière + niveau) au lieu des ECUE configurées dans Planning LMD.
+                        </p>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <a href="{{ route('esbtp.classes.edit', $emploiTemps->classe->id) }}"
+                               class="btn btn-warning btn-sm">
+                                <i class="fas fa-cog me-1"></i>Configurer Domaine / Mention / Parcours
+                            </a>
+                            <a href="{{ route('esbtp.lmd.planning.index') }}"
+                               target="_blank"
+                               class="btn btn-outline-warning btn-sm">
+                                <i class="fas fa-graduation-cap me-1"></i>Aller au Planning LMD
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        @endif
 
         @if ($errors->any())
             <div class="alert alert-danger border-start border-danger border-4 mb-4">
@@ -590,6 +629,24 @@
                                     <select name="teacher_id" id="teacher_id" class="form-select @error('teacher_id') error @enderror" onchange="showTeacherAvailability()" required>
                                         <option value="">Sélectionner d'abord une matière</option>
                                     </select>
+                                    @if($isClasseLmd)
+                                        {{-- LMD : les boutons quick-create et manage-teachers BTS ne sont pas applicables ici
+                                             (planification_id est null en LMD, enseignants_selectables vient des
+                                             enseignants assignés via Planning LMD). Renvoyer vers la page LMD. --}}
+                                        <div class="alert alert-info mt-2 mb-0">
+                                            <div class="d-flex align-items-start gap-2">
+                                                <i class="fas fa-info-circle mt-1"></i>
+                                                <div>
+                                                    <strong>Mode LMD — gestion enseignants via Planning LMD</strong>
+                                                    <div class="small text-muted mt-1">
+                                                        Les enseignants ECUE sont attribués depuis la page
+                                                        <a href="{{ route('esbtp.lmd.planning.index') }}" target="_blank" class="fw-semibold">Planning LMD</a>
+                                                        (responsable d'UE + enseignant par ECUE).
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    @else
                                     <div class="teacher-create-actions" id="teacherCreateActions" style="display: none;">
                                         <div class="alert alert-info mt-2 mb-0" id="teacherEmptyState" style="display: none;">
                                             <div class="d-flex align-items-start gap-2">
@@ -609,6 +666,7 @@
                                             </button>
                                         </div>
                                     </div>
+                                    @endif
                                     <div id="teacher-info" class="form-info" style="display: none;">
                                         <i class="fas fa-check-circle"></i>
                                         <span id="teacher-assignment-text"></span>
