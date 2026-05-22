@@ -601,6 +601,86 @@ Quand un dropdown premium s'ouvre, il doit pouvoir **déborder visuellement** de
 
 Sans ça, on obtient le bug classique : menu tronqué, labels de la section d'en bas qui passent au-dessus, UX cassée.
 
+## 🔄 AJAX no-reload (OBLIGATOIRE pour toute UI premium)
+
+### Principe absolu
+
+**Aucune action utilisateur sur une UI premium KLASSCI ne doit déclencher un page reload.**
+
+Toutes les mutations passent par :
+- `fetch()` avec JSON request/response
+- Alpine `x-data` qui maintient le state local
+- `dispatchEvent(new CustomEvent('...', { detail: {...} }))` pour communiquer entre composants
+- Toast premium pour feedback (composant `<x-toast>`)
+- `:disabled` ou `wire:loading` pour UX feedback pendant requête
+
+### Pattern canonique
+
+```blade
+<div x-data="moduleAction()" x-init="init()">
+    <form @submit.prevent="save()">
+        <input x-model="form.field">
+        <button :disabled="saving" type="submit">
+            <span x-show="!saving">Enregistrer</span>
+            <span x-show="saving" x-cloak>…</span>
+        </button>
+    </form>
+</div>
+
+<script>
+function moduleAction() {
+    return {
+        form: {}, saving: false,
+        init() {
+            window.addEventListener('module:updated', (ev) => {/* refresh */});
+        },
+        async save() {
+            this.saving = true;
+            try {
+                const res = await fetch('/api/...', {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify(this.form),
+                });
+                if (!res.ok) throw new Error('...');
+                const data = await res.json();
+                window.dispatchEvent(new CustomEvent('module:updated', { detail: data }));
+                window.dispatchEvent(new CustomEvent('toast', {
+                    detail: { type: 'success', message: 'Enregistré.' }
+                }));
+            } catch (err) {
+                window.dispatchEvent(new CustomEvent('toast', {
+                    detail: { type: 'error', message: err.message }
+                }));
+            } finally { this.saving = false; }
+        }
+    };
+}
+</script>
+```
+
+### Exceptions tolérées (rares — DOCUMENTER avec commentaire)
+
+1. **Création initiale d'une entité majeure** (createUser, createInscription) où reset état complet justifie reload
+2. **Actions critiques sécurité** (logout, force re-login après MDP changé)
+3. **Migration page** (changement de scope académique majeur)
+4. **Publication finale workflow** (jury → publication = change tout contexte)
+
+### Anti-patterns à bloquer en review
+
+1. ❌ `window.location.reload()` (sauf cas exceptionnels avec commentaire `// EXCEPTION ajax-no-reload-premium : ...`)
+2. ❌ `<form action="..." method="POST">` sans `@submit.prevent` Alpine — soumission classique = reload
+3. ❌ `redirect()->back()` Laravel après mutation simple → préférer `response()->json([...])`
+4. ❌ Page-refresh après suppression d'1 row → refetch + replace DOM uniquement
+5. ❌ `<a href="?param=newvalue">` pour update simple → pushState + AJAX fetch
+6. ❌ Bouton "Actualiser" visible utilisateur — UI doit refresh auto via dispatch events
+7. ❌ Form submit Blade legacy sur une page premium (mélange paradigmes)
+
+### Voir aussi détaillé : `.claude/rules/ajax-no-reload-premium.md`
+
 ## Règles absolues
 
 1. **Copier le pattern planning-header** pour les headers de page — ne pas inventer
@@ -615,3 +695,4 @@ Sans ça, on obtient le bug classique : menu tronqué, labels de la section d'en
 10. **Border-radius** : 8-10px (petits), 12-14px (cards), 18px (hero)
 11. **Sélecteurs** — voir [`premium-selects.md`](premium-selects.md). Jamais `<select>` natif visible.
 12. **Dropdowns non tronqués** — aucune card contenant des select premium ne doit couper le menu (`overflow/stacking context` à contrôler explicitement).
+13. **AJAX no-reload** — toutes les actions UI mutations via fetch + Alpine + CustomEvent. Voir [`ajax-no-reload-premium.md`](ajax-no-reload-premium.md).
