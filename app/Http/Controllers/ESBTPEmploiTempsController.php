@@ -720,7 +720,7 @@ class ESBTPEmploiTempsController extends Controller
             if (($emploiTemps->classe->systeme_academique ?? '') === 'LMD'
                 || in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true)) {
                 $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)
-                    ->buildWithVolumeBudget($planificationData, $emploiTemps->classe, $emploiTemps->annee);
+                    ->buildWithVolumeBudget($planificationData, $emploiTemps->classe, $emploiTemps->annee, $emploiTemps->semestre);
             }
         }
 
@@ -879,9 +879,10 @@ class ESBTPEmploiTempsController extends Controller
             // PR1 chantier emploi-temps-lmd-unification : bascule vers MatiereTreeBuilder
             // canonical (SSOT). buildWithVolumeBudget() calcule les heures realisees CM/TD/TP
             // via VolumeBudgetService pour les KPIs hero "heures restantes / % realise".
-            if (($emploi_temp->classe->systeme_academique ?? '') === 'LMD') {
+            if (($emploi_temp->classe->systeme_academique ?? '') === 'LMD'
+                || in_array($emploi_temp->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true)) {
                 $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)
-                    ->buildWithVolumeBudget($planificationData, $emploi_temp->classe, $emploi_temp->annee);
+                    ->buildWithVolumeBudget($planificationData, $emploi_temp->classe, $emploi_temp->annee, $emploi_temp->semestre);
             }
         }
 
