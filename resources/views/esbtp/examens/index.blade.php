@@ -196,6 +196,16 @@
 .exp-modal-grid .field input[type="number"]::-webkit-inner-spin-button {
     opacity: .5; cursor: pointer;
 }
+
+/* Force <x-au-select> à occuper toute la cellule grid */
+.exp-modal-grid .field .au-select,
+.exp-modal-grid .field .au-select-trigger { width: 100%; }
+.exp-modal-grid .field .au-select-trigger { box-sizing: border-box; }
+
+/* Pareil pour les filtres au-dessus de la table */
+.exp-filters .au-select,
+.exp-filters .au-select-trigger { width: 100%; }
+.exp-filters .au-select-trigger { box-sizing: border-box; }
 .exp-checkbox {
     display: flex; align-items: center; gap: .55rem;
     padding: .7rem .8rem; background: #f8fafc; border: 1px solid #e2e8f0;

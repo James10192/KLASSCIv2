@@ -31,6 +31,7 @@
     font-size:.85rem;color:#1e293b;cursor:pointer;text-transform:none;font-weight:500;
 }
 .exp-checkbox input { width:auto;accent-color:#0453cb; }
+.exp-form-field .au-select, .exp-form-field .au-select-trigger { width: 100%; box-sizing: border-box; }
 .exp-form-actions { margin-top:1.5rem;display:flex;gap:.5rem;justify-content:flex-end;}
 .btn { padding:.6rem 1.2rem;border-radius:10px;font-weight:600;font-size:.85rem;
     border:1px solid;cursor:pointer;display:inline-flex;align-items:center;gap:.4rem;text-decoration:none;}
