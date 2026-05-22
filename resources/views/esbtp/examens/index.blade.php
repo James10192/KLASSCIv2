@@ -313,30 +313,184 @@
 .exp-calendar-card .fc-day-other .fc-daygrid-day-number { color: #cbd5e1; }
 .exp-calendar-card .fc-scrollgrid { border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; }
 .exp-calendar-card .fc-scrollgrid td, .exp-calendar-card .fc-scrollgrid th { border-color: #f1f5f9; }
+/* ─── Calendar V2 : Premium event cards ─── */
 .exp-calendar-card .fc-event {
-    border-radius: 6px; padding: .15rem .35rem;
-    font-size: .72rem; font-weight: 600;
-    cursor: pointer; transition: transform .1s, box-shadow .1s;
-    border: none;
+    background: #fff !important;
+    border: 1px solid #e2e8f0 !important;
+    border-radius: 8px !important;
+    padding: 0 !important;
+    cursor: pointer;
+    overflow: hidden;
+    transition: transform .12s ease, box-shadow .15s ease, border-color .15s ease;
+    box-shadow: 0 1px 2px rgba(15,23,42,.04);
+    margin-bottom: 2px;
 }
 .exp-calendar-card .fc-event:hover {
     transform: translateY(-1px);
-    box-shadow: 0 3px 8px rgba(4,83,203,.25);
+    box-shadow: 0 4px 12px rgba(4,83,203,.15), 0 1px 3px rgba(15,23,42,.06);
+    border-color: rgba(4,83,203,.30) !important;
+    z-index: 5;
 }
-.exp-event--cancelled { opacity: .55; text-decoration: line-through; }
-.exp-event--locked::before { content: '🔒 '; font-size: .65rem; }
+.exp-calendar-card .fc-event-main, .exp-calendar-card .fc-event-main-frame { padding: 0 !important; height: 100%; }
+.exp-calendar-card .fc-event-title-container, .exp-calendar-card .fc-event-title { padding: 0; overflow: visible; white-space: normal; }
 
-/* Distinction système académique (WCAG : texte préfixe titre + border + couleur fond) */
-.exp-event--sys-lmd { border-left: 3px solid rgba(255,255,255,.7) !important; }
-.exp-event--sys-bts {
-    border-left: 3px dashed rgba(255,255,255,.55) !important;
-    background-image: repeating-linear-gradient(
-        45deg,
-        transparent,
-        transparent 5px,
-        rgba(255,255,255,.06) 5px,
-        rgba(255,255,255,.06) 10px
-    );
+/* ═══ Vue MOIS — Compact row ═══ */
+.exp-fc-row {
+    display: flex; align-items: center; gap: .35rem;
+    padding: .25rem .4rem .25rem .55rem;
+    background: linear-gradient(135deg, #fff, #fafbff);
+    font-size: .7rem;
+    line-height: 1.1;
+    min-height: 22px;
+}
+.exp-fc-icon { font-size: .68rem; flex-shrink: 0; opacity: .85; }
+.exp-fc-time {
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: .62rem; font-weight: 700; color: #475569;
+    background: #f1f5f9; border-radius: 3px;
+    padding: .05rem .25rem; flex-shrink: 0;
+}
+.exp-fc-title {
+    flex: 1; min-width: 0; color: #0f172a; font-weight: 600;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.exp-fc-sys-dot {
+    width: 16px; height: 16px; border-radius: 4px;
+    display: inline-flex; align-items: center; justify-content: center;
+    font-size: .55rem; flex-shrink: 0;
+}
+.exp-fc-sys-dot--sys-lmd { background: rgba(4,83,203,.12); color: #0453cb; }
+.exp-fc-sys-dot--sys-bts { background: rgba(100,116,139,.12); color: #475569; }
+
+/* ═══ Vue SEMAINE/JOUR — Rich card ═══ */
+.exp-fc-rich {
+    padding: .45rem .55rem;
+    background: linear-gradient(135deg, #fff, #f8faff);
+    height: 100%;
+    display: flex; flex-direction: column; gap: .25rem;
+    position: relative;
+    overflow: hidden;
+}
+.exp-fc-rich-head {
+    display: flex; align-items: center; gap: .35rem;
+    flex-wrap: wrap;
+}
+.exp-fc-rich-head i { font-size: .68rem; }
+.exp-fc-rich-type {
+    font-size: .62rem; font-weight: 700; color: #475569;
+    text-transform: uppercase; letter-spacing: .03em;
+}
+.exp-fc-rich-chip {
+    display: inline-flex; align-items: center; gap: .2rem;
+    padding: .08rem .35rem; border-radius: 4px;
+    font-size: .58rem; font-weight: 700;
+    margin-left: auto;
+}
+.exp-fc-rich-chip--sys-lmd {
+    background: rgba(4,83,203,.10); color: #0453cb; border: 1px solid rgba(4,83,203,.25);
+}
+.exp-fc-rich-chip--sys-bts {
+    background: rgba(100,116,139,.10); color: #475569; border: 1px solid rgba(100,116,139,.25);
+}
+.exp-fc-rich-chip i { font-size: .52rem; }
+.exp-fc-lock-badge, .exp-fc-anon-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 4px;
+    font-size: .58rem;
+}
+.exp-fc-lock-badge { background: rgba(220,38,38,.10); color: #b91c1c; }
+.exp-fc-anon-badge { background: rgba(4,83,203,.10); color: #0453cb; }
+
+.exp-fc-rich-title {
+    font-size: .75rem; font-weight: 700; color: #0f172a;
+    line-height: 1.2;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.exp-fc-rich-meta {
+    display: flex; flex-wrap: wrap; gap: .55rem;
+    font-size: .65rem; color: #64748b;
+}
+.exp-fc-rich-meta i { margin-right: .2rem; color: #94a3b8; }
+.exp-fc-rich-meta span { display: inline-flex; align-items: center; }
+.exp-fc-rich-classes {
+    font-size: .65rem; color: #475569; font-weight: 500;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.exp-fc-rich-classes i { margin-right: .25rem; color: #0453cb; }
+.exp-fc-rich-conv {
+    margin-top: .15rem;
+    font-family: 'SFMono-Regular', Consolas, monospace;
+    font-size: .58rem; color: #0453cb;
+    background: rgba(4,83,203,.06); border-radius: 3px;
+    padding: .08rem .3rem; align-self: flex-start;
+    font-weight: 700; letter-spacing: .02em;
+}
+
+/* ═══ Annulé overlay ═══ */
+.exp-fc-cancel-overlay {
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(45deg, rgba(220,38,38,.08), rgba(220,38,38,.08) 8px, rgba(220,38,38,.16) 8px, rgba(220,38,38,.16) 16px);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 800; color: #b91c1c; font-size: .85rem; letter-spacing: .1em;
+    pointer-events: none; z-index: 2;
+}
+.exp-fc-event--cancelled { opacity: .82; }
+
+/* "+ N autres" lien */
+.exp-fc-more-link {
+    color: #0453cb !important; font-weight: 600; font-size: .68rem;
+    padding: .15rem .35rem; border-radius: 4px;
+    background: rgba(4,83,203,.06);
+    transition: background .15s;
+}
+.exp-fc-more-link:hover { background: rgba(4,83,203,.12) !important; }
+
+/* Now indicator (ligne rouge horaire courant) */
+.exp-calendar-card .fc-timegrid-now-indicator-line { border-color: #dc2626 !important; }
+.exp-calendar-card .fc-timegrid-now-indicator-arrow { border-color: #dc2626 !important; }
+
+/* Vue Semaine/Jour — slots horaires */
+.exp-calendar-card .fc-timegrid-slot { height: 2.5em; }
+.exp-calendar-card .fc-timegrid-slot-label { font-size: .72rem; color: #94a3b8; }
+.exp-calendar-card .fc-timegrid-axis { background: #f8fafc; }
+.exp-calendar-card .fc-timegrid-event { padding: 0 !important; }
+
+/* Day headers (lun mar mer...) */
+.exp-calendar-card .fc-col-header-cell-cushion {
+    display: inline-block; padding: .65rem .25rem; text-decoration: none;
+    color: #475569 !important;
+}
+.exp-calendar-card .fc-day-today .fc-col-header-cell-cushion {
+    color: #0453cb !important; font-weight: 700;
+}
+
+/* Day number cells */
+.exp-calendar-card .fc-daygrid-day-number {
+    color: #1e293b; font-weight: 600; font-size: .8rem;
+    padding: .4rem .55rem;
+    text-decoration: none;
+}
+.exp-calendar-card .fc-day-today .fc-daygrid-day-number {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    border-radius: 50%;
+    width: 26px; height: 26px;
+    display: inline-flex; align-items: center; justify-content: center;
+    padding: 0;
+    margin: .25rem;
+    box-shadow: 0 2px 6px rgba(4,83,203,.30);
+}
+.exp-calendar-card .fc-day-today { background: rgba(4,83,203,.025) !important; }
+
+/* Day cell hover */
+.exp-calendar-card .fc-daygrid-day:hover { background: rgba(4,83,203,.03); }
+
+/* Responsive mobile */
+@@media (max-width: 768px) {
+    .exp-calendar-card .fc-toolbar { flex-direction: column; gap: .5rem; }
+    .exp-calendar-card .fc-toolbar-chunk { display: flex; gap: 4px; }
+    .exp-fc-rich-title { font-size: .7rem; }
+    .exp-fc-row { padding: .2rem .3rem; font-size: .65rem; }
 }
 .exp-calendar-card .fc-list-event:hover td { background: rgba(4,83,203,.05) !important; }
 .exp-calendar-card .fc-list-day-cushion { background: #f8fafc !important; color: #0f172a; font-weight: 700; }
@@ -1036,45 +1190,132 @@ function examensIndex() {
             this.calendar = new FullCalendar.Calendar(el, {
                 locale: 'fr',
                 initialView: 'dayGridMonth',
-                height: 680,
+                height: 720,
                 headerToolbar: {
                     left: 'prev,next today',
                     center: 'title',
-                    right: 'dayGridMonth,timeGridWeek,listMonth',
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay',
                 },
                 buttonText: {
                     today: "Aujourd'hui",
                     month: 'Mois',
                     week: 'Semaine',
-                    list: 'Liste',
+                    day: 'Jour',
                 },
                 events: feedUrl.toString(),
                 eventDisplay: 'block',
-                eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: false },
+                displayEventTime: false,  // on gère le rendu temps dans eventContent
                 slotMinTime: '07:00:00',
                 slotMaxTime: '20:00:00',
+                slotDuration: '00:30:00',
+                slotLabelFormat: { hour: '2-digit', minute: '2-digit', hour12: false },
+                nowIndicator: true,
                 weekends: true,
                 firstDay: 1,  // Lundi
-                eventDidMount: (info) => {
-                    const p = info.event.extendedProps;
-                    const tooltip = [
-                        p.type_label || '',
-                        p.numero_convocation ? '• ' + p.numero_convocation : '',
-                        p.classe_label ? '• ' + p.classe_label : '',
-                        p.matiere ? '• ' + p.matiere : '',
-                        p.salle ? '• ' + p.salle : '',
-                        p.status_label ? '• Statut : ' + p.status_label : '',
-                    ].filter(Boolean).join('\n');
-                    info.el.setAttribute('title', tooltip);
+                dayMaxEvents: 3,  // mois : "+N more" si > 3 events
+                moreLinkText: (n) => '+ ' + n + ' autre' + (n > 1 ? 's' : ''),
+                moreLinkClassNames: 'exp-fc-more-link',
+                eventClassNames: (arg) => {
+                    return ['exp-fc-card', 'exp-fc-card--' + arg.view.type];
                 },
+                eventContent: (arg) => this.renderEventCard(arg),
+                eventDidMount: (info) => this.attachEventTooltip(info),
                 eventClick: (info) => {
-                    // FullCalendar navigue automatiquement vers info.event.url
-                    // Si on veut empêcher la navigation et ouvrir un modal :
-                    // info.jsEvent.preventDefault();
-                    // openShowModal(info.event.id);
+                    // Navigation native vers info.event.url. Si tu veux popover modal,
+                    // décommente info.jsEvent.preventDefault() et ouvre un modal show.
                 },
             });
             this.calendar.render();
+        },
+
+        /** Custom rendering de chaque event card selon la vue active. */
+        renderEventCard(arg) {
+            const e = arg.event;
+            const p = e.extendedProps;
+            const view = arg.view.type;
+            const startHour = e.start ? this.formatHour(e.start) : '';
+            const endHour = e.end ? this.formatHour(e.end) : '';
+
+            const sysClass = p.systeme === 'LMD' ? 'sys-lmd' : 'sys-bts';
+            const sysColor = p.systeme === 'LMD' ? '#0453cb' : '#64748b';
+
+            // Vue Mois — compact : icône type · heure · titre · chip système
+            if (view === 'dayGridMonth') {
+                return {
+                    html: `
+                        <div class="exp-fc-row" style="border-left:3px solid ${p.type_color};">
+                            <i class="fas ${p.type_icon} exp-fc-icon" style="color:${p.type_color};"></i>
+                            <span class="exp-fc-time">${startHour}</span>
+                            <span class="exp-fc-title">${this.escape(e.title)}</span>
+                            <span class="exp-fc-sys-dot exp-fc-sys-dot--${sysClass}" title="${p.systeme}">
+                                <i class="fas ${p.systeme_icon}"></i>
+                            </span>
+                        </div>
+                    `
+                };
+            }
+
+            // Vue Semaine/Jour — rich card avec convocation, salle, classes
+            const lockBadge = p.notes_locked ? '<span class="exp-fc-lock-badge" title="Notes verrouillées"><i class="fas fa-lock"></i></span>' : '';
+            const anonBadge = p.is_anonymous ? '<span class="exp-fc-anon-badge" title="Copies anonymisées"><i class="fas fa-mask"></i></span>' : '';
+            const cancelOverlay = p.status === 'cancelled' ? '<div class="exp-fc-cancel-overlay">ANNULÉ</div>' : '';
+
+            return {
+                html: `
+                    ${cancelOverlay}
+                    <div class="exp-fc-rich" style="border-left:4px solid ${p.type_color};">
+                        <div class="exp-fc-rich-head">
+                            <i class="fas ${p.type_icon}" style="color:${p.type_color};"></i>
+                            <span class="exp-fc-rich-type">${this.escape(p.type_label || p.type_examen)}</span>
+                            <span class="exp-fc-rich-chip exp-fc-rich-chip--${sysClass}">
+                                <i class="fas ${p.systeme_icon}"></i> ${p.systeme}
+                            </span>
+                            ${lockBadge}${anonBadge}
+                        </div>
+                        <div class="exp-fc-rich-title">${this.escape(e.title)}</div>
+                        <div class="exp-fc-rich-meta">
+                            <span><i class="far fa-clock"></i> ${startHour}–${endHour}${p.duree_minutes ? ' · ' + p.duree_minutes + 'min' : ''}</span>
+                            ${p.salle ? `<span><i class="fas fa-door-open"></i> ${this.escape(p.salle)}</span>` : ''}
+                        </div>
+                        ${p.classe_label ? `<div class="exp-fc-rich-classes"><i class="fas fa-chalkboard"></i> ${this.escape(p.classe_label)}</div>` : ''}
+                        ${p.numero_convocation ? `<div class="exp-fc-rich-conv">${this.escape(p.numero_convocation)}</div>` : ''}
+                    </div>
+                `
+            };
+        },
+
+        formatHour(d) {
+            const h = String(d.getHours()).padStart(2, '0');
+            const m = String(d.getMinutes()).padStart(2, '0');
+            return `${h}:${m}`;
+        },
+
+        escape(str) {
+            if (str == null) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        },
+
+        attachEventTooltip(info) {
+            const p = info.event.extendedProps;
+            const lines = [
+                p.type_label,
+                p.numero_convocation ? 'Convocation : ' + p.numero_convocation : null,
+                p.classe_label ? 'Classes : ' + p.classe_label : null,
+                p.matiere ? (p.systeme === 'LMD' ? 'ECUE : ' : 'Matière : ') + p.matiere : null,
+                p.salle ? 'Salle : ' + p.salle : null,
+                p.coefficient ? 'Coef ' + p.coefficient + ' × /' + p.bareme : null,
+                p.status_label ? 'Statut : ' + p.status_label : null,
+                p.notes_locked ? '🔒 Notes verrouillées' : null,
+                p.is_anonymous ? '🎭 Copies anonymisées' : null,
+            ].filter(Boolean);
+            info.el.setAttribute('title', lines.join('\n'));
+            info.el.setAttribute('aria-label',
+                `${p.systeme} ${p.type_label} ${info.event.title} ${p.numero_convocation || ''}`);
         },
 
         defaultForm() {

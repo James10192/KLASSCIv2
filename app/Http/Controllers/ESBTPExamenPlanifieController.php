@@ -617,29 +617,40 @@ class ESBTPExamenPlanifieController extends Controller
                 $color = '#94a3b8';
             }
 
-            // Distinction système : préfixe titre + classNames + extendedProps
-            // WCAG 1.4.1 : texte + couleur (border-left CSS) + icône (légende)
+            // Distinction système : chip dans event card (pas de préfixe titre v2)
+            // WCAG 1.4.1 : texte + couleur (border CSS) + icône (chip rendered)
             $systeme = $e->systeme;  // 'BTS' | 'LMD' via accessor
+
+            // Icône type d'épreuve pour event card
+            $typeIcons = [
+                'EXAMEN' => 'fa-pen-ruler',
+                'PARTIEL' => 'fa-pen-to-square',
+                'RATTRAPAGE' => 'fa-rotate-right',
+                'SOUTENANCE' => 'fa-microphone',
+            ];
 
             return [
                 'id' => $e->id,
-                'title' => '[' . $systeme . '] ' . $e->titre,
+                'title' => $e->titre,
                 'start' => $e->date_debut?->toIso8601String(),
                 'end' => $e->date_fin?->toIso8601String(),
-                'backgroundColor' => $color,
+                'backgroundColor' => 'transparent',  // override par CSS .exp-fc-card
                 'borderColor' => $color,
-                'textColor' => '#fff',
-                'classNames' => [
-                    'exp-event',
-                    'exp-event--' . strtolower($e->type_examen),
-                    'exp-event--sys-' . strtolower($systeme),
-                    $e->notes_locked ? 'exp-event--locked' : '',
-                    $e->status === 'cancelled' ? 'exp-event--cancelled' : '',
-                ],
+                'textColor' => '#0f172a',
+                'classNames' => array_filter([
+                    'exp-fc-event',
+                    'exp-fc-event--' . strtolower($e->type_examen),
+                    'exp-fc-event--sys-' . strtolower($systeme),
+                    $e->notes_locked ? 'exp-fc-event--locked' : null,
+                    $e->status === 'cancelled' ? 'exp-fc-event--cancelled' : null,
+                ]),
                 'extendedProps' => [
                     'type_examen' => $e->type_examen,
                     'type_label' => TypeExamen::labelFor($e->type_examen),
+                    'type_icon' => $typeIcons[$e->type_examen] ?? 'fa-calendar-check',
+                    'type_color' => $color,
                     'systeme' => $systeme,
+                    'systeme_icon' => $systeme === 'LMD' ? 'fa-graduation-cap' : 'fa-screwdriver-wrench',
                     'status' => $e->status,
                     'status_label' => ExamenStatus::labelFor($e->status),
                     'numero_convocation' => $e->numero_convocation,
@@ -647,6 +658,10 @@ class ESBTPExamenPlanifieController extends Controller
                     'classes_count' => $classesCount,
                     'matiere' => $e->matiere?->name,
                     'salle' => $e->salle,
+                    'duree_minutes' => $e->duree_minutes,
+                    'coefficient' => $e->coefficient ? rtrim(rtrim(number_format($e->coefficient, 2, '.', ''), '0'), '.') : null,
+                    'bareme' => (int) $e->bareme,
+                    'is_anonymous' => (bool) $e->is_anonymous,
                     'notes_locked' => (bool) $e->notes_locked,
                     'show_url' => route('esbtp.examens.show', $e),
                 ],
