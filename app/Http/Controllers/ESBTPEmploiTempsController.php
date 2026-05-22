@@ -713,6 +713,15 @@ class ESBTPEmploiTempsController extends Controller
                 $emploiTemps->annee,
                 $emploiTemps->semestre
             );
+
+            // PR2 chantier emploi-temps-lmd-unification : applique override LMD via service
+            // canonical MatiereTreeBuilder. buildForPlanning() sans volumeBudget car bulk-edit
+            // et sections AJAX n'affichent pas les KPIs "heures restantes" (uniquement la grille).
+            // Sans cette ligne, le bulkEdit affichait "Planification non configuree" pour classes LMD.
+            if (($emploiTemps->classe->systeme_academique ?? '') === 'LMD') {
+                $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)
+                    ->buildForPlanning($planificationData, $emploiTemps->classe);
+            }
         }
 
         // Variables tab "Suivi des heures" (LMD/BTS) via méthode DRY
@@ -1063,105 +1072,12 @@ class ESBTPEmploiTempsController extends Controller
         ];
     }
 
-    /**
-     * Pour classe LMD avec parcours : remplace $planificationData['matieres_planifiees'] par
-     * les ECUEs strict du parcours (pattern Planning LMD via parcours.unitesEnseignement +
-     * getEcuesEffectifs). Garde la meme structure attendue par le composant
-     * <x-emploi-temps.planification-section> pour compatibility.
-     *
-     * @deprecated PR1 chantier emploi-temps-lmd-unification (2026-05-22) — duplication
-     *             avec App\Services\LMD\MatiereTreeBuilder::buildWithVolumeBudget().
-     *             Utilise désormais le service partout. CETTE MÉTHODE SERA SUPPRIMÉE EN PR2
-     *             une fois que `buildEmploiTempsViewData()` et `addSession()` auront migré
-     *             vers le service. Strangler fig pattern — voir
-     *             memory/feedback_strangler_fig_refactor.md
-     * @see \App\Services\LMD\MatiereTreeBuilder::buildWithVolumeBudget()
-     */
-    private function overridePlanificationForLmd(array $planificationData, $classe): array
-    {
-        try {
-            $lmdMatieres = app(\App\Services\LMD\MatiereTreeBuilder::class)
-                ->loadLmdMatieresForClasse($classe);
-        } catch (\Throwable $e) {
-            \Log::warning('LMD planification override failed: '.$e->getMessage());
-            return $planificationData;
-        }
-
-        if ($lmdMatieres->isEmpty()) {
-            return $planificationData;
-        }
-
-        // Volume budget par matiere (heures realisees) — reutilise VolumeBudgetService.
-        $volumeBudget = [];
-        try {
-            $anneeId = optional(\App\Models\ESBTPAnneeUniversitaire::current())->id;
-            if ($anneeId) {
-                $volumeBudgetService = app(\App\Services\VolumeBudgetService::class);
-                $niveauType = optional($classe->niveau)->type ?? '';
-                $niveauYear = (int) (optional($classe->niveau)->year ?? 1);
-                $baseSem = 0;
-                if ($niveauType === 'Licence') {
-                    $baseSem = ($niveauYear - 1) * 2;
-                } elseif ($niveauType === 'Master') {
-                    $baseSem = 6 + ($niveauYear - 1) * 2;
-                } elseif ($niveauType === 'Doctorat') {
-                    $baseSem = 10 + ($niveauYear - 1) * 2;
-                }
-                foreach ([$baseSem + 1, $baseSem + 2] as $sem) {
-                    $sb = $volumeBudgetService->forClasse($classe, $classe->niveau_etude_id, $sem, $anneeId);
-                    foreach ($sb as $mid => $b) {
-                        if (! isset($volumeBudget[$mid])) {
-                            $volumeBudget[$mid] = $b;
-                        } else {
-                            foreach (['cm', 'td', 'tp'] as $k) {
-                                $volumeBudget[$mid][$k]['planifie'] = ($volumeBudget[$mid][$k]['planifie'] ?? 0) + ($b[$k]['planifie'] ?? 0);
-                                $volumeBudget[$mid][$k]['realise']  = ($volumeBudget[$mid][$k]['realise']  ?? 0) + ($b[$k]['realise']  ?? 0);
-                            }
-                        }
-                    }
-                }
-            }
-        } catch (\Throwable $e) {
-            \Log::warning('LMD volume budget for override failed: '.$e->getMessage());
-        }
-
-        // Map vers la structure attendue par le composant planification-section
-        $matieresPlanifiees = $lmdMatieres->map(function ($row) use ($volumeBudget) {
-            $mid = $row['matiere']->id;
-            $totalPlanifie = (float) ($row['volume_horaire_total'] ?? 0);
-            $b = $volumeBudget[$mid] ?? [];
-            $totalRealise = (float) (($b['cm']['realise'] ?? 0) + ($b['td']['realise'] ?? 0) + ($b['tp']['realise'] ?? 0));
-            $heuresRestantes = max(0, $totalPlanifie - $totalRealise);
-            $pct = $totalPlanifie > 0 ? min(100, (int) round($totalRealise / $totalPlanifie * 100)) : 0;
-            $fmt = fn ($n) => rtrim(rtrim(number_format((float) $n, 1, ',', ''), '0'), ',').'h';
-
-            return [
-                'matiere' => $row['matiere'],
-                'planification_id' => null,
-                'volume_horaire_total' => $totalPlanifie,
-                'volume_horaire_total_formatted' => $fmt($totalPlanifie),
-                'heures_restantes' => $heuresRestantes,
-                'heures_restantes_formatted' => $fmt($heuresRestantes),
-                'pourcentage_utilise' => $pct,
-                'enseignant_affiche' => null,
-                'enseignants_selectables' => collect(),
-            ];
-        });
-
-        $totalHeures = (float) $matieresPlanifiees->sum('volume_horaire_total');
-        $totalRestant = (float) $matieresPlanifiees->sum('heures_restantes');
-        $fmt = fn ($n) => rtrim(rtrim(number_format((float) $n, 1, ',', ''), '0'), ',').'h';
-
-        return array_merge($planificationData, [
-            'planifications_configurees' => true,
-            'matieres_planifiees' => $matieresPlanifiees,
-            'heures_totales' => $totalHeures,
-            'heures_totales_formatted' => $fmt($totalHeures),
-            'heures_restantes' => $totalRestant,
-            'heures_restantes_formatted' => $fmt($totalRestant),
-            'message_configuration' => null,
-        ]);
-    }
+    // PR2 chantier emploi-temps-lmd-unification (2026-05-22) :
+    // Méthode privée `overridePlanificationForLmd()` SUPPRIMÉE.
+    // Logique consolidée dans App\Services\LMD\MatiereTreeBuilder::buildWithVolumeBudget().
+    // Tous les callers (show, buildEmploiTempsViewData, addSession en PR3) utilisent désormais
+    // le service via l'API canonique (rule lmd-bts-matieres-single-source.md).
+    // Strangler fig pattern complété — voir memory/feedback_strangler_fig_refactor.md
 
     public function bulkEdit(Request $request)
     {
