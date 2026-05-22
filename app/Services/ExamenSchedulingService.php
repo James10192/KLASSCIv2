@@ -313,12 +313,7 @@ class ExamenSchedulingService
         ?int $scopeId,
         array $extraParcoursIds = []
     ): Collection {
-        $query = ESBTPClasse::query();
-
-        // Optionnellement filtrer par is_active si la colonne existe
-        if (\Schema::hasColumn('esbtp_classes', 'is_active')) {
-            $query->where('is_active', true);
-        }
+        $query = ESBTPClasse::query()->where('is_active', true);
 
         switch ($scopeType) {
             case 'classe':
