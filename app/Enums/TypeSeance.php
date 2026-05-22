@@ -4,24 +4,30 @@ namespace App\Enums;
 
 enum TypeSeance: string
 {
-    case CM      = 'CM';
-    case TD      = 'TD';
-    case TP      = 'TP';
-    case PROJET  = 'PROJET';
-    case TPE     = 'TPE';
-    case EXAMEN  = 'EXAMEN';
-    case AUTRE   = 'AUTRE';
+    case CM         = 'CM';
+    case TD         = 'TD';
+    case TP         = 'TP';
+    case PROJET     = 'PROJET';
+    case TPE        = 'TPE';
+    case EXAMEN     = 'EXAMEN';
+    case PARTIEL    = 'PARTIEL';     // PR6 chantier emploi-temps-lmd : examen CC mi-semestre
+    case RATTRAPAGE = 'RATTRAPAGE';  // PR6 : examen 2e session UEMOA
+    case SOUTENANCE = 'SOUTENANCE';  // PR6 : soutenance mémoire/thèse
+    case AUTRE      = 'AUTRE';
 
     public function label(): string
     {
         return match($this) {
-            self::CM     => 'Cours Magistral',
-            self::TD     => 'Travaux Dirigés',
-            self::TP     => 'Travaux Pratiques',
-            self::PROJET => 'Projet',
-            self::TPE    => 'Travail Personnel Étudiant',
-            self::EXAMEN => 'Examen',
-            self::AUTRE  => 'Autre',
+            self::CM         => 'Cours Magistral',
+            self::TD         => 'Travaux Dirigés',
+            self::TP         => 'Travaux Pratiques',
+            self::PROJET     => 'Projet',
+            self::TPE        => 'Travail Personnel Étudiant',
+            self::EXAMEN     => 'Examen',
+            self::PARTIEL    => 'Examen Partiel (CC)',
+            self::RATTRAPAGE => 'Examen Rattrapage',
+            self::SOUTENANCE => 'Soutenance',
+            self::AUTRE      => 'Autre',
         };
     }
 
@@ -44,14 +50,45 @@ enum TypeSeance: string
         $upper = strtoupper(trim($raw));
 
         return match($upper) {
-            'CM'     => self::CM,
-            'TD'     => self::TD,
-            'TP'     => self::TP,
-            'PROJET' => self::PROJET,
-            'TPE'    => self::TPE,
-            'EXAMEN' => self::EXAMEN,
-            default  => self::AUTRE,
+            'CM'         => self::CM,
+            'TD'         => self::TD,
+            'TP'         => self::TP,
+            'PROJET'     => self::PROJET,
+            'TPE'        => self::TPE,
+            'EXAMEN'     => self::EXAMEN,
+            'PARTIEL'    => self::PARTIEL,
+            'RATTRAPAGE' => self::RATTRAPAGE,
+            'SOUTENANCE' => self::SOUTENANCE,
+            default      => self::AUTRE,
         };
+    }
+
+    /**
+     * Indique si ce type est une évaluation (examen, partiel, rattrapage, soutenance).
+     * Utilisé par /esbtp/lmd/planning section Examens (PR6) pour scope query.
+     */
+    public function isEvaluation(): bool
+    {
+        return in_array($this, [
+            self::EXAMEN,
+            self::PARTIEL,
+            self::RATTRAPAGE,
+            self::SOUTENANCE,
+        ], true);
+    }
+
+    /**
+     * Retourne les cases d'évaluation (pour scope query SQL : type_seance IN (...)).
+     * @return array<int, string>
+     */
+    public static function evaluationCases(): array
+    {
+        return [
+            self::EXAMEN->value,
+            self::PARTIEL->value,
+            self::RATTRAPAGE->value,
+            self::SOUTENANCE->value,
+        ];
     }
 
     /** Whether this type counts toward volume horaire tracking (CM/TD/TP). */
@@ -64,28 +101,46 @@ enum TypeSeance: string
      * Map UEMOA type_seance vers le `type` (creneau emploi-temps) attendu par ESBTPSeanceCours.
      *
      * - CM, TD, TP, PROJET, AUTRE → 'course' (seances avec prof en presentiel)
-     * - TPE → null (travail personnel etudiant, JAMAIS planifie en emploi du temps,
-     *   c'est une metadonnee de l'ECUE — cf standards Apogee, Cocktail, HOPSY)
-     * - EXAMEN → 'homework' (genere automatiquement une ESBTPEvaluation)
+     * - TPE → null (travail personnel etudiant, JAMAIS planifie en emploi du temps)
+     * - EXAMEN, PARTIEL, RATTRAPAGE, SOUTENANCE → null (PR6 refactor)
+     *
+     * PR6 chantier emploi-temps-lmd-unification : mapping EVALUATION → null
+     * (avant : EXAMEN → 'homework' qui est semantiquement faux per Critic round 2).
+     * Le filtrage examens utilise type_seance IN (EXAMEN,PARTIEL,RATTRAPAGE,SOUTENANCE)
+     * direct sur le scope query — pas le mapping legacy.
+     *
+     * @see App\Services\ESBTPSeanceCoursController::store() — genere ESBTPEvaluation
+     *      basee sur le type_seance directement (pas via mapToType()).
      */
     public function mapToType(): ?string
     {
         return match ($this) {
             self::CM, self::TD, self::TP, self::PROJET, self::AUTRE => 'course',
             self::TPE                                                => null,
-            self::EXAMEN                                             => 'homework',
+            self::EXAMEN, self::PARTIEL, self::RATTRAPAGE, self::SOUTENANCE => null,
         };
     }
 
     /**
      * Cases plannables dans l'emploi du temps (TPE exclus car metadonnee ECUE).
      * Utilise pour le formulaire seances-cours/create LMD.
+     * PR6 : ajout PARTIEL, RATTRAPAGE, SOUTENANCE.
      *
      * @return array<int, self>
      */
     public static function plannableCases(): array
     {
-        return [self::CM, self::TD, self::TP, self::PROJET, self::EXAMEN, self::AUTRE];
+        return [
+            self::CM,
+            self::TD,
+            self::TP,
+            self::PROJET,
+            self::EXAMEN,
+            self::PARTIEL,
+            self::RATTRAPAGE,
+            self::SOUTENANCE,
+            self::AUTRE,
+        ];
     }
 
     /** Returns ['VALUE' => 'Label'] array for <x-au-select> :options prop. */
@@ -143,6 +198,24 @@ enum TypeSeance: string
                 'color'  => '#b91c1c',
                 'border' => 'rgba(220, 38, 38, .22)',
                 'icon'   => 'fa-file-circle-check',
+            ],
+            self::PARTIEL->value => [
+                'bg'     => 'rgba(234, 88, 12, .1)',
+                'color'  => '#c2410c',
+                'border' => 'rgba(234, 88, 12, .22)',
+                'icon'   => 'fa-file-pen',
+            ],
+            self::RATTRAPAGE->value => [
+                'bg'     => 'rgba(180, 83, 9, .12)',
+                'color'  => '#92400e',
+                'border' => 'rgba(180, 83, 9, .25)',
+                'icon'   => 'fa-rotate-right',
+            ],
+            self::SOUTENANCE->value => [
+                'bg'     => 'rgba(124, 58, 237, .1)',
+                'color'  => '#6d28d9',
+                'border' => 'rgba(124, 58, 237, .22)',
+                'icon'   => 'fa-microphone-lines',
             ],
             self::AUTRE->value => [
                 'bg'     => 'rgba(148, 163, 184, .14)',

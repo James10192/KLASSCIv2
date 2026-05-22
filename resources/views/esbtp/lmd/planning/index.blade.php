@@ -78,6 +78,9 @@
     <div class="lp-content-area" id="lpContent" data-tour-node="listing">
         @include('esbtp.lmd.planning._listing')
     </div>
+
+    {{-- PR6 chantier emploi-temps-lmd-unification : section "Examens planifiés" — workflow Phase 1 (scope query) --}}
+    @include('esbtp.lmd.planning._examens_section')
 </div>
 
 @include('esbtp.lmd.planning._help_modal')

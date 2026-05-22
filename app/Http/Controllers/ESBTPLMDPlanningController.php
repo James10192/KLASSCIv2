@@ -53,7 +53,53 @@ class ESBTPLMDPlanningController extends Controller
                 ->get()
             : collect();
 
+        // PR6 chantier emploi-temps-lmd-unification : ajouter section "Examens planifiés".
+        // Scope query sur esbtp_seance_cours.type_seance IN (EXAMEN, PARTIEL, RATTRAPAGE, SOUTENANCE).
+        // Phase 1 : pas de table dédiée — utilise infrastructure existante seance_cours.
+        // Phase 2 (PR8-13) : migration vers esbtp_examens_planifies pour workflow scolarité complet.
+        $ctx['examensRows'] = $this->loadExamensRows($ctx['filters'] ?? []);
+
         return view('esbtp.lmd.planning.index', $ctx);
+    }
+
+    /**
+     * Charge les examens planifiés pour le filtre courant (parcours/niveau/semestre).
+     * Scope query sur seance_cours avec type_seance ∈ evaluationCases() (PR6).
+     *
+     * @return \Illuminate\Support\Collection
+     */
+    private function loadExamensRows(array $filters): \Illuminate\Support\Collection
+    {
+        $filiereId = optional($this->resolveFiliereFromParcours($filters['parcours_id'] ?? null))->id;
+
+        $query = \App\Models\ESBTPSeanceCours::query()
+            ->whereIn('type_seance', \App\Enums\TypeSeance::evaluationCases())
+            ->with(['matiere.uniteEnseignement', 'emploiTemps.classe', 'teacher.user'])
+            ->whereHas('emploiTemps.classe', function ($q) use ($filiereId, $filters) {
+                $q->where('systeme_academique', 'LMD');
+                if ($filiereId) {
+                    $q->where('filiere_id', $filiereId);
+                }
+                if (!empty($filters['niveau_id'])) {
+                    $q->where('niveau_etude_id', $filters['niveau_id']);
+                }
+            })
+            ->orderBy('date_seance', 'asc')
+            ->orderBy('heure_debut', 'asc');
+
+        return $query->get();
+    }
+
+    /**
+     * Helper : résout la filière depuis un parcours_id (pour scope examens).
+     */
+    private function resolveFiliereFromParcours(?int $parcoursId)
+    {
+        if (!$parcoursId) {
+            return null;
+        }
+        $parcours = ESBTPLMDParcours::find($parcoursId);
+        return $parcours ? $parcours->filiere : null;
     }
 
     /**
