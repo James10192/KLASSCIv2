@@ -12,6 +12,70 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Mai 2026
 
+### Chantier Emploi-Temps & LMD Unification UEMOA (PR0–PR14) — 22 mai 2026
+
+Refonte profonde du système emploi du temps + examens + rattrapage + jury de délibération pour aligner BTS legacy et LMD UEMOA sur 6 tenants. 14 PRs livrées sur la branche `feat/emploi-temps-lmd-master`. Voir [docs/MASTER-PLAN-emploi-temps-lmd-unification.md](docs/MASTER-PLAN-emploi-temps-lmd-unification.md).
+
+#### Ajouts (chantier complet)
+
+**Architecture & refactor (PR1–PR7)**
+- **Service `MatiereTreeBuilder` canonique** — Single Source of Truth pour les matières d'une classe via 2 méthodes publiques explicites (`buildForPlanning` sans volumeBudget, `buildWithVolumeBudget` avec CM/TD/TP réalisés). Suppression de la duplication legacy `ESBTPEmploiTempsController::overridePlanificationForLmd` (−90 LOC).
+- **`bulkEdit` LMD-aware** + **`addSession` LMD-aware** + **`seances-cours/edit` LMD-aware** — tous les call sites passent désormais par MatiereTreeBuilder, fin du `whereHas('filieres')` BTS-only.
+- **Fix embedded styles** — `@push('styles')` au lieu de `@section('styles')` + fallback `@yield` dans `layouts/embedded.blade.php`.
+- **Types reactive BTS-aware** — partials `_form_type_seance_bts.blade.php` séparés + Alpine `$watch topType → subType` réactif selon BTS vs LMD.
+- **Section examens P1** — nouveau partial `_examens_section.blade.php` (namespace `lpx-*`) dans planning LMD + extension `App\Enums\TypeSeance` (PARTIEL, RATTRAPAGE, SOUTENANCE).
+- **Bulletin BTS guard 422** contre classes LMD sur 3 sites de `ESBTPBulletinController::generate()` + audit `LMDBulletinService`.
+
+**Workflow examens scolarité (PR8–PR9)**
+- **Table dédiée `esbtp_examens_planifies`** — schéma scolarité Apogée complet : scope (annee+classe+matiere+parcours+semestre) + session_id + type_examen (EXAMEN|PARTIEL|RATTRAPAGE|SOUTENANCE) + `numero_convocation` unique (format `CONV-{TENANT}-{ANNEE}-{SEQ4}`) + planning (date_debut/fin, salle, durée) + pondération + anonymat + workflow state + notes_locked anti-tampering + softDeletes + 4 indexes performance.
+- **Table `esbtp_examen_surveillants`** — pivot examen+user + role (surveillant|principal|secretaire|responsable_salle) + notification_sent + confirmed + unique(examen, user).
+- **Models `ESBTPExamenPlanifie` + `ESBTPExamenSurveillant`** — Auditable whitelist + 5 scopes + helpers + constantes.
+- **Service `ExamenSchedulingService`** — `genererExamensSession` (idempotent, transaction), `detecterConflitsEtudiants` (overlap multi-classes via inscriptions actives), `assignerSurveillants`, `lockNotesAfterExam` (anti-tampering + audit log), `genererNumeroConvocation` (DB lockForUpdate thread-safe), `getMatieresForScope` via planifications canoniques.
+- **Controller `ESBTPExamenPlanifieController` + 13 routes `/esbtp/examens/*`** — CRUD complet + bulkGenerate AJAX + assignSurveillants AJAX + lockNotes AJAX + KPIs live + convocations PDF preview/download.
+- **Vues premium namespace `exp-*`** — index avec hero KPIs live + filtres + table chronologique, create form premium, edit pré-rempli + guard notes_locked, show avec hero meta + panel surveillants AJAX + lockNotes, **PDF convocations DomPDF** (1 conv par page + meta + consignes + surveillants).
+
+**Workflow rattrapage UEMOA (PR10)**
+- **Table `esbtp_lmd_sessions`** — annee+parcours+semestre+type (normale|rattrapage|extra) + `parent_session_id` self-ref + status workflow + softDeletes + 2 indexes.
+- **Extension `esbtp_lmd_resultats_ecues` +5 colonnes** — `note_session_normale` (snapshot pre-rattrapage), `note_rattrapage`, `note_finale`, `rattrapage_eligible`, `rattrapage_inscrit` + index.
+- **Model `ESBTPLMDSession`** — Auditable + relations parcours/parent/children/examens + scopes forAnnee/normales/rattrapages + constantes TYPES/STATUSES.
+- **Service `RattrapageSchedulingService`** — `genererSessionRattrapage` (guards type/status), `identifierEtudiantsEligibles` (snapshot note normale + flag via setting `lmd_seuil_validation_ecue`), `genererExamensRattrapage` (1 examen RATTRAPAGE par classe+matière éligible, idempotent), `recalculerMoyennesAvecRattrapage` (setting `lmd_rattrapage_replace` contrôle max vs remplace), `inscrireEtudiantsEligibles` bulk.
+- **Controller `ESBTPLMDSessionController` + 7 routes `/esbtp/lmd/rattrapage/*`** — index + show + store + lancerRattrapage AJAX + recalculerNotes + inscrireEligibles + publier.
+- **Vues premium namespace `rtp-*`** — index avec hero KPIs + table + modal create, show avec hero meta + grid 2/3 + actions AJAX no-reload + display examens enfants + lastResult feedback.
+
+**Jury de délibération UEMOA (PR11–PR13)**
+- **3 tables** `esbtp_lmd_jurys` + `esbtp_lmd_jury_membres` + `esbtp_lmd_jury_decisions`.
+- **Models Auditable** : `ESBTPLMDJury` (scope notLocked + isLocked/isPublished + STATUSES), `ESBTPLMDJuryMembre` (ROLES + hasSigned), `ESBTPLMDJuryDecision` (DECISIONS + MENTIONS + VOTE_RESULTATS).
+- **Service `JuryDeliberationService`** — `calculerDecisionAuto` (settings tenant compensation + intra-UE + seuil ECUE + note éliminatoire + 5 mentions), `appliquerDecisionsAuto` (bulk idempotent, préserve overrides), `overrideDecision` (motif obligatoire min 5), `reserverNumeroPv` (DB lockForUpdate thread-safe format `PV-{ANNEE}-{TENANT}-{SEQ4}`), `genererPvDeliberation` (DomPDF + `storage/pv/{tenant}/{annee}/{num}.pdf` + lock décisions + audit Log), `publierDecisions` (guard pv_genere_at), `verifierQuorum` (settings `lmd_jury_quorum_min/_assesseurs_min`), `enregistrerSignature` (preuve légale IP+UA), `buildStatistiques`.
+- **Controller `ESBTPLMDJuryController` + 14 routes `/esbtp/lmd/jurys/*`** — CRUD + addMembre/removeMembre/signerMembre AJAX + appliquerAuto + overrideDecision PATCH + KPIs live + genererPv (guard quorum) + publier + PV preview/download.
+- **Vues premium namespace `juy-*`** — index avec hero + table jurys + modal create, **show = salle de délibération** avec 4 tabs Alpine (Composition + Délibération + Statistiques + PV), actions bar contextuelle, modal override avec validation motif min 5, CustomEvent `jury:decision-updated` propagé, toast feedback partout.
+- **Template PV PDF officiel `lmd-jury-pv.blade.php`** — 9 sections légales : en-tête institution + ID bar + identification jury + composition + statistiques + décisions individuelles (table colorisée par décision + flag overrides) + observations + cachet légal 5 ans + signatures (grid 3 col, images base64 ou mention électronique + IP + timestamp). Format A4 portrait + footer paginé.
+
+#### Sécurité
+
+- **10 nouvelles permissions** dans le registry centralisé (`config/permissions.php`) :
+  - `lmd.examens.view`, `lmd.examens.manage`, `lmd.examens.notes_lock`
+  - `lmd.rattrapage.view`, `lmd.rattrapage.manage`
+  - `lmd.jury.view`, `lmd.jury.preside`, `lmd.jury.deliberate`, `lmd.jury.publish`
+  - Toutes accordées par défaut au `superAdmin` via Gate::before + ajoutées au `role_defaults`.
+- **Anti-tampering** — `notes_locked` + `notes_locked_at` + `notes_locked_by` sur les examens (rule UEMOA : impossible de modifier les notes après lock).
+- **Verrouillage post-PV** — toutes les décisions du jury sont marquées `locked=true` + `locked_at` lors de la génération du PV. Override interdit après lock (guard `isLocked()` dans le service).
+- **Archivage légal 5 ans** — setting `lmd_pv_retention_years` (default 5), soft delete only, audit log immutable Auditable trait sur `esbtp_lmd_jurys.pv_*`.
+- **Throttling** — convocations preview 60/min, download 10/min, lock-notes 30/min, override 60/min, generer-pv 10/min.
+
+#### Tests
+
+- **47 tests Unit (57 assertions)** — `ExamenSchedulingNumeroConvocationTest` (4 tests : format regex + incrementation seq + overflow), `JuryDeliberationMentionTest` (11 tests : matriciels seuils UEMOA), `JuryDecisionAutoLogicTest` (7 tests : branches defere/ajourne/admis/sous_condition/rattrapage), `JuryQuorumLogicTest` (4 tests : OK + KO sans président + KO < min + ignore absents), `RattrapageRecalculLogicTest` (5 tests : max-mode + replace-mode + null normale), `EmploiTempsLmdRoutesTest` (20 tests : smoke parser routes/web.php).
+- Tests Feature avec DB + Pest Browser E2E déférés à une PR ultérieure (nécessitent setup tenant local ou exécution sur serveur).
+
+#### Settings tenant configurables (defaults documentés)
+
+- `lmd_compensation_enabled` (true), `lmd_intra_ue_compensation` (true)
+- `lmd_seuil_validation_ecue` (10), `lmd_note_eliminatoire` (0)
+- `lmd_rattrapage_replace` (false — mode max)
+- `lmd_jury_quorum_min` (2), `lmd_jury_quorum_assesseurs_min` (1)
+- `lmd_pv_retention_years` (5)
+- `lmd_mention_p_threshold` (10), `lmd_mention_ab_threshold` (12), `lmd_mention_b_threshold` (14), `lmd_mention_tb_threshold` (16)
+
 ### W5 — Justification d'absences : Foundation + Redesign premium — 16 mai 2026
 
 #### Ajouts
