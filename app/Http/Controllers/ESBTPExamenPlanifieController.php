@@ -33,7 +33,7 @@ class ESBTPExamenPlanifieController extends Controller
         $annee = $this->resolveAnnee($request);
 
         $query = ESBTPExamenPlanifie::query()
-            ->with(['classe', 'matiere', 'parcours', 'createdBy'])
+            ->with(['classe', 'classes', 'matiere', 'uniteEnseignement', 'parcours', 'createdBy'])
             ->where('annee_universitaire_id', $annee->id)
             ->orderBy('date_debut');
 
@@ -123,9 +123,16 @@ class ESBTPExamenPlanifieController extends Controller
 
         $data = $request->validate([
             'annee_universitaire_id' => ['required', 'exists:esbtp_annee_universitaires,id'],
-            'classe_id' => ['required', 'exists:esbtp_classes,id'],
+            // classe_id requis seulement si scope=classe ; sinon optionnel (classe principale dérivée)
+            'classe_id' => ['nullable', 'exists:esbtp_classes,id'],
+            'classe_ids' => ['nullable', 'array'],
+            'classe_ids.*' => ['integer', 'exists:esbtp_classes,id'],
             'matiere_id' => ['required', 'exists:esbtp_matieres,id'],
             'parcours_id' => ['nullable', 'exists:esbtp_lmd_parcours,id'],
+            'parcours_ids' => ['nullable', 'array'],
+            'parcours_ids.*' => ['integer', 'exists:esbtp_lmd_parcours,id'],
+            'scope_type' => ['nullable', 'in:'.implode(',', ESBTPExamenPlanifie::SCOPE_TYPES)],
+            'scope_id' => ['nullable', 'integer'],
             'session_id' => ['nullable', 'integer', 'exists:esbtp_lmd_sessions,id'],
             'semestre' => ['nullable', 'integer', 'between:1,8'],
             'type_examen' => ['required', 'in:'.implode(',', TypeExamen::values())],
@@ -140,20 +147,69 @@ class ESBTPExamenPlanifieController extends Controller
             'is_anonymous' => ['nullable', 'boolean'],
         ]);
 
+        // Dérive unite_enseignement_id depuis la matière (ECUE LMD) si présent
+        $matiere = ESBTPMatiere::find($data['matiere_id']);
+        $data['unite_enseignement_id'] = $matiere?->unite_enseignement_id;
+
+        // Scope par défaut = classe (rétrocompat BTS)
+        $data['scope_type'] = $data['scope_type'] ?? 'classe';
+        $data['scope_id'] = $data['scope_id'] ?? null;
+
+        // Résolution des classes ciblées :
+        //   1) Si classe_ids fourni explicitement → utiliser tel quel
+        //   2) Sinon, si scope ≠ classe → resolveScopedClasses()
+        //   3) Sinon → [classe_id]
+        $classeIds = $data['classe_ids'] ?? null;
+        if ($classeIds === null) {
+            if ($data['scope_type'] !== 'classe' && $data['scope_id']) {
+                $classeIds = $this->scheduler->resolveScopedClasses(
+                    $data['scope_type'],
+                    $data['scope_id'],
+                    $data['parcours_ids'] ?? []
+                )->pluck('id')->all();
+            } elseif ($data['classe_id']) {
+                $classeIds = [$data['classe_id']];
+            } else {
+                $classeIds = [];
+            }
+        }
+
+        if (empty($classeIds)) {
+            return response()->json([
+                'message' => 'Validation échouée',
+                'errors' => ['classe_ids' => ['Aucune classe ciblée — précisez un scope ou une classe.']],
+            ], 422);
+        }
+
+        // classe_id "principale" = première classe (legacy + convocation per-class)
+        $data['classe_id'] = $data['classe_id'] ?? $classeIds[0];
+
         $data['created_by'] = auth()->id();
         $data['is_anonymous'] = (bool) ($data['is_anonymous'] ?? false);
         $data['coefficient'] = $data['coefficient'] ?? 1;
         $data['bareme'] = $data['bareme'] ?? 20;
         $data['status'] = ExamenStatus::PLANNED->value;
 
-        $examen = ESBTPExamenPlanifie::create($data);
-        $examen->numero_convocation = $this->scheduler->genererNumeroConvocation($examen);
-        $examen->save();
+        // parcours_ids n'est utile que pour scope=parcours en inter-parcours
+        if ($data['scope_type'] !== 'parcours') {
+            $data['parcours_ids'] = null;
+        }
+
+        // Cleanup avant Eloquent create — classe_ids n'est pas fillable
+        unset($data['classe_ids']);
+
+        $examen = \DB::transaction(function () use ($data, $classeIds) {
+            $examen = ESBTPExamenPlanifie::create($data);
+            $examen->numero_convocation = $this->scheduler->genererNumeroConvocation($examen);
+            $examen->save();
+            $this->scheduler->syncExamenClasses($examen, $classeIds);
+            return $examen;
+        });
 
         if ($request->wantsJson() || $request->expectsJson()) {
             return response()->json([
                 'success' => true,
-                'examen' => $this->serializeExamen($examen->loadMissing(['classe', 'matiere'])),
+                'examen' => $this->serializeExamen($examen->fresh(['classe', 'matiere', 'classes'])),
                 'kpis' => $this->buildKpis(ESBTPAnneeUniversitaire::find($data['annee_universitaire_id'])),
             ]);
         }
@@ -163,11 +219,96 @@ class ESBTPExamenPlanifieController extends Controller
             ->with('success', "Examen créé : {$examen->numero_convocation}");
     }
 
+    /**
+     * Endpoint AJAX : preview des classes ciblées par un scope donné.
+     * Utilisé par le modal pour afficher la liste avant submit (avec
+     * checkboxes pour exclure manuellement certaines classes).
+     */
+    public function resolveScopeClasses(Request $request): JsonResponse
+    {
+        abort_unless(auth()->user()?->can('lmd.examens.manage'), 403);
+
+        $data = $request->validate([
+            'scope_type' => ['required', 'in:'.implode(',', ESBTPExamenPlanifie::SCOPE_TYPES)],
+            'scope_id' => ['nullable', 'integer'],
+            'parcours_ids' => ['nullable', 'array'],
+            'parcours_ids.*' => ['integer'],
+            'matiere_id' => ['nullable', 'integer', 'exists:esbtp_matieres,id'],
+        ]);
+
+        $classes = $this->scheduler->resolveScopedClasses(
+            $data['scope_type'],
+            $data['scope_id'] ?? null,
+            $data['parcours_ids'] ?? []
+        );
+
+        // Détecte les parcours qui partagent l'ECUE (pour toggle inter-parcours)
+        $sharedParcours = collect();
+        if (! empty($data['matiere_id'])) {
+            $excludeParcoursId = $data['scope_type'] === 'parcours' ? ($data['scope_id'] ?? null) : null;
+            $sharedParcours = $this->scheduler->detectSharedParcours($data['matiere_id'], $excludeParcoursId);
+        }
+
+        return response()->json([
+            'classes' => $classes->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name,
+                'filiere_id' => $c->filiere_id,
+                'parcours_id' => $c->parcours_id,
+            ])->values(),
+            'shared_parcours' => $sharedParcours->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'code' => $p->code,
+            ])->values(),
+        ]);
+    }
+
+    /**
+     * Endpoint AJAX : retourne les UE et leurs ECUE pour un parcours+niveau.
+     * Utilisé par le modal cascade UEMOA.
+     */
+    public function ecuesByParcours(Request $request): JsonResponse
+    {
+        abort_unless(auth()->user()?->can('lmd.examens.manage'), 403);
+
+        $data = $request->validate([
+            'parcours_id' => ['required', 'integer', 'exists:esbtp_lmd_parcours,id'],
+            'niveau_id' => ['nullable', 'integer'],
+        ]);
+
+        $groups = $this->scheduler->getEcuesGroupedByUe($data['parcours_id'], $data['niveau_id'] ?? null);
+
+        return response()->json([
+            'groups' => $groups->map(fn ($g) => [
+                'ue' => [
+                    'id' => $g['ue']->id,
+                    'name' => $g['ue']->name,
+                    'code' => $g['ue']->code,
+                ],
+                'ecues' => $g['ecues']->map(fn ($e) => [
+                    'id' => $e->id,
+                    'name' => $e->name,
+                    'code' => $e->code,
+                ])->values(),
+            ])->values(),
+        ]);
+    }
+
     public function show(ESBTPExamenPlanifie $examen): View
     {
         abort_unless(auth()->user()?->can('lmd.examens.view'), 403);
 
-        $examen->load(['classe', 'matiere', 'parcours', 'surveillants.user', 'createdBy']);
+        $examen->load([
+            'classe',
+            'classes.filiere',
+            'classes.niveau',
+            'matiere',
+            'uniteEnseignement',
+            'parcours',
+            'surveillants.user',
+            'createdBy',
+        ]);
 
         $surveillantsDispo = User::role(['enseignant', 'serviceTechnique', 'secretaire'])
             ->orderBy('name')

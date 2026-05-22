@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use OwenIt\Auditing\Contracts\Auditable;
@@ -21,7 +22,11 @@ class ESBTPExamenPlanifie extends Model implements Auditable
         'annee_universitaire_id',
         'classe_id',
         'matiere_id',
+        'unite_enseignement_id',
         'parcours_id',
+        'parcours_ids',
+        'scope_type',
+        'scope_id',
         'semestre',
         'session_id',
         'type_examen',
@@ -53,6 +58,7 @@ class ESBTPExamenPlanifie extends Model implements Auditable
         'bareme' => 'decimal:2',
         'is_anonymous' => 'boolean',
         'notes_locked' => 'boolean',
+        'parcours_ids' => 'array',
     ];
 
     protected $auditInclude = [
@@ -69,6 +75,10 @@ class ESBTPExamenPlanifie extends Model implements Auditable
         'notes_locked',
         'notes_locked_at',
         'notes_locked_by',
+        'scope_type',
+        'scope_id',
+        'unite_enseignement_id',
+        'parcours_ids',
     ];
 
     protected $auditEvents = [
@@ -96,19 +106,70 @@ class ESBTPExamenPlanifie extends Model implements Auditable
         'responsable_salle',
     ];
 
+    public const SCOPE_TYPES = ['classe', 'parcours', 'mention', 'domaine'];
+
     public function anneeUniversitaire(): BelongsTo
     {
         return $this->belongsTo(ESBTPAnneeUniversitaire::class, 'annee_universitaire_id');
     }
 
+    /**
+     * Classe principale (legacy BTS + premier-classe LMD).
+     * Pour le multi-classe LMD, utiliser `$examen->classes` (pivot).
+     */
     public function classe(): BelongsTo
     {
         return $this->belongsTo(ESBTPClasse::class, 'classe_id');
     }
 
+    /**
+     * Toutes les classes concernées par cet examen (pivot esbtp_examen_classes).
+     * Sur BTS legacy, contient juste la classe principale (backfillée).
+     * Sur LMD : contient toutes les classes du scope (parcours/mention/domaine).
+     * Filtre les pivots soft-deleted ET les classes exclues manuellement.
+     */
+    public function classes(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ESBTPClasse::class,
+            'esbtp_examen_classes',
+            'examen_id',
+            'classe_id'
+        )
+            ->withTimestamps()
+            ->withPivot(['excluded', 'deleted_at'])
+            ->wherePivot('excluded', false)
+            ->wherePivotNull('deleted_at');
+    }
+
+    /**
+     * Toutes les pivots y compris exclues (pour audit / réactivation).
+     */
+    public function classesAvecExclues(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            ESBTPClasse::class,
+            'esbtp_examen_classes',
+            'examen_id',
+            'classe_id'
+        )
+            ->withTimestamps()
+            ->withPivot(['excluded', 'deleted_at'])
+            ->wherePivotNull('deleted_at');
+    }
+
     public function matiere(): BelongsTo
     {
         return $this->belongsTo(ESBTPMatiere::class, 'matiere_id');
+    }
+
+    /**
+     * UE (Unité d'Enseignement) auquel rattacher l'ECUE (LMD UEMOA).
+     * Dérivable depuis matiere.unite_enseignement_id, dénormalisée pour filtrage rapide.
+     */
+    public function uniteEnseignement(): BelongsTo
+    {
+        return $this->belongsTo(ESBTPUniteEnseignement::class, 'unite_enseignement_id');
     }
 
     public function parcours(): BelongsTo
@@ -133,12 +194,27 @@ class ESBTPExamenPlanifie extends Model implements Auditable
 
     public function scopeForClasse(Builder $query, int $classeId): Builder
     {
-        return $query->where('classe_id', $classeId);
+        // Filtrage via la pivot pour couvrir multi-classe + classe principale
+        return $query->whereHas('classes', fn ($q) => $q->where('esbtp_classes.id', $classeId));
     }
 
     public function scopeForAnnee(Builder $query, int $anneeId): Builder
     {
         return $query->where('annee_universitaire_id', $anneeId);
+    }
+
+    public function scopeForUe(Builder $query, int $ueId): Builder
+    {
+        return $query->where('unite_enseignement_id', $ueId);
+    }
+
+    public function scopeForScope(Builder $query, string $scopeType, ?int $scopeId): Builder
+    {
+        $query->where('scope_type', $scopeType);
+        if ($scopeId !== null) {
+            $query->where('scope_id', $scopeId);
+        }
+        return $query;
     }
 
     public function scopeBetween(Builder $query, Carbon $start, Carbon $end): Builder

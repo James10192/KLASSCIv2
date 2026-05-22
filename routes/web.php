@@ -2586,6 +2586,14 @@ Route::prefix('esbtp/examens')->name('esbtp.examens.')
         Route::get('/options', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'options'])
             ->middleware(['permission:lmd.examens.manage', 'throttle:60,1'])
             ->name('options');
+        // UEMOA cascade : UE + ECUE pour un parcours
+        Route::get('/ecues-by-parcours', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'ecuesByParcours'])
+            ->middleware(['permission:lmd.examens.manage', 'throttle:60,1'])
+            ->name('ecues-by-parcours');
+        // UEMOA scope : preview des classes ciblées (scope_type/scope_id) + parcours partagés
+        Route::post('/resolve-scope-classes', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'resolveScopeClasses'])
+            ->middleware(['permission:lmd.examens.manage', 'throttle:60,1'])
+            ->name('resolve-scope-classes');
         Route::get('/convocations/preview', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'convocationsPreview'])
             ->middleware(['permission:lmd.examens.view', 'throttle:60,1'])
             ->name('convocations.preview');

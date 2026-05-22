@@ -48,13 +48,30 @@
 @section('content')
 <div x-data="examenShow()">
 
+@php
+    $allClasses = $examen->classes;
+    $classesCount = $allClasses->count();
+    $scopeLabel = match($examen->scope_type) {
+        'parcours' => 'Parcours',
+        'mention' => 'Mention',
+        'domaine' => 'Domaine',
+        default => 'Classe',
+    };
+@endphp
+
 <div class="exp-show-hero">
     <div style="display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap;">
         <div>
             <h1>{{ $examen->titre }}</h1>
             <p>
-                {{ $examen->classe->name ?? '—' }} ·
-                {{ $examen->matiere->name ?? '—' }} ·
+                @if($classesCount > 1)
+                    {{ $classesCount }} classes ({{ $scopeLabel }}) ·
+                @else
+                    {{ $allClasses->first()?->name ?? $examen->classe?->name ?? '—' }} ·
+                @endif
+                {{ $examen->matiere->name ?? '—' }}
+                @if($examen->uniteEnseignement) <em style="color:rgba(255,255,255,.85);font-style:normal;">· UE : {{ $examen->uniteEnseignement->name }}</em> @endif
+                ·
                 <span style="font-family:'Courier New',monospace;font-weight:600;">{{ $examen->numero_convocation ?? '—' }}</span>
             </p>
         </div>
@@ -98,6 +115,31 @@
 
 <div class="exp-show-grid">
     <div>
+        @if($classesCount > 0)
+        <div class="exp-show-card" style="margin-bottom:1rem;">
+            <h2>
+                <i class="fas fa-chalkboard"></i> Classes concernées
+                <span style="margin-left:auto;font-size:.78rem;color:#64748b;font-weight:500;">{{ $classesCount }} classe{{ $classesCount > 1 ? 's' : '' }}</span>
+            </h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.5rem;">
+                @foreach($allClasses as $cls)
+                    <a href="{{ route('esbtp.classes.show', $cls->id) }}"
+                       style="display:flex;align-items:center;gap:.55rem;padding:.5rem .7rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;text-decoration:none;color:#1e293b;font-size:.85rem;transition:all .15s;"
+                       onmouseover="this.style.borderColor='#0453cb';this.style.background='#eff6ff';"
+                       onmouseout="this.style.borderColor='#e2e8f0';this.style.background='#f8fafc';">
+                        <span style="width:28px;height:28px;border-radius:7px;background:linear-gradient(135deg,#0453cb,#3b7ddb);color:#fff;display:flex;align-items:center;justify-content:center;font-size:.7rem;flex-shrink:0;"><i class="fas fa-chalkboard"></i></span>
+                        <div style="flex:1;min-width:0;">
+                            <div style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ $cls->name }}</div>
+                            @if($cls->filiere)
+                                <div style="font-size:.7rem;color:#64748b;">{{ $cls->filiere->code ?? $cls->filiere->name ?? '' }}</div>
+                            @endif
+                        </div>
+                    </a>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
         <div class="exp-show-card">
             <h2><i class="fas fa-info-circle"></i> Détails</h2>
             <div class="kv-row"><span>Semestre</span><span>{{ $examen->semestre ? 'S'.$examen->semestre : '—' }}</span></div>

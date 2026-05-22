@@ -23,6 +23,10 @@
         1 => 'Semestre 1', 2 => 'Semestre 2', 3 => 'Semestre 3', 4 => 'Semestre 4',
         5 => 'Semestre 5', 6 => 'Semestre 6', 7 => 'Semestre 7', 8 => 'Semestre 8',
     ];
+    // Mode multi-classes UEMOA — uniquement parcours actifs (LMD)
+    $parcoursListAvailable = ($parcours ?? collect())->mapWithKeys(fn ($p) => [
+        $p->id => $p->name . ($p->code ? ' · '.$p->code : ''),
+    ])->all();
 @endphp
 
 @push('styles')
@@ -222,6 +226,34 @@
     display: flex; gap: .5rem; justify-content: flex-end;
 }
 
+/* Mode toggle (Cohorte UEMOA vs Classe unique) */
+.exp-mode-btn {
+    flex: 1; padding: .65rem .8rem; border-radius: 10px;
+    border: 1px solid #e2e8f0; background: #fff; cursor: pointer;
+    font-size: .82rem; font-weight: 600; color: #475569;
+    display: inline-flex; align-items: center; gap: .5rem; justify-content: center;
+    transition: all .15s;
+}
+.exp-mode-btn:hover { background: #eff6ff; border-color: #dbeafe; color: #0453cb; }
+.exp-mode-btn--active {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff; border-color: transparent;
+    box-shadow: 0 2px 8px rgba(4,83,203,.25);
+}
+.exp-mode-btn--active:hover { color: #fff; background: linear-gradient(135deg, #033a8e, #0453cb); }
+
+/* Banner d'auto-detect de scope */
+.exp-scope-banner {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .7rem 1rem; border-radius: 10px;
+    font-size: .85rem; color: #fff; font-weight: 500;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+}
+.exp-scope-banner--mention { background: linear-gradient(135deg, #033a8e, #0a3d8f); }
+.exp-scope-banner--domaine { background: linear-gradient(135deg, #0a3d8f, #1e3a8a); }
+.exp-scope-banner--classe { background: linear-gradient(135deg, #475569, #64748b); }
+.exp-scope-banner i { font-size: .9rem; }
+
 .exp-error-banner {
     margin-bottom: 1rem; padding: .75rem 1rem;
     background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.2);
@@ -394,8 +426,22 @@
                             </div>
                         </td>
                         <td>
-                            <div style="font-weight:600;">{{ $e->classe->name ?? '—' }}</div>
-                            <div style="color:#64748b;font-size:.75rem;">{{ $e->matiere->name ?? '—' }}</div>
+                            @php
+                                $classeNames = $e->classes->pluck('name');
+                                $primaryClasse = $classeNames->first() ?? $e->classe?->name ?? '—';
+                                $extras = max(0, $classeNames->count() - 1);
+                                $ueName = $e->uniteEnseignement?->name;
+                            @endphp
+                            <div style="font-weight:600;">
+                                {{ $primaryClasse }}
+                                @if($extras > 0)
+                                    <span title="{{ $classeNames->skip(1)->join(', ') }}" style="display:inline-block;padding:.05rem .35rem;background:rgba(4,83,203,.10);color:#0453cb;border-radius:5px;font-size:.65rem;margin-left:.25rem;font-weight:700;">+{{ $extras }}</span>
+                                @endif
+                            </div>
+                            <div style="color:#64748b;font-size:.75rem;">
+                                {{ $e->matiere->name ?? '—' }}
+                                @if($ueName) · <em style="color:#3b7ddb;">{{ $ueName }}</em> @endif
+                            </div>
                         </td>
                         <td><span class="exp-chip exp-chip--{{ strtolower($e->type_examen) }}">{{ TypeExamen::labelFor($e->type_examen) }}</span></td>
                         <td>{{ $e->salle ?? '—' }}</td>
@@ -455,9 +501,150 @@
                 </div>
 
                 <div>
-                    {{-- Section identifiants académiques --}}
-                    <div class="exp-modal-section">
-                        <div class="exp-modal-section-title"><i class="fas fa-graduation-cap"></i> Scope académique</div>
+                    {{-- Toggle mode classique vs cohorte UEMOA --}}
+                    <div class="exp-modal-section" style="padding-bottom:.75rem;">
+                        <div style="display:flex;gap:.5rem;">
+                            <button type="button" class="exp-mode-btn"
+                                    :class="mode === 'cohorte' ? 'exp-mode-btn--active' : ''"
+                                    @click="switchMode('cohorte')">
+                                <i class="fas fa-users"></i>
+                                Mode cohorte UEMOA <span style="opacity:.7;font-weight:400;">(plusieurs classes)</span>
+                            </button>
+                            <button type="button" class="exp-mode-btn"
+                                    :class="mode === 'classe' ? 'exp-mode-btn--active' : ''"
+                                    @click="switchMode('classe')">
+                                <i class="fas fa-chalkboard"></i>
+                                Mode classe unique <span style="opacity:.7;font-weight:400;">(BTS / TP)</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- ════════════ MODE COHORTE UEMOA (cascade Parcours → UE → ECUE) ════════════ --}}
+                    <div class="exp-modal-section" x-show="mode === 'cohorte'" x-cloak>
+                        <div class="exp-modal-section-title"><i class="fas fa-sitemap"></i> Cohorte académique (UEMOA)</div>
+                        <div class="exp-modal-grid">
+                            <div class="field">
+                                <label>Parcours *</label>
+                                <x-au-select name="parcours_id"
+                                    :options="$parcoursListAvailable"
+                                    icon="fa-route"
+                                    placeholder="— Sélectionner un parcours —"
+                                    :searchable="count($parcoursListAvailable) > 8"
+                                    onchange="window.dispatchEvent(new CustomEvent('exam-parcours-changed', { detail: { id: this.value } }))" />
+                            </div>
+                            <div class="field">
+                                <label>UE *</label>
+                                <select x-ref="ueSelect" name="unite_enseignement_id"
+                                        @change="onUeChange($event.target.value)"
+                                        :disabled="!parcoursId || ues.length === 0"
+                                        style="width:100%;border:1px solid #e2e8f0;border-radius:9px;padding:.55rem .7rem;font-size:.88rem;background:#fff;color:#1e293b;cursor:pointer;">
+                                    <option value="">— UE —</option>
+                                    <template x-for="ue in ues" :key="ue.id">
+                                        <option :value="ue.id" x-text="ue.name + (ue.code ? ' · ' + ue.code : '')"></option>
+                                    </template>
+                                </select>
+                                <small x-show="parcoursId && ues.length === 0 && !loadingUes" x-cloak style="color:#b91c1c;font-size:.7rem;">Aucune UE pour ce parcours.</small>
+                                <small x-show="loadingUes" x-cloak style="color:#64748b;font-size:.7rem;"><i class="fas fa-spinner fa-spin"></i> Chargement…</small>
+                            </div>
+                            <div class="field full">
+                                <label>ECUE * <span style="font-weight:400;color:#64748b;font-size:.72rem;text-transform:none;">(Élément Constitutif d'UE)</span></label>
+                                <select name="matiere_id" x-model="ecueId"
+                                        :disabled="!ueId || ecues.length === 0"
+                                        style="width:100%;border:1px solid #e2e8f0;border-radius:9px;padding:.55rem .7rem;font-size:.88rem;background:#fff;color:#1e293b;cursor:pointer;">
+                                    <option value="">— ECUE —</option>
+                                    <template x-for="ecue in ecues" :key="ecue.id">
+                                        <option :value="ecue.id" x-text="ecue.name + (ecue.code ? ' · ' + ecue.code : '')"></option>
+                                    </template>
+                                </select>
+                                <small x-show="ueId && ecues.length === 0" x-cloak style="color:#b91c1c;font-size:.7rem;">Aucun ECUE configuré pour cette UE.</small>
+                            </div>
+                            <div class="field">
+                                <label>Type d'épreuve *</label>
+                                <x-au-select name="type_examen"
+                                    value="EXAMEN"
+                                    :options="$typeOptions"
+                                    icon="fa-pen-ruler"
+                                    :placeholderIsFirstOption="false" />
+                            </div>
+                            <div class="field">
+                                <label>Semestre</label>
+                                <x-au-select name="semestre"
+                                    :options="$semestreOptions"
+                                    icon="fa-layer-group"
+                                    placeholder="—" />
+                            </div>
+                            <div class="field">
+                                <label>Session UEMOA</label>
+                                <x-au-select name="session_id"
+                                    :options="$sessionOptions"
+                                    icon="fa-calendar-check"
+                                    placeholder="— Aucune —" />
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- ════════════ AUTO-DETECT + PREVIEW CLASSES ════════════ --}}
+                    <div class="exp-modal-section" x-show="mode === 'cohorte' && scopeResolved" x-cloak>
+                        <div class="exp-modal-section-title">
+                            <i class="fas fa-bullseye"></i> Classes ciblées
+                            <span x-show="resolvedClasses.length > 0" x-cloak style="margin-left:auto;font-size:.7rem;background:#eff6ff;color:#0453cb;padding:.15rem .5rem;border-radius:5px;font-weight:700;">
+                                <span x-text="selectedClassesCount"></span>/<span x-text="resolvedClasses.length"></span>
+                            </span>
+                        </div>
+                        <div class="exp-scope-banner" :class="'exp-scope-banner--' + scopeType">
+                            <i class="fas fa-magic-wand-sparkles"></i>
+                            Scope auto-détecté : <strong x-text="scopeLabel"></strong>
+                            <button type="button" @click="cycleScope()" style="margin-left:auto;background:rgba(255,255,255,.25);border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:5px;padding:.15rem .55rem;font-size:.72rem;cursor:pointer;">
+                                <i class="fas fa-shuffle"></i> Changer
+                            </button>
+                        </div>
+
+                        {{-- Inter-parcours toggle (si ECUE partagé) --}}
+                        <div x-show="sharedParcours.length > 0" x-cloak style="margin-top:.85rem;padding:.7rem .9rem;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:9px;font-size:.82rem;">
+                            <div style="display:flex;align-items:center;gap:.55rem;margin-bottom:.45rem;color:#b45309;font-weight:600;">
+                                <i class="fas fa-link"></i> Cet ECUE existe aussi dans
+                                <span x-text="sharedParcours.length"></span> autre(s) parcours
+                            </div>
+                            <template x-for="p in sharedParcours" :key="p.id">
+                                <label style="display:flex;align-items:center;gap:.45rem;padding:.35rem .55rem;background:#fff;border:1px solid #fde68a;border-radius:7px;margin:.2rem 0;cursor:pointer;font-size:.8rem;">
+                                    <input type="checkbox" :value="p.id" x-model="extraParcoursIds" @change="refreshClassesPreview()" style="accent-color:#b45309;">
+                                    <span x-text="p.name + (p.code ? ' · ' + p.code : '')"></span>
+                                </label>
+                            </template>
+                        </div>
+
+                        {{-- Liste classes avec checkboxes --}}
+                        <div x-show="loadingClasses" x-cloak style="padding:1.5rem;text-align:center;color:#64748b;">
+                            <i class="fas fa-spinner fa-spin" style="color:#0453cb;font-size:1.2rem;"></i>
+                            Calcul des classes…
+                        </div>
+                        <div x-show="!loadingClasses && resolvedClasses.length === 0" x-cloak style="padding:1.5rem;text-align:center;color:#94a3b8;font-size:.85rem;">
+                            <i class="fas fa-circle-exclamation" style="color:#f59e0b;"></i>
+                            Aucune classe trouvée pour ce scope.
+                        </div>
+                        <div x-show="!loadingClasses && resolvedClasses.length > 0" x-cloak
+                             style="display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:.4rem;margin-top:.85rem;max-height:240px;overflow-y:auto;padding-right:.4rem;">
+                            <template x-for="cls in resolvedClasses" :key="cls.id">
+                                <label style="display:flex;align-items:center;gap:.5rem;padding:.5rem .65rem;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;cursor:pointer;transition:all .15s;"
+                                       :style="excludedClasses.includes(cls.id) ? 'opacity:.45;background:#fafafa;' : ''">
+                                    <input type="checkbox" :checked="!excludedClasses.includes(cls.id)" @change="toggleClasse(cls.id)" style="accent-color:#0453cb;">
+                                    <span style="flex:1;font-size:.82rem;color:#1e293b;font-weight:500;" x-text="cls.name"></span>
+                                </label>
+                            </template>
+                        </div>
+                        <div style="display:flex;gap:.5rem;margin-top:.6rem;">
+                            <button type="button" @click="excludedClasses = []" class="exp-btn exp-btn--secondary" style="font-size:.75rem;padding:.35rem .7rem;">
+                                <i class="fas fa-check-double"></i> Tout cocher
+                            </button>
+                            <button type="button" @click="excludedClasses = resolvedClasses.map(c => c.id)" class="exp-btn exp-btn--secondary" style="font-size:.75rem;padding:.35rem .7rem;">
+                                <i class="fas fa-xmark"></i> Tout décocher
+                            </button>
+                        </div>
+                    </div>
+
+                    {{-- ════════════ MODE CLASSE UNIQUE (legacy / BTS) ════════════ --}}
+                    <div class="exp-modal-section" x-show="mode === 'classe'" x-cloak>
+                        <div class="exp-modal-section-title"><i class="fas fa-chalkboard"></i> Classe + Matière</div>
                         <div class="exp-modal-grid">
                             <div class="field">
                                 <label>Classe *</label>
@@ -476,21 +663,6 @@
                                     :searchable="count($matiereOptions) > 8" />
                             </div>
                             <div class="field">
-                                <label>Parcours (optionnel)</label>
-                                <x-au-select name="parcours_id"
-                                    :options="$parcoursOptions"
-                                    icon="fa-route"
-                                    placeholder="— Aucun (tronc commun) —"
-                                    :searchable="count($parcoursOptions) > 8" />
-                            </div>
-                            <div class="field">
-                                <label>Session UEMOA (optionnel)</label>
-                                <x-au-select name="session_id"
-                                    :options="$sessionOptions"
-                                    icon="fa-calendar-check"
-                                    placeholder="— Aucune session liée —" />
-                            </div>
-                            <div class="field">
                                 <label>Type d'épreuve *</label>
                                 <x-au-select name="type_examen"
                                     value="EXAMEN"
@@ -504,6 +676,13 @@
                                     :options="$semestreOptions"
                                     icon="fa-layer-group"
                                     placeholder="—" />
+                            </div>
+                            <div class="field">
+                                <label>Session UEMOA</label>
+                                <x-au-select name="session_id"
+                                    :options="$sessionOptions"
+                                    icon="fa-calendar-check"
+                                    placeholder="— Aucune —" />
                             </div>
                         </div>
                     </div>
@@ -607,10 +786,33 @@ function examensIndex() {
         toasts: [],
         toastId: 0,
         form: this.defaultForm(),
+        anneeId: {{ $annee->id }},
+
+        // ─── Mode cohorte UEMOA (cascade Parcours → UE → ECUE) ───
+        mode: 'cohorte',  // 'cohorte' | 'classe'
+        parcoursId: '',
+        ueId: '',
+        ecueId: '',
+        ues: [],
+        ecuesAll: [],          // tous les ECUE chargés pour le parcours
+        loadingUes: false,
+        loadingClasses: false,
+        scopeType: 'parcours',
+        scopeId: null,
+        scopeLabel: '',
+        scopeResolved: false,
+        resolvedClasses: [],
+        excludedClasses: [],
+        extraParcoursIds: [],
+        sharedParcours: [],
+
+        // Cycle des scopes possibles
+        scopeCycleOrder: ['parcours', 'mention', 'domaine', 'classe'],
+        scopeLabels: { parcours: 'Parcours', mention: 'Mention (L1 tronc commun)', domaine: 'Domaine', classe: 'Classe unique' },
 
         init() {
             window.addEventListener('toast', (ev) => this.pushToast(ev.detail));
-            // Auto-ouvrir le modal si query ?open_create=1 (rétrocompat lien externe /create)
+            window.addEventListener('exam-parcours-changed', (ev) => this.onParcoursChange(ev.detail.id));
             const params = new URLSearchParams(window.location.search);
             if (params.get('open_create') === '1') {
                 this.openCreateModal();
@@ -634,8 +836,19 @@ function examensIndex() {
             };
         },
 
+        get ecues() {
+            // ECUE filtrés par UE sélectionnée
+            if (!this.ueId) return [];
+            return this.ecuesAll.filter(e => String(e.unite_enseignement_id) === String(this.ueId));
+        },
+
+        get selectedClassesCount() {
+            return this.resolvedClasses.length - this.excludedClasses.length;
+        },
+
         openCreateModal() {
             this.form = this.defaultForm();
+            this.resetCohorte();
             this.errors = [];
             this.modalOpen = true;
         },
@@ -643,6 +856,123 @@ function examensIndex() {
         closeModal() {
             this.modalOpen = false;
             this.errors = [];
+        },
+
+        resetCohorte() {
+            this.parcoursId = '';
+            this.ueId = '';
+            this.ecueId = '';
+            this.ues = [];
+            this.ecuesAll = [];
+            this.scopeResolved = false;
+            this.resolvedClasses = [];
+            this.excludedClasses = [];
+            this.extraParcoursIds = [];
+            this.sharedParcours = [];
+            this.scopeType = 'parcours';
+            this.scopeId = null;
+            this.scopeLabel = '';
+        },
+
+        switchMode(newMode) {
+            this.mode = newMode;
+            if (newMode === 'classe') {
+                this.resetCohorte();
+            }
+        },
+
+        async onParcoursChange(parcoursId) {
+            this.parcoursId = parcoursId || '';
+            this.ueId = '';
+            this.ecueId = '';
+            this.ues = [];
+            this.ecuesAll = [];
+            this.scopeResolved = false;
+            if (!parcoursId) return;
+            this.loadingUes = true;
+            try {
+                const url = new URL('{{ route("esbtp.examens.ecues-by-parcours") }}', window.location.origin);
+                url.searchParams.set('parcours_id', parcoursId);
+                const res = await fetch(url, { headers: { Accept: 'application/json' } });
+                if (!res.ok) throw new Error('Erreur ' + res.status);
+                const data = await res.json();
+                this.ues = data.groups.map(g => g.ue);
+                // Tous les ECUEs en flat avec leur unite_enseignement_id
+                this.ecuesAll = data.groups.flatMap(g => g.ecues.map(e => ({ ...e, unite_enseignement_id: g.ue.id })));
+            } catch (e) {
+                this.pushToast({ type: 'error', message: 'Erreur chargement UE/ECUE : ' + e.message });
+            } finally {
+                this.loadingUes = false;
+            }
+            // Reset scope auto sur le parcours sélectionné
+            this.scopeType = 'parcours';
+            this.scopeId = parseInt(parcoursId);
+            this.scopeLabel = this.scopeLabels.parcours + ' #' + parcoursId;
+            this.tryResolveClasses();
+        },
+
+        onUeChange(ueId) {
+            this.ueId = ueId;
+            this.ecueId = '';
+        },
+
+        async tryResolveClasses() {
+            if (this.mode !== 'cohorte' || !this.scopeId) return;
+            this.loadingClasses = true;
+            this.scopeResolved = true;
+            try {
+                const res = await fetch('{{ route("esbtp.examens.resolve-scope-classes") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        scope_type: this.scopeType,
+                        scope_id: this.scopeId,
+                        parcours_ids: this.extraParcoursIds,
+                        matiere_id: this.ecueId || null,
+                    }),
+                });
+                if (!res.ok) throw new Error('Erreur ' + res.status);
+                const data = await res.json();
+                this.resolvedClasses = data.classes;
+                this.sharedParcours = data.shared_parcours;
+                this.excludedClasses = [];
+                // Re-affiner le label de scope avec le nombre
+                this.scopeLabel = this.scopeLabels[this.scopeType] + ' — ' + this.resolvedClasses.length + ' classe' + (this.resolvedClasses.length > 1 ? 's' : '');
+            } catch (e) {
+                this.pushToast({ type: 'error', message: 'Erreur résolution classes : ' + e.message });
+                this.resolvedClasses = [];
+                this.sharedParcours = [];
+            } finally {
+                this.loadingClasses = false;
+            }
+        },
+
+        async refreshClassesPreview() {
+            await this.tryResolveClasses();
+        },
+
+        cycleScope() {
+            // Cycle parcours → mention → domaine → classe → parcours
+            const idx = this.scopeCycleOrder.indexOf(this.scopeType);
+            const next = this.scopeCycleOrder[(idx + 1) % this.scopeCycleOrder.length];
+            this.scopeType = next;
+            // scope_id : conserve le parcours_id par défaut, l'utilisateur ajustera via filière/mention si besoin
+            if (next === 'mention' || next === 'domaine') {
+                // On garde temporairement scope_id du parcours, le backend résoudra via la classe parent
+                // Simplification : scope_id devient null → mode "cohérent avec parcours sélectionné" si besoin
+                // Note : pour mention/domaine précis, l'utilisateur peut rester sur parcours et utiliser inter-parcours toggle
+            }
+            this.tryResolveClasses();
+        },
+
+        toggleClasse(classeId) {
+            const idx = this.excludedClasses.indexOf(classeId);
+            if (idx >= 0) this.excludedClasses.splice(idx, 1);
+            else this.excludedClasses.push(classeId);
         },
 
         async submitCreate() {
@@ -661,6 +991,25 @@ function examensIndex() {
                 // Merge avec les champs Alpine non couverts par FormData (textarea/inputs liés via x-model)
                 Object.assign(payload, this.cleanPayload(this.form));
                 payload.is_anonymous = this.form.is_anonymous ? 1 : 0;
+
+                // Mode cohorte → ajouter scope + classe_ids résolues - exclusions
+                if (this.mode === 'cohorte') {
+                    payload.scope_type = this.scopeType;
+                    payload.scope_id = this.scopeId;
+                    payload.parcours_ids = this.extraParcoursIds;
+                    payload.classe_ids = this.resolvedClasses
+                        .filter(c => !this.excludedClasses.includes(c.id))
+                        .map(c => c.id);
+                    if (!payload.classe_ids.length) {
+                        this.errors = ['Sélectionnez au moins une classe ciblée.'];
+                        this.saving = false;
+                        return;
+                    }
+                    // En cohorte, classe_id principale = la 1ère cochée
+                    payload.classe_id = payload.classe_ids[0];
+                } else {
+                    payload.scope_type = 'classe';
+                }
 
                 const res = await fetch('{{ route("esbtp.examens.store") }}', {
                     method: 'POST',
