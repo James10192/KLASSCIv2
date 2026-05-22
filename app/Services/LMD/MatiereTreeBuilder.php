@@ -2,23 +2,41 @@
 
 namespace App\Services\LMD;
 
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPPlanificationAcademique;
+use App\Services\VolumeBudgetService;
 use Illuminate\Support\Collection;
 
 /**
- * Groupe une collection de matieres LMD (ECUEs) par Unite d'Enseignement
- * avec agregats CM/TD/TP par UE + bucket "Hors UE" pour orphans.
+ * MatiereTreeBuilder — Single Source of Truth pour les matières d'une classe.
  *
  * Source canonique :
  * - Pour classe LMD avec parcours : pattern Planning LMD (parcours->unitesEnseignement)
  * - Pour classe LMD sans parcours (tronc commun) : fallback ESBTPPlanificationAcademique
  *   par filiere+niveau (cf rule klassci-classe-matieres.md).
  *
- * Consumers :
- * - ESBTPClasseController::show() tab Suivi heures (classes.show LMD)
- * - ESBTPEmploiTempsController::show() tab Suivi heures (emploi-temps/show)
+ * ## API publique (rule `lmd-bts-matieres-single-source.md`)
+ *
+ * - `buildForPlanning($planificationData, $classe)` — sans volumeBudget (heures réalisées)
+ *   Pour : bulk-edit, addSession, seances-cours/edit, formulaires planification
+ *
+ * - `buildWithVolumeBudget($planificationData, $classe, $annee)` — avec volumeBudget
+ *   Pour : emploi-temps/show, dashboards KPI réalisation
+ *
+ * - `loadLmdMatieresForClasse($classe)` — helper bas-niveau pour classes.show tab Suivi heures
+ *
+ * - `forClasse($lmdMatieres, $lmdVolumeBudget)` — groupage UE → ECUE avec agrégats CM/TD/TP
+ *
+ * ## Pourquoi 2 méthodes publiques (pas un flag boolean)
+ *
+ * Decision Critic round 2 (chantier 2026-05) : flag `bool $includeVolumeBudget` = smell
+ * d'avenir, un caller oubliera le param tôt ou tard. 2 méthodes distinctes = impossible
+ * d'oublier l'intent.
+ *
+ * @see .claude/rules/lmd-bts-matieres-single-source.md
+ * @see memory/feedback_matiere_tree_builder_canonical.md
  */
 class MatiereTreeBuilder
 {
@@ -138,11 +156,18 @@ class MatiereTreeBuilder
 
     /**
      * Pour une classe LMD : produit la structure $planificationData['matieres_planifiees']
-     * attendue par les UIs legacy (composant <x-emploi-temps.planification-section>,
-     * seances-cours/create form, etc.) MAIS avec le scope strict parcours.unitesEnseignement
-     * (au lieu de la pivot esbtp_matiere_filiere qui est vide pour LMD).
+     * SANS volumeBudget (heures réalisées CM/TD/TP).
+     *
+     * Pour : bulk-edit, addSession, seances-cours/edit, formulaires planification —
+     * tous les contextes où on n'a pas besoin de tracker les heures réalisées en live.
+     *
+     * Si tu veux le volumeBudget (heures réalisées) → utilise `buildWithVolumeBudget()` à la place.
+     *
+     * @param array $planificationData Structure initiale retournée par getPlanificationDataForClasse()
+     * @param ESBTPClasse $classe Classe LMD (filtrée par le caller via systeme_academique === 'LMD')
+     * @return array Structure $planificationData mise à jour avec matieres_planifiees LMD
      */
-    public function overridePlanificationForLmd(array $planificationData, ESBTPClasse $classe): array
+    public function buildForPlanning(array $planificationData, ESBTPClasse $classe): array
     {
         $lmdMatieres = $this->loadLmdMatieresForClasse($classe);
         if ($lmdMatieres->isEmpty()) {
@@ -176,6 +201,149 @@ class MatiereTreeBuilder
             'heures_restantes_formatted' => $fmt($totalHeures),
             'message_configuration' => null,
         ]);
+    }
+
+    /**
+     * Pour une classe LMD : produit la structure $planificationData['matieres_planifiees']
+     * AVEC volumeBudget (heures réalisées CM/TD/TP via VolumeBudgetService).
+     *
+     * Pour : emploi-temps/show, dashboards KPI réalisation — tous les contextes où
+     * on veut afficher "heures_restantes" calculées à partir des séances réellement
+     * tenues (date_seance < now() ET teacher_attendance.status != 'absent').
+     *
+     * Calcule les semestres applicables au niveau LMD (L1=[1,2], L2=[3,4], L3=[5,6], etc.)
+     * et merge les volumes des 2 semestres dans le budget.
+     *
+     * @param array $planificationData Structure initiale
+     * @param ESBTPClasse $classe Classe LMD
+     * @param ESBTPAnneeUniversitaire|null $annee Année universitaire (défaut: current)
+     * @return array Structure $planificationData avec heures_restantes calculées
+     */
+    public function buildWithVolumeBudget(
+        array $planificationData,
+        ESBTPClasse $classe,
+        ?ESBTPAnneeUniversitaire $annee = null
+    ): array {
+        $lmdMatieres = $this->loadLmdMatieresForClasse($classe);
+        if ($lmdMatieres->isEmpty()) {
+            return $planificationData;
+        }
+
+        // VolumeBudget par matière (heures réalisées) — via VolumeBudgetService.
+        // Boucle sur les 2 semestres LMD du niveau pour merger les volumes.
+        $volumeBudget = $this->loadVolumeBudget($classe, $annee);
+
+        $fmt = fn ($n) => rtrim(rtrim(number_format((float) $n, 1, ',', ''), '0'), ',').'h';
+        $matieresPlanifiees = $lmdMatieres->map(function ($row) use ($volumeBudget, $fmt) {
+            $mid = $row['matiere']->id;
+            $totalPlanifie = (float) ($row['volume_horaire_total'] ?? 0);
+            $b = $volumeBudget[$mid] ?? [];
+            $totalRealise = (float) (
+                ($b['cm']['realise'] ?? 0)
+                + ($b['td']['realise'] ?? 0)
+                + ($b['tp']['realise'] ?? 0)
+            );
+            $heuresRestantes = max(0, $totalPlanifie - $totalRealise);
+            $pct = $totalPlanifie > 0
+                ? min(100, (int) round($totalRealise / $totalPlanifie * 100))
+                : 0;
+
+            return [
+                'matiere' => $row['matiere'],
+                'planification_id' => null,
+                'volume_horaire_total' => $totalPlanifie,
+                'volume_horaire_total_formatted' => $fmt($totalPlanifie),
+                'heures_restantes' => $heuresRestantes,
+                'heures_restantes_formatted' => $fmt($heuresRestantes),
+                'pourcentage_utilise' => $pct,
+                'enseignant_affiche' => null,
+                'enseignants_selectables' => collect(),
+            ];
+        });
+
+        $totalHeures = (float) $matieresPlanifiees->sum('volume_horaire_total');
+        $totalRestant = (float) $matieresPlanifiees->sum('heures_restantes');
+
+        return array_merge($planificationData, [
+            'planifications_configurees' => true,
+            'matieres_planifiees' => $matieresPlanifiees,
+            'heures_totales' => $totalHeures,
+            'heures_totales_formatted' => $fmt($totalHeures),
+            'heures_restantes' => $totalRestant,
+            'heures_restantes_formatted' => $fmt($totalRestant),
+            'message_configuration' => null,
+        ]);
+    }
+
+    /**
+     * Charge le volumeBudget (heures réalisées) pour les 2 semestres LMD applicables.
+     * Helper privé utilisé par buildWithVolumeBudget().
+     *
+     * Mapping niveau LMD → semestres :
+     * - Licence : L1=[1,2], L2=[3,4], L3=[5,6]
+     * - Master  : M1=[7,8], M2=[9,10]
+     * - Doctorat: D1=[11,12], D2=[13,14]
+     *
+     * @return array Keyed by matiere_id, structure {cm,td,tp} => {planifie, realise}
+     */
+    private function loadVolumeBudget(ESBTPClasse $classe, ?ESBTPAnneeUniversitaire $annee): array
+    {
+        $volumeBudget = [];
+        try {
+            $anneeId = $annee?->id ?? optional(ESBTPAnneeUniversitaire::current())->id;
+            if (!$anneeId) {
+                return $volumeBudget;
+            }
+
+            $volumeBudgetService = app(VolumeBudgetService::class);
+            $niveauType = optional($classe->niveau)->type ?? '';
+            $niveauYear = (int) (optional($classe->niveau)->year ?? 1);
+
+            // Calcul base semestre selon le type de niveau LMD UEMOA
+            $baseSem = match ($niveauType) {
+                'Licence' => ($niveauYear - 1) * 2,
+                'Master' => 6 + ($niveauYear - 1) * 2,
+                'Doctorat' => 10 + ($niveauYear - 1) * 2,
+                default => 0,
+            };
+
+            foreach ([$baseSem + 1, $baseSem + 2] as $sem) {
+                $sb = $volumeBudgetService->forClasse(
+                    $classe,
+                    $classe->niveau_etude_id,
+                    $sem,
+                    $anneeId
+                );
+                foreach ($sb as $mid => $b) {
+                    if (!isset($volumeBudget[$mid])) {
+                        $volumeBudget[$mid] = $b;
+                    } else {
+                        foreach (['cm', 'td', 'tp'] as $k) {
+                            $volumeBudget[$mid][$k]['planifie'] = ($volumeBudget[$mid][$k]['planifie'] ?? 0) + ($b[$k]['planifie'] ?? 0);
+                            $volumeBudget[$mid][$k]['realise'] = ($volumeBudget[$mid][$k]['realise'] ?? 0) + ($b[$k]['realise'] ?? 0);
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('MatiereTreeBuilder::loadVolumeBudget failed: '.$e->getMessage(), [
+                'classe_id' => $classe->id,
+            ]);
+        }
+
+        return $volumeBudget;
+    }
+
+    /**
+     * @deprecated since PR1 (2026-05-22) of chantier emploi-temps-lmd-unification.
+     *             Use `buildForPlanning()` (sans volumeBudget) ou `buildWithVolumeBudget()` (avec).
+     *             Will be removed in a future PR once all callers are migrated.
+     *
+     * Alias rétrocompat — préserve les usages existants (anti-régression strangler fig).
+     */
+    public function overridePlanificationForLmd(array $planificationData, ESBTPClasse $classe): array
+    {
+        return $this->buildForPlanning($planificationData, $classe);
     }
 
     /**

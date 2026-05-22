@@ -867,8 +867,12 @@ class ESBTPEmploiTempsController extends Controller
             // OVERRIDE LMD : si la classe est LMD avec parcours, utiliser le scope strict
             // parcours.unitesEnseignement (pattern Planning LMD) au lieu du planning general
             // (qui retourne 0 matieres car le pivot esbtp_classe_matiere est vide en LMD).
+            // PR1 chantier emploi-temps-lmd-unification : bascule vers MatiereTreeBuilder
+            // canonical (SSOT). buildWithVolumeBudget() calcule les heures realisees CM/TD/TP
+            // via VolumeBudgetService pour les KPIs hero "heures restantes / % realise".
             if (($emploi_temp->classe->systeme_academique ?? '') === 'LMD') {
-                $planificationData = $this->overridePlanificationForLmd($planificationData, $emploi_temp->classe);
+                $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)
+                    ->buildWithVolumeBudget($planificationData, $emploi_temp->classe, $emploi_temp->annee);
             }
         }
 
@@ -1064,6 +1068,14 @@ class ESBTPEmploiTempsController extends Controller
      * les ECUEs strict du parcours (pattern Planning LMD via parcours.unitesEnseignement +
      * getEcuesEffectifs). Garde la meme structure attendue par le composant
      * <x-emploi-temps.planification-section> pour compatibility.
+     *
+     * @deprecated PR1 chantier emploi-temps-lmd-unification (2026-05-22) — duplication
+     *             avec App\Services\LMD\MatiereTreeBuilder::buildWithVolumeBudget().
+     *             Utilise désormais le service partout. CETTE MÉTHODE SERA SUPPRIMÉE EN PR2
+     *             une fois que `buildEmploiTempsViewData()` et `addSession()` auront migré
+     *             vers le service. Strangler fig pattern — voir
+     *             memory/feedback_strangler_fig_refactor.md
+     * @see \App\Services\LMD\MatiereTreeBuilder::buildWithVolumeBudget()
      */
     private function overridePlanificationForLmd(array $planificationData, $classe): array
     {
