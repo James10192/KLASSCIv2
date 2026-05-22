@@ -2481,6 +2481,48 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
         ->name('ues.update-responsable');
 });
 
+// ============================================================
+// Routes Examens planifiés (PR9 — workflow UEMOA scolarité)
+// ============================================================
+Route::prefix('esbtp/examens')->name('esbtp.examens.')
+    ->middleware(['auth', 'permission:admin.access', 'paywall'])
+    ->group(function () {
+        // Aperçus / KPIs (lecture)
+        Route::get('/kpis', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'kpis'])
+            ->middleware(['permission:lmd.examens.view', 'throttle:120,1'])
+            ->name('kpis');
+        Route::get('/convocations/preview', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'convocationsPreview'])
+            ->middleware(['permission:lmd.examens.view', 'throttle:60,1'])
+            ->name('convocations.preview');
+        Route::get('/convocations/download', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'convocationsDownload'])
+            ->middleware(['permission:lmd.examens.view', 'throttle:10,1'])
+            ->name('convocations.download');
+
+        // Bulk generate + actions custom
+        Route::post('/bulk-generate', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'bulkGenerate'])
+            ->middleware(['permission:lmd.examens.manage', 'throttle:10,1'])
+            ->name('bulk-generate');
+        Route::post('/{examen}/surveillants', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'assignSurveillants'])
+            ->middleware(['permission:lmd.examens.manage', 'throttle:30,1'])
+            ->name('surveillants.assign');
+        Route::post('/{examen}/lock-notes', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'lockNotes'])
+            ->middleware(['permission:lmd.examens.notes_lock', 'throttle:30,1'])
+            ->name('lock-notes');
+
+        // Resource CRUD
+        Route::resource('/', \App\Http\Controllers\ESBTPExamenPlanifieController::class)
+            ->parameters(['' => 'examen'])
+            ->names([
+                'index' => 'index',
+                'create' => 'create',
+                'store' => 'store',
+                'show' => 'show',
+                'edit' => 'edit',
+                'update' => 'update',
+                'destroy' => 'destroy',
+            ]);
+    });
+
 /*
 |--------------------------------------------------------------------------
 | Chat interactif + Notifs workflow (issue #298)
