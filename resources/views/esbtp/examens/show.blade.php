@@ -1,6 +1,11 @@
 @extends('layouts.app')
 @section('title', $examen->titre)
 
+@php
+    use App\Enums\ExamenStatus;
+    use App\Enums\TypeExamen;
+@endphp
+
 @push('styles')
 <style>
 [x-cloak] { display:none !important; }
@@ -67,7 +72,7 @@
     <div class="exp-show-meta">
         <div class="exp-show-meta-item">
             <div class="exp-show-meta-label">Type</div>
-            <div class="exp-show-meta-value">{{ $examen->type_examen }}</div>
+            <div class="exp-show-meta-value">{{ TypeExamen::labelFor($examen->type_examen) }}</div>
         </div>
         <div class="exp-show-meta-item">
             <div class="exp-show-meta-label">Date</div>
@@ -85,7 +90,7 @@
             <div class="exp-show-meta-label">Statut</div>
             <div class="exp-show-meta-value">
                 @if($examen->notes_locked) <i class="fas fa-lock"></i> @endif
-                {{ ucfirst(str_replace('_',' ', $examen->status)) }}
+                {{ ExamenStatus::labelFor($examen->status) }}
             </div>
         </div>
     </div>

@@ -2582,6 +2582,10 @@ Route::prefix('esbtp/examens')->name('esbtp.examens.')
         Route::get('/kpis', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'kpis'])
             ->middleware(['permission:lmd.examens.view', 'throttle:120,1'])
             ->name('kpis');
+        // Options pour modal AJAX (classes + matières + parcours + sessions)
+        Route::get('/options', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'options'])
+            ->middleware(['permission:lmd.examens.manage', 'throttle:60,1'])
+            ->name('options');
         Route::get('/convocations/preview', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'convocationsPreview'])
             ->middleware(['permission:lmd.examens.view', 'throttle:60,1'])
             ->name('convocations.preview');
