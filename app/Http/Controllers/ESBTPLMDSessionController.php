@@ -39,7 +39,7 @@ class ESBTPLMDSessionController extends Controller
             'publiees' => ESBTPLMDSession::forAnnee($annee->id)->where('status', 'published')->count(),
         ];
 
-        $parcours = ESBTPLMDParcours::orderBy('nom')->get(['id', 'nom']);
+        $parcours = ESBTPLMDParcours::orderBy('name')->get(['id', 'name']);
         $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'libelle', 'is_current']);
 
         return view('esbtp.lmd.rattrapage.index', compact(

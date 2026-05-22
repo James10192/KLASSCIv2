@@ -43,7 +43,7 @@ class ESBTPLMDJuryController extends Controller
             'publies' => ESBTPLMDJury::where('annee_universitaire_id', $annee->id)->where('status', 'publie')->count(),
         ];
 
-        $parcours = ESBTPLMDParcours::orderBy('nom')->get(['id', 'nom']);
+        $parcours = ESBTPLMDParcours::orderBy('name')->get(['id', 'name']);
         $classes = ESBTPClasse::orderBy('name')->get(['id', 'name']);
         $sessions = ESBTPLMDSession::orderByDesc('date_debut')->get(['id', 'libelle']);
         $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'libelle', 'is_current']);

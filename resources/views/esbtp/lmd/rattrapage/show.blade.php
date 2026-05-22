@@ -39,7 +39,7 @@
             <h1>{{ $session->libelle }}</h1>
             <p>
                 <span style="text-transform:uppercase;font-weight:600;font-size:.78rem;">{{ $session->type }}</span> ·
-                {{ $session->parcours->nom ?? 'Tous parcours' }} ·
+                {{ $session->parcours->name ?? 'Tous parcours' }} ·
                 {{ $session->semestre ? 'S'.$session->semestre : 'Semestre n/a' }}
             </p>
         </div>

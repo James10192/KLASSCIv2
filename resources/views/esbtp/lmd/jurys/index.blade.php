@@ -97,7 +97,7 @@
         <tr>
             <td style="font-weight:600;color:#0453cb;">{{ $j->libelle }}</td>
             <td>{{ optional($j->date_jury)->format('d/m/Y') ?? '—' }}</td>
-            <td>{{ $j->parcours?->nom ?? '—' }} @if($j->classe) · {{ $j->classe->name }}@endif</td>
+            <td>{{ $j->parcours?->name ?? '—' }} @if($j->classe) · {{ $j->classe->name }}@endif</td>
             <td><span style="background:#f1f5f9;padding:.15rem .45rem;border-radius:5px;font-size:.72rem;color:#475569;font-weight:600;">{{ $j->membres->count() }}</span></td>
             <td><span class="juy-status juy-status--{{ $j->status }}">{{ str_replace('_',' ',$j->status) }}</span></td>
             <td>
@@ -138,7 +138,7 @@
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Parcours</label>
                     <select name="parcours_id" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
                         <option value="">— Tous —</option>
-                        @foreach($parcours as $p)<option value="{{ $p->id }}">{{ $p->nom }}</option>@endforeach
+                        @foreach($parcours as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
                     </select>
                 </div>
                 <div>

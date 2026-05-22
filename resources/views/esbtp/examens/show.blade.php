@@ -96,7 +96,7 @@
         <div class="exp-show-card">
             <h2><i class="fas fa-info-circle"></i> Détails</h2>
             <div class="kv-row"><span>Semestre</span><span>{{ $examen->semestre ? 'S'.$examen->semestre : '—' }}</span></div>
-            <div class="kv-row"><span>Parcours</span><span>{{ $examen->parcours->nom ?? '—' }}</span></div>
+            <div class="kv-row"><span>Parcours</span><span>{{ $examen->parcours->name ?? '—' }}</span></div>
             <div class="kv-row"><span>Coefficient</span><span>{{ rtrim(rtrim(number_format($examen->coefficient, 2, '.', ''), '0'), '.') }}</span></div>
             <div class="kv-row"><span>Barème</span><span>{{ (int) $examen->bareme }}</span></div>
             <div class="kv-row"><span>Anonymisé</span><span>{{ $examen->is_anonymous ? 'Oui' : 'Non' }}</span></div>
