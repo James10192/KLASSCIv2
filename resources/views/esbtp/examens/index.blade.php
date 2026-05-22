@@ -785,7 +785,17 @@ function examensIndex() {
         errors: [],
         toasts: [],
         toastId: 0,
-        form: this.defaultForm(),
+        form: {
+            titre: '',
+            description: '',
+            date_debut: '',
+            date_fin: '',
+            duree_minutes: 120,
+            salle: '',
+            coefficient: 1,
+            bareme: 20,
+            is_anonymous: false,
+        },
         anneeId: {{ $annee->id }},
 
         // ─── Mode cohorte UEMOA (cascade Parcours → UE → ECUE) ───
