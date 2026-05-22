@@ -17,7 +17,7 @@
         $p->id => $p->name . ($p->code ? ' · '.$p->code : ''),
     ])->all();
     $sessionOptions = ($sessions ?? collect())->mapWithKeys(fn ($s) => [
-        $s->id => $s->name . ($s->type ? ' ('.$s->type.')' : ''),
+        $s->id => $s->libelle . ($s->type ? ' ('.$s->type.')' : ''),
     ])->all();
     $semestreOptions = [
         1 => 'Semestre 1', 2 => 'Semestre 2', 3 => 'Semestre 3', 4 => 'Semestre 4',

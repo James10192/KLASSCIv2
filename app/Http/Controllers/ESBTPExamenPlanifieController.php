@@ -61,13 +61,15 @@ class ESBTPExamenPlanifieController extends Controller
         $annees = ESBTPAnneeUniversitaire::orderByDesc('id')->get(['id', 'name', 'is_current']);
 
         // Données pour le modal de création (chargées server-side pour que les
-        // pickers premium <x-au-select> soient rendus directement — pas d'AJAX
+        // pickers premium au-select soient rendus directement — pas d'AJAX
         // post-mount).
         $matieres = ESBTPMatiere::orderBy('name')->get(['id', 'name']);
         $parcours = ESBTPLMDParcours::orderBy('name')->get(['id', 'name', 'code']);
+        // ESBTPLMDSession utilise la colonne `libelle` (pas `name`) — convention
+        // historique de la table esbtp_lmd_sessions.
         $sessions = ESBTPLMDSession::where('annee_universitaire_id', $annee->id)
             ->orderByDesc('date_debut')
-            ->get(['id', 'name', 'type']);
+            ->get(['id', 'libelle', 'type']);
 
         return view('esbtp.examens.index', compact(
             'examens', 'kpis', 'classes', 'annee', 'annees',
@@ -93,7 +95,8 @@ class ESBTPExamenPlanifieController extends Controller
             'parcours' => ESBTPLMDParcours::orderBy('name')->get(['id', 'name', 'code'])->values(),
             'sessions' => ESBTPLMDSession::where('annee_universitaire_id', $annee->id)
                 ->orderBy('date_debut', 'desc')
-                ->get(['id', 'name', 'type'])
+                ->get(['id', 'libelle', 'type'])
+                ->map(fn ($s) => ['id' => $s->id, 'name' => $s->libelle, 'type' => $s->type])
                 ->values(),
             'annee' => ['id' => $annee->id, 'name' => $annee->name],
             'types' => TypeExamen::selectOptions(),
