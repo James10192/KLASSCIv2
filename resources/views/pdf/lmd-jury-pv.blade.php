@@ -94,7 +94,7 @@
             <tr><td class="label">Libellé</td><td class="value">{{ $jury->libelle }}</td></tr>
             <tr><td class="label">Année universitaire</td><td class="value">{{ $jury->anneeUniversitaire?->libelle ?? '—' }}</td></tr>
             <tr><td class="label">Date du jury</td><td class="value">{{ $jury->date_jury?->format('l d F Y') ?? '—' }}</td></tr>
-            <tr><td class="label">Parcours</td><td class="value">{{ $jury->parcours?->nom ?? 'Tous parcours' }}</td></tr>
+            <tr><td class="label">Parcours</td><td class="value">{{ $jury->parcours?->name ?? 'Tous parcours' }}</td></tr>
             <tr><td class="label">Classe</td><td class="value">{{ $jury->classe?->name ?? '—' }}</td></tr>
             <tr><td class="label">Semestre</td><td class="value">{{ $jury->semestre ? 'S' . $jury->semestre : '—' }}</td></tr>
             <tr><td class="label">Session liée</td><td class="value">{{ $jury->session?->libelle ?? '—' }}</td></tr>

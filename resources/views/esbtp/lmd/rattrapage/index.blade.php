@@ -103,7 +103,7 @@
         <tr>
             <td style="font-weight:600;color:#0453cb;">{{ $s->libelle }}</td>
             <td><span class="rtp-chip rtp-chip--{{ $s->type }}">{{ $s->type }}</span></td>
-            <td>{{ $s->parcours->nom ?? '—' }}</td>
+            <td>{{ $s->parcours->name ?? '—' }}</td>
             <td>{{ $s->semestre ? 'S'.$s->semestre : '—' }}</td>
             <td>{{ optional($s->date_debut)->format('d/m/Y') }} — {{ optional($s->date_fin)->format('d/m/Y') }}</td>
             <td><span class="rtp-status rtp-status--{{ $s->status }}">{{ str_replace('_',' ',$s->status) }}</span></td>
@@ -151,7 +151,7 @@
                     <label style="font-size:.72rem;color:#475569;font-weight:600;text-transform:uppercase;">Parcours</label>
                     <select name="parcours_id" style="width:100%;padding:.5rem;border:1px solid #e2e8f0;border-radius:8px;">
                         <option value="">— Tous parcours —</option>
-                        @foreach($parcours as $p)<option value="{{ $p->id }}">{{ $p->nom }}</option>@endforeach
+                        @foreach($parcours as $p)<option value="{{ $p->id }}">{{ $p->name }}</option>@endforeach
                     </select>
                 </div>
                 <div style="grid-column:1/-1;">

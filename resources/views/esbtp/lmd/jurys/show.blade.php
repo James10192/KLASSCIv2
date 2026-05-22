@@ -73,7 +73,7 @@
             <h1>{{ $jury->libelle }}</h1>
             <p>
                 <span style="text-transform:uppercase;font-weight:700;font-size:.75rem;">{{ str_replace('_',' ', $jury->status) }}</span>
-                @if($jury->parcours) · {{ $jury->parcours->nom }} @endif
+                @if($jury->parcours) · {{ $jury->parcours->name }} @endif
                 @if($jury->classe) · {{ $jury->classe->name }} @endif
                 @if($jury->semestre) · S{{ $jury->semestre }} @endif
                 @if($jury->date_jury) · {{ $jury->date_jury->format('d/m/Y') }} @endif

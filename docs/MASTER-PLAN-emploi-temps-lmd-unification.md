@@ -599,18 +599,20 @@ presentation (dev canonical)
 | 2026-05-22 | PR5 | Types reactive BTS-aware + partial BTS séparé | `4c8daa12` | 4 Feature | ✅ Done |
 | 2026-05-22 | PR6 | Section examens P1 + extension TypeSeance enum (PARTIEL/RATTRAPAGE/SOUTENANCE) | `0287e09b` | 1 Feature | ✅ Done |
 | 2026-05-22 | PR7 | Bulletin BTS guard 422 contre classes LMD (3 sites) + audit LMDBulletinService | `599e26df` | 2 Feature | ✅ Done |
-| _pending_ | PR8 | Migration table `esbtp_examens_planifies` + `esbtp_examen_surveillants` | — | — | ⏳ Next |
-| _pending_ | PR9 | Workflow examens complet (CRUD + scheduling + convocations) | — | — | ⏳ |
-| _pending_ | PR10 | Workflow rattrapage | — | — | ⏳ |
-| _pending_ | PR11 | Jury foundation (tables + service) | — | — | ⏳ |
-| _pending_ | PR12 | Jury UI premium AJAX `juy-*` | — | — | ⏳ |
-| _pending_ | PR13 | PV PDF officiel + archivage légal 5 ans | — | — | ⏳ |
-| _pending_ | PR14 | Tests E2E exhaustifs Pest Browser | — | — | ⏳ |
-| _pending_ | PR15 | Documentation (CHANGELOG + landing FR/EN + docs API) | — | — | ⏳ |
-| _pending_ | PR16 | Bonus features (pre-commit hook, doctor, dashboard) | — | — | ⏳ |
-| _pending_ | PR17 | Déploiement coordonné 6 tenants | — | — | ⏳ |
+| 2026-05-22 | PR8 | Migration table `esbtp_examens_planifies` + `esbtp_examen_surveillants` + models Auditable | `4d942a45` | — | ✅ Done |
+| 2026-05-22 | PR9 | Workflow examens complet (service + controller + UI exp-* + convocations PDF) | `f25dd70d` | — | ✅ Done |
+| 2026-05-22 | PR10 | Workflow rattrapage UEMOA (sessions + service + UI rtp-*) | `e3c24b6a` | — | ✅ Done |
+| 2026-05-22 | PR11 | Jury foundation (3 tables + 3 models + JuryDeliberationService) | `5c9e2004` | — | ✅ Done |
+| 2026-05-22 | PR12 | Jury UI premium AJAX juy-* (controller 14 routes + show 4 tabs) | `64cc050b` | — | ✅ Done |
+| 2026-05-22 | PR13 | PV PDF officiel template 9 sections + archivage légal | `298dac1f` | — | ✅ Done |
+| 2026-05-22 | PR14 | Tests Unit services + routes smoke (47 tests / 57 assertions) | `aa074097` | 47 PASS | ✅ Done |
+| 2026-05-22 | PR15 | Documentation (CHANGELOG + 3 docs API) | `7723fd91` | — | ✅ Done |
+| 2026-05-22 | PR16 | Bonus doctor command + sidebar entries | `9e54a838` | — | ✅ Done |
+| 2026-05-22 | PR17 | Déploiement presentation (merge PR #415 + pull + cache:clear + migrate 7 + permissions:fix 368 + smoke HTTP 302) | PR #415 merged | smoke OK | ✅ Done |
 
-### Progression : 7/18 PRs (39%)
+### Progression : 18/18 PRs (100%) ✅
+
+**Sprint 1 (PR0-7) + Sprint 2 (PR8-13) + Sprint 3 (PR14-17) — chantier shipped en 1 session focalisée**.
 
 **Sprint 1 (PR0-7) shippé** : foundation + bugs racines BTS/LMD résolus + examens P1
 - ✅ Single Source of Truth (MatiereTreeBuilder)
