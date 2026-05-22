@@ -2482,6 +2482,35 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
 });
 
 // ============================================================
+// Routes Rattrapage LMD (PR10 — sessions 2e session UEMOA)
+// ============================================================
+Route::prefix('esbtp/lmd/rattrapage')->name('esbtp.lmd.rattrapage.')
+    ->middleware(['auth', 'permission:admin.access', 'permission:module.lmd.access', 'paywall'])
+    ->group(function () {
+        Route::get('/', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'index'])
+            ->middleware('permission:lmd.rattrapage.view')
+            ->name('index');
+        Route::get('/{session}', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'show'])
+            ->middleware('permission:lmd.rattrapage.view')
+            ->name('show');
+        Route::post('/sessions', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'store'])
+            ->middleware(['permission:lmd.rattrapage.manage', 'throttle:30,1'])
+            ->name('store');
+        Route::post('/sessions/{session}/lancer', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'lancerRattrapage'])
+            ->middleware(['permission:lmd.rattrapage.manage', 'throttle:10,1'])
+            ->name('lancer');
+        Route::post('/sessions/{session}/recalculer', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'recalculerNotes'])
+            ->middleware(['permission:lmd.rattrapage.manage', 'throttle:30,1'])
+            ->name('recalculer');
+        Route::post('/sessions/{session}/inscrire', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'inscrireEligibles'])
+            ->middleware(['permission:lmd.rattrapage.manage', 'throttle:30,1'])
+            ->name('inscrire');
+        Route::post('/sessions/{session}/publier', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'publier'])
+            ->middleware(['permission:lmd.rattrapage.manage', 'throttle:30,1'])
+            ->name('publier');
+    });
+
+// ============================================================
 // Routes Examens planifiés (PR9 — workflow UEMOA scolarité)
 // ============================================================
 Route::prefix('esbtp/examens')->name('esbtp.examens.')
