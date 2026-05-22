@@ -2,7 +2,12 @@
 
 @section('title', 'Ajouter une séance - KLASSCI')
 
-@section('styles')
+{{-- PR4 chantier emploi-temps-lmd-unification : @push('styles') au lieu de @section('styles')
+     pour que les styles soient appliques en mode embedded (?embed=1) ET en mode standalone.
+     layouts.embedded utilise @stack('styles') uniquement, ce qui droppait silencieusement
+     les @section('styles') -> 'embedded sans style' bug.
+     Rule .claude/rules/embedded-styles-pattern.md --}}
+@push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
@@ -274,7 +279,7 @@
         .sce-type-radio-group { grid-template-columns: 1fr; }
     }
 </style>
-@endsection
+@endpush
 
 @section('content')
 <div class="dashboard-acasi">
