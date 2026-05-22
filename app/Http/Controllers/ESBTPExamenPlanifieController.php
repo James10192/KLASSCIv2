@@ -363,15 +363,25 @@ class ESBTPExamenPlanifieController extends Controller
             'matiere',
             'uniteEnseignement',
             'parcours',
-            'surveillants.user',
+            'anneeUniversitaire',
+            'surveillants.user.roles',
             'createdBy',
+            'notesLockedBy',
         ]);
 
         $surveillantsDispo = User::role(['enseignant', 'serviceTechnique', 'secretaire'])
             ->orderBy('name')
             ->get(['id', 'name', 'email']);
 
-        return view('esbtp.examens.show', compact('examen', 'surveillantsDispo'));
+        // 5 derniers événements d'audit sur cet examen (timeline show)
+        $recentAudits = \OwenIt\Auditing\Models\Audit::where('auditable_type', ESBTPExamenPlanifie::class)
+            ->where('auditable_id', $examen->id)
+            ->with('user:id,name,email')
+            ->orderByDesc('created_at')
+            ->limit(5)
+            ->get();
+
+        return view('esbtp.examens.show', compact('examen', 'surveillantsDispo', 'recentAudits'));
     }
 
     public function edit(ESBTPExamenPlanifie $examen): View
