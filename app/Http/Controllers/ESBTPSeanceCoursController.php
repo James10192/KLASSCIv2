@@ -197,6 +197,11 @@ class ESBTPSeanceCoursController extends Controller
      */
     public function create(Request $request)
     {
+        // PR17.2 : si pas d'emploi_temps_id, afficher page picker EDT premium
+        if (! $request->filled('emploi_temps_id')) {
+            return $this->showEmploiTempsPicker($request);
+        }
+
         try {
             // Validate required parameters - jour et heure_debut sont optionnels
             $request->validate([
@@ -1250,5 +1255,24 @@ class ESBTPSeanceCoursController extends Controller
         }
 
         return $conflits;
+    }
+
+    /**
+     * PR17.2 : Page premium picker EDT quand /esbtp/seances-cours/create est appelé
+     * sans emploi_temps_id. Évite redirect silencieux vers /navbar/notifications.
+     */
+    private function showEmploiTempsPicker(Request $request)
+    {
+        $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first()
+            ?? ESBTPAnneeUniversitaire::orderByDesc('id')->first();
+
+        $emploisTemps = ESBTPEmploiTemps::with(['classe.filiere', 'classe.niveau'])
+            ->when($annee, fn ($q) => $q->where('annee_universitaire_id', $annee->id))
+            ->where('is_active', true)
+            ->orderByDesc('is_current')
+            ->orderByDesc('date_debut')
+            ->get();
+
+        return view('esbtp.seances-cours.picker-emploi-temps', compact('emploisTemps', 'annee'));
     }
 }
