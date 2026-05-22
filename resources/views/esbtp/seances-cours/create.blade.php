@@ -557,16 +557,29 @@
                                 </div>
                             </div>
 
-                            {{-- Type seance LMD : radio cards premium CM/TD/TP (LMD uniquement) --}}
-                            @if(in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat', 'Bachelor']))
-                                <div class="form-group" style="margin-bottom: 1.5rem;">
-                                    <label class="sce-form-label">
-                                        Type de séance <span class="text-danger">*</span>
+                            {{-- PR5 chantier emploi-temps-lmd-unification : type seance reactive BTS/LMD-aware.
+                                 - LMD (Licence/Master/Doctorat) : 6 cards UEMOA (CM/TD/TP/PROJET/EXAMEN/AUTRE)
+                                 - BTS legacy : 3 cards (CM/TD/TP)
+                                 Rule .claude/rules/type-seance-enum-extension.md --}}
+                            @php
+                                $isLmdClasse = ($emploiTemps->classe->systeme_academique ?? '') === 'LMD'
+                                    || in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat']);
+                            @endphp
+                            <div class="form-group" style="margin-bottom: 1.5rem;">
+                                <label class="sce-form-label">
+                                    Type de séance <span class="text-danger">*</span>
+                                    @if($isLmdClasse)
                                         <span class="sce-form-label-chip"><i class="fas fa-university"></i>LMD — UEMOA</span>
-                                    </label>
+                                    @else
+                                        <span class="sce-form-label-chip"><i class="fas fa-graduation-cap"></i>BTS</span>
+                                    @endif
+                                </label>
+                                @if($isLmdClasse)
                                     @include('esbtp.seances-cours.partials._form_type_seance_lmd')
-                                </div>
-                            @endif
+                                @else
+                                    @include('esbtp.seances-cours.partials._form_type_seance_bts', ['seancesCour' => null])
+                                @endif
+                            </div>
 
                             <div class="form-grid">
                                 {{-- Picker matiere (LMD enrichi vs BTS flat) --}}
