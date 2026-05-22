@@ -406,8 +406,10 @@
             <input type="hidden" name="embed" value="{{ request()->boolean('embed') ? 1 : 0 }}">
 
             <div class="form-sections">
-                <!-- Section 1: Type de séance (BTS uniquement — LMD utilise type_seance UEMOA) -->
-                @if(!$isClasseLmd)
+                <!-- Section 1: Type de séance top-level (BTS+LMD) — Cours/Devoir/Récréation/Pause-déj -->
+                {{-- PR17.3 : top-types visibles partout (BTS+LMD). La hierarchie est :
+                     Top-type (type) -> Cours/Devoir = courseFields visibles, Récréation/Pause-déj = pas de detail.
+                     Sous-type (type_seance) -> visible uniquement quand type=Cours ou Devoir, et adapte selon BTS/LMD. --}}
                 <div class="main-card">
                     <div class="main-card-header">
                         <div class="main-card-title">
@@ -435,14 +437,9 @@
                             </div>
                             @endforeach
                         </div>
-                        <input type="hidden" name="type" id="sessionType" required>
+                        <input type="hidden" name="type" id="sessionType" value="{{ old('type', 'course') }}" required>
                     </div>
                 </div>
-                @else
-                {{-- LMD : type derive serveur-side depuis type_seance UEMOA (CM/TD/TP/PROJET/AUTRE → course, EXAMEN → homework). --}}
-                {{-- L'utilisateur ne voit qu'un seul selecteur radio cards LMD plus bas dans Section 3. --}}
-                <input type="hidden" name="type" id="sessionType" value="course">
-                @endif
 
                 <!-- Section 2: Informations de base -->
                 <div class="main-card">
@@ -559,8 +556,9 @@
                     </div>
                 </div>
 
-                <!-- Section 3: Matières et Enseignants (LMD : visible par defaut car type=course implicit) -->
-                <div class="main-card" id="courseFields" style="display: {{ $isClasseLmd ? 'block' : 'none' }};">
+                <!-- Section 3: Matières et Enseignants — visible quand top-type ∈ {Cours, Devoir} -->
+                {{-- PR17.3 : display piloté par selectSessionType() JS. Section1 top-type default 'course' (cf hidden #sessionType value=course) → visible au load. --}}
+                <div class="main-card" id="courseFields" style="display: block;">
                     <div class="main-card-header">
                         <div class="main-card-title">
                             <i class="fas fa-graduation-cap"></i>
@@ -596,19 +594,30 @@
                                 </div>
                             </div>
 
-                            {{-- PR17.1 hotfix : sous-types pedagogiques CM/TD/TP/PROJET/EXAMEN/AUTRE
-                                 sont UEMOA-only (LMD). En BTS pur, on n'affiche QUE les top-types
-                                 (Cours/Devoir/Recreation/Pause-dej) deja rendus en Section 1 line 371.
-                                 Marcel : "il n'y a pas ca sur le BTS, ca pollue" --}}
-                            @if($isClasseLmd)
-                                <div class="form-group" style="margin-bottom: 1.5rem;">
-                                    <label class="sce-form-label">
-                                        Type de séance <span class="text-danger">*</span>
+                            {{-- PR17.3 : hierarchie 2 niveaux selon DB esbtp_seance_cours :
+                                 - type (top) : course/homework/break/lunch (Section 1)
+                                 - type_seance (sous-type pedagogique) : CM/TD/TP/PROJET/EXAMEN/etc (ici)
+                                 Visible UNIQUEMENT quand top ∈ {course, homework} via Alpine wrapper.
+                                 LMD = 6 cards UEMOA, BTS = 3 cards CM/TD/TP. --}}
+                            <div class="form-group" style="margin-bottom: 1.5rem;"
+                                 x-data="{ topType: document.getElementById('sessionType').value }"
+                                 x-init="document.addEventListener('session-type-changed', e => topType = e.detail)"
+                                 x-show="topType === 'course' || topType === 'homework'"
+                                 x-cloak>
+                                <label class="sce-form-label">
+                                    Sous-type pédagogique <span class="text-danger">*</span>
+                                    @if($isClasseLmd)
                                         <span class="sce-form-label-chip"><i class="fas fa-university"></i>LMD — UEMOA</span>
-                                    </label>
+                                    @else
+                                        <span class="sce-form-label-chip"><i class="fas fa-graduation-cap"></i>BTS</span>
+                                    @endif
+                                </label>
+                                @if($isClasseLmd)
                                     @include('esbtp.seances-cours.partials._form_type_seance_lmd')
-                                </div>
-                            @endif
+                                @else
+                                    @include('esbtp.seances-cours.partials._form_type_seance_bts', ['seancesCour' => null])
+                                @endif
+                            </div>
 
                             <div class="form-grid">
                                 {{-- Picker matiere (LMD enrichi vs BTS flat) --}}
@@ -1308,6 +1317,9 @@ document.addEventListener('DOMContentLoaded', function() {
 function selectSessionType(type) {
     // Update hidden input
     document.getElementById('sessionType').value = type;
+
+    // PR17.3 : dispatch event pour wrapper Alpine sous-type section (CM/TD/TP visible quand course|homework)
+    document.dispatchEvent(new CustomEvent('session-type-changed', { detail: type }));
 
     // Update UI
     document.querySelectorAll('.session-type-card').forEach(card => {

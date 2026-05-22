@@ -9,6 +9,7 @@
         border-radius: 14px;
         box-shadow: 0 1px 3px rgba(15,23,42,.04);
         overflow: hidden;
+        margin-bottom: 1rem;
     }
     .epl-header {
         padding: 1rem 1.25rem;
