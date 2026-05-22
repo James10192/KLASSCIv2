@@ -169,8 +169,16 @@
 .exs-card {
     background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
     box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
-    overflow: hidden;
+    /* IMPORTANT : pas d'overflow:hidden — le dropdown du composant
+       au-select de la section Surveillants doit pouvoir déborder de la
+       card. Voir rule .claude/rules/css-stacking-pitfalls.md */
 }
+/* Le header conserve son border-radius via background sans clip */
+.exs-card > .exs-card-header:first-child { border-radius: 14px 14px 0 0; }
+.exs-card > *:last-child:not(.exs-card-header) { border-radius: 0 0 14px 14px; }
+/* La card avec dropdown ouvert passe au-dessus des sœurs (stacking) */
+.exs-card { position: relative; z-index: 1; }
+.exs-card:focus-within { z-index: 10; }
 .exs-card-header {
     display: flex; align-items: center; gap: .55rem;
     padding: 1rem 1.25rem .85rem;
