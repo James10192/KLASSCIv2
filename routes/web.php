@@ -2590,6 +2590,10 @@ Route::prefix('esbtp/examens')->name('esbtp.examens.')
         Route::get('/ecues-by-parcours', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'ecuesByParcours'])
             ->middleware(['permission:lmd.examens.manage', 'throttle:60,1'])
             ->name('ecues-by-parcours');
+        // Feed JSON FullCalendar pour la vue calendrier
+        Route::get('/feed', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'calendarFeed'])
+            ->middleware(['permission:lmd.examens.view', 'throttle:120,1'])
+            ->name('feed');
         // UEMOA scope : preview des classes ciblées (scope_type/scope_id) + parcours partagés
         Route::post('/resolve-scope-classes', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'resolveScopeClasses'])
             ->middleware(['permission:lmd.examens.manage', 'throttle:60,1'])

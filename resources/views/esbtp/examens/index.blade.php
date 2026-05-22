@@ -30,6 +30,7 @@
 @endphp
 
 @push('styles')
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.css" rel="stylesheet">
 <style>
 [x-cloak] { display: none !important; }
 
@@ -254,6 +255,88 @@
 .exp-scope-banner--classe { background: linear-gradient(135deg, #475569, #64748b); }
 .exp-scope-banner i { font-size: .9rem; }
 
+/* ─── Toggle Vue Liste / Calendrier ─── */
+.exp-view-tabs {
+    display: inline-flex; gap: .2rem; padding: .3rem;
+    background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 12px;
+    margin-bottom: 1.25rem;
+}
+.exp-view-tab {
+    padding: .45rem .95rem; border: none; background: transparent;
+    color: #475569; font-size: .82rem; font-weight: 600; cursor: pointer;
+    border-radius: 9px;
+    display: inline-flex; align-items: center; gap: .4rem;
+    transition: all .15s;
+}
+.exp-view-tab:hover { color: #0453cb; background: rgba(4,83,203,.06); }
+.exp-view-tab--active {
+    background: #fff; color: #0453cb;
+    box-shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(4,83,203,.10);
+}
+
+/* ─── Calendrier premium KLASSCI (override FullCalendar) ─── */
+.exp-calendar-card {
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+    padding: 1.25rem; box-shadow: 0 1px 3px rgba(15,23,42,.04);
+    min-height: 600px;
+}
+.exp-calendar-card .fc { font-family: inherit; font-size: .85rem; }
+.exp-calendar-card .fc-toolbar-title { font-size: 1.15rem !important; font-weight: 700; color: #0f172a; text-transform: capitalize; }
+.exp-calendar-card .fc-button-primary {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb) !important;
+    border: none !important;
+    color: #fff !important;
+    border-radius: 9px !important;
+    padding: .45rem .85rem !important;
+    font-size: .78rem !important; font-weight: 600 !important;
+    text-transform: capitalize !important;
+    box-shadow: 0 1px 3px rgba(4,83,203,.18);
+    transition: all .15s !important;
+}
+.exp-calendar-card .fc-button-primary:hover {
+    background: linear-gradient(135deg, #033a8e, #0453cb) !important;
+    transform: translateY(-1px);
+}
+.exp-calendar-card .fc-button-primary:disabled { opacity: .55; cursor: not-allowed; }
+.exp-calendar-card .fc-button-active { background: #033a8e !important; }
+.exp-calendar-card .fc-button-group { gap: 4px; }
+.exp-calendar-card .fc-col-header-cell {
+    background: #f8fafc;
+    text-transform: uppercase;
+    font-size: .68rem; font-weight: 700; color: #64748b; letter-spacing: .5px;
+    padding: .55rem 0;
+}
+.exp-calendar-card .fc-day-today { background: rgba(4,83,203,.06) !important; }
+.exp-calendar-card .fc-daygrid-day-number { color: #1e293b; font-weight: 600; font-size: .82rem; padding: .4rem; }
+.exp-calendar-card .fc-day-other .fc-daygrid-day-number { color: #cbd5e1; }
+.exp-calendar-card .fc-scrollgrid { border-radius: 10px; overflow: hidden; border: 1px solid #e2e8f0; }
+.exp-calendar-card .fc-scrollgrid td, .exp-calendar-card .fc-scrollgrid th { border-color: #f1f5f9; }
+.exp-calendar-card .fc-event {
+    border-radius: 6px; padding: .15rem .35rem;
+    font-size: .72rem; font-weight: 600;
+    cursor: pointer; transition: transform .1s, box-shadow .1s;
+    border: none;
+}
+.exp-calendar-card .fc-event:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 8px rgba(4,83,203,.25);
+}
+.exp-event--cancelled { opacity: .55; text-decoration: line-through; }
+.exp-event--locked::before { content: '🔒 '; font-size: .65rem; }
+.exp-calendar-card .fc-list-event:hover td { background: rgba(4,83,203,.05) !important; }
+.exp-calendar-card .fc-list-day-cushion { background: #f8fafc !important; color: #0f172a; font-weight: 700; }
+.exp-calendar-card .fc-event-title { font-weight: 600; }
+
+/* Légende sous le calendrier */
+.exp-calendar-legend {
+    margin-top: .85rem; display: flex; gap: .85rem; flex-wrap: wrap;
+    padding: .65rem 1rem; background: #f8fafc;
+    border: 1px solid #e2e8f0; border-radius: 10px;
+    font-size: .75rem; color: #64748b;
+}
+.exp-calendar-legend-item { display: inline-flex; align-items: center; gap: .35rem; }
+.exp-calendar-legend-dot { width: 12px; height: 12px; border-radius: 3px; flex-shrink: 0; }
+
 .exp-error-banner {
     margin-bottom: 1rem; padding: .75rem 1rem;
     background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.2);
@@ -386,8 +469,40 @@
         @endif
     </form>
 
-    {{-- ═══════════════════════════ TABLE ═══════════════════════════ --}}
-    <div class="exp-card">
+    {{-- ═══════════════════════════ TOGGLE LISTE / CALENDRIER ═══════════════════════════ --}}
+    <div class="exp-view-tabs">
+        <button type="button" class="exp-view-tab" :class="view === 'liste' ? 'exp-view-tab--active' : ''" @click="setView('liste')">
+            <i class="fas fa-list-ul"></i> Liste
+        </button>
+        <button type="button" class="exp-view-tab" :class="view === 'calendrier' ? 'exp-view-tab--active' : ''" @click="setView('calendrier')">
+            <i class="fas fa-calendar-days"></i> Calendrier
+        </button>
+    </div>
+
+    {{-- ═══════════════════════════ VUE CALENDRIER ═══════════════════════════ --}}
+    <div class="exp-calendar-card" x-show="view === 'calendrier'" x-cloak>
+        <div x-ref="calendarEl"></div>
+        <div class="exp-calendar-legend">
+            <span class="exp-calendar-legend-item">
+                <span class="exp-calendar-legend-dot" style="background:#0453cb;"></span> Examen terminal
+            </span>
+            <span class="exp-calendar-legend-item">
+                <span class="exp-calendar-legend-dot" style="background:#3b7ddb;"></span> Partiel
+            </span>
+            <span class="exp-calendar-legend-item">
+                <span class="exp-calendar-legend-dot" style="background:#b45309;"></span> Rattrapage (2ᵉ session)
+            </span>
+            <span class="exp-calendar-legend-item">
+                <span class="exp-calendar-legend-dot" style="background:#033a8e;"></span> Soutenance
+            </span>
+            <span class="exp-calendar-legend-item" style="margin-left:auto;color:#94a3b8;">
+                <i class="fas fa-lock"></i> Notes verrouillées
+            </span>
+        </div>
+    </div>
+
+    {{-- ═══════════════════════════ VUE LISTE (TABLE) ═══════════════════════════ --}}
+    <div class="exp-card" x-show="view === 'liste'">
         @if($examens->isEmpty())
             <div class="exp-empty">
                 <i class="fas fa-pen-ruler"></i>
@@ -776,10 +891,14 @@
 </div>
 
 @push('scripts')
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/main.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.10.1/locales/fr.js"></script>
 <script>
 function examensIndex() {
     return {
         kpis: @json($kpis),
+        view: new URLSearchParams(window.location.search).get('view') === 'calendrier' ? 'calendrier' : 'liste',
+        calendar: null,
         modalOpen: false,
         saving: false,
         errors: [],
@@ -830,6 +949,86 @@ function examensIndex() {
                 const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
                 window.history.replaceState({}, '', newUrl);
             }
+            // Init calendrier si view=calendrier dès le chargement
+            if (this.view === 'calendrier') {
+                this.$nextTick(() => this.initCalendar());
+            }
+        },
+
+        setView(newView) {
+            if (newView === this.view) return;
+            this.view = newView;
+            // Conserve la vue dans la query string (cohérent avec rule ajax-no-reload-premium :
+            // pushState sans reload page)
+            const url = new URL(window.location);
+            if (newView === 'calendrier') url.searchParams.set('view', 'calendrier');
+            else url.searchParams.delete('view');
+            window.history.replaceState({}, '', url);
+            if (newView === 'calendrier') {
+                this.$nextTick(() => this.initCalendar());
+            }
+        },
+
+        initCalendar() {
+            if (this.calendar) {
+                // Déjà initialisé — juste re-render pour rafraîchir si nécessaire
+                this.calendar.refetchEvents();
+                this.calendar.render();
+                return;
+            }
+            const el = this.$refs.calendarEl;
+            if (!el || typeof FullCalendar === 'undefined') return;
+
+            const params = new URLSearchParams(window.location.search);
+            const feedUrl = new URL('{{ route("esbtp.examens.feed") }}', window.location.origin);
+            feedUrl.searchParams.set('annee_universitaire_id', {{ $annee->id }});
+            ['classe_id', 'type', 'status', 'from', 'to'].forEach(k => {
+                const v = params.get(k);
+                if (v) feedUrl.searchParams.set(k, v);
+            });
+
+            this.calendar = new FullCalendar.Calendar(el, {
+                locale: 'fr',
+                initialView: 'dayGridMonth',
+                height: 680,
+                headerToolbar: {
+                    left: 'prev,next today',
+                    center: 'title',
+                    right: 'dayGridMonth,timeGridWeek,listMonth',
+                },
+                buttonText: {
+                    today: "Aujourd'hui",
+                    month: 'Mois',
+                    week: 'Semaine',
+                    list: 'Liste',
+                },
+                events: feedUrl.toString(),
+                eventDisplay: 'block',
+                eventTimeFormat: { hour: '2-digit', minute: '2-digit', meridiem: false },
+                slotMinTime: '07:00:00',
+                slotMaxTime: '20:00:00',
+                weekends: true,
+                firstDay: 1,  // Lundi
+                eventDidMount: (info) => {
+                    const p = info.event.extendedProps;
+                    const tooltip = [
+                        p.type_label || '',
+                        p.numero_convocation ? '• ' + p.numero_convocation : '',
+                        p.classe_label ? '• ' + p.classe_label : '',
+                        p.matiere ? '• ' + p.matiere : '',
+                        p.salle ? '• ' + p.salle : '',
+                        p.status_label ? '• Statut : ' + p.status_label : '',
+                    ].filter(Boolean).join('\n');
+                    info.el.setAttribute('title', tooltip);
+                },
+                eventClick: (info) => {
+                    // FullCalendar navigue automatiquement vers info.event.url
+                    // Si on veut empêcher la navigation et ouvrir un modal :
+                    // info.jsEvent.preventDefault();
+                    // openShowModal(info.event.id);
+                },
+            });
+            this.calendar.render();
         },
 
         defaultForm() {

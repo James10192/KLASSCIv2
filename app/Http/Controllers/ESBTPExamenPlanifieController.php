@@ -492,6 +492,93 @@ class ESBTPExamenPlanifieController extends Controller
     }
 
     /**
+     * Feed JSON FullCalendar — retourne les examens de l'année courante
+     * (filtrables) au format attendu par FullCalendar 5+.
+     * Événements colorés par type (EXAMEN bleu, PARTIEL bleu clair, RATTRAPAGE
+     * orange UEMOA, SOUTENANCE bleu marine).
+     */
+    public function calendarFeed(Request $request): JsonResponse
+    {
+        abort_unless(auth()->user()?->can('lmd.examens.view'), 403);
+
+        $annee = $this->resolveAnnee($request);
+
+        $query = ESBTPExamenPlanifie::with(['classe', 'classes', 'matiere'])
+            ->where('annee_universitaire_id', $annee->id);
+
+        if ($classeId = $request->integer('classe_id')) {
+            $query->forClasse($classeId);
+        }
+        if ($type = $request->string('type')->trim()->value()) {
+            $query->where('type_examen', $type);
+        }
+        if ($status = $request->string('status')->trim()->value()) {
+            $query->where('status', $status);
+        }
+        if ($from = $request->date('from')) {
+            $query->where('date_debut', '>=', $from);
+        }
+        if ($to = $request->date('to')) {
+            $query->where('date_fin', '<=', $to);
+        }
+
+        $colors = [
+            'EXAMEN' => '#0453cb',
+            'PARTIEL' => '#3b7ddb',
+            'RATTRAPAGE' => '#b45309',  // Orange semaforique UEMOA pour 2e session
+            'SOUTENANCE' => '#033a8e',
+        ];
+
+        $examens = $query->get();
+
+        $events = $examens->map(function ($e) use ($colors) {
+            $classes = $e->classes;
+            $classesCount = $classes->count();
+            $classeLabel = $classesCount > 1
+                ? ($classes->first()?->name ?? 'Classe') . ' +' . ($classesCount - 1)
+                : ($classes->first()?->name ?? $e->classe?->name ?? '—');
+
+            $color = $colors[$e->type_examen] ?? '#0453cb';
+            // Statut annulé → grisé barré
+            if ($e->status === 'cancelled') {
+                $color = '#94a3b8';
+            }
+
+            return [
+                'id' => $e->id,
+                'title' => $e->titre,
+                'start' => $e->date_debut?->toIso8601String(),
+                'end' => $e->date_fin?->toIso8601String(),
+                'backgroundColor' => $color,
+                'borderColor' => $color,
+                'textColor' => '#fff',
+                'classNames' => [
+                    'exp-event',
+                    'exp-event--' . strtolower($e->type_examen),
+                    $e->notes_locked ? 'exp-event--locked' : '',
+                    $e->status === 'cancelled' ? 'exp-event--cancelled' : '',
+                ],
+                'extendedProps' => [
+                    'type_examen' => $e->type_examen,
+                    'type_label' => TypeExamen::labelFor($e->type_examen),
+                    'status' => $e->status,
+                    'status_label' => ExamenStatus::labelFor($e->status),
+                    'numero_convocation' => $e->numero_convocation,
+                    'classe_label' => $classeLabel,
+                    'classes_count' => $classesCount,
+                    'matiere' => $e->matiere?->name,
+                    'salle' => $e->salle,
+                    'notes_locked' => (bool) $e->notes_locked,
+                    'show_url' => route('esbtp.examens.show', $e),
+                ],
+                'url' => route('esbtp.examens.show', $e),
+            ];
+        })->values();
+
+        return response()->json($events);
+    }
+
+    /**
      * Aperçu PDF des convocations (groupé par classe).
      */
     public function convocationsPreview(Request $request): \Symfony\Component\HttpFoundation\Response
