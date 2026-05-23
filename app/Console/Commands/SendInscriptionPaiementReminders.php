@@ -7,7 +7,8 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Models\NotificationReminder;
 use App\Models\ESBTPSystemSetting;
-use App\Services\NotificationService;
+use App\Domain\Notifications\Notifiers\InscriptionNotifier;
+use App\Domain\Notifications\Notifiers\PaiementNotifier;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
@@ -27,12 +28,14 @@ class SendInscriptionPaiementReminders extends Command
      */
     protected $description = 'Envoyer les rappels automatiques pour les inscriptions et paiements en attente';
 
-    protected $notificationService;
+    protected InscriptionNotifier $inscriptionNotifier;
+    protected PaiementNotifier $paiementNotifier;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(InscriptionNotifier $inscriptionNotifier, PaiementNotifier $paiementNotifier)
     {
         parent::__construct();
-        $this->notificationService = $notificationService;
+        $this->inscriptionNotifier = $inscriptionNotifier;
+        $this->paiementNotifier = $paiementNotifier;
     }
 
     /**
@@ -118,7 +121,7 @@ class SendInscriptionPaiementReminders extends Command
             if ($reminder->reminder_count === 0) {
                 if ($daysPending >= $firstDelay) {
                     if (!$isTestMode) {
-                        $this->notificationService->sendInscriptionReminder($inscription, $daysPending, 1);
+                        $this->inscriptionNotifier->rappelInscription($inscription, $daysPending, 1);
                         $reminder->recordReminderSent($frequency);
                         $remindersSent++;
                     }
@@ -196,7 +199,7 @@ class SendInscriptionPaiementReminders extends Command
             if ($reminder->reminder_count === 0) {
                 if ($daysPending >= $firstDelay) {
                     if (!$isTestMode) {
-                        $this->notificationService->sendPaiementReminder($paiement, $daysPending, 1);
+                        $this->paiementNotifier->rappelPaiement($paiement, $daysPending, 1);
                         $reminder->recordReminderSent($frequency);
                         $remindersSent++;
                     }

@@ -58,4 +58,13 @@ class InscriptionNotifier extends AbstractNotifier
     {
         $this->legacy->notifyNewReinscription($inscription, $createdBy);
     }
+
+    /**
+     * Rappel inscription en attente (workflow non finalisé après N jours).
+     * Utilisé par SendInscriptionPaiementReminders command (cron daily).
+     */
+    public function rappelInscription(ESBTPInscription $inscription, int $daysPending = 0, int $reminderCount = 1): void
+    {
+        $this->legacy->sendInscriptionReminder($inscription, $daysPending, $reminderCount);
+    }
 }
