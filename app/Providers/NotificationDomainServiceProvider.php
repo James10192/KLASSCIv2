@@ -3,22 +3,23 @@
 namespace App\Providers;
 
 use App\Domain\Notifications\MultiChannelDispatcher;
+use App\Domain\Notifications\Notifiers\AbsenceNotifier;
+use App\Domain\Notifications\Notifiers\AnnonceNotifier;
+use App\Domain\Notifications\Notifiers\BulletinNotifier;
+use App\Domain\Notifications\Notifiers\InscriptionNotifier;
+use App\Domain\Notifications\Notifiers\PaiementNotifier;
 use App\Domain\Notifications\Notifiers\RelanceNotifier;
+use App\Domain\Notifications\Notifiers\SystemNotifier;
+use App\Domain\Notifications\Notifiers\TeacherNotifier;
 use Illuminate\Support\ServiceProvider;
 
 /**
  * Service Provider pour le domaine Notifications (strangler fig de NotificationService).
  *
- * Enregistre les notifiers métier extraits du NotificationService god-class.
- * Chaque notifier est résolu en singleton via le container Laravel pour
- * permettre injection de dépendances + remplacement en test.
- *
  * Stratégie strangler fig :
- *  - Phase 8a (en cours) : architecture + RelanceNotifier extrait
- *  - Phase 8b : migration des callers (controllers, jobs, commands)
+ *  - Phase 8a : architecture + 8 notifiers (RelanceNotifier complet, autres en shell délégation)
+ *  - Phase 8b : migration des callers + extraction code réel depuis NotificationService legacy
  *  - Phase 8c : suppression du NotificationService god-class
- *
- * Provider à enregistrer dans bootstrap/providers.php (Laravel 12).
  *
  * @see App\Domain\Notifications\AbstractNotifier
  * @see App\Domain\Notifications\Contracts\NotifierInterface
@@ -26,24 +27,30 @@ use Illuminate\Support\ServiceProvider;
  */
 class NotificationDomainServiceProvider extends ServiceProvider
 {
-    /**
-     * Liste des notifiers extraits du NotificationService god-class.
-     *
-     * Au fur et à mesure de l'extraction (Phase 8a → 8b → 8c), ajouter les
-     * notifiers concrets ici : InscriptionNotifier, PaiementNotifier,
-     * AbsenceNotifier, BulletinNotifier, AnnonceNotifier, SystemNotifier,
-     * TeacherNotifier, ChatbotNotifier (Phase 10).
-     */
     public array $singletons = [
         MultiChannelDispatcher::class => MultiChannelDispatcher::class,
         RelanceNotifier::class => RelanceNotifier::class,
+        InscriptionNotifier::class => InscriptionNotifier::class,
+        PaiementNotifier::class => PaiementNotifier::class,
+        AbsenceNotifier::class => AbsenceNotifier::class,
+        BulletinNotifier::class => BulletinNotifier::class,
+        AnnonceNotifier::class => AnnonceNotifier::class,
+        SystemNotifier::class => SystemNotifier::class,
+        TeacherNotifier::class => TeacherNotifier::class,
     ];
 
     public function register(): void
     {
-        // Bindings additionnels si nécessaire (ex: tags pour découverte automatique).
+        // Tag tous les notifiers pour découverte automatique (dashboards, stats, etc.).
         $this->app->tag([
             RelanceNotifier::class,
+            InscriptionNotifier::class,
+            PaiementNotifier::class,
+            AbsenceNotifier::class,
+            BulletinNotifier::class,
+            AnnonceNotifier::class,
+            SystemNotifier::class,
+            TeacherNotifier::class,
         ], 'notifications.notifiers');
     }
 
