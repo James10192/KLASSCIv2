@@ -22,9 +22,78 @@ use Illuminate\Support\Facades\Log;
  */
 class WhatsAppReplyService
 {
+    private const SERVICE_WINDOW_HOURS = 24;
+
     public function __construct(
         protected TenantConfigResolver $configResolver,
     ) {
+    }
+
+    /**
+     * Retourne le temps restant dans la fenêtre service 24h en minutes.
+     *
+     * @return int 0 si fenêtre expirée, sinon minutes restantes (max 1440)
+     */
+    public function minutesRemainingInWindow(WhatsAppInboundMessage $inbound): int
+    {
+        if (! $inbound->received_at) {
+            return 0;
+        }
+
+        $minutesElapsed = $inbound->received_at->diffInMinutes(now());
+        $minutesMax = self::SERVICE_WINDOW_HOURS * 60;
+
+        return max(0, $minutesMax - $minutesElapsed);
+    }
+
+    /**
+     * Status visuel fenêtre service pour UI countdown (Phase 7 inbox).
+     *
+     * @return array{minutes_remaining: int, status: string, color: string, label: string}
+     *   status : 'open' (>4h restantes) | 'warning' (1-4h) | 'critical' (<1h) | 'expired'
+     */
+    public function windowStatus(WhatsAppInboundMessage $inbound): array
+    {
+        $minutes = $this->minutesRemainingInWindow($inbound);
+
+        $status = match (true) {
+            $minutes === 0 => 'expired',
+            $minutes < 60 => 'critical',
+            $minutes < 240 => 'warning',
+            default => 'open',
+        };
+
+        $color = match ($status) {
+            'expired' => '#94a3b8', // gray
+            'critical' => '#dc2626', // red
+            'warning' => '#f59e0b', // orange
+            'open' => '#10b981', // green
+            default => '#94a3b8',
+        };
+
+        $label = match ($status) {
+            'expired' => 'Fenêtre 24h expirée — template requis',
+            'critical' => sprintf('Reste %d min — répondre vite', $minutes),
+            'warning' => sprintf('Reste %d h %d min', intdiv($minutes, 60), $minutes % 60),
+            'open' => sprintf('Fenêtre ouverte : %d h restantes', intdiv($minutes, 60)),
+            default => '',
+        };
+
+        return [
+            'minutes_remaining' => $minutes,
+            'status' => $status,
+            'color' => $color,
+            'label' => $label,
+        ];
+    }
+
+    /**
+     * Helper : la fenêtre est-elle encore active ?
+     * Wrapper du model->isWithinServiceWindow() pour accès depuis le service.
+     */
+    public function isInServiceWindow(WhatsAppInboundMessage $inbound): bool
+    {
+        return $this->minutesRemainingInWindow($inbound) > 0;
     }
 
     /**
