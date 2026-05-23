@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Services\WhatsApp\PiiMasker;
 use App\Services\WhatsApp\TenantConfigResolver;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
@@ -263,10 +264,16 @@ class WhatsAppService
                 ],
             ];
 
+            // Phase 18 — masquage PII obligatoire avant log (RGPD + loi 2013-450 CI)
             Log::info('Envoi WhatsApp template', [
                 'template' => $templateName,
-                'phone' => $cleanPhone,
-                'payload' => $payload,
+                'phone' => PiiMasker::phone($cleanPhone),
+                // Payload tronqué : on log uniquement template name + nb parameters
+                // (les valeurs de parameters peuvent contenir noms étudiants, montants, etc.)
+                'payload_summary' => [
+                    'template' => $templateName,
+                    'parameters_count' => count($parameters),
+                ],
             ]);
 
             $response = Http::withToken($accessToken)
@@ -276,15 +283,16 @@ class WhatsAppService
                 $result = $response->json();
                 Log::info('WhatsApp message envoyé avec succès', [
                     'message_id' => $result['messages'][0]['id'] ?? null,
-                    'phone' => $cleanPhone,
+                    'phone' => PiiMasker::phone($cleanPhone),
                     'template' => $templateName,
                 ]);
                 return $result;
             } else {
                 Log::error('Erreur API WhatsApp', [
                     'status' => $response->status(),
-                    'body' => $response->body(),
-                    'phone' => $cleanPhone,
+                    // Body Meta peut contenir des PII en cas de fbtrace_id error — masquage prudent
+                    'body_preview' => PiiMasker::messagePreview($response->body()),
+                    'phone' => PiiMasker::phone($cleanPhone),
                     'template' => $templateName,
                 ]);
                 return false;
@@ -292,7 +300,7 @@ class WhatsAppService
         } catch (\Exception $e) {
             Log::error('Exception envoi WhatsApp', [
                 'error' => $e->getMessage(),
-                'phone' => $phoneNumber,
+                'phone' => PiiMasker::phone($phoneNumber),
                 'template' => $templateName,
             ]);
             return false;
