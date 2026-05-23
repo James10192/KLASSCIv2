@@ -4,7 +4,9 @@ namespace App\Jobs;
 
 use App\Models\WhatsAppInboundMessage;
 use App\Services\WhatsApp\Chatbot\ChatbotGeminiService;
+use App\Services\WhatsApp\FaqRouter;
 use App\Services\WhatsApp\PhoneToParentResolver;
+use App\Services\WhatsApp\PiiMasker;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -45,6 +47,7 @@ class ProcessInboundMessageJob implements ShouldQueue
 
     public function handle(
         PhoneToParentResolver $resolver,
+        FaqRouter $faqRouter,
         ChatbotGeminiService $chatbot,
     ): void {
         $message = WhatsAppInboundMessage::find($this->inboundMessageId);
@@ -64,25 +67,49 @@ class ProcessInboundMessageJob implements ShouldQueue
             ]);
         }
 
-        // 2. Chatbot auto-reply (Phase 10)
-        $aiAnswer = $chatbot->answer($message->body ?? '', $resolved['primary_etudiant']);
+        $body = $message->body ?? '';
 
-        if (! $aiAnswer['escalate'] && ! empty($aiAnswer['response'])) {
-            // Auto-reply via WhatsAppReplyService (à implémenter Phase 7 step 2/2)
-            // Pour l'instant on log uniquement — l'envoi réel viendra avec
-            // app(WhatsAppReplyService::class)->reply($message, $aiAnswer['response'], system_user_id);
-            Log::info('[wa-inbound] Auto-reply prêt (envoi pending Phase 7 step 2/2)', [
+        // 2. Phase 11 — FAQ pattern matching d'abord (gratuit + instantané)
+        // Si match : auto-reply immédiat, économise un appel Gemini IA payant
+        $faqMatch = $faqRouter->route($body);
+
+        if ($faqMatch['matched'] && ! empty($faqMatch['response'])) {
+            Log::info('[wa-inbound] FAQ match — auto-reply pattern', [
                 'message_id' => $message->id,
-                'intent' => $aiAnswer['intent'],
-                'confidence' => $aiAnswer['confidence'],
-                'response_preview' => substr($aiAnswer['response'], 0, 80),
+                'intent' => $faqMatch['intent'] ?? 'general',
+                'from_phone' => PiiMasker::phone($message->from_phone),
+                'preview' => PiiMasker::messagePreview($body),
+            ]);
+
+            // Auto-reply via WhatsAppReplyService (Phase 7 step 2/2 — placeholder)
+            // app(WhatsAppReplyService::class)->reply($message, $faqMatch['response'], 'system_faq');
+
+            // Marquer comme replied
+            $message->update([
+                'status' => 'replied',
+                'replied_at' => now(),
             ]);
             return;
         }
 
-        // 3. Escalation : message reste unread + assignation auto (à venir Phase 11)
+        // 3. Phase 10 — Chatbot Gemini IA (escalation FAQ vers IA)
+        $aiAnswer = $chatbot->answer($body, $resolved['primary_etudiant']);
+
+        if (! $aiAnswer['escalate'] && ! empty($aiAnswer['response'])) {
+            // Auto-reply via WhatsAppReplyService (à implémenter Phase 7 step 2/2)
+            Log::info('[wa-inbound] Auto-reply IA prêt (envoi pending Phase 7 step 2/2)', [
+                'message_id' => $message->id,
+                'intent' => $aiAnswer['intent'],
+                'confidence' => $aiAnswer['confidence'],
+                'preview' => PiiMasker::messagePreview($aiAnswer['response']),
+            ]);
+            return;
+        }
+
+        // 4. Escalation manuelle : message reste unread, secrétaire à notifier (Phase 7 inbox UI)
         Log::info('[wa-inbound] Escalation manuelle requise', [
             'message_id' => $message->id,
+            'from_phone' => PiiMasker::phone($message->from_phone),
             'reason' => $aiAnswer['reason'] ?? 'low_confidence',
             'intent' => $aiAnswer['intent'] ?? 'unknown',
         ]);
