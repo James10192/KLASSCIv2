@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Domain\Notifications\MultiChannelDispatcher;
 use App\Domain\Notifications\Notifiers\RelanceNotifier;
 use Illuminate\Support\ServiceProvider;
 
@@ -34,6 +35,7 @@ class NotificationDomainServiceProvider extends ServiceProvider
      * TeacherNotifier, ChatbotNotifier (Phase 10).
      */
     public array $singletons = [
+        MultiChannelDispatcher::class => MultiChannelDispatcher::class,
         RelanceNotifier::class => RelanceNotifier::class,
     ];
 
