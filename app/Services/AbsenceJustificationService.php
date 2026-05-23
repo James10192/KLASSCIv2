@@ -84,10 +84,11 @@ class AbsenceJustificationService
 
             $absence->save();
 
-            // Notify admins
+            // Notify admins — Phase 8b strangler fig via AbsenceNotifier
             $etudiant = ESBTPEtudiant::find($absence->etudiant_id);
             if ($etudiant) {
-                $this->notificationService->notifyAbsenceJustificationSubmitted($absence, $etudiant);
+                app(\App\Domain\Notifications\Notifiers\AbsenceNotifier::class)
+                    ->justificationSoumise($absence, $etudiant);
             }
 
             Log::info('Justification submitted', [
@@ -131,15 +132,12 @@ class AbsenceJustificationService
 
             $etudiant = ESBTPEtudiant::find($absence->etudiant_id);
             if ($etudiant) {
+                // Phase 8b strangler fig via AbsenceNotifier
+                $absenceNotifier = app(\App\Domain\Notifications\Notifiers\AbsenceNotifier::class);
                 if ($newStatus === JustificationStatus::APPROVED) {
-                    $this->notificationService->notifyAbsenceJustificationApproved($absence, $etudiant, $admin);
+                    $absenceNotifier->justificationApprouvee($absence, $etudiant, $admin);
                 } else {
-                    $this->notificationService->notifyAbsenceJustificationRejected(
-                        $absence,
-                        $etudiant,
-                        $adminComment,
-                        $admin
-                    );
+                    $absenceNotifier->justificationRejetee($absence, $etudiant, $adminComment, $admin);
                 }
             }
 

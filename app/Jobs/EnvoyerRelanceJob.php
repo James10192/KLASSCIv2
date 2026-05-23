@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Domain\Notifications\Notifiers\RelanceNotifier;
 use App\Models\ESBTPRelance;
 use App\Services\NotificationService;
 use Illuminate\Bus\Queueable;
@@ -31,15 +32,17 @@ class EnvoyerRelanceJob implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle(NotificationService $notificationService): void
+    public function handle(RelanceNotifier $relanceNotifier, NotificationService $legacy): void
     {
         try {
             Log::info("Début envoi relance ID: {$this->relance->id}");
 
+            // Phase 8b strangler fig : email/sms via RelanceNotifier (extrait complet),
+            // courrier reste en legacy (génération PDF non encore extraite Phase 8a)
             $resultat = match($this->relance->type) {
-                'email' => $notificationService->envoyerRelanceEmail($this->relance),
-                'sms' => $notificationService->envoyerRelanceSMS($this->relance),
-                'courrier' => $notificationService->genererCourrierRelance($this->relance),
+                'email' => $relanceNotifier->envoyerEmail($this->relance)->toArray(),
+                'sms' => $relanceNotifier->envoyerSMS($this->relance)->toArray(),
+                'courrier' => $legacy->genererCourrierRelance($this->relance),
                 default => ['success' => false, 'message' => 'Type de relance non supporté']
             };
 

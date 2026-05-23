@@ -190,7 +190,8 @@ class ESBTPAnnonceController extends Controller
             if ($annonce->is_published && $annonce->date_publication <= now()) {
                 $this->sendAnnonceNotification($annonce);
                 // Envoyer notification administrative aux autres admins
-                $this->notificationService->notifyAdminsNewAnnouncement($annonce, Auth::user());
+                app(\App\Domain\Notifications\Notifiers\AnnonceNotifier::class)
+                    ->annonceAdminsCreee($annonce, Auth::user());
             }
 
             DB::commit();
@@ -341,7 +342,8 @@ class ESBTPAnnonceController extends Controller
             if ($annonce->is_published && !$wasPublished && $annonce->date_publication <= now()) {
                 $this->sendAnnonceNotification($annonce);
                 // Envoyer notification administrative aux autres admins
-                $this->notificationService->notifyAdminsNewAnnouncement($annonce, Auth::user());
+                app(\App\Domain\Notifications\Notifiers\AnnonceNotifier::class)
+                    ->annonceAdminsCreee($annonce, Auth::user());
             }
 
             DB::commit();
@@ -680,6 +682,7 @@ class ESBTPAnnonceController extends Controller
     private function sendAnnonceNotification(ESBTPAnnonce $annonce)
     {
         // Utiliser le service de notifications centralisé avec l'expéditeur
-        $this->notificationService->notifyNewAnnouncement($annonce, Auth::user());
+        app(\App\Domain\Notifications\Notifiers\AnnonceNotifier::class)
+            ->annonceCreee($annonce, Auth::user());
     }
 }
