@@ -244,10 +244,10 @@ class TeacherAttendanceController extends Controller
                 $workflow = ESBTPSessionWorkflow::getOrCreateForSession($seanceCours->id, $user->id);
                 $workflow->markAttendanceStartSigned();
 
-                // Notification
+                // Notification — Phase 8b strangler fig via TeacherNotifier
                 try {
-                    $notificationService = app(NotificationService::class);
-                    $notificationService->notifyCoordinateurTeacherAttendanceSigned($user, $seanceCours);
+                    app(\App\Domain\Notifications\Notifiers\TeacherNotifier::class)
+                        ->coordinateurEmargementSigne($user, $seanceCours);
                 } catch (\Exception $e) {
                     \Log::error('Erreur lors de l\'envoi de la notification d\'émargement: ' . $e->getMessage());
                 }

@@ -46,4 +46,38 @@ class TeacherNotifier extends AbstractNotifier
     {
         $this->legacy->notifyAdminsTeacherAttendanceSigned($teacher, $className);
     }
+
+    /**
+     * Coordinateurs notifiés qu'un teacher a signé l'émargement d'une séance.
+     * Différent de adminsEmargementSigne — passe l'objet $seanceCours pour contexte.
+     */
+    public function coordinateurEmargementSigne(User $teacher, $seanceCours): void
+    {
+        $this->legacy->notifyCoordinateurTeacherAttendanceSigned($teacher, $seanceCours);
+    }
+
+    /**
+     * Coordinateurs notifiés qu'un teacher a complété l'appel des étudiants d'une séance.
+     */
+    public function coordinateurAppelEffectue(User $teacher, $seanceCours, array $attendanceData): void
+    {
+        $this->legacy->notifyCoordinateurStudentRollCallCompleted($teacher, $seanceCours, $attendanceData);
+    }
+
+    /**
+     * Coordinateurs notifiés qu'un teacher a clos un cours (avec notes optionnelles).
+     */
+    public function coordinateurCoursClos(User $teacher, $seanceCours, ?string $notes = null): void
+    {
+        $this->legacy->notifyCoordinateurCourseClosed($teacher, $seanceCours, $notes);
+    }
+
+    /**
+     * Étudiants absents notifiés (auto par teacher après appel).
+     * @param array $absentStudents Liste d'objets ESBTPEtudiant ou IDs
+     */
+    public function etudiantsAbsenceConstatee(array $absentStudents, $seanceCours, User $teacher): void
+    {
+        $this->legacy->notifyStudentsAbsence($absentStudents, $seanceCours, $teacher);
+    }
 }
