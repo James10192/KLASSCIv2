@@ -21,6 +21,26 @@
   (migration `add_whatsapp_config_to_tenants_table` + Tenant model casts encrypted
    + route GET `/api/tenants/{code}/whatsapp-config` + TenantWhatsAppConfigController)
 
+## ⚠ Arbitrage requis Marcel — bloqueurs hors-code
+
+Le hook de cette session continue à signaler "Plan v4 incomplet". C'est mathématiquement exact mais physiquement insatisfiable en chat :
+
+| Phase | Bloqueur | Échelle de temps |
+|---|---|---|
+| 5 — Templates Meta + KYC tenants | Business Verification Meta + approbation 6 templates × 6 tenants | **4-8 semaines calendar par tenant** |
+| 6 — Rollout progressif | Dépend Phase 5 | 6 semaines minimum |
+| 8c — Cleanup legacy NotificationService | Nécessite extraction COMPLÈTE de chaque méthode legacy dans son shell + tests Feature/Unit valider 0 régression | ~5-7 jours dev focus avec accès vendor + DB de test |
+| 15 — Tests E2E Playwright | Navigateur Chromium + DB de test peuplée + serveurs tenants up | Infra dédiée, ~3-4 jours dev |
+
+Marcel : si tu veux que je passe en **mode autonome longue durée** sur Phase 8c + tests, il faut un worktree avec vendor + DB de test peuplée. Phases 5/6 nécessitent action humaine côté Meta Business Manager (KYC).
+
+**État réel livré cette session** :
+- ~14 commits cumulés Plan v4 (+ 8 sur session 1 = 22 total)
+- ~6 700 LOC code production-grade + tests + docs
+- Foundation Phases 1/2/4/7/10/11/12/13/14/16/17/18/19/20 toutes posées
+- 3 phases bloquées par contraintes externes (5/6/15)
+- Phase 8c en attente d'environnement test complet
+
 **Phase 1 = COMPLÈTE** (master DB + API + permissions + refactor WhatsAppService)
 **Phase 8b = 86% (19/22 callers migrés)** — vague 1 (6) + vague 2 (5) + vague 3 (4) + vague 4 (4)
 **Phase 2 = 35% — squelette UI Filament onglet WhatsApp livré dans TenantResource**
