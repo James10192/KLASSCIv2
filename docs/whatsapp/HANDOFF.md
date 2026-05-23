@@ -22,7 +22,14 @@
    + route GET `/api/tenants/{code}/whatsapp-config` + TenantWhatsAppConfigController)
 
 **Phase 1 = COMPLÈTE** (master DB + API + permissions + refactor WhatsAppService)
-**Phase 8b = 30% (6/22 callers migrés)** — reste 16 callers vague 2
+**Phase 8b = 75% (15/22 callers migrés)** — vague 1 (6) + vague 2 (5) + vague 3 (4)
+**Phase 2 = 35% — squelette UI Filament onglet WhatsApp livré dans TenantResource**
+
+### ✅ Session 2 supplément (suite 23/05/2026)
+
+- `c9f39d0d` refactor(notifications): Phase 8b vague 2 — 5 callers Jobs/Listeners/Services migrés
+- `c54e859`  (adminKlassci) feat(filament): Phase 2 squelette UI WhatsApp dans TenantResource
+- `2726a809` refactor(notifications): Phase 8b vague 3 — rappels inscription + paiement
 
 ### Commits chronologiques
 
