@@ -2,7 +2,10 @@
 
 namespace App\Services;
 
+use App\Services\WhatsApp\CircuitBreaker;
+use App\Services\WhatsApp\PerTenantRateLimiter;
 use App\Services\WhatsApp\PiiMasker;
+use App\Services\WhatsApp\RateLimitExceededException;
 use App\Services\WhatsApp\TenantConfigResolver;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Http;
@@ -28,7 +31,11 @@ class WhatsAppService
 {
     private const API_BASE_URL = 'https://graph.facebook.com/v18.0';
 
-    public function __construct(private readonly TenantConfigResolver $configResolver) {}
+    public function __construct(
+        private readonly TenantConfigResolver $configResolver,
+        private readonly PerTenantRateLimiter $rateLimiter,
+        private readonly CircuitBreaker $circuitBreaker,
+    ) {}
 
     /**
      * Envoyer une notification d'inscription/réinscription
@@ -235,6 +242,27 @@ class WhatsAppService
                 return false;
             }
 
+            // Phase 4 hardening — circuit breaker + rate limiter Meta tiers
+            $tenantCode = config('app.tenant_code') ?? env('TENANT_CODE', 'unknown');
+
+            if ($this->circuitBreaker->isOpen($tenantCode)) {
+                Log::warning('[whatsapp] Circuit breaker OPEN — envoi skipé', [
+                    'tenant' => $tenantCode,
+                    'template' => $templateName,
+                ]);
+                return false;
+            }
+
+            try {
+                $this->rateLimiter->check($tenantCode, (int) ($config['meta_tier'] ?? 1));
+            } catch (RateLimitExceededException $e) {
+                Log::warning('[whatsapp] Rate limit Meta atteint — envoi skipé', [
+                    'tenant' => $tenantCode,
+                    'template' => $templateName,
+                ]);
+                return false;
+            }
+
             // Nettoyer le numéro de téléphone (enlever espaces, tirets, etc.)
             $cleanPhone = preg_replace('/[^0-9+]/', '', $phoneNumber);
 
@@ -281,6 +309,9 @@ class WhatsAppService
 
             if ($response->successful()) {
                 $result = $response->json();
+                // Phase 4 hardening — feedback success au circuit breaker + increment rate limiter
+                $this->circuitBreaker->recordSuccess($tenantCode);
+                $this->rateLimiter->increment($tenantCode);
                 Log::info('WhatsApp message envoyé avec succès', [
                     'message_id' => $result['messages'][0]['id'] ?? null,
                     'phone' => PiiMasker::phone($cleanPhone),
@@ -288,6 +319,8 @@ class WhatsAppService
                 ]);
                 return $result;
             } else {
+                // Phase 4 hardening — record failure (peut déclencher circuit OPEN)
+                $this->circuitBreaker->recordFailure($tenantCode, "HTTP {$response->status()}");
                 Log::error('Erreur API WhatsApp', [
                     'status' => $response->status(),
                     // Body Meta peut contenir des PII en cas de fbtrace_id error — masquage prudent
