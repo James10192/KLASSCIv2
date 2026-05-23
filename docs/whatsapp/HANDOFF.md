@@ -1,14 +1,28 @@
 # HANDOFF — Plan v4 WhatsApp KLASSCI production-ready
 
-> Document de reprise après session du 23 mai 2026. À utiliser comme point d'entrée
-> pour la prochaine session de continuation du chantier.
+> Document de reprise mis à jour le 23 mai 2026 (session 2/N).
+> Point d'entrée pour la prochaine session de continuation du chantier.
 
 ## 📍 Où on en est
 
 **Branche** : `feat/whatsapp-multitenant-prod` (worktree `./.claude/worktrees/whatsapp-prod/`)
 **Base** : `presentation` (à jour)
-**Commits livrés** : 14 commits, **+4 000 LOC** code production-grade + tests + docs
+**Commits livrés** : **26 commits**, **+5 500 LOC** code production-grade + tests + docs
 **PR ouverte** : https://github.com/James10192/KLASSCIv2/pull/new/feat/whatsapp-multitenant-prod
+
+### ✅ Session 2 (23/05/2026) — livrables additionnels
+
+- `f0f4278c` refactor(notifications): Phase 8b vague 1 — 6 callers migrés vers Notifier shells
+- `1cc32bbb` feat(permissions): Phase 1 step 2/3 — 15 permissions WhatsApp mergées dans config/permissions.php
+- `81c75ea1` refactor(whatsapp): Phase 1 step 3/3 — WhatsAppService multi-tenant via TenantConfigResolver
+
+**adminKlassci (repo séparé `James10192/adminKlassci` branch main)** :
+- `f13c661` feat(whatsapp): Phase 1 multi-tenant credentials Meta Cloud API
+  (migration `add_whatsapp_config_to_tenants_table` + Tenant model casts encrypted
+   + route GET `/api/tenants/{code}/whatsapp-config` + TenantWhatsAppConfigController)
+
+**Phase 1 = COMPLÈTE** (master DB + API + permissions + refactor WhatsAppService)
+**Phase 8b = 30% (6/22 callers migrés)** — reste 16 callers vague 2
 
 ### Commits chronologiques
 
@@ -100,45 +114,59 @@ adminKlassci/
 
 ## 🎯 Phases restantes — ordre d'attaque recommandé
 
-### Priorité 1 — Bloque tout le reste (3-4 jours)
+### Priorité 1 — ✅ TERMINÉE (session 23/05/2026)
 
-#### Phase 1 step 2/3 — Casts encrypted + route API + permission
-**Repo** : adminKlassci + KLASSCIv2
-- [ ] adminKlassci/app/Models/Tenant.php — ajouter `protected $casts = ['whatsapp_phone_number_id' => 'encrypted', 'whatsapp_access_token' => 'encrypted', ...]`
-- [ ] adminKlassci/routes/api.php — ajouter `Route::get('/tenants/{code}/whatsapp-config', [TenantWhatsAppConfigController::class, 'show'])->middleware('tenant.api')`
-- [ ] KLASSCIv2/config/permissions.php — merger `config/permissions-whatsapp.php` (13 permissions)
-- [ ] KLASSCIv2/bin/deploy/fix_permissions.php run pour propager
+#### ✅ Phase 1 step 2/3 — Casts encrypted + route API + permissions (FAIT)
+- ✅ adminKlassci/app/Models/Tenant.php — 6 casts encrypted ajoutés (commit `f13c661`)
+- ✅ adminKlassci/routes/api.php — route `/tenants/{code}/whatsapp-config` registered
+- ✅ KLASSCIv2/config/permissions.php — 15 permissions WhatsApp mergées (commit `1cc32bbb`)
+- [ ] **À faire au déploiement** : `php bin/deploy/fix_permissions.php` sur chaque tenant pour propager DB
 
-#### Phase 1 step 3/3 — Refactor WhatsAppService legacy
-**Fichier** : `app/Services/WhatsAppService.php`
-- [ ] Remplacer `__construct() { $this->phoneNumberId = env(...) }` par injection DI `TenantConfigResolver $configResolver`
-- [ ] Toutes les méthodes `send*Notification` : vérifier `$this->configResolver->getConfig()['enabled']` avant envoi
-- [ ] Si disabled → return false + log info (pas throw)
-- [ ] sendTemplateMessage() utilise `$config['phone_number_id']` + `$config['access_token']` à chaque appel
-- [ ] Tests Feature avec mock TenantConfigResolver
+#### ✅ Phase 1 step 3/3 — Refactor WhatsAppService (FAIT — commit `81c75ea1`)
+- ✅ Constructor DI `TenantConfigResolver $configResolver` (immutable readonly)
+- ✅ sendTemplateMessage() résout config per-call + check enabled
+- ✅ getMessageStatus() pareil
+- ✅ enabled=false → return false + log info (graceful)
+- ✅ Plus aucun `env()` direct (compatible config:cache)
+- [ ] Tests Feature avec mock TenantConfigResolver (reportés Phase 15)
 
 ### Priorité 2 — Production hardening (3-5 jours)
 
-#### Phase 8b — Migration callers vers Notifier shells
-**Pattern** : grep callers existants + remplacer par DI Notifier
-```bash
-# Trouver les callers
-grep -rn "app(NotificationService::class)" app/Http/Controllers/ app/Jobs/
-grep -rn "new NotificationService" app/
+#### Phase 8b — Migration callers vers Notifier shells (vague 2)
 
-# Migration par caller :
-# AVANT
-app(NotificationService::class)->notifyParentsInscriptionCreated($i, $c);
-# APRÈS
-app(InscriptionNotifier::class)->inscriptionCreated($i, $c);
-```
-- [ ] ESBTPInscriptionController → InscriptionNotifier
-- [ ] ESBTPPaiementController (3 callers) → PaiementNotifier
-- [ ] ESBTPAttendanceController → AbsenceNotifier
-- [ ] ESBTPBulletinController (2 callers) → BulletinNotifier
+**Vague 1 (session 23/05/2026) — 6 callers MIGRÉS** (commit `f0f4278c`) :
+- ✅ ESBTPInscriptionController::store() → InscriptionNotifier::inscriptionCreated()
+- ✅ ESBTPReinscriptionController::store() → InscriptionNotifier::reinscriptionCreated()
+- ✅ ESBTPPaiementController validation classique → PaiementNotifier::paiementValide()
+- ✅ ESBTPPaiementController validation rapide → PaiementNotifier::paiementValide()
+- ✅ ESBTPPaiementController rejet → PaiementNotifier::paiementRejete(motif)
+- ✅ ESBTPAttendanceController → AbsenceNotifier::nouvelleAbsence()
+- ✅ ESBTPBulletinController togglePublication → BulletinNotifier::bulletinPublie() + alerteNotesFaibles()
+
+**Vague 2 (à faire) — 16 callers restants** :
+- [ ] ESBTPPaiementController::store() L427 — caller orphelin "parents only" (analyse risque double-notif)
+- [ ] ESBTPBulletinController autres méthodes generate*
 - [ ] EnvoyerRelanceJob → RelanceNotifier::envoyerEmail()
-- [ ] ~15 autres callers (controllers + jobs)
-- [ ] Tests Feature après chaque migration
+- [ ] PlanifierRelancesJob, SendInscriptionPaiementReminders
+- [ ] Listeners : EnvoyerNotificationPaiement, GererSeuilAtteint, MettreAJourDashboard, NotifierBonApprouve, TraiterRelanceEnvoyee
+- [ ] Services : ESBTPInscriptionService, AbsenceJustificationService
+- [ ] Controllers : ESBTPNoteController, ESBTPAnnonceController, ESBTPBonSortieController, ESBTPComptabiliteRelanceController, TeacherDashboardController, CoordinateurDashboardController, ESBTP/TeacherAttendanceController
+
+**Pattern de migration** :
+```bash
+# Trouver les callers restants
+grep -rn "NotificationService::class\|notifyParents\|notifyPaiement\|notifyNewAbsence\|notifyParentsBulletin" \
+    app/Http/Controllers/ app/Jobs/ app/Listeners/ app/Services/ app/Console/
+
+# Avant
+$notificationService->notifyParentsXxx($entity);
+# Après
+app(XxxNotifier::class)->methodeShell($entity);
+```
+
+**Caveat** : Étendre les shells si nouvelles méthodes nécessaires (ex: PaiementNotifier
+a déjà été étendu avec `paiementRejete(motif)` cette session — vérifier signatures
+avant migration).
 
 #### Phase 4 step 2/2 — Intégration hardening dans WhatsAppService
 - [ ] Wrap `sendTemplateMessage()` avec `try { $rateLimiter->check(); $breaker->isOpen() }`
