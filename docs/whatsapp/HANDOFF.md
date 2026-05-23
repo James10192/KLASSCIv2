@@ -22,14 +22,26 @@
    + route GET `/api/tenants/{code}/whatsapp-config` + TenantWhatsAppConfigController)
 
 **Phase 1 = COMPLÈTE** (master DB + API + permissions + refactor WhatsAppService)
-**Phase 8b = 75% (15/22 callers migrés)** — vague 1 (6) + vague 2 (5) + vague 3 (4)
+**Phase 8b = 86% (19/22 callers migrés)** — vague 1 (6) + vague 2 (5) + vague 3 (4) + vague 4 (4)
 **Phase 2 = 35% — squelette UI Filament onglet WhatsApp livré dans TenantResource**
+**Phase 13 = 70% — Hub Communications scaffolding livré (controller + vue + route + sidebar)**
+**Phase 16 = 30% — Widget WhatsAppOverviewWidget dashboard SaaS livré**
+**Phase 17 = 90% — Doc complète : ONBOARDING + DISASTER_RECOVERY + RUNBOOK_OPS + HANDOFF**
+**Phase 18 = 40% — PiiMasker utility + application masquage logs WhatsAppService**
+**Phase 19 = 50% — 3 index composites parent_notification_logs analytics**
+**Phase 20 = 80% — DR runbook + ops runbook livrés**
 
 ### ✅ Session 2 supplément (suite 23/05/2026)
 
 - `c9f39d0d` refactor(notifications): Phase 8b vague 2 — 5 callers Jobs/Listeners/Services migrés
 - `c54e859`  (adminKlassci) feat(filament): Phase 2 squelette UI WhatsApp dans TenantResource
 - `2726a809` refactor(notifications): Phase 8b vague 3 — rappels inscription + paiement
+- `e0e1fa13` refactor(notifications): Phase 8b vague 4 — TeacherNotifier étendu + 4 callers teacher
+- `81f26298` feat(communications): Phase 13 — Hub Communications unifié (controller + vue + route)
+- `fff15b2`  (adminKlassci) feat(filament): Phase 16 — WhatsAppOverviewWidget dashboard SaaS
+- `1a7169ed` docs(whatsapp): Phase 17/20 — RUNBOOK_OPS.md (référence ops quotidienne)
+- `1fc2ef1e` feat(security): Phase 18 — PiiMasker + masquage logs WhatsApp (RGPD/ARTCI)
+- `c9ad6e1d` perf(db): Phase 19 — 3 index composites analytics WhatsApp/SMS
 
 ### Commits chronologiques
 
