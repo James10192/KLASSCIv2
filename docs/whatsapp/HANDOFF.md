@@ -1,7 +1,62 @@
 # HANDOFF — Plan v4 WhatsApp KLASSCI production-ready
 
-> Document de reprise mis à jour le 23 mai 2026 (session 2/N).
+> Document de reprise mis à jour le 23 mai 2026 (session 2/N — clôture).
 > Point d'entrée pour la prochaine session de continuation du chantier.
+
+## 🚀 REPRISE — Prompt pour prochaine session
+
+Copier-coller dans le prochain chat :
+
+```
+Reprise chantier WhatsApp KLASSCI v4 — session 3.
+
+Lire d'abord docs/whatsapp/HANDOFF.md (point d'entrée complet).
+
+État actuel :
+- PR #426 ouverte feat/whatsapp-multitenant-prod → presentation
+- 41 commits, ~6 800 LOC, 14/22 phases foundation production-grade
+- Phase 8b = 91% (20/22 callers migrés, 2 callers atypiques restants)
+
+Marcel a validé Option B (PR merge) puis Option A (Phase 8c + 15 via klassci-cli
+sur presentation comme test infra).
+
+Prochaines étapes ordre d'attaque :
+
+1. Vérifier statut PR #426 (mergée ? en review ? CI ?)
+   → Si mergée : pull presentation + cross-branch push esbtp-abidjan/yakro/ephrata/hetec/rostan
+   → Si pending : laisser, attaquer Option A en parallèle
+
+2. Reporter 3 commits adminKlassci hors-git du worktree dans repo
+   James10192/adminKlassci main :
+   - f13c661 Migration + Tenant casts encrypted + route API + Controller
+   - c54e859 Filament UI WhatsApp tab dans TenantResource
+   - fff15b2 WhatsAppOverviewWidget dashboard SaaS
+
+3. Phase 8c (cleanup legacy NotificationService) — Option A
+   Test infra = klassci-cli sur tenant presentation (validé Marcel).
+   Stratégie : extraire UNE méthode legacy à la fois vers son Notifier shell,
+   tester via klassci-cli (création paiement/inscription/absence), commit
+   atomique par méthode. Cible : RelanceNotifier::envoyerEmail déjà extrait
+   pattern → répliquer pour PaiementNotifier::paiementValide (méthode legacy
+   notifyPaiementValide L2036 → extraction complète + delete legacy).
+
+4. Phase 8b vague 6 — 2 callers atypiques restants :
+   - ESBTPPaiementController L427 (paiement créé en_attente + notif parents
+     "validé" — analyse métier : bug latent ou intentionnel ?)
+   - ESBTPBonSortieController L42 (créer BonSortieNotifier shell minimal ou
+     intégrer dans AnnonceNotifier ?)
+
+5. Phase 15 partial — tests Feature sans browser :
+   tests/Feature/Notifications/RelanceNotifierTest.php avec klassci-cli
+   factory data depuis presentation. Pas Playwright (bloqué infra),
+   mais Pest/PHPUnit Feature tests via API REST testable.
+
+Bloqueurs hors-code restants (action utilisateur) :
+- Phase 5 Meta KYC : Business Verification + 6 templates UTILITY × 2 tenants pilotes
+- Phase 6 Rollout : dépend Phase 5
+```
+
+---
 
 ## 📍 Où on en est
 
