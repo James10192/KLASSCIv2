@@ -1291,13 +1291,11 @@ class ESBTPPaiementController extends Controller
             // S1.6 — Notif gros montant aux users avec permission `comptabilite.notifications.high_amount`
             $this->notifyHighAmountIfAny($paiement, auth()->user());
 
-            // Envoyer notification à l'étudiant
+            // Envoyer notification — Phase 8b strangler fig via PaiementNotifier
+            // (combine étudiant + admins + parents en un seul appel orchestré)
             try {
-                $notificationService = app(\App\Services\NotificationService::class);
-                $notificationService->notifyPaiementValide($paiement, auth()->user());
-
-                // Envoyer notification aux parents
-                $notificationService->notifyParentsPaiementValide($paiement);
+                app(\App\Domain\Notifications\Notifiers\PaiementNotifier::class)
+                    ->paiementValide($paiement, auth()->user());
             } catch (\Exception $e) {
                 Log::error('Erreur envoi notification paiement validé: ' . $e->getMessage());
             }
@@ -1407,11 +1405,10 @@ class ESBTPPaiementController extends Controller
             // S1.6 — Notif gros montant
             $this->notifyHighAmountIfAny($paiement, auth()->user());
 
-            // Envoyer notifications
+            // Envoyer notifications — Phase 8b strangler fig via PaiementNotifier
             try {
-                $notificationService = app(\App\Services\NotificationService::class);
-                $notificationService->notifyPaiementValide($paiement, auth()->user());
-                $notificationService->notifyParentsPaiementValide($paiement);
+                app(\App\Domain\Notifications\Notifiers\PaiementNotifier::class)
+                    ->paiementValide($paiement, auth()->user());
             } catch (\Exception $e) {
                 Log::error('Erreur envoi notification paiement validé (rapide): ' . $e->getMessage());
             }
@@ -1505,13 +1502,10 @@ class ESBTPPaiementController extends Controller
                 'commentaire' => $request->input('motif_rejet')
             ]);
 
-            // Envoyer notification à l'étudiant
+            // Envoyer notification — Phase 8b strangler fig via PaiementNotifier
             try {
-                $notificationService = app(\App\Services\NotificationService::class);
-                $notificationService->notifyPaiementRejete($paiement, auth()->user(), $request->input('motif_rejet'));
-
-                // Envoyer notification aux parents
-                $notificationService->notifyParentsPaiementRejete($paiement);
+                app(\App\Domain\Notifications\Notifiers\PaiementNotifier::class)
+                    ->paiementRejete($paiement, auth()->user(), $request->input('motif_rejet'));
             } catch (\Exception $e) {
                 Log::error('Erreur envoi notification paiement rejeté: ' . $e->getMessage());
             }

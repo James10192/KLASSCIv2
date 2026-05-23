@@ -1638,11 +1638,9 @@ class ESBTPAttendanceController extends Controller
             $absence->heure_debut = $seanceCours->heure_debut;
             $absence->heure_fin = $seanceCours->heure_fin;
 
-            // Utiliser le service de notifications
-            $this->notificationService->notifyNewAbsence($absence, $etudiant);
-
-            // Notifier les parents de l'absence
-            $this->notificationService->notifyParentsAbsence($absence);
+            // Phase 8b strangler fig via AbsenceNotifier (orchestre étudiant + parents)
+            app(\App\Domain\Notifications\Notifiers\AbsenceNotifier::class)
+                ->nouvelleAbsence($absence, $etudiant);
 
             \Log::info("Notification d'absence enrichie envoyée pour le cours", [
                 'etudiant_id' => $etudiantId,

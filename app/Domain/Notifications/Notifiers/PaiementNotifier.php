@@ -4,6 +4,7 @@ namespace App\Domain\Notifications\Notifiers;
 
 use App\Domain\Notifications\AbstractNotifier;
 use App\Models\ESBTPPaiement;
+use App\Models\User;
 use App\Services\NotificationService;
 use App\Services\SmsService;
 use App\Services\WhatsAppService;
@@ -40,15 +41,21 @@ class PaiementNotifier extends AbstractNotifier
         $this->legacy->notifyPaiementCreated($paiement);
     }
 
-    public function paiementValide(ESBTPPaiement $paiement): void
+    public function paiementValide(ESBTPPaiement $paiement, ?User $validatedBy = null): void
     {
-        $this->legacy->notifyPaiementValide($paiement);
+        $validatedBy ??= auth()->user();
+        if ($validatedBy instanceof User) {
+            $this->legacy->notifyPaiementValide($paiement, $validatedBy);
+        }
         $this->legacy->notifyParentsPaiementValide($paiement);
     }
 
-    public function paiementRejete(ESBTPPaiement $paiement): void
+    public function paiementRejete(ESBTPPaiement $paiement, ?User $rejectedBy = null, ?string $motif = null): void
     {
-        $this->legacy->notifyPaiementRejete($paiement);
+        $rejectedBy ??= auth()->user();
+        if ($rejectedBy instanceof User) {
+            $this->legacy->notifyPaiementRejete($paiement, $rejectedBy, $motif);
+        }
         $this->legacy->notifyParentsPaiementRejete($paiement);
     }
 
