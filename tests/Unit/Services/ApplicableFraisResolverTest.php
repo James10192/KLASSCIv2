@@ -14,17 +14,19 @@ use App\Models\ESBTPLMDDomaine;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
+use App\Models\User;
 use App\Services\ApplicableFraisResolver;
 use App\Services\FraisScopeResolver;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class ApplicableFraisResolverTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_it_resolves_bts_and_lmd_configurations_with_distinct_scopes(): void
     {
+        $user = User::factory()->create();
         $annee = ESBTPAnneeUniversitaire::factory()->create();
         $niveau = ESBTPNiveauEtude::factory()->create(['code' => 'L1', 'type' => 'Licence', 'year' => 1]);
         $filiere = ESBTPFiliere::factory()->create();
@@ -53,11 +55,13 @@ class ApplicableFraisResolverTest extends TestCase
             'payment_deadline_days' => 30,
             'effective_date' => now()->toDateString(),
             'is_active' => true,
+            'created_by' => $user->id,
         ]);
 
         $lmdConfig = ESBTPFraisConfiguration::create([
             'frais_category_id' => $category->id,
             'systeme_academique' => 'LMD',
+            'filiere_id' => $filiere->id,
             'parcours_id' => $parcours->id,
             'niveau_id' => $niveau->id,
             'annee_universitaire_id' => null,
@@ -65,6 +69,7 @@ class ApplicableFraisResolverTest extends TestCase
             'payment_deadline_days' => 30,
             'effective_date' => now()->toDateString(),
             'is_active' => true,
+            'created_by' => $user->id,
         ]);
 
         $this->assertTrue($btsConfig->is($category->fresh()->getApplicableRule($filiere->id, $niveau->id)));
@@ -81,6 +86,7 @@ class ApplicableFraisResolverTest extends TestCase
 
     public function test_it_resolves_lmd_subscription_configuration_from_inscription_context(): void
     {
+        $user = User::factory()->create();
         $annee = ESBTPAnneeUniversitaire::factory()->create();
         $niveau = ESBTPNiveauEtude::factory()->create(['code' => 'L2', 'type' => 'Licence', 'year' => 2]);
         $filiere = ESBTPFiliere::factory()->create();
@@ -110,12 +116,14 @@ class ApplicableFraisResolverTest extends TestCase
         $config = ESBTPFraisConfiguration::create([
             'frais_category_id' => $category->id,
             'systeme_academique' => 'LMD',
+            'filiere_id' => $filiere->id,
             'parcours_id' => $parcours->id,
             'niveau_id' => $niveau->id,
             'amount' => 22000,
             'payment_deadline_days' => 20,
             'effective_date' => now()->toDateString(),
             'is_active' => true,
+            'created_by' => $user->id,
         ]);
 
         $inscription = ESBTPInscription::create([
@@ -125,10 +133,13 @@ class ApplicableFraisResolverTest extends TestCase
             'niveau_id' => $niveau->id,
             'classe_id' => $classe->id,
             'date_inscription' => now()->toDateString(),
-            'type_inscription' => 'PREMIERE',
+            'type_inscription' => 'première_inscription',
             'status' => 'active',
             'workflow_step' => 'etudiant_cree',
             'affectation_status' => ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+            'montant_scolarite' => 22000,
+            'frais_inscription' => 0,
+            'created_by' => $user->id,
         ]);
 
         $subscription = ESBTPFraisSubscription::create([
@@ -137,6 +148,7 @@ class ApplicableFraisResolverTest extends TestCase
             'amount' => 22000,
             'is_active' => true,
             'subscribed_at' => now(),
+            'created_by' => $user->id,
         ]);
 
         $this->assertTrue($config->is($subscription->fresh()->frais_configuration));

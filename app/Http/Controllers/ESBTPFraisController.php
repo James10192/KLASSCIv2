@@ -649,7 +649,10 @@ class ESBTPFraisController extends Controller
         $filiereId = $request->input('filiere_id');
         $parcoursId = $request->input('parcours_id');
 
-        if (($systeme === 'BTS' || ! $request->filled('systeme')) && $filiereId && ! ESBTPFiliere::whereKey($filiereId)->exists() && \App\Models\ESBTPLMDParcours::whereKey($filiereId)->exists()) {
+        if (($systeme === 'BTS' || ! $request->filled('systeme')) && $parcoursId) {
+            $systeme = 'LMD';
+            $request->merge(['systeme' => 'LMD']);
+        } elseif (($systeme === 'BTS' || ! $request->filled('systeme')) && $filiereId && ! ESBTPFiliere::whereKey($filiereId)->exists() && \App\Models\ESBTPLMDParcours::whereKey($filiereId)->exists()) {
             $systeme = 'LMD';
             $parcoursId = $filiereId;
             $request->merge(['systeme' => 'LMD', 'parcours_id' => $parcoursId, 'filiere_id' => null]);
@@ -950,7 +953,10 @@ class ESBTPFraisController extends Controller
             $niveauId = $request->get('niveau_id');
             $type = $request->get('type', 'all');
 
-            if (($systeme === 'BTS' || ! $request->filled('systeme')) && $filiereId && ! ESBTPFiliere::whereKey($filiereId)->exists() && \App\Models\ESBTPLMDParcours::whereKey($filiereId)->exists()) {
+            if (($systeme === 'BTS' || ! $request->filled('systeme')) && $parcoursId) {
+                $systeme = 'LMD';
+                $filiereId = null;
+            } elseif (($systeme === 'BTS' || ! $request->filled('systeme')) && $filiereId && ! ESBTPFiliere::whereKey($filiereId)->exists() && \App\Models\ESBTPLMDParcours::whereKey($filiereId)->exists()) {
                 $systeme = 'LMD';
                 $parcoursId = $filiereId;
                 $filiereId = null;

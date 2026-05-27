@@ -10,17 +10,19 @@ use App\Models\ESBTPLMDDomaine;
 use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPNiveauEtude;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\User;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class FraisConfigureLmdAjaxTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_lmd_ajax_categories_endpoint_accepts_parcours_scope_without_explicit_systeme(): void
     {
         $this->withoutMiddleware();
 
+        $user = User::factory()->create();
         $annee = ESBTPAnneeUniversitaire::factory()->create();
         $niveau = ESBTPNiveauEtude::factory()->create(['code' => 'L1', 'type' => 'Licence', 'year' => 1]);
         $filiere = ESBTPFiliere::factory()->create();
@@ -41,16 +43,18 @@ class FraisConfigureLmdAjaxTest extends TestCase
         ESBTPFraisConfiguration::create([
             'frais_category_id' => $category->id,
             'systeme_academique' => 'LMD',
+            'filiere_id' => $filiere->id,
             'parcours_id' => $parcours->id,
             'niveau_id' => $niveau->id,
             'amount' => 18000,
             'payment_deadline_days' => 30,
             'effective_date' => now()->toDateString(),
             'is_active' => true,
+            'created_by' => $user->id,
         ]);
 
         $response = $this->withHeaders(['X-Requested-With' => 'XMLHttpRequest'])->get(route('esbtp.frais.get-categories', [
-            'filiere_id' => $parcours->id,
+            'parcours_id' => $parcours->id,
             'niveau_id' => $niveau->id,
             'type' => 'mandatory',
         ]));
