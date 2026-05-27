@@ -439,7 +439,7 @@ document.addEventListener('DOMContentLoaded', function () {
         if (currentAnnualYear()) params.set('annee_universitaire_id', currentAnnualYear());
 
         bulkTargetsContainer.innerHTML = renderLoadingState('Préparation des combinaisons du niveau...');
-        fetch(`{{ route('esbtp.frais.preview-level-targets') }}?${params.toString()}`)
+        fetch(`{{ url('/esbtp/frais/preview-level-targets') }}?${params.toString()}`)
             .then(response => response.json())
             .then(data => {
                 if (!data.success) {
@@ -536,7 +536,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     document.getElementById('saveConfigurationBtn').addEventListener('click', function () {
         const endpoint = state.actionType === 'level'
-            ? `{{ route('esbtp.frais.apply-level-configuration') }}`
+            ? `{{ url('/esbtp/frais/apply-level-configuration') }}`
             : `{{ route('esbtp.frais.update-configuration') }}`;
         const formData = buildFormData();
 
