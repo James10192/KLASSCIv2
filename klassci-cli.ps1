@@ -13,14 +13,32 @@ $ErrorActionPreference = "Stop"
 function Get-KlassciConfig {
     param([string]$TenantCode)
 
+    $globalConfigPath = Join-Path $HOME ".klassci\config.json"
     $tenants = @{
         "presentation" = "https://presentation.klassci.com"
+    }
+    $globalConfig = $null
+
+    if (Test-Path $globalConfigPath) {
+        try {
+            $globalConfig = Get-Content $globalConfigPath -Raw | ConvertFrom-Json
+        } catch {
+            throw "Unable to read ${globalConfigPath}: $($_.Exception.Message)"
+        }
+    }
+
+    $tenantConfig = $null
+    if ($globalConfig -and $globalConfig.tenants) {
+        $tenantConfig = $globalConfig.tenants.PSObject.Properties[$TenantCode].Value
     }
 
     $baseUrl = $env:KLASSCI_CLI_BASE_URL
     if (-not $baseUrl) {
         $tenantKey = "KLASSCI_CLI_BASE_URL_{0}" -f ($TenantCode.ToUpper() -replace '-', '_')
         $baseUrl = [Environment]::GetEnvironmentVariable($tenantKey)
+    }
+    if (-not $baseUrl) {
+        $baseUrl = $tenantConfig.url
     }
     if (-not $baseUrl) {
         $baseUrl = $tenants[$TenantCode]
@@ -30,6 +48,9 @@ function Get-KlassciConfig {
     if (-not $token) {
         $tenantKey = "KLASSCI_CLI_TOKEN_{0}" -f ($TenantCode.ToUpper() -replace '-', '_')
         $token = [Environment]::GetEnvironmentVariable($tenantKey)
+    }
+    if (-not $token) {
+        $token = $tenantConfig.token
     }
 
     return @{
@@ -54,17 +75,32 @@ function Invoke-KlassciApi {
         throw "No CLI token configured for tenant '$($Config.Tenant)'. Set KLASSCI_CLI_TOKEN_$($Config.Tenant.ToUpper().Replace('-', '_'))."
     }
 
-    $headers = @{
-        "Accept" = "application/json"
-        "Authorization" = "Bearer $($Config.Token)"
-    }
-
     $uri = "{0}/api/cli{1}" -f $Config.BaseUrl.TrimEnd('/'), $Path
+    $curlArgs = @(
+        "-sS",
+        "-X", $Method,
+        $uri,
+        "-H", "Accept: application/json",
+        "-H", "Authorization: Bearer $($Config.Token)"
+    )
+
     if ($Body -ne $null) {
-        return Invoke-RestMethod -Method $Method -Uri $uri -Headers $headers -ContentType "application/json" -Body ($Body | ConvertTo-Json -Depth 8)
+        $curlArgs += @(
+            "-H", "Content-Type: application/json",
+            "-d", ($Body | ConvertTo-Json -Depth 8 -Compress)
+        )
     }
 
-    return Invoke-RestMethod -Method $Method -Uri $uri -Headers $headers
+    $response = & curl.exe @curlArgs
+    if ($LASTEXITCODE -ne 0) {
+        throw "curl failed with exit code $LASTEXITCODE"
+    }
+
+    if (-not $response) {
+        return $null
+    }
+
+    return $response | ConvertFrom-Json
 }
 
 switch ($Command) {
