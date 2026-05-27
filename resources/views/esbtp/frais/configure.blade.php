@@ -167,6 +167,29 @@
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: 1rem;
 }
+.fc-tabs {
+    display: flex;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+.fc-tab-btn {
+    border: 1px solid var(--fc-border);
+    background: var(--fc-white);
+    color: var(--fc-text);
+    border-radius: 999px;
+    padding: .55rem 1rem;
+    font-size: .8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all .2s ease;
+}
+.fc-tab-btn.is-active {
+    background: var(--fc-primary);
+    color: #fff;
+    border-color: var(--fc-primary);
+}
+.fc-tab-panel[hidden] { display: none !important; }
 
 /* ── CLASS CARD ── */
 .fc-card {
@@ -642,6 +665,12 @@
         </div>
 
         {{-- ── CLASSES GRID ── --}}
+        <div class="fc-tabs" role="tablist" aria-label="SystÃ¨mes acadÃ©miques">
+            <button type="button" class="fc-tab-btn is-active" data-tab-target="ALL">Tous ({{ $classes->count() }})</button>
+            <button type="button" class="fc-tab-btn" data-tab-target="BTS">BTS ({{ $btsClasses->count() }})</button>
+            <button type="button" class="fc-tab-btn" data-tab-target="LMD">LMD ({{ $lmdClasses->count() }})</button>
+        </div>
+
         <div class="fc-section-title">
             <i class="fas fa-graduation-cap"></i>
             Classes ({{ $classes->count() }})
@@ -675,7 +704,7 @@
                         }
                     @endphp
 
-                    <div class="fc-card {{ $statusClass }}">
+                    <div class="fc-card {{ $statusClass }}" data-systeme="{{ $classe->scope['systeme'] ?? 'BTS' }}">
                         <div class="fc-card-header">
                             <div class="fc-card-icon">
                                 <i class="fas fa-graduation-cap"></i>
@@ -732,10 +761,14 @@
 
                         <button type="button"
                                 class="fc-btn-config configure-btn"
-                                data-filiere-id="{{ $classe->filiere->id }}"
+                                data-systeme="{{ $classe->scope['systeme'] ?? 'BTS' }}"
+                                data-filiere-id="{{ $classe->scope['filiere_id'] ?? $classe->filiere->id }}"
+                                data-parcours-id="{{ $classe->scope['parcours_id'] ?? '' }}"
                                 data-niveau-id="{{ $classe->niveau->id }}"
                                 data-filiere-name="{{ $classe->filiere->name }}"
+                                data-parcours-name="{{ $classe->scope['parcours'] ?? '' }}"
                                 data-niveau-name="{{ $classe->niveau->name }}"
+                                data-label-scope="{{ $classe->scope['label_scope'] ?? ($classe->filiere->name . ' - ' . $classe->niveau->name) }}"
                                 onclick="openConfigurationModal(this)">
                             <i class="fas fa-cogs"></i>
                             <span class="configure-text">Configurer les Frais</span>
@@ -773,7 +806,9 @@
 
                         <form id="configurationForm" method="POST" action="{{ route('esbtp.frais.update-configuration') }}">
                             @csrf
+                            <input type="hidden" id="modalSysteme" name="systeme" value="BTS">
                             <input type="hidden" id="modalFiliereId" name="filiere_id">
+                            <input type="hidden" id="modalParcoursId" name="parcours_id">
                             <input type="hidden" id="modalNiveauId" name="niveau_id">
 
                             <div id="categoriesContainer">
@@ -807,36 +842,77 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     debugLog('DOM ready - Simple modal system');
+    const tabButtons = Array.from(document.querySelectorAll('[data-tab-target]'));
+    const cards = Array.from(document.querySelectorAll('.fc-card[data-systeme]'));
+    let activeScope = null;
+
+    function setActiveTab(target) {
+        tabButtons.forEach(button => {
+            button.classList.toggle('is-active', button.dataset.tabTarget === target);
+        });
+
+        cards.forEach(card => {
+            const systeme = card.dataset.systeme || 'BTS';
+            card.style.display = (target === 'ALL' || systeme === target) ? '' : 'none';
+        });
+    }
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            setActiveTab(button.dataset.tabTarget);
+        });
+    });
 
     window.openConfigurationModal = function(button) {
         debugLog('Opening configuration modal...');
 
+        const systeme = button.dataset.systeme || 'BTS';
         const filiereId = button.dataset.filiereId;
+        const parcoursId = button.dataset.parcoursId;
         const niveauId = button.dataset.niveauId;
         const filiereName = button.dataset.filiereName;
+        const parcoursName = button.dataset.parcoursName;
         const niveauName = button.dataset.niveauName;
+        const labelScope = button.dataset.labelScope || `${filiereName || parcoursName} - ${niveauName}`;
 
         if (typeof bootstrap === 'undefined') {
             alert('Bootstrap non disponible');
             return;
         }
 
+        activeScope = { systeme, filiereId, parcoursId, niveauId, button };
+        document.getElementById('modalSysteme').value = systeme;
         document.getElementById('modalFiliereId').value = filiereId;
+        document.getElementById('modalParcoursId').value = parcoursId;
         document.getElementById('modalNiveauId').value = niveauId;
-        document.getElementById('modalClasseInfo').textContent = `${filiereName} - ${niveauName}`;
+        document.getElementById('modalClasseInfo').textContent = labelScope;
 
         const modalElement = document.getElementById('configurationModal');
         const modal = new bootstrap.Modal(modalElement);
         modal.show();
 
         modalElement.addEventListener('shown.bs.modal', function() {
-            loadCategories(filiereId, niveauId);
+            loadCategories(systeme, filiereId, parcoursId, niveauId);
         }, { once: true });
     };
 
-    function loadCategories(filiereId, niveauId) {
+    function loadCategories(systeme, filiereId, parcoursId, niveauId) {
         const container = document.getElementById('categoriesContainer');
-        const url = `{{ route('esbtp.frais.get-categories') }}?filiere_id=${filiereId}&niveau_id=${niveauId}&type=mandatory`;
+        const params = new URLSearchParams({
+            systeme,
+            niveau_id: niveauId,
+            type: 'mandatory'
+        });
+
+        if (filiereId) {
+            params.set('filiere_id', filiereId);
+        }
+
+        if (parcoursId) {
+            params.set('parcours_id', parcoursId);
+        }
+
+        const url = `{{ route('esbtp.frais.get-categories') }}?${params.toString()}`;
 
         fetch(url)
             .then(response => response.json())
@@ -898,7 +974,32 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(data => {
             if (data.success) {
                 bootstrap.Modal.getInstance(document.getElementById('configurationModal')).hide();
-                location.reload();
+                if (activeScope && activeScope.button) {
+                    const card = activeScope.button.closest('.fc-card');
+                    if (card) {
+                        const obligValue = card.querySelector('.fc-stat.is-oblig .fc-stat-value');
+                        if (obligValue) {
+                            const parts = obligValue.textContent.split('/');
+                            if (parts.length === 2) {
+                                obligValue.textContent = `${parts[1]}/${parts[1]}`;
+                            }
+                        }
+
+                        const badge = card.querySelector('.fc-badge');
+                        if (badge) {
+                            badge.className = 'fc-badge is-complete';
+                            badge.innerHTML = '<i class="fas fa-check-circle" style="font-size:.65em;"></i>Complet';
+                        }
+
+                        card.classList.remove('is-empty', 'is-partial');
+                        card.classList.add('is-complete');
+
+                        const pct = card.querySelector('.fc-ring-pct');
+                        if (pct) {
+                            pct.textContent = '100%';
+                        }
+                    }
+                }
             } else {
                 alert('Erreur: ' + (data.message || 'Impossible d\'enregistrer'));
             }
@@ -908,6 +1009,8 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Erreur de connexion');
         });
     });
+
+    setActiveTab('ALL');
 });
 </script>
 @endpush

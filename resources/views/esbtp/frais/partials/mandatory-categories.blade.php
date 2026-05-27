@@ -10,7 +10,9 @@
                 'affectation_status' => 'all',
             ])
             : route('esbtp.comptabilite.echeanciers.index', [
+                'systeme' => $systeme ?? 'BTS',
                 'filiere_id' => $filiereId,
+                'parcours_id' => $parcoursId ?? null,
                 'niveau_id' => $niveauId,
                 'frais_category_id' => $category->id,
                 'affectation_status' => 'all',

@@ -2,15 +2,11 @@
 
 namespace App\Models;
 
+use App\Services\FraisScopeResolver;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use App\Models\ESBTPInscription;
 
-/**
- * Modèle unifié pour la configuration des frais par classe/année
- * Remplace la complexité Rules + Variants par une approche simplifiée
- */
 class ESBTPFraisConfiguration extends Model
 {
     use HasFactory, SoftDeletes;
@@ -19,13 +15,15 @@ class ESBTPFraisConfiguration extends Model
 
     protected $fillable = [
         'frais_category_id',
+        'systeme_academique',
         'filiere_id',
-        'niveau_id', 
+        'parcours_id',
+        'niveau_id',
         'annee_universitaire_id',
         'amount',
-        'amount_affecte',    // Nouveau: montant pour étudiants affectés
-        'amount_reaffecte',  // Nouveau: montant pour étudiants réaffectés
-        'amount_non_affecte', // Nouveau: montant pour étudiants non affectés
+        'amount_affecte',
+        'amount_reaffecte',
+        'amount_non_affecte',
         'payment_deadline_days',
         'installments_allowed',
         'max_installments',
@@ -65,12 +63,10 @@ class ESBTPFraisConfiguration extends Model
         'expiry_date' => 'date',
     ];
 
-    /**
-     * Boot
-     */
     protected static function boot()
     {
         parent::boot();
+
         static::creating(function ($model) {
             if (empty($model->effective_date)) {
                 $model->effective_date = now()->toDateString();
@@ -78,12 +74,14 @@ class ESBTPFraisConfiguration extends Model
             if (empty($model->created_by)) {
                 $model->created_by = auth()->id();
             }
+            if (empty($model->systeme_academique)) {
+                $model->systeme_academique = $model->parcours_id
+                    ? FraisScopeResolver::SYSTEME_LMD
+                    : FraisScopeResolver::SYSTEME_BTS;
+            }
         });
     }
 
-    /**
-     * Relations
-     */
     public function fraisCategory()
     {
         return $this->belongsTo(ESBTPFraisCategory::class, 'frais_category_id');
@@ -92,6 +90,11 @@ class ESBTPFraisConfiguration extends Model
     public function filiere()
     {
         return $this->belongsTo(ESBTPFiliere::class, 'filiere_id');
+    }
+
+    public function parcours()
+    {
+        return $this->belongsTo(ESBTPLMDParcours::class, 'parcours_id');
     }
 
     public function niveau()
@@ -114,18 +117,12 @@ class ESBTPFraisConfiguration extends Model
         return $this->hasMany(ESBTPFraisOption::class, 'configuration_id');
     }
 
-    /**
-     * Règles d'échéancier associées à cette configuration.
-     */
     public function echeancierRules()
     {
         return $this->hasMany(ESBTPEcheancierRule::class, 'scope_id')
             ->where('scope_type', ESBTPEcheancierRule::SCOPE_CONFIGURATION);
     }
 
-    /**
-     * Scopes
-     */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
@@ -134,12 +131,13 @@ class ESBTPFraisConfiguration extends Model
     public function scopeValid($query)
     {
         $now = now();
+
         return $query->where(function ($q) use ($now) {
             $q->where('effective_date', '<=', $now)
-              ->where(function ($q2) use ($now) {
-                  $q2->whereNull('expiry_date')
-                     ->orWhere('expiry_date', '>=', $now);
-              });
+                ->where(function ($q2) use ($now) {
+                    $q2->whereNull('expiry_date')
+                        ->orWhere('expiry_date', '>=', $now);
+                });
         });
     }
 
@@ -163,37 +161,111 @@ class ESBTPFraisConfiguration extends Model
         return $query->whereNull('annee_universitaire_id');
     }
 
-    /**
-     * Méthodes métier
-     */
-
-    /**
-     * Obtient la configuration applicable pour un contexte donné
-     */
-    public static function getApplicableConfiguration($categoryId, $filiereId, $niveauId, $anneeId = null)
+    public function scopeForBtsScope($query, $filiereId, $niveauId, $anneeId = null)
     {
-        $query = static::active()
-            ->valid()
-            ->where('frais_category_id', $categoryId)
-            ->where('filiere_id', $filiereId)
+        $query->where(function ($q) {
+            $q->where('systeme_academique', FraisScopeResolver::SYSTEME_BTS)
+                ->orWhereNull('systeme_academique');
+        })->where('filiere_id', $filiereId)
             ->where('niveau_id', $niveauId);
 
         if ($anneeId) {
-            // Priorité à la configuration spécifique à l'année
-            $config = (clone $query)->where('annee_universitaire_id', $anneeId)->first();
-            if ($config) return $config;
+            $query->where('annee_universitaire_id', $anneeId);
         }
 
-        // Fallback: configuration générale
+        return $query;
+    }
+
+    public function scopeForLmdScope($query, $parcoursId, $niveauId, $anneeId = null)
+    {
+        $query->where('systeme_academique', FraisScopeResolver::SYSTEME_LMD)
+            ->where('parcours_id', $parcoursId)
+            ->where('niveau_id', $niveauId);
+
+        if ($anneeId) {
+            $query->where('annee_universitaire_id', $anneeId);
+        }
+
+        return $query;
+    }
+
+    public static function getApplicableConfiguration($categoryId, $filiereId, $niveauId, $anneeId = null)
+    {
+        return static::getApplicableForScope($categoryId, [
+            'systeme' => FraisScopeResolver::SYSTEME_BTS,
+            'filiere_id' => $filiereId,
+            'niveau_id' => $niveauId,
+            'annee_universitaire_id' => $anneeId,
+        ]);
+    }
+
+    public static function getApplicableForClass(ESBTPClasse $classe)
+    {
+        $scope = app(FraisScopeResolver::class)->resolveForClasse($classe);
+
+        return static::queryForScope($scope)
+            ->active()
+            ->valid()
+            ->with(['fraisCategory', 'options' => fn ($query) => $query->active()->ordered()])
+            ->get();
+    }
+
+    public static function getApplicableForInscription(ESBTPInscription $inscription)
+    {
+        $scope = app(FraisScopeResolver::class)->resolveForInscription($inscription);
+
+        return static::queryForScope($scope)
+            ->active()
+            ->valid()
+            ->with(['fraisCategory', 'options' => fn ($query) => $query->active()->ordered()])
+            ->get();
+    }
+
+    public static function getApplicableForScope($categoryId, array $scope): ?self
+    {
+        $query = static::queryForScope($scope)
+            ->active()
+            ->valid()
+            ->where('frais_category_id', $categoryId);
+
+        $anneeId = $scope['annee_universitaire_id'] ?? null;
+
+        if ($anneeId) {
+            $config = (clone $query)->where('annee_universitaire_id', $anneeId)->first();
+            if ($config) {
+                return $config;
+            }
+        }
+
         return $query->whereNull('annee_universitaire_id')->first();
     }
 
-    /**
-     * Calcule les frais de retard
-     */
+    public static function queryForScope(array $scope)
+    {
+        $query = static::query();
+        $systeme = strtoupper((string) ($scope['systeme'] ?? FraisScopeResolver::SYSTEME_BTS));
+
+        if ($systeme === FraisScopeResolver::SYSTEME_LMD) {
+            return $query
+                ->where('systeme_academique', FraisScopeResolver::SYSTEME_LMD)
+                ->where('parcours_id', $scope['parcours_id'] ?? null)
+                ->where('niveau_id', $scope['niveau_id'] ?? null);
+        }
+
+        return $query
+            ->where(function ($q) {
+                $q->where('systeme_academique', FraisScopeResolver::SYSTEME_BTS)
+                    ->orWhereNull('systeme_academique');
+            })
+            ->where('filiere_id', $scope['filiere_id'] ?? null)
+            ->where('niveau_id', $scope['niveau_id'] ?? null);
+    }
+
     public function calculateLateFee($baseAmount, $daysLate = 0)
     {
-        if ($daysLate <= 0) return 0;
+        if ($daysLate <= 0) {
+            return 0;
+        }
 
         $lateFee = 0;
 
@@ -208,20 +280,16 @@ class ESBTPFraisConfiguration extends Model
         return $lateFee;
     }
 
-    /**
-     * Vérifie si les paiements échelonnés sont autorisés
-     */
     public function allowsInstallments()
     {
         return $this->installments_allowed && $this->max_installments > 1;
     }
 
-    /**
-     * Calcule le montant minimum d'un échéancier
-     */
     public function getMinimumInstallmentAmount()
     {
-        if (!$this->allowsInstallments()) return $this->amount;
+        if (! $this->allowsInstallments()) {
+            return $this->amount;
+        }
 
         $minByRule = $this->min_installment_amount ?: 0;
         $minByDivision = $this->amount / $this->max_installments;
@@ -229,37 +297,27 @@ class ESBTPFraisConfiguration extends Model
         return max($minByRule, $minByDivision);
     }
 
-    /**
-     * Applique la remise de paiement anticipé
-     */
     public function applyEarlyPaymentDiscount($amount)
     {
         if ($this->early_payment_discount > 0) {
             return $amount * (1 - $this->early_payment_discount / 100);
         }
+
         return $amount;
     }
 
-    /**
-     * Vérifie si la remise fratrie est activée
-     */
     public function hasSiblingDiscount()
     {
         return $this->sibling_discount_enabled;
     }
 
-    /**
-     * Obtient les remises en volume
-     */
     public function getBulkDiscountForQuantity($quantity)
     {
-        if (!$this->bulk_discount_tiers || $quantity <= 1) {
+        if (! $this->bulk_discount_tiers || $quantity <= 1) {
             return 0;
         }
 
         $tiers = collect($this->bulk_discount_tiers);
-        
-        // Trier par quantité décroissante et prendre le premier applicable
         $applicableTier = $tiers
             ->sortByDesc('min_quantity')
             ->first(function ($tier) use ($quantity) {
@@ -269,12 +327,9 @@ class ESBTPFraisConfiguration extends Model
         return $applicableTier ? $applicableTier['discount_percentage'] : 0;
     }
 
-    /**
-     * Obtient l'ajustement saisonnier actuel
-     */
     public function getCurrentSeasonalAdjustment()
     {
-        if (!$this->seasonal_adjustments) {
+        if (! $this->seasonal_adjustments) {
             return 1.0;
         }
 
@@ -282,77 +337,57 @@ class ESBTPFraisConfiguration extends Model
         $adjustments = collect($this->seasonal_adjustments);
 
         $applicable = $adjustments->first(function ($adjustment) use ($currentMonth) {
-            return $currentMonth >= $adjustment['start_month'] && 
-                   $currentMonth <= $adjustment['end_month'];
+            return $currentMonth >= $adjustment['start_month']
+                && $currentMonth <= $adjustment['end_month'];
         });
 
         return $applicable ? $applicable['multiplier'] : 1.0;
     }
 
-    /**
-     * Vérifie si une condition spéciale s'applique
-     */
     public function hasSpecialCondition($conditionType)
     {
-        if (!$this->special_conditions) {
+        if (! $this->special_conditions) {
             return false;
         }
 
         return collect($this->special_conditions)->contains('type', $conditionType);
     }
 
-    /**
-     * Obtient le résumé de la configuration
-     */
     public function getSummary()
     {
         return [
             'category' => $this->fraisCategory->name,
-            'filiere' => $this->filiere->name,
+            'systeme' => $this->systeme_academique ?? FraisScopeResolver::SYSTEME_BTS,
+            'filiere' => $this->filiere->name ?? null,
+            'parcours' => $this->parcours->name ?? null,
             'niveau' => $this->niveau->name,
-            'annee' => $this->anneeUniversitaire ? $this->anneeUniversitaire->name : 'Générale',
+            'annee' => $this->anneeUniversitaire ? $this->anneeUniversitaire->name : 'Generale',
             'amount' => $this->amount,
             'payment_deadline' => $this->payment_deadline_days . ' jours',
             'installments' => $this->allowsInstallments() ? 'Oui (' . $this->max_installments . ' max)' : 'Non',
             'early_discount' => $this->early_payment_discount > 0 ? $this->early_payment_discount . '%' : 'Non',
             'sibling_discount' => $this->sibling_discount_enabled ? 'Oui' : 'Non',
-            'seasonal_adjustments' => !empty($this->seasonal_adjustments) ? 'Oui' : 'Non',
+            'seasonal_adjustments' => ! empty($this->seasonal_adjustments) ? 'Oui' : 'Non',
         ];
     }
 
-    /**
-     * Récupère le montant selon le statut d'affectation.
-     *
-     * @param string $affectationStatus
-     * @return float
-     */
     public function getMontantByStatus($affectationStatus)
     {
-        return match($affectationStatus) {
+        return match ($affectationStatus) {
             ESBTPInscription::DEFAULT_AFFECTATION_STATUS => $this->amount_affecte ?? $this->amount,
-            'réaffecté' => $this->amount_reaffecte ?? $this->amount,
-            'non_affecté' => $this->amount_non_affecte ?? $this->amount,
-            default => $this->amount
+            'reaffecte', 'réaffecté' => $this->amount_reaffecte ?? $this->amount,
+            'non_affecte', 'non_affecté' => $this->amount_non_affecte ?? $this->amount,
+            default => $this->amount,
         };
     }
 
-    /**
-     * Vérifie si des montants différenciés sont configurés.
-     *
-     * @return bool
-     */
     public function hasDifferentiatedAmounts()
     {
-        return $this->amount_affecte !== null || 
-               $this->amount_reaffecte !== null || 
-               $this->amount_non_affecte !== null;
+        return $this->amount_affecte !== null
+            || $this->amount_reaffecte !== null
+            || $this->amount_non_affecte !== null;
     }
 
-    /**
-     * Retourne tous les montants configurés par statut.
-     *
-     * @return array
-     */
     public function getAllAmounts()
     {
         return [
@@ -362,26 +397,21 @@ class ESBTPFraisConfiguration extends Model
         ];
     }
 
-    /**
-     * Clone la configuration pour une nouvelle année
-     */
     public function cloneForNewYear($newAnneeId, $userId)
     {
         $newConfig = $this->replicate(['id', 'created_at', 'updated_at']);
         $newConfig->annee_universitaire_id = $newAnneeId;
         $newConfig->created_by = $userId;
         $newConfig->effective_date = now();
-        $newConfig->notes = 'Clonée depuis la configuration ID: ' . $this->id;
-        
+        $newConfig->notes = 'Clonee depuis la configuration ID: ' . $this->id;
         $newConfig->save();
-        
-        // Cloner aussi les options
+
         foreach ($this->options as $option) {
             $newOption = $option->replicate(['id', 'created_at', 'updated_at']);
             $newOption->configuration_id = $newConfig->id;
             $newOption->save();
         }
-        
+
         return $newConfig;
     }
 }

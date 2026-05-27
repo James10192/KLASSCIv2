@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use App\Services\FraisScopeResolver;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Carbon\Carbon;
 use OwenIt\Auditing\Contracts\Auditable;
 
 class ESBTPFraisSubscription extends Model implements Auditable
@@ -21,20 +22,15 @@ class ESBTPFraisSubscription extends Model implements Auditable
         'is_active',
         'subscribed_at',
         'created_by',
-        'notes'
+        'notes',
     ];
 
     protected $casts = [
         'amount' => 'decimal:2',
         'is_active' => 'boolean',
-        'subscribed_at' => 'datetime'
+        'subscribed_at' => 'datetime',
     ];
 
-    /**
-     * Colonnes auditées (whitelist — données financières sensibles).
-     *
-     * @var array
-     */
     protected $auditInclude = [
         'inscription_id',
         'frais_category_id',
@@ -45,11 +41,6 @@ class ESBTPFraisSubscription extends Model implements Auditable
         'notes',
     ];
 
-    /**
-     * Événements à auditer.
-     *
-     * @var array
-     */
     protected $auditEvents = [
         'created',
         'updated',
@@ -57,99 +48,75 @@ class ESBTPFraisSubscription extends Model implements Auditable
         'restored',
     ];
 
-    /**
-     * Relation avec l'inscription
-     */
     public function inscription(): BelongsTo
     {
         return $this->belongsTo(ESBTPInscription::class, 'inscription_id');
     }
 
-    /**
-     * Relation avec la catégorie de frais
-     */
     public function fraisCategory(): BelongsTo
     {
         return $this->belongsTo(ESBTPFraisCategory::class, 'frais_category_id');
     }
 
-    /**
-     * Relation avec l'option sélectionnée (peut être une configuration de frais)
-     */
     public function selectedOption(): BelongsTo
     {
         return $this->belongsTo(ESBTPFraisOption::class, 'selected_option_id');
     }
 
-    /**
-     * Accesseur pour obtenir la configuration de frais
-     * Retourne la configuration associée à cette souscription
-     */
     public function getFraisConfigurationAttribute()
     {
-        // Si on a une option sélectionnée, utiliser sa configuration
         if ($this->selected_option_id && $this->selectedOption) {
-            return $this->selectedOption->fraisConfiguration ?? null;
+            return $this->selectedOption->configuration
+                ?? $this->selectedOption->fraisConfiguration
+                ?? null;
         }
 
-        // Sinon, chercher directement la configuration par catégorie
+        $this->loadMissing('inscription.classe.parcours.mention.domaine');
+
+        if ($this->inscription) {
+            $scope = app(FraisScopeResolver::class)->resolveForInscription($this->inscription);
+            return ESBTPFraisConfiguration::getApplicableForScope($this->frais_category_id, $scope);
+        }
+
         return ESBTPFraisConfiguration::where('frais_category_id', $this->frais_category_id)
             ->where('is_active', true)
             ->first();
     }
 
-    /**
-     * Méthode pour obtenir le nom de la configuration de frais
-     */
     public function getConfigurationNameAttribute()
     {
         $config = $this->frais_configuration;
-        return $config ? $config->name : ($this->fraisCategory ? $this->fraisCategory->name : 'N/A');
+
+        return $config
+            ? ($config->fraisCategory->name ?? $this->fraisCategory?->name ?? 'N/A')
+            : ($this->fraisCategory ? $this->fraisCategory->name : 'N/A');
     }
 
-    /**
-     * Relation avec l'utilisateur qui a créé la souscription
-     */
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
     }
 
-    /**
-     * Scope pour les souscriptions actives
-     */
     public function scopeActive($query)
     {
         return $query->where('is_active', true);
     }
 
-    /**
-     * Scope pour les souscriptions inactives
-     */
     public function scopeInactive($query)
     {
         return $query->where('is_active', false);
     }
 
-    /**
-     * Scope pour une inscription spécifique
-     */
     public function scopeForInscription($query, $inscriptionId)
     {
         return $query->where('inscription_id', $inscriptionId);
     }
 
-    /**
-     * Scope pour une catégorie de frais spécifique
-     */
     public function scopeForCategory($query, $categoryId)
     {
         return $query->where('frais_category_id', $categoryId);
     }
 
-    /**
-     * Vérifier si un étudiant est souscrit à un frais optionnel
-     */
     public static function isSubscribed($inscriptionId, $fraisCategoryId): bool
     {
         return self::where('inscription_id', $inscriptionId)
@@ -158,9 +125,6 @@ class ESBTPFraisSubscription extends Model implements Auditable
             ->exists();
     }
 
-    /**
-     * Souscrire à un frais optionnel
-     */
     public static function subscribe($inscriptionId, $fraisCategoryId, $amount, $userId, $notes = null)
     {
         return self::updateOrCreate(
@@ -178,9 +142,6 @@ class ESBTPFraisSubscription extends Model implements Auditable
         );
     }
 
-    /**
-     * Se désabonner d'un frais optionnel
-     */
     public static function unsubscribe($inscriptionId, $fraisCategoryId)
     {
         return self::where('inscription_id', $inscriptionId)
@@ -188,9 +149,6 @@ class ESBTPFraisSubscription extends Model implements Auditable
             ->update(['is_active' => false]);
     }
 
-    /**
-     * Obtenir toutes les souscriptions actives pour une inscription
-     */
     public static function getActiveSubscriptions($inscriptionId)
     {
         return self::with(['fraisCategory'])
@@ -199,9 +157,21 @@ class ESBTPFraisSubscription extends Model implements Auditable
             ->get();
     }
 
-    /**
-     * Obtenir le montant total souscrit pour une inscription
-     */
+    public static function resolveSubscriptionsForStudentContext(ESBTPInscription $inscription)
+    {
+        return self::with(['fraisCategory', 'selectedOption', 'inscription.classe.parcours.mention.domaine'])
+            ->where('inscription_id', $inscription->id)
+            ->where('is_active', true)
+            ->get();
+    }
+
+    public static function getSubscribedOptionalFeesForInscription(ESBTPInscription $inscription)
+    {
+        return self::resolveSubscriptionsForStudentContext($inscription)
+            ->filter(fn (self $subscription) => optional($subscription->fraisCategory)->is_mandatory === false)
+            ->values();
+    }
+
     public static function getTotalSubscribedAmount($inscriptionId)
     {
         return self::where('inscription_id', $inscriptionId)
@@ -209,9 +179,6 @@ class ESBTPFraisSubscription extends Model implements Auditable
             ->sum('amount');
     }
 
-    /**
-     * Obtenir les statistiques des souscriptions pour une catégorie
-     */
     public static function getCategoryStats($fraisCategoryId)
     {
         return [
@@ -223,29 +190,20 @@ class ESBTPFraisSubscription extends Model implements Auditable
                 ->sum('amount'),
             'average_amount' => self::where('frais_category_id', $fraisCategoryId)
                 ->where('is_active', true)
-                ->avg('amount')
+                ->avg('amount'),
         ];
     }
 
-    /**
-     * Formater le montant pour l'affichage
-     */
     public function getFormattedAmountAttribute()
     {
         return number_format($this->amount, 0, ',', ' ') . ' FCFA';
     }
 
-    /**
-     * Vérifier si la souscription est récente (moins de 24h)
-     */
     public function getIsRecentAttribute()
     {
         return $this->subscribed_at->gt(Carbon::now()->subDay());
     }
 
-    /**
-     * Obtenir le nom complet de l'étudiant
-     */
     public function getStudentNameAttribute()
     {
         return $this->inscription->etudiant->nom . ' ' . $this->inscription->etudiant->prenom;

@@ -535,6 +535,59 @@ class ESBTPInscriptionService
         $generatedFees = [];
         
         try {
+            $resolver = app(\App\Services\ApplicableFraisResolver::class);
+            $mandatoryFees = $resolver->resolveMandatoryFeesForInscription($inscription, $affectationStatus);
+
+            foreach ($mandatoryFees as $fee) {
+                $generatedFees[] = [
+                    'id' => 'mandatory_' . $fee['category']->id,
+                    'category_id' => $fee['category']->id,
+                    'description' => $fee['description'],
+                    'amount' => $fee['amount'],
+                    'type' => 'mandatory',
+                    'configuration_id' => $fee['configuration']?->id,
+                ];
+            }
+
+            foreach ($selectedOptionals as $categoryId => $optionData) {
+                if (empty($optionData['variant_id']) || $optionData['variant_id'] === 'none') {
+                    continue;
+                }
+
+                $category = \App\Models\ESBTPFraisCategory::find($categoryId);
+                if (! $category || $category->is_mandatory) {
+                    continue;
+                }
+
+                $optionId = null;
+                $amount = (float) ($category->default_amount ?? 0);
+                $description = $category->name . ' (standard)';
+
+                if ($optionData['variant_id'] !== 'default') {
+                    $option = \App\Models\ESBTPFraisOption::find($optionData['variant_id']);
+                    if (! $option) {
+                        continue;
+                    }
+
+                    $optionId = $option->id;
+                    $amount = (float) ($option->additional_amount ?? 0);
+                    $description = $category->name . ' - ' . $option->name;
+                }
+
+                $generatedFees[] = [
+                    'id' => 'optional_' . $categoryId . '_' . $optionData['variant_id'],
+                    'category_id' => $categoryId,
+                    'description' => $description,
+                    'amount' => $amount,
+                    'type' => 'optional',
+                    'option_id' => $optionId,
+                ];
+            }
+
+            $this->createOptionalFeeSubscriptions($inscription, $selectedOptionals);
+
+            return $generatedFees;
+
             // 1. Charger la classe de l'inscription
             $classe = $inscription->classe;
             if (!$classe) {
@@ -1277,6 +1330,29 @@ class ESBTPInscriptionService
      */
     public function regenererFraisInscription(ESBTPInscription $inscription): void
     {
+        $resolver = app(\App\Services\ApplicableFraisResolver::class);
+        $fees = $resolver->resolveMandatoryFeesForInscription($inscription);
+        $affectationStatus = $inscription->affectation_status ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
+
+        foreach ($fees as $fee) {
+            ESBTPFraisSubscription::updateOrCreate(
+                [
+                    'inscription_id' => $inscription->id,
+                    'frais_category_id' => $fee['category']->id,
+                ],
+                [
+                    'selected_option_id' => null,
+                    'amount' => $fee['amount'],
+                    'is_active' => true,
+                    'subscribed_at' => now(),
+                    'created_by' => Auth::id(),
+                    'notes' => 'Regenerate automatically after class change (' . $affectationStatus . ')',
+                ],
+            );
+        }
+
+        return;
+
         $categoriesObligatoires = ESBTPFraisCategory::where('is_mandatory', true)
             ->where('is_active', true)
             ->orderBy('sort_order')
