@@ -191,6 +191,69 @@
 }
 .fc-tab-panel[hidden] { display: none !important; }
 
+.fc-loading-state {
+    display: grid;
+    gap: .9rem;
+}
+.fc-loading-card {
+    background: var(--fc-white);
+    border: 1px solid var(--fc-border);
+    border-radius: 14px;
+    padding: 1rem 1.1rem;
+    box-shadow: var(--fc-shadow-sm);
+}
+.fc-loading-head {
+    display: flex;
+    gap: .75rem;
+    align-items: center;
+    margin-bottom: .9rem;
+}
+.fc-skeleton {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(90deg, #edf2f7 0%, #f8fafc 50%, #edf2f7 100%);
+    background-size: 200% 100%;
+    animation: fc-skeleton 1.1s linear infinite;
+    border-radius: 10px;
+}
+.fc-skeleton.is-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 10px;
+    flex-shrink: 0;
+}
+.fc-skeleton.is-title {
+    height: 14px;
+    width: 38%;
+    margin-bottom: .45rem;
+}
+.fc-skeleton.is-subtitle {
+    height: 10px;
+    width: 55%;
+}
+.fc-skeleton.is-block {
+    height: 58px;
+    margin-bottom: .75rem;
+}
+.fc-skeleton.is-line {
+    height: 12px;
+    width: 100%;
+}
+.fc-loading-caption {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .45rem;
+    color: var(--fc-muted);
+    font-size: .8rem;
+    font-weight: 600;
+}
+
+@keyframes fc-skeleton {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
 /* ── CLASS CARD ── */
 .fc-card {
     background: var(--fc-white);
@@ -614,7 +677,7 @@
                     <span class="fc-hero-icon"><i class="fas fa-sliders-h"></i></span>
                     <div>
                         <h1 class="fc-hero-title">Configuration des Frais par Classe</h1>
-                        <p class="fc-hero-sub">Configurez les tarifs obligatoires pour chaque combinaison filière et niveau</p>
+                        <p class="fc-hero-sub">Configurez les frais BTS et LMD par scope académique, y compris les parcours sans classe encore créée</p>
                         <div class="fc-hero-chips">
                             <span class="fc-hero-chip">
                                 <i class="fas fa-coins"></i>
@@ -658,9 +721,9 @@
         <div class="fc-info-bar">
             <div class="fc-info-icon"><i class="fas fa-info"></i></div>
             <div class="fc-info-text">
-                <strong>Classe = Filière + Niveau.</strong>
-                Cliquez sur une carte pour configurer les montants des frais obligatoires.
-                Les frais <span style="color:var(--fc-danger);font-weight:600;">obligatoires</span> doivent tous être configurés pour chaque classe.
+                <strong>BTS = filière + niveau. LMD = parcours + niveau.</strong>
+                Cliquez sur une carte pour configurer les montants des frais obligatoires, même si la classe LMD sera créée plus tard.
+                Les frais <span style="color:var(--fc-danger);font-weight:600;">obligatoires</span> doivent tous être configurés pour chaque scope.
             </div>
         </div>
 
@@ -711,7 +774,7 @@
                             </div>
                             <div>
                                 <div class="fc-card-name">{{ $classe->name }}</div>
-                                <div class="fc-card-meta">{{ $classe->filiere->name }} · {{ $classe->niveau->name }}</div>
+                                <div class="fc-card-meta">{{ $classe->meta_line ?: ($classe->filiere->name . ' · ' . $classe->niveau->name) }}</div>
                                 <div class="fc-card-students"><i class="fas fa-users" style="margin-right:.25rem;"></i>{{ $classe->effectif }} étudiants</div>
                             </div>
                         </div>
@@ -800,7 +863,7 @@
                             <i class="fas fa-graduation-cap"></i>
                             <div>
                                 <strong>Classe :</strong> <span id="modalClasseInfo">-</span><br>
-                                <small style="color:var(--fc-muted);">Configurez les montants des frais obligatoires pour cette combinaison filière/niveau.</small>
+                                <small style="color:var(--fc-muted);">Les catégories apparaissent ci-dessous après chargement AJAX. Le scope BTS/LMD est résolu automatiquement.</small>
                             </div>
                         </div>
 
@@ -812,9 +875,9 @@
                             <input type="hidden" id="modalNiveauId" name="niveau_id">
 
                             <div id="categoriesContainer">
-                                <div style="text-align:center;padding:2rem;">
-                                    <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;color:var(--fc-primary);"></i>
-                                    <p style="margin-top:.75rem;color:var(--fc-muted);font-size:.85rem;">Chargement des catégories...</p>
+                                <div class="fc-loading-caption">
+                                    <i class="fas fa-circle-notch fa-spin"></i>
+                                    Chargement des catégories...
                                 </div>
                             </div>
                         </form>
@@ -845,6 +908,40 @@ document.addEventListener('DOMContentLoaded', function() {
     const tabButtons = Array.from(document.querySelectorAll('[data-tab-target]'));
     const cards = Array.from(document.querySelectorAll('.fc-card[data-systeme]'));
     let activeScope = null;
+    const categoriesContainer = document.getElementById('categoriesContainer');
+
+    function renderLoadingState(message = 'Chargement des catégories...') {
+        return `
+            <div class="fc-loading-state" aria-live="polite" aria-busy="true">
+                <div class="fc-loading-card">
+                    <div class="fc-loading-head">
+                        <div class="fc-skeleton is-icon"></div>
+                        <div style="flex:1;">
+                            <div class="fc-skeleton is-title"></div>
+                            <div class="fc-skeleton is-subtitle"></div>
+                        </div>
+                    </div>
+                    <div class="fc-skeleton is-block"></div>
+                    <div class="fc-skeleton is-line"></div>
+                </div>
+                <div class="fc-loading-card">
+                    <div class="fc-loading-head">
+                        <div class="fc-skeleton is-icon"></div>
+                        <div style="flex:1;">
+                            <div class="fc-skeleton is-title" style="width:32%;"></div>
+                            <div class="fc-skeleton is-subtitle" style="width:48%;"></div>
+                        </div>
+                    </div>
+                    <div class="fc-skeleton is-block"></div>
+                    <div class="fc-skeleton is-line" style="width:86%;"></div>
+                </div>
+                <div class="fc-loading-caption">
+                    <i class="fas fa-circle-notch fa-spin"></i>
+                    ${message}
+                </div>
+            </div>
+        `;
+    }
 
     function setActiveTab(target) {
         tabButtons.forEach(button => {
@@ -886,6 +983,7 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('modalParcoursId').value = parcoursId;
         document.getElementById('modalNiveauId').value = niveauId;
         document.getElementById('modalClasseInfo').textContent = labelScope;
+        categoriesContainer.innerHTML = renderLoadingState('Préparation des catégories...');
 
         const modalElement = document.getElementById('configurationModal');
         const modal = new bootstrap.Modal(modalElement);
@@ -897,7 +995,6 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     function loadCategories(systeme, filiereId, parcoursId, niveauId) {
-        const container = document.getElementById('categoriesContainer');
         const params = new URLSearchParams({
             systeme,
             niveau_id: niveauId,
@@ -913,19 +1010,20 @@ document.addEventListener('DOMContentLoaded', function() {
         }
 
         const url = `{{ route('esbtp.frais.get-categories') }}?${params.toString()}`;
+        categoriesContainer.innerHTML = renderLoadingState('Chargement des catégories...');
 
         fetch(url)
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    container.innerHTML = data.html;
+                    categoriesContainer.innerHTML = data.html;
                 } else {
-                    container.innerHTML = '<div class="alert alert-warning">Aucune catégorie trouvée</div>';
+                    categoriesContainer.innerHTML = '<div class="alert alert-warning">Impossible de charger les catégories pour ce scope.</div>';
                 }
             })
             .catch(error => {
                 debugError('Erreur:', error);
-                container.innerHTML = '<div class="alert alert-danger">Erreur de chargement</div>';
+                categoriesContainer.innerHTML = '<div class="alert alert-danger">Erreur de chargement des catégories.</div>';
             });
     }
 
