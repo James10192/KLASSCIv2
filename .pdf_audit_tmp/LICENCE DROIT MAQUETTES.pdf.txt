@@ -1,0 +1,1167 @@
+
+--- PAGE 1 ---
+1 
+ 
+ 
+ 
+ 
+LICENCE 1 DROIT 
+ 
+ 
+ 
+--- PAGE 2 ---
+2 
+ 
+Semestre 1 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 1
+SEMESTRE: 1
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+IGD5001.1 La Notion du Droit 14 16 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+IGD5001.2 La réalisation du Droit 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+TGC5001.1 Théorie Générale de l'Etat 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Sanogo 
+Moussa
+TGC5001.2 Théorie Générale de la 
+Constitution 12 8 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire M.Zokolo
+DCP5001.1 L'Etat des personnes 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Sigui Seu 
+Xavier
+DCP5001.2 Les Incapacités 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Zekpe Evora 
+Yamun
+IHD5001.1 Institutions de l'Egypte 
+Pharaonique 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Tra Bi Fidèle
+IHD5001.2 Institutions et Droits 
+Traditionnels Africains 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire M.Messa Yavo 
+Deliance
+REI5001.1 Les Acteurs des Relations 
+Internationales 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Sanogo 
+Moussa
+REI5001.2 Les Normes de Relations 
+Internationales 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Sanogo 
+Moussa
+IMJ5001.1 Méthodologie de Dissertation et 
+du Commentaire 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+IMJ5001.2 Méthodologie du Cas Pratique 
+et de la Consultation Juridique 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M.Zokolo
+ANGLAIS Base de l'Anglais Juridique 14 16 0 0 30 45 75 3 3 Présentiel Anglais Mineur 40 60 Obligatoire Dr Coulibaly 
+Kounady
+Dr Coulibaly 
+Kounady
+ACN5001.2 Méthodologie de Travail 
+Universitaire 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M.Ori Rocher 
+Patience
+COG5001.1 Initiation à l'Informatique 0 0 10 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M.Kanté 
+Vassidiki
+ACN5001.2 Civisme et Citoyenneté 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M.Cissé 
+alassane                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+178 112 10 0 300 450 750 30 30
+DCP5001 DROIT CIVIL - LES 
+PERSONNES 5
+IHD5001
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des 
+Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+INTRODUCTION 
+HISTORIQUE AU 
+DROIT AFRICAIN
+5
+Dr Sanogo MoussaTGC5001
+THEORIE 
+GENERALE DU 
+DROIT 
+CONSTITUTIONNE
+L
+5
+Mode 
+d'apprentissa
+ge
+Langue 
+d'apprentiss
+age
+Importance
+Majeur
+Majeur
+UNIVERSITE EPHRATA
+SCIENCES JURIDIQUES
+TRONC COMMUN DROIT PRIVE ET DROIT PUBLIC
+MASSE HORAIRE SEMESTRIELLE
+UE FONDAMENTALES
+IGD5001
+INTRODUCTION 
+GENERALE AU 
+DROIT
+5 Dr Camara 
+Mohamed
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+UE DE CULTURE GENERALE
+IMJ5001
+INITIATION A LA 
+METHODOLOGIE 
+JURIDIQUE
+2
+Dr Tra Bi Fidèle
+Dr Sanogo Moussa
+Dr Camara 
+Mohamed
+UE DE METHODOLOGIE
+REI5001
+RELATIONS 
+INTERNATIONNAL
+ES
+2
+Mineur
+TOTAL SMESTRE 1
+COG5001 CONNAISSANCE 
+GENERALE 3 M.Cissé alassane                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
+Dr Sigui Seu XavierMajeur
+Majeur
+Mineur
+Mineur
+--- PAGE 3 ---
+3 
+ 
+Semestre 2 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 1
+SEMESTRE: 2
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+REP5002.1 Régimes Politiques Etrangers 20 10 0 0 30 45 75 3 Présentiel Francais 40 60 Obligatoire Dr Sanogo 
+Moussa
+REP5002.2 Régime Politique Ivoirien 12 8 0 0 20 30 50 2 Présentiel Francais 40 60 Obligatoire M.Zokolo
+DCF5002.1 Les Différentes Formes d'Unions 20 10 0 0 30 45 75 3 Présentiel Francais 40 60 Obligatoire Dr Silué 
+Kassinibain
+DCF5002.2 La Filiation 14 6 0 0 20 30 50 2 Présentiel Francais 40 60 Obligatoire Dr Kambou Dare
+HMF5002.1 Institutions Méditerranéennes 20 10 0 0 30 45 75 3 Présentiel Francais 40 60 Obligatoire Dr Tra Bi Fidèle
+HMF5002.2 Histoire du Droit Foncier 14 6 0 0 20 30 50 2 Présentiel Francais 40 60 Obligatoire M.Messa Yavo 
+Deliance
+SPO5002.1 Introduction à la Sciencse 
+Politique 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+SPO5002.2 Introduction à la Sociologie 
+Politique 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+DCO5002.1 Droit Communautaire Européen 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Droh 
+Hyacinthe
+DCO5002.2 Droit Communautaire Africain 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+EPO5002.1 Miroéconomie 12 0 0 0 12 18 30 1 Présentiel Français 40 60 Obligatoire Dr Kouassi Yao 
+Martial
+EPO5002.2 Macroéconomie 12 0 0 0 12 18 30 1 Présentiel Français 40 60 Obligatoire Dr Diawara 
+Ibrahim
+TEJ5002.1 Techniques d'Expression 
+Juridique 10 10 0 0 20 30 50 2 Présentiel Francais 40 60 Obligatoire M.Ouattara 
+Kader
+TEJ5002.2 Initiation au Raisonnement 
+Juridique 10 0 0 0 10 15 25 1 Présentiel Francais 40 60 Obligatoire Dr Camara 
+Mohamed
+212 92 0 0 304 456 760 30 30TOTAL SMESTRE 2
+Dr Silué 
+Kassinibain
+Dr Tra Bi Fidèle
+M.Ouattara Kader
+UE DE METHODOLOGIE
+TEJ5002 TECHNIQUES JURIDIQUES 3
+DCF5002 DROIT CIVIL-LA FAMILLE 5
+HMF5002
+HISTOIRE DES 
+INSTITUTIONS 
+MEDITERRAN2ENNES ET 
+DU DROIT FONCIER
+5
+Dr Diawara 
+Ibrahim
+UE FONDAMENTALES
+REP5002 REGIMES POLITIQUES 5 Dr Sanogo Moussa
+Mode 
+d'évaluatio
+n Fonctionnalit
+é
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Langue 
+d'apprentissa
+ge
+Importance
+UNIVERSITE EPHRATA
+SCIENCES JURIDIQUES
+TRONC COMMUN DROIT PRIVE ET DROIT PUBLIC
+MASSE HORAIRE SEMESTRIELLE Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+Mode 
+d'apprentissa
+ge
+Mineur
+Mineur
+Dr Droh Hyacinthe
+Majeur
+Majeur
+Dr Camara 
+Mohamed
+Majeur
+Majeur
+Majeur
+EPO5002 ECONOMIE POLITIQUE 2
+DCO5002 DROIT COMMUNAUTAIRE 5
+UE DE SPECIALITE
+SPO5002 SCIENCES POLITIQUES 5
+--- PAGE 4 ---
+4 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+LICENCE 2 DROIT 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+--- PAGE 5 ---
+5 
+ 
+Semestre 3 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 2
+SEMESTRE: 3
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+CON5003.1 La Formation du Contrat 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Soro Pognire
+CON5003.2 Exécution du Contrat 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Soro Pognire
+OAA5003.1 Organisation Administrative 12 8 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Sanogo 
+Moussa
+OAA5003.2
+Actions Administrative 
+(Missions et Moyens de 
+l'Administration
+20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Sanogo 
+Moussa
+HID5003.1 Histoire du Droit des 
+Obligations 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire M.Gogbe N'toh 
+Aristide
+HID5003.2 Histoire de la Justice 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Soro Pognire
+DPG5003.1 Infraction 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Silué 
+Kassinibain
+DPG5003.2 Répression 12 8 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire M.Gogbe N'toh 
+Aristide
+DRH5003.1 Notion de Droits de l'Homme 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Esmel Melès 
+Jean-Raoul
+DRH5003.2 Protection des Droits de 
+l'Homme 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Esmel Melès 
+Jean-Raoul
+Méthodologie de Dissertation 
+et du Commentaire 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+Méthodologie du Cas 
+Pratique et de la Consultation 
+Juridique
+0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M.Zokolo
+MEA5003.3 Initiation à la Rédaction de la 
+Demande d'Emploi et du CV 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Kamaté 
+Ismael Dr Kamaté Ismael
+ACN5003 CULTURE NUMERIQUE ACN5003.1 Connaissance de 
+l'Environnement Numérique 0 10 10 0 20 30 50 2 2 Présentiel Français Mineur 40 60 Obligatoire Dr Traoré 
+Adama
+ANGLAIS ACN5003.2 Anglais: Introduction to the 
+Common Law 10 20 0 0 30 45 75 3 3 Présentiel Anglais Mineur 40 60 Obligatoire Dr Edja Yao 
+Drissa
+162 128 10 0 300 450 750 30 30
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs Importance
+UNIVERSITE EPHRATA
+SCIENCES JURIDIQUES
+TRONC COMMUN DROIT PRIVE ET DROIT PUBLIC
+MASSE HORAIRE SEMESTRIELLE CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+TOTAL SMESTRE 3
+UE DE CULTURE GENERALE
+UE FONDAMENTALES
+CON5003 CONTRAT 5 Dr Soro Pognire
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+Dr Edja Yao Drissa
+UE DE METHODOLOGIE
+OAA5003
+ORGANISATION ET 
+ACTION 
+ADMINISTRATIVES
+5
+DPG5003 DROIT PENAL GENERAL 5
+HID5003
+HISTOIRE DU DROIT DES 
+OBLIGATIONS ET DE LA 
+JUSTICE
+5
+UE DE SPECIALITE
+METHODOLOGIE 
+APPLIQUEE 3 Mineur
+DRH5003 DROIT DE L'HOMME 2 Dr Esmel Melès 
+Jean-RaoulMineur
+Majeur
+Majeur
+Majeur
+Majeur
+Dr Camara 
+Mohamed
+Dr Sanogo Moussa
+Dr Silué 
+Kassinibain
+Dr Soro Pognire
+--- PAGE 6 ---
+6 
+ 
+ 
+Semestre 4 
+ 
+ERTABLISSEMENT: UNIVERSITE EPHRATA
+UFR/ INSTITUT:
+DOMAINE: SCIENCES JURIDIQUES
+PARCOURS: TRONC COMMUN DROIT 
+CYCLE: Licence
+ANNEE: 2
+SEMESTRE: 4
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+FAJ5004.1 Responsabilité Civile 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Soro Pognire
+FAJ5004.2 Quasi-Contrats 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire M.Gogbe N'toh 
+Aristide
+CAA5004.1 Responsabilité Administrative 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Sanogo 
+Moussa
+CAA5004.2 Recours pour Excès de Pouvoir 16 4 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Sanogo 
+Moussa
+FIP5004.1 Droit Budgétaire 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+FIP5004.2 Comptabilité   Publique 20 10 0 0 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Kamaté 
+Ismael
+DRC5004.1 Droit Public Colonial 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr CAmara 
+Mohamed
+DRC5004.2 Droit Privé Colonial 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr CAmara 
+Mohamed
+DROIT COMMUNAUTAIRE Droit OHADA des Surétés 20 10 30 45 75 3 3 Présentiel Français Mineur 40 60 Obligatoire
+OJI5004.1 Juridictions Judiciaires 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Sigui Seu
+OJI5004.2 Juridictions Administratives 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Sigui Seu
+DAE5004.1 Droit de l'Agriculture 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire D r Kouakou 
+Etienne
+DAE5004.2 Droit de l'Environnement 20 0 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire D r Kouakou 
+Etienne
+Introduction à la Criminologie 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire
+Introduction à la Géopolitique 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire
+ENT5004 Entreprenariat Agricole 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire
+214 86 0 0 300 450 750 30 30
+DAE5004 DROIT DE L'AGRICULTURE 
+ET DE L'ENIRONNEMENT 3
+UE DE CULTURE GENERALE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Dr Sanogo Moussa
+TOTAL SMESTRE 4
+CAA5004 CONTRÔLE DE L'ACTION 
+ADMINISTRATIVE
+Dr Sigui Seu
+UE DE SPECIALITE
+UE FONDAMENTALES
+FAJ5004 FAITS JURIDIQUES 5 Dr Soro Pognire
+Mode 
+d'apprentissage
+Langue 
+d'apprentissage Importance
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+MASSE HORAIRE SEMESTRIELLE
+5
+5
+4
+2
+3CONNAISSANCES 
+GENERALES
+FIP5004 FINANCES PUBLIQUES
+DRC5004 DROIT COLONIAL
+OJI5004
+ORGANISATION 
+JURIDICTIONNELLE 
+IVOIRIENNE
+Majeur
+Dr Camara 
+Mohamed
+Dr CAmara 
+Mohamed
+D r Kouakou 
+Etienne
+Mineur
+Mineur
+Mineur
+Majeur
+Majeur
+Majeur
+--- PAGE 7 ---
+7 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+LICENCE 3 DROIT 
+PRIVE 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+--- PAGE 8 ---
+8 
+ 
+ 
+Semestre 5 : Droit Privé 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 5
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+DDT5005.1 Relations Individuelles de 
+Travail 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Zekpe Evora 
+Yamun
+DDT5005.2 Relations Collectives de 
+Travail 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire M.Gogbe N'Toh 
+Aristide
+DRO5005.1 Modalités de d'Obligation 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Silue 
+Kassinibain
+DRO5005.2 Circulation de l'Obligation 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Toure Abou
+DCP5005.1 Commerçant et les Actes 
+de Commerce 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Diaby  
+Alhassane
+DCP5005.2 Fonds de Commerce 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire M.Diarrassoubou 
+Issouf
+DJP5005.1 Action en Justice 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Zekpe Evora 
+Yamun
+DJP5005.2 Compétence 
+Juridictionnelle 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Zekpe Evora 
+Yamun
+CDC5005.1 Comptabilité Générale 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Diawara 
+Ibrahim
+CDC5005.2 Droit de la Consommation 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Toure Abou
+DRF5005.1 Théorie Générale de 
+l'Impôt 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Cisse Abib
+DRF5005.2 Système Fiscal Ivoirien 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Cisse Abib
+DFO5005.1 Droit Foncier Urbain 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Cisse Abib
+DFO5005.2 Droit Foncier Rural 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Cisse Abib
+PAI5005.1 Rédaction de l'Assignation 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Toure Abou
+PAI5005.2 Rédaction de la Requête 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Toure Abou
+PAI5005.3 Méthodologie  du Mini-
+Mémoire  0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+AAC5005.1 Introduction to the 
+Business Law 10 10 0 0 20 30 50 2 Présentiel Anglais 40 60 Obligatoire Dr Coulibaly 
+Kounady
+AAC5005.2
+Maîtrise de 
+l'Environnement 
+Numérique
+0 10 10 0 20 30 50 2 Présentiel Français 40 60 Obligatoire M.Traore Adama
+144 146 10 0 300 450 750 30 30
+Dr Silue 
+Kassinibain
+Dr Diaby  
+Alhassane
+PAI5005
+PRINCIPAUX ACTES 
+INTRODUCTIFS 
+D'INSTANCE
+4
+UE DE CULTURE GENERALE
+AAC5005
+ANGLAIS DES 
+AFFAIRES ET 
+CULTURE 
+NUMERIQUE
+TOTAL SMESTRE 5- DROIT PRIVE
+DRO5005
+DROIT CIVIL-
+RAPPORT 
+D'OBLIGATION
+4
+CDC5005
+COMPTABILITE ET 
+DROIT DE LA 
+CONSOMMATION
+3
+DCG5005
+DROIT 
+COMMERCIAL 
+GENERAL 
+3
+DJP5005 DROIT JUDICIAIRE 
+PRIVE 4
+UE SPECIALITE
+DDT5005 DROIT DU TRAVAIL 4 Dr Zekpe Evora 
+Yamun
+Mode 
+d'évaluatio
+n Fonctionnalité Enseignant chargé 
+de l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+UNIVERSITE EPHRATA
+SCIENCES JURIDIQUES
+ DROIT PRIVE
+MASSE HORAIRE SEMESTRIELLE Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+Dr Coulibaly 
+Kounady
+Dr Zekpe Evora 
+Yamun
+Dr Diawara 
+Ibrahim
+Dr Camara 
+Mohamed
+UE DE METHODOLOGIE
+3
+DRF5005 DROIT FISCAL 3 Dr Cisse Abib
+Mineur
+Majeur
+DFO5005 DROIT FONCIER 2 Dr Cisse Abib
+Mineur
+Mineur
+Majeur
+Majeur
+Mineur
+Majeur
+Mineur
+--- PAGE 9 ---
+9 
+ 
+ 
+Semestre 6 : Droit Privé 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 6
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+DEO5006.1 L'Extinction par l'Exécution 10 10 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire M.Diarrassouba 
+Issouf
+DEO5006.2 L'Extinction sans Exécution 10 10 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire M.Diarrassouba 
+Issouf
+DSC5006.1 Droit Commun des Sociétés 10 10 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Coulibaly 
+Souleymane
+DSC5006.2 Droit Spécial des Sociétés 12 8 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Coulibaly 
+Souleymane
+DJP5006.1 Jugement 12 8 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Toure Abou
+DJP5006.2  Voies de Recours 12 8 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Toure Abou
+DBS5006.1 Droits des Biens 12 8 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Toure Abou
+DBS5006.2 Droit des Sûrétés 12 8 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire M.Diarrassouba 
+Issouf
+IDB5006.1 Droit bancaire 10 0 0 0 10 15 25 1 Presentiel Français 40 60 Obligatoire Dr Kambou Dare
+IDB5006.2 Droit des Transactions 
+Electroniques 10 0 0 0 10 15 25 1 Presentiel Français 40 60 Obligatoire M.Diarrassouba 
+Issouf
+CUG5006.1 Droit des Assurances 10 0 0 0 10 15 25 1 Presentiel Français 40 60 Obligatoire M.Diarrassouba 
+Issouf
+CUG5006.2 Droit de la Propriété 
+Intellectuelle 10 0 0 0 10 15 25 1 Presentiel Français 40 60 Obligatoire M.Diarrassouba 
+Issouf
+Initiation à la Rédaction 
+Administrative 0 10 0 0 10 15 25 1 Presentiel Français 40 60 Obligatoire
+Soutenance du Mi-
+Mémoire ou du Rapport de 
+Stage
+0 0 0 30 30 45 75 3 Presentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+DST5006.1 Droit de la Sécurité Sociale 10 0 0 0 10 15 25 1 Presentiel Français 40 60 Obligatoire Dr Toure Abou
+DST5006.2 Droit des Transports 14 6 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Toure Abou
+DES5006.1 Droit International de 
+l'Environnement 10 0 0 0 10 15 25 1 Presentiel Français 40 60 Obligatoire Dr Kouakou 
+Etienne
+DES5006.2 Droit de la Santé 20 0 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Kouakou 
+Etienne
+184 86 0 30 300 450 750 30 30
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+UNIVERSITE EPHRATA
+SCIENCES JURIDIQUES
+DROIT PRIVE
+MASSE HORAIRE SEMESTRIELLE
+UE DE SPECIALITE
+DEO5006
+DROIT CIVIL-
+L'EXTINCTION DE 
+L'OBLIGATION
+4 M.Diarrassouba 
+Issouf
+Mode 
+d'évaluation Fonctionnali
+té
+Enseignant chargé 
+de l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+UE DE METHODOLOGIE
+DSC5006 DROIT DES SOCIETES 
+COMMERCIALES 4
+DBS5006 DROIT DES BIENS ET DES 
+SURETES 4
+DJP5006 DROIT JUDICIAIRE PRIVE 4
+Dr Coulibaly 
+Souleymane
+Dr Toure Abou
+M.Diarrassouba 
+Issouf
+IDB5006
+INTRODUCTION AU 
+DROIT BANCAIRE ET 
+TRANSACTIONS 
+ELECTRONIQUES
+2
+ REDACTION 
+ADMINISTRATIVE ET 
+SOUTENANCE MI-
+MÉMOIRE OU RAPPORT
+4 Majeur
+TOTAL SMESTRE 3- DROIT PRIVE
+UE DE CULTURE GENERALE
+DST5006
+DROIT DE LA SECURITE 
+SOCIALE ET DROIT DES 
+TRANSPORTS
+3 Dr Toure AbouMineur
+DES5006
+DROIT INTERNATIONAL 
+DE L'ENVIRONNEMENT ET 
+DE LA SANTE
+3 Dr Kouakou 
+EtienneMineur
+CUG5006 CULTURE GENERALE 2 M.Diarrassouba 
+IssoufMineur
+Majeur
+Majeur
+Majeur
+Majeur
+Dr Kambou DareMineur
+--- PAGE 10 ---
+10 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+LICENCE 3 DROIT 
+PUBLIC 
+--- PAGE 11 ---
+11 
+ 
+ 
+Semestre 5 : Droit Public 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 5
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+FDI5005.1 Les Sources du DIP 20 10 0 0 30 45 75 3 Presentiel Français 40 60 Obligatoire Dr Camara 
+mohamed
+FDI5005.2 Les Sujets du DIP 10 10 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Camara 
+mohamed
+DLF5005.1 Le Statut des Libertés 14 6 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Beugré Kla 
+Jean-Mari
+DLF5005.2 Les  Garanties des Libertés 12 8 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire M Flindé
+DAB5005.1 Les Principes généraux de 
+la Domanialité Publique 14 6 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Kouakou 
+Ettienne
+DAB5005.2 L'Expropriation et Travaux  
+Publics 12 8 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Kouakou 
+Ettienne
+PAI5005.1 Rédaction de l'Assignation 0 10 0 0 10 15 25 1 Présidentiel Français 40 60 Obligatoire Dr Toure Abou
+PAI5005.2 Rédaction de la Requête 0 10 0 0 10 15 25 1 Présidentiel Français 40 60 Obligatoire Dr Toure Abou
+PAI5005.3 Méthodologie  du Mini-
+Mémoire  0 10 0 0 10 15 25 1 Présidentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+DRT5005.1 Les Relations Individuelles 
+de travail 10 0 0 0 10 15 25 1 Presentiel Français 40 60 Obligatoire M Bogbé N'Toh  
+Aristide
+DRT5005.2 Les Relations Collectives 
+de travail 10 0 0 0 10 15 25 1 Presentiel Français 40 60 Obligatoire M Bogbé N'Toh  
+Aristide
+DFE5005.1 Droit Foncier (Rural et 
+Urbain) 14 6 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire M Cissé  Habib
+DFE5005.2 Droit International de 
+l'Environnement 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire M Cissé  Habib
+DDS5005 DROIT DE LA SANTE DRS5005.1 Droit de la Santé 14 6 0 0 20 30 50 2 2 Présentiel Français Mineur 40 60 Obligatoire Dr Esmel Raoul Dr Esmel Raoul
+DFL5005.1 Droit des Finances 
+Communales 10 0 0 0 10 15 25 1 Presentiel Français 40 60 Obligatoire Dr Bandé Guih 
+Ange
+DFL5005.2 Droit des Finances 
+Régionales 10 0 0 0 10 15 25 1 Presentiel Français 40 60 Obligatoire Dr Bandé Guih 
+Ange
+ACN5005.1 Introduction to the 
+Business Law 10 10 0 0 20 30 50 2 Présidentiel Anglais 40 60 Obligatoire Dr  Coulibaly 
+Kounady
+ACN5005.2
+Maîtrise de 
+l'Environnement 
+Numérique
+0 10 10 0 20 30 50 2 Présidentiel Français 40 60 Obligatoire Dr Coulibaly 
+Kounady
+170 120 10 0 300 450 750 30 30
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans l'UE, 
+Code UE)
+Eléments constitutifs 
+Dr Coulibaly 
+Kounady
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+Majeur
+Majeur
+Majeur
+PAI5005
+PRINCIPAUX ACTES 
+INTRODUCTIFS 
+D'INSTANCE
+3 Mineur
+UE DE METHODOLOGIE
+UNIVERSITE EPHRATA
+SCIENCES JURIDIQUES
+DROIT PUBLIC
+MASSE HORAIRE SEMESTRIELLE
+UE DE SPECIALITE
+FDI5005 FORMATION DU DROIT 
+INTERNATIONAL PUBLIC 5 Dr Camara 
+mohamed
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+UE DE CULTURE GENERALE
+ACN5005 ANGLAIS DES AFFAIRES ET 
+CULTURE NUMERIQUE 4
+TOTAL SEMESTRE 5- DROIT PUBLIC
+Majeur
+DFE5005 DROIT FONCIER ET  DE 
+L'ENVIRONNEMENT 4 Majeur M Cissé  Habib
+DFL5005 DROIT DES FINANCES 
+LOCALES
+DLF5005 DROITS DES LIBERTES 
+FONDAMENTALES 4
+DAB5005 DROIT ADMINISTRATIF 
+DES BIENS 4
+DRT5005 DROIT DU TRAVAIL 2 Mineur M Bogbé N'Toh  
+Aristide
+2 Mineur Dr Bandé Guih 
+Ange
+Dr Kouakou 
+Ettienne
+Dr Beugré Kla Jean-
+Mari
+Dr Camara 
+Mohamed
+--- PAGE 12 ---
+12 
+ 
+Semestre 6 : Droit Public 
+ 
+ERTABLISSEMENT:
+UFR/ INSTITUT:
+DOMAINE:
+PARCOURS:
+CYCLE: Licence
+ANNEE: 3
+SEMESTRE: 6
+CM TD TP PROJE
+T HE TPE CTT % CC % ET
+DIP5006.1 Droit de la 
+Responsabilité 20 10 0 0 30 45 75 3 Presentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+DIP5006.2
+Le Règlement des 
+Différends 
+Internationaux
+14 6 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+DRF5006.1 Théorie Générale de 
+l'Impôt 14 6 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire M Cisse Habib
+DRF5006.2 Système Fiscal Ivoirien 20 10 0 0 30 45 75 3 Presentiel Français 40 60 Obligatoire M  Cisse Habib
+DFP5006.1 Théorie Générale de la 
+Fonction Publique 20 10 0 0 30 45 75 3 Presentiel Français 40 60 Obligatoire Dr Camara 
+Mohamed
+DFP5006.2 Fonction Publique 
+Ivoirienne 12 8 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Kamate 
+ismael
+DHC5006.1 Droit International 
+Humanitaire 10 10 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Esmel Raoul
+DHC5006.2 Coopération et 
+Développement 20 0 0 0 20 30 50 2 Presentiel Français 40 60 Obligatoire Dr Esmel Raoul
+Initiation à la Rédaction 
+Administrative 0 10 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Sanogo 
+Moussa
+Soutenance du Mi-
+Mémoire ou du Rapport 
+de Stage
+0 0 0 30 30 45 75 3 Présentiel Français 40 60 Obligatoire Dr Sanogo 
+Moussa
+DAE5006.1 Droit des Affaires 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire M Bogbé N'Toh  
+Aristide
+DAE5006.2 Droit Electoral 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire M Bogbé N'Toh  
+Aristide
+Droit des Sociétés 
+Coopératives 10 10 0 0 20 30 50 2 Présentiel Français 40 60 Obligatoire Dr Diarrassouba 
+Issouf
+Droit Immobilier 10 0 0 0 10 15 25 1 Présentiel Français 40 60 Obligatoire Dr Diarrassouba 
+Issouf
+170 100 0 30 300 450 750 30 30
+ Code UE  
+(Sigle de l'UE, 
+Cycle, 
+Semestre, 
+n°d'ordre UE)
+Intitulé des Unités 
+d'enseignement
+(UE)
+ Code ECUE  
+(N°d'ordre 
+ECUE dans 
+l'UE, Code 
+UE)
+Eléments constitutifs 
+Mode 
+d'apprentis
+sage
+Langue 
+d'apprentiss
+age
+Importance
+UNIVERSITE EPHRATA
+SCIENCES JURIDIQUES
+DROIT PUBLIC
+MASSE HORAIRE SEMESTRIELLE
+UE DE SPECIALITE
+DIP5006
+DROIT 
+INTERNATIONAL 
+PUBLIC- RAPPORTS 
+INTERNATIONAUX
+5 Dr Camara 
+Mohamed
+Mode 
+d'évaluatio
+n Fonctionnali
+té
+Enseignant 
+chargé de 
+l'ECUE
+Responsable de 
+l'UE
+CREDI
+TS 
+ECUE
+CECT 
+UE
+Majeur
+Mineur
+Dr Sanogo Moussa
+TOTAL SMESTRE 3- DROIT PUBLIC
+UE DE CULTURE GENERALE
+DAE5006
+DROIT DES 
+AFFAIRES ET DROIT 
+ELECTORAL
+4
+DROIT DES 
+SOCIETES 
+COOPERATIVES ET 
+DROIT IMMOBILIER 
+Dr Diarrassouba 
+Issouf
+M Bogbé N'Toh  
+Aristide
+3
+DFP5006
+DROIT DE LA 
+FONCTION 
+PUBLIQUE
+5
+4 Majeur
+ REDACTION 
+ADMINISTRATIVE 
+ET SOUTENANCE 
+MI-MÉMOIRE OU 
+RAPPORT
+Majeur
+M  Cisse Habib
+DHC5006
+DROIT 
+HUMANITAIRE ET 
+COOPERATION
+4 Majeur Dr Esmel Raoul
+Majeur Dr Camara 
+Mohamed
+Majeur
+UE DE METHODOLOGIE
+DRF5006 DROIT FISCAL 5
+--- PAGE 13 ---
+13 
+ 
+ 

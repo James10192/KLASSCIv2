@@ -288,6 +288,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('frais/save-assignment', [\App\Http\Controllers\ESBTPFraisController::class, 'saveAssignment'])->name('frais.save-assignment');
             Route::get('frais/get-categories', [\App\Http\Controllers\ESBTPFraisController::class, 'getCategories'])->name('frais.get-categories');
             Route::post('frais/update-configuration', [\App\Http\Controllers\ESBTPFraisController::class, 'updateConfiguration'])->name('frais.update-configuration');
+            Route::get('frais/preview-level-targets', [\App\Http\Controllers\ESBTPFraisController::class, 'previewLevelTargets'])->name('frais.preview-level-targets');
+            Route::post('frais/apply-level-configuration', [\App\Http\Controllers\ESBTPFraisController::class, 'applyLevelConfiguration'])->name('frais.apply-level-configuration');
             Route::post('frais/{category}/toggle', [\App\Http\Controllers\ESBTPFraisController::class, 'toggleCategory'])->name('frais.toggle');
             Route::post('frais/{fraisCategory}/toggle-active', [\App\Http\Controllers\ESBTPFraisController::class, 'toggleActive'])->name('frais.toggle-active');
             Route::post('frais/reset-defaults', [\App\Http\Controllers\ESBTPFraisController::class, 'resetDefaults'])->name('frais.reset-defaults');

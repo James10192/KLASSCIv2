@@ -154,6 +154,67 @@ class ApplicableFraisResolverTest extends TestCase
         $this->assertTrue($config->is($subscription->fresh()->frais_configuration));
     }
 
+    public function test_it_prefers_annual_override_and_falls_back_to_global_configuration(): void
+    {
+        $user = User::factory()->create();
+        $annee = ESBTPAnneeUniversitaire::factory()->create();
+        $niveau = ESBTPNiveauEtude::factory()->create(['code' => 'BTS2', 'type' => 'BTS', 'year' => 2]);
+        $filiere = ESBTPFiliere::factory()->create();
+        $category = ESBTPFraisCategory::create([
+            'name' => 'Scolarite annuelle',
+            'code' => 'SCO-AN',
+            'is_mandatory' => true,
+            'is_active' => true,
+            'category_type' => 'academic',
+            'sort_order' => 1,
+            'default_amount' => 1000,
+            'payment_deadline_days' => 30,
+        ]);
+
+        $globalConfig = ESBTPFraisConfiguration::create([
+            'frais_category_id' => $category->id,
+            'systeme_academique' => 'BTS',
+            'filiere_id' => $filiere->id,
+            'niveau_id' => $niveau->id,
+            'amount' => 15000,
+            'payment_deadline_days' => 30,
+            'effective_date' => now()->toDateString(),
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $resolvedGlobal = ESBTPFraisConfiguration::getApplicableForScope($category->id, [
+            'systeme' => 'BTS',
+            'filiere_id' => $filiere->id,
+            'niveau_id' => $niveau->id,
+            'annee_universitaire_id' => $annee->id,
+        ]);
+
+        $this->assertTrue($globalConfig->is($resolvedGlobal));
+
+        $annualConfig = ESBTPFraisConfiguration::create([
+            'frais_category_id' => $category->id,
+            'systeme_academique' => 'BTS',
+            'filiere_id' => $filiere->id,
+            'niveau_id' => $niveau->id,
+            'annee_universitaire_id' => $annee->id,
+            'amount' => 21000,
+            'payment_deadline_days' => 45,
+            'effective_date' => now()->toDateString(),
+            'is_active' => true,
+            'created_by' => $user->id,
+        ]);
+
+        $resolvedAnnual = ESBTPFraisConfiguration::getApplicableForScope($category->id, [
+            'systeme' => 'BTS',
+            'filiere_id' => $filiere->id,
+            'niveau_id' => $niveau->id,
+            'annee_universitaire_id' => $annee->id,
+        ]);
+
+        $this->assertTrue($annualConfig->is($resolvedAnnual));
+    }
+
     public function test_scope_resolver_marks_lmd_class_with_parcours_context(): void
     {
         $annee = ESBTPAnneeUniversitaire::factory()->create();

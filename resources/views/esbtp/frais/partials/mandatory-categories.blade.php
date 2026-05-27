@@ -1,8 +1,16 @@
 {{-- Catégories de frais obligatoires — rendu dans modal #configurationModal (chargé via AJAX) --}}
 @foreach($categories as $category)
     @php
-        $existingConfig = $configurations->where('frais_category_id', $category->id)->first();
+        $annualConfig = ($annualConfigurations ?? collect())->where('frais_category_id', $category->id)->first();
+        $globalConfig = ($globalConfigurations ?? collect())->where('frais_category_id', $category->id)->first();
+        $existingConfig = $annualConfig ?: $globalConfig ?: $configurations->where('frais_category_id', $category->id)->first();
+        $sourceType = $annualConfig ? 'annual' : ($globalConfig ? 'global' : 'none');
         $isConfigured = (bool) $existingConfig;
+        $sourceLabel = match ($sourceType) {
+            'annual' => 'Surcharge annuelle',
+            'global' => 'Template global',
+            default => 'À configurer',
+        };
         $echeancierUrl = $existingConfig
             ? route('esbtp.comptabilite.echeanciers.index', [
                 'scope_type' => 'configuration',
@@ -19,8 +27,7 @@
             ]);
     @endphp
 
-    <div class="fc-cat-row">
-        {{-- Header catégorie --}}
+    <div class="fc-cat-row" data-category-id="{{ $category->id }}" data-source-type="{{ $sourceType }}">
         <div class="fc-cat-head">
             <div class="fc-cat-icon">
                 <i class="{{ $category->icon ?? 'fas fa-money-bill' }}"></i>
@@ -29,6 +36,9 @@
                 <div class="fc-cat-name">
                     {{ $category->name }}
                     <span class="fc-cat-pill"><i class="fas fa-asterisk"></i>Obligatoire</span>
+                    <span class="fc-cat-pill" style="background:rgba(15,23,42,.06);color:#334155;border-color:rgba(15,23,42,.08);">
+                        {{ $sourceLabel }}
+                    </span>
                 </div>
                 @if($category->description)
                     <div class="fc-cat-desc">{{ $category->description }}</div>
@@ -42,7 +52,6 @@
             </div>
         </div>
 
-        {{-- Section Montants par statut --}}
         <div class="fc-cat-section">
             <div class="fc-cat-section-label">
                 <i class="fas fa-coins"></i>
@@ -50,12 +59,10 @@
             </div>
             <div class="fc-cat-section-hint">
                 <i class="fas fa-info-circle"></i>
-                Configurez des tarifs différents selon le statut d'affectation gouvernementale (MESRS).
-                <strong>Astuce&nbsp;:</strong> mettre <code>0</code> = gratuit pour ce statut (ex&nbsp;: scolarité prise en charge par l'État pour les Affectés). Champ vide = catégorie non configurée.
+                En mode annuel, laisser les mêmes valeurs que le global ne crée pas de surcharge inutile.
             </div>
 
             <div class="fc-statuts">
-                {{-- Affectés --}}
                 <div class="fc-statut is-affecte">
                     <div class="fc-statut-head">
                         <span class="fc-statut-dot"><i class="fas fa-check"></i></span>
@@ -71,10 +78,8 @@
                                placeholder="Vide = non configuré · 0 = gratuit">
                         <span class="fc-input-suffix">FCFA</span>
                     </div>
-                    <div class="fc-statut-hint">Subvention étatique possible · 0 = gratuit</div>
                 </div>
 
-                {{-- Réaffectés --}}
                 <div class="fc-statut is-reaffecte">
                     <div class="fc-statut-head">
                         <span class="fc-statut-dot"><i class="fas fa-sync-alt"></i></span>
@@ -90,10 +95,8 @@
                                placeholder="Vide = non configuré · 0 = gratuit">
                         <span class="fc-input-suffix">FCFA</span>
                     </div>
-                    <div class="fc-statut-hint">Subvention maintenue · 0 = gratuit</div>
                 </div>
 
-                {{-- Non affectés --}}
                 <div class="fc-statut is-non-affecte">
                     <div class="fc-statut-head">
                         <span class="fc-statut-dot"><i class="fas fa-times"></i></span>
@@ -109,11 +112,9 @@
                                placeholder="Vide = non configuré · 0 = gratuit">
                         <span class="fc-input-suffix">FCFA</span>
                     </div>
-                    <div class="fc-statut-hint">Tarif complet · 0 = gratuit</div>
                 </div>
             </div>
 
-            {{-- Actions rapides copier --}}
             <div class="fc-copy-actions">
                 <button type="button" class="fc-copy-btn" onclick="copyToAll({{ $category->id }}, 'amount_affecte')" title="Copier le montant Affectés sur les autres statuts">
                     <i class="fas fa-copy"></i>Copier Affectés
@@ -127,7 +128,6 @@
             </div>
         </div>
 
-        {{-- Section Échéance --}}
         <div class="fc-cat-section">
             <label class="fc-cat-section-label" for="deadline_{{ $category->id }}">
                 <i class="fas fa-calendar-alt"></i>
@@ -146,17 +146,12 @@
                 </div>
                 <span class="fc-deadline-suffix">jours</span>
             </div>
-            <div class="fc-cat-section-hint" style="margin-top: .4rem; margin-bottom: 0;">
-                <i class="fas fa-info-circle"></i>
-                Défaut catégorie : {{ $category->payment_deadline_days ?? 30 }} jours. Laissez vide pour utiliser le défaut.
-            </div>
         </div>
 
-        {{-- Statut --}}
         @if($isConfigured)
             <div class="fc-cat-status is-done">
                 <i class="fas fa-check-circle"></i>
-                Configuré depuis le {{ $existingConfig->created_at->format('d/m/Y') }}
+                {{ $sourceLabel }}
             </div>
         @else
             <div class="fc-cat-status is-todo">

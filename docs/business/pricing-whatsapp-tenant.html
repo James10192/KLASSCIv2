@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>WhatsApp KLASSCI — Tarification &amp; quotas inclus</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Poppins:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --klassci-blue:       #0453cb;
+    --klassci-blue-deep:  #033a8e;
+    --klassci-blue-soft:  #5e91de;
+    --klassci-blue-tint:  #e8f0fc;
+    --adc-orange:         #f97316;
+    --ink:                #0a0a0a;
+    --ink-2:              #1e293b;
+    --neutral-700:        #404040;
+    --neutral-500:        #737373;
+    --neutral-300:        #d4d4d4;
+    --neutral-200:        #e5e5e5;
+    --neutral-100:        #f5f5f5;
+    --neutral-50:         #fafafa;
+    --white:              #ffffff;
+    --success:            #10b981;
+    --warning:            #f59e0b;
+    --serif:              'Fraunces', 'Georgia', serif;
+    --sans:               'Poppins', system-ui, sans-serif;
+    --mono:               'JetBrains Mono', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    font-family: var(--sans);
+    color: var(--ink-2);
+    -webkit-font-smoothing: antialiased;
+    font-size: 10.5pt;
+    line-height: 1.55;
+    background: var(--white);
+  }
+
+  @page { size: A4; margin: 0; }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    padding: 18mm 22mm 36mm 22mm;
+    box-sizing: border-box;
+    page-break-after: always !important;
+    break-after: page !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  .page:last-child { page-break-after: auto !important; break-after: auto !important; }
+
+  .page-footer, .page-number, .section-label {
+    position: absolute;
+    font-size: 8pt;
+    color: var(--neutral-500);
+    text-transform: uppercase;
+    z-index: 20;
+    background: var(--white);
+    padding: 3px 6px;
+  }
+  .page-footer { bottom: 12mm; left: 22mm; letter-spacing: 0.2em; }
+  .page-number { bottom: 12mm; right: 22mm; letter-spacing: 0.3em; }
+  .section-label { top: 12mm; right: 22mm; letter-spacing: 0.25em; color: var(--klassci-blue); }
+
+  .page:not(.cover)::before {
+    content: '';
+    position: absolute;
+    left: 22mm; right: 22mm;
+    bottom: 22mm;
+    height: 1px;
+    background: var(--neutral-200);
+    z-index: 15;
+  }
+
+  /* === COVER === */
+  .cover {
+    background: linear-gradient(135deg, #022963 0%, #033a8e 35%, #0453cb 70%, #0a5fd9 100%);
+    color: var(--white);
+    padding: 0 !important;
+  }
+  .cover-glow {
+    position: absolute;
+    top: -10%; right: -10%;
+    width: 60%; height: 70%;
+    background: radial-gradient(circle, rgba(94,145,222,0.35) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .cover-glow-2 {
+    position: absolute;
+    bottom: -10%; left: -10%;
+    width: 50%; height: 60%;
+    background: radial-gradient(circle, rgba(249,115,22,0.18) 0%, transparent 60%);
+    pointer-events: none;
+  }
+  .cover-inner {
+    flex: 1; width: 100%;
+    padding: 22mm;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    position: relative; z-index: 2;
+  }
+  .cover-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 30px; }
+  .cover-logos {
+    display: flex; align-items: center; gap: 18px;
+    background: var(--white);
+    padding: 14px 22px;
+    border-radius: 14px;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+  }
+  .cover-logos img.adc-logo { height: 36px; width: auto; }
+  .cover-logos img.klassci-logo { height: 36px; width: auto; }
+  .cover-logos .x {
+    font-family: var(--serif);
+    font-size: 22px;
+    color: var(--neutral-300);
+    font-style: italic;
+  }
+  .cover-meta {
+    text-align: right; font-size: 9pt;
+    color: rgba(255,255,255,0.85);
+    line-height: 1.55; letter-spacing: 0.04em;
+  }
+  .cover-meta strong { color: var(--white); font-weight: 600; }
+
+  .cover-title { max-width: 82%; }
+  .kicker {
+    display: inline-flex; align-items: center; gap: 14px;
+    font-size: 9pt; letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.85);
+    margin-bottom: 18px; font-weight: 500;
+  }
+  .kicker::before {
+    content: ''; display: inline-block;
+    width: 44px; height: 1px;
+    background: var(--adc-orange);
+  }
+  h1.cover-h1 {
+    font-family: var(--serif);
+    font-size: 60pt; line-height: 0.95;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    margin-bottom: 18px;
+  }
+  h1.cover-h1 em {
+    font-style: italic;
+    color: var(--klassci-blue-soft);
+    font-weight: 500;
+  }
+  .lead {
+    font-size: 14pt;
+    color: rgba(255,255,255,0.9);
+    line-height: 1.5;
+    max-width: 72%;
+    font-weight: 300;
+  }
+
+  .cover-bottom {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    font-size: 9pt; color: rgba(255,255,255,0.75);
+    letter-spacing: 0.06em;
+  }
+  .cover-bottom strong { color: var(--white); font-weight: 600; }
+
+  /* === CONTENT === */
+  .page-head {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 22pt;
+  }
+  .page-head .brand-text {
+    font-family: var(--serif);
+    font-size: 11pt;
+    color: var(--klassci-blue);
+    font-weight: 600;
+  }
+  .page-head .doc-ref {
+    font-size: 8pt; color: var(--neutral-500);
+    text-align: right; letter-spacing: 0.04em;
+  }
+
+  h2 {
+    font-family: var(--serif);
+    font-size: 26pt; line-height: 1.05;
+    font-weight: 500; letter-spacing: -0.015em;
+    color: var(--ink); margin-bottom: 18px;
+  }
+  h2 em { font-style: italic; color: var(--klassci-blue); font-weight: 400; }
+  h3 {
+    font-family: var(--serif);
+    font-size: 16pt; line-height: 1.2;
+    font-weight: 500; color: var(--ink);
+    margin-bottom: 12px; margin-top: 18px;
+  }
+  h4 {
+    font-family: var(--sans);
+    font-size: 10pt; text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--klassci-blue);
+    font-weight: 600; margin-bottom: 8px;
+  }
+  p { max-width: 72ch; color: var(--neutral-700); margin-bottom: 10px; }
+  p.intro {
+    font-family: var(--serif);
+    font-size: 13pt; line-height: 1.5;
+    color: var(--ink-2); font-weight: 400;
+    max-width: 70ch; margin-bottom: 18px;
+  }
+  strong { color: var(--ink); font-weight: 600; }
+  em { font-style: italic; color: var(--klassci-blue); font-weight: 500; }
+
+  .kpi-hero {
+    background: linear-gradient(135deg, #022963 0%, #033a8e 50%, #0453cb 100%);
+    color: var(--white);
+    padding: 28px 24px;
+    border-radius: 16px;
+    margin: 10px 0 20px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: relative; overflow: hidden;
+  }
+  .kpi-hero::after {
+    content: '';
+    position: absolute;
+    top: -50%; right: -10%;
+    width: 50%; height: 200%;
+    background: radial-gradient(circle, rgba(249,115,22,0.18), transparent 60%);
+  }
+  .kpi-hero-left { z-index: 2; }
+  .kpi-hero-value {
+    font-family: var(--serif);
+    font-size: 42pt; line-height: 1;
+    font-weight: 600; letter-spacing: -0.02em;
+  }
+  .kpi-hero-value-sub { font-size: 16pt; opacity: 0.85; font-weight: 400; }
+  .kpi-hero-label {
+    font-size: 9pt; text-transform: uppercase;
+    letter-spacing: 0.16em; opacity: 0.85;
+    margin-top: 6px; font-weight: 500;
+  }
+  .kpi-hero-right {
+    text-align: right; z-index: 2;
+    font-size: 9pt; opacity: 0.9;
+    line-height: 1.6;
+  }
+  .kpi-hero-right strong { color: var(--white); font-size: 11pt; }
+
+  /* === Tables === */
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 9.5pt; margin: 8px 0 12px;
+  }
+  thead th {
+    background: var(--klassci-blue-tint);
+    color: var(--klassci-blue-deep);
+    font-weight: 600; text-align: left;
+    padding: 8px 10px;
+    border-bottom: 2px solid var(--klassci-blue);
+    text-transform: uppercase;
+    font-size: 8pt; letter-spacing: 0.08em;
+  }
+  thead th.num { text-align: right; }
+  tbody td {
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--neutral-200);
+    color: var(--neutral-700);
+  }
+  tbody td.num { text-align: right; font-variant-numeric: tabular-nums; font-feature-settings: "tnum"; white-space: nowrap; }
+  tbody td.pos { color: var(--success); font-weight: 600; }
+  tbody td strong { color: var(--ink); }
+  tbody tr:last-child td { border-bottom: none; }
+  tbody tr.total-row td {
+    background: var(--neutral-50); font-weight: 600;
+    color: var(--ink);
+    border-top: 2px solid var(--klassci-blue);
+  }
+  tbody tr.featured td {
+    background: linear-gradient(90deg, rgba(4,83,203,0.06), transparent);
+  }
+
+  /* === Plan cards === */
+  .plan-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin: 14px 0; }
+  .plan-card {
+    border: 1px solid var(--neutral-200);
+    border-radius: 12px;
+    padding: 20px 18px;
+    background: var(--white);
+    position: relative;
+    display: flex; flex-direction: column;
+  }
+  .plan-card.featured {
+    border-color: var(--klassci-blue);
+    border-width: 2px;
+    background: linear-gradient(180deg, var(--klassci-blue-tint) 0%, var(--white) 60%);
+    box-shadow: 0 8px 22px rgba(4,83,203,0.10);
+  }
+  .plan-card.featured::before {
+    content: 'RECOMMANDÉ';
+    position: absolute;
+    top: -10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--klassci-blue);
+    color: var(--white);
+    font-size: 7pt;
+    letter-spacing: 0.16em;
+    padding: 4px 12px;
+    border-radius: 50px;
+    font-weight: 600;
+  }
+  .plan-name {
+    font-family: var(--serif);
+    font-size: 17pt; color: var(--ink);
+    font-weight: 600; margin-bottom: 4px;
+  }
+  .plan-tag {
+    font-size: 8pt; text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: var(--klassci-blue);
+    font-weight: 600; margin-bottom: 14px;
+  }
+  .plan-quota {
+    font-family: var(--serif);
+    font-size: 32pt; color: var(--klassci-blue);
+    font-weight: 600; line-height: 1;
+    margin-bottom: 2px;
+    letter-spacing: -0.02em;
+  }
+  .plan-quota-unit { font-size: 10pt; color: var(--neutral-500); font-weight: 400; }
+  .plan-features {
+    margin: 14px 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 9pt;
+    color: var(--neutral-700);
+  }
+  .plan-features li {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--neutral-100);
+    display: flex; justify-content: space-between;
+  }
+  .plan-features li:last-child { border-bottom: none; }
+  .plan-features strong { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+  /* === Cards tenant === */
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin: 12px 0 14px; }
+  .tenant-card {
+    border: 1px solid var(--neutral-200);
+    border-radius: 12px;
+    padding: 16px 18px;
+    background: var(--white);
+    border-top: 4px solid var(--klassci-blue);
+  }
+  .tenant-card h3 {
+    font-family: var(--serif);
+    font-size: 14pt; color: var(--ink);
+    margin: 0 0 12px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .tenant-card .line {
+    display: flex; justify-content: space-between;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--neutral-100);
+    font-size: 9.5pt;
+  }
+  .tenant-card .line:last-child { border-bottom: none; }
+  .tenant-card .line .label { color: var(--neutral-500); }
+  .tenant-card .line .value { font-weight: 600; color: var(--ink-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tenant-card .line.success {
+    background: linear-gradient(90deg, rgba(16,185,129,0.08), transparent);
+    margin: 4px -8px; padding: 7px 8px;
+    border-radius: 6px; border-bottom: none;
+  }
+  .tenant-card .line.success .value { color: var(--success); }
+  .tenant-card .line.warn {
+    background: linear-gradient(90deg, rgba(245,158,11,0.08), transparent);
+    margin: 4px -8px; padding: 7px 8px;
+    border-radius: 6px; border-bottom: none;
+  }
+  .tenant-card .line.warn .value { color: var(--warning); }
+
+  .badge {
+    display: inline-block;
+    font-size: 7pt; padding: 3px 8px;
+    border-radius: 4px;
+    text-transform: uppercase;
+    font-weight: 600; letter-spacing: 0.06em;
+    background: var(--klassci-blue);
+    color: var(--white);
+  }
+  .badge-success { background: var(--success); }
+  .badge-warn { background: var(--warning); }
+
+  /* === Callouts === */
+  .callout {
+    border-left: 3px solid var(--klassci-blue);
+    background: var(--klassci-blue-tint);
+    padding: 12px 16px;
+    border-radius: 0 8px 8px 0;
+    margin: 12px 0;
+    font-size: 9.5pt;
+    color: var(--ink-2);
+  }
+  .callout-success {
+    border-left-color: var(--success);
+    background: rgba(16,185,129,0.06);
+  }
+  .callout-warn {
+    border-left-color: var(--warning);
+    background: rgba(245,158,11,0.06);
+  }
+  .callout strong { color: var(--ink); }
+
+  ul { margin: 8px 0 12px 16px; }
+  li {
+    margin: 5px 0;
+    font-size: 10pt;
+    color: var(--neutral-700);
+  }
+  li strong { color: var(--ink); }
+
+  .small { font-size: 8.5pt; color: var(--neutral-500); }
+  .mono { font-family: var(--mono); font-size: 9pt; }
+</style>
+</head>
+<body>
+
+<!-- ============================================================
+     PAGE 1 — COVER
+     ============================================================ -->
+<section class="page cover">
+  <div class="cover-glow"></div>
+  <div class="cover-glow-2"></div>
+  <div class="cover-inner">
+
+    <div class="cover-top">
+      <div class="cover-logos">
+        <img class="adc-logo" src="file:///C:/Users/yabla/Downloads/adc-assets/logo-horizontal-transparent.png" alt="ADC">
+        <span class="x">×</span>
+        <img class="klassci-logo" src="file:///C:/Users/yabla/Downloads/dev/klassci-landing/public/img/logo-klassci-full.png" alt="KLASSCI">
+      </div>
+      <div class="cover-meta">
+        <strong>DOCUMENT COMMERCIAL</strong><br>
+        Version 1.0 · 23 mai 2026<br>
+        Référence : WAB-TENANT-2026-05
+      </div>
+    </div>
+
+    <div class="cover-title">
+      <div class="kicker">Tarification &amp; quotas inclus</div>
+      <h1 class="cover-h1">WhatsApp <em>inclus</em><br>dans votre abonnement.</h1>
+      <p class="lead">
+        Quota mensuel d'office, tarification simple à l'usage au-delà.
+        Notifications parents, paiements, absences, bulletins, annonces.
+      </p>
+    </div>
+
+    <div class="cover-bottom">
+      <div>
+        Africandigit Consulting · Grand-Bassam, Côte d'Ivoire<br>
+        Édité par <strong>ADC</strong> · Solution <strong>KLASSCI</strong>
+      </div>
+      <div>
+        <strong>klassci.com</strong> · africandigitconsulting.com
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ============================================================
+     PAGE 2 — SYNTHÈSE TENANT
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">KLASSCI · WhatsApp Business</div>
+    <div class="doc-ref">WAB-TENANT-2026-05 · p. 02</div>
+  </div>
+
+  <div class="section-label">01 · Principe</div>
+
+  <h2>WhatsApp, <em>inclus</em> dans votre abonnement.</h2>
+
+  <p class="intro">
+    Le module WhatsApp Business est intégré nativement à votre abonnement
+    KLASSCI. Chaque plan inclut un quota mensuel d'envois généreux, calibré
+    pour couvrir l'essentiel des notifications parents. Au-delà du quota,
+    une tarification simple à l'usage s'applique.
+  </p>
+
+  <div class="kpi-hero">
+    <div class="kpi-hero-left">
+      <div class="kpi-hero-value">30 000 <span class="kpi-hero-value-sub">messages</span></div>
+      <div class="kpi-hero-label">Inclus chaque mois · Plan Élite</div>
+    </div>
+    <div class="kpi-hero-right">
+      Couvre <strong>~3 500 élèves</strong><br>
+      &amp; <strong>10 000 réponses entrantes</strong><br>
+      <span class="small">avec marge de sécurité saisonnière</span>
+    </div>
+  </div>
+
+  <h3>Comment fonctionne le quota</h3>
+
+  <ul>
+    <li><strong>Inclus d'office.</strong> Le quota mensuel WhatsApp est activé dès la souscription, sans option à cocher ni facture supplémentaire à la signature.</li>
+    <li><strong>Calibré sur votre effectif.</strong> Le quota est dimensionné par plan d'abonnement, proportionnellement à la taille de l'école (Essentiel pour ~600 élèves, Pro pour ~1 800, Élite pour ~3 500).</li>
+    <li><strong>Réinitialisé chaque mois.</strong> Le compteur repart à zéro le 1<sup>er</sup> de chaque mois ; les messages non consommés ne sont pas reportés.</li>
+    <li><strong>Visible en temps réel.</strong> Tableau de bord dédié dans votre interface d'administration KLASSCI : compteur live, alertes à 80 % et 100 % du quota.</li>
+  </ul>
+
+  <div class="callout callout-success">
+    <strong>Ce que vous n'avez pas à faire.</strong> Pas de configuration Meta
+    Business à gérer, pas de carte bancaire à enregistrer chez Meta, pas de
+    suivi de coût Meta par message. Tout est centralisé dans votre abonnement
+    KLASSCI et opéré par ADC pour vous.
+  </div>
+
+  <div class="page-footer">ADC × KLASSCI · WhatsApp Business 2026</div>
+  <div class="page-number">02</div>
+</section>
+
+<!-- ============================================================
+     PAGE 3 — GRILLE DE QUOTAS PAR PLAN
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">KLASSCI · WhatsApp Business</div>
+    <div class="doc-ref">WAB-TENANT-2026-05 · p. 03</div>
+  </div>
+
+  <div class="section-label">02 · Quotas inclus</div>
+
+  <h2>Quotas <em>inclus</em> par plan d'abonnement.</h2>
+
+  <p>
+    Trois plans alignés sur votre abonnement KLASSCI existant.
+    Aucun coût supplémentaire pour activer le module WhatsApp.
+  </p>
+
+  <div class="plan-grid">
+
+    <div class="plan-card">
+      <div class="plan-name">Essentiel</div>
+      <div class="plan-tag">≤ 600 élèves</div>
+      <div class="plan-quota">5 000 <span class="plan-quota-unit">msgs / mois</span></div>
+      <ul class="plan-features">
+        <li>Outbound inclus <strong>5 000</strong></li>
+        <li>Inbound inclus <strong>2 000</strong></li>
+        <li>Templates utilisables <strong>3</strong></li>
+        <li>Tableau de bord <strong>✓</strong></li>
+        <li>Support inclus <strong>✓</strong></li>
+      </ul>
+    </div>
+
+    <div class="plan-card">
+      <div class="plan-name">Pro</div>
+      <div class="plan-tag">≤ 1 800 élèves</div>
+      <div class="plan-quota">15 000 <span class="plan-quota-unit">msgs / mois</span></div>
+      <ul class="plan-features">
+        <li>Outbound inclus <strong>15 000</strong></li>
+        <li>Inbound inclus <strong>5 000</strong></li>
+        <li>Templates utilisables <strong>5</strong></li>
+        <li>Tableau de bord <strong>✓</strong></li>
+        <li>Support inclus <strong>✓</strong></li>
+      </ul>
+    </div>
+
+    <div class="plan-card featured">
+      <div class="plan-name">Élite</div>
+      <div class="plan-tag">≤ 3 500 élèves</div>
+      <div class="plan-quota">30 000 <span class="plan-quota-unit">msgs / mois</span></div>
+      <ul class="plan-features">
+        <li>Outbound inclus <strong>30 000</strong></li>
+        <li>Inbound inclus <strong>10 000</strong></li>
+        <li>Templates utilisables <strong>illimités</strong></li>
+        <li>Tableau de bord <strong>✓</strong></li>
+        <li>Support prioritaire <strong>✓</strong></li>
+      </ul>
+    </div>
+
+  </div>
+
+  <h4>Comment savoir quel plan vous correspond</h4>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Effectif de l'école</th>
+        <th>Plan recommandé</th>
+        <th class="num">Quota mensuel</th>
+        <th>Usage type</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Jusqu'à 600 élèves</td>
+        <td><strong>Essentiel</strong></td>
+        <td class="num">5 000 msgs</td>
+        <td class="small">Notifications essentielles : paiements, absences</td>
+      </tr>
+      <tr>
+        <td>De 600 à 1 800 élèves</td>
+        <td><strong>Pro</strong></td>
+        <td class="num">15 000 msgs</td>
+        <td class="small">Notifications + bulletins + annonces régulières</td>
+      </tr>
+      <tr class="featured">
+        <td>Plus de 1 800 élèves</td>
+        <td><strong>Élite</strong></td>
+        <td class="num">30 000 msgs</td>
+        <td class="small">Usage complet, communications fréquentes</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>Décompte.</strong> 1 message envoyé = 1 quota outbound ; 1 réponse reçue = 1 quota inbound. Messages de groupe non proposés (politique Meta).
+  </div>
+
+  <div class="page-footer">ADC × KLASSCI · WhatsApp Business 2026</div>
+  <div class="page-number">03</div>
+</section>
+
+<!-- ============================================================
+     PAGE 4 — TARIFICATION EXTRA-USAGE
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">KLASSCI · WhatsApp Business</div>
+    <div class="doc-ref">WAB-TENANT-2026-05 · p. 04</div>
+  </div>
+
+  <div class="section-label">03 · Extra-usage</div>
+
+  <h2>Tarification <em>au-delà</em> du quota inclus.</h2>
+
+  <p class="intro">
+    Si votre école dépasse le quota mensuel inclus (pic saisonnier, campagne
+    de relance, communication exceptionnelle), une tarification simple à l'usage
+    s'applique sous forme de packs ou à l'unité.
+  </p>
+
+  <h3>Tarifs packs outbound</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Pack</th>
+        <th class="num">Messages outbound</th>
+        <th class="num">Tarif pack</th>
+        <th class="num">Coût par message</th>
+        <th>Avantage volume</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Pack S</strong></td>
+        <td class="num">1 000 msgs</td>
+        <td class="num"><strong>4 000 FCFA</strong></td>
+        <td class="num">4,00 FCFA</td>
+        <td class="small">Référence unitaire</td>
+      </tr>
+      <tr>
+        <td><strong>Pack M</strong></td>
+        <td class="num">5 000 msgs</td>
+        <td class="num"><strong>18 000 FCFA</strong></td>
+        <td class="num">3,60 FCFA</td>
+        <td class="small pos">−10 % sur le tarif</td>
+      </tr>
+      <tr class="featured">
+        <td><strong>Pack L</strong></td>
+        <td class="num">10 000 msgs</td>
+        <td class="num"><strong>32 000 FCFA</strong></td>
+        <td class="num">3,20 FCFA</td>
+        <td class="small pos">−20 % sur le tarif</td>
+      </tr>
+      <tr>
+        <td><strong>Pack XL</strong></td>
+        <td class="num">25 000 msgs</td>
+        <td class="num"><strong>70 000 FCFA</strong></td>
+        <td class="num">2,80 FCFA</td>
+        <td class="small pos">−30 % sur le tarif</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Messages entrants au-delà du quota</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Type</th>
+        <th class="num">Tarif unitaire</th>
+        <th>Décompte</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Inbound extra</strong><br><span class="small">Réponse parent au-delà du quota inclus</span></td>
+        <td class="num"><strong>1 FCFA / message</strong></td>
+        <td class="small">Facturation mensuelle automatique sur dépassement</td>
+      </tr>
+      <tr>
+        <td><strong>Outbound unitaire (hors pack)</strong><br><span class="small">Si aucun pack actif</span></td>
+        <td class="num"><strong>5 FCFA / message</strong></td>
+        <td class="small">Tarif appliqué si dépassement sans pack pré-acheté</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <strong>Bonnes pratiques.</strong> Acheter un pack à l'avance permet de
+    réduire le coût unitaire de 10 % à 30 %. Le tableau de bord KLASSCI alerte
+    à 80 % du quota pour vous laisser le temps de choisir le pack adapté
+    avant la fin du mois.
+  </div>
+
+  <div class="callout callout-success">
+    <strong>Aucun engagement pack.</strong> Les packs sont à l'usage : achetés
+    sur le mois, ils restent valables sur le mois suivant si non consommés.
+    Pas d'abonnement supplémentaire ni de renouvellement automatique.
+  </div>
+
+  <div class="page-footer">ADC × KLASSCI · WhatsApp Business 2026</div>
+  <div class="page-number">04</div>
+</section>
+
+<!-- ============================================================
+     PAGE 5 — CAS PRATIQUES ESBTP
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">KLASSCI · WhatsApp Business</div>
+    <div class="doc-ref">WAB-TENANT-2026-05 · p. 05</div>
+  </div>
+
+  <div class="section-label">04 · Cas pratiques</div>
+
+  <h2>Cas pratiques <em>ESBTP</em> — pilotes.</h2>
+
+  <p>
+    Trois scénarios illustrant l'usage du quota inclus et l'éventuel
+    extra-usage selon les périodes de l'année académique.
+  </p>
+
+  <div class="two-col">
+
+    <div class="tenant-card">
+      <h3>ESBTP-Abidjan <span class="badge">Élite</span></h3>
+      <div class="line"><span class="label">Étudiants actifs</span><span class="value">2 507</span></div>
+      <div class="line"><span class="label">Plan d'abonnement</span><span class="value">Élite</span></div>
+      <div class="line"><span class="label">Quota outbound inclus</span><span class="value">30 000 / mois</span></div>
+      <div class="line"><span class="label">Quota inbound inclus</span><span class="value">10 000 / mois</span></div>
+      <div class="line"><span class="label">Volume outbound estimé</span><span class="value">20 056 / mois</span></div>
+      <div class="line"><span class="label">Volume inbound estimé</span><span class="value">5 014 / mois</span></div>
+      <div class="line"><span class="label">Reste quota outbound</span><span class="value">9 944 msgs</span></div>
+      <div class="line"><span class="label">Reste quota inbound</span><span class="value">4 986 msgs</span></div>
+      <div class="line success"><span class="label">Extra-usage mois normal</span><span class="value">0 FCFA</span></div>
+      <div class="line"><span class="label">Taux d'occupation quota</span><span class="value">67 %</span></div>
+    </div>
+
+    <div class="tenant-card">
+      <h3>ESBTP-Yakro <span class="badge">Élite</span></h3>
+      <div class="line"><span class="label">Étudiants actifs (estim.)</span><span class="value">2 000</span></div>
+      <div class="line"><span class="label">Plan d'abonnement</span><span class="value">Élite</span></div>
+      <div class="line"><span class="label">Quota outbound inclus</span><span class="value">30 000 / mois</span></div>
+      <div class="line"><span class="label">Quota inbound inclus</span><span class="value">10 000 / mois</span></div>
+      <div class="line"><span class="label">Volume outbound estimé</span><span class="value">16 000 / mois</span></div>
+      <div class="line"><span class="label">Volume inbound estimé</span><span class="value">4 000 / mois</span></div>
+      <div class="line"><span class="label">Reste quota outbound</span><span class="value">14 000 msgs</span></div>
+      <div class="line"><span class="label">Reste quota inbound</span><span class="value">6 000 msgs</span></div>
+      <div class="line success"><span class="label">Extra-usage mois normal</span><span class="value">0 FCFA</span></div>
+      <div class="line"><span class="label">Taux d'occupation quota</span><span class="value">53 %</span></div>
+    </div>
+
+  </div>
+
+  <h3>Scénario pic saisonnier (rentrée + bulletins)</h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Indicateur</th>
+        <th class="num">ESBTP-Abidjan</th>
+        <th class="num">ESBTP-Yakro</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>Volume outbound pic (mois septembre)</td>
+        <td class="num">45 000 msgs</td>
+        <td class="num">38 000 msgs</td>
+      </tr>
+      <tr>
+        <td>Quota Élite inclus</td>
+        <td class="num">30 000 msgs</td>
+        <td class="num">30 000 msgs</td>
+      </tr>
+      <tr>
+        <td>Dépassement quota</td>
+        <td class="num">15 000 msgs</td>
+        <td class="num">8 000 msgs</td>
+      </tr>
+      <tr>
+        <td>Pack recommandé</td>
+        <td class="num"><strong>Pack L 10k</strong> + Pack M 5k</td>
+        <td class="num"><strong>Pack L 10k</strong></td>
+      </tr>
+      <tr class="total-row">
+        <td>Coût extra-usage pour ce mois</td>
+        <td class="num"><strong>50 000 FCFA</strong></td>
+        <td class="num"><strong>32 000 FCFA</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout callout-success">
+    <strong>Récapitulatif.</strong> Sur une année académique typique, ESBTP-Abidjan
+    et ESBTP-Yakro restent dans leur quota Élite 10 à 11 mois sur 12. Le coût
+    annuel d'extra-usage estimé est de l'ordre de 50 000 à 100 000 FCFA par
+    tenant, concentré sur les pics de rentrée et de fin de trimestre.
+  </div>
+
+  <div class="page-footer">ADC × KLASSCI · WhatsApp Business 2026</div>
+  <div class="page-number">05</div>
+</section>
+
+<!-- ============================================================
+     PAGE 6 — POURQUOI WHATSAPP + RECOMMANDATION
+     ============================================================ -->
+<section class="page">
+  <div class="page-head">
+    <div class="brand-text">KLASSCI · WhatsApp Business</div>
+    <div class="doc-ref">WAB-TENANT-2026-05 · p. 06</div>
+  </div>
+
+  <div class="section-label">05 · Valeur</div>
+
+  <h2>Pourquoi WhatsApp <em>plutôt que SMS</em>.</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Critère</th>
+        <th>SMS classique</th>
+        <th>WhatsApp Business</th>
+        <th>Gain pour l'école</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Taux de livraison</strong></td>
+        <td>~75 %</td>
+        <td class="pos">&gt; 95 %</td>
+        <td class="small">+20 % de parents touchés</td>
+      </tr>
+      <tr>
+        <td><strong>Taux de lecture</strong></td>
+        <td>~25 %</td>
+        <td class="pos">&gt; 80 %</td>
+        <td class="small">+55 % de parents informés</td>
+      </tr>
+      <tr>
+        <td><strong>Accusé de lecture</strong></td>
+        <td>Non</td>
+        <td class="pos">Oui (double coche bleue)</td>
+        <td class="small">Preuve de notification</td>
+      </tr>
+      <tr>
+        <td><strong>Médias</strong></td>
+        <td>Texte 160 caractères</td>
+        <td class="pos">Texte, images, PDF, audio</td>
+        <td class="small">Bulletins en PDF, photos événements</td>
+      </tr>
+      <tr>
+        <td><strong>Réponse parent</strong></td>
+        <td>Non géré</td>
+        <td class="pos">Conversation bidirectionnelle</td>
+        <td class="small">Support parent intégré</td>
+      </tr>
+      <tr>
+        <td><strong>Coût unitaire école</strong></td>
+        <td>~30 FCFA / msg</td>
+        <td class="pos">Inclus (puis 4 FCFA / msg)</td>
+        <td class="small">−87 % vs SMS</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Cas d'usage couverts par défaut</h3>
+
+  <ul>
+    <li><strong>Confirmation d'inscription</strong> envoyée automatiquement au parent à la création du dossier</li>
+    <li><strong>Notification paiement reçu</strong> avec montant et solde restant</li>
+    <li><strong>Notification paiement validé</strong> par le comptable</li>
+    <li><strong>Rappel d'échéance</strong> trois jours avant la date limite</li>
+    <li><strong>Notification d'absence</strong> dès la saisie par l'enseignant ou le coordinateur</li>
+    <li><strong>Notification de bulletin disponible</strong> en fin de trimestre, avec lien sécurisé</li>
+    <li><strong>Annonces générales</strong> de l'école aux familles (rentrée, fermeture, événements)</li>
+  </ul>
+
+  <div class="callout callout-success">
+    <strong>Recommandation.</strong> Le plan Élite à 30 000 messages inclus
+    par mois couvre largement les besoins d'une école jusqu'à 3 500 élèves,
+    avec une marge de 30 à 50 % pour absorber les pics saisonniers. Pour les
+    écoles dépassant occasionnellement le quota, l'achat d'un pack ponctuel
+    reste plus économique qu'un sur-abonnement permanent.
+  </div>
+
+  <p class="small">
+    Document version 1.0 · édité par <strong>ADC (Africandigit Consulting)</strong>
+    pour la solution <strong>KLASSCI</strong>. 23 mai 2026.
+  </p>
+
+  <div class="page-footer">ADC × KLASSCI · WhatsApp Business 2026</div>
+  <div class="page-number">06</div>
+</section>
+
+</body>
+</html>

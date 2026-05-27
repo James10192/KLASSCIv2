@@ -24,32 +24,21 @@ class FraisCacheService
     /**
      * Cache les configurations de frais pour une classe
      */
-    public function cacheClassConfigurations($filiereId, $niveauId, $anneeId = null, ?string $systeme = 'BTS', $parcoursId = null): array
+    public function cacheClassConfigurations($filiereId, $niveauId, $anneeId = null, ?string $systeme = 'BTS', $parcoursId = null, string $mode = 'global'): array
     {
-        $cacheKey = $this->buildKey('class_configs', [$systeme, $filiereId, $parcoursId, $niveauId, $anneeId]);
+        $cacheKey = $this->buildKey('class_configs', [$mode, $systeme, $filiereId, $parcoursId, $niveauId, $anneeId]);
         
-        return Cache::remember($cacheKey, self::DEFAULT_TTL, function () use ($filiereId, $niveauId, $anneeId, $systeme, $parcoursId, $cacheKey) {
-            $query = ESBTPFraisConfiguration::queryForScope([
-                    'systeme' => $systeme,
-                    'filiere_id' => $filiereId,
-                    'parcours_id' => $parcoursId,
-                    'niveau_id' => $niveauId,
-                ])
-                ->active()
-                ->valid()
-                ->with(['fraisCategory', 'options' => function ($query) {
-                    $query->active()->ordered();
-                }]);
-
-            if ($anneeId) {
-                $query->where('annee_universitaire_id', $anneeId);
-            } else {
-                $query->whereNull('annee_universitaire_id');
-            }
-
-            $configurations = $query->get();
+        return Cache::remember($cacheKey, self::DEFAULT_TTL, function () use ($filiereId, $niveauId, $anneeId, $systeme, $parcoursId, $cacheKey, $mode) {
+            $configurations = ESBTPFraisConfiguration::getConfigurationsForScope([
+                'systeme' => $systeme,
+                'filiere_id' => $filiereId,
+                'parcours_id' => $parcoursId,
+                'niveau_id' => $niveauId,
+                'annee_universitaire_id' => $anneeId,
+            ], $anneeId, $mode, true);
             
             Log::info('Configurations mises en cache', [
+                'mode' => $mode,
                 'systeme' => $systeme,
                 'filiere_id' => $filiereId,
                 'parcours_id' => $parcoursId,
@@ -381,27 +370,15 @@ class FraisCacheService
     /**
      * Obtenir les configurations pour une classe (méthode d'accès simple)
      */
-    public function getConfigurations($filiereId, $niveauId, $anneeId = null, ?string $systeme = 'BTS', $parcoursId = null)
+    public function getConfigurations($filiereId, $niveauId, $anneeId = null, ?string $systeme = 'BTS', $parcoursId = null, string $mode = 'global')
     {
-        $query = ESBTPFraisConfiguration::queryForScope([
-                'systeme' => $systeme,
-                'filiere_id' => $filiereId,
-                'parcours_id' => $parcoursId,
-                'niveau_id' => $niveauId,
-            ])
-            ->active()
-            ->valid()
-            ->with(['fraisCategory', 'options' => function ($query) {
-                $query->active()->ordered();
-            }]);
-
-        if ($anneeId) {
-            $query->where('annee_universitaire_id', $anneeId);
-        } else {
-            $query->whereNull('annee_universitaire_id');
-        }
-
-        return $query->get();
+        return ESBTPFraisConfiguration::getConfigurationsForScope([
+            'systeme' => $systeme,
+            'filiere_id' => $filiereId,
+            'parcours_id' => $parcoursId,
+            'niveau_id' => $niveauId,
+            'annee_universitaire_id' => $anneeId,
+        ], $anneeId, $mode, true);
     }
 
     /**
@@ -409,10 +386,14 @@ class FraisCacheService
      */
     public function invalidateConfigurationCache($filiereId, $niveauId, $anneeId = null, ?string $systeme = 'BTS', $parcoursId = null): void
     {
-        $cacheKey = $this->buildKey('class_configs', [$systeme, $filiereId, $parcoursId, $niveauId, $anneeId]);
-        Cache::forget($cacheKey);
+        foreach (['global', 'annual', 'effective'] as $mode) {
+            $cacheKey = $this->buildKey('class_configs', [$mode, $systeme, $filiereId, $parcoursId, $niveauId, $anneeId]);
+            Cache::forget($cacheKey);
+        }
         
         Log::info('Cache des configurations invalidé', [
+            'systeme' => $systeme,
+            'parcours_id' => $parcoursId,
             'filiere_id' => $filiereId,
             'niveau_id' => $niveauId,
             'annee_id' => $anneeId

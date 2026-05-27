@@ -203,41 +203,84 @@ class ESBTPFraisConfiguration extends Model
     {
         $scope = app(FraisScopeResolver::class)->resolveForClasse($classe);
 
-        return static::queryForScope($scope)
-            ->active()
-            ->valid()
-            ->with(['fraisCategory', 'options' => fn ($query) => $query->active()->ordered()])
-            ->get();
+        return static::getConfigurationsForScope($scope, $scope['annee_universitaire_id'] ?? null, 'effective', true);
     }
 
     public static function getApplicableForInscription(ESBTPInscription $inscription)
     {
         $scope = app(FraisScopeResolver::class)->resolveForInscription($inscription);
 
+        return static::getConfigurationsForScope($scope, $scope['annee_universitaire_id'] ?? null, 'effective', true);
+    }
+
+    public static function getGlobalForScope($categoryId, array $scope): ?self
+    {
         return static::queryForScope($scope)
             ->active()
             ->valid()
-            ->with(['fraisCategory', 'options' => fn ($query) => $query->active()->ordered()])
-            ->get();
+            ->where('frais_category_id', $categoryId)
+            ->whereNull('annee_universitaire_id')
+            ->first();
+    }
+
+    public static function getAnnualOverrideForScope($categoryId, array $scope): ?self
+    {
+        $anneeId = $scope['annee_universitaire_id'] ?? null;
+        if (! $anneeId) {
+            return null;
+        }
+
+        return static::queryForScope($scope)
+            ->active()
+            ->valid()
+            ->where('frais_category_id', $categoryId)
+            ->where('annee_universitaire_id', $anneeId)
+            ->first();
+    }
+
+    public static function getEffectiveForScope($categoryId, array $scope): ?self
+    {
+        $annual = static::getAnnualOverrideForScope($categoryId, $scope);
+        if ($annual) {
+            return $annual;
+        }
+
+        return static::getGlobalForScope($categoryId, $scope);
     }
 
     public static function getApplicableForScope($categoryId, array $scope): ?self
     {
-        $query = static::queryForScope($scope)
-            ->active()
-            ->valid()
-            ->where('frais_category_id', $categoryId);
+        return static::getEffectiveForScope($categoryId, $scope);
+    }
 
-        $anneeId = $scope['annee_universitaire_id'] ?? null;
+    public static function getConfigurationsForScope(array $scope, ?int $anneeId = null, string $mode = 'effective', bool $withRelations = false)
+    {
+        $buildQuery = function () use ($scope, $withRelations) {
+            $query = static::queryForScope($scope)
+                ->active()
+                ->valid();
 
-        if ($anneeId) {
-            $config = (clone $query)->where('annee_universitaire_id', $anneeId)->first();
-            if ($config) {
-                return $config;
+            if ($withRelations) {
+                $query->with(['fraisCategory', 'options' => fn ($optionsQuery) => $optionsQuery->active()->ordered()]);
             }
+
+            return $query;
+        };
+
+        if ($mode === 'annual') {
+            return $anneeId
+                ? $buildQuery()->where('annee_universitaire_id', $anneeId)->get()
+                : collect();
         }
 
-        return $query->whereNull('annee_universitaire_id')->first();
+        $global = $buildQuery()->whereNull('annee_universitaire_id')->get()->keyBy('frais_category_id');
+        if ($mode === 'global' || ! $anneeId) {
+            return $global->values();
+        }
+
+        $annual = $buildQuery()->where('annee_universitaire_id', $anneeId)->get()->keyBy('frais_category_id');
+
+        return $global->merge($annual)->values();
     }
 
     public static function queryForScope(array $scope)

@@ -91,16 +91,193 @@ function Invoke-KlassciApi {
         )
     }
 
-    $response = & curl.exe @curlArgs
-    if ($LASTEXITCODE -ne 0) {
-        throw "curl failed with exit code $LASTEXITCODE"
+    $tmpFile = [System.IO.Path]::GetTempFileName()
+    try {
+        $curlArgs += @("-o", $tmpFile)
+        & curl.exe @curlArgs | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "curl failed with exit code $LASTEXITCODE"
+        }
+
+        $response = Get-Content $tmpFile -Raw
+        if (-not $response) {
+            return $null
+        }
+
+        return ConvertFrom-KlassciJson -Json $response
+    } finally {
+        Remove-Item $tmpFile -ErrorAction SilentlyContinue
+    }
+}
+
+function Invoke-KlassciUrl {
+    param(
+        [string]$Method,
+        [string]$Url,
+        [hashtable]$Headers = @{},
+        [object]$Body = $null
+    )
+
+    $curlArgs = @(
+        "-sS",
+        "-X", $Method,
+        $Url
+    )
+
+    foreach ($key in $Headers.Keys) {
+        $curlArgs += @("-H", "{0}: {1}" -f $key, $Headers[$key])
     }
 
-    if (-not $response) {
-        return $null
+    if ($Body -ne $null) {
+        $curlArgs += @(
+            "-H", "Content-Type: application/json",
+            "-d", ($Body | ConvertTo-Json -Depth 8 -Compress)
+        )
     }
 
-    return $response | ConvertFrom-Json
+    $tmpFile = [System.IO.Path]::GetTempFileName()
+    try {
+        $curlArgs += @("-o", $tmpFile)
+        & curl.exe @curlArgs | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "curl failed with exit code $LASTEXITCODE"
+        }
+
+        $response = Get-Content $tmpFile -Raw
+        if (-not $response) {
+            return $null
+        }
+
+        return ConvertFrom-KlassciJson -Json $response
+    } finally {
+        Remove-Item $tmpFile -ErrorAction SilentlyContinue
+    }
+}
+
+function Invoke-KlassciUrlRaw {
+    param(
+        [string]$Method,
+        [string]$Url,
+        [hashtable]$Headers = @{},
+        [object]$Body = $null
+    )
+
+    $curlArgs = @(
+        "-sS",
+        "-X", $Method,
+        $Url
+    )
+
+    foreach ($key in $Headers.Keys) {
+        $curlArgs += @("-H", "{0}: {1}" -f $key, $Headers[$key])
+    }
+
+    if ($Body -ne $null) {
+        $curlArgs += @(
+            "-H", "Content-Type: application/json",
+            "-d", ($Body | ConvertTo-Json -Depth 8 -Compress)
+        )
+    }
+
+    $tmpFile = [System.IO.Path]::GetTempFileName()
+    try {
+        $curlArgs += @("-o", $tmpFile)
+        & curl.exe @curlArgs | Out-Null
+        if ($LASTEXITCODE -ne 0) {
+            throw "curl failed with exit code $LASTEXITCODE"
+        }
+
+        return (Get-Content $tmpFile -Raw)
+    } finally {
+        Remove-Item $tmpFile -ErrorAction SilentlyContinue
+    }
+}
+
+function ConvertFrom-KlassciJson {
+    param([string]$Json)
+
+    try {
+        return $Json | ConvertFrom-Json
+    } catch {
+        Add-Type -AssemblyName System.Web.Extensions
+        $serializer = New-Object System.Web.Script.Serialization.JavaScriptSerializer
+        $serializer.MaxJsonLength = 67108864
+        return $serializer.DeserializeObject($Json)
+    }
+}
+
+function Get-LmdCoverageReport {
+    param([string]$TenantCode)
+
+    $cfg = Get-KlassciConfig -TenantCode $TenantCode
+    $tree = Invoke-KlassciApi -Method "GET" -Path "/lmd/tree" -Config $cfg
+    $rawClassesJson = Invoke-KlassciUrlRaw -Method "GET" -Url ("{0}/api/classes" -f $cfg.BaseUrl.TrimEnd('/')) -Headers @{ "Accept" = "application/json" }
+    $domaines = @()
+
+    if ($tree -and $tree.data -and $tree.data.domaines) {
+        $domaines = @($tree.data.domaines)
+    }
+
+    $parcours = @()
+    foreach ($domaine in $domaines) {
+        $mentions = @()
+        if ($domaine.mentions) {
+            $mentions = @($domaine.mentions)
+        }
+
+        foreach ($mention in $mentions) {
+            $mentionParcours = @()
+            if ($mention.parcours) {
+                $mentionParcours = @($mention.parcours)
+            }
+
+            foreach ($item in $mentionParcours) {
+                $parcours += [PSCustomObject]@{
+                    id = [int]$item.id
+                    name = [string]$item.name
+                    mention = [string]$mention.name
+                    domaine = [string]$domaine.name
+                    filiere = [string]$item.filiere.name
+                }
+            }
+        }
+    }
+
+    $classMatches = [regex]::Matches($rawClassesJson, '"id":(?<id>\d+),"name":"(?<name>(?:\\.|[^"])*)","libelle":.*?"is_active":true,"systeme_academique":"LMD","parcours_id":(?<parcours>null|\d+)', [System.Text.RegularExpressions.RegexOptions]::Singleline)
+    $lmdClasses = @()
+    foreach ($match in $classMatches) {
+        $parcoursValue = $match.Groups['parcours'].Value
+        $lmdClasses += [PSCustomObject]@{
+            id = [int]$match.Groups['id'].Value
+            name = [regex]::Unescape($match.Groups['name'].Value)
+            parcours_id = if ($parcoursValue -eq 'null') { $null } else { [int]$parcoursValue }
+        }
+    }
+
+    $classParcoursIds = @($lmdClasses | Where-Object { $_.parcours_id } | ForEach-Object { [int]$_.parcours_id } | Sort-Object -Unique)
+    $missingParcours = @($parcours | Where-Object { $classParcoursIds -notcontains $_.id })
+    $classesWithoutParcours = @($lmdClasses | Where-Object { -not $_.parcours_id } | ForEach-Object {
+        [PSCustomObject]@{
+            id = $_.id
+            name = $_.name
+        }
+    })
+    $matchedParcours = @($parcours | Where-Object { $classParcoursIds -contains $_.id })
+
+    return [PSCustomObject]@{
+        success = $true
+        tenant = $TenantCode
+        totals = [PSCustomObject]@{
+            parcours_in_tree = @($parcours).Count
+            lmd_classes = @($lmdClasses).Count
+            parcours_with_class = @($matchedParcours).Count
+            parcours_missing_class = @($missingParcours).Count
+            classes_without_parcours_id = @($classesWithoutParcours).Count
+        }
+        parcours_with_class = $matchedParcours
+        parcours_missing_class = $missingParcours
+        classes_without_parcours_id = $classesWithoutParcours
+    }
 }
 
 switch ($Command) {
@@ -127,12 +304,35 @@ switch ($Command) {
         Invoke-KlassciApi -Method "POST" -Path "/cache/clear" -Config $cfg | ConvertTo-Json -Depth 8
         break
     }
+    "classes" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        Invoke-KlassciApi -Method "GET" -Path "/classes" -Config $cfg | ConvertTo-Json -Depth 8
+        break
+    }
+    "lmd:tree" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        Invoke-KlassciApi -Method "GET" -Path "/lmd/tree" -Config $cfg | ConvertTo-Json -Depth 8
+        break
+    }
+    "classes:raw" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        Invoke-KlassciUrlRaw -Method "GET" -Url ("{0}/api/classes" -f $cfg.BaseUrl.TrimEnd('/')) -Headers @{ "Accept" = "application/json" }
+        break
+    }
+    "lmd:coverage" {
+        Get-LmdCoverageReport -TenantCode $Tenant | ConvertTo-Json -Depth 8
+        break
+    }
     default {
         Write-Host "Usage:" -ForegroundColor Yellow
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
         Write-Host "  .\klassci-cli.ps1 pull [presentation]"
         Write-Host "  .\klassci-cli.ps1 migrate [presentation]"
         Write-Host "  .\klassci-cli.ps1 cache:clear [presentation]"
+        Write-Host "  .\klassci-cli.ps1 classes [presentation]"
+        Write-Host "  .\klassci-cli.ps1 classes:raw [presentation]"
+        Write-Host "  .\klassci-cli.ps1 lmd:tree [presentation]"
+        Write-Host "  .\klassci-cli.ps1 lmd:coverage [presentation]"
         exit 1
     }
 }

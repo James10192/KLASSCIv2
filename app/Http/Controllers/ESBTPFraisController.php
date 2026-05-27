@@ -14,9 +14,12 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Services\FraisCalculationService;
 use App\Services\FraisCacheService;
 use App\Services\ApplicableFraisResolver;
+use App\Services\BulkLevelFraisApplicator;
 use App\Services\FraisConfigurationPageBuilder;
+use App\Services\FraisConfigurationWriter;
 use App\Services\FraisManagementService;
 use App\Services\FraisScopeResolver;
+use App\Services\LevelFeeTargetResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -30,6 +33,9 @@ class ESBTPFraisController extends Controller
     protected $fraisScopeResolver;
     protected $applicableFraisResolver;
     protected $configurationPageBuilder;
+    protected $configurationWriter;
+    protected $bulkLevelFraisApplicator;
+    protected $levelFeeTargetResolver;
 
     public function __construct(
         FraisCalculationService $fraisCalculationService,
@@ -37,14 +43,17 @@ class ESBTPFraisController extends Controller
         FraisManagementService $fraisManagementService,
         FraisScopeResolver $fraisScopeResolver,
         ApplicableFraisResolver $applicableFraisResolver,
-        FraisConfigurationPageBuilder $configurationPageBuilder
+        FraisConfigurationPageBuilder $configurationPageBuilder,
+        FraisConfigurationWriter $configurationWriter,
+        BulkLevelFraisApplicator $bulkLevelFraisApplicator,
+        LevelFeeTargetResolver $levelFeeTargetResolver
     ) {
         $this->middleware('auth');
         $this->middleware('permission:frais.view', ['only' => ['index', 'show']]);
         $this->middleware('permission:frais.create', ['only' => ['create', 'store']]);
         $this->middleware('permission:frais.edit', ['only' => ['edit', 'update', 'toggleActive']]);
         $this->middleware('permission:frais.delete', ['only' => ['destroy', 'resetDefaults']]);
-        $this->middleware('permission:frais.configure', ['only' => ['configure', 'updateConfiguration']]);
+        $this->middleware('permission:frais.configure', ['only' => ['configure', 'updateConfiguration', 'previewLevelTargets', 'applyLevelConfiguration']]);
         
         $this->fraisCalculationService = $fraisCalculationService;
         $this->fraisCacheService = $fraisCacheService;
@@ -52,6 +61,9 @@ class ESBTPFraisController extends Controller
         $this->fraisScopeResolver = $fraisScopeResolver;
         $this->applicableFraisResolver = $applicableFraisResolver;
         $this->configurationPageBuilder = $configurationPageBuilder;
+        $this->configurationWriter = $configurationWriter;
+        $this->bulkLevelFraisApplicator = $bulkLevelFraisApplicator;
+        $this->levelFeeTargetResolver = $levelFeeTargetResolver;
     }
 
     /**
@@ -96,7 +108,11 @@ class ESBTPFraisController extends Controller
     public function configure(Request $request)
     {
         $categories = $this->fraisCacheService->getCategories();
-        $pageData = $this->configurationPageBuilder->build();
+        $configurationMode = $this->normalizeConfigurationMode($request->get('mode', 'global'));
+        $anneeUniversitaireId = $configurationMode === 'annual'
+            ? ($request->integer('annee_universitaire_id') ?: ESBTPAnneeUniversitaire::query()->where('is_current', true)->value('id'))
+            : null;
+        $pageData = $this->configurationPageBuilder->build($configurationMode, $anneeUniversitaireId);
         $systeme = strtoupper((string) $request->get('systeme', 'BTS'));
         $filiereId = $request->get('filiere_id');
         $parcoursId = $request->get('parcours_id');
@@ -107,11 +123,20 @@ class ESBTPFraisController extends Controller
             $configurations = $this->fraisCacheService->getConfigurations(
                 $filiereId,
                 $niveauId,
-                null,
+                $anneeUniversitaireId,
                 $systeme,
-                $parcoursId
+                $parcoursId,
+                $configurationMode === 'annual' ? 'effective' : 'global'
             );
         }
+
+        $anneesUniversitaires = ESBTPAnneeUniversitaire::query()
+            ->orderByDesc('is_current')
+            ->orderByDesc('start_date')
+            ->get();
+        $selectedAnneeUniversitaire = $anneeUniversitaireId
+            ? $anneesUniversitaires->firstWhere('id', $anneeUniversitaireId)
+            : null;
 
         return view('esbtp.frais.configure', compact(
             'categories',
@@ -119,7 +144,11 @@ class ESBTPFraisController extends Controller
             'filiereId',
             'parcoursId',
             'niveauId',
-            'systeme'
+            'systeme',
+            'configurationMode',
+            'anneeUniversitaireId',
+            'anneesUniversitaires',
+            'selectedAnneeUniversitaire'
         ) + $pageData + [
             'classes' => $pageData['btsClasses']->concat($pageData['lmdClasses']),
         ]);
@@ -645,34 +674,9 @@ class ESBTPFraisController extends Controller
      */
     public function updateConfiguration(Request $request)
     {
-        $systeme = strtoupper((string) $request->input('systeme', 'BTS'));
-        $filiereId = $request->input('filiere_id');
-        $parcoursId = $request->input('parcours_id');
-
-        if (($systeme === 'BTS' || ! $request->filled('systeme')) && $parcoursId) {
-            $systeme = 'LMD';
-            $request->merge(['systeme' => 'LMD']);
-        } elseif (($systeme === 'BTS' || ! $request->filled('systeme')) && $filiereId && ! ESBTPFiliere::whereKey($filiereId)->exists() && \App\Models\ESBTPLMDParcours::whereKey($filiereId)->exists()) {
-            $systeme = 'LMD';
-            $parcoursId = $filiereId;
-            $request->merge(['systeme' => 'LMD', 'parcours_id' => $parcoursId, 'filiere_id' => null]);
-        }
-
-        $validator = Validator::make($request->all(), [
-            'systeme' => 'required|in:BTS,LMD',
-            'niveau_id' => 'required|exists:esbtp_niveau_etudes,id',
-            'filiere_id' => 'required_if:systeme,BTS|nullable|exists:esbtp_filieres,id',
-            'parcours_id' => 'required_if:systeme,LMD|nullable|exists:esbtp_lmd_parcours,id',
-            'categories' => 'required|array',
-            'categories.*.amount' => 'nullable|numeric|min:0',
-            'categories.*.amount_affecte' => 'nullable|numeric|min:0',
-            'categories.*.amount_reaffecte' => 'nullable|numeric|min:0',
-            'categories.*.amount_non_affecte' => 'nullable|numeric|min:0',
-            'categories.*.deadline_days' => 'required|integer|min:1|max:365',
-            'categories.*.installments_allowed' => 'boolean',
-            'categories.*.max_installments' => 'nullable|integer|min:1|max:12',
-            'categories.*.early_payment_discount' => 'nullable|numeric|min:0|max:100',
-        ]);
+        $request = $this->normalizeScopeRequest($request);
+        $configurationMode = $this->normalizeConfigurationMode($request->input('mode', 'global'));
+        $validator = Validator::make($request->all(), $this->configurationValidationRules($configurationMode));
 
         if ($validator->fails()) {
             if ($request->ajax()) {
@@ -696,57 +700,19 @@ class ESBTPFraisController extends Controller
                 'niveau_id',
                 'annee_universitaire_id',
             ]));
-            $userId = auth()->id();
-
-            foreach ($request->input('categories', []) as $categoryId => $categoryData) {
-                $category = ESBTPFraisCategory::find($categoryId);
-                if (! $category) {
-                    continue;
-                }
-
-                $hasValue = fn (string $key) => isset($categoryData[$key]) && is_numeric($categoryData[$key]);
-                $value = fn (string $key) => (float) $categoryData[$key];
-                $mainAmount = match (true) {
-                    $hasValue('amount') => $value('amount'),
-                    $hasValue('amount_affecte') => $value('amount_affecte'),
-                    $hasValue('amount_reaffecte') => $value('amount_reaffecte'),
-                    $hasValue('amount_non_affecte') => $value('amount_non_affecte'),
-                    default => null,
-                };
-
-                if ($mainAmount === null) {
-                    continue;
-                }
-
-                ESBTPFraisConfiguration::updateOrCreate(
-                    [
-                        'frais_category_id' => $categoryId,
-                        'systeme_academique' => $scope['systeme'],
-                        'filiere_id' => $scope['filiere_id'],
-                        'parcours_id' => $scope['parcours_id'],
-                        'niveau_id' => $scope['niveau_id'],
-                        'annee_universitaire_id' => null,
-                    ],
-                    [
-                        'amount' => $mainAmount,
-                        'amount_affecte' => $hasValue('amount_affecte') ? $value('amount_affecte') : null,
-                        'amount_reaffecte' => $hasValue('amount_reaffecte') ? $value('amount_reaffecte') : null,
-                        'amount_non_affecte' => $hasValue('amount_non_affecte') ? $value('amount_non_affecte') : null,
-                        'payment_deadline_days' => $categoryData['deadline_days'],
-                        'installments_allowed' => $categoryData['installments_allowed'] ?? false,
-                        'max_installments' => $categoryData['max_installments'] ?? 1,
-                        'early_payment_discount' => $categoryData['early_payment_discount'] ?? 0,
-                        'is_active' => true,
-                        'effective_date' => now(),
-                        'created_by' => $userId,
-                    ]
-                );
-            }
+            $anneeUniversitaireId = $configurationMode === 'annual' ? $request->integer('annee_universitaire_id') : null;
+            $summary = $this->configurationWriter->persistCategories(
+                $scope,
+                $request->input('categories', []),
+                $configurationMode,
+                $anneeUniversitaireId,
+                auth()->id()
+            );
 
             $this->fraisCacheService->invalidateConfigurationCache(
                 $scope['filiere_id'],
                 $scope['niveau_id'],
-                null,
+                $anneeUniversitaireId,
                 $scope['systeme'],
                 $scope['parcours_id']
             );
@@ -757,6 +723,8 @@ class ESBTPFraisController extends Controller
                 'success' => true,
                 'message' => 'Configuration des frais mise à jour avec succès.',
                 'scope' => $scope,
+                'mode' => $configurationMode,
+                'summary' => $summary,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
@@ -947,20 +915,14 @@ class ESBTPFraisController extends Controller
     public function getCategories(Request $request)
     {
         try {
+            $request = $this->normalizeScopeRequest($request);
+            $configurationMode = $this->normalizeConfigurationMode($request->get('mode', 'global'));
+            $anneeUniversitaireId = $configurationMode === 'annual' ? $request->integer('annee_universitaire_id') : null;
             $systeme = strtoupper((string) $request->get('systeme', 'BTS'));
             $filiereId = $request->get('filiere_id');
             $parcoursId = $request->get('parcours_id');
             $niveauId = $request->get('niveau_id');
             $type = $request->get('type', 'all');
-
-            if (($systeme === 'BTS' || ! $request->filled('systeme')) && $parcoursId) {
-                $systeme = 'LMD';
-                $filiereId = null;
-            } elseif (($systeme === 'BTS' || ! $request->filled('systeme')) && $filiereId && ! ESBTPFiliere::whereKey($filiereId)->exists() && \App\Models\ESBTPLMDParcours::whereKey($filiereId)->exists()) {
-                $systeme = 'LMD';
-                $parcoursId = $filiereId;
-                $filiereId = null;
-            }
 
             if (! $niveauId || ($systeme === 'LMD' ? ! $parcoursId : ! $filiereId)) {
                 return response()->json([
@@ -973,20 +935,29 @@ class ESBTPFraisController extends Controller
             $configurations = $this->fraisCacheService->getConfigurations(
                 $filiereId,
                 $niveauId,
-                null,
+                $anneeUniversitaireId,
                 $systeme,
-                $parcoursId
+                $parcoursId,
+                $configurationMode === 'annual' ? 'effective' : 'global'
             );
+            $globalConfigurations = $this->fraisCacheService->getConfigurations($filiereId, $niveauId, null, $systeme, $parcoursId, 'global');
+            $annualConfigurations = $configurationMode === 'annual'
+                ? $this->fraisCacheService->getConfigurations($filiereId, $niveauId, $anneeUniversitaireId, $systeme, $parcoursId, 'annual')
+                : collect();
 
             if ($type === 'mandatory') {
                 $categories = $categories->where('is_mandatory', true);
                 $html = view('esbtp.frais.partials.mandatory-categories', compact(
                     'categories',
                     'configurations',
+                    'globalConfigurations',
+                    'annualConfigurations',
                     'filiereId',
                     'parcoursId',
                     'niveauId',
-                    'systeme'
+                    'systeme',
+                    'configurationMode',
+                    'anneeUniversitaireId'
                 ))->render();
 
                 return response()->json([
@@ -995,6 +966,8 @@ class ESBTPFraisController extends Controller
                     'count' => $categories->count(),
                     'type' => $type,
                     'systeme' => $systeme,
+                    'mode' => $configurationMode,
+                    'annee_universitaire_id' => $anneeUniversitaireId,
                 ]);
             }
 
@@ -1045,6 +1018,105 @@ class ESBTPFraisController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors du chargement des catégories: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    public function previewLevelTargets(Request $request)
+    {
+        $configurationMode = $this->normalizeConfigurationMode($request->input('mode', 'global'));
+        $validator = Validator::make($request->all(), [
+            'systeme' => 'required|in:BTS,LMD',
+            'niveau_id' => 'required|exists:esbtp_niveau_etudes,id',
+            'annee_universitaire_id' => 'required_if:mode,annual|nullable|exists:esbtp_annee_universitaires,id',
+            'mode' => 'nullable|in:global,annual',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Données invalides',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $targets = $this->bulkLevelFraisApplicator->preview(
+            strtoupper((string) $request->input('systeme', 'BTS')),
+            (int) $request->input('niveau_id'),
+            $configurationMode,
+            $configurationMode === 'annual' ? $request->integer('annee_universitaire_id') : null
+        );
+
+        return response()->json([
+            'success' => true,
+            'targets' => $targets->values(),
+            'mode' => $configurationMode,
+        ]);
+    }
+
+    public function applyLevelConfiguration(Request $request)
+    {
+        $request = $this->normalizeScopeRequest($request);
+        $configurationMode = $this->normalizeConfigurationMode($request->input('mode', 'global'));
+        $validator = Validator::make($request->all(), array_merge(
+            $this->configurationValidationRules($configurationMode, false),
+            [
+                'targets' => 'required|array|min:1',
+                'targets.*.systeme' => 'required|in:BTS,LMD',
+                'targets.*.niveau_id' => 'required|exists:esbtp_niveau_etudes,id',
+                'targets.*.filiere_id' => 'nullable|exists:esbtp_filieres,id',
+                'targets.*.parcours_id' => 'nullable|exists:esbtp_lmd_parcours,id',
+                'conflict_strategy' => 'required|in:overwrite_all,create_missing_only',
+            ]
+        ));
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Données invalides',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $summary = $this->bulkLevelFraisApplicator->apply(
+                strtoupper((string) $request->input('systeme', 'BTS')),
+                (int) $request->input('niveau_id'),
+                $request->input('categories', []),
+                $request->input('targets', []),
+                $configurationMode,
+                $configurationMode === 'annual' ? $request->integer('annee_universitaire_id') : null,
+                $request->input('conflict_strategy', 'overwrite_all'),
+                auth()->id()
+            );
+
+            foreach ($summary['affected_targets'] as $target) {
+                $this->fraisCacheService->invalidateConfigurationCache(
+                    $target['filiere_id'] ?? null,
+                    $target['niveau_id'],
+                    $configurationMode === 'annual' ? $request->integer('annee_universitaire_id') : null,
+                    $target['systeme'],
+                    $target['parcours_id'] ?? null
+                );
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Configuration de niveau appliquée avec succès.',
+                'summary' => $summary,
+                'mode' => $configurationMode,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Erreur lors de la propagation des frais par niveau: ' . $e->getMessage());
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de la propagation des frais par niveau.',
             ], 500);
         }
     }
@@ -1852,6 +1924,63 @@ class ESBTPFraisController extends Controller
                 'message' => 'Erreur lors du chargement des options'
             ], 500);
         }
+    }
+
+    private function normalizeScopeRequest(Request $request): Request
+    {
+        $systeme = strtoupper((string) $request->input('systeme', 'BTS'));
+        $filiereId = $request->input('filiere_id');
+        $parcoursId = $request->input('parcours_id');
+
+        if (($systeme === 'BTS' || ! $request->filled('systeme')) && $parcoursId) {
+            $request->merge([
+                'systeme' => 'LMD',
+                'filiere_id' => null,
+            ]);
+
+            return $request;
+        }
+
+        if (($systeme === 'BTS' || ! $request->filled('systeme'))
+            && $filiereId
+            && ! ESBTPFiliere::whereKey($filiereId)->exists()
+            && \App\Models\ESBTPLMDParcours::whereKey($filiereId)->exists()) {
+            $request->merge([
+                'systeme' => 'LMD',
+                'parcours_id' => $filiereId,
+                'filiere_id' => null,
+            ]);
+        }
+
+        return $request;
+    }
+
+    private function normalizeConfigurationMode(?string $mode): string
+    {
+        return strtolower((string) $mode) === 'annual' ? 'annual' : 'global';
+    }
+
+    private function configurationValidationRules(string $configurationMode, bool $requireDirectScope = true): array
+    {
+        return [
+            'mode' => 'nullable|in:global,annual',
+            'systeme' => 'required|in:BTS,LMD',
+            'niveau_id' => 'required|exists:esbtp_niveau_etudes,id',
+            'filiere_id' => ($requireDirectScope ? 'required_if:systeme,BTS|' : '') . 'nullable|exists:esbtp_filieres,id',
+            'parcours_id' => ($requireDirectScope ? 'required_if:systeme,LMD|' : '') . 'nullable|exists:esbtp_lmd_parcours,id',
+            'annee_universitaire_id' => $configurationMode === 'annual'
+                ? 'required|exists:esbtp_annee_universitaires,id'
+                : 'nullable',
+            'categories' => 'required|array',
+            'categories.*.amount' => 'nullable|numeric|min:0',
+            'categories.*.amount_affecte' => 'nullable|numeric|min:0',
+            'categories.*.amount_reaffecte' => 'nullable|numeric|min:0',
+            'categories.*.amount_non_affecte' => 'nullable|numeric|min:0',
+            'categories.*.deadline_days' => 'required|integer|min:1|max:365',
+            'categories.*.installments_allowed' => 'boolean',
+            'categories.*.max_installments' => 'nullable|integer|min:1|max:12',
+            'categories.*.early_payment_discount' => 'nullable|numeric|min:0|max:100',
+        ];
     }
 
 }
