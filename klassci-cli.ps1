@@ -5,6 +5,9 @@ param(
     [Parameter(Position = 1)]
     [string]$Tenant = "presentation",
 
+    [Parameter(Position = 2, ValueFromRemainingArguments = $true)]
+    [string[]]$ExtraArgs = @(),
+
     [switch]$Json
 )
 
@@ -280,6 +283,29 @@ function Get-LmdCoverageReport {
     }
 }
 
+function New-KlassciQueryString {
+    param([hashtable]$Query)
+
+    if (-not $Query -or $Query.Count -eq 0) {
+        return ""
+    }
+
+    $pairs = @()
+    foreach ($key in $Query.Keys) {
+        if ($null -eq $Query[$key] -or $Query[$key] -eq "") {
+            continue
+        }
+
+        $pairs += ("{0}={1}" -f [uri]::EscapeDataString([string]$key), [uri]::EscapeDataString([string]$Query[$key]))
+    }
+
+    if ($pairs.Count -eq 0) {
+        return ""
+    }
+
+    return "?" + ($pairs -join "&")
+}
+
 switch ($Command) {
     "doctor" {
         if ($Json.IsPresent) {
@@ -323,6 +349,22 @@ switch ($Command) {
         Get-LmdCoverageReport -TenantCode $Tenant | ConvertTo-Json -Depth 8
         break
     }
+    "resultats:diagnose" {
+        if ($ExtraArgs.Count -lt 1) {
+            throw "Usage: .\klassci-cli.ps1 resultats:diagnose [tenant] <etudiant_id> [classe_id] [annee_universitaire_id] [periode] [include_all_statuses]"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $query = @{}
+        if ($ExtraArgs.Count -ge 2) { $query["classe_id"] = $ExtraArgs[1] }
+        if ($ExtraArgs.Count -ge 3) { $query["annee_universitaire_id"] = $ExtraArgs[2] }
+        if ($ExtraArgs.Count -ge 4) { $query["periode"] = $ExtraArgs[3] }
+        if ($ExtraArgs.Count -ge 5) { $query["include_all_statuses"] = $ExtraArgs[4] }
+
+        $path = "/resultats/etudiant/{0}/diagnose{1}" -f $ExtraArgs[0], (New-KlassciQueryString -Query $query)
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 8
+        break
+    }
     default {
         Write-Host "Usage:" -ForegroundColor Yellow
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
@@ -333,6 +375,7 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 classes:raw [presentation]"
         Write-Host "  .\klassci-cli.ps1 lmd:tree [presentation]"
         Write-Host "  .\klassci-cli.ps1 lmd:coverage [presentation]"
+        Write-Host "  .\klassci-cli.ps1 resultats:diagnose [presentation] <etudiant_id> [classe_id] [annee_universitaire_id] [periode] [include_all_statuses]"
         exit 1
     }
 }
