@@ -46,6 +46,10 @@
     font-family: var(--cb-font);
 }
 
+body:has(#fab-encaisser) .chatbot-widget {
+    bottom: 108px;
+}
+
 .chatbot-widget *,
 .chatbot-widget *::before,
 .chatbot-widget *::after {
@@ -1990,6 +1994,10 @@
     .chatbot-widget {
         bottom: 16px;
         right: 16px;
+    }
+
+    body:has(#fab-encaisser) .chatbot-widget {
+        bottom: 84px;
     }
 
     .chatbot-toggle {
