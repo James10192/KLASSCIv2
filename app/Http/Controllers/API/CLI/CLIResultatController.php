@@ -160,6 +160,25 @@ class CLIResultatController extends BaseApiController
             ],
             'notes_summary' => [
                 'total' => $notes->count(),
+                'entries' => $notes->map(function (ESBTPNote $note) {
+                    $bareme = $note->evaluation?->bareme ?: 20;
+                    $value = is_numeric($note->note) ? (float) $note->note : (is_numeric($note->valeur) ? (float) $note->valeur : null);
+                    $normalized = ($value !== null && $bareme > 0) ? round(($value / $bareme) * 20, 2) : null;
+
+                    return [
+                        'id' => $note->id,
+                        'classe_id' => $note->evaluation?->classe_id,
+                        'classe' => $note->evaluation?->classe?->name,
+                        'evaluation_periode' => $note->evaluation?->periode,
+                        'semestre' => $note->semestre,
+                        'matiere_id' => $note->matiere_id ?: $note->evaluation?->matiere_id,
+                        'note' => $note->note,
+                        'valeur' => $note->valeur,
+                        'bareme' => $bareme,
+                        'coefficient_evaluation' => $note->evaluation?->coefficient,
+                        'normalized_on_20' => $normalized,
+                    ];
+                })->values(),
                 'by_class_and_periode' => $notes
                     ->groupBy(fn ($note) => ($note->evaluation?->classe_id ?: 'none') . '|' . ($note->evaluation?->periode ?: $note->semestre ?: 'none'))
                     ->map(function ($group) {
