@@ -22,6 +22,10 @@
 
 @push('styles')
 <style>
+body.has-fab-encaisser .chatbot-widget {
+    bottom: 108px !important;
+}
+
 .fab-encaisser {
     position: fixed;
     bottom: 24px;
@@ -96,6 +100,10 @@
 
 /* Mobile : compacte le label et masque le raccourci clavier */
 @media (max-width: 768px) {
+    body.has-fab-encaisser .chatbot-widget {
+        bottom: 84px !important;
+    }
+
     .fab-encaisser {
         bottom: 16px;
         right: 16px;
@@ -127,6 +135,18 @@
 @push('scripts')
 <script>
 (function() {
+    function markFabEncaisserPresence() {
+        document.documentElement.classList.add('has-fab-encaisser');
+        if (document.body) {
+            document.body.classList.add('has-fab-encaisser');
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', markFabEncaisserPresence, { once: true });
+    } else {
+        markFabEncaisserPresence();
+    }
     // Raccourci clavier Ctrl+E (ou Cmd+E macOS) → naviguer vers /esbtp/paiements/create
     // Skip si user est en train de saisir dans un input/textarea/contenteditable
     document.addEventListener('keydown', function(e) {
