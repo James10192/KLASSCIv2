@@ -31,6 +31,9 @@ class CLIMaintenanceController extends BaseApiController
             Artisan::call('config:clear');
             $output[] = 'config:clear OK';
 
+            Artisan::call('route:clear');
+            $output[] = 'route:clear OK';
+
             Artisan::call('cache:clear');
             $output[] = 'cache:clear OK';
 
