@@ -1517,18 +1517,16 @@
                         <div style="flex:1; min-width:180px;">
                             <select name="filiere_filter" id="filiere_filter" class="form-select" style="border-radius:10px; border-color:#e2e8f0; font-size:.85rem;" onchange="document.getElementById('filters-form').submit()">
                                 <option value="">Toutes les filières</option>
-                                @php $filieres = \App\Models\ESBTPFiliere::where('is_active', true)->orderBy('name')->get(); @endphp
                                 @foreach($filieres as $filiere)
-                                    <option value="{{ $filiere->id }}" {{ request('filiere_filter') == $filiere->id ? 'selected' : '' }}>{{ $filiere->name }}</option>
+                                    <option value="{{ $filiere->id }}" {{ ($filiereFilter ?? request('filiere_filter')) == $filiere->id ? 'selected' : '' }}>{{ $filiere->name }}</option>
                                 @endforeach
                             </select>
                         </div>
                         <div style="flex:1; min-width:180px;">
                             <select name="niveau_filter" id="niveau_filter" class="form-select" style="border-radius:10px; border-color:#e2e8f0; font-size:.85rem;" onchange="document.getElementById('filters-form').submit()">
                                 <option value="">Tous les niveaux</option>
-                                @php $niveaux = \App\Models\ESBTPNiveauEtude::where('is_active', true)->orderBy('year')->get(); @endphp
                                 @foreach($niveaux as $niveau)
-                                    <option value="{{ $niveau->id }}" {{ request('niveau_filter') == $niveau->id ? 'selected' : '' }}>{{ $niveau->name }}</option>
+                                    <option value="{{ $niveau->id }}" {{ ($niveauFilter ?? request('niveau_filter')) == $niveau->id ? 'selected' : '' }}>{{ $niveau->name }}</option>
                                 @endforeach
                             </select>
                         </div>
@@ -2078,11 +2076,7 @@
 
                     {{-- Grid des filières avec pills niveaux --}}
                     <div class="am-grid" id="am-filieres-grid">
-                        @php
-                            $amFilieres = \App\Models\ESBTPFiliere::where('is_active', true)->orderBy('name')->get();
-                            $amNiveaux = \App\Models\ESBTPNiveauEtude::where('is_active', true)->orderBy('year')->get();
-                        @endphp
-                        @foreach($amFilieres as $filiere)
+                        @foreach($filieres as $filiere)
                         <div class="am-fcard" data-filiere-id="{{ $filiere->id }}">
                             <div class="am-fcard-head">
                                 <span class="am-fcard-dot"></span>
@@ -2095,7 +2089,7 @@
                                 </button>
                             </div>
                             <div class="am-pills">
-                                @foreach($amNiveaux as $niveau)
+                                @foreach($niveaux as $niveau)
                                 <span class="am-pill" onclick="amTogglePill(this)" data-filiere-id="{{ $filiere->id }}" data-niveau-id="{{ $niveau->id }}">
                                     <span class="am-pill-check"><i class="fas fa-check"></i></span>
                                     {{ $niveau->name }}

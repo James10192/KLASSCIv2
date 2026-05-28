@@ -18,6 +18,7 @@ use App\Models\ESBTPDailyCode;
 use App\Models\ESBTPTeacherAttendance;
 use App\Models\ESBTPTeacher;
 use App\Services\PlanningConfigurationService;
+use App\Services\PlanningFilterCatalog;
 use App\Services\PlanningStatisticsService;
 use App\Http\Requests\Planning\StorePlanificationRequest;
 use App\Http\Requests\Planning\GenerateCodeEmargementRequest;
@@ -29,6 +30,7 @@ class ESBTPPlanningGeneralController extends Controller
 {
     protected $planningConfigService;
     protected $planningStatsService;
+    protected $planningFilterCatalog;
 
     /** Types LMD exclus du planning général BTS (Licence/Master/Doctorat). */
     private const LMD_TYPES = ['Licence', 'Master', 'Doctorat'];
@@ -36,11 +38,13 @@ class ESBTPPlanningGeneralController extends Controller
     public function __construct(
         PlanningConfigurationService $planningConfigService,
         PlanningStatisticsService $planningStatsService,
+        PlanningFilterCatalog $planningFilterCatalog,
     ) {
         $this->middleware("auth");
         $this->middleware('permission:module.emploi_temps.access');
         $this->planningConfigService = $planningConfigService;
         $this->planningStatsService = $planningStatsService;
+        $this->planningFilterCatalog = $planningFilterCatalog;
     }
 
     /**
@@ -81,8 +85,10 @@ class ESBTPPlanningGeneralController extends Controller
         $stats = $this->planningStatsService->calculerStatistiquesGenerales($anneeId);
 
         // Récupérer les filtres
-        $filiereFilter = $request->input("filiere_filter");
-        $niveauFilter = $request->input("niveau_filter");
+        $filiereFilter = $this->planningFilterCatalog->normalizeBtsFiliereId($request->input("filiere_filter"));
+        $niveauFilter = $this->planningFilterCatalog->normalizeBtsNiveauId($request->input("niveau_filter"));
+        $filieres = $this->planningFilterCatalog->getBtsFilieres();
+        $niveaux = $this->planningFilterCatalog->getBtsNiveaux();
 
         // Récupérer toutes les combinaisons filière/niveau avec leurs matières
         $combinaisons = $this->getCombinaisonsAvecMatieres(
@@ -93,7 +99,7 @@ class ESBTPPlanningGeneralController extends Controller
 
         return view(
             "esbtp.planning-general.index",
-            compact("annees", "anneeSelectionnee", "stats", "combinaisons"),
+            compact("annees", "anneeSelectionnee", "stats", "combinaisons", "filieres", "niveaux", "filiereFilter", "niveauFilter"),
         );
     }
 
@@ -106,14 +112,13 @@ class ESBTPPlanningGeneralController extends Controller
         $niveauFilter = null,
     ) {
         // Récupérer les combinaisons avec filtres optionnels
-        $filieres = ESBTPFiliere::where("is_active", true);
+        $filieres = ESBTPFiliere::whereIn('id', $this->planningFilterCatalog->getBtsVisibleFiliereIds()->all());
         if ($filiereFilter) {
             $filieres->where("id", $filiereFilter);
         }
         $filieres = $filieres->orderBy("name")->get();
 
-        $niveaux = ESBTPNiveauEtude::where("is_active", true)
-            ->whereNotIn("type", self::LMD_TYPES);
+        $niveaux = ESBTPNiveauEtude::whereIn('id', $this->planningFilterCatalog->getBtsNiveaux()->pluck('id')->all());
         if ($niveauFilter) {
             $niveaux->where("id", $niveauFilter);
         }
@@ -427,8 +432,8 @@ class ESBTPPlanningGeneralController extends Controller
     {
         $anneeId = $request->input("annee_id");
         $classeId = $request->input("classe_id");
-        $filiereId = $request->input("filiere_id");
-        $niveauId = $request->input("niveau_id");
+        $filiereId = $this->planningFilterCatalog->normalizeBtsFiliereId($request->input("filiere_id"));
+        $niveauId = $this->planningFilterCatalog->normalizeBtsNiveauId($request->input("niveau_id"));
         $search = $request->input("search");
         $periode = $request->input("periode", "annee"); // semestre1, semestre2, ou annee
 
@@ -455,8 +460,8 @@ class ESBTPPlanningGeneralController extends Controller
             ->get();
 
         // Filières et niveaux pour les selects de filtrage
-        $filieres = ESBTPFiliere::orderBy("name")->get();
-        $niveaux = ESBTPNiveauEtude::whereNotIn("type", self::LMD_TYPES)->orderBy("name")->get();
+        $filieres = $this->planningFilterCatalog->getBtsFilieres();
+        $niveaux = $this->planningFilterCatalog->getBtsNiveaux();
 
         // Construire la liste des classes filtrées
         $filteredClassIds = null;
@@ -1815,8 +1820,8 @@ class ESBTPPlanningGeneralController extends Controller
         }
 
         $anneeId = $request->input("annee_id");
-        $filiereId = $request->input("filiere_id");
-        $niveauId = $request->input("niveau_id");
+        $filiereId = $this->planningFilterCatalog->normalizeBtsFiliereId($request->input("filiere_id"));
+        $niveauId = $this->planningFilterCatalog->normalizeBtsNiveauId($request->input("niveau_id"));
         $periodeDebut = $request->input("periode_debut");
         $periodeFin = $request->input("periode_fin");
 
@@ -1825,13 +1830,8 @@ class ESBTPPlanningGeneralController extends Controller
         $anneeSelectionnee =
             ESBTPAnneeUniversitaire::find($anneeId) ??
             ESBTPAnneeUniversitaire::where("is_current", true)->first();
-        $filieres = ESBTPFiliere::where("is_active", true)
-            ->orderBy("name")
-            ->get();
-        $niveaux = ESBTPNiveauEtude::where("is_active", true)
-            ->whereNotIn("type", self::LMD_TYPES)
-            ->orderBy("year")
-            ->get();
+        $filieres = $this->planningFilterCatalog->getBtsFilieres();
+        $niveaux = $this->planningFilterCatalog->getBtsNiveaux();
 
         if ($anneeSelectionnee) {
             $anneeId = $anneeSelectionnee->id;

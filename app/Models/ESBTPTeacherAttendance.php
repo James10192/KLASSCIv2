@@ -52,6 +52,14 @@ class ESBTPTeacherAttendance extends Model
     }
 
     /**
+     * Alias historique de la séance pour les écrans planning/émargement.
+     */
+    public function seance(): BelongsTo
+    {
+        return $this->course();
+    }
+
+    /**
      * Relation avec le code d'émargement
      */
     public function dailyCode(): BelongsTo
