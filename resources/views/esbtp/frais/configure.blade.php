@@ -104,6 +104,79 @@
 #configurationModal .modal-header { background: linear-gradient(135deg, #071631 0%, #0453cb 100%); color: #fff; }
 #configurationModal .modal-body { background: var(--fc-surface); }
 .fc-modal-info { background: rgba(4,83,203,.05); border: 1px solid rgba(4,83,203,.12); border-radius: 12px; padding: .85rem 1rem; margin-bottom: 1rem; }
+.fc-cat-row {
+    background: var(--fc-white); border: 1px solid var(--fc-border); border-radius: 14px;
+    padding: 1.15rem 1.2rem; margin-bottom: 1rem;
+}
+.fc-cat-head {
+    display: flex; align-items: flex-start; gap: .75rem; margin-bottom: 1rem;
+    padding-bottom: .85rem; border-bottom: 1px solid var(--fc-border);
+}
+.fc-cat-icon {
+    width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, var(--fc-primary), var(--fc-secondary));
+    display: flex; align-items: center; justify-content: center; color: #fff; flex-shrink: 0;
+}
+.fc-cat-meta { flex: 1; min-width: 0; }
+.fc-cat-name {
+    display: flex; align-items: center; gap: .45rem; flex-wrap: wrap;
+    font-size: .92rem; font-weight: 700; color: var(--fc-text); line-height: 1.2;
+}
+.fc-cat-pill {
+    display: inline-flex; align-items: center; gap: .25rem; padding: .15rem .5rem; border-radius: 999px;
+    background: rgba(4,83,203,.08); color: var(--fc-primary); border: 1px solid rgba(4,83,203,.16);
+    font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .03em;
+}
+.fc-cat-desc { margin-top: .25rem; font-size: .74rem; color: var(--fc-muted); }
+.fc-cat-section { margin-bottom: 1rem; }
+.fc-cat-section-label {
+    display: flex; align-items: center; gap: .35rem; font-size: .7rem; font-weight: 800;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--fc-text); margin-bottom: .3rem;
+}
+.fc-cat-section-hint { font-size: .72rem; color: var(--fc-muted); margin-bottom: .7rem; }
+.fc-statuts { display: grid; grid-template-columns: repeat(3, 1fr); gap: .65rem; margin-bottom: .75rem; }
+.fc-statut {
+    background: var(--fc-white); border: 1px solid var(--fc-border); border-radius: 12px; padding: .8rem .75rem;
+}
+.fc-statut.is-affecte { border-top: 3px solid var(--fc-success); }
+.fc-statut.is-reaffecte { border-top: 3px solid var(--fc-warning); }
+.fc-statut.is-non-affecte { border-top: 3px solid var(--fc-danger); }
+.fc-statut-head { display: flex; align-items: center; gap: .4rem; margin-bottom: .55rem; }
+.fc-statut-dot {
+    width: 18px; height: 18px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .55rem;
+}
+.fc-statut.is-affecte .fc-statut-dot { background: var(--fc-success); }
+.fc-statut.is-reaffecte .fc-statut-dot { background: var(--fc-warning); }
+.fc-statut.is-non-affecte .fc-statut-dot { background: var(--fc-danger); }
+.fc-statut-label { font-size: .67rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.fc-input-wrap { position: relative; margin-bottom: .35rem; }
+.fc-input {
+    width: 100%; border: 1px solid var(--fc-border); border-radius: 8px;
+    padding: .52rem 3rem .52rem .65rem; font-size: .82rem; font-weight: 600; color: var(--fc-text); background: #fff;
+}
+.fc-input:focus { outline: none; border-color: var(--fc-primary); box-shadow: 0 0 0 3px rgba(4,83,203,.08); }
+.fc-input-suffix {
+    position: absolute; right: .55rem; top: 50%; transform: translateY(-50%);
+    font-size: .62rem; font-weight: 800; color: var(--fc-muted);
+}
+.fc-copy-actions { display: flex; gap: .45rem; flex-wrap: wrap; }
+.fc-copy-btn {
+    display: inline-flex; align-items: center; gap: .3rem; border: 1px solid var(--fc-border); background: #fff; color: var(--fc-text);
+    border-radius: 8px; padding: .35rem .65rem; font-size: .72rem; font-weight: 700;
+}
+.fc-copy-btn:hover { background: var(--fc-surface); color: var(--fc-primary); }
+.fc-deadline { display: grid; grid-template-columns: 1fr auto; gap: .55rem; align-items: center; }
+.fc-deadline-suffix { font-size: .76rem; color: var(--fc-muted); }
+.fc-cat-status {
+    display: inline-flex; align-items: center; gap: .35rem; margin-top: .9rem; padding: .35rem .7rem;
+    border-radius: 999px; font-size: .7rem; font-weight: 700;
+}
+.fc-cat-status.is-done { background: rgba(16,185,129,.08); color: #059669; }
+.fc-cat-status.is-todo { background: rgba(239,68,68,.08); color: #dc2626; }
+@media (max-width: 768px) {
+    .fc-statuts { grid-template-columns: 1fr; }
+    .fc-cat-head { flex-direction: column; }
+}
 @keyframes fc-skeleton { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
 @media (max-width: 768px) { .fc-toolbar { align-items: stretch; } }
 </style>
@@ -314,6 +387,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const saveScopeButtons = Array.from(document.querySelectorAll('[data-save-scope]'));
     const conflictButtons = Array.from(document.querySelectorAll('[data-conflict-strategy]'));
     const bulkLevelPanel = document.getElementById('bulkLevelPanel');
+    const singleScopeButton = document.querySelector('[data-save-scope="single"]');
+    const levelScopeButton = document.querySelector('[data-save-scope="level"]');
     const modalElement = document.getElementById('configurationModal');
     const modal = new bootstrap.Modal(modalElement);
     const state = {
@@ -385,6 +460,7 @@ document.addEventListener('DOMContentLoaded', function () {
         const parcoursId = button.dataset.parcoursId || '';
         const niveauId = button.dataset.niveauId;
         const labelScope = button.dataset.labelScope;
+        const isLevelCard = button.classList.contains('configure-level-btn') || (!filiereId && !parcoursId);
 
         state.activeScope = { systeme, filiereId, parcoursId, niveauId, labelScope };
         document.getElementById('modalMode').value = state.mode;
@@ -399,7 +475,16 @@ document.addEventListener('DOMContentLoaded', function () {
             : 'Mode global · template permanent';
         categoriesContainer.innerHTML = renderLoadingState('Chargement des catégories...');
         bulkTargetsContainer.innerHTML = renderLoadingState('Préparation des combinaisons du niveau...');
-        setSaveScope(actionType);
+        if (singleScopeButton && levelScopeButton) {
+            if (isLevelCard) {
+                singleScopeButton.style.display = 'none';
+                levelScopeButton.style.display = '';
+            } else {
+                singleScopeButton.style.display = '';
+                levelScopeButton.style.display = '';
+            }
+        }
+        setSaveScope(isLevelCard ? 'level' : actionType);
         modal.show();
         loadCategories();
     }
@@ -413,6 +498,9 @@ document.addEventListener('DOMContentLoaded', function () {
         });
         if (state.activeScope.filiereId) params.set('filiere_id', state.activeScope.filiereId);
         if (state.activeScope.parcoursId) params.set('parcours_id', state.activeScope.parcoursId);
+        if (state.actionType === 'level' && !state.activeScope.filiereId && !state.activeScope.parcoursId) {
+            params.set('bulk_level_context', '1');
+        }
         if (currentAnnualYear()) params.set('annee_universitaire_id', currentAnnualYear());
 
         categoriesContainer.innerHTML = renderLoadingState('Chargement des catégories...');

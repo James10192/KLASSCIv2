@@ -923,8 +923,9 @@ class ESBTPFraisController extends Controller
             $parcoursId = $request->get('parcours_id');
             $niveauId = $request->get('niveau_id');
             $type = $request->get('type', 'all');
+            $isLevelContext = $request->boolean('bulk_level_context');
 
-            if (! $niveauId || ($systeme === 'LMD' ? ! $parcoursId : ! $filiereId)) {
+            if (! $niveauId || (! $isLevelContext && ($systeme === 'LMD' ? ! $parcoursId : ! $filiereId))) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Paramètres manquants pour ce scope académique.',
@@ -932,18 +933,24 @@ class ESBTPFraisController extends Controller
             }
 
             $categories = $this->fraisCacheService->getCategories();
-            $configurations = $this->fraisCacheService->getConfigurations(
-                $filiereId,
-                $niveauId,
-                $anneeUniversitaireId,
-                $systeme,
-                $parcoursId,
-                $configurationMode === 'annual' ? 'effective' : 'global'
-            );
-            $globalConfigurations = $this->fraisCacheService->getConfigurations($filiereId, $niveauId, null, $systeme, $parcoursId, 'global');
-            $annualConfigurations = $configurationMode === 'annual'
-                ? $this->fraisCacheService->getConfigurations($filiereId, $niveauId, $anneeUniversitaireId, $systeme, $parcoursId, 'annual')
-                : collect();
+            $configurations = $isLevelContext
+                ? collect()
+                : $this->fraisCacheService->getConfigurations(
+                    $filiereId,
+                    $niveauId,
+                    $anneeUniversitaireId,
+                    $systeme,
+                    $parcoursId,
+                    $configurationMode === 'annual' ? 'effective' : 'global'
+                );
+            $globalConfigurations = $isLevelContext
+                ? collect()
+                : $this->fraisCacheService->getConfigurations($filiereId, $niveauId, null, $systeme, $parcoursId, 'global');
+            $annualConfigurations = $isLevelContext
+                ? collect()
+                : ($configurationMode === 'annual'
+                    ? $this->fraisCacheService->getConfigurations($filiereId, $niveauId, $anneeUniversitaireId, $systeme, $parcoursId, 'annual')
+                    : collect());
 
             if ($type === 'mandatory') {
                 $categories = $categories->where('is_mandatory', true);
