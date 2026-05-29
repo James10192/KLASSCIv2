@@ -120,6 +120,17 @@
                 <input type="search" class="search-bar sr-filter-select" placeholder="Rechercher..." style="max-width: 220px; font-size: 0.82rem;">
             </div>
 
+            <div class="px-4 pt-3">
+                <div class="alert {{ !empty($attendanceNoteEnabled) ? 'alert-success' : 'alert-secondary' }} py-2 px-3 mb-0" style="font-size: 0.9rem;">
+                    <i class="fas {{ !empty($attendanceNoteEnabled) ? 'fa-toggle-on' : 'fa-toggle-off' }} me-2"></i>
+                    @if(!empty($attendanceNoteEnabled))
+                        Assiduite activee : les moyennes de la liste incluent le bonus/malus d'assiduite.
+                    @else
+                        Assiduite desactivee : les moyennes de la liste sont affichees sans bonus/malus.
+                    @endif
+                </div>
+            </div>
+
             {{-- Instructions initiales --}}
             <div id="initial-instructions" class="{{ (isset($classe_id) || isset($annee_universitaire_id)) ? 'd-none' : '' }}">
                 <div class="sr-empty">

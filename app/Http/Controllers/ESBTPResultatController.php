@@ -152,6 +152,7 @@ class ESBTPResultatController extends Controller
         $moyennes = []; // Empty for initial load
         $rangs = []; // Empty for initial load
         $bulletins = []; // Empty for initial load
+        $attendanceNoteEnabled = $this->bulletinService->isAttendanceNoteEnabled();
 
         // Les moyennes et rangs sont maintenant calculés uniquement à partir de vraies données
 
@@ -175,7 +176,8 @@ class ESBTPResultatController extends Controller
             'rangs',
             'bulletins',
             'totalEtudiants',
-            'include_all_statuses'
+            'include_all_statuses',
+            'attendanceNoteEnabled'
         ));
     }
 
@@ -1031,6 +1033,7 @@ class ESBTPResultatController extends Controller
                 'annee_id' => $annee_universitaire_id,
                 'detail_periode' => $detail_periode,
                 'include_all_statuses' => (bool) $include_all_statuses,
+                'attendanceNoteEnabled' => $this->bulletinService->isAttendanceNoteEnabled(),
             ];
 
             if ((int) $page === 1) {
