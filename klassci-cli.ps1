@@ -306,6 +306,126 @@ function New-KlassciQueryString {
     return "?" + ($pairs -join "&")
 }
 
+function Get-BtsSemesterSnapshot {
+    param(
+        [hashtable]$Config,
+        [string]$EtudiantId,
+        [string]$ClasseId,
+        [string]$AnneeUniversitaireId,
+        [string]$Periode
+    )
+
+    $query = @{
+        "classe_id" = $ClasseId
+        "annee_universitaire_id" = $AnneeUniversitaireId
+        "periode" = $Periode
+    }
+
+    $path = "/resultats/etudiant/{0}/bulletin-consistency-diagnose{1}" -f $EtudiantId, (New-KlassciQueryString -Query $query)
+    return Invoke-KlassciApi -Method "GET" -Path $path -Config $Config
+}
+
+function Get-BtsAnnualSnapshotReport {
+    param(
+        [hashtable]$Config,
+        [string]$EtudiantId,
+        [string]$ClasseId,
+        [string]$AnneeUniversitaireId,
+        [string]$IncludeAllStatuses = "1"
+    )
+
+    $diagQuery = @{
+        "classe_id" = $ClasseId
+        "annee_universitaire_id" = $AnneeUniversitaireId
+        "periode" = "annuel"
+        "include_all_statuses" = $IncludeAllStatuses
+    }
+
+    $diagPath = "/resultats/etudiant/{0}/diagnose{1}" -f $EtudiantId, (New-KlassciQueryString -Query $diagQuery)
+    $diagnose = Invoke-KlassciApi -Method "GET" -Path $diagPath -Config $Config
+
+    $s1 = Get-BtsSemesterSnapshot -Config $Config -EtudiantId $EtudiantId -ClasseId $ClasseId -AnneeUniversitaireId $AnneeUniversitaireId -Periode "semestre1"
+    $s2 = Get-BtsSemesterSnapshot -Config $Config -EtudiantId $EtudiantId -ClasseId $ClasseId -AnneeUniversitaireId $AnneeUniversitaireId -Periode "semestre2"
+
+    $s1Current = $s1.data.snapshot.diagnostic.current
+    $s2Current = $s2.data.snapshot.diagnostic.current
+    $weights = $diagnose.data.averages.semester_weights
+
+    $s1Effective = if ($null -ne $s1Current) { $s1Current.effective_total } else { $null }
+    $s2Effective = if ($null -ne $s2Current) { $s2Current.effective_total } else { $null }
+    $s1Raw = if ($null -ne $s1Current) { $s1Current.raw_total } else { $null }
+    $s2Raw = if ($null -ne $s2Current) { $s2Current.raw_total } else { $null }
+
+    $annualState = "no_data"
+    $annualEffective = $null
+    $annualRaw = $null
+    $primarySemester = $null
+
+    if ($null -ne $s1Effective -and $null -ne $s2Effective) {
+        $totalWeight = [double]$weights.semester1 + [double]$weights.semester2
+        if ($totalWeight -gt 0) {
+            $annualEffective = [Math]::Round((([double]$s1Effective * [double]$weights.semester1) + ([double]$s2Effective * [double]$weights.semester2)) / $totalWeight, 2)
+            $annualRaw = [Math]::Round((([double]$s1Raw * [double]$weights.semester1) + ([double]$s2Raw * [double]$weights.semester2)) / $totalWeight, 2)
+            $annualState = "annual_complete"
+        }
+    } elseif ($null -ne $s1Effective) {
+        $annualState = "annual_incomplete"
+        $annualEffective = $s1Effective
+        $annualRaw = $s1Raw
+        $primarySemester = "semestre1"
+    } elseif ($null -ne $s2Effective) {
+        $annualState = "annual_incomplete"
+        $annualEffective = $s2Effective
+        $annualRaw = $s2Raw
+        $primarySemester = "semestre2"
+    }
+
+    $annualRows = @()
+    if ($diagnose.data.resultats_summary.by_class_and_periode) {
+        $annualRows = @($diagnose.data.resultats_summary.by_class_and_periode | Where-Object { $_.periode -eq "annuel" })
+    }
+
+    return [PSCustomObject]@{
+        student = $diagnose.data.student
+        context = [PSCustomObject]@{
+            classe_id = $ClasseId
+            annee_universitaire_id = $AnneeUniversitaireId
+            include_all_statuses = $IncludeAllStatuses
+        }
+        diagnose_annual = $diagnose.data.averages.requested_class
+        semester_weights = $weights
+        semester_snapshots = [PSCustomObject]@{
+            semestre1 = [PSCustomObject]@{
+                effective_total = $s1Effective
+                raw_total = $s1Raw
+                current_state = $s1.data.snapshot.current_state
+                current_subjects = $s1.data.snapshot.current_subjects
+            }
+            semestre2 = [PSCustomObject]@{
+                effective_total = $s2Effective
+                raw_total = $s2Raw
+                current_state = $s2.data.snapshot.current_state
+                current_subjects = $s2.data.snapshot.current_subjects
+            }
+        }
+        canonical_annual = [PSCustomObject]@{
+            state = $annualState
+            effective_total = $annualEffective
+            raw_total = $annualRaw
+            primary_semester = $primarySemester
+        }
+        stored_resultats_rows = [PSCustomObject]@{
+            total = $diagnose.data.resultats_summary.total
+            annual_rows = $annualRows
+            by_class_and_periode = $diagnose.data.resultats_summary.by_class_and_periode
+        }
+        stored_bulletins_rows = [PSCustomObject]@{
+            total = $diagnose.data.bulletins_summary.total
+            entries = $diagnose.data.bulletins_summary.entries
+        }
+    }
+}
+
 switch ($Command) {
     "doctor" {
         if ($Json.IsPresent) {
@@ -381,6 +501,22 @@ switch ($Command) {
         Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
         break
     }
+    "resultats:bts-annual-snapshot" {
+        if ($ExtraArgs.Count -lt 3) {
+            throw "Usage: .\klassci-cli.ps1 resultats:bts-annual-snapshot [tenant] <etudiant_id> <classe_id> <annee_universitaire_id> [include_all_statuses]"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $includeAllStatuses = if ($ExtraArgs.Count -ge 4) { $ExtraArgs[3] } else { "1" }
+
+        Get-BtsAnnualSnapshotReport `
+            -Config $cfg `
+            -EtudiantId $ExtraArgs[0] `
+            -ClasseId $ExtraArgs[1] `
+            -AnneeUniversitaireId $ExtraArgs[2] `
+            -IncludeAllStatuses $includeAllStatuses | ConvertTo-Json -Depth 12
+        break
+    }
     default {
         Write-Host "Usage:" -ForegroundColor Yellow
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
@@ -393,6 +529,7 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 lmd:coverage [presentation]"
         Write-Host "  .\klassci-cli.ps1 resultats:diagnose [presentation] <etudiant_id> [classe_id] [annee_universitaire_id] [periode] [include_all_statuses]"
         Write-Host "  .\klassci-cli.ps1 resultats:bulletin-consistency-diagnose [presentation] <etudiant_id> <classe_id> <annee_universitaire_id> <periode>"
+        Write-Host "  .\klassci-cli.ps1 resultats:bts-annual-snapshot [presentation] <etudiant_id> <classe_id> <annee_universitaire_id> [include_all_statuses]"
         exit 1
     }
 }
