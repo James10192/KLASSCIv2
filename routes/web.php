@@ -2065,6 +2065,10 @@ Route::middleware(['auth', 'permission:admin.access'])->group(function () {
         ->name('esbtp.bulletins.pdf-params-preview')
         ->middleware('throttle:60,1');
     Route::get('/esbtp-special/bulletins-check', [ESBTPBulletinController::class, 'checkBulletinPrerequisites'])->name('esbtp.bulletins.check-prerequisites');
+    Route::get('/esbtp-special/bulletins-check-consistency', [ESBTPBulletinController::class, 'checkBulletinConsistency'])->name('esbtp.bulletins.check-consistency');
+    Route::post('/esbtp-special/bulletins-regenerate', [ESBTPBulletinController::class, 'regenerateOfficialBulletin'])
+        ->middleware('permission:bulletins.edit')
+        ->name('esbtp.bulletins.regenerate');
     Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'previewBulletin'])->name('esbtp.bulletins.preview');
     Route::post('/esbtp/bulletins/generer-classe', [ESBTPBulletinController::class, 'genererClasseBulletins'])->name('esbtp.bulletins.generer-classe');
 

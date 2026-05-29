@@ -18,6 +18,7 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Services\ESBTP\BulletinConsistencyService;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use Carbon\Carbon;
 use App\Http\Requests\Bulletin\BulkUpdateMoyennesRequest;
@@ -47,11 +48,17 @@ class ESBTPResultatController extends Controller
 {
     private $absenceService;
     private $bulletinService;
+    private $bulletinConsistencyService;
 
-    public function __construct(\App\Services\ESBTP\ESBTPAbsenceService $absenceService, \App\Services\BulletinService $bulletinService)
+    public function __construct(
+        \App\Services\ESBTP\ESBTPAbsenceService $absenceService,
+        \App\Services\BulletinService $bulletinService,
+        BulletinConsistencyService $bulletinConsistencyService
+    )
     {
         $this->absenceService = $absenceService;
         $this->bulletinService = $bulletinService;
+        $this->bulletinConsistencyService = $bulletinConsistencyService;
     }
 
     public function resultats(ResultatsFilterRequest $request)
@@ -489,6 +496,33 @@ class ESBTPResultatController extends Controller
 
         // Utiliser le bon nom de variable pour compatibilité avec la vue
         $anneesUniversitaires = $annees_universitaires;
+        $bulletinConsistencyByStudent = [];
+        $bulletinConsistencySummary = [
+            'official' => 0,
+            'stale' => 0,
+        ];
+
+        if (in_array($periode, ['semestre1', 'semestre2'], true) && $students->isNotEmpty()) {
+            $bulletinConsistencyByStudent = $this->bulletinConsistencyService->getSnapshotsForStudents(
+                $students->pluck('id')->all(),
+                $classe->id,
+                $annee_universitaire_id,
+                $periode
+            );
+
+            foreach ($bulletinConsistencyByStudent as $snapshot) {
+                if (! ($snapshot['official_bulletin_exists'] ?? false)) {
+                    continue;
+                }
+
+                if ($snapshot['has_divergence'] ?? false) {
+                    $bulletinConsistencySummary['stale']++;
+                    continue;
+                }
+
+                $bulletinConsistencySummary['official']++;
+            }
+        }
 
         return view('esbtp.resultats.classe', compact(
             'classe',
@@ -503,7 +537,9 @@ class ESBTPResultatController extends Controller
             'anneeUniversitaire',
             'resultats',
             'include_all_statuses',
-            'afficherNoteAssiduite'
+            'afficherNoteAssiduite',
+            'bulletinConsistencyByStudent',
+            'bulletinConsistencySummary'
         ));
     }
 
@@ -832,6 +868,14 @@ class ESBTPResultatController extends Controller
         $detailUiState = $this->buildAnnualDetailUiState($periode, $moyenneSemestre1, $moyenneSemestre2, $moyenneAnnuelle);
         $bulletinWorkflowPeriode = $detailUiState['bulletin_workflow_periode'];
         $bulletinWorkflowPeriodeLabel = $detailUiState['bulletin_workflow_periode_label'];
+        $bulletinConsistency = $classe
+            ? $this->bulletinConsistencyService->getSnapshot(
+                $etudiant->id,
+                $classe->id,
+                $annee_universitaire_id,
+                $bulletinWorkflowPeriode
+            )
+            : null;
 
         return view('esbtp.resultats.etudiant', compact(
             'etudiant',
@@ -858,7 +902,8 @@ class ESBTPResultatController extends Controller
             'include_all_statuses',
             'detailUiState',
             'bulletinWorkflowPeriode',
-            'bulletinWorkflowPeriodeLabel'
+            'bulletinWorkflowPeriodeLabel',
+            'bulletinConsistency'
         ));
     }
 

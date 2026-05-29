@@ -239,6 +239,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/inscriptions', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'inscriptions'])->name('inscriptions');
     Route::get('/resultats/etudiant/{id}/diagnose', [App\Http\Controllers\API\CLI\CLIResultatController::class, 'studentDiagnose'])
         ->name('resultats.student.diagnose');
+    Route::get('/resultats/etudiant/{id}/bulletin-consistency-diagnose', [App\Http\Controllers\API\CLI\CLIResultatController::class, 'bulletinConsistencyDiagnose'])
+        ->name('resultats.student.bulletin-consistency-diagnose');
 
     // Read endpoints — Academic years
     Route::get('/annee', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'annee'])->name('annee');

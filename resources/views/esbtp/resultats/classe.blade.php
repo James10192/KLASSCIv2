@@ -108,6 +108,17 @@
             </div>
         </div>
 
+        @if(($bulletinConsistencySummary['official'] ?? 0) > 0 || ($bulletinConsistencySummary['stale'] ?? 0) > 0)
+            <div class="sr-bulletin-summary sr-animate sr-animate-delay-1">
+                @if(($bulletinConsistencySummary['official'] ?? 0) > 0)
+                    <span class="sr-bulletin-chip">Officiel {{ $bulletinConsistencySummary['official'] }}</span>
+                @endif
+                @if(($bulletinConsistencySummary['stale'] ?? 0) > 0)
+                    <span class="sr-bulletin-chip sr-bulletin-chip--warning">À régénérer {{ $bulletinConsistencySummary['stale'] }}</span>
+                @endif
+            </div>
+        @endif
+
         {{-- Filtres --}}
         <div class="sr-filter-bar sr-animate sr-animate-delay-2">
             <form id="rc-filter-form" class="filter-form">
@@ -181,6 +192,7 @@
                                     $moyenne = $resultat['moyenne_avec_assiduite'] ?? $resultat['moyenne'];
                                     $notesCount = $resultat['notes_count'];
                                     $noteAssid = $resultat['note_assiduite'] ?? 0;
+                                    $bulletinStatus = $bulletinConsistencyByStudent[$etudiant->id] ?? null;
                                 @endphp
                                 <tr>
                                     <td class="text-center">
@@ -245,6 +257,13 @@
                                             @endif
                                         @else
                                             <span class="sr-appreciation" style="background: var(--sr-border); color: var(--sr-muted);">Aucune note</span>
+                                        @endif
+                                        @if($bulletinStatus && ($bulletinStatus['official_bulletin_exists'] ?? false))
+                                            <div class="mt-2">
+                                                <span class="sr-bulletin-chip {{ $bulletinStatus['has_divergence'] ? 'sr-bulletin-chip--warning' : '' }}">
+                                                    {{ $bulletinStatus['has_divergence'] ? 'À régénérer' : 'Officiel' }}
+                                                </span>
+                                            </div>
                                         @endif
                                     </td>
                                     <td class="text-end">

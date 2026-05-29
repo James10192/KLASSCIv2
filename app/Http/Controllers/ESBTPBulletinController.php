@@ -18,6 +18,7 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Services\ESBTP\BulletinConsistencyService;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use Carbon\Carbon;
 use App\Http\Requests\Bulletin\BulkUpdateMoyennesRequest;
@@ -44,10 +45,17 @@ class ESBTPBulletinController extends Controller
 
     protected $bulletinService;
 
-    public function __construct(ESBTPAbsenceService $absenceService, \App\Services\BulletinService $bulletinService)
+    protected $bulletinConsistencyService;
+
+    public function __construct(
+        ESBTPAbsenceService $absenceService,
+        \App\Services\BulletinService $bulletinService,
+        BulletinConsistencyService $bulletinConsistencyService
+    )
     {
         $this->absenceService = $absenceService;
         $this->bulletinService = $bulletinService;
+        $this->bulletinConsistencyService = $bulletinConsistencyService;
     }
 
     /**
@@ -1369,6 +1377,24 @@ class ESBTPBulletinController extends Controller
             $etudiant_id = $request->etudiant_id ?? $request->bulletin;
             $periode = $request->periode ?? 'semestre1';
             $annee_universitaire_id = $request->annee_universitaire_id;
+            $forceOfficial = $request->boolean('use_official');
+
+            $consistency = null;
+            if ($classe_id && $etudiant_id && $annee_universitaire_id) {
+                $consistency = $this->bulletinConsistencyService->getSnapshot(
+                    (int) $etudiant_id,
+                    (int) $classe_id,
+                    (int) $annee_universitaire_id,
+                    (string) $periode
+                );
+            }
+
+            if (($forceOfficial || ($consistency['official_bulletin_exists'] ?? false) && ! ($consistency['has_divergence'] ?? false))
+                && ! empty($consistency['official_bulletin_id'])) {
+                $officialBulletin = ESBTPBulletin::findOrFail($consistency['official_bulletin_id']);
+
+                return $this->genererPDF($officialBulletin, $inline);
+            }
 
             // Utiliser le BulletinService unifié pour générer les données
             $donnees = $this->bulletinService->genererDonneesBulletin(
@@ -1507,6 +1533,97 @@ class ESBTPBulletinController extends Controller
             'ok' => true,
             'warnings' => $warnings,
         ]);
+    }
+
+    public function checkBulletinConsistency(Request $request)
+    {
+        $classeId = (int) $request->input('classe_id');
+        $etudiantId = (int) ($request->input('etudiant_id') ?? $request->input('bulletin'));
+        $periode = (string) ($request->input('periode') ?? 'semestre1');
+        $anneeId = (int) $request->input('annee_universitaire_id');
+        $action = (string) $request->input('action', 'download_pdf');
+
+        $consistency = $this->bulletinConsistencyService->getSnapshot($etudiantId, $classeId, $anneeId, $periode);
+        $warnings = [];
+
+        if ($consistency['official_bulletin_exists'] && $consistency['has_divergence']) {
+            $warnings[] = [
+                'type' => 'warning',
+                'title' => 'Bulletin officiel obsolète',
+                'message' => 'Les notes actuelles ne correspondent plus au bulletin officiel enregistré.',
+            ];
+        }
+
+        $resolvedUrl = $this->resolveConsistencyActionUrl($action, $consistency, [
+            'bulletin' => $etudiantId,
+            'classe_id' => $classeId,
+            'periode' => $periode,
+            'annee_universitaire_id' => $anneeId,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'warnings' => $warnings,
+            'consistency' => $consistency,
+            'message' => $consistency['user_message'],
+            'resolved_url' => $resolvedUrl['resolved_url'],
+            'official_url' => $resolvedUrl['official_url'],
+            'current_url' => $resolvedUrl['current_url'],
+            'regenerate_url' => route('esbtp.bulletins.regenerate'),
+            'can_regenerate' => Auth::user()?->can('bulletins.edit') ?? false,
+        ]);
+    }
+
+    public function regenerateOfficialBulletin(Request $request)
+    {
+        abort_unless(Auth::check() && Auth::user()->can('bulletins.edit'), 403);
+
+        $validated = $request->validate([
+            'classe_id' => 'required|integer|exists:esbtp_classes,id',
+            'etudiant_id' => 'required|integer|exists:esbtp_etudiants,id',
+            'annee_universitaire_id' => 'required|integer|exists:esbtp_annee_universitaires,id',
+            'periode' => 'required|string|in:1,2,semestre1,semestre2',
+        ]);
+
+        try {
+            $consistency = $this->bulletinConsistencyService->regenerateOfficialBulletin(
+                (int) $validated['etudiant_id'],
+                (int) $validated['classe_id'],
+                (int) $validated['annee_universitaire_id'],
+                (string) $validated['periode']
+            );
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Le bulletin officiel a été régénéré avec les données courantes.',
+                'consistency' => $consistency,
+            ]);
+        } catch (CoefficientMissingException $e) {
+            $context = $this->buildCoefficientIssueContext($e->getContext(), $request);
+
+            return response()->json([
+                'ok' => false,
+                'message' => $this->formatCoefficientIssueMessage($context),
+                'redirect_url' => $context['config_url'] ?? null,
+                'context' => $context,
+            ], 422);
+        } catch (\Exception $e) {
+            $redirectUrl = null;
+            if (str_contains($e->getMessage(), 'Configuration bulletin manquante')) {
+                $redirectUrl = route('esbtp.bulletins.config-matieres', [
+                    'classe_id' => $validated['classe_id'],
+                    'periode' => $validated['periode'],
+                    'annee_universitaire_id' => $validated['annee_universitaire_id'],
+                    'bulletin' => $validated['etudiant_id'],
+                ]);
+            }
+
+            return response()->json([
+                'ok' => false,
+                'message' => $e->getMessage(),
+                'redirect_url' => $redirectUrl,
+            ], 422);
+        }
     }
 
     /**
@@ -1750,6 +1867,40 @@ class ESBTPBulletinController extends Controller
         }
 
         return "Coefficient manquant pour {$matiereName}. Configurez les coefficients avant de continuer.";
+    }
+
+    private function resolveConsistencyActionUrl(string $action, array $consistency, array $params): array
+    {
+        $currentUrl = match ($action) {
+            'preview_pdf' => route('esbtp.bulletins.pdf-params-preview', $params),
+            'web_preview' => route('esbtp.resultats.etudiant.preview', ['etudiant' => $params['bulletin']]) . '?' . http_build_query([
+                'classe_id' => $params['classe_id'],
+                'annee_universitaire_id' => $params['annee_universitaire_id'],
+                'periode' => $params['periode'],
+            ]),
+            default => route('esbtp.bulletins.pdf-params', $params),
+        };
+
+        $officialUrl = null;
+        if (! empty($consistency['official_bulletin_id'])) {
+            $officialUrl = match ($action) {
+                'preview_pdf' => route('esbtp.bulletins.preview-pdf', $consistency['official_bulletin_id']),
+                default => route('esbtp.bulletins.download', $consistency['official_bulletin_id']),
+            };
+        }
+
+        $resolvedUrl = $currentUrl;
+        if (($consistency['official_bulletin_exists'] ?? false)
+            && ! ($consistency['has_divergence'] ?? false)
+            && $officialUrl) {
+            $resolvedUrl = $officialUrl;
+        }
+
+        return [
+            'resolved_url' => $resolvedUrl,
+            'official_url' => $officialUrl,
+            'current_url' => $currentUrl,
+        ];
     }
 
     /**

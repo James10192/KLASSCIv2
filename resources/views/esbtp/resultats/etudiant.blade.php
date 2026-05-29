@@ -82,7 +82,8 @@
 <div class="dashboard-acasi">
     <div class="main-content" id="etudiant-resultats-content"
          data-etudiant-id="{{ $etudiant->id }}"
-         data-route-base="{{ route('esbtp.resultats.etudiant', $etudiant) }}">
+         data-route-base="{{ route('esbtp.resultats.etudiant', $etudiant) }}"
+         data-regenerate-url="{{ route('esbtp.bulletins.regenerate') }}">
 
         {{-- 1. Hero Header --}}
         <div class="sr-hero sr-animate">
@@ -123,20 +124,23 @@
                         @php $_resBulletinParams = ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $bulletinWorkflowPeriode, 'annee_universitaire_id' => $annee_id]; @endphp
                         <a href="{{ route('esbtp.resultats.etudiant.preview', ['etudiant' => $etudiant->id]) }}?classe_id={{ $classe->id }}&annee_universitaire_id={{ $annee_id }}&periode={{ $bulletinWorkflowPeriode }}"
                            class="sr-hero-btn"
-                           data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_resBulletinParams) }}"
+                           data-check-url="{{ route('esbtp.bulletins.check-consistency', $_resBulletinParams) }}"
+                           data-consistency-action="web_preview"
                            onclick="return srCheckBeforePDF(event, this);">
                             <i class="fas fa-window-restore"></i>Vue web{{ $currentPeriodeKey === 'annuel' ? ' ' . $bulletinWorkflowPeriodeLabel : '' }}
                         </a>
                         <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_resBulletinParams) }}"
                            class="sr-hero-btn--solid sr-hero-btn sr-pdf-link"
                            target="_blank"
-                           data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_resBulletinParams) }}"
+                           data-check-url="{{ route('esbtp.bulletins.check-consistency', $_resBulletinParams) }}"
+                           data-consistency-action="preview_pdf"
                            onclick="return srCheckBeforePDF(event, this);">
                             <i class="fas fa-eye"></i>Aperçu PDF{{ $currentPeriodeKey === 'annuel' ? ' ' . $bulletinWorkflowPeriodeLabel : '' }}
                         </a>
                         <a href="{{ route('esbtp.bulletins.pdf-params', $_resBulletinParams) }}"
                            class="sr-hero-btn sr-hero-btn--danger sr-pdf-link"
-                           data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_resBulletinParams) }}"
+                           data-check-url="{{ route('esbtp.bulletins.check-consistency', $_resBulletinParams) }}"
+                           data-consistency-action="download_pdf"
                            onclick="return srCheckBeforePDF(event, this);">
                             <i class="fas fa-file-pdf"></i>PDF{{ $currentPeriodeKey === 'annuel' ? ' ' . $bulletinWorkflowPeriodeLabel : '' }}
                         </a>
@@ -186,6 +190,51 @@
             </button>
         </div>
 
+        @if(isset($bulletinConsistency) && $bulletinConsistency)
+            <div class="sr-bulletin-banner sr-bulletin-banner--{{ $bulletinConsistency['status'] === 'official_exists_but_stale' ? 'warning' : ($bulletinConsistency['status'] === 'aligned' ? 'info' : 'muted') }} sr-animate sr-animate-delay-1">
+                <div class="sr-bulletin-banner__icon">
+                    <i class="fas fa-{{ $bulletinConsistency['status'] === 'official_exists_but_stale' ? 'triangle-exclamation' : ($bulletinConsistency['status'] === 'aligned' ? 'shield-check' : 'file-circle-plus') }}"></i>
+                </div>
+                <div class="sr-bulletin-banner__body">
+                    <div class="sr-bulletin-banner__title">
+                        @if($bulletinConsistency['status'] === 'aligned')
+                            Bulletin officiel existant
+                        @elseif($bulletinConsistency['status'] === 'official_exists_but_stale')
+                            Bulletin officiel à régénérer
+                        @else
+                            Aucun bulletin officiel
+                        @endif
+                    </div>
+                    <p class="sr-bulletin-banner__text">{{ $bulletinConsistency['user_message'] }}</p>
+                    <div class="sr-bulletin-banner__meta">
+                        @if($bulletinConsistency['official_bulletin_exists'])
+                            <span class="sr-bulletin-chip">Bulletin #{{ $bulletinConsistency['official_bulletin_id'] }}</span>
+                            <span class="sr-bulletin-chip">Officiel {{ number_format($bulletinConsistency['official_effective_total'] ?? 0, 2) }}/20</span>
+                        @endif
+                        @if(($bulletinConsistency['current_recomputed_effective_total'] ?? null) !== null)
+                            <span class="sr-bulletin-chip">Courant {{ number_format($bulletinConsistency['current_recomputed_effective_total'], 2) }}/20</span>
+                        @endif
+                        @if($bulletinConsistency['has_divergence'] && ($bulletinConsistency['difference_value'] ?? null) !== null)
+                            <span class="sr-bulletin-chip sr-bulletin-chip--warning">Delta {{ $bulletinConsistency['difference_value'] > 0 ? '+' : '' }}{{ number_format($bulletinConsistency['difference_value'], 2) }}</span>
+                        @endif
+                    </div>
+                </div>
+                @can('bulletins.edit')
+                    @if($bulletinConsistency['official_bulletin_exists'] && $bulletinConsistency['has_divergence'])
+                        <button type="button"
+                                class="sr-bulletin-banner__cta"
+                                data-regenerate-bulletin="1"
+                                data-etudiant-id="{{ $etudiant->id }}"
+                                data-classe-id="{{ $classe->id }}"
+                                data-annee-id="{{ $annee_id }}"
+                                data-periode="{{ $bulletinWorkflowPeriode }}">
+                            <i class="fas fa-rotate-right"></i>Régénérer le bulletin
+                        </button>
+                    @endif
+                @endcan
+            </div>
+        @endif
+
         {{-- 3+4. Layout deux colonnes --}}
         <div class="row mb-4">
             <div class="col-lg-4 mb-3 mb-lg-0">
@@ -229,9 +278,14 @@
                 <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
                     <i class="fas fa-times me-1"></i>Annuler
                 </button>
-                <button type="button" id="srWarningProceedBtn" class="btn btn-warning" style="border-radius: 8px; font-weight: 600; color: white;"
-                        onclick="var url = this.dataset.pdfUrl; if(url) { try { var m = bootstrap.Modal.getInstance(document.getElementById('srBulletinWarningModal')); if(m) m.hide(); } catch(e) {} window.location.href = url; }">
-                    <i class="fas fa-check me-1"></i><span id="srWarningProceedText">Continuer quand même</span>
+                <button type="button" id="srWarningOfficialBtn" class="btn btn-outline-primary" style="border-radius: 8px; display: none;">
+                    <i class="fas fa-file-lines me-1"></i><span>Voir la version officielle</span>
+                </button>
+                <button type="button" id="srWarningRegenerateBtn" class="btn btn-warning" style="border-radius: 8px; font-weight: 600; color: white; display: none;">
+                    <i class="fas fa-rotate-right me-1"></i><span>Régénérer le bulletin</span>
+                </button>
+                <button type="button" id="srWarningProceedBtn" class="btn btn-warning" style="border-radius: 8px; font-weight: 600; color: white; display: none;">
+                    <i class="fas fa-check me-1"></i><span id="srWarningProceedText">Continuer</span>
                 </button>
             </div>
         </div>
@@ -243,6 +297,12 @@
 <script>
 (function() {
     'use strict';
+    var srBulletinModalState = {
+        currentUrl: null,
+        officialUrl: null,
+        action: null,
+        payload: null
+    };
 
     // ═══ Init function — called on page load AND after AJAX swap ═══
     function initStudentResults() {
@@ -303,6 +363,19 @@
                 new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false }).show();
             }
         }
+
+        document.querySelectorAll('[data-regenerate-bulletin="1"]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                srRegenerateBulletin({
+                    etudiant_id: this.dataset.etudiantId,
+                    classe_id: this.dataset.classeId,
+                    annee_universitaire_id: this.dataset.anneeId,
+                    periode: this.dataset.periode
+                }, function() {
+                    srSubmitFilter();
+                });
+            });
+        });
     }
 
     // ═══ AJAX content swap ═══
@@ -381,59 +454,138 @@
         event.preventDefault();
 
         var checkUrl = link.dataset.checkUrl;
-        var pdfUrl = link.href;
+        var targetUrl = link.href;
+        var action = link.dataset.consistencyAction || 'download_pdf';
 
         if (!checkUrl) {
-            window.location.href = pdfUrl;
+            window.location.href = targetUrl;
             return false;
         }
 
-        fetch(checkUrl, {
+        fetch(checkUrl + '&action=' + encodeURIComponent(action), {
             headers: { 'X-Requested-With': 'XMLHttpRequest' }
         })
         .then(function(res) { return res.json(); })
         .then(function(data) {
-            if (data.warnings && data.warnings.length > 0) {
-                // Show warning modal
-                var title = document.getElementById('srWarningModalTitle');
-                var body = document.getElementById('srWarningModalBody');
-                var proceedBtn = document.getElementById('srWarningProceedBtn');
-
-                if (title) title.textContent = data.warnings[0].title || 'Attention';
-
-                if (body) {
-                    body.innerHTML = '';
-                    data.warnings.forEach(function(w) {
-                        var row = document.createElement('div');
-                        row.style.cssText = 'display:flex;gap:0.75rem;align-items:flex-start;padding:0.75rem;background:#fffbeb;border:1px solid #fde68a;border-radius:10px;margin-bottom:0.5rem;';
-                        var icon = document.createElement('i');
-                        icon.className = 'fas fa-' + (w.type === 'warning' ? 'exclamation-triangle' : 'info-circle');
-                        icon.style.cssText = 'color:' + (w.type === 'warning' ? '#d97706' : '#0453cb') + ';margin-top:0.15rem;flex-shrink:0;';
-                        var p = document.createElement('p');
-                        p.style.cssText = 'margin:0;font-size:0.875rem;color:#1e293b;line-height:1.5;';
-                        p.textContent = w.message;
-                        row.appendChild(icon);
-                        row.appendChild(p);
-                        body.appendChild(row);
-                    });
-                }
-
-                if (proceedBtn) proceedBtn.dataset.pdfUrl = pdfUrl;
-
-                var modal = new bootstrap.Modal(document.getElementById('srBulletinWarningModal'));
-                modal.show();
-            } else {
-                // No warnings, proceed directly
-                window.location.href = pdfUrl;
+            if (data.consistency && data.consistency.official_bulletin_exists && data.consistency.has_divergence) {
+                srBulletinModalState.currentUrl = data.current_url || targetUrl;
+                srBulletinModalState.officialUrl = data.official_url || null;
+                srBulletinModalState.action = action;
+                srBulletinModalState.payload = {
+                    etudiant_id: document.getElementById('etudiant-resultats-content').dataset.etudiantId,
+                    classe_id: new URL(targetUrl, window.location.origin).searchParams.get('classe_id'),
+                    annee_universitaire_id: new URL(targetUrl, window.location.origin).searchParams.get('annee_universitaire_id'),
+                    periode: new URL(targetUrl, window.location.origin).searchParams.get('periode')
+                };
+                srShowConsistencyModal(data);
+                return;
             }
+
+            window.location.href = data.resolved_url || targetUrl;
         })
         .catch(function() {
-            // On error, proceed anyway
-            window.location.href = pdfUrl;
+            window.location.href = targetUrl;
         });
 
         return false;
     };
+
+    function srShowConsistencyModal(data) {
+        var title = document.getElementById('srWarningModalTitle');
+        var body = document.getElementById('srWarningModalBody');
+        var officialBtn = document.getElementById('srWarningOfficialBtn');
+        var regenerateBtn = document.getElementById('srWarningRegenerateBtn');
+        var proceedBtn = document.getElementById('srWarningProceedBtn');
+
+        if (title) title.textContent = 'Bulletin officiel obsolète';
+        if (body) {
+            var consistency = data.consistency || {};
+            body.innerHTML = ''
+                + '<div class="sr-warning-block">'
+                + '<p>Le bulletin officiel est obsolète par rapport aux notes actuelles.</p>'
+                + '<p><strong>Officiel :</strong> ' + (consistency.official_effective_total ?? 'n/a') + '/20</p>'
+                + '<p><strong>Courant :</strong> ' + (consistency.current_recomputed_effective_total ?? 'n/a') + '/20</p>'
+                + '<p><strong>Écart :</strong> ' + (consistency.difference_value ?? 'n/a') + '</p>'
+                + '</div>';
+        }
+
+        if (officialBtn) {
+            officialBtn.style.display = srBulletinModalState.officialUrl ? 'inline-flex' : 'none';
+            officialBtn.onclick = function() {
+                srCloseConsistencyModal();
+                if (srBulletinModalState.officialUrl) {
+                    window.location.href = srBulletinModalState.officialUrl;
+                }
+            };
+        }
+
+        if (regenerateBtn) {
+            regenerateBtn.style.display = data.can_regenerate ? 'inline-flex' : 'none';
+            regenerateBtn.onclick = function() {
+                srRegenerateBulletin(srBulletinModalState.payload, function() {
+                    srCloseConsistencyModal();
+                    if (srBulletinModalState.currentUrl) {
+                        window.location.href = srBulletinModalState.currentUrl;
+                    }
+                });
+            };
+        }
+
+        if (proceedBtn) {
+            proceedBtn.style.display = 'none';
+        }
+
+        new bootstrap.Modal(document.getElementById('srBulletinWarningModal')).show();
+    }
+
+    function srRegenerateBulletin(payload, onSuccess) {
+        var container = document.getElementById('etudiant-resultats-content');
+        var regenerateUrl = container ? container.dataset.regenerateUrl : null;
+        var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        if (!regenerateUrl || !csrfToken) {
+            return;
+        }
+
+        fetch(regenerateUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(payload)
+        })
+        .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+        .then(function(result) {
+            if (!result.ok || !result.data.ok) {
+                if (result.data.redirect_url) {
+                    window.location.href = result.data.redirect_url;
+                    return;
+                }
+                throw new Error(result.data.message || 'Erreur de régénération');
+            }
+
+            if (typeof onSuccess === 'function') {
+                onSuccess(result.data);
+            }
+        })
+        .catch(function(error) {
+            console.error(error);
+        });
+    }
+
+    function srCloseConsistencyModal() {
+        try {
+            var modal = bootstrap.Modal.getInstance(document.getElementById('srBulletinWarningModal'));
+            if (modal) {
+                modal.hide();
+            }
+        } catch (error) {
+            console.error(error);
+        }
+    }
 
     // ═══ Handle browser back/forward ═══
     window.addEventListener('popstate', function() {

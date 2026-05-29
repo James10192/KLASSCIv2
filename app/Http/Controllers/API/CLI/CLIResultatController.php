@@ -11,12 +11,16 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Services\BulletinService;
+use App\Services\ESBTP\BulletinConsistencyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class CLIResultatController extends BaseApiController
 {
-    public function __construct(private BulletinService $bulletinService)
+    public function __construct(
+        private BulletinService $bulletinService,
+        private BulletinConsistencyService $bulletinConsistencyService
+    )
     {
         parent::__construct();
     }
@@ -252,6 +256,48 @@ class CLIResultatController extends BaseApiController
             ],
             'warnings' => $warnings,
         ], 'Student results diagnostic generated');
+    }
+
+    /**
+     * GET /api/cli/resultats/etudiant/{id}/bulletin-consistency-diagnose
+     */
+    public function bulletinConsistencyDiagnose(Request $request, int $id): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'classe_id' => 'required|integer|exists:esbtp_classes,id',
+            'annee_universitaire_id' => 'required|integer|exists:esbtp_annee_universitaires,id',
+            'periode' => 'required|string|in:1,2,semestre1,semestre2',
+        ]);
+
+        $etudiant = ESBTPEtudiant::find($id);
+        if (! $etudiant) {
+            return $this->errorResponse('Student not found', [], 404);
+        }
+
+        $snapshot = $this->bulletinConsistencyService->getSnapshot(
+            $etudiant->id,
+            (int) $validated['classe_id'],
+            (int) $validated['annee_universitaire_id'],
+            (string) $validated['periode']
+        );
+
+        return $this->successResponse([
+            'student' => [
+                'id' => $etudiant->id,
+                'matricule' => $etudiant->matricule,
+                'nom_complet' => trim($etudiant->nom . ' ' . $etudiant->prenoms),
+            ],
+            'context' => [
+                'classe_id' => (int) $validated['classe_id'],
+                'annee_universitaire_id' => (int) $validated['annee_universitaire_id'],
+                'periode' => (string) $validated['periode'],
+            ],
+            'snapshot' => $snapshot,
+        ], 'Bulletin consistency diagnostic generated');
     }
 
     private function normalizePeriode(?string $periode): ?string

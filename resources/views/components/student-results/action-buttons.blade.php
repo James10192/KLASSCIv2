@@ -72,7 +72,8 @@
                 {{-- Preview & PDF --}}
                 <a href="{{ route('esbtp.resultats.etudiant.preview', ['etudiant' => $etudiant->id]) }}?classe_id={{ $classe->id }}&annee_universitaire_id={{ $annee_id }}&periode={{ $workflowPeriode }}"
                    class="sr-action-btn"
-                   data-check-url="{{ route('esbtp.bulletins.check-prerequisites', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $workflowPeriode, 'annee_universitaire_id' => $annee_id]) }}"
+                   data-check-url="{{ route('esbtp.bulletins.check-consistency', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $workflowPeriode, 'annee_universitaire_id' => $annee_id]) }}"
+                   data-consistency-action="web_preview"
                    onclick="return srCheckBeforePDF(event, this);">
                     <div class="sr-action-btn-icon sr-action-btn-icon--success">
                         <i class="fas fa-eye"></i>
@@ -83,7 +84,8 @@
                 <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_abPdfParams) }}"
                    class="sr-action-btn sr-pdf-link"
                    target="_blank"
-                   data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_abPdfParams) }}"
+                   data-check-url="{{ route('esbtp.bulletins.check-consistency', $_abPdfParams) }}"
+                   data-consistency-action="preview_pdf"
                    onclick="return srCheckBeforePDF(event, this);">
                     <div class="sr-action-btn-icon sr-action-btn-icon--success">
                         <i class="fas fa-eye"></i>
@@ -92,7 +94,8 @@
                 </a>
                 <a href="{{ route('esbtp.bulletins.pdf-params', $_abPdfParams) }}"
                    class="sr-action-btn sr-pdf-link"
-                   data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_abPdfParams) }}"
+                   data-check-url="{{ route('esbtp.bulletins.check-consistency', $_abPdfParams) }}"
+                   data-consistency-action="download_pdf"
                    onclick="return srCheckBeforePDF(event, this);">
                     <div class="sr-action-btn-icon sr-action-btn-icon--primary">
                         <i class="fas fa-file-pdf"></i>
