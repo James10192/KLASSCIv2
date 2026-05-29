@@ -60,6 +60,14 @@
     if ($currentPeriodeKey === '1') $currentPeriodeKey = 'semestre1';
     elseif ($currentPeriodeKey === '2') $currentPeriodeKey = 'semestre2';
     $includeAllStatusesParam = isset($include_all_statuses) && $include_all_statuses ? ['include_all_statuses' => 1] : [];
+    $classeResultsQuery = [
+        'periode' => $periode,
+        'annee_universitaire_id' => $annee_id,
+    ];
+
+    if (!empty($includeAllStatusesParam)) {
+        $classeResultsQuery['include_all_statuses'] = 1;
+    }
 @endphp
 
 @section('content')
@@ -94,7 +102,7 @@
                             <a href="{{ route('esbtp.resultats.index', $includeAllStatusesParam) }}">Résultats</a>
                             <i class="fas fa-chevron-right"></i>
                             @if(isset($classe) && $classe)
-                                <a href="{{ route('esbtp.resultats.classe', ['classe' => $classe->id]) }}?periode={{ $periode }}&annee_universitaire_id={{ $annee_id }}@if(!empty($includeAllStatusesParam))&include_all_statuses=1@endif">{{ $classe->name }}</a>
+                                <a href="{{ route('esbtp.resultats.classe', ['classe' => $classe->id] + $classeResultsQuery) }}">{{ $classe->name }}</a>
                                 <i class="fas fa-chevron-right"></i>
                             @endif
                             <span>{{ $etudiant->nom }} {{ $etudiant->prenoms }}</span>
