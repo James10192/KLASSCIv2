@@ -543,6 +543,13 @@
 </div>
 
 <script>
+const attendanceNoteEnabled = @json($attendanceNoteEnabled ?? true);
+const attendanceNoteRules = @json([
+    'zero' => (float) (($attendanceNoteRules['zero_unjustified'] ?? null) ?? 0.13),
+    'one' => (float) (($attendanceNoteRules['one_unjustified'] ?? null) ?? 0.0),
+    'two_or_more' => (float) (($attendanceNoteRules['two_or_more_unjustified'] ?? null) ?? -0.13),
+]);
+
 function calculerTotalAbsences() {
     const justifiees = parseFloat(document.getElementById('absences_justifiees').value) || 0;
     const nonJustifiees = parseFloat(document.getElementById('absences_non_justifiees').value) || 0;
@@ -564,12 +571,28 @@ function calculerTotalAbsences() {
         noteAssiduite = -0.50;
     }
 
-    const noteDisplay = noteAssiduite >= 0 ? '+' + noteAssiduite.toFixed(2) : noteAssiduite.toFixed(2);
+    if (attendanceNoteEnabled) {
+        if (nonJustifiees <= 0) {
+            noteAssiduite = Number(attendanceNoteRules.zero || 0);
+        } else if (nonJustifiees < 2) {
+            noteAssiduite = Number(attendanceNoteRules.one || 0);
+        } else {
+            noteAssiduite = Number(attendanceNoteRules.two_or_more || 0);
+        }
+    } else {
+        noteAssiduite = 0;
+    }
+
+    const noteDisplay = attendanceNoteEnabled
+        ? (noteAssiduite >= 0 ? '+' + noteAssiduite.toFixed(2) : noteAssiduite.toFixed(2))
+        : 'Masquee';
     document.getElementById('note_assiduite_display').textContent = noteDisplay;
 
     // Changer la couleur selon la note
     const noteElement = document.getElementById('note_assiduite_display');
-    if (noteAssiduite >= 0) {
+    if (!attendanceNoteEnabled) {
+        noteElement.style.color = '#6b7280';
+    } else if (noteAssiduite >= 0) {
         noteElement.style.color = '#10b981';
     } else {
         noteElement.style.color = '#ef4444';
@@ -578,6 +601,23 @@ function calculerTotalAbsences() {
 
 // Calculer au chargement de la page
 document.addEventListener('DOMContentLoaded', function() {
+    const subtitle = document.querySelector('.main-card-subtitle');
+    if (subtitle) {
+        subtitle.textContent = attendanceNoteEnabled
+            ? 'Calculee selon les absences non justifiees'
+            : 'Le toggle global d\\'assiduite est actuellement desactive';
+    }
+
+    const infoBoxes = document.querySelectorAll('.main-card .info-box');
+    if (infoBoxes.length >= 3) {
+        infoBoxes[0].innerHTML = `<i class="fas fa-check-circle me-2"></i><strong>0</strong> absence non justifiee = <strong>${attendanceNoteRules.zero >= 0 ? '+' : ''}${Number(attendanceNoteRules.zero).toFixed(2)}</strong> point`;
+        infoBoxes[1].innerHTML = `<i class="fas fa-minus-circle me-2"></i><strong>1</strong> absence non justifiee = <strong>${attendanceNoteRules.one >= 0 ? '+' : ''}${Number(attendanceNoteRules.one).toFixed(2)}</strong> point`;
+        infoBoxes[2].innerHTML = `<i class="fas fa-exclamation-circle me-2"></i><strong>2+</strong> absences non justifiees = <strong>${attendanceNoteRules.two_or_more >= 0 ? '+' : ''}${Number(attendanceNoteRules.two_or_more).toFixed(2)}</strong> point`;
+        for (let index = 3; index < infoBoxes.length; index += 1) {
+            infoBoxes[index].style.display = attendanceNoteEnabled ? 'none' : '';
+        }
+    }
+
     calculerTotalAbsences();
 });
 </script>

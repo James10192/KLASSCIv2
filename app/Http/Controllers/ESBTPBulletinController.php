@@ -644,7 +644,7 @@ class ESBTPBulletinController extends Controller
             $semesterWeights = $this->bulletinService->getSemesterWeights();
             $periodeCourante = $bulletin->periode;
             $moyenneAvecAssiduite = $moyenneGenerale + ($noteAssiduite ?? 0);
-            $moyenneSemestre1 = $this->bulletinService->getBulletinAverageForPeriode(
+            $moyenneSemestre1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
                 $bulletin->etudiant_id,
                 $bulletin->classe_id,
                 $bulletin->annee_universitaire_id,
@@ -652,7 +652,7 @@ class ESBTPBulletinController extends Controller
                 $periodeCourante,
                 $moyenneAvecAssiduite
             );
-            $moyenneSemestre2 = $this->bulletinService->getBulletinAverageForPeriode(
+            $moyenneSemestre2 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
                 $bulletin->etudiant_id,
                 $bulletin->classe_id,
                 $bulletin->annee_universitaire_id,

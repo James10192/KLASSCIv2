@@ -23,6 +23,12 @@ use Illuminate\Support\Facades\Storage;
 
 class BulletinService
 {
+    private const ATTENDANCE_NOTE_DEFAULTS = [
+        'attendance_note_zero_unjustified' => '0.13',
+        'attendance_note_one_unjustified' => '0.00',
+        'attendance_note_two_or_more_unjustified' => '-0.13',
+    ];
+
     private $absenceService;
 
     private array $coefficientCache = [];
@@ -32,6 +38,150 @@ class BulletinService
     public function __construct(ESBTPAbsenceService $absenceService)
     {
         $this->absenceService = $absenceService;
+    }
+
+    public function isAttendanceNoteEnabled(): bool
+    {
+        return SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
+    }
+
+    public function getAttendanceNoteSettings(): array
+    {
+        return [
+            'zero_unjustified' => (float) SettingsHelper::get(
+                'attendance_note_zero_unjustified',
+                self::ATTENDANCE_NOTE_DEFAULTS['attendance_note_zero_unjustified']
+            ),
+            'one_unjustified' => (float) SettingsHelper::get(
+                'attendance_note_one_unjustified',
+                self::ATTENDANCE_NOTE_DEFAULTS['attendance_note_one_unjustified']
+            ),
+            'two_or_more_unjustified' => (float) SettingsHelper::get(
+                'attendance_note_two_or_more_unjustified',
+                self::ATTENDANCE_NOTE_DEFAULTS['attendance_note_two_or_more_unjustified']
+            ),
+        ];
+    }
+
+    public function resolveAttendanceNote($absencesJustifiees, $absencesNonJustifiees): float
+    {
+        if (! $this->isAttendanceNoteEnabled()) {
+            return 0.0;
+        }
+
+        $bareme = $this->getAttendanceNoteSettings();
+        $absencesNonJustifiees = (float) $absencesNonJustifiees;
+
+        if ($absencesNonJustifiees <= 0.0) {
+            return $bareme['zero_unjustified'];
+        }
+
+        if ($absencesNonJustifiees < 2.0) {
+            return $bareme['one_unjustified'];
+        }
+
+        return $bareme['two_or_more_unjustified'];
+    }
+
+    public function calculateEffectiveAttendanceNoteForStudent(
+        int $etudiantId,
+        int $classeId,
+        int $anneeUniversitaireId,
+        string $periode = 'annuel'
+    ): float {
+        if (! $this->isAttendanceNoteEnabled()) {
+            return 0.0;
+        }
+
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::find($anneeUniversitaireId);
+        if (! $anneeUniversitaire) {
+            return 0.0;
+        }
+
+        $absences = $this->absenceService->calculerDetailAbsences(
+            $etudiantId,
+            $classeId,
+            $anneeUniversitaire->date_debut ?? null,
+            $anneeUniversitaire->date_fin ?? null,
+            $anneeUniversitaireId,
+            $periode
+        );
+
+        return $this->resolveAttendanceNote(
+            $absences['justifiees'] ?? 0,
+            $absences['non_justifiees'] ?? 0
+        );
+    }
+
+    public function getEffectiveBulletinAttendanceNote(?ESBTPBulletin $bulletin): float
+    {
+        if (! $bulletin || ! $this->isAttendanceNoteEnabled()) {
+            return 0.0;
+        }
+
+        return (float) ($bulletin->note_assiduite ?? 0);
+    }
+
+    public function getEffectiveBulletinAverage(?ESBTPBulletin $bulletin): ?float
+    {
+        if (! $bulletin || $bulletin->moyenne_generale === null) {
+            return null;
+        }
+
+        return (float) $bulletin->moyenne_generale + $this->getEffectiveBulletinAttendanceNote($bulletin);
+    }
+
+    public function getAlignedBulletinAverageForPeriode(
+        int $etudiantId,
+        int $classeId,
+        int $anneeUniversitaireId,
+        string $periode,
+        string $currentPeriode,
+        float $currentAverage,
+        ?float $currentNoteAssiduite = null
+    ): ?float {
+        if ($periode === $currentPeriode) {
+            return $currentAverage;
+        }
+
+        $periodeOptions = [$periode];
+        if ($periode === 'semestre1') {
+            $periodeOptions[] = '1';
+        } elseif ($periode === 'semestre2') {
+            $periodeOptions[] = '2';
+        } elseif ($periode === '1') {
+            $periodeOptions[] = 'semestre1';
+        } elseif ($periode === '2') {
+            $periodeOptions[] = 'semestre2';
+        }
+
+        $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', array_unique($periodeOptions))
+            ->first();
+
+        if ($bulletin && $bulletin->moyenne_generale !== null && $bulletin->moyenne_generale > 0) {
+            return $this->getEffectiveBulletinAverage($bulletin);
+        }
+
+        $rawAvg = $this->calculateStudentAverageForPeriode($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+        if ($rawAvg === null) {
+            return null;
+        }
+
+        $attendanceNote = $currentNoteAssiduite;
+        if ($attendanceNote === null) {
+            $attendancePeriode = $currentPeriode === 'annuel' ? 'annuel' : $periode;
+            $attendanceNote = $this->calculateEffectiveAttendanceNoteForStudent(
+                $etudiantId,
+                $classeId,
+                $anneeUniversitaireId,
+                $attendancePeriode
+            );
+        }
+
+        return $rawAvg + $attendanceNote;
     }
 
     /**
@@ -283,7 +433,7 @@ class BulletinService
             }
         }
 
-        $moyenneSemestre1 = $this->getBulletinAverageForPeriode(
+        $moyenneSemestre1 = $this->getAlignedBulletinAverageForPeriode(
             $etudiantId,
             $classeIdS1, // Peut être la classe tronc commun si spécialisation
             $anneeUniversitaireId,
@@ -292,7 +442,7 @@ class BulletinService
             $moyenneAvecAssiduite,
             $noteAssiduite
         );
-        $moyenneSemestre2 = $this->getBulletinAverageForPeriode(
+        $moyenneSemestre2 = $this->getAlignedBulletinAverageForPeriode(
             $etudiantId,
             $classeId, // Toujours la classe actuelle pour S2
             $anneeUniversitaireId,

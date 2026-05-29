@@ -230,7 +230,14 @@ class CLIResultatController extends BaseApiController
                         'moyenne_generale' => $bulletin->moyenne_generale,
                         'note_assiduite' => $bulletin->note_assiduite,
                         'effective_total' => $bulletin->moyenne_generale !== null
-                            ? round($bulletin->moyenne_generale + ($bulletin->note_assiduite ?? 0), 2)
+                            ? round(
+                                $bulletin->moyenne_generale + (
+                                    \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1') === '1'
+                                        ? ($bulletin->note_assiduite ?? 0)
+                                        : 0
+                                ),
+                                2
+                            )
                             : null,
                         'rang' => $bulletin->rang,
                         'effectif_classe' => $bulletin->effectif_classe,
@@ -273,7 +280,7 @@ class CLIResultatController extends BaseApiController
             ];
         }
 
-        $s1 = $this->bulletinService->getBulletinAverageForPeriode(
+        $s1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
             $etudiantId,
             $classeId,
             $anneeId,
@@ -282,7 +289,7 @@ class CLIResultatController extends BaseApiController
             0,
             0
         );
-        $s2 = $this->bulletinService->getBulletinAverageForPeriode(
+        $s2 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
             $etudiantId,
             $classeId,
             $anneeId,

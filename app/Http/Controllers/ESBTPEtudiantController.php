@@ -1648,7 +1648,11 @@ class ESBTPEtudiantController extends Controller
                     ->get();
                 if ($buls->count()) {
                     $mg = round($buls->avg(function ($b) {
-                        return $b->moyenne_generale + ($b->note_assiduite ?? 0);
+                        $attendanceNote = \App\Helpers\SettingsHelper::get('bulletin_show_attendance_note', '1') === '1'
+                            ? ($b->note_assiduite ?? 0)
+                            : 0;
+
+                        return $b->moyenne_generale + $attendanceNote;
                     }), 2);
                 }
             }

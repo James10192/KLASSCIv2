@@ -27,6 +27,7 @@ class ESBTPSettingsController extends Controller
      */
     public function index()
     {
+        $this->ensureAttendanceNoteSettings();
         $allSettings = Setting::orderBy('category')->orderBy('sort_order')->get();
         $settings = $allSettings->groupBy('category');
         $flatSettings = $allSettings; // Collection plate pour l'accès direct par clé
@@ -43,6 +44,7 @@ class ESBTPSettingsController extends Controller
     {
         try {
             DB::beginTransaction();
+            $this->ensureAttendanceNoteSettings();
 
             $pdfColorDefaults = [
                 'pdf_primary_color' => '#0453cb',
@@ -951,5 +953,31 @@ class ESBTPSettingsController extends Controller
         }
 
         return $overrides;
+    }
+
+    private function ensureAttendanceNoteSettings(): void
+    {
+        $attendanceDefaults = [
+            'attendance_note_zero_unjustified' => ['value' => '0.13', 'description' => 'BarÃ¨me assiduitÃ© pour 0 absence non justifiÃ©e', 'sort_order' => 121],
+            'attendance_note_one_unjustified' => ['value' => '0.00', 'description' => 'BarÃ¨me assiduitÃ© pour 1 absence non justifiÃ©e', 'sort_order' => 122],
+            'attendance_note_two_or_more_unjustified' => ['value' => '-0.13', 'description' => 'BarÃ¨me assiduitÃ© pour 2 absences non justifiÃ©es ou plus', 'sort_order' => 123],
+        ];
+
+        foreach ($attendanceDefaults as $key => $attrs) {
+            Setting::firstOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $attrs['value'],
+                    'type' => 'float',
+                    'group' => 'bulletin',
+                    'category' => 'bulletin',
+                    'description' => $attrs['description'],
+                    'is_required' => false,
+                    'default_value' => $attrs['value'],
+                    'validation_rules' => ['nullable', 'numeric', 'min:-20', 'max:20'],
+                    'sort_order' => $attrs['sort_order'],
+                ]
+            );
+        }
     }
 }

@@ -465,7 +465,7 @@ class ESBTPResultatController extends Controller
                     $annee_universitaire_id,
                     $periode ?: 'annuel'
                 );
-                $noteAssid = $this->bulletinService->calculerNoteAssiduite($absences['justifiees'] ?? 0, $absences['non_justifiees'] ?? 0);
+                $noteAssid = $this->bulletinService->resolveAttendanceNote($absences['justifiees'] ?? 0, $absences['non_justifiees'] ?? 0);
                 $r['note_assiduite'] = $noteAssid;
                 $r['moyenne_avec_assiduite'] = $r['moyenne'] + $noteAssid;
             }
@@ -811,18 +811,18 @@ class ESBTPResultatController extends Controller
                 $anneeUniversitaire->id,
                 $periode ?: 'annuel'
             );
-            $noteAssiduite = $this->bulletinService->calculerNoteAssiduite($absences['justifiees'] ?? 0, $absences['non_justifiees'] ?? 0);
+            $noteAssiduite = $this->bulletinService->resolveAttendanceNote($absences['justifiees'] ?? 0, $absences['non_justifiees'] ?? 0);
             $moyenneAvecAssiduite = $moyenneGenerale + $noteAssiduite;
         }
 
         $semesterWeights = $this->bulletinService->getSemesterWeights();
 
         // Moyennes semestrielles incluant l'assiduité (via bulletin ou fallback)
-        $moyenneSemestre1 = $this->bulletinService->getBulletinAverageForPeriode(
+        $moyenneSemestre1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
             $id, $classe_id ?? 0, $annee_universitaire_id ?? 0,
             'semestre1', $periode, $moyenneAvecAssiduite, $noteAssiduite
         );
-        $moyenneSemestre2 = $this->bulletinService->getBulletinAverageForPeriode(
+        $moyenneSemestre2 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
             $id, $classe_id ?? 0, $annee_universitaire_id ?? 0,
             'semestre2', $periode, $moyenneAvecAssiduite, $noteAssiduite
         );
@@ -938,14 +938,21 @@ class ESBTPResultatController extends Controller
                             continue; // Pas de classe trouvée, skip cet étudiant
                         }
 
+                        $annualAttendanceNote = $this->bulletinService->calculateEffectiveAttendanceNoteForStudent(
+                            $etudiant->id,
+                            $etudiantClasseId,
+                            $annee_universitaire_id ?? 0,
+                            'annuel'
+                        );
+
                         try {
-                            $s1 = $this->bulletinService->getBulletinAverageForPeriode(
+                            $s1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
                                 $etudiant->id, $etudiantClasseId, $annee_universitaire_id ?? 0,
-                                'semestre1', '__none__', 0, 0
+                                'semestre1', 'annuel', 0, $annualAttendanceNote
                             );
-                            $s2 = $this->bulletinService->getBulletinAverageForPeriode(
+                            $s2 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
                                 $etudiant->id, $etudiantClasseId, $annee_universitaire_id ?? 0,
-                                'semestre2', '__none__', 0, 0
+                                'semestre2', 'annuel', 0, $annualAttendanceNote
                             );
                         } catch (\RuntimeException $e) {
                             // Coefficient manquant pour cet étudiant, skip
@@ -999,7 +1006,7 @@ class ESBTPResultatController extends Controller
                                     $annee_universitaire_id,
                                     $periodeForManual
                                 );
-                                $noteAssid = $this->bulletinService->calculerNoteAssiduite($abs['justifiees'] ?? 0, $abs['non_justifiees'] ?? 0);
+                                $noteAssid = $this->bulletinService->resolveAttendanceNote($abs['justifiees'] ?? 0, $abs['non_justifiees'] ?? 0);
                                 $moy += $noteAssid;
                             }
                             unset($moy);
@@ -1308,6 +1315,9 @@ class ESBTPResultatController extends Controller
             ]);
         }
 
+        $attendanceNoteRules = $this->bulletinService->getAttendanceNoteSettings();
+        $attendanceNoteEnabled = $this->bulletinService->isAttendanceNoteEnabled();
+
         return view('esbtp.resultats.classe-edit', compact(
             'classe',
             'students',
@@ -1325,7 +1335,9 @@ class ESBTPResultatController extends Controller
             'anneeUniversitaire',
             'include_all_statuses',
             'kpis',
-            'moyennesCalculees'
+            'moyennesCalculees',
+            'attendanceNoteRules',
+            'attendanceNoteEnabled'
         ));
     }
 
@@ -1787,7 +1799,7 @@ class ESBTPResultatController extends Controller
                 }
 
                 // Calculer la note d'assiduité selon le barème
-                $noteAssiduite = $this->bulletinService->calculerNoteAssiduite($justifiees, $nonJustifiees);
+                $noteAssiduite = $this->bulletinService->resolveAttendanceNote($justifiees, $nonJustifiees);
 
                 // Create or update bulletin avec les absences
                 $bulletin = ESBTPBulletin::updateOrCreate(

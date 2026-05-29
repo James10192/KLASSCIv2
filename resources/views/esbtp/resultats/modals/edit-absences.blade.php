@@ -16,7 +16,7 @@
                     <i class="fas fa-info-circle" style="color: #d97706; margin-top: 0.15rem; flex-shrink: 0;"></i>
                     <div>
                         <strong><span id="absencesStudentCount">0</span> étudiant(s) sélectionné(s)</strong><br>
-                        <span style="color: #92400e;">La note d'assiduité sera calculée automatiquement selon le barème.</span>
+                        <span style="color: #92400e;">@if($attendanceNoteEnabled ?? true) Barème actif : 0 absence = {{ ((($attendanceNoteRules['zero_unjustified'] ?? 0) >= 0 ? '+' : '') . number_format((float) ($attendanceNoteRules['zero_unjustified'] ?? 0), 2)) }}, 1 absence = {{ ((($attendanceNoteRules['one_unjustified'] ?? 0) >= 0 ? '+' : '') . number_format((float) ($attendanceNoteRules['one_unjustified'] ?? 0), 2)) }}, 2+ absences = {{ ((($attendanceNoteRules['two_or_more_unjustified'] ?? 0) >= 0 ? '+' : '') . number_format((float) ($attendanceNoteRules['two_or_more_unjustified'] ?? 0), 2)) }}. @else Le toggle global d'assiduité est inactif : aucun bonus/malus ne sera appliqué. @endif</span>
                     </div>
                 </div>
                 <div class="table-responsive">

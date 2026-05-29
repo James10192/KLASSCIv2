@@ -1003,10 +1003,13 @@ class ESBTPBulletinConfigController extends Controller
         }
 
         // Calculer la note d'assiduité actuelle
-        $noteAssiduite = $this->bulletinService->calculerNoteAssiduite(
+        $noteAssiduite = $this->bulletinService->resolveAttendanceNote(
             $absencesJustifieesDB ?? 0,
             $absencesNonJustifieesDB ?? 0
         );
+
+        $attendanceNoteRules = $this->bulletinService->getAttendanceNoteSettings();
+        $attendanceNoteEnabled = $this->bulletinService->isAttendanceNoteEnabled();
 
         return view('esbtp.bulletins.edit-absences', [
             'etudiant' => $etudiant,
@@ -1016,6 +1019,8 @@ class ESBTPBulletinConfigController extends Controller
             'bulletin' => $bulletin,
             'absencesCalculees' => $absencesCalculees,
             'noteAssiduite' => $noteAssiduite,
+            'attendanceNoteRules' => $attendanceNoteRules,
+            'attendanceNoteEnabled' => $attendanceNoteEnabled,
             'source' => $source,
             // Passer les valeurs directement pour éviter les accesseurs
             'absencesJustifiees' => $absencesJustifieesDB ?? 0,
@@ -1078,7 +1083,7 @@ class ESBTPBulletinConfigController extends Controller
             $bulletin->total_absences = $absencesJustifiees + $absencesNonJustifiees;
 
             // Calculer et mettre à jour la note d'assiduité
-            $bulletin->note_assiduite = $this->bulletinService->calculerNoteAssiduite(
+            $bulletin->note_assiduite = $this->bulletinService->resolveAttendanceNote(
                 $absencesJustifiees,
                 $absencesNonJustifiees
             );
