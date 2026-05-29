@@ -481,6 +481,40 @@ class ESBTPResultatController extends Controller
             unset($r);
         }
 
+        if (! $semestre) {
+            $semesterWeights = $this->bulletinService->getSemesterWeights();
+
+            foreach ($resultats as &$r) {
+                $semestre1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
+                    $r['etudiant']->id,
+                    $classe->id,
+                    $annee_universitaire_id,
+                    'semestre1',
+                    'annuel',
+                    0,
+                    0
+                );
+                $semestre2 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
+                    $r['etudiant']->id,
+                    $classe->id,
+                    $annee_universitaire_id,
+                    'semestre2',
+                    'annuel',
+                    0,
+                    0
+                );
+                $annuelle = $this->bulletinService->calculateAnnualAverage($semestre1, $semestre2, $semesterWeights);
+                $displayAverage = $annuelle ?? $semestre1 ?? $semestre2 ?? null;
+
+                $r['moyenne'] = $displayAverage ?? 0;
+                $r['moyenne_avec_assiduite'] = $displayAverage ?? 0;
+                $r['annual_state'] = $annuelle !== null
+                    ? 'annual_complete'
+                    : (($semestre1 !== null || $semestre2 !== null) ? 'annual_incomplete' : 'no_data');
+            }
+            unset($r);
+        }
+
         // Trier par moyenne (avec assiduité si dispo) décroissante
         usort($resultats, function ($a, $b) {
             $avgA = $a['moyenne_avec_assiduite'] ?? $a['moyenne'];
