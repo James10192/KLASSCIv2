@@ -11,6 +11,7 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Services\BulletinService;
+use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\ESBTP\BulletinConsistencyService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -19,7 +20,8 @@ class CLIResultatController extends BaseApiController
 {
     public function __construct(
         private BulletinService $bulletinService,
-        private BulletinConsistencyService $bulletinConsistencyService
+        private BulletinConsistencyService $bulletinConsistencyService,
+        private BtsCurrentResultSnapshotService $currentResultSnapshotService
     )
     {
         parent::__construct();
@@ -270,7 +272,7 @@ class CLIResultatController extends BaseApiController
         $validated = $request->validate([
             'classe_id' => 'required|integer|exists:esbtp_classes,id',
             'annee_universitaire_id' => 'required|integer|exists:esbtp_annee_universitaires,id',
-            'periode' => 'required|string|in:1,2,semestre1,semestre2',
+            'periode' => 'required|string|in:1,2,semestre1,semestre2,annuel',
         ]);
 
         $etudiant = ESBTPEtudiant::find($id);
@@ -326,25 +328,12 @@ class CLIResultatController extends BaseApiController
             ];
         }
 
-        $s1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
-            $etudiantId,
-            $classeId,
-            $anneeId,
-            'semestre1',
-            '__none__',
-            0,
-            0
-        );
-        $s2 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
-            $etudiantId,
-            $classeId,
-            $anneeId,
-            'semestre2',
-            '__none__',
-            0,
-            0
-        );
-        $annualWeighted = $this->bulletinService->calculateAnnualAverage($s1, $s2, $weights);
+        $annualSnapshot = $this->currentResultSnapshotService->getAnnualSnapshot($etudiantId, $classeId, $anneeId);
+        $s1 = $annualSnapshot['semester_snapshots']['semestre1']['effective_total'] ?? null;
+        $s2 = $annualSnapshot['semester_snapshots']['semestre2']['effective_total'] ?? null;
+        $annualWeighted = $annualSnapshot['state'] === 'annual_complete'
+            ? ($annualSnapshot['effective_total'] ?? null)
+            : null;
 
         return [
             'classe_id' => $classeId,
@@ -352,9 +341,11 @@ class CLIResultatController extends BaseApiController
             'semestre1_effective' => $s1 !== null ? round($s1, 2) : null,
             'semestre2_effective' => $s2 !== null ? round($s2, 2) : null,
             'annual_weighted' => $annualWeighted !== null ? round($annualWeighted, 2) : null,
-            'annual_list_logic' => $annualWeighted !== null
-                ? round($annualWeighted, 2)
-                : ($s1 !== null ? round($s1, 2) : ($s2 !== null ? round($s2, 2) : null)),
+            'annual_list_logic' => $annualSnapshot['effective_total'] !== null
+                ? round($annualSnapshot['effective_total'], 2)
+                : null,
+            'annual_state' => $annualSnapshot['state'] ?? 'no_data',
+            'primary_semester' => $annualSnapshot['primary_semester'] ?? null,
         ];
     }
 

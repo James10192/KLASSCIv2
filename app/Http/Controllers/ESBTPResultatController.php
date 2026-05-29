@@ -18,6 +18,7 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\ESBTP\BulletinConsistencyService;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use Carbon\Carbon;
@@ -49,16 +50,19 @@ class ESBTPResultatController extends Controller
     private $absenceService;
     private $bulletinService;
     private $bulletinConsistencyService;
+    private $currentResultSnapshotService;
 
     public function __construct(
         \App\Services\ESBTP\ESBTPAbsenceService $absenceService,
         \App\Services\BulletinService $bulletinService,
-        BulletinConsistencyService $bulletinConsistencyService
+        BulletinConsistencyService $bulletinConsistencyService,
+        BtsCurrentResultSnapshotService $currentResultSnapshotService
     )
     {
         $this->absenceService = $absenceService;
         $this->bulletinService = $bulletinService;
         $this->bulletinConsistencyService = $bulletinConsistencyService;
+        $this->currentResultSnapshotService = $currentResultSnapshotService;
     }
 
     public function resultats(ResultatsFilterRequest $request)
@@ -483,36 +487,18 @@ class ESBTPResultatController extends Controller
         }
 
         if (! $semestre) {
-            $semesterWeights = $this->bulletinService->getSemesterWeights();
-
             foreach ($resultats as &$r) {
-                $semestre1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
+                $annualSnapshot = $this->currentResultSnapshotService->getAnnualSnapshot(
                     $r['etudiant']->id,
                     $classe->id,
-                    $annee_universitaire_id,
-                    'semestre1',
-                    'annuel',
-                    0,
-                    0
+                    $annee_universitaire_id
                 );
-                $semestre2 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
-                    $r['etudiant']->id,
-                    $classe->id,
-                    $annee_universitaire_id,
-                    'semestre2',
-                    'annuel',
-                    0,
-                    0
-                );
-                $annuelle = $this->bulletinService->calculateAnnualAverage($semestre1, $semestre2, $semesterWeights);
-                $displayAverage = $annuelle ?? $semestre1 ?? $semestre2 ?? null;
+                $displayAverage = $annualSnapshot['effective_total'] ?? null;
 
-                $r['moyenne'] = $displayAverage ?? 0;
-                $r['moyenne_avec_assiduite'] = $displayAverage ?? 0;
+                $r['moyenne'] = $displayAverage;
+                $r['moyenne_avec_assiduite'] = $displayAverage;
                 $r['has_average'] = $displayAverage !== null;
-                $r['annual_state'] = $annuelle !== null
-                    ? 'annual_complete'
-                    : (($semestre1 !== null || $semestre2 !== null) ? 'annual_incomplete' : 'no_data');
+                $r['annual_state'] = $annualSnapshot['state'] ?? 'no_data';
             }
             unset($r);
         }
@@ -890,17 +876,22 @@ class ESBTPResultatController extends Controller
         }
 
         $semesterWeights = $this->bulletinService->getSemesterWeights();
+        $annualSnapshot = $classe
+            ? $this->currentResultSnapshotService->getAnnualSnapshot($etudiant->id, $classe->id, $annee_universitaire_id)
+            : null;
 
         // Moyennes semestrielles incluant l'assiduité (via bulletin ou fallback)
-        $moyenneSemestre1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
+        $moyenneSemestre1 = $annualSnapshot['semester_snapshots']['semestre1']['effective_total'] ?? $this->bulletinService->getAlignedBulletinAverageForPeriode(
             $id, $classe_id ?? 0, $annee_universitaire_id ?? 0,
             'semestre1', $periode, $moyenneAvecAssiduite, $noteAssiduite
         );
-        $moyenneSemestre2 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
+        $moyenneSemestre2 = $annualSnapshot['semester_snapshots']['semestre2']['effective_total'] ?? $this->bulletinService->getAlignedBulletinAverageForPeriode(
             $id, $classe_id ?? 0, $annee_universitaire_id ?? 0,
             'semestre2', $periode, $moyenneAvecAssiduite, $noteAssiduite
         );
-        $moyenneAnnuelle = $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+        $moyenneAnnuelle = ($annualSnapshot['state'] ?? null) === 'annual_complete'
+            ? ($annualSnapshot['effective_total'] ?? null)
+            : $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
         $detailUiState = $this->buildAnnualDetailUiState($periode, $moyenneSemestre1, $moyenneSemestre2, $moyenneAnnuelle);
         $bulletinWorkflowPeriode = $detailUiState['bulletin_workflow_periode'];
         $bulletinWorkflowPeriodeLabel = $detailUiState['bulletin_workflow_periode_label'];
@@ -1140,6 +1131,54 @@ class ESBTPResultatController extends Controller
                                 $rangs[$eid] = $rank++;
                             }
                         }
+                    }
+                }
+
+                $resolvedMoyennes = [];
+                $resolvedAnnualStatuses = [];
+                $inscriptionMap = collect();
+                if (! $classe_id) {
+                    $inscriptionMap = \App\Models\ESBTPInscription::query()
+                        ->whereIn('etudiant_id', $etudiants->pluck('id'))
+                        ->where('annee_universitaire_id', $annee_universitaire_id)
+                        ->orderByDesc('date_inscription')
+                        ->get()
+                        ->unique('etudiant_id')
+                        ->keyBy('etudiant_id');
+                }
+
+                foreach ($etudiants as $etudiant) {
+                    $etudiantClasseId = $classe_id ?: ($inscriptionMap[$etudiant->id]->classe_id ?? null);
+                    if (! $etudiantClasseId) {
+                        continue;
+                    }
+
+                    $snapshot = ! $semestre
+                        ? $this->currentResultSnapshotService->getAnnualSnapshot($etudiant->id, $etudiantClasseId, $annee_universitaire_id)
+                        : $this->currentResultSnapshotService->getSemesterSnapshot(
+                            $etudiant->id,
+                            $etudiantClasseId,
+                            $annee_universitaire_id,
+                            'semestre' . $semestre
+                        );
+
+                    if (! $semestre) {
+                        $resolvedAnnualStatuses[$etudiant->id] = $this->buildBtsAnnualValueStatus($snapshot);
+                    }
+
+                    if (($snapshot['effective_total'] ?? null) !== null) {
+                        $resolvedMoyennes[$etudiant->id] = round((float) $snapshot['effective_total'], 2);
+                    }
+                }
+
+                if (! empty($resolvedMoyennes) || ! empty($resolvedAnnualStatuses)) {
+                    $moyennes = $resolvedMoyennes;
+                    $annualValueStatuses = $resolvedAnnualStatuses;
+                    arsort($moyennes);
+                    $rangs = [];
+                    $rank = 1;
+                    foreach (array_keys($moyennes) as $eid) {
+                        $rangs[$eid] = $rank++;
                     }
                 }
 
@@ -1502,13 +1541,29 @@ class ESBTPResultatController extends Controller
         // Calculer les moyennes pour chaque étudiant
         $moyennesCalculees = [];
         foreach ($request->etudiant_ids as $etudiantId) {
-            $moyennesCalculees[$etudiantId] = $this->bulletinService->calculateMoyennesForStudent(
-                $etudiantId,
-                $request->classe_id,
-                $periode,
-                $request->annee_universitaire_id,
-                $matieres
-            );
+            if ($periode) {
+                $snapshot = $this->currentResultSnapshotService->getSemesterSnapshot(
+                    $etudiantId,
+                    $request->classe_id,
+                    $request->annee_universitaire_id,
+                    $periode
+                );
+                $moyennesCalculees[$etudiantId] = collect($snapshot['subjects'] ?? [])
+                    ->keyBy('matiere_id')
+                    ->map(fn (array $subject) => [
+                        'moyenne' => $subject['moyenne'] ?? null,
+                        'source' => $subject['source'] ?? 'calculee',
+                    ])
+                    ->all();
+            } else {
+                $moyennesCalculees[$etudiantId] = $this->bulletinService->calculateMoyennesForStudent(
+                    $etudiantId,
+                    $request->classe_id,
+                    $periode,
+                    $request->annee_universitaire_id,
+                    $matieres
+                );
+            }
         }
 
         // Enrichir les résultats avec les moyennes calculées et la source
@@ -2469,6 +2524,38 @@ class ESBTPResultatController extends Controller
             }
 
             // Trier les matières par nom pour un affichage cohérent
+            if (in_array($periodePourBDD, ['semestre1', 'semestre2'], true)) {
+                $snapshot = $this->currentResultSnapshotService->getSemesterSnapshot(
+                    $etudiantId,
+                    $classeId,
+                    $anneeUniversitaireId,
+                    $periodePourBDD
+                );
+
+                $notesByMatiere = $this->mapConsistencySubjectsToDetailNotes($snapshot['subjects'] ?? [], $notes);
+
+                foreach ($snapshot['subjects'] ?? [] as $subject) {
+                    $matiereId = $subject['matiere_id'] ?? null;
+                    if (! $matiereId) {
+                        continue;
+                    }
+
+                    $matiereModel = $resultatsData[$matiereId]['matiere']
+                        ?? $notesByMatiere[$matiereId]['matiere']
+                        ?? (object) ['id' => $matiereId, 'name' => $subject['matiere'] ?? 'Matière inconnue'];
+
+                    $resultatsData[$matiereId] = [
+                        'id' => $resultatsData[$matiereId]['id'] ?? ($subject['manual_resultat']['resultat_id'] ?? null),
+                        'matiere' => $matiereModel,
+                        'moyenne' => $subject['moyenne'] ?? null,
+                        'coefficient' => $subject['coefficient'] ?? null,
+                        'rang' => $resultatsData[$matiereId]['rang'] ?? null,
+                        'appreciation' => $resultatsData[$matiereId]['appreciation'] ?? ($subject['manual_resultat']['appreciation'] ?? null),
+                        'source' => $subject['source'] ?? 'calculee',
+                    ];
+                }
+            }
+
             uasort($resultatsData, function ($a, $b) {
                 return strcasecmp($a['matiere']->name, $b['matiere']->name);
             });
@@ -2903,5 +2990,36 @@ class ESBTPResultatController extends Controller
         }
 
         return $notesByMatiere;
+    }
+
+    private function buildBtsAnnualValueStatus(array $annualSnapshot): array
+    {
+        return match ($annualSnapshot['state'] ?? 'no_data') {
+            'annual_complete' => ['state' => 'annual_complete', 'label' => null],
+            'annual_incomplete' => [
+                'state' => 'annual_incomplete',
+                'label' => ($annualSnapshot['primary_semester'] ?? 'semestre1') === 'semestre2'
+                    ? 'Partiel · S2 seulement'
+                    : 'Partiel · S1 seulement',
+            ],
+            default => ['state' => 'no_data', 'label' => 'Aucune note'],
+        };
+    }
+
+    private function buildBtsDecisionLabel(?float $average, ?string $state): string
+    {
+        if ($state === 'annual_incomplete') {
+            return 'Partiel';
+        }
+
+        if ($average === null) {
+            return 'Aucune note';
+        }
+
+        if ($average >= 10) {
+            return 'Admis';
+        }
+
+        return $average >= 8 ? 'Rattrapage' : 'Ajourné';
     }
 }

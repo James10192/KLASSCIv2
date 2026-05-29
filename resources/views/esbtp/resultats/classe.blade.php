@@ -248,18 +248,21 @@
                                         <span class="sr-eval-count">{{ $notesCount }}</span>
                                     </td>
                                     <td class="text-center">
+                                        @php $annualState = $resultat['annual_state'] ?? null; @endphp
                                         @if($hasAverage)
-                                            @if($moyenne >= 10)
+                                            @if($annualState === 'annual_incomplete')
+                                                <span class="sr-appreciation" style="background: #fef3c7; color: #92400e;">Partiel</span>
+                                            @elseif($moyenne >= 10)
                                                 <span class="sr-appreciation sr-appreciation--tres-bien">Admis</span>
                                             @elseif($moyenne >= 8)
                                                 <span class="sr-appreciation sr-appreciation--passable">Rattrapage</span>
                                             @else
                                                 <span class="sr-appreciation sr-appreciation--insuffisant">Ajourné</span>
                                             @endif
-                                        @elseif($notesCount > 0)
-                                            <span class="sr-appreciation" style="background: #fff7ed; color: #c2410c;">À recalculer</span>
-                                        @else
+                                        @elseif($annualState === 'no_data' || $notesCount === 0)
                                             <span class="sr-appreciation" style="background: var(--sr-border); color: var(--sr-muted);">Aucune note</span>
+                                        @else
+                                            <span class="sr-appreciation" style="background: #fff7ed; color: #c2410c;">À recalculer</span>
                                         @endif
                                         @if($bulletinStatus && ($bulletinStatus['official_bulletin_exists'] ?? false))
                                             <div class="mt-2">
