@@ -877,6 +877,21 @@ class ESBTPResultatController extends Controller
             )
             : null;
 
+        if ($bulletinConsistency && in_array($periode, ['semestre1', 'semestre2'], true)) {
+            $moyenneGenerale = $bulletinConsistency['current_recomputed_raw_total'] ?? $moyenneGenerale;
+            $noteAssiduite = $bulletinConsistency['current_recomputed_note_assiduite'] ?? $noteAssiduite;
+            $moyenneAvecAssiduite = $bulletinConsistency['current_recomputed_effective_total'] ?? $moyenneAvecAssiduite;
+
+            if ($periode === 'semestre1') {
+                $moyenneSemestre1 = $moyenneAvecAssiduite;
+            } else {
+                $moyenneSemestre2 = $moyenneAvecAssiduite;
+            }
+
+            $notesByMatiere = $this->mapConsistencySubjectsToDetailNotes($bulletinConsistency['current_subjects'] ?? [], $notes);
+            $detailUiState = $this->buildAnnualDetailUiState($periode, $moyenneSemestre1, $moyenneSemestre2, $moyenneAnnuelle);
+        }
+
         return view('esbtp.resultats.etudiant', compact(
             'etudiant',
             'classe',
@@ -2762,5 +2777,53 @@ class ESBTPResultatController extends Controller
                 ? ($primarySemesterLabel ?? 'Semestre 1')
                 : ($periode === 'semestre2' ? 'Semestre 2' : 'Semestre 1'),
         ];
+    }
+
+    private function mapConsistencySubjectsToDetailNotes(array $subjects, Collection $notes): array
+    {
+        $mapped = [];
+
+        foreach ($subjects as $subject) {
+            $matiereId = $subject['matiere_id'] ?? null;
+            if (! $matiereId) {
+                continue;
+            }
+
+            $notesForSubject = $notes->filter(function ($note) use ($matiereId, $subject) {
+                $noteMatiereId = $note->matiere_id ?: $note->evaluation?->matiere?->id;
+                if ($noteMatiereId !== $matiereId) {
+                    return false;
+                }
+
+                $evaluationIds = collect($subject['evaluations'] ?? [])->pluck('evaluation_id')->filter()->all();
+                if (empty($evaluationIds)) {
+                    return true;
+                }
+
+                return in_array($note->evaluation_id, $evaluationIds, true);
+            })->values();
+
+            $matiereModel = $notesForSubject->first()?->evaluation?->matiere;
+            if (! $matiereModel) {
+                $matiereModel = (object) [
+                    'id' => $matiereId,
+                    'name' => $subject['matiere'] ?? 'Matière inconnue',
+                    'code' => null,
+                ];
+            }
+
+            $mapped[$matiereId] = [
+                'matiere' => $matiereModel,
+                'notes' => $notesForSubject->all(),
+                'calculations' => [],
+                'total_points' => 0,
+                'total_coefficients' => (float) ($subject['coefficient'] ?? 0),
+                'moyenne' => (float) ($subject['moyenne'] ?? 0),
+                'origin' => 'notes',
+                'source' => ($subject['source'] ?? 'calculee') === 'manuelle' ? 'manuelle' : 'calculee',
+            ];
+        }
+
+        return $mapped;
     }
 }
