@@ -22,10 +22,11 @@
     $uiState = $detailUiState['state'] ?? 'standard';
     $annualIncomplete = $uiState === 'annual_incomplete';
     $annualComplete = $uiState === 'annual_complete';
+    $annualUnresolved = $uiState === 'annual_unresolved';
     $primarySemesterLabel = $detailUiState['primary_semester_label'] ?? null;
     $primaryAverage = $detailUiState['primary_average'] ?? null;
     $displayAvg = $detailUiState['display_average'] ?? ($moyenneAvecAssiduite ?? $moyenneGenerale ?? null);
-    $showAssiduite = isset($afficherNoteAssiduite) && $afficherNoteAssiduite && isset($noteAssiduite) && ! $annualIncomplete;
+    $showAssiduite = isset($afficherNoteAssiduite) && $afficherNoteAssiduite && isset($noteAssiduite) && ! $annualIncomplete && ! $annualUnresolved;
     $gaugePercent = $displayAvg !== null ? min($displayAvg * 5, 100) : 0;
     $gaugeClass = ($displayAvg ?? 0) >= 10 ? 'success' : 'danger';
     $isS1Active = ($periodeKey === 'semestre1');
@@ -58,6 +59,8 @@
                     <div class="sr-gauge-label">
                         @if($annualIncomplete)
                             Valeur partielle
+                        @elseif($annualUnresolved)
+                            À recalculer
                         @elseif($isAnnualActive)
                             Moyenne annuelle
                         @else
@@ -117,6 +120,18 @@
                             <span class="sr-context-chip__eyebrow">Analyse Annuelle BTS</span>
                             <span class="sr-context-chip__text">
                                 <strong>Analyse complète</strong>, les deux semestres alimentent la moyenne annuelle.
+                            </span>
+                        </span>
+                    </div>
+                @elseif($annualUnresolved)
+                    <div class="sr-context-chip sr-context-chip--warning">
+                        <span class="sr-context-chip__icon">
+                            <i class="fas fa-rotate-right"></i>
+                        </span>
+                        <span class="sr-context-chip__body">
+                            <span class="sr-context-chip__eyebrow">Analyse Annuelle BTS</span>
+                            <span class="sr-context-chip__text">
+                                <strong>Moyenne indisponible</strong>, des notes existent mais le calcul BTS aligné n'est pas encore résolu.
                             </span>
                         </span>
                     </div>

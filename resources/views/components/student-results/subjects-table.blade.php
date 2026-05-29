@@ -1,4 +1,8 @@
 {{-- 5. Subjects Table — premium design --}}
+@php
+    $resolvedAverage = $moyenneAvecAssiduite ?? $moyenneGenerale;
+    $hasResolvedAverage = $resolvedAverage !== null;
+@endphp
 <div class="sr-table-card sr-animate sr-animate-delay-3">
     <div class="sr-table-header">
         <div class="sr-table-header-left">
@@ -98,12 +102,18 @@
                         <td class="text-center" style="font-weight: 800; font-size: 1rem; color: var(--sr-ink);">
                             {{ array_sum(array_column($notesByMatiere, 'total_coefficients')) }}
                         </td>
-                        <td class="text-center" style="font-weight: 800; font-size: 1rem; color: {{ ($moyenneAvecAssiduite ?? $moyenneGenerale) >= 10 ? 'var(--sr-success)' : 'var(--sr-danger)' }};">
-                            {{ number_format($moyenneAvecAssiduite ?? $moyenneGenerale, 2) }}/20
+                        <td class="text-center" style="font-weight: 800; font-size: 1rem; color: {{ $hasResolvedAverage ? ($resolvedAverage >= 10 ? 'var(--sr-success)' : 'var(--sr-danger)') : 'var(--sr-muted)' }};">
+                            @if($hasResolvedAverage)
+                                {{ number_format($resolvedAverage, 2) }}/20
+                            @else
+                                —
+                            @endif
                         </td>
                         <td class="text-center">
-                            @if(($moyenneAvecAssiduite ?? $moyenneGenerale) >= 10)
+                            @if($hasResolvedAverage && $resolvedAverage >= 10)
                                 <span class="sr-appreciation sr-appreciation--tres-bien">ADMIS</span>
+                            @elseif(!$hasResolvedAverage)
+                                <span class="sr-appreciation" style="background: #fff7ed; color: #c2410c;">À recalculer</span>
                             @else
                                 <span class="sr-appreciation sr-appreciation--insuffisant">AJOURNÉ</span>
                             @endif
@@ -113,12 +123,16 @@
                         <td colspan="3" class="text-end">Moyenne générale pondérée</td>
                         <td class="text-center">{{ array_sum(array_column($notesByMatiere, 'total_coefficients')) }}</td>
                         <td class="text-center" style="font-size: 1.1rem; font-weight: 800;">
-                            {{ number_format($moyenneAvecAssiduite ?? $moyenneGenerale, 2) }}/20
+                            @if($hasResolvedAverage)
+                                {{ number_format($resolvedAverage, 2) }}/20
+                            @else
+                                —
+                            @endif
                         </td>
                         <td class="text-center">
                             <span class="sr-decision">
-                                <i class="fas {{ ($moyenneAvecAssiduite ?? $moyenneGenerale) >= 10 ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
-                                {{ ($moyenneAvecAssiduite ?? $moyenneGenerale) >= 10 ? 'ADMIS' : 'AJOURNÉ' }}
+                                <i class="fas {{ $hasResolvedAverage && $resolvedAverage >= 10 ? 'fa-check-circle' : ($hasResolvedAverage ? 'fa-times-circle' : 'fa-rotate-right') }}"></i>
+                                {{ $hasResolvedAverage ? ($resolvedAverage >= 10 ? 'ADMIS' : 'AJOURNÉ') : 'À recalculer' }}
                             </span>
                         </td>
                     </tr>

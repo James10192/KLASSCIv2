@@ -931,6 +931,25 @@ class ESBTPResultatController extends Controller
                 $notesByMatiere,
                 $bulletinConsistency['current_subjects'] ?? []
             );
+        } elseif (
+            $bulletinConsistency
+            && $periode === 'annuel'
+            && ($detailUiState['state'] ?? null) === 'standard'
+            && $notes->isNotEmpty()
+        ) {
+            $mappedSubjects = $this->mapConsistencySubjectsToDetailNotes(
+                $bulletinConsistency['current_subjects'] ?? [],
+                $notes
+            );
+
+            if (! empty($mappedSubjects)) {
+                $notesByMatiere = $mappedSubjects;
+            }
+
+            $moyenneGenerale = null;
+            $moyenneAvecAssiduite = null;
+            $detailUiState['state'] = 'annual_unresolved';
+            $detailUiState['display_average'] = null;
         }
 
         return view('esbtp.resultats.etudiant', compact(
@@ -2844,7 +2863,7 @@ class ESBTPResultatController extends Controller
                 return in_array($note->evaluation_id, $evaluationIds, true);
             })->values();
 
-            $matiereModel = $notesForSubject->first()?->evaluation?->matiere;
+            $matiereModel = $notesForSubject->first()?->matiere ?: $notesForSubject->first()?->evaluation?->matiere;
             if (! $matiereModel) {
                 $matiereModel = (object) [
                     'id' => $matiereId,
