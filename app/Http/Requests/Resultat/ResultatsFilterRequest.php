@@ -16,7 +16,7 @@ class ResultatsFilterRequest extends FormRequest
         return [
             'classe_id' => 'nullable|exists:esbtp_classes,id',
             'semestre' => 'nullable|in:1,2',
-            'periode' => 'nullable|in:1,2,semestre1,semestre2',
+            'periode' => 'nullable|in:1,2,semestre1,semestre2,annuel',
             'annee_universitaire_id' => 'nullable|exists:esbtp_annee_universitaires,id',
             'include_all_statuses' => 'nullable|boolean',
         ];

@@ -55,10 +55,11 @@
     }
 
     // Current period for tabs
-    $currentPeriode = $periode ?? 'semestre1';
+    $currentPeriode = $periode ?? 'annuel';
     $currentPeriodeKey = $currentPeriode;
     if ($currentPeriodeKey === '1') $currentPeriodeKey = 'semestre1';
     elseif ($currentPeriodeKey === '2') $currentPeriodeKey = 'semestre2';
+    $includeAllStatusesParam = isset($include_all_statuses) && $include_all_statuses ? ['include_all_statuses' => 1] : [];
 @endphp
 
 @section('content')
@@ -90,10 +91,10 @@
                         <h1>{{ $etudiant->nom }} {{ $etudiant->prenoms }}</h1>
                         <p>{{ isset($classe) && $classe ? $classe->name : 'Toutes classes' }} — Détail des notes et moyennes</p>
                         <div class="sr-breadcrumb">
-                            <a href="{{ route('esbtp.resultats.index') }}">Résultats</a>
+                            <a href="{{ route('esbtp.resultats.index', $includeAllStatusesParam) }}">Résultats</a>
                             <i class="fas fa-chevron-right"></i>
                             @if(isset($classe) && $classe)
-                                <a href="{{ route('esbtp.resultats.classe', ['classe' => $classe->id]) }}?periode={{ $periode }}&annee_universitaire_id={{ $annee_id }}">{{ $classe->name }}</a>
+                                <a href="{{ route('esbtp.resultats.classe', ['classe' => $classe->id]) }}?periode={{ $periode }}&annee_universitaire_id={{ $annee_id }}@if(!empty($includeAllStatusesParam))&include_all_statuses=1@endif">{{ $classe->name }}</a>
                                 <i class="fas fa-chevron-right"></i>
                             @endif
                             <span>{{ $etudiant->nom }} {{ $etudiant->prenoms }}</span>
@@ -102,34 +103,34 @@
                 </div>
                 <div class="sr-hero-actions">
                     @if(isset($classe) && $classe && auth()->user()->can('admin.access'))
-                        <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}?annee_universitaire_id={{ $annee_id }}&semestre={{ isset($periode) ? str_replace('semestre', '', $periode) : '' }}"
+                        <a href="{{ route('esbtp.resultats.classe.edit', $classe->id) }}?annee_universitaire_id={{ $annee_id }}&semestre={{ isset($periode) && str_starts_with($periode, 'semestre') ? str_replace('semestre', '', $periode) : '' }}"
                            class="sr-hero-btn">
                             <i class="fas fa-edit"></i>Éditer classe
                         </a>
                     @endif
-                    <a href="{{ route('esbtp.resultats.index') }}" class="sr-hero-btn">
+                    <a href="{{ route('esbtp.resultats.index', $includeAllStatusesParam) }}" class="sr-hero-btn">
                         <i class="fas fa-arrow-left"></i>Retour
                     </a>
                     @if(isset($classe) && $classe)
-                        @php $_resBulletinParams = ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $annee_id]; @endphp
-                        <a href="{{ route('esbtp.resultats.etudiant.preview', ['etudiant' => $etudiant->id]) }}?classe_id={{ $classe->id }}&annee_universitaire_id={{ $annee_id }}&periode={{ $periode }}"
+                        @php $_resBulletinParams = ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $bulletinWorkflowPeriode, 'annee_universitaire_id' => $annee_id]; @endphp
+                        <a href="{{ route('esbtp.resultats.etudiant.preview', ['etudiant' => $etudiant->id]) }}?classe_id={{ $classe->id }}&annee_universitaire_id={{ $annee_id }}&periode={{ $bulletinWorkflowPeriode }}"
                            class="sr-hero-btn"
                            data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_resBulletinParams) }}"
                            onclick="return srCheckBeforePDF(event, this);">
-                            <i class="fas fa-window-restore"></i>Vue web
+                            <i class="fas fa-window-restore"></i>Vue web{{ $currentPeriodeKey === 'annuel' ? ' ' . $bulletinWorkflowPeriodeLabel : '' }}
                         </a>
                         <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_resBulletinParams) }}"
                            class="sr-hero-btn--solid sr-hero-btn sr-pdf-link"
                            target="_blank"
                            data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_resBulletinParams) }}"
                            onclick="return srCheckBeforePDF(event, this);">
-                            <i class="fas fa-eye"></i>Aperçu PDF
+                            <i class="fas fa-eye"></i>Aperçu PDF{{ $currentPeriodeKey === 'annuel' ? ' ' . $bulletinWorkflowPeriodeLabel : '' }}
                         </a>
                         <a href="{{ route('esbtp.bulletins.pdf-params', $_resBulletinParams) }}"
                            class="sr-hero-btn sr-hero-btn--danger sr-pdf-link"
                            data-check-url="{{ route('esbtp.bulletins.check-prerequisites', $_resBulletinParams) }}"
                            onclick="return srCheckBeforePDF(event, this);">
-                            <i class="fas fa-file-pdf"></i>PDF
+                            <i class="fas fa-file-pdf"></i>PDF{{ $currentPeriodeKey === 'annuel' ? ' ' . $bulletinWorkflowPeriodeLabel : '' }}
                         </a>
                     @endif
                 </div>
@@ -141,6 +142,20 @@
 
         {{-- 2b. Period Tabs --}}
         <div class="sr-period-tabs sr-animate sr-animate-delay-1">
+            <button type="button"
+                    class="sr-period-tab {{ $currentPeriodeKey === 'annuel' ? 'active' : '' }}"
+                    data-periode="annuel"
+                    onclick="srSwitchPeriod('annuel')">
+                <i class="fas fa-layer-group"></i>
+                Annuel
+                @if($moyenneAnnuelle !== null)
+                    <span class="sr-tab-avg">{{ number_format($moyenneAnnuelle, 2) }}</span>
+                @elseif(($detailUiState['primary_average'] ?? null) !== null)
+                    <span class="sr-tab-avg" style="opacity: 0.75;">
+                        {{ number_format($detailUiState['primary_average'], 2) }}
+                    </span>
+                @endif
+            </button>
             <button type="button"
                     class="sr-period-tab {{ $currentPeriodeKey === 'semestre1' ? 'active' : '' }}"
                     data-periode="semestre1"

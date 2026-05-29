@@ -40,6 +40,11 @@
             <span class="badge bg-{{ $badgeClass }} fs-6">
                 {{ number_format($moyenne, 2) }}/20
             </span>
+            @if(($annualValueStatuses[$etudiant->id]['state'] ?? null) === 'annual_incomplete')
+                <span class="badge bg-warning text-dark ms-1">
+                    {{ $annualValueStatuses[$etudiant->id]['label'] ?? 'Provisoire' }}
+                </span>
+            @endif
         @else
             <span class="badge bg-secondary">N/A</span>
         @endif
@@ -83,7 +88,7 @@
             $actualClasseId = ($classe ? $classe->id : null) ?? $studentClasseId;
         @endphp
         <div class="btn-group btn-group-sm">
-            <a href="{{ route('esbtp.resultats.etudiant', ['etudiant' => $etudiant->id, 'classe_id' => $actualClasseId, 'annee_universitaire_id' => $annee_id, 'periode' => request('semestre')]) }}" class="btn btn-sm btn-info" title="Voir détails">
+            <a href="{{ route('esbtp.resultats.etudiant', array_filter(['etudiant' => $etudiant->id, 'classe_id' => $actualClasseId, 'annee_universitaire_id' => $annee_id, 'periode' => $detail_periode ?? 'annuel', 'include_all_statuses' => !empty($include_all_statuses) ? 1 : null])) }}" class="btn btn-sm btn-info" title="Voir détails">
                 <i class="fas fa-chart-line"></i>
             </a>
             @if(isset($bulletins[$etudiant->id]))
