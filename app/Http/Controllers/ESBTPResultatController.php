@@ -890,6 +890,11 @@ class ESBTPResultatController extends Controller
 
             $notesByMatiere = $this->mapConsistencySubjectsToDetailNotes($bulletinConsistency['current_subjects'] ?? [], $notes);
             $detailUiState = $this->buildAnnualDetailUiState($periode, $moyenneSemestre1, $moyenneSemestre2, $moyenneAnnuelle);
+        } elseif ($bulletinConsistency && ($detailUiState['state'] ?? null) === 'annual_incomplete') {
+            $notesByMatiere = $this->overlayConsistencySubjectLabels(
+                $notesByMatiere,
+                $bulletinConsistency['current_subjects'] ?? []
+            );
         }
 
         return view('esbtp.resultats.etudiant', compact(
@@ -2825,5 +2830,23 @@ class ESBTPResultatController extends Controller
         }
 
         return $mapped;
+    }
+
+    private function overlayConsistencySubjectLabels(array $notesByMatiere, array $subjects): array
+    {
+        foreach ($subjects as $subject) {
+            $matiereId = $subject['matiere_id'] ?? null;
+            if (! $matiereId || ! isset($notesByMatiere[$matiereId])) {
+                continue;
+            }
+
+            $notesByMatiere[$matiereId]['matiere'] = (object) [
+                'id' => $matiereId,
+                'name' => $subject['matiere'] ?? ($notesByMatiere[$matiereId]['matiere']->name ?? 'Matière inconnue'),
+                'code' => $notesByMatiere[$matiereId]['matiere']->code ?? null,
+            ];
+        }
+
+        return $notesByMatiere;
     }
 }
