@@ -549,9 +549,19 @@
     background: linear-gradient(135deg, rgba(209, 250, 229, 0.9) 0%, rgba(255,255,255,0.96) 58%, rgba(236, 253, 245, 0.98) 100%);
 }
 
+.sr-context-chip--primary {
+    border-color: rgba(4, 83, 203, 0.14);
+    background: linear-gradient(135deg, rgba(219, 234, 254, 0.92) 0%, rgba(255,255,255,0.98) 60%, rgba(239, 246, 255, 0.98) 100%);
+}
+
 .sr-context-chip--muted {
     border-color: rgba(100, 116, 139, 0.14);
     background: linear-gradient(135deg, rgba(241, 245, 249, 0.95) 0%, rgba(255,255,255,0.98) 62%, rgba(248, 250, 252, 0.98) 100%);
+}
+
+.sr-context-chip--warning {
+    border-color: rgba(245, 158, 11, 0.18);
+    background: linear-gradient(135deg, rgba(255, 247, 237, 0.96) 0%, rgba(255,255,255,0.98) 54%, rgba(254, 243, 199, 0.95) 100%);
 }
 
 .sr-context-chip__icon {
@@ -570,9 +580,19 @@
     color: #047857;
 }
 
+.sr-context-chip--primary .sr-context-chip__icon {
+    background: rgba(4, 83, 203, 0.12);
+    color: var(--sr-primary);
+}
+
 .sr-context-chip--muted .sr-context-chip__icon {
     background: rgba(71, 85, 105, 0.1);
     color: #475569;
+}
+
+.sr-context-chip--warning .sr-context-chip__icon {
+    background: rgba(245, 158, 11, 0.14);
+    color: #b45309;
 }
 
 .sr-context-chip__body {
@@ -685,6 +705,16 @@
     display: flex;
     flex-direction: column;
     gap: 1.25rem;
+}
+
+.sr-overview-contexts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.sr-overview-contexts .sr-context-chip {
+    width: 100%;
 }
 
 .sr-semesters {

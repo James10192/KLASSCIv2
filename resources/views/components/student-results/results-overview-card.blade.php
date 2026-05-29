@@ -41,24 +41,6 @@
         <span class="sr-periode-badge">{{ $periodeNom }}</span>
     </div>
 
-    <div style="margin: -0.15rem 0 1.5rem;">
-        <div class="sr-context-chip {{ !empty($afficherNoteAssiduite) ? 'sr-context-chip--success' : 'sr-context-chip--muted' }}">
-            <span class="sr-context-chip__icon">
-                <i class="fas {{ !empty($afficherNoteAssiduite) ? 'fa-wave-square' : 'fa-slash' }}"></i>
-            </span>
-            <span class="sr-context-chip__body">
-                <span class="sr-context-chip__eyebrow">Mode Moyenne</span>
-                <span class="sr-context-chip__text">
-                    @if(!empty($afficherNoteAssiduite))
-                        <strong>Assiduite activee</strong>, bonus/malus inclus dans la moyenne affichee.
-                    @else
-                        <strong>Assiduite desactivee</strong>, moyenne brute sans bonus/malus.
-                    @endif
-                </span>
-            </span>
-        </div>
-    </div>
-
     <div class="sr-overview-body">
         <div class="sr-gauge-wrapper">
             <div class="sr-gauge" @if($annualIncomplete) style="opacity: 0.72;" @endif>
@@ -93,19 +75,53 @@
         </div>
 
         <div class="sr-overview-right">
-            @if($annualIncomplete)
-                <div class="alert alert-warning py-2 px-3 mb-3" style="font-size: 0.9rem;">
-                    L'analyse annuelle BTS est incomplète.
-                    @if($primarySemesterLabel)
-                        La valeur affichée reprend {{ $primarySemesterLabel }} seulement.
-                    @endif
-                    Les deux semestres sont requis pour une vraie moyenne annuelle.
+            <div class="sr-overview-contexts">
+                <div class="sr-context-chip {{ !empty($afficherNoteAssiduite) ? 'sr-context-chip--success' : 'sr-context-chip--muted' }}">
+                    <span class="sr-context-chip__icon">
+                        <i class="fas {{ !empty($afficherNoteAssiduite) ? 'fa-wave-square' : 'fa-slash' }}"></i>
+                    </span>
+                    <span class="sr-context-chip__body">
+                        <span class="sr-context-chip__eyebrow">Mode Moyenne</span>
+                        <span class="sr-context-chip__text">
+                            @if(!empty($afficherNoteAssiduite))
+                                <strong>Assiduite activee</strong>, bonus/malus inclus dans la moyenne affichee.
+                            @else
+                                <strong>Assiduite desactivee</strong>, moyenne brute sans bonus/malus.
+                            @endif
+                        </span>
+                    </span>
                 </div>
-            @elseif($annualComplete)
-                <div class="alert alert-success py-2 px-3 mb-3" style="font-size: 0.9rem;">
-                    Analyse annuelle complète disponible sur les deux semestres.
-                </div>
-            @endif
+
+                @if($annualIncomplete)
+                    <div class="sr-context-chip sr-context-chip--warning">
+                        <span class="sr-context-chip__icon">
+                            <i class="fas fa-triangle-exclamation"></i>
+                        </span>
+                        <span class="sr-context-chip__body">
+                            <span class="sr-context-chip__eyebrow">Analyse Annuelle BTS</span>
+                            <span class="sr-context-chip__text">
+                                <strong>Analyse incomplète</strong>.
+                                @if($primarySemesterLabel)
+                                    La valeur affichée reprend {{ $primarySemesterLabel }} seulement.
+                                @endif
+                                Les deux semestres sont requis pour une vraie moyenne annuelle.
+                            </span>
+                        </span>
+                    </div>
+                @elseif($annualComplete)
+                    <div class="sr-context-chip sr-context-chip--primary">
+                        <span class="sr-context-chip__icon">
+                            <i class="fas fa-layer-group"></i>
+                        </span>
+                        <span class="sr-context-chip__body">
+                            <span class="sr-context-chip__eyebrow">Analyse Annuelle BTS</span>
+                            <span class="sr-context-chip__text">
+                                <strong>Analyse complète</strong>, les deux semestres alimentent la moyenne annuelle.
+                            </span>
+                        </span>
+                    </div>
+                @endif
+            </div>
 
             <div class="sr-semesters">
                 <div class="sr-semester-card {{ $isS1Active ? 'sr-semester-card--active' : '' }}">
@@ -145,7 +161,7 @@
             <div class="sr-semester-note">
                 Coefficients : S1 {{ $semesterWeights['semester1'] }} | S2 {{ $semesterWeights['semester2'] }}
                 @if($annualComplete)
-                    <strong style="color: var(--sr-success); margin-left: 0.5rem;">Bilan complet</strong>
+                    <strong style="color: var(--sr-primary); margin-left: 0.5rem;">Bilan complet</strong>
                 @elseif($annualIncomplete && $primarySemesterLabel)
                     <strong style="color: #b45309; margin-left: 0.5rem;">{{ $primarySemesterLabel }} seulement</strong>
                 @endif
