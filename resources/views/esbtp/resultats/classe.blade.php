@@ -10,7 +10,7 @@
 @php
     $totalMoyennes = 0; $countMoyennes = 0; $min = 20; $max = 0; $countSucces = 0; $countEchec = 0;
     foreach ($resultats as $r) {
-        if ($r['notes_count'] > 0) {
+        if ($r['has_average'] ?? false) {
             $avg = $r['moyenne_avec_assiduite'] ?? $r['moyenne'];
             $totalMoyennes += $avg; $countMoyennes++;
             $min = min($min, $avg); $max = max($max, $avg);
@@ -190,17 +190,18 @@
                                 @php
                                     $etudiant = $resultat['etudiant'];
                                     $moyenne = $resultat['moyenne_avec_assiduite'] ?? $resultat['moyenne'];
+                                    $hasAverage = $resultat['has_average'] ?? false;
                                     $notesCount = $resultat['notes_count'];
                                     $noteAssid = $resultat['note_assiduite'] ?? 0;
                                     $bulletinStatus = $bulletinConsistencyByStudent[$etudiant->id] ?? null;
                                 @endphp
                                 <tr>
                                     <td class="text-center">
-                                        @if($index === 0 && $notesCount > 0)
+                                        @if($index === 0 && $hasAverage)
                                             <span style="color: #d97706; font-size: 1.1rem;"><i class="fas fa-trophy"></i></span>
-                                        @elseif($index === 1 && $notesCount > 0)
+                                        @elseif($index === 1 && $hasAverage)
                                             <span style="color: #9ca3af; font-size: 1rem;"><i class="fas fa-medal"></i></span>
-                                        @elseif($index === 2 && $notesCount > 0)
+                                        @elseif($index === 2 && $hasAverage)
                                             <span style="color: #b45309; font-size: 0.95rem;"><i class="fas fa-medal"></i></span>
                                         @else
                                             <span style="color: var(--sr-muted-light); font-weight: 600; font-size: 0.85rem;">{{ $index + 1 }}</span>
@@ -218,7 +219,7 @@
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        @if($notesCount > 0)
+                                        @if($hasAverage)
                                             <div class="sr-avg-cell">
                                                 <span class="sr-avg-badge sr-avg-badge--{{ $moyenne >= 10 ? 'success' : 'danger' }}">
                                                     {{ number_format($moyenne, 2) }}/20
@@ -247,7 +248,7 @@
                                         <span class="sr-eval-count">{{ $notesCount }}</span>
                                     </td>
                                     <td class="text-center">
-                                        @if($notesCount > 0)
+                                        @if($hasAverage)
                                             @if($moyenne >= 10)
                                                 <span class="sr-appreciation sr-appreciation--tres-bien">Admis</span>
                                             @elseif($moyenne >= 8)
@@ -255,6 +256,8 @@
                                             @else
                                                 <span class="sr-appreciation sr-appreciation--insuffisant">Ajourné</span>
                                             @endif
+                                        @elseif($notesCount > 0)
+                                            <span class="sr-appreciation" style="background: #fff7ed; color: #c2410c;">À recalculer</span>
                                         @else
                                             <span class="sr-appreciation" style="background: var(--sr-border); color: var(--sr-muted);">Aucune note</span>
                                         @endif

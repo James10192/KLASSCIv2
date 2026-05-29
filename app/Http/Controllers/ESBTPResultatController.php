@@ -457,6 +457,7 @@ class ESBTPResultatController extends Controller
                 'moyenne' => $moyenne,
                 'total_coefficients' => $totalCoefficients,
                 'notes_count' => $notes->where('etudiant_id', $student->id)->count(),
+                'has_average' => $totalCoefficients > 0,
             ];
         }
 
@@ -508,6 +509,7 @@ class ESBTPResultatController extends Controller
 
                 $r['moyenne'] = $displayAverage ?? 0;
                 $r['moyenne_avec_assiduite'] = $displayAverage ?? 0;
+                $r['has_average'] = $displayAverage !== null;
                 $r['annual_state'] = $annuelle !== null
                     ? 'annual_complete'
                     : (($semestre1 !== null || $semestre2 !== null) ? 'annual_incomplete' : 'no_data');
