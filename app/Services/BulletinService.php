@@ -1297,6 +1297,13 @@ class BulletinService
 
     public function calculateStudentAverageForPeriode(int $etudiantId, ?int $classeId, ?int $anneeUniversitaireId, string $periode): ?float
     {
+        if ($classeId && $anneeUniversitaireId && in_array($periode, ['semestre1', 'semestre2'], true)) {
+            $snapshot = app(\App\Services\ESBTP\BtsCurrentResultSnapshotService::class)
+                ->getSemesterSnapshot($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+
+            return $snapshot['raw_total'] ?? null;
+        }
+
         $semestre = $periode === 'semestre2' ? '2' : '1';
 
         $notesQuery = ESBTPNote::where('etudiant_id', $etudiantId)

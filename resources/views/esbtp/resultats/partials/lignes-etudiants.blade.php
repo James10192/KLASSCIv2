@@ -45,6 +45,10 @@
                     {{ $annualValueStatuses[$etudiant->id]['label'] ?? 'Provisoire' }}
                 </span>
             @endif
+        @elseif(($annualValueStatuses[$etudiant->id]['state'] ?? null) === 'no_data')
+            <span class="badge bg-secondary">
+                <i class="fas fa-ban me-1"></i>Aucune note
+            </span>
         @else
             <span class="badge bg-secondary">N/A</span>
         @endif
@@ -65,8 +69,13 @@
         @endif
     </td>
     <td>
+        @php $annualState = $annualValueStatuses[$etudiant->id]['state'] ?? null; @endphp
         @if(isset($moyennes[$etudiant->id]))
-            @if($moyennes[$etudiant->id] >= 10)
+            @if($annualState === 'annual_incomplete')
+                <span class="badge bg-warning text-dark">
+                    <i class="fas fa-clock me-1"></i>Partiel
+                </span>
+            @elseif($moyennes[$etudiant->id] >= 10)
                 <span class="badge bg-success">
                     <i class="fas fa-check me-1"></i>Admis
                 </span>
