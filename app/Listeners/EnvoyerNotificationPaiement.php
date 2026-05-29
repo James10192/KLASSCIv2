@@ -2,8 +2,8 @@
 
 namespace App\Listeners;
 
+use App\Domain\Notifications\Notifiers\PaiementNotifier;
 use App\Events\PaiementRecu;
-use App\Services\NotificationService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Support\Facades\Log;
@@ -12,14 +12,14 @@ class EnvoyerNotificationPaiement implements ShouldQueue
 {
     use InteractsWithQueue;
 
-    protected $notificationService;
+    protected PaiementNotifier $paiementNotifier;
 
     /**
      * Create the event listener.
      */
-    public function __construct(NotificationService $notificationService)
+    public function __construct(PaiementNotifier $paiementNotifier)
     {
-        $this->notificationService = $notificationService;
+        $this->paiementNotifier = $paiementNotifier;
     }
 
     /**
@@ -30,8 +30,8 @@ class EnvoyerNotificationPaiement implements ShouldQueue
         try {
             Log::info("Envoi notification paiement reçu ID: {$event->paiement->id}");
 
-            // Envoyer la notification de confirmation
-            $resultat = $this->notificationService->notifierPaiementRecu($event->paiement);
+            // Phase 8b strangler fig via PaiementNotifier
+            $resultat = $this->paiementNotifier->paiementRecu($event->paiement);
 
             if ($resultat['success']) {
                 Log::info("Notification paiement envoyée avec succès", [

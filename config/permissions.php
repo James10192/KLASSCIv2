@@ -1266,6 +1266,101 @@ return [
             'group' => 'Modules',
             'icon' => 'fa-book-reader',
         ],
+        'module.whatsapp.access' => [
+            'label' => 'Module : WhatsApp Business (notifications + chat 2-way)',
+            'description' => 'Active toutes les fonctionnalités WhatsApp pour ce tenant. '
+                . 'Couche abonnement instance — provisioning via adminKlassci.',
+            'group' => 'Modules',
+            'icon' => 'fa-toggle-on',
+        ],
+
+        // ===== WhatsApp Business — Phase 1 → 18 Plan v4 =====
+        'whatsapp.inbox.view' => [
+            'label' => "Voir l'inbox WhatsApp",
+            'description' => 'Consulter les messages entrants des parents via WhatsApp.',
+            'group' => 'WhatsApp',
+            'icon' => 'fa-inbox',
+        ],
+        'whatsapp.inbox.reply' => [
+            'label' => 'Répondre aux messages WhatsApp',
+            'description' => 'Envoyer une réponse manuelle à un parent depuis inbox (fenêtre service 24h Meta).',
+            'group' => 'WhatsApp',
+            'icon' => 'fa-reply',
+        ],
+        'whatsapp.inbox.assign' => [
+            'label' => 'Assigner un message à un agent',
+            'description' => "Réaffecter un message orphelin à un membre de l'équipe.",
+            'group' => 'WhatsApp',
+            'icon' => 'fa-user-tag',
+        ],
+        'whatsapp.inbox.archive' => [
+            'label' => 'Archiver un message WhatsApp',
+            'description' => 'Marquer un thread comme traité et le déplacer en archive.',
+            'group' => 'WhatsApp',
+            'icon' => 'fa-archive',
+        ],
+        'whatsapp.templates.view' => [
+            'label' => 'Voir les templates WhatsApp',
+            'description' => 'Consulter les templates Meta approuvés du tenant.',
+            'group' => 'WhatsApp',
+            'icon' => 'fa-list-alt',
+        ],
+        'whatsapp.templates.manage' => [
+            'label' => 'Gérer les templates WhatsApp (sync Meta)',
+            'description' => "Synchroniser les templates depuis l'API Meta Business Manager.",
+            'group' => 'WhatsApp',
+            'icon' => 'fa-cog',
+        ],
+        'whatsapp.cost.view' => [
+            'label' => 'Voir le coût WhatsApp du tenant',
+            'description' => 'Dashboard coût mensuel FCFA + projection.',
+            'group' => 'WhatsApp',
+            'icon' => 'fa-coins',
+        ],
+        'whatsapp.metrics.view' => [
+            'label' => 'Voir les statistiques WhatsApp',
+            'description' => 'KPIs delivery rate, latency p95, top opt-outs, volume mensuel.',
+            'group' => 'WhatsApp',
+            'icon' => 'fa-chart-line',
+        ],
+        'whatsapp.config.view' => [
+            'label' => 'Voir la configuration WhatsApp du tenant',
+            'description' => 'Inspect credentials Meta (masqués) + statut enabled.',
+            'group' => 'WhatsApp',
+            'icon' => 'fa-eye',
+        ],
+        'whatsapp.config.edit' => [
+            'label' => 'Modifier la configuration WhatsApp',
+            'description' => "Réservé superAdmin — éditer credentials Meta ne devrait être qu'en cas exceptionnel "
+                . '(provisioning normal via adminKlassci).',
+            'group' => 'WhatsApp',
+            'icon' => 'fa-key',
+        ],
+        'whatsapp.chatbot.toggle' => [
+            'label' => 'Activer/désactiver le chatbot IA WhatsApp',
+            'description' => 'Toggle auto-reply Gemini sur messages entrants.',
+            'group' => 'WhatsApp',
+            'icon' => 'fa-robot',
+        ],
+        'whatsapp.chatbot.review' => [
+            'label' => 'Reviewer les réponses IA avant envoi (modération)',
+            'description' => "Queue de modération si confidence IA < seuil — l'humain valide avant send.",
+            'group' => 'WhatsApp',
+            'icon' => 'fa-eye-slash',
+        ],
+        'whatsapp.send.manual' => [
+            'label' => 'Envoyer un message WhatsApp manuel ad-hoc',
+            'description' => "Permet aux comptables/secrétaires d'envoyer une notification one-off "
+                . '(hors template programmé).',
+            'group' => 'WhatsApp',
+            'icon' => 'fa-paper-plane',
+        ],
+        'whatsapp.webhook.manage' => [
+            'label' => 'Gérer la configuration webhook Meta',
+            'description' => 'Réservé Service Technique uniquement — verify token + rotation secret.',
+            'group' => 'WhatsApp',
+            'icon' => 'fa-network-wired',
+        ],
 
         // ===== TPE (Travail Personnel Étudiant — LMD UEMOA) =====
         'tpe.declare' => [
@@ -1430,8 +1525,12 @@ return [
             'module.academique.access', 'module.etudiants.access', 'module.enseignants.access',
             'module.notes_evaluations.access', 'module.emploi_temps.access', 'module.presences.access',
             'module.lmd.access', 'module.comptabilite.access', 'module.communication.access',
+            'module.whatsapp.access',
             // TPE — admin observe toutes les déclarations (dormant tant que module désactivé)
             'tpe.view_all',
+            // WhatsApp Phase 1 — secrétariat gère l'inbox + envois ad-hoc + templates view
+            'whatsapp.inbox.view', 'whatsapp.inbox.reply', 'whatsapp.inbox.assign', 'whatsapp.inbox.archive',
+            'whatsapp.send.manual', 'whatsapp.templates.view',
         ],
 
         'comptable' => [
@@ -1453,6 +1552,9 @@ return [
             'exports.schedules.manage', 'exports.schedules.send_external',  // Phase 8 — exports programmés
             'messages.send', 'messages.receive', 'annonces.view',
             'module.comptabilite.access', 'module.communication.access',
+            'module.whatsapp.access',
+            // WhatsApp Phase 1 — comptable monitore coût + KPI delivery (notif paiements)
+            'whatsapp.cost.view', 'whatsapp.metrics.view',
         ],
 
         'caissier' => [

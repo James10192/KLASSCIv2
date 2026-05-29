@@ -199,6 +199,7 @@ return [
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
         App\Providers\QueryDebugServiceProvider::class,
+        App\Providers\NotificationDomainServiceProvider::class,
 
     ],
 

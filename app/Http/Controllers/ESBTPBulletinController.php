@@ -1114,13 +1114,12 @@ class ESBTPBulletinController extends Controller
             $bulletin->save();
 
             // Si le bulletin vient d'être publié, notifier les parents
+            // Phase 8b strangler fig via BulletinNotifier
             if (! $wasPublished && $bulletin->is_published) {
                 try {
-                    $notificationService = app(\App\Services\NotificationService::class);
-                    $notificationService->notifyParentsBulletinPublished($bulletin);
-
-                    // Vérifier si l'étudiant a des notes faibles et envoyer une alerte si nécessaire
-                    $notificationService->notifyParentsLowGrades($bulletin);
+                    $notifier = app(\App\Domain\Notifications\Notifiers\BulletinNotifier::class);
+                    $notifier->bulletinPublie($bulletin);
+                    $notifier->alerteNotesFaibles($bulletin);
                 } catch (\Exception $e) {
                     \Log::error('Erreur envoi notification bulletin aux parents: '.$e->getMessage());
                 }

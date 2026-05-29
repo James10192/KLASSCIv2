@@ -416,10 +416,11 @@ class TeacherDashboardController extends Controller
 
             // **NOTIFICATION** : Notifier le coordinateur et les étudiants absents
             try {
-                $notificationService = app(NotificationService::class);
+                // Phase 8b strangler fig via TeacherNotifier
+                $teacherNotifier = app(\App\Domain\Notifications\Notifiers\TeacherNotifier::class);
 
                 // 1. Notifier le coordinateur de l'appel terminé
-                $notificationService->notifyCoordinateurStudentRollCallCompleted($user, $seance, $request->attendances);
+                $teacherNotifier->coordinateurAppelEffectue($user, $seance, $request->attendances);
 
                 // 2. Notifier les étudiants absents
                 $absentStudentIds = collect($request->attendances)
@@ -429,7 +430,7 @@ class TeacherDashboardController extends Controller
 
                 if (! empty($absentStudentIds)) {
                     $absentStudents = \App\Models\ESBTPEtudiant::whereIn('id', $absentStudentIds)->get();
-                    $notificationService->notifyStudentsAbsence($absentStudents, $seance, $user);
+                    $teacherNotifier->etudiantsAbsenceConstatee($absentStudents->all(), $seance, $user);
                 }
 
             } catch (\Exception $e) {
@@ -494,9 +495,10 @@ class TeacherDashboardController extends Controller
         ]);
 
         // **NOTIFICATION** : Notifier le coordinateur de la clôture du cours
+        // Phase 8b strangler fig via TeacherNotifier
         try {
-            $notificationService = app(NotificationService::class);
-            $notificationService->notifyCoordinateurCourseClosed($user, $seance, request('notes'));
+            app(\App\Domain\Notifications\Notifiers\TeacherNotifier::class)
+                ->coordinateurCoursClos($user, $seance, request('notes'));
         } catch (\Exception $e) {
             \Log::error('Erreur lors de l\'envoi de la notification de clôture: '.$e->getMessage());
             // Ne pas interrompre le processus principal

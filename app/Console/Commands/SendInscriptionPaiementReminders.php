@@ -7,7 +7,8 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Models\NotificationReminder;
 use App\Models\ESBTPSystemSetting;
-use App\Services\NotificationService;
+use App\Jobs\SendInscriptionReminderJob;
+use App\Jobs\SendPaiementReminderJob;
 use Illuminate\Support\Facades\Log;
 use Carbon\Carbon;
 
@@ -27,12 +28,11 @@ class SendInscriptionPaiementReminders extends Command
      */
     protected $description = 'Envoyer les rappels automatiques pour les inscriptions et paiements en attente';
 
-    protected $notificationService;
-
-    public function __construct(NotificationService $notificationService)
+    public function __construct()
     {
         parent::__construct();
-        $this->notificationService = $notificationService;
+        // Phase 14 — la commande ne fait que dispatcher des jobs, plus de DI Notifier
+        // (les jobs eux-mêmes injectent les Notifier shells dans leurs handle())
     }
 
     /**
@@ -118,7 +118,8 @@ class SendInscriptionPaiementReminders extends Command
             if ($reminder->reminder_count === 0) {
                 if ($daysPending >= $firstDelay) {
                     if (!$isTestMode) {
-                        $this->notificationService->sendInscriptionReminder($inscription, $daysPending, 1);
+                        // Phase 14 — dispatch sur queue 'reminders' (parallélisable, retry exponential)
+                        SendInscriptionReminderJob::dispatch($inscription->id, $daysPending, 1);
                         $reminder->recordReminderSent($frequency);
                         $remindersSent++;
                     }
@@ -137,7 +138,8 @@ class SendInscriptionPaiementReminders extends Command
                     }
 
                     if (!$isTestMode) {
-                        $this->notificationService->sendInscriptionReminder($inscription, $daysPending, $reminder->reminder_count + 1);
+                        // Phase 14 — dispatch sur queue 'reminders' (rappel suivant)
+                        SendInscriptionReminderJob::dispatch($inscription->id, $daysPending, $reminder->reminder_count + 1);
                         $reminder->recordReminderSent($frequency);
                         $remindersSent++;
                     }
@@ -196,7 +198,8 @@ class SendInscriptionPaiementReminders extends Command
             if ($reminder->reminder_count === 0) {
                 if ($daysPending >= $firstDelay) {
                     if (!$isTestMode) {
-                        $this->notificationService->sendPaiementReminder($paiement, $daysPending, 1);
+                        // Phase 14 — dispatch sur queue 'reminders' (premier rappel paiement)
+                        SendPaiementReminderJob::dispatch($paiement->id, $daysPending, 1);
                         $reminder->recordReminderSent($frequency);
                         $remindersSent++;
                     }
@@ -215,7 +218,8 @@ class SendInscriptionPaiementReminders extends Command
                     }
 
                     if (!$isTestMode) {
-                        $this->notificationService->sendPaiementReminder($paiement, $daysPending, $reminder->reminder_count + 1);
+                        // Phase 14 — dispatch sur queue 'reminders' (rappel suivant paiement)
+                        SendPaiementReminderJob::dispatch($paiement->id, $daysPending, $reminder->reminder_count + 1);
                         $reminder->recordReminderSent($frequency);
                         $remindersSent++;
                     }

@@ -2160,8 +2160,15 @@
 
                     <!-- Announcements Section -->
                     @can('module.communication.access')
-                    @can('annonces.view')
                     <div class="menu-category">Communication</div>
+                    {{-- Phase 13 Plan v4 — Hub Communications unifié (entrée principale) --}}
+                    <div class="menu-item">
+                        <a href="{{ route('esbtp.communications.hub') }}" class="menu-link {{ Request::routeIs('esbtp.communications.*') ? 'active' : '' }}">
+                            <div class="menu-icon"><i class="fas fa-comments"></i></div>
+                            <div class="menu-text">Hub Communications</div>
+                        </a>
+                    </div>
+                    @can('annonces.view')
                     <!-- Announcements Management -->
                         <div class="menu-item">
                             <a href="{{ route('esbtp.annonces.index') }}" class="menu-link {{ Request::routeIs('esbtp.annonces.*') ? 'active' : '' }}">

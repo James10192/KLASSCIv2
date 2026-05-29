@@ -4,6 +4,13 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ESBTPClasseController;
 use App\Http\Controllers\ESBTPEtudiantController;
+use App\Http\Controllers\Webhooks\WaveWebhookController;
+
+// Phase 12 Plan v4 — Wave CI webhook (paiements mobiles confirmation)
+// Auth via HMAC signature header (pas auth:sanctum), throttle généreux pour retries Wave
+Route::post('/webhooks/wave', [WaveWebhookController::class, 'handle'])
+    ->name('api.webhooks.wave')
+    ->middleware('throttle:120,1');
 
 /*
 |--------------------------------------------------------------------------

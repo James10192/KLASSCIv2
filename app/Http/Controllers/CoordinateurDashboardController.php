@@ -41,8 +41,10 @@ class CoordinateurDashboardController extends Controller
             ->count();
 
         // Envoyer des notifications pour les alertes critiques
+        // Phase 8b strangler fig via SystemNotifier
         if (!empty($stats['alerts'])) {
-            $this->notificationService->notifyCoordinateurCriticalAlerts($stats['alerts'], $today);
+            app(\App\Domain\Notifications\Notifiers\SystemNotifier::class)
+                ->alertesCriticalCoordinateur($stats['alerts'], $today);
         }
 
         return view('coordinateur.dashboard-attendance', compact('stats', 'unreadNotifications'));

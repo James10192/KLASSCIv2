@@ -12,6 +12,7 @@ use App\Http\Controllers\ESBTP\TeacherAttendanceController;
 use App\Http\Controllers\ESBTP\TeacherAttendanceHistoryController;
 use App\Http\Controllers\ESBTPAnneeUniversitaireController;
 use App\Http\Controllers\ESBTPAnnonceController;
+use App\Http\Controllers\ESBTPCommunicationsHubController;
 use App\Http\Controllers\ESBTPAttendanceCodeController;
 use App\Http\Controllers\ESBTPAttendanceController;
 use App\Http\Controllers\ESBTPBulletinConfigController;
@@ -749,6 +750,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             // Routes pour les annonces
             Route::resource('annonces', ESBTPAnnonceController::class)
                 ->middleware(['permission:annonces.view|annonces.create|annonces.edit']);
+
+            // Phase 13 Plan v4 — Hub Communications unifié (annonces + messages + WhatsApp + chatbot)
+            Route::get('/communications', [ESBTPCommunicationsHubController::class, 'index'])
+                ->name('communications.hub')
+                ->middleware('permission:module.communication.access');
 
             // Routes pour les présences/absences (esbtp namespace)
             Route::name('attendances.')->group(function () {

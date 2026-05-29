@@ -881,15 +881,15 @@ class ESBTPReinscriptionController extends Controller
                 $request->action_reliquat // Gestion des reliquats pour superAdmin
             );
 
-            // Envoyer notification aux parents
+            // Envoyer notification aux parents — Phase 8b strangler fig via InscriptionNotifier
             try {
-                $notificationService = app(\App\Services\NotificationService::class);
                 $reliquatMontant = $request->action_reliquat === 'report' ? $request->reliquat_montant : 0;
-                $notificationService->notifyParentsReinscriptionCreated(
-                    $nouvelleInscription,
-                    $request->decision ?? 'passage',
-                    $reliquatMontant ?? 0
-                );
+                app(\App\Domain\Notifications\Notifiers\InscriptionNotifier::class)
+                    ->reinscriptionCreated(
+                        $nouvelleInscription,
+                        $request->decision ?? 'passage',
+                        (float) ($reliquatMontant ?? 0),
+                    );
             } catch (\Exception $e) {
                 \Log::error('Erreur envoi notification réinscription parent: ' . $e->getMessage());
             }

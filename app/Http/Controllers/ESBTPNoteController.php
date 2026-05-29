@@ -1207,8 +1207,9 @@ class ESBTPNoteController extends Controller
             $absence->heure_debut = $evaluation->heure_debut;
             $absence->heure_fin = $evaluation->heure_fin;
 
-            // Utiliser le service de notifications
-            $this->notificationService->notifyNewAbsence($absence, $etudiant);
+            // Phase 8b vague 5 strangler fig via AbsenceNotifier (orchestre étudiant + parents)
+            app(\App\Domain\Notifications\Notifiers\AbsenceNotifier::class)
+                ->nouvelleAbsence($absence, $etudiant);
 
             \Log::info("Notification d'absence enrichie envoyée pour la note", [
                 'etudiant_id' => $note->etudiant_id,

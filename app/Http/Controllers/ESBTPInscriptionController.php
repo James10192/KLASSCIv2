@@ -586,10 +586,9 @@ class ESBTPInscriptionController extends Controller
                         "username" => $inscription->etudiant->user->username,
                         "password" => session("generated_password"),
                     ];
-                    $notificationService->notifyParentsInscriptionCreated(
-                        $inscription,
-                        $credentials,
-                    );
+                    // Phase 8b strangler fig — délégation via InscriptionNotifier
+                    app(\App\Domain\Notifications\Notifiers\InscriptionNotifier::class)
+                        ->inscriptionCreated($inscription, $credentials);
                 }
             } catch (\Exception $e) {
                 Log::error(
