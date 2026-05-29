@@ -365,6 +365,22 @@ switch ($Command) {
         Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 8
         break
     }
+    "resultats:bulletin-consistency-diagnose" {
+        if ($ExtraArgs.Count -lt 4) {
+            throw "Usage: .\klassci-cli.ps1 resultats:bulletin-consistency-diagnose [tenant] <etudiant_id> <classe_id> <annee_universitaire_id> <periode>"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $query = @{
+            "classe_id" = $ExtraArgs[1]
+            "annee_universitaire_id" = $ExtraArgs[2]
+            "periode" = $ExtraArgs[3]
+        }
+
+        $path = "/resultats/etudiant/{0}/bulletin-consistency-diagnose{1}" -f $ExtraArgs[0], (New-KlassciQueryString -Query $query)
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
+        break
+    }
     default {
         Write-Host "Usage:" -ForegroundColor Yellow
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
@@ -376,6 +392,7 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 lmd:tree [presentation]"
         Write-Host "  .\klassci-cli.ps1 lmd:coverage [presentation]"
         Write-Host "  .\klassci-cli.ps1 resultats:diagnose [presentation] <etudiant_id> [classe_id] [annee_universitaire_id] [periode] [include_all_statuses]"
+        Write-Host "  .\klassci-cli.ps1 resultats:bulletin-consistency-diagnose [presentation] <etudiant_id> <classe_id> <annee_universitaire_id> <periode>"
         exit 1
     }
 }
