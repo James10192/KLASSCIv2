@@ -13,6 +13,7 @@ use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Services\ESBTP\ESBTPAbsenceService;
+use App\Support\InscriptionWorkflowAlertPresenter;
 use App\Models\ESBTPConfigMatiere;
 use App\Models\ESBTPEvaluation;
 use Illuminate\Support\Collection;
@@ -193,6 +194,13 @@ class BulletinService
         $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
         $classe = ESBTPClasse::with(['filiere', 'niveauEtude'])->findOrFail($classeId);
         $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($anneeUniversitaireId);
+        $inscription = $etudiant->inscriptions()
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->orderByDesc('date_inscription')
+            ->orderByDesc('id')
+            ->first();
+        $inscriptionWorkflowAlert = InscriptionWorkflowAlertPresenter::fromInscription($inscription, $anneeUniversitaire);
 
         // Récupérer le bulletin pour obtenir les professeurs configurés
         $bulletin = ESBTPBulletin::where('etudiant_id', $etudiantId)
@@ -531,6 +539,7 @@ class BulletinService
             'totalHeuresAbsencesParMatiere' => $totalHeuresAbsencesParMatiere,
             'classeTroncCommun' => $classeTroncCommun,
             'isSpecialisation' => $classeTroncCommun !== null,
+            'inscriptionWorkflowAlert' => $inscriptionWorkflowAlert,
         ];
     }
 

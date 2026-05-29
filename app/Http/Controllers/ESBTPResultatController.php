@@ -18,6 +18,7 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Support\InscriptionWorkflowAlertPresenter;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\ESBTP\BulletinConsistencyService;
 use App\Services\ESBTP\ESBTPAbsenceService;
@@ -624,6 +625,7 @@ class ESBTPResultatController extends Controller
         $classe = $classe_id ? ESBTPClasse::with(['filiere', 'niveau'])->find($classe_id) : null;
         // Get the academic year object for display
         $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
+        $inscriptionWorkflowAlert = InscriptionWorkflowAlertPresenter::fromInscription($inscription, $anneeUniversitaire);
         // Get all active classes for the filter dropdown
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
@@ -969,7 +971,8 @@ class ESBTPResultatController extends Controller
             'detailUiState',
             'bulletinWorkflowPeriode',
             'bulletinWorkflowPeriodeLabel',
-            'bulletinConsistency'
+            'bulletinConsistency',
+            'inscriptionWorkflowAlert'
         ));
     }
 
@@ -2849,6 +2852,7 @@ class ESBTPResultatController extends Controller
             // Ajouter le logo (la photo étudiant est déjà dans $donnees via le service)
             $logoBase64 = $this->bulletinService->prepareLogoBase64($donnees['settings']['school_logo'] ?? null);
             $donnees['logoBase64'] = $logoBase64;
+            $donnees['showInscriptionWorkflowAlert'] = true;
 
             return view($this->bulletinService->getBulletinTemplateView(), $donnees);
 

@@ -382,6 +382,12 @@
     @endunless
 
     <div class="container">
+        @if(($showInscriptionWorkflowAlert ?? false) && !($isPdfExport ?? false))
+            @include('esbtp.partials.inscription-workflow-alert', [
+                'inscriptionWorkflowAlert' => $inscriptionWorkflowAlert ?? null,
+                'redirectTo' => 'resultats_etudiant',
+            ])
+        @endif
 
         {{-- Header 3 colonnes --}}
         @if(($settings['bulletin_show_header'] ?? '1') == '1')

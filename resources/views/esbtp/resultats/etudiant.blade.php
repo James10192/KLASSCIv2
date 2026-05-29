@@ -194,6 +194,11 @@
             </button>
         </div>
 
+        @include('esbtp.partials.inscription-workflow-alert', [
+            'inscriptionWorkflowAlert' => $inscriptionWorkflowAlert ?? null,
+            'redirectTo' => 'resultats_etudiant',
+        ])
+
         @if(isset($bulletinConsistency) && $bulletinConsistency)
             <div class="sr-bulletin-banner sr-bulletin-banner--{{ $bulletinConsistency['status'] === 'official_exists_but_stale' ? 'warning' : ($bulletinConsistency['status'] === 'aligned' ? 'info' : 'muted') }} sr-animate sr-animate-delay-1">
                 <div class="sr-bulletin-banner__icon">

@@ -383,6 +383,12 @@
 </head>
 <body @if($isPdfExport ?? false)class="pdf-export"@endif>
     <div class="container">
+        @if(($showInscriptionWorkflowAlert ?? false) && !($isPdfExport ?? false))
+            @include('esbtp.partials.inscription-workflow-alert', [
+                'inscriptionWorkflowAlert' => $inscriptionWorkflowAlert ?? null,
+                'redirectTo' => 'resultats_etudiant',
+            ])
+        @endif
 
         {{-- Entête ministère / république --}}
         @if(($settings['bulletin_show_header'] ?? '1') == '1')

@@ -1342,6 +1342,15 @@ class ESBTPInscriptionController extends Controller
                     ->with("success", "Inscription validée avec succès.");
             }
 
+            if ($request->input('redirect_to') === 'resultats_etudiant') {
+                $redirectUrl = (string) $request->input('redirect_url', '');
+                if ($redirectUrl !== '' && str_starts_with($redirectUrl, url('/'))) {
+                    return redirect($redirectUrl)->with("success", "Inscription validée avec succès.");
+                }
+
+                return redirect()->back()->with("success", "Inscription validée avec succès.");
+            }
+
             return redirect()
                 ->route("esbtp.inscriptions.show", $inscription->id)
                 ->with("success", "Inscription validée avec succès.");
