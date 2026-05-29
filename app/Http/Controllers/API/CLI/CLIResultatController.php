@@ -56,7 +56,9 @@ class CLIResultatController extends BaseApiController
             $currentControllerInscriptionQuery->where('status', 'active');
         }
 
-        $currentControllerInscription = $currentControllerInscriptionQuery->first();
+        $currentControllerInscription = $requestedClasseId
+            ? (clone $currentControllerInscriptionQuery)->where('classe_id', $requestedClasseId)->first()
+            : $currentControllerInscriptionQuery->first();
         $requestedClasseInscription = $requestedClasseId
             ? (clone $inscriptionsQuery)->where('classe_id', $requestedClasseId)->first()
             : null;
@@ -65,7 +67,7 @@ class CLIResultatController extends BaseApiController
             ->orderByDesc('id')
             ->get();
 
-        $currentControllerClasseId = $currentControllerInscription?->classe_id ?: $requestedClasseId;
+        $currentControllerClasseId = $requestedClasseId ?: $currentControllerInscription?->classe_id;
         $expectedClasseId = $requestedClasseId ?: $currentControllerInscription?->classe_id;
         $effectiveDetailPeriode = $requestedPeriode ?: 'semestre1';
 

@@ -303,7 +303,7 @@ class ESBTPResultatController extends Controller
             $periode = '';
         }
         $annee_universitaire_id = $request->annee_universitaire_id;
-        $include_all_statuses = $request->has('include_all_statuses');
+        $include_all_statuses = $request->boolean('include_all_statuses');
 
         // Get current academic year if not specified (utiliser is_current au lieu de is_active)
         if (! $annee_universitaire_id) {
@@ -514,27 +514,14 @@ class ESBTPResultatController extends Controller
     public function resultatEtudiant(ResultatsFilterRequest $request, $id)
     {
         // Gérer les deux paramètres: semestre et periode (compatibilité)
-        $semestreRaw = $request->semestre ?? $request->periode;
+        $requestedClasseId = $request->filled('classe_id') ? (int) $request->input('classe_id') : null;
         $annee_universitaire_id = $request->annee_universitaire_id;
 
         // CORRECTION: Conversion du format du semestre pour compatibilité avec le format attendu
         // Gérer les formats : 1, 2, semestre1, semestre2
-        if ($semestreRaw == '1') {
-            $periode = 'semestre1';
-            $semestre = '1';
-        } elseif ($semestreRaw == '2') {
-            $periode = 'semestre2';
-            $semestre = '2';
-        } elseif ($semestreRaw == 'semestre1') {
-            $periode = 'semestre1';
-            $semestre = '1';
-        } elseif ($semestreRaw == 'semestre2') {
-            $periode = 'semestre2';
-            $semestre = '2';
-        } else {
-            $periode = 'semestre1';
-            $semestre = '1';
-        }
+        $normalizedPeriode = $this->normalizeBtsPeriode($request->input('periode', $request->input('semestre')));
+        $periode = $normalizedPeriode['periode'];
+        $semestre = $normalizedPeriode['semestre'];
 
         \Log::debug('Valeurs des variables pour la génération de PDF:', [
             'semestre' => $semestre,
@@ -542,7 +529,7 @@ class ESBTPResultatController extends Controller
             'annee_universitaire_id' => $annee_universitaire_id,
         ]);
 
-        $include_all_statuses = $request->has('include_all_statuses');
+        $include_all_statuses = $request->boolean('include_all_statuses');
 
         // Get current academic year if not specified
         if (! $annee_universitaire_id) {
@@ -562,9 +549,18 @@ class ESBTPResultatController extends Controller
             $inscriptionQuery->where('status', 'active');
         }
 
-        $inscription = $inscriptionQuery->first();
+        $inscriptions = (clone $inscriptionQuery)
+            ->orderByDesc('date_inscription')
+            ->orderByDesc('id')
+            ->get();
+        $inscription = $requestedClasseId
+            ? $inscriptions->firstWhere('classe_id', $requestedClasseId)
+            : $inscriptions->first();
 
-        $classe_id = $inscription->classe_id ?? $request->classe_id ?? null;
+        $classe_id = $requestedClasseId ?? $inscription?->classe_id;
+        if (! $classe_id && $inscription) {
+            $classe_id = $inscription->classe_id;
+        }
         $classe = $classe_id ? ESBTPClasse::with(['filiere', 'niveau'])->find($classe_id) : null;
         // Get the academic year object for display
         $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
@@ -572,19 +568,33 @@ class ESBTPResultatController extends Controller
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
         $periodes = [
-            (object) ['id' => '1', 'nom' => 'Semestre 1'],
-            (object) ['id' => '2', 'nom' => 'Semestre 2'],
+            (object) ['id' => 'annuel', 'code' => 'annuel', 'nom' => 'Annuel'],
+            (object) ['id' => '1', 'code' => 'semestre1', 'nom' => 'Semestre 1'],
+            (object) ['id' => '2', 'code' => 'semestre2', 'nom' => 'Semestre 2'],
         ];
 
         // Get notes for the student
         $notesQuery = ESBTPNote::where('etudiant_id', $id)
             ->with(['evaluation', 'evaluation.matiere']);
 
+        $notesQuery->whereHas('evaluation', function ($query) use ($annee_universitaire_id, $classe_id, $periode) {
+            if ($annee_universitaire_id) {
+                $query->where('annee_universitaire_id', $annee_universitaire_id);
+            }
+            if ($classe_id) {
+                $query->where('classe_id', $classe_id);
+            }
+            if ($periode !== 'annuel') {
+                $query->whereIn('periode', [$periode, $periode === 'semestre1' ? '1' : '2']);
+            }
+        });
+
         // Si un semestre est spécifié, filtrer par ce semestre
         if ($semestre) {
             \Log::info('Filtrage par semestre:', ['semestre' => $semestre]);
-            $notesQuery->where(function ($q) use ($semestre) {
+            $notesQuery->where(function ($q) use ($semestre, $periode) {
                 $q->where('semestre', $semestre)
+                    ->orWhere('semestre', $periode)
                     ->orWhereHas('evaluation', function ($query) use ($semestre) {
                         $query->where('periode', 'semestre'.$semestre)
                             ->orWhere('periode', $semestre);
@@ -724,7 +734,7 @@ class ESBTPResultatController extends Controller
             ->when($classe_id, function ($query) use ($classe_id) {
                 return $query->where('classe_id', $classe_id);
             })
-            ->when($periode, function ($query) use ($periode) {
+            ->when($periode !== 'annuel', function ($query) use ($periode) {
                 return $query->where('periode', $periode);
             })
             ->when($annee_universitaire_id, function ($query) use ($annee_universitaire_id) {
@@ -817,10 +827,14 @@ class ESBTPResultatController extends Controller
             'semestre2', $periode, $moyenneAvecAssiduite, $noteAssiduite
         );
         $moyenneAnnuelle = $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+        $detailUiState = $this->buildAnnualDetailUiState($periode, $moyenneSemestre1, $moyenneSemestre2, $moyenneAnnuelle);
+        $bulletinWorkflowPeriode = $detailUiState['bulletin_workflow_periode'];
+        $bulletinWorkflowPeriodeLabel = $detailUiState['bulletin_workflow_periode_label'];
 
         return view('esbtp.resultats.etudiant', compact(
             'etudiant',
             'classe',
+            'classe_id',
             'anneeUniversitaire',
             'notes',
             'notesByMatiere',
@@ -838,7 +852,11 @@ class ESBTPResultatController extends Controller
             'moyenneSemestre1',
             'moyenneSemestre2',
             'moyenneAnnuelle',
-            'semesterWeights'
+            'semesterWeights',
+            'include_all_statuses',
+            'detailUiState',
+            'bulletinWorkflowPeriode',
+            'bulletinWorkflowPeriodeLabel'
         ));
     }
 
@@ -851,6 +869,7 @@ class ESBTPResultatController extends Controller
         $perPage = $request->get('per_page', 50);
         $classe_id = $request->get('classe_id');
         $semestre = $request->get('semestre');
+        $detail_periode = $semestre ? 'semestre'.$semestre : 'annuel';
         $annee_universitaire_id = $request->get('annee_universitaire_id');
         $include_all_statuses = $request->get('include_all_statuses', true);
 
@@ -866,6 +885,7 @@ class ESBTPResultatController extends Controller
             $moyennes = [];
             $rangs = [];
             $bulletins = [];
+            $annualValueStatuses = [];
             $notes = collect([]);
 
             if ($etudiants->count() > 0) {
@@ -934,10 +954,22 @@ class ESBTPResultatController extends Controller
                         $annual = $this->bulletinService->calculateAnnualAverage($s1, $s2, $weights);
                         if ($annual !== null) {
                             $moyennes[$etudiant->id] = round($annual, 2);
+                            $annualValueStatuses[$etudiant->id] = [
+                                'state' => 'annual_complete',
+                                'label' => null,
+                            ];
                         } elseif ($s1 !== null) {
                             $moyennes[$etudiant->id] = round($s1, 2);
+                            $annualValueStatuses[$etudiant->id] = [
+                                'state' => 'annual_incomplete',
+                                'label' => 'Provisoire · S1 seulement',
+                            ];
                         } elseif ($s2 !== null) {
                             $moyennes[$etudiant->id] = round($s2, 2);
+                            $annualValueStatuses[$etudiant->id] = [
+                                'state' => 'annual_incomplete',
+                                'label' => 'Provisoire · S2 seulement',
+                            ];
                         }
                     }
                     // Calculer les rangs
@@ -988,7 +1020,11 @@ class ESBTPResultatController extends Controller
 
             // Determine which template to use
             $classe = $classe_id ? ESBTPClasse::find($classe_id) : null;
-            $viewData = compact('etudiants', 'moyennes', 'rangs', 'bulletins', 'classe') + ['annee_id' => $annee_universitaire_id];
+            $viewData = compact('etudiants', 'moyennes', 'rangs', 'bulletins', 'classe', 'annualValueStatuses') + [
+                'annee_id' => $annee_universitaire_id,
+                'detail_periode' => $detail_periode,
+                'include_all_statuses' => (bool) $include_all_statuses,
+            ];
 
             if ((int) $page === 1) {
                 $html = view('esbtp.resultats.partials.liste-etudiants', $viewData)->render();
@@ -2630,5 +2666,41 @@ class ESBTPResultatController extends Controller
 
             return redirect()->back()->with('error', 'Erreur lors de la génération de la preview : '.$e->getMessage());
         }
+    }
+    private function normalizeBtsPeriode(?string $rawPeriode): array
+    {
+        return match ($rawPeriode) {
+            '1', 'semestre1' => ['periode' => 'semestre1', 'semestre' => '1'],
+            '2', 'semestre2' => ['periode' => 'semestre2', 'semestre' => '2'],
+            'annuel', '', null => ['periode' => 'annuel', 'semestre' => null],
+            default => ['periode' => 'semestre1', 'semestre' => '1'],
+        };
+    }
+
+    private function buildAnnualDetailUiState(string $periode, ?float $moyenneSemestre1, ?float $moyenneSemestre2, ?float $moyenneAnnuelle): array
+    {
+        $hasSemestre1 = $moyenneSemestre1 !== null;
+        $hasSemestre2 = $moyenneSemestre2 !== null;
+        $annualComplete = $periode === 'annuel' && $hasSemestre1 && $hasSemestre2 && $moyenneAnnuelle !== null;
+        $annualIncomplete = $periode === 'annuel' && ! $annualComplete && ($hasSemestre1 || $hasSemestre2);
+        $primarySemester = $hasSemestre1 ? 'semestre1' : ($hasSemestre2 ? 'semestre2' : null);
+        $primarySemesterLabel = $primarySemester === 'semestre2' ? 'Semestre 2' : 'Semestre 1';
+        $primaryAverage = $primarySemester === 'semestre2' ? $moyenneSemestre2 : $moyenneSemestre1;
+
+        return [
+            'state' => $annualComplete ? 'annual_complete' : ($annualIncomplete ? 'annual_incomplete' : 'standard'),
+            'has_semestre1' => $hasSemestre1,
+            'has_semestre2' => $hasSemestre2,
+            'primary_semester' => $primarySemester,
+            'primary_semester_label' => $primarySemester ? $primarySemesterLabel : null,
+            'primary_average' => $primaryAverage,
+            'display_average' => $periode === 'annuel'
+                ? ($annualComplete ? $moyenneAnnuelle : $primaryAverage)
+                : ($periode === 'semestre2' ? $moyenneSemestre2 : $moyenneSemestre1),
+            'bulletin_workflow_periode' => $periode === 'annuel' ? ($primarySemester ?? 'semestre1') : $periode,
+            'bulletin_workflow_periode_label' => $periode === 'annuel'
+                ? ($primarySemesterLabel ?? 'Semestre 1')
+                : ($periode === 'semestre2' ? 'Semestre 2' : 'Semestre 1'),
+        ];
     }
 }

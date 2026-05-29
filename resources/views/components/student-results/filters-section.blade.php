@@ -2,7 +2,7 @@
 <div class="sr-filter-bar sr-animate sr-animate-delay-1">
     <form id="sr-filter-form" action="{{ route('esbtp.resultats.etudiant', $etudiant) }}" method="GET" class="filter-form">
         {{-- Hidden période field — updated by JS when tabs are clicked --}}
-        <input type="hidden" name="periode" id="sr-periode-input" value="{{ $periode ?? 'semestre1' }}">
+        <input type="hidden" name="periode" id="sr-periode-input" value="{{ $periode ?? 'annuel' }}">
 
         <div class="sr-filter-row">
             <div class="sr-filter-group">

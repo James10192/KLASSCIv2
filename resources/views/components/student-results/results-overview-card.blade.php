@@ -1,10 +1,15 @@
-{{-- 4. Results Overview — KPI Dashboard with SVG gauge --}}
+{{-- 4. Results Overview --}}
 @php
     $periodeKey = (string) $periode;
     if ($periodeKey === '1') $periodeKey = 'semestre1';
     elseif ($periodeKey === '2') $periodeKey = 'semestre2';
 
-    $periodeNom = $periodeKey === 'semestre1' ? 'Semestre 1' : 'Semestre 2';
+    $periodeNom = match ($periodeKey) {
+        'annuel' => 'Annuel',
+        'semestre2' => 'Semestre 2',
+        default => 'Semestre 1',
+    };
+
     if (isset($periodes)) {
         foreach ($periodes as $p) {
             if ((string) $p->id === (string) $periode || (isset($p->code) && $p->code === $periodeKey)) {
@@ -14,12 +19,18 @@
         }
     }
 
-    $showAssiduite = isset($afficherNoteAssiduite) && $afficherNoteAssiduite && isset($noteAssiduite);
-    $displayAvg = $showAssiduite ? ($moyenneAvecAssiduite ?? $moyenneGenerale) : $moyenneGenerale;
-    $gaugePercent = min($displayAvg * 5, 100);
-    $gaugeClass = $displayAvg >= 10 ? 'success' : 'danger';
+    $uiState = $detailUiState['state'] ?? 'standard';
+    $annualIncomplete = $uiState === 'annual_incomplete';
+    $annualComplete = $uiState === 'annual_complete';
+    $primarySemesterLabel = $detailUiState['primary_semester_label'] ?? null;
+    $primaryAverage = $detailUiState['primary_average'] ?? null;
+    $displayAvg = $detailUiState['display_average'] ?? ($moyenneAvecAssiduite ?? $moyenneGenerale ?? null);
+    $showAssiduite = isset($afficherNoteAssiduite) && $afficherNoteAssiduite && isset($noteAssiduite) && ! $annualIncomplete;
+    $gaugePercent = $displayAvg !== null ? min($displayAvg * 5, 100) : 0;
+    $gaugeClass = ($displayAvg ?? 0) >= 10 ? 'success' : 'danger';
     $isS1Active = ($periodeKey === 'semestre1');
     $isS2Active = ($periodeKey === 'semestre2');
+    $isAnnualActive = ($periodeKey === 'annuel');
     $annualAvailable = ($moyenneAnnuelle !== null);
 @endphp
 
@@ -31,9 +42,8 @@
     </div>
 
     <div class="sr-overview-body">
-        {{-- Circular gauge + assiduity badge --}}
         <div class="sr-gauge-wrapper">
-            <div class="sr-gauge">
+            <div class="sr-gauge" @if($annualIncomplete) style="opacity: 0.72;" @endif>
                 <svg viewBox="0 0 120 120">
                     <circle class="sr-gauge-bg" cx="60" cy="60" r="50"/>
                     <circle class="sr-gauge-fill sr-gauge-fill--{{ $gaugeClass }}"
@@ -43,9 +53,17 @@
                 </svg>
                 <div class="sr-gauge-center">
                     <div class="sr-gauge-value sr-gauge-value--{{ $gaugeClass }}">
-                        {{ number_format($displayAvg, 2) }}<span>/20</span>
+                        {{ $displayAvg !== null ? number_format($displayAvg, 2) : '—' }}@if($displayAvg !== null)<span>/20</span>@endif
                     </div>
-                    <div class="sr-gauge-label">Moyenne</div>
+                    <div class="sr-gauge-label">
+                        @if($annualIncomplete)
+                            Valeur partielle
+                        @elseif($isAnnualActive)
+                            Moyenne annuelle
+                        @else
+                            Moyenne
+                        @endif
+                    </div>
                 </div>
             </div>
             @if($showAssiduite && $noteAssiduite != 0)
@@ -56,9 +74,21 @@
             @endif
         </div>
 
-        {{-- Right panel --}}
         <div class="sr-overview-right">
-            {{-- Semesters — always show all 3 --}}
+            @if($annualIncomplete)
+                <div class="alert alert-warning py-2 px-3 mb-3" style="font-size: 0.9rem;">
+                    L'analyse annuelle BTS est incomplète.
+                    @if($primarySemesterLabel)
+                        La valeur affichée reprend {{ $primarySemesterLabel }} seulement.
+                    @endif
+                    Les deux semestres sont requis pour une vraie moyenne annuelle.
+                </div>
+            @elseif($annualComplete)
+                <div class="alert alert-success py-2 px-3 mb-3" style="font-size: 0.9rem;">
+                    Analyse annuelle complète disponible sur les deux semestres.
+                </div>
+            @endif
+
             <div class="sr-semesters">
                 <div class="sr-semester-card {{ $isS1Active ? 'sr-semester-card--active' : '' }}">
                     <div class="sr-semester-label">Semestre 1</div>
@@ -72,17 +102,22 @@
                         {{ $moyenneSemestre2 !== null ? number_format($moyenneSemestre2, 2) : '—' }}
                     </div>
                 </div>
-                <div class="sr-semester-card {{ $annualAvailable ? 'sr-semester-card--annual-available' : '' }}">
+                <div class="sr-semester-card {{ $isAnnualActive ? 'sr-semester-card--active' : '' }} {{ $annualAvailable ? 'sr-semester-card--annual-available' : '' }}">
                     <div class="sr-semester-label">Annuelle</div>
-                    <div class="sr-semester-value">
-                        {{-- TOUJOURS afficher la moyenne annuelle quand disponible --}}
+                    <div class="sr-semester-value" @if($annualIncomplete) style="color:#64748b;" @endif>
                         @if($annualAvailable)
                             {{ number_format($moyenneAnnuelle, 2) }}
+                        @elseif($annualIncomplete && $primaryAverage !== null)
+                            {{ number_format($primaryAverage, 2) }}
                         @else
                             —
                         @endif
                     </div>
-                    @if(!$annualAvailable)
+                    @if($annualIncomplete && $primarySemesterLabel)
+                        <div class="sr-semester-tooltip">
+                            {{ $primarySemesterLabel }} seulement
+                        </div>
+                    @elseif(!$annualAvailable)
                         <div class="sr-semester-tooltip" title="Nécessite les notes des deux semestres">
                             Requiert S1 + S2
                         </div>
@@ -91,12 +126,13 @@
             </div>
             <div class="sr-semester-note">
                 Coefficients : S1 {{ $semesterWeights['semester1'] }} | S2 {{ $semesterWeights['semester2'] }}
-                @if($annualAvailable && $isS2Active)
+                @if($annualComplete)
                     <strong style="color: var(--sr-success); margin-left: 0.5rem;">Bilan complet</strong>
+                @elseif($annualIncomplete && $primarySemesterLabel)
+                    <strong style="color: #b45309; margin-left: 0.5rem;">{{ $primarySemesterLabel }} seulement</strong>
                 @endif
             </div>
 
-            {{-- Stats --}}
             <div class="sr-stats">
                 <div class="sr-stat sr-stat--primary">
                     <div class="sr-stat-icon"><i class="fas fa-book"></i></div>
@@ -115,9 +151,17 @@
                 </div>
                 <div class="sr-stat sr-stat--{{ $gaugeClass }}">
                     <div class="sr-stat-icon">
-                        <i class="fas {{ $displayAvg >= 10 ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
+                        <i class="fas {{ ($displayAvg ?? 0) >= 10 ? 'fa-check-circle' : 'fa-times-circle' }}"></i>
                     </div>
-                    <div class="sr-stat-value">{{ $displayAvg >= 10 ? 'ADMIS' : 'AJOURNÉ' }}</div>
+                    <div class="sr-stat-value">
+                        @if($displayAvg === null)
+                            —
+                        @elseif($annualIncomplete)
+                            Partiel
+                        @else
+                            {{ $displayAvg >= 10 ? 'ADMIS' : 'AJOURNÉ' }}
+                        @endif
+                    </div>
                     <div class="sr-stat-label">Décision</div>
                 </div>
             </div>
