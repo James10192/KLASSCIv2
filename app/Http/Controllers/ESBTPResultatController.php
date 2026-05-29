@@ -613,7 +613,7 @@ class ESBTPResultatController extends Controller
 
         // Get notes for the student
         $notesQuery = ESBTPNote::where('etudiant_id', $id)
-            ->with(['evaluation', 'evaluation.matiere']);
+            ->with(['evaluation', 'evaluation.matiere', 'matiere']);
 
         $notesQuery->whereHas('evaluation', function ($query) use ($annee_universitaire_id, $classe_id, $periode) {
             if ($annee_universitaire_id) {
@@ -668,7 +668,7 @@ class ESBTPResultatController extends Controller
         }
 
         foreach ($notes as $note) {
-            if (! $note->evaluation || ! $note->evaluation->matiere) {
+            if (! $note->evaluation || (! $note->matiere && ! $note->evaluation->matiere)) {
                 \Log::warning('Note without evaluation or matière', ['note_id' => $note->id]);
 
                 continue; // Skip notes without evaluation or matière
@@ -688,7 +688,7 @@ class ESBTPResultatController extends Controller
             }
 
             // Utiliser la matière déjà eager-loaded via evaluation.matiere
-            $matiere = $note->evaluation?->matiere;
+            $matiere = $note->matiere ?: $note->evaluation?->matiere;
             if (! $matiere) {
                 \Log::warning("Matiere with ID {$matiere_id} not found for note ID {$note->id} - skipping note");
 
