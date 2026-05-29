@@ -59,6 +59,10 @@
     $currentPeriodeKey = $currentPeriode;
     if ($currentPeriodeKey === '1') $currentPeriodeKey = 'semestre1';
     elseif ($currentPeriodeKey === '2') $currentPeriodeKey = 'semestre2';
+    $bannerCurrentTotal = $bulletinConsistency['current_recomputed_effective_total'] ?? null;
+    if (($detailUiState['state'] ?? null) === 'annual_incomplete') {
+        $bannerCurrentTotal = $detailUiState['display_average'] ?? $detailUiState['primary_average'] ?? $bannerCurrentTotal;
+    }
     $includeAllStatusesParam = isset($include_all_statuses) && $include_all_statuses ? ['include_all_statuses' => 1] : [];
     $classeResultsQuery = [
         'periode' => $periode,
@@ -211,8 +215,8 @@
                             <span class="sr-bulletin-chip">Bulletin #{{ $bulletinConsistency['official_bulletin_id'] }}</span>
                             <span class="sr-bulletin-chip">Officiel {{ number_format($bulletinConsistency['official_effective_total'] ?? 0, 2) }}/20</span>
                         @endif
-                        @if(($bulletinConsistency['current_recomputed_effective_total'] ?? null) !== null)
-                            <span class="sr-bulletin-chip">Courant {{ number_format($bulletinConsistency['current_recomputed_effective_total'], 2) }}/20</span>
+                        @if($bannerCurrentTotal !== null)
+                            <span class="sr-bulletin-chip">Courant {{ number_format($bannerCurrentTotal, 2) }}/20</span>
                         @endif
                         @if($bulletinConsistency['has_divergence'] && ($bulletinConsistency['difference_value'] ?? null) !== null)
                             <span class="sr-bulletin-chip sr-bulletin-chip--warning">Delta {{ $bulletinConsistency['difference_value'] > 0 ? '+' : '' }}{{ number_format($bulletinConsistency['difference_value'], 2) }}</span>
