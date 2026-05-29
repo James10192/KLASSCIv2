@@ -532,6 +532,75 @@
     letter-spacing: 0.04em;
 }
 
+.sr-context-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 52px;
+    padding: 0.7rem 1rem;
+    border-radius: 18px;
+    border: 1px solid rgba(15, 23, 42, 0.08);
+    background: linear-gradient(180deg, rgba(255,255,255,0.92) 0%, rgba(248,250,252,0.98) 100%);
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06), inset 0 1px 0 rgba(255,255,255,0.75);
+}
+
+.sr-context-chip--success {
+    border-color: rgba(16, 185, 129, 0.18);
+    background: linear-gradient(135deg, rgba(209, 250, 229, 0.9) 0%, rgba(255,255,255,0.96) 58%, rgba(236, 253, 245, 0.98) 100%);
+}
+
+.sr-context-chip--muted {
+    border-color: rgba(100, 116, 139, 0.14);
+    background: linear-gradient(135deg, rgba(241, 245, 249, 0.95) 0%, rgba(255,255,255,0.98) 62%, rgba(248, 250, 252, 0.98) 100%);
+}
+
+.sr-context-chip__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 0.82rem;
+}
+
+.sr-context-chip--success .sr-context-chip__icon {
+    background: rgba(6, 95, 70, 0.12);
+    color: #047857;
+}
+
+.sr-context-chip--muted .sr-context-chip__icon {
+    background: rgba(71, 85, 105, 0.1);
+    color: #475569;
+}
+
+.sr-context-chip__body {
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.08rem;
+}
+
+.sr-context-chip__eyebrow {
+    font-size: 0.62rem;
+    font-weight: 800;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sr-muted);
+}
+
+.sr-context-chip__text {
+    font-size: 0.84rem;
+    font-weight: 600;
+    color: var(--sr-ink-2);
+    line-height: 1.35;
+}
+
+.sr-context-chip__text strong {
+    font-weight: 800;
+}
+
 .sr-overview-body {
     display: grid;
     grid-template-columns: auto 1fr;
@@ -801,6 +870,17 @@
     border-radius: 20px;
     background: var(--sr-primary-light);
     color: var(--sr-primary);
+}
+
+.sr-table-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-left: auto;
+}
+
+.sr-table-meta .sr-context-chip {
+    max-width: 430px;
 }
 
 .sr-table-responsive {

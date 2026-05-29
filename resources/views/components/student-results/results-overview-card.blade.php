@@ -41,14 +41,21 @@
         <span class="sr-periode-badge">{{ $periodeNom }}</span>
     </div>
 
-    <div class="px-4 pt-3">
-        <div class="alert {{ !empty($afficherNoteAssiduite) ? 'alert-success' : 'alert-secondary' }} py-2 px-3 mb-0" style="font-size: 0.9rem;">
-            <i class="fas {{ !empty($afficherNoteAssiduite) ? 'fa-toggle-on' : 'fa-toggle-off' }} me-2"></i>
-            @if(!empty($afficherNoteAssiduite))
-                Assiduite activee : les moyennes affichees incluent le bonus/malus d'assiduite.
-            @else
-                Assiduite desactivee : les moyennes affichees restent brutes, sans bonus/malus.
-            @endif
+    <div style="margin: -0.15rem 0 1.5rem;">
+        <div class="sr-context-chip {{ !empty($afficherNoteAssiduite) ? 'sr-context-chip--success' : 'sr-context-chip--muted' }}">
+            <span class="sr-context-chip__icon">
+                <i class="fas {{ !empty($afficherNoteAssiduite) ? 'fa-wave-square' : 'fa-slash' }}"></i>
+            </span>
+            <span class="sr-context-chip__body">
+                <span class="sr-context-chip__eyebrow">Mode Moyenne</span>
+                <span class="sr-context-chip__text">
+                    @if(!empty($afficherNoteAssiduite))
+                        <strong>Assiduite activee</strong>, bonus/malus inclus dans la moyenne affichee.
+                    @else
+                        <strong>Assiduite desactivee</strong>, moyenne brute sans bonus/malus.
+                    @endif
+                </span>
+            </span>
         </div>
     </div>
 

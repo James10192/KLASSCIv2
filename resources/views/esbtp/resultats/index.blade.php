@@ -117,17 +117,23 @@
                     <i class="fas fa-list-ol"></i>
                     <h3>Liste des résultats</h3>
                 </div>
-                <input type="search" class="search-bar sr-filter-select" placeholder="Rechercher..." style="max-width: 220px; font-size: 0.82rem;">
-            </div>
-
-            <div class="px-4 pt-3">
-                <div class="alert {{ !empty($attendanceNoteEnabled) ? 'alert-success' : 'alert-secondary' }} py-2 px-3 mb-0" style="font-size: 0.9rem;">
-                    <i class="fas {{ !empty($attendanceNoteEnabled) ? 'fa-toggle-on' : 'fa-toggle-off' }} me-2"></i>
-                    @if(!empty($attendanceNoteEnabled))
-                        Assiduite activee : les moyennes de la liste incluent le bonus/malus d'assiduite.
-                    @else
-                        Assiduite desactivee : les moyennes de la liste sont affichees sans bonus/malus.
-                    @endif
+                <div class="sr-table-meta">
+                    <div class="sr-context-chip {{ !empty($attendanceNoteEnabled) ? 'sr-context-chip--success' : 'sr-context-chip--muted' }}">
+                        <span class="sr-context-chip__icon">
+                            <i class="fas {{ !empty($attendanceNoteEnabled) ? 'fa-wave-square' : 'fa-slash' }}"></i>
+                        </span>
+                        <span class="sr-context-chip__body">
+                            <span class="sr-context-chip__eyebrow">Mode Moyenne</span>
+                            <span class="sr-context-chip__text">
+                                @if(!empty($attendanceNoteEnabled))
+                                    <strong>Assiduite activee</strong>, la liste inclut le bonus/malus.
+                                @else
+                                    <strong>Assiduite desactivee</strong>, liste en moyenne brute.
+                                @endif
+                            </span>
+                        </span>
+                    </div>
+                    <input type="search" class="search-bar sr-filter-select" placeholder="Rechercher..." style="max-width: 220px; font-size: 0.82rem;">
                 </div>
             </div>
 
