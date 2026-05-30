@@ -215,6 +215,11 @@
                                             <div class="sr-subject-info">
                                                 <div class="sr-subject-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</div>
                                                 <span class="sr-subject-code">{{ $etudiant->matricule }}</span>
+                                                @if(($studentWorkflowAlerts[$etudiant->id]['show_banner'] ?? false) && !empty($include_all_statuses))
+                                                    <div class="mt-1">
+                                                        <span class="sr-bulletin-chip sr-bulletin-chip--warning">Inscription non validée</span>
+                                                    </div>
+                                                @endif
                                             </div>
                                         </div>
                                     </td>

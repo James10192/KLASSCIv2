@@ -38,6 +38,11 @@
                             <div>
                                 <div class="fw-semibold">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</div>
                                 <small class="text-muted">{{ $etudiant->email ?? 'Pas d\'email' }}</small>
+                                @if(($studentWorkflowAlerts[$etudiant->id]['show_banner'] ?? false) && !empty($include_all_statuses))
+                                    <div class="mt-1">
+                                        <span class="badge text-bg-warning">Inscription non validée</span>
+                                    </div>
+                                @endif
                             </div>
                         </div>
                     </td>

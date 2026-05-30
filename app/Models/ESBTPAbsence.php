@@ -139,11 +139,6 @@ class ESBTPAbsence extends Model
     public function matiere()
     {
         // Vérifier si la relation cours existe et est chargée
-        if (!$this->cours) {
-            return null;
-        }
-
-        // Retourner la relation matiere du cours
-        return $this->cours->matiere;
+        return $this->belongsTo(ESBTPMatiere::class, 'matiere_id');
     }
 }

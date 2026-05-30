@@ -343,13 +343,10 @@ class ESBTPBulletin extends Model implements Auditable
         }
         return $this->etudiant->absences()
             ->where('justified', true)
-            ->whereHas('cours', function ($query) {
-                $query->where('classe_id', $this->classe_id)
-                    ->whereHas('matiere', function ($q) {
-                        $q->whereHas('classes', function ($c) {
-                            $c->where('classe_id', $this->classe_id);
-                        });
-                    });
+            ->whereHas('matiere', function ($query) {
+                $query->whereHas('classes', function ($q) {
+                    $q->where('classe_id', $this->classe_id);
+                });
             })
             ->sum('hours');
     }
@@ -361,13 +358,10 @@ class ESBTPBulletin extends Model implements Auditable
         }
         return $this->etudiant->absences()
             ->where('justified', false)
-            ->whereHas('cours', function ($query) {
-                $query->where('classe_id', $this->classe_id)
-                    ->whereHas('matiere', function ($q) {
-                        $q->whereHas('classes', function ($c) {
-                            $c->where('classe_id', $this->classe_id);
-                        });
-                    });
+            ->whereHas('matiere', function ($query) {
+                $query->whereHas('classes', function ($q) {
+                    $q->where('classe_id', $this->classe_id);
+                });
             })
             ->sum('hours');
     }
@@ -416,11 +410,9 @@ class ESBTPBulletin extends Model implements Auditable
     public function getTotalAbsences(): int
     {
         return ESBTPAbsence::where('etudiant_id', $this->etudiant_id)
-            ->whereHas('cours', function ($query) {
-                $query->whereHas('matiere', function ($q) {
-                    $q->whereHas('classes', function ($c) {
-                        $c->where('classe_id', $this->classe_id);
-                    });
+            ->whereHas('matiere', function ($query) {
+                $query->whereHas('classes', function ($q) {
+                    $q->where('classe_id', $this->classe_id);
                 });
             })
             ->where('date', '>=', $this->anneeUniversitaire->date_debut)
@@ -434,11 +426,9 @@ class ESBTPBulletin extends Model implements Auditable
     public function getAbsencesJustifiees(): int
     {
         return ESBTPAbsence::where('etudiant_id', $this->etudiant_id)
-            ->whereHas('cours', function ($query) {
-                $query->whereHas('matiere', function ($q) {
-                    $q->whereHas('classes', function ($c) {
-                        $c->where('classe_id', $this->classe_id);
-                    });
+            ->whereHas('matiere', function ($query) {
+                $query->whereHas('classes', function ($q) {
+                    $q->where('classe_id', $this->classe_id);
                 });
             })
             ->where('date', '>=', $this->anneeUniversitaire->date_debut)
@@ -453,11 +443,9 @@ class ESBTPBulletin extends Model implements Auditable
     public function getAbsencesNonJustifiees(): int
     {
         return ESBTPAbsence::where('etudiant_id', $this->etudiant_id)
-            ->whereHas('cours', function ($query) {
-                $query->whereHas('matiere', function ($q) {
-                    $q->whereHas('classes', function ($c) {
-                        $c->where('classe_id', $this->classe_id);
-                    });
+            ->whereHas('matiere', function ($query) {
+                $query->whereHas('classes', function ($q) {
+                    $q->where('classe_id', $this->classe_id);
                 });
             })
             ->where('date', '>=', $this->anneeUniversitaire->date_debut)

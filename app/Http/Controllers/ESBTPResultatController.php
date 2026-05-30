@@ -341,6 +341,7 @@ class ESBTPResultatController extends Controller
         });
 
         $students = $studentsQuery->get();
+        $studentWorkflowAlerts = $this->buildStudentWorkflowAlerts($students, $annee_universitaire_id, $classe_id);
 
         \Log::info('Classe Results Query', [
             'classe_id' => $classe_id,
@@ -561,6 +562,7 @@ class ESBTPResultatController extends Controller
             'resultats',
             'include_all_statuses',
             'afficherNoteAssiduite',
+            'studentWorkflowAlerts',
             'bulletinConsistencyByStudent',
             'bulletinConsistencySummary'
         ));
@@ -1198,6 +1200,7 @@ class ESBTPResultatController extends Controller
                 'detail_periode' => $detail_periode,
                 'include_all_statuses' => (bool) $include_all_statuses,
                 'attendanceNoteEnabled' => $this->bulletinService->isAttendanceNoteEnabled(),
+                'studentWorkflowAlerts' => $this->buildStudentWorkflowAlerts($etudiants, $annee_universitaire_id, $classe_id),
             ];
 
             if ((int) $page === 1) {
@@ -2903,6 +2906,34 @@ class ESBTPResultatController extends Controller
             'annuel', '', null => ['periode' => 'annuel', 'semestre' => null],
             default => ['periode' => 'semestre1', 'semestre' => '1'],
         };
+    }
+
+    private function buildStudentWorkflowAlerts(Collection $etudiants, ?int $anneeUniversitaireId, ?int $classeId = null): array
+    {
+        if ($etudiants->isEmpty() || ! $anneeUniversitaireId) {
+            return [];
+        }
+
+        $inscriptions = \App\Models\ESBTPInscription::query()
+            ->whereIn('etudiant_id', $etudiants->pluck('id'))
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->when($classeId, fn ($query) => $query->where('classe_id', $classeId))
+            ->orderByDesc('date_inscription')
+            ->orderByDesc('id')
+            ->get()
+            ->groupBy('etudiant_id');
+
+        $anneeUniversitaire = ESBTPAnneeUniversitaire::find($anneeUniversitaireId);
+        $alerts = [];
+
+        foreach ($etudiants as $etudiant) {
+            $alerts[$etudiant->id] = InscriptionWorkflowAlertPresenter::fromInscription(
+                $inscriptions->get($etudiant->id)?->first(),
+                $anneeUniversitaire
+            );
+        }
+
+        return $alerts;
     }
 
     private function buildAnnualDetailUiState(string $periode, ?float $moyenneSemestre1, ?float $moyenneSemestre2, ?float $moyenneAnnuelle): array
