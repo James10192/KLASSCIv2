@@ -517,23 +517,41 @@
             </table>
         </div>
 
-        {{-- Tableau des matières --}}
+        {{-- Tableau des matiÃ¨res --}}
         @if(($settings['bulletin_show_subjects_table'] ?? '1') == '1')
+        @php
+            $showSubjectAverage = ($settings['bulletin_show_subject_average'] ?? '1') == '1';
+            $showCoefficient = ($settings['bulletin_show_coefficient'] ?? '1') == '1';
+            $showWeightedAverage = ($settings['bulletin_show_weighted_average'] ?? '1') == '1';
+            $showRankPerSubject = ($settings['bulletin_show_rank_per_subject'] ?? '1') == '1';
+            $showAbsencesParMatiere = ($settings['bulletin_show_absences_par_matiere'] ?? '0') == '1'
+                && ($settings['bulletin_conduite_enabled'] ?? '0') == '1';
+            $showTeachers = ($settings['bulletin_show_teachers'] ?? '1') == '1';
+            $showAppreciations = ($settings['bulletin_show_appreciations'] ?? '1') == '1';
+            $subjectColumnCount = 1
+                + ($showSubjectAverage ? 1 : 0)
+                + ($showCoefficient ? 1 : 0)
+                + ($showWeightedAverage ? 1 : 0)
+                + ($showRankPerSubject ? 1 : 0)
+                + ($showAbsencesParMatiere ? 1 : 0)
+                + ($showTeachers ? 1 : 0)
+                + ($showAppreciations ? 1 : 0);
+        @endphp
         <table>
             <thead>
                 <tr>
-                    <th>Matière</th>
-                    @if(($settings['bulletin_show_subject_average'] ?? '1') == '1')<th>Moyenne M</th>@endif
-                    @if(($settings['bulletin_show_coefficient'] ?? '1') == '1')<th>Coef C</th>@endif
-                    @if(($settings['bulletin_show_weighted_average'] ?? '1') == '1')<th>Moy Pondérée M×C</th>@endif
-                    @if(($settings['bulletin_show_rank_per_subject'] ?? '1') == '1')<th>Rang</th>@endif
-                    @if(($settings['bulletin_show_absences_par_matiere'] ?? '0') == '1' && ($settings['bulletin_conduite_enabled'] ?? '0') == '1')<th>Abs. (h)</th>@endif
-                    @if(($settings['bulletin_show_teachers'] ?? '1') == '1')<th>Professeurs</th>@endif
-                    @if(($settings['bulletin_show_appreciations'] ?? '1') == '1')<th>Appréciations</th>@endif
+                    <th>MatiÃ¨re</th>
+                    @if($showSubjectAverage)<th>Moyenne M</th>@endif
+                    @if($showCoefficient)<th>Coef C</th>@endif
+                    @if($showWeightedAverage)<th>Moy Pond&eacute;r&eacute;e M&times;C</th>@endif
+                    @if($showRankPerSubject)<th>Rang</th>@endif
+                    @if($showAbsencesParMatiere)<th>Abs. (h)</th>@endif
+                    @if($showTeachers)<th>Professeurs</th>@endif
+                    @if($showAppreciations)<th>Appr&eacute;ciations</th>@endif
                 </tr>
                 @if(($settings['bulletin_show_general_subjects'] ?? '1') == '1')
                 <tr class="section-header">
-                    <td colspan="7">Enseignement Général</td>
+                    <td colspan="{{ $subjectColumnCount }}">Enseignement G&eacute;n&eacute;ral</td>
                 </tr>
                 @endif
             </thead>
@@ -543,52 +561,50 @@
                         @foreach($resultatsGeneraux as $resultat)
                             <tr class="subject-row{{ $loop->even ? ' subject-row-even' : '' }}">
                                 <td>{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'N/A' }}</td>
-                                @if(($settings['bulletin_show_subject_average'] ?? '1') == '1')<td class="center">{{ number_format($resultat->moyenne, 2) }}</td>@endif
-                                @if(($settings['bulletin_show_coefficient'] ?? '1') == '1')<td class="center">{{ $resultat->coefficient }}</td>@endif
-                                @if(($settings['bulletin_show_weighted_average'] ?? '1') == '1')<td class="center">{{ number_format($resultat->moyenne * $resultat->coefficient, 2) }}</td>@endif
-                                @if(($settings['bulletin_show_rank_per_subject'] ?? '1') == '1')<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
-                                @if(($settings['bulletin_show_absences_par_matiere'] ?? '0') == '1' && ($settings['bulletin_conduite_enabled'] ?? '0') == '1')<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
-                                @if(($settings['bulletin_show_teachers'] ?? '1') == '1')<td>{{ $professeurs[$resultat->matiere_id] ?? 'M.' }}</td>@endif
-                                @if(($settings['bulletin_show_appreciations'] ?? '1') == '1')<td>{{ $resultat->appreciation ?? 'Nul' }}</td>@endif
+                                @if($showSubjectAverage)<td class="center">{{ number_format($resultat->moyenne, 2) }}</td>@endif
+                                @if($showCoefficient)<td class="center">{{ $resultat->coefficient }}</td>@endif
+                                @if($showWeightedAverage)<td class="center">{{ number_format($resultat->moyenne * $resultat->coefficient, 2) }}</td>@endif
+                                @if($showRankPerSubject)<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
+                                @if($showAbsencesParMatiere)<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
+                                @if($showTeachers)<td>{{ $professeurs[$resultat->matiere_id] ?? 'M.' }}</td>@endif
+                                @if($showAppreciations)<td>{{ $resultat->appreciation ?? '-' }}</td>@endif
                             </tr>
                         @endforeach
                     @else
-                        <tr><td colspan="8" class="center">Aucune matière d'enseignement général</td></tr>
+                        <tr><td colspan="{{ $subjectColumnCount }}" class="center">Aucune mati&egrave;re d'enseignement g&eacute;n&eacute;ral</td></tr>
                     @endif
                     @if(($settings['bulletin_show_section_averages'] ?? '1') == '1')
                     <tr class="summary-row">
-                        <td>Moyenne enseignement général</td>
-                        <td colspan="2" class="center">{{ number_format($moyenneGenerale, 2) }}</td>
-                        <td colspan="4"></td>
+                        <td colspan="{{ max($subjectColumnCount - 1, 1) }}">Moyenne enseignement g&eacute;n&eacute;ral</td>
+                        <td class="center">{{ number_format($moyenneGenerale, 2) }}</td>
                     </tr>
                     @endif
                 @endif
 
                 @if(($settings['bulletin_show_technical_subjects'] ?? '1') == '1')
                 <tr class="section-header">
-                    <td colspan="7">Enseignement Technique</td>
+                    <td colspan="{{ $subjectColumnCount }}">Enseignement Technique</td>
                 </tr>
                 @if(isset($resultatsTechniques) && $resultatsTechniques->count() > 0)
                     @foreach($resultatsTechniques as $resultat)
                         <tr class="subject-row{{ $loop->even ? ' subject-row-even' : '' }}">
                             <td>{{ $resultat->matiere->name ?? $resultat->matiere->nom ?? 'N/A' }}</td>
-                            @if(($settings['bulletin_show_subject_average'] ?? '1') == '1')<td class="center">{{ number_format($resultat->moyenne, 2) }}</td>@endif
-                            @if(($settings['bulletin_show_coefficient'] ?? '1') == '1')<td class="center">{{ $resultat->coefficient }}</td>@endif
-                            @if(($settings['bulletin_show_weighted_average'] ?? '1') == '1')<td class="center">{{ number_format($resultat->moyenne * $resultat->coefficient, 2) }}</td>@endif
-                            @if(($settings['bulletin_show_rank_per_subject'] ?? '1') == '1')<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
-                            @if(($settings['bulletin_show_absences_par_matiere'] ?? '0') == '1' && ($settings['bulletin_conduite_enabled'] ?? '0') == '1')<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
-                            @if(($settings['bulletin_show_teachers'] ?? '1') == '1')<td>{{ $professeurs[$resultat->matiere_id] ?? 'M.' }}</td>@endif
-                            @if(($settings['bulletin_show_appreciations'] ?? '1') == '1')<td>{{ $resultat->appreciation ?? 'Nul' }}</td>@endif
+                            @if($showSubjectAverage)<td class="center">{{ number_format($resultat->moyenne, 2) }}</td>@endif
+                            @if($showCoefficient)<td class="center">{{ $resultat->coefficient }}</td>@endif
+                            @if($showWeightedAverage)<td class="center">{{ number_format($resultat->moyenne * $resultat->coefficient, 2) }}</td>@endif
+                            @if($showRankPerSubject)<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
+                            @if($showAbsencesParMatiere)<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
+                            @if($showTeachers)<td>{{ $professeurs[$resultat->matiere_id] ?? 'M.' }}</td>@endif
+                            @if($showAppreciations)<td>{{ $resultat->appreciation ?? '-' }}</td>@endif
                         </tr>
                     @endforeach
                 @else
-                    <tr><td colspan="8" class="center">Aucune matière d'enseignement technique</td></tr>
+                    <tr><td colspan="{{ $subjectColumnCount }}" class="center">Aucune mati&egrave;re d'enseignement technique</td></tr>
                 @endif
                 @if(($settings['bulletin_show_section_averages'] ?? '1') == '1')
                 <tr class="summary-row">
-                    <td>Moyenne enseignement technique</td>
-                    <td colspan="2" class="center">{{ number_format($moyenneTechnique, 2) }}</td>
-                    <td colspan="4"></td>
+                    <td colspan="{{ max($subjectColumnCount - 1, 1) }}">Moyenne enseignement technique</td>
+                    <td class="center">{{ number_format($moyenneTechnique, 2) }}</td>
                 </tr>
                 @endif
                 @endif

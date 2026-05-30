@@ -599,6 +599,7 @@ class ESBTPBulletinController extends Controller
                             'id' => $notes->first()->id,
                             'note' => round($moyenneMatiere, 2),
                             'moyenne' => round($moyenneMatiere, 2),
+                            'appreciation' => $this->bulletinService->getAppreciation($moyenneMatiere),
                             'matiere' => $matiere,
                             'matiere_id' => $matiere->id,
                             'moyenne_matiere' => round($moyenneMatiere, 2),
