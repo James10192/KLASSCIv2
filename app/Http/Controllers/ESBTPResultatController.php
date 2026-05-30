@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\CoefficientMissingException;
+use App\Domain\BtsTroncCommun\BtsAnnualAggregationService;
+use App\Domain\BtsTroncCommun\BtsUiPresenter;
 use App\Helpers\SettingsHelper;
 use App\Models\Classe;
 use App\Models\ESBTPAbsence;
@@ -52,18 +54,24 @@ class ESBTPResultatController extends Controller
     private $bulletinService;
     private $bulletinConsistencyService;
     private $currentResultSnapshotService;
+    private $btsAnnualAggregationService;
+    private $btsUiPresenter;
 
     public function __construct(
         \App\Services\ESBTP\ESBTPAbsenceService $absenceService,
         \App\Services\BulletinService $bulletinService,
         BulletinConsistencyService $bulletinConsistencyService,
-        BtsCurrentResultSnapshotService $currentResultSnapshotService
+        BtsCurrentResultSnapshotService $currentResultSnapshotService,
+        BtsAnnualAggregationService $btsAnnualAggregationService,
+        BtsUiPresenter $btsUiPresenter
     )
     {
         $this->absenceService = $absenceService;
         $this->bulletinService = $bulletinService;
         $this->bulletinConsistencyService = $bulletinConsistencyService;
         $this->currentResultSnapshotService = $currentResultSnapshotService;
+        $this->btsAnnualAggregationService = $btsAnnualAggregationService;
+        $this->btsUiPresenter = $btsUiPresenter;
     }
 
     public function resultats(ResultatsFilterRequest $request)
@@ -603,29 +611,17 @@ class ESBTPResultatController extends Controller
         $annee_id = $annee_universitaire_id;
 
         $etudiant = ESBTPEtudiant::with('user')->findOrFail($id);
-
-        // Résolution double :
-        // - `$inscription` garde le comportement métier principal des résultats
-        // - `$inscriptionForAlert` retrouve l'inscription classe+année même si elle n'est pas active
-        $allYearInscriptions = $etudiant->inscriptions()
-            ->where('annee_universitaire_id', $annee_universitaire_id)
-            ->orderByDesc('date_inscription')
-            ->orderByDesc('id')
-            ->get();
-        $inscriptions = $include_all_statuses
-            ? $allYearInscriptions
-            : $allYearInscriptions->where('status', 'active')->values();
-        $inscription = $requestedClasseId
-            ? $inscriptions->firstWhere('classe_id', $requestedClasseId)
-            : $inscriptions->first();
-        $inscriptionForAlert = $requestedClasseId
-            ? $allYearInscriptions->firstWhere('classe_id', $requestedClasseId)
-            : ($inscription ?? $allYearInscriptions->first());
-
-        $classe_id = $requestedClasseId ?? $inscription?->classe_id ?? $inscriptionForAlert?->classe_id;
-        if (! $classe_id && $inscriptionForAlert) {
-            $classe_id = $inscriptionForAlert->classe_id;
-        }
+        $aggregationContext = $this->btsAnnualAggregationService->resolveStudentContext(
+            $etudiant,
+            $annee_universitaire_id,
+            $requestedClasseId,
+            $periode,
+            $include_all_statuses
+        );
+        $allYearInscriptions = $aggregationContext['all_inscriptions'] ?? collect();
+        $inscription = $aggregationContext['inscription'];
+        $inscriptionForAlert = $inscription ?? $allYearInscriptions->first();
+        $classe_id = $aggregationContext['effective_classe_id'] ?? $requestedClasseId;
         $classe = $classe_id ? ESBTPClasse::with(['filiere', 'niveau'])->find($classe_id) : null;
         // Get the academic year object for display
         $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
@@ -638,6 +634,7 @@ class ESBTPResultatController extends Controller
             (object) ['id' => '1', 'code' => 'semestre1', 'nom' => 'Semestre 1'],
             (object) ['id' => '2', 'code' => 'semestre2', 'nom' => 'Semestre 2'],
         ];
+        $btsJourney = $this->btsUiPresenter->forInscription($inscriptionForAlert);
 
         // Get notes for the student
         $notesQuery = ESBTPNote::where('etudiant_id', $id)
@@ -976,7 +973,8 @@ class ESBTPResultatController extends Controller
             'bulletinWorkflowPeriode',
             'bulletinWorkflowPeriodeLabel',
             'bulletinConsistency',
-            'inscriptionWorkflowAlert'
+            'inscriptionWorkflowAlert',
+            'btsJourney'
         ));
     }
 

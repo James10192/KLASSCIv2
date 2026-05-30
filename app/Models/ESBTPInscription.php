@@ -437,6 +437,20 @@ class ESBTPInscription extends Model implements Auditable
         return $this->hasOne(ESBTPInscription::class, 'inscription_origine_id');
     }
 
+    public function phases()
+    {
+        return $this->hasMany(ESBTPInscriptionPhase::class, 'inscription_id')
+            ->orderBy('semestre_debut')
+            ->orderBy('id');
+    }
+
+    public function activePhase()
+    {
+        return $this->hasOne(ESBTPInscriptionPhase::class, 'inscription_id')
+            ->where('is_active', true)
+            ->latestOfMany('id');
+    }
+
     /**
      * Vérifie si cette inscription est issue d'un tronc commun.
      */

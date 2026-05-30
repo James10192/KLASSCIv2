@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Students\Accessibility\Actions\AttachAccessibilityProfile;
+use App\Domain\BtsTroncCommun\BtsUiPresenter;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPFiliere;
@@ -55,17 +56,20 @@ class ESBTPInscriptionController extends Controller
      * Constructeur avec injection du service d'inscription
      */
     protected $searchService;
+    protected $btsUiPresenter;
 
     public function __construct(
         ESBTPInscriptionService $inscriptionService,
         ComptabiliteService $comptabiliteService,
         InscriptionWorkflowService $workflowService,
         \App\Services\InscriptionSearchService $searchService,
+        BtsUiPresenter $btsUiPresenter,
     ) {
         $this->inscriptionService = $inscriptionService;
         $this->comptabiliteService = $comptabiliteService;
         $this->workflowService = $workflowService;
         $this->searchService = $searchService;
+        $this->btsUiPresenter = $btsUiPresenter;
         $this->middleware("auth");
         $this->middleware("permission:inscriptions.view", [
             "only" => ["index", "show"],
@@ -1002,6 +1006,8 @@ class ESBTPInscriptionController extends Controller
             ->with(['anneeUniversitaire', 'classe', 'filiere'])
             ->orderByDesc('created_at')
             ->get();
+        $inscription->loadMissing(['phases.classe.filiere', 'classe.orientationTargets.targetClasse']);
+        $btsJourney = $this->btsUiPresenter->forInscription($inscription);
 
         return view(
             "esbtp.inscriptions.show",
@@ -1021,6 +1027,7 @@ class ESBTPInscriptionController extends Controller
                 "canViewFinancials",
                 "anneeCourante",
                 "otherInscriptions",
+                "btsJourney",
             ),
         );
     }

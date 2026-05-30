@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\BtsTroncCommun\BtsUiPresenter;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEtudiantDocument;
 use App\Models\ESBTPFiliere;
@@ -31,6 +32,7 @@ class ESBTPEtudiantController extends Controller
     protected $inscriptionService;
     protected $inscriptionWorkflowService;
     protected $classeManagementService;
+    protected $btsUiPresenter;
 
     /**
      * Constructeur avec injection du service d'inscription
@@ -38,11 +40,13 @@ class ESBTPEtudiantController extends Controller
     public function __construct(
         ESBTPInscriptionService $inscriptionService,
         InscriptionWorkflowService $inscriptionWorkflowService,
-        ClasseManagementService $classeManagementService
+        ClasseManagementService $classeManagementService,
+        BtsUiPresenter $btsUiPresenter
     ) {
         $this->inscriptionService = $inscriptionService;
         $this->inscriptionWorkflowService = $inscriptionWorkflowService;
         $this->classeManagementService = $classeManagementService;
+        $this->btsUiPresenter = $btsUiPresenter;
         $this->middleware('auth');
         $this->middleware('permission:students.view', ['only' => ['index', 'show']]);
         $this->middleware('permission:students.create', ['only' => ['create', 'store']]);
@@ -479,9 +483,11 @@ class ESBTPEtudiantController extends Controller
             ];
         }
 
+        $btsJourney = $this->btsUiPresenter->forStudent($etudiant);
+
         return view('esbtp.etudiants.show', compact(
             'etudiant', 'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
-            'isLMD', 'bulletinLMD', 'parcours', 'lmdCredits'
+            'isLMD', 'bulletinLMD', 'parcours', 'lmdCredits', 'btsJourney'
         ));
     }
 

@@ -241,6 +241,16 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         ->name('resultats.student.diagnose');
     Route::get('/resultats/etudiant/{id}/bulletin-consistency-diagnose', [App\Http\Controllers\API\CLI\CLIResultatController::class, 'bulletinConsistencyDiagnose'])
         ->name('resultats.student.bulletin-consistency-diagnose');
+    Route::get('/bts-tc/inscriptions/{id}/diagnose', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'diagnoseInscription'])
+        ->name('bts-tc.inscriptions.diagnose');
+    Route::get('/bts-tc/students/{id}/journey', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'studentJourney'])
+        ->name('bts-tc.students.journey');
+    Route::get('/bts-tc/students/{id}/results-consistency', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'resultsConsistency'])
+        ->name('bts-tc.students.results-consistency');
+    Route::get('/bts-tc/classes/{id}/orientation-check', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'classOrientationCheck'])
+        ->name('bts-tc.classes.orientation-check');
+    Route::get('/bts-tc/legacy-audit', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'legacyAudit'])
+        ->name('bts-tc.legacy-audit');
 
     // Read endpoints — Academic years
     Route::get('/annee', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'annee'])->name('annee');

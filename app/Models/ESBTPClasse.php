@@ -196,6 +196,18 @@ class ESBTPClasse extends Model implements Auditable
         return $this->hasMany(ESBTPInscription::class, 'classe_id');
     }
 
+    public function orientationTargets()
+    {
+        return $this->hasMany(ESBTPClasseOrientationTarget::class, 'source_classe_id')
+            ->orderBy('sort_order')
+            ->orderBy('id');
+    }
+
+    public function orientationSources()
+    {
+        return $this->hasMany(ESBTPClasseOrientationTarget::class, 'target_classe_id');
+    }
+
     /**
      * Relation avec les emplois du temps.
      *

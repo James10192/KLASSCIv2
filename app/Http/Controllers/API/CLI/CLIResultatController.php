@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
+use App\Domain\BtsTroncCommun\BtsAnnualAggregationService;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
@@ -21,7 +22,8 @@ class CLIResultatController extends BaseApiController
     public function __construct(
         private BulletinService $bulletinService,
         private BulletinConsistencyService $bulletinConsistencyService,
-        private BtsCurrentResultSnapshotService $currentResultSnapshotService
+        private BtsCurrentResultSnapshotService $currentResultSnapshotService,
+        private BtsAnnualAggregationService $btsAnnualAggregationService
     )
     {
         parent::__construct();
@@ -73,6 +75,13 @@ class CLIResultatController extends BaseApiController
             ->orderByDesc('id')
             ->get();
 
+        $aggregationContext = $this->btsAnnualAggregationService->resolveStudentContext(
+            $etudiant,
+            $requestedAnneeId,
+            $requestedClasseId,
+            $requestedPeriode ?: 'semestre1',
+            $includeAllStatuses
+        );
         $currentControllerClasseId = $requestedClasseId ?: $currentControllerInscription?->classe_id;
         $expectedClasseId = $requestedClasseId ?: $currentControllerInscription?->classe_id;
         $effectiveDetailPeriode = $requestedPeriode ?: 'semestre1';
@@ -138,7 +147,12 @@ class CLIResultatController extends BaseApiController
                 'current_behavior_classe' => $this->formatClasseSummary($currentControllerClasseId),
                 'expected_if_request_wins_classe_id' => $expectedClasseId,
                 'expected_if_request_wins_classe' => $this->formatClasseSummary($expectedClasseId),
+                'phase_resolved_classe_id' => $aggregationContext['effective_classe_id'] ?? null,
+                'phase_resolved_classe' => $this->formatClasseSummary($aggregationContext['effective_classe_id'] ?? null),
             ],
+            'source_model' => $aggregationContext['source_model'] ?? 'phase_based',
+            'current_phase' => $aggregationContext['effective_phase'] ?? null,
+            'timeline' => $aggregationContext['journey']['timeline'] ?? [],
             'inscriptions' => $inscriptions->map(function (ESBTPInscription $inscription) {
                 return [
                     'id' => $inscription->id,

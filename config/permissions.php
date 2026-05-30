@@ -325,6 +325,26 @@ return [
             'icon' => 'fa-trash',
             'aliases' => ['delete_classes', 'delete classes'],
         ],
+        'bts_tronc_commun.view' => [
+            'label' => 'Voir le parcours BTS tronc commun',
+            'group' => 'Académique',
+            'icon' => 'fa-road',
+        ],
+        'bts_tronc_commun.orient' => [
+            'label' => 'Orienter un étudiant BTS tronc commun',
+            'group' => 'Académique',
+            'icon' => 'fa-route',
+        ],
+        'bts_tronc_commun.manage_targets' => [
+            'label' => 'Configurer les sorties BTS tronc commun',
+            'group' => 'Académique',
+            'icon' => 'fa-diagram-project',
+        ],
+        'bts_tronc_commun.view_history' => [
+            'label' => "Voir l'historique BTS tronc commun",
+            'group' => 'Académique',
+            'icon' => 'fa-clock-rotate-left',
+        ],
 
         // ===== Filières =====
         'filieres.view' => [

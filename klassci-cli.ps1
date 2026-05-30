@@ -517,6 +517,62 @@ switch ($Command) {
             -IncludeAllStatuses $includeAllStatuses | ConvertTo-Json -Depth 12
         break
     }
+    "bts-tc:diagnose" {
+        if ($ExtraArgs.Count -lt 1) {
+            throw "Usage: .\klassci-cli.ps1 bts-tc:diagnose [presentation] <inscription_id>"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $path = "/bts-tc/inscriptions/{0}/diagnose" -f $ExtraArgs[0]
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
+        break
+    }
+    "bts-tc:student-journey" {
+        if ($ExtraArgs.Count -lt 1) {
+            throw "Usage: .\klassci-cli.ps1 bts-tc:student-journey [presentation] <etudiant_id> [annee_universitaire_id]"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $query = @{}
+        if ($ExtraArgs.Count -ge 2) { $query["annee_universitaire_id"] = $ExtraArgs[1] }
+
+        $path = "/bts-tc/students/{0}/journey{1}" -f $ExtraArgs[0], (New-KlassciQueryString -Query $query)
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
+        break
+    }
+    "bts-tc:orientation-check" {
+        if ($ExtraArgs.Count -lt 1) {
+            throw "Usage: .\klassci-cli.ps1 bts-tc:orientation-check [presentation] <classe_id>"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $path = "/bts-tc/classes/{0}/orientation-check" -f $ExtraArgs[0]
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
+        break
+    }
+    "bts-tc:legacy-audit" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $query = @{}
+        if ($ExtraArgs.Count -ge 1) { $query["annee_universitaire_id"] = $ExtraArgs[0] }
+
+        $path = "/bts-tc/legacy-audit{0}" -f (New-KlassciQueryString -Query $query)
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
+        break
+    }
+    "bts-tc:results-consistency" {
+        if ($ExtraArgs.Count -lt 1) {
+            throw "Usage: .\klassci-cli.ps1 bts-tc:results-consistency [presentation] <etudiant_id> [annee_universitaire_id] [periode]"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $query = @{}
+        if ($ExtraArgs.Count -ge 2) { $query["annee_universitaire_id"] = $ExtraArgs[1] }
+        if ($ExtraArgs.Count -ge 3) { $query["periode"] = $ExtraArgs[2] }
+
+        $path = "/bts-tc/students/{0}/results-consistency{1}" -f $ExtraArgs[0], (New-KlassciQueryString -Query $query)
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
+        break
+    }
     default {
         Write-Host "Usage:" -ForegroundColor Yellow
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
@@ -530,6 +586,11 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 resultats:diagnose [presentation] <etudiant_id> [classe_id] [annee_universitaire_id] [periode] [include_all_statuses]"
         Write-Host "  .\klassci-cli.ps1 resultats:bulletin-consistency-diagnose [presentation] <etudiant_id> <classe_id> <annee_universitaire_id> <periode>"
         Write-Host "  .\klassci-cli.ps1 resultats:bts-annual-snapshot [presentation] <etudiant_id> <classe_id> <annee_universitaire_id> [include_all_statuses]"
+        Write-Host "  .\klassci-cli.ps1 bts-tc:diagnose [presentation] <inscription_id>"
+        Write-Host "  .\klassci-cli.ps1 bts-tc:student-journey [presentation] <etudiant_id> [annee_universitaire_id]"
+        Write-Host "  .\klassci-cli.ps1 bts-tc:orientation-check [presentation] <classe_id>"
+        Write-Host "  .\klassci-cli.ps1 bts-tc:legacy-audit [presentation] [annee_universitaire_id]"
+        Write-Host "  .\klassci-cli.ps1 bts-tc:results-consistency [presentation] <etudiant_id> [annee_universitaire_id] [periode]"
         exit 1
     }
 }

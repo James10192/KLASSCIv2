@@ -1218,6 +1218,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
             </div>
         </div>
 
+        @include('esbtp.partials.bts-journey', ['btsJourney' => $btsJourney ?? null])
+
         <div class="p-lg">
             @if(session('success'))
                 <div class="alert alert-success alert-dismissible fade show" role="alert">

@@ -154,6 +154,7 @@
         </div>
 
         {{-- 2. Filtres (Classe + Année, sans Période) --}}
+        @include('esbtp.partials.bts-journey', ['btsJourney' => $btsJourney ?? null])
         @include('components.student-results.filters-section')
 
         {{-- 2b. Period Tabs --}}
