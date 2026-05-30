@@ -602,30 +602,32 @@ class ESBTPResultatController extends Controller
 
         $etudiant = ESBTPEtudiant::with('user')->findOrFail($id);
 
-        // Get inscription for the student in the specified academic year
-        $inscriptionQuery = $etudiant->inscriptions()
-            ->where('annee_universitaire_id', $annee_universitaire_id);
-
-        if (! $include_all_statuses) {
-            $inscriptionQuery->where('status', 'active');
-        }
-
-        $inscriptions = (clone $inscriptionQuery)
+        // Résolution double :
+        // - `$inscription` garde le comportement métier principal des résultats
+        // - `$inscriptionForAlert` retrouve l'inscription classe+année même si elle n'est pas active
+        $allYearInscriptions = $etudiant->inscriptions()
+            ->where('annee_universitaire_id', $annee_universitaire_id)
             ->orderByDesc('date_inscription')
             ->orderByDesc('id')
             ->get();
+        $inscriptions = $include_all_statuses
+            ? $allYearInscriptions
+            : $allYearInscriptions->where('status', 'active')->values();
         $inscription = $requestedClasseId
             ? $inscriptions->firstWhere('classe_id', $requestedClasseId)
             : $inscriptions->first();
+        $inscriptionForAlert = $requestedClasseId
+            ? $allYearInscriptions->firstWhere('classe_id', $requestedClasseId)
+            : ($inscription ?? $allYearInscriptions->first());
 
-        $classe_id = $requestedClasseId ?? $inscription?->classe_id;
-        if (! $classe_id && $inscription) {
-            $classe_id = $inscription->classe_id;
+        $classe_id = $requestedClasseId ?? $inscription?->classe_id ?? $inscriptionForAlert?->classe_id;
+        if (! $classe_id && $inscriptionForAlert) {
+            $classe_id = $inscriptionForAlert->classe_id;
         }
         $classe = $classe_id ? ESBTPClasse::with(['filiere', 'niveau'])->find($classe_id) : null;
         // Get the academic year object for display
         $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
-        $inscriptionWorkflowAlert = InscriptionWorkflowAlertPresenter::fromInscription($inscription, $anneeUniversitaire);
+        $inscriptionWorkflowAlert = InscriptionWorkflowAlertPresenter::fromInscription($inscriptionForAlert, $anneeUniversitaire);
         // Get all active classes for the filter dropdown
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();

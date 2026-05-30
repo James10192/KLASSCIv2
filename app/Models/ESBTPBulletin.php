@@ -343,10 +343,13 @@ class ESBTPBulletin extends Model implements Auditable
         }
         return $this->etudiant->absences()
             ->where('justified', true)
-            ->whereHas('matiere', function ($query) {
-                $query->whereHas('classes', function ($q) {
-                    $q->where('classe_id', $this->classe_id);
-                });
+            ->whereHas('cours', function ($query) {
+                $query->where('classe_id', $this->classe_id)
+                    ->whereHas('matiere', function ($q) {
+                        $q->whereHas('classes', function ($c) {
+                            $c->where('classe_id', $this->classe_id);
+                        });
+                    });
             })
             ->sum('hours');
     }
@@ -358,10 +361,13 @@ class ESBTPBulletin extends Model implements Auditable
         }
         return $this->etudiant->absences()
             ->where('justified', false)
-            ->whereHas('matiere', function ($query) {
-                $query->whereHas('classes', function ($q) {
-                    $q->where('classe_id', $this->classe_id);
-                });
+            ->whereHas('cours', function ($query) {
+                $query->where('classe_id', $this->classe_id)
+                    ->whereHas('matiere', function ($q) {
+                        $q->whereHas('classes', function ($c) {
+                            $c->where('classe_id', $this->classe_id);
+                        });
+                    });
             })
             ->sum('hours');
     }
