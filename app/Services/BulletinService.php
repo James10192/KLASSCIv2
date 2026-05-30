@@ -8,6 +8,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPInscription;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
@@ -373,11 +374,8 @@ class BulletinService
         $noteAssiduite = $afficherNoteAssiduite ? $this->calculerNoteAssiduite($absences['justifiees'], $absences['non_justifiees']) : 0;
         $moyenneAvecAssiduite = $moyenneGlobale + $noteAssiduite;
 
-        // Effectif de la classe
-        $effectif = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classe, $anneeUniversitaire) {
-            $q->where('classe_id', $classe->id)
-                ->where('annee_universitaire_id', $anneeUniversitaire->id);
-        })->count();
+        // Effectif de la classe aligné sur classes.show: inscriptions validées uniquement.
+        $effectif = $this->countValidatedClassStudents($classe->id, $anneeUniversitaire->id);
 
         // Persister la moyenne BRUTE (sans assiduité) dans le bulletin.
         // L'assiduité est stockée séparément dans note_assiduite.
@@ -1516,12 +1514,25 @@ class BulletinService
             ->where('periode', $bulletin->periode)
             ->whereNotNull('moyenne_generale');
 
-        $bulletin->effectif_classe = $base->count();
+        $bulletin->effectif_classe = $this->countValidatedClassStudents(
+            $bulletin->classe_id,
+            $bulletin->annee_universitaire_id
+        );
         $bulletin->rang = (clone $base)
             ->where('moyenne_generale', '>', $bulletin->moyenne_generale ?? 0)
             ->count() + 1;
 
         $bulletin->save();
+    }
+
+    private function countValidatedClassStudents(int $classeId, int $anneeUniversitaireId): int
+    {
+        return ESBTPInscription::where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->distinct('etudiant_id')
+            ->count('etudiant_id');
     }
 
     /**

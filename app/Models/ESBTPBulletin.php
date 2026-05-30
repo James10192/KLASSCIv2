@@ -282,8 +282,13 @@ class ESBTPBulletin extends Model implements Auditable
             ->orderByDesc('moyenne_generale')
             ->get();
 
-        // Update class size
-        $this->effectif_classe = $bulletins->count();
+        // Keep displayed class size aligned with validated enrollments, not only generated bulletins.
+        $this->effectif_classe = ESBTPInscription::where('classe_id', $this->classe_id)
+            ->where('annee_universitaire_id', $this->annee_universitaire_id)
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->distinct('etudiant_id')
+            ->count('etudiant_id');
 
         // Find student's rank
         foreach ($bulletins as $index => $bulletin) {
