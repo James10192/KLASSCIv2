@@ -598,7 +598,9 @@ class ESBTPBulletinController extends Controller
                         $resultatFormate = (object) [
                             'id' => $notes->first()->id,
                             'note' => round($moyenneMatiere, 2),
+                            'moyenne' => round($moyenneMatiere, 2),
                             'matiere' => $matiere,
+                            'matiere_id' => $matiere->id,
                             'moyenne_matiere' => round($moyenneMatiere, 2),
                             'coefficient' => $coefficient,
                             'rang' => 1, // À calculer si nécessaire
