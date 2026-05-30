@@ -672,6 +672,14 @@ class ESBTPBulletinController extends Controller
                 $moyenneAvecAssiduite
             );
             $moyenneAnnuelle = $this->bulletinService->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+            $effectifClasse = $this->bulletinService->getValidatedClassStudentCount(
+                $bulletin->classe_id,
+                $bulletin->annee_universitaire_id
+            );
+
+            if ((int) $bulletin->effectif_classe !== $effectifClasse) {
+                $bulletin->forceFill(['effectif_classe' => $effectifClasse])->save();
+            }
 
             $data = [
                 'bulletin' => $bulletin,
@@ -691,7 +699,7 @@ class ESBTPBulletinController extends Controller
                 'semesterWeights' => $semesterWeights,
                 'noteAssiduite' => $noteAssiduite,
                 'rang' => $bulletin->rang,
-                'effectif' => $bulletin->effectif_classe,
+                'effectif' => $effectifClasse,
                 'appreciation' => $bulletin->mention,
                 'date_edition' => now()->format('d/m/Y'),
                 'absencesJustifiees' => $bulletin->absences_justifiees,

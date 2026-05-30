@@ -375,7 +375,7 @@ class BulletinService
         $moyenneAvecAssiduite = $moyenneGlobale + $noteAssiduite;
 
         // Effectif de la classe aligné sur classes.show: inscriptions validées uniquement.
-        $effectif = $this->countValidatedClassStudents($classe->id, $anneeUniversitaire->id);
+        $effectif = $this->getValidatedClassStudentCount($classe->id, $anneeUniversitaire->id);
 
         // Persister la moyenne BRUTE (sans assiduité) dans le bulletin.
         // L'assiduité est stockée séparément dans note_assiduite.
@@ -1514,7 +1514,7 @@ class BulletinService
             ->where('periode', $bulletin->periode)
             ->whereNotNull('moyenne_generale');
 
-        $bulletin->effectif_classe = $this->countValidatedClassStudents(
+        $bulletin->effectif_classe = $this->getValidatedClassStudentCount(
             $bulletin->classe_id,
             $bulletin->annee_universitaire_id
         );
@@ -1525,7 +1525,7 @@ class BulletinService
         $bulletin->save();
     }
 
-    private function countValidatedClassStudents(int $classeId, int $anneeUniversitaireId): int
+    public function getValidatedClassStudentCount(int $classeId, int $anneeUniversitaireId): int
     {
         return ESBTPInscription::where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
