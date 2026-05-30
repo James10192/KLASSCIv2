@@ -701,6 +701,8 @@ class ESBTPBulletinController extends Controller
                 'settings' => $settings, // Ajouter tous les paramètres de configuration
             ];
 
+            $data += $this->getOfficialBulletinTemplateDefaults($bulletin);
+
             // Log des variables d'absences pour debugging
             Log::info('Variables d\'absence pour le PDF dans genererPDF:', [
                 'bulletin_absences_justifiees' => $bulletin->absences_justifiees ?? 'Non défini',
@@ -1912,6 +1914,25 @@ class ESBTPBulletinController extends Controller
             'official_url' => $officialUrl,
             'current_url' => $currentUrl,
         ];
+    }
+
+    private function getOfficialBulletinTemplateDefaults(ESBTPBulletin $bulletin): array
+    {
+        try {
+            return $this->bulletinService->genererDonneesBulletin(
+                $bulletin->etudiant_id,
+                $bulletin->classe_id,
+                $bulletin->annee_universitaire_id,
+                $bulletin->periode
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Fallback defaults unavailable for official bulletin template', [
+                'bulletin_id' => $bulletin->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return [];
+        }
     }
 
     /**
