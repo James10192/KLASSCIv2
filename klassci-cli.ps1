@@ -12,6 +12,7 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 function Get-KlassciConfig {
     param([string]$TenantCode)
@@ -79,38 +80,29 @@ function Invoke-KlassciApi {
     }
 
     $uri = "{0}/api/cli{1}" -f $Config.BaseUrl.TrimEnd('/'), $Path
-    $curlArgs = @(
-        "-sS",
-        "-X", $Method,
-        $uri,
-        "-H", "Accept: application/json",
-        "-H", "Authorization: Bearer $($Config.Token)"
-    )
+    $headers = @{
+        "Accept" = "application/json"
+        "Authorization" = "Bearer $($Config.Token)"
+    }
+    $requestParams = @{
+        Method = $Method
+        Uri = $uri
+        Headers = $headers
+        UseBasicParsing = $true
+        Proxy = $null
+    }
 
     if ($Body -ne $null) {
-        $curlArgs += @(
-            "-H", "Content-Type: application/json",
-            "-d", ($Body | ConvertTo-Json -Depth 8 -Compress)
-        )
+        $requestParams["ContentType"] = "application/json"
+        $requestParams["Body"] = ($Body | ConvertTo-Json -Depth 8 -Compress)
     }
 
-    $tmpFile = [System.IO.Path]::GetTempFileName()
-    try {
-        $curlArgs += @("-o", $tmpFile)
-        & curl.exe @curlArgs | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            throw "curl failed with exit code $LASTEXITCODE"
-        }
-
-        $response = Get-Content $tmpFile -Raw
-        if (-not $response) {
-            return $null
-        }
-
-        return ConvertFrom-KlassciJson -Json $response
-    } finally {
-        Remove-Item $tmpFile -ErrorAction SilentlyContinue
+    $response = Invoke-RestMethod @requestParams
+    if ($null -eq $response) {
+        return $null
     }
+
+    return $response
 }
 
 function Invoke-KlassciUrl {
@@ -121,40 +113,25 @@ function Invoke-KlassciUrl {
         [object]$Body = $null
     )
 
-    $curlArgs = @(
-        "-sS",
-        "-X", $Method,
-        $Url
-    )
-
-    foreach ($key in $Headers.Keys) {
-        $curlArgs += @("-H", "{0}: {1}" -f $key, $Headers[$key])
+    $requestParams = @{
+        Method = $Method
+        Uri = $Url
+        Headers = $Headers
+        UseBasicParsing = $true
+        Proxy = $null
     }
 
     if ($Body -ne $null) {
-        $curlArgs += @(
-            "-H", "Content-Type: application/json",
-            "-d", ($Body | ConvertTo-Json -Depth 8 -Compress)
-        )
+        $requestParams["ContentType"] = "application/json"
+        $requestParams["Body"] = ($Body | ConvertTo-Json -Depth 8 -Compress)
     }
 
-    $tmpFile = [System.IO.Path]::GetTempFileName()
-    try {
-        $curlArgs += @("-o", $tmpFile)
-        & curl.exe @curlArgs | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            throw "curl failed with exit code $LASTEXITCODE"
-        }
-
-        $response = Get-Content $tmpFile -Raw
-        if (-not $response) {
-            return $null
-        }
-
-        return ConvertFrom-KlassciJson -Json $response
-    } finally {
-        Remove-Item $tmpFile -ErrorAction SilentlyContinue
+    $response = Invoke-RestMethod @requestParams
+    if ($null -eq $response) {
+        return $null
     }
+
+    return $response
 }
 
 function Invoke-KlassciUrlRaw {
@@ -165,35 +142,25 @@ function Invoke-KlassciUrlRaw {
         [object]$Body = $null
     )
 
-    $curlArgs = @(
-        "-sS",
-        "-X", $Method,
-        $Url
-    )
-
-    foreach ($key in $Headers.Keys) {
-        $curlArgs += @("-H", "{0}: {1}" -f $key, $Headers[$key])
+    $requestParams = @{
+        Method = $Method
+        Uri = $Url
+        Headers = $Headers
+        UseBasicParsing = $true
+        Proxy = $null
     }
 
     if ($Body -ne $null) {
-        $curlArgs += @(
-            "-H", "Content-Type: application/json",
-            "-d", ($Body | ConvertTo-Json -Depth 8 -Compress)
-        )
+        $requestParams["ContentType"] = "application/json"
+        $requestParams["Body"] = ($Body | ConvertTo-Json -Depth 8 -Compress)
     }
 
-    $tmpFile = [System.IO.Path]::GetTempFileName()
-    try {
-        $curlArgs += @("-o", $tmpFile)
-        & curl.exe @curlArgs | Out-Null
-        if ($LASTEXITCODE -ne 0) {
-            throw "curl failed with exit code $LASTEXITCODE"
-        }
-
-        return (Get-Content $tmpFile -Raw)
-    } finally {
-        Remove-Item $tmpFile -ErrorAction SilentlyContinue
+    $response = Invoke-WebRequest @requestParams
+    if (-not $response) {
+        return $null
     }
+
+    return $response.Content
 }
 
 function ConvertFrom-KlassciJson {
@@ -629,6 +596,20 @@ switch ($Command) {
         Invoke-KlassciApiJson -Method "POST" -Path $path -Config $cfg -Body $body
         break
     }
+    "bts-tc:seed-academic-sample" {
+        if ($ExtraArgs.Count -lt 1) {
+            throw "Usage: .\klassci-cli.ps1 bts-tc:seed-academic-sample [presentation] <inscription_id> [semestre1_note] [semestre2_note]"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $body = @{}
+        if ($ExtraArgs.Count -ge 2) { $body["semestre1_note"] = [double]$ExtraArgs[1] }
+        if ($ExtraArgs.Count -ge 3) { $body["semestre2_note"] = [double]$ExtraArgs[2] }
+
+        $path = "/bts-tc/inscriptions/{0}/seed-academic-sample" -f $ExtraArgs[0]
+        Invoke-KlassciApiJson -Method "POST" -Path $path -Config $cfg -Body $body
+        break
+    }
     default {
         Write-Host "Usage:" -ForegroundColor Yellow
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
@@ -650,6 +631,7 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 bts-tc:mark-filiere-tc [presentation] <filiere_id> [semestres_tronc_commun]"
         Write-Host "  .\klassci-cli.ps1 bts-tc:add-target [presentation] <source_classe_id> <target_classe_id> [semestre_activation] [sort_order]"
         Write-Host "  .\klassci-cli.ps1 bts-tc:orient [presentation] <inscription_id> <target_classe_id>"
+        Write-Host "  .\klassci-cli.ps1 bts-tc:seed-academic-sample [presentation] <inscription_id> [semestre1_note] [semestre2_note]"
         exit 1
     }
 }

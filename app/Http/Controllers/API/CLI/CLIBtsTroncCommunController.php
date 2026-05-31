@@ -7,11 +7,19 @@ use App\Domain\BtsTroncCommun\BtsOrientationService;
 use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPClasseOrientationTarget;
+use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPMatiere;
+use App\Models\ESBTPMatiereCoefficient;
+use App\Models\ESBTPNote;
+use App\Models\ESBTPResultat;
+use App\Models\ESBTPResultatMatiere;
+use App\Services\BulletinService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,7 +29,8 @@ class CLIBtsTroncCommunController extends BaseApiController
     public function __construct(
         private BtsPhaseResolver $phaseResolver,
         private BtsAnnualAggregationService $aggregationService,
-        private BtsOrientationService $orientationService
+        private BtsOrientationService $orientationService,
+        private BulletinService $bulletinService
     ) {
         parent::__construct();
     }
@@ -298,5 +307,329 @@ class CLIBtsTroncCommunController extends BaseApiController
             'errors' => [],
             'recommended_actions' => [],
         ], 'BTS TC orientation completed');
+    }
+
+    public function seedAcademicSample(Request $request, int $id): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'semestre1_note' => 'sometimes|numeric|min:0|max:20',
+            'semestre2_note' => 'sometimes|numeric|min:0|max:20',
+        ]);
+
+        $inscription = ESBTPInscription::with([
+            'etudiant',
+            'filiere',
+            'niveau',
+            'classe',
+            'phases.classe.filiere',
+        ])->find($id);
+
+        if (! $inscription) {
+            return $this->errorResponse('Inscription not found', [], 404);
+        }
+
+        $journey = $this->phaseResolver->buildJourney($inscription);
+        $semestre1Phase = $this->phaseResolver->resolveSemesterPhase($inscription, 1);
+        $semestre2Phase = $this->phaseResolver->resolveSemesterPhase($inscription, 2);
+
+        if (! $semestre1Phase || ! $semestre2Phase) {
+            return $this->errorResponse('Both semestre1 and semestre2 phases are required', [], 422);
+        }
+
+        $etudiant = $inscription->etudiant;
+        if (! $etudiant) {
+            return $this->errorResponse('Student not found', [], 404);
+        }
+
+        $payload = DB::transaction(function () use ($request, $inscription, $etudiant, $semestre1Phase, $semestre2Phase, $validated) {
+            $userId = (int) ($request->user()->id ?? 1);
+            $anneeId = (int) $inscription->annee_universitaire_id;
+            $semestre1Classe = ESBTPClasse::findOrFail((int) $semestre1Phase['classe_id']);
+            $semestre2Classe = ESBTPClasse::findOrFail((int) $semestre2Phase['classe_id']);
+
+            $matiereS1 = $this->upsertSampleMatiere(
+                inscriptionId: $inscription->id,
+                suffix: 'S1',
+                name: 'Culture générale TC',
+                classe: $semestre1Classe,
+                userId: $userId
+            );
+            $matiereS2 = $this->upsertSampleMatiere(
+                inscriptionId: $inscription->id,
+                suffix: 'S2',
+                name: 'Pratique professionnelle',
+                classe: $semestre2Classe,
+                userId: $userId
+            );
+
+            $this->upsertCoefficient($matiereS1, $semestre1Classe, $anneeId, $userId);
+            $this->upsertCoefficient($matiereS2, $semestre2Classe, $anneeId, $userId);
+
+            $noteS1 = round((float) ($validated['semestre1_note'] ?? 12), 2);
+            $noteS2 = round((float) ($validated['semestre2_note'] ?? 16), 2);
+
+            $evaluationS1 = $this->upsertEvaluation($inscription->id, 'S1', $matiereS1, $semestre1Classe, $anneeId, $userId);
+            $evaluationS2 = $this->upsertEvaluation($inscription->id, 'S2', $matiereS2, $semestre2Classe, $anneeId, $userId);
+
+            $this->upsertNote($evaluationS1, $etudiant->id, $semestre1Classe->id, $matiereS1->id, 1, $noteS1, $userId);
+            $this->upsertNote($evaluationS2, $etudiant->id, $semestre2Classe->id, $matiereS2->id, 2, $noteS2, $userId);
+
+            $resultatS1 = $this->upsertResultat($etudiant->id, $semestre1Classe->id, $matiereS1->id, $anneeId, 'semestre1', $noteS1, $userId);
+            $resultatS2 = $this->upsertResultat($etudiant->id, $semestre2Classe->id, $matiereS2->id, $anneeId, 'semestre2', $noteS2, $userId);
+
+            $bulletinS1 = $this->upsertBulletin(
+                etudiantId: $etudiant->id,
+                classe: $semestre1Classe,
+                anneeId: $anneeId,
+                periode: 'semestre1',
+                matiere: $matiereS1,
+                moyenne: $noteS1,
+                coefficient: (float) $resultatS1->coefficient,
+                userId: $userId
+            );
+            $bulletinS2 = $this->upsertBulletin(
+                etudiantId: $etudiant->id,
+                classe: $semestre2Classe,
+                anneeId: $anneeId,
+                periode: 'semestre2',
+                matiere: $matiereS2,
+                moyenne: $noteS2,
+                coefficient: (float) $resultatS2->coefficient,
+                userId: $userId
+            );
+
+            $annualAverage = round(
+                (float) $this->bulletinService->calculateAnnualAverage(
+                    $noteS1 + $this->resolveAttendanceNote($etudiant->id, $semestre1Classe->id, $anneeId, 'semestre1'),
+                    $noteS2 + $this->resolveAttendanceNote($etudiant->id, $semestre2Classe->id, $anneeId, 'semestre2'),
+                    $this->bulletinService->getSemesterWeights()
+                ),
+                2
+            );
+
+            return [
+                'student_id' => $etudiant->id,
+                'inscription_id' => $inscription->id,
+                'source_model' => $journey['source_model'] ?? 'phase_based',
+                'current_phase' => $journey['current_phase'] ?? null,
+                'timeline' => $journey['timeline'] ?? [],
+                'seeded' => [
+                    'matieres' => [
+                        ['id' => $matiereS1->id, 'name' => $matiereS1->name, 'periode' => 'semestre1', 'classe_id' => $semestre1Classe->id],
+                        ['id' => $matiereS2->id, 'name' => $matiereS2->name, 'periode' => 'semestre2', 'classe_id' => $semestre2Classe->id],
+                    ],
+                    'evaluations' => [
+                        ['id' => $evaluationS1->id, 'periode' => 'semestre1', 'classe_id' => $semestre1Classe->id],
+                        ['id' => $evaluationS2->id, 'periode' => 'semestre2', 'classe_id' => $semestre2Classe->id],
+                    ],
+                    'bulletins' => [
+                        ['id' => $bulletinS1->id, 'periode' => 'semestre1', 'classe_id' => $semestre1Classe->id, 'moyenne_generale' => $bulletinS1->moyenne_generale],
+                        ['id' => $bulletinS2->id, 'periode' => 'semestre2', 'classe_id' => $semestre2Classe->id, 'moyenne_generale' => $bulletinS2->moyenne_generale],
+                    ],
+                    'annual_expected_effective' => $annualAverage,
+                ],
+            ];
+        });
+
+        return $this->successResponse($payload, 'BTS TC academic sample seeded');
+    }
+
+    private function upsertSampleMatiere(int $inscriptionId, string $suffix, string $name, ESBTPClasse $classe, int $userId): ESBTPMatiere
+    {
+        $matiere = ESBTPMatiere::firstOrCreate(
+            ['code' => "BTSTC-{$inscriptionId}-{$suffix}"],
+            [
+                'name' => $name,
+                'coefficient' => 1,
+                'niveau_etude_id' => $classe->niveau_etude_id,
+                'type_formation' => 'generale',
+                'is_active' => true,
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ]
+        );
+
+        $matiere->filieres()->syncWithoutDetaching([$classe->filiere_id => ['is_active' => true]]);
+        $matiere->niveaux()->syncWithoutDetaching([$classe->niveau_etude_id => ['coefficient' => 1, 'heures_cours' => 20, 'is_active' => true]]);
+        $matiere->classes()->syncWithoutDetaching([$classe->id => ['coefficient' => 1, 'total_heures' => 20, 'is_active' => true]]);
+
+        return $matiere->fresh();
+    }
+
+    private function upsertCoefficient(ESBTPMatiere $matiere, ESBTPClasse $classe, int $anneeId, int $userId): void
+    {
+        ESBTPMatiereCoefficient::updateOrCreate(
+            [
+                'matiere_id' => $matiere->id,
+                'filiere_id' => $classe->filiere_id,
+                'niveau_etude_id' => $classe->niveau_etude_id,
+                'annee_universitaire_id' => $anneeId,
+            ],
+            [
+                'coefficient' => 1,
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ]
+        );
+    }
+
+    private function upsertEvaluation(
+        int $inscriptionId,
+        string $suffix,
+        ESBTPMatiere $matiere,
+        ESBTPClasse $classe,
+        int $anneeId,
+        int $userId
+    ): ESBTPEvaluation {
+        return ESBTPEvaluation::updateOrCreate(
+            [
+                'classe_id' => $classe->id,
+                'matiere_id' => $matiere->id,
+                'titre' => "Seed BTS TC {$inscriptionId} {$suffix}",
+            ],
+            [
+                'description' => 'Jeu de diagnostic BTS TC',
+                'type' => ESBTPEvaluation::TYPE_DEVOIR,
+                'date_evaluation' => now(),
+                'coefficient' => 1,
+                'bareme' => 20,
+                'duree_minutes' => 60,
+                'periode' => $suffix === 'S1' ? 'semestre1' : 'semestre2',
+                'annee_universitaire_id' => $anneeId,
+                'status' => ESBTPEvaluation::STATUS_COMPLETED,
+                'is_published' => true,
+                'notes_published' => true,
+                'created_by' => $userId,
+                'updated_by' => $userId,
+                'enseignant_id' => $userId,
+            ]
+        );
+    }
+
+    private function upsertNote(
+        ESBTPEvaluation $evaluation,
+        int $etudiantId,
+        int $classeId,
+        int $matiereId,
+        int $semestre,
+        float $note,
+        int $userId
+    ): void {
+        ESBTPNote::updateOrCreate(
+            [
+                'evaluation_id' => $evaluation->id,
+                'etudiant_id' => $etudiantId,
+            ],
+            [
+                'matiere_id' => $matiereId,
+                'classe_id' => $classeId,
+                'semestre' => $semestre,
+                'note' => $note,
+                'valeur' => $note,
+                'type_evaluation' => $evaluation->type,
+                'is_absent' => false,
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ]
+        );
+    }
+
+    private function upsertResultat(
+        int $etudiantId,
+        int $classeId,
+        int $matiereId,
+        int $anneeId,
+        string $periode,
+        float $moyenne,
+        int $userId
+    ): ESBTPResultat {
+        return ESBTPResultat::updateOrCreate(
+            [
+                'etudiant_id' => $etudiantId,
+                'classe_id' => $classeId,
+                'matiere_id' => $matiereId,
+                'periode' => $periode,
+                'annee_universitaire_id' => $anneeId,
+            ],
+            [
+                'moyenne' => $moyenne,
+                'coefficient' => 1,
+                'rang' => 1,
+                'appreciation' => $this->bulletinService->getAppreciation($moyenne),
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ]
+        );
+    }
+
+    private function upsertBulletin(
+        int $etudiantId,
+        ESBTPClasse $classe,
+        int $anneeId,
+        string $periode,
+        ESBTPMatiere $matiere,
+        float $moyenne,
+        float $coefficient,
+        int $userId
+    ): ESBTPBulletin {
+        $attendance = $this->resolveAttendanceNote($etudiantId, $classe->id, $anneeId, $periode);
+
+        $bulletin = ESBTPBulletin::firstOrNew([
+            'etudiant_id' => $etudiantId,
+            'classe_id' => $classe->id,
+            'annee_universitaire_id' => $anneeId,
+            'periode' => $periode,
+        ]);
+
+        $bulletin->moyenne_generale = $moyenne;
+        $bulletin->rang = 1;
+        $bulletin->effectif_classe = 1;
+        $bulletin->mention = $this->bulletinService->getAppreciation($moyenne);
+        $bulletin->appreciation_generale = 'Dossier seed BTS TC';
+        $bulletin->decision_conseil = $moyenne >= 10 ? 'Admis' : 'Ajourné';
+        $bulletin->config_matieres = ['generales' => [$matiere->id], 'techniques' => []];
+        $bulletin->professeurs = json_encode([$matiere->id => 'Professeur démo'], JSON_UNESCAPED_UNICODE);
+        $bulletin->is_published = true;
+        $bulletin->absences_justifiees = 0;
+        $bulletin->absences_non_justifiees = 0;
+        $bulletin->total_absences = 0;
+        $bulletin->note_assiduite = $attendance;
+        $bulletin->details_absences = ['justifiees' => 0, 'non_justifiees' => 0];
+        $bulletin->user_id = $userId;
+        $bulletin->save();
+
+        ESBTPResultatMatiere::updateOrCreate(
+            [
+                'bulletin_id' => $bulletin->id,
+                'matiere_id' => $matiere->id,
+            ],
+            [
+                'moyenne' => $moyenne,
+                'coefficient' => $coefficient,
+                'rang' => 1,
+                'appreciation' => $this->bulletinService->getAppreciation($moyenne),
+                'created_by' => $userId,
+                'updated_by' => $userId,
+            ]
+        );
+
+        return $bulletin->fresh();
+    }
+
+    private function resolveAttendanceNote(int $etudiantId, int $classeId, int $anneeId, string $periode): float
+    {
+        return round(
+            $this->bulletinService->calculateEffectiveAttendanceNoteForStudent(
+                $etudiantId,
+                $classeId,
+                $anneeId,
+                $periode
+            ),
+            2
+        );
     }
 }

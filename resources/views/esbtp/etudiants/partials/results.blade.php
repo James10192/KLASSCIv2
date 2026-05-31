@@ -118,6 +118,11 @@
                         @if($pendingInscription)
                             <span class="badge bg-warning text-dark ms-2">Inscription en attente</span>
                         @endif
+                        @if(!empty($etudiant->bts_journey_ui))
+                            <div class="mt-2">
+                                @include('esbtp.partials.bts-journey-badge', ['btsJourney' => $etudiant->bts_journey_ui])
+                            </div>
+                        @endif
                     </td>
                     <td>{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</td>
                     <td>
@@ -352,6 +357,11 @@
                         <p class="student-matricule">{{ $etudiant->matricule }}</p>
                         @if($pendingInscription)
                             <span class="badge bg-warning text-dark">Inscription en attente</span>
+                        @endif
+                        @if(!empty($etudiant->bts_journey_ui))
+                            <div class="mt-2">
+                                @include('esbtp.partials.bts-journey-badge', ['btsJourney' => $etudiant->bts_journey_ui])
+                            </div>
                         @endif
                     </div>
                     <div class="student-status">

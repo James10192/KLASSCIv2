@@ -257,6 +257,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         ->name('bts-tc.classes.targets.store');
     Route::post('/bts-tc/inscriptions/{id}/orient', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'orientInscription'])
         ->name('bts-tc.inscriptions.orient');
+    Route::post('/bts-tc/inscriptions/{id}/seed-academic-sample', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'seedAcademicSample'])
+        ->name('bts-tc.inscriptions.seed-academic-sample');
 
     // Read endpoints — Academic years
     Route::get('/annee', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'annee'])->name('annee');

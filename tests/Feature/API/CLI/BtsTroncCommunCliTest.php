@@ -7,6 +7,9 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPClasseOrientationTarget;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPBulletin;
+use App\Models\ESBTPNote;
+use App\Models\ESBTPResultat;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPInscriptionPhase;
@@ -76,6 +79,46 @@ class BtsTroncCommunCliTest extends TestCase
         $this->assertSame(200, $target->getStatusCode());
         $this->assertSame(200, $orient->getStatusCode());
         $this->assertSame('specialisation', $orient->getData(true)['data']['current_phase']['type_phase']);
+    }
+
+    /** @test */
+    public function cli_can_seed_academic_sample_for_bts_tc_flow(): void
+    {
+        [$user, $inscription] = $this->makeWritableFixture();
+        $controller = app(CLIBtsTroncCommunController::class);
+        $resolver = fn () => new class($user) {
+            public function __construct(private User $user) {}
+            public function tokenCan(string $ability): bool { return in_array($ability, ['cli:read', 'cli:admin'], true); }
+            public function __get(string $name) { return $this->user->{$name}; }
+        };
+
+        $markRequest = Request::create('/', 'POST', ['is_tronc_commun' => true, 'semestres_tronc_commun' => 1]);
+        $markRequest->setUserResolver($resolver);
+        $controller->markFiliereTroncCommun($markRequest, $inscription->filiere_id);
+
+        $targetClasse = ESBTPClasse::factory()->create([
+            'filiere_id' => ESBTPFiliere::factory()->create(['parent_id' => $inscription->filiere_id])->id,
+            'niveau_etude_id' => $inscription->niveau_id,
+            'annee_universitaire_id' => $inscription->annee_universitaire_id,
+        ]);
+
+        $targetRequest = Request::create('/', 'POST', ['target_classe_id' => $targetClasse->id, 'semestre_activation' => 2]);
+        $targetRequest->setUserResolver($resolver);
+        $controller->addOrientationTarget($targetRequest, $inscription->classe_id);
+
+        $orientRequest = Request::create('/', 'POST', ['target_classe_id' => $targetClasse->id]);
+        $orientRequest->setUserResolver($resolver);
+        $controller->orientInscription($orientRequest, $inscription->id);
+
+        $seedRequest = Request::create('/', 'POST', ['semestre1_note' => 11, 'semestre2_note' => 15]);
+        $seedRequest->setUserResolver($resolver);
+        $response = $controller->seedAcademicSample($seedRequest, $inscription->id);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame(2, ESBTPNote::count());
+        $this->assertSame(2, ESBTPResultat::count());
+        $this->assertSame(2, ESBTPBulletin::count());
+        $this->assertEquals(13.13, $response->getData(true)['data']['seeded']['annual_expected_effective']);
     }
 
     private function makeFixture(): array

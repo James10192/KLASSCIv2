@@ -132,6 +132,11 @@
                 <div class="ii-filiere-name">{{ $inscription->filiere->name ?? ($inscription->filiere->nom ?? 'N/A') }}</div>
                 <div class="ii-filiere-niveau">{{ $inscription->niveau->name ?? ($inscription->niveau->nom ?? '') }}</div>
             @endif
+            @if(!empty($inscription->bts_journey_ui))
+                <div style="margin-top:.45rem;">
+                    @include('esbtp.partials.bts-journey-badge', ['btsJourney' => $inscription->bts_journey_ui])
+                </div>
+            @endif
         </div>
     </td>
 

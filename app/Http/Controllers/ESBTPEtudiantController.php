@@ -69,7 +69,15 @@ class ESBTPEtudiantController extends Controller
         // Construire la requête avec les filtres
         $baseQuery = ESBTPEtudiant::query()
             ->with(['user', 'inscriptions' => function ($q) {
-                $q->with(['filiere', 'niveau', 'classe', 'anneeUniversitaire']);
+                $q->with([
+                    'filiere',
+                    'niveau',
+                    'classe',
+                    'anneeUniversitaire',
+                    'phases.classe.filiere',
+                    'inscriptionOrigine.classe.filiere',
+                    'inscriptionSpecialisation.classe.filiere',
+                ]);
             }]);
 
         if ($status) {
@@ -145,6 +153,14 @@ class ESBTPEtudiantController extends Controller
         } else {
             $etudiants = $baseQuery->orderByDesc('created_at')->paginate($perPage)->appends($request->query());
         }
+
+        $etudiants->setCollection(
+            $etudiants->getCollection()->map(function (ESBTPEtudiant $etudiant) {
+                $etudiant->setAttribute('bts_journey_ui', $this->btsUiPresenter->forStudent($etudiant));
+
+                return $etudiant;
+            })
+        );
 
         // Récupérer les listes pour les filtres
         $filieres = ESBTPFiliere::where('is_active', true)->get();

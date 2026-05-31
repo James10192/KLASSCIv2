@@ -135,6 +135,9 @@ class ESBTPInscriptionController extends Controller
             "niveau",
             "classe.parcours.mention.domaine",
             "anneeUniversitaire",
+            "phases.classe.filiere",
+            "inscriptionOrigine.classe.filiere",
+            "inscriptionSpecialisation.classe.filiere",
         ]);
 
         // Filtre Filière BTS : ne s'applique qu'en mode BTS (ou Tous systèmes en mode legacy).
@@ -220,6 +223,14 @@ class ESBTPInscriptionController extends Controller
                 ->paginate($perPage)
                 ->appends($request->query());
         }
+
+        $inscriptions->setCollection(
+            $inscriptions->getCollection()->map(function (ESBTPInscription $inscription) {
+                $inscription->setAttribute('bts_journey_ui', $this->btsUiPresenter->forInscription($inscription));
+
+                return $inscription;
+            })
+        );
 
         // Récupérer les listes pour les filtres
         $filieres = ESBTPFiliere::where("is_active", true)->get();

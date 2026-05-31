@@ -2194,6 +2194,7 @@
                 </p>
             @endif
             <div class="hero-pills">
+                @include('esbtp.partials.bts-journey-badge', ['btsJourney' => $btsJourney ?? null])
                 @if($isLMD || $lmdCredits)
                     <span class="hero-pill" style="background:rgba(16,185,129,.25); color:#6ee7b7; border-color:rgba(16,185,129,.4);"><i class="fas fa-graduation-cap" style="font-size:.65rem;"></i> LMD</span>
                 @else
@@ -2390,7 +2391,6 @@
     </div>
 </div>{{-- /hero --}}
 
-@include('esbtp.partials.bts-journey', ['btsJourney' => $btsJourney ?? null])
 
 {{-- ════════════════════════════════════════════════════════════════
      TAB BAR
@@ -2428,6 +2428,7 @@
 
 {{-- ─── TAB: VUE D'ENSEMBLE ─────────────────────────────────────── --}}
 <div class="tab-panel active" id="tab-overview">
+    @include('esbtp.partials.bts-journey', ['btsJourney' => $btsJourney ?? null])
 
     {{-- Bannière : étudiant non inscrit pour l'année courante (masquée si pré-inscrit sous réserve) --}}
     @if($anneeCourante && !$inscCourante && !$inscFutureSousReserve)
