@@ -3,20 +3,25 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Domain\BtsTroncCommun\BtsAnnualAggregationService;
+use App\Domain\BtsTroncCommun\BtsOrientationService;
 use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPClasseOrientationTarget;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPFiliere;
 use App\Models\ESBTPInscription;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CLIBtsTroncCommunController extends BaseApiController
 {
     public function __construct(
         private BtsPhaseResolver $phaseResolver,
-        private BtsAnnualAggregationService $aggregationService
+        private BtsAnnualAggregationService $aggregationService,
+        private BtsOrientationService $orientationService
     ) {
         parent::__construct();
     }
@@ -175,5 +180,123 @@ class CLIBtsTroncCommunController extends BaseApiController
             'recommended_actions' => [],
             'items' => $items,
         ], 'BTS TC legacy audit generated');
+    }
+
+    public function markFiliereTroncCommun(Request $request, int $id): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'is_tronc_commun' => 'sometimes|boolean',
+            'semestres_tronc_commun' => 'sometimes|integer|min:1|max:6',
+        ]);
+
+        $filiere = ESBTPFiliere::find($id);
+        if (! $filiere) {
+            return $this->errorResponse('Filiere not found', [], 404);
+        }
+
+        $filiere->update([
+            'is_tronc_commun' => $validated['is_tronc_commun'] ?? true,
+            'semestres_tronc_commun' => $validated['semestres_tronc_commun'] ?? ($filiere->semestres_tronc_commun ?: 1),
+        ]);
+
+        return $this->successResponse([
+            'filiere' => [
+                'id' => $filiere->id,
+                'name' => $filiere->name,
+                'is_tronc_commun' => (bool) $filiere->is_tronc_commun,
+                'semestres_tronc_commun' => (int) $filiere->semestres_tronc_commun,
+            ],
+        ], 'BTS TC filiere updated');
+    }
+
+    public function addOrientationTarget(Request $request, int $id): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'target_classe_id' => 'required|integer|exists:esbtp_classes,id',
+            'semestre_activation' => 'sometimes|integer|min:1|max:6',
+            'sort_order' => 'sometimes|integer|min:0|max:65535',
+            'notes' => 'nullable|string|max:1000',
+            'is_active' => 'sometimes|boolean',
+        ]);
+
+        $sourceClasse = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->find($id);
+        $targetClasse = ESBTPClasse::with(['filiere', 'niveau', 'annee'])->find((int) $validated['target_classe_id']);
+
+        if (! $sourceClasse || ! $targetClasse) {
+            return $this->errorResponse('Source or target class not found', [], 404);
+        }
+
+        if ((int) $sourceClasse->annee_universitaire_id !== (int) $targetClasse->annee_universitaire_id) {
+            return $this->errorResponse('Target class must share the same academic year', [], 422);
+        }
+
+        if ((int) $sourceClasse->niveau_etude_id !== (int) $targetClasse->niveau_etude_id) {
+            return $this->errorResponse('Target class must share the same study level', [], 422);
+        }
+
+        $target = ESBTPClasseOrientationTarget::updateOrCreate(
+            [
+                'source_classe_id' => $sourceClasse->id,
+                'target_classe_id' => $targetClasse->id,
+            ],
+            [
+                'semestre_activation' => $validated['semestre_activation'] ?? 2,
+                'sort_order' => $validated['sort_order'] ?? 0,
+                'notes' => $validated['notes'] ?? null,
+                'is_active' => $validated['is_active'] ?? true,
+            ]
+        );
+
+        return $this->successResponse([
+            'target' => [
+                'id' => $target->id,
+                'source_classe_id' => $target->source_classe_id,
+                'target_classe_id' => $target->target_classe_id,
+                'semestre_activation' => $target->semestre_activation,
+                'is_active' => (bool) $target->is_active,
+            ],
+        ], 'BTS TC orientation target created/updated');
+    }
+
+    public function orientInscription(Request $request, int $id): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'target_classe_id' => 'required|integer|exists:esbtp_classes,id',
+        ]);
+
+        $inscription = ESBTPInscription::with([
+            'filiere',
+            'classe.orientationTargets.targetClasse.filiere',
+            'phases.classe.filiere',
+        ])->find($id);
+
+        if (! $inscription) {
+            return $this->errorResponse('Inscription not found', [], 404);
+        }
+
+        $inscription = DB::transaction(fn () => $this->orientationService->orient($inscription, (int) $validated['target_classe_id']));
+        $journey = $this->phaseResolver->buildJourney($inscription);
+
+        return $this->successResponse([
+            'status' => 'ok',
+            'source_model' => $journey['source_model'],
+            'current_phase' => $journey['current_phase'],
+            'timeline' => $journey['timeline'],
+            'warnings' => [],
+            'errors' => [],
+            'recommended_actions' => [],
+        ], 'BTS TC orientation completed');
     }
 }

@@ -48,6 +48,36 @@ class BtsTroncCommunCliTest extends TestCase
         $this->assertSame('ok', $check->getData(true)['data']['status']);
     }
 
+    /** @test */
+    public function cli_write_operations_can_prepare_a_real_bts_tc_flow(): void
+    {
+        [$user, $inscription] = $this->makeWritableFixture();
+        $controller = app(CLIBtsTroncCommunController::class);
+        $resolver = fn () => new class($user) {
+            public function __construct(private User $user) {}
+            public function tokenCan(string $ability): bool { return in_array($ability, ['cli:read', 'cli:admin'], true); }
+            public function __get(string $name) { return $this->user->{$name}; }
+        };
+
+        $markRequest = Request::create('/', 'POST', ['is_tronc_commun' => true, 'semestres_tronc_commun' => 1]);
+        $markRequest->setUserResolver($resolver);
+        $mark = $controller->markFiliereTroncCommun($markRequest, $inscription->inscriptionOrigine?->filiere_id ?? $inscription->filiere_id);
+
+        $sourceClasseId = $inscription->inscriptionOrigine?->classe_id ?? $inscription->classe_id;
+        $targetRequest = Request::create('/', 'POST', ['target_classe_id' => $inscription->classe_id, 'semestre_activation' => 2]);
+        $targetRequest->setUserResolver($resolver);
+        $target = $controller->addOrientationTarget($targetRequest, $sourceClasseId);
+
+        $orientRequest = Request::create('/', 'POST', ['target_classe_id' => $inscription->classe_id]);
+        $orientRequest->setUserResolver($resolver);
+        $orient = $controller->orientInscription($orientRequest, $inscription->inscriptionOrigine?->id ?? $inscription->id);
+
+        $this->assertSame(200, $mark->getStatusCode());
+        $this->assertSame(200, $target->getStatusCode());
+        $this->assertSame(200, $orient->getStatusCode());
+        $this->assertSame('specialisation', $orient->getData(true)['data']['current_phase']['type_phase']);
+    }
+
     private function makeFixture(): array
     {
         $user = User::factory()->create();
@@ -94,5 +124,27 @@ class BtsTroncCommunCliTest extends TestCase
         ]);
 
         return [$user, $inscription, $etudiant, $sourceClasse];
+    }
+
+    private function makeWritableFixture(): array
+    {
+        $user = User::factory()->create();
+        $annee = ESBTPAnneeUniversitaire::factory()->create(['is_current' => true]);
+        $niveau = ESBTPNiveauEtude::factory()->create(['year' => 1, 'type' => 'BTS']);
+        $tcFiliere = ESBTPFiliere::factory()->create(['is_tronc_commun' => false, 'semestres_tronc_commun' => 1]);
+        $specFiliere = ESBTPFiliere::factory()->create(['parent_id' => $tcFiliere->id]);
+        $sourceClasse = ESBTPClasse::factory()->create(['filiere_id' => $tcFiliere->id, 'niveau_etude_id' => $niveau->id, 'annee_universitaire_id' => $annee->id]);
+        $targetClasse = ESBTPClasse::factory()->create(['filiere_id' => $specFiliere->id, 'niveau_etude_id' => $niveau->id, 'annee_universitaire_id' => $annee->id]);
+        $etudiant = ESBTPEtudiant::factory()->create();
+
+        $inscription = ESBTPInscription::factory()->create([
+            'etudiant_id' => $etudiant->id,
+            'filiere_id' => $tcFiliere->id,
+            'niveau_id' => $niveau->id,
+            'classe_id' => $sourceClasse->id,
+            'annee_universitaire_id' => $annee->id,
+        ]);
+
+        return [$user, $inscription];
     }
 }

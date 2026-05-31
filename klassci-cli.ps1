@@ -306,6 +306,17 @@ function New-KlassciQueryString {
     return "?" + ($pairs -join "&")
 }
 
+function Invoke-KlassciApiJson {
+    param(
+        [string]$Method,
+        [string]$Path,
+        [hashtable]$Config,
+        [hashtable]$Body = @{}
+    )
+
+    Invoke-KlassciApi -Method $Method -Path $Path -Config $Config -Body $Body | ConvertTo-Json -Depth 10
+}
+
 function Get-BtsSemesterSnapshot {
     param(
         [hashtable]$Config,
@@ -573,6 +584,51 @@ switch ($Command) {
         Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
         break
     }
+    "bts-tc:mark-filiere-tc" {
+        if ($ExtraArgs.Count -lt 1) {
+            throw "Usage: .\klassci-cli.ps1 bts-tc:mark-filiere-tc [presentation] <filiere_id> [semestres_tronc_commun]"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $body = @{
+            is_tronc_commun = $true
+        }
+        if ($ExtraArgs.Count -ge 2) { $body["semestres_tronc_commun"] = [int]$ExtraArgs[1] }
+
+        $path = "/bts-tc/filieres/{0}/mark-tronc-commun" -f $ExtraArgs[0]
+        Invoke-KlassciApiJson -Method "POST" -Path $path -Config $cfg -Body $body
+        break
+    }
+    "bts-tc:add-target" {
+        if ($ExtraArgs.Count -lt 2) {
+            throw "Usage: .\klassci-cli.ps1 bts-tc:add-target [presentation] <source_classe_id> <target_classe_id> [semestre_activation] [sort_order]"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $body = @{
+            target_classe_id = [int]$ExtraArgs[1]
+        }
+        if ($ExtraArgs.Count -ge 3) { $body["semestre_activation"] = [int]$ExtraArgs[2] }
+        if ($ExtraArgs.Count -ge 4) { $body["sort_order"] = [int]$ExtraArgs[3] }
+
+        $path = "/bts-tc/classes/{0}/targets" -f $ExtraArgs[0]
+        Invoke-KlassciApiJson -Method "POST" -Path $path -Config $cfg -Body $body
+        break
+    }
+    "bts-tc:orient" {
+        if ($ExtraArgs.Count -lt 2) {
+            throw "Usage: .\klassci-cli.ps1 bts-tc:orient [presentation] <inscription_id> <target_classe_id>"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $body = @{
+            target_classe_id = [int]$ExtraArgs[1]
+        }
+
+        $path = "/bts-tc/inscriptions/{0}/orient" -f $ExtraArgs[0]
+        Invoke-KlassciApiJson -Method "POST" -Path $path -Config $cfg -Body $body
+        break
+    }
     default {
         Write-Host "Usage:" -ForegroundColor Yellow
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
@@ -591,6 +647,9 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 bts-tc:orientation-check [presentation] <classe_id>"
         Write-Host "  .\klassci-cli.ps1 bts-tc:legacy-audit [presentation] [annee_universitaire_id]"
         Write-Host "  .\klassci-cli.ps1 bts-tc:results-consistency [presentation] <etudiant_id> [annee_universitaire_id] [periode]"
+        Write-Host "  .\klassci-cli.ps1 bts-tc:mark-filiere-tc [presentation] <filiere_id> [semestres_tronc_commun]"
+        Write-Host "  .\klassci-cli.ps1 bts-tc:add-target [presentation] <source_classe_id> <target_classe_id> [semestre_activation] [sort_order]"
+        Write-Host "  .\klassci-cli.ps1 bts-tc:orient [presentation] <inscription_id> <target_classe_id>"
         exit 1
     }
 }

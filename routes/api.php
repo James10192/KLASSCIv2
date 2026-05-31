@@ -251,6 +251,12 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         ->name('bts-tc.classes.orientation-check');
     Route::get('/bts-tc/legacy-audit', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'legacyAudit'])
         ->name('bts-tc.legacy-audit');
+    Route::post('/bts-tc/filieres/{id}/mark-tronc-commun', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'markFiliereTroncCommun'])
+        ->name('bts-tc.filieres.mark-tronc-commun');
+    Route::post('/bts-tc/classes/{id}/targets', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'addOrientationTarget'])
+        ->name('bts-tc.classes.targets.store');
+    Route::post('/bts-tc/inscriptions/{id}/orient', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'orientInscription'])
+        ->name('bts-tc.inscriptions.orient');
 
     // Read endpoints — Academic years
     Route::get('/annee', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'annee'])->name('annee');
