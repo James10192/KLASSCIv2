@@ -46,8 +46,42 @@ class BtsUiPresenter
 
     public function forStudent(ESBTPEtudiant $etudiant): ?array
     {
+        $etudiant->loadMissing([
+            'inscriptions.anneeUniversitaire',
+            'inscriptions.filiere',
+            'inscriptions.phases.classe.filiere',
+            'inscriptions.inscriptionOrigine.classe.filiere',
+            'inscriptions.inscriptionSpecialisation.classe.filiere',
+        ]);
+
         $inscription = $etudiant->inscriptions
+            ->sortByDesc(function (ESBTPInscription $item) {
+                return sprintf(
+                    '%d-%d-%s-%010d',
+                    $item->status === 'active' ? 1 : 0,
+                    $item->anneeUniversitaire?->is_current ? 1 : 0,
+                    optional($item->date_inscription)->format('YmdHis') ?? '00000000000000',
+                    $item->id
+                );
+            })
             ->first(fn (ESBTPInscription $item) => $item->filiere?->isTroncCommun() || $item->isSpecialisation() || $item->phases->isNotEmpty());
+
+        if (! $inscription) {
+            $inscription = ESBTPInscription::query()
+                ->with([
+                    'anneeUniversitaire',
+                    'filiere',
+                    'phases.classe.filiere',
+                    'inscriptionOrigine.classe.filiere',
+                    'inscriptionSpecialisation.classe.filiere',
+                ])
+                ->where('etudiant_id', $etudiant->id)
+                ->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
+                ->orderByDesc('date_inscription')
+                ->orderByDesc('id')
+                ->get()
+                ->first(fn (ESBTPInscription $item) => $item->filiere?->isTroncCommun() || $item->isSpecialisation() || $item->phases->isNotEmpty());
+        }
 
         return $this->forInscription($inscription);
     }
