@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\BtsTroncCommun\BtsUiPresenter;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPStudentAccessibilityProfile;
 use App\Models\ESBTPDepartment;
@@ -25,7 +26,9 @@ use PDF;
 
 class ESBTPStudentController extends Controller
 {
-    public function __construct()
+    public function __construct(
+        private BtsUiPresenter $btsUiPresenter
+    )
     {
         $this->middleware('auth');
         $this->middleware('permission:students.view', ['only' => ['index', 'show', 'genererCertificat', 'exportExcel', 'exportPdf']]);
@@ -316,6 +319,14 @@ class ESBTPStudentController extends Controller
             $etudiants = $baseQuery->paginate($perPage)->appends($request->query());
         }
 
+        $etudiants->setCollection(
+            $etudiants->getCollection()->map(function (ESBTPEtudiant $etudiant) {
+                $etudiant->setAttribute('bts_journey_ui', $this->btsUiPresenter->forStudent($etudiant));
+
+                return $etudiant;
+            })
+        );
+
         // Récupérer les listes pour les filtres
         $filieres = ESBTPFiliere::where('is_active', true)->get();
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
@@ -579,11 +590,13 @@ class ESBTPStudentController extends Controller
             }
         }
 
+        $btsJourney = $this->btsUiPresenter->forStudent($etudiant);
+
         return view('esbtp.etudiants.show', compact(
             'etudiant', 'dossier', 'anneeCourante',
             'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits',
             'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
-            'tpeAttendu', 'tpeParSemestre'
+            'tpeAttendu', 'tpeParSemestre', 'btsJourney'
         ));
     }
 
