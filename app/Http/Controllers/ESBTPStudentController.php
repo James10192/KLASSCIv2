@@ -321,7 +321,7 @@ class ESBTPStudentController extends Controller
 
         $etudiants->setCollection(
             $etudiants->getCollection()->map(function (ESBTPEtudiant $etudiant) {
-                $etudiant->setAttribute('bts_journey_ui', $this->btsUiPresenter->forStudent($etudiant));
+                $etudiant->setAttribute('bts_journey_ui', $this->resolveBtsJourney($etudiant));
 
                 return $etudiant;
             })
@@ -590,7 +590,7 @@ class ESBTPStudentController extends Controller
             }
         }
 
-        $btsJourney = $this->btsUiPresenter->forStudent($etudiant);
+        $btsJourney = $this->resolveBtsJourney($etudiant);
 
         return view('esbtp.etudiants.show', compact(
             'etudiant', 'dossier', 'anneeCourante',
@@ -644,6 +644,23 @@ class ESBTPStudentController extends Controller
             'filiereIdForMatricule',
             'inscriptionRecente'
         ));
+    }
+
+    private function resolveBtsJourney(ESBTPEtudiant $etudiant): ?array
+    {
+        $inscription = $etudiant->inscriptions
+            ->sortByDesc(function ($item) {
+                return sprintf(
+                    '%d-%s-%010d',
+                    $item->status === 'active' ? 1 : 0,
+                    optional($item->date_inscription)->format('YmdHis') ?? '00000000000000',
+                    $item->id
+                );
+            })
+            ->first();
+
+        return $this->btsUiPresenter->forInscription($inscription)
+            ?? $this->btsUiPresenter->forStudent($etudiant);
     }
 
     public function update(Request $request, ESBTPEtudiant $etudiant)
