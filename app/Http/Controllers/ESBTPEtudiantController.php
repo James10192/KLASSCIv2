@@ -11,6 +11,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\User;
 use App\Services\ESBTPInscriptionService;
+use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Auth;
@@ -33,6 +34,7 @@ class ESBTPEtudiantController extends Controller
     protected $inscriptionWorkflowService;
     protected $classeManagementService;
     protected $btsUiPresenter;
+    protected $btsCurrentResultSnapshotService;
 
     /**
      * Constructeur avec injection du service d'inscription
@@ -41,12 +43,14 @@ class ESBTPEtudiantController extends Controller
         ESBTPInscriptionService $inscriptionService,
         InscriptionWorkflowService $inscriptionWorkflowService,
         ClasseManagementService $classeManagementService,
-        BtsUiPresenter $btsUiPresenter
+        BtsUiPresenter $btsUiPresenter,
+        BtsCurrentResultSnapshotService $btsCurrentResultSnapshotService
     ) {
         $this->inscriptionService = $inscriptionService;
         $this->inscriptionWorkflowService = $inscriptionWorkflowService;
         $this->classeManagementService = $classeManagementService;
         $this->btsUiPresenter = $btsUiPresenter;
+        $this->btsCurrentResultSnapshotService = $btsCurrentResultSnapshotService;
         $this->middleware('auth');
         $this->middleware('permission:students.view', ['only' => ['index', 'show']]);
         $this->middleware('permission:students.create', ['only' => ['create', 'store']]);
@@ -500,10 +504,20 @@ class ESBTPEtudiantController extends Controller
         }
 
         $btsJourney = $this->btsUiPresenter->forStudent($etudiant);
+        $btsAnnualSnapshot = null;
+
+        $btsSnapshotInscription = $statistiques['inscription_active'] ?? $statistiques['derniere_inscription'];
+        if (! $isLMD && $btsJourney && $btsSnapshotInscription?->classe_id && $btsSnapshotInscription?->annee_universitaire_id) {
+            $btsAnnualSnapshot = $this->btsCurrentResultSnapshotService->getAnnualSnapshot(
+                $etudiant->id,
+                $btsSnapshotInscription->classe_id,
+                $btsSnapshotInscription->annee_universitaire_id
+            );
+        }
 
         return view('esbtp.etudiants.show', compact(
             'etudiant', 'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
-            'isLMD', 'bulletinLMD', 'parcours', 'lmdCredits', 'btsJourney'
+            'isLMD', 'bulletinLMD', 'parcours', 'lmdCredits', 'btsJourney', 'btsAnnualSnapshot'
         ));
     }
 

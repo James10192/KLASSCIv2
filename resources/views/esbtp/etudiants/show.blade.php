@@ -2590,6 +2590,13 @@
             $kpiMoyenneGen    = $lmdMoyenneAnnuelle;
             $kpiMoyenneIsLive = false;
         } else if (!$isLMD) {
+            if (($btsAnnualSnapshot['state'] ?? null) === 'annual_complete' && ($btsAnnualSnapshot['effective_total'] ?? null) !== null) {
+                $kpiMoyenneGen = round((float) $btsAnnualSnapshot['effective_total'], 2);
+                $kpiMoyenneIsLive = false;
+            } elseif (($btsAnnualSnapshot['state'] ?? null) === 'annual_incomplete' && ($btsAnnualSnapshot['effective_total'] ?? null) !== null) {
+                $kpiMoyenneGen = round((float) $btsAnnualSnapshot['effective_total'], 2);
+                $kpiMoyenneIsLive = true;
+            }
             // ── BTS : logique existante ──
             $kpiBulletins = $kpiInscActive
                 ? \App\Models\ESBTPBulletin::where('etudiant_id', $etudiant->id)
@@ -2598,7 +2605,9 @@
                 : collect();
 
             $kpiBulletinsCalcueles = $kpiBulletins->filter(fn($b) => $b->moyenne_generale !== null && $b->moyenne_generale > 0);
-            if ($kpiBulletinsCalcueles->count()) {
+            if ($kpiMoyenneGen !== null) {
+                // Le snapshot BTS phase-based est prioritaire quand il existe.
+            } elseif ($kpiBulletinsCalcueles->count()) {
                 $kpiMoyenneGen    = round($kpiBulletinsCalcueles->avg('moyenne_generale'), 2);
                 $kpiMoyenneIsLive = false;
             } else {
