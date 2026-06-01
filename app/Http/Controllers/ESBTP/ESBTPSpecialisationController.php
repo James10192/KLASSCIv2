@@ -4,7 +4,6 @@ namespace App\Http\Controllers\ESBTP;
 
 use App\Domain\BtsTroncCommun\BtsOrientationService;
 use App\Http\Controllers\Controller;
-use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Services\TroncCommunService;
 use Illuminate\Http\Request;
@@ -33,12 +32,13 @@ class ESBTPSpecialisationController extends Controller
             'anneeUniversitaire',
             'phases',
         ]);
-        $this->orientationService->ensureInitialPhase($inscription);
 
         if (! $inscription->filiere || ! $inscription->filiere->isTroncCommun()) {
             return redirect()->route('esbtp.inscriptions.show', $inscription)
                 ->with('error', "Cette inscription n'est pas sur une filière tronc commun.");
         }
+
+        $this->orientationService->ensureInitialPhase($inscription);
 
         if ($inscription->phases->contains(fn ($phase) => $phase->type_phase === 'specialisation' && $phase->is_active)) {
             return redirect()->route('esbtp.inscriptions.show', $inscription)
@@ -66,18 +66,16 @@ class ESBTPSpecialisationController extends Controller
             ->sortBy('sort_order')
             ->map(fn ($target) => $target->targetClasse)
             ->filter()
+            ->filter(fn ($classe) => $classe->is_active
+                && (int) $classe->niveau_etude_id === (int) $inscription->niveau_id
+                && (int) $classe->annee_universitaire_id === (int) $inscription->annee_universitaire_id)
             ->when($filiereId, fn ($items) => $items->where('filiere_id', (int) $filiereId))
             ->values();
 
-        if ($classes->isEmpty()) {
-            $classes = ESBTPClasse::where('filiere_id', $filiereId)
-                ->where('niveau_etude_id', $inscription->niveau_id)
-                ->where('annee_universitaire_id', $inscription->annee_universitaire_id)
-                ->where('is_active', true)
-                ->get();
-        }
-
         return response()->json([
+            'message' => $classes->isEmpty()
+                ? "Aucune classe cible n'est configuree pour cette specialisation."
+                : null,
             'classes' => $classes->map(function ($classe) {
                 return [
                     'id' => $classe->id,

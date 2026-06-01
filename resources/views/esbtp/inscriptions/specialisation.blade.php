@@ -165,7 +165,7 @@
                         </button>
                         <small class="text-muted d-block text-center mt-2">
                             <i class="fas fa-info-circle me-1"></i>
-                            L'inscription actuelle sera clôturée et une nouvelle inscription sera créée pour la spécialisation.
+                            L'inscription actuelle sera conservée et mise à jour avec une phase de spécialisation active.
                         </small>
                     </div>
                 </div>
@@ -196,7 +196,7 @@
             .then(r => r.json())
             .then(data => {
                 if (data.classes.length === 0) {
-                    list.innerHTML = '<div class="alert alert-warning mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Aucune classe disponible pour cette spécialisation.</div>';
+                    list.innerHTML = `<div class="alert alert-warning mb-0"><i class="fas fa-exclamation-triangle me-2"></i>${data.message || "Aucune classe cible n'est configurée pour cette spécialisation."}</div>`;
                     return;
                 }
                 let html = '';

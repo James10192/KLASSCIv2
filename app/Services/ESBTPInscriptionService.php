@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Domain\BtsTroncCommun\BtsOrientationService;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFraisCategory;
@@ -30,10 +31,15 @@ use App\Support\MatriculeGenerator;
 class ESBTPInscriptionService
 {
     protected MatriculeGenerator $matriculeGenerator;
+    protected BtsOrientationService $btsOrientationService;
 
-    public function __construct(MatriculeGenerator $matriculeGenerator)
+    public function __construct(
+        MatriculeGenerator $matriculeGenerator,
+        BtsOrientationService $btsOrientationService
+    )
     {
         $this->matriculeGenerator = $matriculeGenerator;
+        $this->btsOrientationService = $btsOrientationService;
     }
 
     /**
@@ -1246,6 +1252,7 @@ class ESBTPInscriptionService
         InscriptionWorkflowService $workflowService
     ): array {
         $ancienneClasseId = $inscription->classe_id;
+        $nouvelleClasse = ESBTPClasse::with('filiere')->findOrFail($nouvelleClasseId);
 
         // Vérifier la disponibilité de la nouvelle classe
         $availability = $workflowService->checkClassAvailability(
@@ -1299,11 +1306,15 @@ class ESBTPInscriptionService
         $resolvedAffectationStatus = $affectationStatus ?? ($ancienneClasseId ? 'réaffecté' : ESBTPInscription::DEFAULT_AFFECTATION_STATUS);
         $inscription->update([
             'classe_id' => $nouvelleClasseId,
+            'filiere_id' => $nouvelleClasse->filiere_id,
+            'niveau_id' => $nouvelleClasse->niveau_etude_id,
             'affectation_status' => $resolvedAffectationStatus,
             'updated_at' => now(),
         ]);
 
         // Régénérer les souscriptions de frais avec la nouvelle classe/statut
+        $this->btsOrientationService->syncAfterClassChange($inscription, $nouvelleClasse);
+
         $this->regenererFraisInscription($inscription);
 
         // Charger les relations pour retourner les infos

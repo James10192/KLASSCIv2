@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Students\Accessibility\Actions\AttachAccessibilityProfile;
+use App\Domain\BtsTroncCommun\BtsOrientationService;
 use App\Domain\BtsTroncCommun\BtsUiPresenter;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -57,6 +58,7 @@ class ESBTPInscriptionController extends Controller
      */
     protected $searchService;
     protected $btsUiPresenter;
+    protected $btsOrientationService;
 
     public function __construct(
         ESBTPInscriptionService $inscriptionService,
@@ -64,12 +66,14 @@ class ESBTPInscriptionController extends Controller
         InscriptionWorkflowService $workflowService,
         \App\Services\InscriptionSearchService $searchService,
         BtsUiPresenter $btsUiPresenter,
+        BtsOrientationService $btsOrientationService,
     ) {
         $this->inscriptionService = $inscriptionService;
         $this->comptabiliteService = $comptabiliteService;
         $this->workflowService = $workflowService;
         $this->searchService = $searchService;
         $this->btsUiPresenter = $btsUiPresenter;
+        $this->btsOrientationService = $btsOrientationService;
         $this->middleware("auth");
         $this->middleware("permission:inscriptions.view", [
             "only" => ["index", "show"],
@@ -1271,6 +1275,11 @@ class ESBTPInscriptionController extends Controller
             $inscription->updated_by = Auth::id();
             $inscription->save();
 
+            if ($ancienneClasse != $inscription->classe_id && $inscription->classe_id) {
+                $nouvelleClasse = ESBTPClasse::with('filiere')->findOrFail($inscription->classe_id);
+                $this->btsOrientationService->syncAfterClassChange($inscription, $nouvelleClasse);
+            }
+
             // Mettre à jour les souscriptions de frais si la filière, niveau, classe ou statut d'affectation a changé
             if (
                 $ancienneFiliere != $inscription->filiere_id ||
@@ -1789,6 +1798,16 @@ class ESBTPInscriptionController extends Controller
                 'message' => $result['message'],
                 'inscription' => $result['data'],
             ]);
+        } catch (\InvalidArgumentException $e) {
+            DB::rollBack();
+
+            return response()->json(
+                [
+                    "success" => false,
+                    "message" => $e->getMessage(),
+                ],
+                400,
+            );
         } catch (\Exception $e) {
             DB::rollBack();
 
