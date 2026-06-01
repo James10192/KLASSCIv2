@@ -18,6 +18,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Services\FuzzyNameMatcher;
+use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\EtudiantDossierService;
 use App\Exports\EtudiantsExport;
 use App\Helpers\SettingsHelper;
@@ -27,7 +28,8 @@ use PDF;
 class ESBTPStudentController extends Controller
 {
     public function __construct(
-        private BtsUiPresenter $btsUiPresenter
+        private BtsUiPresenter $btsUiPresenter,
+        private BtsCurrentResultSnapshotService $btsCurrentResultSnapshotService
     )
     {
         $this->middleware('auth');
@@ -600,12 +602,21 @@ class ESBTPStudentController extends Controller
         }
 
         $btsJourney = $this->resolveBtsJourney($etudiant);
+        $btsAnnualSnapshot = null;
+
+        if (! $isLMD && $btsJourney && $inscActive?->classe_id && $inscActive?->annee_universitaire_id) {
+            $btsAnnualSnapshot = $this->btsCurrentResultSnapshotService->getAnnualSnapshot(
+                $etudiant->id,
+                $inscActive->classe_id,
+                $inscActive->annee_universitaire_id
+            );
+        }
 
         return view('esbtp.etudiants.show', compact(
             'etudiant', 'dossier', 'anneeCourante',
             'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits',
             'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
-            'tpeAttendu', 'tpeParSemestre', 'btsJourney'
+            'tpeAttendu', 'tpeParSemestre', 'btsJourney', 'btsAnnualSnapshot'
         ));
     }
 
