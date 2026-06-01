@@ -267,11 +267,69 @@
                         </fieldset>
                     </div>
 
+                    @php
+                        // BTS Tronc Commun — détection phase TC active pour gating picker classe
+                        $inscription->loadMissing(['filiere', 'phases']);
+                        $insIsInTcActif = $inscription->filiere?->isTroncCommun()
+                            && ! $inscription->phases->contains(fn ($p) => $p->type_phase === 'specialisation' && $p->is_active);
+                        $insIsLegacyDual = $inscription->inscription_origine_id !== null;
+                        $insCanCorrection = auth()->user()->can('admin.access');
+                    @endphp
+
+                    @if($insIsInTcActif && ! $insIsLegacyDual)
+                        <div class="alert alert-info border-start border-4 border-primary mb-3" role="alert"
+                             style="background:linear-gradient(135deg,rgba(4,83,203,.04),rgba(59,125,219,.06));">
+                            <div class="d-flex align-items-start gap-2">
+                                <i class="fas fa-route text-primary mt-1"></i>
+                                <div class="flex-grow-1">
+                                    <strong>Étudiant en Tronc Commun actif.</strong>
+                                    Pour l'orienter vers une spécialité, utilisez le bouton
+                                    <strong>« Orienter vers une spécialité »</strong> sur sa fiche détail
+                                    (workflow officiel UEMOA, transition tracée + audit).
+                                </div>
+                            </div>
+                            @if($insCanCorrection)
+                                <hr class="my-2">
+                                <div x-data="{ correctionMode: false }" class="mt-2">
+                                    <label class="form-check-label d-flex align-items-start gap-2" style="cursor:pointer;">
+                                        <input type="checkbox" name="correction_saisie" value="1" x-model="correctionMode"
+                                               class="form-check-input mt-1" style="margin:0;">
+                                        <span>
+                                            <strong>Correction d'erreur de saisie</strong>
+                                            <span class="badge bg-warning text-dark ms-1">admin</span>
+                                            <small class="d-block text-muted">
+                                                Cocher uniquement si la classe initiale a été <em>mal saisie</em>
+                                                (ex : redoublant inscrit en TC par erreur). Ne pas utiliser pour orienter — utilisez le workflow officiel.
+                                            </small>
+                                        </span>
+                                    </label>
+                                    <div x-show="correctionMode" x-cloak class="mt-2">
+                                        <input type="text" name="correction_motif" maxlength="500"
+                                               class="form-control form-control-sm"
+                                               placeholder="Motif de la correction (obligatoire) — ex: étudiant redoublant déjà spécialisé">
+                                        <small class="text-muted">Journalisé dans l'audit + log applicatif.</small>
+                                    </div>
+                                </div>
+                            @endif
+                        </div>
+                    @endif
+
                     <div class="row mb-3">
                         <div class="col-md-12">
-                            <div class="form-group">
-                                <label for="classe_id" class="form-label">Classe <span class="text-danger">*</span></label>
-                                <select name="classe_id" id="classe_id" class="form-select" required data-places-indicator="{{ $placesInfoId }}">
+                            <div class="form-group" @if($insIsInTcActif && ! $insIsLegacyDual) x-data="{ correctionMode: false }" @endif>
+                                <label for="classe_id" class="form-label">
+                                    Classe <span class="text-danger">*</span>
+                                    @if($insIsInTcActif && ! $insIsLegacyDual && $insCanCorrection)
+                                        <small class="text-muted ms-2">(déverrouillé via case « Correction »)</small>
+                                    @endif
+                                </label>
+                                <select name="classe_id" id="classe_id" class="form-select" required
+                                        data-places-indicator="{{ $placesInfoId }}"
+                                        @if($insIsInTcActif && ! $insIsLegacyDual)
+                                            :disabled="! document.querySelector('input[name=correction_saisie]')?.checked"
+                                            x-init="$watch(() => document.querySelector('input[name=correction_saisie]')?.checked, v => $el.disabled = ! v); $el.disabled = ! document.querySelector('input[name=correction_saisie]')?.checked;"
+                                        @endif
+                                    >
                                     <option value="">Sélectionner une classe</option>
                                     @foreach($classes as $classe)
                                         <option value="{{ $classe->id }}"
@@ -289,7 +347,13 @@
                                     @endforeach
                                 </select>
                                 <div id="{{ $placesInfoId }}" class="mt-2 small text-muted"></div>
-                                <div class="form-text text-muted">Vous pouvez changer la classe tant que l'inscription n'est pas activée.</div>
+                                <div class="form-text text-muted">
+                                    @if($insIsInTcActif && ! $insIsLegacyDual)
+                                        Verrouillé : étudiant en Tronc Commun. Utilisez l'orientation officielle ou cochez « Correction d'erreur » ci-dessus.
+                                    @else
+                                        Vous pouvez changer la classe tant que l'inscription n'est pas activée.
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     </div>

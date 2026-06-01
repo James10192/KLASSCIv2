@@ -4,10 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use OwenIt\Auditing\Contracts\Auditable;
 
-class ESBTPInscriptionPhase extends Model
+class ESBTPInscriptionPhase extends Model implements Auditable
 {
-    use HasFactory;
+    use HasFactory, \OwenIt\Auditing\Auditable;
 
     public const TYPE_TRONC_COMMUN = 'tronc_commun';
     public const TYPE_SPECIALISATION = 'specialisation';
@@ -33,6 +34,30 @@ class ESBTPInscriptionPhase extends Model
         'is_active' => 'boolean',
         'date_activation' => 'datetime',
         'date_cloture' => 'datetime',
+    ];
+
+    /**
+     * Colonnes auditées — traçabilité conformité UEMOA pour orientation TC→Spé.
+     * Permet de répondre : qui a orienté quel étudiant, quand, vers quelle classe ?
+     */
+    protected $auditInclude = [
+        'inscription_id',
+        'type_phase',
+        'classe_id',
+        'filiere_id',
+        'semestre_debut',
+        'semestre_fin',
+        'is_active',
+        'orientation_target_id',
+        'date_activation',
+        'date_cloture',
+    ];
+
+    protected $auditEvents = [
+        'created',
+        'updated',
+        'deleted',
+        'restored',
     ];
 
     public function inscription()

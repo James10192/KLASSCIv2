@@ -1165,6 +1165,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/inscriptions/{inscription}/specialisation/classes', [\App\Http\Controllers\ESBTP\ESBTPSpecialisationController::class, 'getClasses'])->name('inscriptions.specialisation.classes');
             Route::post('/inscriptions/{inscription}/specialisation', [\App\Http\Controllers\ESBTP\ESBTPSpecialisationController::class, 'store'])->name('inscriptions.specialisation.store');
 
+            // Admin BTS Tronc Commun — Configuration des sorties (target classes)
+            Route::prefix('admin/orientation-targets')->name('admin.orientation-targets.')->group(function () {
+                Route::get('/', [\App\Http\Controllers\Admin\BtsOrientationTargetController::class, 'index'])->name('index');
+                Route::post('/', [\App\Http\Controllers\Admin\BtsOrientationTargetController::class, 'store'])->name('store');
+                Route::patch('/{target}', [\App\Http\Controllers\Admin\BtsOrientationTargetController::class, 'update'])->name('update');
+                Route::delete('/{target}', [\App\Http\Controllers\Admin\BtsOrientationTargetController::class, 'destroy'])->name('destroy');
+            });
+
             // Routes API utilisées par les formulaires
 
             // Routes pour les notes — throttle anti-abus (saisie unitaire 30/min, bulk 10/min).

@@ -1166,7 +1166,38 @@ class ESBTPInscriptionController extends Controller
             "affectation_status" => "nullable|in:affecté,réaffecté,non_affecté",
             "est_transfert" => "nullable|boolean",
             "etablissement_origine" => "nullable|string|max:255",
+            "correction_saisie" => "nullable|boolean",
+            "correction_motif" => "nullable|string|max:500",
         ]);
+
+        // ─── BTS Tronc Commun — Bug #2 : interdire orientation silencieuse via edit ───
+        // Si l'inscription est en phase TC active (filière TC, pas de spé active)
+        // et que la classe change, refuser sauf si "correction_saisie" est cochée.
+        // L'orientation officielle TC → Spécialité doit passer par /specialisation.
+        $inscription->loadMissing(['filiere', 'phases']);
+        $isInTroncCommunActif = $inscription->filiere?->isTroncCommun()
+            && ! $inscription->phases->contains(fn ($p) => $p->type_phase === 'specialisation' && $p->is_active);
+        $isCorrectionSaisie = $request->boolean('correction_saisie', false);
+        $classeChangee = $request->filled('classe_id')
+            && (int) $request->input('classe_id') !== (int) $inscription->classe_id;
+
+        if ($isInTroncCommunActif && $classeChangee && ! $isCorrectionSaisie) {
+            return redirect()->back()->withErrors([
+                'classe_id' => "Cet étudiant est en Tronc Commun actif. Pour l'orienter vers une spécialité, utilisez le bouton « Orienter vers une spécialité » sur sa fiche. Pour une correction d'erreur de saisie, cochez la case « Correction d'erreur ».",
+            ])->withInput();
+        }
+
+        if ($isCorrectionSaisie && ! Auth::user()->can('admin.access')) {
+            return redirect()->back()->withErrors([
+                'correction_saisie' => "Seuls les administrateurs peuvent effectuer une correction d'erreur de saisie.",
+            ])->withInput();
+        }
+
+        if ($isCorrectionSaisie && ! $request->filled('correction_motif')) {
+            return redirect()->back()->withErrors([
+                'correction_motif' => "Le motif de la correction est obligatoire pour la traçabilité.",
+            ])->withInput();
+        }
 
         if ($validator->fails()) {
             return redirect()->back()->withErrors($validator)->withInput();
@@ -1288,6 +1319,41 @@ class ESBTPInscriptionController extends Controller
                 $ancienAffectationStatus != $inscription->affectation_status
             ) {
                 $this->regenererFraisInscription($inscription);
+            }
+
+            // ─── BTS Tronc Commun — Bug #2 fix : synchroniser les phases ───
+            // Si la classe a changé ET on est en correction de saisie (admin override),
+            // déléguer à BtsOrientationService::syncAfterClassChange() qui gère :
+            //  - Si nouvelle filière est non-TC : supprimer toutes les phases TC/spé
+            //  - Si nouvelle filière est TC : mettre à jour la phase TC initiale
+            //  - Refuse si une phase spécialisation active existe (utilise /specialisation)
+            // Skip explicitement le cas legacy_dual_inscription (inscription_origine_id).
+            $isLegacyDual = $inscription->inscription_origine_id !== null
+                || $inscription->inscriptionSpecialisation()->exists();
+            if ($ancienneClasse != $inscription->classe_id
+                && ! $isLegacyDual
+                && $inscription->classe) {
+                try {
+                    $this->btsOrientationService->syncAfterClassChange(
+                        $inscription,
+                        $inscription->classe
+                    );
+
+                    if ($isCorrectionSaisie) {
+                        \Log::info('BTS TC — correction de saisie inscription', [
+                            'inscription_id' => $inscription->id,
+                            'ancienne_classe_id' => $ancienneClasse,
+                            'nouvelle_classe_id' => $inscription->classe_id,
+                            'admin_id' => Auth::id(),
+                            'motif' => $request->input('correction_motif'),
+                        ]);
+                    }
+                } catch (\InvalidArgumentException $e) {
+                    DB::rollBack();
+                    return redirect()->back()->withErrors([
+                        'classe_id' => $e->getMessage(),
+                    ])->withInput();
+                }
             }
 
             DB::commit();
