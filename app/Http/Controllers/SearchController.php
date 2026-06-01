@@ -12,36 +12,87 @@ use Illuminate\Support\Facades\Auth;
 
 class SearchController extends Controller
 {
-    private function applyStudentSearch($queryBuilder, string $query)
+    private function tokenizeSearch(string $query)
     {
-        $tokens = collect(preg_split('/[\s,]+/u', trim($query), -1, PREG_SPLIT_NO_EMPTY))
+        return collect(preg_split('/[\s,]+/u', trim($query), -1, PREG_SPLIT_NO_EMPTY))
             ->filter()
             ->values();
+    }
 
-        return $queryBuilder->where(function ($q) use ($query, $tokens) {
+    private function matchesLooseText(string $query, array $haystacks): bool
+    {
+        $query = trim($query);
+        if ($query === '') {
+            return false;
+        }
+
+        $normalizedHaystacks = collect($haystacks)
+            ->filter(fn ($value) => filled($value))
+            ->map(fn ($value) => mb_strtolower((string) $value))
+            ->values();
+
+        if ($normalizedHaystacks->isEmpty()) {
+            return false;
+        }
+
+        $normalizedQuery = mb_strtolower($query);
+
+        if ($normalizedHaystacks->contains(fn ($value) => str_contains($value, $normalizedQuery))) {
+            return true;
+        }
+
+        $tokens = $this->tokenizeSearch($query)
+            ->map(fn ($token) => mb_strtolower((string) $token))
+            ->values();
+
+        return $tokens->count() > 1
+            && $tokens->every(fn ($token) => $normalizedHaystacks->contains(fn ($value) => str_contains($value, $token)));
+    }
+
+    private function applyLooseSearch($queryBuilder, string $query, array $columns, array $concatColumns = [])
+    {
+        $tokens = $this->tokenizeSearch($query);
+
+        return $queryBuilder->where(function ($q) use ($query, $tokens, $columns, $concatColumns) {
             $likeQuery = '%' . $query . '%';
 
-            $q->where('nom', 'LIKE', $likeQuery)
-                ->orWhere('prenoms', 'LIKE', $likeQuery)
-                ->orWhere('matricule', 'LIKE', $likeQuery)
-                ->orWhere('email', 'LIKE', $likeQuery)
-                ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$likeQuery])
-                ->orWhereRaw("CONCAT_WS(' ', prenoms, nom) LIKE ?", [$likeQuery]);
+            foreach ($columns as $column) {
+                $q->orWhere($column, 'LIKE', $likeQuery);
+            }
+
+            foreach ($concatColumns as $concatColumnGroup) {
+                $q->orWhereRaw(
+                    "CONCAT_WS(' ', " . implode(', ', $concatColumnGroup) . ") LIKE ?",
+                    [$likeQuery]
+                );
+            }
 
             if ($tokens->count() > 1) {
-                $q->orWhere(function ($tokenQuery) use ($tokens) {
+                $q->orWhere(function ($tokenQuery) use ($tokens, $columns) {
                     foreach ($tokens as $token) {
                         $likeToken = '%' . $token . '%';
-                        $tokenQuery->where(function ($inner) use ($likeToken) {
-                            $inner->where('nom', 'LIKE', $likeToken)
-                                ->orWhere('prenoms', 'LIKE', $likeToken)
-                                ->orWhere('matricule', 'LIKE', $likeToken)
-                                ->orWhere('email', 'LIKE', $likeToken);
+                        $tokenQuery->where(function ($inner) use ($columns, $likeToken) {
+                            foreach ($columns as $column) {
+                                $inner->orWhere($column, 'LIKE', $likeToken);
+                            }
                         });
                     }
                 });
             }
         });
+    }
+
+    private function applyStudentSearch($queryBuilder, string $query)
+    {
+        return $this->applyLooseSearch(
+            $queryBuilder,
+            $query,
+            ['nom', 'prenoms', 'matricule', 'email'],
+            [
+                ['nom', 'prenoms'],
+                ['prenoms', 'nom'],
+            ]
+        );
     }
 
     /**
@@ -102,9 +153,11 @@ class SearchController extends Controller
 
             // Recherche de classes (pour admin et secrétaire)
             if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
-                $classes = ESBTPClasse::where('name', 'LIKE', "%{$query}%")
-                    ->orWhere('libelle', 'LIKE', "%{$query}%")
-                    ->orWhere('code', 'LIKE', "%{$query}%")
+                $classes = $this->applyLooseSearch(
+                    ESBTPClasse::query(),
+                    $query,
+                    ['name', 'libelle', 'code']
+                )
                     ->with(['filiere', 'niveauEtude'])
                     ->limit($limit)
                     ->get();
@@ -125,9 +178,11 @@ class SearchController extends Controller
 
             // Recherche de filières (pour admin et secrétaire)
             if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
-                $filieres = ESBTPFiliere::where('name', 'LIKE', "%{$query}%")
-                    ->orWhere('libelle', 'LIKE', "%{$query}%")
-                    ->orWhere('description', 'LIKE', "%{$query}%")
+                $filieres = $this->applyLooseSearch(
+                    ESBTPFiliere::query(),
+                    $query,
+                    ['name', 'libelle', 'description']
+                )
                     ->limit($limit)
                     ->get();
 
@@ -147,9 +202,11 @@ class SearchController extends Controller
 
             // Recherche de matières (pour admin et secrétaire)
             if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
-                $matieres = ESBTPMatiere::where('name', 'LIKE', "%{$query}%")
-                    ->orWhere('description', 'LIKE', "%{$query}%")
-                    ->orWhere('code', 'LIKE', "%{$query}%")
+                $matieres = $this->applyLooseSearch(
+                    ESBTPMatiere::query(),
+                    $query,
+                    ['name', 'description', 'code']
+                )
                     ->limit($limit)
                     ->get();
 
@@ -169,11 +226,13 @@ class SearchController extends Controller
 
             // Recherche d'enseignants (pour admin et secrétaire)
             if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
-                $enseignants = ESBTPTeacher::where('matricule', 'LIKE', "%{$query}%")
-                    ->orWhere('specialization', 'LIKE', "%{$query}%")
+                $enseignants = $this->applyLooseSearch(
+                    ESBTPTeacher::query(),
+                    $query,
+                    ['matricule', 'specialization']
+                )
                     ->orWhereHas('user', function($q) use ($query) {
-                        $q->where('name', 'LIKE', "%{$query}%")
-                          ->orWhere('email', 'LIKE', "%{$query}%");
+                        $this->applyLooseSearch($q, $query, ['name', 'email']);
                     })
                     ->with(['user', 'department'])
                     ->limit($limit)
@@ -241,33 +300,44 @@ class SearchController extends Controller
 
             // Recherche de classes
             if (($type === 'all' || $type === 'classes') && $user->can('classes.view')) {
-                $results['classes'] = ESBTPClasse::where('nom', 'LIKE', "%{$query}%")
+                $results['classes'] = $this->applyLooseSearch(
+                    ESBTPClasse::query(),
+                    $query,
+                    ['name', 'libelle', 'code']
+                )
                     ->with(['filiere', 'niveauEtude'])
                     ->paginate($perPage, ['*'], 'classes_page');
             }
 
             // Recherche de filières
             if (($type === 'all' || $type === 'filieres') && $user->can('filieres.view')) {
-                $results['filieres'] = ESBTPFiliere::where('name', 'LIKE', "%{$query}%")
-                    ->orWhere('libelle', 'LIKE', "%{$query}%")
-                    ->orWhere('description', 'LIKE', "%{$query}%")
+                $results['filieres'] = $this->applyLooseSearch(
+                    ESBTPFiliere::query(),
+                    $query,
+                    ['name', 'libelle', 'description']
+                )
                     ->paginate($perPage, ['*'], 'filieres_page');
             }
 
             // Recherche de matières
             if (($type === 'all' || $type === 'matieres') && $user->can('matieres.view')) {
-                $results['matieres'] = ESBTPMatiere::where('name', 'LIKE', "%{$query}%")
-                    ->orWhere('description', 'LIKE', "%{$query}%")
+                $results['matieres'] = $this->applyLooseSearch(
+                    ESBTPMatiere::query(),
+                    $query,
+                    ['name', 'description', 'code']
+                )
                     ->paginate($perPage, ['*'], 'matieres_page');
             }
 
             // Recherche d'enseignants
             if (($type === 'all' || $type === 'enseignants') && ($user->can('teachers.view') || $user->hasAnyPermission(['admin.access', 'identity.school_manager']))) {
-                $results['enseignants'] = ESBTPTeacher::where('matricule', 'LIKE', "%{$query}%")
-                    ->orWhere('specialization', 'LIKE', "%{$query}%")
+                $results['enseignants'] = $this->applyLooseSearch(
+                    ESBTPTeacher::query(),
+                    $query,
+                    ['matricule', 'specialization']
+                )
                     ->orWhereHas('user', function($q) use ($query) {
-                        $q->where('name', 'LIKE', "%{$query}%")
-                          ->orWhere('email', 'LIKE', "%{$query}%");
+                        $this->applyLooseSearch($q, $query, ['name', 'email']);
                     })
                     ->with(['user', 'department'])
                     ->paginate($perPage, ['*'], 'enseignants_page');
@@ -289,7 +359,7 @@ class SearchController extends Controller
         $navigationItems = $this->getNavigationItems($user);
 
         foreach ($navigationItems as $item) {
-            if (stripos($item['title'], $query) !== false || stripos($item['description'], $query) !== false) {
+            if ($this->matchesLooseText($query, [$item['title'], $item['description']])) {
                 $results[] = [
                     'category' => 'Navigation',
                     'type' => 'navigation',
@@ -315,7 +385,7 @@ class SearchController extends Controller
         $quickActions = $this->getQuickActions($user);
 
         foreach ($quickActions as $action) {
-            if (stripos($action['title'], $query) !== false || stripos($action['description'], $query) !== false) {
+            if ($this->matchesLooseText($query, [$action['title'], $action['description']])) {
                 $results[] = [
                     'category' => 'Actions Rapides',
                     'type' => 'action',
@@ -345,8 +415,7 @@ class SearchController extends Controller
                 $q->where('name', 'secretaire');
             })
             ->where(function($q) use ($query) {
-                $q->where('name', 'LIKE', "%{$query}%")
-                  ->orWhere('email', 'LIKE', "%{$query}%");
+                $this->applyLooseSearch($q, $query, ['name', 'email']);
             })
             ->limit($limit)
             ->get();
@@ -369,8 +438,7 @@ class SearchController extends Controller
                 $q->where('name', 'superAdmin');
             })
             ->where(function($q) use ($query) {
-                $q->where('name', 'LIKE', "%{$query}%")
-                  ->orWhere('email', 'LIKE', "%{$query}%");
+                $this->applyLooseSearch($q, $query, ['name', 'email']);
             })
             ->limit($limit)
             ->get();
