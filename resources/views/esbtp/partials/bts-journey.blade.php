@@ -73,6 +73,15 @@
 
         <div class="bts-journey-line">
             @foreach(($btsJourney['timeline'] ?? []) as $phase)
+                @php
+                    $semestreDebut = $phase['semestre_debut'] ?? null;
+                    $semestreFin = $phase['semestre_fin'] ?? null;
+                    $semestreLabel = match (true) {
+                        empty($semestreDebut) => 'Semestre à définir',
+                        empty($semestreFin), (int) $semestreDebut === (int) $semestreFin => 'Semestre ' . $semestreDebut,
+                        default => 'Semestres ' . $semestreDebut . ' à ' . $semestreFin,
+                    };
+                @endphp
                 <div class="bts-journey-step {{ !empty($phase['is_active']) ? 'active' : '' }}">
                     <div class="bts-journey-dot">{{ $loop->iteration }}</div>
                     <div>
@@ -83,7 +92,7 @@
                             @endif
                         </div>
                         <div class="bts-journey-meta">
-                            Semestres {{ $phase['semestre_debut'] ?? '?' }} à {{ $phase['semestre_fin'] ?? '...' }}
+                            {{ $semestreLabel }}
                             @if(!empty($phase['filiere']))
                                 · {{ $phase['filiere'] }}
                             @endif

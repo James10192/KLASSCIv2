@@ -471,6 +471,15 @@ class ESBTPStudentController extends Controller
             'documents' => fn($q) => $q->with('uploadedBy')->orderByDesc('created_at'),
         ]);
 
+        $etudiant->setRelation(
+            'inscriptions',
+            $etudiant->inscriptions->map(function ($inscription) {
+                $inscription->setAttribute('bts_journey_ui', $this->btsUiPresenter->forInscription($inscription));
+
+                return $inscription;
+            })
+        );
+
         $dossier       = $dossierService->buildDossier($etudiant);
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 

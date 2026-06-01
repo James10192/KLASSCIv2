@@ -2898,6 +2898,12 @@
                     </div>
                 </div>
 
+                @if(!empty($insc->bts_journey_ui))
+                    <div style="margin-bottom:.75rem;">
+                        @include('esbtp.partials.bts-journey-badge', ['btsJourney' => $insc->bts_journey_ui])
+                    </div>
+                @endif
+
                 @php
                     $inscIsLmd = ($insc->classe?->systeme_academique ?? '') === 'LMD';
                     $inscLmdParcours = $inscIsLmd && $insc->classe?->parcours

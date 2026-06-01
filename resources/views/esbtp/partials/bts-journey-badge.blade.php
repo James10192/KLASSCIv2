@@ -3,11 +3,19 @@
         $tone = $btsJourney['badge']['tone'] ?? 'muted';
         $label = $btsJourney['badge']['label'] ?? 'Parcours BTS';
         $currentPhase = $btsJourney['current_phase'] ?? [];
+        $semestreMeta = null;
+
+        if (!empty($currentPhase['semestre_debut'])) {
+            $semestreMeta = 'S' . $currentPhase['semestre_debut'];
+
+            if (!empty($currentPhase['semestre_fin']) && (int) $currentPhase['semestre_fin'] !== (int) $currentPhase['semestre_debut']) {
+                $semestreMeta .= '-S' . $currentPhase['semestre_fin'];
+            }
+        }
+
         $meta = trim(implode(' · ', array_filter([
             $currentPhase['classe'] ?? null,
-            !empty($currentPhase['semestre_debut'])
-                ? 'S' . $currentPhase['semestre_debut'] . (!empty($currentPhase['semestre_fin']) ? '-S' . $currentPhase['semestre_fin'] : '')
-                : null,
+            $semestreMeta,
         ])));
     @endphp
 
