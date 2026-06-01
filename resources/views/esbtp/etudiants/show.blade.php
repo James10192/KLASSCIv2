@@ -2194,7 +2194,7 @@
                 </p>
             @endif
             <div class="hero-pills">
-                @include('esbtp.partials.bts-journey-badge', ['btsJourney' => $btsJourney ?? null])
+                @include('esbtp.partials.bts-journey-badge', ['btsJourney' => $btsJourney ?? null, 'variant' => 'hero'])
                 @if($isLMD || $lmdCredits)
                     <span class="hero-pill" style="background:rgba(16,185,129,.25); color:#6ee7b7; border-color:rgba(16,185,129,.4);"><i class="fas fa-graduation-cap" style="font-size:.65rem;"></i> LMD</span>
                 @else
@@ -2901,6 +2901,32 @@
                 @if(!empty($insc->bts_journey_ui))
                     <div style="margin-bottom:.75rem;">
                         @include('esbtp.partials.bts-journey-badge', ['btsJourney' => $insc->bts_journey_ui])
+
+                        @if(!empty($insc->bts_journey_ui['timeline']) && count($insc->bts_journey_ui['timeline']) > 1)
+                            <div style="display:flex; flex-direction:column; gap:4px; margin-top:8px;">
+                                @foreach($insc->bts_journey_ui['timeline'] as $phaseStep)
+                                    @php
+                                        $phaseSemestreDebut = $phaseStep['semestre_debut'] ?? null;
+                                        $phaseSemestreFin = $phaseStep['semestre_fin'] ?? null;
+                                        $phaseSemestreLabel = match (true) {
+                                            empty($phaseSemestreDebut) => 'Semestre à définir',
+                                            empty($phaseSemestreFin), (int) $phaseSemestreDebut === (int) $phaseSemestreFin => 'Semestre ' . $phaseSemestreDebut,
+                                            default => 'Semestres ' . $phaseSemestreDebut . ' à ' . $phaseSemestreFin,
+                                        };
+                                    @endphp
+                                    <div style="display:flex; align-items:center; gap:8px; font-size:.74rem; color:#475569; line-height:1.3;">
+                                        <span style="width:7px; height:7px; border-radius:999px; flex-shrink:0; background:{{ !empty($phaseStep['is_active']) ? '#10b981' : '#94a3b8' }};"></span>
+                                        <span>
+                                            <strong style="color:#0f172a;">{{ $phaseStep['label'] }}</strong>
+                                            @if(!empty($phaseStep['classe']))
+                                                · {{ $phaseStep['classe'] }}
+                                            @endif
+                                            · {{ $phaseSemestreLabel }}
+                                        </span>
+                                    </div>
+                                @endforeach
+                            </div>
+                        @endif
                     </div>
                 @endif
 

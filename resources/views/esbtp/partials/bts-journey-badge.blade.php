@@ -1,5 +1,6 @@
 @if(!empty($btsJourney))
     @php
+        $variant = $variant ?? 'default';
         $tone = $btsJourney['badge']['tone'] ?? 'muted';
         $label = $btsJourney['badge']['label'] ?? 'Parcours BTS';
         $currentPhase = $btsJourney['current_phase'] ?? [];
@@ -31,10 +32,26 @@
             font-weight: 700;
             line-height: 1;
             white-space: nowrap;
+            border: 1px solid transparent;
         }
         .bts-mini-badge--info { background: rgba(4, 83, 203, 0.1); color: #0453cb; }
         .bts-mini-badge--success { background: rgba(5, 150, 105, 0.12); color: #047857; }
         .bts-mini-badge--muted { background: rgba(100, 116, 139, 0.12); color: #475569; }
+        .bts-mini-badge--hero.bts-mini-badge--info {
+            background: rgba(147, 197, 253, 0.18);
+            color: #eff6ff;
+            border-color: rgba(191, 219, 254, 0.38);
+        }
+        .bts-mini-badge--hero.bts-mini-badge--success {
+            background: rgba(16, 185, 129, 0.24);
+            color: #ecfdf5;
+            border-color: rgba(110, 231, 183, 0.38);
+        }
+        .bts-mini-badge--hero.bts-mini-badge--muted {
+            background: rgba(255, 255, 255, 0.16);
+            color: #f8fafc;
+            border-color: rgba(255, 255, 255, 0.24);
+        }
         .bts-mini-badge__dot {
             width: 7px;
             height: 7px;
@@ -49,7 +66,7 @@
         }
     </style>
 
-    <span class="bts-mini-badge bts-mini-badge--{{ $tone }}" title="Parcours BTS">
+    <span class="bts-mini-badge bts-mini-badge--{{ $tone }} {{ $variant === 'hero' ? 'bts-mini-badge--hero' : '' }}" title="Parcours BTS">
         <span class="bts-mini-badge__dot" aria-hidden="true"></span>
         <span>{{ $label }}</span>
         @if($meta !== '')
