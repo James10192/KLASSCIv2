@@ -12,6 +12,38 @@ use Illuminate\Support\Facades\Auth;
 
 class SearchController extends Controller
 {
+    private function applyStudentSearch($queryBuilder, string $query)
+    {
+        $tokens = collect(preg_split('/[\s,]+/u', trim($query), -1, PREG_SPLIT_NO_EMPTY))
+            ->filter()
+            ->values();
+
+        return $queryBuilder->where(function ($q) use ($query, $tokens) {
+            $likeQuery = '%' . $query . '%';
+
+            $q->where('nom', 'LIKE', $likeQuery)
+                ->orWhere('prenoms', 'LIKE', $likeQuery)
+                ->orWhere('matricule', 'LIKE', $likeQuery)
+                ->orWhere('email', 'LIKE', $likeQuery)
+                ->orWhereRaw("CONCAT_WS(' ', nom, prenoms) LIKE ?", [$likeQuery])
+                ->orWhereRaw("CONCAT_WS(' ', prenoms, nom) LIKE ?", [$likeQuery]);
+
+            if ($tokens->count() > 1) {
+                $q->orWhere(function ($tokenQuery) use ($tokens) {
+                    foreach ($tokens as $token) {
+                        $likeToken = '%' . $token . '%';
+                        $tokenQuery->where(function ($inner) use ($likeToken) {
+                            $inner->where('nom', 'LIKE', $likeToken)
+                                ->orWhere('prenoms', 'LIKE', $likeToken)
+                                ->orWhere('matricule', 'LIKE', $likeToken)
+                                ->orWhere('email', 'LIKE', $likeToken);
+                        });
+                    }
+                });
+            }
+        });
+    }
+
     /**
      * Recherche globale AJAX
      */
@@ -45,10 +77,7 @@ class SearchController extends Controller
             $results = array_merge($results, $personnelResults);
 
             // Recherche d'étudiants (pour tous les utilisateurs authentifiés)
-            $etudiants = ESBTPEtudiant::where('nom', 'LIKE', "%{$query}%")
-                ->orWhere('prenoms', 'LIKE', "%{$query}%")
-                ->orWhere('matricule', 'LIKE', "%{$query}%")
-                ->orWhere('email', 'LIKE', "%{$query}%")
+            $etudiants = $this->applyStudentSearch(ESBTPEtudiant::query(), $query)
                 ->with(['classe.filiere', 'classe.niveauEtude'])
                 ->limit($limit)
                 ->get();
@@ -199,10 +228,7 @@ class SearchController extends Controller
         try {
             // Recherche d'étudiants
             if (($type === 'all' || $type === 'etudiants') && ($user->can('students.view') || $user->can('identity.student'))) {
-                $etudiantsQuery = ESBTPEtudiant::where('nom', 'LIKE', "%{$query}%")
-                    ->orWhere('prenoms', 'LIKE', "%{$query}%")
-                    ->orWhere('matricule', 'LIKE', "%{$query}%")
-                    ->orWhere('email', 'LIKE', "%{$query}%")
+                $etudiantsQuery = $this->applyStudentSearch(ESBTPEtudiant::query(), $query)
                     ->with(['classe.filiere', 'classe.niveauEtude']);
 
                 // Si c'est un étudiant, ne montrer que son propre profil
