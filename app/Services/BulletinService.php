@@ -216,8 +216,8 @@ class BulletinService
         }
 
         // Vérifier que la configuration n'est pas vide
-        $configMatieres = json_decode($bulletin->config_matieres, true);
-        $professeursConfigures = json_decode($bulletin->professeurs, true);
+        $configMatieres = $this->decodeJsonToArray($bulletin->config_matieres);
+        $professeursConfigures = $this->decodeJsonToArray($bulletin->professeurs);
 
         if (empty($configMatieres['generales']) && empty($configMatieres['techniques'])) {
             throw new \Exception('Aucune matière configurée dans le bulletin.');
@@ -1080,7 +1080,7 @@ class BulletinService
                         continue;
                     }
 
-                    $configMatieres = json_decode($bulletin->config_matieres, true);
+                    $configMatieres = $this->decodeJsonToArray($bulletin->config_matieres);
                     $matiereConfig = null;
 
                     // Chercher la matière dans la configuration
@@ -1523,6 +1523,21 @@ class BulletinService
             ->count() + 1;
 
         $bulletin->save();
+    }
+
+    private function decodeJsonToArray($value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if ($value === null || $value === '') {
+            return [];
+        }
+
+        $decoded = json_decode((string) $value, true);
+
+        return is_array($decoded) ? $decoded : [];
     }
 
     public function getValidatedClassStudentCount(int $classeId, int $anneeUniversitaireId): int

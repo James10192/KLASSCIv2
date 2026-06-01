@@ -2940,7 +2940,9 @@ class ESBTPResultatController extends Controller
         $hasSemestre2 = $moyenneSemestre2 !== null;
         $annualComplete = $periode === 'annuel' && $hasSemestre1 && $hasSemestre2 && $moyenneAnnuelle !== null;
         $annualIncomplete = $periode === 'annuel' && ! $annualComplete && ($hasSemestre1 || $hasSemestre2);
-        $primarySemester = $hasSemestre1 ? 'semestre1' : ($hasSemestre2 ? 'semestre2' : null);
+        $primarySemester = $annualComplete
+            ? 'semestre2'
+            : ($hasSemestre1 ? 'semestre1' : ($hasSemestre2 ? 'semestre2' : null));
         $primarySemesterLabel = $primarySemester === 'semestre2' ? 'Semestre 2' : 'Semestre 1';
         $primaryAverage = $primarySemester === 'semestre2' ? $moyenneSemestre2 : $moyenneSemestre1;
 
@@ -2957,6 +2959,9 @@ class ESBTPResultatController extends Controller
             'bulletin_workflow_periode' => $periode === 'annuel' ? ($primarySemester ?? 'semestre1') : $periode,
             'bulletin_workflow_periode_label' => $periode === 'annuel'
                 ? ($primarySemesterLabel ?? 'Semestre 1')
+                : ($periode === 'semestre2' ? 'Semestre 2' : 'Semestre 1'),
+            'bulletin_action_label' => $periode === 'annuel'
+                ? 'Annuel'
                 : ($periode === 'semestre2' ? 'Semestre 2' : 'Semestre 1'),
         ];
     }

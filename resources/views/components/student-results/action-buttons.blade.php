@@ -1,10 +1,11 @@
-{{-- 7. Actions — card-button grid + stepper --}}
+{{-- 7. Actions - card-button grid + stepper --}}
 @php
     $includeAllStatusesQuery = !empty($include_all_statuses) ? '&include_all_statuses=1' : '';
     $workflowPeriode = $bulletinWorkflowPeriode ?? $periode;
     $workflowPeriodeLabel = $bulletinWorkflowPeriodeLabel ?? ($periode === 'semestre2' ? 'Semestre 2' : 'Semestre 1');
+    $bulletinActionLabel = $detailUiState['bulletin_action_label'] ?? (($periode ?? null) === 'annuel' ? 'Annuel' : $workflowPeriodeLabel);
     $annualActionSuffix = ($detailUiState['state'] ?? null) === 'annual_incomplete' || ($periode ?? null) === 'annuel'
-        ? ' · ' . $workflowPeriodeLabel
+        ? ' · ' . $bulletinActionLabel
         : '';
 @endphp
 <div class="sr-actions-card sr-animate sr-animate-delay-5">
@@ -14,7 +15,6 @@
     </div>
     <div class="sr-actions-body">
         <div class="sr-actions-grid">
-            {{-- Navigation --}}
             @if(isset($classe) && $classe)
                 <a href="{{ route('esbtp.resultats.classe', ['classe' => $classe->id]) }}?periode={{ $periode }}&annee_universitaire_id={{ $annee_id }}{{ $includeAllStatusesQuery }}"
                    class="sr-action-btn">
@@ -33,7 +33,6 @@
             @endif
 
             @if(isset($classe) && $classe)
-                {{-- Modification (superAdmin / secretaire) --}}
                 @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager']))
                     <a href="{{ route('esbtp.bulletins.moyennes-preview', ['etudiant_id' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $workflowPeriode, 'annee_universitaire_id' => $annee_id]) }}"
                        class="sr-action-btn">
@@ -44,7 +43,6 @@
                     </a>
                 @endif
 
-                {{-- Configuration (superAdmin) --}}
                 @if(auth()->user()->can('admin.access'))
                     <a href="{{ route('esbtp.bulletins.config-matieres', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $workflowPeriode, 'annee_universitaire_id' => $annee_id]) }}"
                        class="sr-action-btn">
@@ -69,7 +67,6 @@
                     </a>
                 @endif
 
-                {{-- Preview & PDF --}}
                 <a href="{{ route('esbtp.resultats.etudiant.preview', ['etudiant' => $etudiant->id]) }}?classe_id={{ $classe->id }}&annee_universitaire_id={{ $annee_id }}&periode={{ $workflowPeriode }}"
                    class="sr-action-btn"
                    data-check-url="{{ route('esbtp.bulletins.check-consistency', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $workflowPeriode, 'annee_universitaire_id' => $annee_id]) }}"
@@ -114,7 +111,6 @@
         </div>
 
         @if(isset($classe) && $classe)
-            {{-- Stepper guide --}}
             <div class="sr-callout">
                 <i class="fas fa-lightbulb"></i>
                 <div>

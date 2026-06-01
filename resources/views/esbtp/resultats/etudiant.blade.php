@@ -59,6 +59,7 @@
     $currentPeriodeKey = $currentPeriode;
     if ($currentPeriodeKey === '1') $currentPeriodeKey = 'semestre1';
     elseif ($currentPeriodeKey === '2') $currentPeriodeKey = 'semestre2';
+    $bulletinActionLabel = $detailUiState['bulletin_action_label'] ?? $bulletinWorkflowPeriodeLabel ?? 'Semestre 1';
     $bannerCurrentTotal = $bulletinConsistency['current_recomputed_effective_total'] ?? null;
     if (($detailUiState['state'] ?? null) === 'annual_incomplete') {
         $bannerCurrentTotal = $detailUiState['display_average'] ?? $detailUiState['primary_average'] ?? $bannerCurrentTotal;
@@ -131,7 +132,7 @@
                            data-check-url="{{ route('esbtp.bulletins.check-consistency', $_resBulletinParams) }}"
                            data-consistency-action="web_preview"
                            onclick="return srCheckBeforePDF(event, this);">
-                            <i class="fas fa-window-restore"></i>Vue web{{ $currentPeriodeKey === 'annuel' ? ' ' . $bulletinWorkflowPeriodeLabel : '' }}
+                            <i class="fas fa-window-restore"></i>Vue web{{ $currentPeriodeKey === 'annuel' ? ' ' . $bulletinActionLabel : '' }}
                         </a>
                         <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_resBulletinParams) }}"
                            class="sr-hero-btn--solid sr-hero-btn sr-pdf-link"
@@ -139,14 +140,14 @@
                            data-check-url="{{ route('esbtp.bulletins.check-consistency', $_resBulletinParams) }}"
                            data-consistency-action="preview_pdf"
                            onclick="return srCheckBeforePDF(event, this);">
-                            <i class="fas fa-eye"></i>Aperçu PDF{{ $currentPeriodeKey === 'annuel' ? ' ' . $bulletinWorkflowPeriodeLabel : '' }}
+                            <i class="fas fa-eye"></i>Aperçu PDF{{ $currentPeriodeKey === 'annuel' ? ' ' . $bulletinActionLabel : '' }}
                         </a>
                         <a href="{{ route('esbtp.bulletins.pdf-params', $_resBulletinParams) }}"
                            class="sr-hero-btn sr-hero-btn--danger sr-pdf-link"
                            data-check-url="{{ route('esbtp.bulletins.check-consistency', $_resBulletinParams) }}"
                            data-consistency-action="download_pdf"
                            onclick="return srCheckBeforePDF(event, this);">
-                            <i class="fas fa-file-pdf"></i>PDF{{ $currentPeriodeKey === 'annuel' ? ' ' . $bulletinWorkflowPeriodeLabel : '' }}
+                            <i class="fas fa-file-pdf"></i>PDF{{ $currentPeriodeKey === 'annuel' ? ' ' . $bulletinActionLabel : '' }}
                         </a>
                     @endif
                 </div>
