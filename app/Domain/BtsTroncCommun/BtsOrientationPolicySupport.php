@@ -17,21 +17,52 @@ class BtsOrientationPolicySupport
 
     public function validateTarget(ESBTPInscription $inscription, ESBTPClasse $targetClasse): ?ESBTPClasseOrientationTarget
     {
-        $target = $inscription->classe?->orientationTargets
-            ->firstWhere('target_classe_id', $targetClasse->id);
-
-        if (! $target || ! $target->is_active) {
-            return null;
-        }
-
+        // Garde-fous communs : année + niveau + classe active
         if ((int) $targetClasse->annee_universitaire_id !== (int) $inscription->annee_universitaire_id) {
             return null;
         }
-
         if ((int) $targetClasse->niveau_etude_id !== (int) $inscription->niveau_id) {
             return null;
         }
+        if (! $targetClasse->is_active) {
+            return null;
+        }
 
-        return $target;
+        // 1. Cible canonique : ClasseOrientationTarget configuré explicitement
+        $target = $inscription->classe?->orientationTargets
+            ->firstWhere('target_classe_id', $targetClasse->id);
+
+        if ($target && $target->is_active) {
+            return $target;
+        }
+
+        // 2. Fallback hiérarchie filière (parent_id) :
+        //    Si la filière target est enfant de la filière TC source, on auto-crée
+        //    le ClasseOrientationTarget. Cela évite à l'admin de configurer
+        //    manuellement N×M mappings quand la hiérarchie filière est déjà en place.
+        $sourceFiliere = $inscription->classe?->filiere;
+        $targetFiliere = $targetClasse->filiere;
+
+        if ($sourceFiliere
+            && $sourceFiliere->isTroncCommun()
+            && $targetFiliere
+            && $targetFiliere->parent_id !== null
+            && (int) $targetFiliere->parent_id === (int) $sourceFiliere->id) {
+
+            return ESBTPClasseOrientationTarget::firstOrCreate(
+                [
+                    'source_classe_id' => $inscription->classe->id,
+                    'target_classe_id' => $targetClasse->id,
+                ],
+                [
+                    'is_active' => true,
+                    'semestre_activation' => 2,
+                    'sort_order' => 0,
+                    'notes' => 'Auto-créé via hiérarchie filière (parent_id)',
+                ]
+            );
+        }
+
+        return null;
     }
 }

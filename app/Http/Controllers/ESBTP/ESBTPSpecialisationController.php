@@ -73,6 +73,7 @@ class ESBTPSpecialisationController extends Controller
 
         $inscription->loadMissing(['classe.orientationTargets.targetClasse']);
 
+        // Source canonique : ClasseOrientationTarget (mapping manuel via admin)
         $classes = collect($inscription->classe?->orientationTargets ?? [])
             ->where('is_active', true)
             ->sortBy('sort_order')
@@ -84,9 +85,21 @@ class ESBTPSpecialisationController extends Controller
             ->when($filiereId, fn ($items) => $items->where('filiere_id', (int) $filiereId))
             ->values();
 
+        // Fallback legacy : pas de target configurée → classes actives de la filière
+        // matching le niveau + année universitaire de l'inscription. Cohérent avec
+        // le fallback parent_id utilisé dans show() pour lister les spécialisations.
+        if ($classes->isEmpty() && $filiereId) {
+            $classes = \App\Models\ESBTPClasse::where('is_active', true)
+                ->where('filiere_id', (int) $filiereId)
+                ->where('niveau_etude_id', $inscription->niveau_id)
+                ->where('annee_universitaire_id', $inscription->annee_universitaire_id)
+                ->orderBy('name')
+                ->get();
+        }
+
         return response()->json([
             'message' => $classes->isEmpty()
-                ? "Aucune classe cible n'est configuree pour cette specialisation."
+                ? "Aucune classe disponible pour cette spécialisation. Vérifiez que des classes actives existent pour cette filière au niveau et à l'année courants."
                 : null,
             'classes' => $classes->map(function ($classe) {
                 return [
