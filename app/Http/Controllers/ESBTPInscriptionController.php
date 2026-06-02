@@ -2605,4 +2605,85 @@ class ESBTPInscriptionController extends Controller
             'L\'inscription a été marquée sous réserve de son ' . $inscription->condition_reserve . '.'
         );
     }
+
+    /**
+     * Resynchronise les phases BTS d'une inscription (cas désynchronisation
+     * historique : étudiant qui apparaît "Tronc Commun" alors que sa classe
+     * actuelle est non-TC parce que la classe a été changée hors du workflow
+     * officiel avant le déploiement du sync auto dans update()).
+     *
+     * Permission requise : admin.access (maintenance données).
+     */
+    public function syncBtsPhase(Request $request, ESBTPInscription $inscription)
+    {
+        if (! Auth::user()->can('admin.access')) {
+            abort(403, 'Permission admin requise pour resynchroniser un parcours BTS.');
+        }
+
+        $result = $this->btsOrientationService->syncSingleInscription($inscription);
+
+        \Log::info('BTS TC — sync individuel demandé', [
+            'inscription_id' => $inscription->id,
+            'admin_id' => Auth::id(),
+            'result' => $result,
+        ]);
+
+        if ($request->wantsJson() || $request->expectsJson()) {
+            return response()->json([
+                'success' => $result['status'] !== 'error',
+                'result' => $result,
+            ]);
+        }
+
+        $msg = match ($result['status']) {
+            'fixed' => 'Parcours BTS resynchronisé : '.$result['message'],
+            'ok' => 'Aucun changement nécessaire : '.$result['message'],
+            'skipped' => $result['message'],
+            'error' => 'Erreur : '.$result['message'],
+            default => 'Sync terminée.',
+        };
+
+        return redirect()->back()->with(
+            $result['status'] === 'error' ? 'error' : 'success',
+            $msg
+        );
+    }
+
+    /**
+     * Resynchronise en masse toutes les inscriptions BTS du tenant.
+     * Idempotent : peut être relancé sans casser. Retourne un résumé
+     * fixed/ok/skipped/errors.
+     *
+     * Permission requise : admin.access.
+     */
+    public function bulkSyncBtsPhases(Request $request)
+    {
+        if (! Auth::user()->can('admin.access')) {
+            abort(403, 'Permission admin requise.');
+        }
+
+        $anneeId = $request->integer('annee_universitaire_id');
+        $stats = $this->btsOrientationService->bulkSyncAll($anneeId ?: null);
+
+        \Log::info('BTS TC — bulk sync exécuté', [
+            'admin_id' => Auth::id(),
+            'annee_universitaire_id' => $anneeId,
+            'stats' => array_diff_key($stats, ['details' => 0]),
+            'details_count' => count($stats['details']),
+        ]);
+
+        if ($request->wantsJson() || $request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'stats' => $stats,
+            ]);
+        }
+
+        $msg = sprintf(
+            'Sync BTS terminée : %d traitées · %d corrigées · %d déjà OK · %d skippées · %d erreurs',
+            $stats['total'], $stats['fixed'] ?? 0, $stats['ok'] ?? 0, $stats['skipped'] ?? 0, $stats['errors'] ?? 0
+        );
+
+        return redirect()->back()->with('success', $msg);
+    }
 }

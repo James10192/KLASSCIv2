@@ -1173,6 +1173,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::delete('/{target}', [\App\Http\Controllers\Admin\BtsOrientationTargetController::class, 'destroy'])->name('destroy');
             });
 
+            // Resync BTS phases (maintenance données — désynchronisation historique)
+            Route::post('/inscriptions/bts-sync-all', [\App\Http\Controllers\ESBTPInscriptionController::class, 'bulkSyncBtsPhases'])
+                ->middleware('throttle:5,1')
+                ->name('inscriptions.bts-sync-all');
+            Route::post('/inscriptions/{inscription}/bts-sync', [\App\Http\Controllers\ESBTPInscriptionController::class, 'syncBtsPhase'])
+                ->middleware('throttle:30,1')
+                ->name('inscriptions.bts-sync');
+
             // Routes API utilisées par les formulaires
 
             // Routes pour les notes — throttle anti-abus (saisie unitaire 30/min, bulk 10/min).

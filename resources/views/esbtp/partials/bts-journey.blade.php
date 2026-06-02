@@ -1,8 +1,9 @@
 @php
-    $btsInscription = $inscription ?? null;
+    $btsInscription = $inscription ?? ($btsJourney['inscription'] ?? null);
     $currentType = $btsJourney['current_phase']['type_phase'] ?? null;
     $sourceModel = $btsJourney['source_model'] ?? null;
-    $hasActiveSpe = collect($btsJourney['timeline'] ?? [])
+    $timeline = $btsJourney['timeline'] ?? [];
+    $hasActiveSpe = collect($timeline)
         ->contains(fn ($p) => ($p['type_phase'] ?? null) === 'specialisation' && ! empty($p['is_active']));
     $canOrient = $currentType === 'tronc_commun'
         && $sourceModel === 'phase_based'
@@ -10,173 +11,285 @@
         && $btsInscription !== null
         && auth()->user()?->can('bts_tronc_commun.orient');
     $orientationTargetsCount = $btsInscription?->classe?->orientationTargets?->where('is_active', true)->count() ?? 0;
+    $currentPhase = $btsJourney['current_phase'] ?? null;
+    $badgeLabel = $btsJourney['badge']['label'] ?? 'Parcours BTS';
+    $badgeTone = $btsJourney['badge']['tone'] ?? 'muted';
+    $isAnnuelInscription = $btsInscription?->anneeUniversitaire?->is_current ?? false;
 @endphp
 @if(!empty($btsJourney))
     <style>
-        .bts-journey-card {
-            background: #fff;
-            border: 1px solid rgba(4, 83, 203, 0.12);
-            border-radius: 16px;
-            padding: 16px;
-            margin: 16px 0;
-            box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+        .bj-hero {
+            position: relative;
+            background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 45%, #3b7ddb 100%);
+            border-radius: 18px;
+            padding: 1.5rem 1.75rem;
+            color: #fff;
+            margin: 1.25rem 0;
+            box-shadow: 0 12px 32px rgba(4,83,203,.22);
         }
-        .bts-journey-cta-row {
-            display: flex; align-items: center; justify-content: space-between;
-            gap: 12px; flex-wrap: wrap;
-            margin-top: 14px; padding-top: 14px;
-            border-top: 1px dashed rgba(4, 83, 203, 0.18);
-        }
-        .bts-journey-cta-info {
-            font-size: 0.82rem; color: #475569; flex: 1; min-width: 0;
-            display: flex; gap: .5rem; align-items: center;
-        }
-        .bts-journey-cta-info i { color: #0453cb; font-size: .82rem; }
-        .bts-journey-cta-btn {
-            padding: .55rem 1rem; border-radius: 10px;
-            background: linear-gradient(135deg, #0453cb, #3b7ddb);
-            color: #fff; text-decoration: none; font-weight: 600; font-size: .85rem;
-            display: inline-flex; align-items: center; gap: .4rem;
-            border: none; cursor: pointer;
-            box-shadow: 0 2px 8px rgba(4,83,203,.22);
-            transition: all .15s ease;
-        }
-        .bts-journey-cta-btn:hover { background: linear-gradient(135deg, #033a8e, #0453cb); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(4,83,203,.30); }
-        .bts-journey-cta-btn--disabled {
-            background: #f1f5f9; color: #94a3b8;
-            cursor: not-allowed; box-shadow: none;
-        }
-        .bts-journey-cta-btn--disabled:hover { background: #f1f5f9; color: #94a3b8; transform: none; box-shadow: none; }
-        .bts-journey-warn {
-            background: rgba(245,158,11,.08);
-            border: 1px solid rgba(245,158,11,.25);
-            border-radius: 9px;
-            padding: .55rem .8rem;
-            font-size: .78rem; color: #92400e;
-            display: flex; align-items: center; gap: .45rem; flex: 1; min-width: 0;
-        }
-        .bts-journey-warn i { color: #b45309; }
-        .bts-journey-top {
+        .bj-hero-top {
             display: flex;
-            justify-content: space-between;
-            gap: 12px;
             align-items: flex-start;
+            justify-content: space-between;
+            gap: 1rem;
             flex-wrap: wrap;
-            margin-bottom: 12px;
         }
-        .bts-journey-title { font-size: 1rem; font-weight: 700; color: #0f172a; }
-        .bts-journey-sub { color: #475569; font-size: 0.86rem; }
-        .bts-journey-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            border-radius: 999px;
-            padding: 6px 10px;
-            font-size: 0.78rem;
-            font-weight: 700;
-        }
-        .bts-journey-badge.info { background: rgba(4, 83, 203, 0.1); color: #0453cb; }
-        .bts-journey-badge.success { background: rgba(5, 150, 105, 0.12); color: #047857; }
-        .bts-journey-badge.muted { background: rgba(100, 116, 139, 0.12); color: #475569; }
-        .bts-journey-line { display: grid; gap: 10px; }
-        .bts-journey-step {
-            display: grid;
-            grid-template-columns: 28px 1fr;
-            gap: 10px;
-            align-items: start;
-        }
-        .bts-journey-dot {
-            width: 28px;
-            height: 28px;
-            border-radius: 999px;
+        .bj-hero-left {
             display: flex;
             align-items: center;
-            justify-content: center;
-            background: #e2e8f0;
-            color: #0f172a;
-            font-size: 0.72rem;
-            font-weight: 700;
+            gap: .85rem;
+            min-width: 0;
+            flex: 1;
         }
-        .bts-journey-step.active .bts-journey-dot { background: #0453cb; color: #fff; }
-        .bts-journey-label { font-weight: 700; color: #0f172a; }
-        .bts-journey-meta { color: #64748b; font-size: 0.82rem; }
+        .bj-hero-icon {
+            width: 48px; height: 48px;
+            border-radius: 13px;
+            background: rgba(255,255,255,.14);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255,255,255,.18);
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.2rem;
+            flex-shrink: 0;
+        }
+        .bj-hero-title { font-size: 1.15rem; font-weight: 700; line-height: 1.2; margin: 0; }
+        .bj-hero-sub { font-size: .82rem; color: rgba(255,255,255,.78); margin-top: .2rem; }
+        .bj-hero-badge {
+            display: inline-flex; align-items: center; gap: .35rem;
+            padding: .35rem .7rem;
+            border-radius: 999px;
+            font-size: .72rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .4px;
+            background: rgba(255,255,255,.18);
+            border: 1px solid rgba(255,255,255,.22);
+            color: #fff;
+            white-space: nowrap;
+        }
+        .bj-hero-badge.success { background: rgba(16,185,129,.25); border-color: rgba(16,185,129,.45); }
+        .bj-hero-badge.info { background: rgba(255,255,255,.22); border-color: rgba(255,255,255,.32); }
+        .bj-hero-badge.muted { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.18); color: rgba(255,255,255,.78); }
+        .bj-hero-badge i { font-size: .68rem; }
+
+        .bj-timeline {
+            margin-top: 1.25rem;
+            background: rgba(255,255,255,.08);
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 12px;
+            padding: .85rem 1rem;
+            display: flex;
+            align-items: stretch;
+            gap: .65rem;
+            flex-wrap: wrap;
+        }
+        .bj-step {
+            flex: 1; min-width: 180px;
+            display: flex; align-items: center; gap: .6rem;
+            padding: .45rem .6rem;
+            border-radius: 9px;
+            background: rgba(255,255,255,.05);
+            border: 1px solid rgba(255,255,255,.08);
+            transition: background .15s ease;
+        }
+        .bj-step.active {
+            background: rgba(255,255,255,.18);
+            border-color: rgba(255,255,255,.32);
+            box-shadow: 0 2px 8px rgba(0,0,0,.12);
+        }
+        .bj-step-dot {
+            width: 30px; height: 30px;
+            border-radius: 999px;
+            background: rgba(255,255,255,.16);
+            color: #fff;
+            font-size: .76rem; font-weight: 700;
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            border: 1px solid rgba(255,255,255,.18);
+        }
+        .bj-step.active .bj-step-dot {
+            background: #fff;
+            color: #0453cb;
+            border-color: #fff;
+            box-shadow: 0 0 0 3px rgba(255,255,255,.20);
+        }
+        .bj-step-body { min-width: 0; flex: 1; }
+        .bj-step-label { font-size: .82rem; font-weight: 700; color: #fff; line-height: 1.2; }
+        .bj-step-meta { font-size: .7rem; color: rgba(255,255,255,.7); margin-top: .15rem; line-height: 1.3; }
+
+        .bj-actions {
+            margin-top: 1.1rem;
+            display: flex; align-items: center;
+            gap: .55rem; flex-wrap: wrap;
+        }
+        .bj-info {
+            flex: 1; min-width: 200px;
+            display: flex; align-items: center; gap: .5rem;
+            padding: .55rem .8rem;
+            background: rgba(255,255,255,.08);
+            border: 1px solid rgba(255,255,255,.12);
+            border-radius: 10px;
+            font-size: .78rem;
+            color: rgba(255,255,255,.92);
+        }
+        .bj-info i { font-size: .82rem; color: #fff; }
+        .bj-info strong { color: #fff; font-weight: 700; }
+
+        .bj-warn {
+            flex: 1; min-width: 200px;
+            display: flex; align-items: center; gap: .5rem;
+            padding: .55rem .8rem;
+            background: rgba(245,158,11,.18);
+            border: 1px solid rgba(245,158,11,.40);
+            border-radius: 10px;
+            font-size: .78rem;
+            color: #fff;
+        }
+        .bj-warn i { color: #fef3c7; }
+
+        .bj-btn {
+            display: inline-flex; align-items: center; gap: .4rem;
+            padding: .55rem 1rem;
+            border-radius: 10px;
+            font-size: .82rem; font-weight: 600;
+            text-decoration: none;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all .15s ease;
+            white-space: nowrap;
+        }
+        .bj-btn--primary {
+            background: #fff;
+            color: #0453cb;
+            border-color: #fff;
+            box-shadow: 0 4px 12px rgba(0,0,0,.15);
+        }
+        .bj-btn--primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(0,0,0,.22);
+            color: #033a8e;
+        }
+        .bj-btn--glass {
+            background: rgba(255,255,255,.14);
+            color: #fff;
+            border-color: rgba(255,255,255,.22);
+        }
+        .bj-btn--glass:hover {
+            background: rgba(255,255,255,.24);
+            color: #fff;
+            transform: translateY(-1px);
+        }
+        .bj-btn--disabled {
+            background: rgba(255,255,255,.08);
+            color: rgba(255,255,255,.5);
+            cursor: not-allowed;
+            border-color: rgba(255,255,255,.10);
+        }
+        .bj-btn--disabled:hover { transform: none; background: rgba(255,255,255,.08); }
+
+        @media (max-width: 768px) {
+            .bj-hero { padding: 1.25rem; }
+            .bj-hero-title { font-size: 1rem; }
+            .bj-step { min-width: 100%; }
+            .bj-actions { flex-direction: column; align-items: stretch; }
+            .bj-btn, .bj-info, .bj-warn { width: 100%; justify-content: center; }
+        }
     </style>
 
-    <section class="bts-journey-card" data-bts-journey="1">
-        <div class="bts-journey-top">
-            <div>
-                <div class="bts-journey-title">Parcours BTS</div>
-                <div class="bts-journey-sub">
-                    @if(($btsJourney['source_model'] ?? null) === 'legacy_dual_inscription')
-                        Lecture compatible du dossier historique
-                    @else
-                        Inscription annuelle avec phases intra-année
-                    @endif
+    <section class="bj-hero" data-bts-journey="1">
+        <div class="bj-hero-top">
+            <div class="bj-hero-left">
+                <div class="bj-hero-icon">
+                    <i class="fas fa-route"></i>
+                </div>
+                <div style="min-width:0;">
+                    <div class="bj-hero-title">Parcours BTS Tronc Commun</div>
+                    <div class="bj-hero-sub">
+                        @if($sourceModel === 'legacy_dual_inscription')
+                            Lecture compatible du dossier historique
+                        @else
+                            Inscription annuelle avec phases intra-année
+                        @endif
+                        @if($btsInscription?->anneeUniversitaire)
+                            · {{ $btsInscription->anneeUniversitaire->name ?? $btsInscription->anneeUniversitaire->annee_libelle ?? '' }}
+                        @endif
+                    </div>
                 </div>
             </div>
-            <span class="bts-journey-badge {{ $btsJourney['badge']['tone'] ?? 'muted' }}">
-                {{ $btsJourney['badge']['label'] ?? 'Parcours BTS' }}
+            <span class="bj-hero-badge {{ $badgeTone }}">
+                <i class="fas {{ $badgeTone === 'success' ? 'fa-graduation-cap' : ($badgeTone === 'info' ? 'fa-seedling' : 'fa-circle') }}"></i>
+                {{ $badgeLabel }}
             </span>
         </div>
 
-        <div class="bts-journey-line">
-            @foreach(($btsJourney['timeline'] ?? []) as $phase)
-                @php
-                    $semestreDebut = $phase['semestre_debut'] ?? null;
-                    $semestreFin = $phase['semestre_fin'] ?? null;
-                    $semestreLabel = match (true) {
-                        empty($semestreDebut) => 'Semestre à définir',
-                        empty($semestreFin), (int) $semestreDebut === (int) $semestreFin => 'Semestre ' . $semestreDebut,
-                        default => 'Semestres ' . $semestreDebut . ' à ' . $semestreFin,
-                    };
-                @endphp
-                <div class="bts-journey-step {{ !empty($phase['is_active']) ? 'active' : '' }}">
-                    <div class="bts-journey-dot">{{ $loop->iteration }}</div>
-                    <div>
-                        <div class="bts-journey-label">
-                            {{ $phase['label'] }}
-                            @if(!empty($phase['classe']))
-                                · {{ $phase['classe'] }}
-                            @endif
-                        </div>
-                        <div class="bts-journey-meta">
-                            {{ $semestreLabel }}
-                            @if(!empty($phase['filiere']))
-                                · {{ $phase['filiere'] }}
-                            @endif
+        @if(!empty($timeline))
+            <div class="bj-timeline">
+                @foreach($timeline as $phase)
+                    @php
+                        $semestreDebut = $phase['semestre_debut'] ?? null;
+                        $semestreFin = $phase['semestre_fin'] ?? null;
+                        $semestreLabel = match (true) {
+                            empty($semestreDebut) => 'Semestre à définir',
+                            empty($semestreFin), (int) $semestreDebut === (int) $semestreFin => 'Semestre ' . $semestreDebut,
+                            default => 'Semestres ' . $semestreDebut . ' à ' . $semestreFin,
+                        };
+                    @endphp
+                    <div class="bj-step {{ !empty($phase['is_active']) ? 'active' : '' }}">
+                        <div class="bj-step-dot">{{ $loop->iteration }}</div>
+                        <div class="bj-step-body">
+                            <div class="bj-step-label">
+                                {{ $phase['label'] }}
+                                @if(!empty($phase['classe']))
+                                    · {{ $phase['classe'] }}
+                                @endif
+                            </div>
+                            <div class="bj-step-meta">
+                                {{ $semestreLabel }}
+                                @if(!empty($phase['filiere']))
+                                    · {{ $phase['filiere'] }}
+                                @endif
+                            </div>
                         </div>
                     </div>
-                </div>
-            @endforeach
-        </div>
+                @endforeach
+            </div>
+        @endif
 
-        {{-- CTA Orienter — Bug #1 fix : bouton visible quand TC active sans spé --}}
         @if($currentType === 'tronc_commun' && $sourceModel === 'phase_based' && ! $hasActiveSpe && $btsInscription !== null)
-            <div class="bts-journey-cta-row">
+            <div class="bj-actions">
                 @if($canOrient && $orientationTargetsCount > 0)
-                    <div class="bts-journey-cta-info">
+                    <div class="bj-info">
                         <i class="fas fa-route"></i>
-                        <span><strong>{{ $orientationTargetsCount }}</strong> spécialité{{ $orientationTargetsCount > 1 ? 's' : '' }} configurée{{ $orientationTargetsCount > 1 ? 's' : '' }} pour cette classe. Lance l'orientation officielle (transition tracée + audit).</span>
+                        <span><strong>{{ $orientationTargetsCount }}</strong> spécialité{{ $orientationTargetsCount > 1 ? 's' : '' }} configurée{{ $orientationTargetsCount > 1 ? 's' : '' }} pour cette classe — orientation officielle avec transition tracée.</span>
                     </div>
-                    <a href="{{ route('esbtp.inscriptions.specialisation', $btsInscription) }}" class="bts-journey-cta-btn">
+                    <a href="{{ route('esbtp.inscriptions.specialisation', $btsInscription) }}" class="bj-btn bj-btn--primary">
                         <i class="fas fa-graduation-cap"></i>
-                        Orienter vers une spécialité
+                        Choisir la spécialité
                     </a>
                 @elseif($canOrient && $orientationTargetsCount === 0)
-                    <div class="bts-journey-warn">
+                    <div class="bj-warn">
                         <i class="fas fa-circle-exclamation"></i>
-                        <span>Aucune spécialité configurée pour la classe <strong>{{ $btsInscription->classe?->name ?? '—' }}</strong>. Demande à un admin de configurer les sorties depuis <em>Administration → Sorties BTS Tronc Commun</em>.</span>
+                        <span>Aucune spécialité configurée pour <strong>{{ $btsInscription->classe?->name ?? 'cette classe' }}</strong>. Admin → <em>Sorties BTS Tronc Commun</em>.</span>
                     </div>
-                    <button class="bts-journey-cta-btn bts-journey-cta-btn--disabled" disabled title="Aucune spécialité configurée">
+                    <button class="bj-btn bj-btn--disabled" disabled title="Aucune spécialité configurée">
                         <i class="fas fa-graduation-cap"></i>
                         Orienter
                     </button>
                 @elseif(! auth()->user()?->can('bts_tronc_commun.orient'))
-                    <div class="bts-journey-cta-info">
+                    <div class="bj-info">
                         <i class="fas fa-lock"></i>
                         <span>Permission requise pour orienter cet étudiant. Contactez un admin scolarité.</span>
                     </div>
                 @endif
+
+                @can('admin.access')
+                    <form action="{{ route('esbtp.inscriptions.bts-sync', $btsInscription) }}" method="POST" style="display:inline-flex;">
+                        @csrf
+                        <button type="submit" class="bj-btn bj-btn--glass"
+                                title="Resynchronise les phases avec la classe actuelle (corrige les désynchronisations historiques)"
+                                onclick="return confirm('Actualiser le parcours BTS de cet étudiant ?\n\nSi sa classe actuelle est non-TC mais qu\'une phase TC est encore active, elle sera supprimée. Cette opération est tracée dans l\'audit.');">
+                            <i class="fas fa-arrows-rotate"></i>
+                            Actualiser
+                        </button>
+                    </form>
+                @endcan
             </div>
         @endif
     </section>

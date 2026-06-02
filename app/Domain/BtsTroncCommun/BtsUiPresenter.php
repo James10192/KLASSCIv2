@@ -41,6 +41,8 @@ class BtsUiPresenter
             'timeline' => $timeline,
             'destination' => collect($timeline)->firstWhere('type_phase', 'specialisation'),
             'history' => $this->buildHistory($timeline),
+            'inscription' => $inscription,  // Pour que les partials puissent retrouver l'inscription source
+            'inscription_id' => $inscription->id,
         ];
     }
 

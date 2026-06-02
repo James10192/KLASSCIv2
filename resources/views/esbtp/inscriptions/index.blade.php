@@ -563,6 +563,16 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                     </div>
                 </div>
                 <div class="ii-hero-actions">
+                    @can('admin.access')
+                        <form action="{{ route('esbtp.inscriptions.bts-sync-all') }}" method="POST" style="display:inline;">
+                            @csrf
+                            <button type="submit" class="ii-btn--glass"
+                                    title="Resynchronise les phases TC/Spé de toutes les inscriptions BTS (corrige les désynchronisations historiques)"
+                                    onclick="return confirm('Actualiser TOUS les parcours BTS du tenant ?\n\nCette opération scanne toutes les inscriptions et corrige automatiquement les phases désynchronisées (étudiants qui apparaissent en TC alors que leur classe est non-TC, etc.).\n\nIdempotent : peut être relancé sans risque.');">
+                                <i class="fas fa-arrows-rotate"></i>Actualiser parcours BTS
+                            </button>
+                        </form>
+                    @endcan
                     @can('inscriptions.validate')
                         <a href="{{ route('esbtp.inscriptions.administration') }}" class="ii-btn--glass">
                             <i class="fas fa-user-check"></i>Administration
