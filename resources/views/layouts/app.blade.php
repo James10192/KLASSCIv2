@@ -3117,17 +3117,11 @@
     <!-- jQuery -->
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 
-    <!-- Bootstrap JS with Popper -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-
     {{-- ═══ Règle universelle KLASSCI : auto-attach Popper config sur tous les dropdowns
-         - data-bs-strategy="fixed" → Popper position:fixed → détache du flow document,
-           ignore overflow:hidden des parents (rule css-stacking-pitfalls.md)
-         - data-bs-boundary="viewport" → boundary = fenêtre entière, plus le scrollParent,
-           permet auto-flip basé sur viewport réel
-         - data-bs-display="dynamic" → Popper recalcule placement à chaque ouverture
-           (auto-flip up quand espace insuffisant en bas, source: Bootstrap docs)
-         - MutationObserver pour les dropdowns ajoutés dynamiquement (AJAX, Alpine x-show)
+         AVANT le chargement de Bootstrap pour que la conf soit lue à l'instanciation.
+         - data-bs-strategy="fixed" → Popper position:fixed → ignore overflow:hidden parents
+         - data-bs-boundary="viewport" → boundary = viewport, auto-flip réel
+         - data-bs-display="dynamic" → Popper recalcule à chaque ouverture (flip up auto)
     --}}
     <script>
     (function() {
@@ -3138,23 +3132,31 @@
                 if (!trigger.hasAttribute('data-bs-strategy')) trigger.setAttribute('data-bs-strategy', 'fixed');
                 if (!trigger.hasAttribute('data-bs-boundary')) trigger.setAttribute('data-bs-boundary', 'viewport');
                 if (!trigger.hasAttribute('data-bs-display')) trigger.setAttribute('data-bs-display', 'dynamic');
-                // Si Bootstrap a déjà instancié, le re-init n'est pas nécessaire car Bootstrap
-                // lit les data-attrs au moment de l'instanciation lazy.
+                // Si Bootstrap déjà instancié, dispose + readd attrs forcera re-init au prochain click.
+                if (window.bootstrap && bootstrap.Dropdown && bootstrap.Dropdown.getInstance(trigger)) {
+                    try { bootstrap.Dropdown.getInstance(trigger).dispose(); } catch(e) {}
+                }
             });
         }
-        document.addEventListener('DOMContentLoaded', function() {
+        // 1. Run au plus tôt sur le DOM existant (avant bootstrap.bundle si possible)
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', function() { applyDropdownDefaults(document); });
+        } else {
             applyDropdownDefaults(document);
-            // Observer le DOM pour gérer les dropdowns ajoutés via AJAX/Alpine.
-            new MutationObserver(function(mutations) {
-                mutations.forEach(function(m) {
-                    m.addedNodes.forEach(function(node) {
-                        if (node.nodeType === 1) applyDropdownDefaults(node);
-                    });
+        }
+        // 2. MutationObserver pour les dropdowns ajoutés via AJAX/Alpine.
+        new MutationObserver(function(mutations) {
+            mutations.forEach(function(m) {
+                m.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1) applyDropdownDefaults(node);
                 });
-            }).observe(document.body, { childList: true, subtree: true });
-        });
+            });
+        }).observe(document.documentElement, { childList: true, subtree: true });
     })();
     </script>
+
+    <!-- Bootstrap JS with Popper (chargé APRÈS notre injection des data-bs-* attrs) -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
     <!-- Alpine.js (focus plugin must load BEFORE core for x-trap to register) -->
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
