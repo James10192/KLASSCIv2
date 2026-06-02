@@ -55,7 +55,7 @@
                     <div class="sr-hero-avatar"><i class="fas fa-chalkboard-teacher"></i></div>
                     <div class="sr-hero-info">
                         <h1>Édition des professeurs</h1>
-                        <p>{{ $etudiant->nom }} {{ $etudiant->prenoms }} · {{ $classe->name ?? '' }} · {{ $periode }}</p>
+                        <p id="ep-hero-subtitle">{{ $etudiant->nom }} {{ $etudiant->prenoms }} · {{ $classe->name ?? '' }} · {{ $periode === 'semestre1' ? 'Semestre 1' : ($periode === 'semestre2' ? 'Semestre 2' : ucfirst($periode)) }}</p>
                         <div class="sr-breadcrumb">
                             <a href="{{ route('esbtp.resultats.etudiant', ['etudiant' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $anneeUniversitaire->id]) }}">Résultats</a>
                             <i class="fas fa-chevron-right"></i>
@@ -460,6 +460,10 @@ document.addEventListener('DOMContentLoaded', function() {
                             if (currentStats[i]) currentStats[i].textContent = s.textContent;
                         });
                     }
+                    // Update hero subtitle (qui contient le label de la période)
+                    const freshSubtitle = tmp.querySelector('#ep-hero-subtitle');
+                    const currentSubtitle = document.getElementById('ep-hero-subtitle');
+                    if (freshSubtitle && currentSubtitle) currentSubtitle.textContent = freshSubtitle.textContent;
                     // Update browser URL (no reload)
                     history.pushState({ periode: targetPeriode }, '', newUrl);
                     // Re-init handlers (copy button + animateValueChange consumers)
