@@ -377,9 +377,7 @@
     </style>
 </head>
 <body @if($isPdfExport ?? false)class="pdf-export"@endif>
-    @unless($isPdfExport ?? false)
-    <button class="pdf-toggle" onclick="togglePDFMode()" id="pdfToggle">Mode PDF</button>
-    @endunless
+    {{-- Bouton 'Mode PDF' debug retiré (artefact dev affiché en preview) --}}
 
     <div class="container">
         @if(($showInscriptionWorkflowAlert ?? false) && !($isPdfExport ?? false))

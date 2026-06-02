@@ -267,6 +267,7 @@
 
         {{-- Modal coefficients --}}
         @include('esbtp.resultats.partials.student-coefficients-modal')
+        @include('partials._klassci_toast')
 
     </div>
 </div>
@@ -555,6 +556,9 @@
         var csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
         if (!regenerateUrl || !csrfToken) {
+            if (typeof window.klassciToast === 'function') {
+                window.klassciToast('error', 'Configuration manquante : impossible de régénérer (URL ou CSRF token absent).');
+            }
             return;
         }
 
@@ -568,22 +572,38 @@
             },
             body: JSON.stringify(payload)
         })
-        .then(function(res) { return res.json().then(function(data) { return { ok: res.ok, data: data }; }); })
+        .then(function(res) {
+            return res.json()
+                .catch(function() { return { ok: false, message: 'Réponse serveur non-JSON (HTTP ' + res.status + ')' }; })
+                .then(function(data) { return { ok: res.ok, status: res.status, data: data }; });
+        })
         .then(function(result) {
             if (!result.ok || !result.data.ok) {
+                // Affiche l'erreur via toast premium AVANT de redirect/throw
+                var errMsg = result.data.message
+                    || (result.data.errors && Object.values(result.data.errors).flat().join(' · '))
+                    || ('Erreur HTTP ' + result.status);
+                if (typeof window.klassciToast === 'function') {
+                    window.klassciToast('error', errMsg);
+                } else {
+                    alert(errMsg);
+                }
                 if (result.data.redirect_url) {
-                    window.location.href = result.data.redirect_url;
+                    setTimeout(function() { window.location.href = result.data.redirect_url; }, 1500);
                     return;
                 }
-                throw new Error(result.data.message || 'Erreur de régénération');
+                throw new Error(errMsg);
             }
 
+            if (typeof window.klassciToast === 'function') {
+                window.klassciToast('success', result.data.message || 'Bulletin officiel régénéré.');
+            }
             if (typeof onSuccess === 'function') {
                 onSuccess(result.data);
             }
         })
         .catch(function(error) {
-            console.error(error);
+            console.error('Erreur régénération bulletin:', error);
         });
     }
 
