@@ -54,7 +54,7 @@
                     <div>
                         <h5 class="rqf-title" id="rqfModalLabel">Mettre à jour la fiche étudiant ?</h5>
                         <p class="rqf-subtitle">Vérifiez et complétez les informations de
-                            <strong>{{ $etudiant->prenoms }} {{ $etudiant->nom }}</strong>
+                            <strong>{{ $etudiant->nom_complet }}</strong>
                             avant de valider la réinscription. Vous pouvez tout laisser tel quel et continuer.
                         </p>
                     </div>

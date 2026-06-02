@@ -758,7 +758,7 @@ class ESBTPComptabiliteRelanceController extends Controller
             $variables = [
                 '{nom}' => $etudiantExemple->nom,
                 '{prenom}' => $etudiantExemple->prenoms,
-                '{nom_complet}' => $etudiantExemple->prenoms . ' ' . $etudiantExemple->nom,
+                '{nom_complet}' => $etudiantExemple->nom . ' ' . $etudiantExemple->prenoms,
                 '{email}' => $etudiantExemple->email,
                 '{telephone}' => $etudiantExemple->telephone,
                 '{montant_dette}' => '150,000 FCFA',

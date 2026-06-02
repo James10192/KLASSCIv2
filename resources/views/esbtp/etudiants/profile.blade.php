@@ -463,7 +463,7 @@
                         @endif
                     </div>
                     <div class="profile-identity-info">
-                        <h2 class="profile-name">{{ $etudiant->prenoms }} {{ $etudiant->nom }}</h2>
+                        <h2 class="profile-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</h2>
                         <div class="profile-meta">
                             @if($etudiant->matricule)
                             <span class="profile-meta-chip">

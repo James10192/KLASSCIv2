@@ -387,7 +387,7 @@ class NotificationService
         try {
             $etudiant = $paiement->etudiant;
 
-            $message = "Cher/Chère {$etudiant->prenoms} {$etudiant->nom},\n\n";
+            $message = "Cher/Chère {$etudiant->nom} {$etudiant->prenoms},\n\n";
             $message .= "Nous accusons réception de votre paiement de " . number_format($paiement->montant, 0, ',', ' ') . " FCFA.\n\n";
             $message .= "Référence: {$paiement->reference_paiement}\n";
             $message .= "Date: " . $paiement->date_paiement->format('d/m/Y') . "\n\n";
@@ -2540,8 +2540,8 @@ class NotificationService
             $soldeRestant = $totalAttendu - $totalPaye;
 
             $data = [
-                'parentName' => $tuteur->prenoms . ' ' . $tuteur->nom,
-                'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
+                'studentName' => $etudiant->nom . ' ' . $etudiant->prenoms,
                 'matricule' => $etudiant->matricule ?? 'N/A',
                 'classe' => $inscription->classe->name ?? 'N/A',
                 'filiere' => $inscription->classe->filiere->name ?? 'N/A',
@@ -2566,7 +2566,7 @@ class NotificationService
                 'user_id' => $etudiant->user_id,
                 'type' => 'inscription_confirmation',
                 'title' => 'Inscription confirmée',
-                'message' => "L'inscription de {$etudiant->prenoms} {$etudiant->nom} a été enregistrée pour l'année {$data['anneeUniversitaire']}.",
+                'message' => "L'inscription de {$etudiant->nom} {$etudiant->prenoms} a été enregistrée pour l'année {$data['anneeUniversitaire']}.",
                 'is_read' => false,
             ]);
 
@@ -2628,7 +2628,7 @@ class NotificationService
 
             $data = [
                 'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
-                'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                'studentName' => $etudiant->nom . ' ' . $etudiant->prenoms,
                 'montant' => $paiement->montant,
                 'reference' => $paiement->reference_paiement ?? 'N/A',
                 'numeroRecu' => $paiement->numero_recu ?? 'En cours de génération',
@@ -2656,7 +2656,7 @@ class NotificationService
                 'user_id' => $etudiant->user_id,
                 'type' => 'paiement_valide',
                 'title' => 'Paiement validé',
-                'message' => "Le paiement de {$paiement->montant} FCFA pour {$etudiant->prenoms} {$etudiant->nom} a été validé.",
+                'message' => "Le paiement de {$paiement->montant} FCFA pour {$etudiant->nom} {$etudiant->prenoms} a été validé.",
                 'is_read' => false,
             ]);
 
@@ -2693,7 +2693,7 @@ class NotificationService
 
             $data = [
                 'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
-                'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                'studentName' => $etudiant->nom . ' ' . $etudiant->prenoms,
                 'montant' => $paiement->montant,
                 'reference' => $paiement->reference_paiement ?? 'N/A',
                 'dateSoumission' => $paiement->created_at ? $paiement->created_at->format('d/m/Y H:i') : 'N/A',
@@ -2762,7 +2762,7 @@ class NotificationService
 
             $data = [
                 'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
-                'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                'studentName' => $etudiant->nom . ' ' . $etudiant->prenoms,
                 'classe' => $etudiant->inscriptions()->latest()->first()->classe->nom ?? 'N/A',
                 'date' => \Carbon\Carbon::parse($attendance->date)->format('d/m/Y'),
                 'heureDebut' => $attendance->heure_debut ?? '08:00',
@@ -2789,7 +2789,7 @@ class NotificationService
                 'user_id' => $etudiant->user_id,
                 'type' => 'absence',
                 'title' => 'Absence enregistrée',
-                'message' => "{$etudiant->prenoms} {$etudiant->nom} a été absent(e) le {$data['date']}.",
+                'message' => "{$etudiant->nom} {$etudiant->prenoms} a été absent(e) le {$data['date']}.",
                 'is_read' => false,
             ]);
 
@@ -2834,7 +2834,7 @@ class NotificationService
 
             $data = [
                 'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
-                'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                'studentName' => $etudiant->nom . ' ' . $etudiant->prenoms,
                 'classe' => $bulletin->classe->nom ?? 'N/A',
                 'periode' => $bulletin->periode,
                 'anneeUniversitaire' => $bulletin->anneeUniversitaire->annee ?? 'N/A',
@@ -2862,7 +2862,7 @@ class NotificationService
                 'user_id' => $etudiant->user_id,
                 'type' => 'bulletin_publie',
                 'title' => 'Bulletin disponible',
-                'message' => "Le bulletin de {$etudiant->prenoms} {$etudiant->nom} est disponible (Moyenne: {$bulletin->moyenne_generale}).",
+                'message' => "Le bulletin de {$etudiant->nom} {$etudiant->prenoms} est disponible (Moyenne: {$bulletin->moyenne_generale}).",
                 'is_read' => false,
             ]);
 
@@ -2915,7 +2915,7 @@ class NotificationService
             if ($moyenneGenerale < 10 || count($matieresFaibles) > 0) {
                 $data = [
                     'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
-                    'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                    'studentName' => $etudiant->nom . ' ' . $etudiant->prenoms,
                     'classe' => $bulletin->classe->nom ?? 'N/A',
                     'periode' => $bulletin->periode,
                     'moyenneGenerale' => $moyenneGenerale,
@@ -2940,7 +2940,7 @@ class NotificationService
                     'user_id' => $etudiant->user_id,
                     'type' => 'notes_faibles',
                     'title' => 'Alerte notes faibles',
-                    'message' => "{$etudiant->prenoms} {$etudiant->nom} a des difficultés académiques (Moyenne: {$moyenneGenerale}).",
+                    'message' => "{$etudiant->nom} {$etudiant->prenoms} a des difficultés académiques (Moyenne: {$moyenneGenerale}).",
                     'is_read' => false,
                 ]);
 
@@ -3004,8 +3004,8 @@ class NotificationService
             $schoolSettings = $this->getSchoolSettings();
 
             $data = [
-                'parentName' => $tuteur->prenoms . ' ' . $tuteur->nom,
-                'studentName' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
+                'studentName' => $etudiant->nom . ' ' . $etudiant->prenoms,
                 'matricule' => $etudiant->matricule ?? 'N/A',
                 'classe' => $inscription->classe->name ?? 'N/A',
                 'filiere' => $inscription->classe->filiere->name ?? 'N/A',
@@ -3027,7 +3027,7 @@ class NotificationService
                 'user_id' => $etudiant->user_id,
                 'type' => 'reinscription_confirmation',
                 'title' => 'Réinscription confirmée',
-                'message' => "La réinscription de {$etudiant->prenoms} {$etudiant->nom} a été enregistrée pour l'année {$data['anneeUniversitaire']} en classe {$data['classe']}.",
+                'message' => "La réinscription de {$etudiant->nom} {$etudiant->prenoms} a été enregistrée pour l'année {$data['anneeUniversitaire']} en classe {$data['classe']}.",
                 'is_read' => false,
             ]);
 

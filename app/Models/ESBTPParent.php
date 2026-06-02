@@ -84,7 +84,8 @@ class ESBTPParent extends Model
      */
     public function getNomCompletAttribute()
     {
-        return $this->prenoms . ' ' . $this->nom;
+        // Convention KLASSCI : NOM Prénoms (Côte d'Ivoire)
+        return trim($this->nom . ' ' . $this->prenoms);
     }
 
     /**

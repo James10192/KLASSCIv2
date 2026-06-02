@@ -172,7 +172,7 @@ class PaymentFilterService
                     'matricule' => $etudiant?->matricule,
                     'nom' => $etudiant?->nom,
                     'prenoms' => $etudiant?->prenoms,
-                    'full_name' => $etudiant ? trim($etudiant->prenoms . ' ' . $etudiant->nom) : null,
+                    'full_name' => $etudiant ? trim($etudiant->nom . ' ' . $etudiant->prenoms) : null,
                     'numero_recu' => $paiement->numero_recu,
                     'reference' => $paiement->reference_paiement,
                 ];

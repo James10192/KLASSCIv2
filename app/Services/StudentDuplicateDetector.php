@@ -85,7 +85,7 @@ class StudentDuplicateDetector
 
                 return [
                     'id'            => $candidate->id,
-                    'full_name'     => trim($candidate->prenoms . ' ' . $candidate->nom),
+                    'full_name'     => trim($candidate->nom . ' ' . $candidate->prenoms),
                     'matricule'     => $candidate->matricule,
                     'date_naissance'=> $candidate->date_naissance?->format('d/m/Y'),
                     'sexe'          => $candidate->sexe,

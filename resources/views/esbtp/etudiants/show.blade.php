@@ -71,8 +71,8 @@
 .hero-inner {
     position: relative; z-index: 200; /* au-dessus de .fiche-tabs-wrap (z-index:100) pour que le dropdown ne soit pas masqué */
     max-width: 1280px; margin: 0 auto;
-    padding: 32px 32px 28px;
-    display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+    padding: 16px 22px 14px; /* compact : -50% vertical (32→16) pour voir info sans scroll */
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
 }
 
 /* Avatar wrapper — permet le badge de statut */
@@ -80,42 +80,42 @@
     position: relative; flex-shrink: 0;
 }
 
-/* Avatar */
+/* Avatar — compact (96→64, gain -33%) */
 .hero-avatar {
-    width: 96px; height: 96px;
+    width: 64px; height: 64px;
     border-radius: 50%;
-    border: 3px solid rgba(255,255,255,.6);
+    border: 2px solid rgba(255,255,255,.6);
     background: rgba(255,255,255,.15);
     display: flex; align-items: center; justify-content: center;
-    font-size: 2.2rem; font-weight: 700; color: rgba(255,255,255,.9);
+    font-size: 1.4rem; font-weight: 700; color: rgba(255,255,255,.9);
     overflow: hidden;
-    box-shadow: 0 4px 20px rgba(0,0,0,.22);
+    box-shadow: 0 2px 10px rgba(0,0,0,.18);
     backdrop-filter: blur(4px);
 }
 .hero-avatar img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 /* Badge de statut — petit rond coloré en bas à droite de l'avatar */
 .hero-avatar-status {
-    position: absolute; bottom: 4px; right: 4px;
-    width: 18px; height: 18px; border-radius: 50%;
-    border: 3px solid rgba(4,83,203,.85);
-    box-shadow: 0 1px 4px rgba(0,0,0,.3);
+    position: absolute; bottom: 2px; right: 2px;
+    width: 13px; height: 13px; border-radius: 50%;
+    border: 2px solid rgba(4,83,203,.85);
+    box-shadow: 0 1px 3px rgba(0,0,0,.3);
 }
 .hero-avatar-status.actif    { background: #10b981; }
 .hero-avatar-status.inactif  { background: #94a3b8; }
 .hero-avatar-status.abandon  { background: #ef4444; }
 
-/* Bouton upload photo — overlay camera sur l'avatar */
+/* Bouton upload photo — overlay camera sur l'avatar (compact) */
 .hero-avatar-upload {
     position: absolute; bottom: -2px; left: -2px;
-    width: 30px; height: 30px; border-radius: 50%;
+    width: 22px; height: 22px; border-radius: 50%;
     background: rgba(4,83,203,.85);
     border: 2px solid white;
     display: flex; align-items: center; justify-content: center;
     cursor: pointer;
-    color: white; font-size: 0.7rem;
+    color: white; font-size: 0.55rem;
     transition: all 0.2s ease;
-    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+    box-shadow: 0 2px 6px rgba(0,0,0,.22);
     z-index: 2;
 }
 .hero-avatar-upload:hover {
@@ -129,17 +129,17 @@
 }
 .hero-avatar-upload .fa-spin { font-size: 0.65rem; }
 
-/* Text block */
-.hero-text { flex: 1; min-width: 200px; color: #fff; }
-.hero-name { font-size: 1.65rem; font-weight: 800; letter-spacing: -.02em; margin: 0 0 3px; line-height: 1.2; }
-.hero-sub  { font-size: .88rem; opacity: .8; margin: 0 0 10px; }
-.hero-pills { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; }
+/* Text block (compact) */
+.hero-text { flex: 1; min-width: 180px; color: #fff; }
+.hero-name { font-size: 1.15rem; font-weight: 700; letter-spacing: -.01em; margin: 0 0 2px; line-height: 1.18; }
+.hero-sub  { font-size: .76rem; opacity: .78; margin: 0 0 6px; line-height: 1.3; }
+.hero-pills { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
 .hero-pill {
-    display: inline-flex; align-items: center; gap: 5px;
+    display: inline-flex; align-items: center; gap: 4px;
     background: rgba(255,255,255,.18); backdrop-filter: blur(6px);
     border: 1px solid rgba(255,255,255,.28);
-    color: #fff; font-size: .76rem; font-weight: 600;
-    padding: 3px 11px; border-radius: 20px;
+    color: #fff; font-size: .68rem; font-weight: 600;
+    padding: 2px 9px; border-radius: 999px;
     white-space: nowrap;
 }
 .hero-pill.green  { background: rgba(16,185,129,.25); border-color: rgba(16,185,129,.4); }
@@ -152,14 +152,14 @@
     font-size: .74rem; letter-spacing: .02em;
 }
 
-/* Actions in hero — poussées à droite */
-.hero-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-left: auto; }
-.hero-btns { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+/* Actions in hero — poussées à droite (compact) */
+.hero-actions { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; margin-left: auto; }
+.hero-btns { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .hero-btn {
-    display: inline-flex; align-items: center; gap: 6px;
-    padding: 9px 18px; border-radius: 8px; font-size: .82rem; font-weight: 600;
+    display: inline-flex; align-items: center; gap: 5px;
+    padding: 5px 12px; border-radius: 7px; font-size: .74rem; font-weight: 600;
     text-decoration: none; cursor: pointer; border: none; transition: all .18s;
-    white-space: nowrap;
+    white-space: nowrap; line-height: 1.2;
 }
 .hero-btn.primary { background: rgba(255,255,255,.95); color: var(--k-blue); }
 .hero-btn.primary:hover { background: #fff; color: var(--k-blue); box-shadow: 0 4px 16px rgba(0,0,0,.15); }
@@ -168,23 +168,23 @@
 .hero-btn.danger { background: rgba(239,68,68,.2); color: #fff; border: 1px solid rgba(239,68,68,.4); }
 .hero-btn.danger:hover { background: rgba(239,68,68,.35); }
 
-/* ── Mini KPI Strip (inside hero, above tabs) ────────────────────── */
+/* ── Mini KPI Strip compact (inside hero, above tabs) ────────────────────── */
 .hero-kpi-strip {
     position: relative; z-index: 1;
     max-width: 1280px; margin: 0 auto;
     display: flex; gap: 0;
     border-top: 1px solid rgba(255,255,255,.15);
-    margin-top: 4px;
+    margin-top: 2px;
 }
 .hero-kpi {
-    flex: 1; padding: 14px 20px;
-    display: flex; align-items: center; gap: 12px;
+    flex: 1; padding: 8px 14px;
+    display: flex; align-items: center; gap: 9px;
     border-right: 1px solid rgba(255,255,255,.1);
     color: #fff;
 }
 .hero-kpi:last-child { border-right: none; }
-.hero-kpi-icon { font-size: 1rem; opacity: .7; }
-.hero-kpi-val { font-size: 1.1rem; font-weight: 700; line-height: 1; }
+.hero-kpi-icon { font-size: .85rem; opacity: .7; }
+.hero-kpi-val { font-size: .95rem; font-weight: 700; line-height: 1; }
 .hero-kpi-lbl { font-size: .7rem; opacity: .7; letter-spacing: .04em; text-transform: uppercase; margin-top: 2px; }
 
 /* ── Tab Bar ─────────────────────────────────────────────────────── */
@@ -5523,7 +5523,7 @@
                 </div>
                 <div class="dum-header-texts">
                     <h4 class="dum-header-title" id="docUploadModalLabel">Ajouter un document</h4>
-                    <p class="dum-header-sub">{{ $etudiant->prenoms }} {{ $etudiant->nom }}</p>
+                    <p class="dum-header-sub">{{ $etudiant->nom_complet }}</p>
                 </div>
             </div>
 

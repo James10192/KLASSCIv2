@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Finaliser la Réinscription - ' . $analyse['etudiant']->prenoms . ' ' . $analyse['etudiant']->nom)
+@section('title', 'Finaliser la Réinscription - ' . $analyse['etudiant']->nom . ' ' . $analyse['etudiant']->prenoms)
 
 @section('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
@@ -211,7 +211,7 @@
         <div class="dashboard-header">
             <div class="header-left">
                 <h1>Finaliser la Réinscription</h1>
-                <p class="header-subtitle">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }} - De {{ $anneeEtudiantActuelle }} vers <span id="anneeDestinationDisplay">{{ $anneeDestinationName }}</span></p>
+                <p class="header-subtitle">{{ $analyse['etudiant']->nom }} {{ $analyse['etudiant']->prenoms }} - De {{ $anneeEtudiantActuelle }} vers <span id="anneeDestinationDisplay">{{ $anneeDestinationName }}</span></p>
             </div>
             <div class="header-actions">
                 <a href="{{ route('esbtp.reinscription.show', $analyse['etudiant']->id) }}?annee_academique={{ $anneeAcademique }}" class="btn-acasi secondary">
@@ -325,7 +325,7 @@
                         <div class="col-md-6">
                             <div class="form-group-moderne form-group-disabled">
                                 <label class="form-label-moderne">Nom complet</label>
-                                <input type="text" class="form-control-moderne" value="{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }}" readonly>
+                                <input type="text" class="form-control-moderne" value="{{ $analyse['etudiant']->nom }} {{ $analyse['etudiant']->prenoms }}" readonly>
                             </div>
                         </div>
                         <div class="col-md-6">

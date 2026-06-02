@@ -1075,7 +1075,7 @@ class ESBTPEtudiantController extends Controller
 
             // Créer le compte utilisateur
             $user = User::create([
-                'name' => $etudiant->prenoms . ' ' . $etudiant->nom,
+                'name' => $etudiant->nom . ' ' . $etudiant->prenoms,
                 'first_name' => $etudiant->prenoms,
                 'last_name' => $etudiant->nom,
                 'email' => $email,
@@ -1248,7 +1248,7 @@ class ESBTPEtudiantController extends Controller
             ->map(function($etudiant) {
                 return [
                     'id' => $etudiant->id,
-                    'text' => "{$etudiant->matricule} - {$etudiant->prenoms} {$etudiant->nom}"
+                    'text' => "{$etudiant->matricule} - {$etudiant->nom} {$etudiant->prenoms}"
                 ];
             });
 

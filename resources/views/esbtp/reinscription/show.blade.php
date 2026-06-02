@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Détails Réinscription - ' . $analyse['etudiant']->prenom . ' ' . $analyse['etudiant']->nom)
+@section('title', 'Détails Réinscription - ' . $analyse['etudiant']->nom . ' ' . $analyse['etudiant']->prenom)
 @php
     use Illuminate\Support\Str;
 @endphp
@@ -84,7 +84,7 @@
         <div class="dashboard-header">
             <div class="header-left">
                 <h1>Détails de Réinscription</h1>
-                <p class="header-subtitle">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }}</p>
+                <p class="header-subtitle">{{ $analyse['etudiant']->nom }} {{ $analyse['etudiant']->prenoms }}</p>
             </div>
             <div class="header-actions">
                 <a href="{{ route('esbtp.reinscription.index') }}?annee_academique={{ $anneeAcademique }}" class="btn-acasi secondary">
@@ -130,7 +130,7 @@
                             <i class="fas fa-user fa-2x" style="color: var(--text-muted);"></i>
                         @endif
                     </div>
-                    <h3 style="color: var(--primary); margin-bottom: var(--space-lg);">{{ $analyse['etudiant']->prenoms }} {{ $analyse['etudiant']->nom }}</h3>
+                    <h3 style="color: var(--primary); margin-bottom: var(--space-lg);">{{ $analyse['etudiant']->nom }} {{ $analyse['etudiant']->prenoms }}</h3>
 
                     <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); text-align: left;">
                         <div>

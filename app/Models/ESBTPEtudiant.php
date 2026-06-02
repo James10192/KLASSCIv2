@@ -224,12 +224,14 @@ class ESBTPEtudiant extends Model implements Auditable
 
     /**
      * Obtenir le nom complet de l'étudiant.
+     * Convention KLASSCI : NOM en premier (familial), Prénoms ensuite.
+     * Cohérent avec l'usage en Côte d'Ivoire et les documents officiels.
      *
      * @return string
      */
     public function getNomCompletAttribute()
     {
-        return $this->prenoms . ' ' . $this->nom;
+        return trim($this->nom . ' ' . $this->prenoms);
     }
 
     /**

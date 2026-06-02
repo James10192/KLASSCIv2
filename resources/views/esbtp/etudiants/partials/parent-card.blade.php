@@ -7,7 +7,7 @@
             <h6 class="mb-1 text-primary" style="font-weight: 600;">
                 <i class="fas fa-user-friends me-2"></i>Parent / Tuteur #{{ $index + 1 }}
             </h6>
-            <small class="text-muted">{{ $parent->prenoms }} {{ $parent->nom }}</small>
+            <small class="text-muted">{{ $parent->nom }} {{ $parent->prenoms }}</small>
         </div>
         <div class="d-flex align-items-center gap-2">
             <span class="badge bg-light text-dark border">{{ $relation }}</span>

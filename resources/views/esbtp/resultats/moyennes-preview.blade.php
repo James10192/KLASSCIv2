@@ -601,7 +601,7 @@
                         <i class="fas fa-edit me-2" style="opacity:.85"></i>Modification des moyennes
                     </h1>
                     <p class="mp-hero-sub">
-                        {{ $etudiant->prenoms }} {{ $etudiant->nom }}
+                        {{ $etudiant->nom_complet }}
                         &nbsp;·&nbsp;
                         {{ $classe->name }}
                         &nbsp;·&nbsp;

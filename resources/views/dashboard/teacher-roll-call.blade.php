@@ -353,7 +353,7 @@
                                 {{ substr($etudiant->prenoms ?? $etudiant->nom ?? 'E', 0, 1) }}
                             </div>
                             <div class="student-details">
-                                <h6>{{ ($etudiant->prenoms && $etudiant->nom) ? $etudiant->prenoms . ' ' . $etudiant->nom : ($etudiant->user->name ?? 'Nom non défini') }}</h6>
+                                <h6>{{ ($etudiant->prenoms && $etudiant->nom) ? $etudiant->nom . ' ' . $etudiant->prenoms : ($etudiant->user->name ?? 'Nom non défini') }}</h6>
                                 <small>{{ $etudiant->matricule ?? 'Matricule non défini' }}</small>
                             </div>
                         </div>

@@ -45,7 +45,7 @@ class InscriptionSearchService
                     'nom' => $etudiant?->nom,
                     'prenoms' => $etudiant?->prenoms,
                     'full_name' => $etudiant
-                        ? trim($etudiant->prenoms . ' ' . $etudiant->nom)
+                        ? trim($etudiant->nom . ' ' . $etudiant->prenoms)
                         : null,
                     'classe' => $inscription->classe?->name,
                     'numero_inscription' => $inscription->numero_inscription,
