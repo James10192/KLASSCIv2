@@ -98,7 +98,8 @@ class ESBTPEtudiantController extends Controller
             });
         }
 
-        $perPage = 15;
+        // Infinite scroll : 30 items par "page" (sentinel charge la suivante)
+        $perPage = (int) $request->input('per_page', 30);
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
 
         if ($search) {
@@ -167,6 +168,27 @@ class ESBTPEtudiantController extends Controller
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
 
+        // Étudiants pour modal Réinscription groupée : TOUS les étudiants ayant une inscription
+        // sur l'année courante (pas limité à la pagination 15 de la table). Payload léger
+        // (id+matricule+nom+classe) ~100B/étudiant → 250KB pour 2500 étudiants, acceptable.
+        $anneeEnCoursForBulk = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $etudiantsForBulk = ESBTPEtudiant::query()
+            ->select('id', 'matricule', 'nom', 'prenoms')
+            ->when($anneeEnCoursForBulk, function ($q) use ($anneeEnCoursForBulk) {
+                $q->whereHas('inscriptions', function ($sub) use ($anneeEnCoursForBulk) {
+                    $sub->where('annee_universitaire_id', $anneeEnCoursForBulk->id);
+                });
+            })
+            ->with(['inscriptions' => function ($q) use ($anneeEnCoursForBulk) {
+                if ($anneeEnCoursForBulk) {
+                    $q->where('annee_universitaire_id', $anneeEnCoursForBulk->id);
+                }
+                $q->with('classe:id,name');
+            }])
+            ->orderBy('nom')
+            ->orderBy('prenoms')
+            ->get();
+
         if ($request->ajax()) {
             return response()->json([
                 'html' => view('esbtp.etudiants.partials.results', [
@@ -178,6 +200,7 @@ class ESBTPEtudiantController extends Controller
 
         return view('esbtp.etudiants.index', compact(
             'etudiants',
+            'etudiantsForBulk',
             'filieres',
             'niveaux',
             'annees',

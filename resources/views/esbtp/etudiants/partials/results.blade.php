@@ -6,40 +6,66 @@
 {{-- Compteur inline (affiché dans le header de section via JS) --}}
 <div id="student-count-inline" style="display:none;" data-total="{{ $etudiants->total() }}" data-page="{{ $etudiants->count() }}" data-has-pages="{{ $etudiants->total() > $etudiants->perPage() ? '1' : '0' }}"></div>
 
-<!-- Vue Desktop : Tableau (visible > 992px) -->
-<div class="table-responsive desktop-view">
-    <table class="table table-hover align-middle mb-0" id="etudiants-table">
-        <thead class="bg-primary text-white">
+<style>
+    /* Premium table — namespace eu-* (Étudiants index) */
+    .eu-table-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.04); }
+    .eu-table-wrap { overflow-x: clip; overflow-y: visible; }
+    .eu-table { width: 100%; border-collapse: separate; border-spacing: 0; }
+    .eu-table thead th { background: #f8fafc; color: #475569; font-size: .72rem; text-transform: uppercase; letter-spacing: .05em; font-weight: 600; padding: .85rem 1rem; border-bottom: 1px solid #e2e8f0; text-align: left; white-space: nowrap; }
+    .eu-table thead .eu-sort-btn { background: none; border: none; color: inherit; font: inherit; padding: 0; cursor: pointer; display: inline-flex; align-items: center; gap: .25rem; }
+    .eu-table thead .eu-sort-btn:hover { color: #0453cb; }
+    .eu-table tbody tr { transition: background-color .15s ease, transform .15s ease; cursor: pointer; }
+    .eu-table tbody tr:hover { background-color: #f0f4fa; }
+    .eu-table tbody tr.eu-row-pending { background-color: rgba(245,158,11,.06); }
+    .eu-table tbody tr.eu-row-pending:hover { background-color: rgba(245,158,11,.12); }
+    .eu-table tbody td { padding: .85rem 1rem; vertical-align: middle; border-bottom: 1px solid #f1f5f9; font-size: .82rem; color: #1e293b; }
+    .eu-table tbody tr:last-child td { border-bottom: none; }
+    .eu-photo, .eu-photo-placeholder { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; box-shadow: 0 1px 3px rgba(15,23,42,.08); display: flex; align-items: center; justify-content: center; background: #f1f5f9; color: #94a3b8; flex-shrink: 0; }
+    .eu-name { font-weight: 600; color: #1e293b; }
+    .eu-matricule { font-family: 'Courier New', monospace; font-size: .76rem; color: #0453cb; background: rgba(4,83,203,.08); padding: .15rem .45rem; border-radius: 5px; font-weight: 700; letter-spacing: .3px; white-space: nowrap; }
+    .eu-classe-main { font-weight: 600; }
+    .eu-classe-sub { font-size: .72rem; color: #64748b; margin-top: .15rem; }
+    .eu-lmd-badge { font-size: .58rem; font-weight: 700; color: #0453cb; background: rgba(4,83,203,.1); border: 1px solid rgba(4,83,203,.25); padding: .1rem .35rem; border-radius: 4px; letter-spacing: .4px; vertical-align: middle; margin-left: .25rem; }
+    .eu-status-badge { display: inline-flex; align-items: center; gap: .3rem; padding: .25rem .65rem; border-radius: 999px; font-size: .68rem; font-weight: 700; }
+    .eu-status-badge--success { background: rgba(16,185,129,.12); color: #047857; }
+    .eu-status-badge--info { background: rgba(4,83,203,.1); color: #0453cb; }
+    .eu-status-badge--danger { background: rgba(220,38,38,.12); color: #b91c1c; }
+    .eu-status-badge--warning { background: rgba(245,158,11,.14); color: #92400e; }
+    .eu-actions { display: flex; gap: .3rem; justify-content: flex-end; }
+    .eu-action-btn { width: 30px; height: 30px; border-radius: 7px; border: 1px solid #e2e8f0; background: #fff; color: #475569; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all .15s ease; font-size: .78rem; text-decoration: none; }
+    .eu-action-btn:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(15,23,42,.1); }
+    .eu-action-btn--view { color: #0453cb; }
+    .eu-action-btn--view:hover { background: #0453cb; color: #fff; border-color: #0453cb; }
+    .eu-action-btn--edit { color: #d97706; }
+    .eu-action-btn--edit:hover { background: #d97706; color: #fff; border-color: #d97706; }
+    .eu-action-btn--validate { color: #10b981; }
+    .eu-action-btn--validate:hover { background: #10b981; color: #fff; border-color: #10b981; }
+    .eu-empty { padding: 3rem 1rem; text-align: center; color: #94a3b8; }
+    .eu-empty i { font-size: 2rem; margin-bottom: .75rem; display: block; color: #cbd5e1; }
+    /* Indication visuelle que la row est cliquable */
+    .eu-table tbody tr:hover .eu-name { color: #0453cb; }
+</style>
+
+<!-- Vue Desktop : Tableau premium (visible > 992px) -->
+<div class="eu-table-card desktop-view">
+    <div class="eu-table-wrap">
+    <table class="eu-table" id="etudiants-table">
+        <thead>
             <tr>
-                <th>
-                    <button type="button" class="btn btn-link text-white text-decoration-none p-0 table-sort" data-column="matricule">
-                        Matricule <i class="fas fa-sort ms-1"></i>
-                    </button>
-                </th>
-                <th>Photo</th>
-                <th>
-                    <button type="button" class="btn btn-link text-white text-decoration-none p-0 table-sort" data-column="nom">
-                        Nom complet <i class="fas fa-sort ms-1"></i>
-                    </button>
-                </th>
-                <th>Genre</th>
+                <th style="width:42px;"></th>
+                <th><button type="button" class="eu-sort-btn table-sort" data-column="matricule">Matricule <i class="fas fa-sort"></i></button></th>
+                <th><button type="button" class="eu-sort-btn table-sort" data-column="nom">Nom complet <i class="fas fa-sort"></i></button></th>
                 <th>Contact</th>
-                <th>Résidence</th>
-                <th>
-                    <button type="button" class="btn btn-link text-white text-decoration-none p-0 table-sort" data-column="classe">
-                        Classe actuelle <i class="fas fa-sort ms-1"></i>
-                    </button>
-                </th>
-                <th>
-                    <button type="button" class="btn btn-link text-white text-decoration-none p-0 table-sort" data-column="date">
-                        Date inscription <i class="fas fa-sort ms-1"></i>
-                    </button>
-                </th>
-                <th>Statut d'affectation</th>
-                <th>Actions</th>
+                <th><button type="button" class="eu-sort-btn table-sort" data-column="classe">Classe · Filière <i class="fas fa-sort"></i></button></th>
+                <th><button type="button" class="eu-sort-btn table-sort" data-column="date">Inscription <i class="fas fa-sort"></i></button></th>
+                <th>Affectation</th>
+                <th style="text-align:right;">Actions</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="etudiants-tbody"
+               data-has-more="{{ $etudiants->hasMorePages() ? '1' : '0' }}"
+               data-next-page="{{ $etudiants->currentPage() + 1 }}"
+               data-current-page="{{ $etudiants->currentPage() }}">
             @forelse ($etudiants as $etudiant)
                 @php
                     $pendingInscription = $etudiant->pending_inscriptions->first();
@@ -92,49 +118,39 @@
                         ->where('workflow_step', 'etudiant_cree')
                         ->first() : null;
                 @endphp
-                <tr @if($pendingInscription) class="table-warning" @endif
+                <tr class="eu-row {{ $pendingInscription ? 'eu-row-pending' : '' }}"
+                    data-etudiant-id="{{ $etudiant->id }}"
+                    data-show-url="{{ route('esbtp.etudiants.show', $etudiant) }}"
                     data-sort-matricule="{{ strtoupper($etudiant->matricule) }}"
                     data-sort-nom="{{ strtoupper(trim($etudiant->nom . ' ' . $etudiant->prenoms)) }}"
                     data-sort-classe="{{ strtoupper(optional($latestInscription?->classe)->name ?? '') }}"
                     data-sort-date="{{ $latestDateSort }}">
-                    <td>{{ $etudiant->matricule }}</td>
-                    <td class="text-center">
+                    <td>
                         @if($etudiant->photo_url)
-                            <img src="{{ $etudiant->photo_url }}" alt="Photo" class="img-thumbnail rounded-circle shadow" style="width: 50px; height: 50px; object-fit: cover;">
+                            <img src="{{ $etudiant->photo_url }}" alt="" class="eu-photo">
                         @else
-                            <div class="bg-light d-flex align-items-center justify-content-center rounded-circle shadow" style="width: 50px; height: 50px;">
-                                <i class="fas fa-user text-secondary"></i>
-                            </div>
+                            <div class="eu-photo-placeholder"><i class="fas fa-user"></i></div>
                         @endif
                     </td>
+                    <td><span class="eu-matricule">{{ $etudiant->matricule }}</span></td>
                     <td>
-                        {{ $etudiant->nom }} {{ $etudiant->prenoms }}
+                        <span class="eu-name">{{ $etudiant->nom }} {{ $etudiant->prenoms }}</span>
                         @can('students.accessibility.view')
                             @if($etudiant->accessibilityProfile)
-                                <i class="fas fa-universal-access ms-1" style="color:#0453cb;cursor:help;"
+                                <i class="fas fa-universal-access ms-1" style="color:#0453cb;cursor:help;font-size:.78rem;"
                                    title="{{ $etudiant->accessibilityProfile->summaryBadge() }}{{ $etudiant->accessibilityProfile->short_description ? ' — ' . $etudiant->accessibilityProfile->short_description : '' }}"></i>
                             @endif
                         @endcan
                         @if($pendingInscription)
-                            <span class="badge bg-warning text-dark ms-2">Inscription en attente</span>
+                            <span class="eu-status-badge eu-status-badge--warning" style="margin-left:.4rem;"><i class="fas fa-hourglass-half"></i>En attente</span>
                         @endif
                         @if(!empty($etudiant->bts_journey_ui))
-                            <div class="mt-2">
-                                @include('esbtp.partials.bts-journey-badge', ['btsJourney' => $etudiant->bts_journey_ui])
-                            </div>
+                            <div style="margin-top:.3rem;">@include('esbtp.partials.bts-journey-badge', ['btsJourney' => $etudiant->bts_journey_ui])</div>
                         @endif
                     </td>
-                    <td>{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</td>
                     <td>
-                        {{ $etudiant->telephone }}<br>
-                        <small>{{ $etudiant->email }}</small>
-                    </td>
-                    <td>
-                        @if($etudiant->ville || $etudiant->commune)
-                            {{ $etudiant->ville }} {{ $etudiant->commune ? ', '.$etudiant->commune : '' }}
-                        @else
-                            <span class="text-muted">Non renseignée</span>
-                        @endif
+                        <div style="font-size:.78rem;color:#1e293b;">{{ $etudiant->telephone ?: '—' }}</div>
+                        @if($etudiant->email)<div style="font-size:.7rem;color:#64748b;margin-top:.1rem;">{{ $etudiant->email }}</div>@endif
                     </td>
                     <td>
                         @php
@@ -213,53 +229,38 @@
                             <span class="text-muted">Non inscrit</span>
                         @endif
                     </td>
+                    <td><span style="font-size:.74rem;color:#475569;">{{ $latestDate }}</span></td>
                     <td>
-                        <span class="badge bg-light text-dark border">{{ $latestDate }}</span>
-                    </td>
-                    <td>
-                        @if($inscriptionCourante)
-                            @if($inscriptionCourante->affectation_status == 'affecté')
-                                <span class="badge bg-success px-3 py-2">Affecté</span>
-                            @elseif($inscriptionCourante->affectation_status == 'réaffecté')
-                                <span class="badge bg-info px-3 py-2">Réaffecté</span>
-                            @elseif($inscriptionCourante->affectation_status == 'non_affecté')
-                                <span class="badge bg-danger px-3 py-2">Non affecté</span>
-                            @else
-                                <span class="text-muted">-</span>
-                            @endif
-                        @elseif($etudiant->inscriptions->count() > 0)
-                            <?php $derniere = $etudiant->inscriptions->sortByDesc('created_at')->first(); ?>
-                            @if($derniere->affectation_status)
-                                @if($derniere->affectation_status == 'affecté')
-                                    <span class="badge bg-success px-2 py-1">Affecté</span>
-                                @elseif($derniere->affectation_status == 'réaffecté')
-                                    <span class="badge bg-info px-2 py-1">Réaffecté</span>
-                                @elseif($derniere->affectation_status == 'non_affecté')
-                                    <span class="badge bg-danger px-2 py-1">Non affecté</span>
-                                @endif
-                            @else
-                                <span class="text-muted small">Pas d'affectation ({{ $currentYear->name ?? 'N/A' }})</span>
-                            @endif
+                        @php
+                            $affectStatus = $inscriptionCourante?->affectation_status
+                                ?? ($etudiant->inscriptions->isNotEmpty() ? $etudiant->inscriptions->sortByDesc('created_at')->first()->affectation_status : null);
+                            $affectMap = [
+                                'affecté'     => ['eu-status-badge--success', 'Affecté'],
+                                'réaffecté'   => ['eu-status-badge--info', 'Réaffecté'],
+                                'non_affecté' => ['eu-status-badge--danger', 'Non affecté'],
+                            ];
+                            $affectInfo = $affectMap[$affectStatus] ?? null;
+                        @endphp
+                        @if($affectInfo)
+                            <span class="eu-status-badge {{ $affectInfo[0] }}">{{ $affectInfo[1] }}</span>
                         @else
-                            <span class="text-muted small">Pas d'inscription ({{ $currentYear->name ?? 'N/A' }})</span>
+                            <span style="font-size:.7rem;color:#94a3b8;">—</span>
                         @endif
                     </td>
                     <td>
-                        <div class="d-flex flex-wrap gap-1">
-                            <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="btn btn-primary btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1" title="Voir les détails">
+                        <div class="eu-actions" data-row-actions>
+                            <a href="{{ route('esbtp.etudiants.show', $etudiant) }}" class="eu-action-btn eu-action-btn--view" title="Voir les détails" data-stop-propagation>
                                 <i class="fas fa-eye"></i>
                             </a>
                             @can('students.edit')
-                            <button type="button"
-                                class="btn btn-warning btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1 btn-open-edit-modal"
-                                title="Modifier"
+                            <button type="button" class="eu-action-btn eu-action-btn--edit btn-open-edit-modal" title="Modifier" data-stop-propagation
                                 data-student='@json($studentDataset, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT)'>
                                 <i class="fas fa-edit"></i>
                             </button>
                             @endcan
                             @if($pendingInscription)
                                 @can('inscriptions.validate')
-                                <button type="button" class="btn btn-success btn-sm rounded-pill shadow-sm d-inline-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}" title="Valider l'inscription">
+                                <button type="button" class="eu-action-btn eu-action-btn--validate" data-bs-toggle="modal" data-bs-target="#validationModal{{ $pendingInscription->id }}" title="Valider l'inscription" data-stop-propagation>
                                     <i class="fas fa-check"></i>
                                 </button>
                                 @includeIf('esbtp.etudiants._validation_modal', ['pendingInscription' => $pendingInscription, 'etudiant' => $etudiant])
@@ -270,11 +271,37 @@
                 </tr>
             @empty
                 <tr>
-                    <td colspan="11" class="text-center">Aucun étudiant trouvé</td>
+                    <td colspan="8">
+                        <div class="eu-empty">
+                            <i class="fas fa-user-slash"></i>
+                            <p style="margin:0;font-weight:600;">Aucun étudiant trouvé</p>
+                            <p style="margin:.3rem 0 0;font-size:.78rem;">Essayez d'élargir les filtres ou créez une nouvelle inscription.</p>
+                        </div>
+                    </td>
                 </tr>
             @endforelse
         </tbody>
     </table>
+    </div>{{-- /.eu-table-wrap --}}
+
+    {{-- Sentinel infinite scroll : IntersectionObserver détecte sa visibilité et trigger loadMore() --}}
+    @if($etudiants->total() > 0)
+        <div id="etudiants-sentinel"
+             style="padding: 1.1rem 1rem; text-align: center; border-top: 1px dashed #e2e8f0;"
+             data-current-page="{{ $etudiants->currentPage() }}"
+             data-last-page="{{ $etudiants->lastPage() }}"
+             data-total="{{ $etudiants->total() }}">
+            <div class="eu-sentinel-spinner" style="display:none; align-items:center; justify-content:center; gap:.6rem; color:#0453cb; font-size:.85rem; font-weight:600;">
+                <i class="fas fa-spinner fa-spin"></i><span>Chargement...</span>
+            </div>
+            @if(! $etudiants->hasMorePages() && $etudiants->total() > 0)
+                <div style="display:flex; align-items:center; justify-content:center; gap:.5rem; color:#64748b; font-size:.78rem; font-style:italic;">
+                    <i class="fas fa-check-circle" style="color:#10b981;"></i>
+                    <span>Toutes les {{ $etudiants->total() }} fiches affichées.</span>
+                </div>
+            @endif
+        </div>
+    @endif
 </div>
 
 <!-- Vue Mobile : Cards Grid (visible ≤ 992px) -->
@@ -510,6 +537,4 @@
     </div>
 </div>
 
-<div class="d-flex justify-content-center mt-4">
-    {{ $etudiants->links() }}
-</div>
+{{-- Pagination Laravel remplacée par infinite scroll (sentinel ci-dessus, JS dans index) --}}

@@ -111,9 +111,9 @@
                                 <div class="brm-result-actions">
                                     <a :href="'{{ route('esbtp.reinscription.show', ['etudiant' => 0]) }}'.replace('/0', '/' + r.etudiant_id)"
                                        class="brm-btn brm-btn--primary brm-btn--sm"
-                                       target="_blank">
+                                       title="Finaliser la réinscription pour cet étudiant">
                                         <i class="fas fa-arrow-right"></i>
-                                        Détail
+                                        Finaliser
                                     </a>
                                 </div>
                             </div>

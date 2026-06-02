@@ -3464,51 +3464,65 @@
 </div>
 </div>
 
-<!-- Modal d'édition rapide -->
-<div class="modal modal-modern" id="etudiantEditModal" tabindex="-1" aria-labelledby="etudiantEditModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
+<!-- Modal d'édition rapide premium — namespace eqe-* (Edit Quick Etudiant) -->
+<style>
+.eqe-modal .modal-content { border-radius: 16px; overflow: hidden; border: 1px solid rgba(4,83,203,.12); }
+.eqe-header { background: linear-gradient(135deg, #0453cb 0%, #3b7ddb 100%); color: #fff; padding: 1rem 1.25rem; display: flex; align-items: center; gap: .85rem; border-bottom: none; }
+.eqe-header-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(255,255,255,.16); display: flex; align-items: center; justify-content: center; font-size: 1.1rem; flex-shrink: 0; }
+.eqe-header-text { flex: 1; min-width: 0; }
+.eqe-header-eyebrow { color: rgba(255,255,255,.7); font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; margin: 0 0 .15rem; }
+.eqe-header-title { color: #fff; font-size: 1.05rem; font-weight: 700; margin: 0; line-height: 1.15; }
+.eqe-close { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.22); border-radius: 8px; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background .15s ease; }
+.eqe-close:hover { background: rgba(255,255,255,.28); }
+.eqe-body { padding: 0; background: #f8fafc; }
+.eqe-tabs { display: flex; gap: .35rem; padding: .55rem .85rem 0; background: #fff; border-bottom: 1px solid #e2e8f0; }
+.eqe-tab { display: inline-flex; align-items: center; gap: .4rem; padding: .55rem 1rem; border-radius: 9px 9px 0 0; background: transparent; color: #475569; border: none; border-bottom: 2px solid transparent; font-size: .82rem; font-weight: 600; cursor: pointer; transition: all .12s ease; }
+.eqe-tab:hover { color: #0453cb; background: rgba(4,83,203,.05); }
+.eqe-tab.active { color: #0453cb; border-bottom-color: #0453cb; background: rgba(4,83,203,.05); }
+.eqe-tab-content { padding: 0; min-height: 480px; }
+.eqe-pane { display: none; padding: 0; }
+.eqe-pane.active { display: block; }
+.eqe-iframe-wrap { position: relative; min-height: 520px; }
+.eqe-iframe-loader { position: absolute; inset: 0; background: rgba(255,255,255,.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; color: #475569; font-size: .82rem; gap: .5rem; }
+.eqe-iframe-loader .spinner-border { color: #0453cb; }
+.eqe-iframe-wrap iframe { width: 100%; min-height: 520px; border: none; background: #fff; }
+.eqe-inscriptions { padding: 1.25rem; background: #fff; }
+</style>
+<div class="modal fade eqe-modal" id="etudiantEditModal" tabindex="-1" aria-labelledby="etudiantEditModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header">
-                <div>
-                    <p class="text-uppercase text-muted small mb-1">Edition rapide</p>
-                    <h5 class="modal-title" id="etudiantEditModalLabel">Modifier l'étudiant</h5>
+            <div class="modal-header eqe-header">
+                <div class="eqe-header-icon"><i class="fas fa-user-pen"></i></div>
+                <div class="eqe-header-text">
+                    <p class="eqe-header-eyebrow">Édition rapide</p>
+                    <h5 class="eqe-header-title" id="etudiantEditModalLabel">Modifier l'étudiant</h5>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <button type="button" class="eqe-close" data-bs-dismiss="modal" aria-label="Fermer">
+                    <i class="fas fa-xmark"></i>
+                </button>
             </div>
-            <div class="modal-body">
-                <div class="student-tabs-container">
-                    <ul class="nav nav-tabs" id="editStudentTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="tab-etudiant-link" data-bs-toggle="tab" data-bs-target="#tab-etudiant" type="button" role="tab">
-                                <span class="tab-label">
-                                    <i class="fas fa-user-edit"></i>
-                                    Étudiant
-                                </span>
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="tab-inscriptions-link" data-bs-toggle="tab" data-bs-target="#tab-inscriptions" type="button" role="tab">
-                                <span class="tab-label">
-                                    <i class="fas fa-graduation-cap"></i>
-                                    Inscriptions
-                                </span>
-                            </button>
-                        </li>
-                    </ul>
+            <div class="modal-body eqe-body">
+                <div class="eqe-tabs" role="tablist">
+                    <button type="button" class="eqe-tab active" id="tab-etudiant-link" data-bs-toggle="tab" data-bs-target="#tab-etudiant" role="tab">
+                        <i class="fas fa-user-edit"></i>Étudiant
+                    </button>
+                    <button type="button" class="eqe-tab" id="tab-inscriptions-link" data-bs-toggle="tab" data-bs-target="#tab-inscriptions" role="tab">
+                        <i class="fas fa-graduation-cap"></i>Inscriptions
+                    </button>
                 </div>
-                <div class="tab-content modern-tab-content" id="editStudentTabContent">
-                    <div class="tab-pane fade show active" id="tab-etudiant" role="tabpanel">
-                        <div class="modal-iframe-wrapper" style="position:relative;">
-                            <div id="student-edit-loader" class="iframe-loader">
-                                <div class="spinner-border text-primary" role="status" style="width:2rem;height:2rem;"></div>
-                                <span style="font-size:0.85rem;color:#64748b;margin-top:0.5rem;">Chargement du formulaire...</span>
+                <div class="tab-content eqe-tab-content" id="editStudentTabContent">
+                    <div class="tab-pane fade show active eqe-pane active" id="tab-etudiant" role="tabpanel">
+                        <div class="eqe-iframe-wrap">
+                            <div id="student-edit-loader" class="eqe-iframe-loader">
+                                <div class="spinner-border" role="status" style="width:2rem;height:2rem;"></div>
+                                <span>Chargement du formulaire...</span>
                             </div>
-                            <iframe id="student-edit-frame" src="about:blank" title="Édition étudiant" loading="eager" class="border-0"></iframe>
+                            <iframe id="student-edit-frame" src="about:blank" title="Édition étudiant" loading="eager"></iframe>
                         </div>
                     </div>
-                    <div class="tab-pane fade" id="tab-inscriptions" role="tabpanel">
-                        <div id="inscriptions-accordion-container" class="accordion-modern text-muted w-100">
-                            Sélectionnez un étudiant pour afficher ses inscriptions.
+                    <div class="tab-pane fade eqe-pane" id="tab-inscriptions" role="tabpanel">
+                        <div id="inscriptions-accordion-container" class="eqe-inscriptions">
+                            <p style="color:#94a3b8; font-size:.82rem; margin:0;">Sélectionnez un étudiant pour afficher ses inscriptions.</p>
                         </div>
                     </div>
                 </div>
@@ -3517,7 +3531,7 @@
     </div>
 </div>
 
-@include('esbtp.reinscription.partials.bulk-modal', ['students' => $etudiants])
+@include('esbtp.reinscription.partials.bulk-modal', ['students' => $etudiantsForBulk ?? $etudiants])
 
 @if(request()->boolean('open_bulk'))
 <script>
@@ -3795,10 +3809,69 @@
         };
 
         function bindPagination() {
-            resultsContainer.querySelectorAll('.pagination a').forEach((link) => {
-                link.addEventListener('click', function (event) {
-                    event.preventDefault();
-                    fetchResults(this.href, { pushState: true });
+            // Infinite scroll : remplace la pagination Laravel.
+            // Observer la sentinelle, fetch page suivante, append rows au tbody.
+            bindInfiniteScroll();
+            // Click sur row → navigation vers fiche étudiant (sauf action buttons).
+            bindRowClick();
+        }
+
+        let infiniteObserver = null;
+        let infiniteLoading = false;
+        function bindInfiniteScroll() {
+            if (infiniteObserver) { infiniteObserver.disconnect(); infiniteObserver = null; }
+            const sentinel = document.getElementById('etudiants-sentinel');
+            const tbody = document.getElementById('etudiants-tbody');
+            if (!sentinel || !tbody) return;
+            infiniteObserver = new IntersectionObserver(async (entries) => {
+                for (const entry of entries) {
+                    if (!entry.isIntersecting || infiniteLoading) continue;
+                    if (tbody.dataset.hasMore !== '1') { infiniteObserver.disconnect(); continue; }
+                    infiniteLoading = true;
+                    const spinner = sentinel.querySelector('.eu-sentinel-spinner');
+                    if (spinner) spinner.style.display = 'flex';
+                    try {
+                        const nextPage = parseInt(tbody.dataset.nextPage || '2', 10);
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('page', String(nextPage));
+                        const res = await fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                        if (!res.ok) throw new Error('HTTP ' + res.status);
+                        const data = await res.json();
+                        const tmp = document.createElement('div');
+                        tmp.innerHTML = data.html || '';
+                        const newTbody = tmp.querySelector('#etudiants-tbody');
+                        if (newTbody) {
+                            Array.from(newTbody.children).forEach((row) => tbody.appendChild(row));
+                            tbody.dataset.hasMore = newTbody.dataset.hasMore || '0';
+                            tbody.dataset.nextPage = newTbody.dataset.nextPage || String(nextPage + 1);
+                            tbody.dataset.currentPage = newTbody.dataset.currentPage || String(nextPage);
+                        }
+                        const newSentinel = tmp.querySelector('#etudiants-sentinel');
+                        if (newSentinel) sentinel.innerHTML = newSentinel.innerHTML;
+                        // Re-bind row click on new rows
+                        bindRowClick();
+                    } catch (e) {
+                        console.error('Erreur infinite scroll étudiants:', e);
+                    } finally {
+                        infiniteLoading = false;
+                        if (spinner) spinner.style.display = 'none';
+                    }
+                }
+            }, { rootMargin: '200px' });
+            infiniteObserver.observe(sentinel);
+        }
+
+        function bindRowClick() {
+            document.querySelectorAll('.eu-row').forEach((tr) => {
+                if (tr.dataset.clickBound === '1') return;
+                tr.dataset.clickBound = '1';
+                tr.addEventListener('click', function (ev) {
+                    // Ignore si clic sur action button ou enfant marqué stop-propagation
+                    if (ev.target.closest('[data-stop-propagation]')) return;
+                    if (ev.target.closest('.eu-actions')) return;
+                    if (ev.target.closest('a, button')) return;
+                    const url = this.dataset.showUrl;
+                    if (url) window.location.href = url;
                 });
             });
         }
