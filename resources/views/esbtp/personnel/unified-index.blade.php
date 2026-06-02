@@ -1494,7 +1494,7 @@
                             @endif
                             @if($personnelAccess['enseignants']['create'] ?? false)
                             <li><a class="dropdown-item" href="{{ route('esbtp.enseignants.create') }}">
-                                <i class="fas fa-chalkboard-user"></i>Enseignant
+                                <i class="fas fa-user-graduate"></i>Enseignant
                             </a></li>
                             @endif
                             @if(($personnelAccess['secretaires']['create'] ?? false) && ($userRole ?? '') !== 'secretaire')
@@ -1675,7 +1675,7 @@
                 @endif
                 @if(in_array('enseignants', $visiblePersonnelTabs, true))
                 <button class="pu-tab slider-tab {{ $firstVisibleTab === 'enseignants' ? 'active' : '' }}" data-tab="enseignants">
-                    <span class="pu-tab-icon"><i class="fas fa-chalkboard-user"></i></span>
+                    <span class="pu-tab-icon"><i class="fas fa-user-graduate"></i></span>
                     <span class="pu-tab-label">Enseignants</span>
                     <span class="pu-tab-count">{{ $stats['enseignants'] ?? 0 }} personnes</span>
                 </button>
@@ -1888,7 +1888,7 @@
                             @endforeach
                         @else
                             <div class="pu-empty">
-                                <div class="pu-empty-icon"><i class="fas fa-chalkboard-user"></i></div>
+                                <div class="pu-empty-icon"><i class="fas fa-user-graduate"></i></div>
                                 <h3>Aucun enseignant</h3>
                                 <p>Commencez par créer votre premier enseignant.</p>
                                 @if($personnelAccess['enseignants']['create'] ?? false)
