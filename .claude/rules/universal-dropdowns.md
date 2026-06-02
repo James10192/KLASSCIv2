@@ -149,6 +149,30 @@ Le layout global :
    - Reste au-dessus des autres éléments (z-index)
    - N'est pas clippé par un parent overflow
 
+## Piège annexe : icônes FontAwesome dans les dropdown-items
+
+KLASSCI charge FA 6.4.0 Free via CDN. Certains noms d'icônes FA5 sont absents du
+subset Free :
+
+- ❌ `fa-chalkboard-teacher` (FA5, supprimé en FA6)
+- ❌ `fa-chalkboard-user` (FA6 mais content vide en 6.4.0 Free CDN)
+
+Symptôme : l'icône apparaît comme un caractère glitchy ou un carré. Le diagnostic
+dev-browser le confirme :
+```js
+window.getComputedStyle(icon, ':before').content  // → "" (vide = pas dans la font)
+```
+
+Icônes garantes Free 6.4.0 pour les personas KLASSCI :
+- Enseignant : `fa-user-graduate` ou `fa-user-tie`
+- Coordinateur : `fa-user-tie` ou `fa-users-cog`
+- Secrétaire : `fa-user-shield`
+- Comptable : `fa-calculator` ou `fa-coins`
+- Caissier : `fa-cash-register` ou `fa-money-bill-wave`
+
+Toujours tester une nouvelle icône via dev-browser ou Chrome devtools sur la page,
+pas seulement faire confiance au nom dans la documentation FA.
+
 ## Sites historiques validés par cette rule
 
 - `/esbtp/personnel/unified` : « Nouveau Personnel » dropdown (z-index 1051 local retiré, règle globale prend le relais)
