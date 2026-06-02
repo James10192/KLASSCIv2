@@ -449,11 +449,17 @@ class ESBTPResultatController extends Controller
                         $matiereMoyenne = $matiereData['sum'] / $matiereData['coeffSum'];
 
                         // Récupération du coefficient de la matière dans la classe
-                        $matiereCoefficient = $this->bulletinService->getCoefficientForCombination(
-                            $matiereId,
-                            $classe->id,
-                            $annee_universitaire_id
-                        );
+                        // Fallback 1 si missing (évite RuntimeException 'Coefficient manquant'
+                        // qui déclencherait un redirect vers evaluations.index)
+                        try {
+                            $matiereCoefficient = $this->bulletinService->getCoefficientForCombination(
+                                $matiereId,
+                                $classe->id,
+                                $annee_universitaire_id
+                            );
+                        } catch (\RuntimeException $e) {
+                            $matiereCoefficient = 1;
+                        }
 
                         // Application du coefficient de la matière
                         $totalPoints += $matiereMoyenne * $matiereCoefficient;
@@ -785,11 +791,20 @@ class ESBTPResultatController extends Controller
         foreach ($notesByMatiere as $matiere_id => &$matiereData) {
             // Récupère le coefficient officiel de la matière dans la classe.
             // Source de vérité = esbtp_matiere_coefficients (BulletinService).
-            $matiereData['matiere_coefficient'] = $this->bulletinService->getCoefficientForCombination(
-                (int) $matiere_id,
-                (int) $classe->id,
-                $annee_universitaire_id
-            ) ?: 1;
+            // Fallback 1 si missing : la page result detail doit rester accessible
+            // même quand coefficient manque (modal in-page configure ça après).
+            // SANS try/catch, RuntimeException 'Coefficient manquant' déclencherait
+            // un redirect vers evaluations.index — exactement ce que Marcel veut éviter.
+            try {
+                $matiereData['matiere_coefficient'] = $this->bulletinService->getCoefficientForCombination(
+                    (int) $matiere_id,
+                    (int) $classe->id,
+                    $annee_universitaire_id
+                ) ?: 1;
+            } catch (\RuntimeException $e) {
+                $matiereData['matiere_coefficient'] = 1;
+                $matiereData['matiere_coefficient_missing'] = true;
+            }
 
             if ($matiereData['total_coefficients'] > 0) {
                 $matiereData['moyenne'] = $matiereData['total_points'] / $matiereData['total_coefficients'];
@@ -831,11 +846,15 @@ class ESBTPResultatController extends Controller
 
             // Si la matière n'existe pas encore dans notesByMatiere, la créer
             if (! isset($notesByMatiere[$matiere_id])) {
-                $matiereCoefOfficiel = $this->bulletinService->getCoefficientForCombination(
-                    (int) $matiere_id,
-                    (int) $classe->id,
-                    $annee_universitaire_id
-                ) ?: ($resultat->coefficient ?: 1);
+                try {
+                    $matiereCoefOfficiel = $this->bulletinService->getCoefficientForCombination(
+                        (int) $matiere_id,
+                        (int) $classe->id,
+                        $annee_universitaire_id
+                    ) ?: ($resultat->coefficient ?: 1);
+                } catch (\RuntimeException $e) {
+                    $matiereCoefOfficiel = $resultat->coefficient ?: 1;
+                }
 
                 $notesByMatiere[$matiere_id] = [
                     'matiere' => $resultat->matiere,
@@ -874,11 +893,15 @@ class ESBTPResultatController extends Controller
             if (! empty($missingMatieresIds)) {
                 $missingMatieres = \App\Models\ESBTPMatiere::whereIn('id', $missingMatieresIds)->get();
                 foreach ($missingMatieres as $matiere) {
-                    $coef = $this->bulletinService->getCoefficientForCombination(
-                        (int) $matiere->id,
-                        (int) $classe->id,
-                        $annee_universitaire_id
-                    ) ?: 1;
+                    try {
+                        $coef = $this->bulletinService->getCoefficientForCombination(
+                            (int) $matiere->id,
+                            (int) $classe->id,
+                            $annee_universitaire_id
+                        ) ?: 1;
+                    } catch (\RuntimeException $e) {
+                        $coef = 1;
+                    }
                     $notesByMatiere[$matiere->id] = [
                         'matiere' => $matiere,
                         'notes' => [],
