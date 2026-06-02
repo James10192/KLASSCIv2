@@ -27,7 +27,7 @@ class ESBTPSpecialisationController extends Controller
         $inscription->load([
             'etudiant',
             'filiere',
-            'classe.orientationTargets.targetClasse',
+            'classe.orientationTargets.targetClasse.filiere',
             'niveau',
             'anneeUniversitaire',
             'phases',
@@ -45,7 +45,19 @@ class ESBTPSpecialisationController extends Controller
                 ->with('error', 'Cette inscription a déjà une spécialisation.');
         }
 
-        $specialisations = $this->troncCommunService->getSpecialisationsDisponibles($inscription->filiere);
+        // Source canonique : filières dérivées des classes cibles (ClasseOrientationTarget).
+        // Si aucune target classe configurée, fallback sur le legacy filières-enfants (parent_id).
+        $targetFilieres = collect($inscription->classe?->orientationTargets ?? [])
+            ->where('is_active', true)
+            ->pluck('targetClasse.filiere')
+            ->filter()
+            ->unique('id')
+            ->values();
+
+        $specialisations = $targetFilieres->isNotEmpty()
+            ? $targetFilieres
+            : $this->troncCommunService->getSpecialisationsDisponibles($inscription->filiere);
+
         $totalPaye = $inscription->paiements()->where('status', 'validé')->sum('montant');
 
         return view('esbtp.inscriptions.specialisation', compact(
