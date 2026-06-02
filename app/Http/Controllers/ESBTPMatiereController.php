@@ -140,15 +140,22 @@ class ESBTPMatiereController extends Controller
             ])
             ->orderBy('name');
 
-        if ($filiere) {
-            $query->whereHas('filieres', function ($q) use ($filiere) {
-                $q->where('esbtp_filieres.id', $filiere);
+        // Filtres filière+niveau via pivot canonique (esbtp_matiere_filiere_niveau).
+        // Si les 2 filtres sont actifs → seules les matières liées à CETTE
+        // combinaison filière+niveau apparaissent (AND strict sur la même ligne du pivot).
+        // Si un seul filtre est actif → fallback sur la relation simple.
+        if ($filiere && $niveau) {
+            $query->whereHas('liaisonsFilieresNiveaux', function ($q) use ($filiere, $niveau) {
+                $q->where('filiere_id', $filiere)
+                  ->where('niveau_etude_id', $niveau);
             });
-        }
-
-        if ($niveau) {
-            $query->whereHas('niveaux', function ($q) use ($niveau) {
-                $q->where('esbtp_niveau_etudes.id', $niveau);
+        } elseif ($filiere) {
+            $query->whereHas('liaisonsFilieresNiveaux', function ($q) use ($filiere) {
+                $q->where('filiere_id', $filiere);
+            });
+        } elseif ($niveau) {
+            $query->whereHas('liaisonsFilieresNiveaux', function ($q) use ($niveau) {
+                $q->where('niveau_etude_id', $niveau);
             });
         }
 

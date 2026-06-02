@@ -21,7 +21,10 @@
                 <th style="width: 110px;">Actions</th>
             </tr>
         </thead>
-        <tbody>
+        <tbody id="matieres-tbody"
+               data-has-more="{{ $matieres->hasMorePages() ? '1' : '0' }}"
+               data-next-page="{{ $matieres->currentPage() + 1 }}"
+               data-current-page="{{ $matieres->currentPage() }}">
             @forelse($matieres as $matiere)
                 @include('esbtp.matieres.partials.matiere-row', ['matiere' => $matiere])
             @empty
@@ -51,8 +54,22 @@
     </table>
 </div>
 
-@if($matieres->total() > 0 && $matieres->hasPages())
-    <div class="pagination-wrapper d-flex justify-content-center">
-        {{ $matieres->appends(request()->query())->links() }}
+{{-- Sentinel infinite scroll : IntersectionObserver détecte sa visibilité et trigger loadMore() --}}
+@if($matieres->total() > 0)
+    <div id="matieres-sentinel"
+         class="mi-sentinel"
+         data-current-page="{{ $matieres->currentPage() }}"
+         data-last-page="{{ $matieres->lastPage() }}"
+         data-total="{{ $matieres->total() }}">
+        <div class="mi-sentinel-spinner" style="display:none;">
+            <i class="fas fa-spinner fa-spin"></i>
+            <span>Chargement...</span>
+        </div>
+        @if(! $matieres->hasMorePages() && $matieres->total() > 0)
+            <div class="mi-sentinel-end">
+                <i class="fas fa-check-circle"></i>
+                <span>Toutes les {{ $matieres->total() }} matière(s) affichée(s).</span>
+            </div>
+        @endif
     </div>
 @endif

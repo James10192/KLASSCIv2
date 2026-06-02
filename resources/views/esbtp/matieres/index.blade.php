@@ -101,30 +101,33 @@
                        autocomplete="off">
             </div>
             <div class="mi-filter-group">
-                <label for="filter-filiere" class="mi-filter-label">Filière</label>
-                <select name="filiere_filter" id="filter-filiere" class="mi-filter-select">
-                    <option value="">Toutes les filières</option>
-                    @foreach($filieres as $filiere)
-                        <option value="{{ $filiere->id }}" @selected($filters['filiere_filter'] == $filiere->id)>{{ $filiere->name }}</option>
-                    @endforeach
-                </select>
+                <label class="mi-filter-label">Filière</label>
+                <x-au-select
+                    name="filiere_filter"
+                    :value="$filters['filiere_filter'] ?? ''"
+                    placeholder="Toutes les filières"
+                    icon="fa-graduation-cap"
+                    :searchable="count($filieres) > 8"
+                    :options="$filieres->mapWithKeys(fn($f) => [$f->id => $f->name])->all()" />
             </div>
             <div class="mi-filter-group">
-                <label for="filter-niveau" class="mi-filter-label">Niveau</label>
-                <select name="niveau_filter" id="filter-niveau" class="mi-filter-select">
-                    <option value="">Tous les niveaux</option>
-                    @foreach($niveaux as $niveau)
-                        <option value="{{ $niveau->id }}" @selected($filters['niveau_filter'] == $niveau->id)>{{ $niveau->name }}</option>
-                    @endforeach
-                </select>
+                <label class="mi-filter-label">Niveau</label>
+                <x-au-select
+                    name="niveau_filter"
+                    :value="$filters['niveau_filter'] ?? ''"
+                    placeholder="Tous les niveaux"
+                    icon="fa-layer-group"
+                    :searchable="count($niveaux) > 8"
+                    :options="$niveaux->mapWithKeys(fn($n) => [$n->id => $n->name])->all()" />
             </div>
             <div class="mi-filter-group">
-                <label for="filter-statut" class="mi-filter-label">Statut</label>
-                <select name="statut_filter" id="filter-statut" class="mi-filter-select">
-                    <option value="">Tous</option>
-                    <option value="1" @selected($filters['statut_filter'] === '1')>Actif</option>
-                    <option value="0" @selected($filters['statut_filter'] === '0')>Inactif</option>
-                </select>
+                <label class="mi-filter-label">Statut</label>
+                <x-au-select
+                    name="statut_filter"
+                    :value="$filters['statut_filter'] ?? ''"
+                    placeholder="Tous"
+                    icon="fa-circle-check"
+                    :options="['1' => 'Actif', '0' => 'Inactif']" />
             </div>
 
             <div class="mi-filters-actions">
@@ -1081,21 +1084,76 @@
             });
         }
 
-        resultsContainer.querySelectorAll('.pagination a').forEach((link) => {
-            link.addEventListener('click', async (event) => {
-                event.preventDefault();
-                const href = link.getAttribute('href');
-                if (!href || href === '#') {
-                    return;
+        // Infinite scroll : observer la sentinelle, fetch la page suivante,
+        // append les rows au tbody plutôt que replace innerHTML (preserve scroll).
+        initInfiniteScroll();
+    }
+
+    let infiniteObserver = null;
+    let infiniteLoading = false;
+
+    function initInfiniteScroll() {
+        if (infiniteObserver) {
+            infiniteObserver.disconnect();
+            infiniteObserver = null;
+        }
+        const sentinel = document.getElementById('matieres-sentinel');
+        const tbody = document.getElementById('matieres-tbody');
+        if (!sentinel || !tbody) return;
+
+        infiniteObserver = new IntersectionObserver(async (entries) => {
+            for (const entry of entries) {
+                if (!entry.isIntersecting) continue;
+                if (infiniteLoading) continue;
+                const hasMore = tbody.dataset.hasMore === '1';
+                if (!hasMore) {
+                    infiniteObserver.disconnect();
+                    continue;
                 }
+                infiniteLoading = true;
+                const spinner = sentinel.querySelector('.mi-sentinel-spinner');
+                if (spinner) spinner.style.display = 'flex';
                 try {
-                    const data = await ajaxJson(href);
-                    applyListingResponse(data);
-                    initTableInteractions();
+                    const nextPage = parseInt(tbody.dataset.nextPage || '2', 10);
+                    const url = new URL(window.location.href);
+                    url.searchParams.set('page', String(nextPage));
+                    const data = await ajaxJson(url.toString());
+                    // Parse retourné HTML, extraire les <tr> du nouveau tbody, append
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = data.html || '';
+                    const newTbody = tmp.querySelector('#matieres-tbody');
+                    if (newTbody) {
+                        Array.from(newTbody.children).forEach((row) => {
+                            tbody.appendChild(row);
+                        });
+                        tbody.dataset.hasMore = newTbody.dataset.hasMore || '0';
+                        tbody.dataset.nextPage = newTbody.dataset.nextPage || String(nextPage + 1);
+                        tbody.dataset.currentPage = newTbody.dataset.currentPage || String(nextPage);
+                    }
+                    // Re-render sentinel state (end-message si dernière page)
+                    const newSentinel = tmp.querySelector('#matieres-sentinel');
+                    if (newSentinel) sentinel.innerHTML = newSentinel.innerHTML;
+                    // Update summary count
+                    updateSummary(data.summary || {});
+                    // Re-attache les handlers row selection sur les nouvelles rows
+                    bindRowSelectionForNewRows();
                 } catch (error) {
-                    debugError('Erreur pagination matières:', error);
+                    debugError('Erreur infinite scroll matières:', error);
+                } finally {
+                    infiniteLoading = false;
                 }
-            });
+            }
+        }, { rootMargin: '200px' });
+
+        infiniteObserver.observe(sentinel);
+    }
+
+    function bindRowSelectionForNewRows() {
+        if (!resultsContainer) return;
+        resultsContainer.querySelectorAll('.matiere-checkbox').forEach((checkbox) => {
+            if (checkbox.dataset.bound === '1') return;
+            checkbox.dataset.bound = '1';
+            checkbox.addEventListener('change', handleRowSelection);
         });
     }
 

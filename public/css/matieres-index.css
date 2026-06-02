@@ -306,11 +306,25 @@
     border: 1px solid #e2e8f0;
     border-radius: 14px;
     box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
-    overflow: hidden;
+    /* Pas d'overflow:hidden ici, sinon les dropdowns des rows sont clippés.
+       Le border-radius est porté par le header/footer enfants si nécessaire. */
     position: relative;
 }
 .mi-results-card .table-responsive {
     overflow-x: auto;
+    overflow-y: visible;  /* permet aux dropdowns des rows de déborder verticalement */
+}
+/* Quand un dropdown menu est ouvert, neutralise les transforms hover concurrents
+   et augmente le z-index de la row active (rule css-stacking-pitfalls.md) */
+body:has(.mi-action-menu.show) .mi-results-card .table tbody tr:hover {
+    transform: none;
+}
+.mi-results-card .table tbody tr:has(.mi-action-menu.show) {
+    position: relative;
+    z-index: 1000;
+}
+.mi-action-menu.dropdown-menu.show {
+    z-index: 1060;
 }
 .mi-results-card .table {
     margin-bottom: 0;
@@ -341,6 +355,33 @@
 .mi-results-card .table tbody tr:last-child td {
     border-bottom: none;
 }
+/* ─── INFINITE SCROLL SENTINEL ─── */
+.mi-sentinel {
+    padding: 1.25rem 1rem;
+    text-align: center;
+    border-top: 1px dashed #e2e8f0;
+}
+.mi-sentinel-spinner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .6rem;
+    color: #0453cb;
+    font-size: .85rem;
+    font-weight: 600;
+}
+.mi-sentinel-spinner i { font-size: 1rem; }
+.mi-sentinel-end {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: .5rem;
+    color: #64748b;
+    font-size: .8rem;
+    font-style: italic;
+}
+.mi-sentinel-end i { color: #10b981; }
+
 .mi-results-card .pagination-wrapper {
     padding: .85rem 1.25rem;
     border-top: 1px solid #e2e8f0;
