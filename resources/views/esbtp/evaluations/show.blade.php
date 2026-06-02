@@ -26,10 +26,17 @@
     }
     $classe = $evaluation->classe;
     $matiere = $evaluation->matiere;
+    // Cascade de fallback pour identifier qui "porte" l'évaluation :
+    //  1. enseignant_id (relation enseignant) — l'enseignant officiel assigné
+    //  2. enseignant_externe_nom — vacataire saisi manuellement
+    //  3. created_by (relation createdBy) — celui qui a créé l'évaluation
+    // Évite l'affichage "Non défini" trompeur quand created_by est connu.
     $enseignant = $evaluation->enseignant;
+    $creator = $evaluation->createdBy ?? null;
     $enseignantNom = $enseignant
         ? ($enseignant->name ?? $enseignant->full_name ?? $enseignant->email)
-        : ($evaluation->enseignant_externe_nom ?: 'Non défini');
+        : ($evaluation->enseignant_externe_nom
+            ?: ($creator ? ($creator->name ?? $creator->full_name ?? $creator->email) : 'Non défini'));
 
     $typeIcons = [
         'examen' => 'fa-file-alt',

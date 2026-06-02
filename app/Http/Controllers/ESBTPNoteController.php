@@ -787,7 +787,12 @@ class ESBTPNoteController extends Controller
                 ->with('error', "La saisie des notes est disponible uniquement après la date d'évaluation.");
         }
 
-        if ($user->can('identity.teach') && $user->can('notes.manage_own')) {
+        // Ownership check : seulement si user n'a PAS la permission notes.edit globale.
+        // Évite que superAdmin (qui passe par Gate::before et a TOUTES les perms) soit
+        // bloqué comme un enseignant restreint à ses propres évaluations.
+        // Pattern : admin/coordinateur (notes.edit) → accès libre, enseignant (notes.manage_own
+        // uniquement) → restriction à ses propres évaluations.
+        if (! $user->can('notes.edit') && $user->can('notes.manage_own') && $user->can('identity.teach')) {
             $isOwner = $evaluation->enseignant_id === $user->id || $evaluation->created_by === $user->id;
             if (! $isOwner) {
                 return redirect()
@@ -975,7 +980,9 @@ class ESBTPNoteController extends Controller
         $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
         $user = Auth::user();
 
-        if ($user->can('identity.teach') && $user->can('notes.manage_own')) {
+        // Voir saisieRapide() pour la justification : exempte les users avec notes.edit
+        // global (superAdmin/coordinateur) du check ownership restrictif.
+        if (! $user->can('notes.edit') && $user->can('notes.manage_own') && $user->can('identity.teach')) {
             $isOwner = $evaluation->enseignant_id === $user->id || $evaluation->created_by === $user->id;
             if (! $isOwner) {
                 return redirect()->back()

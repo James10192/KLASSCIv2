@@ -774,11 +774,23 @@ class ESBTPResultatController extends Controller
             }
         }
 
-        // Calculate average for each matière and overall weighted average
+        // Calculate average for each matière and overall weighted average.
+        // Bug historique : `total_coefficients` était utilisé à la fois pour le calcul
+        // interne de la moyenne matière (somme des coefs évals) ET pour l'affichage
+        // du coeff dans la liste. On dissocie maintenant `matiere_coefficient` (coeff
+        // de la matière dans la classe via BulletinService) du total interne d'évals.
         $moyenneGenerale = 0;
         $countValidMatieres = 0;
 
         foreach ($notesByMatiere as $matiere_id => &$matiereData) {
+            // Récupère le coefficient officiel de la matière dans la classe.
+            // Source de vérité = esbtp_matiere_coefficients (BulletinService).
+            $matiereData['matiere_coefficient'] = $this->bulletinService->getCoefficientForCombination(
+                (int) $matiere_id,
+                (int) $classe->id,
+                $annee_universitaire_id
+            ) ?: 1;
+
             if ($matiereData['total_coefficients'] > 0) {
                 $matiereData['moyenne'] = $matiereData['total_points'] / $matiereData['total_coefficients'];
 
@@ -819,12 +831,19 @@ class ESBTPResultatController extends Controller
 
             // Si la matière n'existe pas encore dans notesByMatiere, la créer
             if (! isset($notesByMatiere[$matiere_id])) {
+                $matiereCoefOfficiel = $this->bulletinService->getCoefficientForCombination(
+                    (int) $matiere_id,
+                    (int) $classe->id,
+                    $annee_universitaire_id
+                ) ?: ($resultat->coefficient ?: 1);
+
                 $notesByMatiere[$matiere_id] = [
                     'matiere' => $resultat->matiere,
                     'notes' => [],
                     'calculations' => [],
                     'total_points' => 0,
                     'total_coefficients' => $resultat->coefficient,
+                    'matiere_coefficient' => $matiereCoefOfficiel,
                     'moyenne' => 0,
                 ];
             }
@@ -833,6 +852,10 @@ class ESBTPResultatController extends Controller
             $notesByMatiere[$matiere_id]['moyenne'] = $resultat->moyenne;
             $notesByMatiere[$matiere_id]['source'] = 'manuelle';
             $notesByMatiere[$matiere_id]['total_coefficients'] = $resultat->coefficient;
+            // Conserve matiere_coefficient déjà calculé (officiel) — NE PAS l'écraser
+            if (! isset($notesByMatiere[$matiere_id]['matiere_coefficient'])) {
+                $notesByMatiere[$matiere_id]['matiere_coefficient'] = $resultat->coefficient ?: 1;
+            }
         }
 
         // Marquer les moyennes calculées qui n'ont pas été écrasées

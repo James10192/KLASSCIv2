@@ -65,7 +65,9 @@
                                 <span class="sr-eval-count">{{ count($matiereData['notes']) }}</span>
                             </td>
                             <td class="text-center">
-                                <span class="sr-coeff">{{ $matiereData['total_coefficients'] }}</span>
+                                {{-- Coefficient OFFICIEL de la matière dans la classe (esbtp_matiere_coefficients),
+                                     PAS la somme des coefficients d'évaluations. --}}
+                                <span class="sr-coeff">{{ $matiereData['matiere_coefficient'] ?? $matiereData['total_coefficients'] }}</span>
                             </td>
                             <td class="text-center">
                                 <div class="sr-avg-cell">
@@ -100,7 +102,7 @@
                             Total des coefficients
                         </td>
                         <td class="text-center" style="font-weight: 800; font-size: 1rem; color: var(--sr-ink);">
-                            {{ array_sum(array_column($notesByMatiere, 'total_coefficients')) }}
+                            {{ array_sum(array_map(fn($m) => $m['matiere_coefficient'] ?? $m['total_coefficients'] ?? 0, $notesByMatiere)) }}
                         </td>
                         <td class="text-center" style="font-weight: 800; font-size: 1rem; color: {{ $hasResolvedAverage ? ($resolvedAverage >= 10 ? 'var(--sr-success)' : 'var(--sr-danger)') : 'var(--sr-muted)' }};">
                             @if($hasResolvedAverage)
@@ -121,7 +123,7 @@
                     </tr>
                     <tr class="sr-table-footer-result">
                         <td colspan="3" class="text-end">Moyenne générale pondérée</td>
-                        <td class="text-center">{{ array_sum(array_column($notesByMatiere, 'total_coefficients')) }}</td>
+                        <td class="text-center">{{ array_sum(array_map(fn($m) => $m['matiere_coefficient'] ?? $m['total_coefficients'] ?? 0, $notesByMatiere)) }}</td>
                         <td class="text-center" style="font-size: 1.1rem; font-weight: 800;">
                             @if($hasResolvedAverage)
                                 {{ number_format($resolvedAverage, 2) }}/20
