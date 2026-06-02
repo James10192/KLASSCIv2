@@ -2103,6 +2103,9 @@ Route::middleware(['auth', 'permission:admin.access'])->group(function () {
     Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinConfigController::class, 'configMatieresTypeFormation'])->name('esbtp.bulletins.config-matieres');
     Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinConfigController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
     Route::get('/esbtp-special/bulletins/edit-professeurs', [ESBTPBulletinConfigController::class, 'editProfesseurs'])->name('esbtp.bulletins.edit-professeurs');
+    Route::post('/esbtp-special/bulletins/copy-professeurs-from-other-semestre', [ESBTPBulletinConfigController::class, 'copyProfesseursFromOtherSemestre'])
+        ->middleware('throttle:30,1')
+        ->name('esbtp.bulletins.copy-professeurs-from-other-semestre');
     Route::post('/esbtp-special/bulletins/save-professeurs', [ESBTPBulletinConfigController::class, 'saveProfesseurs'])->name('esbtp.bulletins.save-professeurs');
     Route::get('/esbtp-special/bulletins/edit-absences', [ESBTPBulletinConfigController::class, 'editAbsences'])->name('esbtp.bulletins.edit-absences');
     Route::post('/esbtp-special/bulletins/save-absences', [ESBTPBulletinConfigController::class, 'saveAbsences'])->name('esbtp.bulletins.save-absences');

@@ -64,6 +64,16 @@
                     </div>
                 </div>
                 <div class="sr-hero-actions">
+                    @php $otherPeriode = $periode === 'semestre1' ? 'semestre2' : 'semestre1'; @endphp
+                    @if(in_array($periode, ['semestre1', 'semestre2'], true))
+                    <button type="button"
+                            id="copyProfsBtn"
+                            class="sr-hero-btn"
+                            style="background:rgba(255,255,255,.16); color:#fff; border:1px solid rgba(255,255,255,.32);"
+                            title="Copier les professeurs déjà saisis sur l'autre semestre (souvent le même professeur enseigne aux 2 semestres)">
+                        <i class="fas fa-copy"></i>Copier depuis {{ $otherPeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2' }}
+                    </button>
+                    @endif
                     <a href="{{ route('esbtp.resultats.etudiant', ['etudiant' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $anneeUniversitaire->id]) }}" class="sr-hero-btn">
                         <i class="fas fa-arrow-left"></i>Retour
                     </a>
@@ -285,6 +295,75 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+
+    // ═══ Copier les professeurs depuis l'autre semestre ═══
+    var copyBtn = document.getElementById('copyProfsBtn');
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async function (ev) {
+            ev.preventDefault();
+            if (copyBtn.disabled) return;
+            const original = copyBtn.innerHTML;
+            copyBtn.disabled = true;
+            copyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Chargement…';
+            try {
+                const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                const res = await fetch('{{ route('esbtp.bulletins.copy-professeurs-from-other-semestre') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrf,
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: JSON.stringify({
+                        etudiant_id: {{ (int) $etudiant->id }},
+                        classe_id: {{ (int) $classe->id }},
+                        periode: @json($periode),
+                        annee_universitaire_id: {{ (int) $anneeUniversitaire->id }},
+                    }),
+                });
+                const data = await res.json();
+                if (!res.ok || !data.success) {
+                    if (typeof window.klassciToast === 'function') {
+                        window.klassciToast('error', data?.message || 'Erreur lors de la copie.');
+                    } else {
+                        alert(data?.message || 'Erreur lors de la copie.');
+                    }
+                    return;
+                }
+                // Hydrate les inputs avec les profs source. Confirm avant écrasement si valeurs existantes.
+                let filledCount = 0, overwrittenCount = 0;
+                Object.entries(data.professeurs || {}).forEach(([matiereId, profNom]) => {
+                    const input = document.getElementById('professeur_' + matiereId);
+                    if (!input) return;
+                    const had = (input.value || '').trim() !== '';
+                    if (had) overwrittenCount++;
+                    input.value = profNom;
+                    input.setAttribute('value', profNom);
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                    if (typeof animateValueChange === 'function') animateValueChange(input);
+                    filledCount++;
+                });
+                const summary = `<strong>${filledCount}</strong> professeur(s) copié(s) depuis ${data.source_periode_label}` + (overwrittenCount > 0 ? `<br><em>${overwrittenCount} valeur(s) précédente(s) écrasée(s)</em>` : '') + '<br>Cliquez sur <strong>Enregistrer</strong> pour confirmer.';
+                if (typeof window.klassciToast === 'function') {
+                    window.klassciToast('success', summary, 7000);
+                } else {
+                    alert(summary.replace(/<[^>]+>/g, ' '));
+                }
+            } catch (err) {
+                console.error(err);
+                if (typeof window.klassciToast === 'function') {
+                    window.klassciToast('error', err.message || 'Erreur réseau.');
+                } else {
+                    alert('Erreur : ' + (err.message || 'réseau'));
+                }
+            } finally {
+                copyBtn.disabled = false;
+                copyBtn.innerHTML = original;
+            }
+        });
+    }
 });
 </script>
+@include('partials._klassci_toast')
 @endsection

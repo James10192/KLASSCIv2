@@ -1152,4 +1152,65 @@ class ESBTPBulletinConfigController extends Controller
                 ->with('error', 'Une erreur est survenue lors de l\'enregistrement des absences: '.$e->getMessage());
         }
     }
+
+    /**
+     * Copie les professeurs assignés sur l'autre semestre vers le semestre courant.
+     * Endpoint AJAX appelé depuis edit-professeurs.blade.php quand l'utilisateur clique
+     * sur "Copier depuis Semestre 1/2". Source : bulletin->professeurs (JSON).
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function copyProfesseursFromOtherSemestre(Request $request)
+    {
+        if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
+            return response()->json(['success' => false, 'message' => 'Permission requise.'], 403);
+        }
+
+        $validated = $request->validate([
+            'etudiant_id' => 'required|exists:esbtp_etudiants,id',
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'periode' => 'required|in:semestre1,semestre2',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+        ]);
+
+        // Détermine le semestre source (l'autre)
+        $sourcePeriode = $validated['periode'] === 'semestre1' ? 'semestre2' : 'semestre1';
+
+        $sourceBulletin = ESBTPBulletin::where([
+            'etudiant_id' => $validated['etudiant_id'],
+            'classe_id' => $validated['classe_id'],
+            'periode' => $sourcePeriode,
+            'annee_universitaire_id' => $validated['annee_universitaire_id'],
+        ])->first();
+
+        if (! $sourceBulletin || empty($sourceBulletin->professeurs) || $sourceBulletin->professeurs === '{}') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun professeur configuré sur le ' . ($sourcePeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2') . ' pour cet étudiant.',
+            ], 422);
+        }
+
+        $sourceProfesseurs = is_string($sourceBulletin->professeurs)
+            ? (json_decode($sourceBulletin->professeurs, true) ?: [])
+            : (array) $sourceBulletin->professeurs;
+
+        // Filtre : ne garde que les entrées avec une valeur non vide
+        $sourceProfesseurs = array_filter($sourceProfesseurs, fn ($v) => is_string($v) && trim($v) !== '');
+
+        if (empty($sourceProfesseurs)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Le ' . ($sourcePeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2') . ' n\'a aucun professeur renseigné à copier.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => count($sourceProfesseurs) . ' professeur(s) chargé(s) depuis le ' . ($sourcePeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2') . ' — vérifiez et cliquez sur Enregistrer pour confirmer.',
+            'professeurs' => $sourceProfesseurs,
+            'source_periode' => $sourcePeriode,
+            'source_periode_label' => $sourcePeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2',
+            'count' => count($sourceProfesseurs),
+        ]);
+    }
 }
