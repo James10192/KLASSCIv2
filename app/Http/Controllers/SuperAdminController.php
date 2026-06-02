@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Students\StudentCountService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\ESBTPClasse;
@@ -19,11 +20,14 @@ class SuperAdminController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function dashboard()
+    public function dashboard(StudentCountService $studentCounts)
     {
-        // Récupérer les statistiques pour le tableau de bord
+        // Récupérer les statistiques pour le tableau de bord — 2 valeurs distinctes
+        $counts = $studentCounts->counts();
         $stats = [
-            'totalEtudiants' => ESBTPEtudiant::count(),
+            'totalEtudiants' => $counts['inscrits_annee_courante'], // inscrits année courante
+            'totalEtudiantsBase' => $counts['total_base'],          // total base DB
+            'anneeLabel' => $counts['annee_courante_label'],
             'totalClasses' => ESBTPClasse::count(),
             'totalFilieres' => ESBTPFiliere::count(),
             'totalNiveauxEtudes' => ESBTPNiveauEtude::count(),

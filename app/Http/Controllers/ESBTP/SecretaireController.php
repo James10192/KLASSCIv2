@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ESBTP;
 
+use App\Domain\Students\StudentCountService;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Message;
@@ -24,9 +25,12 @@ class SecretaireController extends Controller
     /**
      * Affiche le tableau de bord du secrétaire.
      */
-    public function dashboard()
+    public function dashboard(StudentCountService $studentCounts)
     {
-        $totalStudents = ESBTPEtudiant::count();
+        $counts = $studentCounts->counts();
+        $totalStudents = $counts['inscrits_annee_courante']; // KPI principal = inscrits cette année
+        $totalStudentsBase = $counts['total_base'];           // KPI complémentaire = base totale
+        $anneeLabel = $counts['annee_courante_label'];
         
         // Récupérer les présences d'aujourd'hui seulement si la table existe
         try {
@@ -79,6 +83,8 @@ class SecretaireController extends Controller
         
         return view('dashboard.secretaire', compact(
             'totalStudents',
+            'totalStudentsBase',
+            'anneeLabel',
             'todayAttendances',
             'pendingAttendances',
             'justificationsEnAttente',

@@ -224,6 +224,8 @@
     /* KPI color variants */
     .sec-kpi--primary { background: linear-gradient(135deg, var(--primary), #3b7ddb); box-shadow: 0 4px 16px rgba(4,83,203,0.25); }
     .sec-kpi--primary:hover { box-shadow: 0 8px 28px rgba(4,83,203,0.35); }
+    .sec-kpi--info { background: linear-gradient(135deg, #3b7ddb, #5e91de); box-shadow: 0 4px 16px rgba(59,125,219,0.22); }
+    .sec-kpi--info:hover { box-shadow: 0 8px 28px rgba(59,125,219,0.32); }
     .sec-kpi--success { background: linear-gradient(135deg, var(--success), #34d399); box-shadow: 0 4px 16px rgba(16,185,129,0.25); }
     .sec-kpi--success:hover { box-shadow: 0 8px 28px rgba(16,185,129,0.35); }
     .sec-kpi--warning { background: linear-gradient(135deg, #d97706, #f59e0b); box-shadow: 0 4px 16px rgba(245,158,11,0.25); }
@@ -593,12 +595,24 @@
             @endif
 
             @if(isset($totalStudents))
-                <div class="sec-kpi sec-kpi--primary sec-animate">
-                    <div class="sec-kpi-icon"><i class="fas fa-users"></i></div>
-                    <div class="sec-kpi-label">Etudiants inscrits</div>
+                <div class="sec-kpi sec-kpi--primary sec-animate"
+                     title="Étudiants distincts avec une inscription active et validée sur l'année {{ $anneeLabel ?? 'courante' }}">
+                    <div class="sec-kpi-icon"><i class="fas fa-user-check"></i></div>
+                    <div class="sec-kpi-label">Inscrits {{ $anneeLabel ?? 'année courante' }}</div>
                     <div class="sec-kpi-value">{{ $totalStudents }}</div>
                     <a href="{{ route('esbtp.etudiants.index') }}" class="sec-kpi-link">
                         Gerer <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
+            @endif
+            @if(isset($totalStudentsBase))
+                <div class="sec-kpi sec-kpi--info sec-animate"
+                     title="Toutes les fiches étudiants présentes dans la base de données (toutes années / tous statuts confondus, y compris anciens diplômés et non-réinscrits).">
+                    <div class="sec-kpi-icon"><i class="fas fa-users"></i></div>
+                    <div class="sec-kpi-label">Étudiants en base</div>
+                    <div class="sec-kpi-value">{{ $totalStudentsBase }}</div>
+                    <a href="{{ route('esbtp.etudiants.index') }}" class="sec-kpi-link">
+                        Consulter <i class="fas fa-arrow-right"></i>
                     </a>
                 </div>
             @endif

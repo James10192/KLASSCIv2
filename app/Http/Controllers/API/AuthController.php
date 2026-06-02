@@ -354,10 +354,14 @@ class AuthController extends BaseApiController
             return [];
         }
 
-        // Statistiques générales
+        // Statistiques générales — distinguer étudiants inscrits année courante (canonique)
+        // de étudiants en base (tous statuts confondus) pour éviter l'écart trompeur.
+        $studentCounts = app(\App\Domain\Students\StudentCountService::class)->counts();
         $stats = [
             'nb_enseignants' => \App\Models\User::role('enseignant')->count(),
-            'nb_etudiants' => \App\Models\User::role('etudiant')->count(),
+            'nb_etudiants' => $studentCounts['inscrits_annee_courante'],
+            'nb_etudiants_base' => $studentCounts['total_base'],
+            'annee_label' => $studentCounts['annee_courante_label'],
             'nb_classes_actives' => \App\Models\ESBTPClasse::where('is_active', true)->count(),
             'nb_matieres_actives' => \App\Models\ESBTPMatiere::where('is_active', true)->count(),
         ];

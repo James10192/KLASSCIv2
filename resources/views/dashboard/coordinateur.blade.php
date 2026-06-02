@@ -602,14 +602,27 @@
                 </a>
             </div>
 
-            <div class="cd-kpi cd-kpi--primary cd-animate">
-                <div class="cd-kpi-icon"><i class="fas fa-user-graduate"></i></div>
-                <div class="cd-kpi-label">Etudiants inscrits</div>
+            <div class="cd-kpi cd-kpi--primary cd-animate"
+                 title="Étudiants distincts avec inscription active validée sur l'année {{ $anneeLabel ?? 'courante' }}">
+                <div class="cd-kpi-icon"><i class="fas fa-user-check"></i></div>
+                <div class="cd-kpi-label">Inscrits {{ $anneeLabel ?? 'année courante' }}</div>
                 <div class="cd-kpi-value" data-kpi="totalStudents">{{ $totalStudents ?? 0 }}</div>
                 <a href="{{ route('esbtp.etudiants.index') }}" class="cd-kpi-link">
                     Gerer <i class="fas fa-arrow-right"></i>
                 </a>
             </div>
+
+            @if(isset($totalStudentsBase))
+            <div class="cd-kpi cd-kpi--cyan cd-animate"
+                 title="Toutes les fiches étudiants dans la base (toutes années / statuts confondus, y compris diplômés et non-réinscrits)">
+                <div class="cd-kpi-icon"><i class="fas fa-users"></i></div>
+                <div class="cd-kpi-label">Étudiants en base</div>
+                <div class="cd-kpi-value" data-kpi="totalStudentsBase">{{ $totalStudentsBase ?? 0 }}</div>
+                <a href="{{ route('esbtp.etudiants.index') }}" class="cd-kpi-link">
+                    Consulter <i class="fas fa-arrow-right"></i>
+                </a>
+            </div>
+            @endif
 
             <div class="cd-kpi cd-kpi--success cd-animate">
                 <div class="cd-kpi-icon"><i class="fas fa-users"></i></div>
@@ -900,6 +913,7 @@ function cdRefreshData() {
         var kpiMap = {
             'pendingInscriptionsCount': data.pendingInscriptionsCount,
             'totalStudents': data.totalStudents,
+            'totalStudentsBase': data.totalStudentsBase,
             'totalClasses': data.totalClasses,
             'totalTeachers': data.totalTeachers,
             'totalExamens': data.totalExamens,

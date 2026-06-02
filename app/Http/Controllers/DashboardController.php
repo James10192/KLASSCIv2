@@ -34,6 +34,7 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPTeacher;
 use App\Models\ESBTPSystemSetting;
 use App\Models\ESBTPEtablissement;
+use App\Domain\Students\StudentCountService;
 use App\Services\PermissionRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -195,11 +196,13 @@ class DashboardController extends Controller
             ];
         }
 
-        // Étudiants (filtré par année en cours)
+        // Étudiants — Service centralisé (distinct etudiant_id, inscriptions actives+validées année courante)
+        $studentCounts = app(StudentCountService::class)->counts();
+        $data['totalStudents'] = $studentCounts['inscrits_annee_courante'];
+        $data['totalStudentsBase'] = $studentCounts['total_base'];
+        $data['anneeLabel'] = $studentCounts['annee_courante_label'];
+
         if ($anneeEnCours) {
-            $data['totalStudents'] = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
-                ->where('status', 'active')
-                ->count();
             $data['recentStudents'] = ESBTPInscription::with(['etudiant'])
                 ->where('annee_universitaire_id', $anneeEnCours->id)
                 ->orderBy('created_at', 'desc')
@@ -209,7 +212,6 @@ class DashboardController extends Controller
                     return $inscription->etudiant;
                 });
         } else {
-            $data['totalStudents'] = ESBTPEtudiant::count();
             $data['recentStudents'] = ESBTPEtudiant::orderBy('created_at', 'desc')->take(5)->get();
         }
 
@@ -617,7 +619,10 @@ class DashboardController extends Controller
 
         // Étudiants - Les secrétaires peuvent voir et créer des étudiants
         try {
-            $data['totalStudents'] = ESBTPEtudiant::count();
+            $studentCountsSec = app(StudentCountService::class)->counts();
+            $data['totalStudents'] = $studentCountsSec['inscrits_annee_courante'];
+            $data['totalStudentsBase'] = $studentCountsSec['total_base'];
+            $data['anneeLabel'] = $studentCountsSec['annee_courante_label'];
             $data['recentStudents'] = ESBTPEtudiant::with(['inscriptions' => function($q) {
                     $q->with(['classe', 'anneeUniversitaire'])
                         ->orderBy('created_at', 'desc');
@@ -628,6 +633,8 @@ class DashboardController extends Controller
                 ->get();
         } catch (\Exception $e) {
             $data['totalStudents'] = 0;
+            $data['totalStudentsBase'] = 0;
+            $data['anneeLabel'] = null;
             $data['recentStudents'] = collect();
         }
 
@@ -879,11 +886,13 @@ class DashboardController extends Controller
 
         // Statistiques accessibles aux coordinateurs
         try {
-            // Étudiants - Coordinateurs peuvent voir et gérer les étudiants (filtré par année en cours)
+            // Étudiants — Service centralisé (distinct etudiant_id, inscriptions actives+validées année courante)
+            $studentCounts = app(StudentCountService::class)->counts();
+            $data['totalStudents'] = $studentCounts['inscrits_annee_courante'];
+            $data['totalStudentsBase'] = $studentCounts['total_base'];
+            $data['anneeLabel'] = $studentCounts['annee_courante_label'];
+
             if ($anneeEnCours) {
-                $data['totalStudents'] = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
-                    ->where('status', 'active')
-                    ->count();
                 $data['recentStudents'] = ESBTPInscription::with(['etudiant', 'classe.filiere'])
                     ->where('annee_universitaire_id', $anneeEnCours->id)
                     ->orderBy('created_at', 'desc')
@@ -893,7 +902,6 @@ class DashboardController extends Controller
                         return $inscription->etudiant;
                     });
             } else {
-                $data['totalStudents'] = ESBTPEtudiant::count();
                 $data['recentStudents'] = ESBTPEtudiant::with(['classe.filiere'])
                     ->orderBy('created_at', 'desc')
                     ->take(5)
@@ -901,6 +909,8 @@ class DashboardController extends Controller
             }
         } catch (\Exception $e) {
             $data['totalStudents'] = 0;
+            $data['totalStudentsBase'] = 0;
+            $data['anneeLabel'] = null;
             $data['recentStudents'] = collect();
         }
 
@@ -1104,7 +1114,12 @@ class DashboardController extends Controller
         // Réutiliser la même logique que coordinateurDashboard
         $anneeEnCours = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        $totalStudents = 0;
+        // Service centralisé : 2 valeurs distinctes (cf. memory_studentcount)
+        $studentCounts = app(StudentCountService::class)->counts();
+        $totalStudents = $studentCounts['inscrits_annee_courante'];
+        $totalStudentsBase = $studentCounts['total_base'];
+        $anneeLabel = $studentCounts['annee_courante_label'];
+
         $pendingInscriptionsCount = 0;
         $totalClasses = 0;
         $totalTeachers = 0;
@@ -1125,8 +1140,7 @@ class DashboardController extends Controller
 
         try {
             if ($anneeEnCours) {
-                $totalStudents = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
-                    ->where('status', 'active')->where('workflow_step', 'etudiant_cree')->count();
+                // $totalStudents déjà calculé par StudentCountService ci-dessus
                 $pendingInscriptionsCount = ESBTPInscription::where('annee_universitaire_id', $anneeEnCours->id)
                     ->where(function ($q) {
                         $q->whereIn('status', ['en_attente', 'pending'])->orWhere(function ($subQ) {
@@ -1170,6 +1184,8 @@ class DashboardController extends Controller
 
         return response()->json([
             'totalStudents' => $totalStudents,
+            'totalStudentsBase' => $totalStudentsBase,
+            'anneeLabel' => $anneeLabel,
             'pendingInscriptionsCount' => $pendingInscriptionsCount,
             'totalClasses' => $totalClasses,
             'totalTeachers' => $totalTeachers,
@@ -1305,8 +1321,11 @@ class DashboardController extends Controller
             abort(403, 'Accès non autorisé');
         }
 
-        // Statistiques principales
-        $totalStudents = ESBTPEtudiant::count();
+        // Statistiques principales — Service centralisé pour distinguer année courante vs base totale
+        $studentCounts = app(StudentCountService::class)->counts();
+        $totalStudents = $studentCounts['inscrits_annee_courante'];
+        $totalStudentsBase = $studentCounts['total_base'];
+        $anneeLabel = $studentCounts['annee_courante_label'];
         $totalFilieres = ESBTPFiliere::count();
         $totalMatieres = ESBTPMatiere::count();
         $totalClasses = ESBTPClasse::count();
@@ -1445,6 +1464,8 @@ class DashboardController extends Controller
 
         return view('dashboard.superadmin', compact(
             'totalStudents',
+            'totalStudentsBase',
+            'anneeLabel',
             'totalFilieres',
             'totalMatieres',
             'totalClasses',
@@ -1588,9 +1609,11 @@ class DashboardController extends Controller
         ]);
 
         // Statistiques globales de l'établissement actuel
+        $studentCountsST = app(StudentCountService::class)->counts();
         $stats = [
             'total_users' => User::count(),
-            'total_students' => ESBTPEtudiant::count(),
+            'total_students' => $studentCountsST['inscrits_annee_courante'], // = inscrits année courante
+            'total_students_base' => $studentCountsST['total_base'],          // = total base DB
             'total_teachers' => User::whereHas('roles', function($query) {
                 $query->whereIn('name', ['enseignant', 'teacher']);
             })->count(),

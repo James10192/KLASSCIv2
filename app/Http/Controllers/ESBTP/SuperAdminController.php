@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\ESBTP;
 
+use App\Domain\Students\StudentCountService;
 use App\Http\Controllers\Controller;
 use App\Models\Attendance;
 use App\Models\Certificate;
@@ -31,13 +32,16 @@ class SuperAdminController extends Controller
     /**
      * Affiche le tableau de bord du superAdmin.
      */
-    public function dashboard()
+    public function dashboard(StudentCountService $studentCounts)
     {
         // Récupérer l'utilisateur connecté
         $user = auth()->user();
-        
-        // Statistiques pour le tableau de bord
-        $totalStudents = ESBTPEtudiant::count();
+
+        // Statistiques pour le tableau de bord — distinguer "inscrits année courante" vs "total base"
+        $counts = $studentCounts->counts();
+        $totalStudents = $counts['inscrits_annee_courante'];
+        $totalStudentsBase = $counts['total_base'];
+        $anneeLabel = $counts['annee_courante_label'];
         $totalSecretaires = User::role('secretaire')->count();
         $totalFilieres = Filiere::count();
         $totalFormations = Formation::count();
@@ -69,6 +73,8 @@ class SuperAdminController extends Controller
         return view('dashboard.superadmin', compact(
             'user',
             'totalStudents',
+            'totalStudentsBase',
+            'anneeLabel',
             'totalSecretaires',
             'totalFilieres',
             'totalFormations',

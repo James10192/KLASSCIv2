@@ -75,11 +75,21 @@
 
     <!-- KPI Cards -->
     <div class="kpi-grid mb-xl">
-        <div class="kpi-card card-moderne" style="background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 100%); color: white; text-align: center;">
-            <i class="fas fa-users fa-2x mb-md"></i>
-            <div class="kpi-title" style="color: white;">Étudiants</div>
+        <div class="kpi-card card-moderne" style="background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 100%); color: white; text-align: center;"
+             title="Étudiants distincts avec inscription active validée sur l'année {{ $anneeLabel ?? 'courante' }}">
+            <i class="fas fa-user-check fa-2x mb-md"></i>
+            <div class="kpi-title" style="color: white;">Inscrits {{ $anneeLabel ?? 'année courante' }}</div>
             <div class="kpi-value" style="color: white;">{{ $totalStudents }}</div>
         </div>
+
+        @if(isset($totalStudentsBase))
+        <div class="kpi-card card-moderne" style="background: linear-gradient(135deg, #3b7ddb 0%, #5e91de 100%); color: white; text-align: center;"
+             title="Toutes les fiches étudiants dans la base (toutes années / statuts confondus, y compris diplômés et non-réinscrits)">
+            <i class="fas fa-users fa-2x mb-md"></i>
+            <div class="kpi-title" style="color: white;">Étudiants en base</div>
+            <div class="kpi-value" style="color: white;">{{ $totalStudentsBase }}</div>
+        </div>
+        @endif
 
         <div class="kpi-card card-moderne" style="background: linear-gradient(135deg, #0453cb 0%, #1b64d4 100%); color: white; text-align: center;">
             <i class="fas fa-graduation-cap fa-2x mb-md"></i>

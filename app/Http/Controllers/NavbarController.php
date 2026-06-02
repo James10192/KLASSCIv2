@@ -656,8 +656,11 @@ class NavbarController extends Controller
         $stats = [];
 
         if ($user->hasAnyPermission(['admin.access', 'identity.school_manager'])) {
+            $studentCounts = app(\App\Domain\Students\StudentCountService::class)->counts();
             $stats = [
-                'total_etudiants' => ESBTPEtudiant::count(),
+                'total_etudiants' => $studentCounts['inscrits_annee_courante'],
+                'total_etudiants_base' => $studentCounts['total_base'],
+                'annee_label' => $studentCounts['annee_courante_label'],
                 'nouvelles_inscriptions' => ESBTPEtudiant::whereDate('created_at', today())->count(),
                 'evaluations_en_cours' => ESBTPEvaluation::whereDate('date', '>=', today())->count(),
                 'notes_en_attente' => ESBTPNote::whereNull('valeur')->count(),
