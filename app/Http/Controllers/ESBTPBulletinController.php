@@ -544,7 +544,7 @@ class ESBTPBulletinController extends Controller
                 // BUG corrigé : avant aucun filtre periode → S1 et S2 mélangés sur le PDF S2.
                 // La période vit sur evaluation.periode (semestre1 | semestre2 | annuel).
                 $bulletinPeriode = $this->bulletinService->normalizePeriode($bulletin->periode ?? 'semestre1');
-                Log::warning('BULLETIN_DEBUG periode raw='.$bulletin->periode.' normalized='.$bulletinPeriode.' bulletin_id='.$bulletin->id);
+                Log::error('BULLETIN_DEBUG_X periode raw='.$bulletin->periode.' normalized='.$bulletinPeriode.' bulletin_id='.$bulletin->id);
                 $notesEtudiant = ESBTPNote::where('etudiant_id', $bulletin->etudiant_id)
                     ->where('classe_id', $bulletin->classe_id)
                     ->whereHas('evaluation', function ($q) use ($bulletinPeriode) {
@@ -556,8 +556,8 @@ class ESBTPBulletinController extends Controller
                     ->with(['matiere', 'evaluation'])
                     ->get();
 
-                Log::warning('BULLETIN_DEBUG Notes trouvées: '.$notesEtudiant->count().' periode_attendue='.$bulletinPeriode);
-                Log::warning('BULLETIN_DEBUG matiere_ids: '.implode(',', $notesEtudiant->pluck('matiere_id')->unique()->all()));
+                Log::error('BULLETIN_DEBUG_X Notes trouvées: '.$notesEtudiant->count().' periode_attendue='.$bulletinPeriode);
+                Log::error('BULLETIN_DEBUG_X matiere_ids: '.implode(',', $notesEtudiant->pluck('matiere_id')->unique()->all()));
 
                 // Grouper les notes par matière et calculer les moyennes par matière
                 $notesByMatiere = $notesEtudiant->groupBy('matiere_id');
