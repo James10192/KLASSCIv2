@@ -3132,19 +3132,41 @@
                 if (!trigger.hasAttribute('data-bs-strategy')) trigger.setAttribute('data-bs-strategy', 'fixed');
                 if (!trigger.hasAttribute('data-bs-boundary')) trigger.setAttribute('data-bs-boundary', 'viewport');
                 if (!trigger.hasAttribute('data-bs-display')) trigger.setAttribute('data-bs-display', 'dynamic');
-                // Si Bootstrap déjà instancié, dispose + readd attrs forcera re-init au prochain click.
                 if (window.bootstrap && bootstrap.Dropdown && bootstrap.Dropdown.getInstance(trigger)) {
                     try { bootstrap.Dropdown.getInstance(trigger).dispose(); } catch(e) {}
                 }
             });
         }
-        // 1. Run au plus tôt sur le DOM existant (avant bootstrap.bundle si possible)
+        // Auto-flip via dropup class : si pas assez d'espace en bas, mettre la classe dropup
+        // sur le parent .dropdown AVANT le click pour que Bootstrap calcule placement up.
+        function detectAndFlipDropdown(trigger) {
+            const dropdownParent = trigger.closest('.dropdown, .btn-group, .dropdown-center');
+            if (!dropdownParent) return;
+            const menu = dropdownParent.querySelector('.dropdown-menu');
+            if (!menu) return;
+            // Estimation hauteur menu (peut être imprécise si menu jamais affiché)
+            const estHeight = menu.scrollHeight || menu.offsetHeight || 200;
+            const triggerRect = trigger.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - triggerRect.bottom;
+            const spaceAbove = triggerRect.top;
+            // Flip up si pas assez d'espace en bas ET assez en haut
+            if (spaceBelow < estHeight + 20 && spaceAbove > estHeight + 20) {
+                dropdownParent.classList.add('dropup');
+            } else {
+                dropdownParent.classList.remove('dropup');
+            }
+        }
+        // Listener global avant le click (capture phase pour précéder Bootstrap)
+        document.addEventListener('mousedown', function(ev) {
+            const trigger = ev.target.closest('[data-bs-toggle="dropdown"]');
+            if (trigger) detectAndFlipDropdown(trigger);
+        }, true);
+
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', function() { applyDropdownDefaults(document); });
         } else {
             applyDropdownDefaults(document);
         }
-        // 2. MutationObserver pour les dropdowns ajoutés via AJAX/Alpine.
         new MutationObserver(function(mutations) {
             mutations.forEach(function(m) {
                 m.addedNodes.forEach(function(node) {
