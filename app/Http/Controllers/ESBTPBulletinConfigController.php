@@ -471,19 +471,17 @@ class ESBTPBulletinConfigController extends Controller
         $classeFiliereId = $classe->filiere_id;
         $classeNiveauId = $classe->niveau_etude_id;
 
+        // Source canonique : pivot esbtp_matiere_filiere_niveau pour combinaison stricte.
+        // Bug : filter sur filieres ET niveaux séparément donnait OR-logic erroné
+        // (matière liée à filière A + matière liée à niveau B = considérée liée à A+B).
         $matieresFiltrees = ESBTPMatiere::with(['filieres:id,name,code', 'niveaux:id,name,code'])
             ->where('is_active', true)
-            ->orderBy('name')
-            ->get()
-            ->filter(function (ESBTPMatiere $matiere) use ($classeFiliereId, $classeNiveauId) {
-                if (! $classeFiliereId || ! $classeNiveauId) {
-                    return false;
-                }
-
-                return $matiere->filieres->pluck('id')->contains($classeFiliereId)
-                    && $matiere->niveaux->pluck('id')->contains($classeNiveauId);
+            ->whereHas('liaisonsFilieresNiveaux', function ($q) use ($classeFiliereId, $classeNiveauId) {
+                $q->where('filiere_id', $classeFiliereId)
+                  ->where('niveau_etude_id', $classeNiveauId);
             })
-            ->values();
+            ->orderBy('name')
+            ->get();
         $matieresClasseIds = $matieresFiltrees->pluck('id')->all();
 
         // Vérifier si la configuration des matières a été faite pour ces matières

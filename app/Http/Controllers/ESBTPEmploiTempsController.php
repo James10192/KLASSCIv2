@@ -392,13 +392,12 @@ class ESBTPEmploiTempsController extends Controller
             'lien_configuration' => null,
         ];
 
-        // NOUVELLE LOGIQUE : Récupérer uniquement les matières liées à cette combinaison filière/niveau
+        // Récupérer les matières liées à cette combinaison STRICTE filière+niveau
+        // (pivot esbtp_matiere_filiere_niveau — Single Source of Truth).
         $matieresLiees = ESBTPMatiere::where('is_active', true)
-            ->whereHas('filieres', function ($query) use ($classe) {
-                $query->where('esbtp_filieres.id', $classe->filiere_id);
-            })
-            ->whereHas('niveaux', function ($query) use ($classe) {
-                $query->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+            ->whereHas('liaisonsFilieresNiveaux', function ($query) use ($classe) {
+                $query->where('filiere_id', $classe->filiere_id)
+                      ->where('niveau_etude_id', $classe->niveau_etude_id);
             })
             ->get();
 

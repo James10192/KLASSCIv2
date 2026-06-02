@@ -1033,18 +1033,18 @@ class ESBTPMatiereController extends Controller
                 });
             }
 
-            // Filtrer par filière si fournie
-            if ($request->has('filiere_id') && $request->filiere_id) {
-                $query->whereHas('filieres', function ($q) use ($request) {
-                    $q->where('esbtp_filieres.id', $request->filiere_id);
+            // Filtres filière+niveau via pivot canonique pour combinaison stricte AND
+            $filiereId = $request->input('filiere_id');
+            $niveauId = $request->input('niveau_id');
+            if ($filiereId && $niveauId) {
+                $query->whereHas('liaisonsFilieresNiveaux', function ($q) use ($filiereId, $niveauId) {
+                    $q->where('filiere_id', $filiereId)
+                      ->where('niveau_etude_id', $niveauId);
                 });
-            }
-
-            // Filtrer par niveau si fourni
-            if ($request->has('niveau_id') && $request->niveau_id) {
-                $query->whereHas('niveaux', function ($q) use ($request) {
-                    $q->where('esbtp_niveau_etudes.id', $request->niveau_id);
-                });
+            } elseif ($filiereId) {
+                $query->whereHas('liaisonsFilieresNiveaux', fn ($q) => $q->where('filiere_id', $filiereId));
+            } elseif ($niveauId) {
+                $query->whereHas('liaisonsFilieresNiveaux', fn ($q) => $q->where('niveau_etude_id', $niveauId));
             }
 
             $matieres = $query->select('id', 'name', 'code', 'description', 'coefficient')

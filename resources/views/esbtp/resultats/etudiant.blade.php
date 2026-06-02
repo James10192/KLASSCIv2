@@ -22,9 +22,15 @@
         $coeffFiliere = $classe->filiere;
         $coeffNiveau  = $classe->niveau;
 
+        // Source canonique : pivot esbtp_matiere_filiere_niveau (combinaison stricte
+        // filière+niveau sur la MÊME ligne). Avant : 2 whereHas séparés (filieres ET
+        // niveaux) = OR-logique sur les combinaisons → IGC liée à GTP-1A + IGC liée
+        // à GBAT-2A étaient considérées comme liée à GTP-2A à tort.
         $coeffMatieresLiees = \App\Models\ESBTPMatiere::where('is_active', true)
-            ->whereHas('filieres', fn($q) => $q->where('esbtp_filieres.id', $coeffFiliere->id))
-            ->whereHas('niveaux',  fn($q) => $q->where('esbtp_niveau_etudes.id', $coeffNiveau->id))
+            ->whereHas('liaisonsFilieresNiveaux', function ($q) use ($coeffFiliere, $coeffNiveau) {
+                $q->where('filiere_id', $coeffFiliere->id)
+                  ->where('niveau_etude_id', $coeffNiveau->id);
+            })
             ->orderBy('name')
             ->get();
 

@@ -1292,14 +1292,14 @@ $evaluation->titre = $request->titre;
 
             $classe = ESBTPClasse::findOrFail($classeId);
 
-            // Récupérer les matières disponibles via combinaisons globales (filière + niveau)
-            // Même logique que API LMS et classes/matieres.blade.php
+            // Récupérer les matières disponibles via combinaisons STRICTES filière+niveau
+            // (pivot esbtp_matiere_filiere_niveau). 2 whereHas séparés donnaient un OR-logic
+            // sur les combinaisons → matière liée à GTP-1A OU GBAT-2A apparaissait à tort
+            // comme liée à GTP-2A.
             $matieres = ESBTPMatiere::where('is_active', true)
-                ->whereHas('filieres', function ($q) use ($classe) {
-                    $q->where('esbtp_filieres.id', $classe->filiere_id);
-                })
-                ->whereHas('niveaux', function ($q) use ($classe) {
-                    $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+                ->whereHas('liaisonsFilieresNiveaux', function ($q) use ($classe) {
+                    $q->where('filiere_id', $classe->filiere_id)
+                      ->where('niveau_etude_id', $classe->niveau_etude_id);
                 })
                 ->orderBy('name')
                 ->get();
@@ -1387,11 +1387,9 @@ $evaluation->titre = $request->titre;
                 }
 
                 $matieres = ESBTPMatiere::where('is_active', true)
-                    ->whereHas('filieres', function ($query) use ($filiere) {
-                        $query->where('esbtp_filieres.id', $filiere->id);
-                    })
-                    ->whereHas('niveaux', function ($query) use ($niveau) {
-                        $query->where('esbtp_niveau_etudes.id', $niveau->id);
+                    ->whereHas('liaisonsFilieresNiveaux', function ($query) use ($filiere, $niveau) {
+                        $query->where('filiere_id', $filiere->id)
+                              ->where('niveau_etude_id', $niveau->id);
                     })
                     ->orderBy('name')
                     ->get();

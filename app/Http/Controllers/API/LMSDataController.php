@@ -210,11 +210,9 @@ class LMSDataController extends BaseApiController
 
             // Récupérer les matières disponibles via combinaison (filiere_id + niveau_id)
             $matieres = ESBTPMatiere::where('is_active', true)
-                ->whereHas('filieres', function ($q) use ($classe) {
-                    $q->where('esbtp_filieres.id', $classe->filiere_id);
-                })
-                ->whereHas('niveaux', function ($q) use ($classe) {
-                    $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+                ->whereHas('liaisonsFilieresNiveaux', function ($q) use ($classe) {
+                    $q->where('filiere_id', $classe->filiere_id)
+                      ->where('niveau_etude_id', $classe->niveau_etude_id);
                 })
                 ->get();
 
@@ -345,10 +343,9 @@ class LMSDataController extends BaseApiController
                 $q->where('enseignant_id', auth()->id())
                   ->where('esbtp_enseignant_matiere.annee_universitaire_id', $annee->id)
                   ->where('esbtp_enseignant_matiere.is_active', true);
-            })->whereHas('filieres', function ($q) use ($classe) {
-                $q->where('esbtp_filieres.id', $classe->filiere_id);
-            })->whereHas('niveaux', function ($q) use ($classe) {
-                $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+            })->whereHas('liaisonsFilieresNiveaux', function ($q) use ($classe) {
+                $q->where('filiere_id', $classe->filiere_id)
+                  ->where('niveau_etude_id', $classe->niveau_etude_id);
             })->exists();
 
             if (!$hasAccess) {
@@ -1090,11 +1087,9 @@ class LMSDataController extends BaseApiController
 
         // Récupérer les matières (cours) disponibles pour la classe
         $matieres = ESBTPMatiere::where('is_active', true)
-            ->whereHas('filieres', function ($q) use ($classe) {
-                $q->where('esbtp_filieres.id', $classe->filiere_id);
-            })
-            ->whereHas('niveaux', function ($q) use ($classe) {
-                $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+            ->whereHas('liaisonsFilieresNiveaux', function ($q) use ($classe) {
+                $q->where('filiere_id', $classe->filiere_id)
+                  ->where('niveau_etude_id', $classe->niveau_etude_id);
             })
             ->get();
 
@@ -1622,11 +1617,9 @@ class LMSDataController extends BaseApiController
         // Récupérer les matières disponibles via combinaison (filière + niveau)
         // IMPORTANT: Utilise les tables pivot globales, PAS esbtp_classe_matiere
         $matieres = ESBTPMatiere::where('is_active', true)
-            ->whereHas('filieres', function ($q) use ($classe) {
-                $q->where('esbtp_filieres.id', $classe->filiere_id);
-            })
-            ->whereHas('niveaux', function ($q) use ($classe) {
-                $q->where('esbtp_niveau_etudes.id', $classe->niveau_etude_id);
+            ->whereHas('liaisonsFilieresNiveaux', function ($q) use ($classe) {
+                $q->where('filiere_id', $classe->filiere_id)
+                  ->where('niveau_etude_id', $classe->niveau_etude_id);
             })
             ->with(['filieres', 'niveaux'])
             ->get();

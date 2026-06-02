@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(php artisan *)",
+      "Bash(php -d memory_limit=512M vendor/bin/phpunit --filter=\"ESBTPPaiementOwnershipTest\" tests/Unit/)",
+      "Bash(php -d memory_limit=512M vendor/bin/phpunit --filter=\"ESBTPPaiementOwnershipTest|ExampleTest\" tests/Unit/)",
+      "Bash(php -l app/Services/PaiementExportService.php)",
+      "Bash(php -l app/Http/Controllers/ESBTPPaiementExportController.php)",
+      "Bash(php -l database/migrations/2026_04_30_142727_add_paiements_export_permission.php)",
+      "Bash(php -l routes/web.php)",
+      "Bash(php -d memory_limit=512M vendor/bin/phpunit --filter=\"ESBTPPaiement\" tests/)",
+      "Bash(php -l app/Models/ESBTPPaiement.php app/Policies/ESBTPPaiementPolicy.php app/Http/Controllers/ESBTPPaiementController.php app/Services/PaymentFilterService.php bin/deploy/fix_permissions.php tests/Unit/Models/ESBTPPaiementOwnershipTest.php)",
+      "Bash(php -l resources/views/esbtp/paiements/exports/pdf-detaille.blade.php)",
+      "Bash(php -l resources/views/esbtp/paiements/exports/form.blade.php)",
+      "Bash(php *)",
+      "WebFetch(domain:africandigitconsulting.com)",
+      "Bash(file *)",
+      "Bash(git add *)",
+      "Bash(git commit -m 'fix\\(demo\\): call ESBTPInscriptionService directly to bypass artisan confirm\\(\\) *)",
+      "Bash(git push *)",
+      "PowerShell(& php \"$env:USERPROFILE\\\\Downloads\\\\ASSIGNMENT\\\\DEV\\\\klassci-cli\\\\bin\\\\klassci\" cache:clear presentation 2>&1 | Select-Object -Last 3)",
+      "Bash(sort -t: -k2 -n)",
+      "Bash(php -l app/Http/Controllers/Admin/BtsOrientationTargetController.php)",
+      "Bash(rm -rf storage/framework/views/*)"
+    ]
+  }
+}

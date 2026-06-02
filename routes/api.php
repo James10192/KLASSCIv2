@@ -264,6 +264,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::post('/bts-tc/sync-all', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'syncAll'])
         ->name('bts-tc.sync-all');
 
+    // Diagnose matière liaisons (filière+niveau pivot vs filieres/niveaux relations)
+    Route::get('/matieres/diagnose-liaisons', [App\Http\Controllers\API\CLI\CLIMatiereController::class, 'diagnoseLiaisons'])
+        ->name('matieres.diagnose-liaisons');
+
     // Read endpoints — Academic years
     Route::get('/annee', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'annee'])->name('annee');
 
