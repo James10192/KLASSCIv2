@@ -675,6 +675,14 @@ class ESBTPBulletinController extends Controller
 
             $semesterWeights = $this->bulletinService->getSemesterWeights();
             $periodeCourante = $bulletin->periode;
+            // Recompute note d'assiduité depuis les absences finales (était à 0 — initialisé ligne 499
+            // mais jamais réassigné → moyenneAvecAssiduite = brute, le +0.13 du template venait de
+            // note_assiduite injecté par genererDonneesBulletin via getOfficialBulletinTemplateDefaults).
+            // Maintenant cohérent : moyenneAvecAssiduite = brute + bonus assiduité.
+            $noteAssiduite = $this->bulletinService->resolveAttendanceNote(
+                $bulletin->absences_justifiees ?? 0,
+                $bulletin->absences_non_justifiees ?? 0
+            );
             $moyenneAvecAssiduite = $moyenneGenerale + ($noteAssiduite ?? 0);
             $moyenneSemestre1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
                 $bulletin->etudiant_id,
