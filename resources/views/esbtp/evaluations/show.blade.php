@@ -26,17 +26,22 @@
     }
     $classe = $evaluation->classe;
     $matiere = $evaluation->matiere;
-    // Cascade de fallback pour identifier qui "porte" l'évaluation :
-    //  1. enseignant_id (relation enseignant) — l'enseignant officiel assigné
-    //  2. enseignant_externe_nom — vacataire saisi manuellement
-    //  3. created_by (relation createdBy) — celui qui a créé l'évaluation
-    // Évite l'affichage "Non défini" trompeur quand created_by est connu.
+    // Distingue STRICTEMENT enseignant assigné vs créateur de l'évaluation.
+    // Marcel : le créateur (souvent secrétaire) ne doit JAMAIS être affiché comme
+    // enseignant — c'est un faux signal métier. On affiche :
+    //  - enseignantNom = enseignant_id OU enseignant_externe_nom OU '—' (jamais createdBy)
+    //  - creatorNom = createdBy->name si distinct de l'enseignant
+    // Quand aucun enseignant connu → 'Non défini' clair, et 'Créé par X' séparé.
     $enseignant = $evaluation->enseignant;
     $creator = $evaluation->createdBy ?? null;
     $enseignantNom = $enseignant
         ? ($enseignant->name ?? $enseignant->full_name ?? $enseignant->email)
-        : ($evaluation->enseignant_externe_nom
-            ?: ($creator ? ($creator->name ?? $creator->full_name ?? $creator->email) : 'Non défini'));
+        : ($evaluation->enseignant_externe_nom ?: 'Non défini');
+    $creatorNom = $creator
+        ? ($creator->name ?? $creator->full_name ?? $creator->email)
+        : null;
+    // Affiche 'Créé par X' SEULEMENT si X != enseignant (sinon redondant)
+    $showCreator = $creatorNom && $creatorNom !== $enseignantNom;
 
     $typeIcons = [
         'examen' => 'fa-file-alt',
@@ -198,6 +203,16 @@
                                     {{ $enseignantNom }}
                                 </span>
                             </div>
+
+                            @if($showCreator)
+                            <div class="ev-info-item">
+                                <span class="ev-info-label">Créé par</span>
+                                <span class="ev-info-value" style="opacity:.85;">
+                                    <i class="fas fa-user-pen ev-info-icon"></i>
+                                    {{ $creatorNom }}
+                                </span>
+                            </div>
+                            @endif
 
                             <div class="ev-info-item">
                                 <span class="ev-info-label">Publication</span>
