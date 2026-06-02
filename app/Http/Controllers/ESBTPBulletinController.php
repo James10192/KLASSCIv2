@@ -540,9 +540,18 @@ class ESBTPBulletinController extends Controller
             try {
                 Log::info('Récupération des vraies notes pour l\'étudiant #'.$bulletin->etudiant_id);
 
-                // Récupérer toutes les notes de l'étudiant avec les matières et évaluations
+                // Récupérer les notes de l'étudiant pour la période du bulletin.
+                // BUG corrigé : avant aucun filtre periode → S1 et S2 mélangés sur le PDF S2.
+                // La période vit sur evaluation.periode (semestre1 | semestre2 | annuel).
+                $bulletinPeriode = $this->bulletinService->normalizePeriode($bulletin->periode ?? 'semestre1');
                 $notesEtudiant = ESBTPNote::where('etudiant_id', $bulletin->etudiant_id)
                     ->where('classe_id', $bulletin->classe_id)
+                    ->whereHas('evaluation', function ($q) use ($bulletinPeriode) {
+                        if ($bulletinPeriode === 'annuel') {
+                            return; // pas de filtre → toutes les périodes
+                        }
+                        $q->where('periode', $bulletinPeriode);
+                    })
                     ->with(['matiere', 'evaluation'])
                     ->get();
 
@@ -584,11 +593,18 @@ class ESBTPBulletinController extends Controller
 
                         // Calculer la moyenne pondérée
                         $moyenneMatiere = $totalCoefficients > 0 ? $totalPondere / $totalCoefficients : 0;
-                        $coefficient = $this->bulletinService->getCoefficientForCombination(
-                            $matiere->id,
-                            $bulletin->classe_id,
-                            $bulletin->annee_universitaire_id
-                        );
+                        // Fallback 1 si coefficient missing — évite que toute la boucle bail
+                        // (catch ligne 641 met resultatsGeneraux/Techniques = empty → 0 matières)
+                        try {
+                            $coefficient = $this->bulletinService->getCoefficientForCombination(
+                                $matiere->id,
+                                $bulletin->classe_id,
+                                $bulletin->annee_universitaire_id
+                            );
+                        } catch (\RuntimeException $e) {
+                            $coefficient = 1;
+                            Log::warning('Coefficient manquant pour matière #'.$matiere->id.' bulletin #'.$bulletin->id.' — fallback à 1');
+                        }
 
                         Log::info('Matière: '.$matiere->name.' - '.$notes->count().' notes');
                         Log::info('Total pondéré: '.$totalPondere.', Total coefficients: '.$totalCoefficients);
@@ -609,14 +625,18 @@ class ESBTPBulletinController extends Controller
                             'total_coefficients' => $totalCoefficients,
                         ];
 
-                        if ($matiere->type_formation === 'generale') {
-                            $totalGeneral += $moyenneMatiere * $coefficient;
-                            $countGeneral += $coefficient;
-                            $resultatsGeneraux->push($resultatFormate);
-                        } elseif (in_array($matiere->type_formation, ['technique', 'technologique_professionnelle'])) {
+                        // Routing par type_formation, avec fallback 'generale' si null/inconnu
+                        // (sinon la matière était silencieusement droppée → 0 matières dans le PDF)
+                        $typeForm = $matiere->type_formation ?: 'generale';
+                        if (in_array($typeForm, ['technique', 'technologique_professionnelle'], true)) {
                             $totalTechnique += $moyenneMatiere * $coefficient;
                             $countTechnique += $coefficient;
                             $resultatsTechniques->push($resultatFormate);
+                        } else {
+                            // 'generale' explicite OU fallback (null, valeur inattendue)
+                            $totalGeneral += $moyenneMatiere * $coefficient;
+                            $countGeneral += $coefficient;
+                            $resultatsGeneraux->push($resultatFormate);
                         }
                     }
                 }
