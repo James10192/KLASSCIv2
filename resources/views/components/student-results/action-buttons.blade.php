@@ -51,6 +51,19 @@
                         </div>
                         <span class="sr-action-btn-text">Config. matières{{ $annualActionSuffix }}</span>
                     </a>
+                    {{-- Ouvre le modal coefficients in-page au lieu de rediriger vers evaluations.index --}}
+                    @if(isset($coeffFiliere) && isset($coeffNiveau))
+                    <button type="button"
+                            class="sr-action-btn"
+                            data-bs-toggle="modal"
+                            data-bs-target="#studentCoeffModal"
+                            title="Configure les coefficients matière (pondération bulletin)">
+                        <div class="sr-action-btn-icon sr-action-btn-icon--info">
+                            <i class="fas fa-sliders-h"></i>
+                        </div>
+                        <span class="sr-action-btn-text">Paramètres coefficients</span>
+                    </button>
+                    @endif
                     <a href="{{ route('esbtp.bulletins.edit-professeurs', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $workflowPeriode, 'annee_universitaire_id' => $annee_id]) }}"
                        class="sr-action-btn">
                         <div class="sr-action-btn-icon sr-action-btn-icon--primary">

@@ -894,13 +894,19 @@ class ESBTPResultatController extends Controller
             }
         }
 
-        // Recalculer la moyenne générale PONDÉRÉE (cohérent avec BulletinService::calculerMoyennePonderee)
+        // Recalculer la moyenne générale PONDÉRÉE par le COEFFICIENT DE LA MATIÈRE
+        // (source canonique = esbtp_matiere_coefficients via BulletinService).
+        // Bug historique : utilisait total_coefficients = somme des coefs ÉVALUATIONS
+        // → erroné. Le coef d'une éval pondère uniquement les notes INTRA-matière
+        // (moyenne matière). Le coef MATIÈRE pondère la moyenne matière dans la
+        // moyenne générale du bulletin. Les 2 niveaux sont distincts (BulletinService::calculerMoyennePonderee).
         $sommePoints = 0;
         $sommeCoefs = 0;
         foreach ($notesByMatiere as $matiere_id => $matiereData) {
-            if ($matiereData['moyenne'] > 0 && $matiereData['total_coefficients'] > 0) {
-                $sommePoints += $matiereData['moyenne'] * $matiereData['total_coefficients'];
-                $sommeCoefs += $matiereData['total_coefficients'];
+            $matCoef = $matiereData['matiere_coefficient'] ?? $matiereData['total_coefficients'] ?? 1;
+            if ($matiereData['moyenne'] > 0 && $matCoef > 0) {
+                $sommePoints += $matiereData['moyenne'] * $matCoef;
+                $sommeCoefs += $matCoef;
             }
         }
         $moyenneGenerale = $sommeCoefs > 0 ? $sommePoints / $sommeCoefs : 0;
