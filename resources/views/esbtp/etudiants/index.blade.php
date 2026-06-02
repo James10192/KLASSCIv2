@@ -3483,7 +3483,8 @@
 .eqe-pane { display: none; padding: 0; }
 .eqe-pane.active { display: block; }
 .eqe-iframe-wrap { position: relative; min-height: 520px; }
-.eqe-iframe-loader { position: absolute; inset: 0; background: rgba(255,255,255,.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; color: #475569; font-size: .82rem; gap: .5rem; }
+.eqe-iframe-loader { position: absolute; inset: 0; background: rgba(255,255,255,.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 5; color: #475569; font-size: .82rem; gap: .5rem; transition: opacity .25s ease; }
+.eqe-iframe-loader.hidden { opacity: 0; pointer-events: none; }
 .eqe-iframe-loader .spinner-border { color: #0453cb; }
 .eqe-iframe-wrap iframe { width: 100%; min-height: 520px; border: none; background: #fff; }
 .eqe-inscriptions { padding: 1.25rem; background: #fff; }
