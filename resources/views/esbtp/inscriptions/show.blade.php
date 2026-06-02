@@ -526,100 +526,96 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
    INSCRIPTION SHOW — PREMIUM REDESIGN (is-* namespace)
    ═══════════════════════════════════════════════════════════ */
 
-/* --- Hero Section --- */
+/* --- Hero Section — compact (less vertical space, info above the fold) --- */
 .is-hero {
     background: linear-gradient(135deg, #0453cb 0%, #1b64d4 50%, #5e91de 100%);
-    padding: 28px 32px 24px;
+    padding: 16px 22px;
     margin: -24px -24px 0;
     position: relative;
     overflow: hidden;
-}
-.is-hero::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background-image: radial-gradient(circle at 20% 80%, rgba(255,255,255,0.06) 0%, transparent 50%),
-                       radial-gradient(circle at 80% 20%, rgba(255,255,255,0.04) 0%, transparent 50%);
 }
 .is-hero-inner {
     position: relative;
     display: flex;
     align-items: center;
-    gap: 20px;
+    gap: 14px;
     max-width: 1280px;
     flex-wrap: wrap;
 }
 .is-hero-avatar {
-    width: 88px;
-    height: 88px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
-    border: 3px solid rgba(255,255,255,0.5);
+    border: 2px solid rgba(255,255,255,0.5);
     object-fit: cover;
     flex-shrink: 0;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.2);
+    box-shadow: 0 2px 10px rgba(0,0,0,0.15);
 }
 .is-hero-avatar-placeholder {
-    width: 88px;
-    height: 88px;
+    width: 56px;
+    height: 56px;
     border-radius: 50%;
-    border: 3px solid rgba(255,255,255,0.3);
+    border: 2px solid rgba(255,255,255,0.3);
     background: rgba(255,255,255,0.12);
     display: flex;
     align-items: center;
     justify-content: center;
     color: rgba(255,255,255,0.7);
-    font-size: 2rem;
+    font-size: 1.3rem;
     flex-shrink: 0;
 }
-.is-hero-text { flex: 1; min-width: 200px; }
+.is-hero-text { flex: 1; min-width: 180px; }
 .is-hero-name {
-    font-size: 1.5rem;
-    font-weight: 800;
+    font-size: 1.1rem;
+    font-weight: 700;
     color: #fff;
-    letter-spacing: -0.02em;
-    margin-bottom: 4px;
+    letter-spacing: -0.01em;
+    margin-bottom: 2px;
+    line-height: 1.15;
 }
 .is-hero-sub {
-    font-size: 0.88rem;
-    color: rgba(255,255,255,0.8);
-    margin-bottom: 10px;
+    font-size: 0.76rem;
+    color: rgba(255,255,255,0.78);
+    margin-bottom: 6px;
+    line-height: 1.3;
 }
-.is-hero-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.is-hero-pills { display: flex; flex-wrap: wrap; gap: 6px; }
 .is-hero-pill {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 5px 14px;
-    border-radius: 20px;
-    font-size: 0.78rem;
+    gap: 5px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 0.7rem;
     font-weight: 600;
     background: rgba(255,255,255,0.15);
     color: #fff;
     border: 1px solid rgba(255,255,255,0.2);
 }
-.is-hero-pill.success { background: rgba(16,185,129,0.25); border-color: rgba(16,185,129,0.4); }
-.is-hero-pill.warning { background: rgba(245,158,11,0.25); border-color: rgba(245,158,11,0.4); }
-.is-hero-pill.danger { background: rgba(239,68,68,0.25); border-color: rgba(239,68,68,0.4); }
+.is-hero-pill.success { background: rgba(16,185,129,0.28); border-color: rgba(16,185,129,0.45); }
+.is-hero-pill.warning { background: rgba(245,158,11,0.28); border-color: rgba(245,158,11,0.45); }
+.is-hero-pill.danger { background: rgba(239,68,68,0.28); border-color: rgba(239,68,68,0.45); }
 .is-hero-actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
     margin-left: auto;
 }
 .is-hero-btn {
     display: inline-flex;
     align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 0.82rem;
+    gap: 5px;
+    padding: 5px 11px;
+    border-radius: 7px;
+    font-size: 0.75rem;
     font-weight: 600;
     border: 1px solid rgba(255,255,255,0.3);
     background: rgba(255,255,255,0.12);
     color: #fff;
     text-decoration: none;
-    transition: all 0.2s ease;
+    transition: all 0.18s ease;
     cursor: pointer;
+    line-height: 1.2;
 }
 .is-hero-btn:hover {
     background: rgba(255,255,255,0.22);

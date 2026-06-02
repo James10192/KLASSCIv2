@@ -22,70 +22,69 @@
         .bj-hero {
             position: relative;
             background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 45%, #3b7ddb 100%);
-            border-radius: 18px;
-            padding: 1.5rem 1.75rem;
+            border-radius: 14px;
+            padding: .9rem 1.1rem;
             color: #fff;
-            margin: 1.25rem 0;
-            box-shadow: 0 12px 32px rgba(4,83,203,.22);
+            margin: .85rem 0;
+            box-shadow: 0 6px 18px rgba(4,83,203,.16);
         }
         .bj-hero-top {
             display: flex;
-            align-items: flex-start;
+            align-items: center;
             justify-content: space-between;
-            gap: 1rem;
+            gap: .75rem;
             flex-wrap: wrap;
         }
         .bj-hero-left {
             display: flex;
             align-items: center;
-            gap: .85rem;
+            gap: .65rem;
             min-width: 0;
             flex: 1;
         }
         .bj-hero-icon {
-            width: 48px; height: 48px;
-            border-radius: 13px;
-            background: rgba(255,255,255,.14);
-            backdrop-filter: blur(8px);
+            width: 34px; height: 34px;
+            border-radius: 9px;
+            background: rgba(255,255,255,.16);
             border: 1px solid rgba(255,255,255,.18);
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.2rem;
+            font-size: .88rem;
             flex-shrink: 0;
         }
-        .bj-hero-title { font-size: 1.15rem; font-weight: 700; line-height: 1.2; margin: 0; }
-        .bj-hero-sub { font-size: .82rem; color: rgba(255,255,255,.78); margin-top: .2rem; }
+        .bj-hero-title { font-size: .92rem; font-weight: 700; line-height: 1.15; margin: 0; letter-spacing: -.01em; }
+        .bj-hero-sub { font-size: .7rem; color: rgba(255,255,255,.72); margin-top: .15rem; line-height: 1.25; }
         .bj-hero-badge {
-            display: inline-flex; align-items: center; gap: .35rem;
-            padding: .35rem .7rem;
+            display: inline-flex; align-items: center; gap: .28rem;
+            padding: .25rem .6rem;
             border-radius: 999px;
-            font-size: .72rem; font-weight: 700;
-            text-transform: uppercase; letter-spacing: .4px;
+            font-size: .65rem; font-weight: 700;
+            text-transform: uppercase; letter-spacing: .35px;
             background: rgba(255,255,255,.18);
             border: 1px solid rgba(255,255,255,.22);
             color: #fff;
             white-space: nowrap;
         }
-        .bj-hero-badge.success { background: rgba(16,185,129,.25); border-color: rgba(16,185,129,.45); }
+        .bj-hero-badge.success { background: rgba(16,185,129,.28); border-color: rgba(16,185,129,.45); }
         .bj-hero-badge.info { background: rgba(255,255,255,.22); border-color: rgba(255,255,255,.32); }
         .bj-hero-badge.muted { background: rgba(255,255,255,.10); border-color: rgba(255,255,255,.18); color: rgba(255,255,255,.78); }
-        .bj-hero-badge i { font-size: .68rem; }
+        .bj-hero-badge i { font-size: .62rem; }
 
         .bj-timeline {
-            margin-top: 1.25rem;
+            margin-top: .7rem;
             background: rgba(255,255,255,.08);
             border: 1px solid rgba(255,255,255,.12);
-            border-radius: 12px;
-            padding: .85rem 1rem;
+            border-radius: 9px;
+            padding: .45rem .55rem;
             display: flex;
             align-items: stretch;
-            gap: .65rem;
+            gap: .4rem;
             flex-wrap: wrap;
         }
         .bj-step {
-            flex: 1; min-width: 180px;
-            display: flex; align-items: center; gap: .6rem;
-            padding: .45rem .6rem;
-            border-radius: 9px;
+            flex: 1; min-width: 170px;
+            display: flex; align-items: center; gap: .45rem;
+            padding: .25rem .4rem;
+            border-radius: 7px;
             background: rgba(255,255,255,.05);
             border: 1px solid rgba(255,255,255,.08);
             transition: background .15s ease;
@@ -93,14 +92,13 @@
         .bj-step.active {
             background: rgba(255,255,255,.18);
             border-color: rgba(255,255,255,.32);
-            box-shadow: 0 2px 8px rgba(0,0,0,.12);
         }
         .bj-step-dot {
-            width: 30px; height: 30px;
+            width: 22px; height: 22px;
             border-radius: 999px;
             background: rgba(255,255,255,.16);
             color: #fff;
-            font-size: .76rem; font-weight: 700;
+            font-size: .65rem; font-weight: 700;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
             border: 1px solid rgba(255,255,255,.18);
@@ -109,47 +107,48 @@
             background: #fff;
             color: #0453cb;
             border-color: #fff;
-            box-shadow: 0 0 0 3px rgba(255,255,255,.20);
         }
         .bj-step-body { min-width: 0; flex: 1; }
-        .bj-step-label { font-size: .82rem; font-weight: 700; color: #fff; line-height: 1.2; }
-        .bj-step-meta { font-size: .7rem; color: rgba(255,255,255,.7); margin-top: .15rem; line-height: 1.3; }
+        .bj-step-label { font-size: .72rem; font-weight: 700; color: #fff; line-height: 1.2; }
+        .bj-step-meta { font-size: .62rem; color: rgba(255,255,255,.68); margin-top: .08rem; line-height: 1.25; }
 
         .bj-actions {
-            margin-top: 1.1rem;
+            margin-top: .65rem;
             display: flex; align-items: center;
-            gap: .55rem; flex-wrap: wrap;
+            gap: .45rem; flex-wrap: wrap;
         }
         .bj-info {
-            flex: 1; min-width: 200px;
-            display: flex; align-items: center; gap: .5rem;
-            padding: .55rem .8rem;
+            flex: 1; min-width: 180px;
+            display: flex; align-items: center; gap: .4rem;
+            padding: .38rem .6rem;
             background: rgba(255,255,255,.08);
             border: 1px solid rgba(255,255,255,.12);
-            border-radius: 10px;
-            font-size: .78rem;
+            border-radius: 7px;
+            font-size: .7rem;
             color: rgba(255,255,255,.92);
+            line-height: 1.3;
         }
-        .bj-info i { font-size: .82rem; color: #fff; }
+        .bj-info i { font-size: .72rem; color: #fff; }
         .bj-info strong { color: #fff; font-weight: 700; }
 
         .bj-warn {
-            flex: 1; min-width: 200px;
-            display: flex; align-items: center; gap: .5rem;
-            padding: .55rem .8rem;
+            flex: 1; min-width: 180px;
+            display: flex; align-items: center; gap: .4rem;
+            padding: .38rem .6rem;
             background: rgba(245,158,11,.18);
             border: 1px solid rgba(245,158,11,.40);
-            border-radius: 10px;
-            font-size: .78rem;
+            border-radius: 7px;
+            font-size: .7rem;
             color: #fff;
+            line-height: 1.3;
         }
         .bj-warn i { color: #fef3c7; }
 
         .bj-btn {
-            display: inline-flex; align-items: center; gap: .4rem;
-            padding: .55rem 1rem;
-            border-radius: 10px;
-            font-size: .82rem; font-weight: 600;
+            display: inline-flex; align-items: center; gap: .35rem;
+            padding: .35rem .8rem;
+            border-radius: 7px;
+            font-size: .72rem; font-weight: 600;
             text-decoration: none;
             border: 1px solid transparent;
             cursor: pointer;

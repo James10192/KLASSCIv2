@@ -168,7 +168,9 @@ class ESBTPFiliere extends Model
      */
     public function isTroncCommun(): bool
     {
-        return $this->is_tronc_commun;
+        // Defensive: a real TC filière must be PRINCIPALE (parent_id IS NULL).
+        // Protects against data corruption where OPTION filières are wrongly flagged is_tronc_commun=true.
+        return $this->is_tronc_commun && is_null($this->parent_id);
     }
 
     /**
