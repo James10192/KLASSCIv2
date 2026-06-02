@@ -309,6 +309,45 @@ class CLIBtsTroncCommunController extends BaseApiController
         ], 'BTS TC orientation completed');
     }
 
+    public function syncInscription(Request $request, int $id): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $inscription = ESBTPInscription::with([
+            'etudiant',
+            'filiere',
+            'classe.filiere',
+            'phases.classe.filiere',
+            'inscriptionOrigine.classe.filiere',
+            'inscriptionSpecialisation.classe.filiere',
+        ])->find($id);
+
+        if (! $inscription) {
+            return $this->errorResponse('Inscription not found', [], 404);
+        }
+
+        $result = $this->orientationService->syncSingleInscription($inscription);
+
+        return $this->successResponse($result, 'BTS TC inscription sync executed');
+    }
+
+    public function syncAll(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'annee_universitaire_id' => 'sometimes|nullable|integer|exists:esbtp_annee_universitaires,id',
+        ]);
+
+        $stats = $this->orientationService->bulkSyncAll($validated['annee_universitaire_id'] ?? null);
+
+        return $this->successResponse($stats, 'BTS TC bulk sync executed');
+    }
+
     public function seedAcademicSample(Request $request, int $id): JsonResponse
     {
         if (! $request->user()->tokenCan('cli:admin')) {
