@@ -3192,6 +3192,36 @@
                 });
             });
         }).observe(document.documentElement, { childList: true, subtree: true });
+
+        // Détache les dropdown-menu de leur parent et les ré-attache au <body>
+        // au moment de l'ouverture. Sans ça, un ancestor avec transform/filter/will-change
+        // (animations CSS, hover effects, etc.) crée un containing block qui piège
+        // le menu et permet à des siblings (KPIs, cards) de passer au-dessus malgré z-index.
+        document.addEventListener('show.bs.dropdown', function(ev) {
+            const trigger = ev.target;
+            const menu = trigger.parentElement && trigger.parentElement.querySelector(':scope > .dropdown-menu');
+            if (!menu || menu.dataset.klassciTeleported === '1') return;
+            menu.dataset.klassciTeleported = '1';
+            menu.dataset.klassciOriginalParent = '1';
+            // Marque l'origin parent pour ré-attachement futur si besoin
+            const placeholder = document.createComment('dropdown-menu-placeholder');
+            menu.parentElement.insertBefore(placeholder, menu);
+            menu._klassciPlaceholder = placeholder;
+            document.body.appendChild(menu);
+        });
+        document.addEventListener('hidden.bs.dropdown', function(ev) {
+            const trigger = ev.target;
+            // Trouve le menu dans body qui pointe sur ce trigger via Popper
+            document.querySelectorAll('body > .dropdown-menu[data-klassci-teleported="1"]').forEach(function(menu) {
+                if (menu._klassciPlaceholder && menu._klassciPlaceholder.parentNode) {
+                    menu._klassciPlaceholder.parentNode.insertBefore(menu, menu._klassciPlaceholder);
+                    menu._klassciPlaceholder.remove();
+                    menu._klassciPlaceholder = null;
+                    delete menu.dataset.klassciTeleported;
+                    delete menu.dataset.klassciOriginalParent;
+                }
+            });
+        });
     })();
     </script>
 
