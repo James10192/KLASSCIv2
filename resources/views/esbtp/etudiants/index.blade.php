@@ -2833,6 +2833,15 @@
                     <i class="fas fa-user-graduate"></i>Réinscriptions
                 </a>
                 @endcan
+                @can('inscriptions.create')
+                <button type="button"
+                        class="btn-acasi success"
+                        data-bs-toggle="modal"
+                        data-bs-target="#bulkReinscriptionModal"
+                        title="Lancer une réinscription groupée — diagnostic moyenne/décision/frais soldés par étudiant">
+                    <i class="fas fa-layer-group"></i>Réinscription groupée
+                </button>
+                @endcan
 
                 {{-- Export modal trigger --}}
                 <button type="button" class="btn-acasi secondary" data-bs-toggle="modal" data-bs-target="#exportModal" style="gap: 6px;">
@@ -3507,6 +3516,19 @@
         </div>
     </div>
 </div>
+
+@include('esbtp.reinscription.partials.bulk-modal', ['students' => $etudiants])
+
+@if(request()->boolean('open_bulk'))
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const modalEl = document.getElementById('bulkReinscriptionModal');
+        if (modalEl && window.bootstrap) {
+            new bootstrap.Modal(modalEl).show();
+        }
+    });
+</script>
+@endif
 @endsection
 
 @push('scripts')

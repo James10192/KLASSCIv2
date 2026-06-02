@@ -709,6 +709,12 @@
                     <a href="{{ route('esbtp.reinscription.regles.index') }}" class="re-btn re-btn--glass">
                         <i class="fas fa-cogs"></i> Règles Académiques
                     </a>
+                    @can('inscriptions.create')
+                    <a href="{{ route('esbtp.etudiants.index', ['open_bulk' => 1]) }}" class="re-btn re-btn--glass"
+                       title="Sélectionner les étudiants à analyser pour la réinscription">
+                        <i class="fas fa-layer-group"></i> Réinscription groupée
+                    </a>
+                    @endcan
                     <button type="button" class="re-btn re-btn--white" onclick="exportResults()">
                         <i class="fas fa-download"></i> Exporter
                     </button>

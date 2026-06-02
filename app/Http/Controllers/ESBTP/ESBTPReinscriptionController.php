@@ -1256,4 +1256,105 @@ class ESBTPReinscriptionController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * Endpoint AJAX bulk-summary : pour une liste d'IDs étudiants, retourne
+     * par étudiant {moyenne, decision, frais_soldes, solde_restant, peut_reinscrire}.
+     * Utilisé par le modal de réinscription groupée (etudiants.index +
+     * reinscription.index). Limité à 100 étudiants par appel pour éviter
+     * les timeouts (analyserSituationEtudiantParInscription est lourd).
+     */
+    public function bulkSummary(Request $request)
+    {
+        $validated = $request->validate([
+            'etudiants_ids'   => 'required|array|min:1|max:100',
+            'etudiants_ids.*' => 'integer|exists:esbtp_etudiants,id',
+            'annee_academique' => 'sometimes|nullable|string',
+        ]);
+
+        $anneeAcademique = $validated['annee_academique'] ?? null;
+        if (! $anneeAcademique) {
+            $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+            $anneeAcademique = $anneeCourante?->name ?? (date('Y') . '-' . (date('Y') + 1));
+        }
+
+        $isSuperAdmin = auth()->user()?->isSuperAdmin() ?? false;
+        $results = [];
+
+        foreach ($validated['etudiants_ids'] as $etudiantId) {
+            try {
+                $inscription = \App\Models\ESBTPInscription::whereNotNull('classe_id')
+                    ->where('etudiant_id', $etudiantId)
+                    ->with(['etudiant', 'classe.niveau', 'classe.filiere'])
+                    ->orderByDesc('id')
+                    ->first();
+
+                if (! $inscription) {
+                    $results[] = [
+                        'etudiant_id' => $etudiantId,
+                        'status'      => 'skipped',
+                        'message'     => 'Aucune inscription avec classe trouvée.',
+                    ];
+                    continue;
+                }
+
+                $analyse = $this->reinscriptionService->analyserSituationEtudiantParInscription(
+                    $inscription, $anneeAcademique
+                );
+
+                $totalAttendu = $this->calculerTotalAttendu($inscription);
+                $totalPaye    = $this->calculerTotalPaye($inscription);
+                $soldeRestant = $totalAttendu - $totalPaye;
+                $fraisSoldes  = $soldeRestant <= 0;
+                $peutReinscrire = $fraisSoldes || $isSuperAdmin;
+
+                $etudiant = $analyse['etudiant'] ?? $inscription->etudiant;
+
+                $results[] = [
+                    'etudiant_id'    => (int) $etudiantId,
+                    'matricule'      => $etudiant?->matricule,
+                    'nom_complet'    => $etudiant?->nom_complet,
+                    'classe'         => $inscription->classe?->name,
+                    'filiere'        => $inscription->classe?->filiere?->name,
+                    'moyenne'        => isset($analyse['moyenne']) ? round((float) $analyse['moyenne'], 2) : null,
+                    'decision'       => $analyse['decision'] ?? null,
+                    'decision_label' => $this->decisionLabel($analyse['decision'] ?? null),
+                    'montant_attendu' => (float) $totalAttendu,
+                    'montant_paye'    => (float) $totalPaye,
+                    'solde_restant'   => (float) $soldeRestant,
+                    'frais_soldes'    => $fraisSoldes,
+                    'peut_reinscrire' => $peutReinscrire,
+                    'status'          => 'ok',
+                ];
+            } catch (\Exception $e) {
+                \Log::warning('bulkSummary échec sur étudiant ' . $etudiantId . ' : ' . $e->getMessage());
+                $results[] = [
+                    'etudiant_id' => (int) $etudiantId,
+                    'status'      => 'error',
+                    'message'     => $e->getMessage(),
+                ];
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'count'   => count($results),
+            'annee'   => $anneeAcademique,
+            'results' => $results,
+        ]);
+    }
+
+    private function decisionLabel(?string $decision): string
+    {
+        return match (true) {
+            $decision === 'passage'      => 'Passage en classe supérieure',
+            $decision === 'rattrapage'   => 'Rattrapage',
+            $decision === 'redoublement' => 'Redoublement',
+            $decision === 'abandon'      => 'Abandon',
+            $decision === 'admis'        => 'Admis',
+            $decision === 'ajourne'      => 'Ajourné',
+            (bool) $decision             => ucfirst($decision),
+            default                      => '—',
+        };
+    }
 }

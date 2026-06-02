@@ -479,6 +479,12 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('api/niveaux-by-filiere/{filiere}', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'getNiveauxByFiliere'])->name('api.niveaux-by-filiere');
                 Route::get('api/classes-by-filiere-niveau', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'getClassesByFiliereNiveau'])->name('api.classes-by-filiere-niveau');
 
+                // Diagnostic en masse — retourne par étudiant {moyenne, decision, frais_soldes, solde_restant}
+                // utilisé par le modal de réinscription groupée depuis etudiants.index + reinscription.index
+                Route::post('api/bulk-summary', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'bulkSummary'])
+                    ->middleware('throttle:30,1')
+                    ->name('api.bulk-summary');
+
                 // Route pour la page de finalisation de réinscription
                 Route::get('{etudiant}/finaliser', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'create'])->name('create');
 
