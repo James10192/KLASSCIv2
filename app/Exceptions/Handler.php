@@ -126,8 +126,13 @@ class Handler extends ExceptionHandler
                     ], 422);
                 }
 
-                return redirect()->route('esbtp.evaluations.index', ['open_coefficients' => 1])
-                    ->with('error', $message.' Configurez les coefficients avant de continuer.');
+                // Garde l'utilisateur sur sa page d'origine (souvent /esbtp/resultats/etudiant/...)
+                // et signale qu'un coefficient est manquant. La page result detail détecte le
+                // session('coefficient_missing_context') et auto-ouvre #studentCoeffModal in-page
+                // au lieu de rediriger vers evaluations.index?open_coefficients=1 (rupture UX).
+                return redirect()->back()
+                    ->with('error', $message.' Configurez les coefficients avant de continuer.')
+                    ->with('coefficient_missing_context', ['runtime' => true, 'message' => $message]);
             }
         }
 
