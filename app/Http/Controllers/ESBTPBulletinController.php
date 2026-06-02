@@ -630,6 +630,7 @@ class ESBTPBulletinController extends Controller
                         // Routing par type_formation, avec fallback 'generale' si null/inconnu
                         // (sinon la matière était silencieusement droppée → 0 matières dans le PDF)
                         $typeForm = $matiere->type_formation ?: 'generale';
+                        Log::error('BULLETIN_DEBUG_X matiere='.$matiere->id.' name='.$matiere->name.' type_form='.$typeForm.' coef='.$coefficient.' moy='.round($moyenneMatiere, 2));
                         if (in_array($typeForm, ['technique', 'technologique_professionnelle'], true)) {
                             $totalTechnique += $moyenneMatiere * $coefficient;
                             $countTechnique += $coefficient;
