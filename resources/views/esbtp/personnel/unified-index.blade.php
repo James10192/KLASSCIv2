@@ -129,9 +129,10 @@
     margin-top: 0.15rem;
 }
 
-/* ─── Dropdown override inside hero ─── */
+/* ─── Dropdown override inside hero ───
+   z-index retiré : géré par la règle universelle layouts/app.blade.php (99999).
+   Garder un z-index local plus bas casserait le pattern Popper sur cette page. */
 .pu-hero .dropdown-menu {
-    z-index: 1051 !important;
     background: #fff !important;
     border: 1px solid #e5e7eb !important;
     border-radius: 12px !important;
