@@ -25,6 +25,45 @@ Marcel : « je veux que ce soit universel dans KLASSCI en ne cassant pas les aut
 
 **Source canonique** : `resources/views/layouts/app.blade.php` (CSS dans `<head>` + JS avant `bootstrap.bundle.min.js`).
 
+**3 couches qui agissent ensemble** :
+1. CSS `position: fixed !important; z-index: 99999 !important; background: #fff !important` — couche défensive
+2. JS injection `data-bs-strategy="fixed"` + auto-flip dropup — placement intelligent
+3. **Teleport-to-body à l'ouverture** — couche définitive qui extrait le menu de tout stacking context parent
+
+### 0. Teleport-to-body (couche définitive, juin 2026)
+
+CSS pur ne suffit pas quand Popper.js applique un `transform: translate(...)` inline sur le menu (ce qu'il fait toujours en mode `data-bs-display="dynamic"`). Le `transform` sur le menu crée un stacking context qui interagit avec les siblings positionnés du parent, malgré `position: fixed; z-index: 99999`.
+
+**La solution canonique** : à `show.bs.dropdown`, détacher le menu de son parent et l'appendChild au `<body>`. À `hidden.bs.dropdown`, le ré-attacher à son emplacement d'origine via un placeholder commentaire.
+
+```js
+document.addEventListener('show.bs.dropdown', function(ev) {
+    const trigger = ev.target;
+    const menu = trigger.parentElement && trigger.parentElement.querySelector(':scope > .dropdown-menu');
+    if (!menu || menu.dataset.klassciTeleported === '1') return;
+    menu.dataset.klassciTeleported = '1';
+    const placeholder = document.createComment('dropdown-menu-placeholder');
+    menu.parentElement.insertBefore(placeholder, menu);
+    menu._klassciPlaceholder = placeholder;
+    document.body.appendChild(menu);
+});
+document.addEventListener('hidden.bs.dropdown', function(ev) {
+    document.querySelectorAll('body > .dropdown-menu[data-klassci-teleported="1"]').forEach(function(menu) {
+        if (menu._klassciPlaceholder && menu._klassciPlaceholder.parentNode) {
+            menu._klassciPlaceholder.parentNode.insertBefore(menu, menu._klassciPlaceholder);
+            menu._klassciPlaceholder.remove();
+            menu._klassciPlaceholder = null;
+            delete menu.dataset.klassciTeleported;
+        }
+    });
+});
+```
+
+**Effets de bord à connaître** :
+- Le menu est dans `<body>` quand ouvert — `closest('.dropdown')` depuis le menu retournera null. Si du code legacy dépend de cette navigation, le casser ou utiliser `getRootNode()`.
+- Les sélecteurs CSS scopés au parent (ex: `.pu-hero .dropdown-menu`) **ne s'appliquent plus quand le menu est ouvert**. Utiliser des classes propres au menu ou des sélecteurs globaux.
+- `aria-labelledby` reste valide car c'est un ID reference, pas un parent-child.
+
 ### 1. CSS global (z-index 99999 + force position fixed)
 
 ```css
