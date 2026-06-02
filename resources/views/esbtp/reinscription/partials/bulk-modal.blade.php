@@ -157,15 +157,20 @@
     </div>
 </div>
 
+@php
+    // Préparation des données dans un @php block pour éviter le pitfall Blade
+    // 'Unclosed [ on line N' quand un @json(array_literal_multiline) est mal parsé.
+    $brmStudentsData = $students->map(fn ($e) => [
+        'id'          => $e->id,
+        'matricule'   => $e->matricule,
+        'nom_complet' => $e->nom_complet ?? trim(($e->nom ?? '') . ' ' . ($e->prenoms ?? '')),
+        'classe'      => optional($e->inscriptions->first())->classe?->name,
+    ])->values();
+@endphp
 <script>
 function bulkReinscriptionModal() {
     return {
-        students: @json($students->map(fn($e) => [
-            'id'          => $e->id,
-            'matricule'   => $e->matricule,
-            'nom_complet' => $e->nom_complet ?? trim(($e->nom ?? '') . ' ' . ($e->prenoms ?? '')),
-            'classe'      => optional($e->inscriptions->first())->classe?->name,
-        ])->values()),
+        students: @json($brmStudentsData),
         selectedIds: [],
         searchQuery: '',
         step: 'select', // 'select' | 'loading' | 'results'
