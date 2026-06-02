@@ -1498,16 +1498,28 @@
          Source: Bootstrap docs + xjavascript.com.
     --}}
     <style>
-        /* Force le z-index très haut pour TOUS les dropdown-menu ouverts
-           (au-dessus de modals, fixed headers, sticky elements, etc.) */
+        /* Force z-index très haut pour TOUS les dropdown-menu ouverts (au-dessus de modals,
+           fixed headers, sticky elements). Sélecteurs multiples pour battre la spécificité
+           des règles inline Bootstrap (z-index: 1100). */
         .dropdown-menu.show,
-        .dropdown-menu[data-bs-popper] {
-            z-index: 10000 !important;
+        .dropdown-menu[data-bs-popper],
+        html body .dropdown-menu.show,
+        html body .dropdown-menu[data-bs-popper] {
+            z-index: 99999 !important;
+        }
+        /* Force position:fixed pour vraiment échapper aux parents overflow:hidden.
+           Combiné avec data-bs-strategy=fixed (Popper), c'est doublement protégé. */
+        html body .dropdown-menu.show[data-bs-popper],
+        html body .dropdown-menu[data-bs-popper] {
+            position: fixed !important;
         }
         /* Quand un dropdown est ouvert, neutralise les transform/transition concurrents
-           sur les rows hover (rule css-stacking-pitfalls.md) */
+           sur les rows hover (rule css-stacking-pitfalls.md) qui créeraient un nouveau
+           stacking context au-dessus du dropdown. */
         body:has(.dropdown-menu.show) tr:hover,
-        body:has(.dropdown-menu.show) .card:hover {
+        body:has(.dropdown-menu.show) .card:hover,
+        body:has(.dropdown-menu.show) .stat-card:hover,
+        body:has(.dropdown-menu.show) .kpi-card:hover {
             transform: none !important;
         }
     </style>
