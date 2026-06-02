@@ -55,6 +55,19 @@ class BtsPhaseResolver
             ->values();
 
         if ($phases->isEmpty()) {
+            // Defensive: only synthesize a TC phase if the inscription is actually TC.
+            // Without this guard, BTS2 inscriptions with no phase get a phantom TC banner.
+            $inscriptionIsTc = $inscription->filiere?->isTroncCommun()
+                || $inscription->classe?->filiere?->isTroncCommun();
+
+            if (! $inscriptionIsTc) {
+                return [
+                    'source_model' => 'phase_based',
+                    'current_phase' => null,
+                    'timeline' => [],
+                ];
+            }
+
             $timeline = [$this->formatPhaseArray([
                 'type_phase' => ESBTPInscriptionPhase::TYPE_TRONC_COMMUN,
                 'classe_id' => $inscription->classe_id,
