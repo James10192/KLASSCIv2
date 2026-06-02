@@ -326,8 +326,8 @@
                                 <select name="classe_id" id="classe_id" class="form-select" required
                                         data-places-indicator="{{ $placesInfoId }}"
                                         @if($insIsInTcActif && ! $insIsLegacyDual)
-                                            :disabled="! document.querySelector('input[name=correction_saisie]')?.checked"
-                                            x-init="$watch(() => document.querySelector('input[name=correction_saisie]')?.checked, v => $el.disabled = ! v); $el.disabled = ! document.querySelector('input[name=correction_saisie]')?.checked;"
+                                            data-locked-by-tc="1"
+                                            disabled
                                         @endif
                                     >
                                     <option value="">Sélectionner une classe</option>

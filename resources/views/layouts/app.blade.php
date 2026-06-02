@@ -1490,6 +1490,27 @@
             }
         }
     </style>
+
+    {{-- ═══ Règle universelle KLASSCI : dropdowns toujours au-dessus + auto-flip ═══
+         Pattern documenté Bootstrap 5 (data-bs-strategy=fixed + data-bs-boundary=viewport)
+         pour échapper aux parents overflow:hidden et stacking contexts concurrents.
+         Évite les clips visuels sur toutes les pages KLASSCI sans régression.
+         Source: Bootstrap docs + xjavascript.com.
+    --}}
+    <style>
+        /* Force le z-index très haut pour TOUS les dropdown-menu ouverts
+           (au-dessus de modals, fixed headers, sticky elements, etc.) */
+        .dropdown-menu.show,
+        .dropdown-menu[data-bs-popper] {
+            z-index: 10000 !important;
+        }
+        /* Quand un dropdown est ouvert, neutralise les transform/transition concurrents
+           sur les rows hover (rule css-stacking-pitfalls.md) */
+        body:has(.dropdown-menu.show) tr:hover,
+        body:has(.dropdown-menu.show) .card:hover {
+            transform: none !important;
+        }
+    </style>
     @yield('styles')
     @stack('styles')
 </head>
@@ -3086,6 +3107,42 @@
 
     <!-- Bootstrap JS with Popper -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    {{-- ═══ Règle universelle KLASSCI : auto-attach Popper config sur tous les dropdowns
+         - data-bs-strategy="fixed" → Popper position:fixed → détache du flow document,
+           ignore overflow:hidden des parents (rule css-stacking-pitfalls.md)
+         - data-bs-boundary="viewport" → boundary = fenêtre entière, plus le scrollParent,
+           permet auto-flip basé sur viewport réel
+         - data-bs-display="dynamic" → Popper recalcule placement à chaque ouverture
+           (auto-flip up quand espace insuffisant en bas, source: Bootstrap docs)
+         - MutationObserver pour les dropdowns ajoutés dynamiquement (AJAX, Alpine x-show)
+    --}}
+    <script>
+    (function() {
+        function applyDropdownDefaults(scope) {
+            scope.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(trigger) {
+                if (trigger.dataset.klassciDropdownInit === '1') return;
+                trigger.dataset.klassciDropdownInit = '1';
+                if (!trigger.hasAttribute('data-bs-strategy')) trigger.setAttribute('data-bs-strategy', 'fixed');
+                if (!trigger.hasAttribute('data-bs-boundary')) trigger.setAttribute('data-bs-boundary', 'viewport');
+                if (!trigger.hasAttribute('data-bs-display')) trigger.setAttribute('data-bs-display', 'dynamic');
+                // Si Bootstrap a déjà instancié, le re-init n'est pas nécessaire car Bootstrap
+                // lit les data-attrs au moment de l'instanciation lazy.
+            });
+        }
+        document.addEventListener('DOMContentLoaded', function() {
+            applyDropdownDefaults(document);
+            // Observer le DOM pour gérer les dropdowns ajoutés via AJAX/Alpine.
+            new MutationObserver(function(mutations) {
+                mutations.forEach(function(m) {
+                    m.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1) applyDropdownDefaults(node);
+                    });
+                });
+            }).observe(document.body, { childList: true, subtree: true });
+        });
+    })();
+    </script>
 
     <!-- Alpine.js (focus plugin must load BEFORE core for x-trap to register) -->
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>

@@ -3,6 +3,19 @@
         const form = $('form[data-places-info-target]').first();
         const placesTargetId = form.data('places-info-target');
 
+        // Déverrouille le select classe_id quand la case "Correction d'erreur de saisie" est cochée.
+        // Avant : Alpine $watch sur document.querySelector ne fonctionne pas car DOM
+        // n'est pas réactif. Pattern remplaçé par event listener natif.
+        const correctionCheckbox = document.querySelector('input[name="correction_saisie"]');
+        const classeSelect = document.getElementById('classe_id');
+        if (correctionCheckbox && classeSelect && classeSelect.dataset.lockedByTc === '1') {
+            const applyLock = () => {
+                classeSelect.disabled = !correctionCheckbox.checked;
+            };
+            correctionCheckbox.addEventListener('change', applyLock);
+            applyLock(); // état initial
+        }
+
         function updatePlacesInfo(classeId) {
             const target = placesTargetId ? $('#' + placesTargetId) : $();
             if (!target.length) {
