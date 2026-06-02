@@ -90,17 +90,21 @@
                     <i class="fas fa-eye" aria-hidden="true"></i>
                 </a>
 
-                {{-- Kebab menu BS5 native dropdown : Configurer / Modifier / Supprimer --}}
+                {{-- Kebab menu BS5 native dropdown : Configurer / Modifier / Supprimer
+                     data-bs-strategy=fixed → Popper détache du flow table-responsive (pas de clip)
+                     data-bs-display=dynamic → flip auto vers le haut si pas assez d'espace en bas --}}
                 <div class="dropdown">
                     <button type="button"
                             class="mi-action-kebab"
                             data-bs-toggle="dropdown"
+                            data-bs-strategy="fixed"
+                            data-bs-display="dynamic"
                             aria-expanded="false"
                             aria-label="Plus d'actions pour {{ $matiere->name }}"
                             title="Plus d'actions">
                         <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end mi-action-menu">
+                    <ul class="dropdown-menu dropdown-menu-end mi-action-menu" style="z-index:1100;">
                         <li>
                             <button type="button"
                                     class="dropdown-item configure-matiere-btn"

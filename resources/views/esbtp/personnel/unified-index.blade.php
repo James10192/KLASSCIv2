@@ -1477,10 +1477,15 @@
                 @if($canAnyCreatePersonnel)
                 <div class="pu-hero-actions">
                     <div class="dropdown">
-                        <button class="pu-hero-btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        <button class="pu-hero-btn dropdown-toggle" type="button"
+                                data-bs-toggle="dropdown"
+                                data-bs-strategy="fixed"
+                                data-bs-display="dynamic"
+                                aria-expanded="false">
                             <i class="fas fa-plus"></i>Nouveau Personnel
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-end">
+                        <ul class="dropdown-menu dropdown-menu-end"
+                            style="z-index:1100;">
                             @if(($personnelAccess['coordinateurs']['create'] ?? false) && ($userRole ?? '') !== 'coordinateur')
                             <li><a class="dropdown-item" href="{{ route('esbtp.coordinateurs.create') }}">
                                 <i class="fas fa-user-tie"></i>Coordinateur
