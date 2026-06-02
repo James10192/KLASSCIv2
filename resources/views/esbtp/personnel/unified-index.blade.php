@@ -575,6 +575,13 @@
 .pu-delay-2 { animation-delay: 0.2s; }
 .pu-delay-3 { animation-delay: 0.3s; }
 
+/* Le hero contient un dropdown qui doit s'extraire en position:fixed.
+   transform: translateY(0) (état final animation) crée un containing block et
+   piège le menu dans le stacking context du hero. On utilise une animation
+   opacity-only pour le hero spécifiquement, qui ne laisse aucun transform. */
+@keyframes pu-fade-only { from { opacity: 0; } to { opacity: 1; } }
+.pu-hero.pu-animate { animation: pu-fade-only 0.5s ease-out both; transform: none !important; }
+
 /* ─── Overflow fix for dropdown ─── */
 .dashboard-acasi,
 .main-content { overflow: visible !important; }
