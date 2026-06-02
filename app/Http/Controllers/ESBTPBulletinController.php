@@ -645,6 +645,7 @@ class ESBTPBulletinController extends Controller
                 $resultatsTechniques = collect();
                 $moyenneGenerale = 0;
                 $moyenneTechnique = 0;
+                $moyenneGlobale = 0; // Évite 'Undefined variable $moyenneGlobale' au rendu du template
             }
 
             // Générer le PDF avec les configurations de l'école

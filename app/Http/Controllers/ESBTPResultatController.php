@@ -885,37 +885,10 @@ class ESBTPResultatController extends Controller
         }
         unset($matiereData);
 
-        // Compléter avec les matières de la classe qui n'ont AUCUNE note ni résultat
-        // saisi : Marcel veut les voir apparaître quand même (avec moyenne 0 + coef officiel)
-        // au lieu d'être invisibles. Permet de signaler l'absence de saisie.
-        if ($classe && ! empty($classeMatieresIds)) {
-            $missingMatieresIds = array_diff($classeMatieresIds, array_keys($notesByMatiere));
-            if (! empty($missingMatieresIds)) {
-                $missingMatieres = \App\Models\ESBTPMatiere::whereIn('id', $missingMatieresIds)->get();
-                foreach ($missingMatieres as $matiere) {
-                    try {
-                        $coef = $this->bulletinService->getCoefficientForCombination(
-                            (int) $matiere->id,
-                            (int) $classe->id,
-                            $annee_universitaire_id
-                        ) ?: 1;
-                    } catch (\RuntimeException $e) {
-                        $coef = 1;
-                    }
-                    $notesByMatiere[$matiere->id] = [
-                        'matiere' => $matiere,
-                        'notes' => [],
-                        'calculations' => [],
-                        'total_points' => 0,
-                        'total_coefficients' => 0,
-                        'matiere_coefficient' => $coef,
-                        'moyenne' => 0,
-                        'source' => 'aucune_saisie',
-                        'origin' => 'classe',
-                    ];
-                }
-            }
-        }
+        // NE PAS ajouter ici les matières sans note ni résultat manuel : Marcel ne veut
+        // voir QUE les matières qui ont au moins une note évaluée OU une moyenne manuelle.
+        // (Précédente version polluait la liste avec des matières fantômes 'aucune_saisie'
+        // affichées 0.00/20 INSUFFISANT alors qu'aucune saisie n'existe.)
 
         // Recalculer la moyenne générale PONDÉRÉE par le COEFFICIENT DE LA MATIÈRE
         // (source canonique = esbtp_matiere_coefficients via BulletinService).
