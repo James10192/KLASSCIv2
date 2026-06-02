@@ -186,7 +186,8 @@ class ESBTPStudentController extends Controller
             $this->applyAccessibilityFilter($baseQuery, (string) $accessibility);
         }
 
-        $perPage = 15;
+        // Infinite scroll : 30 items par "page" (sentinel charge la suivante).
+        $perPage = (int) $request->input('per_page', 30);
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
 
         \Log::info('ESBTPStudentController@index processing', array_merge($baseLogContext, [
@@ -368,13 +369,35 @@ class ESBTPStudentController extends Controller
             ]);
         }
 
+        // Étudiants pour modal Réinscription groupée : TOUS les étudiants ayant une
+        // inscription sur l'année courante (pas limité à pagination 15). Payload
+        // léger id+matricule+nom+classe ~100B/étudiant.
+        $etudiantsForBulk = ESBTPEtudiant::query()
+            ->select('id', 'matricule', 'nom', 'prenoms')
+            ->when($anneeCourante, function ($q) use ($anneeCourante) {
+                $q->whereHas('inscriptions', function ($sub) use ($anneeCourante) {
+                    $sub->where('annee_universitaire_id', $anneeCourante->id);
+                });
+            })
+            ->with(['inscriptions' => function ($q) use ($anneeCourante) {
+                if ($anneeCourante) {
+                    $q->where('annee_universitaire_id', $anneeCourante->id);
+                }
+                $q->with('classe:id,name');
+            }])
+            ->orderBy('nom')
+            ->orderBy('prenoms')
+            ->get();
+
         \Log::info('ESBTPStudentController@index returning view', array_merge($baseLogContext, [
             'timestamp' => now()->toIso8601String(),
             'duration_ms' => round((microtime(true) - $startMicrotime) * 1000, 2),
+            'etudiants_for_bulk_count' => $etudiantsForBulk->count(),
         ]));
 
         return view('esbtp.etudiants.index', compact(
             'etudiants',
+            'etudiantsForBulk',
             'filieres',
             'niveaux',
             'annees',
