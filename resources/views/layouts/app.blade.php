@@ -1506,12 +1506,27 @@
         html body .dropdown-menu.show,
         html body .dropdown-menu[data-bs-popper] {
             z-index: 99999 !important;
+            background-color: #fff !important;
+            opacity: 1 !important;
+            backdrop-filter: none !important;
         }
         /* Force position:fixed pour vraiment échapper aux parents overflow:hidden.
            Combiné avec data-bs-strategy=fixed (Popper), c'est doublement protégé. */
         html body .dropdown-menu.show[data-bs-popper],
         html body .dropdown-menu[data-bs-popper] {
             position: fixed !important;
+        }
+        /* Items du dropdown : couleur texte sombre forcée pour rester lisible
+           sur background blanc même si la page parent a un texte blanc/clair */
+        html body .dropdown-menu.show .dropdown-item,
+        html body .dropdown-menu[data-bs-popper] .dropdown-item {
+            color: #374151 !important;
+            text-shadow: none !important;
+        }
+        html body .dropdown-menu.show .dropdown-item:hover,
+        html body .dropdown-menu[data-bs-popper] .dropdown-item:hover {
+            background-color: rgba(4,83,203,.08) !important;
+            color: #0453cb !important;
         }
         /* Quand un dropdown est ouvert, neutralise les transform/transition concurrents
            sur les rows hover (rule css-stacking-pitfalls.md) qui créeraient un nouveau
