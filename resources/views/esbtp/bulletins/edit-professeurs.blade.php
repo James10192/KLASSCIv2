@@ -68,10 +68,11 @@
                     @if(in_array($periode, ['semestre1', 'semestre2'], true))
                     <button type="button"
                             id="copyProfsBtn"
+                            data-source-label="{{ $otherPeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2' }}"
                             class="sr-hero-btn"
                             style="background:rgba(255,255,255,.16); color:#fff; border:1px solid rgba(255,255,255,.32);"
                             title="Copier les professeurs déjà saisis sur l'autre semestre (souvent le même professeur enseigne aux 2 semestres)">
-                        <i class="fas fa-copy"></i>Copier depuis {{ $otherPeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2' }}
+                        <i class="fas fa-copy"></i><span class="copy-btn-label">Copier depuis {{ $otherPeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2' }}</span>
                     </button>
                     @endif
                     <a href="{{ route('esbtp.resultats.etudiant', ['etudiant' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $periode, 'annee_universitaire_id' => $anneeUniversitaire->id]) }}" class="sr-hero-btn">
@@ -105,6 +106,29 @@
             </div>
         </div>
 
+        {{-- Tabs Semestre 1 / Semestre 2 (AJAX no-reload) --}}
+        @if(in_array($periode, ['semestre1', 'semestre2'], true))
+        <div class="ep-tabs sr-animate sr-animate-delay-1" role="tablist" style="display:flex; gap:.45rem; background:#fff; padding:.4rem; border-radius:12px; border:1px solid #e2e8f0; box-shadow:0 1px 3px rgba(15,23,42,.04); margin-bottom:1.25rem; max-width:fit-content;">
+            <button type="button"
+                    class="ep-tab"
+                    role="tab"
+                    data-periode="semestre1"
+                    aria-selected="{{ $periode === 'semestre1' ? 'true' : 'false' }}"
+                    style="padding:.5rem 1rem; border-radius:8px; border:none; font-weight:600; font-size:.85rem; cursor:pointer; transition:all .15s ease; background:{{ $periode === 'semestre1' ? '#0453cb' : 'transparent' }}; color:{{ $periode === 'semestre1' ? '#fff' : '#475569' }};">
+                <i class="fas fa-calendar-day me-1"></i>Semestre 1
+            </button>
+            <button type="button"
+                    class="ep-tab"
+                    role="tab"
+                    data-periode="semestre2"
+                    aria-selected="{{ $periode === 'semestre2' ? 'true' : 'false' }}"
+                    style="padding:.5rem 1rem; border-radius:8px; border:none; font-weight:600; font-size:.85rem; cursor:pointer; transition:all .15s ease; background:{{ $periode === 'semestre2' ? '#0453cb' : 'transparent' }}; color:{{ $periode === 'semestre2' ? '#fff' : '#475569' }};">
+                <i class="fas fa-calendar-week me-1"></i>Semestre 2
+            </button>
+        </div>
+        @endif
+
+        <div id="ep-content-area">
         @if($errors->any())
             <div class="alert alert-danger alert-dismissible fade show"><i class="fas fa-exclamation-circle me-2"></i>
                 @foreach($errors->all() as $error) {{ $error }} @endforeach
@@ -269,6 +293,7 @@
                 </div>
             </div>
         </form>
+        </div>{{-- /#ep-content-area --}}
     </div>
 </div>
 
@@ -297,11 +322,20 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     // ═══ Copier les professeurs depuis l'autre semestre ═══
-    var copyBtn = document.getElementById('copyProfsBtn');
-    if (copyBtn) {
+    function bindCopyButton() {
+        var copyBtn = document.getElementById('copyProfsBtn');
+        if (!copyBtn || copyBtn.dataset.bound === '1') return;
+        copyBtn.dataset.bound = '1';
         copyBtn.addEventListener('click', async function (ev) {
             ev.preventDefault();
             if (copyBtn.disabled) return;
+            // Lit dynamiquement les params depuis les inputs hidden du form courant
+            const form = document.getElementById('professeursForm');
+            if (!form) return;
+            const currentPeriode = form.querySelector('input[name="periode"]')?.value;
+            const etudiantId = form.querySelector('input[name="etudiant_id"]')?.value;
+            const classeId = form.querySelector('input[name="classe_id"]')?.value;
+            const anneeId = form.querySelector('input[name="annee_universitaire_id"]')?.value;
             const original = copyBtn.innerHTML;
             copyBtn.disabled = true;
             copyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>Chargement…';
@@ -316,10 +350,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                     body: JSON.stringify({
-                        etudiant_id: {{ (int) $etudiant->id }},
-                        classe_id: {{ (int) $classe->id }},
-                        periode: @json($periode),
-                        annee_universitaire_id: {{ (int) $anneeUniversitaire->id }},
+                        etudiant_id: parseInt(etudiantId, 10),
+                        classe_id: parseInt(classeId, 10),
+                        periode: currentPeriode,
+                        annee_universitaire_id: parseInt(anneeId, 10),
                     }),
                 });
                 const data = await res.json();
@@ -331,7 +365,6 @@ document.addEventListener('DOMContentLoaded', function() {
                     }
                     return;
                 }
-                // Hydrate les inputs avec les profs source. Confirm avant écrasement si valeurs existantes.
                 let filledCount = 0, overwrittenCount = 0;
                 Object.entries(data.professeurs || {}).forEach(([matiereId, profNom]) => {
                     const input = document.getElementById('professeur_' + matiereId);
@@ -363,6 +396,127 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    bindCopyButton();
+
+    // ═══ Tabs S1 ↔ S2 (AJAX no-reload) ═══
+    function bindTabs() {
+        document.querySelectorAll('.ep-tab').forEach(function (tab) {
+            if (tab.dataset.bound === '1') return;
+            tab.dataset.bound = '1';
+            tab.addEventListener('click', async function (ev) {
+                ev.preventDefault();
+                const targetPeriode = this.dataset.periode;
+                const currentPeriode = document.querySelector('#professeursForm input[name="periode"]')?.value;
+                if (!targetPeriode || targetPeriode === currentPeriode) return;
+                // Update tab style immédiatement (UX feedback)
+                document.querySelectorAll('.ep-tab').forEach(t => {
+                    const isActive = t.dataset.periode === targetPeriode;
+                    t.style.background = isActive ? '#0453cb' : 'transparent';
+                    t.style.color = isActive ? '#fff' : '#475569';
+                    t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                });
+
+                // Build target URL avec mêmes params + nouveau periode
+                const params = new URLSearchParams(window.location.search);
+                params.set('periode', targetPeriode);
+                const newUrl = window.location.pathname + '?' + params.toString();
+
+                const contentArea = document.getElementById('ep-content-area');
+                if (contentArea) {
+                    contentArea.style.opacity = '0.5';
+                    contentArea.style.pointerEvents = 'none';
+                }
+                try {
+                    const res = await fetch(newUrl, {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'text/html',
+                        },
+                    });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const html = await res.text();
+                    const tmp = document.createElement('div');
+                    tmp.innerHTML = html;
+                    const fresh = tmp.querySelector('#ep-content-area');
+                    if (!fresh) throw new Error('Contenu introuvable dans la réponse');
+                    if (contentArea) contentArea.outerHTML = fresh.outerHTML;
+                    // Update copy button label depuis le nouveau hero (autre semestre source)
+                    const freshCopyBtn = tmp.querySelector('#copyProfsBtn');
+                    if (freshCopyBtn) {
+                        const currentCopyBtn = document.getElementById('copyProfsBtn');
+                        if (currentCopyBtn) {
+                            const newLabel = freshCopyBtn.dataset.sourceLabel || 'autre Semestre';
+                            const labelSpan = currentCopyBtn.querySelector('.copy-btn-label');
+                            if (labelSpan) labelSpan.textContent = 'Copier depuis ' + newLabel;
+                            currentCopyBtn.dataset.sourceLabel = newLabel;
+                            currentCopyBtn.dataset.bound = ''; // re-bind
+                        }
+                    }
+                    // Update KPI "Assignés"
+                    const freshStats = tmp.querySelectorAll('.sr-stat-value');
+                    if (freshStats.length > 0) {
+                        const currentStats = document.querySelectorAll('.sr-stat-value');
+                        freshStats.forEach((s, i) => {
+                            if (currentStats[i]) currentStats[i].textContent = s.textContent;
+                        });
+                    }
+                    // Update browser URL (no reload)
+                    history.pushState({ periode: targetPeriode }, '', newUrl);
+                    // Re-init handlers (copy button + animateValueChange consumers)
+                    bindCopyButton();
+                    // Re-bind quick-select dropdowns inside swapped content
+                    document.querySelectorAll('.form-select-modern').forEach(function (sel) {
+                        if (sel.dataset.bound === '1') return;
+                        sel.dataset.bound = '1';
+                        sel.addEventListener('change', function () {
+                            if (!this.value) return;
+                            var card = this.closest('.subject-card');
+                            if (!card) return;
+                            var input = card.querySelector('.form-control-modern');
+                            if (input) {
+                                input.value = this.value;
+                                input.setAttribute('value', this.value);
+                                input.dispatchEvent(new Event('input', { bubbles: true }));
+                                if (typeof animateValueChange === 'function') animateValueChange(input);
+                                this.value = '';
+                            }
+                        });
+                    });
+                    if (typeof window.klassciToast === 'function') {
+                        window.klassciToast('info', 'Semestre ' + (targetPeriode === 'semestre1' ? '1' : '2') + ' chargé.', 2500);
+                    }
+                } catch (err) {
+                    console.error(err);
+                    if (typeof window.klassciToast === 'function') {
+                        window.klassciToast('error', err.message || 'Erreur de chargement.');
+                    }
+                    // Revert tab style
+                    document.querySelectorAll('.ep-tab').forEach(t => {
+                        const isActive = t.dataset.periode === currentPeriode;
+                        t.style.background = isActive ? '#0453cb' : 'transparent';
+                        t.style.color = isActive ? '#fff' : '#475569';
+                        t.setAttribute('aria-selected', isActive ? 'true' : 'false');
+                    });
+                } finally {
+                    const newContentArea = document.getElementById('ep-content-area');
+                    if (newContentArea) {
+                        newContentArea.style.opacity = '';
+                        newContentArea.style.pointerEvents = '';
+                    }
+                }
+            });
+        });
+    }
+    bindTabs();
+
+    // Handle browser back/forward
+    window.addEventListener('popstate', function (ev) {
+        const params = new URLSearchParams(window.location.search);
+        const periode = params.get('periode');
+        if (!periode) return;
+        const targetTab = document.querySelector('.ep-tab[data-periode="' + periode + '"]');
+        if (targetTab) targetTab.click();
+    });
 });
 </script>
 @include('partials._klassci_toast')
