@@ -544,7 +544,6 @@ class ESBTPBulletinController extends Controller
                 // BUG corrigé : avant aucun filtre periode → S1 et S2 mélangés sur le PDF S2.
                 // La période vit sur evaluation.periode (semestre1 | semestre2 | annuel).
                 $bulletinPeriode = $this->bulletinService->normalizePeriode($bulletin->periode ?? 'semestre1');
-                Log::error('BULLETIN_DEBUG_X periode raw='.$bulletin->periode.' normalized='.$bulletinPeriode.' bulletin_id='.$bulletin->id);
                 $notesEtudiant = ESBTPNote::where('etudiant_id', $bulletin->etudiant_id)
                     ->where('classe_id', $bulletin->classe_id)
                     ->whereHas('evaluation', function ($q) use ($bulletinPeriode) {
@@ -556,8 +555,7 @@ class ESBTPBulletinController extends Controller
                     ->with(['matiere', 'evaluation'])
                     ->get();
 
-                Log::error('BULLETIN_DEBUG_X Notes trouvées: '.$notesEtudiant->count().' periode_attendue='.$bulletinPeriode);
-                Log::error('BULLETIN_DEBUG_X matiere_ids: '.implode(',', $notesEtudiant->pluck('matiere_id')->unique()->all()));
+                Log::info('Notes trouvées: '.$notesEtudiant->count().' periode_attendue='.$bulletinPeriode);
 
                 // Grouper les notes par matière et calculer les moyennes par matière
                 $notesByMatiere = $notesEtudiant->groupBy('matiere_id');
@@ -630,7 +628,6 @@ class ESBTPBulletinController extends Controller
                         // Routing par type_formation, avec fallback 'generale' si null/inconnu
                         // (sinon la matière était silencieusement droppée → 0 matières dans le PDF)
                         $typeForm = $matiere->type_formation ?: 'generale';
-                        Log::error('BULLETIN_DEBUG_X matiere='.$matiere->id.' name='.$matiere->name.' type_form='.$typeForm.' coef='.$coefficient.' moy='.round($moyenneMatiere, 2));
                         if (in_array($typeForm, ['technique', 'technologique_professionnelle'], true)) {
                             $totalTechnique += $moyenneMatiere * $coefficient;
                             $countTechnique += $coefficient;
