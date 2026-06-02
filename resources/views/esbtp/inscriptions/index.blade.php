@@ -564,14 +564,50 @@ tr[data-inscription-id] > td { transition: background .15s ease; }
                 </div>
                 <div class="ii-hero-actions">
                     @can('admin.access')
-                        <form action="{{ route('esbtp.inscriptions.bts-sync-all') }}" method="POST" style="display:inline;">
-                            @csrf
-                            <button type="submit" class="ii-btn--glass"
-                                    title="Resynchronise les phases TC/Spé de toutes les inscriptions BTS (corrige les désynchronisations historiques)"
-                                    onclick="return confirm('Actualiser TOUS les parcours BTS du tenant ?\n\nCette opération scanne toutes les inscriptions et corrige automatiquement les phases désynchronisées (étudiants qui apparaissent en TC alors que leur classe est non-TC, etc.).\n\nIdempotent : peut être relancé sans risque.');">
-                                <i class="fas fa-arrows-rotate"></i>Actualiser parcours BTS
-                            </button>
-                        </form>
+                        @include('partials._klassci_toast')
+                        <button type="button" class="ii-btn--glass"
+                                x-data="{
+                                    bulkSyncing: false,
+                                    async bulkSyncBts() {
+                                        if (this.bulkSyncing) return;
+                                        if (!confirm('Actualiser TOUS les parcours BTS du tenant ?\n\nCette opération scanne toutes les inscriptions et corrige automatiquement les phases désynchronisées (étudiants qui apparaissent en TC alors que leur classe est non-TC, etc.).\n\nIdempotent : peut être relancé sans risque.')) return;
+                                        this.bulkSyncing = true;
+                                        try {
+                                            const res = await fetch('{{ route('esbtp.inscriptions.bts-sync-all') }}', {
+                                                method: 'POST',
+                                                headers: {
+                                                    'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                                    'Accept': 'application/json',
+                                                    'Content-Type': 'application/json',
+                                                },
+                                            });
+                                            const data = await res.json();
+                                            if (!res.ok || !data.success) throw new Error(data?.message || 'Erreur lors de la sync');
+                                            const s = data.stats || {};
+                                            const fixed = s.fixed ?? 0;
+                                            const summary = `<strong>Sync BTS terminée</strong><br><strong>${s.total ?? 0}</strong> inscriptions traitées<br><strong>${fixed}</strong> corrigée${fixed>1?'s':''} · <strong>${s.ok ?? 0}</strong> déjà OK · <strong>${s.skipped ?? 0}</strong> skippée${(s.skipped ?? 0)>1?'s':''} · <strong>${s.errors ?? 0}</strong> erreur${(s.errors ?? 0)>1?'s':''}`;
+                                            if (typeof window.klassciToast === 'function') {
+                                                window.klassciToast(fixed > 0 ? 'success' : 'info', summary, 8000);
+                                            } else {
+                                                alert(summary.replace(/<[^>]+>/g, ' '));
+                                            }
+                                        } catch (err) {
+                                            if (typeof window.klassciToast === 'function') {
+                                                window.klassciToast('error', err.message || 'Erreur réseau');
+                                            } else {
+                                                alert('Erreur : ' + (err.message || 'réseau'));
+                                            }
+                                        } finally {
+                                            this.bulkSyncing = false;
+                                        }
+                                    }
+                                }"
+                                @click.prevent="bulkSyncBts()"
+                                :disabled="bulkSyncing"
+                                title="Resynchronise les phases TC/Spé de toutes les inscriptions BTS (corrige les désynchronisations historiques)">
+                            <i class="fas" :class="bulkSyncing ? 'fa-spinner fa-spin' : 'fa-arrows-rotate'"></i>
+                            <span x-text="bulkSyncing ? 'Synchronisation…' : 'Actualiser parcours BTS'"></span>
+                        </button>
                     @endcan
                     @can('inscriptions.validate')
                         <a href="{{ route('esbtp.inscriptions.administration') }}" class="ii-btn--glass">

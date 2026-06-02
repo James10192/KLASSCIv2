@@ -2629,9 +2629,17 @@ class ESBTPInscriptionController extends Controller
         ]);
 
         if ($request->wantsJson() || $request->expectsJson()) {
+            $fresh = $inscription->fresh();
+            $btsJourney = $fresh ? $this->btsUiPresenter->forInscription($fresh) : null;
+            $html = $btsJourney
+                ? view('esbtp.partials.bts-journey', ['btsJourney' => $btsJourney, 'inscription' => $fresh])->render()
+                : '';
+
             return response()->json([
                 'success' => $result['status'] !== 'error',
                 'result' => $result,
+                'html' => $html,
+                'has_banner' => $btsJourney !== null,
             ]);
         }
 

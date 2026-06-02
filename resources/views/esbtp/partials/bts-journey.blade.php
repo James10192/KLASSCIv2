@@ -17,6 +17,7 @@
     $isAnnuelInscription = $btsInscription?->anneeUniversitaire?->is_current ?? false;
 @endphp
 @if(!empty($btsJourney))
+    @include('partials._klassci_toast')
     <style>
         .bj-hero {
             position: relative;
@@ -193,7 +194,45 @@
         }
     </style>
 
-    <section class="bj-hero" data-bts-journey="1">
+    <section class="bj-hero" data-bts-journey="1" data-inscription-id="{{ $btsInscription?->id ?? '' }}"
+             x-data="{
+                syncing: false,
+                async sync() {
+                    if (this.syncing) return;
+                    if (!confirm('Actualiser le parcours BTS de cet étudiant ?\n\nSi sa classe actuelle est non-TC mais qu\'une phase TC est encore active, elle sera supprimée. Cette opération est tracée dans l\'audit.')) return;
+                    this.syncing = true;
+                    try {
+                        const url = '{{ $btsInscription ? route('esbtp.inscriptions.bts-sync', $btsInscription) : '' }}';
+                        const res = await fetch(url, {
+                            method: 'POST',
+                            headers: {
+                                'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content,
+                                'Accept': 'application/json',
+                                'Content-Type': 'application/json',
+                            },
+                        });
+                        const data = await res.json();
+                        if (!res.ok || data.success === false) throw new Error(data?.result?.message || data?.message || 'Erreur de synchronisation');
+                        const status = data.result?.status || 'ok';
+                        const msg = data.result?.message || 'Sync terminée.';
+                        const toastType = status === 'fixed' ? 'success' : (status === 'ok' ? 'info' : (status === 'error' ? 'error' : 'warning'));
+                        const labelMap = { fixed: 'Parcours BTS resynchronisé', ok: 'Aucun changement nécessaire', skipped: 'Sync ignorée', error: 'Erreur' };
+                        window.klassciToast(toastType, `<strong>${labelMap[status] || 'Sync'}</strong><br>${msg}`);
+                        if (data.html && data.has_banner) {
+                            const tmp = document.createElement('div');
+                            tmp.innerHTML = data.html;
+                            const newSection = tmp.querySelector('[data-bts-journey]');
+                            if (newSection) this.$root.replaceWith(newSection);
+                        } else {
+                            this.$root.remove();
+                        }
+                    } catch (err) {
+                        window.klassciToast('error', err.message || 'Erreur réseau');
+                    } finally {
+                        this.syncing = false;
+                    }
+                }
+             }">
         <div class="bj-hero-top">
             <div class="bj-hero-left">
                 <div class="bj-hero-icon">
@@ -280,15 +319,14 @@
                 @endif
 
                 @can('admin.access')
-                    <form action="{{ route('esbtp.inscriptions.bts-sync', $btsInscription) }}" method="POST" style="display:inline-flex;">
-                        @csrf
-                        <button type="submit" class="bj-btn bj-btn--glass"
-                                title="Resynchronise les phases avec la classe actuelle (corrige les désynchronisations historiques)"
-                                onclick="return confirm('Actualiser le parcours BTS de cet étudiant ?\n\nSi sa classe actuelle est non-TC mais qu\'une phase TC est encore active, elle sera supprimée. Cette opération est tracée dans l\'audit.');">
-                            <i class="fas fa-arrows-rotate"></i>
-                            Actualiser
-                        </button>
-                    </form>
+                    <button type="button" class="bj-btn bj-btn--glass"
+                            @click.prevent="sync()"
+                            :disabled="syncing"
+                            :class="syncing ? 'bj-btn--disabled' : ''"
+                            title="Resynchronise les phases avec la classe actuelle (corrige les désynchronisations historiques)">
+                        <i class="fas" :class="syncing ? 'fa-spinner fa-spin' : 'fa-arrows-rotate'"></i>
+                        <span x-text="syncing ? 'Synchronisation…' : 'Actualiser'"></span>
+                    </button>
                 @endcan
             </div>
         @endif
