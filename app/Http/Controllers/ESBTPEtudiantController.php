@@ -189,7 +189,7 @@ class ESBTPEtudiantController extends Controller
             ->orderBy('prenoms')
             ->get();
 
-        \Log::error('BULK_DEBUG etudiantsForBulk count='.$etudiantsForBulk->count().' annee='.($anneeEnCoursForBulk?->id ?? 'null'));
+        \Log::error('BULK_DEBUG_V2 etudiantsForBulk count='.$etudiantsForBulk->count().' annee='.($anneeEnCoursForBulk?->id ?? 'null'));
 
         if ($request->ajax()) {
             return response()->json([
