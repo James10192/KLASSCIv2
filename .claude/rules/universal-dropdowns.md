@@ -149,6 +149,51 @@ Le layout global :
    - Reste au-dessus des autres éléments (z-index)
    - N'est pas clippé par un parent overflow
 
+## Piège fondamental : z-index ne suffit pas — il faut `position: fixed`
+
+**Le piège qui m'a couté plusieurs itérations** : un dropdown-menu avec `position: absolute`
+(par défaut Bootstrap/Popper) reste **prisonnier du stacking context du parent positionné**.
+
+Exemple concret KLASSCI : `/esbtp/personnel/unified` :
+```
+.pu-hero (position:relative → stacking context root)
+├── .pu-hero-top (z-index:1)
+│   └── .pu-hero-actions
+│       └── .dropdown
+│           └── ul.dropdown-menu (z-index:99999, position:absolute)
+└── .pu-hero-kpis (z-index:1)
+    └── .pu-hero-kpi-value "205" ← APPARAÎT PAR-DESSUS LE MENU
+```
+
+Le z-index 99999 du menu est **INTERNE au scope `.pu-hero-top` (z:1)**. Le sibling
+`.pu-hero-kpis` est dans le même scope au même z-index 1. Par ordre DOM, les KPIs
+paintent APRÈS → visuellement par-dessus le menu.
+
+**Le seul vrai fix** : `position: fixed` qui extrait le menu du stacking context parent
+et le place au niveau viewport. Là, z-index 99999 devient vraiment compétitif au plus
+haut niveau, au-dessus de tous les parents.
+
+```css
+/* CORRECT — utilise .show (qui est TOUJOURS sur menu ouvert) */
+html body .dropdown-menu.show {
+    position: fixed !important;
+    z-index: 99999 !important;
+}
+
+/* INSUFFISANT — [data-bs-popper] n'est pas toujours présent */
+html body .dropdown-menu[data-bs-popper] {
+    position: fixed !important;
+}
+```
+
+**Diagnostic dev-browser** pour confirmer si un menu est prisonnier de son parent :
+```js
+document.elementsFromPoint(cx, cy)[0]  // → si c'est un élément AUTRE que le menu, le menu est masqué visuellement
+```
+
+Si l'élément TOP au point central du menu n'est pas le menu lui-même, c'est la preuve
+que le menu est dans un stacking context perdant.
+
 ## Piège annexe : icônes FontAwesome dans les dropdown-items
 
 KLASSCI charge FA 6.4.0 Free via CDN. Certains noms d'icônes FA5 sont absents du
