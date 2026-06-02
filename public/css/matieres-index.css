@@ -175,7 +175,9 @@
     border-radius: 14px;
     box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
     margin-bottom: 1.25rem;
-    overflow: hidden;
+    /* PAS d'overflow:hidden : sinon les dropdowns Statut/Filière/Niveau qui s'ouvrent
+       vers le bas sont clippés. Le border-radius est porté par le foot/header. */
+    position: relative;
 }
 .mi-filters-bar {
     display: grid;
@@ -185,6 +187,13 @@
     padding: 1rem 1.25rem;
 }
 .mi-filter-group { min-width: 0; }
+/* <x-au-select> est inline-flex par défaut — force la largeur pleine dans les filter groups
+   pour qu'il occupe TOUTE la colonne du grid (sinon il rétrécit au contenu). */
+.mi-filter-group .au-select {
+    display: flex;
+    width: 100%;
+    flex: 1 1 100%;
+}
 .mi-filter-input--search {
     padding-left: 2.4rem;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
@@ -311,8 +320,11 @@
     position: relative;
 }
 .mi-results-card .table-responsive {
-    overflow-x: auto;
-    overflow-y: visible;  /* permet aux dropdowns des rows de déborder verticalement */
+    /* overflow-x: clip permet (contrairement à auto) de garder overflow-y: visible
+       indépendamment — spec CSS overflow-clip. Les dropdowns de la dernière row
+       peuvent ainsi sortir vers le bas sans être clippés par le scroll horizontal. */
+    overflow-x: clip;
+    overflow-y: visible;
 }
 /* Quand un dropdown menu est ouvert, neutralise les transforms hover concurrents
    et augmente le z-index de la row active (rule css-stacking-pitfalls.md) */

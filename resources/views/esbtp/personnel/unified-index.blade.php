@@ -17,26 +17,36 @@
     color: #fff;
     margin-bottom: 1.5rem;
     position: relative;
-    overflow: hidden;
+    /* PAS d'overflow:hidden : sinon le dropdown 'Nouveau Personnel' est clippé
+       (rule css-stacking-pitfalls.md). Décorations radiales déplacées dans
+       .pu-hero-deco wrapper enfant qui peut clipper sans gêner le dropdown. */
 }
-.pu-hero::before {
+.pu-hero-deco {
+    position: absolute;
+    inset: 0;
+    border-radius: 18px;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 0;
+}
+.pu-hero-deco::before {
     content: '';
     position: absolute;
     top: -40%; right: -10%;
     width: 340px; height: 340px;
     background: radial-gradient(circle, rgba(255,255,255,0.08) 0%, transparent 70%);
     border-radius: 50%;
-    pointer-events: none;
 }
-.pu-hero::after {
+.pu-hero-deco::after {
     content: '';
     position: absolute;
     bottom: -30%; left: -5%;
     width: 200px; height: 200px;
     background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
     border-radius: 50%;
-    pointer-events: none;
 }
+/* Tous les enfants directs du hero passent au-dessus de la deco */
+.pu-hero > *:not(.pu-hero-deco) { position: relative; z-index: 1; }
 .pu-hero-top {
     display: flex;
     justify-content: space-between;
@@ -1456,6 +1466,7 @@
 
         {{-- ═══ Hero ═══ --}}
         <div class="pu-hero pu-animate">
+            <div class="pu-hero-deco" aria-hidden="true"></div>
             <div class="pu-hero-top">
                 <div>
                     <div class="pu-hero-title">
