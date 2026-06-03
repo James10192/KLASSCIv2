@@ -184,6 +184,75 @@ grep -rEn '//[^\n]*<x-[a-z]' resources/views/
 grep -rEn '\{\{--[^-]*<x-[a-z]' resources/views/
 ```
 
+## Pitfall #4 — `@json([…])` avec array literal multiligne
+
+### Le piège
+
+`@json(...)` est une directive Blade qui s'attend à recevoir **un seul argument PHP**, sérialisé en JSON dans la sortie. Quand cet argument est un **array literal `[ … ]` multiligne**, le parser Blade interne match mal les parenthèses internes. Il voit `@json([` puis quand il rencontre `])` à la fin (split sur plusieurs lignes), il ne reconstruit pas correctement la paire `( ... )` extérieure de `@json(...)`.
+
+Résultat : Laravel compile la vue sans erreur, mais au runtime PHP lance :
+
+```
+Unclosed '[' on line N does not match ')'
+```
+
+…dans `storage/framework/views/<hash>.php`. La cause apparente est sur la ligne `]);` mais la vraie origine est `@json([` plus haut.
+
+### Symptôme
+
+500 sur la page qui rend la vue. Stack trace contient :
+```
+Exception: Unclosed '[' on line XXX does not match ')'
+(View: /path/to/view.blade.php)
+   at /storage/framework/views/<hash>.php:YYY
+```
+
+### ❌ INTERDIT
+
+```blade
+<script>
+const rules = @json([
+    'zero' => (float) (($attendanceRules['zero'] ?? null) ?? 0.13),
+    'one' => (float) (($attendanceRules['one'] ?? null) ?? 0.0),
+    'two_or_more' => (float) (($attendanceRules['two'] ?? null) ?? -0.13),
+]);
+</script>
+```
+
+→ Compile silent, mais crash 500 au rendu.
+
+### ✅ FIX — extraire l'array en variable avant `@json()`
+
+```blade
+@php
+$_attendanceRules = [
+    'zero' => (float) (($attendanceRules['zero'] ?? null) ?? 0.13),
+    'one' => (float) (($attendanceRules['one'] ?? null) ?? 0.0),
+    'two_or_more' => (float) (($attendanceRules['two'] ?? null) ?? -0.13),
+];
+@endphp
+<script>
+const rules = @json($_attendanceRules);
+</script>
+```
+
+### Variantes du même piège
+
+- `@js([multiligne])` — même bug, même fix
+- `@json($expr ?? [valeur, par, défaut])` quand `[valeur,par,défaut]` est multiligne
+- Toute directive Blade `@xxx(...)` qui prend 1 argument PHP et où cet argument est multiligne
+
+### Règle simple
+
+**Si tu dois passer un array à `@json()`, `@js()`, ou toute directive Blade qui prend un argument PHP : prépare-le AVANT dans un `@php $var = [...]; @endphp` puis appelle `@json($var)`. Jamais d'array literal multiligne dans la parenthèse.**
+
+### Détection au quotidien
+
+```bash
+# Cherche @json/@js avec un [ qui n'est pas suivi de ] sur la même ligne
+grep -nE "@(json|js)\(\[\s*$" path/to/file.blade.php
+```
+
 ## Audit obligatoire avant de pousser un .blade.php modifié
 
 ```bash
@@ -212,6 +281,7 @@ for f in storage/framework/views/*.php; do php -l "$f" 2>&1 | grep -v "No syntax
 1. ❌ `@php(expr)` shortform dans un fichier qui contient AUSSI `@php ... @endphp` block plus loin
 2. ❌ `@can`, `@if`, `@foreach`, `@endif`, etc. littéraux dans un commentaire JS (`// @can(...)`) ou HTML (`<!-- @if(...) -->`)
 3. ❌ `<x-mon-composant>` littéral dans un commentaire CSS (`/* <x-foo> */`), JS (`// <x-bar>`), HTML ou string
+4. ❌ `@json([...])` ou `@js([...])` avec un array literal **multiligne** dans la parenthèse → toujours extraire en `@php $var = [...]; @endphp` puis `@json($var)`
 4. ❌ Tester un Blade modifié uniquement avec `php artisan view:cache` sans `php -l` du compiled output
 5. ❌ Mélanger les deux formes `@php(...)` et `@php...@endphp` dans le même fichier (toujours préférer la block form pour la cohérence)
 

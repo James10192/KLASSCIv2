@@ -542,13 +542,19 @@
     </div>
 </div>
 
-<script>
-const attendanceNoteEnabled = @json($attendanceNoteEnabled ?? true);
-const attendanceNoteRules = @json([
+@php
+// Lot 4 fix: extraction du array en PHP block avant @json() — sinon @json([multiligne]) déclenche
+// "Unclosed '[' does not match ')'" car le parser Blade match mal les parens internes de @json(...)
+// quand le contenu est un array literal multiligne. Toujours préparer la variable AVANT puis @json($var).
+$_attendanceRules = [
     'zero' => (float) (($attendanceNoteRules['zero_unjustified'] ?? null) ?? 0.13),
     'one' => (float) (($attendanceNoteRules['one_unjustified'] ?? null) ?? 0.0),
     'two_or_more' => (float) (($attendanceNoteRules['two_or_more_unjustified'] ?? null) ?? -0.13),
-]);
+];
+@endphp
+<script>
+const attendanceNoteEnabled = @json($attendanceNoteEnabled ?? true);
+const attendanceNoteRules = @json($_attendanceRules);
 
 function calculerTotalAbsences() {
     const justifiees = parseFloat(document.getElementById('absences_justifiees').value) || 0;

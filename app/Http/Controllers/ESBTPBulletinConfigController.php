@@ -911,7 +911,6 @@ class ESBTPBulletinConfigController extends Controller
      */
     public function editAbsences(Request $request)
     {
-        try {
         // Vérifier les permissions
         if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
             abort(403, 'Accès non autorisé. Vous n\'avez pas la permission de configurer les bulletins.');
@@ -1043,24 +1042,6 @@ class ESBTPBulletinConfigController extends Controller
             'absencesNonJustifiees' => $absencesNonJustifieesDB ?? 0,
             'totalAbsences' => ($absencesJustifieesDB ?? 0) + ($absencesNonJustifieesDB ?? 0),
         ]);
-        } catch (\Throwable $e) {
-            \Log::error('editAbsences crash', [
-                'msg' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            // En prod APP_DEBUG=false : retourner un JSON minimal pour debug rapide
-            if (request()->boolean('_diag')) {
-                return response()->json([
-                    'msg' => $e->getMessage(),
-                    'file' => $e->getFile(),
-                    'line' => $e->getLine(),
-                    'trace' => array_slice(explode("\n", $e->getTraceAsString()), 0, 15),
-                ], 500);
-            }
-            throw $e;
-        }
     }
 
     /**
