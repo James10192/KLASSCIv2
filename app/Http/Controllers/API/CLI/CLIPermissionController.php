@@ -139,6 +139,47 @@ class CLIPermissionController extends BaseApiController
      *
      * Show all permissions assigned to a specific role + diff vs canonical defaults.
      */
+    /**
+     * POST /api/cli/roles/{role}/grant
+     * Body: {permissions: ['perm1', 'perm2', ...]}
+     * Attribue les permissions au rôle (sans toucher aux existantes).
+     */
+    public function roleGrant(Request $request, string $role): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $perms = $request->input('permissions', []);
+        if (!is_array($perms) || empty($perms)) {
+            return $this->errorResponse('permissions[] requis', [], 422);
+        }
+
+        $roleModel = \Spatie\Permission\Models\Role::where('name', $role)->first();
+        if (!$roleModel) {
+            return $this->errorResponse("Role '{$role}' not found", [], 404);
+        }
+
+        $granted = [];
+        $missing = [];
+        foreach ($perms as $perm) {
+            $permModel = \Spatie\Permission\Models\Permission::where('name', $perm)->first();
+            if (!$permModel) { $missing[] = $perm; continue; }
+            if (!$roleModel->hasPermissionTo($perm)) {
+                $roleModel->givePermissionTo($permModel);
+                $granted[] = $perm;
+            }
+        }
+        app()['cache']->forget(config('permission.cache.key', 'spatie.permission.cache'));
+
+        return $this->successResponse([
+            'role' => $role,
+            'granted' => $granted,
+            'already_had' => array_values(array_diff($perms, $granted, $missing)),
+            'missing_in_db' => $missing,
+        ], "Permissions accordées au rôle '{$role}'");
+    }
+
     public function roleShow(Request $request, string $role): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:read')) {
