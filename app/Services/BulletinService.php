@@ -25,9 +25,16 @@ use Illuminate\Support\Facades\Storage;
 
 class BulletinService
 {
+    // Barème assiduité 5 paliers (Marcel 03/06/2026 — étendu de 3 à 5).
+    // Rétrocompat : 'two_or_more' reste lisible comme fallback pour les bulletins
+    // historiques saisis avant l'extension.
     private const ATTENDANCE_NOTE_DEFAULTS = [
         'attendance_note_zero_unjustified' => '0.13',
         'attendance_note_one_unjustified' => '0.00',
+        'attendance_note_two_unjustified' => '-0.13',
+        'attendance_note_three_to_four_unjustified' => '-0.39',
+        'attendance_note_five_or_more_unjustified' => '-0.50',
+        // Rétrocompat : settings legacy 3-paliers
         'attendance_note_two_or_more_unjustified' => '-0.13',
     ];
 
@@ -49,6 +56,13 @@ class BulletinService
 
     public function getAttendanceNoteSettings(): array
     {
+        // Si setting palier "2" pas défini, utiliser le legacy "two_or_more" en fallback
+        // (cas tenants qui n'ont pas encore l'extension 5-paliers configurée).
+        $legacyTwoOrMore = (float) SettingsHelper::get(
+            'attendance_note_two_or_more_unjustified',
+            self::ATTENDANCE_NOTE_DEFAULTS['attendance_note_two_or_more_unjustified']
+        );
+
         return [
             'zero_unjustified' => (float) SettingsHelper::get(
                 'attendance_note_zero_unjustified',
@@ -58,10 +72,20 @@ class BulletinService
                 'attendance_note_one_unjustified',
                 self::ATTENDANCE_NOTE_DEFAULTS['attendance_note_one_unjustified']
             ),
-            'two_or_more_unjustified' => (float) SettingsHelper::get(
-                'attendance_note_two_or_more_unjustified',
-                self::ATTENDANCE_NOTE_DEFAULTS['attendance_note_two_or_more_unjustified']
+            'two_unjustified' => (float) SettingsHelper::get(
+                'attendance_note_two_unjustified',
+                $legacyTwoOrMore // fallback legacy si nouveau palier pas saisi
             ),
+            'three_to_four_unjustified' => (float) SettingsHelper::get(
+                'attendance_note_three_to_four_unjustified',
+                $legacyTwoOrMore // fallback legacy
+            ),
+            'five_or_more_unjustified' => (float) SettingsHelper::get(
+                'attendance_note_five_or_more_unjustified',
+                $legacyTwoOrMore // fallback legacy
+            ),
+            // Rétrocompat pour code qui lit encore ce nom
+            'two_or_more_unjustified' => $legacyTwoOrMore,
         ];
     }
 
@@ -74,15 +98,21 @@ class BulletinService
         $bareme = $this->getAttendanceNoteSettings();
         $absencesNonJustifiees = (float) $absencesNonJustifiees;
 
+        // Barème 5 paliers (Marcel 03/06/2026)
         if ($absencesNonJustifiees <= 0.0) {
             return $bareme['zero_unjustified'];
         }
-
         if ($absencesNonJustifiees < 2.0) {
             return $bareme['one_unjustified'];
         }
+        if ($absencesNonJustifiees < 3.0) {
+            return $bareme['two_unjustified'];
+        }
+        if ($absencesNonJustifiees < 5.0) {
+            return $bareme['three_to_four_unjustified'];
+        }
 
-        return $bareme['two_or_more_unjustified'];
+        return $bareme['five_or_more_unjustified'];
     }
 
     public function calculateEffectiveAttendanceNoteForStudent(

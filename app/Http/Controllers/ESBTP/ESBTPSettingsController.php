@@ -957,10 +957,15 @@ class ESBTPSettingsController extends Controller
 
     private function ensureAttendanceNoteSettings(): void
     {
+        // Barème 5 paliers (étendu 03/06/2026). Le palier legacy "two_or_more" reste
+        // créé pour rétrocompat des appels code qui le lisent encore.
         $attendanceDefaults = [
-            'attendance_note_zero_unjustified' => ['value' => '0.13', 'description' => 'BarÃ¨me assiduitÃ© pour 0 absence non justifiÃ©e', 'sort_order' => 121],
-            'attendance_note_one_unjustified' => ['value' => '0.00', 'description' => 'BarÃ¨me assiduitÃ© pour 1 absence non justifiÃ©e', 'sort_order' => 122],
-            'attendance_note_two_or_more_unjustified' => ['value' => '-0.13', 'description' => 'BarÃ¨me assiduitÃ© pour 2 absences non justifiÃ©es ou plus', 'sort_order' => 123],
+            'attendance_note_zero_unjustified' => ['value' => '0.13', 'description' => 'Barème assiduité pour 0 absence non justifiée', 'sort_order' => 121],
+            'attendance_note_one_unjustified' => ['value' => '0.00', 'description' => 'Barème assiduité pour 1 absence non justifiée', 'sort_order' => 122],
+            'attendance_note_two_unjustified' => ['value' => '-0.13', 'description' => 'Barème assiduité pour 2 absences non justifiées', 'sort_order' => 123],
+            'attendance_note_three_to_four_unjustified' => ['value' => '-0.39', 'description' => 'Barème assiduité pour 3 à 4 absences non justifiées', 'sort_order' => 124],
+            'attendance_note_five_or_more_unjustified' => ['value' => '-0.50', 'description' => 'Barème assiduité pour 5 absences non justifiées ou plus', 'sort_order' => 125],
+            'attendance_note_two_or_more_unjustified' => ['value' => '-0.13', 'description' => 'Barème assiduité legacy (2 absences ou plus, conservé pour rétrocompat)', 'sort_order' => 126],
         ];
 
         foreach ($attendanceDefaults as $key => $attrs) {

@@ -1264,7 +1264,7 @@
                             <input type="number" class="form-control form-control-modern" name="setting_attendance_note_zero_unjustified"
                                    value="{{ \App\Helpers\SettingsHelper::get('attendance_note_zero_unjustified', '0.13') }}"
                                    step="0.01" min="-20" max="20" placeholder="0.13">
-                            <small class="text-muted">Bonus/malus applique si aucune absence non justifiee n'est enregistree.</small>
+                            <small class="text-muted">Bonus applique si aucune absence non justifiee n'est enregistree.</small>
                         </div>
                     </div>
                     <div class="bc-input-row">
@@ -1280,20 +1280,40 @@
                     <div class="bc-input-row">
                         <div class="bc-icon"><i class="fas fa-user-times"></i></div>
                         <div class="bc-body">
-                            <div class="bc-label">2 absences non justifiees ou plus</div>
-                            <input type="number" class="form-control form-control-modern" name="setting_attendance_note_two_or_more_unjustified"
-                                   value="{{ \App\Helpers\SettingsHelper::get('attendance_note_two_or_more_unjustified', '-0.13') }}"
+                            <div class="bc-label">2 absences non justifiees</div>
+                            <input type="number" class="form-control form-control-modern" name="setting_attendance_note_two_unjustified"
+                                   value="{{ \App\Helpers\SettingsHelper::get('attendance_note_two_unjustified', \App\Helpers\SettingsHelper::get('attendance_note_two_or_more_unjustified', '-0.13')) }}"
                                    step="0.01" min="-20" max="20" placeholder="-0.13">
-                            <small class="text-muted">Malus applique a partir de deux absences non justifiees.</small>
+                            <small class="text-muted">Malus applique pour exactement 2 absences non justifiees.</small>
+                        </div>
+                    </div>
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">3 a 4 absences non justifiees</div>
+                            <input type="number" class="form-control form-control-modern" name="setting_attendance_note_three_to_four_unjustified"
+                                   value="{{ \App\Helpers\SettingsHelper::get('attendance_note_three_to_four_unjustified', '-0.39') }}"
+                                   step="0.01" min="-20" max="20" placeholder="-0.39">
+                            <small class="text-muted">Malus applique pour 3 ou 4 absences non justifiees.</small>
+                        </div>
+                    </div>
+                    <div class="bc-input-row">
+                        <div class="bc-icon"><i class="fas fa-skull-crossbones"></i></div>
+                        <div class="bc-body">
+                            <div class="bc-label">5 absences non justifiees ou plus</div>
+                            <input type="number" class="form-control form-control-modern" name="setting_attendance_note_five_or_more_unjustified"
+                                   value="{{ \App\Helpers\SettingsHelper::get('attendance_note_five_or_more_unjustified', '-0.50') }}"
+                                   step="0.01" min="-20" max="20" placeholder="-0.50">
+                            <small class="text-muted">Malus maximum applique a partir de 5 absences non justifiees.</small>
                         </div>
                     </div>
                     <div class="bc-input-row">
                         <div class="bc-icon"><i class="fas fa-info-circle"></i></div>
                         <div class="bc-body">
-                            <div class="bc-label">Regle globale d'assiduite</div>
+                            <div class="bc-label">Regle globale d'assiduite (5 paliers)</div>
                             <div class="bc-desc">
                                 Le toggle <strong>Note d'assiduite</strong> reste le commutateur unique :
-                                actif, il applique ce bareme au calcul et a l'affichage ; inactif, la note vaut 0 partout et reste masquee.
+                                actif, il applique ce bareme 5 paliers au calcul et a l'affichage ; inactif, la note vaut 0 partout et reste masquee.
                             </div>
                         </div>
                     </div>
