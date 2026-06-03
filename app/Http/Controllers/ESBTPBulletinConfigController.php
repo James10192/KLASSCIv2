@@ -385,71 +385,66 @@ class ESBTPBulletinConfigController extends Controller
         try {
             DB::beginTransaction();
 
-            // Supprimer les configurations existantes qui ne sont plus dans la liste envoyée
-            // Récupérer toutes les matières configurées précédemment pour cette classe/période/année
-            $existingConfigs = ESBTPConfigMatiere::withTrashed()
-                ->where([
-                    'classe_id' => $classe_id,
-                    'periode' => $periode,
-                    'annee_universitaire_id' => $annee_universitaire_id,
-                ])
-                ->pluck('matiere_id')
-                ->toArray();
+            // Sous-lot β : si periode='annuel', on écrit la même config sur S1 ET S2.
+            // Cela permet à l'utilisateur de configurer "Annuel" depuis resultats.index sans
+            // doubler le travail. La lecture (preview/PDF bulletin) ira chercher S1 puis S2.
+            $periodes = ($periode === 'annuel') ? ['semestre1', 'semestre2'] : [$periode];
 
-            // Trouver les matières qui ne sont plus dans la nouvelle configuration
-            $removedMatieres = array_diff(
-                $existingConfigs,
-                array_keys(array_filter($matiere_types, function ($type) {
-                    return $type !== 'none';
-                }))
-            );
-
-            // Supprimer définitivement ces configurations
-            if (! empty($removedMatieres)) {
-                ESBTPConfigMatiere::withTrashed()
+            foreach ($periodes as $p) {
+                // Supprimer les configurations existantes qui ne sont plus dans la liste envoyée
+                $existingConfigs = ESBTPConfigMatiere::withTrashed()
                     ->where([
                         'classe_id' => $classe_id,
-                        'periode' => $periode,
+                        'periode' => $p,
                         'annee_universitaire_id' => $annee_universitaire_id,
                     ])
-                    ->whereIn('matiere_id', $removedMatieres)
-                    ->forceDelete();
-            }
+                    ->pluck('matiere_id')
+                    ->toArray();
 
-            // Initialiser les tableaux pour stocker les matières par type de formation
-            $matieresGenerales = [];
-            $matieresTechniques = [];
+                $removedMatieres = array_diff(
+                    $existingConfigs,
+                    array_keys(array_filter($matiere_types, function ($type) {
+                        return $type !== 'none';
+                    }))
+                );
 
-            // Organiser les matières par type
-            foreach ($matiere_types as $matiere_id => $type) {
-                if ($type == 'general') {
-                    $matieresGenerales[] = (int) $matiere_id;
-                    // Utiliser le même type que dans le formulaire pour la cohérence
-                    $type_value = 'general';
-                } elseif ($type == 'technique') {
-                    $matieresTechniques[] = (int) $matiere_id;
-                    // Utiliser le même type que dans le formulaire pour la cohérence
-                    $type_value = 'technique';
-                } else {
-                    // Si "none", ignorer cette matière
-                    continue;
+                if (! empty($removedMatieres)) {
+                    ESBTPConfigMatiere::withTrashed()
+                        ->where([
+                            'classe_id' => $classe_id,
+                            'periode' => $p,
+                            'annee_universitaire_id' => $annee_universitaire_id,
+                        ])
+                        ->whereIn('matiere_id', $removedMatieres)
+                        ->forceDelete();
                 }
 
-                // Utiliser updateOrCreate au lieu de delete puis create
-                ESBTPConfigMatiere::withTrashed()->updateOrCreate(
-                    [
-                        'matiere_id' => $matiere_id,
-                        'classe_id' => $classe_id,
-                        'periode' => $periode,
-                        'annee_universitaire_id' => $annee_universitaire_id,
-                    ],
-                    [
-                        'config' => json_encode(['type' => $type_value]),
-                        'created_by' => Auth::id(),
-                        'updated_by' => Auth::id(),
-                        'deleted_at' => null, // Restaurer l'enregistrement s'il était soft-deleted
-                    ]
-                );
+                foreach ($matiere_types as $matiere_id => $type) {
+                    if ($type === 'general' || $type === 'technique') {
+                        ESBTPConfigMatiere::withTrashed()->updateOrCreate(
+                            [
+                                'matiere_id' => $matiere_id,
+                                'classe_id' => $classe_id,
+                                'periode' => $p,
+                                'annee_universitaire_id' => $annee_universitaire_id,
+                            ],
+                            [
+                                'config' => json_encode(['type' => $type]),
+                                'created_by' => Auth::id(),
+                                'updated_by' => Auth::id(),
+                                'deleted_at' => null,
+                            ]
+                        );
+                    }
+                }
+            }
+
+            // Pour la suite du flow (bulletin->config_matieres JSON), on agrège les arrays généraux/techniques
+            $matieresGenerales = [];
+            $matieresTechniques = [];
+            foreach ($matiere_types as $matiere_id => $type) {
+                if ($type === 'general') $matieresGenerales[] = (int) $matiere_id;
+                if ($type === 'technique') $matieresTechniques[] = (int) $matiere_id;
             }
 
             // Récupérer ou créer le bulletin pour cet étudiant
@@ -582,12 +577,22 @@ class ESBTPBulletinConfigController extends Controller
             ->get();
         $matieresClasseIds = $matieresFiltrees->pluck('id')->all();
 
-        // Vérifier si la configuration des matières a été faite pour ces matières
+        // Vérifier si la configuration des matières a été faite pour ces matières.
+        // Sous-lot β : si periode='annuel', lire S1 par default (et S2 en fallback) :
+        // la config 'annuelle' a été écrite sur S1+S2 simultanément en save.
+        $readPeriode = ($periode === 'annuel') ? 'semestre1' : $periode;
         $configsMatieres = ESBTPConfigMatiere::where([
             'classe_id' => $classe_id,
-            'periode' => $periode,
+            'periode' => $readPeriode,
             'annee_universitaire_id' => $annee_universitaire_id,
         ])->whereIn('matiere_id', $matieresFiltrees->pluck('id'))->get();
+        if ($configsMatieres->isEmpty() && $periode === 'annuel') {
+            $configsMatieres = ESBTPConfigMatiere::where([
+                'classe_id' => $classe_id,
+                'periode' => 'semestre2',
+                'annee_universitaire_id' => $annee_universitaire_id,
+            ])->whereIn('matiere_id', $matieresFiltrees->pluck('id'))->get();
+        }
 
         if ($configsMatieres->isEmpty()) {
             // Rediriger vers la configuration des matières
