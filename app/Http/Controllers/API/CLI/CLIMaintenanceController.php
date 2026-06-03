@@ -62,6 +62,40 @@ class CLIMaintenanceController extends BaseApiController
     }
 
     /**
+     * POST /api/cli/evaluations/sync-notes — Resync esbtp_notes denormalized columns
+     * (classe_id, matiere_id, semestre) from their parent evaluation.
+     *
+     * Optional body : { "evaluation_id": 622, "dry": true }
+     */
+    public function evaluationsSyncNotes(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $params = [];
+        if ($request->filled('evaluation_id')) {
+            $params['--evaluation'] = (int) $request->input('evaluation_id');
+        }
+        if ($request->boolean('dry')) {
+            $params['--dry'] = true;
+        }
+
+        try {
+            $exitCode = Artisan::call('evaluations:sync-notes', $params);
+            $output = Artisan::output();
+            return $this->successResponse([
+                'exit_code' => $exitCode,
+                'output' => $output,
+                'params' => $params,
+            ], 'Evaluations sync-notes completed');
+        } catch (\Throwable $e) {
+            Log::error('CLI: evaluations sync-notes failed', ['error' => $e->getMessage()]);
+            return $this->errorResponse('Sync failed: ' . $e->getMessage(), [], 500);
+        }
+    }
+
+    /**
      * GET /api/cli/logs — Read recent application logs (sanitized)
      */
     public function logs(Request $request): JsonResponse
