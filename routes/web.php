@@ -1563,6 +1563,9 @@ Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['aut
     Route::get('/coefficients/modal', [ESBTPEvaluationController::class, 'coefficientsModal'])->name('coefficients.modal');
     Route::post('/coefficients/update', [ESBTPEvaluationController::class, 'updateCoefficients'])->name('coefficients.update');
     Route::get('/coefficients/check', [ESBTPEvaluationController::class, 'checkCoefficient'])->name('coefficients.check');
+    // Sous-lot δ
+    Route::post('/coefficients/copy', [ESBTPEvaluationController::class, 'copyCoefficients'])->name('coefficients.copy');
+    Route::get('/coefficients/completion', [ESBTPEvaluationController::class, 'coefficientsCompletion'])->name('coefficients.completion');
 
     Route::get('/{evaluation}/refresh-row', [ESBTPEvaluationController::class, 'refreshRow'])->name('refresh-row');
     // Quick edit (titre + barème + coefficient) — utilisé depuis le modal notes (PR #4)
@@ -2105,6 +2108,8 @@ Route::middleware(['auth', 'permission:admin.access|bulletins.configure'])->grou
     // Configuration matières, professeurs, absences bulletins
     Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinConfigController::class, 'configMatieresTypeFormation'])->name('esbtp.bulletins.config-matieres');
     Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinConfigController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
+    // Sous-lot δ — copy config-matieres entre semestres
+    Route::post('/esbtp-special/bulletins/config-matieres/copy', [ESBTPBulletinConfigController::class, 'copyConfigMatieres'])->name('esbtp.bulletins.config-matieres.copy');
     Route::get('/esbtp-special/bulletins/edit-professeurs', [ESBTPBulletinConfigController::class, 'editProfesseurs'])->name('esbtp.bulletins.edit-professeurs');
     Route::post('/esbtp-special/bulletins/copy-professeurs-from-other-semestre', [ESBTPBulletinConfigController::class, 'copyProfesseursFromOtherSemestre'])
         ->middleware('throttle:30,1')

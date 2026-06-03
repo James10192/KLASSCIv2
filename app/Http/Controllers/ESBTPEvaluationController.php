@@ -1500,6 +1500,167 @@ $evaluation->titre = $request->titre;
         ]);
     }
 
+    /**
+     * Sous-lot δ — POST /coefficients/copy
+     * Copie les coefficients d'une période vers une autre.
+     * Modes :
+     *   - override : remplace les cibles existantes
+     *   - merge : skip les cibles déjà configurées
+     * dry_run=1 : retourne juste un preview (matières affectées + valeurs)
+     */
+    public function copyCoefficients(Request $request)
+    {
+        $validated = $request->validate([
+            'filiere_id' => 'required|exists:esbtp_filieres,id',
+            'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'source_periode' => 'required|in:semestre1,semestre2',
+            'target_periode' => 'required|in:semestre1,semestre2|different:source_periode',
+            'mode' => 'required|in:override,merge',
+            'dry_run' => 'nullable|boolean',
+        ]);
+
+        $dryRun = (bool) ($validated['dry_run'] ?? false);
+        $sources = ESBTPMatiereCoefficient::with('matiere:id,name,code')
+            ->where('filiere_id', $validated['filiere_id'])
+            ->where('niveau_etude_id', $validated['niveau_etude_id'])
+            ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
+            ->where('periode', $validated['source_periode'])
+            ->get();
+
+        $targets = ESBTPMatiereCoefficient::where('filiere_id', $validated['filiere_id'])
+            ->where('niveau_etude_id', $validated['niveau_etude_id'])
+            ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
+            ->where('periode', $validated['target_periode'])
+            ->get()
+            ->keyBy('matiere_id');
+
+        $preview = ['create' => [], 'update' => [], 'skip' => []];
+        foreach ($sources as $src) {
+            $existing = $targets->get($src->matiere_id);
+            $row = [
+                'matiere_id' => $src->matiere_id,
+                'matiere_name' => $src->matiere->name ?? '#'.$src->matiere_id,
+                'matiere_code' => $src->matiere->code ?? null,
+                'source_value' => (float) $src->coefficient,
+                'target_existing_value' => $existing ? (float) $existing->coefficient : null,
+            ];
+
+            if (! $existing) {
+                $preview['create'][] = $row;
+            } elseif ($validated['mode'] === 'override') {
+                $row['action'] = $existing->coefficient == $src->coefficient ? 'unchanged' : 'overridden';
+                $preview['update'][] = $row;
+            } else {
+                $preview['skip'][] = $row + ['reason' => 'Cible déjà configurée (mode merge)'];
+            }
+        }
+
+        if ($dryRun) {
+            return response()->json([
+                'success' => true,
+                'dry_run' => true,
+                'summary' => [
+                    'will_create' => count($preview['create']),
+                    'will_update' => count($preview['update']),
+                    'will_skip' => count($preview['skip']),
+                    'source_total' => $sources->count(),
+                ],
+                'preview' => $preview,
+            ]);
+        }
+
+        // Real run
+        $created = 0; $updated = 0; $skipped = 0;
+        foreach ($sources as $src) {
+            $existing = $targets->get($src->matiere_id);
+            if ($existing && $validated['mode'] === 'merge') {
+                $skipped++;
+                continue;
+            }
+            ESBTPMatiereCoefficient::updateOrCreate([
+                'matiere_id' => $src->matiere_id,
+                'filiere_id' => $validated['filiere_id'],
+                'niveau_etude_id' => $validated['niveau_etude_id'],
+                'annee_universitaire_id' => $validated['annee_universitaire_id'],
+                'periode' => $validated['target_periode'],
+            ], [
+                'coefficient' => $src->coefficient,
+                'updated_by' => Auth::id(),
+                'created_by' => Auth::id(),
+            ]);
+            if ($existing) $updated++; else $created++;
+        }
+
+        return response()->json([
+            'success' => true,
+            'dry_run' => false,
+            'message' => "Copie {$validated['source_periode']} → {$validated['target_periode']} effectuée.",
+            'summary' => ['created' => $created, 'updated' => $updated, 'skipped' => $skipped],
+        ]);
+    }
+
+    /**
+     * Sous-lot δ — GET /coefficients/completion
+     * Retourne le statut de complétude d'une combinaison (filière+niveau+année+période).
+     */
+    public function coefficientsCompletion(Request $request)
+    {
+        $validated = $request->validate([
+            'classe_id' => 'nullable|exists:esbtp_classes,id',
+            'filiere_id' => 'nullable|exists:esbtp_filieres,id',
+            'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'periode' => 'required|in:semestre1,semestre2',
+        ]);
+
+        $filiereId = $validated['filiere_id'] ?? null;
+        $niveauId = $validated['niveau_etude_id'] ?? null;
+        if (!empty($validated['classe_id'])) {
+            $classe = ESBTPClasse::find($validated['classe_id']);
+            $filiereId = $filiereId ?: $classe?->filiere_id;
+            $niveauId = $niveauId ?: $classe?->niveau_etude_id;
+        }
+
+        if (!$filiereId || !$niveauId) {
+            return response()->json([
+                'success' => false,
+                'message' => 'classe_id (ou filiere_id+niveau_etude_id) requis pour calculer la complétude.',
+            ], 422);
+        }
+
+        // Matières applicables = pivot esbtp_matiere_filiere_niveau (combinaison stricte)
+        $matieresQuery = \App\Models\ESBTPMatiere::query()
+            ->where('is_active', true)
+            ->whereHas('filieres', fn ($q) => $q->where('esbtp_filieres.id', $filiereId))
+            ->whereHas('niveaux', fn ($q) => $q->where('esbtp_niveau_etudes.id', $niveauId));
+
+        $allMatieres = $matieresQuery->get(['id', 'name', 'code']);
+        $total = $allMatieres->count();
+
+        $configured = ESBTPMatiereCoefficient::where('filiere_id', $filiereId)
+            ->where('niveau_etude_id', $niveauId)
+            ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
+            ->where('periode', $validated['periode'])
+            ->pluck('coefficient', 'matiere_id');
+
+        $missing = $allMatieres->filter(fn ($m) => !$configured->has($m->id))->values();
+
+        $status = $total === 0
+            ? 'unknown'
+            : ($configured->count() >= $total ? 'complete'
+                : ($configured->count() === 0 ? 'unconfigured' : 'incomplete'));
+
+        return response()->json([
+            'success' => true,
+            'periode' => $validated['periode'],
+            'configured_count' => $configured->count(),
+            'total_count' => $total,
+            'status' => $status,
+            'missing_matieres' => $missing->map(fn ($m) => ['id' => $m->id, 'name' => $m->name, 'code' => $m->code])->all(),
+        ]);
+    }
+
     public function checkCoefficient(Request $request)
     {
         $validated = $request->validate([

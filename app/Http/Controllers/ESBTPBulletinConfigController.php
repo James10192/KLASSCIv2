@@ -256,6 +256,104 @@ class ESBTPBulletinConfigController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+    /**
+     * Sous-lot δ — POST /bulletins/config-matieres/copy
+     * Copie la classification (general/technique) d'une période vers l'autre.
+     * Modes : override (remplace) | merge (skip si cible déjà configurée).
+     * dry_run=1 : preview seulement.
+     */
+    public function copyConfigMatieres(Request $request)
+    {
+        if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'source_periode' => 'required|in:semestre1,semestre2',
+            'target_periode' => 'required|in:semestre1,semestre2|different:source_periode',
+            'mode' => 'required|in:override,merge',
+            'dry_run' => 'nullable|boolean',
+        ]);
+
+        $dryRun = (bool) ($validated['dry_run'] ?? false);
+
+        $sources = ESBTPConfigMatiere::with('matiere:id,name,code')
+            ->where('classe_id', $validated['classe_id'])
+            ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
+            ->where('periode', $validated['source_periode'])
+            ->get();
+
+        $targets = ESBTPConfigMatiere::where('classe_id', $validated['classe_id'])
+            ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
+            ->where('periode', $validated['target_periode'])
+            ->get()
+            ->keyBy('matiere_id');
+
+        $preview = ['create' => [], 'update' => [], 'skip' => []];
+        foreach ($sources as $src) {
+            $existing = $targets->get($src->matiere_id);
+            $srcType = (json_decode($src->config, true)['type'] ?? null) ?: 'general';
+            $row = [
+                'matiere_id' => $src->matiere_id,
+                'matiere_name' => $src->matiere->name ?? '#'.$src->matiere_id,
+                'source_type' => $srcType,
+                'target_existing_type' => $existing ? (json_decode($existing->config, true)['type'] ?? null) : null,
+            ];
+            if (!$existing) {
+                $preview['create'][] = $row;
+            } elseif ($validated['mode'] === 'override') {
+                $preview['update'][] = $row;
+            } else {
+                $preview['skip'][] = $row + ['reason' => 'Cible déjà configurée (mode merge)'];
+            }
+        }
+
+        if ($dryRun) {
+            return response()->json([
+                'success' => true,
+                'dry_run' => true,
+                'summary' => [
+                    'will_create' => count($preview['create']),
+                    'will_update' => count($preview['update']),
+                    'will_skip' => count($preview['skip']),
+                    'source_total' => $sources->count(),
+                ],
+                'preview' => $preview,
+            ]);
+        }
+
+        $created = $updated = $skipped = 0;
+        DB::transaction(function () use ($sources, $targets, $validated, &$created, &$updated, &$skipped) {
+            foreach ($sources as $src) {
+                $existing = $targets->get($src->matiere_id);
+                if ($existing && $validated['mode'] === 'merge') {
+                    $skipped++;
+                    continue;
+                }
+                ESBTPConfigMatiere::updateOrCreate([
+                    'matiere_id' => $src->matiere_id,
+                    'classe_id' => $validated['classe_id'],
+                    'periode' => $validated['target_periode'],
+                    'annee_universitaire_id' => $validated['annee_universitaire_id'],
+                ], [
+                    'config' => $src->config,
+                    'updated_by' => Auth::id(),
+                    'created_by' => Auth::id(),
+                ]);
+                if ($existing) $updated++; else $created++;
+            }
+        });
+
+        return response()->json([
+            'success' => true,
+            'dry_run' => false,
+            'message' => "Copie {$validated['source_periode']} → {$validated['target_periode']} effectuée.",
+            'summary' => ['created' => $created, 'updated' => $updated, 'skipped' => $skipped],
+        ]);
+    }
+
     public function saveConfigMatieresTypeFormation(Request $request)
     {
         // Vérifier que l'utilisateur est autorisé
