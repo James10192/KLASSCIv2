@@ -3224,14 +3224,31 @@
         // au moment de l'ouverture. Sans ça, un ancestor avec transform/filter/will-change
         // (animations CSS, hover effects, etc.) crée un containing block qui piège
         // le menu et permet à des siblings (KPIs, cards) de passer au-dessus malgré z-index.
-        function getDropdownParts(dropdownRoot) {
-            if (!dropdownRoot || dropdownRoot.nodeType !== 1) return { root: null, trigger: null, menu: null };
+        function getDropdownParts(eventTarget) {
+            if (!eventTarget || eventTarget.nodeType !== 1) return { root: null, trigger: null, menu: null };
 
-            return {
-                root: dropdownRoot,
-                trigger: dropdownRoot.querySelector(':scope > [data-bs-toggle="dropdown"]'),
-                menu: dropdownRoot.querySelector(':scope > .dropdown-menu')
-            };
+            // Bootstrap 5 fire show.bs.dropdown / shown.bs.dropdown / hidden.bs.dropdown
+            // sur l'élément TRIGGER (data-bs-toggle="dropdown"), pas sur le .dropdown root.
+            // Détection robuste : ev.target peut être le trigger OU le root selon
+            // d'où vient l'event. On gère les deux cas.
+            let trigger = null;
+            let root = null;
+
+            const hasToggle = eventTarget.hasAttribute && eventTarget.hasAttribute('data-bs-toggle')
+                && eventTarget.getAttribute('data-bs-toggle') === 'dropdown';
+
+            if (hasToggle) {
+                trigger = eventTarget;
+                root = eventTarget.closest('.dropdown, .btn-group, .dropdown-center') || eventTarget.parentElement;
+            } else {
+                root = eventTarget;
+                trigger = eventTarget.querySelector(':scope > [data-bs-toggle="dropdown"]')
+                    || eventTarget.querySelector('[data-bs-toggle="dropdown"]');
+            }
+
+            const menu = root ? (root.querySelector(':scope > .dropdown-menu') || root.querySelector('.dropdown-menu')) : null;
+
+            return { root, trigger, menu };
         }
 
         function findTeleportedMenu(dropdownRoot) {
