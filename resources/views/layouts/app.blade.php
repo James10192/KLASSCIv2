@@ -3346,6 +3346,16 @@
         });
 
         document.addEventListener('shown.bs.dropdown', function(ev) {
+            // Force Popper à recalculer après le teleport pour que le menu (maintenant dans body)
+            // soit repositionné en coordonnées viewport-relatives correctes.
+            const parts = getDropdownParts(ev.target);
+            if (parts.trigger && window.bootstrap && bootstrap.Dropdown) {
+                const inst = bootstrap.Dropdown.getInstance(parts.trigger);
+                if (inst && inst._popper && typeof inst._popper.update === 'function') {
+                    inst._popper.update();
+                }
+            }
+            // Fallback : recalc manuel si Popper indisponible ou échec
             positionTeleportedDropdown(ev.target);
             bindDropdownReposition(ev.target);
         });
