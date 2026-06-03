@@ -965,11 +965,28 @@ class ESBTPBulletinConfigController extends Controller
             $bulletin->save();
         }
 
-        // Calculer les absences automatiquement via le système existant
+        // Calculer les absences automatiquement via le système existant.
+        // Lot 4 fix: l'ancienne version appelait $this->calculerAbsencesDetailes($bulletin)
+        // qui n'existait nulle part → PHP Error (pas Exception) non capturée → 500.
+        // Remplacé par l'appel direct au service ESBTPAbsenceService (méthode officielle
+        // calculerDetailAbsences déjà utilisée dans BulletinService). Catch élargi à \Throwable
+        // pour couvrir Error + Exception.
         try {
-            $absencesCalculees = $this->calculerAbsencesDetailes($bulletin);
-        } catch (\Exception $e) {
-            \Log::error('Erreur lors du calcul automatique des absences: '.$e->getMessage());
+            $absencesCalculees = $this->absenceService->calculerDetailAbsences(
+                $etudiant->id,
+                $classe->id,
+                $anneeUniversitaire->date_debut ?? null,
+                $anneeUniversitaire->date_fin ?? null,
+                $anneeUniversitaire->id,
+                $periode
+            );
+        } catch (\Throwable $e) {
+            \Log::error('Erreur lors du calcul automatique des absences: '.$e->getMessage(), [
+                'etudiant_id' => $etudiant->id,
+                'classe_id' => $classe->id,
+                'periode' => $periode,
+                'trace' => $e->getTraceAsString(),
+            ]);
             $absencesCalculees = [
                 'justifiees' => 0,
                 'non_justifiees' => 0,
