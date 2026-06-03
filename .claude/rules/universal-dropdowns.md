@@ -21,14 +21,118 @@ Le pattern universel a été appliqué une fois pour toutes au layout global au 
 
 Marcel : « je veux que ce soit universel dans KLASSCI en ne cassant pas les autres fonctionnalités sur les autres pages aussi »
 
-## Le pattern universel — déjà en place
+## ⚠ Leçons apprises (juin 2026) — ANTI-PATTERNS À NE JAMAIS REFAIRE
 
-**Source canonique** : `resources/views/layouts/app.blade.php` (CSS dans `<head>` + JS avant `bootstrap.bundle.min.js`).
+L'historique a montré 3 approches qui ont CASSÉ les dropdowns plus que les ont réparées :
+
+### ❌ Anti-pattern #1 : `position: fixed !important` en CSS sans repasser par Popper
+
+```css
+/* CECI A CASSÉ TOUS LES DROPDOWNS — Marcel screenshot 3 juin 2026 */
+html body .dropdown-menu.show {
+    position: fixed !important;
+}
+```
+
+**Pourquoi ça casse** : Popper applique `position: absolute; inset: 0 0 auto auto; transform: translate(X, Y)` inline. Le `inset` et le `transform` sont calculés POUR `position: absolute` (relatif au `.dropdown` parent). Si tu force `position: fixed` via CSS, `inset: 0 0 auto auto` devient top-right du **viewport**, plus du parent. Le `transform: translate(0, 970)` (qui était valide pour absolute) reste mais s'applique maintenant en absolu viewport → menu poussé à `top: 0 + 970 = 970px` → sous le viewport, invisible.
+
+### ❌ Anti-pattern #2 : Teleport-to-body avec recalc manuel des coords
+
+```js
+/* CECI A CASSÉ : Marcel screenshot "dropdown disparait" */
+document.addEventListener('show.bs.dropdown', function(ev) {
+    document.body.appendChild(menu);  // teleport
+});
+document.addEventListener('shown.bs.dropdown', function(ev) {
+    // recalc manuel position:fixed top/left depuis triggerRect
+    menu.style.top = triggerRect.bottom + 'px';
+    menu.style.left = triggerRect.right - menuWidth + 'px';
+});
+```
+
+**Pourquoi ça casse** :
+1. Race condition entre Popper (qui repositionne sur scroll/resize) et le recalc manuel
+2. Bootstrap fire `show.bs.dropdown` sur le **trigger button** (pas sur `.dropdown` root) — facile à se tromper sur ev.target
+3. Le menu peut disparaître entre les deux updates
+4. Le scroll listener manuel + Popper listener double-fire
+
+### ❌ Anti-pattern #3 : data-bs-strategy="fixed" en attribut HTML
+
+```html
+<button data-bs-toggle="dropdown" data-bs-strategy="fixed">...</button>
+```
+
+**Pourquoi ça ne marche pas** : Bootstrap 5.3 N'A PAS d'option `strategy` dans son `Default` (vérifié dans le source `Dropdown.js`). L'attribut `data-bs-strategy` est ignoré. Popper utilise `strategy: 'absolute'` par défaut (qui n'est PAS modifiable via data-attribute).
+
+**La VRAIE façon** : reconfigurer chaque dropdown via `popperConfig` en JS :
+
+```js
+new bootstrap.Dropdown(trigger, {
+    popperConfig: function(defaultConfig) {
+        return Object.assign({}, defaultConfig, { strategy: 'fixed' });
+    }
+});
+```
+
+## Le pattern universel CORRECT (juin 2026)
+
+**Source canonique** : `resources/views/layouts/app.blade.php` (CSS dans `<head>` + 2 scripts AVANT/APRÈS `bootstrap.bundle.min.js`).
 
 **3 couches qui agissent ensemble** :
-1. CSS `position: fixed !important; z-index: 99999 !important; background: #fff !important` — couche défensive
-2. JS injection `data-bs-strategy="fixed"` + auto-flip dropup — placement intelligent
-3. **Teleport-to-body à l'ouverture** — couche définitive qui extrait le menu de tout stacking context parent
+1. CSS `z-index: 99999 !important; background: #fff !important` (PAS de position:fixed) — surveillance défensive
+2. JS pre-bootstrap : injection `data-bs-boundary="viewport"` + `data-bs-display="dynamic"` + auto-flip `.dropup` au mousedown
+3. JS post-bootstrap : reconfigure CHAQUE dropdown via `new bootstrap.Dropdown(trigger, { popperConfig: { strategy: 'fixed' } })` — Popper calcule en fixed dès l'init, plaçant le menu dans le stacking context ROOT du viewport (au-dessus des navbar sticky / sidebar à z-index local)
+
+**Code source** :
+
+```js
+// SCRIPT 1 (avant bootstrap.bundle) : data-bs-* attrs + helpers
+function applyDropdownDefaults(scope) {
+    scope.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(trigger) {
+        if (trigger.dataset.klassciDropdownInit === '1') return;
+        trigger.dataset.klassciDropdownInit = '1';
+        if (!trigger.hasAttribute('data-bs-boundary')) trigger.setAttribute('data-bs-boundary', 'viewport');
+        if (!trigger.hasAttribute('data-bs-display')) trigger.setAttribute('data-bs-display', 'dynamic');
+    });
+}
+
+function forceFixedStrategyOnAllDropdowns() {
+    if (!window.bootstrap || !bootstrap.Dropdown) return;
+    document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(trigger) {
+        if (trigger.dataset.klassciStrategyFixed === '1') return;
+        trigger.dataset.klassciStrategyFixed = '1';
+        try {
+            const existing = bootstrap.Dropdown.getInstance(trigger);
+            if (existing) existing.dispose();
+            new bootstrap.Dropdown(trigger, {
+                popperConfig: function(defaultConfig) {
+                    return Object.assign({}, defaultConfig, { strategy: 'fixed' });
+                }
+            });
+        } catch(e) {}
+    });
+}
+
+window.__klassciForceFixedDropdowns = forceFixedStrategyOnAllDropdowns;
+
+// SCRIPT 2 (après bootstrap.bundle) : applique la stratégie + observe DOM
+if (window.__klassciForceFixedDropdowns) {
+    window.__klassciForceFixedDropdowns();
+    new MutationObserver(function(mutations) {
+        let needs = false;
+        mutations.forEach(function(m) {
+            m.addedNodes.forEach(function(node) {
+                if (node.nodeType === 1 &&
+                    (node.matches?.('[data-bs-toggle="dropdown"]')
+                     || node.querySelector?.('[data-bs-toggle="dropdown"]'))) {
+                    needs = true;
+                }
+            });
+        });
+        if (needs) window.__klassciForceFixedDropdowns();
+    }).observe(document.documentElement, { childList: true, subtree: true });
+}
+```
 
 ### 0. Teleport-to-body (couche définitive, juin 2026)
 

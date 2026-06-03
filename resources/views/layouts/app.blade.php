@@ -3171,12 +3171,29 @@
             scope.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(trigger) {
                 if (trigger.dataset.klassciDropdownInit === '1') return;
                 trigger.dataset.klassciDropdownInit = '1';
-                if (!trigger.hasAttribute('data-bs-strategy')) trigger.setAttribute('data-bs-strategy', 'fixed');
                 if (!trigger.hasAttribute('data-bs-boundary')) trigger.setAttribute('data-bs-boundary', 'viewport');
                 if (!trigger.hasAttribute('data-bs-display')) trigger.setAttribute('data-bs-display', 'dynamic');
-                if (window.bootstrap && bootstrap.Dropdown && bootstrap.Dropdown.getInstance(trigger)) {
-                    try { bootstrap.Dropdown.getInstance(trigger).dispose(); } catch(e) {}
-                }
+            });
+        }
+
+        // Force Popper strategy:'fixed' sur TOUS les dropdowns Bootstrap pour que le menu
+        // soit placé dans le stacking context ROOT du viewport (au-dessus des navbar sticky,
+        // sidebar, etc. dont les contextes locaux ont z-index moindre).
+        // À appeler APRÈS bootstrap.bundle chargé.
+        function forceFixedStrategyOnAllDropdowns() {
+            if (!window.bootstrap || !bootstrap.Dropdown) return;
+            document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach(function(trigger) {
+                if (trigger.dataset.klassciStrategyFixed === '1') return;
+                trigger.dataset.klassciStrategyFixed = '1';
+                try {
+                    const existing = bootstrap.Dropdown.getInstance(trigger);
+                    if (existing) existing.dispose();
+                    new bootstrap.Dropdown(trigger, {
+                        popperConfig: function(defaultConfig) {
+                            return Object.assign({}, defaultConfig, { strategy: 'fixed' });
+                        }
+                    });
+                } catch(e) {}
             });
         }
         // Auto-flip via dropup class : si pas assez d'espace en bas, mettre la classe dropup
@@ -3217,17 +3234,34 @@
             });
         }).observe(document.documentElement, { childList: true, subtree: true });
 
-        // RÉVERT teleport+recalc complexes. On reste sur l'approche simple :
-        // 1. data-bs-strategy="fixed" + boundary="viewport" + display="dynamic" (déjà injectés)
-        // 2. detectAndFlipDropdown (déjà fait au mousedown)
-        // 3. CSS rule force position:fixed + z-index 99999 (style block plus haut)
-        // Les transforms sur :hover des cards sont retirés au cas-par-cas dans chaque vue
-        // pour empêcher la création d'un containing block (CSS spec).
+        // Expose forceFixedStrategyOnAllDropdowns au scope global pour qu'on puisse
+        // l'appeler après le chargement de bootstrap.bundle (cf. script suivant).
+        window.__klassciForceFixedDropdowns = forceFixedStrategyOnAllDropdowns;
     })();
     </script>
 
     <!-- Bootstrap JS with Popper (chargé APRÈS notre injection des data-bs-* attrs) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Une fois Bootstrap chargé, force strategy:'fixed' sur tous les dropdowns existants
+        // ET observe le DOM pour appliquer la stratégie aux dropdowns dynamiquement ajoutés.
+        if (window.__klassciForceFixedDropdowns) {
+            window.__klassciForceFixedDropdowns();
+            new MutationObserver(function(mutations) {
+                let needs = false;
+                mutations.forEach(function(m) {
+                    m.addedNodes.forEach(function(node) {
+                        if (node.nodeType === 1 &&
+                            (node.matches && node.matches('[data-bs-toggle="dropdown"]')
+                             || (node.querySelector && node.querySelector('[data-bs-toggle="dropdown"]')))) {
+                            needs = true;
+                        }
+                    });
+                });
+                if (needs) window.__klassciForceFixedDropdowns();
+            }).observe(document.documentElement, { childList: true, subtree: true });
+        }
+    </script>
 
     <!-- Alpine.js (focus plugin must load BEFORE core for x-trap to register) -->
     <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
