@@ -10,6 +10,53 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ---
 
+## Juin 2026
+
+### Ajouts
+
+- **Redesign full premium page Évaluations** (`/esbtp/evaluations`) — hero gradient KLASSCI, KPIs live, filtres `<x-au-select>`, table click-row, namespace `ev-*` [8d8b0aa5]
+- **Coefficients S1/S2 séparés** — colonne `periode` sur `esbtp_matiere_coefficients` (S1/S2/ANNEE) + backend distingué par période [81e7939a]
+- **Endpoints réutilisables** `/coefficients/copy` + `/coefficients/completion` + `/coefficients/read` pour piloter la copie inter-période et exposer les stats de complétude [41b1cbb0]
+- **Modal coefficients enrichi** (sous-lot γ) — switch S1/S2 inline, jauge de complétude, copy preview override/merge avec confirmation [fdf197ac]
+- **Redesign full premium page Configuration des matières** (`/esbtp/config-matieres`, namespace `cm-*`) — switch S1/S2/Annuel + copy modal preview [ecfce1b6]
+- **Switch S1/S2/Annuel en AJAX no-reload** sur `/esbtp/config-matieres` (rule ajax-no-reload-premium) [7ab40180]
+- **Propagation classe sur config-matieres** + loading state spinner sur les actions [25f3d5e3]
+- **Barème assiduité 5 paliers** + **redesign full premium edit-absences** (`/esbtp/absences/edit`) [3797b94d]
+
+### Améliorations
+
+- **Bulletin Yakro PDF** — agrandissement police pour meilleure lisibilité [8f10cfa5]
+- **Bulletin Yakro PDF** — élargir A4 (marges + padding réduits), fix mojibake « MatiÃ¨re » → « Matière », info-rows en table 2 colonnes label/valeur alignés [9054ca7b]
+- **Bulletin Yakro PDF** — layout 1 page A4 : élargi + compacté, mentions en grid 2 colonnes, labels sans ":" [47abfc8d]
+- **Bulletin Yakro PDF** — compacte tableaux résultats/stats/absences, agrandit polices, centre checkboxes mentions [373ff77e]
+- **Bulletin Yakro PDF** — aère la zone signature (30→70 px) pour signature + cachet manuel [b7f48263]
+- **Bulletin Yakro / Résultats** — boutons bulletin direct, summary-row gris, marges A4 minimales [dbffc31f]
+- **Bulletin Yakro PDF** — ministère paramétrable multi-lignes (fini la répétition « Recherche Scientifique ») [95b8cd27]
+- **CLI** — `settingsUpdate` en upsert au lieu de 404 + tweak edit-absences (link 'settings') [3ae28ba5, f6fc14fc]
+
+### Corrections
+
+- **Personnel** — hero sans `transform` pour libérer le dropdown du stacking context (bug menu masqué) [5a8adf22]
+- **Dropdowns universels** — teleport menu vers `body` à l'ouverture pour échapper aux stacking contexts Popper [0bf8b9c7]
+- **Inscriptions** — `const` redéclaration cassait le script de correction unlock [ed96400f]
+- **BTS Tronc commun** — fallback hiérarchie filière (`parent_id`) si aucun `ClasseOrientationTarget` configuré [532d2637]
+- **Bulletin** — résolution canonique du `type_formation` (ConfigMatiere > bulletin JSON > matière globale) [359702d7]
+- **Résultats** (Lot 3) — `whereIn` (union) au lieu d'`orWhereHas` qui buguait sur `notes.evaluation` indirecte [0b2b042f]
+- **Résultats** — élargir `buildEtudiantsQuery` + fallback moyenne arithmétique sans coefficients [0c03a121]
+- **Absences edit** (Lot 4) — `editAbsences` appelait `calculerAbsencesDetailes()` inexistante → 500 [0e614150]
+- **Absences edit** — Blade `@json([multiligne])` crashait au rendu [47ce02c3]
+- **Routes `/esbtp-special/bulletins/*`** ouvertes à la permission `bulletins.configure` (rule customizable-roles) [f1122fd2]
+- **Migration coefficients** — `SET FOREIGN_KEY_CHECKS=0` pour drop `matiere_coeff_unique` (FK references) [7b41e584]
+- **Config-matieres** — switch `<button>` manquait le sélecteur (en plus des `<a>`) [1e451dd1]
+- **Modal coefficients** — state loading bouton Enregistrer (CSS `d-none` missing + restore au success) [f85da117]
+- **`matieres/create`** — `@section('scripts')` → `@push('scripts')` : le JS n'était JAMAIS chargé sur la page [f9df8268]
+
+### Sécurité
+
+- **Permission `inscriptions.specialisation.manage`** introduite au lieu d'un rôle hardcodé sur le workflow BTS Tronc commun (rule customizable-roles) [6b625ce3]
+
+---
+
 ## Mai 2026
 
 ### Audit — Liens vers entités liées sur toutes les pages — 22 mai 2026
