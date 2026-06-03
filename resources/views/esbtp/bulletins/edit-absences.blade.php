@@ -577,7 +577,7 @@ $_returnUrl = route('esbtp.resultats.etudiant', [
                                 </div>
                                 <div class="ea-footnote">
                                     <i class="fas fa-info-circle"></i>
-                                    <div>La note d'assiduité est <strong>ajoutée à la moyenne générale</strong> du bulletin. Le barème est configurable globalement dans <a href="{{ route('esbtp.settings.index') }}" style="color:#0453cb;">/esbtp/settings</a>.</div>
+                                    <div>La note d'assiduité est <strong>ajoutée à la moyenne générale</strong> du bulletin. Le barème est configurable globalement dans <a href="{{ route('esbtp.settings.index') }}" style="color:#0453cb;font-weight:600;">settings</a>.</div>
                                 </div>
                             </div>
                         </div>
@@ -586,7 +586,7 @@ $_returnUrl = route('esbtp.resultats.etudiant', [
                             <i class="fas fa-toggle-off"></i>
                             <div>
                                 <strong>Note d'assiduité désactivée</strong><br>
-                                <small>Le toggle global est OFF — la note vaut <code>0</code> partout et n'apparaît ni sur le bulletin ni dans les calculs. Activez-le dans <a href="{{ route('esbtp.settings.index') }}" style="color:#0453cb;font-weight:600;">/esbtp/settings</a> pour configurer le barème.</small>
+                                <small>Le toggle global est OFF — la note vaut <code>0</code> partout et n'apparaît ni sur le bulletin ni dans les calculs. Activez-le dans <a href="{{ route('esbtp.settings.index') }}" style="color:#0453cb;font-weight:600;">settings</a> pour configurer le barème.</small>
                             </div>
                         </div>
                     @endif
