@@ -208,47 +208,102 @@
         ])
 
         @if(isset($bulletinConsistency) && $bulletinConsistency)
-            <div class="sr-bulletin-banner sr-bulletin-banner--{{ $bulletinConsistency['status'] === 'official_exists_but_stale' ? 'warning' : ($bulletinConsistency['status'] === 'aligned' ? 'info' : 'muted') }} sr-animate sr-animate-delay-1">
-                <div class="sr-bulletin-banner__icon">
-                    <i class="fas fa-{{ $bulletinConsistency['status'] === 'official_exists_but_stale' ? 'triangle-exclamation' : ($bulletinConsistency['status'] === 'aligned' ? 'shield-check' : 'file-circle-plus') }}"></i>
-                </div>
-                <div class="sr-bulletin-banner__body">
-                    <div class="sr-bulletin-banner__title">
-                        @if($bulletinConsistency['status'] === 'aligned')
-                            Bulletin officiel existant
-                        @elseif($bulletinConsistency['status'] === 'official_exists_but_stale')
-                            Bulletin officiel à régénérer
-                        @else
-                            Aucun bulletin officiel
-                        @endif
+            @php
+                $bcStatus = $bulletinConsistency['status'] ?? 'muted';
+                $bcStatusModifier = $bcStatus === 'official_exists_but_stale' ? 'warning'
+                    : ($bcStatus === 'aligned' ? 'success' : 'neutral');
+                $bcIcon = $bcStatus === 'official_exists_but_stale' ? 'triangle-exclamation'
+                    : ($bcStatus === 'aligned' ? 'shield-check' : 'file-circle-plus');
+                $bcTitle = $bcStatus === 'aligned' ? 'Bulletin officiel'
+                    : ($bcStatus === 'official_exists_but_stale' ? 'Bulletin à régénérer' : 'Aucun bulletin officiel');
+                $bcOfficial = $bulletinConsistency['official_effective_total'] ?? null;
+                $bcCurrent = $bannerCurrentTotal;
+                $bcDelta = $bulletinConsistency['difference_value'] ?? null;
+                $bcHasDivergence = $bulletinConsistency['has_divergence'] ?? false;
+                $bcOfficialExists = $bulletinConsistency['official_bulletin_exists'] ?? false;
+                $bcOfficialId = $bulletinConsistency['official_bulletin_id'] ?? null;
+
+                $bcPreviewCurrentUrl = $bcOfficialId
+                    ? route('esbtp.bulletins.preview-pdf', $bcOfficialId)
+                    : null;
+            @endphp
+            <div class="srb-banner srb-banner--{{ $bcStatusModifier }} sr-animate sr-animate-delay-1">
+                <div class="srb-banner-main">
+                    <div class="srb-banner-avatar">
+                        <i class="fas fa-{{ $bcIcon }}"></i>
                     </div>
-                    <p class="sr-bulletin-banner__text">{{ $bulletinConsistency['user_message'] }}</p>
-                    <div class="sr-bulletin-banner__meta">
-                        @if($bulletinConsistency['official_bulletin_exists'])
-                            <span class="sr-bulletin-chip">Bulletin #{{ $bulletinConsistency['official_bulletin_id'] }}</span>
-                            <span class="sr-bulletin-chip">Officiel {{ number_format($bulletinConsistency['official_effective_total'] ?? 0, 2) }}/20</span>
-                        @endif
-                        @if($bannerCurrentTotal !== null)
-                            <span class="sr-bulletin-chip">Courant {{ number_format($bannerCurrentTotal, 2) }}/20</span>
-                        @endif
-                        @if($bulletinConsistency['has_divergence'] && ($bulletinConsistency['difference_value'] ?? null) !== null)
-                            <span class="sr-bulletin-chip sr-bulletin-chip--warning">Delta {{ $bulletinConsistency['difference_value'] > 0 ? '+' : '' }}{{ number_format($bulletinConsistency['difference_value'], 2) }}</span>
-                        @endif
+                    <div class="srb-banner-body">
+                        <div class="srb-banner-title">{{ $bcTitle }}</div>
+                        <p class="srb-banner-text">{{ $bulletinConsistency['user_message'] ?? '' }}</p>
                     </div>
                 </div>
-                @can('bulletins.edit')
-                    @if($bulletinConsistency['official_bulletin_exists'] && $bulletinConsistency['has_divergence'])
-                        <button type="button"
-                                class="sr-bulletin-banner__cta"
-                                data-regenerate-bulletin="1"
-                                data-etudiant-id="{{ $etudiant->id }}"
-                                data-classe-id="{{ $classe->id }}"
-                                data-annee-id="{{ $annee_id }}"
-                                data-periode="{{ $bulletinWorkflowPeriode }}">
-                            <i class="fas fa-rotate-right"></i>Régénérer le bulletin
-                        </button>
+
+                <div class="srb-banner-stats">
+                    @if($bcOfficialExists)
+                        <div class="srb-stat srb-stat--official">
+                            <div class="srb-stat-label">Officiel</div>
+                            <div class="srb-stat-value">{{ number_format($bcOfficial ?? 0, 2) }}<span class="srb-stat-unit">/20</span></div>
+                            @if($bcOfficialId)<div class="srb-stat-sub">#{{ $bcOfficialId }}</div>@endif
+                        </div>
                     @endif
-                @endcan
+                    @if($bcCurrent !== null)
+                        <div class="srb-stat srb-stat--current">
+                            <div class="srb-stat-label">Courant</div>
+                            <div class="srb-stat-value">{{ number_format($bcCurrent, 2) }}<span class="srb-stat-unit">/20</span></div>
+                            <div class="srb-stat-sub">Live</div>
+                        </div>
+                    @endif
+                    @if($bcHasDivergence && $bcDelta !== null)
+                        <div class="srb-stat srb-stat--delta">
+                            <div class="srb-stat-label">Écart</div>
+                            <div class="srb-stat-value {{ $bcDelta > 0 ? 'is-positive' : ($bcDelta < 0 ? 'is-negative' : '') }}">
+                                {{ $bcDelta > 0 ? '+' : '' }}{{ number_format($bcDelta, 2) }}
+                            </div>
+                            <div class="srb-stat-sub">Δ courant − officiel</div>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="srb-banner-actions">
+                    <button type="button"
+                            class="srb-action srb-action--ghost"
+                            data-srb-details="1"
+                            data-payload='@json([
+                                "etudiant_id" => $etudiant->id,
+                                "classe_id" => $classe->id ?? null,
+                                "annee_universitaire_id" => $annee_id,
+                                "periode" => $bulletinWorkflowPeriode,
+                                "preview_url" => $bcPreviewCurrentUrl,
+                                "can_regenerate" => $bcOfficialExists && $bcHasDivergence,
+                                "official" => $bcOfficial,
+                                "current" => $bcCurrent,
+                                "delta" => $bcDelta,
+                                "bulletin_id" => $bcOfficialId,
+                                "title" => $bcTitle,
+                                "message" => $bulletinConsistency['user_message'] ?? '',
+                                "status" => $bcStatus,
+                            ])'>
+                        <i class="fas fa-circle-info"></i> Détails
+                    </button>
+                    @if($bcOfficialExists && $bcPreviewCurrentUrl)
+                        <a href="{{ $bcPreviewCurrentUrl }}" target="_blank" class="srb-action srb-action--outline">
+                            <i class="fas fa-eye"></i> Aperçu PDF
+                        </a>
+                    @endif
+                    @can('bulletins.edit')
+                        @if($bcOfficialExists && $bcHasDivergence)
+                            <button type="button"
+                                    class="srb-action srb-action--warning"
+                                    data-regenerate-bulletin="1"
+                                    data-etudiant-id="{{ $etudiant->id }}"
+                                    data-classe-id="{{ $classe->id }}"
+                                    data-annee-id="{{ $annee_id }}"
+                                    data-periode="{{ $bulletinWorkflowPeriode }}">
+                                <i class="fas fa-rotate-right"></i> Régénérer
+                            </button>
+                        @endif
+                    @endcan
+                </div>
             </div>
         @endif
 
@@ -304,6 +359,46 @@
                 </button>
                 <button type="button" id="srWarningProceedBtn" class="btn btn-warning" style="border-radius: 8px; font-weight: 600; color: white; display: none;">
                     <i class="fas fa-check me-1"></i><span id="srWarningProceedText">Continuer</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{{-- Modal premium : Détails consistance bulletin (Officiel / Courant / Δ + actions) --}}
+<div class="modal fade srb-modal-wrapper" id="srbDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" style="max-width:620px;">
+        <div class="modal-content srb-modal">
+            <div class="srb-modal-hero">
+                <div class="srb-modal-hero-icon"><i class="fas fa-file-shield"></i></div>
+                <div class="srb-modal-hero-body">
+                    <div class="srb-modal-hero-title" id="srbDetailsTitle">Bulletin officiel</div>
+                    <div class="srb-modal-hero-sub" id="srbDetailsSub">Comparaison snapshot vs état courant</div>
+                </div>
+                <button type="button" class="srb-modal-close" data-bs-dismiss="modal" aria-label="Fermer">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="srb-modal-body">
+                <div class="srb-modal-message" id="srbDetailsMessage"></div>
+                <div class="srb-modal-grid" id="srbDetailsGrid"></div>
+                <div class="srb-modal-explainer">
+                    <i class="fas fa-circle-info"></i>
+                    <div>
+                        <strong>Snapshot officiel :</strong> figé au moment de la génération du bulletin. Conservé pour traçabilité (signature, archivage).<br>
+                        <strong>État courant :</strong> recalculé live depuis les notes + résultats manuels. Régénérer remplace le snapshot par cette valeur.
+                    </div>
+                </div>
+            </div>
+            <div class="srb-modal-footer">
+                <button type="button" class="srb-action srb-action--ghost" data-bs-dismiss="modal">
+                    Fermer
+                </button>
+                <a href="#" id="srbDetailsPreviewLink" target="_blank" class="srb-action srb-action--outline" style="display:none;">
+                    <i class="fas fa-eye"></i> Aperçu PDF officiel
+                </a>
+                <button type="button" id="srbDetailsRegenerateBtn" class="srb-action srb-action--warning" style="display:none;">
+                    <i class="fas fa-rotate-right"></i> Régénérer le bulletin
                 </button>
             </div>
         </div>
@@ -394,6 +489,97 @@
                 });
             });
         });
+
+        // ═══ Modal premium : détails de cohérence bulletin (srb-modal) ═══
+        document.querySelectorAll('[data-srb-details="1"]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                var payload = null;
+                try { payload = JSON.parse(this.dataset.payload || '{}'); } catch (e) { return; }
+                srbOpenDetailsModal(payload);
+            });
+        });
+    }
+
+    function srbFormat(value, suffix) {
+        if (value === null || value === undefined || isNaN(value)) return '—';
+        return parseFloat(value).toFixed(2) + (suffix || '');
+    }
+
+    function srbOpenDetailsModal(payload) {
+        var modalEl = document.getElementById('srbDetailsModal');
+        if (!modalEl) return;
+        var titleEl = document.getElementById('srbDetailsTitle');
+        var subEl = document.getElementById('srbDetailsSub');
+        var messageEl = document.getElementById('srbDetailsMessage');
+        var gridEl = document.getElementById('srbDetailsGrid');
+        var previewLink = document.getElementById('srbDetailsPreviewLink');
+        var regenBtn = document.getElementById('srbDetailsRegenerateBtn');
+
+        var hasDivergence = payload.delta !== null && payload.delta !== undefined && Math.abs(payload.delta) > 0;
+
+        if (titleEl) titleEl.textContent = payload.title || 'Bulletin officiel';
+        if (subEl) subEl.textContent = hasDivergence
+            ? 'Snapshot officiel ≠ état courant — détails ci-dessous'
+            : 'Snapshot officiel et état courant sont alignés';
+        if (messageEl) messageEl.textContent = payload.message || '';
+
+        var deltaClass = '';
+        if (payload.delta > 0) deltaClass = 'is-positive';
+        else if (payload.delta < 0) deltaClass = 'is-negative';
+
+        var html = '';
+        if (payload.official !== null && payload.official !== undefined) {
+            html += '<div class="srb-cell srb-cell--official">'
+                  + '<div class="srb-cell-label"><i class="fas fa-shield-halved"></i> Snapshot officiel</div>'
+                  + '<div class="srb-cell-value">' + srbFormat(payload.official) + '<span class="srb-cell-unit">/20</span></div>'
+                  + (payload.bulletin_id ? '<div class="srb-cell-sub">Bulletin #' + payload.bulletin_id + '</div>' : '')
+                  + '</div>';
+        }
+        if (payload.current !== null && payload.current !== undefined) {
+            html += '<div class="srb-cell srb-cell--current">'
+                  + '<div class="srb-cell-label"><i class="fas fa-bolt"></i> État courant</div>'
+                  + '<div class="srb-cell-value">' + srbFormat(payload.current) + '<span class="srb-cell-unit">/20</span></div>'
+                  + '<div class="srb-cell-sub">Recalcul live</div>'
+                  + '</div>';
+        }
+        if (hasDivergence) {
+            html += '<div class="srb-cell srb-cell--delta">'
+                  + '<div class="srb-cell-label"><i class="fas fa-arrows-up-down-left-right"></i> Écart</div>'
+                  + '<div class="srb-cell-value ' + deltaClass + '">' + (payload.delta > 0 ? '+' : '') + srbFormat(payload.delta) + '</div>'
+                  + '<div class="srb-cell-sub">Δ courant − officiel</div>'
+                  + '</div>';
+        }
+        if (gridEl) gridEl.innerHTML = html;
+
+        if (previewLink) {
+            if (payload.preview_url) {
+                previewLink.href = payload.preview_url;
+                previewLink.style.display = 'inline-flex';
+            } else {
+                previewLink.style.display = 'none';
+            }
+        }
+        if (regenBtn) {
+            if (payload.can_regenerate) {
+                regenBtn.style.display = 'inline-flex';
+                regenBtn.onclick = function() {
+                    srRegenerateBulletin({
+                        etudiant_id: payload.etudiant_id,
+                        classe_id: payload.classe_id,
+                        annee_universitaire_id: payload.annee_universitaire_id,
+                        periode: payload.periode,
+                    }, function() {
+                        var inst = bootstrap.Modal.getInstance(modalEl);
+                        if (inst) inst.hide();
+                        srSubmitFilter();
+                    });
+                };
+            } else {
+                regenBtn.style.display = 'none';
+            }
+        }
+
+        new bootstrap.Modal(modalEl).show();
     }
 
     // ═══ AJAX content swap ═══
