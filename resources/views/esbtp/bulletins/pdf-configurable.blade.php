@@ -17,27 +17,30 @@
         * { box-sizing: border-box; }
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
-            font-size: {{ $settings['bulletin_font_size'] ?? '13' }}px;
+            font-size: {{ $settings['bulletin_font_size'] ?? '12' }}px;
             margin: 0;
             padding: 0;
             background: #fff;
             color: #111827;
-            line-height: 1.45;
+            line-height: 1.3;
         }
+        /* Compaction auto-fit 1 page : sections critiques évitent coupure */
+        .student-info, .header, .results-container, .signature-container,
+        tr.section-header, tr.summary-row { page-break-inside: avoid; }
         .container {
             width: 210mm;
             max-width: 794px;
             margin: 0 auto;
             background: #fff;
-            padding: 4px 6px 6px;
+            padding: 2px 3px 3px;
         }
 
         /* ── Header principal ─────────────────────────────────── */
         .header {
             width: 100%;
-            margin-bottom: 10px;
-            border-bottom: 2.5px solid {{ $pdfPrimary }};
-            padding-bottom: 8px;
+            margin-bottom: 5px;
+            border-bottom: 2px solid {{ $pdfPrimary }};
+            padding-bottom: 4px;
         }
         .header-table {
             width: 100%;
@@ -112,9 +115,9 @@
         /* ── Fiche étudiant ───────────────────────────────────── */
         .student-info {
             width: 100%;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
             border: 1px solid #d1d5db;
-            border-radius: 8px;
+            border-radius: 6px;
             background: #f9fafb;
             overflow: hidden;
         }
@@ -125,35 +128,35 @@
         }
         .student-info-table td {
             border: none;
-            padding: 7px 8px;
+            padding: 4px 6px;
             vertical-align: top;
             word-wrap: break-word;
         }
 
         /* Colonne photo */
         .student-info-table td:first-child {
-            width: 118px;
-            min-width: 118px;
+            width: 90px;
+            min-width: 90px;
             text-align: center;
             vertical-align: middle;
-            padding: 8px;
+            padding: 5px;
             background: #eff6ff;
             border-right: 1px solid #dbeafe;
             display: table-cell;
         }
         .student-info-table td:first-child img {
-            width: 90px;
-            height: 90px;
-            border-radius: 6px;
+            width: 70px;
+            height: 70px;
+            border-radius: 5px;
             object-fit: cover;
             border: 2px solid {{ $pdfPrimary }};
             display: block;
             margin: 0 auto;
         }
         .avatar-fallback {
-            width: 90px;
-            height: 90px;
-            border-radius: 6px;
+            width: 70px;
+            height: 70px;
+            border-radius: 5px;
             border: 2px solid {{ $pdfPrimary }};
             display: table;
             margin: 0 auto;
@@ -163,44 +166,50 @@
             display: table-cell;
             vertical-align: middle;
             text-align: center;
-            font-size: 26px;
+            font-size: 22px;
             color: {{ $pdfPrimary }};
             font-weight: 700;
         }
         .matricule-text {
-            margin-top: 5px;
+            margin-top: 3px;
             font-weight: 700;
-            font-size: 11.5px;
+            font-size: 10px;
             text-align: center;
             color: #374151;
         }
 
-        /* Colonnes infos — refactor table 2 colonnes pour aligner label/valeur sur même ligne
-           (avant : display:inline-block width:125px + value en inline → wrap si label long) */
+        /* Colonnes infos premium — style fiche élève sans ":", labels uppercase muted +
+           valeurs bold primary. Table 2 colonnes pour alignement garanti DomPDF. */
         .info-group {
-            width: 40%;
+            width: 42%;
             vertical-align: top;
+            padding: 3px 6px;
         }
         .info-table {
             width: 100%;
             border-collapse: collapse;
         }
         .info-table td {
-            padding: 4px 0;
+            padding: 3px 0;
             border: none;
-            vertical-align: top;
+            border-bottom: 1px dotted #e5e7eb;
+            vertical-align: middle;
         }
+        .info-table tr:last-child td { border-bottom: none; }
         .info-table td.info-label {
             font-weight: 700;
             white-space: nowrap;
             padding-right: 10px;
-            color: #374151;
-            font-size: 12.5px;
+            color: #6b7280;
+            font-size: 9.5px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
             width: 1%; /* shrink to content */
         }
         .info-table td.info-value {
-            color: #111827;
-            font-size: 13px;
+            color: {{ $pdfPrimary }};
+            font-size: 12.5px;
+            font-weight: 700;
             word-wrap: break-word;
         }
 
@@ -208,19 +217,19 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 8px;
-            font-size: 11.5px;
+            margin-bottom: 5px;
+            font-size: 11px;
         }
         th, td {
             border: 1px solid #d1d5db;
-            padding: 5px 6px;
+            padding: 4px 5px;
             text-align: left;
         }
         th {
             background: #f3f4f6;
             font-weight: 700;
             text-align: center;
-            font-size: 10.5px;
+            font-size: 10px;
             color: #111827;
         }
         .center { text-align: center; }
@@ -232,8 +241,8 @@
             color: {{ $pdfHeaderText }};
             font-weight: 700;
             text-align: center;
-            padding: 6px 9px;
-            font-size: 11.5px;
+            padding: 4px 8px;
+            font-size: 11px;
         }
         /* :nth-child n'est pas supporté par DomPDF — on utilise .subject-row-even
            posée via $loop->even dans le template Blade (voir tbody ci-dessous). */
@@ -298,23 +307,28 @@
             font-size: 12px;
         }
 
-        /* ── Mentions ─────────────────────────────────────────── */
-        .mention-box {
+        /* ── Mentions — grid 2 colonnes (compaction) ──────────── */
+        .mentions-grid {
             width: 100%;
-            margin-bottom: 4px;
+            border-collapse: separate;
+            border-spacing: 5px 4px;
+            margin: 0;
+        }
+        .mentions-grid td.mention-cell {
+            width: 50%;
             border: 1px solid #d1d5db;
-            border-radius: 6px;
-            font-size: 10.5px;
+            border-radius: 5px;
+            padding: 5px 8px;
             background: #fff;
-            overflow: hidden;
+            font-size: 11px;
+            vertical-align: middle;
         }
-        .mention-table { width: 100%; border-collapse: collapse; }
-        .mention-table td {
-            padding: 4px 8px;
-            border: none;
-        }
-        .mention-label { font-weight: 600; color: #111827; }
-        .mention-value { width: 28px; text-align: right; }
+        .mentions-grid td.mention-cell--empty { background: transparent; border: none; }
+        .mention-label { font-weight: 600; color: #111827; display: inline; }
+        .mention-check { float: right; }
+        .mention-check input[type="checkbox"] { vertical-align: middle; }
+        /* Legacy mention-* CSS retained for any other call sites */
+        .mention-box { display: none; }
 
         /* ── Décision conseil ─────────────────────────────────── */
         .decision-container {
@@ -355,7 +369,7 @@
         @if($isPdfExport ?? false)
         @page {
             size: A4 portrait;
-            margin: 6mm 5mm;
+            margin: 4mm 3mm;
         }
         body.pdf-export {
             margin: 0;
@@ -474,31 +488,31 @@
                     <td class="info-group">
                         <table class="info-table">
                             <tr>
-                                <td class="info-label">Nom et Prénoms :</td>
+                                <td class="info-label">Nom et Prénoms</td>
                                 <td class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</td>
                             </tr>
                             @if(($settings['bulletin_show_birth_date'] ?? '1') == '1')
                             <tr>
-                                <td class="info-label">Date de Naissance :</td>
+                                <td class="info-label">Date de Naissance</td>
                                 <td class="info-value">{{ $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</td>
                             </tr>
                             @endif
                             <tr>
-                                <td class="info-label">Lieu de Naissance :</td>
+                                <td class="info-label">Lieu de Naissance</td>
                                 <td class="info-value">{{ $etudiant->lieu_naissance ?? 'Non renseigné' }}</td>
                             </tr>
                             <tr>
-                                <td class="info-label">Genre :</td>
+                                <td class="info-label">Genre</td>
                                 <td class="info-value">{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</td>
                             </tr>
                             @if(($settings['bulletin_show_redoublant'] ?? '1') == '1')
                             <tr>
-                                <td class="info-label">Redoublant :</td>
+                                <td class="info-label">Redoublant</td>
                                 <td class="info-value">{{ $etudiant->inscriptions->first()->is_redoublant ?? false ? 'Oui' : 'Non' }}</td>
                             </tr>
                             @endif
                             <tr>
-                                <td class="info-label">Téléphone :</td>
+                                <td class="info-label">Téléphone</td>
                                 <td class="info-value">{{ $etudiant->telephone ?? 'Non renseigné' }}</td>
                             </tr>
                         </table>
@@ -506,25 +520,25 @@
                     <td class="info-group">
                         <table class="info-table">
                             <tr>
-                                <td class="info-label">Classe :</td>
+                                <td class="info-label">Classe</td>
                                 <td class="info-value">{{ $classe->libelle ?? $classe->name }}</td>
                             </tr>
                             @if(!empty($isSpecialisation) && !empty($classeTroncCommun) && ($settings['tronc_commun_bulletin_show_origin'] ?? '1') == '1')
                             <tr>
-                                <td class="info-label">Classe S1 (TC) :</td>
+                                <td class="info-label">Classe S1 (TC)</td>
                                 <td class="info-value">{{ $classeTroncCommun->libelle ?? $classeTroncCommun->name }}</td>
                             </tr>
                             @endif
                             <tr>
-                                <td class="info-label">Année d'étude :</td>
+                                <td class="info-label">Année d'étude</td>
                                 <td class="info-value">{{ $classe->niveau->libelle ?? $classe->niveau->name ?? ($classe->annee ?? 'N/A') }}</td>
                             </tr>
                             <tr>
-                                <td class="info-label">Filière :</td>
+                                <td class="info-label">Filière</td>
                                 <td class="info-value">{{ $classe->filiere->name ?? 'N/A' }}</td>
                             </tr>
                             <tr>
-                                <td class="info-label">Effectif :</td>
+                                <td class="info-label">Effectif</td>
                                 <td class="info-value">{{ $effectif }}</td>
                             </tr>
                         </table>
@@ -729,26 +743,43 @@
                         </div>
 
                         @if(($settings['bulletin_show_mentions'] ?? '1') == '1')
-                        <div style="margin-top: 8px;">
-                            @if(($settings['bulletin_show_felicitation'] ?? '1') == '1')
-                                @php $felicitationThreshold = floatval($settings['bulletin_felicitation_threshold'] ?? 16); $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $felicitationThreshold) : false; @endphp
-                                <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">Félicitation</td><td class="mention-value"><input type="checkbox" {{ $isChecked ? 'checked' : '' }}></td></tr></table></div>
-                            @endif
-                            @if(($settings['bulletin_show_encouragement'] ?? '1') == '1')
-                                @php $encouragementThreshold = floatval($settings['bulletin_encouragement_threshold'] ?? 14); $felicitationThreshold = floatval($settings['bulletin_felicitation_threshold'] ?? 16); $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $encouragementThreshold && $moyenneGlobale < $felicitationThreshold) : false; @endphp
-                                <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">Encouragement</td><td class="mention-value"><input type="checkbox" {{ $isChecked ? 'checked' : '' }}></td></tr></table></div>
-                            @endif
-                            @if(($settings['bulletin_show_honor_roll'] ?? '1') == '1')
-                                @php $honorRollThreshold = floatval($settings['bulletin_honor_roll_threshold'] ?? 12); $encouragementThreshold = floatval($settings['bulletin_encouragement_threshold'] ?? 14); $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $honorRollThreshold && $moyenneGlobale < $encouragementThreshold) : false; @endphp
-                                <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">Tableau d'honneur</td><td class="mention-value"><input type="checkbox" {{ $isChecked ? 'checked' : '' }}></td></tr></table></div>
-                            @endif
-                            @if(($settings['bulletin_show_work_warning'] ?? '1') == '1')
-                                @php $workWarningThreshold = floatval($settings['bulletin_work_warning_threshold'] ?? 8); $isChecked = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1' ? ($moyenneGlobale >= $workWarningThreshold && $moyenneGlobale < 10) : false; @endphp
-                                <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">Avertissement (Travail)</td><td class="mention-value"><input type="checkbox" {{ $isChecked ? 'checked' : '' }}></td></tr></table></div>
-                            @endif
-                            @if(($settings['bulletin_show_conduct_blame'] ?? '1') == '1')
-                                <div class="mention-box"><table class="mention-table"><tr><td class="mention-label">Blâme (Conduite)</td><td class="mention-value"><input type="checkbox"></td></tr></table></div>
-                            @endif
+                        @php
+                            // Collecte des mentions actives → grid 2 colonnes pour économiser l'espace
+                            $_mentions = [];
+                            $_autoCalc = ($settings['bulletin_auto_calculate_mention'] ?? '1') == '1';
+                            $_felThresh = floatval($settings['bulletin_felicitation_threshold'] ?? 16);
+                            $_encThresh = floatval($settings['bulletin_encouragement_threshold'] ?? 14);
+                            $_honThresh = floatval($settings['bulletin_honor_roll_threshold'] ?? 12);
+                            $_warnThresh = floatval($settings['bulletin_work_warning_threshold'] ?? 8);
+                            if (($settings['bulletin_show_felicitation'] ?? '1') == '1') {
+                                $_mentions[] = ['label' => 'Félicitation', 'checked' => $_autoCalc && $moyenneGlobale >= $_felThresh];
+                            }
+                            if (($settings['bulletin_show_encouragement'] ?? '1') == '1') {
+                                $_mentions[] = ['label' => 'Encouragement', 'checked' => $_autoCalc && $moyenneGlobale >= $_encThresh && $moyenneGlobale < $_felThresh];
+                            }
+                            if (($settings['bulletin_show_honor_roll'] ?? '1') == '1') {
+                                $_mentions[] = ['label' => 'Tableau d\'honneur', 'checked' => $_autoCalc && $moyenneGlobale >= $_honThresh && $moyenneGlobale < $_encThresh];
+                            }
+                            if (($settings['bulletin_show_work_warning'] ?? '1') == '1') {
+                                $_mentions[] = ['label' => 'Avertissement (Travail)', 'checked' => $_autoCalc && $moyenneGlobale >= $_warnThresh && $moyenneGlobale < 10];
+                            }
+                            if (($settings['bulletin_show_conduct_blame'] ?? '1') == '1') {
+                                $_mentions[] = ['label' => 'Blâme (Conduite)', 'checked' => false];
+                            }
+                            $_mentionsChunks = array_chunk($_mentions, 2);
+                        @endphp
+                        <div style="margin-top: 5px;">
+                            <table class="mentions-grid">
+                                @foreach($_mentionsChunks as $row)
+                                <tr>
+                                    @foreach($row as $m)
+                                        <td class="mention-cell"><span class="mention-label">{{ $m['label'] }}</span><span class="mention-check"><input type="checkbox" {{ $m['checked'] ? 'checked' : '' }}></span></td>
+                                    @endforeach
+                                    {{-- Cellule vide si row impaire pour préserver l'alignement --}}
+                                    @if(count($row) === 1)<td class="mention-cell mention-cell--empty"></td>@endif
+                                </tr>
+                                @endforeach
+                            </table>
                         </div>
                         @endif
                     </td>
