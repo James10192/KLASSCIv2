@@ -682,6 +682,20 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('resultats', [ESBTPResultatController::class, 'resultats'])
                 ->name('resultats.index')
                 ->middleware(['permission:bulletins.view_own|bulletins.view']);
+
+            // ═══ Sous-lot C+ : Corbeille multi-entité (étudiants + inscriptions + paiements) ═══
+            Route::middleware('permission:trash.view')->prefix('trash')->name('trash.')->group(function () {
+                Route::get('/', fn () => view('esbtp.trash.index'))->name('index');
+                Route::get('/etudiants', [\App\Http\Controllers\ESBTPEtudiantTrashController::class, 'index'])->name('etudiants');
+                Route::get('/inscriptions', [\App\Http\Controllers\ESBTPInscriptionTrashController::class, 'index'])->name('inscriptions');
+                Route::get('/paiements', [\App\Http\Controllers\ESBTPPaiementTrashController::class, 'index'])->name('paiements');
+                Route::post('/etudiants/{id}/restore', [\App\Http\Controllers\ESBTPEtudiantTrashController::class, 'restore'])->name('etudiants.restore');
+                Route::delete('/etudiants/{id}/force', [\App\Http\Controllers\ESBTPEtudiantTrashController::class, 'forceDelete'])->name('etudiants.force');
+                Route::post('/inscriptions/{id}/restore', [\App\Http\Controllers\ESBTPInscriptionTrashController::class, 'restore'])->name('inscriptions.restore');
+                Route::delete('/inscriptions/{id}/force', [\App\Http\Controllers\ESBTPInscriptionTrashController::class, 'forceDelete'])->name('inscriptions.force');
+                Route::post('/paiements/{id}/restore', [\App\Http\Controllers\ESBTPPaiementTrashController::class, 'restore'])->name('paiements.restore');
+                Route::delete('/paiements/{id}/force', [\App\Http\Controllers\ESBTPPaiementTrashController::class, 'forceDelete'])->name('paiements.force');
+            });
             Route::get('resultats/classes', [ESBTPResultatController::class, 'resultatsClasses'])
                 ->name('resultats.classes')
                 ->middleware(['permission:bulletins.view_own|bulletins.view']);

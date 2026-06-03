@@ -185,6 +185,43 @@ return [
             'icon' => 'fa-user-minus',
             'aliases' => ['delete_students'],
         ],
+        // ===== Corbeille (sous-lot C+) =====
+        'trash.view' => [
+            'label' => 'Accéder à la corbeille (étudiants, inscriptions, paiements soft-deleted)',
+            'group' => 'Corbeille',
+            'icon' => 'fa-trash-restore',
+        ],
+        'students.restore' => [
+            'label' => 'Restaurer un étudiant supprimé',
+            'group' => 'Corbeille',
+            'icon' => 'fa-rotate-left',
+        ],
+        'students.force_delete' => [
+            'label' => 'Supprimer définitivement un étudiant (corbeille)',
+            'description' => 'Action destructive irréversible — efface l\'étudiant et ses dépendances cascade',
+            'group' => 'Corbeille',
+            'icon' => 'fa-fire',
+        ],
+        'inscriptions.restore' => [
+            'label' => 'Restaurer une inscription supprimée',
+            'group' => 'Corbeille',
+            'icon' => 'fa-rotate-left',
+        ],
+        'inscriptions.force_delete' => [
+            'label' => 'Supprimer définitivement une inscription (corbeille)',
+            'group' => 'Corbeille',
+            'icon' => 'fa-fire',
+        ],
+        'paiements.restore' => [
+            'label' => 'Restaurer un paiement supprimé',
+            'group' => 'Corbeille',
+            'icon' => 'fa-rotate-left',
+        ],
+        'paiements.force_delete' => [
+            'label' => 'Supprimer définitivement un paiement (corbeille)',
+            'group' => 'Corbeille',
+            'icon' => 'fa-fire',
+        ],
 
         // ===== Accessibilité étudiants (handicap, aménagements) =====
         'students.accessibility.view' => [

@@ -2833,6 +2833,11 @@
                     <i class="fas fa-user-graduate"></i>Réinscriptions
                 </a>
                 @endcan
+                @can('trash.view')
+                <a href="{{ route('esbtp.trash.index') }}" class="btn-acasi secondary" title="Voir les étudiants/inscriptions/paiements supprimés">
+                    <i class="fas fa-trash-restore"></i>Corbeille
+                </a>
+                @endcan
                 @can('inscriptions.create')
                 <button type="button"
                         class="btn-acasi success"

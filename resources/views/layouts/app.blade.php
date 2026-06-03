@@ -1677,6 +1677,12 @@
                                     <div class="menu-text">Accessibilité</div>
                                 </a>
                                 @endcan
+                                @can('trash.view')
+                                <a href="{{ route('esbtp.trash.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.trash.*') ? 'active' : '' }}">
+                                    <div class="menu-icon"><i class="fas fa-trash-restore"></i></div>
+                                    <div class="menu-text">Corbeille</div>
+                                </a>
+                                @endcan
                             </div>
                         </div>
                     @endif
