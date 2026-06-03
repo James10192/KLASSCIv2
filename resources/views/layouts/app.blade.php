@@ -3224,30 +3224,44 @@
         // au moment de l'ouverture. Sans ça, un ancestor avec transform/filter/will-change
         // (animations CSS, hover effects, etc.) crée un containing block qui piège
         // le menu et permet à des siblings (KPIs, cards) de passer au-dessus malgré z-index.
+        function getDropdownParts(dropdownRoot) {
+            if (!dropdownRoot || dropdownRoot.nodeType !== 1) return { root: null, trigger: null, menu: null };
+
+            return {
+                root: dropdownRoot,
+                trigger: dropdownRoot.querySelector(':scope > [data-bs-toggle="dropdown"]'),
+                menu: dropdownRoot.querySelector(':scope > .dropdown-menu')
+            };
+        }
+
         document.addEventListener('show.bs.dropdown', function(ev) {
-            const trigger = ev.target;
-            const menu = trigger.parentElement && trigger.parentElement.querySelector(':scope > .dropdown-menu');
+            const parts = getDropdownParts(ev.target);
+            const menu = parts.menu;
             if (!menu || menu.dataset.klassciTeleported === '1') return;
-            menu.dataset.klassciTeleported = '1';
-            menu.dataset.klassciOriginalParent = '1';
-            // Marque l'origin parent pour ré-attachement futur si besoin
+
             const placeholder = document.createComment('dropdown-menu-placeholder');
             menu.parentElement.insertBefore(placeholder, menu);
             menu._klassciPlaceholder = placeholder;
+            menu._klassciDropdownRoot = parts.root;
+            menu.dataset.klassciTeleported = '1';
             document.body.appendChild(menu);
         });
+
         document.addEventListener('hidden.bs.dropdown', function(ev) {
-            const trigger = ev.target;
-            // Trouve le menu dans body qui pointe sur ce trigger via Popper
-            document.querySelectorAll('body > .dropdown-menu[data-klassci-teleported="1"]').forEach(function(menu) {
-                if (menu._klassciPlaceholder && menu._klassciPlaceholder.parentNode) {
-                    menu._klassciPlaceholder.parentNode.insertBefore(menu, menu._klassciPlaceholder);
-                    menu._klassciPlaceholder.remove();
-                    menu._klassciPlaceholder = null;
-                    delete menu.dataset.klassciTeleported;
-                    delete menu.dataset.klassciOriginalParent;
-                }
-            });
+            const parts = getDropdownParts(ev.target);
+            const menu = parts.menu && parts.menu.dataset.klassciTeleported === '1'
+                ? parts.menu
+                : Array.from(document.querySelectorAll('body > .dropdown-menu[data-klassci-teleported="1"]')).find(function(candidate) {
+                    return candidate._klassciDropdownRoot === parts.root;
+                });
+
+            if (!menu || !menu._klassciPlaceholder || !menu._klassciPlaceholder.parentNode) return;
+
+            menu._klassciPlaceholder.parentNode.insertBefore(menu, menu._klassciPlaceholder);
+            menu._klassciPlaceholder.remove();
+            menu._klassciPlaceholder = null;
+            menu._klassciDropdownRoot = null;
+            delete menu.dataset.klassciTeleported;
         });
     })();
     </script>

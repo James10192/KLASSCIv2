@@ -92,12 +92,14 @@
 
                 {{-- Kebab menu BS5 native dropdown : Configurer / Modifier / Supprimer
                      data-bs-strategy=fixed → Popper détache du flow table-responsive (pas de clip)
+                     data-bs-boundary=viewport → collision calculée contre le viewport
                      data-bs-display=dynamic → flip auto vers le haut si pas assez d'espace en bas --}}
                 <div class="dropdown">
                     <button type="button"
                             class="mi-action-kebab"
                             data-bs-toggle="dropdown"
                             data-bs-strategy="fixed"
+                            data-bs-boundary="viewport"
                             data-bs-display="dynamic"
                             aria-expanded="false"
                             aria-label="Plus d'actions pour {{ $matiere->name }}"

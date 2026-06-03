@@ -774,7 +774,13 @@
                         @endif
                         @if($nombreEtudiants > 0 && (auth()->user()->can('students.view') || auth()->user()->can('attendances.view')))
                             <div class="dropdown">
-                                <button type="button" class="cs-btn--outline" data-bs-toggle="dropdown" aria-expanded="false">
+                                <button type="button"
+                                        class="cs-btn--outline"
+                                        data-bs-toggle="dropdown"
+                                        data-bs-strategy="fixed"
+                                        data-bs-boundary="viewport"
+                                        data-bs-display="dynamic"
+                                        aria-expanded="false">
                                     <i class="fas fa-download"></i>Exporter
                                 </button>
                                 <ul class="dropdown-menu dropdown-menu-end">

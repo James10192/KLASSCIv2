@@ -46,6 +46,9 @@
                     <button type="button"
                             class="ci-card-kebab"
                             data-bs-toggle="dropdown"
+                            data-bs-strategy="fixed"
+                            data-bs-boundary="viewport"
+                            data-bs-display="dynamic"
                             aria-expanded="false"
                             aria-label="Actions supplémentaires">
                         <i class="fas fa-ellipsis-v"></i>
