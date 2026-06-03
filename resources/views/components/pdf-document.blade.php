@@ -21,18 +21,23 @@
     $logoBasename = basename($storageRelativeLogoPath);
     $shouldShowLogo = !empty($pdf['show_logo']) || \App\Helpers\SettingsHelper::get('bulletin_show_logo', '1') === '1';
 
-    if ($shouldShowLogo && $logoPath) {
-        foreach ([
-            storage_path('app/public/' . $normalizedLogoPath),
-            storage_path('app/public/' . $storageRelativeLogoPath),
-            storage_path('app/public/logos/' . $logoBasename),
-            public_path('storage/' . $normalizedLogoPath),
-            public_path('storage/' . $storageRelativeLogoPath),
-            public_path('storage/logos/' . $logoBasename),
-            public_path($normalizedLogoPath),
-            public_path('images/esbtp_logo.png'),
-            public_path('images/LOGO-KLASSCI-PNG.png'),
-        ] as $candidate) {
+    if ($shouldShowLogo) {
+        $candidates = [];
+        if ($logoPath) {
+            $candidates = [
+                storage_path('app/public/' . $normalizedLogoPath),
+                storage_path('app/public/' . $storageRelativeLogoPath),
+                storage_path('app/public/logos/' . $logoBasename),
+                public_path('storage/' . $normalizedLogoPath),
+                public_path('storage/' . $storageRelativeLogoPath),
+                public_path('storage/logos/' . $logoBasename),
+                public_path($normalizedLogoPath),
+            ];
+        }
+        // Fallbacks toujours testés (même si school_logo est vide)
+        $candidates[] = public_path('images/esbtp_logo.png');
+        $candidates[] = public_path('images/LOGO-KLASSCI-PNG.png');
+        foreach ($candidates as $candidate) {
             if (file_exists($candidate)) {
                 $logoBase64 = base64_encode(file_get_contents($candidate));
                 $logoExt = pathinfo($candidate, PATHINFO_EXTENSION) ?: 'png';
