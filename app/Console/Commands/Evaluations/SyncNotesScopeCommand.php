@@ -82,15 +82,16 @@ class SyncNotesScopeCommand extends Command
         if ($this->option('clean-resultats')) {
             $this->newLine();
             $this->info('Cleaning orphan esbtp_resultats rows…');
+            // esbtp_notes n'a pas annee_universitaire_id direct — passer par esbtp_evaluations via join.
             $orphanQuery = ESBTPResultat::whereNotExists(function ($q) {
                 $q->select(DB::raw(1))
                     ->from('esbtp_notes')
+                    ->join('esbtp_evaluations', 'esbtp_evaluations.id', '=', 'esbtp_notes.evaluation_id')
                     ->whereColumn('esbtp_notes.etudiant_id', 'esbtp_resultats.etudiant_id')
                     ->whereColumn('esbtp_notes.classe_id', 'esbtp_resultats.classe_id')
                     ->whereColumn('esbtp_notes.matiere_id', 'esbtp_resultats.matiere_id')
-                    ->whereColumn('esbtp_notes.annee_universitaire_id', 'esbtp_resultats.annee_universitaire_id')
+                    ->whereColumn('esbtp_evaluations.annee_universitaire_id', 'esbtp_resultats.annee_universitaire_id')
                     ->where(function ($q2) {
-                        // Match periode : esbtp_resultats.periode = 'semestre1' AND notes.semestre = 1, etc.
                         $q2->where(function ($a) {
                             $a->where('esbtp_resultats.periode', 'semestre1')->where('esbtp_notes.semestre', 1);
                         })->orWhere(function ($a) {
