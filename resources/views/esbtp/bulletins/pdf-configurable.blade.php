@@ -369,19 +369,20 @@
 
         /* ── Signature ────────────────────────────────────────── */
         .signature-container {
-            margin-top: 6px;
+            margin-top: 12px;
             text-align: right;
+            page-break-inside: avoid;
         }
         .signature-box {
             display: inline-block;
             text-align: center;
-            min-width: 200px;
+            min-width: 250px;
         }
         .signature-line {
-            width: 200px;
-            height: 30px;
+            width: 250px;
+            height: 70px;
             border-bottom: 1.5px solid {{ $pdfPrimary }};
-            margin-top: 2px;
+            margin-top: 4px;
         }
 
         /* ── Mode PDF export ──────────────────────────────────── */
