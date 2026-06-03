@@ -243,14 +243,14 @@ class BulletinService
                 $matiereId = $matiere->id;
 
                 if (! isset($resultatsParMatiere[$matiereId])) {
-                    // Déterminer le type de formation selon la configuration du bulletin
-                    if (in_array($matiereId, $configMatieres['generales'] ?? [])) {
-                        $typeFormation = 'generale';
-                    } elseif (in_array($matiereId, $configMatieres['techniques'] ?? [])) {
-                        $typeFormation = 'technologique_professionnelle';
-                    } else {
-                        $typeFormation = 'generale';
-                    }
+                    // Type de formation : résolution canonique (ConfigMatiere → bulletin JSON → matiere globale)
+                    $typeFormation = $this->resolveMatiereTypeFormation(
+                        $matiereId,
+                        $classe->id,
+                        $periode,
+                        $anneeUniversitaireId,
+                        $bulletin
+                    );
 
                     $resultatsParMatiere[$matiereId] = (object) [
                         'id' => $matiereId,
@@ -302,14 +302,14 @@ class BulletinService
             if ($resultatManuel->matiere) {
                 // Si la matière n'existe pas encore dans les résultats, l'ajouter
                 if (! isset($resultatsParMatiere[$matiereId])) {
-                    // Déterminer le type selon la configuration du bulletin
-                    if (in_array($matiereId, $configMatieres['generales'] ?? [])) {
-                        $typeFormation = 'generale';
-                    } elseif (in_array($matiereId, $configMatieres['techniques'] ?? [])) {
-                        $typeFormation = 'technologique_professionnelle';
-                    } else {
-                        $typeFormation = 'generale';
-                    }
+                    // Type de formation : résolution canonique (ConfigMatiere → bulletin JSON → matiere globale)
+                    $typeFormation = $this->resolveMatiereTypeFormation(
+                        $matiereId,
+                        $classe->id,
+                        $periode,
+                        $anneeUniversitaireId,
+                        $bulletin
+                    );
 
                     $resultatsParMatiere[$matiereId] = (object) [
                         'id' => $matiereId,
@@ -539,6 +539,65 @@ class BulletinService
             'isSpecialisation' => $classeTroncCommun !== null,
             'inscriptionWorkflowAlert' => $inscriptionWorkflowAlert,
         ];
+    }
+
+    /**
+     * Résolution canonique du type de formation d'une matière pour un bulletin.
+     *
+     * Priorité de résolution :
+     *   1. ESBTPConfigMatiere (table per matiere+classe+période+année) — override saisi via /config-matieres
+     *   2. $bulletin->config_matieres JSON (arrays generales[]/techniques[])
+     *   3. $matiere->type_formation (fallback global)
+     *
+     * @return string 'generale' | 'technologique_professionnelle'
+     */
+    public function resolveMatiereTypeFormation(
+        int $matiereId,
+        int $classeId,
+        string $periode,
+        int $anneeUniversitaireId,
+        ?ESBTPBulletin $bulletin = null
+    ): string {
+        // 1. ESBTPConfigMatiere (source canonique : override par classe/période)
+        $config = ESBTPConfigMatiere::where('matiere_id', $matiereId)
+            ->where('classe_id', $classeId)
+            ->where('periode', $periode)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->first();
+
+        if ($config) {
+            $cfg = is_string($config->config) ? json_decode($config->config, true) : ($config->config ?? []);
+            $type = is_array($cfg) ? ($cfg['type'] ?? null) : null;
+            if ($type === 'general' || $type === 'generale') {
+                return 'generale';
+            }
+            if ($type === 'technique' || $type === 'technologique_professionnelle') {
+                return 'technologique_professionnelle';
+            }
+        }
+
+        // 2. Bulletin JSON (legacy : arrays generales[]/techniques[] saisi via /config-matieres)
+        if ($bulletin && $bulletin->config_matieres) {
+            $bulletinConfig = is_string($bulletin->config_matieres)
+                ? (json_decode($bulletin->config_matieres, true) ?: [])
+                : (is_array($bulletin->config_matieres) ? $bulletin->config_matieres : []);
+
+            if (in_array($matiereId, $bulletinConfig['generales'] ?? [], false)) {
+                return 'generale';
+            }
+            if (in_array($matiereId, $bulletinConfig['techniques'] ?? [], false)) {
+                return 'technologique_professionnelle';
+            }
+        }
+
+        // 3. Fallback : type global de la matière
+        $matiere = ESBTPMatiere::find($matiereId);
+        $globalType = $matiere?->type_formation;
+        if ($globalType === 'technique' || $globalType === 'technologique_professionnelle') {
+            return 'technologique_professionnelle';
+        }
+
+        return 'generale';
     }
 
     public function getBulletinTemplateView(): string

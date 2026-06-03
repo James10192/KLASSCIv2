@@ -625,15 +625,19 @@ class ESBTPBulletinController extends Controller
                             'total_coefficients' => $totalCoefficients,
                         ];
 
-                        // Routing par type_formation, avec fallback 'generale' si null/inconnu
-                        // (sinon la matière était silencieusement droppée → 0 matières dans le PDF)
-                        $typeForm = $matiere->type_formation ?: 'generale';
-                        if (in_array($typeForm, ['technique', 'technologique_professionnelle'], true)) {
+                        // Type de formation : résolution canonique (ConfigMatiere → bulletin JSON → matiere globale)
+                        $typeForm = $this->bulletinService->resolveMatiereTypeFormation(
+                            $matiere->id,
+                            (int) $bulletin->classe_id,
+                            (string) ($bulletin->periode ?? 'semestre1'),
+                            (int) $bulletin->annee_universitaire_id,
+                            $bulletin
+                        );
+                        if ($typeForm === 'technologique_professionnelle') {
                             $totalTechnique += $moyenneMatiere * $coefficient;
                             $countTechnique += $coefficient;
                             $resultatsTechniques->push($resultatFormate);
                         } else {
-                            // 'generale' explicite OU fallback (null, valeur inattendue)
                             $totalGeneral += $moyenneMatiere * $coefficient;
                             $countGeneral += $coefficient;
                             $resultatsGeneraux->push($resultatFormate);
