@@ -27,7 +27,7 @@
                 </div>
                 <div class="ee-hero-actions">
                     @php
-                        $statusLabel = $evaluation->statusLabel();
+                        $statusLabel = $evaluation->status_label;
                         $statusColor = match($evaluation->status) {
                             'draft' => 'rgba(255,255,255,.10)',
                             'scheduled' => 'rgba(59,130,246,.20)',
