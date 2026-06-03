@@ -87,10 +87,9 @@
                     <thead>
                         <tr>
                             <th class="amh-col-name">Étudiant</th>
-                            <th class="amh-col-hours">Présence (h)</th>
                             <th class="amh-col-hours">Abs. justifiées (h)</th>
                             <th class="amh-col-hours">Abs. non justifiées (h)</th>
-                            <th class="amh-col-total" title="Total saisi = Présence + Absences">Total saisi</th>
+                            <th class="amh-col-total" title="Total absences = Justifiées + Non justifiées">Total absences</th>
                             <th class="amh-col-note">Note</th>
                             <th class="amh-col-actions">Actions</th>
                         </tr>
@@ -130,13 +129,8 @@
                                         </span>
                                     </div>
                                 </td>
-                                <td class="amh-col-hours">
-                                    <input type="number" step="0.25" min="0" max="999.99"
-                                           name="entries[{{ $i }}][heures_presence]"
-                                           value="{{ $origPres }}"
-                                           class="amh-input amh-input--pres"
-                                           placeholder="0">
-                                </td>
+                                {{-- Sous-lot A : champ heures_presence retiré du formulaire (les écoles ne saisissent que les absences). Un input hidden 0 est gardé pour rester compat avec backend qui valide nullable|numeric|min:0 — le bulletin déduit la présence implicite du volume total. --}}
+                                <input type="hidden" name="entries[{{ $i }}][heures_presence]" value="0" class="amh-input--pres">
                                 <td class="amh-col-hours">
                                     <input type="number" step="0.25" min="0" max="999.99"
                                            name="entries[{{ $i }}][heures_absence_justifiees]"

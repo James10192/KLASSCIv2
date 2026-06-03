@@ -13,7 +13,7 @@
                     <div class="at-hero-icon"><i class="fas fa-calendar-check"></i></div>
                     <div>
                         <h1>Marquer les présences</h1>
-                        <p>Enregistrement des présences étudiantes par séance ou en saisie manuelle</p>
+                        <p>Enregistrement des présences par séance ou saisie manuelle des absences (Justifiées + Non justifiées)</p>
                     </div>
                 </div>
                 <div class="at-hero-actions">
@@ -1776,10 +1776,12 @@
                     normalized(absNj) !== normalized(origAbsNj) ||
                     (notes ?? '') !== (origNotes ?? '');
 
-                const presN  = parseFloat(pres)  || 0;
+                // Sous-lot A : "presN" est toujours 0 (input hidden) — total absences = J + NJ uniquement
                 const absJN  = parseFloat(absJ)  || 0;
                 const absNjN = parseFloat(absNj) || 0;
-                const total  = presN + absJN + absNjN;
+                const totalAbs = absJN + absNjN;
+                // Total complet (incluant présence implicite) reste utilisé pour le state dirty
+                const total = totalAbs;
 
                 const isEmpty = total === 0 && !notes;
 
@@ -1792,20 +1794,20 @@
 
                 row.dataset.state = state;
 
-                // Total saisi + match/mismatch avec volume prévu
+                // Total absences saisi (J + NJ) + comparaison avec volume prévu (les absences ne doivent pas dépasser le volume)
                 const panel = row.closest('.amh-panel');
                 const expected = parseFloat(panel?.dataset.volumeTotal || '0') || 0;
                 const totalEl = row.querySelector('[data-row-total]');
                 if (totalEl) {
-                    totalEl.textContent = this.formatHours(total);
+                    totalEl.textContent = this.formatHours(totalAbs);
                     let match = 'na';
                     if (expected > 0 && !isEmpty) {
-                        const diff = Math.abs(total - expected);
-                        match = diff < 0.001 ? 'ok' : (total > expected ? 'over' : 'under');
+                        // ok = absences raisonnables (≤ 50% du volume), over = absences > volume (impossible), warning = > 50%
+                        match = totalAbs > expected ? 'over' : (totalAbs > expected * 0.5 ? 'under' : 'ok');
                     }
                     row.dataset.totalMatch = match;
                     const title = expected > 0
-                        ? `Volume prévu : ${this.formatHours(expected)}h — saisi : ${this.formatHours(total)}h` + (match === 'over' ? ` (dépasse de ${this.formatHours(total - expected)}h)` : match === 'under' ? ` (manque ${this.formatHours(expected - total)}h)` : '')
+                        ? `Volume prévu : ${this.formatHours(expected)}h — Absences saisies : ${this.formatHours(totalAbs)}h` + (match === 'over' ? ` (dépasse le volume !)` : match === 'under' ? ` (absences élevées : ${Math.round(totalAbs/expected*100)}%)` : '')
                         : 'Aucun volume horaire prévu défini';
                     totalEl.parentElement.setAttribute('title', title);
                 }
