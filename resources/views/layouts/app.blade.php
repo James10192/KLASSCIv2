@@ -1290,24 +1290,34 @@
         }
 
         /* ===== BADGES ET NOTIFICATIONS ===== */
+        /* Fix Marcel : assurer que les parents ne clippent pas le badge.
+           Cause récurrente : un parent (dropdown, navbar wrapper) avec overflow:hidden
+           ou un border-radius qui clippe les éléments en absolute. */
+        .dropdown:has(> .btn-acasi.icon-only),
+        .btn-acasi.icon-only {
+            overflow: visible !important;
+        }
         .navbar-badge {
             position: absolute;
-            top: -6px;
-            right: -6px;
+            top: -4px;
+            right: -4px;
             background: linear-gradient(135deg, #ef4444, #dc2626);
             color: white;
-            border-radius: 50%;
-            width: 20px;
-            height: 20px;
-            font-size: 11px;
-            display: flex;
+            border-radius: 999px;
+            min-width: 18px;
+            height: 18px;
+            padding: 0 4px;
+            font-size: 10px;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
             animation: badgePulse 2s infinite;
             border: 2px solid white;
             box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
-            z-index: 10;
+            z-index: 100;
+            line-height: 1;
+            white-space: nowrap;
         }
 
         @keyframes badgePulse {
