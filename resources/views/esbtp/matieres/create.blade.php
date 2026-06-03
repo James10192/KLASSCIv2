@@ -409,7 +409,7 @@
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
 $(document).ready(function() {
     // Auto-generate code from name
@@ -488,4 +488,4 @@ function mcFnSyncHiddenInputs() {
     });
 }
 </script>
-@endsection
+@endpush
