@@ -513,11 +513,45 @@ class ESBTPBulletinConfigController extends Controller
             }
             $bulletin->save();
 
-            \Log::info('Configuration des matières sauvegardée dans le bulletin', [
+            // Sous-lot β : propagation à TOUS les étudiants de la classe (pattern saveProfesseurs)
+            $bulletinsPropages = 0;
+            if ($request->has('appliquer_a_classe') && $request->input('appliquer_a_classe') == '1') {
+                $autresEtudiantIds = \App\Models\ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classe_id, $annee_universitaire_id) {
+                    $q->where('classe_id', $classe_id)
+                        ->where('annee_universitaire_id', $annee_universitaire_id);
+                })
+                ->where('id', '!=', $etudiant_id)
+                ->pluck('id');
+
+                $writePeriodes = ($periode === 'annuel') ? ['semestre1', 'semestre2'] : [$periode];
+
+                foreach ($autresEtudiantIds as $autreEtudiantId) {
+                    foreach ($writePeriodes as $wp) {
+                        $autreBulletin = ESBTPBulletin::firstOrCreate(
+                            [
+                                'etudiant_id' => $autreEtudiantId,
+                                'classe_id' => $classe_id,
+                                'periode' => $wp,
+                                'annee_universitaire_id' => $annee_universitaire_id,
+                            ],
+                            ['created_by' => Auth::id()]
+                        );
+                        $autreBulletin->config_matieres = json_encode($configMatieres);
+                        if (! $autreBulletin->professeurs) {
+                            $autreBulletin->professeurs = '{}';
+                        }
+                        $autreBulletin->updated_by = Auth::id();
+                        $autreBulletin->save();
+                    }
+                    $bulletinsPropages++;
+                }
+            }
+
+            \Log::info('Configuration des matières sauvegardée', [
                 'bulletin_id' => $bulletin->id,
-                'config_matieres' => $bulletin->config_matieres,
                 'matieres_generales' => count($matieresGenerales),
                 'matieres_techniques' => count($matieresTechniques),
+                'bulletins_propages' => $bulletinsPropages,
             ]);
 
             DB::commit();

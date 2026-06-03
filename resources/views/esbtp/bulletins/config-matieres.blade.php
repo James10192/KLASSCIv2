@@ -96,12 +96,31 @@
     border: none;
     cursor: pointer;
     transition: all .15s;
+    position: relative;
 }
 .cm-period-switch a.active,
 .cm-period-switch button.active { background: #fff; color: #0453cb; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
 .cm-period-switch a:not(.active):hover,
 .cm-period-switch button:not(.active):not(:disabled):hover { color: #fff; background: rgba(255,255,255,.08); }
-.cm-period-switch button:disabled { opacity: .6; cursor: wait; }
+.cm-period-switch button:disabled { opacity: .6; cursor: wait; pointer-events: none; }
+.cm-period-switch.loading { animation: cmPulse 1.2s ease-in-out infinite; }
+@keyframes cmPulse {
+    0%,100% { opacity: 1; }
+    50% { opacity: .6; }
+}
+.cm-loading-overlay {
+    position: absolute; inset: 0;
+    background: rgba(255,255,255,.85);
+    backdrop-filter: blur(2px);
+    display: none; align-items: center; justify-content: center;
+    z-index: 10; border-radius: 10px;
+}
+.cm-loading-overlay.show { display: flex; }
+.cm-loading-overlay .spin {
+    display: inline-flex; align-items: center; gap: .5rem;
+    color: #0453cb; font-size: .9rem; font-weight: 700;
+}
+.cm-table-wrap { position: relative; }
 
 /* ─── KPIs ─── */
 .cm-kpis { display: flex; gap: .75rem; margin-top: 1.5rem; flex-wrap: wrap; }
@@ -466,15 +485,18 @@
                 </div>
                 <div class="cm-hero-actions" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
                     {{-- Switch S1/S2/Annuel dans le hero (AJAX no-reload, rule ajax-no-reload-premium) --}}
-                    <div class="cm-period-switch">
+                    <div class="cm-period-switch" :class="{ loading: loadingSwitch }">
                         <button type="button" @click="switchPeriode('semestre1')" :class="{ active: currentPeriode === 'semestre1' }" :disabled="loadingSwitch">
+                            <i class="fas fa-circle-notch fa-spin" x-show="loadingSwitch && targetPeriode === 'semestre1'" x-cloak></i>
                             <span style="font-weight:800;">S1</span>
                         </button>
                         <button type="button" @click="switchPeriode('semestre2')" :class="{ active: currentPeriode === 'semestre2' }" :disabled="loadingSwitch">
+                            <i class="fas fa-circle-notch fa-spin" x-show="loadingSwitch && targetPeriode === 'semestre2'" x-cloak></i>
                             <span style="font-weight:800;">S2</span>
                         </button>
                         <button type="button" @click="switchPeriode('annuel')" :class="{ active: currentPeriode === 'annuel' }" :disabled="loadingSwitch">
-                            <i class="fas fa-calendar"></i>Annuel
+                            <i class="fas fa-circle-notch fa-spin" x-show="loadingSwitch && targetPeriode === 'annuel'" x-cloak></i>
+                            <i class="fas fa-calendar" x-show="!(loadingSwitch && targetPeriode === 'annuel')"></i>Annuel
                         </button>
                     </div>
                     <button type="button" class="cm-btn cm-btn--glass" @click="openCopyModal()" x-show="currentPeriode !== 'annuel'" title="Copier la config de ce semestre vers l'autre" x-cloak>
@@ -685,6 +707,21 @@
                         </table>
                     </div>
 
+                    {{-- Option : appliquer à toute la classe (créé les bulletins manquants) --}}
+                    <div style="background: rgba(4,83,203,.04); border: 1px solid rgba(4,83,203,.15); border-radius: 12px; padding: 1rem 1.25rem; margin-top: 1.25rem; display: flex; align-items: flex-start; gap: .75rem;">
+                        <label style="display: flex; align-items: center; gap: .65rem; cursor: pointer; flex: 1;">
+                            <input type="checkbox" name="appliquer_a_classe" value="1" style="width: 18px; height: 18px; accent-color: #0453cb;">
+                            <div>
+                                <div style="font-weight: 700; color: #1e293b; font-size: .92rem;">
+                                    <i class="fas fa-users me-1" style="color: #0453cb;"></i>Appliquer aussi à TOUS les étudiants de la classe
+                                </div>
+                                <div style="font-size: .8rem; color: #64748b; margin-top: .15rem;">
+                                    La même classification (général/technique) sera copiée sur le bulletin de chaque étudiant inscrit dans <strong>{{ $_classeName }}</strong>. Les bulletins manquants seront créés automatiquement.
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+
                     {{-- Footer actions --}}
                     <div class="cm-actions" style="margin-top: 1.5rem;">
                         <a href="{{ $_returnUrl }}" class="cm-btn cm-btn--ghost">
@@ -803,6 +840,7 @@ function cmConfigMatieres() {
     return {
         currentPeriode: '{{ $_periode }}',
         loadingSwitch: false,
+        targetPeriode: null,
         counts: { total: 0, general: 0, technique: 0, excluded: 0, configured: 0 },
         completionStatus: 'unconfigured',
         completionStatusLabel: 'Non configuré',
@@ -840,6 +878,7 @@ function cmConfigMatieres() {
 
         async switchPeriode(targetPeriode) {
             if (targetPeriode === this.currentPeriode || this.loadingSwitch) return;
+            this.targetPeriode = targetPeriode;
             this.loadingSwitch = true;
             try {
                 const url = new URL('{{ route('esbtp.bulletins.config-matieres.data') }}');
@@ -864,6 +903,7 @@ function cmConfigMatieres() {
                 alert('Impossible de changer de période : ' + e.message);
             } finally {
                 this.loadingSwitch = false;
+                this.targetPeriode = null;
             }
         },
 
