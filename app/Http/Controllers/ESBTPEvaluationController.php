@@ -630,11 +630,14 @@ $evaluation = new ESBTPEvaluation;
 
         try {
             $hasNotes = $evaluation->notes()->count() > 0;
+            $isChangingScope = $evaluation->classe_id != $request->classe_id || $evaluation->matiere_id != $request->matiere_id;
+            $canBypassLock = auth()->user()->can('evaluations.edit_locked');
 
             // Si l'évaluation a déjà des notes et que l'utilisateur essaie de changer la classe ou la matière
-            if ($hasNotes && ($evaluation->classe_id != $request->classe_id || $evaluation->matiere_id != $request->matiere_id)) {
+            // sans la permission evaluations.edit_locked, bloquer.
+            if ($hasNotes && $isChangingScope && !$canBypassLock) {
                 return redirect()->back()
-                    ->with('error', 'Impossible de modifier la classe ou la matière car des notes sont déjà associées à cette évaluation')
+                    ->with('error', 'Impossible de modifier la classe ou la matière car des notes sont déjà associées. Demandez la permission evaluations.edit_locked pour bypasser cette protection.')
                     ->withInput();
             }
 
@@ -670,8 +673,8 @@ $evaluation->titre = $request->titre;
                 $evaluation->duree_minutes = $calculatedDuration;
             }
 
-            // Mettre à jour la classe et la matière uniquement s'il n'y a pas de notes
-            if (! $hasNotes) {
+            // Met à jour classe/matière si pas de notes OU si user a la permission de bypass
+            if (! $hasNotes || $canBypassLock) {
                 $evaluation->classe_id = $request->classe_id;
                 $evaluation->matiere_id = $request->matiere_id;
             }

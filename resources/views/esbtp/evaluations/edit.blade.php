@@ -10,6 +10,7 @@
         $m->id => $m->nom ?? $m->name ?? 'Matière ' . $m->id,
     ])->all();
     $notesCount = $evaluation->notes->count();
+    $scopeLocked = $notesCount > 0 && !auth()->user()->can('evaluations.edit_locked');
 @endphp
 
 @section('content')
@@ -89,12 +90,17 @@
 
         {{-- Notes warning --}}
         @if($notesCount > 0)
+            @php $canBypassLock = auth()->user()->can('evaluations.edit_locked'); @endphp
             <div class="ee-alert ee-alert--info">
                 <i class="fas fa-info-circle"></i>
                 <div class="ee-alert-body">
                     <div class="ee-alert-title">{{ $notesCount }} note{{ $notesCount > 1 ? 's' : '' }} déjà saisie{{ $notesCount > 1 ? 's' : '' }}</div>
                     <p class="ee-alert-text">
-                        Modifier le barème, le coefficient ou la matière peut affecter les calculs des moyennes et des bulletins.
+                        @if($canBypassLock)
+                            Modifier la classe, la matière, le barème ou le coefficient peut affecter les calculs des moyennes et des bulletins.
+                        @else
+                            La classe et la matière sont verrouillées tant qu'il y a des notes. Le barème et le coefficient peuvent être modifiés mais cela affecte les calculs.
+                        @endif
                     </p>
                     <a href="{{ route('esbtp.notes.saisie-rapide', $evaluation) }}" class="ee-alert-action">
                         <i class="fas fa-pen"></i> Saisir / réviser les notes
@@ -206,35 +212,58 @@
                     <div class="ee-card-body">
                         <div class="ee-grid">
                             <div class="ee-field">
-                                <label class="ee-label">Classe <span class="ee-required">*</span></label>
-                                <x-au-select
-                                    name="classe_id"
-                                    id="classe_id"
-                                    icon="fa-users"
-                                    :value="old('classe_id', $evaluation->classe_id)"
-                                    placeholder="Sélectionner une classe"
-                                    :options="$classesOptions"
-                                    :searchable="count($classesOptions) > 8"
-                                    required />
+                                <label class="ee-label">
+                                    Classe <span class="ee-required">*</span>
+                                    @if($scopeLocked)<span class="ee-lock-badge"><i class="fas fa-lock"></i> Verrouillée</span>@endif
+                                </label>
+                                @if($scopeLocked)
+                                    <div class="ee-readonly">
+                                        <i class="fas fa-users"></i>
+                                        <span>{{ $evaluation->classe->name ?? '—' }} ({{ $evaluation->classe->filiere->name ?? '—' }} · {{ $evaluation->classe->niveau->name ?? '—' }})</span>
+                                    </div>
+                                    <input type="hidden" name="classe_id" value="{{ $evaluation->classe_id }}">
+                                @else
+                                    <x-au-select
+                                        name="classe_id"
+                                        id="classe_id"
+                                        icon="fa-users"
+                                        :value="old('classe_id', $evaluation->classe_id)"
+                                        placeholder="Sélectionner une classe"
+                                        :options="$classesOptions"
+                                        :searchable="count($classesOptions) > 8"
+                                        required />
+                                @endif
                                 @error('classe_id')<div class="ee-error">{{ $message }}</div>@enderror
                             </div>
 
                             <div class="ee-field">
                                 <label class="ee-label">
                                     Matière <span class="ee-required">*</span>
-                                    <span class="ee-loading" id="matiere-loading" style="display:none">
-                                        <i class="fas fa-spinner fa-spin"></i>
-                                    </span>
+                                    @if($scopeLocked)
+                                        <span class="ee-lock-badge"><i class="fas fa-lock"></i> Verrouillée</span>
+                                    @else
+                                        <span class="ee-loading" id="matiere-loading" style="display:none">
+                                            <i class="fas fa-spinner fa-spin"></i>
+                                        </span>
+                                    @endif
                                 </label>
-                                <x-au-select
-                                    name="matiere_id"
-                                    id="matiere_id"
-                                    icon="fa-book"
-                                    :value="old('matiere_id', $evaluation->matiere_id)"
-                                    placeholder="Sélectionner une matière"
-                                    :options="$matieresOptions"
-                                    :searchable="count($matieresOptions) > 8"
-                                    required />
+                                @if($scopeLocked)
+                                    <div class="ee-readonly">
+                                        <i class="fas fa-book"></i>
+                                        <span>{{ $evaluation->matiere->nom ?? $evaluation->matiere->name ?? '—' }}</span>
+                                    </div>
+                                    <input type="hidden" name="matiere_id" value="{{ $evaluation->matiere_id }}">
+                                @else
+                                    <x-au-select
+                                        name="matiere_id"
+                                        id="matiere_id"
+                                        icon="fa-book"
+                                        :value="old('matiere_id', $evaluation->matiere_id)"
+                                        placeholder="Sélectionner une matière"
+                                        :options="$matieresOptions"
+                                        :searchable="count($matieresOptions) > 8"
+                                        required />
+                                @endif
                                 @error('matiere_id')<div class="ee-error">{{ $message }}</div>@enderror
                             </div>
 
@@ -546,7 +575,8 @@
 .ee-label {
     font-size: .82rem; font-weight: 600; color: #1e293b;
     margin-bottom: .4rem;
-    display: inline-flex; align-items: center; gap: .35rem;
+    display: flex; align-items: center; gap: .35rem;
+    flex-wrap: wrap;
 }
 .ee-required { color: #dc2626; font-weight: 700; }
 .ee-loading { color: #0453cb; font-size: .78rem; margin-left: .35rem; }
@@ -575,6 +605,30 @@ textarea.ee-input { resize: vertical; min-height: 90px; }
 }
 .ee-error::before { content: "⚠"; font-weight: bold; }
 .ee-hint { color: #64748b; font-size: .76rem; margin-top: .3rem; font-style: italic; }
+
+.ee-readonly {
+    display: flex; align-items: center; gap: .6rem;
+    padding: .55rem .85rem;
+    border: 1px dashed #cbd5e1;
+    border-radius: 10px;
+    background: #f8fafc;
+    color: #475569; font-size: .88rem; font-weight: 500;
+    min-height: 42px;
+}
+.ee-readonly > i { color: #64748b; flex-shrink: 0; }
+.ee-readonly > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.ee-lock-badge {
+    display: inline-flex; align-items: center; gap: .25rem;
+    margin-left: auto;
+    padding: .15rem .5rem;
+    border-radius: 999px;
+    background: rgba(245,158,11,.12);
+    color: #92400e;
+    font-size: .68rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .3px;
+}
+.ee-lock-badge i { font-size: .62rem; }
 
 .ee-info {
     display: flex; align-items: flex-start; gap: .5rem;
