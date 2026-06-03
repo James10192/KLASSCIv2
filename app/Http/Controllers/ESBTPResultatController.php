@@ -632,29 +632,47 @@ class ESBTPResultatController extends Controller
         // Get the academic year object for display
         $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
         $inscriptionWorkflowAlert = InscriptionWorkflowAlertPresenter::fromInscription($inscriptionForAlert, $anneeUniversitaire);
-        // Classes du sélecteur : UNIQUEMENT celles où l'étudiant a été inscrit (toutes années
-        // confondues si include_all_statuses, sinon limitées à l'année courante). C'est cohérent
-        // avec la page : on regarde le résultat d'UN étudiant, pas de toutes les classes.
-        $studentClasseIds = $etudiant->inscriptions()
-            ->when(! $include_all_statuses && $annee_universitaire_id, function ($q) use ($annee_universitaire_id) {
-                $q->where('annee_universitaire_id', $annee_universitaire_id);
+        // Source de vérité : les inscriptions de l'étudiant. Par défaut on filtre sur
+        // (status=active + workflow_step=etudiant_cree) car ce sont les inscriptions réelles
+        // qui produisent des notes/bulletins. Le toggle include_all_statuses lève ce filtre.
+        $inscriptionsQuery = $etudiant->inscriptions()
+            ->when(! $include_all_statuses, function ($q) {
+                $q->where('status', 'active')->where('workflow_step', 'etudiant_cree');
             })
-            ->whereNotNull('classe_id')
-            ->pluck('classe_id')
-            ->unique()
-            ->values()
+            ->whereNotNull('classe_id');
+
+        $inscriptionsScope = $inscriptionsQuery->get(['id', 'classe_id', 'annee_universitaire_id']);
+
+        // Map année → classes pour permettre au front d'auto-changer l'année quand on
+        // change la classe (et inversement).
+        $inscriptionMap = $inscriptionsScope
+            ->groupBy('classe_id')
+            ->map(fn ($rows) => $rows->pluck('annee_universitaire_id')->unique()->values()->all())
             ->all();
-        // Inclut au moins la classe affichée actuellement (sécurité si l'inscription a été archivée)
+
+        // IDs distincts pour les selects
+        $studentClasseIds = $inscriptionsScope->pluck('classe_id')->unique()->values()->all();
+        $studentAnneeIds = $inscriptionsScope->pluck('annee_universitaire_id')->unique()->values()->all();
+
+        // Sécurité : inclut la classe/année courante affichée même si l'inscription a été archivée
         if ($classe_id && !in_array($classe_id, $studentClasseIds, true)) {
             $studentClasseIds[] = $classe_id;
         }
+        if ($annee_universitaire_id && !in_array($annee_universitaire_id, $studentAnneeIds, true)) {
+            $studentAnneeIds[] = $annee_universitaire_id;
+        }
+
         $classes = empty($studentClasseIds)
             ? collect()
             : ESBTPClasse::with(['filiere', 'niveau'])
                 ->whereIn('id', $studentClasseIds)
                 ->orderBy('name')
                 ->get();
-        $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
+        $anneesUniversitaires = empty($studentAnneeIds)
+            ? collect()
+            : ESBTPAnneeUniversitaire::whereIn('id', $studentAnneeIds)
+                ->orderBy('annee_debut', 'desc')
+                ->get();
         $periodes = [
             (object) ['id' => 'annuel', 'code' => 'annuel', 'nom' => 'Annuel'],
             (object) ['id' => '1', 'code' => 'semestre1', 'nom' => 'Semestre 1'],
@@ -1037,6 +1055,7 @@ class ESBTPResultatController extends Controller
             'annee_id',
             'classes',
             'anneesUniversitaires',
+            'inscriptionMap',
             'periodes',
             'moyenneSemestre1',
             'moyenneSemestre2',

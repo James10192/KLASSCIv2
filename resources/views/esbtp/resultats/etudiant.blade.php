@@ -460,6 +460,34 @@
             });
         });
 
+        // ═══ Auto-sync année quand on change la classe ═══
+        // Map { classe_id: [annee_id, ...] } injectée via data-inscription-map.
+        // Si la classe sélectionnée n'est pas inscrite dans l'année courante,
+        // bascule sur la première année où cette classe existe.
+        (function() {
+            var filterBar = document.querySelector('.sr-filter-bar');
+            if (!filterBar) return;
+            var rawMap = filterBar.dataset.inscriptionMap;
+            if (!rawMap) return;
+            var classeAnneeMap = {};
+            try { classeAnneeMap = JSON.parse(rawMap) || {}; } catch (e) { return; }
+
+            var classeSelect = filterBar.querySelector('select[name="classe_id"]');
+            var anneeSelect = filterBar.querySelector('select[name="annee_universitaire_id"]');
+            if (!classeSelect || !anneeSelect) return;
+
+            classeSelect.addEventListener('change', function() {
+                var newClasseId = String(this.value || '');
+                var currentAnneeId = String(anneeSelect.value || '');
+                var validAnnees = (classeAnneeMap[newClasseId] || []).map(String);
+                if (validAnnees.length === 0) return;
+                if (!validAnnees.includes(currentAnneeId)) {
+                    // Bascule sur la première année dispo pour cette classe
+                    anneeSelect.value = validAnnees[0];
+                }
+            });
+        })();
+
         // Filter form submit via AJAX
         var form = document.getElementById('sr-filter-form');
         if (form) {

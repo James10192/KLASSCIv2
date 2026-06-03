@@ -1,5 +1,6 @@
 {{-- 2. Filter Bar — Classe + Année only (période handled by tabs) --}}
-<div class="sr-filter-bar sr-animate sr-animate-delay-1">
+@php $inscriptionMap = $inscriptionMap ?? []; @endphp
+<div class="sr-filter-bar sr-animate sr-animate-delay-1" data-inscription-map='@json($inscriptionMap)'>
     <form id="sr-filter-form" action="{{ route('esbtp.resultats.etudiant', $etudiant) }}" method="GET" class="filter-form">
         {{-- Hidden période field — updated by JS when tabs are clicked --}}
         <input type="hidden" name="periode" id="sr-periode-input" value="{{ $periode ?? 'annuel' }}">
