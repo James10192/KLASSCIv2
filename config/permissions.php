@@ -1459,6 +1459,8 @@ return [
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
             'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
+            // Sous-lot C+ : corbeille (restore tout, force_delete réservé superAdmin via Gate::before)
+            'trash.view', 'students.restore', 'inscriptions.restore', 'paiements.restore',
             'cycles.view', 'cycles.create', 'cycles.edit', 'cycles.delete',
             'classes.view', 'classes.create', 'classes.edit',
             'filieres.view', 'filieres.create', 'filieres.edit',
