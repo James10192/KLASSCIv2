@@ -216,19 +216,39 @@ class CLIDataController extends BaseApiController
             return $this->errorResponse('Missing required field: value', [], 422);
         }
 
+        // Upsert : créer la ligne si elle n'existe pas (utile pour provisionner de
+        // nouveaux settings via CLI sans avoir à faire un git deploy + UI visit
+        // d'abord). Le type est inféré du request param ?type=float|int|bool|string
+        // (default 'string') pour le firstOrCreate.
         $setting = Setting::where('key', $key)->first();
+        $created = false;
         if (!$setting) {
-            return $this->errorResponse("Setting '{$key}' not found", [], 404);
+            $setting = Setting::create([
+                'key' => $key,
+                'value' => $request->input('value'),
+                'type' => $request->input('type', 'string'),
+                'group' => $request->input('group', 'general'),
+                'description' => $request->input('description', "CLI-provisioned: {$key}"),
+                'is_required' => false,
+            ]);
+            $created = true;
         }
 
         try {
-            Setting::set($key, $request->input('value'), $request->user()->id);
+            $previousValue = $setting->value;
+            if (!$created) {
+                Setting::set($key, $request->input('value'), $request->user()->id);
+            }
 
             return $this->successResponse([
                 'key' => $key,
                 'value' => $request->input('value'),
-                'previous_value' => $setting->value,
-            ], "Setting '{$key}' updated successfully");
+                'previous_value' => $previousValue,
+                'created' => $created,
+            ], $created
+                ? "Setting '{$key}' created with value"
+                : "Setting '{$key}' updated successfully"
+            );
         } catch (\Exception $e) {
             Log::error('CLI: setting update failed', ['key' => $key, 'error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);
