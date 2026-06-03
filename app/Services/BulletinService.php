@@ -1811,29 +1811,39 @@ class BulletinService
     {
         if ($classe_id) {
             // Get students through inscriptions for the selected class and year.
-            // Lot 3 fix: élargir aux étudiants qui ONT des notes/évaluations/résultats dans cette
-            // classe pour cette année — couvre les cas BTS TC orientation (étudiant passé en S1
-            // puis orienté vers spécialité en S2 : son inscription pointe sur la nouvelle classe
-            // mais ses notes S1 vivent toujours sur classe_source). Sans ça, l'index "perd"
-            // l'étudiant dès qu'on change la classe sur son inscription.
-            return ESBTPEtudiant::where(function ($q) use ($classe_id, $annee_universitaire_id, $include_all_statuses) {
-                $q->whereHas('inscriptions', function ($query) use ($classe_id, $annee_universitaire_id, $include_all_statuses) {
-                    $query->where('classe_id', $classe_id)
-                        ->where('annee_universitaire_id', $annee_universitaire_id);
-                    if (! $include_all_statuses) {
-                        $query->where('status', 'active');
-                    }
-                })
-                ->orWhereHas('notes.evaluation', function ($query) use ($classe_id, $annee_universitaire_id) {
+            // Lot 3 fix: élargir avec UNION des étudiants ayant notes/résultats persistés
+            // dans cette classe pour cette année — couvre les cas BTS TC orientation
+            // (étudiant passé en S1 puis orienté vers spécialité en S2 : son inscription
+            // pointe sur la nouvelle classe mais ses notes S1 vivent toujours sur
+            // classe_source). Sans ça, l'index "perd" l'étudiant dès qu'on change la
+            // classe sur son inscription.
+            //
+            // On résout via 3 sous-queries pluck() puis whereIn() unifié — plus robuste
+            // que orWhereHas qui peut buguer sur relations indirectes (notes.evaluation).
+            $inscriptionEtudiantIds = \App\Models\ESBTPInscription::where('classe_id', $classe_id)
+                ->where('annee_universitaire_id', $annee_universitaire_id)
+                ->when(! $include_all_statuses, fn ($q) => $q->where('status', 'active'))
+                ->pluck('etudiant_id');
+
+            $notesEtudiantIds = \App\Models\ESBTPNote::whereHas('evaluation', function ($query) use ($classe_id, $annee_universitaire_id) {
                     $query->where('classe_id', $classe_id)
                         ->where('annee_universitaire_id', $annee_universitaire_id)
                         ->where('status', '!=', 'cancelled');
                 })
-                ->orWhereHas('resultats', function ($query) use ($classe_id, $annee_universitaire_id) {
-                    $query->where('classe_id', $classe_id)
-                        ->where('annee_universitaire_id', $annee_universitaire_id);
-                });
-            })
+                ->pluck('etudiant_id');
+
+            $resultatsEtudiantIds = \App\Models\ESBTPResultat::where('classe_id', $classe_id)
+                ->where('annee_universitaire_id', $annee_universitaire_id)
+                ->pluck('etudiant_id');
+
+            $allEtudiantIds = $inscriptionEtudiantIds
+                ->merge($notesEtudiantIds)
+                ->merge($resultatsEtudiantIds)
+                ->unique()
+                ->filter()
+                ->values();
+
+            return ESBTPEtudiant::whereIn('id', $allEtudiantIds)
                 ->with(['user', 'inscriptions.classe.filiere', 'inscriptions.classe.niveau'])
                 ->orderBy('nom')
                 ->orderBy('prenoms');
