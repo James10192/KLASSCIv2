@@ -226,6 +226,22 @@
                 $bcPreviewCurrentUrl = $bcOfficialId
                     ? route('esbtp.bulletins.preview-pdf', $bcOfficialId)
                     : null;
+
+                $srbDetailsPayload = [
+                    'etudiant_id' => $etudiant->id,
+                    'classe_id' => $classe->id ?? null,
+                    'annee_universitaire_id' => $annee_id,
+                    'periode' => $bulletinWorkflowPeriode,
+                    'preview_url' => $bcPreviewCurrentUrl,
+                    'can_regenerate' => $bcOfficialExists && $bcHasDivergence,
+                    'official' => $bcOfficial,
+                    'current' => $bcCurrent,
+                    'delta' => $bcDelta,
+                    'bulletin_id' => $bcOfficialId,
+                    'title' => $bcTitle,
+                    'message' => $bulletinConsistency['user_message'] ?? '',
+                    'status' => $bcStatus,
+                ];
             @endphp
             <div class="srb-banner srb-banner--{{ $bcStatusModifier }} sr-animate sr-animate-delay-1">
                 <div class="srb-banner-main">
@@ -268,21 +284,7 @@
                     <button type="button"
                             class="srb-action srb-action--ghost"
                             data-srb-details="1"
-                            data-payload='@json([
-                                "etudiant_id" => $etudiant->id,
-                                "classe_id" => $classe->id ?? null,
-                                "annee_universitaire_id" => $annee_id,
-                                "periode" => $bulletinWorkflowPeriode,
-                                "preview_url" => $bcPreviewCurrentUrl,
-                                "can_regenerate" => $bcOfficialExists && $bcHasDivergence,
-                                "official" => $bcOfficial,
-                                "current" => $bcCurrent,
-                                "delta" => $bcDelta,
-                                "bulletin_id" => $bcOfficialId,
-                                "title" => $bcTitle,
-                                "message" => $bulletinConsistency['user_message'] ?? '',
-                                "status" => $bcStatus,
-                            ])'>
+                            data-payload='@json($srbDetailsPayload)'>
                         <i class="fas fa-circle-info"></i> Détails
                     </button>
                     @if($bcOfficialExists && $bcPreviewCurrentUrl)
