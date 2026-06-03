@@ -5,15 +5,34 @@
         <input type="hidden" name="periode" id="sr-periode-input" value="{{ $periode ?? 'annuel' }}">
 
         <div class="sr-filter-row">
+            @php $classesList = $classes ?? collect(); $classesCount = is_countable($classesList) ? count($classesList) : 0; @endphp
             <div class="sr-filter-group">
                 <label class="sr-filter-label">Classe</label>
-                <select class="sr-filter-select sr-auto-filter" name="classe_id">
-                    @foreach($classes ?? [] as $c)
-                        <option value="{{ $c->id }}" {{ isset($classe_id) && $classe_id == $c->id ? 'selected' : '' }}>
-                            {{ $c->name }}
-                        </option>
-                    @endforeach
-                </select>
+                @if($classesCount > 1)
+                    {{-- Étudiant inscrit dans plusieurs classes (changement en cours d'année OU vue toutes années) --}}
+                    <select class="sr-filter-select sr-auto-filter" name="classe_id">
+                        @foreach($classesList as $c)
+                            <option value="{{ $c->id }}" {{ isset($classe_id) && $classe_id == $c->id ? 'selected' : '' }}>
+                                {{ $c->name }}@if(isset($c->filiere)) — {{ $c->filiere->name }}@endif
+                            </option>
+                        @endforeach
+                    </select>
+                @elseif($classesCount === 1)
+                    @php $onlyClasse = $classesList->first(); @endphp
+                    <div class="sr-filter-static" title="L'étudiant est inscrit uniquement dans cette classe pour cette année">
+                        <i class="fas fa-graduation-cap"></i>
+                        <span class="sr-filter-static-value">{{ $onlyClasse->name }}</span>
+                        @if(isset($onlyClasse->filiere))
+                            <span class="sr-filter-static-sub">{{ $onlyClasse->filiere->name }}</span>
+                        @endif
+                        <input type="hidden" name="classe_id" value="{{ $onlyClasse->id }}">
+                    </div>
+                @else
+                    <div class="sr-filter-static sr-filter-static--empty">
+                        <i class="fas fa-circle-info"></i>
+                        <span class="sr-filter-static-value">Aucune inscription pour cette année</span>
+                    </div>
+                @endif
             </div>
 
             <div class="sr-filter-group">

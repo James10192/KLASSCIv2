@@ -632,8 +632,28 @@ class ESBTPResultatController extends Controller
         // Get the academic year object for display
         $anneeUniversitaire = ESBTPAnneeUniversitaire::find($annee_universitaire_id);
         $inscriptionWorkflowAlert = InscriptionWorkflowAlertPresenter::fromInscription($inscriptionForAlert, $anneeUniversitaire);
-        // Get all active classes for the filter dropdown
-        $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
+        // Classes du sélecteur : UNIQUEMENT celles où l'étudiant a été inscrit (toutes années
+        // confondues si include_all_statuses, sinon limitées à l'année courante). C'est cohérent
+        // avec la page : on regarde le résultat d'UN étudiant, pas de toutes les classes.
+        $studentClasseIds = $etudiant->inscriptions()
+            ->when(! $include_all_statuses && $annee_universitaire_id, function ($q) use ($annee_universitaire_id) {
+                $q->where('annee_universitaire_id', $annee_universitaire_id);
+            })
+            ->whereNotNull('classe_id')
+            ->pluck('classe_id')
+            ->unique()
+            ->values()
+            ->all();
+        // Inclut au moins la classe affichée actuellement (sécurité si l'inscription a été archivée)
+        if ($classe_id && !in_array($classe_id, $studentClasseIds, true)) {
+            $studentClasseIds[] = $classe_id;
+        }
+        $classes = empty($studentClasseIds)
+            ? collect()
+            : ESBTPClasse::with(['filiere', 'niveau'])
+                ->whereIn('id', $studentClasseIds)
+                ->orderBy('name')
+                ->get();
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
         $periodes = [
             (object) ['id' => 'annuel', 'code' => 'annuel', 'nom' => 'Annuel'],

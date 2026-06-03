@@ -280,6 +280,36 @@
     background-color: var(--sr-surface);
 }
 
+/* Champ classe statique (étudiant inscrit dans 1 seule classe pour cette année) */
+.sr-filter-static {
+    display: flex; align-items: center; gap: .55rem;
+    padding: .5rem .85rem;
+    background: linear-gradient(180deg, rgba(4,83,203,.04), rgba(4,83,203,.02));
+    border: 1.5px dashed rgba(4,83,203,.25);
+    border-radius: var(--sr-radius-xs);
+    color: var(--sr-ink);
+    font-size: .85rem;
+    min-height: 38px;
+    cursor: default;
+}
+.sr-filter-static > i { color: var(--sr-primary); flex-shrink: 0; }
+.sr-filter-static-value { font-weight: 700; color: var(--sr-ink); }
+.sr-filter-static-sub {
+    font-size: .72rem; font-weight: 500;
+    color: var(--sr-ink-2);
+    padding: .15rem .5rem;
+    background: rgba(4,83,203,.08);
+    border-radius: 999px;
+    margin-left: auto;
+}
+.sr-filter-static--empty {
+    background: rgba(148,163,184,.08);
+    border-color: rgba(148,163,184,.3);
+    color: var(--sr-ink-2);
+    font-style: italic;
+}
+.sr-filter-static--empty > i { color: #94a3b8; }
+
 .sr-filter-btn {
     padding: 0.5rem 1.25rem;
     font-size: 0.85rem;
