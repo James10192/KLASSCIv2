@@ -82,6 +82,23 @@ class SyncNotesScopeCommand extends Command
         if ($this->option('clean-resultats')) {
             $this->newLine();
             $this->info('Cleaning orphan esbtp_resultats rows…');
+
+            // Catégorie 1 : resultat dont la matière n'existe plus (matiere_id invalide ou soft-deleted)
+            // → affichait "Matière inconnue" sur la page résultats
+            $brokenMatiereQuery = ESBTPResultat::whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('esbtp_matieres')
+                    ->whereColumn('esbtp_matieres.id', 'esbtp_resultats.matiere_id')
+                    ->whereNull('esbtp_matieres.deleted_at');
+            });
+            $brokenCount = $brokenMatiereQuery->count();
+            $this->line("  Found {$brokenCount} resultat(s) with broken matiere_id");
+            if (! $dry && $brokenCount > 0) {
+                $deleted = $brokenMatiereQuery->delete();
+                $this->info("  Deleted {$deleted} resultat(s) with broken matiere");
+            }
+
+            // Catégorie 2 : resultat sans note correspondante (matière déplacée vers autre matière)
             // esbtp_notes n'a pas annee_universitaire_id direct — passer par esbtp_evaluations via join.
             $orphanQuery = ESBTPResultat::whereNotExists(function ($q) {
                 $q->select(DB::raw(1))
@@ -101,7 +118,7 @@ class SyncNotesScopeCommand extends Command
             });
 
             $orphanCount = $orphanQuery->count();
-            $this->line("  Found {$orphanCount} orphan resultat(s)");
+            $this->line("  Found {$orphanCount} orphan resultat(s) (no matching note)");
 
             if (! $dry && $orphanCount > 0) {
                 $deleted = $orphanQuery->delete();
