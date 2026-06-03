@@ -2080,8 +2080,11 @@ if (app()->environment('local')) {
     })->middleware('auth');
 }
 
-// Routes spéciales pour le workflow des bulletins — PROTÉGÉES
-Route::middleware(['auth', 'permission:admin.access'])->group(function () {
+// Routes spéciales pour le workflow des bulletins — PROTÉGÉES.
+// Lot 4 fix: ouvert à 'bulletins.configure' OU 'admin.access' (rule customizable-roles :
+// le secretaire/comptable/rôle custom peut gérer les bulletins via bulletins.configure
+// sans avoir admin.access global). Les controllers font leurs propres checks fins.
+Route::middleware(['auth', 'permission:admin.access|bulletins.configure'])->group(function () {
     Route::get('/esbtp-special/bulletins-pdf', [ESBTPBulletinController::class, 'genererPDFParParamsUnified'])->name('esbtp.bulletins.pdf-params');
     Route::get('/esbtp-special/bulletins-pdf/preview', [ESBTPBulletinController::class, 'previewPDFParParamsUnified'])
         ->name('esbtp.bulletins.pdf-params-preview')
