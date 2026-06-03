@@ -84,17 +84,24 @@
     border-radius: 12px;
     padding: 4px;
 }
-.cm-period-switch a {
+.cm-period-switch a,
+.cm-period-switch button {
     display: inline-flex; align-items: center; gap: .35rem;
     padding: .45rem .9rem;
     border-radius: 9px;
     font-size: .8rem; font-weight: 700;
     color: rgba(255,255,255,.7);
     text-decoration: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
     transition: all .15s;
 }
-.cm-period-switch a.active { background: #fff; color: #0453cb; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
-.cm-period-switch a:not(.active):hover { color: #fff; background: rgba(255,255,255,.08); }
+.cm-period-switch a.active,
+.cm-period-switch button.active { background: #fff; color: #0453cb; box-shadow: 0 2px 6px rgba(0,0,0,.08); }
+.cm-period-switch a:not(.active):hover,
+.cm-period-switch button:not(.active):not(:disabled):hover { color: #fff; background: rgba(255,255,255,.08); }
+.cm-period-switch button:disabled { opacity: .6; cursor: wait; }
 
 /* ─── KPIs ─── */
 .cm-kpis { display: flex; gap: .75rem; margin-top: 1.5rem; flex-wrap: wrap; }
