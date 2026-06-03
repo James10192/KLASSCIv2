@@ -79,9 +79,9 @@
     cursor: pointer; transition: all .2s ease; border: 1px solid transparent;
 }
 .cs-btn--glass { background: rgba(255,255,255,.14); color: #fff; border-color: rgba(255,255,255,.18); }
-.cs-btn--glass:hover { background: rgba(255,255,255,.22); color: #fff; transform: translateY(-1px); }
+.cs-btn--glass:hover { background: rgba(255,255,255,.22); color: #fff; }
 .cs-btn--white { background: #fff; color: var(--cs-primary); }
-.cs-btn--white:hover { background: #f1f5f9; color: var(--cs-primary-dark); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(0,0,0,.12); }
+.cs-btn--white:hover { background: #f1f5f9; color: var(--cs-primary-dark); box-shadow: 0 4px 14px rgba(0,0,0,.12); }
 
 /* KPIs hero */
 .cs-kpis {
@@ -213,7 +213,7 @@
     border: 1px solid transparent;
 }
 .cs-btn--primary { background: var(--cs-primary); color: #fff; }
-.cs-btn--primary:hover { background: var(--cs-primary-dark); color: #fff; transform: translateY(-1px); box-shadow: 0 4px 12px rgba(4,83,203,.25); }
+.cs-btn--primary:hover { background: var(--cs-primary-dark); color: #fff; box-shadow: 0 4px 12px rgba(4,83,203,.25); }
 .cs-btn--ghost { background: #fff; color: var(--cs-text); border-color: var(--cs-border); }
 .cs-btn--ghost:hover { border-color: var(--cs-primary); color: var(--cs-primary); background: rgba(4,83,203,.04); }
 .cs-btn--outline { background: #fff; color: var(--cs-primary); border-color: var(--cs-primary); }
@@ -280,7 +280,7 @@
     background: #fff; border: 1px solid var(--cs-border);
     border-radius: 12px; padding: .85rem 1rem; transition: all .2s;
 }
-.cs-matiere-card:hover { border-color: #c7d4e5; box-shadow: 0 4px 14px rgba(4,83,203,.06); transform: translateY(-1px); }
+.cs-matiere-card:hover { border-color: #c7d4e5; box-shadow: 0 4px 14px rgba(4,83,203,.06); }
 .cs-matiere-head { display: flex; justify-content: space-between; align-items: start; gap: .5rem; margin-bottom: .45rem; }
 .cs-matiere-name { font-weight: 700; color: var(--cs-text); font-size: .92rem; line-height: 1.3; }
 .cs-matiere-code {
