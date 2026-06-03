@@ -117,13 +117,6 @@
             </div>
         @endif
 
-        {{-- ═══════════════════════ LIENS EXTERNES (admin) ═══════════════════════ --}}
-        @if(auth()->check() && auth()->user() && !auth()->user()->hasAnyPermission(['identity.teach', 'identity.student']) && $evaluationsForExternalLinks->isNotEmpty())
-        <div class="ev-card">
-            @include('components.external-links-manager', ['evaluations' => $evaluationsForExternalLinks])
-        </div>
-        @endif
-
         {{-- ═══════════════════════ FILTRES + RÉSULTATS ═══════════════════════ --}}
         <div class="ev-card">
             <div class="ev-card-header">
@@ -220,6 +213,11 @@
                 </div>
             </div>
         </div>
+
+        {{-- ═══════════════════════ LIENS EXTERNES (admin) — déplacé en bas après KPIs+liste ═══════════════════════ --}}
+        @if(auth()->check() && auth()->user() && !auth()->user()->hasAnyPermission(['identity.teach', 'identity.student']) && $evaluationsForExternalLinks->isNotEmpty())
+            @include('components.external-links-manager', ['evaluations' => $evaluationsForExternalLinks])
+        @endif
     </div>
 </div>
 

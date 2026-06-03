@@ -1304,20 +1304,23 @@
             background: linear-gradient(135deg, #ef4444, #dc2626);
             color: white;
             border-radius: 999px;
-            min-width: 18px;
-            height: 18px;
-            padding: 0 4px;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 5px;
             font-size: 10px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; /* numérique aligné */
             animation: badgePulse 2s infinite;
             border: 2px solid white;
             box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
             z-index: 100;
-            line-height: 1;
+            line-height: 20px; /* = height pour centrage vertical pixel-perfect (au lieu de line-height:1 qui décalait) */
             white-space: nowrap;
+            text-align: center;
+            box-sizing: border-box;
         }
 
         @keyframes badgePulse {

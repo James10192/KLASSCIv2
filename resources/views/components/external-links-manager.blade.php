@@ -1,41 +1,201 @@
-{{-- Composant de gestion des liens externes --}}
-<div class="external-links-manager">
-    <!-- Section de génération de liens -->
-    <div class="card shadow-sm border-0 mb-4" id="generate-links-section">
-        <div class="card-header bg-warning text-dark">
-            <h5 class="mb-0">
-                <i class="fas fa-link me-2"></i>Génération de liens externes temporaires
-            </h5>
-            <p class="mb-0 text-dark opacity-75">Créer des liens sécurisés pour la saisie de notes par des enseignants externes</p>
+{{-- Composant Liens Externes — premium namespace xl-* (collapsible compact) --}}
+@push('styles')
+<style>
+/* ═══════════ XL (eXternal Links) premium namespace ═══════════ */
+.xl-card {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 14px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04);
+    margin-bottom: 1.25rem;
+    overflow: hidden;
+}
+.xl-card-header {
+    padding: 1rem 1.4rem;
+    background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06));
+    border-bottom: 1px solid #f1f5f9;
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap;
+    cursor: pointer; user-select: none;
+    transition: background .15s;
+}
+.xl-card-header:hover { background: linear-gradient(135deg, rgba(4,83,203,.08), rgba(59,125,219,.1)); }
+.xl-section-icon {
+    width: 38px; height: 38px; border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: .9rem; flex-shrink: 0;
+}
+.xl-section-title { font-size: .92rem; font-weight: 700; color: #1e293b; margin: 0; }
+.xl-section-subtitle { font-size: .76rem; color: #64748b; margin: .1rem 0 0; }
+.xl-toggle-icon {
+    color: #94a3b8; font-size: .9rem;
+    transition: transform .2s;
+}
+.xl-toggle-icon.open { transform: rotate(180deg); color: #0453cb; }
+.xl-body { padding: 1.25rem 1.4rem; display: none; }
+.xl-body.open { display: block; }
+
+.xl-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: .85rem;
+    margin-bottom: 1rem;
+}
+.xl-field { display: flex; flex-direction: column; gap: .35rem; }
+.xl-field-label {
+    font-size: .7rem; font-weight: 700; color: #475569;
+    text-transform: uppercase; letter-spacing: .04em;
+}
+.xl-input, .xl-select {
+    background: #fff;
+    border: 1.5px solid #e2e8f0;
+    border-radius: 10px;
+    padding: .55rem .75rem;
+    font-size: .88rem; color: #1e293b;
+    transition: border-color .15s, box-shadow .15s;
+}
+.xl-input:focus, .xl-select:focus {
+    outline: none; border-color: rgba(4,83,203,.5);
+    box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+}
+
+.xl-actions {
+    display: flex; gap: .65rem; align-items: center;
+    margin-top: .75rem; flex-wrap: wrap;
+}
+.xl-btn {
+    display: inline-flex; align-items: center; gap: .45rem;
+    border-radius: 10px;
+    padding: .55rem 1rem;
+    font-size: .82rem; font-weight: 700;
+    cursor: pointer; border: 1px solid transparent;
+    transition: all .15s;
+}
+.xl-btn--primary {
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(4,83,203,.25);
+}
+.xl-btn--primary:hover { box-shadow: 0 4px 12px rgba(4,83,203,.35); transform: translateY(-1px); color: #fff; }
+.xl-btn--ghost {
+    background: #fff; color: #0453cb;
+    border-color: rgba(4,83,203,.25);
+}
+.xl-btn--ghost:hover { background: rgba(4,83,203,.05); }
+.xl-info-text {
+    font-size: .76rem; color: #94a3b8;
+    display: inline-flex; align-items: center; gap: .3rem;
+}
+
+.xl-result {
+    background: linear-gradient(135deg, rgba(16,185,129,.05), rgba(16,185,129,.08));
+    border: 1px solid rgba(16,185,129,.25);
+    border-radius: 12px;
+    padding: 1rem;
+    margin-top: 1rem;
+}
+.xl-result-title {
+    font-weight: 700; color: #047857;
+    display: inline-flex; align-items: center; gap: .4rem;
+    font-size: .85rem;
+}
+.xl-result-input-group {
+    display: flex; gap: .5rem; margin: .65rem 0 .35rem; align-items: stretch;
+}
+.xl-result-input-group input {
+    flex: 1; min-width: 0;
+    background: #fff; border: 1px solid #d1fae5;
+    border-radius: 8px;
+    padding: .5rem .7rem;
+    font-size: .82rem; color: #1e293b;
+    font-family: 'Courier New', monospace;
+}
+.xl-result-expire {
+    font-size: .72rem; color: #64748b;
+    display: inline-flex; align-items: center; gap: .3rem;
+}
+
+.xl-active-section {
+    border-top: 1px solid #f1f5f9;
+    margin-top: 1.25rem; padding-top: 1.25rem;
+}
+.xl-active-header {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 1rem; flex-wrap: wrap; margin-bottom: 1rem;
+}
+.xl-active-title { font-size: .85rem; font-weight: 700; color: #1e293b; display: inline-flex; align-items: center; gap: .4rem; }
+
+.xl-link-item {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: .85rem 1rem;
+    margin-bottom: .65rem;
+    transition: all .15s;
+}
+.xl-link-item:hover {
+    border-color: rgba(4,83,203,.4);
+    box-shadow: 0 4px 12px rgba(4,83,203,.08);
+}
+.xl-link-item.expiring { border-color: rgba(245,158,11,.5); background: rgba(245,158,11,.04); }
+.xl-link-item.expired { border-color: rgba(220,38,38,.4); background: rgba(220,38,38,.04); opacity: .8; }
+.xl-link-actions { display: flex; gap: .4rem; flex-wrap: wrap; }
+
+.xl-empty {
+    text-align: center;
+    padding: 2rem 1rem;
+    color: #94a3b8;
+}
+.xl-empty i { font-size: 2rem; color: #cbd5e1; margin-bottom: .5rem; }
+
+/* legacy rules retained for backward compat */
+.external-links-manager .link-item { background: #fff; border: 1px solid #e9ecef; border-radius: 12px; padding: 1rem; margin-bottom: .75rem; transition: all .3s; }
+.external-links-manager .link-item:hover { border-color: #0453cb; box-shadow: 0 4px 12px rgba(4,83,203,.1); transform: translateY(-1px); }
+.external-links-manager .link-actions { display: flex; gap: .5rem; flex-wrap: wrap; }
+</style>
+@endpush
+
+<div class="external-links-manager" x-data="{ open: false }">
+    <div class="xl-card">
+        {{-- Collapsible header --}}
+        <div class="xl-card-header" @click="open = !open">
+            <div style="display:flex;align-items:center;gap:.85rem;flex:1;min-width:0;">
+                <div class="xl-section-icon"><i class="fas fa-link"></i></div>
+                <div>
+                    <h5 class="xl-section-title">Liens externes temporaires (admin)</h5>
+                    <p class="xl-section-subtitle">Générer des liens pour la saisie de notes par enseignants externes</p>
+                </div>
+            </div>
+            <div style="display:flex;align-items:center;gap:.65rem;">
+                <span style="font-size:.72rem;color:#64748b;" x-show="!open" x-cloak>Cliquer pour ouvrir</span>
+                <i class="fas fa-chevron-down xl-toggle-icon" :class="{ open: open }"></i>
+            </div>
         </div>
-        <div class="card-body">
-            <!-- Sélecteur d'évaluation -->
-            <div class="row g-3 mb-4">
-                <div class="col-md-6">
-                    <label for="evaluation-select" class="form-label fw-medium">Sélectionner une évaluation</label>
-                    <select id="evaluation-select" class="form-select">
-                        <option value="">-- Choisir une évaluation --</option>
+
+        <div class="xl-body" :class="{ open: open }" x-cloak>
+            {{-- Génération --}}
+            <div class="xl-form-grid">
+                <div class="xl-field">
+                    <label for="evaluation-select" class="xl-field-label">Évaluation</label>
+                    <select id="evaluation-select" class="xl-select">
+                        <option value="">— Choisir une évaluation —</option>
                         @foreach($evaluations ?? [] as $evaluation)
-                            <option value="{{ $evaluation->id }}" data-title="{{ $evaluation->titre }}" 
-                                    data-classe="{{ $evaluation->classe->name ?? '' }}" 
+                            <option value="{{ $evaluation->id }}" data-title="{{ $evaluation->titre }}"
+                                    data-classe="{{ $evaluation->classe->name ?? '' }}"
                                     data-matiere="{{ $evaluation->matiere->name ?? '' }}">
-                                {{ $evaluation->titre }} - {{ $evaluation->classe->name ?? '' }}
+                                {{ $evaluation->titre }} — {{ $evaluation->classe->name ?? '' }}
                             </option>
                         @endforeach
                     </select>
                 </div>
-                <div class="col-md-6">
-                    <label for="enseignant-externe-nom" class="form-label fw-medium">Nom de l'enseignant externe</label>
-                    <input type="text" id="enseignant-externe-nom" class="form-control" 
-                           placeholder="Ex: Dr. Martin Dupont">
+                <div class="xl-field">
+                    <label for="enseignant-externe-nom" class="xl-field-label">Nom enseignant externe</label>
+                    <input type="text" id="enseignant-externe-nom" class="xl-input" placeholder="Ex: Dr. Martin Dupont">
                 </div>
-            </div>
-
-            <!-- Configuration de la durée -->
-            <div class="row g-3 mb-4">
-                <div class="col-md-4">
-                    <label for="duree-heures" class="form-label fw-medium">Durée de validité</label>
-                    <select id="duree-heures" class="form-select">
+                <div class="xl-field">
+                    <label for="duree-heures" class="xl-field-label">Durée de validité</label>
+                    <select id="duree-heures" class="xl-select">
                         <option value="24">24 heures</option>
                         <option value="48">48 heures</option>
                         <option value="72" selected>3 jours</option>
@@ -43,96 +203,46 @@
                         <option value="168">7 jours</option>
                     </select>
                 </div>
-                <div class="col-md-8 d-flex align-items-end">
-                    <button type="button" id="generate-link-btn" class="btn btn-warning me-2">
-                        <i class="fas fa-magic me-1"></i>Générer le lien
-                    </button>
-                    <div class="text-muted">
-                        <small><i class="fas fa-info-circle me-1"></i>Le lien sera automatiquement révoqué après expiration</small>
-                    </div>
-                </div>
+            </div>
+            <div class="xl-actions">
+                <button type="button" id="generate-link-btn" class="xl-btn xl-btn--primary">
+                    <i class="fas fa-wand-magic-sparkles"></i>Générer le lien
+                </button>
+                <span class="xl-info-text"><i class="fas fa-info-circle"></i>Révoqué automatiquement après expiration</span>
             </div>
 
-            <!-- Résultat de génération -->
+            {{-- Résultat génération --}}
             <div id="generated-link-result" class="d-none">
-                <div class="alert alert-success border-0 shadow-sm">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div class="flex-grow-1">
-                            <h6 class="alert-heading"><i class="fas fa-check-circle me-1"></i>Lien généré avec succès</h6>
-                            <div class="input-group mt-2">
-                                <input type="text" id="generated-link-input" class="form-control" readonly>
-                                <button class="btn btn-outline-primary" type="button" id="copy-link-btn">
-                                    <i class="fas fa-copy me-1"></i>Copier
-                                </button>
-                            </div>
-                            <small class="text-muted mt-2 d-block">
-                                <i class="fas fa-clock me-1"></i>Expire le : <span id="expire-date"></span>
-                            </small>
-                        </div>
-                        <button type="button" class="btn-close" id="close-result"></button>
+                <div class="xl-result">
+                    <div class="xl-result-title"><i class="fas fa-check-circle"></i>Lien généré avec succès</div>
+                    <div class="xl-result-input-group">
+                        <input type="text" id="generated-link-input" readonly>
+                        <button class="xl-btn xl-btn--ghost" type="button" id="copy-link-btn">
+                            <i class="fas fa-copy"></i>Copier
+                        </button>
                     </div>
+                    <div class="xl-result-expire"><i class="fas fa-clock"></i>Expire le <span id="expire-date"></span></div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Section de monitoring des liens actifs -->
-    <div class="card shadow-sm border-0">
-        <div class="card-header bg-gradient-info text-white d-flex justify-content-between align-items-center">
-            <div>
-                <h5 class="mb-0">
-                    <i class="fas fa-monitor-heart-rate me-2"></i>Liens externes actifs
-                </h5>
-                <p class="mb-0 opacity-75">Surveillance et gestion des liens temporaires</p>
-            </div>
-            <button type="button" id="refresh-links-btn" class="btn btn-light btn-sm">
-                <i class="fas fa-refresh me-1"></i>Actualiser
-            </button>
-        </div>
-        <div class="card-body">
-            <div id="active-links-container">
-                <div class="text-center text-muted py-4">
-                    <i class="fas fa-spinner fa-spin fa-2x"></i>
-                    <p class="mt-2">Chargement des liens actifs...</p>
+            {{-- Liens actifs --}}
+            <div class="xl-active-section">
+                <div class="xl-active-header">
+                    <div class="xl-active-title"><i class="fas fa-broadcast-tower"></i>Liens actifs</div>
+                    <button type="button" id="refresh-links-btn" class="xl-btn xl-btn--ghost">
+                        <i class="fas fa-arrows-rotate"></i>Actualiser
+                    </button>
+                </div>
+                <div id="active-links-container">
+                    <div class="xl-empty">
+                        <i class="fas fa-circle-notch fa-spin"></i>
+                        <div>Chargement des liens actifs…</div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-<style>
-.external-links-manager .link-item {
-    border: 1px solid #e9ecef;
-    border-radius: 12px;
-    padding: 1rem;
-    margin-bottom: 0.75rem;
-    transition: all 0.3s ease;
-    background: #fff;
-}
-
-.external-links-manager .link-item:hover {
-    border-color: #0d6efd;
-    box-shadow: 0 4px 12px rgba(13, 110, 253, 0.1);
-    transform: translateY(-1px);
-}
-
-.external-links-manager .link-item.expiring {
-    border-color: #fd7e14;
-    background: rgba(253, 126, 20, 0.05);
-}
-
-.external-links-manager .link-item.expired {
-    border-color: #dc3545;
-    background: rgba(220, 53, 69, 0.05);
-    opacity: 0.7;
-}
-
-.external-links-manager .link-actions {
-    display: flex;
-    gap: 0.5rem;
-    flex-wrap: wrap;
-}
-</style>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
