@@ -1566,6 +1566,7 @@ Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['aut
     // Sous-lot δ
     Route::post('/coefficients/copy', [ESBTPEvaluationController::class, 'copyCoefficients'])->name('coefficients.copy');
     Route::get('/coefficients/completion', [ESBTPEvaluationController::class, 'coefficientsCompletion'])->name('coefficients.completion');
+    Route::get('/coefficients/read', [ESBTPEvaluationController::class, 'readCoefficients'])->name('coefficients.read');
 
     Route::get('/{evaluation}/refresh-row', [ESBTPEvaluationController::class, 'refreshRow'])->name('refresh-row');
     // Quick edit (titre + barème + coefficient) — utilisé depuis le modal notes (PR #4)

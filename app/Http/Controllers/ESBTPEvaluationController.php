@@ -1501,6 +1501,37 @@ $evaluation->titre = $request->titre;
     }
 
     /**
+     * GET /coefficients/read — lit les coefficients pour une combinaison+période donnée.
+     * Réutilisé par le modal coefficients étudiant pour switch S1/S2 sans reload page.
+     */
+    public function readCoefficients(Request $request)
+    {
+        $validated = $request->validate([
+            'filiere_id' => 'required|exists:esbtp_filieres,id',
+            'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'periode' => 'required|in:semestre1,semestre2',
+        ]);
+
+        $rows = ESBTPMatiereCoefficient::where('filiere_id', $validated['filiere_id'])
+            ->where('niveau_etude_id', $validated['niveau_etude_id'])
+            ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
+            ->where('periode', $validated['periode'])
+            ->get();
+
+        $map = [];
+        foreach ($rows as $r) {
+            $map[$r->matiere_id] = (float) $r->coefficient;
+        }
+
+        return response()->json([
+            'success' => true,
+            'periode' => $validated['periode'],
+            'coefficients' => $map,
+        ]);
+    }
+
+    /**
      * Sous-lot δ — POST /coefficients/copy
      * Copie les coefficients d'une période vers une autre.
      * Modes :

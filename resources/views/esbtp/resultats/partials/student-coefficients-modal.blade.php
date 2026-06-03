@@ -41,6 +41,73 @@
                 </button>
             </div>
 
+            {{-- ═══ SOUS-LOT γ : SWITCH S1/S2 + JAUGE + COPY ═══ --}}
+            <div class="scm-period-bar">
+                <div class="scm-period-switch">
+                    <button type="button" class="scm-period-btn active" data-scm-periode="semestre1">
+                        <span>S1</span>
+                    </button>
+                    <button type="button" class="scm-period-btn" data-scm-periode="semestre2">
+                        <span>S2</span>
+                    </button>
+                </div>
+                <button type="button" class="scm-copy-btn" id="scmCopyBtn" title="Copier les coefficients vers l'autre semestre">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    <span>Copier vers <span id="scmCopyTarget">S2</span></span>
+                </button>
+            </div>
+            <div class="scm-completion">
+                <div class="scm-completion-status" id="scmCompletionStatus">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                    <span id="scmCompletionLabel">Chargement…</span>
+                </div>
+                <div class="scm-completion-bar">
+                    <div class="scm-completion-bar-fill" id="scmCompletionFill" style="width: 0%;"></div>
+                </div>
+                <div class="scm-completion-counts">
+                    <strong id="scmCompletionConfigured">0</strong> / <strong id="scmCompletionTotal">0</strong> matières
+                </div>
+            </div>
+
+            {{-- ═══ COPY MODAL OVERLAY (in-modal) ═══ --}}
+            <div class="scm-copy-overlay d-none" id="scmCopyOverlay">
+                <div class="scm-copy-card">
+                    <div class="scm-copy-header">
+                        <h5>Copier <span id="scmCopyHeaderSource">S1</span> → <span id="scmCopyHeaderTarget">S2</span></h5>
+                        <button type="button" class="scm-copy-close" id="scmCopyClose">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <div class="scm-copy-body">
+                        <p class="scm-copy-intro">Choisissez la stratégie puis prévisualisez les changements.</p>
+                        <div class="scm-mode-picker">
+                            <label class="scm-mode-option active" data-scm-mode="override">
+                                <input type="radio" name="scmCopyMode" value="override" checked>
+                                <div>
+                                    <strong>Override (Remplacer)</strong>
+                                    <small>Les valeurs existantes seront remplacées</small>
+                                </div>
+                            </label>
+                            <label class="scm-mode-option" data-scm-mode="merge">
+                                <input type="radio" name="scmCopyMode" value="merge">
+                                <div>
+                                    <strong>Merge (Préserver)</strong>
+                                    <small>Les valeurs déjà saisies seront préservées</small>
+                                </div>
+                            </label>
+                        </div>
+                        <div class="scm-copy-summary" id="scmCopySummary"></div>
+                        <div class="scm-copy-details" id="scmCopyDetails"></div>
+                    </div>
+                    <div class="scm-copy-footer">
+                        <button type="button" class="scm-btn scm-btn--ghost" id="scmCopyCancel">Annuler</button>
+                        <button type="button" class="scm-btn scm-btn--primary" id="scmCopyExecute">
+                            <span>Valider la copie</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             {{-- ═══ BANNIÈRE CONTEXTUELLE ═══ --}}
             @if($coeffContext && isset($coeffContext['reason']))
                 <div class="scm-banner scm-banner--{{ $coeffContext['reason'] === 'matiere_hors_combinaison' ? 'warn' : 'error' }}">
@@ -85,6 +152,7 @@
                     <input type="hidden" name="filiere_id" value="{{ $coeffFiliere->id }}">
                     <input type="hidden" name="niveau_etude_id" value="{{ $coeffNiveau->id }}">
                     <input type="hidden" name="annee_universitaire_id" value="{{ $coeffAnneeId }}">
+                    <input type="hidden" name="periode" id="scmPeriode" value="semestre1">
 
                     {{-- ── GROUPE 1 : Matières officiellement liées ── --}}
                     <div class="scm-group" data-group="linked">
@@ -821,6 +889,173 @@
     .scm-btn { justify-content: center; width: 100%; }
     .scm-footer-info { justify-content: center; }
 }
+
+/* ═══ SOUS-LOT γ : Switch S1/S2 + Jauge + Copy modal ═══ */
+.scm-period-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: .75rem; flex-wrap: wrap;
+    padding: .85rem 1.5rem;
+    background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06));
+    border-bottom: 1px solid var(--scm-border);
+}
+.scm-period-switch {
+    display: inline-flex; background: #fff;
+    border: 1px solid var(--scm-border);
+    border-radius: 10px; padding: 3px;
+    box-shadow: 0 1px 2px rgba(0,0,0,.04);
+}
+.scm-period-btn {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .45rem 1rem;
+    border: none; background: transparent;
+    border-radius: 7px;
+    font-size: .85rem; font-weight: 700;
+    color: var(--scm-muted);
+    cursor: pointer;
+    transition: all .15s;
+}
+.scm-period-btn:hover:not(.active):not(:disabled) { color: var(--scm-ink); background: rgba(0,0,0,.03); }
+.scm-period-btn.active {
+    background: linear-gradient(135deg, var(--scm-blue), var(--scm-blue-mid));
+    color: #fff;
+    box-shadow: 0 2px 6px rgba(4,83,203,.25);
+}
+.scm-period-btn:disabled { opacity: .55; cursor: wait; }
+.scm-copy-btn {
+    display: inline-flex; align-items: center; gap: .4rem;
+    padding: .5rem 1rem;
+    border: 1px solid var(--scm-border); background: #fff;
+    border-radius: 9px;
+    font-size: .82rem; font-weight: 700;
+    color: var(--scm-blue);
+    cursor: pointer;
+    transition: all .15s;
+}
+.scm-copy-btn:hover { background: var(--scm-blue-light); border-color: var(--scm-blue); }
+.scm-copy-btn svg { width: 14px; height: 14px; }
+
+.scm-completion {
+    display: flex; align-items: center; gap: 1rem; flex-wrap: wrap;
+    padding: .75rem 1.5rem;
+    background: #fff;
+    border-bottom: 1px solid var(--scm-border);
+}
+.scm-completion-status {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .3rem .65rem;
+    border-radius: 999px;
+    font-size: .7rem; font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    border: 1px solid;
+}
+.scm-completion-status[data-status="complete"] { background: var(--scm-green-light); color: var(--scm-green); border-color: rgba(5,150,105,.3); }
+.scm-completion-status[data-status="incomplete"] { background: var(--scm-amber-light); color: var(--scm-amber); border-color: rgba(217,119,6,.3); }
+.scm-completion-status[data-status="unconfigured"] { background: var(--scm-red-light); color: var(--scm-red); border-color: rgba(220,38,38,.3); }
+.scm-completion-bar {
+    flex: 1; min-width: 150px;
+    height: 8px;
+    background: var(--scm-border);
+    border-radius: 999px;
+    overflow: hidden;
+}
+.scm-completion-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--scm-blue), var(--scm-blue-mid));
+    transition: width .4s ease;
+}
+.scm-completion-bar-fill[data-status="complete"] { background: linear-gradient(90deg, var(--scm-green), #10b981); }
+.scm-completion-bar-fill[data-status="incomplete"] { background: linear-gradient(90deg, var(--scm-amber), #fbbf24); }
+.scm-completion-counts {
+    font-size: .8rem; color: var(--scm-muted); font-weight: 600;
+}
+.scm-completion-counts strong { color: var(--scm-blue); }
+
+/* Copy modal overlay (in-modal) */
+.scm-copy-overlay {
+    position: absolute; inset: 0;
+    background: rgba(15,23,42,.5);
+    backdrop-filter: blur(2px);
+    z-index: 1100;
+    display: flex; align-items: center; justify-content: center;
+    padding: 1.5rem;
+    border-radius: var(--scm-radius);
+}
+.scm-copy-overlay.d-none { display: none; }
+.scm-copy-card {
+    background: #fff;
+    border-radius: 12px;
+    width: 100%;
+    max-width: 480px;
+    max-height: 90%;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    box-shadow: 0 20px 50px rgba(0,0,0,.3);
+}
+.scm-copy-header {
+    padding: 1rem 1.25rem;
+    background: linear-gradient(135deg, var(--scm-blue), var(--scm-blue-mid));
+    color: #fff;
+    display: flex; align-items: center; justify-content: space-between;
+}
+.scm-copy-header h5 { margin: 0; font-size: 1rem; font-weight: 700; }
+.scm-copy-close {
+    background: rgba(255,255,255,.2); border: none; color: #fff;
+    width: 28px; height: 28px; border-radius: 6px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+}
+.scm-copy-close svg { width: 14px; height: 14px; }
+.scm-copy-body { padding: 1.25rem; overflow-y: auto; flex: 1; }
+.scm-copy-intro { font-size: .85rem; color: var(--scm-muted); margin: 0 0 1rem; }
+.scm-mode-picker { display: flex; gap: .5rem; flex-direction: column; margin-bottom: 1rem; }
+.scm-mode-option {
+    padding: .75rem 1rem;
+    border: 2px solid var(--scm-border);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all .15s;
+    display: flex; align-items: center; gap: .75rem;
+}
+.scm-mode-option.active { border-color: var(--scm-blue); background: var(--scm-blue-light); }
+.scm-mode-option input { display: none; }
+.scm-mode-option strong { display: block; font-size: .85rem; color: var(--scm-ink); }
+.scm-mode-option small { display: block; font-size: .75rem; color: var(--scm-muted); margin-top: .15rem; }
+.scm-copy-summary {
+    display: flex; gap: .5rem; flex-wrap: wrap;
+    padding: .65rem .75rem;
+    background: var(--scm-bg);
+    border: 1px solid var(--scm-border);
+    border-radius: 8px;
+    margin-bottom: .75rem;
+    font-size: .78rem;
+}
+.scm-copy-summary .pill {
+    display: inline-flex; align-items: center; gap: .25rem;
+    padding: .2rem .5rem; border-radius: 999px;
+    font-weight: 700;
+}
+.scm-copy-summary .pill--create { background: var(--scm-green-light); color: var(--scm-green); }
+.scm-copy-summary .pill--update { background: var(--scm-amber-light); color: var(--scm-amber); }
+.scm-copy-summary .pill--skip { background: var(--scm-border); color: var(--scm-muted); }
+.scm-copy-details {
+    font-size: .82rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+.scm-copy-details .item {
+    display: flex; justify-content: space-between;
+    padding: .35rem .5rem;
+    border-bottom: 1px solid var(--scm-border);
+}
+.scm-copy-details .item:last-child { border-bottom: none; }
+.scm-copy-details .name { font-weight: 600; color: var(--scm-ink); }
+.scm-copy-details .change { color: var(--scm-muted); }
+.scm-copy-footer {
+    padding: .85rem 1.25rem;
+    border-top: 1px solid var(--scm-border);
+    display: flex; justify-content: flex-end; gap: .5rem;
+}
 </style>
 
 {{-- ═══════════════════════════════════════════════════════════════
@@ -836,8 +1071,192 @@
     const errBox  = document.getElementById('scmError');
     const errText = document.getElementById('scmErrorText');
     const UPDATE_URL = "{{ route('esbtp.evaluations.coefficients.update') }}";
+    const READ_URL = "{{ route('esbtp.evaluations.coefficients.read') }}";
+    const COMPLETION_URL = "{{ route('esbtp.evaluations.coefficients.completion') }}";
+    const COPY_URL = "{{ route('esbtp.evaluations.coefficients.copy') }}";
 
     if (!form) return;
+
+    /* ═══ SOUS-LOT γ : Switch S1/S2 + Jauge + Copy ═══ */
+    const periodeInput = document.getElementById('scmPeriode');
+    const filiereId = form.querySelector('input[name="filiere_id"]').value;
+    const niveauId = form.querySelector('input[name="niveau_etude_id"]').value;
+    const anneeId = form.querySelector('input[name="annee_universitaire_id"]').value;
+    const periodeBtns = document.querySelectorAll('.scm-period-btn');
+    const copyBtn = document.getElementById('scmCopyBtn');
+    const copyTargetSpan = document.getElementById('scmCopyTarget');
+    const completionStatus = document.getElementById('scmCompletionStatus');
+    const completionLabel = document.getElementById('scmCompletionLabel');
+    const completionFill = document.getElementById('scmCompletionFill');
+    const completionConfigured = document.getElementById('scmCompletionConfigured');
+    const completionTotal = document.getElementById('scmCompletionTotal');
+
+    function currentPeriode() { return periodeInput.value || 'semestre1'; }
+    function otherPeriode() { return currentPeriode() === 'semestre1' ? 'semestre2' : 'semestre1'; }
+    function periodeLabel(p) { return p === 'semestre1' ? 'S1' : 'S2'; }
+
+    function updateCopyTargetLabel() {
+        if (copyTargetSpan) copyTargetSpan.textContent = periodeLabel(otherPeriode());
+    }
+
+    async function refreshCompletion() {
+        try {
+            const url = new URL(COMPLETION_URL, window.location.origin);
+            url.searchParams.append('filiere_id', filiereId);
+            url.searchParams.append('niveau_etude_id', niveauId);
+            url.searchParams.append('annee_universitaire_id', anneeId);
+            url.searchParams.append('periode', currentPeriode());
+            const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+            const data = await res.json();
+            if (!data.success) return;
+            completionConfigured.textContent = data.configured_count;
+            completionTotal.textContent = data.total_count;
+            completionFill.style.width = data.total_count > 0
+                ? ((data.configured_count / data.total_count) * 100) + '%'
+                : '0%';
+            completionFill.dataset.status = data.status;
+            completionStatus.dataset.status = data.status;
+            completionLabel.textContent = data.status === 'complete' ? 'Complet'
+                : data.status === 'incomplete' ? 'Incomplet'
+                : 'Non configuré';
+        } catch (e) { console.warn('completion error', e); }
+    }
+
+    async function switchToPeriode(target) {
+        if (target === currentPeriode()) return;
+        periodeBtns.forEach(b => { b.disabled = true; });
+        try {
+            const url = new URL(READ_URL, window.location.origin);
+            url.searchParams.append('filiere_id', filiereId);
+            url.searchParams.append('niveau_etude_id', niveauId);
+            url.searchParams.append('annee_universitaire_id', anneeId);
+            url.searchParams.append('periode', target);
+            const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'erreur');
+            // Update all coefficient inputs
+            form.querySelectorAll('.scm-input').forEach(input => {
+                const name = input.name; // coefficients[X]
+                const m = name.match(/coefficients\[(\d+)\]/);
+                if (m) {
+                    const matiereId = m[1];
+                    input.value = (data.coefficients[matiereId] !== undefined) ? data.coefficients[matiereId] : '';
+                }
+            });
+            periodeInput.value = target;
+            periodeBtns.forEach(b => b.classList.toggle('active', b.dataset.scmPeriode === target));
+            updateCopyTargetLabel();
+            await refreshCompletion();
+        } catch (e) {
+            alert('Erreur switch période : ' + e.message);
+        } finally {
+            periodeBtns.forEach(b => b.disabled = false);
+        }
+    }
+
+    periodeBtns.forEach(btn => {
+        btn.addEventListener('click', () => switchToPeriode(btn.dataset.scmPeriode));
+    });
+
+    /* Copy modal */
+    const copyOverlay = document.getElementById('scmCopyOverlay');
+    const copyClose = document.getElementById('scmCopyClose');
+    const copyCancel = document.getElementById('scmCopyCancel');
+    const copyExecute = document.getElementById('scmCopyExecute');
+    const copyHeaderSource = document.getElementById('scmCopyHeaderSource');
+    const copyHeaderTarget = document.getElementById('scmCopyHeaderTarget');
+    const copySummary = document.getElementById('scmCopySummary');
+    const copyDetails = document.getElementById('scmCopyDetails');
+    const modeOptions = document.querySelectorAll('.scm-mode-option');
+    let currentCopyMode = 'override';
+
+    if (copyBtn) {
+        copyBtn.addEventListener('click', () => {
+            copyHeaderSource.textContent = periodeLabel(currentPeriode());
+            copyHeaderTarget.textContent = periodeLabel(otherPeriode());
+            copyOverlay.classList.remove('d-none');
+            refreshCopyPreview();
+        });
+    }
+    [copyClose, copyCancel].forEach(b => b && b.addEventListener('click', () => copyOverlay.classList.add('d-none')));
+
+    modeOptions.forEach(opt => {
+        opt.addEventListener('click', () => {
+            modeOptions.forEach(o => o.classList.remove('active'));
+            opt.classList.add('active');
+            opt.querySelector('input').checked = true;
+            currentCopyMode = opt.dataset.scmMode;
+            refreshCopyPreview();
+        });
+    });
+
+    async function refreshCopyPreview() {
+        copySummary.innerHTML = '<span style="color:#64748b;font-size:.78rem;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" width="12" height="12" class="scm-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Calcul…</span>';
+        copyDetails.innerHTML = '';
+        try {
+            const fd = new FormData();
+            fd.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+            fd.append('filiere_id', filiereId);
+            fd.append('niveau_etude_id', niveauId);
+            fd.append('annee_universitaire_id', anneeId);
+            fd.append('source_periode', currentPeriode());
+            fd.append('target_periode', otherPeriode());
+            fd.append('mode', currentCopyMode);
+            fd.append('dry_run', '1');
+            const res = await fetch(COPY_URL, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+            const data = await res.json();
+            if (!data.success) throw new Error(data.message || 'erreur');
+            const s = data.summary;
+            copySummary.innerHTML = `
+                <span class="pill pill--create">Créer : <strong>${s.will_create}</strong></span>
+                <span class="pill pill--update">Mettre à jour : <strong>${s.will_update}</strong></span>
+                <span class="pill pill--skip">Skip : <strong>${s.will_skip}</strong></span>
+            `;
+            let html = '';
+            (data.preview.create || []).forEach(r => {
+                html += `<div class="item"><span class="name">${r.matiere_name}</span><span class="change">→ ${r.source_value}</span></div>`;
+            });
+            (data.preview.update || []).forEach(r => {
+                html += `<div class="item"><span class="name">${r.matiere_name}</span><span class="change">${r.target_existing_value} → ${r.source_value}</span></div>`;
+            });
+            (data.preview.skip || []).forEach(r => {
+                html += `<div class="item"><span class="name">${r.matiere_name}</span><span class="change">déjà : ${r.target_existing_value}</span></div>`;
+            });
+            copyDetails.innerHTML = html;
+        } catch (e) {
+            copySummary.innerHTML = '<span style="color:#dc2626;">Erreur : ' + e.message + '</span>';
+        }
+    }
+
+    if (copyExecute) {
+        copyExecute.addEventListener('click', async () => {
+            copyExecute.disabled = true;
+            try {
+                const fd = new FormData();
+                fd.append('_token', document.querySelector('meta[name="csrf-token"]')?.content || '');
+                fd.append('filiere_id', filiereId);
+                fd.append('niveau_etude_id', niveauId);
+                fd.append('annee_universitaire_id', anneeId);
+                fd.append('source_periode', currentPeriode());
+                fd.append('target_periode', otherPeriode());
+                fd.append('mode', currentCopyMode);
+                const res = await fetch(COPY_URL, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message);
+                alert(`Copie : ${data.summary.created} créés, ${data.summary.updated} mis à jour, ${data.summary.skipped} skippés.`);
+                copyOverlay.classList.add('d-none');
+                await refreshCompletion();
+            } catch (e) {
+                alert('Erreur : ' + e.message);
+            } finally {
+                copyExecute.disabled = false;
+            }
+        });
+    }
+
+    /* Init : load S1 + completion */
+    updateCopyTargetLabel();
+    refreshCompletion();
 
     /* Focus the first empty blocking input if present */
     setTimeout(function () {
