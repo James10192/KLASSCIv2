@@ -453,8 +453,10 @@
                         <div>{{ $settings['bulletin_union_text'] ?? 'Union-Discipline-Travail' }}</div>
                         @endif
                         @if(($settings['bulletin_show_ministry_info'] ?? '1') == '1')
-                        <div style="margin-top: 4px;">{{ $settings['bulletin_ministry_text'] ?? 'Ministère de l\'Enseignement Supérieur' }}</div>
-                        <div>et de la Recherche Scientifique</div>
+                        <div style="margin-top: 4px;">
+                            {{-- bulletin_ministry_text supporte les sauts de ligne (configurable dans /esbtp/settings) --}}
+                            {!! nl2br(e($settings['bulletin_ministry_text'] ?? "Ministère de l'Enseignement Supérieur\net de la Recherche Scientifique")) !!}
+                        </div>
                         @endif
                     </td>
                     <td class="header-center">
