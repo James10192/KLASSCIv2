@@ -4,7 +4,9 @@ namespace App\Console\Commands\Evaluations;
 
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPResultat;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Sync the denormalized columns (classe_id, matiere_id, semestre) on esbtp_notes
@@ -18,7 +20,8 @@ class SyncNotesScopeCommand extends Command
 {
     protected $signature = 'evaluations:sync-notes
                             {--evaluation= : Sync only this evaluation ID (default: all)}
-                            {--dry : Show what would be updated without writing}';
+                            {--dry : Show what would be updated without writing}
+                            {--clean-resultats : Also delete orphan esbtp_resultats rows (no matching notes)}';
 
     protected $description = 'Sync esbtp_notes.{classe_id, matiere_id, semestre} from their parent evaluation';
 
@@ -72,6 +75,39 @@ class SyncNotesScopeCommand extends Command
         $verb = $dry ? 'would be' : 'were';
         $this->newLine();
         $this->info("Total: {$evaluationsTouched} evaluation(s), {$totalNotesFixed} note(s) {$verb} synced.");
+
+        // Clean up orphan esbtp_resultats : rows for (etudiant, classe, matiere, periode, annee)
+        // where no notes exist anymore. Ces moyennes snapshots restent visibles dans
+        // resultats/etudiant alors que les notes ont été déplacées vers une autre matière.
+        if ($this->option('clean-resultats')) {
+            $this->newLine();
+            $this->info('Cleaning orphan esbtp_resultats rows…');
+            $orphanQuery = ESBTPResultat::whereNotExists(function ($q) {
+                $q->select(DB::raw(1))
+                    ->from('esbtp_notes')
+                    ->whereColumn('esbtp_notes.etudiant_id', 'esbtp_resultats.etudiant_id')
+                    ->whereColumn('esbtp_notes.classe_id', 'esbtp_resultats.classe_id')
+                    ->whereColumn('esbtp_notes.matiere_id', 'esbtp_resultats.matiere_id')
+                    ->whereColumn('esbtp_notes.annee_universitaire_id', 'esbtp_resultats.annee_universitaire_id')
+                    ->where(function ($q2) {
+                        // Match periode : esbtp_resultats.periode = 'semestre1' AND notes.semestre = 1, etc.
+                        $q2->where(function ($a) {
+                            $a->where('esbtp_resultats.periode', 'semestre1')->where('esbtp_notes.semestre', 1);
+                        })->orWhere(function ($a) {
+                            $a->where('esbtp_resultats.periode', 'semestre2')->where('esbtp_notes.semestre', 2);
+                        })->orWhere('esbtp_resultats.periode', 'annuel');
+                    });
+            });
+
+            $orphanCount = $orphanQuery->count();
+            $this->line("  Found {$orphanCount} orphan resultat(s)");
+
+            if (! $dry && $orphanCount > 0) {
+                $deleted = $orphanQuery->delete();
+                $this->info("  Deleted {$deleted} orphan resultat(s)");
+            }
+        }
+
         if ($dry) {
             $this->warn('[DRY-RUN] Pass without --dry to actually update.');
         }

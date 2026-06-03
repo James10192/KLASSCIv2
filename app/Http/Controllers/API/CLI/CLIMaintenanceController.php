@@ -80,6 +80,9 @@ class CLIMaintenanceController extends BaseApiController
         if ($request->boolean('dry')) {
             $params['--dry'] = true;
         }
+        if ($request->boolean('clean_resultats')) {
+            $params['--clean-resultats'] = true;
+        }
 
         try {
             $exitCode = Artisan::call('evaluations:sync-notes', $params);
