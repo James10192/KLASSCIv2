@@ -1193,7 +1193,7 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                             </button>
                         @endif
                     @endcan
-                    @can('inscriptions.edit')
+                    @can('inscriptions.specialisation.manage')
                         @php
                             $canChooseSpecialisation = \App\Helpers\SettingsHelper::get('tronc_commun_enabled', false)
                                 && $inscription->filiere?->isTroncCommun()
@@ -1205,6 +1205,8 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                                 <span class="d-none d-lg-inline">Choisir la specialisation</span>
                             </a>
                         @endif
+                    @endcan
+                    @can('inscriptions.edit')
                         <a href="{{ route('esbtp.inscriptions.edit', $inscription) }}" class="is-hero-btn">
                             <i class="fas fa-edit"></i>
                             <span class="d-none d-sm-inline">Modifier</span>

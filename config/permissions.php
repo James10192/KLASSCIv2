@@ -261,6 +261,12 @@ return [
             'group' => 'Inscriptions',
             'icon' => 'fa-tasks',
         ],
+        'inscriptions.specialisation.manage' => [
+            'label' => 'Orienter un étudiant en Tronc Commun vers une spécialité (BTS UEMOA)',
+            'description' => 'Permet l\'accès à /specialisation (workflow officiel TC → spécialisation : choix filière + classe cible, transition tracée + audit)',
+            'group' => 'Inscriptions',
+            'icon' => 'fa-route',
+        ],
 
         // ===== Cycles =====
         'cycles.view' => [
@@ -1415,7 +1421,7 @@ return [
             'students.view', 'students.create', 'students.edit', 'students.delete',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',
-            'inscriptions.cancel', 'inscriptions.manage',
+            'inscriptions.cancel', 'inscriptions.manage', 'inscriptions.specialisation.manage',
             'cycles.view', 'cycles.create', 'cycles.edit', 'cycles.delete',
             'classes.view', 'classes.create', 'classes.edit',
             'filieres.view', 'filieres.create', 'filieres.edit',

@@ -14,7 +14,7 @@ class ESBTPSpecialisationController extends Controller
         protected TroncCommunService $troncCommunService,
         protected BtsOrientationService $orientationService
     ) {
-        $this->middleware(['auth', 'role:superAdmin|secretaire']);
+        $this->middleware(['auth', 'permission:inscriptions.specialisation.manage']);
     }
 
     public function show(ESBTPInscription $inscription)
