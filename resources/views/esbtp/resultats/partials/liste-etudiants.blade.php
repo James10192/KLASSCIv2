@@ -133,32 +133,28 @@
                             <a href="{{ route('esbtp.resultats.etudiant', array_filter(['etudiant' => $etudiant->id, 'classe_id' => $actualClasseId, 'annee_universitaire_id' => $annee_id, 'periode' => $detail_periode ?? 'annuel', 'include_all_statuses' => !empty($include_all_statuses) ? 1 : null])) }}" class="btn btn-sm btn-info" title="Voir détails">
                                 <i class="fas fa-chart-line"></i>
                             </a>
-                            @if(isset($bulletins[$etudiant->id]))
-                                <button type="button"
-                                        class="btn btn-sm btn-secondary btn-bulletin-periode"
-                                        title="Voir bulletin"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalChoixPeriodeBulletin"
-                                        data-etudiant-id="{{ $etudiant->id }}"
-                                        data-bulletin-id="{{ $bulletins[$etudiant->id] }}"
-                                        data-classe-id="{{ $actualClasseId }}"
-                                        data-annee-id="{{ $annee_id }}"
-                                        data-action="show">
-                                    <i class="fas fa-file-alt"></i>
-                                </button>
-                                <button type="button"
-                                        class="btn btn-sm btn-danger btn-bulletin-periode"
-                                        title="Télécharger PDF"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#modalChoixPeriodeBulletin"
-                                        data-etudiant-id="{{ $etudiant->id }}"
-                                        data-bulletin-id="{{ $bulletins[$etudiant->id] }}"
-                                        data-classe-id="{{ $actualClasseId }}"
-                                        data-annee-id="{{ $annee_id }}"
-                                        data-action="pdf">
-                                    <i class="fas fa-file-pdf"></i>
-                                </button>
-                            @else
+                            @php
+                                // Période depuis le filtre principal de la page (S1/S2/Annuel)
+                                $_bulPeriode = $detail_periode ?? 'semestre1';
+                                $_bulParams = array_filter([
+                                    'bulletin' => $etudiant->id,
+                                    'classe_id' => $actualClasseId,
+                                    'periode' => $_bulPeriode,
+                                    'annee_universitaire_id' => $annee_id,
+                                ]);
+                            @endphp
+                            <a href="{{ route('esbtp.bulletins.pdf-params-preview', $_bulParams) }}"
+                               target="_blank"
+                               class="btn btn-sm btn-secondary"
+                               title="Voir bulletin ({{ $_bulPeriode === 'annuel' ? 'Annuel' : ($_bulPeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2') }})">
+                                <i class="fas fa-file-alt"></i>
+                            </a>
+                            <a href="{{ route('esbtp.bulletins.pdf-params', $_bulParams) }}"
+                               class="btn btn-sm btn-danger"
+                               title="Télécharger PDF ({{ $_bulPeriode === 'annuel' ? 'Annuel' : ($_bulPeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2') }})">
+                                <i class="fas fa-file-pdf"></i>
+                            </a>
+                            @if(false)
                                 <button class="btn btn-sm btn-outline-secondary" disabled title="Bulletin non généré">
                                     <i class="fas fa-exclamation-triangle"></i>
                                 </button>

@@ -28,11 +28,11 @@
         .student-info, .header, .results-container, .signature-container,
         tr.section-header, tr.summary-row { page-break-inside: avoid; }
         .container {
-            width: 210mm;
-            max-width: 794px;
-            margin: 0 auto;
+            width: 100%;
+            max-width: 100%;
+            margin: 0;
             background: #fff;
-            padding: 2px 3px 3px;
+            padding: 0;
         }
 
         /* ── Header principal ─────────────────────────────────── */
@@ -234,6 +234,13 @@
         }
         .center { text-align: center; }
 
+        /* Lignes "Moyenne enseignement général/technique" — gris bold pour ressortir */
+        .summary-row td {
+            background-color: #e5e7eb !important;
+            font-weight: 700;
+            font-size: 13px;
+        }
+
         /* DomPDF ne supporte pas background-color sur <tr>.
            Le background doit toujours être posé sur les <td> enfants. */
         .section-header td {
@@ -389,7 +396,7 @@
         @if($isPdfExport ?? false)
         @page {
             size: A4 portrait;
-            margin: 4mm 3mm;
+            margin: 2mm 2mm;
         }
         body.pdf-export {
             margin: 0;
