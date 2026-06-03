@@ -62,14 +62,21 @@
                             @php
                                 $moyenne = $moyennes[$etudiant->id];
                                 $badgeClass = $moyenne >= 16 ? 'success' : ($moyenne >= 14 ? 'info' : ($moyenne >= 12 ? 'warning' : ($moyenne >= 10 ? 'primary' : 'danger')));
+                                $coeffMissingHere = !empty($coefficientsMissingMap[$etudiant->id] ?? false);
                             @endphp
-                            <span class="badge bg-{{ $badgeClass }} fs-6">
+                            <span class="badge bg-{{ $badgeClass }} fs-6"@if($coeffMissingHere) title="Moyenne arithmétique (coefficients à configurer)" @endif>
                                 {{ number_format($moyenne, 2) }}/20
+                                @if($coeffMissingHere)<i class="fas fa-triangle-exclamation ms-1" style="font-size:.65em;"></i>@endif
                             </span>
                             @if(($annualValueStatuses[$etudiant->id]['state'] ?? null) === 'annual_incomplete')
                                 <span class="badge bg-warning text-dark ms-1">
                                     {{ $annualValueStatuses[$etudiant->id]['label'] ?? 'Provisoire' }}
                                 </span>
+                            @endif
+                            @if($coeffMissingHere)
+                                <div class="small text-warning mt-1" style="font-size:.7rem;line-height:1.1;">
+                                    <i class="fas fa-info-circle"></i> Coefficients à configurer
+                                </div>
                             @endif
                         @elseif(($annualValueStatuses[$etudiant->id]['state'] ?? null) === 'no_data')
                             <span class="badge bg-secondary">

@@ -1195,6 +1195,7 @@ class ESBTPResultatController extends Controller
 
                 $resolvedMoyennes = [];
                 $resolvedAnnualStatuses = [];
+                $coefficientsMissingMap = []; // Lot 3 : flag par étudiant pour badge UI
                 $inscriptionMap = collect();
                 if (! $classe_id) {
                     $inscriptionMap = \App\Models\ESBTPInscription::query()
@@ -1228,6 +1229,9 @@ class ESBTPResultatController extends Controller
                     if (($snapshot['effective_total'] ?? null) !== null) {
                         $resolvedMoyennes[$etudiant->id] = round((float) $snapshot['effective_total'], 2);
                     }
+                    if (! empty($snapshot['coefficients_missing'])) {
+                        $coefficientsMissingMap[$etudiant->id] = true;
+                    }
                 }
 
                 if (! empty($resolvedMoyennes) || ! empty($resolvedAnnualStatuses)) {
@@ -1253,6 +1257,7 @@ class ESBTPResultatController extends Controller
                 'include_all_statuses' => (bool) $include_all_statuses,
                 'attendanceNoteEnabled' => $this->bulletinService->isAttendanceNoteEnabled(),
                 'studentWorkflowAlerts' => $this->buildStudentWorkflowAlerts($etudiants, $annee_universitaire_id, $classe_id),
+                'coefficientsMissingMap' => $coefficientsMissingMap ?? [],
             ];
 
             if ((int) $page === 1) {

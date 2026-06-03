@@ -1810,14 +1810,29 @@ class BulletinService
     public function buildEtudiantsQuery($classe_id, $annee_universitaire_id, $include_all_statuses)
     {
         if ($classe_id) {
-            // Get students through inscriptions for the selected class and year
-            return ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($classe_id, $annee_universitaire_id, $include_all_statuses) {
-                $query->where('classe_id', $classe_id)
-                    ->where('annee_universitaire_id', $annee_universitaire_id);
-
-                if (! $include_all_statuses) {
-                    $query->where('status', 'active');
-                }
+            // Get students through inscriptions for the selected class and year.
+            // Lot 3 fix: élargir aux étudiants qui ONT des notes/évaluations/résultats dans cette
+            // classe pour cette année — couvre les cas BTS TC orientation (étudiant passé en S1
+            // puis orienté vers spécialité en S2 : son inscription pointe sur la nouvelle classe
+            // mais ses notes S1 vivent toujours sur classe_source). Sans ça, l'index "perd"
+            // l'étudiant dès qu'on change la classe sur son inscription.
+            return ESBTPEtudiant::where(function ($q) use ($classe_id, $annee_universitaire_id, $include_all_statuses) {
+                $q->whereHas('inscriptions', function ($query) use ($classe_id, $annee_universitaire_id, $include_all_statuses) {
+                    $query->where('classe_id', $classe_id)
+                        ->where('annee_universitaire_id', $annee_universitaire_id);
+                    if (! $include_all_statuses) {
+                        $query->where('status', 'active');
+                    }
+                })
+                ->orWhereHas('notes.evaluation', function ($query) use ($classe_id, $annee_universitaire_id) {
+                    $query->where('classe_id', $classe_id)
+                        ->where('annee_universitaire_id', $annee_universitaire_id)
+                        ->where('status', '!=', 'cancelled');
+                })
+                ->orWhereHas('resultats', function ($query) use ($classe_id, $annee_universitaire_id) {
+                    $query->where('classe_id', $classe_id)
+                        ->where('annee_universitaire_id', $annee_universitaire_id);
+                });
             })
                 ->with(['user', 'inscriptions.classe.filiere', 'inscriptions.classe.niveau'])
                 ->orderBy('nom')

@@ -160,9 +160,30 @@ class BtsCurrentResultSnapshotService
             }
         }
 
-        $rawTotal = $weightedCoefficients > 0
-            ? round($weightedPoints / $weightedCoefficients, 2)
-            : null;
+        $coefficientsMissing = false;
+        if ($weightedCoefficients > 0) {
+            $rawTotal = round($weightedPoints / $weightedCoefficients, 2);
+            $state = 'semester_complete';
+        } else {
+            // Lot 3 fix: fallback moyenne arithmétique simple quand AUCUN coefficient n'est
+            // configuré mais des notes existent. Permet à l'index resultats d'afficher quelque
+            // chose (moyenne brute) au lieu de "aucune note" + 0. Flag coefficients_missing
+            // permet à l'UI de signaler "Coefficients à configurer".
+            $matieresWithMoyenne = array_filter(
+                $subjects,
+                fn ($s) => $s['moyenne'] !== null
+            );
+            if (! empty($matieresWithMoyenne)) {
+                $sumMoyennes = array_sum(array_map(fn ($s) => (float) $s['moyenne'], $matieresWithMoyenne));
+                $rawTotal = round($sumMoyennes / count($matieresWithMoyenne), 2);
+                $state = 'semester_complete_no_coefficients';
+                $coefficientsMissing = true;
+            } else {
+                $rawTotal = null;
+                $state = 'no_data';
+            }
+        }
+
         $attendanceNote = round(
             $this->bulletinService->calculateEffectiveAttendanceNoteForStudent(
                 $etudiantId,
@@ -174,7 +195,7 @@ class BtsCurrentResultSnapshotService
         );
 
         return [
-            'state' => $rawTotal !== null ? 'semester_complete' : 'no_data',
+            'state' => $state,
             'periode' => $periode,
             'raw_total' => $rawTotal,
             'attendance_note' => $rawTotal !== null ? $attendanceNote : null,
@@ -182,6 +203,7 @@ class BtsCurrentResultSnapshotService
             'subjects' => array_values($subjects),
             'notes_count' => $notes->count(),
             'manual_resultats_count' => $manualResultats->count(),
+            'coefficients_missing' => $coefficientsMissing,
             'configuration' => [
                 'ready' => empty($missingConfiguration),
                 'missing_items' => $missingConfiguration,
@@ -223,8 +245,12 @@ class BtsCurrentResultSnapshotService
         $primarySemester = $hasSemestre1 ? 'semestre1' : ($hasSemestre2 ? 'semestre2' : null);
         $primarySnapshot = $primarySemester === 'semestre2' ? $semestre2 : $semestre1;
 
+        // Lot 3 : propage le flag coefficients_missing depuis les snapshots semestriels
+        $coefficientsMissing = ($semestre1['coefficients_missing'] ?? false)
+            || ($semestre2['coefficients_missing'] ?? false);
+
         if ($annualEffective !== null && $annualRaw !== null) {
-            $state = 'annual_complete';
+            $state = $coefficientsMissing ? 'annual_complete_no_coefficients' : 'annual_complete';
             $rawTotal = round($annualRaw, 2);
             $effectiveTotal = round($annualEffective, 2);
             $attendanceNote = round($effectiveTotal - $rawTotal, 2);
@@ -252,6 +278,7 @@ class BtsCurrentResultSnapshotService
             'subjects' => $subjects,
             'notes_count' => ($semestre1['notes_count'] ?? 0) + ($semestre2['notes_count'] ?? 0),
             'manual_resultats_count' => ($semestre1['manual_resultats_count'] ?? 0) + ($semestre2['manual_resultats_count'] ?? 0),
+            'coefficients_missing' => $coefficientsMissing,
             'configuration' => [
                 'ready' => ($semestre1['configuration']['ready'] ?? false) && ($semestre2['configuration']['ready'] ?? false),
                 'missing_items' => array_values(array_unique(array_merge(
