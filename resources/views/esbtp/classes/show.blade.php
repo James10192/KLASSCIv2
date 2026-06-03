@@ -772,7 +772,7 @@
                                 <i class="fas fa-exchange-alt"></i>Retirer / Transférer
                             </button>
                         @endif
-                        @if($nombreEtudiants > 0 && auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.teach', 'identity.coordinate']))
+                        @if($nombreEtudiants > 0 && (auth()->user()->can('students.view') || auth()->user()->can('attendances.view')))
                             <div class="dropdown">
                                 <button type="button" class="cs-btn--outline" data-bs-toggle="dropdown" aria-expanded="false">
                                     <i class="fas fa-download"></i>Exporter
