@@ -1523,15 +1523,12 @@
             opacity: 1 !important;
             backdrop-filter: none !important;
         }
-        /* Force position:fixed pour vraiment échapper aux parents overflow:hidden
-           ET aux stacking contexts parents (pu-hero, .card, modal-body, etc.).
-           Bootstrap inline 'position: absolute' qui RESTE prisonnier du stacking
-           context du parent — fixed l'extrait au niveau viewport directement.
-           Combiné avec data-bs-strategy=fixed (Popper). */
-        html body .dropdown-menu.show,
-        html body .dropdown-menu[data-bs-popper] {
-            position: fixed !important;
-        }
+        /* PAS de position:fixed forcé en CSS — Popper applique position:absolute
+           avec inset et transform calculés pour position:absolute. Forcer position:fixed
+           via CSS sans repasser par Popper crée un offset énorme (l'inset 0 0 auto auto
+           passe d'un parent .dropdown à un viewport, et transform reste au calcul absolute).
+           Si on veut position:fixed, c'est via data-bs-strategy="fixed" sur le trigger,
+           qui demande à Popper de calculer EN fixed. */
         /* Items du dropdown : couleur texte sombre forcée pour rester lisible
            sur background blanc même si la page parent a un texte blanc/clair */
         html body .dropdown-menu.show .dropdown-item,
