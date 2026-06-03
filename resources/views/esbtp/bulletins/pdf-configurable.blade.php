@@ -17,12 +17,12 @@
         * { box-sizing: border-box; }
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
-            font-size: {{ $settings['bulletin_font_size'] ?? '12' }}px;
+            font-size: {{ $settings['bulletin_font_size'] ?? '13' }}px;
             margin: 0;
             padding: 0;
             background: #fff;
             color: #111827;
-            line-height: 1.3;
+            line-height: 1.25;
         }
         /* Compaction auto-fit 1 page : sections critiques évitent coupure */
         .student-info, .header, .results-container, .signature-container,
@@ -217,19 +217,19 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-bottom: 5px;
-            font-size: 11px;
+            margin-bottom: 4px;
+            font-size: 12.5px;
         }
         th, td {
             border: 1px solid #d1d5db;
-            padding: 4px 5px;
+            padding: 3px 5px;
             text-align: left;
         }
         th {
             background: #f3f4f6;
             font-weight: 700;
             text-align: center;
-            font-size: 10px;
+            font-size: 11.5px;
             color: #111827;
         }
         .center { text-align: center; }
@@ -241,22 +241,17 @@
             color: {{ $pdfHeaderText }};
             font-weight: 700;
             text-align: center;
-            padding: 4px 8px;
-            font-size: 11px;
+            padding: 3px 6px;
+            font-size: 12.5px;
         }
         /* :nth-child n'est pas supporté par DomPDF — on utilise .subject-row-even
            posée via $loop->even dans le template Blade (voir tbody ci-dessous). */
-        .subject-row-even td { background-color: #f8fafb; }
-        .summary-row td {
-            background-color: #e5e7eb;
-            font-weight: 700;
-        }
 
         /* Absences */
         .absences-table { width: 100%; margin-bottom: 8px; }
 
         /* ── Résultats & Statistiques ─────────────────────────── */
-        .results-container { width: 100%; margin-bottom: 10px; }
+        .results-container { width: 100%; margin-bottom: 5px; }
         .results-container-table { width: 100%; border-collapse: collapse; }
         .results-container-table td {
             border: none;
@@ -274,19 +269,19 @@
         }
         .results-table, .stats-table {
             width: 100%;
-            font-size: 11.5px;
+            font-size: 13px;
             border-collapse: collapse;
         }
         .results-table th, .stats-table th {
             background: {{ $pdfPrimary }};
             color: {{ $pdfHeaderText }};
-            padding: 6px 9px;
-            font-size: 10.5px;
+            padding: 3px 7px;
+            font-size: 12px;
             border: none;
             text-align: left;
         }
         .results-table td, .stats-table td {
-            padding: 5px 9px;
+            padding: 3px 7px;
             border-bottom: 1px solid #f3f4f6;
             border-left: none;
             border-right: none;
@@ -298,14 +293,16 @@
         .result-value-box {
             border: 1px solid #d1d5db;
             border-radius: 4px;
-            padding: 3px 7px;
-            min-width: 56px;
+            padding: 2px 7px;
+            min-width: 58px;
             display: inline-block;
             text-align: center;
             font-weight: 700;
             background: #f8fafb;
-            font-size: 12px;
+            font-size: 13px;
         }
+        .absences-table { width: 100%; margin-bottom: 4px; font-size: 12.5px; }
+        .absences-table td { padding: 3px 5px; }
 
         /* ── Mentions — grid 2 colonnes (compaction) ──────────── */
         .mentions-grid {
@@ -314,43 +311,65 @@
             border-spacing: 5px 4px;
             margin: 0;
         }
-        .mentions-grid td.mention-cell {
+        .mentions-grid > tbody > tr > td.mention-cell {
             width: 50%;
             border: 1px solid #d1d5db;
             border-radius: 5px;
-            padding: 5px 8px;
+            padding: 0;
             background: #fff;
-            font-size: 11px;
+            font-size: 12px;
             vertical-align: middle;
         }
-        .mentions-grid td.mention-cell--empty { background: transparent; border: none; }
-        .mention-label { font-weight: 600; color: #111827; display: inline; }
-        .mention-check { float: right; }
-        .mention-check input[type="checkbox"] { vertical-align: middle; }
+        .mentions-grid > tbody > tr > td.mention-cell--empty {
+            background: transparent;
+            border: none;
+        }
+        /* Mini-table interne : label gauche + checkbox droite centrée verticalement */
+        .mention-inner {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 0;
+        }
+        .mention-inner td {
+            border: none;
+            padding: 5px 8px;
+            vertical-align: middle;
+        }
+        .mention-inner td.mention-label-cell {
+            font-weight: 600;
+            color: #111827;
+            text-align: left;
+        }
+        .mention-inner td.mention-check-cell {
+            width: 24px;
+            text-align: center;
+            padding-right: 10px;
+        }
+        .mention-inner input[type="checkbox"] { vertical-align: middle; margin: 0; }
         /* Legacy mention-* CSS retained for any other call sites */
         .mention-box { display: none; }
 
         /* ── Décision conseil ─────────────────────────────────── */
         .decision-container {
-            margin: 10px 0;
+            margin: 5px 0;
             border: 1px solid #d1d5db;
-            border-radius: 8px;
-            padding: 8px 10px;
-            min-height: 52px;
+            border-radius: 6px;
+            padding: 5px 8px;
+            min-height: 36px;
             background: #f9fafb;
         }
         .decision-title {
             font-weight: 700;
-            margin-bottom: 5px;
+            margin-bottom: 3px;
             text-decoration: underline;
-            font-size: 11px;
+            font-size: 12px;
             text-transform: uppercase;
             color: {{ $pdfPrimary }};
         }
 
         /* ── Signature ────────────────────────────────────────── */
         .signature-container {
-            margin-top: 12px;
+            margin-top: 6px;
             text-align: right;
         }
         .signature-box {
@@ -360,9 +379,9 @@
         }
         .signature-line {
             width: 200px;
-            height: 44px;
+            height: 30px;
             border-bottom: 1.5px solid {{ $pdfPrimary }};
-            margin-top: 4px;
+            margin-top: 2px;
         }
 
         /* ── Mode PDF export ──────────────────────────────────── */
@@ -773,7 +792,14 @@
                                 @foreach($_mentionsChunks as $row)
                                 <tr>
                                     @foreach($row as $m)
-                                        <td class="mention-cell"><span class="mention-label">{{ $m['label'] }}</span><span class="mention-check"><input type="checkbox" {{ $m['checked'] ? 'checked' : '' }}></span></td>
+                                        <td class="mention-cell">
+                                            <table class="mention-inner">
+                                                <tr>
+                                                    <td class="mention-label-cell">{{ $m['label'] }}</td>
+                                                    <td class="mention-check-cell"><input type="checkbox" {{ $m['checked'] ? 'checked' : '' }}></td>
+                                                </tr>
+                                            </table>
+                                        </td>
                                     @endforeach
                                     {{-- Cellule vide si row impaire pour préserver l'alignement --}}
                                     @if(count($row) === 1)<td class="mention-cell mention-cell--empty"></td>@endif
