@@ -3358,6 +3358,25 @@
             // Fallback : recalc manuel si Popper indisponible ou échec
             positionTeleportedDropdown(ev.target);
             bindDropdownReposition(ev.target);
+
+            // Debug temporaire : trace position pour diagnostic (window.KLASSCI_DROPDOWN_DEBUG=true pour activer)
+            if (window.KLASSCI_DROPDOWN_DEBUG && parts.trigger) {
+                const menu = findTeleportedMenu(parts.root);
+                if (menu) {
+                    const tr = parts.trigger.getBoundingClientRect();
+                    const mr = menu.getBoundingClientRect();
+                    console.log('[KLASSCI dropdown debug]', {
+                        triggerRect: { l: tr.left, t: tr.top, r: tr.right, b: tr.bottom },
+                        menuRect: { l: mr.left, t: mr.top, r: mr.right, b: mr.bottom },
+                        deltaY_menuTop_triggerBottom: (mr.top - tr.bottom).toFixed(1),
+                        deltaX_menuRight_triggerRight: (mr.right - tr.right).toFixed(1),
+                        menuParent: menu.parentElement.tagName,
+                        menuTeleported: menu.dataset.klassciTeleported,
+                        menuTransform: getComputedStyle(menu).transform.substring(0, 50),
+                        menuPosition: getComputedStyle(menu).position,
+                    });
+                }
+            }
         });
 
         document.addEventListener('hidden.bs.dropdown', function(ev) {
