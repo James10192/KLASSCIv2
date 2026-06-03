@@ -868,13 +868,28 @@
     transform: none;
 }
 
-.scm-btn-icon { width: 15px; height: 15px; }
+.scm-btn-icon { width: 15px; height: 15px; flex-shrink: 0; }
+.scm-btn-label,
+.scm-btn-loading {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    line-height: 1;
+}
+.scm-btn-loading svg {
+    width: 15px;
+    height: 15px;
+    flex-shrink: 0;
+}
+.scm-btn-label.d-none,
+.scm-btn-loading.d-none,
+.scm-btn-icon.d-none { display: none !important; }
 
 @keyframes scm-spin {
     to { transform: rotate(360deg); }
 }
 
-.scm-spin { animation: scm-spin 0.8s linear infinite; }
+.scm-spin { animation: scm-spin 0.8s linear infinite; transform-origin: 50% 50%; }
 
 /* ── Responsive ── */
 @media (max-width: 576px) {
@@ -1264,6 +1279,18 @@
         if (blocking) blocking.focus();
     }, 400);
 
+    function scmSetLoading(loading) {
+        const label = saveBtn.querySelector('.scm-btn-label');
+        const loadingEl = saveBtn.querySelector('.scm-btn-loading');
+        const icon = saveBtn.querySelector('.scm-btn-icon');
+        saveBtn.disabled = !!loading;
+        if (label) label.classList.toggle('d-none', !!loading);
+        if (loadingEl) loadingEl.classList.toggle('d-none', !loading);
+        if (icon) icon.classList.toggle('d-none', !!loading);
+    }
+    // Failsafe : si on rouvre le modal en plein loading (refresh stuck), restaure
+    scmSetLoading(false);
+
     form.addEventListener('submit', function (e) {
         e.preventDefault();
 
@@ -1271,11 +1298,7 @@
         success.classList.add('d-none');
         errBox.classList.add('d-none');
 
-        /* Loading state */
-        saveBtn.disabled = true;
-        saveBtn.querySelector('.scm-btn-label').classList.add('d-none');
-        saveBtn.querySelector('.scm-btn-loading').classList.remove('d-none');
-        saveBtn.querySelector('.scm-btn-icon')?.classList?.add('d-none');
+        scmSetLoading(true);
 
         const body = new FormData(form);
 
@@ -1293,9 +1316,15 @@
         .then(function ({ ok, data }) {
             if (ok && data.success) {
                 success.classList.remove('d-none');
+                // Failsafe : restaurer le bouton même si refreshContent fail (5s timeout)
+                const restoreTimer = setTimeout(function () { scmSetLoading(false); }, 5000);
                 /* Après l'animation (1.5s), rafraîchir le contenu sans recharger toute la page */
                 setTimeout(function () {
+                    clearTimeout(restoreTimer);
                     scmRefreshContent();
+                    // Au cas où le refresh est rapide mais le modal n'est pas remplacé,
+                    // on restaure aussi le bouton après un délai supplémentaire
+                    setTimeout(function () { scmSetLoading(false); success.classList.add('d-none'); }, 2000);
                 }, 1600);
             } else {
                 throw new Error(data.message || 'Erreur lors de l\'enregistrement.');
@@ -1304,11 +1333,7 @@
         .catch(function (err) {
             errText.textContent = err.message || 'Une erreur réseau est survenue.';
             errBox.classList.remove('d-none');
-            /* Restore button */
-            saveBtn.disabled = false;
-            saveBtn.querySelector('.scm-btn-label').classList.remove('d-none');
-            saveBtn.querySelector('.scm-btn-loading').classList.add('d-none');
-            saveBtn.querySelector('.scm-btn-icon')?.classList?.remove('d-none');
+            scmSetLoading(false);
         });
     });
 
