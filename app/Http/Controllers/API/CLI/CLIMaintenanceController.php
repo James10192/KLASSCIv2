@@ -99,6 +99,43 @@ class CLIMaintenanceController extends BaseApiController
     }
 
     /**
+     * GET /api/cli/matieres/{matiere}/coefficient?classe_id=X&annee=Y
+     * Quick lookup : coefficient officiel d'une matière dans une combinaison
+     * (filiere + niveau_etude + annee) déduite de la classe.
+     */
+    public function matiereCoefficientLookup(Request $request, int $matiere): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+        $classeId = (int) $request->query('classe_id');
+        $anneeId = (int) $request->query('annee_universitaire_id', 0);
+        if (!$classeId) {
+            return $this->errorResponse('classe_id requis', [], 422);
+        }
+        $classe = \App\Models\ESBTPClasse::with(['filiere', 'niveauEtude'])->find($classeId);
+        if (!$classe) {
+            return $this->errorResponse("Classe {$classeId} non trouvée", [], 404);
+        }
+        if (!$anneeId) {
+            $anneeId = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->value('id');
+        }
+        $coefs = \App\Models\ESBTPMatiereCoefficient::where('matiere_id', $matiere)
+            ->where('filiere_id', $classe->filiere_id)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->where('annee_universitaire_id', $anneeId)
+            ->get(['matiere_id', 'filiere_id', 'niveau_etude_id', 'annee_universitaire_id', 'periode', 'coefficient'])
+            ->toArray();
+        $matiereModel = \App\Models\ESBTPMatiere::find($matiere);
+        return $this->successResponse([
+            'matiere' => $matiereModel ? ['id' => $matiereModel->id, 'name' => $matiereModel->name, 'code' => $matiereModel->code] : null,
+            'classe' => ['id' => $classe->id, 'name' => $classe->name, 'filiere_id' => $classe->filiere_id, 'niveau_etude_id' => $classe->niveau_etude_id],
+            'annee_universitaire_id' => $anneeId,
+            'coefficients' => $coefs,
+        ], 'Coefficient lookup');
+    }
+
+    /**
      * GET /api/cli/logs — Read recent application logs (sanitized)
      */
     public function logs(Request $request): JsonResponse
