@@ -2080,6 +2080,16 @@ if (app()->environment('local')) {
     })->middleware('auth');
 }
 
+// DEBUG L4 TEMP: tail laravel.log
+Route::get('/_debug/log-tail', function (\Illuminate\Http\Request $request) {
+    abort_unless(auth()->check() && auth()->user()->hasRole(['superAdmin', 'secretaire']), 403);
+    $lines = (int) $request->query('lines', 80);
+    $path = storage_path('logs/laravel.log');
+    if (! file_exists($path)) return response('No log file', 404);
+    $cmd = 'tail -n ' . $lines . ' ' . escapeshellarg($path);
+    return response(shell_exec($cmd) ?: '(empty)', 200)->header('Content-Type', 'text/plain');
+})->middleware('auth');
+
 // Routes spéciales pour le workflow des bulletins — PROTÉGÉES.
 // Lot 4 fix: ouvert à 'bulletins.configure' OU 'admin.access' (rule customizable-roles :
 // le secretaire/comptable/rôle custom peut gérer les bulletins via bulletins.configure
