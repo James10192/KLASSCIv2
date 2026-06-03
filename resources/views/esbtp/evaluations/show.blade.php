@@ -82,6 +82,17 @@
                         <i class="fas fa-tag"></i>
                         {{ ucfirst($evaluation->type) }}
                     </span>
+                    @php
+                        $_periodeLabel = match($evaluation->periode) {
+                            'semestre1' => 'Semestre 1',
+                            'semestre2' => 'Semestre 2',
+                            'annuel' => 'Annuel',
+                            default => ucfirst($evaluation->periode ?? '—'),
+                        };
+                    @endphp
+                    <span class="ev-chip ev-chip--info" title="Période académique">
+                        <i class="fas fa-calendar-week"></i>{{ $_periodeLabel }}
+                    </span>
                     @if($evaluation->is_published)
                         <span class="ev-chip ev-chip--success">
                             <i class="fas fa-check-circle"></i> Publiée
@@ -94,11 +105,13 @@
                     <a href="{{ route('esbtp.evaluations.index') }}" class="ev-btn ev-btn--glass">
                         <i class="fas fa-arrow-left"></i> Retour
                     </a>
-                    @if($evaluation->isEditable())
-                        <a href="{{ route('esbtp.evaluations.edit', $evaluation) }}" class="ev-btn ev-btn--white">
-                            <i class="fas fa-edit"></i> Modifier
-                        </a>
-                    @endif
+                    @can('evaluations.edit')
+                        @if($evaluation->isEditable())
+                            <a href="{{ route('esbtp.evaluations.edit', $evaluation) }}" class="ev-btn ev-btn--white">
+                                <i class="fas fa-edit"></i> Modifier
+                            </a>
+                        @endif
+                    @endcan
                 </div>
             </div>
 
@@ -521,6 +534,7 @@
 .ev-chip i { font-size: .72rem; }
 .ev-chip--success { background: rgba(16,185,129,.2); border-color: rgba(16,185,129,.4); }
 .ev-chip--muted { background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.15); opacity: .85; }
+.ev-chip--info { background: rgba(59,125,219,.25); border-color: rgba(59,125,219,.5); }
 
 .ev-btn {
     display: inline-flex; align-items: center; justify-content: center; gap: .5rem;

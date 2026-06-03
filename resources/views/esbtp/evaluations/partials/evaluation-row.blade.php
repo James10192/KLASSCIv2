@@ -89,10 +89,25 @@
         </span>
     </td>
 
-    {{-- Date + durée --}}
+    {{-- Date + durée + période --}}
     <td>
         <div class="ev-date-cell">
             <span class="ev-date-main">{{ $evaluation->date_evaluation?->format('d/m/Y') ?? '—' }}</span>
+            @php
+                $_periodeLabel = match($evaluation->periode) {
+                    'semestre1' => 'S1',
+                    'semestre2' => 'S2',
+                    'annuel' => 'Annuel',
+                    default => null,
+                };
+                $_periodeClass = $evaluation->periode === 'semestre1' ? 'ev-period-pill--s1'
+                    : ($evaluation->periode === 'semestre2' ? 'ev-period-pill--s2' : 'ev-period-pill--annuel');
+            @endphp
+            @if($_periodeLabel)
+                <span class="ev-period-pill {{ $_periodeClass }}" title="Période académique">
+                    <i class="fas fa-calendar-week"></i>{{ $_periodeLabel }}
+                </span>
+            @endif
             @if($durationLabel)
                 <span class="ev-date-sub">
                     <i class="far fa-clock"></i>{{ $durationLabel }} ({{ $durationMinutes }} mn)

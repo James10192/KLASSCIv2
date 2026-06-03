@@ -655,9 +655,24 @@
 .ev-chip--neutral { background: rgba(100,116,139,.06); border-color: rgba(100,116,139,.15); color: #475569; }
 
 /* Date cell */
-.ev-date-cell { display: flex; flex-direction: column; gap: .15rem; }
+.ev-date-cell { display: flex; flex-direction: column; gap: .2rem; align-items: flex-start; }
 .ev-date-cell .ev-date-main { font-size: .82rem; font-weight: 600; color: #1e293b; }
 .ev-date-cell .ev-date-sub { font-size: .72rem; color: #94a3b8; display: inline-flex; align-items: center; gap: .3rem; }
+
+/* Période pill (Sous-lot B+) */
+.ev-period-pill {
+    display: inline-flex; align-items: center; gap: .25rem;
+    padding: .1rem .45rem;
+    border-radius: 999px;
+    font-size: .65rem; font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    border: 1px solid;
+}
+.ev-period-pill i { font-size: .58rem; }
+.ev-period-pill--s1 { background: rgba(4,83,203,.1); color: #0453cb; border-color: rgba(4,83,203,.25); }
+.ev-period-pill--s2 { background: rgba(16,185,129,.1); color: #047857; border-color: rgba(16,185,129,.25); }
+.ev-period-pill--annuel { background: rgba(245,158,11,.1); color: #b45309; border-color: rgba(245,158,11,.25); }
 
 /* Boutons actions table */
 .ev-action-btn {
