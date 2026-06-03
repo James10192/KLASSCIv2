@@ -13,6 +13,7 @@ class ESBTPMatiereCoefficient extends Model
         'filiere_id',
         'niveau_etude_id',
         'annee_universitaire_id',
+        'periode',
         'coefficient',
         'created_by',
         'updated_by',

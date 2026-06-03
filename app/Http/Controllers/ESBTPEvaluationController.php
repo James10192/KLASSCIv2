@@ -1457,9 +1457,13 @@ $evaluation->titre = $request->titre;
             'filiere_id' => 'required|exists:esbtp_filieres,id',
             'niveau_etude_id' => 'required|exists:esbtp_niveau_etudes,id',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'periode' => 'nullable|in:semestre1,semestre2',
             'coefficients' => 'required|array',
             'coefficients.*' => 'nullable|numeric|min:0.1',
         ]);
+
+        // Sous-lot α : coefficients par-période (default S1 si absent)
+        $periode = $validated['periode'] ?? 'semestre1';
 
         $saved = 0;
         foreach ($validated['coefficients'] as $matiereId => $value) {
@@ -1468,6 +1472,7 @@ $evaluation->titre = $request->titre;
                     ->where('filiere_id', $validated['filiere_id'])
                     ->where('niveau_etude_id', $validated['niveau_etude_id'])
                     ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
+                    ->where('periode', $periode)
                     ->delete();
 
                 continue;
@@ -1478,6 +1483,7 @@ $evaluation->titre = $request->titre;
                 'filiere_id' => $validated['filiere_id'],
                 'niveau_etude_id' => $validated['niveau_etude_id'],
                 'annee_universitaire_id' => $validated['annee_universitaire_id'],
+                'periode' => $periode,
             ], [
                 'coefficient' => $value,
                 'updated_by' => Auth::id(),
@@ -1490,6 +1496,7 @@ $evaluation->titre = $request->titre;
             'success' => true,
             'message' => 'Coefficients enregistrés.',
             'saved' => $saved,
+            'periode' => $periode,
         ]);
     }
 

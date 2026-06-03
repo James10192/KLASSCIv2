@@ -2184,9 +2184,17 @@ class BulletinService
     }
 
 
-    public function getCoefficientForCombination(int $matiereId, int $classeId, int $anneeUniversitaireId): float
+    public function getCoefficientForCombination(int $matiereId, int $classeId, int $anneeUniversitaireId, ?string $periode = null): float
     {
-        $cacheKey = $matiereId.'|'.$classeId.'|'.$anneeUniversitaireId;
+        // Sous-lot α : coefficients désormais par-périodes. Si $periode null, on prend
+        // n'importe quelle ligne (fallback semestre1) pour rétrocompat des appelants
+        // qui n'ont pas encore intégré la dimension semestre.
+        $periode = $periode ? $this->normalizePeriode($periode) : 'semestre1';
+        if ($periode === 'annuel') {
+            $periode = 'semestre1';
+        }
+
+        $cacheKey = $matiereId.'|'.$classeId.'|'.$anneeUniversitaireId.'|'.$periode;
 
         if (isset($this->coefficientCache[$cacheKey])) {
             return $this->coefficientCache[$cacheKey];
@@ -2206,7 +2214,19 @@ class BulletinService
             ->where('filiere_id', $classe->filiere_id)
             ->where('niveau_etude_id', $classe->niveau_etude_id)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('periode', $periode)
             ->value('coefficient');
+
+        // Fallback : si le palier $periode n'existe pas, regarder l'autre (rétrocompat pré-migration)
+        if ($coefficient === null) {
+            $altPeriode = $periode === 'semestre1' ? 'semestre2' : 'semestre1';
+            $coefficient = ESBTPMatiereCoefficient::where('matiere_id', $matiereId)
+                ->where('filiere_id', $classe->filiere_id)
+                ->where('niveau_etude_id', $classe->niveau_etude_id)
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->where('periode', $altPeriode)
+                ->value('coefficient');
+        }
 
         if ($coefficient === null) {
             throw new \RuntimeException('Coefficient manquant pour la matière sélectionnée.');
