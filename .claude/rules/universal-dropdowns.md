@@ -164,6 +164,54 @@ Le layout global :
 - Force z-index 99999 sur le menu ouvert (au-dessus de modals, sidebar, hero gradient)
 - Force `position: fixed` pour échapper aux parents `overflow:hidden`
 
+## ⚠ Piège critique #2 : ancestor avec containing-block-creating property
+
+**Spec CSS** ([MDN - Containing block](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_display/Containing_block)) :
+> "If the position property is fixed, the containing block is established by the nearest ancestor with **any of**: `transform`, `filter`, `backdrop-filter`, `perspective`, `rotate`, `scale`, `translate`, `contain: layout|paint|strict|content`, or `will-change` mentioning one of these properties (with a non-`none` value)."
+
+**Implication brutale** : `position: fixed` que la rule universelle force sur le `.dropdown-menu.show` n'est plus relative au viewport mais à l'ancestor. Le menu apparaît AILLEURS que là où Popper l'a calculé (souvent décalé de plusieurs centaines de pixels).
+
+**Incident fondateur — 3 juin 2026 sur esbtp-yakro `/esbtp/classes`** :
+- `.ci-card:hover { transform: translateY(-2px); }` (effet "lift" décoratif)
+- Marcel clique le kebab de BATIMENT A (top right)
+- Le dropdown apparaît à BATIMENT D (bottom right) — 250px plus bas
+- Cause : Popper a calculé `top: 380px` viewport-relatif, mais le browser l'interprète relativement à `.ci-card` transformée → menu s'ancre à la card au lieu du viewport
+
+**Ressources canoniques** :
+- [DEV - Transform property containing block](https://dev.to/salilnaik/the-uncanny-relationship-between-position-fixed-and-transform-property-32f6)
+- [Eric Meyer - Un-fixing Fixed Elements with CSS Transforms](http://meyerweb.com/eric/thoughts/2011/09/12/un-fixing-fixed-elements-with-css-transforms/)
+- [aworkinprogress.dev - Transform Establishes Containing Block](https://www.aworkinprogress.dev/transform-establishes-containing-block-descendants)
+- [W3C CSS Transforms 1 Spec §3](https://www.w3.org/TR/css-transforms-1/#transform-rendering)
+
+### Liste exhaustive des propriétés piège (à NE JAMAIS appliquer à un parent de dropdown sur `:hover`)
+
+| Propriété | Valeur déclenchante |
+|---|---|
+| `transform` | tout sauf `none` |
+| `filter` | tout sauf `none` |
+| `backdrop-filter` | tout sauf `none` |
+| `perspective` | tout sauf `none` |
+| `rotate` `scale` `translate` (individual transforms) | tout sauf `none` |
+| `contain` | `layout` `paint` `strict` `content` |
+| `will-change` | mentionne `transform` `filter` `perspective` ou autre prop ci-dessus |
+
+### Fix UNIQUE et fiable : ne PAS utiliser ces propriétés sur `:hover` d'un parent de dropdown
+
+```css
+/* ❌ INTERDIT — crée un containing block quand hovered */
+.xx-card:hover { transform: translateY(-2px); }
+
+/* ✅ ACCEPTABLE — feedback visuel sans containing block */
+.xx-card:hover {
+    border-color: #c7d4e5;
+    box-shadow: 0 8px 26px rgba(4,83,203,.08), 0 2px 6px rgba(15,23,42,.04);
+}
+```
+
+**Pourquoi pas `:has()` pour neutraliser après-coup** : `[class$="-card"]:has(.dropdown-menu.show) { transform: none !important; }` semble logique mais Popper a DÉJÀ calculé `top/left` en supposant que le containing block était l'ancestor transformé. Réinitialiser à `transform: none` après-coup décale le menu sans le repositionner.
+
+**Si tu as ABSOLUMENT besoin d'un effet "lift" sur hover** : utilise `margin-top: -2px` + `margin-bottom: 2px` (déplace sans transformer) ou `box-shadow` plus prononcé.
+
 ## Anti-patterns à BLOQUER en review
 
 1. ❌ **Ajouter un `z-index: 10XX` local sur un `.dropdown-menu`** dans une page (ex: `.pu-hero .dropdown-menu { z-index: 1051 }`). Sabote la règle universelle. Si ton dropdown a un problème de z-index, debug pourquoi la règle globale n'applique pas (probablement spécificité). NE PAS ajouter de !important local.
@@ -173,6 +221,8 @@ Le layout global :
 3. ❌ **Ajouter `overflow: hidden` à un parent direct d'un dropdown** (ex: hero card). Combiné avec `position: fixed` du menu c'est OK mais reste fragile. Préfère :
    - Soit retirer `overflow:hidden`
    - Soit isoler les décorations dans un wrapper enfant clippé (`.pu-hero-deco` pattern, voir rule `css-stacking-pitfalls.md` variante critique)
+
+8. ❌ **Appliquer `transform` `filter` `backdrop-filter` `perspective` `contain: paint` ou `will-change: transform` sur un parent de dropdown au `:hover`** — crée un containing block qui rompt `position: fixed` du menu. Toujours utiliser box-shadow + border-color pour le feedback visuel sur les cards/rows contenant des dropdowns.
 
 4. ❌ **Modifier le script inline de `layouts/app.blade.php`** sans comprendre la chaîne :
    - data-attrs sur le trigger AVANT bootstrap auto-init

@@ -1550,7 +1550,15 @@
         body:has(.dropdown-menu.show) tr:hover,
         body:has(.dropdown-menu.show) .card:hover,
         body:has(.dropdown-menu.show) .stat-card:hover,
-        body:has(.dropdown-menu.show) .kpi-card:hover {
+        body:has(.dropdown-menu.show) .kpi-card:hover,
+        body:has(.dropdown-menu.show) [class$="-card"]:hover,
+        body:has(.dropdown-menu.show) [class*="-card "]:hover {
+            transform: none !important;
+        }
+        /* Quand la card elle-même CONTIENT le dropdown ouvert : on bloque transform direct
+           pour qu'elle ne crée pas de containing block pour le menu position:fixed. */
+        [class$="-card"]:has(.dropdown-menu.show),
+        [class*="-card "]:has(.dropdown-menu.show) {
             transform: none !important;
         }
     </style>

@@ -562,6 +562,12 @@ return [
             'icon' => 'fa-edit',
             'aliases' => ['edit_evaluations'],
         ],
+        'evaluations.edit_locked' => [
+            'label' => 'Modifier une évaluation verrouillée (en cours, terminée, annulée)',
+            'description' => "Bypass la règle métier qui interdit la modification d'une évaluation déjà passée. À donner avec parcimonie (correction typos urgents, recalibrage tardif).",
+            'group' => 'Notes & Évaluations',
+            'icon' => 'fa-unlock',
+        ],
         'exams.view' => [
             'label' => 'Voir les examens',
             'group' => 'Notes & Évaluations',

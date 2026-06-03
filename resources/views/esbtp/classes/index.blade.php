@@ -471,10 +471,14 @@
     flex-direction: column;
     gap: .85rem;
 }
+/* JAMAIS de transform sur .ci-card:hover : la spec CSS dit que transform crée un
+   containing block pour position:fixed descendants. Le dropdown kebab en position:fixed
+   (via universal-dropdowns rule) serait alors ancré à la card au lieu du viewport,
+   causant un décalage massif (incident yakro 3 juin 2026 : kebab BATIMENT A → menu à BATIMENT D).
+   Le box-shadow + border-color change suffisent comme feedback visuel. */
 .ci-card:hover {
     border-color: #c7d4e5;
     box-shadow: 0 8px 26px rgba(4,83,203,.08), 0 2px 6px rgba(15,23,42,.04);
-    transform: translateY(-2px);
 }
 .ci-card--inactive {
     background: #f8fafc;

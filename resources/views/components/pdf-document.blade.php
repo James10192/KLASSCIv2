@@ -34,8 +34,7 @@
                 public_path($normalizedLogoPath),
             ];
         }
-        // Fallbacks toujours testés (même si school_logo est vide)
-        $candidates[] = public_path('images/esbtp_logo.png');
+        // Fallback KLASSCI générique uniquement (jamais d'esbtp_logo qui est tenant-specific)
         $candidates[] = public_path('images/LOGO-KLASSCI-PNG.png');
         foreach ($candidates as $candidate) {
             if (file_exists($candidate)) {

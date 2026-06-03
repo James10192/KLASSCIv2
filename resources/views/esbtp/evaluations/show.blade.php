@@ -106,7 +106,7 @@
                         <i class="fas fa-arrow-left"></i> Retour
                     </a>
                     @can('evaluations.edit')
-                        @if($evaluation->isEditable())
+                        @if($evaluation->isEditable() || auth()->user()->can('evaluations.edit_locked'))
                             <a href="{{ route('esbtp.evaluations.edit', $evaluation) }}" class="ev-btn ev-btn--white">
                                 <i class="fas fa-edit"></i> Modifier
                             </a>
@@ -348,7 +348,7 @@
                             <i class="fas fa-pen-to-square"></i> Gérer les notes
                         </a>
 
-                        @if($evaluation->isEditable())
+                        @if($evaluation->isEditable() || auth()->user()->can('evaluations.edit_locked'))
                             <a href="{{ route('esbtp.evaluations.edit', $evaluation) }}" class="ev-btn ev-btn--ghost ev-btn--block">
                                 <i class="fas fa-edit"></i> Modifier l'évaluation
                             </a>

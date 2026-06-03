@@ -156,7 +156,7 @@
                     <i class="fas fa-eye"></i>
                 </a>
                 @can('evaluations.edit')
-                    @if($evaluation->isEditable())
+                    @if($evaluation->isEditable() || auth()->user()->can('evaluations.edit_locked'))
                         <a href="{{ route('esbtp.evaluations.edit', $evaluation) }}" class="ev-action-btn ev-action-btn--warning" title="Modifier">
                             <i class="fas fa-pen-to-square"></i>
                         </a>
