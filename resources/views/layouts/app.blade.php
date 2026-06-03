@@ -3243,20 +3243,23 @@
     <!-- Bootstrap JS with Popper (chargé APRÈS notre injection des data-bs-* attrs) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Monkey-patch Popper.createPopper pour forcer strategy:'fixed' sur TOUTES les
-        // instances Popper créées (par Bootstrap ou autre). Garantit que le menu est
-        // placé dans le stacking context ROOT du viewport, au-dessus des navbar sticky.
-        //
-        // Pourquoi ce hack et pas popperConfig sur Dropdown : Bootstrap 5.3 stocke
-        // popperConfig comme null si la fonction n'est pas appelée correctement par
-        // _typeCheckConfig (observé via dev-browser). Le monkey-patch est ROBUSTE car
-        // il intercepte au niveau Popper directement.
+        // Monkey-patch bootstrap.Dropdown.prototype._getPopperConfig pour forcer
+        // strategy:'fixed' sur toutes les instances Dropdown.
+        // window.Popper n'est PAS exposé par bootstrap.bundle (Popper est interne).
+        // _getPopperConfig est la méthode où Dropdown construit la config Popper.
+        // En ajoutant strategy:'fixed' au retour, Popper utilise position:fixed et
+        // place le menu dans le stacking context ROOT du viewport.
         (function() {
-            if (!window.Popper || !window.Popper.createPopper) return;
-            const _origCreate = window.Popper.createPopper;
-            window.Popper.createPopper = function(reference, popper, options) {
-                const opts = Object.assign({}, options || {}, { strategy: 'fixed' });
-                return _origCreate(reference, popper, opts);
+            if (!window.bootstrap || !bootstrap.Dropdown) return;
+            const proto = bootstrap.Dropdown.prototype;
+            const orig = proto._getPopperConfig;
+            if (!orig) return;
+            proto._getPopperConfig = function() {
+                const config = orig.apply(this, arguments);
+                if (config && typeof config === 'object') {
+                    config.strategy = 'fixed';
+                }
+                return config;
             };
         })();
     </script>
