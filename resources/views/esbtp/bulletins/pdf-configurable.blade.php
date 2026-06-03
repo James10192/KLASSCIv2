@@ -17,12 +17,12 @@
         * { box-sizing: border-box; }
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
-            font-size: {{ $settings['bulletin_font_size'] ?? '11' }}px;
+            font-size: {{ $settings['bulletin_font_size'] ?? '12' }}px;
             margin: 0;
             padding: 0;
             background: #fff;
             color: #111827;
-            line-height: 1.35;
+            line-height: 1.4;
         }
         .container {
             width: 210mm;
@@ -52,7 +52,7 @@
         }
         .header-left {
             width: 26%;
-            font-size: 9px;
+            font-size: 10.5px;
             line-height: 1.5;
             color: #374151;
             border-right: 1px solid #e5e7eb;
@@ -66,7 +66,7 @@
         }
         .header-right {
             width: 26%;
-            font-size: 9.5px;
+            font-size: 11px;
             line-height: 1.5;
             text-align: right;
             padding-left: 8px;
@@ -80,32 +80,32 @@
         }
         .school-name {
             font-weight: 700;
-            font-size: 13px;
+            font-size: 14.5px;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
             letter-spacing: 0.04em;
             margin-bottom: 2px;
         }
         .school-address {
-            font-size: 8px;
+            font-size: 9.5px;
             color: #6b7280;
         }
         .header-right .title {
             font-weight: 700;
-            font-size: 11.5px;
+            font-size: 13.5px;
             text-decoration: underline;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
             margin-bottom: 3px;
         }
         .header-right .period {
-            font-size: 9px;
+            font-size: 11px;
             font-weight: 600;
             color: #1f2937;
             margin-bottom: 2px;
         }
         .header-right .year {
-            font-size: 9px;
+            font-size: 10.5px;
             color: #374151;
         }
 
@@ -170,7 +170,7 @@
         .matricule-text {
             margin-top: 5px;
             font-weight: 700;
-            font-size: 8.5px;
+            font-size: 10px;
             text-align: center;
             color: #374151;
         }
@@ -180,33 +180,33 @@
             width: 40%;
             vertical-align: top;
         }
-        .info-row { margin-bottom: 4px; font-size: 10px; }
+        .info-row { margin-bottom: 5px; font-size: 11.5px; }
         .info-label {
             font-weight: 700;
             display: inline-block;
             width: 115px;
             color: #374151;
-            font-size: 9.5px;
+            font-size: 11px;
         }
-        .info-value { color: #111827; font-size: 10px; }
+        .info-value { color: #111827; font-size: 11.5px; }
 
         /* ── Tableau matières ─────────────────────────────────── */
         table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 8px;
-            font-size: 9.5px;
+            font-size: 11.5px;
         }
         th, td {
             border: 1px solid #d1d5db;
-            padding: 4px 5px;
+            padding: 5px 6px;
             text-align: left;
         }
         th {
             background: #f3f4f6;
             font-weight: 700;
             text-align: center;
-            font-size: 9px;
+            font-size: 10.5px;
             color: #111827;
         }
         .center { text-align: center; }
@@ -218,8 +218,8 @@
             color: {{ $pdfHeaderText }};
             font-weight: 700;
             text-align: center;
-            padding: 5px 8px;
-            font-size: 9.5px;
+            padding: 6px 9px;
+            font-size: 11.5px;
         }
         /* :nth-child n'est pas supporté par DomPDF — on utilise .subject-row-even
            posée via $loop->even dans le template Blade (voir tbody ci-dessous). */
@@ -251,19 +251,19 @@
         }
         .results-table, .stats-table {
             width: 100%;
-            font-size: 9.5px;
+            font-size: 11.5px;
             border-collapse: collapse;
         }
         .results-table th, .stats-table th {
             background: {{ $pdfPrimary }};
             color: {{ $pdfHeaderText }};
-            padding: 5px 8px;
-            font-size: 9px;
+            padding: 6px 9px;
+            font-size: 10.5px;
             border: none;
             text-align: left;
         }
         .results-table td, .stats-table td {
-            padding: 4px 8px;
+            padding: 5px 9px;
             border-bottom: 1px solid #f3f4f6;
             border-left: none;
             border-right: none;
@@ -275,13 +275,13 @@
         .result-value-box {
             border: 1px solid #d1d5db;
             border-radius: 4px;
-            padding: 2px 6px;
-            min-width: 52px;
+            padding: 3px 7px;
+            min-width: 56px;
             display: inline-block;
             text-align: center;
             font-weight: 700;
             background: #f8fafb;
-            font-size: 10px;
+            font-size: 12px;
         }
 
         /* ── Mentions ─────────────────────────────────────────── */
@@ -290,7 +290,7 @@
             margin-bottom: 4px;
             border: 1px solid #d1d5db;
             border-radius: 6px;
-            font-size: 9px;
+            font-size: 10.5px;
             background: #fff;
             overflow: hidden;
         }
@@ -315,7 +315,7 @@
             font-weight: 700;
             margin-bottom: 5px;
             text-decoration: underline;
-            font-size: 9.5px;
+            font-size: 11px;
             text-transform: uppercase;
             color: {{ $pdfPrimary }};
         }
@@ -764,7 +764,7 @@
         @if(($settings['bulletin_show_council_decision'] ?? '1') == '1')
         <div class="decision-container">
             <div class="decision-title">Décision du conseil de classe</div>
-            <div style="min-height: 36px; font-size: 10px;">{{ $appreciation }}</div>
+            <div style="min-height: 36px; font-size: 11.5px;">{{ $appreciation }}</div>
         </div>
         @endif
 
@@ -777,10 +777,10 @@
         <div class="signature-container">
             @if(($settings['bulletin_show_director_signature'] ?? '1') == '1')
             <div class="signature-box">
-                <div style="font-size: 10px;">{{ $directorTitle }}</div>
+                <div style="font-size: 11.5px;">{{ $directorTitle }}</div>
                 <div class="signature-line"></div>
                 @if($directorName)
-                    <div style="margin-top: 4px; font-weight: 700; font-size: 9.5px;">{{ $directorName }}</div>
+                    <div style="margin-top: 4px; font-weight: 700; font-size: 11px;">{{ $directorName }}</div>
                 @endif
             </div>
             @endif
