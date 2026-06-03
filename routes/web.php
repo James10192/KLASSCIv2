@@ -2110,6 +2110,8 @@ Route::middleware(['auth', 'permission:admin.access|bulletins.configure'])->grou
     Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinConfigController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
     // Sous-lot δ — copy config-matieres entre semestres
     Route::post('/esbtp-special/bulletins/config-matieres/copy', [ESBTPBulletinConfigController::class, 'copyConfigMatieres'])->name('esbtp.bulletins.config-matieres.copy');
+    // Sous-lot β AJAX — switch S1/S2/Annuel sans reload
+    Route::get('/esbtp-special/bulletins/config-matieres/data', [ESBTPBulletinConfigController::class, 'configMatieresData'])->name('esbtp.bulletins.config-matieres.data');
     Route::get('/esbtp-special/bulletins/edit-professeurs', [ESBTPBulletinConfigController::class, 'editProfesseurs'])->name('esbtp.bulletins.edit-professeurs');
     Route::post('/esbtp-special/bulletins/copy-professeurs-from-other-semestre', [ESBTPBulletinConfigController::class, 'copyProfesseursFromOtherSemestre'])
         ->middleware('throttle:30,1')

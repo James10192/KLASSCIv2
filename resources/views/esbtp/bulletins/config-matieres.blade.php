@@ -458,26 +458,21 @@
                     </div>
                 </div>
                 <div class="cm-hero-actions" style="display:flex;align-items:center;gap:.6rem;flex-wrap:wrap;">
-                    {{-- Switch S1/S2/Annuel dans le hero --}}
+                    {{-- Switch S1/S2/Annuel dans le hero (AJAX no-reload, rule ajax-no-reload-premium) --}}
                     <div class="cm-period-switch">
-                        <a href="?bulletin={{ $_etudiantId }}&classe_id={{ $_classeId }}&periode=semestre1&annee_universitaire_id={{ $_anneeId }}"
-                           class="{{ $_periode === 'semestre1' ? 'active' : '' }}">
+                        <button type="button" @click="switchPeriode('semestre1')" :class="{ active: currentPeriode === 'semestre1' }" :disabled="loadingSwitch">
                             <span style="font-weight:800;">S1</span>
-                        </a>
-                        <a href="?bulletin={{ $_etudiantId }}&classe_id={{ $_classeId }}&periode=semestre2&annee_universitaire_id={{ $_anneeId }}"
-                           class="{{ $_periode === 'semestre2' ? 'active' : '' }}">
+                        </button>
+                        <button type="button" @click="switchPeriode('semestre2')" :class="{ active: currentPeriode === 'semestre2' }" :disabled="loadingSwitch">
                             <span style="font-weight:800;">S2</span>
-                        </a>
-                        <a href="?bulletin={{ $_etudiantId }}&classe_id={{ $_classeId }}&periode=annuel&annee_universitaire_id={{ $_anneeId }}"
-                           class="{{ $_isAnnuel ? 'active' : '' }}">
+                        </button>
+                        <button type="button" @click="switchPeriode('annuel')" :class="{ active: currentPeriode === 'annuel' }" :disabled="loadingSwitch">
                             <i class="fas fa-calendar"></i>Annuel
-                        </a>
+                        </button>
                     </div>
-                    @if(!$_isAnnuel)
-                    <button type="button" class="cm-btn cm-btn--glass" @click="openCopyModal()" title="Copier la configuration de ce semestre vers {{ $_otherPeriodeLabel }}">
-                        <i class="fas fa-copy"></i><span>Copier vers {{ $_otherPeriodeLabel }}</span>
+                    <button type="button" class="cm-btn cm-btn--glass" @click="openCopyModal()" x-show="currentPeriode !== 'annuel'" title="Copier la config de ce semestre vers l'autre" x-cloak>
+                        <i class="fas fa-copy"></i><span>Copier vers <span x-text="otherPeriodeLabel"></span></span>
                     </button>
-                    @endif
                     <a href="{{ $_returnUrl }}" class="cm-btn cm-btn--glass">
                         <i class="fas fa-arrow-left"></i><span>Retour</span>
                     </a>
@@ -562,7 +557,7 @@
                 <div class="cm-section-header">
                     <div class="cm-section-icon"><i class="fas fa-list"></i></div>
                     <div>
-                        <h3>Classification des matières — {{ $_periodeLabel }}</h3>
+                        <h3 id="cmSectionTitle">Classification des matières — {{ $_periodeLabel }}</h3>
                         <p>Choisissez Général, Technique ou Exclure pour chaque matière</p>
                     </div>
                 </div>
@@ -799,6 +794,8 @@
 <script>
 function cmConfigMatieres() {
     return {
+        currentPeriode: '{{ $_periode }}',
+        loadingSwitch: false,
         counts: { total: 0, general: 0, technique: 0, excluded: 0, configured: 0 },
         completionStatus: 'unconfigured',
         completionStatusLabel: 'Non configuré',
@@ -809,8 +806,72 @@ function cmConfigMatieres() {
         preview: null,
         previewLoading: false,
 
+        get otherPeriode() {
+            return this.currentPeriode === 'semestre1' ? 'semestre2'
+                : this.currentPeriode === 'semestre2' ? 'semestre1' : null;
+        },
+        get otherPeriodeLabel() {
+            return this.otherPeriode === 'semestre1' ? 'Semestre 1'
+                : this.otherPeriode === 'semestre2' ? 'Semestre 2' : '';
+        },
+        get periodeLabel() {
+            return this.currentPeriode === 'semestre1' ? 'Semestre 1'
+                : this.currentPeriode === 'semestre2' ? 'Semestre 2' : 'Annuel (S1 + S2)';
+        },
+
         init() {
             this.recountFromDOM();
+            // Listen popstate pour synchroniser si l'utilisateur use back/forward
+            window.addEventListener('popstate', (ev) => {
+                const url = new URL(window.location.href);
+                const p = url.searchParams.get('periode') || 'semestre1';
+                if (p !== this.currentPeriode) {
+                    this.applyPeriodeFromAjax(p, true);
+                }
+            });
+        },
+
+        async switchPeriode(targetPeriode) {
+            if (targetPeriode === this.currentPeriode || this.loadingSwitch) return;
+            this.loadingSwitch = true;
+            try {
+                const url = new URL('{{ route('esbtp.bulletins.config-matieres.data') }}');
+                url.searchParams.append('classe_id', '{{ $_classeId }}');
+                url.searchParams.append('annee_universitaire_id', '{{ $_anneeId }}');
+                url.searchParams.append('periode', targetPeriode);
+                const res = await fetch(url.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message || 'erreur');
+
+                // Mise à jour radios : pour chaque matière, set le bon type checked
+                document.querySelectorAll('[data-matiere-row]').forEach(row => {
+                    const matiereId = parseInt(row.dataset.matiereRow, 10);
+                    const type = data.matiere_types[matiereId] || 'none';
+                    const radio = row.querySelector(`.cm-type-picker input[value="${type}"]`);
+                    if (radio) radio.checked = true;
+                });
+                this.applyPeriodeFromAjax(targetPeriode, false);
+                this.onTypeChange();
+            } catch (e) {
+                alert('Impossible de changer de période : ' + e.message);
+            } finally {
+                this.loadingSwitch = false;
+            }
+        },
+
+        applyPeriodeFromAjax(periode, fromPopstate) {
+            this.currentPeriode = periode;
+            // Update hidden input + section title + URL (pushState)
+            const hiddenPeriode = document.querySelector('input[name="periode"]');
+            if (hiddenPeriode) hiddenPeriode.value = periode;
+            const sectionTitle = document.getElementById('cmSectionTitle');
+            if (sectionTitle) sectionTitle.textContent = 'Classification des matières — ' + this.periodeLabel;
+            if (!fromPopstate) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('periode', periode);
+                window.history.pushState({ periode }, '', url.toString());
+            }
         },
 
         recountFromDOM() {
@@ -881,6 +942,7 @@ function cmConfigMatieres() {
         },
 
         async refreshPreview() {
+            if (!this.otherPeriode) return; // annuel n'a pas d'autre période
             this.previewLoading = true;
             this.preview = null;
             try {
@@ -888,8 +950,8 @@ function cmConfigMatieres() {
                 fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
                 fd.append('classe_id', '{{ $_classeId }}');
                 fd.append('annee_universitaire_id', '{{ $_anneeId }}');
-                fd.append('source_periode', '{{ $_periode }}');
-                fd.append('target_periode', '{{ $_otherPeriode }}');
+                fd.append('source_periode', this.currentPeriode);
+                fd.append('target_periode', this.otherPeriode);
                 fd.append('mode', this.copyMode);
                 fd.append('dry_run', '1');
                 const res = await fetch('{{ route('esbtp.bulletins.config-matieres.copy') }}', {
@@ -906,14 +968,15 @@ function cmConfigMatieres() {
         },
 
         async executeCopy() {
+            if (!this.otherPeriode) return;
             this.copySaving = true;
             try {
                 const fd = new FormData();
                 fd.append('_token', document.querySelector('meta[name="csrf-token"]').content);
                 fd.append('classe_id', '{{ $_classeId }}');
                 fd.append('annee_universitaire_id', '{{ $_anneeId }}');
-                fd.append('source_periode', '{{ $_periode }}');
-                fd.append('target_periode', '{{ $_otherPeriode }}');
+                fd.append('source_periode', this.currentPeriode);
+                fd.append('target_periode', this.otherPeriode);
                 fd.append('mode', this.copyMode);
                 const res = await fetch('{{ route('esbtp.bulletins.config-matieres.copy') }}', {
                     method: 'POST', body: fd,

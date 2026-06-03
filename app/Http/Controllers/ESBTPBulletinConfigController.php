@@ -257,6 +257,51 @@ class ESBTPBulletinConfigController extends Controller
      * @return \Illuminate\Http\Response
      */
     /**
+     * GET /bulletins/config-matieres/data : retourne JSON pour switch AJAX entre S1/S2/Annuel.
+     * Rule ajax-no-reload-premium : le switch dans le hero ne doit pas recharger la page.
+     */
+    public function configMatieresData(Request $request)
+    {
+        if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
+            abort(403);
+        }
+        $validated = $request->validate([
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'periode' => 'required|in:semestre1,semestre2,annuel',
+        ]);
+
+        // Read fallback : annuel → S1 (et S2 si vide)
+        $readPeriode = $validated['periode'] === 'annuel' ? 'semestre1' : $validated['periode'];
+        $configs = ESBTPConfigMatiere::where('classe_id', $validated['classe_id'])
+            ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
+            ->where('periode', $readPeriode)
+            ->get();
+        if ($configs->isEmpty() && $validated['periode'] === 'annuel') {
+            $configs = ESBTPConfigMatiere::where('classe_id', $validated['classe_id'])
+                ->where('annee_universitaire_id', $validated['annee_universitaire_id'])
+                ->where('periode', 'semestre2')
+                ->get();
+        }
+
+        $byMatiere = [];
+        foreach ($configs as $c) {
+            $cfg = is_string($c->config) ? (json_decode($c->config, true) ?: []) : ($c->config ?? []);
+            $type = $cfg['type'] ?? null;
+            if (in_array($type, ['general', 'technique'], true)) {
+                $byMatiere[$c->matiere_id] = $type;
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'periode' => $validated['periode'],
+            'effective_read_periode' => $readPeriode,
+            'matiere_types' => $byMatiere, // { matiere_id: 'general'|'technique' }
+        ]);
+    }
+
+    /**
      * Sous-lot δ — POST /bulletins/config-matieres/copy
      * Copie la classification (general/technique) d'une période vers l'autre.
      * Modes : override (remplace) | merge (skip si cible déjà configurée).
