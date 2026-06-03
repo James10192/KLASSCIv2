@@ -3243,24 +3243,22 @@
     <!-- Bootstrap JS with Popper (chargé APRÈS notre injection des data-bs-* attrs) -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script>
-        // Une fois Bootstrap chargé, force strategy:'fixed' sur tous les dropdowns existants
-        // ET observe le DOM pour appliquer la stratégie aux dropdowns dynamiquement ajoutés.
-        if (window.__klassciForceFixedDropdowns) {
-            window.__klassciForceFixedDropdowns();
-            new MutationObserver(function(mutations) {
-                let needs = false;
-                mutations.forEach(function(m) {
-                    m.addedNodes.forEach(function(node) {
-                        if (node.nodeType === 1 &&
-                            (node.matches && node.matches('[data-bs-toggle="dropdown"]')
-                             || (node.querySelector && node.querySelector('[data-bs-toggle="dropdown"]')))) {
-                            needs = true;
-                        }
-                    });
-                });
-                if (needs) window.__klassciForceFixedDropdowns();
-            }).observe(document.documentElement, { childList: true, subtree: true });
-        }
+        // Monkey-patch Popper.createPopper pour forcer strategy:'fixed' sur TOUTES les
+        // instances Popper créées (par Bootstrap ou autre). Garantit que le menu est
+        // placé dans le stacking context ROOT du viewport, au-dessus des navbar sticky.
+        //
+        // Pourquoi ce hack et pas popperConfig sur Dropdown : Bootstrap 5.3 stocke
+        // popperConfig comme null si la fonction n'est pas appelée correctement par
+        // _typeCheckConfig (observé via dev-browser). Le monkey-patch est ROBUSTE car
+        // il intercepte au niveau Popper directement.
+        (function() {
+            if (!window.Popper || !window.Popper.createPopper) return;
+            const _origCreate = window.Popper.createPopper;
+            window.Popper.createPopper = function(reference, popper, options) {
+                const opts = Object.assign({}, options || {}, { strategy: 'fixed' });
+                return _origCreate(reference, popper, opts);
+            };
+        })();
     </script>
 
     <!-- Alpine.js (focus plugin must load BEFORE core for x-trap to register) -->
