@@ -24,13 +24,16 @@ return new class extends Migration
             return;
         }
 
-        Schema::table('esbtp_matiere_coefficients', function (Blueprint $table) {
-            try {
-                $table->dropUnique('matiere_coeff_unique');
-            } catch (\Throwable $e) {
-                // déjà droppée ou nom différent — ignore
-            }
-        });
+        // MySQL refuse de dropper l'index si des FK l'utilisent pour la validation
+        // (matiere_id, filiere_id, niveau_etude_id, annee_universitaire_id sont tous FK).
+        // On désactive temporairement les FK checks pour cette opération.
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        try {
+            DB::statement('ALTER TABLE esbtp_matiere_coefficients DROP INDEX matiere_coeff_unique');
+        } catch (\Throwable $e) {
+            // déjà droppée ou nom différent — ignore
+        }
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
         Schema::table('esbtp_matiere_coefficients', function (Blueprint $table) {
             if (!Schema::hasColumn('esbtp_matiere_coefficients', 'periode')) {
@@ -85,11 +88,11 @@ return new class extends Migration
             return;
         }
 
-        Schema::table('esbtp_matiere_coefficients', function (Blueprint $table) {
-            try {
-                $table->dropUnique('matiere_coeff_unique');
-            } catch (\Throwable $e) {}
-        });
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+        try {
+            DB::statement('ALTER TABLE esbtp_matiere_coefficients DROP INDEX matiere_coeff_unique');
+        } catch (\Throwable $e) {}
+        DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
         DB::table('esbtp_matiere_coefficients')->where('periode', 'semestre2')->delete();
 
