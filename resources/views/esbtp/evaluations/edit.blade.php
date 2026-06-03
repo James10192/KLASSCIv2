@@ -61,9 +61,9 @@
         @if($errors->any())
             <div class="ee-alert ee-alert--error">
                 <i class="fas fa-exclamation-circle"></i>
-                <div>
-                    <strong>Erreur de validation</strong>
-                    <ul>
+                <div class="ee-alert-body">
+                    <div class="ee-alert-title">Erreur de validation</div>
+                    <ul class="ee-alert-errors">
                         @foreach($errors->all() as $error)
                             <li>{{ $error }}</li>
                         @endforeach
@@ -76,9 +76,13 @@
         @if(!$evaluation->isEditable() && auth()->user()->can('evaluations.edit_locked'))
             <div class="ee-alert ee-alert--warning">
                 <i class="fas fa-unlock"></i>
-                <div>
-                    <strong>Modification d'une évaluation verrouillée</strong>
-                    Cette évaluation est en statut <strong>{{ $statusLabel }}</strong>. Le bouton Modifier est accessible grâce à votre permission <code>evaluations.edit_locked</code>. Modifiez avec prudence — les changements de barème, coefficient ou date peuvent affecter les notes déjà saisies.
+                <div class="ee-alert-body">
+                    <div class="ee-alert-title">Modification d'une évaluation verrouillée</div>
+                    <p class="ee-alert-text">
+                        Cette évaluation est en statut <span class="ee-tag">{{ $statusLabel }}</span>.
+                        Accessible grâce à votre permission <code>evaluations.edit_locked</code>.
+                        Modifiez avec prudence : les changements de barème, coefficient ou date peuvent impacter les notes déjà saisies.
+                    </p>
                 </div>
             </div>
         @endif
@@ -87,10 +91,12 @@
         @if($notesCount > 0)
             <div class="ee-alert ee-alert--info">
                 <i class="fas fa-info-circle"></i>
-                <div>
-                    <strong>{{ $notesCount }} note{{ $notesCount > 1 ? 's' : '' }} déjà saisie{{ $notesCount > 1 ? 's' : '' }}</strong>
-                    Modifier le <strong>barème</strong>, le <strong>coefficient</strong> ou la <strong>matière</strong> peut affecter les calculs des moyennes et des bulletins.
-                    <a href="{{ route('esbtp.notes.saisie-rapide', $evaluation) }}" class="ee-inline-link">
+                <div class="ee-alert-body">
+                    <div class="ee-alert-title">{{ $notesCount }} note{{ $notesCount > 1 ? 's' : '' }} déjà saisie{{ $notesCount > 1 ? 's' : '' }}</div>
+                    <p class="ee-alert-text">
+                        Modifier le barème, le coefficient ou la matière peut affecter les calculs des moyennes et des bulletins.
+                    </p>
+                    <a href="{{ route('esbtp.notes.saisie-rapide', $evaluation) }}" class="ee-alert-action">
                         <i class="fas fa-pen"></i> Saisir / réviser les notes
                     </a>
                 </div>
@@ -452,30 +458,55 @@
     border-left: 4px solid;
     box-shadow: 0 1px 3px rgba(15,23,42,.04);
 }
-.ee-alert i { font-size: 1.15rem; margin-top: .15rem; flex-shrink: 0; }
-.ee-alert strong { display: block; margin-bottom: .25rem; font-size: .9rem; }
-.ee-alert div { font-size: .82rem; line-height: 1.5; }
-.ee-alert ul { margin: .35rem 0 0; padding-left: 1.1rem; }
-.ee-alert li { font-size: .8rem; line-height: 1.4; }
+.ee-alert > i { font-size: 1.15rem; margin-top: .15rem; flex-shrink: 0; }
+.ee-alert-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .35rem; }
+.ee-alert-title { font-size: .9rem; font-weight: 700; line-height: 1.3; }
+.ee-alert-text { font-size: .82rem; line-height: 1.55; margin: 0; color: inherit; opacity: .95; }
+.ee-alert-errors { margin: 0; padding-left: 1.15rem; display: flex; flex-direction: column; gap: .15rem; }
+.ee-alert-errors li { font-size: .8rem; line-height: 1.4; }
 .ee-alert--error { background: #fef2f2; color: #991b1b; border-left-color: #dc2626; }
-.ee-alert--error i { color: #dc2626; }
+.ee-alert--error > i { color: #dc2626; }
+.ee-alert--error strong { color: #7f1d1d; }
 .ee-alert--warning { background: #fffbeb; color: #92400e; border-left-color: #f59e0b; }
-.ee-alert--warning i { color: #f59e0b; }
-.ee-alert--warning code {
-    background: rgba(245,158,11,.15);
-    padding: .1rem .4rem; border-radius: 4px;
-    font-family: 'Consolas', monospace; font-size: .78rem;
-    color: #78350f;
-}
+.ee-alert--warning > i { color: #f59e0b; }
 .ee-alert--info { background: #eff6ff; color: #1e3a8a; border-left-color: #0453cb; }
-.ee-alert--info i { color: #0453cb; }
+.ee-alert--info > i { color: #0453cb; }
 
-.ee-inline-link {
-    display: inline-flex; align-items: center; gap: .3rem;
-    margin-left: .5rem; color: inherit; font-weight: 600;
-    text-decoration: underline;
+.ee-alert code {
+    background: rgba(0,0,0,.06);
+    padding: .1rem .4rem; border-radius: 4px;
+    font-family: 'Consolas', 'Monaco', monospace; font-size: .76rem;
+    font-weight: 500;
 }
-.ee-inline-link:hover { color: inherit; opacity: .85; }
+
+.ee-tag {
+    display: inline-flex; align-items: center;
+    padding: .1rem .5rem;
+    border-radius: 999px;
+    background: rgba(0,0,0,.08);
+    font-size: .72rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .3px;
+    vertical-align: middle;
+}
+
+.ee-alert-action {
+    display: inline-flex; align-items: center; gap: .4rem;
+    margin-top: .25rem;
+    padding: .45rem .85rem;
+    border-radius: 8px;
+    background: rgba(4,83,203,.08);
+    border: 1px solid rgba(4,83,203,.18);
+    color: #0453cb;
+    font-size: .8rem; font-weight: 600;
+    text-decoration: none;
+    align-self: flex-start;
+    transition: background-color .15s, border-color .15s;
+}
+.ee-alert-action:hover {
+    background: rgba(4,83,203,.14);
+    border-color: rgba(4,83,203,.28);
+    color: #033a8e;
+}
 
 .ee-sections { display: grid; gap: 1.25rem; }
 
