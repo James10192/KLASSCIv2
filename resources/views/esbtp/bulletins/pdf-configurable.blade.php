@@ -17,19 +17,19 @@
         * { box-sizing: border-box; }
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
-            font-size: {{ $settings['bulletin_font_size'] ?? '12' }}px;
+            font-size: {{ $settings['bulletin_font_size'] ?? '13' }}px;
             margin: 0;
             padding: 0;
             background: #fff;
             color: #111827;
-            line-height: 1.4;
+            line-height: 1.45;
         }
         .container {
             width: 210mm;
             max-width: 794px;
             margin: 0 auto;
             background: #fff;
-            padding: 10px 14px 14px;
+            padding: 4px 6px 6px;
         }
 
         /* ── Header principal ─────────────────────────────────── */
@@ -52,7 +52,7 @@
         }
         .header-left {
             width: 26%;
-            font-size: 10.5px;
+            font-size: 11.5px;
             line-height: 1.5;
             color: #374151;
             border-right: 1px solid #e5e7eb;
@@ -66,7 +66,7 @@
         }
         .header-right {
             width: 26%;
-            font-size: 11px;
+            font-size: 12px;
             line-height: 1.5;
             text-align: right;
             padding-left: 8px;
@@ -80,32 +80,32 @@
         }
         .school-name {
             font-weight: 700;
-            font-size: 14.5px;
+            font-size: 16px;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
             letter-spacing: 0.04em;
-            margin-bottom: 2px;
+            margin-bottom: 3px;
         }
         .school-address {
-            font-size: 9.5px;
+            font-size: 10.5px;
             color: #6b7280;
         }
         .header-right .title {
             font-weight: 700;
-            font-size: 13.5px;
+            font-size: 15px;
             text-decoration: underline;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
-            margin-bottom: 3px;
+            margin-bottom: 4px;
         }
         .header-right .period {
-            font-size: 11px;
+            font-size: 12.5px;
             font-weight: 600;
             color: #1f2937;
             margin-bottom: 2px;
         }
         .header-right .year {
-            font-size: 10.5px;
+            font-size: 12px;
             color: #374151;
         }
 
@@ -170,25 +170,39 @@
         .matricule-text {
             margin-top: 5px;
             font-weight: 700;
-            font-size: 10px;
+            font-size: 11.5px;
             text-align: center;
             color: #374151;
         }
 
-        /* Colonnes infos */
+        /* Colonnes infos — refactor table 2 colonnes pour aligner label/valeur sur même ligne
+           (avant : display:inline-block width:125px + value en inline → wrap si label long) */
         .info-group {
             width: 40%;
             vertical-align: top;
         }
-        .info-row { margin-bottom: 5px; font-size: 11.5px; }
-        .info-label {
-            font-weight: 700;
-            display: inline-block;
-            width: 115px;
-            color: #374151;
-            font-size: 11px;
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
         }
-        .info-value { color: #111827; font-size: 11.5px; }
+        .info-table td {
+            padding: 4px 0;
+            border: none;
+            vertical-align: top;
+        }
+        .info-table td.info-label {
+            font-weight: 700;
+            white-space: nowrap;
+            padding-right: 10px;
+            color: #374151;
+            font-size: 12.5px;
+            width: 1%; /* shrink to content */
+        }
+        .info-table td.info-value {
+            color: #111827;
+            font-size: 13px;
+            word-wrap: break-word;
+        }
 
         /* ── Tableau matières ─────────────────────────────────── */
         table {
@@ -341,7 +355,7 @@
         @if($isPdfExport ?? false)
         @page {
             size: A4 portrait;
-            margin: 12mm 10mm;
+            margin: 6mm 5mm;
         }
         body.pdf-export {
             margin: 0;
@@ -458,64 +472,68 @@
                         @endif
                     </td>
                     <td class="info-group">
-                        <div class="info-row">
-                            <span class="info-label">Nom et Prénoms :</span>
-                            <span class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</span>
-                        </div>
-                        @if(($settings['bulletin_show_birth_date'] ?? '1') == '1')
-                        <div class="info-row">
-                            <span class="info-label">Date de Naissance :</span>
-                            <span class="info-value">{{ $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</span>
-                        </div>
-                        @endif
-                        <div class="info-row">
-                            <span class="info-label">Lieu de Naissance :</span>
-                            <span class="info-value">{{ $etudiant->lieu_naissance ?? 'Non renseigné' }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Genre :</span>
-                            <span class="info-value">{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</span>
-                        </div>
-                        @if(($settings['bulletin_show_redoublant'] ?? '1') == '1')
-                        <div class="info-row">
-                            <span class="info-label">Redoublant :</span>
-                            <span class="info-value">{{ $etudiant->inscriptions->first()->is_redoublant ?? false ? 'Oui' : 'Non' }}</span>
-                        </div>
-                        @endif
-                        <div class="info-row">
-                            <span class="info-label">Téléphone :</span>
-                            <span class="info-value">{{ $etudiant->telephone ?? 'Non renseigné' }}</span>
-                        </div>
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label">Nom et Prénoms :</td>
+                                <td class="info-value">{{ $etudiant->nom }} {{ $etudiant->prenoms ?? $etudiant->prenom }}</td>
+                            </tr>
+                            @if(($settings['bulletin_show_birth_date'] ?? '1') == '1')
+                            <tr>
+                                <td class="info-label">Date de Naissance :</td>
+                                <td class="info-value">{{ $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : 'Non renseignée' }}</td>
+                            </tr>
+                            @endif
+                            <tr>
+                                <td class="info-label">Lieu de Naissance :</td>
+                                <td class="info-value">{{ $etudiant->lieu_naissance ?? 'Non renseigné' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Genre :</td>
+                                <td class="info-value">{{ $etudiant->genre == 'M' ? 'Masculin' : 'Féminin' }}</td>
+                            </tr>
+                            @if(($settings['bulletin_show_redoublant'] ?? '1') == '1')
+                            <tr>
+                                <td class="info-label">Redoublant :</td>
+                                <td class="info-value">{{ $etudiant->inscriptions->first()->is_redoublant ?? false ? 'Oui' : 'Non' }}</td>
+                            </tr>
+                            @endif
+                            <tr>
+                                <td class="info-label">Téléphone :</td>
+                                <td class="info-value">{{ $etudiant->telephone ?? 'Non renseigné' }}</td>
+                            </tr>
+                        </table>
                     </td>
                     <td class="info-group">
-                        <div class="info-row">
-                            <span class="info-label">Classe :</span>
-                            <span class="info-value">{{ $classe->libelle ?? $classe->name }}</span>
-                        </div>
-                        @if(!empty($isSpecialisation) && !empty($classeTroncCommun) && ($settings['tronc_commun_bulletin_show_origin'] ?? '1') == '1')
-                        <div class="info-row">
-                            <span class="info-label">Classe S1 (TC) :</span>
-                            <span class="info-value">{{ $classeTroncCommun->libelle ?? $classeTroncCommun->name }}</span>
-                        </div>
-                        @endif
-                        <div class="info-row">
-                            <span class="info-label">Année d'étude :</span>
-                            <span class="info-value">{{ $classe->niveau->libelle ?? $classe->niveau->name ?? ($classe->annee ?? 'N/A') }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Filière :</span>
-                            <span class="info-value">{{ $classe->filiere->name ?? 'N/A' }}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="info-label">Effectif :</span>
-                            <span class="info-value">{{ $effectif }}</span>
-                        </div>
+                        <table class="info-table">
+                            <tr>
+                                <td class="info-label">Classe :</td>
+                                <td class="info-value">{{ $classe->libelle ?? $classe->name }}</td>
+                            </tr>
+                            @if(!empty($isSpecialisation) && !empty($classeTroncCommun) && ($settings['tronc_commun_bulletin_show_origin'] ?? '1') == '1')
+                            <tr>
+                                <td class="info-label">Classe S1 (TC) :</td>
+                                <td class="info-value">{{ $classeTroncCommun->libelle ?? $classeTroncCommun->name }}</td>
+                            </tr>
+                            @endif
+                            <tr>
+                                <td class="info-label">Année d'étude :</td>
+                                <td class="info-value">{{ $classe->niveau->libelle ?? $classe->niveau->name ?? ($classe->annee ?? 'N/A') }}</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Filière :</td>
+                                <td class="info-value">{{ $classe->filiere->name ?? 'N/A' }}</td>
+                            </tr>
+                            <tr>
+                                <td class="info-label">Effectif :</td>
+                                <td class="info-value">{{ $effectif }}</td>
+                            </tr>
+                        </table>
                     </td>
                 </tr>
             </table>
         </div>
 
-        {{-- Tableau des matiÃ¨res --}}
+        {{-- Tableau des matières --}}
         @if(($settings['bulletin_show_subjects_table'] ?? '1') == '1')
         @php
             $showSubjectAverage = ($settings['bulletin_show_subject_average'] ?? '1') == '1';
@@ -538,7 +556,7 @@
         <table>
             <thead>
                 <tr>
-                    <th>MatiÃ¨re</th>
+                    <th>Matière</th>
                     @if($showSubjectAverage)<th>Moyenne M</th>@endif
                     @if($showCoefficient)<th>Coef C</th>@endif
                     @if($showWeightedAverage)<th>Moy Pond&eacute;r&eacute;e M&times;C</th>@endif
