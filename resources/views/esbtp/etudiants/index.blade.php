@@ -3537,7 +3537,7 @@
     </div>
 </div>
 
-@include('esbtp.reinscription.partials.bulk-modal', ['students' => $etudiantsForBulk ?? $etudiants])
+<x-reinscription-bulk-modal :students="$etudiantsForBulk ?? collect()" modal-id="bulkReinscriptionModal" />
 
 @if(request()->boolean('open_bulk'))
 <script>

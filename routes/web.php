@@ -485,6 +485,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->middleware('throttle:30,1')
                     ->name('api.bulk-summary');
 
+                // Bulk reinscription v2 (composant <x-reinscription-bulk-modal>) — preview + execute
+                Route::post('api/bulk-preview', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'bulkPreview'])
+                    ->middleware('throttle:30,1')
+                    ->name('api.bulk-preview');
+                Route::post('api/bulk-execute', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'bulkExecute'])
+                    ->middleware('throttle:10,1')
+                    ->name('api.bulk-execute');
+
                 // Route pour la page de finalisation de réinscription
                 Route::get('{etudiant}/finaliser', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'create'])->name('create');
 

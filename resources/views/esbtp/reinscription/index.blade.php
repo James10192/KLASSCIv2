@@ -710,10 +710,11 @@
                         <i class="fas fa-cogs"></i> Règles Académiques
                     </a>
                     @can('inscriptions.create')
-                    <a href="{{ route('esbtp.etudiants.index', ['open_bulk' => 1]) }}" class="re-btn re-btn--glass"
-                       title="Sélectionner les étudiants à analyser pour la réinscription">
+                    <button type="button" class="re-btn re-btn--glass"
+                            data-bs-toggle="modal" data-bs-target="#bulkReinscriptionAllModal"
+                            title="Sélectionner les étudiants à analyser pour la réinscription">
                         <i class="fas fa-layer-group"></i> Réinscription groupée
-                    </a>
+                    </button>
                     @endcan
                     <button type="button" class="re-btn re-btn--white" onclick="exportResults()">
                         <i class="fas fa-download"></i> Exporter
@@ -1567,5 +1568,11 @@ $(document).ready(function() {
     });
 });
 </script>
+
+{{-- Composant Réinscription groupée — modal global (sélection libre, sans pré-filtrage par décision) --}}
+<x-reinscription-bulk-modal
+    :students="$bulkEligibleStudents ?? collect()"
+    modal-id="bulkReinscriptionAllModal"
+    title="Réinscription groupée" />
 
 @endsection

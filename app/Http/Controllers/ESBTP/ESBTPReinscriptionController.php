@@ -38,8 +38,12 @@ class ESBTPReinscriptionController extends Controller
         try {
             // OPTIMISATION: Ne charger que les statistiques au départ
             $statistiques = $this->reinscriptionService->getStatistiquesReinscription($anneeAcademique);
-            
-            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique', 'filieres', 'niveaux'))
+
+            // Charge la liste des étudiants éligibles pour le modal Réinscription groupée
+            $bulkEligibleStudents = app(\App\Services\Reinscription\BulkReinscriptionService::class)
+                ->listEligibleStudents();
+
+            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique', 'filieres', 'niveaux', 'bulkEligibleStudents'))
                 ->withErrors(collect());
         } catch (\Exception $e) {
             // En cas d'erreur, retourner des statistiques vides
@@ -53,7 +57,8 @@ class ESBTPReinscriptionController extends Controller
                 'errors' => 0
             ];
             
-            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique', 'filieres', 'niveaux'))
+            $bulkEligibleStudents = collect();
+            return view('esbtp.reinscription.index', compact('statistiques', 'anneeAcademique', 'filieres', 'niveaux', 'bulkEligibleStudents'))
                 ->withErrors(['error' => 'Erreur lors de l\'analyse: ' . $e->getMessage()]);
         }
     }
@@ -1356,5 +1361,66 @@ class ESBTPReinscriptionController extends Controller
             (bool) $decision             => ucfirst($decision),
             default                      => '—',
         };
+    }
+
+    /**
+     * POST /esbtp/reinscription/api/bulk-preview
+     * Pré-calcul de N étudiants pour le composant <x-reinscription-bulk-modal>.
+     */
+    public function bulkPreview(Request $request, \App\Services\Reinscription\BulkReinscriptionService $bulkService)
+    {
+        $request->validate([
+            'etudiants_ids' => 'required|array|min:1|max:100',
+            'etudiants_ids.*' => 'integer|exists:esbtp_etudiants,id',
+        ]);
+        $preview = $bulkService->preview($request->input('etudiants_ids'));
+        return response()->json([
+            'success' => true,
+            'data' => $preview,
+        ]);
+    }
+
+    /**
+     * POST /esbtp/reinscription/api/bulk-execute
+     * Exécute la batch de réinscriptions en transaction atomique.
+     */
+    public function bulkExecute(Request $request, \App\Services\Reinscription\BulkReinscriptionService $bulkService)
+    {
+        $request->validate([
+            'items' => 'required|array|min:1|max:100',
+            'items.*.etudiant_id' => 'required|integer|exists:esbtp_etudiants,id',
+            'items.*.decision' => 'required|in:passage,rattrapage,redoublement',
+            'items.*.classe_id' => 'nullable|integer|exists:esbtp_classes,id',
+            'items.*.observations' => 'nullable|string|max:1000',
+            'decision_context' => 'nullable|in:passage,rattrapage,redoublement',
+        ]);
+
+        // Si classe_id manquante côté front, on dérive automatiquement depuis la classe d'origine
+        // + la décision (passage → niveau+1, redoublement/rattrapage → même classe).
+        $items = collect($request->input('items'))->map(function ($item) {
+            if (empty($item['classe_id'])) {
+                $etudiant = \App\Models\ESBTPEtudiant::find($item['etudiant_id']);
+                if ($etudiant) {
+                    $classes = $this->reinscriptionService->proposerNouvellesClasses(
+                        $etudiant->id,
+                        $item['decision']
+                    );
+                    if (!empty($classes)) {
+                        $item['classe_id'] = is_object($classes[0]) ? $classes[0]->id : $classes[0];
+                    }
+                }
+            }
+            return $item;
+        })->filter(fn ($item) => !empty($item['classe_id']))->values()->all();
+
+        if (empty($items)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucune classe cible déterminable pour les étudiants. Vérifie la configuration des classes/filières.',
+            ], 422);
+        }
+
+        $result = $bulkService->executeBulk($items);
+        return response()->json($result, $result['success'] ? 200 : 422);
     }
 }
