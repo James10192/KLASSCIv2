@@ -3034,13 +3034,16 @@
     $acadInscs = $etudiant->inscriptions->sortByDesc(fn($i) => optional($i->anneeUniversitaire)->start_date);
 
     /* Inscription de référence : la plus récente avec bulletins CALCULÉS (moyenne_generale > 0).
-       FIX bug bulletin 179 : on filtre AUSSI par classe_id pour ne pas ramener les bulletins
-       d'inscriptions précédentes ou d'autres classes de la même année. */
+       - Filtre classe_id : pas de mélange avec d'autres inscriptions/classes (bug bulletin 179).
+       - Filtre periode != annuel : l'annuel n'est PAS une période standard BTS (c'est
+         l'agrégation S1+S2 affichée au bas du bulletin S2). Les rares bulletins
+         periode='annuel' en base sont des artefacts legacy, exclus de l'UI académique. */
     $acadRef = null; $acadBuls = collect();
     foreach ($acadInscs as $_i) {
         $_b = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiant->id)
             ->where('annee_universitaire_id', optional($_i->anneeUniversitaire)->id)
             ->where('classe_id', $_i->classe_id)
+            ->where('periode', '!=', 'annuel')
             ->orderBy('periode')->get();
         /* Un bulletin n'est "calculé" que si au moins un a moyenne_generale > 0 */
         $_bCalcules = $_b->filter(fn($b) => $b->moyenne_generale !== null && $b->moyenne_generale > 0);
@@ -3577,43 +3580,25 @@
                 <div class="acad-hero-subtitle">{{ $acadClasse }}</div>
             </div>
             @php
-                /* Bouton header : prioriser l'Annuel si dispo, sinon S1+S2 → pdf-params-preview annuel,
-                   sinon le dernier semestre disponible. */
-                $_acadHeroBulAnnuel = $acadBuls->firstWhere('periode', 'annuel');
+                /* Bouton header : il n'y a PAS de période annuelle en BTS.
+                   Le bulletin S2 contient déjà toutes les infos annuelles (moyennes S1+S2+Annuelle
+                   en bas du PDF). Donc :
+                   - Si S2 dispo (et calculé) → on l'ouvre (label "Bulletin Annuel" car contient l'annuel).
+                   - Sinon S1 → on l'ouvre.
+                   - Sinon rien à afficher. */
                 $_acadHeroBulS1 = $acadBuls->firstWhere('periode', 'semestre1');
                 $_acadHeroBulS2 = $acadBuls->firstWhere('periode', 'semestre2');
-                $_acadHeroLabel = 'Bulletin PDF';
+                $_acadHeroLabel = null;
                 $_acadHeroPreviewUrl = null;
                 $_acadHeroDownloadUrl = null;
-                if ($_acadHeroBulAnnuel) {
-                    $_acadHeroLabel = 'Bulletin Annuel';
-                    $_acadHeroPreviewUrl = route('esbtp.bulletins.preview-pdf', $_acadHeroBulAnnuel);
-                    $_acadHeroDownloadUrl = route('esbtp.bulletins.download', $_acadHeroBulAnnuel);
-                } elseif ($_acadHeroBulS1 && $_acadHeroBulS2 && $acadRef) {
-                    $_acadHeroLabel = 'Bulletin Annuel (live)';
-                    $_acadHeroPreviewUrl = route('esbtp.bulletins.pdf-params-preview', [
-                        'etudiant_id' => $etudiant->id,
-                        'classe_id' => $acadRef->classe_id,
-                        'annee_universitaire_id' => $acadRef->annee_universitaire_id,
-                        'periode' => 'annuel',
-                    ]);
-                    $_acadHeroDownloadUrl = route('esbtp.bulletins.pdf-params', [
-                        'etudiant_id' => $etudiant->id,
-                        'classe_id' => $acadRef->classe_id,
-                        'annee_universitaire_id' => $acadRef->annee_universitaire_id,
-                        'periode' => 'annuel',
-                    ]);
-                } elseif ($_acadHeroBulS2) {
-                    $_acadHeroLabel = 'Bulletin S2';
+                if ($_acadHeroBulS2 && $_acadHeroBulS2->moyenne_generale > 0) {
+                    $_acadHeroLabel = $_acadHeroBulS1 ? 'Bulletin Annuel' : 'Bulletin S2';
                     $_acadHeroPreviewUrl = route('esbtp.bulletins.preview-pdf', $_acadHeroBulS2);
                     $_acadHeroDownloadUrl = route('esbtp.bulletins.download', $_acadHeroBulS2);
                 } elseif ($_acadHeroBulS1) {
                     $_acadHeroLabel = 'Bulletin S1';
                     $_acadHeroPreviewUrl = route('esbtp.bulletins.preview-pdf', $_acadHeroBulS1);
                     $_acadHeroDownloadUrl = route('esbtp.bulletins.download', $_acadHeroBulS1);
-                } elseif ($acadLastBul) {
-                    $_acadHeroPreviewUrl = route('esbtp.bulletins.preview-pdf', $acadLastBul);
-                    $_acadHeroDownloadUrl = route('esbtp.bulletins.download', $acadLastBul);
                 }
             @endphp
             @if($_acadHeroPreviewUrl)
