@@ -1020,7 +1020,7 @@ function renderNotesGrid(students, sortedEvaluations) {
                                value="${note}"
                                data-student-id="${student.id}"
                                data-eval-id="${evaluation.id}"
-                               step="0.25" min="0" max="${evaluation.bareme || 20}"
+                               step="0.01" inputmode="decimal" lang="fr" min="0" max="${evaluation.bareme || 20}"
                                ${isAbsent ? 'disabled' : ''}
                                onchange="saveNote(${student.id}, ${evaluation.id}, this.value)">
                         <div class="nm-absence-check">

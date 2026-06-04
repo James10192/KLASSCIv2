@@ -1111,7 +1111,7 @@ function buildNotesGrid() {
             const bareme = ev.bareme || 20;
             const uid = stu.id + '-' + ev.id;
             bodyHtml += `<td><div class="ln-note-cell">
-                <input type="number" class="ln-note-input" step="0.25" min="0" max="${bareme}"
+                <input type="number" class="ln-note-input" step="0.01" inputmode="decimal" lang="fr" min="0" max="${bareme}"
                        value="${isAbsent ? '' : noteVal}"
                        data-student-id="${stu.id}" data-eval-id="${ev.id}"
                        ${isDisabled ? 'disabled' : ''}
