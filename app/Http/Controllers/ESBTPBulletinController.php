@@ -18,6 +18,7 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Models\ESBTPResultatMatiere;
 use App\Services\ESBTP\BulletinConsistencyService;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use Carbon\Carbon;

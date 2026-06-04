@@ -179,7 +179,12 @@ class AnalyticsDiagnoseCommand extends Command
 
     private function riskSaturation(?int $anneeId, DefaultRiskPredictor $predictor): array
     {
-        $context = new AnalyticsContext(anneeId: $anneeId);
+        $context = new AnalyticsContext(
+            anneeId: $anneeId,
+            filiereId: null,
+            classeId: null,
+            etudiantId: null,
+        );
         try {
             $result = $predictor->predict($context);
         } catch (\Throwable $e) {
