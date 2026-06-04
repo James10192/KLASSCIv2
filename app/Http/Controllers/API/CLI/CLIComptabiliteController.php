@@ -248,35 +248,45 @@ class CLIComptabiliteController extends BaseApiController
             return $this->errorResponse('Token missing cli:read ability', [], 403);
         }
 
-        $drifted = ESBTPPaiement::query()
-            ->whereNull('deleted_at')
-            ->whereHas('inscription', function ($q) {
-                $q->whereColumn('annee_universitaire_id', '!=', 'esbtp_paiements.annee_universitaire_id');
-            })
-            ->with('inscription:id,etudiant_id,annee_universitaire_id,classe_id')
-            ->limit(50)
-            ->get(['id', 'etudiant_id', 'annee_universitaire_id', 'status', 'montant', 'date_paiement', 'motif', 'inscription_id']);
+        // Join directe inscription pour vraie corrélation cross-table
+        $baseQuery = DB::table('esbtp_paiements as p')
+            ->leftJoin('esbtp_inscriptions as i', 'p.inscription_id', '=', 'i.id')
+            ->whereNull('p.deleted_at');
 
-        $count = ESBTPPaiement::query()
-            ->whereNull('deleted_at')
-            ->whereHas('inscription', function ($q) {
-                $q->whereColumn('annee_universitaire_id', '!=', 'esbtp_paiements.annee_universitaire_id');
-            })
+        // 3 catégories distinctes de "drift" :
+        // 1. paiement avec annee != inscription.annee (les 2 valeurs non nulles)
+        $driftedBoth = (clone $baseQuery)
+            ->whereNotNull('p.annee_universitaire_id')
+            ->whereNotNull('i.annee_universitaire_id')
+            ->whereColumn('p.annee_universitaire_id', '!=', 'i.annee_universitaire_id')
+            ->select('p.id', 'p.annee_universitaire_id as paiement_annee', 'i.annee_universitaire_id as inscription_annee', 'p.inscription_id', 'p.status', 'p.montant', 'p.date_paiement', 'p.motif', 'i.deleted_at as inscription_deleted_at')
+            ->limit(50)
+            ->get();
+
+        // 2. paiement sans annee mais inscription en a une
+        $noPaiementAnnee = (clone $baseQuery)
+            ->whereNull('p.annee_universitaire_id')
+            ->whereNotNull('i.annee_universitaire_id')
             ->count();
 
+        // 3. paiement a annee mais inscription pas / inscription supprimée
+        $noInscriptionAnnee = (clone $baseQuery)
+            ->whereNotNull('p.annee_universitaire_id')
+            ->where(function ($q) {
+                $q->whereNull('i.annee_universitaire_id')
+                  ->orWhereNotNull('i.deleted_at');
+            })
+            ->select('p.id', 'p.annee_universitaire_id as paiement_annee', 'p.inscription_id', 'p.status', 'p.montant', 'p.date_paiement', 'p.motif', 'i.deleted_at as inscription_deleted_at')
+            ->limit(50)
+            ->get();
+
         return $this->successResponse([
-            'count' => $count,
-            'sample' => $drifted->map(fn ($p) => [
-                'paiement_id' => $p->id,
-                'paiement_annee_id' => $p->annee_universitaire_id,
-                'inscription_id' => $p->inscription_id,
-                'inscription_annee_id' => optional($p->inscription)->annee_universitaire_id,
-                'status' => $p->status,
-                'montant' => $p->montant,
-                'date_paiement' => optional($p->date_paiement)->toDateString(),
-                'motif' => $p->motif,
-            ])->all(),
-        ], 'Paiements avec drift année (paiement vs inscription)');
+            'drifted_both_count' => $driftedBoth->count(),
+            'drifted_both_sample' => $driftedBoth->all(),
+            'no_paiement_annee_count' => $noPaiementAnnee,
+            'paiement_annee_inscription_orphan_count' => $noInscriptionAnnee->count(),
+            'paiement_annee_inscription_orphan_sample' => $noInscriptionAnnee->all(),
+        ], 'Paiements avec drift année (paiement vs inscription) — 3 catégories');
     }
 
     /**
