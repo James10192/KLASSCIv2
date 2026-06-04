@@ -233,6 +233,53 @@ class CLIComptabiliteController extends BaseApiController
     }
 
     /**
+     * GET /api/cli/comptabilite/orphan-paiements-annee-drift
+     *
+     * Identifie les paiements dont `paiement.annee_universitaire_id`
+     * ne correspond PAS à `paiement.inscription.annee_universitaire_id`.
+     * Cause typique : réinscription qui modifie l'inscription rattachée
+     * sans synchroniser l'année du paiement.
+     *
+     * Découvert audit 2026-06-04 : stats(1429) vs dashboard-kpis(1428) = drift 1 paiement.
+     */
+    public function orphanPaiementsAnneeDrift(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $drifted = ESBTPPaiement::query()
+            ->whereNull('deleted_at')
+            ->whereHas('inscription', function ($q) {
+                $q->whereColumn('annee_universitaire_id', '!=', 'esbtp_paiements.annee_universitaire_id');
+            })
+            ->with('inscription:id,etudiant_id,annee_universitaire_id,classe_id')
+            ->limit(50)
+            ->get(['id', 'etudiant_id', 'annee_universitaire_id', 'status', 'montant', 'date_paiement', 'motif', 'inscription_id']);
+
+        $count = ESBTPPaiement::query()
+            ->whereNull('deleted_at')
+            ->whereHas('inscription', function ($q) {
+                $q->whereColumn('annee_universitaire_id', '!=', 'esbtp_paiements.annee_universitaire_id');
+            })
+            ->count();
+
+        return $this->successResponse([
+            'count' => $count,
+            'sample' => $drifted->map(fn ($p) => [
+                'paiement_id' => $p->id,
+                'paiement_annee_id' => $p->annee_universitaire_id,
+                'inscription_id' => $p->inscription_id,
+                'inscription_annee_id' => optional($p->inscription)->annee_universitaire_id,
+                'status' => $p->status,
+                'montant' => $p->montant,
+                'date_paiement' => optional($p->date_paiement)->toDateString(),
+                'motif' => $p->motif,
+            ])->all(),
+        ], 'Paiements avec drift année (paiement vs inscription)');
+    }
+
+    /**
      * GET /api/cli/comptabilite/reconciliation-candidates
      *
      * Identifie les paiements candidats à un audit / réconciliation :
