@@ -618,7 +618,11 @@ class ESBTPStudentController extends Controller
         $btsJourney = $this->resolveBtsJourney($etudiant);
         $btsAnnualSnapshot = null;
 
-        if (! $isLMD && $btsJourney && $inscActive?->classe_id && $inscActive?->annee_universitaire_id) {
+        // FIX flag assiduité : on calcule le snapshot annuel pour TOUT étudiant BTS
+        // (pas seulement les TC). Sinon les KPIs moyennes des tabs "vue d'ensemble"
+        // et "académique" retombent sur les bulletins bruts / résultats sans bonus
+        // assiduité → le flag bulletin_show_attendance_note est ignoré côté UI.
+        if (! $isLMD && $inscActive?->classe_id && $inscActive?->annee_universitaire_id) {
             $btsAnnualSnapshot = $this->btsCurrentResultSnapshotService->getAnnualSnapshot(
                 $etudiant->id,
                 $inscActive->classe_id,

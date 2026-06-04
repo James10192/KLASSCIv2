@@ -3219,6 +3219,33 @@
     $acadAnnee  = optional($acadRef?->anneeUniversitaire)->name ?? '—';
     $acadClasse = optional($acadRef?->classe)->name ?? '—';
 
+    /* MOYENNE CANONIQUE : on délègue au snapshot annuel qui respecte le flag
+       bulletin_show_attendance_note (effective_total = raw_total si flag OFF, sinon
+       raw_total + bonus assiduité). Cohérent avec le PDF bulletin annuel. */
+    if ($acadRef && $acadRef->classe_id && $acadRef->annee_universitaire_id) {
+        try {
+            $_acadSnapshot = app(\App\Services\ESBTP\BtsCurrentResultSnapshotService::class)->getAnnualSnapshot(
+                (int) $etudiant->id,
+                (int) $acadRef->classe_id,
+                (int) $acadRef->annee_universitaire_id
+            );
+            if (($_acadSnapshot['effective_total'] ?? null) !== null) {
+                $acadMg = round((float) $_acadSnapshot['effective_total'], 2);
+                if ($acadMg !== null) {
+                    $acadMention = match(true) {
+                        $acadMg >= 16 => 'Excellent',
+                        $acadMg >= 14 => 'Très Bien',
+                        $acadMg >= 12 => 'Bien',
+                        $acadMg >= 10 => 'Assez Bien',
+                        default       => 'Passable',
+                    };
+                }
+            }
+        } catch (\Throwable $e) {
+            // Silencieux : on garde la moyenne calculée en amont
+        }
+    }
+
     /* RANG CANONIQUE : on délègue à RankingService pour cohérence avec /esbtp/resultats.
        Cohort : status='active' + workflow_step='etudiant_cree', source snapshot live,
        flag bulletin_show_attendance_note respecté, ex-aequo gérés.
@@ -3755,6 +3782,23 @@
                     $_sc += $_coef;
                 }
                 $mg = $_sc > 0 ? round($_sp / $_sc, 2) : null;
+            }
+            /* Override : utiliser le snapshot effective_total (respecte flag assiduité)
+               pour cohérence avec PDF bulletin et KPI hero. */
+            if ($acadRef && in_array(strtolower($bul->periode ?? ''), ['semestre1', 'semestre2', 'annuel'], true)) {
+                try {
+                    $_semSnap = app(\App\Services\ESBTP\BtsCurrentResultSnapshotService::class)->getPeriodeSnapshot(
+                        (int) $etudiant->id,
+                        (int) $acadRef->classe_id,
+                        (int) $acadRef->annee_universitaire_id,
+                        strtolower($bul->periode)
+                    );
+                    if (($_semSnap['effective_total'] ?? null) !== null) {
+                        $mg = round((float) $_semSnap['effective_total'], 2);
+                    }
+                } catch (\Throwable $e) {
+                    // garde la valeur précédente
+                }
             }
             $semKey = 'acad-sem-' . $bul->id;
             $semBadgeCls = $mg === null ? '' : ($mg >= 12 ? 'green' : ($mg >= 10 ? 'amber' : 'red'));
