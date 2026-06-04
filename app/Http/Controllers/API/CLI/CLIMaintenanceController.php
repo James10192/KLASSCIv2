@@ -99,6 +99,44 @@ class CLIMaintenanceController extends BaseApiController
     }
 
     /**
+     * GET /api/cli/etudiants/{id}/inscriptions-diag
+     * Diagnostic des inscriptions d'un étudiant : annee_id, status, workflow_step.
+     */
+    public function etudiantInscriptionsDiag(Request $request, int $id): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+        $etudiant = \App\Models\ESBTPEtudiant::with(['inscriptions.anneeUniversitaire:id,name,is_current'])
+            ->find($id);
+        if (!$etudiant) {
+            return $this->errorResponse("Etudiant {$id} not found", [], 404);
+        }
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first(['id', 'name', 'start_date', 'end_date']);
+        $anneePrecedente = $anneeCourante
+            ? \App\Models\ESBTPAnneeUniversitaire::where('end_date', '<', $anneeCourante->start_date)
+                ->orderBy('end_date', 'desc')
+                ->first(['id', 'name', 'start_date', 'end_date'])
+            : null;
+        return $this->successResponse([
+            'etudiant' => ['id' => $etudiant->id, 'matricule' => $etudiant->matricule, 'nom' => $etudiant->nom . ' ' . $etudiant->prenoms],
+            'annee_courante' => $anneeCourante,
+            'annee_precedente' => $anneePrecedente,
+            'inscriptions' => $etudiant->inscriptions->map(fn ($i) => [
+                'id' => $i->id,
+                'annee_id' => $i->annee_universitaire_id,
+                'annee_name' => optional($i->anneeUniversitaire)->name,
+                'is_current_annee' => optional($i->anneeUniversitaire)->is_current,
+                'classe_id' => $i->classe_id,
+                'status' => $i->status,
+                'workflow_step' => $i->workflow_step,
+                'type_inscription' => $i->type_inscription,
+                'deleted_at' => $i->deleted_at,
+            ])->toArray(),
+        ]);
+    }
+
+    /**
      * GET /api/cli/matieres/{matiere}/coefficient?classe_id=X&annee=Y
      * Quick lookup : coefficient officiel d'une matière dans une combinaison
      * (filiere + niveau_etude + annee) déduite de la classe.

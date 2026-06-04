@@ -168,40 +168,13 @@ class ESBTPEtudiantController extends Controller
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
 
-        // Étudiants pour modal Réinscription groupée : SEULEMENT ceux éligibles à réinscription.
-        // Critères :
-        // - Avoir une inscription ACTIVE (status=active + workflow_step=etudiant_cree) dans l'année
-        //   PRÉCÉDENTE (N-1) — source de la décision de fin d'année.
-        // - NE PAS avoir déjà d'inscription dans l'année COURANTE (N) — sinon déjà réinscrit.
-        // Payload léger : id+matricule+nom+inscription précédente avec classe.
-        $anneeEnCoursForBulk = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $anneePrecedenteForBulk = $anneeEnCoursForBulk
-            ? \App\Models\ESBTPAnneeUniversitaire::where('end_date', '<', $anneeEnCoursForBulk->start_date)
-                ->orderBy('end_date', 'desc')
-                ->first()
-            : null;
-
-        if ($anneePrecedenteForBulk && $anneeEnCoursForBulk) {
-            $etudiantsForBulk = ESBTPEtudiant::query()
-                ->select('id', 'matricule', 'nom', 'prenoms')
-                ->whereHas('inscriptions', function ($sub) use ($anneePrecedenteForBulk) {
-                    $sub->where('annee_universitaire_id', $anneePrecedenteForBulk->id)
-                        ->where('status', 'active')
-                        ->where('workflow_step', 'etudiant_cree');
-                })
-                ->whereDoesntHave('inscriptions', function ($sub) use ($anneeEnCoursForBulk) {
-                    $sub->where('annee_universitaire_id', $anneeEnCoursForBulk->id);
-                })
-                ->with(['inscriptions' => function ($q) use ($anneePrecedenteForBulk) {
-                    $q->where('annee_universitaire_id', $anneePrecedenteForBulk->id)
-                        ->where('status', 'active')
-                        ->where('workflow_step', 'etudiant_cree')
-                        ->with('classe:id,name,filiere_id,niveau_etude_id');
-                }])
-                ->orderBy('nom')
-                ->orderBy('prenoms')
-                ->get();
-        } else {
+        // Étudiants pour modal Réinscription groupée : source unique via BulkReinscriptionService
+        // (utilisée aussi par reinscription.index). Garantit cohérence cross-pages.
+        try {
+            $etudiantsForBulk = app(\App\Services\Reinscription\BulkReinscriptionService::class)
+                ->listEligibleStudents();
+        } catch (\Throwable $e) {
+            \Log::warning('Bulk eligible students fetch failed', ['error' => $e->getMessage()]);
             $etudiantsForBulk = collect();
         }
 

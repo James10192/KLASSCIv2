@@ -131,6 +131,24 @@ class BulkReinscriptionService
                 continue;
             }
 
+            // Defense in depth : refuser tout étudiant ayant déjà une inscription en année courante.
+            // Évite la corruption si le frontend list est stale ou contourné.
+            if ($anneeCourante) {
+                $aDejaInscrit = \App\Models\ESBTPInscription::where('etudiant_id', $id)
+                    ->where('annee_universitaire_id', $anneeCourante->id)
+                    ->exists();
+                if ($aDejaInscrit) {
+                    $rows[] = [
+                        'etudiant_id' => $id,
+                        'matricule' => $etudiant->matricule,
+                        'nom_complet' => trim($etudiant->nom . ' ' . $etudiant->prenoms),
+                        'error' => 'Déjà inscrit pour ' . $anneeCourante->name . ' — non éligible à la réinscription',
+                    ];
+                    $stats['blocked']['analyse_error']++;
+                    continue;
+                }
+            }
+
             $inscription = $etudiant->inscriptions->first();
             if (!$inscription) {
                 $rows[] = [

@@ -306,6 +306,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/seed-demo', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'seedDemo'])->name('seed-demo');
         Route::post('/evaluations/sync-notes', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationsSyncNotes'])->name('evaluations.sync-notes');
         Route::get('/matieres/{matiere}/coefficient', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'matiereCoefficientLookup'])->name('matieres.coefficient');
+        Route::get('/etudiants/{id}/inscriptions-diag', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'etudiantInscriptionsDiag'])->name('etudiants.inscriptions-diag');
 
         // LMD hierarchy (write — bulk setup of Domaine + Mention + Parcours + optional Filiere)
         Route::post('/lmd/setup', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'setup'])->name('lmd.setup');
