@@ -347,6 +347,20 @@ class CLIComptabiliteController extends BaseApiController
     }
 
     /**
+     * GET /api/cli/comptabilite/reconciliation/metrics
+     *
+     * Métriques détaillées (PR6) : santé + KPIs analytiques (avg_days_to_close,
+     * pct_no_ecart, avg_ecart_by_mode sur 90j). Délègue au Service Domain.
+     */
+    public function reconciliationMetrics(Request $request, \App\Domain\Comptabilite\Reconciliation\Services\ReconciliationMetricsService $service): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+        return $this->successResponse($service->snapshot(), 'Reconciliation metrics snapshot');
+    }
+
+    /**
      * GET /api/cli/comptabilite/reconciliation/health
      *
      * Dashboard santé réconciliation : combien de sessions en draft/review/overdue.
