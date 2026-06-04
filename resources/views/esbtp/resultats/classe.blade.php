@@ -197,14 +197,15 @@
                                 @endphp
                                 <tr>
                                     <td class="text-center">
-                                        @if($index === 0 && $hasAverage)
+                                        @php $rangCanon = $resultat['rang_canonique'] ?? ($index + 1); @endphp
+                                        @if($rangCanon === 1 && $hasAverage)
                                             <span style="color: #d97706; font-size: 1.1rem;"><i class="fas fa-trophy"></i></span>
-                                        @elseif($index === 1 && $hasAverage)
+                                        @elseif($rangCanon === 2 && $hasAverage)
                                             <span style="color: #9ca3af; font-size: 1rem;"><i class="fas fa-medal"></i></span>
-                                        @elseif($index === 2 && $hasAverage)
+                                        @elseif($rangCanon === 3 && $hasAverage)
                                             <span style="color: #b45309; font-size: 0.95rem;"><i class="fas fa-medal"></i></span>
                                         @else
-                                            <span style="color: var(--sr-muted-light); font-weight: 600; font-size: 0.85rem;">{{ $index + 1 }}</span>
+                                            <span style="color: var(--sr-muted-light); font-weight: 600; font-size: 0.85rem;">{{ $rangCanon }}</span>
                                         @endif
                                     </td>
                                     <td>

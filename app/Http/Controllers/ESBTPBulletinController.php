@@ -420,6 +420,40 @@ class ESBTPBulletinController extends Controller
      */
     public function previewPDF(ESBTPBulletin $bulletin)
     {
+        // P-D : unification endpoints PDF. Si le snapshot officiel diverge de la
+        // donnée live (notes ajoutées/modifiées depuis la dernière génération),
+        // on redirige vers l'endpoint params-preview qui choisira automatiquement
+        // entre snapshot et live selon BulletinConsistencyService.
+        // Sinon, on rend directement le snapshot (rapide, pas de recomputation).
+        if (
+            $bulletin->etudiant_id
+            && $bulletin->classe_id
+            && $bulletin->annee_universitaire_id
+            && $bulletin->periode
+        ) {
+            try {
+                $consistency = $this->bulletinConsistencyService->getSnapshot(
+                    (int) $bulletin->etudiant_id,
+                    (int) $bulletin->classe_id,
+                    (int) $bulletin->annee_universitaire_id,
+                    (string) $bulletin->periode
+                );
+                if (! empty($consistency['has_divergence'])) {
+                    return redirect()->route('esbtp.bulletins.pdf-params-preview', [
+                        'etudiant_id' => $bulletin->etudiant_id,
+                        'classe_id' => $bulletin->classe_id,
+                        'annee_universitaire_id' => $bulletin->annee_universitaire_id,
+                        'periode' => $bulletin->periode,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::warning('previewPDF: consistency check failed, fallback snapshot', [
+                    'bulletin_id' => $bulletin->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return $this->genererPDF($bulletin, true);
     }
 

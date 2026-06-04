@@ -56,6 +56,7 @@ class ESBTPResultatController extends Controller
     private $currentResultSnapshotService;
     private $btsAnnualAggregationService;
     private $btsUiPresenter;
+    private \App\Services\RankingService $rankingService;
 
     public function __construct(
         \App\Services\ESBTP\ESBTPAbsenceService $absenceService,
@@ -63,7 +64,8 @@ class ESBTPResultatController extends Controller
         BulletinConsistencyService $bulletinConsistencyService,
         BtsCurrentResultSnapshotService $currentResultSnapshotService,
         BtsAnnualAggregationService $btsAnnualAggregationService,
-        BtsUiPresenter $btsUiPresenter
+        BtsUiPresenter $btsUiPresenter,
+        \App\Services\RankingService $rankingService
     )
     {
         $this->absenceService = $absenceService;
@@ -72,6 +74,7 @@ class ESBTPResultatController extends Controller
         $this->currentResultSnapshotService = $currentResultSnapshotService;
         $this->btsAnnualAggregationService = $btsAnnualAggregationService;
         $this->btsUiPresenter = $btsUiPresenter;
+        $this->rankingService = $rankingService;
     }
 
     public function resultats(ResultatsFilterRequest $request)
@@ -519,11 +522,34 @@ class ESBTPResultatController extends Controller
             unset($r);
         }
 
-        // Trier par moyenne (avec assiduité si dispo) décroissante
+        // Source de vérité unique : RankingService garantit cohérence avec etudiants.show
+        // (cohort active + workflow_step etudiant_cree, respect du flag bulletin_show_attendance_note).
+        $rankingPeriode = $periode ?: 'annuel';
+        $rankingData = app(\App\Services\RankingService::class)->calculerRangsClasse(
+            $classe->id,
+            $annee_universitaire_id,
+            $rankingPeriode
+        );
+        $rankingByEtudiantId = $rankingData['rows']->keyBy('etudiant_id');
+
+        // Override la moyenne et le rang avec les valeurs canoniques. Le détail matières/notes
+        // calculé ci-dessus reste affiché pour la transparence.
+        foreach ($resultats as &$r) {
+            $rk = $rankingByEtudiantId->get($r['etudiant']->id);
+            if ($rk) {
+                $r['rang_canonique'] = $rk['rang'];
+                $r['moyenne'] = $rk['moyenne_avec_assiduite'] ?? $rk['moyenne_brute'];
+                $r['moyenne_avec_assiduite'] = $rk['moyenne_avec_assiduite'];
+                $r['note_assiduite'] = $rk['note_assiduite'];
+            }
+        }
+        unset($r);
+
+        // Tri final par rang canonique (les sans rang à la fin)
         usort($resultats, function ($a, $b) {
-            $avgA = $a['moyenne_avec_assiduite'] ?? $a['moyenne'];
-            $avgB = $b['moyenne_avec_assiduite'] ?? $b['moyenne'];
-            return $avgB <=> $avgA;
+            $ra = $a['rang_canonique'] ?? PHP_INT_MAX;
+            $rb = $b['rang_canonique'] ?? PHP_INT_MAX;
+            return $ra <=> $rb;
         });
 
         // Define annee_id for view consistency
@@ -1276,6 +1302,30 @@ class ESBTPResultatController extends Controller
                 if (! empty($resolvedMoyennes) || ! empty($resolvedAnnualStatuses)) {
                     $moyennes = $resolvedMoyennes;
                     $annualValueStatuses = $resolvedAnnualStatuses;
+                }
+
+                // RANG CANONIQUE : si une classe est sélectionnée, on délègue le calcul
+                // du rang au RankingService unique (cohort active + workflow validé,
+                // données snapshot, flag bulletin_show_attendance_note respecté,
+                // ex-aequo gérés). Les étudiants hors cohort (ex: include_all_statuses=1)
+                // restent dans la liste mais sans rang.
+                if ($classe_id) {
+                    $rankingPeriode = $semestre ? 'semestre'.$semestre : 'annuel';
+                    $rankingData = $this->rankingService->calculerRangsClasse(
+                        (int) $classe_id,
+                        (int) $annee_universitaire_id,
+                        $rankingPeriode
+                    );
+                    $rangsCanoniques = $rankingData['rows']
+                        ->whereNotNull('rang')
+                        ->keyBy('etudiant_id');
+
+                    $rangs = [];
+                    foreach ($rangsCanoniques as $etudiantId => $row) {
+                        $rangs[$etudiantId] = $row['rang'];
+                    }
+                } elseif (! empty($moyennes)) {
+                    // Pas de classe : tri sur les moyennes calculées (mode cross-classes).
                     arsort($moyennes);
                     $rangs = [];
                     $rank = 1;

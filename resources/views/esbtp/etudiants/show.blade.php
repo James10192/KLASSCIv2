@@ -3216,6 +3216,26 @@
     $acadAnnee  = optional($acadRef?->anneeUniversitaire)->name ?? '—';
     $acadClasse = optional($acadRef?->classe)->name ?? '—';
 
+    /* RANG CANONIQUE : on délègue à RankingService pour cohérence avec /esbtp/resultats.
+       Cohort : status='active' + workflow_step='etudiant_cree', source snapshot live,
+       flag bulletin_show_attendance_note respecté, ex-aequo gérés.
+       Si l'étudiant n'est pas dans la cohort canonique → on garde l'ad-hoc / bulletin snapshot. */
+    if ($acadRef && $acadRef->classe_id && $acadRef->annee_universitaire_id) {
+        try {
+            $_rk = app(\App\Services\RankingService::class)->calculerRangPourEtudiant(
+                (int) $etudiant->id,
+                (int) $acadRef->classe_id,
+                (int) $acadRef->annee_universitaire_id,
+                'annuel'
+            );
+            if ($_rk['rang'] !== null && $_rk['total'] > 0) {
+                $acadRang = $_rk['rang'] . '/' . $_rk['total'];
+            }
+        } catch (\Throwable $e) {
+            // Silencieux : on garde le rang calculé en amont (bulletin snapshot ou ad-hoc)
+        }
+    }
+
     /* Mention CSS class */
     $acadMentionCls = match(true) {
         !$acadMention => 'passable',
@@ -3740,6 +3760,57 @@
                 </div>
             </div>
             <div class="collapse {{ $loop->first ? 'show' : '' }}" id="{{ $semKey }}">
+                @php
+                    /* P-B : note d'assiduité par semestre, respectant le flag bulletin_show_attendance_note */
+                    $_bulSvc = app(\App\Services\BulletinService::class);
+                    $_assidEnabled = $_bulSvc->isAttendanceNoteEnabled();
+                    $_semPeriode = strtolower($bul->periode ?? '');
+                    $_assidPeriode = $_semPeriode === 'annuel' ? 'annuel' : ($_semPeriode === 'semestre2' ? 'semestre2' : 'semestre1');
+                    $_noteAssid = null;
+                    $_absJ = null; $_absNJ = null;
+                    if ($_assidEnabled && $acadRef && $acadRef->classe_id && $acadRef->annee_universitaire_id) {
+                        try {
+                            $_noteAssid = $_bulSvc->calculateEffectiveAttendanceNoteForStudent(
+                                (int) $etudiant->id,
+                                (int) $acadRef->classe_id,
+                                (int) $acadRef->annee_universitaire_id,
+                                $_assidPeriode
+                            );
+                            $_anneeRef = $acadRef->anneeUniversitaire;
+                            $_absDetail = app(\App\Services\ESBTP\ESBTPAbsenceService::class)->calculerDetailAbsences(
+                                (int) $etudiant->id,
+                                (int) $acadRef->classe_id,
+                                $_anneeRef->date_debut ?? null,
+                                $_anneeRef->date_fin ?? null,
+                                (int) $acadRef->annee_universitaire_id,
+                                $_assidPeriode
+                            );
+                            $_absJ = (int) ($_absDetail['justifiees'] ?? 0);
+                            $_absNJ = (int) ($_absDetail['non_justifiees'] ?? 0);
+                        } catch (\Throwable $e) {
+                            $_noteAssid = null;
+                        }
+                    }
+                @endphp
+                @if($_assidEnabled && $_noteAssid !== null)
+                    @php
+                        $_assidColor = $_noteAssid > 0 ? '#10b981' : ($_noteAssid < 0 ? '#dc2626' : '#64748b');
+                        $_assidIcon = $_noteAssid > 0 ? 'fa-arrow-up' : ($_noteAssid < 0 ? 'fa-arrow-down' : 'fa-equals');
+                        $_assidSign = $_noteAssid > 0 ? '+' : '';
+                    @endphp
+                    <div style="display:flex; align-items:center; justify-content:space-between; gap:.75rem; padding:.6rem .85rem; background:rgba(4,83,203,.04); border:1px solid rgba(4,83,203,.10); border-radius:8px; margin:.5rem 0 .65rem;">
+                        <div style="display:flex; align-items:center; gap:.55rem; font-size:.78rem; color:#334155;">
+                            <i class="fas fa-user-clock" style="color:#0453cb;"></i>
+                            <span style="font-weight:600;">Note d'assiduité</span>
+                            <span style="color:#64748b;">·</span>
+                            <span style="color:#64748b;">{{ $_absJ }} justifiée{{ $_absJ > 1 ? 's' : '' }}, {{ $_absNJ }} non justifiée{{ $_absNJ > 1 ? 's' : '' }}</span>
+                        </div>
+                        <span style="display:inline-flex; align-items:center; gap:.3rem; font-size:.8rem; font-weight:700; color:{{ $_assidColor }};">
+                            <i class="fas {{ $_assidIcon }}" style="font-size:.65rem;"></i>
+                            {{ $_assidSign }}{{ number_format($_noteAssid, 2) }} pt
+                        </span>
+                    </div>
+                @endif
                 <div class="acad-mat-list">
                     @if($semResultats->count())
                         @foreach($semResultats as $res)
@@ -3767,6 +3838,131 @@
                             @endif
                         </div>
                         @endforeach
+                    @elseif(strtolower($bul->periode ?? '') === 'annuel')
+                        @php
+                            /* P-C : Annuel n'est pas une période isolée mais la fusion S1+S2.
+                               On affiche la formule de pondération + moyennes S1/S2/Annuelle. */
+                            $_pondS1 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester1_weight', 1));
+                            $_pondS2 = max(0, (float) \App\Helpers\SettingsHelper::get('bulletin_semester2_weight', 1));
+                            if ($_pondS1 + $_pondS2 <= 0) { $_pondS1 = 1; $_pondS2 = 1; }
+                            $_bulS1 = $acadBuls->firstWhere('periode', 'semestre1');
+                            $_bulS2 = $acadBuls->firstWhere('periode', 'semestre2');
+                            $_mgS1 = $_bulS1 && $_bulS1->moyenne_generale > 0 ? (float) $_bulS1->moyenne_generale : null;
+                            $_mgS2 = $_bulS2 && $_bulS2->moyenne_generale > 0 ? (float) $_bulS2->moyenne_generale : null;
+                        @endphp
+                        <div style="padding:12px 14px;">
+                            <div style="font-size:.72rem; text-transform:uppercase; letter-spacing:.5px; color:#64748b; font-weight:700; margin-bottom:.55rem;">
+                                <i class="fas fa-balance-scale me-1" style="color:#0453cb;"></i>
+                                Pondération annuelle
+                            </div>
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:.6rem;">
+                                <div style="padding:.55rem .7rem; background:rgba(4,83,203,.05); border:1px solid rgba(4,83,203,.10); border-radius:8px;">
+                                    <div style="font-size:.68rem; color:#64748b; font-weight:600;">Semestre 1</div>
+                                    <div style="display:flex; align-items:baseline; gap:.4rem; margin-top:.15rem;">
+                                        <span style="font-size:1.05rem; font-weight:700; color:#0453cb;">{{ $_mgS1 !== null ? number_format($_mgS1, 2) : '—' }}</span>
+                                        <span style="font-size:.7rem; color:#64748b;">/ 20</span>
+                                        <span style="margin-left:auto; font-size:.7rem; color:#94a3b8;">× {{ number_format($_pondS1, 2) }}</span>
+                                    </div>
+                                </div>
+                                <div style="padding:.55rem .7rem; background:rgba(4,83,203,.05); border:1px solid rgba(4,83,203,.10); border-radius:8px;">
+                                    <div style="font-size:.68rem; color:#64748b; font-weight:600;">Semestre 2</div>
+                                    <div style="display:flex; align-items:baseline; gap:.4rem; margin-top:.15rem;">
+                                        <span style="font-size:1.05rem; font-weight:700; color:#0453cb;">{{ $_mgS2 !== null ? number_format($_mgS2, 2) : '—' }}</span>
+                                        <span style="font-size:.7rem; color:#64748b;">/ 20</span>
+                                        <span style="margin-left:auto; font-size:.7rem; color:#94a3b8;">× {{ number_format($_pondS2, 2) }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            @if($mg !== null && ($_mgS1 !== null || $_mgS2 !== null))
+                                <div style="margin-top:.7rem; padding:.55rem .8rem; background:linear-gradient(135deg, rgba(4,83,203,.08), rgba(59,125,219,.10)); border:1px solid rgba(4,83,203,.20); border-radius:8px; display:flex; align-items:center; justify-content:space-between;">
+                                    <span style="font-size:.78rem; color:#1e293b; font-weight:600;">
+                                        <i class="fas fa-equals" style="font-size:.65rem; color:#0453cb; margin-right:.3rem;"></i>
+                                        Moyenne annuelle pondérée
+                                    </span>
+                                    <span style="font-size:1.05rem; font-weight:700; color:#0453cb;">{{ number_format($mg, 2) }}<span style="font-size:.65em; color:#64748b; font-weight:500;">/20</span></span>
+                                </div>
+                            @endif
+                            @php
+                                /* P-E : fusion matières annuel (opt-in setting). Affiche les matières
+                                   avec moyenne pondérée S1×w1 + S2×w2, badge si présent dans un seul semestre. */
+                                $_fusionEnabled = \App\Helpers\SettingsHelper::get('bulletin_annuel_fusion_matieres', '0') === '1';
+                                $_fusedRows = collect();
+                                if ($_fusionEnabled && $acadRef) {
+                                    $_anneeIdFuse = (int) $acadRef->annee_universitaire_id;
+                                    $_rowsS1 = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
+                                        ->where('annee_universitaire_id', $_anneeIdFuse)
+                                        ->where('periode', 'semestre1')
+                                        ->with('matiere')->get()->keyBy('matiere_id');
+                                    $_rowsS2 = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
+                                        ->where('annee_universitaire_id', $_anneeIdFuse)
+                                        ->where('periode', 'semestre2')
+                                        ->with('matiere')->get()->keyBy('matiere_id');
+                                    $_matieresIds = $_rowsS1->keys()->merge($_rowsS2->keys())->unique();
+                                    $_tot = $_pondS1 + $_pondS2;
+                                    foreach ($_matieresIds as $_mid) {
+                                        $_r1 = $_rowsS1->get($_mid);
+                                        $_r2 = $_rowsS2->get($_mid);
+                                        $_n1 = $_r1 ? $_r1->moyenne : null;
+                                        $_n2 = $_r2 ? $_r2->moyenne : null;
+                                        $_matiere = ($_r1 ?? $_r2)->matiere ?? null;
+                                        $_coef = optional($_matiere)->coefficient ?? optional($_matiere)->coeff ?? null;
+                                        $_only = null;
+                                        if ($_n1 !== null && $_n2 !== null) {
+                                            $_avg = ($_n1 * $_pondS1 + $_n2 * $_pondS2) / $_tot;
+                                        } elseif ($_n1 !== null) {
+                                            $_avg = $_n1; $_only = 'S1';
+                                        } elseif ($_n2 !== null) {
+                                            $_avg = $_n2; $_only = 'S2';
+                                        } else {
+                                            continue;
+                                        }
+                                        $_fusedRows->push([
+                                            'name' => optional($_matiere)->name ?? '—',
+                                            'coef' => $_coef,
+                                            'avg' => $_avg,
+                                            'only' => $_only,
+                                        ]);
+                                    }
+                                    $_fusedRows = $_fusedRows->sortBy('name')->values();
+                                }
+                            @endphp
+                            @if($_fusionEnabled && $_fusedRows->count())
+                                <div style="margin-top:.85rem; padding-top:.65rem; border-top:1px dashed rgba(4,83,203,.18);">
+                                    <div style="font-size:.72rem; text-transform:uppercase; letter-spacing:.5px; color:#64748b; font-weight:700; margin-bottom:.45rem;">
+                                        <i class="fas fa-layer-group me-1" style="color:#0453cb;"></i>
+                                        Matières fusionnées (S1 + S2 pondérées)
+                                    </div>
+                                    <div class="acad-mat-list">
+                                        @foreach($_fusedRows as $_fr)
+                                            @php
+                                                $_fcl = $_fr['avg'] >= 12 ? 'good' : ($_fr['avg'] >= 10 ? 'mid' : 'bad');
+                                                $_fco = $_fr['avg'] >= 12 ? '#10b981' : ($_fr['avg'] >= 10 ? '#f59e0b' : '#ef4444');
+                                                $_fpct = min(100, round($_fr['avg'] / 20 * 100));
+                                            @endphp
+                                            <div class="acad-mat-item">
+                                                <div class="acad-mat-top">
+                                                    <span class="acad-mat-name">{{ $_fr['name'] }}</span>
+                                                    @if($_fr['coef']) <span class="acad-mat-coeff-pill">Coef. {{ $_fr['coef'] }}</span> @endif
+                                                    @if($_fr['only'])
+                                                        <span style="font-size:.62rem; padding:.1rem .35rem; background:rgba(245,158,11,.10); color:#b45309; border:1px solid rgba(245,158,11,.25); border-radius:5px; font-weight:700;">{{ $_fr['only'] }} seulement</span>
+                                                    @endif
+                                                    <span class="acad-mat-score {{ $_fcl }}">
+                                                        {{ number_format($_fr['avg'], 2) }}<span style="font-size:.65em; font-weight:500; opacity:.6;">/20</span>
+                                                    </span>
+                                                </div>
+                                                <div class="acad-mat-bar-wrap">
+                                                    <div class="acad-mat-bar" style="width:{{ $_fpct }}%; background:{{ $_fco }};"></div>
+                                                </div>
+                                            </div>
+                                        @endforeach
+                                    </div>
+                                </div>
+                            @endif
+                            <div style="margin-top:.55rem; font-size:.7rem; color:#94a3b8; text-align:center; line-height:1.5;">
+                                <i class="fas fa-info-circle"></i>
+                                Le détail des matières est consultable dans S1 et S2 ci-dessus.
+                            </div>
+                        </div>
                     @else
                         <p style="font-size:.8rem; color:var(--k-muted); text-align:center; padding:12px 0; margin:0;">
                             Détail des matières non disponible
