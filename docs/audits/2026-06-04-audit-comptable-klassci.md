@@ -514,6 +514,48 @@ Voir rule détaillée : `.claude/rules/reconciliation-paiements-caisse.md`
 
 ---
 
+## 4.5 Audit secondaire des sous-pages compta (rerun 22:30)
+
+Pages secondaires testées avec session Admin :
+
+| Page | URL | Statut |
+|---|---|---|
+| Paiement create | `/esbtp/paiements/create` | 🟢 200 OK, "Nouveau paiement" |
+| Paiement show id | `/esbtp/paiements/{id}` | 🟢 200 OK pour ID existant |
+| Paiement recu PDF | `/esbtp/paiements/{id}/recu` | 🟢 Téléchargement PDF déclenché |
+| Catégorie paiement show | `/esbtp/comptabilite/categories-paiement/1` | 🟢 "Détails de la catégorie : Frais de scolarité" |
+| Configuration relances | `/esbtp/comptabilite/relances/config` | 🟢 200 OK |
+| Bourses index | `/esbtp/comptabilite/bourses` | 🟢 200 OK "Gestion des bourses" |
+| Echéanciers config | `/esbtp/comptabilite/config/echeanciers` | 🟢 200 OK "Échéanciers de paiement" |
+| Dashboard data AJAX | `/esbtp/comptabilite/dashboard/data?annee_id=6` | 🟢 200 OK JSON (3118 chars) |
+| KPIs temps réel AJAX | `/esbtp/comptabilite/kpis-temps-reel` | 🟢 200 OK (308 chars) |
+| Frais scolarité show id=1 | `/esbtp/comptabilite/frais-scolarite/1` | 🟡 404 (pas de row id=1 en DB, route OK) |
+| Paiements pending | `/esbtp/paiements/pending` | 🟡 Route inexistante (n'est pas une page distincte — filtre via index) |
+
+### Réconciliation candidates approfondies
+
+```
+api/cli/comptabilite/reconciliation-candidates?pending_days=14
+→ pending_too_old (> 14 jours) : 4 paiements en attente
+→ zero_amount : 18 (idem)
+```
+
+Sample des paiements **zéro validés** (anomalie audit fiscal) — tous avril-mai 2026, motif uniforme « Frais d'inscription » :
+
+```
+id=282  etu=2320 status=validé date=2026-04-29
+id=417  etu=2174 status=validé date=2026-05-04
+id=1157 etu=1300 status=validé date=2026-05-28
+id=1166 etu=1353 status=validé date=2026-05-28
+id=1182 etu=765  status=validé date=2026-05-29
+id=1185 etu=842  status=validé date=2026-05-29
+id=1201 etu=1475 status=validé date=2026-05-29
+```
+
+Pattern suggérant : sentinelle métier « inscription créée sans paiement reçu » → à clarifier avec Marcel ou refactorer en flag dédié `is_exonere` plutôt que paiement 0.
+
+---
+
 ## 5. Recommandations & next steps
 
 ### Priorité 🔴 Haute
