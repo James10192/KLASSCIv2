@@ -286,6 +286,15 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     // Analytics diagnose (read-only) — couverture échéancier, snapshots, saturation risque
     Route::get('/analytics/diagnose', [App\Http\Controllers\API\CLI\CLIDataController::class, 'analyticsDiagnose'])->name('analytics.diagnose');
 
+    // Comptabilité (read-only) — audit + réconciliation diagnose
+    Route::prefix('comptabilite')->name('comptabilite.')->group(function () {
+        Route::get('/dashboard-kpis', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'dashboardKpis'])->name('dashboard-kpis');
+        Route::get('/cash-balance', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'cashBalance'])->name('cash-balance');
+        Route::get('/payments-summary', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'paymentsSummary'])->name('payments-summary');
+        Route::get('/period-locks', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'periodLocks'])->name('period-locks');
+        Route::get('/reconciliation-candidates', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'reconciliationCandidates'])->name('reconciliation-candidates');
+    });
+
     // Permissions supervision (read-only) — registry-driven
     Route::get('/permissions', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'permissions'])->name('permissions.list');
     Route::get('/permissions/audit', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'audit'])->name('permissions.audit');
