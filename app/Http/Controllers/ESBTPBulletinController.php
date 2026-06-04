@@ -87,8 +87,10 @@ class ESBTPBulletinController extends Controller
 
         // Valeurs par défaut filtre
         $classe_id = $request->input('classe_id');
+        // Année par défaut : is_current (en cours), fallback is_active.
         $annee_id = $request->input('annee_universitaire_id',
-            $anneesUniversitaires->firstWhere('is_active', true)?->id);
+            $anneesUniversitaires->firstWhere('is_current', true)?->id
+            ?? $anneesUniversitaires->firstWhere('is_active', true)?->id);
         $periode_id = $request->input('periode_id');
         $published = $request->input('published');
         $search = trim((string) $request->input('search', ''));
@@ -1273,9 +1275,15 @@ class ESBTPBulletinController extends Controller
      */
     public function select()
     {
-        $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
+        $classes = ESBTPClasse::where('is_active', true)
+            ->where(fn ($q) => $q->whereNull('systeme_academique')->orWhere('systeme_academique', '!=', 'LMD'))
+            ->orderBy('name')
+            ->get();
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
-        $anneeActuelle = ESBTPAnneeUniversitaire::where('is_active', true)->first();
+        // L'année par défaut : on prend l'année marquée is_current (l'année académique
+        // en cours pour l'école), avec fallback sur is_active si jamais aucune is_current.
+        $anneeActuelle = ESBTPAnneeUniversitaire::where('is_current', true)->first()
+            ?? ESBTPAnneeUniversitaire::where('is_active', true)->first();
 
         return view('esbtp.bulletins.select', compact('classes', 'anneesUniversitaires', 'anneeActuelle'));
     }
