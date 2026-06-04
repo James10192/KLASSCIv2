@@ -133,10 +133,12 @@ class CLIStudentController extends BaseApiController
         $annee = $this->getAnneeCouraante();
 
         // Current inscription
+        // FIX audit 2026-06-04 : colonnes filiere/niveau sont 'name' (anglais),
+        // pas 'nom' (français). Causait SQL error 'Unknown column nom'.
         $inscription = $annee
             ? $etudiant->inscriptions()
                 ->where('annee_universitaire_id', $annee->id)
-                ->with(['classe:id,name', 'filiere:id,nom', 'niveau:id,nom'])
+                ->with(['classe:id,name', 'filiere:id,name', 'niveau:id,name'])
                 ->first()
             : null;
 
