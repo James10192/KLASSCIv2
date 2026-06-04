@@ -708,10 +708,12 @@
                                             </tr>
                                         @endif
                                         @if(($settings['bulletin_show_semester_average'] ?? '1') == '1')
+                                            @if($periode == 'semestre1' || $periode == 'semestre2')
                                             <tr>
                                                 <td>Moyenne {{ $periode == 'semestre1' ? '1er' : '2e' }} Semestre</td>
                                                 <td class="center"><span class="result-value-box">{{ number_format($moyenneAvecAssiduite, 2) }}</span></td>
                                             </tr>
+                                            @endif
                                             @if($periode == 'semestre2')
                                                 <tr>
                                                     <td>Moyenne Semestre 1</td>
@@ -720,6 +722,20 @@
                                                 <tr>
                                                     <td>Moyenne Annuelle</td>
                                                     <td class="center"><span class="result-value-box">{{ $moyenneAnnuelle !== null ? number_format($moyenneAnnuelle, 2) : '-' }}</span></td>
+                                                </tr>
+                                            @endif
+                                            @if($periode == 'annuel')
+                                                <tr>
+                                                    <td>Moyenne Semestre 1</td>
+                                                    <td class="center"><span class="result-value-box">{{ $moyenneSemestre1 !== null ? number_format($moyenneSemestre1, 2) : '-' }}</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>Moyenne Semestre 2</td>
+                                                    <td class="center"><span class="result-value-box">{{ $moyenneSemestre2 !== null ? number_format($moyenneSemestre2, 2) : '-' }}</span></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Moyenne Annuelle</strong></td>
+                                                    <td class="center"><span class="result-value-box"><strong>{{ $moyenneAnnuelle !== null ? number_format($moyenneAnnuelle, 2) : '-' }}</strong></span></td>
                                                 </tr>
                                             @endif
                                         @endif
@@ -763,7 +779,7 @@
                                 <div class="stats-card">
                                     <table class="stats-table">
                                         <thead>
-                                            <tr><th colspan="2">STATISTIQUES — {{ $periode == 'semestre2' ? 'SEMESTRE 2' : 'SEMESTRE 1' }}</th></tr>
+                                            <tr><th colspan="2">STATISTIQUES — {{ $periode == 'semestre1' ? 'SEMESTRE 1' : ($periode == 'semestre2' ? 'SEMESTRE 2' : 'ANNUEL') }}</th></tr>
                                         </thead>
                                         <tbody>
                                             @if(($settings['bulletin_show_highest_average'] ?? '1') == '1')
