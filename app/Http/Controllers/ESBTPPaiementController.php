@@ -579,6 +579,11 @@ class ESBTPPaiementController extends Controller
             return redirect()->route('esbtp.paiements.show', $paiement->id)
                 ->with('error', $block['message']);
         }
+        // PR2 réconciliation — Garde verrouillage post-réconciliation
+        if ($block = $this->assertReconciliationNotLocked($paiement)) {
+            return redirect()->route('esbtp.paiements.show', $paiement->id)
+                ->with('error', $block['message']);
+        }
 
         $validated = $request->validated();
 
@@ -1525,6 +1530,13 @@ class ESBTPPaiementController extends Controller
                 }
                 return redirect()->back()->with('error', $block['message']);
             }
+            // PR2 réconciliation — Garde verrouillage post-réconciliation
+            if ($block = $this->assertReconciliationNotLocked($paiement)) {
+                if ($request->ajax() || $request->wantsJson()) {
+                    return response()->json(['success' => false, 'message' => $block['message']], 403);
+                }
+                return redirect()->back()->with('error', $block['message']);
+            }
 
             $paiement->update([
                 'status' => 'rejeté',
@@ -1599,6 +1611,13 @@ class ESBTPPaiementController extends Controller
 
         // S1.4 — Garde verrouillage de période comptable (même superAdmin doit utiliser bypass_lock)
         if ($block = $this->assertPeriodNotLocked($paiement)) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $block['message']], 403);
+            }
+            return redirect()->back()->with('error', $block['message']);
+        }
+        // PR2 réconciliation — Garde verrouillage post-réconciliation
+        if ($block = $this->assertReconciliationNotLocked($paiement)) {
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => $block['message']], 403);
             }
@@ -1875,6 +1894,41 @@ class ESBTPPaiementController extends Controller
                 'Action refusée : le paiement du %s appartient à une période comptable verrouillée (jusqu\'au %s). Demandez à un comptable habilité de débloquer la période ou créez une écriture corrective sur la période courante.',
                 $paiementDate->translatedFormat('d/m/Y'),
                 $lockDate->translatedFormat('d/m/Y'),
+            ),
+        ];
+    }
+
+    /**
+     * PR2 réconciliation — vérifie qu'un paiement n'est pas verrouillé par une
+     * session de réconciliation clôturée. Bypass possible via permission
+     * `comptabilite.reconciliation.bypass_lock` (superAdmin/serviceTechnique
+     * passent via Gate::before).
+     *
+     * @return array{message: string}|null Null si OK.
+     */
+    private function assertReconciliationNotLocked(\App\Models\ESBTPPaiement $paiement): ?array
+    {
+        if (!$paiement->reconciliation_locked_at) {
+            return null;
+        }
+
+        if (auth()->user()?->can('comptabilite.reconciliation.bypass_lock')) {
+            Log::warning('Réconciliation : bypass verrouillage paiement utilisé', [
+                'paiement_id' => $paiement->id,
+                'reconciliation_locked_at' => $paiement->reconciliation_locked_at?->toIso8601String(),
+                'session_id' => $paiement->last_reconciliation_session_id,
+                'user_id' => auth()->id(),
+            ]);
+            return null;
+        }
+
+        return [
+            'message' => sprintf(
+                'Action refusée : ce paiement a été verrouillé par la réconciliation %s. '
+                . 'Demandez à un superAdmin de rouvrir la session ou créez une écriture corrective.',
+                $paiement->last_reconciliation_session_id
+                    ? "(session #{$paiement->last_reconciliation_session_id})"
+                    : ''
             ),
         ];
     }

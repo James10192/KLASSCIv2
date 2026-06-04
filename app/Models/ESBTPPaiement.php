@@ -37,7 +37,10 @@ class ESBTPPaiement extends Model implements Auditable
         'numero_recu',
         'reference_externe',
         'metadata',
-        'relance_id'
+        'relance_id',
+        // PR2 réconciliation
+        'reconciliation_locked_at',
+        'last_reconciliation_session_id',
     ];
 
     /**

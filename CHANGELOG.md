@@ -14,6 +14,8 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
+- **Réconciliation paiements ↔ caisse physique (PR2 Workflow OHADA)** — workflow complet draft→review→approved→closed avec séparation des devoirs configurable (setting `comptabilite.reconciliation.require_separation_of_duties`), garde `assertReconciliationNotLocked()` ajoutée aux 3 endpoints paiement (update/cancel/destroy), 4 sous-actions résolution écart (ajuster paiement / créer correctif / annuler / no action), audit dense immutable `payment_reconciliation_logs` (snapshot before/after JSON), motif obligatoire ≥ 10 chars (résolution) ou ≥ 30 chars (réouverture exceptionnelle). 10 routes REST `/esbtp/comptabilite/reconciliation/*` throttlées 60/min.
+- **Réconciliation paiements ↔ caisse physique (PR1 Foundation)** — 4 tables (`reconciliation_sessions`, `cash_counts`, `reconciliation_discrepancies`, `payment_reconciliation_logs`) + 2 enums (`ModePaiement`, `ReconciliationSessionStatus`) + 6 permissions registry + 2 settings tenant configurables (frequency daily/weekly/monthly, require_separation_of_duties), service base + 2 endpoints CLI read-only diagnostic.
 - **Redesign full premium page Évaluations** (`/esbtp/evaluations`) — hero gradient KLASSCI, KPIs live, filtres `<x-au-select>`, table click-row, namespace `ev-*` [8d8b0aa5]
 - **Coefficients S1/S2 séparés** — colonne `periode` sur `esbtp_matiere_coefficients` (S1/S2/ANNEE) + backend distingué par période [81e7939a]
 - **Endpoints réutilisables** `/coefficients/copy` + `/coefficients/completion` + `/coefficients/read` pour piloter la copie inter-période et exposer les stats de complétude [41b1cbb0]

@@ -82,6 +82,11 @@ class EventServiceProvider extends ServiceProvider
         WorkflowStepCompleted::class => [
             NotifyWorkflowNextStepActors::class,
         ],
+
+        // PR2 Réconciliation paiements ↔ caisse physique
+        \App\Domain\Comptabilite\Reconciliation\Events\ReconciliationClosed::class => [
+            \App\Domain\Comptabilite\Reconciliation\Listeners\LockPaymentsAfterReconciliation::class,
+        ],
     ];
 
     /**
