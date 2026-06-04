@@ -15,6 +15,7 @@ class ESBTPOptionAssignment extends Model
         'option_id',
         'filiere_id',
         'niveau_id',
+        'parcours_id',
         'assignment_type',
         'is_active'
     ];
@@ -45,6 +46,11 @@ class ESBTPOptionAssignment extends Model
     public function niveau()
     {
         return $this->belongsTo(ESBTPNiveauEtude::class, 'niveau_id');
+    }
+
+    public function parcours()
+    {
+        return $this->belongsTo(ESBTPLMDParcours::class, 'parcours_id');
     }
 
     /**

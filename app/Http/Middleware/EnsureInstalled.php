@@ -20,7 +20,7 @@ class EnsureInstalled
         // Vérifier si l'application est installée
         $installationStatus = InstallationHelper::getInstallationStatus();
         $installed = $installationStatus['installed'];
-        $hasAdminUser = InstallationHelper::hasAdminUser();
+        $hasAdminUser = $installationStatus['has_admin_user'];
         
         // Si un administrateur existe, considérer l'application comme installée
         if ($hasAdminUser) {

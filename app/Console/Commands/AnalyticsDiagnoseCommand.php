@@ -127,7 +127,6 @@ class AnalyticsDiagnoseCommand extends Command
 
         $rows = DB::table('esbtp_inscription_echeancier_snapshots as s')
             ->join('esbtp_inscriptions as i', 'i.id', '=', 's.inscription_id')
-            ->whereNull('s.deleted_at')
             ->whereNull('i.deleted_at')
             ->where('i.status', 'active')
             ->where('i.workflow_step', 'etudiant_cree')
@@ -147,7 +146,7 @@ class AnalyticsDiagnoseCommand extends Command
             ->whereExists(fn ($q) => $q->selectRaw(1)
                 ->from('esbtp_inscription_echeancier_snapshots as s')
                 ->whereColumn('s.inscription_id', 'esbtp_inscriptions.id'))
-            ->with(['echeancierSnapshot' => fn ($q) => $q->whereNull('deleted_at')])
+            ->with('echeancierSnapshot')
             ->chunkById(100, function ($inscriptions) use (&$aggregated, $start, $end) {
                 foreach ($inscriptions as $i) {
                     $snapshot = $i->echeancierSnapshot ?? null;

@@ -6,10 +6,15 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Cache;
 use App\Models\User;
 
 class InstallationHelper
 {
+    private const INSTALL_STATUS_CACHE_KEY = 'installation_status_v1';
+    private const ADMIN_EXISTS_CACHE_KEY = 'installation_has_admin_v1';
+    private const INSTALL_CACHE_TTL_SECONDS = 30;
+
     /**
      * Check if the application is installed
      *
@@ -78,6 +83,7 @@ class InstallationHelper
 
                 // Write updated content back to .env file
                 File::put($envPath, $envContent);
+                self::flushCachedStatus();
 
                 return true;
             }
@@ -131,22 +137,24 @@ class InstallationHelper
     public static function hasAdminUser(): bool
     {
         try {
-            // Vérifier d'abord si les tables nécessaires existent
-            if (!Schema::hasTable('users') || !Schema::hasTable('roles') || !Schema::hasTable('model_has_roles')) {
-                return false;
-            }
+            return Cache::remember(self::ADMIN_EXISTS_CACHE_KEY, self::INSTALL_CACHE_TTL_SECONDS, function () {
+                // Vérifier d'abord si les tables nécessaires existent
+                if (!Schema::hasTable('users') || !Schema::hasTable('roles') || !Schema::hasTable('model_has_roles')) {
+                    return false;
+                }
 
-            // Vérifier si un utilisateur avec le rôle 'superAdmin' existe
-            $superAdminExists = DB::table('users')
-                ->join('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
-                ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
-                ->where('roles.name', '=', 'superAdmin')
-                ->where('model_has_roles.model_type', '=', User::class)
-                ->exists();
+                // Vérifier si un utilisateur avec le rôle 'superAdmin' existe
+                $superAdminExists = DB::table('users')
+                    ->join('model_has_roles', 'users.id', '=', 'model_has_roles.model_id')
+                    ->join('roles', 'model_has_roles.role_id', '=', 'roles.id')
+                    ->where('roles.name', '=', 'superAdmin')
+                    ->where('model_has_roles.model_type', '=', User::class)
+                    ->exists();
 
-            Log::info('Utilisateur superAdmin existe: ' . ($superAdminExists ? 'Oui' : 'Non'));
+                Log::info('Utilisateur superAdmin existe: ' . ($superAdminExists ? 'Oui' : 'Non'));
 
-            return $superAdminExists;
+                return $superAdminExists;
+            });
         } catch (\Exception $e) {
             Log::error("Erreur lors de la vérification de l'existence de l'administrateur: " . $e->getMessage());
             return false;
@@ -160,72 +168,101 @@ class InstallationHelper
      */
     public static function getInstallationStatus()
     {
-        $isEnvInstalled = self::isInstalled();
-        $isDatabaseConfigured = self::isDatabaseConfigured();
-        $hasAdminUser = self::hasAdminUser();
-        $allTablesPresent = false;
-        $requiredTables = ['users', 'roles', 'permissions', 'model_has_roles'];
-        $allRequiredTablesExist = false;
+        try {
+            return Cache::remember(self::INSTALL_STATUS_CACHE_KEY, self::INSTALL_CACHE_TTL_SECONDS, function () {
+                $envInstalled = env('APP_INSTALLED', false);
+                $isDatabaseConfigured = self::isDatabaseConfigured();
+                $hasAdminUser = $isDatabaseConfigured ? self::hasAdminUser() : false;
+                $allTablesPresent = false;
+                $requiredTables = ['users', 'roles', 'permissions', 'model_has_roles'];
+                $allRequiredTablesExist = false;
 
-        // Initialisation des variables pour le calcul du match_percentage
-        $matchPercentage = 0;
-        $missingTables = [];
-        $extraTables = [];
-        $migrationTables = [];
-        $existingTables = [];
-        $matchingTables = [];
-        $tableCount = 0;
+                // Initialisation des variables pour le calcul du match_percentage
+                $matchPercentage = 0;
+                $missingTables = [];
+                $extraTables = [];
+                $migrationTables = [];
+                $existingTables = [];
+                $matchingTables = [];
+                $tableCount = 0;
 
-        if ($isDatabaseConfigured) {
-            try {
-                // Vérifier les tables requises
-                $allRequiredTablesExist = self::checkRequiredTables($requiredTables);
-                $tableCount = self::getTableCount();
+                if ($isDatabaseConfigured) {
+                    try {
+                        // Vérifier les tables requises
+                        $allRequiredTablesExist = self::checkRequiredTables($requiredTables);
+                        $tableCount = self::getTableCount();
 
-                // Récupérer les tables de migration et existantes
-                $migrationTables = self::getMigrationTableNames();
-                $existingTables = self::getExistingTables();
+                        // Récupérer les tables de migration et existantes
+                        $migrationTables = self::getMigrationTableNames();
+                        $existingTables = self::getExistingTables();
 
-                // Calculer les tables manquantes et supplémentaires
-                $matchingTables = array_intersect($migrationTables, $existingTables);
-                $missingTables = array_diff($migrationTables, $existingTables);
-                $extraTables = array_diff($existingTables, $migrationTables);
+                        // Calculer les tables manquantes et supplémentaires
+                        $matchingTables = array_intersect($migrationTables, $existingTables);
+                        $missingTables = array_diff($migrationTables, $existingTables);
+                        $extraTables = array_diff($existingTables, $migrationTables);
 
-                // Calculer le pourcentage de correspondance
-                $matchPercentage = count($migrationTables) > 0
-                    ? round((count($matchingTables) / count($migrationTables)) * 100)
-                    : 0;
+                        // Calculer le pourcentage de correspondance
+                        $matchPercentage = count($migrationTables) > 0
+                            ? round((count($matchingTables) / count($migrationTables)) * 100)
+                            : 0;
 
-                $allTablesPresent = count($missingTables) === 0;
+                        $allTablesPresent = count($missingTables) === 0;
 
-                // Journaliser les résultats pour le débogage
-                \Log::info("Match percentage: {$matchPercentage}%");
-                \Log::info("Missing tables: " . count($missingTables));
-                \Log::info("Extra tables: " . count($extraTables));
-            } catch (\Exception $e) {
-                \Log::error("Erreur lors du calcul du statut d'installation: " . $e->getMessage());
-            }
+                        // Journaliser les résultats pour le débogage
+                        \Log::info("Match percentage: {$matchPercentage}%");
+                        \Log::info("Missing tables: " . count($missingTables));
+                        \Log::info("Extra tables: " . count($extraTables));
+                    } catch (\Exception $e) {
+                        \Log::error("Erreur lors du calcul du statut d'installation: " . $e->getMessage());
+                    }
+                }
+
+                // L'application est considérée comme installée si toutes les conditions sont remplies
+                $installed = $envInstalled && $isDatabaseConfigured && $hasAdminUser && $allRequiredTablesExist;
+
+                return [
+                    'env_installed' => $envInstalled,
+                    'db_configured' => $isDatabaseConfigured,
+                    'has_admin_user' => $hasAdminUser,
+                    'all_tables_present' => $allTablesPresent,
+                    'all_required_tables_exist' => $allRequiredTablesExist,
+                    'all_tables_exist' => $allRequiredTablesExist,
+                    'table_count' => $tableCount,
+                    'match_percentage' => $matchPercentage,
+                    'missing_tables' => $missingTables,
+                    'extra_tables' => $extraTables,
+                    'migration_tables_count' => count($migrationTables),
+                    'existing_tables_count' => count($existingTables),
+                    'matching_tables_count' => count($matchingTables),
+                    'installed' => $installed,
+                ];
+            });
+        } catch (\Exception $e) {
+            \Log::error("Erreur lors de la récupération du cache d'installation: " . $e->getMessage());
+
+            return [
+                'env_installed' => env('APP_INSTALLED', false),
+                'db_configured' => false,
+                'has_admin_user' => false,
+                'all_tables_present' => false,
+                'all_required_tables_exist' => false,
+                'all_tables_exist' => false,
+                'table_count' => 0,
+                'match_percentage' => 0,
+                'missing_tables' => [],
+                'extra_tables' => [],
+                'migration_tables_count' => 0,
+                'existing_tables_count' => 0,
+                'matching_tables_count' => 0,
+                'installed' => false,
+            ];
         }
+    }
 
-        // L'application est considérée comme installée si toutes les conditions sont remplies
-        $installed = $isEnvInstalled && $isDatabaseConfigured && $hasAdminUser && $allRequiredTablesExist;
-
-        return [
-            'env_installed' => $isEnvInstalled,
-            'db_configured' => $isDatabaseConfigured,
-            'has_admin_user' => $hasAdminUser,
-            'all_tables_present' => $allTablesPresent,
-            'all_required_tables_exist' => $allRequiredTablesExist,
-            'all_tables_exist' => $allRequiredTablesExist,
-            'table_count' => $tableCount,
-            'match_percentage' => $matchPercentage,
-            'missing_tables' => $missingTables,
-            'extra_tables' => $extraTables,
-            'migration_tables_count' => count($migrationTables),
-            'existing_tables_count' => count($existingTables),
-            'matching_tables_count' => count($matchingTables),
-            'installed' => $installed
-        ];
+    public static function flushCachedStatus(): void
+    {
+        Cache::forget(self::INSTALL_STATUS_CACHE_KEY);
+        Cache::forget(self::ADMIN_EXISTS_CACHE_KEY);
     }
 
     /**

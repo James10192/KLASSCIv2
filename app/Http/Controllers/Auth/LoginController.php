@@ -55,7 +55,7 @@ class LoginController extends Controller
     {
         // Vérifier si l'application est installée
         $installationStatus = InstallationHelper::getInstallationStatus();
-        $hasAdminUser = InstallationHelper::hasAdminUser();
+        $hasAdminUser = $installationStatus['has_admin_user'];
 
         // Journaliser l'état pour le débogage
         \Log::info("LoginController: Installation status: " .

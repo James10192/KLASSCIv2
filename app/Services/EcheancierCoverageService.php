@@ -48,8 +48,7 @@ class EcheancierCoverageService
         $with = (clone $base)
             ->whereExists(fn ($q) => $q->selectRaw(1)
                 ->from('esbtp_inscription_echeancier_snapshots as s')
-                ->whereColumn('s.inscription_id', 'esbtp_inscriptions.id')
-                ->whereNull('s.deleted_at'))
+                ->whereColumn('s.inscription_id', 'esbtp_inscriptions.id'))
             ->count();
 
         return [

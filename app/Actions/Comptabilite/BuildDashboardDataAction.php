@@ -29,21 +29,28 @@ class BuildDashboardDataAction
      */
     public function __invoke(ComptabiliteFilters $filters, ?ESBTPAnneeUniversitaire $annee): array
     {
-        $totalPaid = (float) $this->paiementsQuery($filters)
-            ->where('status', self::PAYMENT_STATUS_VALIDATED)
-            ->sum('montant');
+        $statusAgg = $this->paiementsQuery($filters)
+            ->selectRaw(
+                'COUNT(*) as total_count,
+                SUM(CASE WHEN status = ? THEN montant ELSE 0 END) as total_paid,
+                SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as count_paid,
+                SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as count_pending',
+                [
+                    self::PAYMENT_STATUS_VALIDATED,
+                    self::PAYMENT_STATUS_VALIDATED,
+                    self::PAYMENT_STATUS_PENDING,
+                ]
+            )
+            ->first();
+        $totalPaid = (float) ($statusAgg->total_paid ?? 0);
 
         $totalDuResult = $this->getImpayesAging->totalDuForFilters($filters);
         $agingBuckets = ($this->getImpayesAging)($filters);
         $countOverdueTotal = (int) array_sum(array_column($agingBuckets, 'count'));
         $totalOverdue = (float) array_sum(array_column($agingBuckets, 'amount'));
 
-        $countPaid = $this->paiementsQuery($filters)
-            ->where('status', self::PAYMENT_STATUS_VALIDATED)
-            ->count();
-        $countPartiallyPaid = $this->paiementsQuery($filters)
-            ->where('status', self::PAYMENT_STATUS_PENDING)
-            ->count();
+        $countPaid = (int) ($statusAgg->count_paid ?? 0);
+        $countPartiallyPaid = (int) ($statusAgg->count_pending ?? 0);
         $countOverdue = $countOverdueTotal;
 
         $todayValidated = $this->paiementsQuery($filters)
@@ -127,6 +134,8 @@ class BuildDashboardDataAction
             ->where('status', self::PAYMENT_STATUS_PENDING)
             ->whereNull('deleted_at')
             ->when($filters->anneeId, fn ($q) => $q->whereHas('inscription', fn ($q2) => $q2->where('annee_universitaire_id', $filters->anneeId)))
+            ->when($filters->filiereId, fn ($q) => $q->whereHas('inscription.classe', fn ($q2) => $q2->where('filiere_id', $filters->filiereId)))
+            ->when($filters->classeId, fn ($q) => $q->whereHas('inscription', fn ($q2) => $q2->where('classe_id', $filters->classeId)))
             ->orderByDesc('created_at')
             ->limit(self::PENDING_PAYMENTS_LIMIT)
             ->get();

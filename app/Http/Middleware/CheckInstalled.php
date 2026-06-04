@@ -30,7 +30,7 @@ class CheckInstalled
         $installationStatus = InstallationHelper::getInstallationStatus();
         $installed = $installationStatus['installed'];
         $matchPercentage = $installationStatus['match_percentage'] ?? 0;
-        $hasAdminUser = InstallationHelper::hasAdminUser();
+        $hasAdminUser = $installationStatus['has_admin_user'];
 
         // Si un administrateur existe, considérer l'application comme installée
         if ($hasAdminUser) {

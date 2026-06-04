@@ -231,6 +231,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/stats', [App\Http\Controllers\API\CLI\CLIDataController::class, 'stats'])->name('stats');
     Route::get('/classes', [App\Http\Controllers\API\CLI\CLIDataController::class, 'classes'])->name('classes');
     Route::get('/payments', [App\Http\Controllers\API\CLI\CLIDataController::class, 'payments'])->name('payments');
+    Route::get('/relances', [App\Http\Controllers\API\CLI\CLIDataController::class, 'relances'])->name('relances');
+    Route::get('/recouvrement', [App\Http\Controllers\API\CLI\CLIDataController::class, 'recouvrement'])->name('recouvrement');
+    Route::get('/journal-caisse', [App\Http\Controllers\API\CLI\CLIDataController::class, 'journalCaisse'])->name('journal-caisse');
+    Route::get('/audit-comptable', [App\Http\Controllers\API\CLI\CLIDataController::class, 'auditComptable'])->name('audit-comptable');
     Route::get('/settings', [App\Http\Controllers\API\CLI\CLIDataController::class, 'settings'])->name('settings');
 
     // Read endpoints — Students & Inscriptions
