@@ -167,9 +167,8 @@ class BulkReinscriptionService
                 $stats['blocked']['analyse_error']++;
             }
 
-            $solde = $this->reeinscriptionService->calculerSoldeInscription($inscription);
-            $row['solde_restant'] = $solde['solde_restant'] ?? null;
-            $row['peut_reinscrire'] = ($row['solde_restant'] ?? 1) <= 0
+            $row['solde_restant'] = (float) $this->reeinscriptionService->calculerSoldeInscription($inscription);
+            $row['peut_reinscrire'] = $row['solde_restant'] <= 0
                 || (auth()->check() && auth()->user()->hasRole('superAdmin'));
 
             if (!$row['peut_reinscrire']) {

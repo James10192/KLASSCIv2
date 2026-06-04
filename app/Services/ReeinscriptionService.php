@@ -665,7 +665,7 @@ class ReeinscriptionService
      * Calculer le solde restant d'une inscription basé sur les frais souscriptions actives.
      * Si aucune souscription → solde = 0 (rien à payer).
      */
-    private function calculerSoldeInscription($inscription): float
+    public function calculerSoldeInscription($inscription): float
     {
         $subscriptions = ESBTPFraisSubscription::where('inscription_id', $inscription->id)
             ->where('is_active', true)
