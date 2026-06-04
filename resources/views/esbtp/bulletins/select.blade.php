@@ -79,7 +79,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    transition: box-shadow .2s, transform .15s;
+    transition: box-shadow .2s;
 }
 .bus-action-card:hover {
     box-shadow: 0 8px 30px rgba(4, 83, 203, .08), 0 2px 8px rgba(15, 23, 42, .04);
@@ -89,9 +89,7 @@
     border-bottom: 1px solid var(--bus-border);
     background: linear-gradient(135deg, rgba(4, 83, 203, .03), rgba(59, 125, 219, .05));
 }
-.bus-action-card__head-row {
-    display: flex; align-items: center; gap: .75rem;
-}
+.bus-action-card__head-row { display: flex; align-items: center; gap: .75rem; }
 .bus-action-icon {
     width: 40px; height: 40px;
     border-radius: 10px;
@@ -102,15 +100,8 @@
     flex-shrink: 0;
     box-shadow: 0 2px 8px rgba(4, 83, 203, .22);
 }
-.bus-action-title {
-    font-size: 1rem; font-weight: 700;
-    color: var(--bus-text);
-    margin: 0;
-}
-.bus-action-sub {
-    font-size: .76rem; color: var(--bus-muted); margin-top: .25rem;
-    line-height: 1.4;
-}
+.bus-action-title { font-size: 1rem; font-weight: 700; color: var(--bus-text); margin: 0; }
+.bus-action-sub { font-size: .76rem; color: var(--bus-muted); margin-top: .25rem; line-height: 1.4; }
 .bus-action-card__body {
     padding: 1.1rem 1.25rem 1.25rem;
     display: flex; flex-direction: column; gap: .85rem;
@@ -122,12 +113,17 @@
     color: var(--bus-muted);
     text-transform: uppercase;
     letter-spacing: .4px;
+    display: flex; align-items: center; gap: .35rem;
 }
-.bus-helper {
-    font-size: .72rem;
-    color: var(--bus-muted);
-    line-height: 1.4;
+.bus-field-step {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: rgba(4, 83, 203, .12); color: var(--bus-primary);
+    font-size: .65rem; font-weight: 700;
 }
+.bus-field--disabled { opacity: .45; pointer-events: none; }
+.bus-helper { font-size: .72rem; color: var(--bus-muted); line-height: 1.4; }
 .bus-checkbox-row {
     display: flex; align-items: center; gap: .55rem;
     padding: .6rem .75rem;
@@ -147,11 +143,11 @@
     color: #fff;
     background: linear-gradient(135deg, var(--bus-primary), var(--bus-accent));
     cursor: pointer;
-    transition: filter .15s, transform .12s;
+    transition: filter .15s;
     box-shadow: 0 4px 14px rgba(4, 83, 203, .25);
 }
 .bus-submit:hover { filter: brightness(1.08); }
-.bus-submit:disabled { opacity: .55; cursor: wait; }
+.bus-submit:disabled { opacity: .55; cursor: wait; filter: grayscale(.3); }
 .bus-submit--info { background: linear-gradient(135deg, #0ea5e9, #3b7ddb); }
 .bus-submit--success { background: linear-gradient(135deg, #10b981, #0ea5e9); }
 
@@ -167,16 +163,44 @@
 .bus-tag--preview { background: rgba(14, 165, 233, .1); color: #0369a1; }
 .bus-tag--gen { background: rgba(16, 185, 129, .1); color: var(--bus-success); }
 
-.bus-errors {
-    padding: .75rem 1rem;
-    background: rgba(220, 38, 38, .08);
-    border: 1px solid rgba(220, 38, 38, .25);
-    color: #7f1d1d;
-    border-radius: 10px;
-    margin-bottom: 1rem;
-    font-size: .82rem;
+.bus-status {
+    display: flex; align-items: center; gap: .35rem;
+    font-size: .72rem;
+    color: var(--bus-muted);
+    margin-top: -.35rem;
 }
-.bus-errors ul { margin: 0; padding-left: 1.25rem; }
+.bus-status i { font-size: .65rem; }
+
+/* Toast container */
+.bus-toast-stack {
+    position: fixed;
+    bottom: 1.25rem; right: 1.25rem;
+    display: flex; flex-direction: column; gap: .5rem;
+    z-index: 99999;
+    max-width: 380px;
+    pointer-events: none;
+}
+.bus-toast {
+    pointer-events: auto;
+    display: flex; align-items: center; gap: .55rem;
+    background: #fff;
+    border: 1px solid var(--bus-border);
+    border-radius: 10px;
+    padding: .65rem .85rem;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, .12);
+    font-size: .85rem;
+    color: var(--bus-text);
+}
+.bus-toast--success { border-left: 4px solid var(--bus-success); }
+.bus-toast--success > i { color: var(--bus-success); }
+.bus-toast--error { border-left: 4px solid var(--bus-danger); }
+.bus-toast--error > i { color: var(--bus-danger); }
+.bus-toast--info { border-left: 4px solid var(--bus-primary); }
+.bus-toast--info > i { color: var(--bus-primary); }
+.bus-toast-close {
+    background: transparent; border: none; cursor: pointer;
+    color: var(--bus-muted); padding: 0; margin-left: auto;
+}
 
 @media (max-width: 768px) {
     .bus-hero { padding: 1.5rem 1.25rem 1.25rem; }
@@ -195,7 +219,7 @@
                 <div class="bus-hero-icon"><i class="fas fa-magic-wand-sparkles"></i></div>
                 <div>
                     <h1>Générer des bulletins</h1>
-                    <p>Consulter, prévisualiser ou générer en masse les bulletins d'une classe</p>
+                    <p>Choisissez d'abord la classe, puis l'année universitaire, puis l'action à effectuer</p>
                 </div>
             </div>
             <div>
@@ -206,19 +230,9 @@
         </div>
     </div>
 
-    @if($errors->any())
-        <div class="bus-errors">
-            <ul>
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
-
     <div class="bus-grid">
         {{-- ── CARD 1 : Consulter ─────────────────────── --}}
-        <div class="bus-action-card">
+        <div class="bus-action-card" x-data="busCard({ kind: 'consult' })">
             <div class="bus-action-card__head">
                 <div class="bus-action-card__head-row">
                     <div class="bus-action-icon" style="background:linear-gradient(135deg, #0453cb, #3b7ddb);">
@@ -231,41 +245,41 @@
                 </div>
                 <p class="bus-action-sub">Accéder à la page Résultats pour voir les bulletins existants d'une classe.</p>
             </div>
-            <form action="{{ route('esbtp.resultats.index') }}" method="GET" class="bus-action-card__body">
+            <form class="bus-action-card__body" @submit.prevent="submit()">
                 <div class="bus-field">
-                    <label class="bus-field-label">Année universitaire</label>
+                    <label class="bus-field-label"><span class="bus-field-step">1</span>Classe</label>
                     <x-au-select
-                        name="annee_universitaire_id"
-                        :value="$anneeActuelle?->id"
-                        placeholder="Sélectionner…"
-                        icon="fa-calendar"
-                        :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => ($a->annee_debut.' - '.$a->annee_fin)])->toArray()" />
-                </div>
-                <div class="bus-field">
-                    <label class="bus-field-label">Classe</label>
-                    <x-au-select
-                        name="classe_id"
-                        placeholder="Sélectionner…"
+                        :options="$classes->mapWithKeys(fn($c) => [$c->id => $c->name])->toArray()"
+                        placeholder="Choisir la classe…"
                         icon="fa-school"
                         :searchable="$classes->count() > 8"
-                        :options="$classes->mapWithKeys(fn($c) => [$c->id => $c->name])->toArray()" />
+                        x-model="form.classe_id" />
                 </div>
-                <div class="bus-field">
-                    <label class="bus-field-label">Période</label>
+                <div class="bus-field" :class="!form.classe_id ? 'bus-field--disabled' : ''">
+                    <label class="bus-field-label"><span class="bus-field-step">2</span>Année universitaire</label>
                     <x-au-select
-                        name="semestre"
-                        placeholder="Sélectionner…"
-                        icon="fa-layer-group"
-                        :options="['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2']" />
+                        :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => ($a->annee_debut.' - '.$a->annee_fin)])->toArray()"
+                        placeholder="Choisir l'année…"
+                        icon="fa-calendar"
+                        x-model="form.annee_universitaire_id" />
                 </div>
-                <button type="submit" class="bus-submit">
-                    <i class="fas fa-magnifying-glass"></i> Consulter les bulletins
+                <div class="bus-field" :class="(!form.classe_id || !form.annee_universitaire_id) ? 'bus-field--disabled' : ''">
+                    <label class="bus-field-label"><span class="bus-field-step">3</span>Période</label>
+                    <x-au-select
+                        :options="['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2']"
+                        placeholder="Choisir la période…"
+                        icon="fa-layer-group"
+                        x-model="form.semestre" />
+                </div>
+                <button type="submit" class="bus-submit" :disabled="busy || !canSubmit()">
+                    <i class="fas" :class="busy ? 'fa-spinner fa-spin' : 'fa-magnifying-glass'"></i>
+                    <span x-text="busy ? 'Chargement…' : 'Consulter les bulletins'"></span>
                 </button>
             </form>
         </div>
 
         {{-- ── CARD 2 : Prévisualiser ───────────────────── --}}
-        <div class="bus-action-card">
+        <div class="bus-action-card" x-data="busCard({ kind: 'preview' })">
             <div class="bus-action-card__head">
                 <div class="bus-action-card__head-row">
                     <div class="bus-action-icon" style="background:linear-gradient(135deg, #0ea5e9, #3b7ddb);">
@@ -278,43 +292,51 @@
                 </div>
                 <p class="bus-action-sub">Aperçu PDF d'un bulletin individuel pour vérification avant publication.</p>
             </div>
-            <form action="{{ route('esbtp.bulletins.preview') }}" method="GET" class="bus-action-card__body">
+            <form class="bus-action-card__body" @submit.prevent="submit()">
                 <div class="bus-field">
-                    <label class="bus-field-label">Année universitaire</label>
+                    <label class="bus-field-label"><span class="bus-field-step">1</span>Classe</label>
                     <x-au-select
-                        name="annee"
-                        :value="$anneeActuelle?->id"
-                        placeholder="Sélectionner…"
-                        icon="fa-calendar"
-                        :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => ($a->annee_debut.' - '.$a->annee_fin)])->toArray()" />
-                </div>
-                <div class="bus-field">
-                    <label class="bus-field-label">Classe</label>
-                    <x-au-select
-                        name="classe"
-                        x-ref="previewClasse"
-                        placeholder="Sélectionner…"
+                        :options="$classes->mapWithKeys(fn($c) => [$c->id => $c->name])->toArray()"
+                        placeholder="Choisir la classe…"
                         icon="fa-school"
                         :searchable="$classes->count() > 8"
-                        :options="$classes->mapWithKeys(fn($c) => [$c->id => $c->name])->toArray()" />
+                        x-model="form.classe_id" />
                 </div>
-                <div class="bus-field">
-                    <label class="bus-field-label">Étudiant</label>
+                <div class="bus-field" :class="!form.classe_id ? 'bus-field--disabled' : ''">
+                    <label class="bus-field-label"><span class="bus-field-step">2</span>Année universitaire</label>
                     <x-au-select
-                        name="etudiant"
-                        x-ref="previewEtudiant"
-                        placeholder="Choisissez d'abord une classe"
+                        :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => ($a->annee_debut.' - '.$a->annee_fin)])->toArray()"
+                        placeholder="Choisir l'année…"
+                        icon="fa-calendar"
+                        x-model="form.annee_universitaire_id" />
+                </div>
+                <div class="bus-field" :class="(!form.classe_id || !form.annee_universitaire_id) ? 'bus-field--disabled' : ''">
+                    <label class="bus-field-label">
+                        <span class="bus-field-step">3</span>Étudiant
+                        <span x-show="loadingStudents" x-cloak style="margin-left:auto; font-size:.7rem; color:var(--bus-primary);">
+                            <i class="fas fa-spinner fa-spin"></i> Chargement…
+                        </span>
+                    </label>
+                    <x-au-select
+                        x-model="form.etudiant_id"
+                        :searchable="true"
+                        placeholder="Choisir l'étudiant…"
                         icon="fa-user-graduate"
                         :options="[]" />
+                    <p class="bus-status" x-show="form.classe_id && form.annee_universitaire_id && !loadingStudents">
+                        <i class="fas fa-users"></i>
+                        <span x-text="students.length + ' étudiant' + (students.length > 1 ? 's' : '') + ' inscrit' + (students.length > 1 ? 's' : '') + ' cette année dans cette classe'"></span>
+                    </p>
                 </div>
-                <button type="submit" class="bus-submit bus-submit--info">
-                    <i class="fas fa-eye"></i> Prévisualiser le bulletin
+                <button type="submit" class="bus-submit bus-submit--info" :disabled="busy || !canSubmit()">
+                    <i class="fas" :class="busy ? 'fa-spinner fa-spin' : 'fa-eye'"></i>
+                    <span x-text="busy ? 'Ouverture…' : 'Prévisualiser le bulletin'"></span>
                 </button>
             </form>
         </div>
 
         {{-- ── CARD 3 : Générer ─────────────────────────── --}}
-        <div class="bus-action-card">
+        <div class="bus-action-card" x-data="busCard({ kind: 'generate' })">
             <div class="bus-action-card__head">
                 <div class="bus-action-card__head-row">
                     <div class="bus-action-icon" style="background:linear-gradient(135deg, #10b981, #0ea5e9);">
@@ -327,47 +349,62 @@
                 </div>
                 <p class="bus-action-sub">Créer ou recalculer les bulletins de tous les étudiants d'une classe pour une période donnée.</p>
             </div>
-            <form action="{{ route('esbtp.bulletins.generer-classe') }}" method="POST" class="bus-action-card__body">
-                @csrf
+            <form class="bus-action-card__body" @submit.prevent="submit()">
                 <div class="bus-field">
-                    <label class="bus-field-label">Année universitaire</label>
+                    <label class="bus-field-label"><span class="bus-field-step">1</span>Classe</label>
                     <x-au-select
-                        name="annee_universitaire_id"
-                        :value="$anneeActuelle?->id"
-                        placeholder="Sélectionner…"
-                        icon="fa-calendar"
-                        :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => ($a->annee_debut.' - '.$a->annee_fin)])->toArray()" />
-                </div>
-                <div class="bus-field">
-                    <label class="bus-field-label">Classe</label>
-                    <x-au-select
-                        name="classe_id"
-                        placeholder="Sélectionner…"
+                        :options="$classes->mapWithKeys(fn($c) => [$c->id => $c->name])->toArray()"
+                        placeholder="Choisir la classe…"
                         icon="fa-school"
                         :searchable="$classes->count() > 8"
-                        :options="$classes->mapWithKeys(fn($c) => [$c->id => $c->name])->toArray()" />
+                        x-model="form.classe_id" />
                 </div>
-                <div class="bus-field">
-                    <label class="bus-field-label">Période</label>
+                <div class="bus-field" :class="!form.classe_id ? 'bus-field--disabled' : ''">
+                    <label class="bus-field-label">
+                        <span class="bus-field-step">2</span>Année universitaire
+                        <span x-show="loadingStudents" x-cloak style="margin-left:auto; font-size:.7rem; color:var(--bus-primary);">
+                            <i class="fas fa-spinner fa-spin"></i>
+                        </span>
+                    </label>
                     <x-au-select
-                        name="periode"
-                        placeholder="Sélectionner…"
+                        :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => ($a->annee_debut.' - '.$a->annee_fin)])->toArray()"
+                        placeholder="Choisir l'année…"
+                        icon="fa-calendar"
+                        x-model="form.annee_universitaire_id" />
+                    <p class="bus-status" x-show="form.classe_id && form.annee_universitaire_id && !loadingStudents">
+                        <i class="fas fa-users"></i>
+                        <span x-text="students.length + ' étudiant' + (students.length > 1 ? 's' : '') + ' seront concernés'"></span>
+                    </p>
+                </div>
+                <div class="bus-field" :class="(!form.classe_id || !form.annee_universitaire_id) ? 'bus-field--disabled' : ''">
+                    <label class="bus-field-label"><span class="bus-field-step">3</span>Période</label>
+                    <x-au-select
+                        :options="['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2']"
+                        placeholder="Choisir la période…"
                         icon="fa-layer-group"
-                        :options="['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2']" />
+                        x-model="form.periode" />
                 </div>
                 <div class="bus-checkbox-row">
-                    <input type="checkbox" id="bus-recalc" name="recalculer" value="1">
+                    <input type="checkbox" id="bus-recalc" x-model="form.recalculer" :value="1">
                     <label for="bus-recalc">Recalculer si déjà existants</label>
                 </div>
-                <p class="bus-helper">
-                    <i class="fas fa-info-circle"></i>
-                    Si coché, les bulletins déjà générés seront recalculés depuis les notes courantes.
-                </p>
-                <button type="submit" class="bus-submit bus-submit--success">
-                    <i class="fas fa-file-pdf"></i> Générer les bulletins
+                <button type="submit" class="bus-submit bus-submit--success" :disabled="busy || !canSubmit()">
+                    <i class="fas" :class="busy ? 'fa-spinner fa-spin' : 'fa-file-pdf'"></i>
+                    <span x-text="busy ? 'Génération en cours…' : 'Générer les bulletins'"></span>
                 </button>
             </form>
         </div>
+    </div>
+
+    {{-- Toast stack --}}
+    <div class="bus-toast-stack" aria-live="polite">
+        <template x-for="t in toasts" :key="t.id">
+            <div class="bus-toast" :class="'bus-toast--' + t.type" x-transition.opacity>
+                <i :class="t.type === 'success' ? 'fas fa-circle-check' : (t.type === 'error' ? 'fas fa-circle-exclamation' : 'fas fa-circle-info')"></i>
+                <span x-text="t.message"></span>
+                <button class="bus-toast-close" @click="removeToast(t.id)"><i class="fas fa-xmark"></i></button>
+            </div>
+        </template>
     </div>
 </div>
 
@@ -375,70 +412,166 @@
 <script>
 function busSelect() {
     return {
-        etudiantsByClasse: {},
-
+        toasts: [],
+        toastSeq: 0,
         init() {
-            // Quand la classe de la card preview change → fetch les étudiants
-            window.addEventListener('au-select:changed', (ev) => {
-                if (!ev.detail || ev.detail.name !== 'classe') return;
-                this.loadEtudiants(ev.detail.value);
-            });
-            // Fallback : écouter aussi sur le <select> caché interne
-            document.addEventListener('change', (ev) => {
-                if (ev.target && ev.target.name === 'classe' && ev.target.closest('form')?.action.includes('/bulletins/preview')) {
-                    this.loadEtudiants(ev.target.value);
-                }
-            });
+            window.addEventListener('toast', (ev) => this.pushToast(ev.detail));
         },
-
-        previewClasseValue() {
-            const sel = this.$refs.previewClasse?.querySelector('select[name="classe"]');
-            return sel ? sel.value : '';
+        pushToast(detail) {
+            const id = ++this.toastSeq;
+            this.toasts.push({ id, type: detail.type || 'info', message: detail.message || '' });
+            setTimeout(() => this.removeToast(id), 5000);
         },
-
-        async loadEtudiants(classeId) {
-            const etudiantTrigger = this.$refs.previewEtudiant;
-            if (!etudiantTrigger) return;
-            const nativeSel = etudiantTrigger.querySelector('select[name="etudiant"]');
-            if (!nativeSel) return;
-            // Reset
-            nativeSel.innerHTML = '<option value="">Chargement…</option>';
-            if (!classeId) {
-                nativeSel.innerHTML = '<option value="">Choisissez d\'abord une classe</option>';
-                return;
-            }
-            try {
-                const url = `{{ route('esbtp.classes.etudiants', ['classe' => '__ID__']) }}`.replace('__ID__', classeId);
-                const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
-                const data = await res.json();
-                const items = data.etudiants || [];
-                if (!items.length) {
-                    nativeSel.innerHTML = '<option value="">Aucun étudiant dans cette classe</option>';
-                    return;
-                }
-                let html = '<option value="">Sélectionner…</option>';
-                items.forEach(e => {
-                    const name = `${e.nom || ''} ${e.prenom || e.prenoms || ''}`.trim();
-                    html += `<option value="${e.id}">${name} (${e.matricule || ''})</option>`;
-                });
-                nativeSel.innerHTML = html;
-                nativeSel.dispatchEvent(new Event('change', { bubbles: true }));
-            } catch (err) {
-                nativeSel.innerHTML = '<option value="">Erreur de chargement</option>';
-            }
-        },
-
-        submitForm(form) {
-            // Form GET classique : laisse le browser submit naturellement,
-            // mais avec @submit.prevent, on retire les params vides puis submit.
-            const data = new FormData(form);
-            const params = new URLSearchParams();
-            for (const [k, v] of data.entries()) {
-                if (v !== '' && v !== null) params.set(k, v);
-            }
-            window.location.href = form.action + (params.toString() ? '?' + params.toString() : '');
+        removeToast(id) {
+            const idx = this.toasts.findIndex(t => t.id === id);
+            if (idx !== -1) this.toasts.splice(idx, 1);
         },
     };
+}
+
+if (typeof window.busCard !== 'function') {
+window.busCard = function (cfg) {
+    return {
+        kind: cfg.kind,
+        busy: false,
+        loadingStudents: false,
+        students: [],
+        form: {
+            classe_id: '',
+            annee_universitaire_id: '',
+            etudiant_id: '',
+            semestre: '',
+            periode: '',
+            recalculer: false,
+        },
+
+        init() {
+            this.$watch('form.classe_id', () => { this.form.etudiant_id = ''; this.fetchStudents(); });
+            this.$watch('form.annee_universitaire_id', () => { this.form.etudiant_id = ''; this.fetchStudents(); });
+        },
+
+        canSubmit() {
+            if (!this.form.classe_id || !this.form.annee_universitaire_id) return false;
+            if (this.kind === 'consult')  return !!this.form.semestre;
+            if (this.kind === 'preview')  return !!this.form.etudiant_id;
+            if (this.kind === 'generate') return !!this.form.periode;
+            return false;
+        },
+
+        async fetchStudents() {
+            if (!this.form.classe_id || !this.form.annee_universitaire_id) {
+                this.students = [];
+                return;
+            }
+            // Seules les cards qui ont besoin de la liste d'étudiants la chargent
+            if (this.kind !== 'preview' && this.kind !== 'generate') return;
+            this.loadingStudents = true;
+            try {
+                const baseUrl = `{{ route('esbtp.classes.etudiants', ['classe' => '__ID__']) }}`.replace('__ID__', this.form.classe_id);
+                const url = baseUrl + '?annee_universitaire_id=' + encodeURIComponent(this.form.annee_universitaire_id);
+                const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                const data = await res.json();
+                this.students = (data.etudiants || []).map(e => ({
+                    value: e.id,
+                    label: `${e.nom || ''} ${e.prenoms || e.prenom || ''}`.trim() + ` (${e.matricule || ''})`,
+                }));
+                if (this.kind === 'preview') this.injectStudentsIntoSelect();
+            } catch (err) {
+                this.notify('error', 'Erreur lors du chargement des étudiants : ' + err.message);
+                this.students = [];
+            } finally {
+                this.loadingStudents = false;
+            }
+        },
+
+        injectStudentsIntoSelect() {
+            // Le composant au-select est rendu côté serveur avec un native <select> caché.
+            // Pour preview card, on injecte les options étudiants dynamiquement.
+            const card = this.$root || this.$el;
+            const nativeSel = card.querySelector('select[name=""], select.au-select-native');
+            // Trouve le native du 3e au-select (étudiant)
+            const wrappers = card.querySelectorAll('.au-select');
+            if (wrappers.length < 3) return;
+            const studentWrapper = wrappers[2];
+            const native = studentWrapper.querySelector('select.au-select-native');
+            if (!native) return;
+            const currentValue = this.form.etudiant_id;
+            let html = '<option value="">' + (this.students.length ? 'Sélectionner…' : 'Aucun étudiant') + '</option>';
+            this.students.forEach(s => {
+                const sel = String(s.value) === String(currentValue) ? ' selected' : '';
+                html += `<option value="${s.value}"${sel}>${s.label}</option>`;
+            });
+            native.innerHTML = html;
+            // Force resync : le composant Alpine au-select écoute change sur le native
+            native.value = currentValue || '';
+            native.dispatchEvent(new Event('change', { bubbles: true }));
+        },
+
+        async submit() {
+            if (!this.canSubmit()) {
+                this.notify('error', 'Veuillez remplir tous les champs requis.');
+                return;
+            }
+            this.busy = true;
+            try {
+                if (this.kind === 'consult') {
+                    const params = new URLSearchParams();
+                    params.set('classe_id', this.form.classe_id);
+                    params.set('annee_universitaire_id', this.form.annee_universitaire_id);
+                    params.set('semestre', this.form.semestre);
+                    window.location.href = `{{ route('esbtp.resultats.index') }}?` + params.toString();
+                    return;
+                }
+                if (this.kind === 'preview') {
+                    const params = new URLSearchParams();
+                    params.set('annee', this.form.annee_universitaire_id);
+                    params.set('classe', this.form.classe_id);
+                    params.set('etudiant', this.form.etudiant_id);
+                    window.location.href = `{{ route('esbtp.bulletins.preview') }}?` + params.toString();
+                    return;
+                }
+                if (this.kind === 'generate') {
+                    const fd = new FormData();
+                    fd.append('classe_id', this.form.classe_id);
+                    fd.append('annee_universitaire_id', this.form.annee_universitaire_id);
+                    fd.append('periode', this.form.periode);
+                    if (this.form.recalculer) fd.append('recalculer', '1');
+                    const res = await fetch(`{{ route('esbtp.bulletins.generer-classe') }}`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                            'X-Requested-With': 'XMLHttpRequest',
+                            'Accept': 'application/json',
+                        },
+                        body: fd,
+                    });
+                    if (res.status === 422) {
+                        const data = await res.json();
+                        const msg = Object.values(data.errors || {}).flat().join(' • ') || data.message || 'Validation refusée';
+                        this.notify('error', msg);
+                        return;
+                    }
+                    if (!res.ok && !res.redirected) {
+                        throw new Error(`Erreur HTTP ${res.status}`);
+                    }
+                    this.notify('success', `Bulletins générés pour la classe. Redirection…`);
+                    setTimeout(() => {
+                        window.location.href = `{{ route('esbtp.bulletins.index') }}?classe_id=${this.form.classe_id}&annee_universitaire_id=${this.form.annee_universitaire_id}&periode_id=${this.form.periode}`;
+                    }, 1100);
+                }
+            } catch (err) {
+                this.notify('error', err.message || 'Erreur inattendue.');
+            } finally {
+                if (this.kind === 'generate') this.busy = false;
+                else setTimeout(() => { this.busy = false; }, 400);
+            }
+        },
+
+        notify(type, message) {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type, message } }));
+        },
+    };
+};
 }
 </script>
 @endpush

@@ -1302,16 +1302,25 @@ class ESBTPClasseController extends Controller
      * @param  \App\Models\ESBTPClasse  $classe
      * @return \Illuminate\Http\Response
      */
-    public function getEtudiants(ESBTPClasse $classe)
+    public function getEtudiants(ESBTPClasse $classe, \Illuminate\Http\Request $request)
     {
-        $etudiants = $classe
+        $query = $classe
             ->etudiants()
             ->select("esbtp_etudiants.id", "esbtp_etudiants.nom", "esbtp_etudiants.prenoms", "esbtp_etudiants.matricule")
             ->where("esbtp_inscriptions.status", "active")
             ->where("esbtp_inscriptions.workflow_step", "etudiant_cree")
             ->orderBy("esbtp_etudiants.nom")
-            ->orderBy("esbtp_etudiants.prenoms")
-            ->get();
+            ->orderBy("esbtp_etudiants.prenoms");
+
+        // Filtre optionnel : inscriptions de l'année universitaire spécifiée.
+        // Les classes sont universelles dans KLASSCI, donc une même classe peut avoir
+        // des inscriptions sur plusieurs années. Préciser annee_universitaire_id renvoie
+        // uniquement les étudiants inscrits cette année-là dans cette classe.
+        if ($request->filled('annee_universitaire_id')) {
+            $query->where('esbtp_inscriptions.annee_universitaire_id', (int) $request->input('annee_universitaire_id'));
+        }
+
+        $etudiants = $query->get();
 
         return response()->json([
             "success" => true,
