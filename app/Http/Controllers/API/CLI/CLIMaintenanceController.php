@@ -99,6 +99,65 @@ class CLIMaintenanceController extends BaseApiController
     }
 
     /**
+     * GET /api/cli/reinscription/eligible-diag — dump filter state + sample
+     */
+    public function reinscriptionEligibleDiag(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+        $service = app(\App\Services\Reinscription\BulkReinscriptionService::class);
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first(['id', 'name']);
+        $anneePrecedente = $anneeCourante
+            ? \App\Models\ESBTPAnneeUniversitaire::where('end_date', '<', $anneeCourante->start_date)
+                ->orderBy('end_date', 'desc')
+                ->first(['id', 'name', 'start_date', 'end_date'])
+            : null;
+
+        $eligible = $service->listEligibleStudents();
+        $sampleIds = $eligible->pluck('id')->take(20)->all();
+        $count2041 = $eligible->where('id', 2041)->count();
+
+        // Raw count comparisons
+        $hasN1Active = \App\Models\ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($anneePrecedente) {
+            if ($anneePrecedente) {
+                $q->where('annee_universitaire_id', $anneePrecedente->id)
+                    ->where('status', 'active')
+                    ->where('workflow_step', 'etudiant_cree');
+            }
+        })->count();
+        $doesntHaveN = \App\Models\ESBTPEtudiant::whereDoesntHave('inscriptions', function ($q) use ($anneeCourante) {
+            if ($anneeCourante) {
+                $q->where('annee_universitaire_id', $anneeCourante->id);
+            }
+        })->count();
+        $bothFilters = \App\Models\ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($anneePrecedente) {
+            if ($anneePrecedente) {
+                $q->where('annee_universitaire_id', $anneePrecedente->id)
+                    ->where('status', 'active')
+                    ->where('workflow_step', 'etudiant_cree');
+            }
+        })->whereDoesntHave('inscriptions', function ($q) use ($anneeCourante) {
+            if ($anneeCourante) {
+                $q->where('annee_universitaire_id', $anneeCourante->id);
+            }
+        })->count();
+
+        return $this->successResponse([
+            'annee_courante' => $anneeCourante,
+            'annee_precedente' => $anneePrecedente,
+            'service_count' => $eligible->count(),
+            'sample_ids' => $sampleIds,
+            'has_2041_in_eligible' => $count2041 > 0,
+            'raw_counts' => [
+                'has_n_minus_1_active' => $hasN1Active,
+                'doesnt_have_n' => $doesntHaveN,
+                'both_filters' => $bothFilters,
+            ],
+        ]);
+    }
+
+    /**
      * GET /api/cli/etudiants/{id}/inscriptions-diag
      * Diagnostic des inscriptions d'un étudiant : annee_id, status, workflow_step.
      */
