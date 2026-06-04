@@ -610,6 +610,12 @@
                                 </a>
                             </li>
                             <li>
+                                <a class="dropdown-item" href="#" onclick="exportPaiements('saari'); return false;">
+                                    <i class="fas fa-file-excel text-success me-2"></i>Export EXCEL SAARI
+                                    <small class="text-muted d-block ms-4" style="font-size:.7rem;">Format Sage Saari (onglet BNI BKE)</small>
+                                </a>
+                            </li>
+                            <li>
                                 <a class="dropdown-item" href="#" onclick="exportPaiements('csv'); return false;">
                                     <i class="fas fa-file-csv text-info me-2"></i>CSV
                                 </a>
@@ -1528,6 +1534,9 @@ function showYearChangeInfo() {
         switch(format) {
             case 'excel':
                 exportUrl = '{{ route('esbtp.paiements.export.excel') }}';
+                break;
+            case 'saari':
+                exportUrl = '{{ route('esbtp.paiements.export.saari') }}';
                 break;
             case 'csv':
                 exportUrl = '{{ route('esbtp.paiements.export.csv') }}';

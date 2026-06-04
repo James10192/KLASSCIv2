@@ -949,6 +949,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/paiements/export/excel', [App\Http\Controllers\ESBTPPaiementController::class, 'exportExcel'])
                     ->middleware('throttle:10,1')
                     ->name('paiements.export.excel');
+                Route::get('/paiements/export/saari', [App\Http\Controllers\ESBTPPaiementController::class, 'exportSaari'])
+                    ->middleware('throttle:10,1')
+                    ->name('paiements.export.saari');
                 Route::get('/paiements/export/csv', [App\Http\Controllers\ESBTPPaiementController::class, 'exportCsv'])
                     ->middleware('throttle:10,1')
                     ->name('paiements.export.csv');

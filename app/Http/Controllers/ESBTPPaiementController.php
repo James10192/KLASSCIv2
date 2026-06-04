@@ -2239,6 +2239,63 @@ class ESBTPPaiementController extends Controller
     }
 
     /**
+     * Exporter les paiements au format SAARI (Sage Saari Ligne 100).
+     * Format compatible import direct dans SAARI :
+     * colonnes (vide) | cj | date | libelle | debit | credit | n°cmpte | t | Colonne1
+     *
+     * Onglet généré "BNI BKE" (peut être renommé pour BNI BABI ou autre via setting).
+     *
+     * @see app/Exports/PaiementsSaariExport.php
+     */
+    public function exportSaari(Request $request, FuzzyNameMatcher $matcher)
+    {
+        try {
+            $paiements = $this->filterService->getAllFilteredPaiements($request, $matcher);
+
+            $filters = [
+                'search' => $request->input('search'),
+                'status' => $request->input('status'),
+                'date_debut' => $request->input('date_debut'),
+                'date_fin' => $request->input('date_fin'),
+                'periode_label' => $this->buildPeriodeLabel($request),
+            ];
+
+            $export = new \App\Exports\PaiementsSaariExport($paiements, $filters);
+            $filename = 'export_saari_' . now()->format('Y-m-d_His') . '.xlsx';
+
+            Log::info('Export SAARI paiements généré', [
+                'user_id' => auth()->id(),
+                'total_paiements' => $paiements->count(),
+                'filename' => $filename,
+            ]);
+
+            return \Maatwebsite\Excel\Facades\Excel::download($export, $filename);
+        } catch (\Exception $e) {
+            Log::error('Erreur export SAARI paiements: ' . $e->getMessage(), [
+                'trace' => config('app.debug') ? $e->getTraceAsString() : null,
+            ]);
+
+            return redirect()->back()->with('error', 'Erreur lors de l\'export SAARI: ' . $e->getMessage());
+        }
+    }
+
+    private function buildPeriodeLabel(Request $request): string
+    {
+        $d = $request->input('date_debut');
+        $f = $request->input('date_fin');
+        if ($d && $f) {
+            return 'du ' . $d . ' au ' . $f;
+        }
+        if ($d) {
+            return 'depuis le ' . $d;
+        }
+        if ($f) {
+            return 'jusqu\'au ' . $f;
+        }
+        return '';
+    }
+
+    /**
      * Exporter les paiements au format CSV
      */
     public function exportCsv(Request $request, FuzzyNameMatcher $matcher)
