@@ -27,6 +27,7 @@ class ReconciliationRoutesRegistrationTest extends TestCase
             'open' => ['esbtp.comptabilite.reconciliation.open', 'POST'],
             'record-count' => ['esbtp.comptabilite.reconciliation.record-count', 'POST'],
             'detect-discrepancies' => ['esbtp.comptabilite.reconciliation.detect-discrepancies', 'POST'],
+            'payments-by-mode' => ['esbtp.comptabilite.reconciliation.payments-by-mode', 'GET'],
             'resolve' => ['esbtp.comptabilite.reconciliation.resolve', 'POST'],
             'review' => ['esbtp.comptabilite.reconciliation.review', 'POST'],
             'approve' => ['esbtp.comptabilite.reconciliation.approve', 'POST'],
