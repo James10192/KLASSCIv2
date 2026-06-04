@@ -428,8 +428,27 @@ grand_total: 650 000 FCFA
 
 | Bug | Source | Risque |
 |---|---|---|
-| `User c2569688c_Marcel already has more than 'max_user_connections' active connections` | DB MySQL | 🟡 Mid (sous charge utilisateur) — config DB côté hébergeur |
+| `User c2569688c_Marcel already than 'max_user_connections'` | DB MySQL | 🟡 Mid (sous charge utilisateur) — config DB côté hébergeur |
 | `Call to undefined function previewClasseValue()` | bulletins/select compiled view (CACHE STALE) | 🟢 Résolu après `cache:clear` |
+| `Illegal operator and value combination` (1x 07:16) | CLIMaintenanceController:112 — Eloquent forward call sur Collection / Model | 🟡 Bug isolé sur endpoint diagnostic — pas critique pour compta |
+
+### Bugs additionnels détectés lors du run audit du 2026-06-04 (rerun)
+
+| Bug | Trace | Statut |
+|---|---|---|
+| `Unknown column 'nom' in SELECT` esbtp_filieres (1x 08:59) | CLIStudentController:139 utilisait `filiere:id,nom` / `niveau:id,nom` mais colonnes = `name` | ✅ Fixé `6f18f30b` |
+
+### Confirmation que les bugs précédents ne se reproduisent plus
+
+Run du 2026-06-04 22:00 :
+- ❌ `Dates de l'année universitaire non définies` : dernière occurrence à 07:52, AVANT mon fix `ee0e6015` (déployé ~14:00). Pas de nouvelle trace depuis.
+- ❌ `Erreur classes en surcapacité HAVING` : dernière 08:31, AVANT fix. Pas de nouvelle trace.
+- ❌ `school_city undefined` : dernière 12:47, AVANT fix. Pas de nouvelle trace.
+- ❌ `ESBTPResultatMatiere not found` : dernière 13:09, AVANT fix `9d5aa138`. Pas de nouvelle trace.
+- ❌ `AnalyticsContext too few args` : dernière 14:05, AVANT fix `9d5aa138`. Pas de nouvelle trace.
+- ❌ `previewClasseValue()` : dernière 12:28, AVANT fix `b6ff5698`. Pas de nouvelle trace.
+
+→ **Tous les bugs critiques fixés se confirment résolus sur prod**.
 
 ---
 
