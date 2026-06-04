@@ -27,10 +27,23 @@ class ESBTPInscriptionTrashController extends Controller
     {
         abort_unless(Auth::user()?->can('trash.view'), 403, 'Accès à la corbeille refusé.');
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->depAnalyzer->forInscription($id),
-        ]);
+        try {
+            return response()->json([
+                'success' => true,
+                'data' => $this->depAnalyzer->forInscription($id),
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Inscription introuvable ou déjà supprimée définitivement.',
+            ], 404);
+        } catch (\Throwable $e) {
+            Log::error('Erreur analyse dépendances inscription', ['id' => $id, 'error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'analyse des dépendances : '.$e->getMessage(),
+            ], 500);
+        }
     }
 
     public function index(Request $request)

@@ -140,9 +140,10 @@ class TrashDependencyAnalyzer
      */
     public function forInscription(int $id): array
     {
-        $inscription = ESBTPInscription::onlyTrashed()
-            ->with(['etudiant', 'classe', 'anneeUniversitaire'])
-            ->findOrFail($id);
+        $inscription = ESBTPInscription::onlyTrashed()->findOrFail($id);
+        $classe = $inscription->classe_id
+            ? \App\Models\ESBTPClasse::find($inscription->classe_id)
+            : null;
 
         $etudiantId = $inscription->etudiant_id;
         $etudiantTrashed = $etudiantId
@@ -156,8 +157,8 @@ class TrashDependencyAnalyzer
         if ($etudiant) {
             $label .= ' — '.trim(($etudiant->nom ?? '').' '.($etudiant->prenoms ?? ''));
         }
-        if ($inscription->classe) {
-            $label .= ' / '.$inscription->classe->name;
+        if ($classe) {
+            $label .= ' / '.$classe->name;
         }
 
         $blockingRestore = [];
@@ -235,15 +236,15 @@ class TrashDependencyAnalyzer
      */
     public function forPaiement(int $id): array
     {
-        $paiement = ESBTPPaiement::onlyTrashed()
-            ->with(['inscription.etudiant'])
-            ->findOrFail($id);
+        $paiement = ESBTPPaiement::onlyTrashed()->findOrFail($id);
 
+        // Préférence : utiliser inscription_id du paiement (lien direct).
+        // Fallback : etudiant_id direct sur le paiement.
         $inscriptionId = $paiement->inscription_id;
         $inscription = $inscriptionId
             ? ESBTPInscription::withTrashed()->find($inscriptionId)
             : null;
-        $etudiantId = $inscription?->etudiant_id;
+        $etudiantId = $inscription?->etudiant_id ?? $paiement->etudiant_id;
         $etudiant = $etudiantId
             ? ESBTPEtudiant::withTrashed()->find($etudiantId)
             : null;

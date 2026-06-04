@@ -28,10 +28,23 @@ class ESBTPEtudiantTrashController extends Controller
     {
         abort_unless(Auth::user()?->can('trash.view'), 403, 'Accès à la corbeille refusé.');
 
-        return response()->json([
-            'success' => true,
-            'data' => $this->depAnalyzer->forEtudiant($id),
-        ]);
+        try {
+            return response()->json([
+                'success' => true,
+                'data' => $this->depAnalyzer->forEtudiant($id),
+            ]);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Étudiant introuvable ou déjà supprimé définitivement.',
+            ], 404);
+        } catch (\Throwable $e) {
+            Log::error('Erreur analyse dépendances étudiant', ['id' => $id, 'error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur lors de l\'analyse des dépendances : '.$e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
