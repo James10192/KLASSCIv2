@@ -64,6 +64,56 @@ class ESBTPInscription extends Model implements Auditable
     protected $table = 'esbtp_inscriptions';
 
     /**
+     * Hooks soft-delete / restore : cascade sur les paiements actifs.
+     *
+     * Pourquoi : sans cascade, soft-delete d'une inscription laisse ses paiements
+     * actifs orphelins. Conséquences observées (audit 2026-06-04) :
+     * - Discrepancy KPIs : stats compte le paiement (annee_universitaire_id direct),
+     *   dashboard-kpis ne le compte pas (whereHas inscription échoue car soft-deleted).
+     * - Risque comptable : paiement validé reste compté dans le total encaissé alors
+     *   que l'inscription parente n'existe plus.
+     *
+     * Comportement : on soft-delete (ou restaure) les paiements actifs en cascade.
+     * Les paiements DÉJÀ soft-deletés ou supprimés indépendamment ne sont PAS touchés
+     * lors d'un restore (on ne ressuscite que ceux que NOTRE soft-delete a tués).
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (self $inscription) {
+            if ($inscription->isForceDeleting()) {
+                return;
+            }
+            $now = now();
+            $inscription->paiements()
+                ->whereNull('deleted_at')
+                ->update([
+                    'deleted_at' => $now,
+                    'updated_at' => $now,
+                ]);
+        });
+
+        static::restoring(function (self $inscription) {
+            $cutoff = $inscription->deleted_at;
+            if (!$cutoff) {
+                return;
+            }
+            // Restaurer uniquement les paiements soft-deletés EN MÊME TEMPS (±2 min)
+            // que l'inscription — évite de ressusciter des paiements supprimés
+            // indépendamment (refund, fraude, annulation manuelle).
+            $inscription->paiements()
+                ->onlyTrashed()
+                ->whereBetween('deleted_at', [
+                    $cutoff->copy()->subMinutes(2),
+                    $cutoff->copy()->addMinutes(2),
+                ])
+                ->update([
+                    'deleted_at' => null,
+                    'updated_at' => now(),
+                ]);
+        });
+    }
+
+    /**
      * Les attributs qui sont assignables en masse.
      *
      * @var array

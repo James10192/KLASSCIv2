@@ -290,6 +290,46 @@ class CLIComptabiliteController extends BaseApiController
     }
 
     /**
+     * POST /api/cli/comptabilite/cleanup-orphan-paiements
+     *
+     * Soft-delete les paiements actifs dont l'inscription parente est elle-même soft-deletée.
+     * One-shot cleanup pour aligner les KPIs après que le boot cascade ait été ajouté
+     * (les anciens cas historiques d'avant le boot ne sont pas couverts par lui).
+     *
+     * Idempotent : run multiple fois est safe (chaque run ne touche que les nouveaux orphelins).
+     *
+     * Requires cli:admin ability.
+     */
+    public function cleanupOrphanPaiements(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $now = now();
+        $affected = DB::table('esbtp_paiements as p')
+            ->join('esbtp_inscriptions as i', 'p.inscription_id', '=', 'i.id')
+            ->whereNull('p.deleted_at')
+            ->whereNotNull('i.deleted_at')
+            ->update([
+                'p.deleted_at' => $now,
+                'p.updated_at' => $now,
+            ]);
+
+        \Illuminate\Support\Facades\Log::warning('CLI: cleanup-orphan-paiements executed', [
+            'user_id' => $request->user()->id,
+            'affected_rows' => $affected,
+            'executed_at' => $now->toDateTimeString(),
+        ]);
+
+        return $this->successResponse([
+            'affected_rows' => $affected,
+            'executed_at' => $now->toDateTimeString(),
+            'note' => 'Paiements soft-deletés. Vérifier audit log + alignement KPIs stats vs dashboard-kpis.',
+        ], "Cleanup orphan paiements ({$affected} affected)");
+    }
+
+    /**
      * GET /api/cli/comptabilite/reconciliation-candidates
      *
      * Identifie les paiements candidats à un audit / réconciliation :
