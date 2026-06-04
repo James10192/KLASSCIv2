@@ -207,24 +207,38 @@ Chaque erreur trouvée :
 | Audit Compta | `/esbtp/audit/comptabilite` | `comptabilite.audit.view` | 🟢 |
 | Relances | `/esbtp/comptabilite/relances` | `comptabilite.relances.view` | 🟢 |
 | Export détaillé | `/esbtp/comptabilite/export` | `comptabilite.reports.export` | ⚪ à tester |
-| Suivi par Catégorie | `/esbtp/comptabilite/suivi-categories` | `comptabilite.dashboard.view` | ⚪ à tester |
+| Suivi par Catégorie | `/esbtp/paiements/suivi-categories` (PAS `/esbtp/comptabilite/...`) | `comptabilite.dashboard.view` | 🟢 |
+| Export détaillé | `/esbtp/paiements/export-detaille/*` (groupe consolidé) | `paiements.export` | 🟡 routes vérifiées |
 
 ## Endpoints CLI à privilégier
 
-- `api/cli/stats` — KPIs globaux
-- `api/cli/payments` — liste paiements (filtre status, mode)
+### Génériques
+- `api/cli/stats` — KPIs globaux (filtre annee_courante par défaut)
+- `api/cli/payments` — liste paiements (filtre status, mode, annee_courante par défaut)
 - `api/cli/analytics/diagnose` — état échéancier + risk
 - `api/cli/annee` — années universitaires
 - `api/cli/logs?lines=N&search=X` — logs prod
-- `api/cli/users` — liste users (audit qui a accès quoi)
+- `api/cli/users` — liste users
 - `api/cli/permissions/audit` — audit registre permissions
 
+### Compta dédiés (commit `9f1416cd` — utilisez-les en priorité)
+
+- **`api/cli/comptabilite/dashboard-kpis`** `[?annee_id&filiere_id&classe_id]`
+  → Mirror EXACT des KPIs du Dashboard Compta UI. Utiliser pour reproduire bugs UI.
+- **`api/cli/comptabilite/cash-balance`** `[?date_debut&date_fin&status]`
+  → Solde caisse par mode pour réconciliation physique.
+- **`api/cli/comptabilite/payments-summary`**
+  → Breakdown par année × status. Identifier les paiements résidus d'années passées.
+- **`api/cli/comptabilite/period-locks`**
+  → État verrouillage période + nb paiements modifiables vs verrouillés.
+- **`api/cli/comptabilite/reconciliation-candidates`** `[?pending_days]`
+  → Anomalies suspectes (montant=0, sans inscription, sans année, en_attente vieux).
+
 **Si endpoint manquant** :
-1. Ajouter à `app/Http/Controllers/API/CLI/CLIDataController.php` ou nouveau controller
-2. Route dans `routes/api.php` sous le groupe `auth:sanctum + tokenCan('cli:read')`
-3. Update `klassci-cli.ps1` avec la nouvelle commande
-4. Update rule `.claude/rules/klassci-cli-tool.md`
-5. Test : `curl -sS .../api/cli/<nouveau-endpoint> -H "Authorization: Bearer $TOKEN"`
+1. Ajouter à `app/Http/Controllers/API/CLI/CLIComptabiliteController.php` (existant)
+2. Route dans `routes/api.php` sous `Route::prefix('comptabilite')->name('comptabilite.')->group(...)`
+3. Test : `curl -sS .../api/cli/comptabilite/<nouveau> -H "Authorization: Bearer $TOKEN"`
+4. Mettre à jour cette section du skill avec le nouveau endpoint
 
 ## Pattern de sortie standard
 

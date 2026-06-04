@@ -154,24 +154,40 @@ Tous fixes déployés sur yakro.
 
 ---
 
-### 2.5 Suivi par Catégorie (`/esbtp/comptabilite/suivi-categories`)
+### 2.5 Suivi par Catégorie (`/esbtp/paiements/suivi-categories`)
 
-**Statut** : ⚪ Bloqué par permissions (à auditer)
+**Statut** : 🟢 Conforme (validé UI Admin)
 
-À investiguer.
+**⚠ Correction route** : la route réelle est `/esbtp/paiements/suivi-categories` (pas `/esbtp/comptabilite/suivi-categories`).
+
+**Preuves UI** :
+- HTTP 200, title : « Suivi des Paiements par Catégorie - KLASSCI »
+- h1 : « Suivi des Paiements par Catégorie »
+- Hero présent, 22 KPIs, 5 lignes table
+- 0 erreur visible
+
+**Controller** : `ESBTPPaiementSuiviController::suiviCategories`  
+**Refresh AJAX** : `paiements.suivi-categories.refresh`  
+**Drill-down par statut** : `paiements.suivi-categories.load.{statut}`
 
 ---
 
 ### 2.6 Export détaillé
 
-**Statut** : ⚪ Bloqué par permissions (à auditer)
+**Statut** : 🟡 Routes consolidées identifiées
 
-Routes :
+**⚠ Correction route** : préfixe `/esbtp/paiements/export-detaille/...` (pas `/esbtp/comptabilite/export-detaille`).
+
+Routes (lignes 905-945 routes/web.php) :
+- `paiements.export-detaille.*` (groupe dédié avec throttle preview 60/min, download 10/min)
+- `paiements.export.excel/pdf/csv`
 - `analytics.export-pdf`, `analytics.export-excel`, `analytics.preview-pdf`
 - `recouvrement.export-pdf`, `recouvrement.export-excel`, `recouvrement.email-pdf`
 - `relances.export-pdf`, `relances.export-excel`, `relances.preview-pdf`
 
-Tous protégés par `permission:comptabilite.reports.export` + throttle.
+Tous protégés par `permission:paiements.export` ou `comptabilite.reports.export` + throttle.
+
+**À approfondir** : tester un export PDF/Excel + vérifier cohérence totaux exportés ↔ totaux UI.
 
 ---
 
@@ -300,6 +316,81 @@ Tous protégés par `permission:comptabilite.reports.export` + throttle.
 **Observations** :
 - La page existe — peut-être basée sur OwenIt audits table ou `audits` génériques
 - À vérifier : enrichissement par mutation paiement, snapshot avant/après (nécessaire pour future feature réconciliation)
+
+---
+
+## 2.12 Investigation discrepancy Dashboard count_pending (TRACED)
+
+**Via nouveaux endpoints CLI** (commit `9f1416cd`) :
+
+```
+api/cli/comptabilite/dashboard-kpis (sans filtre)
+→ count_pending = 14, total_pending_amount = 1 800 000 FCFA
+
+api/cli/comptabilite/dashboard-kpis?annee_id=6
+→ count_pending = 10, total_pending_amount = 1 200 000 FCFA
+
+api/cli/comptabilite/payments-summary (multi-années)
+→ 2025-2026 (id=6, courante) : 10 en_attente / 1 419 validés = 1 429
+→ 2024-2025 (id=5, passée)    :  4 en_attente / 0 validés    =     4
+→ Grand total : 14 en_attente / 1 419 validés = 1 433
+```
+
+**Cause racine identifiée** : 4 paiements `en_attente` sur l'année passée (2024-2025) montant 600 000 FCFA. Ces paiements ne sont jamais validés et restent en limbo.
+
+**Action recommandée** : workflow de **clôture mensuelle/annuelle** qui force la résolution (valider, rejeter, ou archiver) avant transition. Voir rule `cloture-mensuelle-configurable.md`.
+
+---
+
+## 2.13 Anomalies majeures détectées (paiements suspects)
+
+**Via `api/cli/comptabilite/reconciliation-candidates`** :
+
+| Catégorie | Nombre | Risque |
+|---|---|---|
+| Paiements montant = 0 FCFA | **18** dont plusieurs `validé` | 🔴 Audit fiscal — saisies invalides |
+| Paiements sans inscription | 0 | ✅ |
+| Paiements sans annee_universitaire_id | 0 | ✅ |
+| Paiements en_attente > 7 jours | 5 | 🟡 Workflow validation lent |
+
+**Exemples montant=0 validés** :
+```
+id=282 etudiant_id=2320 status=validé mode=Espèces motif="Frais d'inscription" date=2026-04-29
+id=417 etudiant_id=2174 status=validé mode=Espèces motif="Frais d'inscription" date=2026-05-04
+```
+
+**Hypothèses** :
+- a) Sentinelles pour marquer « frais d'inscription payés ailleurs » sans montant
+- b) Bug de saisie : utilisateur a soumis 0 par erreur, validation manquée
+- c) Frais d'inscription = 0 FCFA pour certaines catégories (étudiants exonérés)
+
+**À clarifier avec Marcel** avant tout traitement automatique.
+
+---
+
+## 2.14 État verrouillage périodique
+
+**Via `api/cli/comptabilite/period-locks`** :
+
+- `comptabilite.period_locked_until` : **null** (aucune période verrouillée)
+- Tous les paiements (toutes années) sont actuellement **modifiables**
+- Bypass permission : `comptabilite.period.bypass_lock`
+
+**Action recommandée** : implémenter la **clôture mensuelle configurable** (déclenchée par cet audit) pour activer automatiquement le verrouillage de période quand le mois est clôturé.
+
+---
+
+## 2.15 Cash balance — paiements du jour
+
+**Via `api/cli/comptabilite/cash-balance` (date=2026-06-04)** :
+
+```
+by_mode:
+  Espèces : 5 paiements × moyenne 130 000 = 650 000 FCFA
+grand_total: 650 000 FCFA
+```
+
+**Note** : aucun autre mode utilisé aujourd'hui (Mobile Money, Virement). Cohérent avec l'usage majoritaire « espèces » indiqué par Marcel.
 
 ---
 
