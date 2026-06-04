@@ -3579,7 +3579,7 @@
                     </svg>
                     <div class="acad-ring-center">
                         <span class="acad-ring-val" style="color:{{ $mgStroke }};">
-                            {{ $acadMg !== null ? number_format($acadMg, 1) : '—' }}
+                            {{ $acadMg !== null ? number_format($acadMg, 2) : '—' }}
                         </span>
                         @if($acadMg !== null)<span class="acad-ring-denom">/20</span>@endif
                     </div>
@@ -3638,7 +3638,7 @@
                 $barColor = $moy >= 14 ? '#10b981' : ($moy >= 12 ? '#3b82f6' : ($moy >= 10 ? '#f59e0b' : '#ef4444'));
             @endphp
             <div class="acad-spark-bar-wrap">
-                <span class="acad-spark-val" style="color:{{ $barColor }};">{{ number_format($moy, 1) }}</span>
+                <span class="acad-spark-val" style="color:{{ $barColor }};">{{ number_format($moy, 2) }}</span>
                 <div class="acad-spark-bar" style="height:{{ $barH }}px; background:{{ $barColor }};"></div>
                 <span class="acad-spark-label">{{ ucfirst(str_replace(['semestre', '_', '-'], ['S', ' ', ' '], strtolower($periode))) }}</span>
             </div>
