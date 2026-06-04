@@ -76,19 +76,27 @@
     border: 1px solid var(--bus-border);
     border-radius: 14px;
     box-shadow: 0 1px 3px rgba(15, 23, 42, .04), 0 1px 2px rgba(15, 23, 42, .06);
-    overflow: hidden;
+    /* PAS de overflow:hidden : sinon le dropdown des selects premium est clippé
+       (rule css-stacking-pitfalls). Le radius est reporté sur le head via radius
+       top + le body via radius bottom. */
     display: flex;
     flex-direction: column;
     transition: box-shadow .2s;
+    position: relative;
 }
 .bus-action-card:hover {
     box-shadow: 0 8px 30px rgba(4, 83, 203, .08), 0 2px 8px rgba(15, 23, 42, .04);
 }
+/* Empile la card avec le dropdown ouvert AU-DESSUS des cards voisines */
+.bus-action-card:focus-within { z-index: 50; }
+.bus-action-card:has(.au-select-trigger--open) { z-index: 100; }
 .bus-action-card__head {
     padding: 1.1rem 1.25rem .85rem;
     border-bottom: 1px solid var(--bus-border);
     background: linear-gradient(135deg, rgba(4, 83, 203, .03), rgba(59, 125, 219, .05));
+    border-radius: 14px 14px 0 0;
 }
+.bus-action-card__body { border-radius: 0 0 14px 14px; }
 .bus-action-card__head-row { display: flex; align-items: center; gap: .75rem; }
 .bus-action-icon {
     width: 40px; height: 40px;
@@ -328,6 +336,14 @@
                         <span x-text="students.length + ' étudiant' + (students.length > 1 ? 's' : '') + ' inscrit' + (students.length > 1 ? 's' : '') + ' cette année dans cette classe'"></span>
                     </p>
                 </div>
+                <div class="bus-field" :class="!form.etudiant_id ? 'bus-field--disabled' : ''">
+                    <label class="bus-field-label"><span class="bus-field-step">4</span>Période</label>
+                    <x-au-select
+                        x-model="form.periode"
+                        placeholder="Choisir la période…"
+                        icon="fa-layer-group"
+                        :options="['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2 (contient l\'annuel)']" />
+                </div>
                 <button type="submit" class="bus-submit bus-submit--info" :disabled="busy || !canSubmit()">
                     <i class="fas" :class="busy ? 'fa-spinner fa-spin' : 'fa-eye'"></i>
                     <span x-text="busy ? 'Ouverture…' : 'Prévisualiser le bulletin'"></span>
@@ -453,7 +469,7 @@ window.busCard = function (cfg) {
         canSubmit() {
             if (!this.form.classe_id || !this.form.annee_universitaire_id) return false;
             if (this.kind === 'consult')  return !!this.form.semestre;
-            if (this.kind === 'preview')  return !!this.form.etudiant_id;
+            if (this.kind === 'preview')  return !!this.form.etudiant_id && !!this.form.periode;
             if (this.kind === 'generate') return !!this.form.periode;
             return false;
         },
@@ -523,11 +539,15 @@ window.busCard = function (cfg) {
                     return;
                 }
                 if (this.kind === 'preview') {
+                    // Utilise pdf-params-preview qui choisit auto entre snapshot officiel
+                    // et live (via BulletinConsistencyService). Plus fiable que
+                    // l'ancien previewBulletin qui pouvait erreur en l'absence de bulletin.
                     const params = new URLSearchParams();
-                    params.set('annee', this.form.annee_universitaire_id);
-                    params.set('classe', this.form.classe_id);
-                    params.set('etudiant', this.form.etudiant_id);
-                    window.location.href = `{{ route('esbtp.bulletins.preview') }}?` + params.toString();
+                    params.set('etudiant_id', this.form.etudiant_id);
+                    params.set('classe_id', this.form.classe_id);
+                    params.set('annee_universitaire_id', this.form.annee_universitaire_id);
+                    params.set('periode', this.form.periode);
+                    window.open(`{{ route('esbtp.bulletins.pdf-params-preview') }}?` + params.toString(), '_blank');
                     return;
                 }
                 if (this.kind === 'generate') {
