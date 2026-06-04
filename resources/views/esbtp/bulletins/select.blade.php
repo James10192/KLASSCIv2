@@ -274,7 +274,7 @@
                 <div class="bus-field" :class="(!form.classe_id || !form.annee_universitaire_id) ? 'bus-field--disabled' : ''">
                     <label class="bus-field-label"><span class="bus-field-step">3</span>Période</label>
                     <x-au-select
-                        :options="['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2']"
+                        :options="['1' => 'Semestre 1', '2' => 'Semestre 2']"
                         placeholder="Choisir la période…"
                         icon="fa-layer-group"
                         x-model="form.semestre" />
