@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Domain\Comptabilite\Reconciliation\Actions\ApproveSession;
 use App\Domain\Comptabilite\Reconciliation\Actions\CloseSession;
+use App\Domain\Comptabilite\Reconciliation\Actions\DetectDiscrepancies;
 use App\Domain\Comptabilite\Reconciliation\Actions\OpenSession;
 use App\Domain\Comptabilite\Reconciliation\Actions\RecordCashCount;
 use App\Domain\Comptabilite\Reconciliation\Actions\ReopenSession;
@@ -123,6 +124,26 @@ class ESBTPReconciliationController extends Controller
             $request->input('notes'),
         );
         return response()->json(['cash_count' => $count, 'ecart' => $count->ecart]);
+    }
+
+    public function detectDiscrepancies(
+        Request $request,
+        ReconciliationSession $session,
+        DetectDiscrepancies $action
+    ): JsonResponse {
+        $this->authorize('comptabilite.reconciliation.resolve');
+        try {
+            $created = $action->execute($session);
+        } catch (\DomainException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+        return response()->json([
+            'created_count' => $created->count(),
+            'discrepancies' => $created->all(),
+            'message' => $created->isEmpty()
+                ? 'Aucun écart détecté — toutes les caisses sont équilibrées.'
+                : $created->count() . ' écart(s) détecté(s).',
+        ]);
     }
 
     public function resolve(
