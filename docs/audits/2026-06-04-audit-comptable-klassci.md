@@ -405,6 +405,24 @@ grand_total: 650 000 FCFA
 | `Non-grouping field 'places_totales' is used in HAVING clause` | ESBTPClasseController:2101 | ✅ Fixé `ee0e6015` |
 | `Dates de l'année universitaire non définies` | BulletinService:1709 | ✅ Fixé `ee0e6015` (accesseurs date_debut/date_fin) |
 | `Undefined array key "school_city"` | ESBTPBulletinController:1524 | ✅ Fixé `ee0e6015` (?? '') |
+| Dashboard count_pending 14 vs 10 (scope année incohérent) | ComptabiliteController::dashboard | ✅ Fixé `1fc8d2ee` (filters->withAnneeDefault) |
+| Dashboard 33s lent (1561 inscriptions × calcul échéancier) | BuildDashboardDataAction | ✅ Mitigé `1fc8d2ee` (Cache::remember 60s, -22%) |
+| Paiements montant=0 acceptés sans confirmation | StorePaiementRequest + UpdatePaiementRequest | ✅ Fixé `1fc8d2ee` (confirmed_zero_amount) |
+
+### Exports vérifiés UI Admin (commit `1fc8d2ee` post-déploiement)
+
+| Export | URL | Status | Content-Type | Latence |
+|---|---|---|---|---|
+| Paiements CSV | `/esbtp/paiements/export/csv` | 200 | text/csv | 20s |
+| Analytics preview PDF | `/esbtp/comptabilite/analytics/preview-pdf` | 200 | application/pdf | 25s |
+| Recouvrement preview PDF | `/esbtp/comptabilite/recouvrement/preview-pdf` | 200 | application/pdf | 40s |
+| Paiements Excel | `/esbtp/paiements/export/excel` | timeout >60s | n/a | **🟡 à investiguer** |
+
+**Observation perf** :
+- DB-only via `api/cli/comptabilite/dashboard-kpis` : 1.6-4.6s ✓
+- UI dashboard : 25-32s (1er hit) → bottleneck = **rendering Blade dashboard (1500+ lignes)** + LWS CDN
+- Caching `BuildDashboardDataAction` aide partiellement (-22 %) mais ne supprime pas le bottleneck Blade
+- **Action future** : refactor dashboard en widgets lazy-loaded (skeleton + AJAX fetch) pour first-paint rapide
 
 ### Bugs persistants détectés (non encore fixés)
 
