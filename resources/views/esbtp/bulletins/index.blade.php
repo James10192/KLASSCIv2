@@ -145,14 +145,19 @@
 }
 .bul-card + .bul-card { margin-top: 1rem; }
 
-/* ── Filter bar ─────────────────────────────────────── */
+/* ── Filter bar : tous filtres + boutons sur une seule rangée flex ─── */
 .bul-filters {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: .85rem;
-    align-items: end;
+    display: flex;
+    flex-wrap: wrap;
+    gap: .75rem;
+    align-items: flex-end;
 }
-.bul-filter-field { display: flex; flex-direction: column; gap: .35rem; }
+.bul-filter-field {
+    display: flex; flex-direction: column; gap: .35rem;
+    flex: 1 1 180px;
+    min-width: 160px;
+}
+.bul-filter-field--search { flex: 1.5 1 220px; }
 .bul-filter-label {
     font-size: .68rem; font-weight: 700;
     color: var(--bul-muted);
@@ -166,6 +171,7 @@
     border-radius: 10px;
     padding: .45rem .75rem;
     transition: border-color .15s, background .15s;
+    height: 40px;
 }
 .bul-search:focus-within { border-color: var(--bul-primary); background: #fff; }
 .bul-search i { color: var(--bul-muted); font-size: .82rem; }
@@ -174,9 +180,21 @@
     font-size: .86rem; color: var(--bul-text); width: 100%;
 }
 .bul-filters-actions {
-    display: flex; gap: .55rem; align-items: end;
-    grid-column: 1 / -1;
-    justify-content: flex-end;
+    display: flex; gap: .55rem; align-items: center;
+    flex-shrink: 0;
+    align-self: flex-end;
+    padding-bottom: 0;
+}
+.bul-loader-indicator {
+    display: inline-flex; align-items: center; gap: .35rem;
+    color: var(--bul-primary);
+    font-size: .78rem;
+    font-weight: 600;
+}
+@media (max-width: 768px) {
+    .bul-filters { gap: .55rem; }
+    .bul-filter-field, .bul-filter-field--search { flex: 1 1 100%; min-width: 100%; }
+    .bul-filters-actions { width: 100%; justify-content: flex-end; }
 }
 
 /* ── Bulk actions bar ───────────────────────────────── */
@@ -216,7 +234,24 @@
     border-radius: 12px;
     background: #fff;
     overflow: hidden;
+    transition: opacity .15s;
 }
+.bul-table-wrap--loading { opacity: .55; pointer-events: none; }
+.bul-page {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 32px; height: 32px;
+    color: var(--bul-primary);
+    background: #fff;
+    border: 1px solid var(--bul-border);
+    border-radius: 8px;
+    text-decoration: none;
+    font-size: .78rem;
+    transition: background .12s, color .12s, border-color .12s;
+    cursor: pointer;
+}
+.bul-page:hover { background: rgba(4, 83, 203, .08); color: var(--bul-primary-d); border-color: rgba(4, 83, 203, .25); }
+.bul-page.disabled { color: #cbd5e1; cursor: not-allowed; background: var(--bul-surface); }
+.bul-pages li { display: flex; }
 .bul-table {
     width: 100%; border-collapse: collapse;
 }
@@ -500,7 +535,8 @@
 
     {{-- ══ FILTRES ════════════════════════════════════════ --}}
     <div class="bul-card">
-        <form id="bul-filter-form" action="{{ route('esbtp.bulletins.index') }}" method="GET" class="bul-filters">
+        <form id="bul-filter-form" action="{{ route('esbtp.bulletins.index') }}" method="GET"
+              class="bul-filters" @submit.prevent="fetchPage(1)">
             <div class="bul-filter-field">
                 <label class="bul-filter-label">Année universitaire</label>
                 <x-au-select
@@ -542,19 +578,24 @@
                     :options="['1' => 'Publiés', '0' => 'En attente']" />
             </div>
 
-            <div class="bul-filter-field">
+            <div class="bul-filter-field bul-filter-field--search">
                 <label class="bul-filter-label">Recherche étudiant</label>
                 <div class="bul-search">
                     <i class="fas fa-search"></i>
-                    <input type="text" name="search" value="{{ $search }}" placeholder="Nom, prénom, matricule…">
+                    <input type="text" name="search" value="{{ $search }}"
+                           placeholder="Nom, prénom, matricule…"
+                           @input.debounce.400ms="fetchPage(1)">
                 </div>
             </div>
 
             <div class="bul-filters-actions">
-                <a href="{{ route('esbtp.bulletins.index') }}" class="bul-btn bul-btn--ghost">
+                <span class="bul-loader-indicator" x-show="loading" x-cloak>
+                    <i class="fas fa-spinner fa-spin"></i> Chargement…
+                </span>
+                <button type="button" class="bul-btn bul-btn--ghost" @click="resetFilters()">
                     <i class="fas fa-rotate-left"></i> Réinitialiser
-                </a>
-                <button type="submit" class="bul-btn bul-btn--primary">
+                </button>
+                <button type="submit" class="bul-btn bul-btn--primary" :disabled="loading">
                     <i class="fas fa-filter"></i> Filtrer
                 </button>
             </div>
@@ -593,145 +634,9 @@
         </div>
     </div>
 
-    {{-- ══ TABLE ═════════════════════════════════════════ --}}
-    <div class="bul-table-wrap">
-        @if($bulletins->count() === 0)
-            <div class="bul-empty">
-                <div class="bul-empty-icon"><i class="fas fa-file-circle-question"></i></div>
-                <div class="bul-empty-title">Aucun bulletin trouvé</div>
-                <div class="bul-empty-msg">
-                    @if($classe_id || $periode_id || $published !== null || $search)
-                        Aucun bulletin ne correspond à vos filtres. Essayez de les réinitialiser pour voir tous les bulletins.
-                    @else
-                        Vous n'avez pas encore généré de bulletins pour cette année. Cliquez sur « Générer » pour commencer.
-                    @endif
-                </div>
-                @can('bulletins.generate')
-                <a href="{{ route('esbtp.bulletins.select') }}" class="bul-btn bul-btn--primary">
-                    <i class="fas fa-magic-wand-sparkles"></i> Générer mes premiers bulletins
-                </a>
-                @endcan
-            </div>
-        @else
-            <table class="bul-table">
-                <thead>
-                    <tr>
-                        <th class="checkbox-col">
-                            <input type="checkbox" @change="toggleAll($event)" :checked="allSelected()" />
-                        </th>
-                        <th>Étudiant</th>
-                        <th>Classe</th>
-                        <th>Période</th>
-                        <th class="center">Moyenne</th>
-                        <th class="center">Rang</th>
-                        <th>Statut</th>
-                        <th>Généré le</th>
-                        <th class="center">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($bulletins as $bulletin)
-                        @php
-                            $etu = $bulletin->etudiant;
-                            $initials = $etu
-                                ? mb_strtoupper(mb_substr($etu->prenoms ?? $etu->nom ?? '?', 0, 1, 'UTF-8') . mb_substr($etu->nom ?? '?', 0, 1, 'UTF-8'), 'UTF-8')
-                                : '?';
-                            $periode = strtolower($bulletin->periode ?? '');
-                            $periodeLabel = match ($periode) {
-                                'semestre1' => 'Semestre 1',
-                                'semestre2' => 'Semestre 2',
-                                'annuel'    => 'Annuel (legacy)',
-                                default     => $bulletin->periode,
-                            };
-                            $periodeCls = match ($periode) {
-                                'semestre1' => 's1',
-                                'semestre2' => 's2',
-                                'annuel'    => 'annuel',
-                                default     => 's1',
-                            };
-                            $moy = $bulletin->moyenne_generale;
-                            $moyCls = $moy === null ? 'na' : ($moy >= 12 ? 'good' : ($moy >= 10 ? 'mid' : 'bad'));
-                        @endphp
-                        <tr>
-                            <td class="checkbox-col">
-                                <input type="checkbox" :checked="selected.includes({{ $bulletin->id }})" @change="toggle({{ $bulletin->id }})" />
-                            </td>
-                            <td>
-                                <div class="bul-etu">
-                                    <div class="bul-etu-avatar">{{ $initials }}</div>
-                                    <div class="bul-etu-meta">
-                                        <div class="bul-etu-name">{{ $etu ? trim($etu->prenoms . ' ' . $etu->nom) : '—' }}</div>
-                                        <div class="bul-etu-matricule">{{ $etu->matricule ?? '—' }}</div>
-                                    </div>
-                                </div>
-                            </td>
-                            <td>{{ $bulletin->classe?->name ?? '—' }}</td>
-                            <td><span class="bul-periode-badge {{ $periodeCls }}">{{ $periodeLabel }}</span></td>
-                            <td class="center">
-                                @if($moy !== null)
-                                    <span class="bul-moy-pill {{ $moyCls }}">{{ number_format($moy, 2) }}<small style="font-weight:500; opacity:.7;">/20</small></span>
-                                @else
-                                    <span class="bul-moy-pill na">—</span>
-                                @endif
-                            </td>
-                            <td class="center">
-                                @if($bulletin->rang)
-                                    <span class="bul-rang-display">
-                                        {{ $bulletin->rang }}<sup>{{ $bulletin->rang == 1 ? 'er' : 'ème' }}</sup>
-                                        @if($bulletin->effectif_classe)<span class="over">/ {{ $bulletin->effectif_classe }}</span>@endif
-                                    </span>
-                                @else
-                                    <span class="bul-moy-pill na">—</span>
-                                @endif
-                            </td>
-                            <td>
-                                @if($bulletin->is_published)
-                                    <span class="bul-status-badge published"><i class="fas fa-circle-check" style="font-size:.65rem;"></i> Publié</span>
-                                @else
-                                    <span class="bul-status-badge pending"><i class="fas fa-clock" style="font-size:.65rem;"></i> En attente</span>
-                                @endif
-                            </td>
-                            <td style="white-space:nowrap; font-size:.78rem; color:var(--bul-muted);">
-                                {{ optional($bulletin->created_at)->format('d/m/Y') ?? '—' }}
-                            </td>
-                            <td class="center">
-                                <div class="bul-actions">
-                                    <a href="{{ route('esbtp.bulletins.show', $bulletin) }}" class="bul-action" title="Voir détail">
-                                        <i class="fas fa-eye"></i>
-                                    </a>
-                                    <a href="{{ route('esbtp.bulletins.preview-pdf', $bulletin) }}"
-                                       target="_blank" class="bul-action" title="Aperçu PDF">
-                                        <i class="fas fa-file-pdf"></i>
-                                    </a>
-                                    <a href="{{ route('esbtp.bulletins.download', $bulletin) }}"
-                                       target="_blank" class="bul-action" title="Télécharger PDF">
-                                        <i class="fas fa-download"></i>
-                                    </a>
-                                    @can('bulletins.edit')
-                                    <a href="{{ route('esbtp.bulletins.edit', $bulletin) }}" class="bul-action" title="Modifier">
-                                        <i class="fas fa-pen"></i>
-                                    </a>
-                                    @endcan
-                                    @can('bulletins.delete')
-                                    <button type="button" class="bul-action danger" title="Supprimer"
-                                            @click="confirmDelete({{ $bulletin->id }})">
-                                        <i class="fas fa-trash"></i>
-                                    </button>
-                                    @endcan
-                                </div>
-                            </td>
-                        </tr>
-                    @endforeach
-                </tbody>
-            </table>
-
-            <div class="bul-pager">
-                <div class="bul-pager-info">
-                    Affichage <strong>{{ $bulletins->firstItem() }}</strong>–<strong>{{ $bulletins->lastItem() }}</strong> sur <strong>{{ $bulletins->total() }}</strong> bulletins
-                </div>
-                {{ $bulletins->onEachSide(1)->links() }}
-            </div>
-        @endif
+    {{-- ══ TABLE (partial AJAX) ═══════════════════════════ --}}
+    <div class="bul-table-wrap" id="bul-table-wrap" :class="loading ? 'bul-table-wrap--loading' : ''">
+        @include('esbtp.bulletins.partials._table', compact('bulletins', 'classe_id', 'periode_id', 'published', 'search'))
     </div>
 
     {{-- Toast container --}}
@@ -752,19 +657,86 @@ function bulIndex() {
     return {
         selected: [],
         busy: false,
+        loading: false,
         toasts: [],
         toastSeq: 0,
+        currentPage: {{ $bulletins->currentPage() }},
         allIds: @json($bulletins->pluck('id')->all()),
+        baseUrl: @json(route('esbtp.bulletins.index')),
 
         init() {
-            // Auto-submit the form when a select changes
+            // AJAX no-reload : intercepter les changes de select premium
             const form = document.getElementById('bul-filter-form');
             if (form) {
                 form.querySelectorAll('select[name]').forEach(sel => {
-                    sel.addEventListener('change', () => { form.submit(); });
+                    sel.addEventListener('change', () => { this.fetchPage(1); });
                 });
             }
+            // Click sur les liens de pagination dans le partial AJAX
+            document.addEventListener('click', (ev) => {
+                const a = ev.target.closest('a.bul-page[data-page]');
+                if (a && document.getElementById('bul-table-wrap')?.contains(a)) {
+                    ev.preventDefault();
+                    this.fetchPage(parseInt(a.dataset.page, 10));
+                }
+            });
+            // Bouton retour browser : recharger via fetch
+            window.addEventListener('popstate', () => { this.fetchPage(this.currentPage, false); });
             window.addEventListener('toast', (ev) => this.pushToast(ev.detail));
+        },
+
+        async fetchPage(page = 1, push = true) {
+            this.loading = true;
+            this.selected = [];
+            try {
+                const form = document.getElementById('bul-filter-form');
+                const params = new URLSearchParams(new FormData(form));
+                params.set('page', page);
+                const url = this.baseUrl + '?' + params.toString();
+                const res = await fetch(url, {
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                    },
+                });
+                if (!res.ok) throw new Error(`Erreur HTTP ${res.status}`);
+                const data = await res.json();
+                const wrap = document.getElementById('bul-table-wrap');
+                if (wrap) wrap.innerHTML = data.html;
+                this.allIds = data.ids || [];
+                this.currentPage = page;
+                this.updateKpis(data.stats);
+                if (push) {
+                    const cleanUrl = this.baseUrl + '?' + params.toString();
+                    window.history.pushState({}, '', cleanUrl);
+                }
+            } catch (err) {
+                this.pushToast({ type: 'error', message: err.message || 'Erreur de chargement.' });
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        updateKpis(stats) {
+            if (!stats) return;
+            const values = document.querySelectorAll('.bul-kpi-value');
+            if (values[0]) values[0].textContent = new Intl.NumberFormat('fr-FR').format(stats.total);
+            if (values[1]) values[1].textContent = stats.published;
+            if (values[2]) values[2].textContent = stats.pending;
+            if (values[3]) values[3].textContent = stats.covered;
+            const fill = document.querySelector('.bul-kpi-trail-fill');
+            if (fill) fill.style.width = (stats.publish_pct || 0) + '%';
+            const pctLabel = document.querySelectorAll('.bul-kpi-label')[1];
+            if (pctLabel) pctLabel.textContent = `Publiés (${stats.publish_pct || 0}%)`;
+        },
+
+        resetFilters() {
+            const form = document.getElementById('bul-filter-form');
+            if (!form) return;
+            form.querySelectorAll('select[name]').forEach(sel => { sel.value = ''; sel.dispatchEvent(new Event('change', { bubbles: true })); });
+            const search = form.querySelector('input[name="search"]');
+            if (search) search.value = '';
+            this.fetchPage(1);
         },
 
         pushToast(detail) {
@@ -822,14 +794,11 @@ function bulIndex() {
                 });
                 const data = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(data.message || `Erreur HTTP ${res.status}`);
-                window.dispatchEvent(new CustomEvent('toast', {
-                    detail: { type: 'success', message: data.message || 'Action effectuée.' }
-                }));
-                setTimeout(() => window.location.reload(), 700);
+                this.pushToast({ type: 'success', message: data.message || 'Action effectuée.' });
+                // Refresh table sans reload page
+                await this.fetchPage(this.currentPage, false);
             } catch (err) {
-                window.dispatchEvent(new CustomEvent('toast', {
-                    detail: { type: 'error', message: err.message || 'Erreur inattendue.' }
-                }));
+                this.pushToast({ type: 'error', message: err.message || 'Erreur inattendue.' });
             } finally {
                 this.busy = false;
             }

@@ -139,6 +139,18 @@ class ESBTPBulletinController extends Controller
             ? (int) round($stats['published'] / $stats['total'] * 100)
             : 0;
 
+        // AJAX no-reload : si requête AJAX, renvoyer le partial table + stats en JSON.
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json([
+                'html'  => view('esbtp.bulletins.partials._table', compact(
+                    'bulletins', 'classe_id', 'periode_id', 'published', 'search'
+                ))->render(),
+                'stats' => $stats,
+                'count' => $bulletins->count(),
+                'ids'   => $bulletins->pluck('id')->all(),
+            ]);
+        }
+
         return view('esbtp.bulletins.index', compact(
             'bulletins',
             'classes',
