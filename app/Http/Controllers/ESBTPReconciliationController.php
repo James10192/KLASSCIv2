@@ -28,7 +28,7 @@ use Illuminate\Http\JsonResponse;
  */
 class ESBTPReconciliationController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request)
     {
         $this->authorize('comptabilite.reconciliation.view');
 
@@ -45,10 +45,25 @@ class ESBTPReconciliationController extends Controller
         }
 
         $sessions = $query->paginate(20);
-        return response()->json($sessions);
+        $kpis = $this->buildKpis();
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'sessions' => $sessions,
+                'kpis' => $kpis,
+            ]);
+        }
+        return view('esbtp.comptabilite.reconciliation.index', compact('sessions', 'kpis'));
     }
 
-    public function show(ReconciliationSession $session): JsonResponse
+    public function create(Request $request)
+    {
+        $this->authorize('comptabilite.reconciliation.open');
+        $defaultFrequency = \App\Helpers\SettingsHelper::get('comptabilite.reconciliation.frequency', 'daily');
+        return view('esbtp.comptabilite.reconciliation.create', compact('defaultFrequency'));
+    }
+
+    public function show(Request $request, ReconciliationSession $session)
     {
         $this->authorize('comptabilite.reconciliation.view');
 
@@ -61,12 +76,28 @@ class ESBTPReconciliationController extends Controller
             'discrepancies',
         ]);
 
-        return response()->json([
+        $payload = [
             'session' => $session,
             'cash_counts' => $session->cashCounts,
             'discrepancies' => $session->discrepancies,
             'total_ecart' => $session->totalEcart(),
-        ]);
+        ];
+
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json($payload);
+        }
+        return view('esbtp.comptabilite.reconciliation.show', $payload);
+    }
+
+    private function buildKpis(): array
+    {
+        return [
+            'draft' => ReconciliationSession::where('status', 'draft')->count(),
+            'review' => ReconciliationSession::where('status', 'review')->count(),
+            'approved' => ReconciliationSession::where('status', 'approved')->count(),
+            'closed' => ReconciliationSession::where('status', 'closed')->count(),
+            'total' => ReconciliationSession::count(),
+        ];
     }
 
     public function open(OpenSessionRequest $request, OpenSession $action): JsonResponse
@@ -150,5 +181,15 @@ class ESBTPReconciliationController extends Controller
     ): JsonResponse {
         $action->execute($session, $request->user(), $request->input('reason'));
         return response()->json(['session' => $session->refresh(), 'message' => 'Session rouverte (exception).']);
+    }
+
+    public function exportPv(
+        Request $request,
+        ReconciliationSession $session,
+        \App\Services\ExportRenderer $renderer
+    ) {
+        $this->authorize('comptabilite.reconciliation.export');
+        $report = new \App\Domain\Exports\Reports\ReconciliationPVReport($session);
+        return $renderer->pdfDownload($report);
     }
 }

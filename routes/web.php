@@ -1021,8 +1021,11 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::prefix('comptabilite/reconciliation')->name('comptabilite.reconciliation.')
                 ->middleware('throttle:60,1')->group(function () {
                 Route::get('/', [App\Http\Controllers\ESBTPReconciliationController::class, 'index'])->name('index');
+                Route::get('/create', [App\Http\Controllers\ESBTPReconciliationController::class, 'create'])->name('create');
                 Route::get('/sessions/{session}', [App\Http\Controllers\ESBTPReconciliationController::class, 'show'])
                     ->name('show')->whereNumber('session');
+                Route::get('/sessions/{session}/pv-pdf', [App\Http\Controllers\ESBTPReconciliationController::class, 'exportPv'])
+                    ->name('export-pv')->whereNumber('session')->middleware('throttle:10,1');
                 Route::post('/sessions', [App\Http\Controllers\ESBTPReconciliationController::class, 'open'])->name('open');
                 Route::post('/sessions/{session}/cash-counts', [App\Http\Controllers\ESBTPReconciliationController::class, 'recordCount'])
                     ->name('record-count')->whereNumber('session');
