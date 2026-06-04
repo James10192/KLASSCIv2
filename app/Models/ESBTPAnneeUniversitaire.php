@@ -73,6 +73,22 @@ class ESBTPAnneeUniversitaire extends Model
     ];
 
     /**
+     * Alias d'accesseurs : du code legacy lit `$annee->date_debut` et `$annee->date_fin`
+     * alors que les colonnes DB sont `start_date` / `end_date`. Ces accesseurs évitent
+     * de propager le rename à travers BulletinService + ESBTPAbsenceService + plusieurs
+     * vues. Spam de logs "Dates de l'année universitaire non définies" éliminé.
+     */
+    public function getDateDebutAttribute()
+    {
+        return $this->start_date;
+    }
+
+    public function getDateFinAttribute()
+    {
+        return $this->end_date;
+    }
+
+    /**
      * Obtenir les inscriptions associées à cette année universitaire.
      *
      * Une année universitaire peut avoir plusieurs inscriptions.

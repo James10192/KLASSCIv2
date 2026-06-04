@@ -2098,7 +2098,20 @@ class ESBTPClasseController extends Controller
                     [$anneeCourante->id],
                 )
                 ->whereRaw("places_totales > 0")
-                ->havingRaw("inscriptions_actives >= places_totales")
+                // FIX MySQL ONLY_FULL_GROUP_BY : on ne peut pas référencer places_totales
+                // (champ non agrégé) dans HAVING sans GROUP BY. Bascule en WHERE avec
+                // la sous-requête expanded pour comparer directement au champ.
+                ->whereRaw(
+                    '(
+                        SELECT COUNT(*)
+                        FROM esbtp_inscriptions
+                        WHERE esbtp_inscriptions.classe_id = esbtp_classes.id
+                        AND esbtp_inscriptions.status = "active"
+                        AND esbtp_inscriptions.workflow_step = "etudiant_cree"
+                        AND esbtp_inscriptions.annee_universitaire_id = ?
+                    ) >= esbtp_classes.places_totales',
+                    [$anneeCourante->id],
+                )
                 ->orderBy("taux_occupation", "desc")
                 ->get();
 

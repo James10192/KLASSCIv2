@@ -1517,13 +1517,13 @@ class ESBTPBulletinController extends Controller
             $logoBase64 = null;
             $config = $this->bulletinService->getPDFConfig();
             $schoolInfo = [
-                'name' => $config['school_name'],
-                'address' => $config['school_address'],
-                'phone' => $config['school_phone'],
-                'email' => $config['school_email'],
-                'city' => $config['school_city'],
-                'country' => $config['school_country'],
-                'logo' => null,
+                'name'    => $config['school_name'] ?? '',
+                'address' => $config['school_address'] ?? '',
+                'phone'   => $config['school_phone'] ?? '',
+                'email'   => $config['school_email'] ?? '',
+                'city'    => $config['school_city'] ?? '',
+                'country' => $config['school_country'] ?? '',
+                'logo'    => null,
             ];
             if (! empty($config['school_logo'])) {
                 $logoPath = $config['school_logo'];
