@@ -87,6 +87,15 @@ class ESBTPReconciliationController extends Controller
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json($payload);
         }
+
+        // PR5 : URLs portails merchant (hint UI drill-down)
+        $portalUrls = [
+            'orange_money' => \App\Helpers\SettingsHelper::get('comptabilite.reconciliation.portal_url_orange_money'),
+            'mtn_money' => \App\Helpers\SettingsHelper::get('comptabilite.reconciliation.portal_url_mtn_money'),
+            'moov_money' => \App\Helpers\SettingsHelper::get('comptabilite.reconciliation.portal_url_moov_money'),
+            'wave' => \App\Helpers\SettingsHelper::get('comptabilite.reconciliation.portal_url_wave'),
+        ];
+        $payload['portalUrls'] = $portalUrls;
         return view('esbtp.comptabilite.reconciliation.show', $payload);
     }
 
@@ -212,5 +221,50 @@ class ESBTPReconciliationController extends Controller
         $this->authorize('comptabilite.reconciliation.export');
         $report = new \App\Domain\Exports\Reports\ReconciliationPVReport($session);
         return $renderer->pdfDownload($report);
+    }
+
+    /**
+     * PR5 drill-down : retourne les paiements détaillés contribuant au montant_systeme
+     * pour (session, mode_paiement). Utilisé par le modal UI pour pointer vs portail merchant.
+     */
+    public function paymentsByMode(
+        Request $request,
+        ReconciliationSession $session,
+        string $mode,
+        \App\Domain\Comptabilite\Reconciliation\Services\PaymentDrillDownService $service
+    ): JsonResponse {
+        $this->authorize('comptabilite.reconciliation.view');
+
+        if (!in_array($mode, \App\Enums\ModePaiement::values(), true)) {
+            return response()->json(['message' => 'Mode de paiement invalide'], 422);
+        }
+
+        $perPage = (int) $request->input('per_page', 20);
+        $perPage = max(5, min($perPage, 100));
+
+        $paginated = $service->paginate($session, $mode, $perPage);
+        $totals = $service->totals($session, $mode);
+
+        return response()->json([
+            'session_code' => $session->code,
+            'mode' => $mode,
+            'mode_label' => \App\Enums\ModePaiement::fromLegacy($mode)?->label() ?? $mode,
+            'totals' => $totals,
+            'payments' => $paginated->getCollection()->map(fn ($p) => [
+                'id' => $p->id,
+                'montant' => (float) $p->montant,
+                'date_paiement' => optional($p->date_paiement)->toDateString(),
+                'reference_paiement' => $p->reference_paiement,
+                'numero_recu' => $p->numero_recu,
+                'etudiant' => optional($p->etudiant)->only(['id', 'nom', 'prenoms', 'matricule']),
+                'motif' => $p->motif,
+            ])->all(),
+            'pagination' => [
+                'current_page' => $paginated->currentPage(),
+                'last_page' => $paginated->lastPage(),
+                'per_page' => $paginated->perPage(),
+                'total' => $paginated->total(),
+            ],
+        ]);
     }
 }

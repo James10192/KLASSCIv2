@@ -5,6 +5,7 @@ namespace App\Domain\Comptabilite\Reconciliation\Actions;
 use App\Domain\Comptabilite\Reconciliation\Models\CashCount;
 use App\Domain\Comptabilite\Reconciliation\Models\ReconciliationDiscrepancy;
 use App\Domain\Comptabilite\Reconciliation\Models\ReconciliationSession;
+use App\Helpers\SettingsHelper;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Collection;
 
@@ -28,7 +29,10 @@ class DetectDiscrepancies
             throw new \DomainException("Session {$session->code} non modifiable.");
         }
 
-        return DB::transaction(function () use ($session) {
+        // Setting tenant : seuil tolérance écart (default 100 FCFA pour absorber arrondis)
+        $tolerance = (float) SettingsHelper::get('comptabilite.reconciliation.ecart_tolerance', 100);
+
+        return DB::transaction(function () use ($session, $tolerance) {
             $session->loadMissing('cashCounts');
             $created = collect();
 
@@ -39,8 +43,8 @@ class DetectDiscrepancies
                     ->whereIn('action', ['a_traiter', 'en_revue'])
                     ->first();
 
-                if (abs($ecart) < 0.01) {
-                    // Écart négligeable : delete la discrepancy 'a_traiter' si elle existait
+                if (abs($ecart) <= $tolerance) {
+                    // Écart dans la tolérance : delete la discrepancy 'a_traiter' si elle existait
                     if ($existing) {
                         $existing->delete();
                     }

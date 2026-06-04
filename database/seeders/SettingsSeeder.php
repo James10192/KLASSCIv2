@@ -1537,6 +1537,67 @@ class SettingsSeeder extends Seeder
                 'default_value' => '1',
                 'validation_rules' => ['required', 'boolean'],
                 'sort_order' => 11
+            ],
+            // PR5 réconciliation : seuil tolérance + URLs portails
+            [
+                'key' => 'comptabilite.reconciliation.ecart_tolerance',
+                'value' => '100',
+                'type' => 'integer',
+                'group' => 'comptabilite',
+                'category' => 'comptabilite',
+                'description' => 'Seuil de tolérance (FCFA) sous lequel un écart n\'est pas considéré comme discrepancy.',
+                'is_required' => true,
+                'default_value' => '100',
+                'validation_rules' => ['required', 'integer', 'min:0'],
+                'sort_order' => 12
+            ],
+            [
+                'key' => 'comptabilite.reconciliation.portal_url_orange_money',
+                'value' => '',
+                'type' => 'string',
+                'group' => 'comptabilite',
+                'category' => 'comptabilite',
+                'description' => 'URL portail merchant Orange Money (hint UI).',
+                'is_required' => false,
+                'default_value' => '',
+                'validation_rules' => ['nullable', 'url', 'max:255'],
+                'sort_order' => 13
+            ],
+            [
+                'key' => 'comptabilite.reconciliation.portal_url_mtn_money',
+                'value' => '',
+                'type' => 'string',
+                'group' => 'comptabilite',
+                'category' => 'comptabilite',
+                'description' => 'URL portail merchant MTN MoMo (hint UI).',
+                'is_required' => false,
+                'default_value' => '',
+                'validation_rules' => ['nullable', 'url', 'max:255'],
+                'sort_order' => 14
+            ],
+            [
+                'key' => 'comptabilite.reconciliation.portal_url_moov_money',
+                'value' => '',
+                'type' => 'string',
+                'group' => 'comptabilite',
+                'category' => 'comptabilite',
+                'description' => 'URL portail merchant Moov Money (hint UI).',
+                'is_required' => false,
+                'default_value' => '',
+                'validation_rules' => ['nullable', 'url', 'max:255'],
+                'sort_order' => 15
+            ],
+            [
+                'key' => 'comptabilite.reconciliation.portal_url_wave',
+                'value' => '',
+                'type' => 'string',
+                'group' => 'comptabilite',
+                'category' => 'comptabilite',
+                'description' => 'URL portail Wave Business (hint UI).',
+                'is_required' => false,
+                'default_value' => '',
+                'validation_rules' => ['nullable', 'url', 'max:255'],
+                'sort_order' => 16
             ]
         ];
 

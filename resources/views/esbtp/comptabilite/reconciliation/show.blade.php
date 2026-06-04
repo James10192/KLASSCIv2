@@ -262,6 +262,67 @@
         .rec-modal-backdrop { padding: 0; align-items: flex-end; }
         .rec-modal { border-radius: 16px 16px 0 0; max-height: 95vh; }
     }
+
+    /* PR5 drill-down */
+    .rec-cash-actions {
+        display: flex; justify-content: space-between; gap: .5rem; align-items: center;
+        margin-top: .65rem; padding-top: .55rem; border-top: 1px dashed #e2e8f0;
+    }
+    .rec-cash-drill-btn {
+        background: rgba(4,83,203,.08); color: #0453cb; border: 1px solid rgba(4,83,203,.18);
+        padding: .3rem .65rem; border-radius: 6px; font-size: .74rem; font-weight: 600;
+        cursor: pointer; display: inline-flex; align-items: center; gap: .3rem;
+        transition: background .15s;
+    }
+    .rec-cash-drill-btn:hover { background: rgba(4,83,203,.14); }
+    .rec-cash-portal-hint {
+        font-size: .72rem; color: #64748b;
+        display: inline-flex; align-items: center; gap: .3rem;
+    }
+    .rec-cash-portal-hint a {
+        color: #0453cb; text-decoration: none; font-weight: 600;
+    }
+    .rec-cash-portal-hint a:hover { text-decoration: underline; }
+
+    .rec-drill-table {
+        width: 100%; border-collapse: collapse; font-size: .85rem;
+    }
+    .rec-drill-table th {
+        text-align: left; background: #f8fafc; padding: .55rem .65rem;
+        font-size: .72rem; text-transform: uppercase; color: #64748b;
+        font-weight: 700; letter-spacing: .3px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .rec-drill-table td {
+        padding: .55rem .65rem; border-bottom: 1px solid #f1f5f9; color: #1e293b;
+    }
+    .rec-drill-table tr:hover td { background: #f8fafc; }
+    .rec-drill-table .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+
+    .rec-drill-summary {
+        background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06));
+        border: 1px solid rgba(4,83,203,.18); border-radius: 10px;
+        padding: .75rem 1rem; margin-bottom: 1rem;
+        display: flex; gap: 1.5rem; flex-wrap: wrap;
+    }
+    .rec-drill-summary > div { display: flex; flex-direction: column; gap: .1rem; }
+    .rec-drill-summary .label {
+        font-size: .68rem; text-transform: uppercase; color: #64748b;
+        letter-spacing: .3px; font-weight: 600;
+    }
+    .rec-drill-summary .val { font-size: 1rem; font-weight: 700; color: #1e293b; }
+
+    .rec-drill-pagination {
+        display: flex; justify-content: space-between; align-items: center;
+        margin-top: 1rem; padding-top: 1rem; border-top: 1px solid #f1f5f9;
+        font-size: .82rem; color: #64748b;
+    }
+    .rec-drill-pagination button {
+        background: #fff; border: 1px solid #cbd5e1; color: #0453cb;
+        padding: .35rem .85rem; border-radius: 6px; font-size: .78rem; font-weight: 600;
+        cursor: pointer;
+    }
+    .rec-drill-pagination button:disabled { opacity: .4; cursor: not-allowed; }
 </style>
 @endpush
 
@@ -390,6 +451,17 @@
                             <span x-show="saving[mode.value]" x-cloak>…</span>
                         </button>
                     </div>
+
+                    {{-- PR5 drill-down + hint portail --}}
+                    <div class="rec-cash-actions" x-show="hasSystemPayments(mode.value)" x-cloak>
+                        <button class="rec-cash-drill-btn" @click="openDrillModal(mode.value)">
+                            <i class="fas fa-list"></i> Voir transactions
+                        </button>
+                        <span class="rec-cash-portal-hint" x-show="portalUrl(mode.value)" x-cloak>
+                            <i class="fas fa-external-link-alt"></i>
+                            <a :href="portalUrl(mode.value)" target="_blank" rel="noopener" x-text="portalLabel(mode.value)"></a>
+                        </span>
+                    </div>
                 </div>
             </template>
         </div>
@@ -429,6 +501,83 @@
                         </div>
                     </div>
                 </template>
+            </div>
+        </div>
+    </div>
+
+    {{-- PR5 Modal drill-down : liste paiements détaillés par mode pour pointage manuel vs portail merchant --}}
+    <div x-show="drillModal.open" x-cloak class="rec-modal-backdrop" @keydown.escape.window="closeDrillModal()">
+        <div class="rec-modal" style="max-width:920px;" @click.outside="closeDrillModal()">
+            <div class="rec-modal-header">
+                <h3>
+                    <i class="fas fa-list"></i>
+                    Transactions <span x-text="drillModal.modeLabel"></span>
+                </h3>
+                <button @click="closeDrillModal()" class="rec-modal-close">×</button>
+            </div>
+            <div class="rec-modal-body">
+                <div class="rec-drill-summary" x-show="!drillModal.loading" x-cloak>
+                    <div>
+                        <span class="label">Nombre</span>
+                        <span class="val" x-text="drillModal.totals.count + ' paiement(s)'"></span>
+                    </div>
+                    <div>
+                        <span class="label">Total système</span>
+                        <span class="val" x-text="formatMoney(drillModal.totals.total_amount)"></span>
+                    </div>
+                    <div x-show="drillModal.portalUrl" x-cloak>
+                        <span class="label">Portail merchant</span>
+                        <a :href="drillModal.portalUrl" target="_blank" rel="noopener" style="color:#0453cb;font-weight:700;font-size:.88rem;">
+                            <i class="fas fa-external-link-alt"></i> Ouvrir
+                        </a>
+                    </div>
+                </div>
+
+                <div x-show="drillModal.loading" x-cloak style="padding:2rem;text-align:center;color:#64748b;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:1.5rem;"></i><br>Chargement…
+                </div>
+
+                <div x-show="!drillModal.loading && drillModal.payments.length === 0" x-cloak style="padding:2rem;text-align:center;color:#64748b;">
+                    <i class="fas fa-inbox" style="font-size:1.5rem;"></i><br>Aucun paiement validé sur cette période et ce mode.
+                </div>
+
+                <div x-show="!drillModal.loading && drillModal.payments.length > 0" x-cloak style="overflow-x:auto;">
+                    <table class="rec-drill-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Date</th>
+                                <th>Étudiant</th>
+                                <th>Référence</th>
+                                <th class="num">Montant</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="p in drillModal.payments" :key="p.id">
+                                <tr>
+                                    <td x-text="'#' + p.id"></td>
+                                    <td x-text="p.date_paiement || '—'"></td>
+                                    <td>
+                                        <span x-show="p.etudiant" x-text="(p.etudiant?.matricule || '—') + ' — ' + ((p.etudiant?.nom || '') + ' ' + (p.etudiant?.prenoms || '')).trim()"></span>
+                                        <span x-show="!p.etudiant" style="color:#94a3b8;">—</span>
+                                    </td>
+                                    <td x-text="p.reference_paiement || p.numero_recu || '—'"></td>
+                                    <td class="num" x-text="formatMoney(p.montant)"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="rec-drill-pagination" x-show="!drillModal.loading && drillModal.pagination.last_page > 1" x-cloak>
+                    <button @click="drillPrev()" :disabled="drillModal.pagination.current_page <= 1">
+                        <i class="fas fa-chevron-left"></i> Précédent
+                    </button>
+                    <span>Page <strong x-text="drillModal.pagination.current_page"></strong> / <span x-text="drillModal.pagination.last_page"></span></span>
+                    <button @click="drillNext()" :disabled="drillModal.pagination.current_page >= drillModal.pagination.last_page">
+                        Suivant <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -597,6 +746,7 @@ window.recShow = function () {
         cashCounts: @json($jsPayload['cashCounts']),
         modes: @json($jsPayload['modes']),
         discrepancies: @json($jsPayload['discrepancies']),
+        portalUrls: @json($portalUrls ?? []),
         drafts: {},
         saving: {},
         detecting: false,
@@ -607,6 +757,16 @@ window.recShow = function () {
             motif: '',
             payload: { paiement_id: null, montant: null, mode_paiement: null },
             submitting: false,
+        },
+        drillModal: {
+            open: false,
+            mode: '',
+            modeLabel: '',
+            portalUrl: null,
+            payments: [],
+            totals: { count: 0, total_amount: 0 },
+            pagination: { current_page: 1, last_page: 1, per_page: 20, total: 0 },
+            loading: false,
         },
 
         init() {
@@ -729,6 +889,55 @@ window.recShow = function () {
 
         discrepancyActionLabel(a) {
             return { a_traiter: 'À traiter', en_revue: 'En revue', resolu: 'Résolu', rejete: 'Rejeté' }[a] || a;
+        },
+
+        // PR5 drill-down
+        hasSystemPayments(mode) {
+            const c = this.cashCounts[mode];
+            return c && parseFloat(c.montant_systeme) > 0;
+        },
+        portalUrl(mode) {
+            return this.portalUrls[mode] || null;
+        },
+        portalLabel(mode) {
+            const labels = { orange_money: 'Voir portail Orange Money', mtn_money: 'Voir portail MTN MoMo', moov_money: 'Voir portail Moov Money', wave: 'Voir Wave Business' };
+            return labels[mode] || 'Voir portail';
+        },
+        async openDrillModal(mode) {
+            const modeObj = this.modes.find(m => m.value === mode);
+            this.drillModal = {
+                open: true,
+                mode: mode,
+                modeLabel: modeObj ? modeObj.label : mode,
+                portalUrl: this.portalUrls[mode] || null,
+                payments: [],
+                totals: { count: 0, total_amount: 0 },
+                pagination: { current_page: 1, last_page: 1, per_page: 20, total: 0 },
+                loading: true,
+            };
+            await this.loadDrillPage(1);
+        },
+        closeDrillModal() {
+            this.drillModal.open = false;
+        },
+        async drillPrev() { if (this.drillModal.pagination.current_page > 1) await this.loadDrillPage(this.drillModal.pagination.current_page - 1); },
+        async drillNext() { if (this.drillModal.pagination.current_page < this.drillModal.pagination.last_page) await this.loadDrillPage(this.drillModal.pagination.current_page + 1); },
+        async loadDrillPage(page) {
+            this.drillModal.loading = true;
+            try {
+                const res = await fetch(`/esbtp/comptabilite/reconciliation/sessions/${this.sessionId}/payments-by-mode/${this.drillModal.mode}?page=${page}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                });
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.message || 'Erreur ' + res.status);
+                this.drillModal.payments = data.payments || [];
+                this.drillModal.totals = data.totals || { count: 0, total_amount: 0 };
+                this.drillModal.pagination = data.pagination || this.drillModal.pagination;
+            } catch (e) {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: e.message } }));
+            } finally {
+                this.drillModal.loading = false;
+            }
         },
 
         getCount(mode) {
