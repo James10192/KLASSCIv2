@@ -1015,6 +1015,29 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->name('preview-pdf');
             });
 
+            // PR2 réconciliation paiements ↔ caisse physique
+            // Routes orchestrées par ESBTPReconciliationController (orchestration uniquement).
+            // Toute la logique métier vit dans Domain/Comptabilite/Reconciliation/.
+            Route::prefix('comptabilite/reconciliation')->name('comptabilite.reconciliation.')
+                ->middleware('throttle:60,1')->group(function () {
+                Route::get('/', [App\Http\Controllers\ESBTPReconciliationController::class, 'index'])->name('index');
+                Route::get('/sessions/{session}', [App\Http\Controllers\ESBTPReconciliationController::class, 'show'])
+                    ->name('show')->whereNumber('session');
+                Route::post('/sessions', [App\Http\Controllers\ESBTPReconciliationController::class, 'open'])->name('open');
+                Route::post('/sessions/{session}/cash-counts', [App\Http\Controllers\ESBTPReconciliationController::class, 'recordCount'])
+                    ->name('record-count')->whereNumber('session');
+                Route::post('/discrepancies/{discrepancy}/resolve', [App\Http\Controllers\ESBTPReconciliationController::class, 'resolve'])
+                    ->name('resolve')->whereNumber('discrepancy');
+                Route::post('/sessions/{session}/review', [App\Http\Controllers\ESBTPReconciliationController::class, 'review'])
+                    ->name('review')->whereNumber('session');
+                Route::post('/sessions/{session}/approve', [App\Http\Controllers\ESBTPReconciliationController::class, 'approve'])
+                    ->name('approve')->whereNumber('session');
+                Route::post('/sessions/{session}/close', [App\Http\Controllers\ESBTPReconciliationController::class, 'close'])
+                    ->name('close')->whereNumber('session');
+                Route::post('/sessions/{session}/reopen', [App\Http\Controllers\ESBTPReconciliationController::class, 'reopen'])
+                    ->name('reopen')->whereNumber('session');
+            });
+
             // ── VALIDATE/REJECT (workflow comptable — throttled)
             Route::middleware(['permission:paiements.validate', 'throttle:60,1'])->group(function () {
                 Route::post('/paiements/{paiement}/valider', [App\Http\Controllers\ESBTPPaiementController::class, 'valider'])
