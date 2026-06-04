@@ -887,6 +887,42 @@ return [
             'group' => 'Comptabilité',
             'icon' => 'fa-key',
         ],
+        'comptabilite.reconciliation.view' => [
+            'label' => 'Voir les sessions de réconciliation caisse',
+            'description' => 'Donne accès à la liste et au détail des sessions de réconciliation. N\'autorise pas à modifier — lecture seule.',
+            'group' => 'Comptabilité — Réconciliation',
+            'icon' => 'fa-balance-scale',
+        ],
+        'comptabilite.reconciliation.open' => [
+            'label' => 'Ouvrir une session de réconciliation',
+            'description' => 'Permet de démarrer une nouvelle session quotidienne / hebdomadaire / mensuelle de bouclage caisse. L\'ouvreur saisit ensuite ses comptages physiques par mode.',
+            'group' => 'Comptabilité — Réconciliation',
+            'icon' => 'fa-folder-open',
+        ],
+        'comptabilite.reconciliation.resolve' => [
+            'label' => 'Résoudre les écarts de réconciliation',
+            'description' => 'Permet d\'agir sur les écarts détectés : ajuster un paiement existant, créer un correctif, annuler, ou assumer l\'écart avec motif.',
+            'group' => 'Comptabilité — Réconciliation',
+            'icon' => 'fa-tools',
+        ],
+        'comptabilite.reconciliation.approve' => [
+            'label' => 'Approuver une session de réconciliation (2e validation)',
+            'description' => 'Permet la 2e validation (séparation des devoirs OHADA) d\'une session après revue. Si le setting `comptabilite.reconciliation.require_separation_of_duties` est activé, l\'approbateur DOIT être différent de l\'ouvreur.',
+            'group' => 'Comptabilité — Réconciliation',
+            'icon' => 'fa-check-double',
+        ],
+        'comptabilite.reconciliation.export' => [
+            'label' => 'Exporter le PV de réconciliation',
+            'description' => 'Génère et télécharge le PV PDF officiel signable d\'une session clôturée. Pour archivage légal et contrôle fiscal.',
+            'group' => 'Comptabilité — Réconciliation',
+            'icon' => 'fa-file-pdf',
+        ],
+        'comptabilite.reconciliation.bypass_lock' => [
+            'label' => 'Forcer modification d\'un paiement réconcilié (exception)',
+            'description' => 'Une fois qu\'un paiement est verrouillé par une réconciliation clôturée, il n\'est plus modifiable. Cette permission permet le bypass exceptionnel, toujours loggé.',
+            'group' => 'Comptabilité — Réconciliation',
+            'icon' => 'fa-key',
+        ],
         'comptabilite.notifications.high_amount' => [
             'label' => 'Recevoir une notification quand un gros paiement est validé',
             'description' => 'Notification email + cloche déclenchée à chaque validation de paiement supérieur au seuil tenant configuré (default 5 000 000 FCFA). Vise typiquement le directeur ou le directeur financier qui surveille les grosses entrées sans être lui-même comptable. Permission assignable via UI custom roles.',
@@ -1528,6 +1564,9 @@ return [
             'comptabilite.recouvrement.access',
             'comptabilite.audit.view',  // QW6 mai 2026 — comptable doit auditer son module
             'comptabilite.journal.view',  // S1.3 mai 2026 — comptable consulte le journal de caisse OHADA
+            // PR1 réconciliation — view+open+resolve+export. Approve réservé au coordinateur (séparation OHADA).
+            'comptabilite.reconciliation.view', 'comptabilite.reconciliation.open',
+            'comptabilite.reconciliation.resolve', 'comptabilite.reconciliation.export',
             'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.validate',
             'paiements.export',  // Lot 15
             'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
@@ -1561,6 +1600,8 @@ return [
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit',
             'inscriptions.validate', 'inscriptions.cancel', 'inscriptions.reject',
             'paiements.view', 'frais.view',
+            // PR1 réconciliation — view + approve (séparation OHADA : approve ≠ comptable qui a ouvert)
+            'comptabilite.reconciliation.view', 'comptabilite.reconciliation.approve',
             'cycles.view', 'cycles.edit',
             'classes.view',
             'filieres.view', 'niveaux.view',
