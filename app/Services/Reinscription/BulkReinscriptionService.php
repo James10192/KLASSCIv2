@@ -336,12 +336,26 @@ class BulkReinscriptionService
         // Queue notifications APRÈS commit pour éviter d'envoyer si rollback
         $this->queueNotifications($successItems, $batchId);
 
+        // Audit batch summary : log structuré + tag les nouvelles inscriptions avec batch_id
+        // pour pouvoir retrouver toute la batch via Audit.
         Log::info('BulkReinscription: success', [
             'batch_id' => $batchId,
             'user_id' => $userId,
             'success_count' => count($successItems),
             'decisions_breakdown' => collect($successItems)->groupBy('decision')->map->count()->all(),
+            'inscription_ids' => collect($successItems)->pluck('inscription_id')->all(),
+            'etudiant_ids' => collect($successItems)->pluck('etudiant_id')->all(),
         ]);
+
+        // Marque chaque nouvelle inscription avec le batch_id en metadata pour traçabilité.
+        // Réutilise le champ reinscription_observations en mode append (sans écraser).
+        foreach ($successItems as $item) {
+            try {
+                \App\Models\ESBTPInscription::where('id', $item['inscription_id'])->update([
+                    'reinscription_observations' => \DB::raw("CONCAT(COALESCE(reinscription_observations, ''), '\\n[BATCH " . $batchId . "]')"),
+                ]);
+            } catch (\Throwable $e) { /* silent — batch_id metadata best-effort */ }
+        }
 
         return [
             'success' => true,

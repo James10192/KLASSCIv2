@@ -99,6 +99,50 @@ class CLIMaintenanceController extends BaseApiController
     }
 
     /**
+     * GET /api/cli/reinscription/batches?limit=10
+     * Liste les dernières batches de réinscription groupée (depuis Laravel logs).
+     */
+    public function reinscriptionBatches(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+        $limit = min((int) $request->query('limit', 10), 100);
+        $logFile = storage_path('logs/laravel.log');
+        if (!file_exists($logFile)) {
+            return $this->successResponse(['batches' => []], 'No logs');
+        }
+
+        // Lit les N dernières lignes contenant "BulkReinscription: success"
+        $batches = [];
+        $handle = @fopen($logFile, 'r');
+        if (!$handle) {
+            return $this->successResponse(['batches' => []], 'Log file unreadable');
+        }
+        fseek($handle, max(0, filesize($logFile) - 5 * 1024 * 1024)); // last 5MB
+        while (($line = fgets($handle)) !== false) {
+            if (stripos($line, 'BulkReinscription: success') !== false) {
+                if (preg_match('/\{(.*)\}\s*$/', $line, $m)) {
+                    $payload = json_decode('{' . $m[1] . '}', true);
+                    if ($payload) {
+                        if (preg_match('/^\[(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2})\]/', $line, $tm)) {
+                            $payload['timestamp'] = $tm[1];
+                        }
+                        $batches[] = $payload;
+                    }
+                }
+            }
+        }
+        fclose($handle);
+        $batches = array_slice(array_reverse($batches), 0, $limit);
+
+        return $this->successResponse([
+            'count' => count($batches),
+            'batches' => $batches,
+        ], 'Recent bulk reinscription batches');
+    }
+
+    /**
      * GET /api/cli/reinscription/eligible-diag — dump filter state + sample
      */
     public function reinscriptionEligibleDiag(Request $request): JsonResponse
