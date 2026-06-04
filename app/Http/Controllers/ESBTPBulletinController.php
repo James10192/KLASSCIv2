@@ -721,7 +721,10 @@ class ESBTPBulletinController extends Controller
                 $bulletin->absences_justifiees ?? 0,
                 $bulletin->absences_non_justifiees ?? 0
             );
-            $moyenneAvecAssiduite = $moyenneGenerale + ($noteAssiduite ?? 0);
+            // FIX : $moyenneGenerale = moyenne enseignement général uniquement (= 7.00 dans le cas ADIE).
+            // Pour "Moyenne 1er/2e Semestre" il faut $moyenneGlobale (= général + technique = 10.49).
+            // Bug observé : 7.00 + 0.13 = 7.13 au lieu de 10.49 + 0.13 = 10.62.
+            $moyenneAvecAssiduite = $moyenneGlobale + ($noteAssiduite ?? 0);
             $moyenneSemestre1 = $this->bulletinService->getAlignedBulletinAverageForPeriode(
                 $bulletin->etudiant_id,
                 $bulletin->classe_id,
