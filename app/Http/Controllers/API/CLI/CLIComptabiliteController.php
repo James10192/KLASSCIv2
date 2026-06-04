@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Domain\Comptabilite\Reconciliation\Models\ReconciliationSession;
 use App\Helpers\SettingsHelper;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -300,6 +301,113 @@ class CLIComptabiliteController extends BaseApiController
      *
      * Requires cli:admin ability.
      */
+    /**
+     * GET /api/cli/comptabilite/reconciliation/sessions
+     *
+     * Liste les sessions de réconciliation (filtre status optionnel).
+     */
+    public function reconciliationSessions(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $query = ReconciliationSession::query()
+            ->with(['opener:id,name', 'approver:id,name'])
+            ->withCount(['cashCounts', 'discrepancies'])
+            ->orderByDesc('opened_at');
+
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+        if ($frequency = $request->input('frequency')) {
+            $query->where('frequency', $frequency);
+        }
+
+        $sessions = $query->limit(50)->get();
+
+        return $this->successResponse([
+            'count' => $sessions->count(),
+            'sessions' => $sessions->map(fn (ReconciliationSession $s) => [
+                'id' => $s->id,
+                'code' => $s->code,
+                'frequency' => $s->frequency,
+                'period_start' => $s->period_start?->toDateString(),
+                'period_end' => $s->period_end?->toDateString(),
+                'status' => $s->status->value,
+                'opener' => $s->opener?->name,
+                'approver' => $s->approver?->name,
+                'cash_counts_count' => $s->cash_counts_count,
+                'discrepancies_count' => $s->discrepancies_count,
+                'total_ecart' => $s->totalEcart(),
+                'opened_at' => $s->opened_at?->toIso8601String(),
+                'closed_at' => $s->closed_at?->toIso8601String(),
+            ])->all(),
+        ], 'Reconciliation sessions');
+    }
+
+    /**
+     * GET /api/cli/comptabilite/reconciliation/sessions/{id}
+     */
+    public function reconciliationSessionShow(Request $request, int $id): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $session = ReconciliationSession::with([
+            'opener:id,name',
+            'reviewer:id,name',
+            'approver:id,name',
+            'closer:id,name',
+            'cashCounts',
+            'discrepancies',
+        ])->find($id);
+
+        if (!$session) {
+            return $this->errorResponse('Session not found', [], 404);
+        }
+
+        return $this->successResponse([
+            'session' => [
+                'id' => $session->id,
+                'code' => $session->code,
+                'frequency' => $session->frequency,
+                'period_start' => $session->period_start?->toDateString(),
+                'period_end' => $session->period_end?->toDateString(),
+                'status' => $session->status->value,
+                'status_label' => $session->status->label(),
+                'opener' => $session->opener?->name,
+                'reviewer' => $session->reviewer?->name,
+                'approver' => $session->approver?->name,
+                'closer' => $session->closer?->name,
+                'opened_at' => $session->opened_at?->toIso8601String(),
+                'reviewed_at' => $session->reviewed_at?->toIso8601String(),
+                'approved_at' => $session->approved_at?->toIso8601String(),
+                'closed_at' => $session->closed_at?->toIso8601String(),
+                'reopen_reason' => $session->reopen_reason,
+                'notes' => $session->notes,
+                'total_ecart' => $session->totalEcart(),
+            ],
+            'cash_counts' => $session->cashCounts->map(fn ($c) => [
+                'id' => $c->id,
+                'mode' => $c->mode_paiement,
+                'mode_label' => $c->modeLabel(),
+                'montant_compte' => (float) $c->montant_compte,
+                'montant_systeme' => (float) $c->montant_systeme,
+                'ecart' => $c->ecart,
+                'counted_at' => $c->counted_at?->toIso8601String(),
+            ])->all(),
+            'discrepancies' => $session->discrepancies->map(fn ($d) => [
+                'id' => $d->id,
+                'type' => $d->type,
+                'montant_ecart' => (float) $d->montant_ecart,
+                'action' => $d->action,
+                'motif' => $d->motif,
+            ])->all(),
+        ], "Session {$session->code}");
+    }
+
     public function cleanupOrphanPaiements(Request $request): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:admin')) {

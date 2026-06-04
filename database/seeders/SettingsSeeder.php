@@ -1512,6 +1512,31 @@ class SettingsSeeder extends Seeder
                 'default_value' => '{}',
                 'validation_rules' => ['nullable', 'string'],
                 'sort_order' => 3
+            ],
+            // PR1 réconciliation
+            [
+                'key' => 'comptabilite.reconciliation.frequency',
+                'value' => 'daily',
+                'type' => 'string',
+                'group' => 'comptabilite',
+                'category' => 'comptabilite',
+                'description' => 'Fréquence par défaut des sessions de réconciliation caisse (daily / weekly / monthly).',
+                'is_required' => true,
+                'default_value' => 'daily',
+                'validation_rules' => ['required', 'in:daily,weekly,monthly'],
+                'sort_order' => 10
+            ],
+            [
+                'key' => 'comptabilite.reconciliation.require_separation_of_duties',
+                'value' => '1',
+                'type' => 'boolean',
+                'group' => 'comptabilite',
+                'category' => 'comptabilite',
+                'description' => 'Si activé, l\'approbateur d\'une session doit être différent de l\'ouvreur (séparation des devoirs OHADA). Recommandé en prod.',
+                'is_required' => true,
+                'default_value' => '1',
+                'validation_rules' => ['required', 'boolean'],
+                'sort_order' => 11
             ]
         ];
 
