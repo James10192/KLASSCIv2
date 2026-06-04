@@ -1029,6 +1029,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('/sessions', [App\Http\Controllers\ESBTPReconciliationController::class, 'open'])->name('open');
                 Route::post('/sessions/{session}/cash-counts', [App\Http\Controllers\ESBTPReconciliationController::class, 'recordCount'])
                     ->name('record-count')->whereNumber('session');
+                Route::post('/sessions/{session}/detect-discrepancies', [App\Http\Controllers\ESBTPReconciliationController::class, 'detectDiscrepancies'])
+                    ->name('detect-discrepancies')->whereNumber('session');
                 Route::post('/discrepancies/{discrepancy}/resolve', [App\Http\Controllers\ESBTPReconciliationController::class, 'resolve'])
                     ->name('resolve')->whereNumber('discrepancy');
                 Route::post('/sessions/{session}/review', [App\Http\Controllers\ESBTPReconciliationController::class, 'review'])
