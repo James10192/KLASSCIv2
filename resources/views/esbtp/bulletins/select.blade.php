@@ -303,7 +303,7 @@
                     <x-au-select
                         name="etudiant"
                         x-ref="previewEtudiant"
-                        :placeholder="previewClasseValue() ? 'Sélectionner…' : 'Choisissez d\'abord une classe'"
+                        placeholder="Choisissez d'abord une classe"
                         icon="fa-user-graduate"
                         :options="[]" />
                 </div>
