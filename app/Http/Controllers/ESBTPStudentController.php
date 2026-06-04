@@ -369,25 +369,16 @@ class ESBTPStudentController extends Controller
             ]);
         }
 
-        // Étudiants pour modal Réinscription groupée : TOUS les étudiants ayant une
-        // inscription sur l'année courante (pas limité à pagination 15). Payload
-        // léger id+matricule+nom+classe ~100B/étudiant.
-        $etudiantsForBulk = ESBTPEtudiant::query()
-            ->select('id', 'matricule', 'nom', 'prenoms')
-            ->when($anneeCourante, function ($q) use ($anneeCourante) {
-                $q->whereHas('inscriptions', function ($sub) use ($anneeCourante) {
-                    $sub->where('annee_universitaire_id', $anneeCourante->id);
-                });
-            })
-            ->with(['inscriptions' => function ($q) use ($anneeCourante) {
-                if ($anneeCourante) {
-                    $q->where('annee_universitaire_id', $anneeCourante->id);
-                }
-                $q->with('classe:id,name');
-            }])
-            ->orderBy('nom')
-            ->orderBy('prenoms')
-            ->get();
+        // Étudiants pour modal Réinscription groupée : source unique via BulkReinscriptionService.
+        // Critères : inscription année N-1 active + workflow_step=etudiant_cree + PAS d'inscription
+        // année N. Cohérent avec reinscription.index.
+        try {
+            $etudiantsForBulk = app(\App\Services\Reinscription\BulkReinscriptionService::class)
+                ->listEligibleStudents();
+        } catch (\Throwable $e) {
+            \Log::warning('Bulk eligible students fetch failed (StudentController)', ['error' => $e->getMessage()]);
+            $etudiantsForBulk = collect();
+        }
 
         \Log::info('ESBTPStudentController@index returning view', array_merge($baseLogContext, [
             'timestamp' => now()->toIso8601String(),
