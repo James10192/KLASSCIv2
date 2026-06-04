@@ -7,14 +7,12 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 use Maatwebsite\Excel\Concerns\FromCollection;
 use Maatwebsite\Excel\Concerns\WithEvents;
-use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
-use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
 
 /**
@@ -36,7 +34,7 @@ use PhpOffice\PhpSpreadsheet\Worksheet\Worksheet;
  *
  * Couleurs : utilise pdf_primary_color du tenant (cohérent avec PaiementsExport).
  */
-class PaiementsSaariExport implements FromCollection, WithHeadings, WithMapping, WithTitle, WithEvents
+class PaiementsSaariExport implements FromCollection, WithMapping, WithTitle, WithEvents
 {
     protected Collection $paiements;
     protected array $filters;
@@ -56,27 +54,11 @@ class PaiementsSaariExport implements FromCollection, WithHeadings, WithMapping,
     }
 
     /**
-     * En-têtes EXACTEMENT comme le sample "BNI BKE" :
-     * - Colonne A vide
-     * - Colonnes B..I avec les libellés SAARI standard
-     */
-    public function headings(): array
-    {
-        return [
-            '',          // A vide
-            'cj',        // B
-            'date',      // C
-            'libelle',   // D
-            'debit',     // E
-            'credit',    // F
-            'n°cmpte',   // G
-            't',         // H
-            'Colonne1',  // I
-        ];
-    }
-
-    /**
      * Mapping ligne par ligne au format SAARI.
+     * Pas de WithHeadings : les en-têtes sont écrites manuellement dans AfterSheet
+     * pour éviter le bug où PhpSpreadsheet ne réécrit pas les cellules avec 0 ou
+     * chaîne vide, qui laissait les headings 'debit', 'n°cmpte', 't' apparents
+     * dans la première ligne de données.
      */
     public function map($paiement): array
     {
@@ -93,9 +75,9 @@ class PaiementsSaariExport implements FromCollection, WithHeadings, WithMapping,
             $libelle,                                                        // D libelle
             0,                                                               // E debit (encaissement = 0)
             (float) ($paiement->montant ?? 0),                               // F credit
-            $compte,                                                         // G n°cmpte
+            $compte,                                                         // G n°compte
             '',                                                              // H t (vide par défaut)
-            $this->rowCounter,                                               // I Colonne1
+            $this->rowCounter,                                               // I n°colonne
         ];
     }
 
@@ -110,14 +92,16 @@ class PaiementsSaariExport implements FromCollection, WithHeadings, WithMapping,
             AfterSheet::class => function (AfterSheet $event) {
                 $sheet = $event->sheet->getDelegate();
 
-                // Insère 3 lignes en haut pour bandeau école + sous-titre
-                $sheet->insertNewRowBefore(1, 3);
+                // Sans WithHeadings, le mapping écrit directement à la row 1.
+                // On insère 4 lignes en haut pour : bandeau école (R1-R3) + heading row (R4).
+                $sheet->insertNewRowBefore(1, 4);
 
                 $highestColumn = 'I';
                 $headingRow = 4;
                 $dataStartRow = $headingRow + 1;
 
                 $this->renderHeader($sheet, $highestColumn);
+                $this->writeHeadingRow($sheet, $headingRow);
                 $this->styleHeadingRow($sheet, $headingRow, $highestColumn);
 
                 $dataEndRow = max($sheet->getHighestRow(), $headingRow);
@@ -145,11 +129,29 @@ class PaiementsSaariExport implements FromCollection, WithHeadings, WithMapping,
                 $sheet->getColumnDimension('F')->setWidth(14);
                 $sheet->getColumnDimension('G')->setWidth(14);
                 $sheet->getColumnDimension('H')->setWidth(6);
-                $sheet->getColumnDimension('I')->setWidth(10);
+                $sheet->getColumnDimension('I')->setWidth(11);
 
                 $sheet->freezePane("A{$dataStartRow}");
+                $sheet->setAutoFilter("A{$headingRow}:{$highestColumn}{$headingRow}");
             },
         ];
+    }
+
+    /**
+     * Écrit la ligne d'en-têtes (thead) manuellement après le bandeau école.
+     * Labels exacts demandés par Marcel : cj, date, libelle, debit, credit, n°compte, t, n°colonne.
+     */
+    private function writeHeadingRow(Worksheet $sheet, int $row): void
+    {
+        $sheet->setCellValue("A{$row}", '');
+        $sheet->setCellValue("B{$row}", 'cj');
+        $sheet->setCellValue("C{$row}", 'date');
+        $sheet->setCellValue("D{$row}", 'libelle');
+        $sheet->setCellValue("E{$row}", 'debit');
+        $sheet->setCellValue("F{$row}", 'credit');
+        $sheet->setCellValue("G{$row}", 'n°compte');
+        $sheet->setCellValue("H{$row}", 't');
+        $sheet->setCellValue("I{$row}", 'n°colonne');
     }
 
     /**

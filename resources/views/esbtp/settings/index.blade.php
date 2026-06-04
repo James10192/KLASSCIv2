@@ -505,6 +505,11 @@
                     <i class="fas fa-graduation-cap"></i> Système LMD
                 </button>
             </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="compta-tab" data-bs-toggle="tab" data-bs-target="#compta" type="button" role="tab">
+                    <i class="fas fa-calculator"></i> Comptabilité / SAARI
+                </button>
+            </li>
         </ul>
 
         <form action="{{ route('esbtp.settings.update') }}" method="POST" enctype="multipart/form-data">
@@ -2368,6 +2373,97 @@
                     </div>
                 </div>
                 <!-- End Tab 6: Système LMD -->
+
+                <!-- Tab 7: Comptabilité / SAARI -->
+                <div class="tab-pane fade" id="compta" role="tabpanel">
+                    <div class="settings-section">
+                        <div class="section-header">
+                            <div class="section-icon" style="background:linear-gradient(135deg, #10b981, #0ea5e9); color:#fff;">
+                                <i class="fas fa-calculator"></i>
+                            </div>
+                            <div>
+                                <h3>Export comptable SAARI (Sage Ligne 100)</h3>
+                                <p style="margin:0; font-size:.85rem; color:#64748b;">
+                                    Configuration du mapping comptable pour l'export EXCEL SAARI des paiements.
+                                    Permet à chaque école de définir son code journal, son compte par défaut et son mapping
+                                    catégories de frais → numéros de compte SAARI.
+                                </p>
+                            </div>
+                        </div>
+
+                        <div class="settings-grid" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:1rem; margin-top:1rem;">
+                            <div>
+                                <label class="form-label" for="setting_saari_code_journal">
+                                    <i class="fas fa-book-open me-1 text-primary"></i> Code journal SAARI
+                                </label>
+                                <input type="text" class="form-control form-control-modern @error('setting_saari_code_journal') is-invalid @enderror"
+                                       id="setting_saari_code_journal"
+                                       name="setting_saari_code_journal"
+                                       maxlength="10"
+                                       value="{{ old('setting_saari_code_journal', \App\Helpers\SettingsHelper::get('saari_code_journal', 'JV')) }}"
+                                       placeholder="JV">
+                                @error('setting_saari_code_journal')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="text-muted">Ex: <code>JV</code> (Journal de Versement), <code>BK</code> (Banque), <code>CA</code> (Caisse).</small>
+                            </div>
+
+                            <div>
+                                <label class="form-label" for="setting_saari_default_account">
+                                    <i class="fas fa-coins me-1 text-success"></i> Compte SAARI par défaut
+                                </label>
+                                <input type="text" class="form-control form-control-modern @error('setting_saari_default_account') is-invalid @enderror"
+                                       id="setting_saari_default_account"
+                                       name="setting_saari_default_account"
+                                       maxlength="20"
+                                       value="{{ old('setting_saari_default_account', \App\Helpers\SettingsHelper::get('saari_default_account', '')) }}"
+                                       placeholder="411000">
+                                @error('setting_saari_default_account')
+                                    <div class="invalid-feedback">{{ $message }}</div>
+                                @enderror
+                                <small class="text-muted">Numéro de compte utilisé si une catégorie de frais n'a pas de mapping spécifique. Ex: <code>411000</code> (clients).</small>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:1.25rem;">
+                            <label class="form-label" for="setting_saari_account_mapping">
+                                <i class="fas fa-link me-1 text-info"></i> Mapping catégories → comptes SAARI (JSON)
+                            </label>
+                            <textarea class="form-control form-control-modern @error('setting_saari_account_mapping') is-invalid @enderror"
+                                      id="setting_saari_account_mapping"
+                                      name="setting_saari_account_mapping"
+                                      rows="6"
+                                      style="font-family:'Courier New', monospace; font-size:.85rem;"
+                                      placeholder='{"1": "411000", "Inscription": "706100", "Scolarite": "706200"}'>{{ old('setting_saari_account_mapping', \App\Helpers\SettingsHelper::get('saari_account_mapping', '{}')) }}</textarea>
+                            @error('setting_saari_account_mapping')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                            <div style="background:rgba(4,83,203,.04); border:1px solid rgba(4,83,203,.15); border-radius:8px; padding:.85rem 1rem; margin-top:.6rem; font-size:.82rem; color:#1e293b;">
+                                <strong><i class="fas fa-info-circle"></i> Format du mapping</strong>
+                                <ul style="margin:.4rem 0 0 1.25rem; padding:0; line-height:1.7;">
+                                    <li><code>"id_categorie"</code> (numérique) → match exact sur l'ID de la catégorie de frais</li>
+                                    <li><code>"mot_cle"</code> (chaîne) → match partiel insensible à la casse sur le nom de la catégorie</li>
+                                </ul>
+                                <strong>Exemple</strong> :
+                                <pre style="margin:.4rem 0 0; padding:.5rem; background:#0f172a; color:#94a3b8; border-radius:6px; font-size:.78rem;">{
+  "1": "411000",
+  "2": "706000",
+  "Inscription": "706100",
+  "Scolarite": "706200",
+  "Examen": "706300"
+}</pre>
+                            </div>
+                        </div>
+
+                        <div style="margin-top:1.25rem; padding:.85rem 1rem; background:linear-gradient(135deg, rgba(16,185,129,.06), rgba(14,165,233,.08)); border:1px solid rgba(16,185,129,.2); border-radius:10px;">
+                            <i class="fas fa-file-excel" style="color:#10b981;"></i>
+                            <strong>Utilisation</strong> : ces paramètres sont consommés par l'export EXCEL SAARI disponible
+                            dans la page Paiements (menu Export → "Export EXCEL SAARI"). Format de sortie compatible Sage Ligne 100,
+                            onglet <code>BNI BKE</code>.
+                        </div>
+                    </div>
+                </div>
+                <!-- End Tab 7: Comptabilité / SAARI -->
 
             </div>
             <!-- End Tab Content -->
