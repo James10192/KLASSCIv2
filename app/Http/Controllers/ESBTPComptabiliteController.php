@@ -62,7 +62,12 @@ class ESBTPComptabiliteController extends Controller
         $filters = ComptabiliteFilters::fromRequest($request);
         [$annee, $anneeActive, $referentiels] = $this->resolveReferentiels($filters);
 
-        $data = $build($filters, $annee);
+        // FIX audit 2026-06-04 §2.12 : sans filtre user explicite, on scope sur
+        // l'année résolue (couvre l'année courante par défaut). Garantit la cohérence
+        // entre Dashboard UI et CLI (`api/cli/stats` / `payments-summary`).
+        $effectiveFilters = $annee ? $filters->withAnneeDefault((int) $annee->id) : $filters;
+
+        $data = $build($effectiveFilters, $annee);
 
         return view('esbtp.comptabilite.dashboard', array_merge($data, [
             'annee' => $annee,
@@ -82,7 +87,10 @@ class ESBTPComptabiliteController extends Controller
         $filters = ComptabiliteFilters::fromRequest($request);
         [$annee] = $this->resolveReferentiels($filters);
 
-        $data = $build($filters, $annee);
+        // Idem dashboard() : filtre annee_courante par défaut pour cohérence CLI ↔ UI.
+        $effectiveFilters = $annee ? $filters->withAnneeDefault((int) $annee->id) : $filters;
+
+        $data = $build($effectiveFilters, $annee);
 
         return response()->json([
             'totalDue' => $data['totalDue'],

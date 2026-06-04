@@ -9,6 +9,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 /**
  * Construit le payload du dashboard comptabilité (KPIs + encaissements + aging + pending).
@@ -20,6 +21,14 @@ class BuildDashboardDataAction
     private const PAYMENT_STATUS_PENDING = 'en_attente';
     private const PENDING_PAYMENTS_LIMIT = 10;
 
+    /**
+     * Audit 2026-06-04 §2.1 : page dashboard observée à 33s sur yakro (1561 inscriptions
+     * × calcul échéancier par inscription via RelanceCalculationService).
+     * Cache 60s = compromis entre fraicheur et performance UI.
+     * Invalidation : via Cache::forget('dashboard_compta_*') ou cache:clear.
+     */
+    private const CACHE_TTL_SECONDS = 60;
+
     public function __construct(
         private readonly GetImpayesAgingAction $getImpayesAging,
     ) {}
@@ -28,6 +37,24 @@ class BuildDashboardDataAction
      * @return array<string, mixed>
      */
     public function __invoke(ComptabiliteFilters $filters, ?ESBTPAnneeUniversitaire $annee): array
+    {
+        $cacheKey = sprintf(
+            'dashboard_compta_%s_%s_%s_%s',
+            $filters->anneeId ?? 'all',
+            $filters->filiereId ?? 'all',
+            $filters->classeId ?? 'all',
+            $annee?->id ?? 'none',
+        );
+
+        return Cache::remember($cacheKey, self::CACHE_TTL_SECONDS, function () use ($filters, $annee) {
+            return $this->build($filters, $annee);
+        });
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function build(ComptabiliteFilters $filters, ?ESBTPAnneeUniversitaire $annee): array
     {
         $statusAgg = $this->paiementsQuery($filters)
             ->selectRaw(

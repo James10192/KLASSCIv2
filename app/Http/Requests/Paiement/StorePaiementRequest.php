@@ -26,6 +26,7 @@ class StorePaiementRequest extends FormRequest
             'tranche' => 'nullable|string',
             'commentaire' => 'nullable|string',
             'confirmed_unusual_amount' => 'nullable|in:0,1',
+            'confirmed_zero_amount' => 'nullable|in:0,1',
         ];
     }
 
@@ -35,6 +36,10 @@ class StorePaiementRequest extends FormRequest
      *
      * Le seuil 'comptabilite.unusual_amount_threshold' est configurable par l'école
      * via /esbtp/settings (default 500 000 FCFA).
+     *
+     * Audit 2026-06-04 §2.13 : on ajoute aussi un garde-fou montant=0 qui exige
+     * une confirmation explicite (cas exonération uniquement). Empêche les 18
+     * paiements zéro accidentels constatés en prod yakro.
      */
     public function withValidator(Validator $validator): void
     {
@@ -51,6 +56,15 @@ class StorePaiementRequest extends FormRequest
                         number_format($montant, 0, ',', ' '),
                         number_format($threshold, 0, ',', ' '),
                     ),
+                );
+            }
+
+            // Garde-fou paiement 0 FCFA — typique d'une erreur de saisie.
+            $confirmedZero = $this->input('confirmed_zero_amount') === '1' || $this->input('confirmed_zero_amount') === 1;
+            if ($montant === 0 && !$confirmedZero) {
+                $v->errors()->add(
+                    'montant',
+                    'Montant à 0 FCFA détecté. Ce paiement ne sera enregistré que si vous confirmez qu\'il s\'agit d\'une exonération (cochez la case dédiée).',
                 );
             }
         });
