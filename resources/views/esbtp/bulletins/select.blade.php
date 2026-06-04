@@ -452,9 +452,10 @@ window.busCard = function (cfg) {
         busy: false,
         loadingStudents: false,
         students: [],
+        // Année universitaire courante pré-sélectionnée (le user peut changer ensuite).
         form: {
             classe_id: '',
-            annee_universitaire_id: '',
+            annee_universitaire_id: @json($anneeActuelle?->id ? (string) $anneeActuelle->id : ''),
             etudiant_id: '',
             semestre: '',
             periode: '',
