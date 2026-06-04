@@ -575,7 +575,9 @@
                                             value="{{ old('notes.' . $etudiant->id . '.valeur', $note ? $note->valeur : '') }}"
                                             min="0"
                                             max="{{ $evaluation->bareme }}"
-                                            step="0.25"
+                                            step="0.01"
+                                            inputmode="decimal"
+                                            lang="fr"
                                             {{ ($note && $note->absent) || $isReadOnly ? 'disabled' : '' }}
                                             autocomplete="off">
                                         @error('notes.' . $etudiant->id . '.valeur')

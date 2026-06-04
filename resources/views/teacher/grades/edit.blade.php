@@ -238,14 +238,16 @@
                                                         <p class="text-xs font-weight-bold mb-0">{{ $student->registration_number }}</p>
                                                     </td>
                                                     <td>
-                                                        <input type="number" 
-                                                               class="form-control form-control-sm grade-input @error('grades.' . $student->id) is-invalid @enderror" 
-                                                               name="grades[{{ $student->id }}]" 
-                                                               id="grade_{{ $student->id }}" 
-                                                               value="{{ old('grades.' . $student->id, $studentGrades[$student->id] ?? '') }}" 
-                                                               min="0" 
-                                                               max="{{ $evaluation->total_points }}" 
-                                                               step="0.25" 
+                                                        <input type="number"
+                                                               class="form-control form-control-sm grade-input @error('grades.' . $student->id) is-invalid @enderror"
+                                                               name="grades[{{ $student->id }}]"
+                                                               id="grade_{{ $student->id }}"
+                                                               value="{{ old('grades.' . $student->id, $studentGrades[$student->id] ?? '') }}"
+                                                               min="0"
+                                                               max="{{ $evaluation->total_points }}"
+                                                               step="0.01"
+                                                               inputmode="decimal"
+                                                               lang="fr"
                                                                {{ isset($studentAbsences[$student->id]) && $studentAbsences[$student->id] ? 'disabled' : '' }}>
                                                         @error('grades.' . $student->id)
                                                             <div class="invalid-feedback">{{ $message }}</div>

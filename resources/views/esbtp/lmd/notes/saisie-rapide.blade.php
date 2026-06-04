@@ -84,7 +84,8 @@
                                        name="notes[{{ $index }}][note]"
                                        class="lmd-note-input"
                                        value="{{ $notesExistantes[$etudiant->id] ?? '' }}"
-                                       min="0" max="{{ $evaluation->bareme }}" step="0.25"
+                                       min="0" max="{{ $evaluation->bareme }}" step="0.01"
+                                       inputmode="decimal" lang="fr"
                                        placeholder="--"
                                        data-bareme="{{ $evaluation->bareme }}"
                                        oninput="colorNote(this)">

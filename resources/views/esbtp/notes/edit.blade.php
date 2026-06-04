@@ -159,7 +159,9 @@
                                            value="{{ old('note', $note->note) }}"
                                            min="0"
                                            max="{{ $note->evaluation->bareme }}"
-                                           step="0.25"
+                                           step="0.01"
+                                           inputmode="decimal"
+                                           lang="fr"
                                            {{ old('is_absent', $note->is_absent) ? 'disabled' : '' }}>
                                     <span class="input-group-text">/ {{ $note->evaluation->bareme }}</span>
                                     @error('note')

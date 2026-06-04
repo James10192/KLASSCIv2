@@ -182,7 +182,9 @@
                                                    class="form-control grade-input @error('notes.'.$etudiant->id) is-invalid @enderror"
                                                    min="0"
                                                    max="{{ $evaluation->bareme }}"
-                                                   step="0.25"
+                                                   step="0.01"
+                                                   inputmode="decimal"
+                                                   lang="fr"
                                                    placeholder="--">
                                             @error('notes.'.$etudiant->id)
                                                 <div class="invalid-feedback">{{ $message }}</div>
