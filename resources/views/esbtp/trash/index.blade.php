@@ -188,7 +188,7 @@
     color: #64748b;
 }
 
-/* Confirm modal force-delete */
+/* Dialog dépendances (pour Restaurer + Supprimer définitivement) */
 .tr-modal-bg {
     position: fixed; inset: 0;
     background: rgba(15,23,42,.6);
@@ -199,23 +199,95 @@
 .tr-modal-bg.show { display: flex; }
 .tr-modal {
     background: #fff; border-radius: 14px;
-    max-width: 480px; width: 100%;
-    overflow: hidden;
+    max-width: 560px; width: 100%;
+    max-height: 90vh; overflow: hidden;
     box-shadow: 0 25px 60px rgba(0,0,0,.3);
+    display: flex; flex-direction: column;
 }
 .tr-modal-header {
     padding: 1.2rem 1.5rem;
-    background: linear-gradient(135deg, #dc2626, #ef4444);
     color: #fff;
+    flex-shrink: 0;
 }
+.tr-modal-header--restore { background: linear-gradient(135deg, #047857, #10b981); }
+.tr-modal-header--force { background: linear-gradient(135deg, #dc2626, #ef4444); }
 .tr-modal-header h4 { margin: 0; font-size: 1rem; font-weight: 700; display: inline-flex; align-items: center; gap: .5rem; }
-.tr-modal-body { padding: 1.4rem 1.5rem; font-size: .9rem; color: #475569; }
+.tr-modal-header p { margin: .3rem 0 0; font-size: .82rem; color: rgba(255,255,255,.85); }
+.tr-modal-body { padding: 1.4rem 1.5rem; font-size: .9rem; color: #475569; overflow-y: auto; flex: 1; }
 .tr-modal-body strong { color: #1e293b; }
 .tr-modal-footer {
     padding: 1rem 1.5rem;
     border-top: 1px solid #f1f5f9;
     display: flex; justify-content: flex-end; gap: .65rem;
+    flex-shrink: 0;
 }
+
+.tr-dep-section { margin-top: 1rem; }
+.tr-dep-section:first-child { margin-top: 0; }
+.tr-dep-title {
+    display: inline-flex; align-items: center; gap: .5rem;
+    font-size: .82rem; font-weight: 700;
+    margin-bottom: .55rem;
+    text-transform: uppercase; letter-spacing: .04em;
+}
+.tr-dep-title--blocking { color: #b91c1c; }
+.tr-dep-title--cascading { color: #b45309; }
+.tr-dep-title--info { color: #0453cb; }
+.tr-dep-list {
+    list-style: none; padding: 0; margin: 0;
+    display: flex; flex-direction: column; gap: .4rem;
+}
+.tr-dep-item {
+    display: flex; align-items: center; gap: .65rem;
+    padding: .6rem .8rem;
+    border-radius: 9px;
+    background: #f8fafc; border: 1px solid #e2e8f0;
+    font-size: .85rem; color: #1e293b;
+}
+.tr-dep-item--blocking { background: rgba(220,38,38,.06); border-color: rgba(220,38,38,.25); }
+.tr-dep-item--cascading { background: rgba(245,158,11,.06); border-color: rgba(245,158,11,.25); }
+.tr-dep-item--info { background: rgba(4,83,203,.05); border-color: rgba(4,83,203,.2); }
+.tr-dep-icon {
+    width: 28px; height: 28px; border-radius: 7px;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: .85rem;
+}
+.tr-dep-icon--blocking { background: rgba(220,38,38,.12); color: #b91c1c; }
+.tr-dep-icon--cascading { background: rgba(245,158,11,.15); color: #b45309; }
+.tr-dep-icon--info { background: rgba(4,83,203,.12); color: #0453cb; }
+
+.tr-dep-banner {
+    padding: .85rem 1rem; border-radius: 10px;
+    display: flex; align-items: flex-start; gap: .65rem;
+    font-size: .85rem; line-height: 1.5;
+    margin-bottom: 1rem;
+}
+.tr-dep-banner--blocked { background: rgba(220,38,38,.07); color: #7f1d1d; border: 1px solid rgba(220,38,38,.2); }
+.tr-dep-banner--warn { background: rgba(245,158,11,.07); color: #78350f; border: 1px solid rgba(245,158,11,.2); }
+.tr-dep-banner--ok { background: rgba(16,185,129,.07); color: #065f46; border: 1px solid rgba(16,185,129,.2); }
+.tr-dep-banner i { font-size: 1rem; margin-top: .15rem; flex-shrink: 0; }
+
+.tr-dep-loading {
+    text-align: center; padding: 2rem 1rem;
+    color: #64748b; font-size: .9rem;
+}
+.tr-dep-loading i { font-size: 1.5rem; margin-bottom: .5rem; display: block; color: #0453cb; }
+
+/* Toast premium */
+.tr-toast {
+    position: fixed; top: 1.5rem; right: 1.5rem;
+    z-index: 99995;
+    padding: .85rem 1.2rem;
+    border-radius: 10px;
+    box-shadow: 0 12px 30px rgba(0,0,0,.18);
+    font-size: .88rem; font-weight: 600;
+    display: flex; align-items: center; gap: .65rem;
+    min-width: 280px; max-width: 420px;
+    color: #fff;
+}
+.tr-toast--success { background: #10b981; }
+.tr-toast--error   { background: #dc2626; }
+.tr-toast--info    { background: #0453cb; }
 
 [x-cloak] { display: none !important; }
 </style>
@@ -490,24 +562,182 @@
             </div>
         </div>
 
-        {{-- Confirm modal force delete --}}
-        <div class="tr-modal-bg" :class="{ show: forceModalOpen }" x-cloak @click.self="forceModalOpen = false">
+        {{-- Dialog dépendances unifié (Restore + Force delete) --}}
+        <div class="tr-modal-bg" :class="{ show: depModalOpen }" x-cloak
+             @click.self="closeDepModal()"
+             @keydown.escape.window="depModalOpen && closeDepModal()">
             <div class="tr-modal">
-                <div class="tr-modal-header">
-                    <h4><i class="fas fa-fire"></i>Suppression définitive</h4>
+                <div class="tr-modal-header" :class="depAction === 'restore' ? 'tr-modal-header--restore' : 'tr-modal-header--force'">
+                    <h4>
+                        <i :class="depAction === 'restore' ? 'fas fa-rotate-left' : 'fas fa-fire'"></i>
+                        <span x-text="depAction === 'restore' ? 'Restaurer' : 'Supprimer définitivement'"></span>
+                    </h4>
+                    <p x-text="depData?.entity_label || '…'"></p>
                 </div>
                 <div class="tr-modal-body">
-                    Vous êtes sur le point de supprimer <strong x-text="forceTarget?.label"></strong> de manière <strong style="color:#dc2626;">irréversible</strong>.
-                    <br><br>
-                    Cette action ne peut pas être annulée. Confirmez-vous ?
+                    {{-- Loading state --}}
+                    <template x-if="depLoading">
+                        <div class="tr-dep-loading">
+                            <i class="fas fa-circle-notch fa-spin"></i>
+                            <div>Analyse des dépendances en cours…</div>
+                        </div>
+                    </template>
+
+                    {{-- Loaded state --}}
+                    <template x-if="!depLoading && depData">
+                        <div>
+                            {{-- Banner status --}}
+                            <template x-if="depAction === 'force' && depData.has_blocking">
+                                <div class="tr-dep-banner tr-dep-banner--blocked">
+                                    <i class="fas fa-ban"></i>
+                                    <div>
+                                        <strong>Suppression définitive impossible.</strong><br>
+                                        Des entités liées empêchent cette action. Supprimez ou restaurez d'abord les éléments listés ci-dessous.
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="depAction === 'force' && !depData.has_blocking && (depData.cascading_force_delete?.length > 0)">
+                                <div class="tr-dep-banner tr-dep-banner--warn">
+                                    <i class="fas fa-triangle-exclamation"></i>
+                                    <div>
+                                        <strong>Action irréversible.</strong> Vérifiez les conséquences avant de confirmer.
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="depAction === 'force' && !depData.has_blocking && (depData.cascading_force_delete?.length === 0)">
+                                <div class="tr-dep-banner tr-dep-banner--warn">
+                                    <i class="fas fa-triangle-exclamation"></i>
+                                    <div>
+                                        <strong>Suppression définitive.</strong> Cette action est irréversible. Aucune dépendance détectée — l'entité sera supprimée seule.
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="depAction === 'restore' && (depData.cascading_restore?.length > 0)">
+                                <div class="tr-dep-banner tr-dep-banner--ok">
+                                    <i class="fas fa-circle-info"></i>
+                                    <div>
+                                        <strong>Restauration en cascade.</strong> D'autres entités liées seront aussi restaurées automatiquement pour préserver l'intégrité.
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="depAction === 'restore' && (depData.cascading_restore?.length === 0) && (depData.blocking_restore?.length === 0)">
+                                <div class="tr-dep-banner tr-dep-banner--ok">
+                                    <i class="fas fa-circle-check"></i>
+                                    <div>
+                                        Aucune dépendance détectée. L'entité sera simplement restaurée.
+                                    </div>
+                                </div>
+                            </template>
+
+                            {{-- Blocking restore (rare) --}}
+                            <template x-if="depAction === 'restore' && depData.blocking_restore?.length > 0">
+                                <div class="tr-dep-section">
+                                    <div class="tr-dep-title tr-dep-title--blocking">
+                                        <i class="fas fa-ban"></i>Restauration bloquée par
+                                    </div>
+                                    <ul class="tr-dep-list">
+                                        <template x-for="dep in depData.blocking_restore" :key="dep.type">
+                                            <li class="tr-dep-item tr-dep-item--blocking">
+                                                <span class="tr-dep-icon tr-dep-icon--blocking">
+                                                    <i :class="'fas ' + (dep.icon || 'fa-exclamation')"></i>
+                                                </span>
+                                                <span x-text="dep.label"></span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
+                            </template>
+
+                            {{-- Cascading restore --}}
+                            <template x-if="depAction === 'restore' && depData.cascading_restore?.length > 0">
+                                <div class="tr-dep-section">
+                                    <div class="tr-dep-title tr-dep-title--info">
+                                        <i class="fas fa-arrow-rotate-left"></i>Restauré en cascade
+                                    </div>
+                                    <ul class="tr-dep-list">
+                                        <template x-for="dep in depData.cascading_restore" :key="dep.type">
+                                            <li class="tr-dep-item tr-dep-item--info">
+                                                <span class="tr-dep-icon tr-dep-icon--info">
+                                                    <i :class="'fas ' + (dep.icon || 'fa-link')"></i>
+                                                </span>
+                                                <span x-text="dep.label"></span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
+                            </template>
+
+                            {{-- Blocking force-delete --}}
+                            <template x-if="depAction === 'force' && depData.blocking_force_delete?.length > 0">
+                                <div class="tr-dep-section">
+                                    <div class="tr-dep-title tr-dep-title--blocking">
+                                        <i class="fas fa-ban"></i>Suppression bloquée par
+                                    </div>
+                                    <ul class="tr-dep-list">
+                                        <template x-for="dep in depData.blocking_force_delete" :key="dep.type">
+                                            <li class="tr-dep-item tr-dep-item--blocking">
+                                                <span class="tr-dep-icon tr-dep-icon--blocking">
+                                                    <i :class="'fas ' + (dep.icon || 'fa-exclamation')"></i>
+                                                </span>
+                                                <span x-text="dep.label"></span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
+                            </template>
+
+                            {{-- Cascading force-delete --}}
+                            <template x-if="depAction === 'force' && depData.cascading_force_delete?.length > 0">
+                                <div class="tr-dep-section">
+                                    <div class="tr-dep-title tr-dep-title--cascading">
+                                        <i class="fas fa-triangle-exclamation"></i>Conséquences en cascade
+                                    </div>
+                                    <ul class="tr-dep-list">
+                                        <template x-for="dep in depData.cascading_force_delete" :key="dep.type">
+                                            <li class="tr-dep-item tr-dep-item--cascading">
+                                                <span class="tr-dep-icon tr-dep-icon--cascading">
+                                                    <i :class="'fas ' + (dep.icon || 'fa-link')"></i>
+                                                </span>
+                                                <span x-text="dep.label"></span>
+                                            </li>
+                                        </template>
+                                    </ul>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+
+                    {{-- Error state --}}
+                    <template x-if="!depLoading && !depData && depError">
+                        <div class="tr-dep-banner tr-dep-banner--blocked">
+                            <i class="fas fa-exclamation-circle"></i>
+                            <div x-text="depError"></div>
+                        </div>
+                    </template>
                 </div>
                 <div class="tr-modal-footer">
-                    <button class="tr-btn tr-btn--ghost" @click="forceModalOpen = false">Annuler</button>
-                    <button class="tr-btn tr-btn--danger" :disabled="forceSaving" @click="confirmForceDelete()">
-                        <i class="fas fa-fire"></i><span x-text="forceSaving ? 'Suppression…' : 'Supprimer définitivement'"></span>
+                    <button class="tr-btn tr-btn--ghost" @click="closeDepModal()" :disabled="actionSaving">Annuler</button>
+                    <button
+                        class="tr-btn"
+                        :class="depAction === 'restore' ? 'tr-btn--success' : 'tr-btn--danger'"
+                        :disabled="depLoading || actionSaving || (depAction === 'force' && depData?.has_blocking)"
+                        @click="confirmAction()">
+                        <i :class="depAction === 'restore' ? 'fas fa-rotate-left' : 'fas fa-fire'"></i>
+                        <span x-show="!actionSaving" x-text="depAction === 'restore' ? 'Confirmer la restauration' : 'Supprimer définitivement'"></span>
+                        <span x-show="actionSaving" x-cloak>Traitement…</span>
                     </button>
                 </div>
             </div>
+        </div>
+
+        {{-- Toast notifications (CSS class statique + :class toggle, jamais mix style+:style) --}}
+        <div class="tr-toast" :class="'tr-toast--' + toast.type" x-show="toast.show" x-cloak x-transition.opacity>
+            <i :class="toast.type === 'success' ? 'fas fa-check-circle' : (toast.type === 'error' ? 'fas fa-exclamation-circle' : 'fas fa-info-circle')"></i>
+            <span x-text="toast.message"></span>
         </div>
     </div>
 </div>
@@ -521,9 +751,18 @@ function trashIndex() {
         loading: false,
         items: [],
         kpis: { total: '—', this_week: '—', older_than_30: '—' },
-        forceModalOpen: false,
-        forceTarget: null,
-        forceSaving: false,
+
+        // Dialog unifié (restore + force delete)
+        depModalOpen: false,
+        depLoading: false,
+        depData: null,
+        depError: null,
+        depAction: 'force',          // 'restore' | 'force'
+        depTarget: null,             // { type, id }
+        actionSaving: false,
+
+        // Toast
+        toast: { show: false, type: 'info', message: '', timer: null },
 
         get activeTabLabel() {
             return this.tab === 'etudiants' ? 'étudiants' : this.tab === 'inscriptions' ? 'inscriptions' : 'paiements';
@@ -539,19 +778,28 @@ function trashIndex() {
             this.reload();
         },
 
+        showToast(type, message, durationMs = 4000) {
+            if (this.toast.timer) clearTimeout(this.toast.timer);
+            this.toast = { show: true, type, message, timer: null };
+            this.toast.timer = setTimeout(() => { this.toast.show = false; }, durationMs);
+        },
+
         async reload() {
             this.loading = true;
             try {
-                const url = new URL(`{{ route('esbtp.trash.index') }}/${this.tab}`, window.location.origin);
+                const url = new URL(`{{ url('/esbtp/trash') }}/${this.tab}`, window.location.origin);
                 if (this.search) url.searchParams.append('search', this.search);
                 if (this.range) url.searchParams.append('range', this.range);
-                const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
+                const res = await fetch(url.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    credentials: 'same-origin',
+                });
                 const data = await res.json();
-                if (!data.success) throw new Error(data.message || 'erreur');
+                if (!data.success) throw new Error(data.message || 'Erreur de chargement');
                 this.items = data.items || [];
                 this.kpis = data.kpis || { total: 0, this_week: 0, older_than_30: 0 };
             } catch (e) {
-                alert('Erreur de chargement : ' + e.message);
+                this.showToast('error', 'Erreur de chargement : ' + e.message);
             } finally {
                 this.loading = false;
             }
@@ -561,53 +809,89 @@ function trashIndex() {
             return new Intl.NumberFormat('fr-FR').format(v || 0) + ' FCFA';
         },
 
-        async restore(type, id, label) {
-            if (!confirm(`Restaurer ${label} ? ${type === 'inscriptions' || type === 'paiements' ? '(Si l\'étudiant est aussi supprimé, il sera restauré aussi)' : ''}`)) return;
+        /**
+         * Point d'entrée unifié pour Restaurer.
+         * Ouvre le dialog dépendances en mode 'restore'.
+         */
+        restore(type, id /*, label (ignoré, on récupère du backend) */) {
+            this.openDepModal('restore', type, id);
+        },
+
+        /**
+         * Point d'entrée unifié pour Supprimer définitivement.
+         * Ouvre le dialog dépendances en mode 'force'.
+         */
+        askForceDelete(type, id /*, label */) {
+            this.openDepModal('force', type, id);
+        },
+
+        async openDepModal(action, type, id) {
+            this.depAction = action;
+            this.depTarget = { type, id };
+            this.depData = null;
+            this.depError = null;
+            this.depLoading = true;
+            this.depModalOpen = true;
+
             try {
-                const res = await fetch(`{{ url('/esbtp/trash') }}/${type}/${id}/restore`, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'application/json',
-                    },
+                const res = await fetch(`{{ url('/esbtp/trash') }}/${type}/${id}/dependencies`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    credentials: 'same-origin',
                 });
-                const data = await res.json();
-                if (!data.success) throw new Error(data.message);
-                alert(data.message);
-                await this.reload();
+                if (!res.ok) {
+                    const errBody = await res.json().catch(() => ({}));
+                    throw new Error(errBody.message || `Erreur HTTP ${res.status}`);
+                }
+                const json = await res.json();
+                if (!json.success) throw new Error(json.message || 'Erreur lors de l\'analyse');
+                this.depData = json.data;
             } catch (e) {
-                alert('Erreur : ' + e.message);
+                this.depError = 'Impossible d\'analyser les dépendances : ' + e.message;
+            } finally {
+                this.depLoading = false;
             }
         },
 
-        askForceDelete(type, id, label) {
-            this.forceTarget = { type, id, label };
-            this.forceModalOpen = true;
+        closeDepModal() {
+            if (this.actionSaving) return;
+            this.depModalOpen = false;
+            this.depData = null;
+            this.depError = null;
+            this.depTarget = null;
         },
 
-        async confirmForceDelete() {
-            if (!this.forceTarget) return;
-            this.forceSaving = true;
+        async confirmAction() {
+            if (!this.depTarget) return;
+            if (this.actionSaving) return;
+            if (this.depAction === 'force' && this.depData?.has_blocking) return;
+
+            this.actionSaving = true;
+            const { type, id } = this.depTarget;
+            const isRestore = this.depAction === 'restore';
+            const url = `{{ url('/esbtp/trash') }}/${type}/${id}/${isRestore ? 'restore' : 'force'}`;
+            const method = isRestore ? 'POST' : 'DELETE';
+
             try {
-                const { type, id, label } = this.forceTarget;
-                const res = await fetch(`{{ url('/esbtp/trash') }}/${type}/${id}/force`, {
-                    method: 'DELETE',
+                const res = await fetch(url, {
+                    method,
                     headers: {
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                         'X-Requested-With': 'XMLHttpRequest',
                         'Accept': 'application/json',
                     },
+                    credentials: 'same-origin',
                 });
                 const data = await res.json();
-                if (!data.success) throw new Error(data.message);
-                alert(data.message);
-                this.forceModalOpen = false;
+                if (!data.success) throw new Error(data.message || 'Erreur lors de l\'action');
+                this.showToast('success', data.message || 'Action effectuée.');
+                this.depModalOpen = false;
+                this.depData = null;
+                this.depTarget = null;
                 await this.reload();
             } catch (e) {
-                alert('Erreur : ' + e.message);
+                this.showToast('error', 'Erreur : ' + e.message, 6000);
             } finally {
-                this.forceSaving = false;
+                this.actionSaving = false;
             }
         },
     };

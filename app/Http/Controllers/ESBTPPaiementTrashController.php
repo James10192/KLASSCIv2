@@ -6,6 +6,7 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
 use App\Services\Trash\TrashAuditService;
+use App\Services\Trash\TrashDependencyAnalyzer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -13,9 +14,24 @@ use Illuminate\Support\Facades\Log;
 
 class ESBTPPaiementTrashController extends Controller
 {
-    public function __construct(protected TrashAuditService $trashAudit)
-    {
+    public function __construct(
+        protected TrashAuditService $trashAudit,
+        protected TrashDependencyAnalyzer $depAnalyzer,
+    ) {
         $this->middleware('auth');
+    }
+
+    /**
+     * GET /esbtp/trash/paiements/{id}/dependencies
+     */
+    public function dependencies(int $id)
+    {
+        abort_unless(Auth::user()?->can('trash.view'), 403, 'Accès à la corbeille refusé.');
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->depAnalyzer->forPaiement($id),
+        ]);
     }
 
     public function index(Request $request)

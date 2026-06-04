@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\ESBTPEtudiant;
 use App\Services\Trash\TrashAuditService;
+use App\Services\Trash\TrashDependencyAnalyzer;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -11,9 +12,26 @@ use Illuminate\Support\Facades\Log;
 
 class ESBTPEtudiantTrashController extends Controller
 {
-    public function __construct(protected TrashAuditService $trashAudit)
-    {
+    public function __construct(
+        protected TrashAuditService $trashAudit,
+        protected TrashDependencyAnalyzer $depAnalyzer,
+    ) {
         $this->middleware('auth');
+    }
+
+    /**
+     * GET /esbtp/trash/etudiants/{id}/dependencies
+     * Analyse les dépendances bloquantes / cascadantes pour les actions
+     * Restaurer + Supprimer définitivement. Affiché dans un dialog UI premium.
+     */
+    public function dependencies(int $id)
+    {
+        abort_unless(Auth::user()?->can('trash.view'), 403, 'Accès à la corbeille refusé.');
+
+        return response()->json([
+            'success' => true,
+            'data' => $this->depAnalyzer->forEtudiant($id),
+        ]);
     }
 
     /**
