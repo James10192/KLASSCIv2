@@ -173,7 +173,7 @@ class ESBTPEtudiantController extends Controller
         try {
             $etudiantsForBulk = app(\App\Services\Reinscription\BulkReinscriptionService::class)
                 ->listEligibleStudents();
-            \Log::info('Bulk eligible students fetched', ['count' => $etudiantsForBulk->count(), 'has_2041' => $etudiantsForBulk->contains('id', 2041)]);
+            \Log::error('DIAG_BULK_ELIGIBLE', ['count' => $etudiantsForBulk->count(), 'has_2041' => $etudiantsForBulk->contains('id', 2041)]);
         } catch (\Throwable $e) {
             \Log::warning('Bulk eligible students fetch failed', ['error' => $e->getMessage()]);
             $etudiantsForBulk = collect();
