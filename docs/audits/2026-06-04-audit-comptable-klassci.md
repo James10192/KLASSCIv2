@@ -532,6 +532,17 @@ Pages secondaires testées avec session Admin :
 | Frais scolarité show id=1 | `/esbtp/comptabilite/frais-scolarite/1` | 🟡 404 (pas de row id=1 en DB, route OK) |
 | Paiements pending | `/esbtp/paiements/pending` | 🟡 Route inexistante (n'est pas une page distincte — filtre via index) |
 
+### Discrepancy stats vs dashboard-kpis (rerun)
+
+| Endpoint | Logique filtre année | Total | Validés | Pending |
+|---|---|---|---|---|
+| `api/cli/stats` | `paiement.annee_universitaire_id = 6` direct | 1429 | 1419 | 10 |
+| `api/cli/comptabilite/dashboard-kpis?annee_id=6` | `whereHas('inscription', annee=6)` (via relation) | 1428 | 1418 | 10 |
+
+**Diff = 1 paiement**. 0 paiement sans inscription (vérifié via `reconciliation-candidates`). Donc 1 paiement a `paiement.annee_universitaire_id = 6` mais son `inscription.annee_universitaire_id ≠ 6` (probable data drift après réinscription).
+
+**Action recommandée** : ajouter endpoint `api/cli/comptabilite/orphan-paiements-annee-drift` pour identifier ces paiements, puis nettoyer.
+
 ### Réconciliation candidates approfondies
 
 ```
