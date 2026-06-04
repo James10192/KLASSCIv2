@@ -347,6 +347,54 @@ class CLIComptabiliteController extends BaseApiController
     }
 
     /**
+     * GET /api/cli/comptabilite/reconciliation/health
+     *
+     * Dashboard santé réconciliation : combien de sessions en draft/review/overdue.
+     * Overdue = session ouverte il y a > 7 jours encore en draft.
+     */
+    public function reconciliationHealth(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $now = now();
+        $overdueThreshold = $now->copy()->subDays(7);
+
+        $byStatus = ReconciliationSession::query()
+            ->selectRaw('status, COUNT(*) as nb')
+            ->groupBy('status')
+            ->pluck('nb', 'status')
+            ->all();
+
+        $overdueDraft = ReconciliationSession::query()
+            ->where('status', 'draft')
+            ->where('opened_at', '<', $overdueThreshold)
+            ->count();
+
+        $lastClosedAt = ReconciliationSession::query()
+            ->where('status', 'closed')
+            ->orderByDesc('closed_at')
+            ->value('closed_at');
+
+        $daysSinceLastClose = $lastClosedAt ? $now->diffInDays($lastClosedAt) : null;
+
+        return $this->successResponse([
+            'by_status' => [
+                'draft' => (int) ($byStatus['draft'] ?? 0),
+                'review' => (int) ($byStatus['review'] ?? 0),
+                'approved' => (int) ($byStatus['approved'] ?? 0),
+                'closed' => (int) ($byStatus['closed'] ?? 0),
+                'reopened' => (int) ($byStatus['reopened'] ?? 0),
+            ],
+            'overdue_draft_count' => $overdueDraft,
+            'last_close_at' => $lastClosedAt?->toIso8601String(),
+            'days_since_last_close' => $daysSinceLastClose,
+            'health_status' => $overdueDraft > 0 ? 'degraded' : ($daysSinceLastClose && $daysSinceLastClose > 7 ? 'warning' : 'ok'),
+        ], 'Reconciliation health');
+    }
+
+    /**
      * GET /api/cli/comptabilite/reconciliation/sessions/{id}
      */
     public function reconciliationSessionShow(Request $request, int $id): JsonResponse

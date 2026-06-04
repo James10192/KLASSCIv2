@@ -2234,6 +2234,13 @@
                                     <span>Journal de caisse</span>
                                 </a>
                                 @endcan
+                                {{-- Réconciliation caisse PR3 --}}
+                                @can('comptabilite.reconciliation.view')
+                                <a href="{{ route('esbtp.comptabilite.reconciliation.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.reconciliation.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Réconciliation caisse</span>
+                                </a>
+                                @endcan
                             </div>
                         </div>
                     @endcan
