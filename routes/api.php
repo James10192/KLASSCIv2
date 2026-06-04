@@ -300,6 +300,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::get('/reconciliation/sessions/{id}', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'reconciliationSessionShow'])->name('reconciliation.sessions.show');
         // PR3 réconciliation
         Route::get('/reconciliation/health', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'reconciliationHealth'])->name('reconciliation.health');
+        // PR6 réconciliation
+        Route::get('/reconciliation/metrics', [App\Http\Controllers\API\CLI\CLIComptabiliteController::class, 'reconciliationMetrics'])->name('reconciliation.metrics');
     });
 
     // Permissions supervision (read-only) — registry-driven

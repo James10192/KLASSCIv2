@@ -1598,6 +1598,19 @@ class SettingsSeeder extends Seeder
                 'default_value' => '',
                 'validation_rules' => ['nullable', 'url', 'max:255'],
                 'sort_order' => 16
+            ],
+            // PR6 réconciliation : seuil overdue
+            [
+                'key' => 'comptabilite.reconciliation.overdue_days',
+                'value' => '2',
+                'type' => 'integer',
+                'group' => 'comptabilite',
+                'category' => 'comptabilite',
+                'description' => 'Nombre de jours après ouverture d\'une session avant qu\'elle soit considérée overdue.',
+                'is_required' => true,
+                'default_value' => '2',
+                'validation_rules' => ['required', 'integer', 'min:1', 'max:60'],
+                'sort_order' => 17
             ]
         ];
 

@@ -914,6 +914,9 @@ body, .filters-bar, .kpi-label, .filter-label, .filter-select {
             </div>
         </div>
 
+        {{-- PR6 Widget santé Réconciliation Caisse --}}
+        @include('esbtp.comptabilite.partials._reconciliation_health_widget')
+
         {{-- ── FILTRES AJAX ── --}}
         <div class="filters-bar">
             <div class="filters-bar-icon">

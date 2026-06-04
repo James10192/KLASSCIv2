@@ -21,6 +21,12 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        // PR6 Réconciliation : check overdue sessions daily à 8h (heure du matin = pertinent)
+        $schedule->command('reconciliation:check-overdue')
+            ->dailyAt('08:00')
+            ->withoutOverlapping()
+            ->onOneServer();
+
         // Tâches existantes
         $schedule->command('attendance:mark-unattended-teacher-sessions')->everyTenMinutes();
 
