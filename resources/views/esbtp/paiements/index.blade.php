@@ -541,6 +541,212 @@
     .modal-body .form-check-label {
         cursor: pointer !important;
     }
+
+    /* ═══════════════════════════════════════════════
+       Anti-débordement (root containers)
+       ═══════════════════════════════════════════════ */
+    .dashboard-acasi { min-width: 0; overflow-x: clip; }
+    .dashboard-acasi .main-content { min-width: 0; max-width: 100%; }
+    .pi-hero, .pi-filters, .pi-bulk-bar { max-width: 100%; min-width: 0; }
+    .pi-hero-actions .dropdown, .pi-hero-actions .pi-btn { min-width: 0; }
+
+    /* ═══════════════════════════════════════════════
+       Premium table (namespace pi-table-*)
+       ═══════════════════════════════════════════════ */
+    .pi-table-card {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 14px;
+        box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+    .pi-table-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem 1.25rem;
+        border-bottom: 1px solid #f1f5f9;
+        gap: 1rem;
+        flex-wrap: wrap;
+    }
+    .pi-table-title {
+        display: inline-flex;
+        align-items: center;
+        gap: .55rem;
+        font-weight: 700;
+        color: #0f172a;
+        font-size: .92rem;
+    }
+    .pi-table-title i {
+        width: 28px; height: 28px;
+        border-radius: 8px;
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        color: #fff;
+        display: inline-flex; align-items: center; justify-content: center;
+        font-size: .72rem;
+    }
+    .pi-table-count {
+        font-size: .82rem;
+        color: #475569;
+        font-weight: 600;
+    }
+    .pi-table-count #pi-rows-shown { color: #0453cb; }
+    .pi-table-count-label { color: #94a3b8; font-weight: 500; margin-left: .25rem; font-size: .76rem; }
+    .pi-table-wrap {
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+    .pi-table {
+        width: 100%;
+        margin: 0;
+        border-collapse: collapse;
+        font-size: .88rem;
+    }
+    .pi-table thead {
+        background: #f8fafc;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    .pi-table thead th {
+        padding: .8rem 1rem;
+        font-weight: 700;
+        font-size: .72rem;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+        color: #475569;
+        text-align: left;
+        white-space: nowrap;
+    }
+    .pi-table .pi-th-checkbox { width: 40px; }
+    .pi-table .pi-th-actions { width: 1%; text-align: right; }
+    .pi-table tbody tr {
+        border-bottom: 1px solid #f1f5f9;
+        transition: background-color .15s ease;
+    }
+    .pi-table tbody tr:hover {
+        background: rgba(4,83,203,.025);
+    }
+    .pi-table tbody td {
+        padding: .85rem 1rem;
+        vertical-align: middle;
+        color: #1e293b;
+    }
+    .pi-table-empty {
+        text-align: center;
+        padding: 3rem 1rem !important;
+        color: #94a3b8;
+    }
+    .pi-table-empty i {
+        font-size: 2.4rem;
+        display: block;
+        margin-bottom: .75rem;
+        opacity: .5;
+    }
+    .pi-table-empty span { font-size: .9rem; }
+
+    /* Row entry animation */
+    @@keyframes pi-row-in {
+        from { opacity: 0; transform: translateY(8px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    .pi-table tbody tr.pi-row-enter {
+        animation: pi-row-in .35s ease forwards;
+    }
+
+    /* ═══════════════════════════════════════════════
+       Infinite scroll : sentinel + skeleton loader
+       ═══════════════════════════════════════════════ */
+    .pi-infinite-zone {
+        position: relative;
+        padding: .25rem 0 0;
+    }
+    .pi-sentinel { height: 1px; pointer-events: none; }
+    .pi-loader {
+        display: flex;
+        flex-direction: column;
+        gap: .5rem;
+        padding: 1rem 1.25rem;
+    }
+    @@keyframes pi-skeleton-shimmer {
+        0% { background-position: -200% 0; }
+        100% { background-position: 200% 0; }
+    }
+    .pi-skeleton-row {
+        height: 32px;
+        border-radius: 8px;
+        background: linear-gradient(90deg, #f1f5f9 0%, #e2e8f0 50%, #f1f5f9 100%);
+        background-size: 200% 100%;
+        animation: pi-skeleton-shimmer 1.4s ease infinite;
+    }
+    .pi-end-marker {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: .5rem;
+        padding: 1.25rem 1rem;
+        color: #94a3b8;
+        font-size: .82rem;
+        font-weight: 500;
+        border-top: 1px dashed #e2e8f0;
+    }
+    .pi-end-marker i { color: #10b981; }
+
+    /* ═══════════════════════════════════════════════
+       Scroll-to-top floating button
+       ═══════════════════════════════════════════════ */
+    .pi-scroll-top {
+        position: fixed;
+        right: 1.25rem;
+        bottom: 1.25rem;
+        width: 44px; height: 44px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        color: #fff;
+        border: none;
+        box-shadow: 0 8px 24px rgba(4,83,203,.35);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        z-index: 1050;
+        opacity: 0;
+        transform: translateY(20px);
+        pointer-events: none;
+        transition: opacity .25s ease, transform .25s ease, box-shadow .2s ease;
+    }
+    .pi-scroll-top.is-visible {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+    }
+    .pi-scroll-top:hover {
+        box-shadow: 0 12px 32px rgba(4,83,203,.5);
+        transform: translateY(-2px);
+    }
+
+    /* ═══════════════════════════════════════════════
+       Responsive — pi-table + KPIs auto-wrap
+       ═══════════════════════════════════════════════ */
+    @@media (max-width: 1199px) {
+        .pi-hero-kpis { grid-template-columns: repeat(2, 1fr); }
+    }
+    @@media (max-width: 992px) {
+        .pi-table thead th, .pi-table tbody td { padding: .65rem .75rem; font-size: .82rem; }
+        .pi-hero-actions { width: 100%; }
+        .pi-hero-actions .pi-btn { flex: 1 1 auto; justify-content: center; }
+    }
+    @@media (max-width: 576px) {
+        .pi-table thead th, .pi-table tbody td { padding: .55rem .55rem; }
+        .pi-table-head { padding: .85rem 1rem; }
+        .pi-scroll-top { right: .8rem; bottom: .8rem; width: 40px; height: 40px; }
+    }
+
+    /* ═══════════════════════════════════════════════
+       Cleanup legacy : neutralise styles globaux qui
+       saignent dans la table (card-moderne etc.)
+       ═══════════════════════════════════════════════ */
+    .pi-table-card .table-responsive { overflow: visible; }
 </style>
 @endsection
 
@@ -693,12 +899,16 @@
                     </div>
                     <div class="pi-field">
                         <label for="status">Statut</label>
-                        <select name="status" id="status" class="form-select">
-                            <option value="">Tous</option>
-                            <option value="en_attente" {{ request('status') == 'en_attente' ? 'selected' : '' }}>En attente</option>
-                            <option value="validé" {{ request('status') == 'validé' ? 'selected' : '' }}>Validé</option>
-                            <option value="rejeté" {{ request('status') == 'rejeté' ? 'selected' : '' }}>Rejeté</option>
-                        </select>
+                        <x-au-select
+                            name="status"
+                            :value="request('status')"
+                            placeholder="Tous"
+                            icon="fa-filter"
+                            :options="[
+                                'en_attente' => 'En attente',
+                                'validé' => 'Validé',
+                                'rejeté' => 'Rejeté',
+                            ]" />
                     </div>
                     <div class="pi-field">
                         <label for="date_debut">Date début</label>
@@ -751,6 +961,11 @@
 
 {{-- Toast container (feedback post-action) --}}
 <div id="pi-toast-container" class="pi-toast-container" aria-live="polite" aria-atomic="true"></div>
+
+{{-- Scroll-to-top floating button (apparait apres 500px scroll) --}}
+<button type="button" id="pi-scroll-top" class="pi-scroll-top" aria-label="Remonter en haut" title="Remonter en haut">
+    <i class="fas fa-arrow-up"></i>
+</button>
 
 <x-fab-encaisser />
 @endsection
@@ -1568,6 +1783,172 @@ function showYearChangeInfo() {
         }
     };
 
+    /* ═══════════════════════════════════════════════
+       Infinite scroll : IntersectionObserver
+       ═══════════════════════════════════════════════ */
+    let _isLoadingMore = false;
+    let _infiniteObserver = null;
+
+    function getInfiniteState() {
+        const card = document.querySelector('.pi-table-card');
+        if (!card) return null;
+        return {
+            card,
+            hasMore: card.getAttribute('data-has-more') === '1',
+            nextPage: parseInt(card.getAttribute('data-next-page') || '2', 10),
+            total: parseInt(card.getAttribute('data-total') || '0', 10),
+        };
+    }
+
+    function setInfiniteState({ hasMore, nextPage, total }) {
+        const card = document.querySelector('.pi-table-card');
+        if (!card) return;
+        if (typeof hasMore !== 'undefined') card.setAttribute('data-has-more', hasMore ? '1' : '0');
+        if (typeof nextPage !== 'undefined') card.setAttribute('data-next-page', String(nextPage));
+        if (typeof total !== 'undefined') card.setAttribute('data-total', String(total));
+        const endMarker = document.getElementById('pi-end-marker');
+        if (endMarker) {
+            endMarker.style.display = hasMore ? 'none' : 'flex';
+            const span = endMarker.querySelector('span');
+            if (span && !hasMore) {
+                span.textContent = (total > 0) ? 'Tous les résultats sont affichés' : '';
+            }
+        }
+    }
+
+    async function loadMoreRows() {
+        const state = getInfiniteState();
+        if (!state || !state.hasMore || _isLoadingMore) return;
+        _isLoadingMore = true;
+        const loader = document.getElementById('pi-loader');
+        if (loader) loader.style.display = 'flex';
+
+        try {
+            const params = new URLSearchParams(window.location.search);
+            params.set('mode', 'rows');
+            params.set('page', state.nextPage);
+
+            const res = await fetch('{{ route('esbtp.paiements.index') }}?' + params.toString(), {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            const data = await res.json();
+
+            if (data.rows) {
+                const tbody = document.getElementById('pi-tbody');
+                if (tbody) {
+                    // Retirer empty row si presente
+                    const emptyRow = document.getElementById('pi-empty-row');
+                    if (emptyRow) emptyRow.remove();
+
+                    const tmpl = document.createElement('template');
+                    tmpl.innerHTML = data.rows.trim();
+
+                    const newRows = Array.from(tmpl.content.querySelectorAll('tr[data-paiement-id]'));
+                    const modals = Array.from(tmpl.content.querySelectorAll('div.modal[id^="rejetModal"]'));
+
+                    newRows.forEach((row) => {
+                        row.classList.add('pi-row-enter');
+                        tbody.appendChild(row);
+                        // Cleanup animation class
+                        setTimeout(() => row.classList.remove('pi-row-enter'), 600);
+                    });
+                    modals.forEach((m) => document.body.appendChild(m));
+
+                    // Update compteur affiche
+                    const shown = document.getElementById('pi-rows-shown');
+                    if (shown) shown.textContent = tbody.querySelectorAll('tr[data-paiement-id]').length;
+                }
+            }
+
+            setInfiniteState({
+                hasMore: !!data.has_more,
+                nextPage: data.next_page || (state.nextPage + 1),
+                total: data.total || state.total,
+            });
+        } catch (err) {
+            debugError('❌ Erreur infinite scroll:', err);
+            if (typeof window.showToast === 'function') {
+                window.showToast('Impossible de charger plus de résultats : ' + err.message, 'error');
+            }
+        } finally {
+            if (loader) loader.style.display = 'none';
+            _isLoadingMore = false;
+        }
+    }
+
+    function setupInfiniteObserver() {
+        if (_infiniteObserver) {
+            _infiniteObserver.disconnect();
+            _infiniteObserver = null;
+        }
+        const sentinel = document.getElementById('pi-sentinel');
+        if (!sentinel || !('IntersectionObserver' in window)) return;
+
+        _infiniteObserver = new IntersectionObserver((entries) => {
+            entries.forEach((entry) => {
+                if (entry.isIntersecting) loadMoreRows();
+            });
+        }, { rootMargin: '200px 0px 200px 0px', threshold: 0.01 });
+
+        _infiniteObserver.observe(sentinel);
+    }
+
+    /* ═══════════════════════════════════════════════
+       Intercepter clics sur les KPI links (AJAX no-reload)
+       ═══════════════════════════════════════════════ */
+    document.addEventListener('click', function(ev) {
+        const kpiLink = ev.target.closest('.pi-hero-kpi[href], .pi-chip a[href]');
+        if (!kpiLink) return;
+        const href = kpiLink.getAttribute('href');
+        if (!href || href.startsWith('#')) return;
+
+        ev.preventDefault();
+        try {
+            const url = new URL(href, window.location.origin);
+            history.pushState({}, '', url.toString());
+            fetchPaiementsData(true, true);
+        } catch (e) {
+            // Fallback nav si URL invalide
+            window.location.href = href;
+        }
+    });
+
+    /* ═══════════════════════════════════════════════
+       Scroll-to-top button
+       ═══════════════════════════════════════════════ */
+    function setupScrollTop() {
+        const btn = document.getElementById('pi-scroll-top');
+        if (!btn) return;
+        const onScroll = () => {
+            if (window.scrollY > 500) {
+                btn.classList.add('is-visible');
+            } else {
+                btn.classList.remove('is-visible');
+            }
+        };
+        window.addEventListener('scroll', onScroll, { passive: true });
+        btn.addEventListener('click', function() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+        onScroll();
+    }
+
+    // Reinstaller l'observer apres chaque fetchPaiementsData (table replaced)
+    const _origFetchPaiementsData = fetchPaiementsData;
+    fetchPaiementsData = function(showLog, showOverlay) {
+        const result = _origFetchPaiementsData.apply(this, arguments);
+        // Reinstaller observer apres replace innerHTML
+        setTimeout(() => {
+            setupInfiniteObserver();
+        }, 50);
+        return result;
+    };
+
     /**
      * Initialisation au chargement de la page
      */
@@ -1576,6 +1957,12 @@ function showYearChangeInfo() {
 
         // Initialiser les listeners de checkboxes
         initCheckboxListeners();
+
+        // Setup infinite scroll observer
+        setupInfiniteObserver();
+
+        // Setup scroll-to-top button
+        setupScrollTop();
 
         // Démarrer le polling automatique
         startPolling();
@@ -1590,10 +1977,11 @@ function showYearChangeInfo() {
         updateBulkActionsBar();
 
         // Auto-submit quand on change un select ou une date
-        $('#status, #date_debut, #date_fin').off('change').on('change', function() {
-            debugLog('📝 Changement détecté, soumission automatique du formulaire');
-            $('#paiements-filter-form').submit();
-        });
+        $('#paiements-filter-form').off('change', 'select[name="status"], input[name="date_debut"], input[name="date_fin"]')
+            .on('change', 'select[name="status"], input[name="date_debut"], input[name="date_fin"]', function() {
+                debugLog('📝 Changement détecté, soumission automatique du formulaire');
+                $('#paiements-filter-form').submit();
+            });
 
         /**
          * Intercepter les clics sur les boutons de validation de paiement

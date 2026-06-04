@@ -81,6 +81,20 @@ class ESBTPPaiementController extends Controller
                 $navUrl .= '?' . $request->getQueryString();
             }
 
+            // Mode "rows-only" pour infinite scroll (append batch)
+            if ($request->input('mode') === 'rows') {
+                return response()->json([
+                    'rows' => view('esbtp.paiements.partials._table-rows', [
+                        'paiements' => $data['paiements'],
+                    ])->render(),
+                    'has_more' => method_exists($data['paiements'], 'hasMorePages') ? $data['paiements']->hasMorePages() : false,
+                    'next_page' => method_exists($data['paiements'], 'currentPage') ? ($data['paiements']->currentPage() + 1) : 2,
+                    'current_page' => method_exists($data['paiements'], 'currentPage') ? $data['paiements']->currentPage() : 1,
+                    'total' => $data['summary']['total'],
+                    'count' => $data['paiements']->count(),
+                ]);
+            }
+
             return response()->json([
                 'table' => view('esbtp.paiements.partials.table', [
                     'paiements' => $data['paiements'],
@@ -132,6 +146,20 @@ class ESBTPPaiementController extends Controller
         $navUrl = route('esbtp.paiements.index');
         if ($request->getQueryString()) {
             $navUrl .= '?' . $request->getQueryString();
+        }
+
+        // Mode "rows-only" pour infinite scroll (append batch)
+        if ($request->input('mode') === 'rows') {
+            return response()->json([
+                'rows' => view('esbtp.paiements.partials._table-rows', [
+                    'paiements' => $data['paiements'],
+                ])->render(),
+                'has_more' => method_exists($data['paiements'], 'hasMorePages') ? $data['paiements']->hasMorePages() : false,
+                'next_page' => method_exists($data['paiements'], 'currentPage') ? ($data['paiements']->currentPage() + 1) : 2,
+                'current_page' => method_exists($data['paiements'], 'currentPage') ? $data['paiements']->currentPage() : 1,
+                'total' => $data['summary']['total'],
+                'count' => $data['paiements']->count(),
+            ]);
         }
 
         return response()->json([
