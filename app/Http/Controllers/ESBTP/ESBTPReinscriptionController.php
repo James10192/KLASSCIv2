@@ -1364,6 +1364,28 @@ class ESBTPReinscriptionController extends Controller
     }
 
     /**
+     * GET /esbtp/reinscription/api/classes-list
+     * Liste toutes les classes actives pour le dropdown override du bulk modal.
+     */
+    public function classesList()
+    {
+        $classes = \App\Models\ESBTPClasse::where('is_active', true)
+            ->with(['filiere:id,name', 'niveau:id,name'])
+            ->orderBy('name')
+            ->get(['id', 'name', 'filiere_id', 'niveau_etude_id'])
+            ->map(fn ($c) => [
+                'id' => $c->id,
+                'name' => $c->name . ' — ' . (optional($c->filiere)->name ?? '—') . ' · ' . (optional($c->niveau)->name ?? '—'),
+                'filiere_id' => $c->filiere_id,
+                'niveau_id' => $c->niveau_etude_id,
+            ]);
+        return response()->json([
+            'success' => true,
+            'data' => ['classes' => $classes],
+        ]);
+    }
+
+    /**
      * POST /esbtp/reinscription/api/bulk-preview
      * Pré-calcul de N étudiants pour le composant <x-reinscription-bulk-modal>.
      */

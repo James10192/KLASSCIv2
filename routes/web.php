@@ -492,6 +492,8 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::post('api/bulk-execute', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'bulkExecute'])
                     ->middleware('throttle:10,1')
                     ->name('api.bulk-execute');
+                Route::get('api/classes-list', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'classesList'])
+                    ->name('api.classes-list');
 
                 // Route pour la page de finalisation de réinscription
                 Route::get('{etudiant}/finaliser', [\App\Http\Controllers\ESBTP\ESBTPReinscriptionController::class, 'create'])->name('create');

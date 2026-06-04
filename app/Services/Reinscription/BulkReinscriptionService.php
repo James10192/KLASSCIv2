@@ -160,12 +160,35 @@ class BulkReinscriptionService
                 );
                 $row['moyenne'] = $analyse['moyenne_generale'] ?? null;
                 $row['decision'] = $analyse['decision'] ?? 'inconnu';
-                $row['matieres_echouees'] = $analyse['matieres_echouees'] ?? [];
+                $row['matieres_echouees'] = collect($analyse['matieres_echouees'] ?? [])
+                    ->map(fn ($m) => ['name' => $m['matiere']['name'] ?? null, 'moyenne' => $m['moyenne'] ?? null])
+                    ->values()
+                    ->all();
             } catch (\Throwable $e) {
                 $row['decision'] = 'inconnu';
                 $row['analyse_error'] = $e->getMessage();
                 $stats['blocked']['analyse_error']++;
             }
+
+            // Suggestions de classes cibles selon la décision (1-3 options typiquement)
+            try {
+                $suggestedClasses = $this->reeinscriptionService->proposerNouvellesClasses(
+                    $etudiant->id,
+                    $row['decision'] ?? 'redoublement'
+                );
+                $row['suggested_classes'] = collect($suggestedClasses)->map(fn ($c) => [
+                    'id' => is_object($c) ? $c->id : $c,
+                    'name' => is_object($c) ? $c->name : 'Classe #' . $c,
+                    'filiere' => is_object($c) ? (optional($c->filiere)->name ?? '—') : null,
+                    'niveau' => is_object($c) ? (optional($c->niveau)->name ?? '—') : null,
+                ])->values()->all();
+                $row['target_classe_id'] = $row['suggested_classes'][0]['id'] ?? null;
+            } catch (\Throwable $e) {
+                $row['suggested_classes'] = [];
+                $row['target_classe_id'] = null;
+            }
+            $row['affectation_status'] = \App\Models\ESBTPInscription::DEFAULT_AFFECTATION_STATUS;
+            $row['observations'] = null;
 
             $row['solde_restant'] = (float) $this->reeinscriptionService->calculerSoldeInscription($inscription);
             $row['peut_reinscrire'] = $row['solde_restant'] <= 0

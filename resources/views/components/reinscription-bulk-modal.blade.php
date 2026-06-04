@@ -203,9 +203,44 @@
                                     </div>
                                 </div>
 
+                                {{-- Configuration par étudiant : classe cible + affectation + observations --}}
+                                <div class="brm-result-config">
+                                    <div class="brm-config-row">
+                                        <label class="brm-config-label">Classe cible</label>
+                                        <select class="brm-config-select" x-model.number="r.target_classe_id">
+                                            <template x-if="r.suggested_classes && r.suggested_classes.length > 0">
+                                                <optgroup label="Suggestions auto">
+                                                    <template x-for="c in r.suggested_classes" :key="c.id">
+                                                        <option :value="c.id" x-text="c.name + ' (' + (c.filiere || '—') + ' · ' + (c.niveau || '—') + ')'"></option>
+                                                    </template>
+                                                </optgroup>
+                                            </template>
+                                            <template x-if="allClasses && allClasses.length > 0">
+                                                <optgroup label="Toutes les classes">
+                                                    <template x-for="c in allClasses" :key="'all-' + c.id">
+                                                        <option :value="c.id" x-text="c.name"></option>
+                                                    </template>
+                                                </optgroup>
+                                            </template>
+                                        </select>
+                                    </div>
+                                    <div class="brm-config-row">
+                                        <label class="brm-config-label">Affectation</label>
+                                        <select class="brm-config-select" x-model="r.affectation_status">
+                                            <option value="affecté">Affecté</option>
+                                            <option value="non-affecté">Non-affecté</option>
+                                            <option value="réaffecté">Réaffecté</option>
+                                        </select>
+                                    </div>
+                                    <div class="brm-config-row brm-config-row--wide">
+                                        <label class="brm-config-label">Observations</label>
+                                        <input type="text" class="brm-config-input" x-model="r.observations" placeholder="Note interne (optionnel)">
+                                    </div>
+                                </div>
+
                                 <div class="brm-result-flags" x-show="!r.fiche_complete">
                                     <span class="brm-flag brm-flag--warn">
-                                        <i class="fas fa-id-card"></i> Fiche incomplète
+                                        <i class="fas fa-id-card"></i> Fiche incomplète — utilise <a :href="'/esbtp/reinscription/' + r.etudiant_id + '/finaliser'" target="_blank" class="brm-flag-link">Quick-Fiche</a> pour compléter
                                     </span>
                                 </div>
                             </div>
@@ -269,6 +304,7 @@ window.__brmSharedFactory = function(modalId, students, decisionContext) {
         executing: false,
         results: [],
         errors: [],
+        allClasses: [],
         stats: { eligible: 0, blockedSolde: 0, ficheIncomplete: 0,
                  byDecision: { passage: 0, rattrapage: 0, redoublement: 0, inconnu: 0 } },
 
@@ -277,6 +313,21 @@ window.__brmSharedFactory = function(modalId, students, decisionContext) {
             if (modalEl) {
                 modalEl.addEventListener('hidden.bs.modal', () => this.backToSelect());
             }
+            // Pré-charge la liste des classes une fois (pour le dropdown override)
+            this.loadAllClasses();
+        },
+
+        async loadAllClasses() {
+            if (this.allClasses.length > 0) return;
+            try {
+                const res = await fetch('/esbtp/reinscription/api/classes-list', {
+                    headers: { 'Accept': 'application/json' }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    this.allClasses = data?.data?.classes || data?.classes || [];
+                }
+            } catch (e) { /* silent — suggestions auto restent disponibles */ }
         },
 
         get visibleStudents() {
@@ -362,12 +413,19 @@ window.__brmSharedFactory = function(modalId, students, decisionContext) {
             if (!confirm(`Confirmer la réinscription de ${this.stats.eligible} étudiant(s) ? Action en transaction atomique — rollback complet si une erreur survient.`)) return;
             this.executing = true;
             const items = this.results
-                .filter(r => r.peut_reinscrire && (r.decision_override || r.decision) !== 'inconnu')
+                .filter(r => r.peut_reinscrire && (r.decision_override || r.decision) !== 'inconnu' && r.target_classe_id)
                 .map(r => ({
                     etudiant_id: r.etudiant_id,
                     decision: r.decision_override || r.decision,
-                    // classe_id auto-déterminée backend selon décision + classe origine
+                    classe_id: r.target_classe_id,
+                    affectation_status: r.affectation_status || 'affecté',
+                    observations: r.observations || null,
                 }));
+            if (items.length === 0) {
+                window.klassciToast?.('warning', 'Aucun étudiant prêt à être réinscrit (classe cible manquante ou bloqué).');
+                this.executing = false;
+                return;
+            }
             try {
                 const res = await fetch('/esbtp/reinscription/api/bulk-execute', {
                     method: 'POST',
@@ -512,6 +570,26 @@ window.{{ $alpineFactory }} = function() {
 .brm-result-flags { margin-top: .4rem; display: flex; gap: .3rem; flex-wrap: wrap; }
 .brm-flag { display: inline-flex; align-items: center; gap: .3rem; font-size: .68rem; padding: .15rem .45rem; border-radius: 4px; font-weight: 600; }
 .brm-flag--warn { background: rgba(245,158,11,.12); color: #92400e; }
+.brm-flag-link { color: inherit; text-decoration: underline; font-weight: 700; }
+
+.brm-result-config {
+    margin-top: .55rem; padding-top: .55rem;
+    border-top: 1px dashed #e2e8f0;
+    display: grid; grid-template-columns: 1fr 1fr; gap: .35rem .5rem;
+}
+.brm-config-row { display: flex; flex-direction: column; min-width: 0; }
+.brm-config-row--wide { grid-column: 1 / -1; }
+.brm-config-label { font-size: .62rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .3px; margin-bottom: .2rem; }
+.brm-config-select, .brm-config-input {
+    width: 100%; padding: .3rem .5rem;
+    border: 1px solid #cbd5e1; border-radius: 5px;
+    background: #fff; color: #0f172a;
+    font-size: .76rem; font-weight: 500;
+}
+.brm-config-select:focus, .brm-config-input:focus {
+    outline: none; border-color: #0453cb;
+    box-shadow: 0 0 0 2px rgba(4,83,203,.15);
+}
 
 .brm-modal-footer { padding: .85rem 1.25rem; border-top: 1px solid #e2e8f0; background: #fff; }
 .brm-btn { display: inline-flex; align-items: center; gap: .4rem; padding: .5rem 1rem; border-radius: 8px; font-size: .82rem; font-weight: 600; cursor: pointer; border: 1px solid transparent; transition: all .15s; }
