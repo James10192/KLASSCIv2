@@ -107,7 +107,7 @@ class CLIMaintenanceController extends BaseApiController
             return $this->errorResponse('Token missing cli:read ability', [], 403);
         }
         $service = app(\App\Services\Reinscription\BulkReinscriptionService::class);
-        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first(['id', 'name']);
+        $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first(['id', 'name', 'start_date', 'end_date']);
         $anneePrecedente = $anneeCourante
             ? \App\Models\ESBTPAnneeUniversitaire::where('end_date', '<', $anneeCourante->start_date)
                 ->orderBy('end_date', 'desc')
