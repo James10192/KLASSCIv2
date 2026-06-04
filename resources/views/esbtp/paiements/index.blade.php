@@ -1878,8 +1878,15 @@ function showYearChangeInfo() {
         } finally {
             if (loader) loader.style.display = 'none';
             _isLoadingMore = false;
+            // Re-observe pour relancer le check meme si le sentinel reste
+            // dans le viewport (IntersectionObserver ne refire pas sans transition)
+            setTimeout(() => {
+                setupInfiniteObserver();
+            }, 50);
         }
     }
+    // Expose pour tests / scroll fallback
+    window.__piLoadMoreRows = loadMoreRows;
 
     function setupInfiniteObserver() {
         if (_infiniteObserver) {
