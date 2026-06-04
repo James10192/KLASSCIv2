@@ -140,13 +140,16 @@ class ReeinscriptionService
             'pour_reinscription_vers' => $anneeAcademique
         ]);
 
-        // Récupérer les étudiants via leurs inscriptions de l'ANNÉE PRÉCÉDENTE
-        // MAIS SEULEMENT ceux qui n'ont pas encore été réinscrits dans l'année courante
+        // Récupérer les étudiants via leurs inscriptions ACTIVES de l'ANNÉE PRÉCÉDENTE
+        // (status=active + workflow_step=etudiant_cree pour ne considérer que les inscriptions
+        // réelles qui produisent décisions / bulletins).
+        // EXCLUSION : ceux qui ont déjà une inscription dans l'année courante (déjà réinscrits).
         $inscriptions = \App\Models\ESBTPInscription::with(['etudiant', 'classe.niveau', 'classe.filiere'])
             ->whereNotNull('classe_id')
             ->whereNotNull('etudiant_id')
             ->where('annee_universitaire_id', $anneePrecedente->id)
-            // CORRECTION: Exclure les étudiants qui ont déjà une inscription dans l'année courante
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
             ->whereDoesntHave('etudiant.inscriptions', function($query) use ($anneeUniversitaireCourante) {
                 $query->where('annee_universitaire_id', $anneeUniversitaireCourante->id);
             })
@@ -312,9 +315,27 @@ class ReeinscriptionService
         return [];
     }
 
-    public function effectuerReinscription($etudiantId, $nouvelleClasseId, $decision, $observations = null, $selectedOptionals = [], $affectationStatus = ESBTPInscription::DEFAULT_AFFECTATION_STATUS, $anneeUniversitaireId = null, $actionReliquat = null)
-    {
-        \DB::beginTransaction();
+    /**
+     * Effectue une réinscription (1 étudiant).
+     *
+     * @param bool $skipTransaction Si true, ne gère pas la transaction (laisse au caller, ex: batch)
+     * @param bool $sendNotification Si false, ne dispatch pas la notification mail (utile en batch queue)
+     */
+    public function effectuerReinscription(
+        $etudiantId,
+        $nouvelleClasseId,
+        $decision,
+        $observations = null,
+        $selectedOptionals = [],
+        $affectationStatus = ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+        $anneeUniversitaireId = null,
+        $actionReliquat = null,
+        bool $skipTransaction = false,
+        bool $sendNotification = true
+    ) {
+        if (!$skipTransaction) {
+            \DB::beginTransaction();
+        }
         try {
             // 1. Vérifications préalables
             $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
@@ -432,11 +453,25 @@ class ReeinscriptionService
             // 7. Historique complet
             $this->sauvegarderHistoriqueComplet($etudiant, $decision, $observations, $nouvelleInscription, $generatedFees);
             
-            \DB::commit();
+            if (!$skipTransaction) {
+                \DB::commit();
+            }
+
+            if ($sendNotification) {
+                try {
+                    app(\App\Services\NotificationService::class)
+                        ->notifyParentsReinscriptionCreated($nouvelleInscription, $decision, null);
+                } catch (\Throwable $notifErr) {
+                    \Log::warning('Notification réinscription failed', ['error' => $notifErr->getMessage()]);
+                }
+            }
+
             return $nouvelleInscription;
-            
+
         } catch (\Exception $e) {
-            \DB::rollback();
+            if (!$skipTransaction) {
+                \DB::rollback();
+            }
             throw $e;
         }
     }

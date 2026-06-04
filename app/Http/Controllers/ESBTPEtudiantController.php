@@ -168,26 +168,42 @@ class ESBTPEtudiantController extends Controller
         $niveaux = ESBTPNiveauEtude::where('is_active', true)->get();
         $annees = ESBTPAnneeUniversitaire::orderBy('start_date', 'desc')->get();
 
-        // Étudiants pour modal Réinscription groupée : TOUS les étudiants ayant une inscription
-        // sur l'année courante (pas limité à la pagination 15 de la table). Payload léger
-        // (id+matricule+nom+classe) ~100B/étudiant → 250KB pour 2500 étudiants, acceptable.
+        // Étudiants pour modal Réinscription groupée : SEULEMENT ceux éligibles à réinscription.
+        // Critères :
+        // - Avoir une inscription ACTIVE (status=active + workflow_step=etudiant_cree) dans l'année
+        //   PRÉCÉDENTE (N-1) — source de la décision de fin d'année.
+        // - NE PAS avoir déjà d'inscription dans l'année COURANTE (N) — sinon déjà réinscrit.
+        // Payload léger : id+matricule+nom+inscription précédente avec classe.
         $anneeEnCoursForBulk = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $etudiantsForBulk = ESBTPEtudiant::query()
-            ->select('id', 'matricule', 'nom', 'prenoms')
-            ->when($anneeEnCoursForBulk, function ($q) use ($anneeEnCoursForBulk) {
-                $q->whereHas('inscriptions', function ($sub) use ($anneeEnCoursForBulk) {
+        $anneePrecedenteForBulk = $anneeEnCoursForBulk
+            ? \App\Models\ESBTPAnneeUniversitaire::where('end_date', '<', $anneeEnCoursForBulk->start_date)
+                ->orderBy('end_date', 'desc')
+                ->first()
+            : null;
+
+        if ($anneePrecedenteForBulk && $anneeEnCoursForBulk) {
+            $etudiantsForBulk = ESBTPEtudiant::query()
+                ->select('id', 'matricule', 'nom', 'prenoms')
+                ->whereHas('inscriptions', function ($sub) use ($anneePrecedenteForBulk) {
+                    $sub->where('annee_universitaire_id', $anneePrecedenteForBulk->id)
+                        ->where('status', 'active')
+                        ->where('workflow_step', 'etudiant_cree');
+                })
+                ->whereDoesntHave('inscriptions', function ($sub) use ($anneeEnCoursForBulk) {
                     $sub->where('annee_universitaire_id', $anneeEnCoursForBulk->id);
-                });
-            })
-            ->with(['inscriptions' => function ($q) use ($anneeEnCoursForBulk) {
-                if ($anneeEnCoursForBulk) {
-                    $q->where('annee_universitaire_id', $anneeEnCoursForBulk->id);
-                }
-                $q->with('classe:id,name');
-            }])
-            ->orderBy('nom')
-            ->orderBy('prenoms')
-            ->get();
+                })
+                ->with(['inscriptions' => function ($q) use ($anneePrecedenteForBulk) {
+                    $q->where('annee_universitaire_id', $anneePrecedenteForBulk->id)
+                        ->where('status', 'active')
+                        ->where('workflow_step', 'etudiant_cree')
+                        ->with('classe:id,name,filiere_id,niveau_etude_id');
+                }])
+                ->orderBy('nom')
+                ->orderBy('prenoms')
+                ->get();
+        } else {
+            $etudiantsForBulk = collect();
+        }
 
         if ($request->ajax()) {
             return response()->json([
