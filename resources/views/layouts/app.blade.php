@@ -1787,6 +1787,12 @@
                                     <span class="menu-dot"></span>
                                     <span>Résultats & Classements</span>
                                 </a>
+                                @can('bulletins.view')
+                                <a href="{{ route('esbtp.bulletins.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.bulletins.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Bulletins</span>
+                                </a>
+                                @endcan
                             </div>
                         </div>
 

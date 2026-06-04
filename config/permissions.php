@@ -624,6 +624,16 @@ return [
             'icon' => 'fa-sliders-h',
             'aliases' => ['bulletin.configure'],
         ],
+        'bulletins.publish.bulk' => [
+            'label' => 'Publier des bulletins en masse',
+            'group' => 'Bulletins',
+            'icon' => 'fa-paper-plane',
+        ],
+        'bulletins.regenerate.bulk' => [
+            'label' => 'Régénérer des bulletins en masse',
+            'group' => 'Bulletins',
+            'icon' => 'fa-arrows-rotate',
+        ],
 
         // ===== Présences =====
         'attendances.view' => [
@@ -1474,7 +1484,8 @@ return [
             'matieres.view',
             'notes.view', 'notes.create', 'notes.edit', 'notes.import_excel',
             'evaluations.view', 'evaluations.create', 'evaluations.edit', 'exams.view',
-            'bulletins.view', 'bulletins.generate', 'bulletins.configure',
+            'bulletins.view', 'bulletins.generate', 'bulletins.edit', 'bulletins.delete', 'bulletins.configure',
+            'bulletins.publish.bulk', 'bulletins.regenerate.bulk',
             'attendances.view', 'attendances.create', 'attendances.edit', 'attendances.delete',
             'attendances.generate_codes', 'attendances.justify_process',
             'session_reports.view',
@@ -1558,6 +1569,7 @@ return [
             'evaluations.view', 'evaluations.create', 'evaluations.edit',
             'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit',
+            'bulletins.publish.bulk', 'bulletins.regenerate.bulk',
             'attendances.view', 'attendances.create', 'attendances.edit', 'attendances.delete',
             'attendances.generate_codes',
             'session_reports.view',

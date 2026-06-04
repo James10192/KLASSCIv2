@@ -71,48 +71,73 @@ class ESBTPBulletinController extends Controller
      */
     public function index(Request $request)
     {
-        $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
+        $classes = ESBTPClasse::where('is_active', true)
+            ->where(fn($q) => $q->whereNull('systeme_academique')->orWhere('systeme_academique', '!=', 'LMD'))
+            ->orderBy('name')->get();
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
 
-        // Périodes disponibles (définir les périodes pour la vue)
-        $periodes = [
-            (object) ['id' => 'semestre1', 'nom' => 'Premier Semestre', 'annee_scolaire' => date('Y').'-'.(date('Y') + 1)],
-            (object) ['id' => 'semestre2', 'nom' => 'Deuxième Semestre', 'annee_scolaire' => date('Y').'-'.(date('Y') + 1)],
-            (object) ['id' => 'annuel', 'nom' => 'Annuel', 'annee_scolaire' => date('Y').'-'.(date('Y') + 1)],
-        ];
-
-        // Statistiques pour les widgets (une seule requête)
-        $bulletinCounts = ESBTPBulletin::selectRaw('COUNT(*) as total, SUM(is_published = 1) as published, SUM(is_published = 0) as pending')->first();
-        $stats = [
-            'total'     => (int) ($bulletinCounts->total ?? 0),
-            'published' => (int) ($bulletinCounts->published ?? 0),
-            'pending'   => (int) ($bulletinCounts->pending ?? 0),
-            'periodes'  => count($periodes),
-        ];
+        // Périodes canoniques BTS : S1 + S2. L'annuel n'est pas une période isolée
+        // mais l'agrégation S1+S2 (les infos annuelles sont affichées au bas du
+        // bulletin S2). On expose toutefois 'annuel' dans le filtre pour pouvoir
+        // retrouver les artefacts legacy en base.
+        $periodes = collect([
+            (object) ['id' => 'semestre1', 'nom' => 'Premier Semestre'],
+            (object) ['id' => 'semestre2', 'nom' => 'Deuxième Semestre'],
+        ]);
 
         // Valeurs par défaut filtre
         $classe_id = $request->input('classe_id');
         $annee_id = $request->input('annee_universitaire_id',
             $anneesUniversitaires->firstWhere('is_active', true)?->id);
         $periode_id = $request->input('periode_id');
+        $published = $request->input('published');
+        $search = trim((string) $request->input('search', ''));
 
-        $query = ESBTPBulletin::with(['etudiant', 'classe', 'anneeUniversitaire']);
+        $query = ESBTPBulletin::with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name', 'anneeUniversitaire:id,name']);
 
-        // Application des filtres
         if ($classe_id) {
             $query->where('classe_id', $classe_id);
         }
-
         if ($annee_id) {
             $query->where('annee_universitaire_id', $annee_id);
         }
-
         if ($periode_id) {
             $query->where('periode', $periode_id);
         }
+        if ($published !== null && $published !== '') {
+            $query->where('is_published', (int) $published);
+        }
+        if ($search !== '') {
+            $like = '%' . $search . '%';
+            $query->whereHas('etudiant', function ($q) use ($like) {
+                $q->where('matricule', 'like', $like)
+                    ->orWhere('nom', 'like', $like)
+                    ->orWhere('prenoms', 'like', $like);
+            });
+        }
 
-        // Utiliser paginate() au lieu de get() pour permettre l'utilisation de appends()
-        $bulletins = $query->orderBy('created_at', 'desc')->paginate(15);
+        $bulletins = $query->orderBy('created_at', 'desc')->paginate(20)->appends($request->query());
+
+        // Statistiques globales scoppées sur l'année universitaire active du filtre.
+        $statsScope = ESBTPBulletin::query();
+        if ($annee_id) {
+            $statsScope->where('annee_universitaire_id', $annee_id);
+        }
+        $bulletinCounts = (clone $statsScope)
+            ->selectRaw('COUNT(*) as total, SUM(CASE WHEN is_published = 1 THEN 1 ELSE 0 END) as published, SUM(CASE WHEN is_published = 0 THEN 1 ELSE 0 END) as pending, SUM(CASE WHEN periode = ? THEN 1 ELSE 0 END) as legacy_annuel', ['annuel'])
+            ->first();
+        $coveredStudents = (clone $statsScope)->distinct('etudiant_id')->count('etudiant_id');
+
+        $stats = [
+            'total'         => (int) ($bulletinCounts->total ?? 0),
+            'published'     => (int) ($bulletinCounts->published ?? 0),
+            'pending'       => (int) ($bulletinCounts->pending ?? 0),
+            'covered'       => $coveredStudents,
+            'legacy_annuel' => (int) ($bulletinCounts->legacy_annuel ?? 0),
+        ];
+        $stats['publish_pct'] = $stats['total'] > 0
+            ? (int) round($stats['published'] / $stats['total'] * 100)
+            : 0;
 
         return view('esbtp.bulletins.index', compact(
             'bulletins',
@@ -122,6 +147,8 @@ class ESBTPBulletinController extends Controller
             'annee_id',
             'periodes',
             'periode_id',
+            'published',
+            'search',
             'stats'
         ));
     }
@@ -412,6 +439,81 @@ class ESBTPBulletinController extends Controller
         } catch (\Exception $e) {
             return back()->with('error', 'Erreur lors de la suppression: '.$e->getMessage());
         }
+    }
+
+    /**
+     * Bulk : publier plusieurs bulletins (AJAX).
+     */
+    public function bulkPublish(Request $request)
+    {
+        $ids = $this->validateBulkIds($request);
+        $count = ESBTPBulletin::whereIn('id', $ids)->update([
+            'is_published' => true,
+            'published_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => "$count bulletin(s) publié(s).",
+            'count'   => $count,
+        ]);
+    }
+
+    /**
+     * Bulk : régénérer plusieurs bulletins (recalcul moyennes via BulletinService).
+     */
+    public function bulkRegenerate(Request $request)
+    {
+        $ids = $this->validateBulkIds($request);
+        $bulletins = ESBTPBulletin::whereIn('id', $ids)->get();
+        $success = 0;
+        $errors = [];
+
+        foreach ($bulletins as $bulletin) {
+            try {
+                $this->bulletinConsistencyService->regenerateOfficialBulletin(
+                    (int) $bulletin->etudiant_id,
+                    (int) $bulletin->classe_id,
+                    (int) $bulletin->annee_universitaire_id,
+                    (string) $bulletin->periode
+                );
+                $success++;
+            } catch (\Throwable $e) {
+                $errors[] = "Bulletin #{$bulletin->id} : {$e->getMessage()}";
+            }
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "$success bulletin(s) régénéré(s)" . (count($errors) ? ' — ' . count($errors) . ' erreur(s)' : '.'),
+            'count'   => $success,
+            'errors'  => $errors,
+        ]);
+    }
+
+    /**
+     * Bulk : supprimer plusieurs bulletins.
+     */
+    public function bulkDelete(Request $request)
+    {
+        $ids = $this->validateBulkIds($request);
+        $count = ESBTPBulletin::whereIn('id', $ids)->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => "$count bulletin(s) supprimé(s).",
+            'count'   => $count,
+        ]);
+    }
+
+    private function validateBulkIds(Request $request): array
+    {
+        $validated = $request->validate([
+            'ids'   => 'required|array|min:1|max:500',
+            'ids.*' => 'integer|exists:esbtp_bulletins,id',
+        ]);
+
+        return $validated['ids'];
     }
 
     /**

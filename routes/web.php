@@ -1640,6 +1640,19 @@ Route::get('/esbtp/bulletins/{bulletin}/preview-pdf', [ESBTPBulletinController::
     ->name('esbtp.bulletins.preview-pdf')
     ->middleware(['auth', 'permission:admin.access', 'throttle:60,1']);
 
+// Bulk actions sur la liste /esbtp/bulletins (AJAX)
+Route::middleware(['auth'])->group(function () {
+    Route::patch('/esbtp/bulletins/bulk-publish', [ESBTPBulletinController::class, 'bulkPublish'])
+        ->middleware('permission:bulletins.publish.bulk')
+        ->name('esbtp.bulletins.bulk-publish');
+    Route::post('/esbtp/bulletins/bulk-regenerate', [ESBTPBulletinController::class, 'bulkRegenerate'])
+        ->middleware('permission:bulletins.regenerate.bulk')
+        ->name('esbtp.bulletins.bulk-regenerate');
+    Route::delete('/esbtp/bulletins/bulk-delete', [ESBTPBulletinController::class, 'bulkDelete'])
+        ->middleware('permission:bulletins.delete')
+        ->name('esbtp.bulletins.bulk-delete');
+});
+
 // Routes pour la gestion des secrétaires
 Route::prefix('secretaires')->name('secretaires.')->middleware(['auth', 'permission:system.manage'])->group(function () {
     Route::get('/', [ESBTPSecretaireController::class, 'index'])->name('index');
