@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\Trash\Actions\ForceDeleteEtudiantWithDependencies;
 use App\Models\ESBTPEtudiant;
 use App\Services\Trash\TrashAuditService;
 use App\Services\Trash\TrashDependencyAnalyzer;
@@ -105,6 +106,10 @@ class ESBTPEtudiantTrashController extends Controller
 
     /**
      * POST /esbtp/trash/etudiants/{id}/restore — Restore un étudiant soft-deleted.
+     *
+     * Le hook ESBTPEtudiant::booted::restoring cascade automatiquement les
+     * inscriptions soft-deletées dans la fenêtre ±2 min autour du deleted_at,
+     * qui à leur tour cascadent à leurs paiements via leur propre booted.
      */
     public function restore(int $id)
     {
@@ -112,17 +117,52 @@ class ESBTPEtudiantTrashController extends Controller
 
         $etudiant = ESBTPEtudiant::onlyTrashed()->findOrFail($id);
 
+        // Compteurs pour audit + message utilisateur
+        $cutoff = $etudiant->deleted_at;
+        $window = $cutoff
+            ? [$cutoff->copy()->subMinutes(2), $cutoff->copy()->addMinutes(2)]
+            : null;
+
+        $inscriptionsCascadees = 0;
+        $paiementsCascades = 0;
+
+        if ($window) {
+            $inscriptionsCascadees = DB::table('esbtp_inscriptions')
+                ->where('etudiant_id', $id)
+                ->whereNotNull('deleted_at')
+                ->whereBetween('deleted_at', $window)
+                ->count();
+
+            $paiementsCascades = DB::table('esbtp_paiements')
+                ->where('etudiant_id', $id)
+                ->whereNotNull('deleted_at')
+                ->whereBetween('deleted_at', $window)
+                ->count();
+        }
+
         DB::transaction(function () use ($etudiant) {
-            $etudiant->restore();
+            $etudiant->restore();  // déclenche booted::restoring cascade
             Log::info('Étudiant restauré depuis la corbeille', [
                 'etudiant_id' => $etudiant->id,
                 'restored_by' => Auth::id(),
             ]);
         });
 
+        $msg = "L'étudiant {$etudiant->nom} {$etudiant->prenoms} a été restauré.";
+        if ($inscriptionsCascadees > 0) {
+            $msg .= " {$inscriptionsCascadees} inscription(s) restaurée(s) en cascade.";
+        }
+        if ($paiementsCascades > 0) {
+            $msg .= " {$paiementsCascades} paiement(s) restauré(s) en cascade.";
+        }
+
         return response()->json([
             'success' => true,
-            'message' => "L'étudiant {$etudiant->nom} {$etudiant->prenoms} a été restauré.",
+            'message' => $msg,
+            'cascade' => [
+                'inscriptions' => $inscriptionsCascadees,
+                'paiements' => $paiementsCascades,
+            ],
         ]);
     }
 
@@ -160,6 +200,73 @@ class ESBTPEtudiantTrashController extends Controller
                 'success' => false,
                 'message' => 'Suppression définitive impossible — l\'étudiant a probablement des dépendances non-cascadables (inscriptions/paiements non-supprimés). Détail : '.$e->getMessage(),
             ], 422);
+        }
+    }
+
+    /**
+     * POST /esbtp/trash/etudiants/{id}/force-delete-cascade — Suppression cascade
+     *
+     * Action exceptionnelle gardée par permission `students.force_delete_cascade`
+     * (superAdmin par défaut). Supprime définitivement l'étudiant ET tous ses
+     * enfants (inscriptions, paiements, notes, absences, frais souscriptions)
+     * en cascade explicite.
+     *
+     * Bloque si des paiements VALIDÉS actifs existent (intégrité OHADA).
+     * Exige un motif texte ≥ 30 caractères (preuve audit).
+     *
+     * Verbe métier non-réservé (rule controller-naming) : `forceDeleteCascade`.
+     */
+    public function forceDeleteCascade(Request $request, int $id, ForceDeleteEtudiantWithDependencies $action)
+    {
+        abort_unless(
+            Auth::user()?->can('students.force_delete_cascade'),
+            403,
+            'Permission students.force_delete_cascade requise (action destructive cascade).'
+        );
+
+        $validated = $request->validate([
+            'motif' => ['required', 'string', 'min:30', 'max:2000'],
+        ], [
+            'motif.required' => 'Motif obligatoire pour la suppression cascade.',
+            'motif.min' => 'Motif doit faire au moins 30 caractères (justification audit).',
+        ]);
+
+        try {
+            $result = $action->execute(
+                etudiantId: $id,
+                user: Auth::user(),
+                motif: $validated['motif']
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => "Étudiant {$result['etudiant_label']} supprimé définitivement en cascade : "
+                    ."{$result['inscriptions_deleted']} inscription(s), "
+                    ."{$result['paiements_deleted']} paiement(s), "
+                    ."{$result['notes_cascade']} note(s) et "
+                    ."{$result['absences_cascade']} présence(s) supprimées.",
+                'result' => $result,
+            ]);
+        } catch (\DomainException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 422);
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Étudiant introuvable ou déjà supprimé définitivement.',
+            ], 404);
+        } catch (\Throwable $e) {
+            Log::error('Erreur lors de la suppression cascade', [
+                'etudiant_id' => $id,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Erreur technique lors de la suppression cascade : '.$e->getMessage(),
+            ], 500);
         }
     }
 }

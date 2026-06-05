@@ -202,6 +202,12 @@ return [
             'group' => 'Corbeille',
             'icon' => 'fa-fire',
         ],
+        'students.force_delete_cascade' => [
+            'label' => 'Forcer suppression cascade d\'un étudiant (corbeille)',
+            'description' => 'Action exceptionnelle — supprime l\'étudiant ET tous ses enfants (inscriptions, paiements non validés, notes, présences). Bloquée si paiements validés actifs. Motif texte ≥ 30 chars obligatoire (audit OHADA).',
+            'group' => 'Corbeille',
+            'icon' => 'fa-skull-crossbones',
+        ],
         'inscriptions.restore' => [
             'label' => 'Restaurer une inscription supprimée',
             'group' => 'Corbeille',

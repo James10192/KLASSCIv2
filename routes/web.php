@@ -713,6 +713,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::get('/paiements', [\App\Http\Controllers\ESBTPPaiementTrashController::class, 'index'])->name('paiements');
                 Route::post('/etudiants/{id}/restore', [\App\Http\Controllers\ESBTPEtudiantTrashController::class, 'restore'])->name('etudiants.restore');
                 Route::delete('/etudiants/{id}/force', [\App\Http\Controllers\ESBTPEtudiantTrashController::class, 'forceDelete'])->name('etudiants.force');
+                Route::post('/etudiants/{id}/force-delete-cascade', [\App\Http\Controllers\ESBTPEtudiantTrashController::class, 'forceDeleteCascade'])
+                    ->middleware('throttle:6,1')
+                    ->name('etudiants.force-cascade');
                 Route::get('/etudiants/{id}/dependencies', [\App\Http\Controllers\ESBTPEtudiantTrashController::class, 'dependencies'])->name('etudiants.dependencies');
                 Route::post('/inscriptions/{id}/restore', [\App\Http\Controllers\ESBTPInscriptionTrashController::class, 'restore'])->name('inscriptions.restore');
                 Route::delete('/inscriptions/{id}/force', [\App\Http\Controllers\ESBTPInscriptionTrashController::class, 'forceDelete'])->name('inscriptions.force');

@@ -69,47 +69,74 @@ class TrashDependencyAnalyzer
         $notesCount = Schema::hasTable('esbtp_notes')
             ? DB::table('esbtp_notes')->where('etudiant_id', $id)->count()
             : 0;
-        $absencesCount = Schema::hasTable('esbtp_absences')
-            ? DB::table('esbtp_absences')->where('etudiant_id', $id)->count()
-            : 0;
+        // Table absences/présences : nom canonique = esbtp_attendances
+        // (le pré-existant 'esbtp_absences' peut exister sur certains tenants pour legacy)
+        $absencesCount = 0;
+        if (Schema::hasTable('esbtp_attendances')) {
+            $absencesCount = DB::table('esbtp_attendances')->where('etudiant_id', $id)->count();
+        } elseif (Schema::hasTable('esbtp_absences')) {
+            $absencesCount = DB::table('esbtp_absences')->where('etudiant_id', $id)->count();
+        }
 
-        if ($inscriptionsCount > 0) {
+        // ⚠️ Garde OHADA stricte : paiements VALIDÉS actifs = truly blocking
+        // (encaissements confirmés — doivent passer par workflow annulation comptable).
+        $paiementsValidesActifs = DB::table('esbtp_paiements')
+            ->where('etudiant_id', $id)
+            ->whereNull('deleted_at')
+            ->whereIn('status', ['validé', 'valide', 'validated'])
+            ->count();
+        if ($paiementsValidesActifs > 0) {
             $blockingForceDelete[] = [
+                'type' => 'paiements_valides',
+                'count' => $paiementsValidesActifs,
+                'label' => $paiementsValidesActifs.' paiement(s) validé(s) actif(s) — intégrité comptable OHADA',
+                'icon' => 'fa-shield',
+            ];
+        }
+
+        // Cascade info (suppression cascade DB-level ou via Action dédiée).
+        // Toutes ces entités peuvent être supprimées via `students.force_delete_cascade`
+        // (avec motif obligatoire) car FK constraints ont onDelete('cascade')
+        // OU sont gérées par l'Action ForceDeleteEtudiantWithDependencies.
+        if ($inscriptionsCount > 0) {
+            $cascadingForceDelete[] = [
                 'type' => 'inscriptions',
                 'count' => $inscriptionsCount,
-                'label' => $inscriptionsCount.' inscription(s) active(s) liée(s) à cet étudiant',
+                'label' => $inscriptionsCount.' inscription(s) active(s) (cascade FK)',
                 'icon' => 'fa-file-signature',
+                'severity' => 'high',
             ];
         }
         if ($inscriptionsTrashedCount > 0) {
             $cascadingForceDelete[] = [
                 'type' => 'inscriptions_trashed',
                 'count' => $inscriptionsTrashedCount,
-                'label' => $inscriptionsTrashedCount.' inscription(s) déjà dans la corbeille (seront supprimées définitivement)',
+                'label' => $inscriptionsTrashedCount.' inscription(s) déjà dans la corbeille',
                 'icon' => 'fa-trash',
             ];
         }
         if ($paiementsCount > 0) {
-            $blockingForceDelete[] = [
+            $cascadingForceDelete[] = [
                 'type' => 'paiements',
                 'count' => $paiementsCount,
-                'label' => $paiementsCount.' paiement(s) actif(s) lié(s) à cet étudiant',
+                'label' => $paiementsCount.' paiement(s) actif(s) non validé(s) (cascade FK)',
                 'icon' => 'fa-money-bill-wave',
+                'severity' => 'high',
             ];
         }
         if ($paiementsTrashedCount > 0) {
             $cascadingForceDelete[] = [
                 'type' => 'paiements_trashed',
                 'count' => $paiementsTrashedCount,
-                'label' => $paiementsTrashedCount.' paiement(s) déjà dans la corbeille (seront supprimés définitivement)',
+                'label' => $paiementsTrashedCount.' paiement(s) déjà dans la corbeille',
                 'icon' => 'fa-trash',
             ];
         }
         if ($notesCount > 0) {
-            $blockingForceDelete[] = [
+            $cascadingForceDelete[] = [
                 'type' => 'notes',
                 'count' => $notesCount,
-                'label' => $notesCount.' note(s) liée(s) à cet étudiant',
+                'label' => $notesCount.' note(s) (cascade FK)',
                 'icon' => 'fa-graduation-cap',
             ];
         }
@@ -117,10 +144,14 @@ class TrashDependencyAnalyzer
             $cascadingForceDelete[] = [
                 'type' => 'absences',
                 'count' => $absencesCount,
-                'label' => $absencesCount.' enregistrement(s) de présence/absence',
+                'label' => $absencesCount.' enregistrement(s) de présence/absence (cascade FK)',
                 'icon' => 'fa-calendar-check',
             ];
         }
+
+        // Flag spécial : indique si une cascade dense (entités actives) est nécessaire
+        // → l'UI affichera l'option "Forcer suppression cascade" (rouge, motif obligatoire)
+        $requiresCascade = ($inscriptionsCount + $paiementsCount) > 0;
 
         return [
             'entity_type' => 'etudiants',
@@ -132,6 +163,12 @@ class TrashDependencyAnalyzer
             'blocking_force_delete' => $blockingForceDelete,
             'cascading_force_delete' => $cascadingForceDelete,
             'has_blocking' => count($blockingForceDelete) > 0,
+            'requires_cascade' => $requiresCascade,
+            'cascade_counts' => [
+                'inscriptions_actives' => $inscriptionsCount,
+                'paiements_actifs_non_valides' => $paiementsCount,
+                'paiements_valides_bloquants' => $paiementsValidesActifs,
+            ],
         ];
     }
 

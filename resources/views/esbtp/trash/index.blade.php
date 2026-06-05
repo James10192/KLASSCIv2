@@ -289,6 +289,68 @@
 .tr-toast--error   { background: #dc2626; }
 .tr-toast--info    { background: #0453cb; }
 
+/* Section cascade dangereuse (force_delete_cascade) */
+.tr-cascade-section {
+    margin-top: 1.25rem;
+    padding: 1rem 1.1rem;
+    background: linear-gradient(135deg, rgba(220,38,38,.05), rgba(239,68,68,.08));
+    border: 1px solid rgba(220,38,38,.25);
+    border-radius: 11px;
+}
+.tr-cascade-title {
+    display: inline-flex; align-items: center; gap: .5rem;
+    font-size: .82rem; font-weight: 700;
+    color: #7f1d1d;
+    text-transform: uppercase; letter-spacing: .04em;
+    margin-bottom: .6rem;
+}
+.tr-cascade-desc {
+    font-size: .82rem; line-height: 1.55;
+    color: #7f1d1d;
+    margin-bottom: .85rem;
+}
+.tr-motif-label {
+    display: block;
+    font-size: .78rem; font-weight: 600;
+    color: #7f1d1d; margin-bottom: .35rem;
+}
+.tr-motif-input {
+    width: 100%;
+    border: 1px solid rgba(220,38,38,.3);
+    border-radius: 9px;
+    padding: .7rem .85rem;
+    font-size: .88rem;
+    color: #1e293b;
+    background: #fff;
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+    transition: border-color .15s, box-shadow .15s;
+}
+.tr-motif-input:focus {
+    outline: none;
+    border-color: #dc2626;
+    box-shadow: 0 0 0 3px rgba(220,38,38,.12);
+}
+.tr-motif-counter {
+    font-size: .72rem;
+    color: #64748b;
+    margin-top: .35rem;
+    font-variant-numeric: tabular-nums;
+}
+.tr-motif-counter--ok { color: #047857; font-weight: 600; }
+.tr-motif-counter--low { color: #b91c1c; font-weight: 600; }
+.tr-btn--danger-cascade {
+    background: linear-gradient(135deg, #7f1d1d, #b91c1c);
+    color: #fff; border: 1px solid #7f1d1d;
+}
+.tr-btn--danger-cascade:hover:not(:disabled) {
+    background: linear-gradient(135deg, #991b1b, #dc2626);
+}
+.tr-btn--danger-cascade:disabled {
+    opacity: .5; cursor: not-allowed;
+}
+
 [x-cloak] { display: none !important; }
 </style>
 @endpush
@@ -708,6 +770,38 @@
                                     </ul>
                                 </div>
                             </template>
+
+                            {{-- Option Forcer suppression cascade (étudiants uniquement, permission requise) --}}
+                            @can('students.force_delete_cascade')
+                            <template x-if="depAction === 'force'
+                                && depTarget?.type === 'etudiants'
+                                && depData.requires_cascade
+                                && !(depData.cascade_counts?.paiements_valides_bloquants > 0)">
+                                <div class="tr-cascade-section">
+                                    <div class="tr-cascade-title">
+                                        <i class="fas fa-skull-crossbones"></i>Forcer la suppression cascade
+                                    </div>
+                                    <div class="tr-cascade-desc">
+                                        Cette action supprime <strong>DÉFINITIVEMENT</strong> l'étudiant ET tous ses enfants :
+                                        inscriptions, paiements (non validés), notes, présences, souscriptions de frais.
+                                        <strong>Irréversible.</strong> Justification écrite obligatoire (audit OHADA).
+                                    </div>
+                                    <label class="tr-motif-label" for="tr-motif-input">
+                                        Motif de la suppression (≥ 30 caractères) <span style="color:#dc2626">*</span>
+                                    </label>
+                                    <textarea
+                                        id="tr-motif-input"
+                                        class="tr-motif-input"
+                                        x-model="cascadeMotif"
+                                        rows="3"
+                                        placeholder="Ex : Étudiant inscrit par erreur, jamais venu en cours, aucun paiement validé, validation directrice 05/06/2026."
+                                        :disabled="actionSaving"></textarea>
+                                    <div class="tr-motif-counter"
+                                         :class="cascadeMotif.trim().length >= 30 ? 'tr-motif-counter--ok' : 'tr-motif-counter--low'"
+                                         x-text="cascadeMotif.trim().length + ' / 30 caractères minimum'"></div>
+                                </div>
+                            </template>
+                            @endcan
                         </div>
                     </template>
 
@@ -721,10 +815,30 @@
                 </div>
                 <div class="tr-modal-footer">
                     <button class="tr-btn tr-btn--ghost" @click="closeDepModal()" :disabled="actionSaving">Annuler</button>
+
+                    {{-- Bouton cascade (étudiants uniquement, permission, requires_cascade actif) --}}
+                    @can('students.force_delete_cascade')
+                    <template x-if="depAction === 'force'
+                        && depTarget?.type === 'etudiants'
+                        && depData?.requires_cascade
+                        && !(depData?.cascade_counts?.paiements_valides_bloquants > 0)">
+                        <button
+                            class="tr-btn tr-btn--danger-cascade"
+                            :disabled="depLoading || actionSaving || cascadeMotif.trim().length < 30"
+                            @click="confirmForceDeleteCascade()">
+                            <i class="fas fa-skull-crossbones"></i>
+                            <span x-show="!actionSaving">Forcer suppression cascade</span>
+                            <span x-show="actionSaving" x-cloak>Suppression…</span>
+                        </button>
+                    </template>
+                    @endcan
+
+                    {{-- Bouton standard restore / force delete --}}
                     <button
                         class="tr-btn"
                         :class="depAction === 'restore' ? 'tr-btn--success' : 'tr-btn--danger'"
                         :disabled="depLoading || actionSaving || (depAction === 'force' && depData?.has_blocking)"
+                        x-show="!(depAction === 'force' && depTarget?.type === 'etudiants' && depData?.requires_cascade)"
                         @click="confirmAction()">
                         <i :class="depAction === 'restore' ? 'fas fa-rotate-left' : 'fas fa-fire'"></i>
                         <span x-show="!actionSaving" x-text="depAction === 'restore' ? 'Confirmer la restauration' : 'Supprimer définitivement'"></span>
@@ -760,6 +874,7 @@ function trashIndex() {
         depAction: 'force',          // 'restore' | 'force'
         depTarget: null,             // { type, id }
         actionSaving: false,
+        cascadeMotif: '',            // Motif pour suppression cascade (≥30 chars)
 
         // Toast
         toast: { show: false, type: 'info', message: '', timer: null },
@@ -830,6 +945,7 @@ function trashIndex() {
             this.depTarget = { type, id };
             this.depData = null;
             this.depError = null;
+            this.cascadeMotif = '';  // reset motif à chaque ouverture
             this.depLoading = true;
             this.depModalOpen = true;
 
@@ -858,6 +974,50 @@ function trashIndex() {
             this.depData = null;
             this.depError = null;
             this.depTarget = null;
+            this.cascadeMotif = '';
+        },
+
+        /**
+         * POST /esbtp/trash/etudiants/{id}/force-delete-cascade avec motif obligatoire.
+         * Action exceptionnelle gardée par permission students.force_delete_cascade.
+         */
+        async confirmForceDeleteCascade() {
+            if (!this.depTarget || this.depTarget.type !== 'etudiants') return;
+            if (this.actionSaving) return;
+            if (this.cascadeMotif.trim().length < 30) {
+                this.showToast('error', 'Motif obligatoire ≥ 30 caractères.');
+                return;
+            }
+
+            this.actionSaving = true;
+            const { id } = this.depTarget;
+            const url = `{{ url('/esbtp/trash') }}/etudiants/${id}/force-delete-cascade`;
+
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ motif: this.cascadeMotif.trim() }),
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message || 'Erreur cascade');
+                this.showToast('success', data.message || 'Suppression cascade effectuée.', 6000);
+                this.depModalOpen = false;
+                this.depData = null;
+                this.depTarget = null;
+                this.cascadeMotif = '';
+                await this.reload();
+            } catch (e) {
+                this.showToast('error', 'Erreur : ' + e.message, 8000);
+            } finally {
+                this.actionSaving = false;
+            }
         },
 
         async confirmAction() {
