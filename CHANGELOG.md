@@ -12,6 +12,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Juin 2026
 
+### Corrections
+
+- **Saisie rapide des notes** (`/esbtp/evaluations/{id}/saisie-rapide`) — le bandeau « Consultation uniquement — En tant que coordinateur, vous pouvez les consulter mais pas les modifier » s'affichait à tort pour les superAdmin (et tout utilisateur disposant de `notes.edit` via Gate::before ou rôle custom). Le verrouillage est désormais basé sur la capacité réelle d'édition (`notes.edit` ou `notes.manage_own` + créateur) plutôt que sur l'identité `identity.coordinate`. Le message est rendu neutre, sans mention de rôle hardcodée.
+
 ### Améliorations
 
 - **Pré-inscription caissier** (`/esbtp/inscriptions/pre-inscription`) — la recherche d'étudiant pour réinscription affiche désormais uniquement les étudiants éligibles (inscrits l'année universitaire passée avec workflow validé ET pas encore inscrits pour l'année en cours), évitant les doubles inscriptions accidentelles. Un message dédié s'affiche quand la recherche ne renvoie aucun étudiant éligible. Le matricule provisoire (format `PRE-XXXXXXXX`) est généré automatiquement à l'enregistrement et affiché dans le message de confirmation.
