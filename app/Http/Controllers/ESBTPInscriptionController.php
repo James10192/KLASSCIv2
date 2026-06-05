@@ -2308,12 +2308,13 @@ class ESBTPInscriptionController extends Controller
                 $query->where('annee_universitaire_id', $anneeCourante->id);
             })
             ->with(['inscriptions' => function ($query) use ($anneePrecedente) {
+                // Pas de take(1) ici : le limit Eloquent s'applique globalement, pas par étudiant.
+                // On charge toutes les inscriptions année n-1 puis on prend la dernière côté PHP.
                 $query->where('annee_universitaire_id', $anneePrecedente->id)
                       ->where('status', 'active')
                       ->where('workflow_step', 'etudiant_cree')
                       ->with('classe')
-                      ->latest()
-                      ->take(1);
+                      ->latest();
             }])
             ->orderBy('nom')
             ->take(10)
