@@ -376,6 +376,18 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('filieres.destroy')
                 ->middleware('permission:filieres.delete');
 
+            // AJAX — Sorties BTS Tronc Commun depuis la page show d'une filière TC
+            // Permission contrôlée dans le controller (bts_tronc_commun.manage_targets)
+            Route::post('filieres/{filiere}/sorties-tc', [ESBTPFiliereController::class, 'addSortieTC'])
+                ->middleware('throttle:30,1')
+                ->name('filieres.sorties-tc.add');
+            Route::patch('filieres/{filiere}/sorties-tc/{target}/toggle', [ESBTPFiliereController::class, 'toggleSortieTC'])
+                ->middleware('throttle:60,1')
+                ->name('filieres.sorties-tc.toggle');
+            Route::delete('filieres/{filiere}/sorties-tc/{target}', [ESBTPFiliereController::class, 'removeSortieTC'])
+                ->middleware('throttle:30,1')
+                ->name('filieres.sorties-tc.remove');
+
             // Routes pour les niveaux d'études — gates per-méthode
             // /!\ Les routes statiques (create) DOIVENT être déclarées AVANT les routes paramétrées.
             Route::middleware('permission:niveaux.create')->group(function () {

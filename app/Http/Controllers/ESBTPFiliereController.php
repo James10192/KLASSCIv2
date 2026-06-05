@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPClasseOrientationTarget;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPMatiere;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 
@@ -98,12 +101,139 @@ class ESBTPFiliereController extends Controller
             'matieres',
             'options',
             'parent',
-            'classes' => function($query) {
-                $query->withCount('inscriptions');
-            }
+            'classes' => function ($query) {
+                $query->with(['niveauEtude:id,name', 'anneeUniversitaire:id,name'])
+                    ->withCount('inscriptions');
+            },
         ])->findOrFail($id);
 
-        return view('esbtp.filieres.show', compact('filiere'));
+        // Sorties BTS Tronc Commun — uniquement si filière marquée TC (et principale)
+        $sourceClasses = collect();
+        $candidatesByClasse = [];
+
+        if ($filiere->isTroncCommun()) {
+            $sourceClasses = ESBTPClasse::query()
+                ->where('filiere_id', $filiere->id)
+                ->where('is_active', true)
+                ->with([
+                    'niveauEtude:id,name',
+                    'anneeUniversitaire:id,name',
+                    'orientationTargets.targetClasse.filiere:id,name,code',
+                    'orientationTargets.targetClasse.niveauEtude:id,name',
+                ])
+                ->orderBy('annee_universitaire_id', 'desc')
+                ->orderBy('name')
+                ->get();
+
+            // Pour chaque classe TC, lister les classes candidates (même niveau + année,
+            // filière non-TC, exclure les targets déjà configurés).
+            foreach ($sourceClasses as $source) {
+                $existingTargetIds = $source->orientationTargets->pluck('target_classe_id')->all();
+                $candidatesByClasse[$source->id] = ESBTPClasse::query()
+                    ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false))
+                    ->where('niveau_etude_id', $source->niveau_etude_id)
+                    ->where('annee_universitaire_id', $source->annee_universitaire_id)
+                    ->whereNotIn('id', $existingTargetIds)
+                    ->where('is_active', true)
+                    ->with('filiere:id,name,code')
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'filiere_id', 'niveau_etude_id']);
+            }
+        }
+
+        return view('esbtp.filieres.show', compact(
+            'filiere',
+            'sourceClasses',
+            'candidatesByClasse'
+        ));
+    }
+
+    /**
+     * AJAX — Ajoute une classe-sortie à une classe TC source.
+     * Endpoint : POST /esbtp/filieres/{filiere}/sorties-tc
+     * Permission : bts_tronc_commun.manage_targets
+     */
+    public function addSortieTC(Request $request, ESBTPFiliere $filiere): JsonResponse
+    {
+        abort_unless(auth()->user()->can('bts_tronc_commun.manage_targets'), 403);
+        abort_unless($filiere->isTroncCommun(), 422, 'Cette filière n\'est pas un tronc commun.');
+
+        $data = $request->validate([
+            'source_classe_id' => ['required', 'integer', 'exists:esbtp_classes,id'],
+            'target_classe_id' => ['required', 'integer', 'exists:esbtp_classes,id', 'different:source_classe_id'],
+            'semestre_activation' => ['nullable', 'integer', 'between:1,8'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // La classe source doit appartenir à cette filière TC (sécurité)
+        $sourceClasse = ESBTPClasse::findOrFail($data['source_classe_id']);
+        abort_unless($sourceClasse->filiere_id === $filiere->id, 422, 'La classe source n\'appartient pas à cette filière.');
+
+        $target = ESBTPClasseOrientationTarget::updateOrCreate(
+            [
+                'source_classe_id' => $data['source_classe_id'],
+                'target_classe_id' => $data['target_classe_id'],
+            ],
+            [
+                'semestre_activation' => $data['semestre_activation'] ?? 2,
+                'is_active' => true,
+                'sort_order' => ESBTPClasseOrientationTarget::where('source_classe_id', $data['source_classe_id'])->count(),
+                'notes' => $data['notes'] ?? null,
+            ]
+        );
+
+        $target->load('targetClasse.filiere:id,name,code', 'targetClasse.niveauEtude:id,name');
+
+        return response()->json([
+            'success' => true,
+            'target' => [
+                'id' => $target->id,
+                'target_classe_id' => $target->target_classe_id,
+                'target_name' => $target->targetClasse?->name,
+                'target_filiere_name' => $target->targetClasse?->filiere?->name,
+                'semestre_activation' => $target->semestre_activation,
+                'is_active' => (bool) $target->is_active,
+                'notes' => $target->notes,
+            ],
+        ]);
+    }
+
+    /**
+     * AJAX — Active/désactive une sortie configurée.
+     * Endpoint : PATCH /esbtp/filieres/{filiere}/sorties-tc/{target}/toggle
+     */
+    public function toggleSortieTC(Request $request, ESBTPFiliere $filiere, ESBTPClasseOrientationTarget $target): JsonResponse
+    {
+        abort_unless(auth()->user()->can('bts_tronc_commun.manage_targets'), 403);
+        abort_unless($filiere->isTroncCommun(), 422);
+        abort_unless($target->sourceClasse?->filiere_id === $filiere->id, 404);
+
+        // Si is_active fourni explicitement, on l'applique. Sinon, on bascule.
+        $newValue = $request->has('is_active')
+            ? $request->boolean('is_active')
+            : ! $target->is_active;
+
+        $target->update(['is_active' => $newValue]);
+
+        return response()->json([
+            'success' => true,
+            'is_active' => (bool) $target->is_active,
+        ]);
+    }
+
+    /**
+     * AJAX — Supprime une sortie configurée.
+     * Endpoint : DELETE /esbtp/filieres/{filiere}/sorties-tc/{target}
+     */
+    public function removeSortieTC(Request $request, ESBTPFiliere $filiere, ESBTPClasseOrientationTarget $target): JsonResponse
+    {
+        abort_unless(auth()->user()->can('bts_tronc_commun.manage_targets'), 403);
+        abort_unless($filiere->isTroncCommun(), 422);
+        abort_unless($target->sourceClasse?->filiere_id === $filiere->id, 404);
+
+        $target->delete();
+
+        return response()->json(['success' => true]);
     }
 
     /**
