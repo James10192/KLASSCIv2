@@ -495,14 +495,21 @@
         {{-- ── Read-only alert ─────────────────────────────────────── --}}
         @php
             $hasExistingNotes = $notes->isNotEmpty();
-            $isCoordinateur = Auth::user()->can('identity.coordinate');
-            $isReadOnly = $hasExistingNotes && $isCoordinateur;
+            // Lecture seule = des notes existent ET l'utilisateur ne peut ni les modifier (notes.edit)
+            // ni gérer ses propres notes en tant qu'enseignant créateur (notes.manage_own + créateur).
+            // Le superAdmin et tout rôle custom avec notes.edit passe via Gate::before — pas de hasRole hardcodé.
+            $authUser = Auth::user();
+            $canEditNotes = $authUser && $authUser->can('notes.edit');
+            $isOwnerTeacher = $authUser
+                && $authUser->can('notes.manage_own')
+                && ($evaluation->enseignant_id === $authUser->id || $evaluation->created_by === $authUser->id);
+            $isReadOnly = $hasExistingNotes && ! $canEditNotes && ! $isOwnerTeacher;
         @endphp
 
         @if($isReadOnly)
             <div class="nm-sr-alert nm-sr-alert--info">
                 <i class="fas fa-lock"></i>
-                <span><strong>Consultation uniquement</strong> — Des notes existent deja. En tant que coordinateur, vous pouvez les consulter mais pas les modifier.</span>
+                <span><strong>Consultation uniquement</strong> — Des notes existent déjà. Vous pouvez les consulter mais pas les modifier.</span>
             </div>
         @endif
 
