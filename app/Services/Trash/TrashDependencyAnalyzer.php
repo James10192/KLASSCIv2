@@ -15,10 +15,19 @@ use Illuminate\Support\Facades\Schema;
  * Quand l'utilisateur clique sur Restaurer / Supprimer définitivement, on lui
  * affiche AVANT l'action :
  *  - blocking_restore : ce qui empêche la restauration (ex: doublon métier)
- *  - cascading_restore : ce qui sera restauré en cascade (ex: étudiant parent)
+ *  - cascading_restore : ce qui sera restauré en cascade (ex: inscriptions liées)
  *  - blocking_force_delete : ce qui empêche la suppression définitive
+ *    chaque entry porte un flag `bypassable` :
+ *      - false → blocage dur (paiements validés OHADA) — JAMAIS contournable ici
+ *      - true → blocage doux (notes) — contournable avec
+ *               permission `students.force_delete_bypass_blocking`
  *  - cascading_force_delete : ce qui sera supprimé en cascade (FK ON DELETE CASCADE
- *    ou supprimé manuellement par hook deleting())
+ *    ou inscriptions/paiements de la corbeille)
+ *
+ * Convention Marcel (5 juin 2026) : les notes RESTENT bloquantes par défaut.
+ * On ajoute une permission de bypass séparée pour les superAdmin qui acceptent
+ * de violer l'intégrité notes. Les paiements validés actifs sont strictement
+ * non-bypassables (intégrité comptable OHADA).
  *
  * Utilisé par les 3 trash controllers via une nouvelle route :
  *   GET /esbtp/trash/{type}/{id}/dependencies
@@ -37,40 +46,49 @@ class TrashDependencyAnalyzer
             $label .= ' ('.$etudiant->matricule.')';
         }
 
-        // Pour restaurer : pas de blocking automatique (l'étudiant est isolé).
-        // Cascade restaurée : les inscriptions/paiements liés NE sont PAS auto-restaurés
-        // car ils peuvent être indépendamment vivants ou supprimés. On informe juste.
-        $blockingRestore = [];
-        $cascadingRestore = [];
-
-        // Pour la suppression définitive : compter les enfants en DB.
-        // FK contraintes peuvent empêcher le forceDelete si pas de ON DELETE CASCADE.
-        $cascadingForceDelete = [];
-        $blockingForceDelete = [];
-
-        // Compter directement via la DB (incluant soft-deleted) car withTrashed()
-        // sur une relation ne fonctionne pas avec onlyTrashed().
-        $inscriptionsCount = DB::table('esbtp_inscriptions')
-            ->where('etudiant_id', $id)
-            ->whereNull('deleted_at')
-            ->count();
+        // ── Cascading restore : compte des entités soft-deletées qui seront
+        // ressuscitées par le restore (toutes inscriptions/paiements soft-del
+        // attachés, pas seulement la fenêtre ±2 min — UX intuitive Marcel).
         $inscriptionsTrashedCount = DB::table('esbtp_inscriptions')
             ->where('etudiant_id', $id)
             ->whereNotNull('deleted_at')
-            ->count();
-        $paiementsCount = DB::table('esbtp_paiements')
-            ->where('etudiant_id', $id)
-            ->whereNull('deleted_at')
             ->count();
         $paiementsTrashedCount = DB::table('esbtp_paiements')
             ->where('etudiant_id', $id)
             ->whereNotNull('deleted_at')
             ->count();
+
+        $cascadingRestore = [];
+        if ($inscriptionsTrashedCount > 0) {
+            $cascadingRestore[] = [
+                'type' => 'inscriptions_trashed',
+                'count' => $inscriptionsTrashedCount,
+                'label' => $inscriptionsTrashedCount.' inscription(s) seront restaurée(s) en cascade',
+                'icon' => 'fa-file-signature',
+            ];
+        }
+        if ($paiementsTrashedCount > 0) {
+            $cascadingRestore[] = [
+                'type' => 'paiements_trashed',
+                'count' => $paiementsTrashedCount,
+                'label' => $paiementsTrashedCount.' paiement(s) seront restauré(s) en cascade',
+                'icon' => 'fa-money-bill-wave',
+            ];
+        }
+
+        // ── Décompte des entités actives + dépendances dénormalisées ──
+        $inscriptionsActivesCount = DB::table('esbtp_inscriptions')
+            ->where('etudiant_id', $id)
+            ->whereNull('deleted_at')
+            ->count();
+        $paiementsActifsNonValidesCount = DB::table('esbtp_paiements')
+            ->where('etudiant_id', $id)
+            ->whereNull('deleted_at')
+            ->whereNotIn('status', ['validé', 'valide', 'validated'])
+            ->count();
         $notesCount = Schema::hasTable('esbtp_notes')
             ? DB::table('esbtp_notes')->where('etudiant_id', $id)->count()
             : 0;
-        // Table absences/présences : nom canonique = esbtp_attendances
-        // (le pré-existant 'esbtp_absences' peut exister sur certains tenants pour legacy)
         $absencesCount = 0;
         if (Schema::hasTable('esbtp_attendances')) {
             $absencesCount = DB::table('esbtp_attendances')->where('etudiant_id', $id)->count();
@@ -78,8 +96,11 @@ class TrashDependencyAnalyzer
             $absencesCount = DB::table('esbtp_absences')->where('etudiant_id', $id)->count();
         }
 
-        // ⚠️ Garde OHADA stricte : paiements VALIDÉS actifs = truly blocking
-        // (encaissements confirmés — doivent passer par workflow annulation comptable).
+        // ── Blocking force-delete : 2 catégories ──
+        $blockingForceDelete = [];
+
+        // (1) Paiements VALIDÉS actifs = blocage DUR OHADA (jamais bypassable
+        //     via cette UI — passer par workflow d'annulation comptable).
         $paiementsValidesActifs = DB::table('esbtp_paiements')
             ->where('etudiant_id', $id)
             ->whereNull('deleted_at')
@@ -91,37 +112,32 @@ class TrashDependencyAnalyzer
                 'count' => $paiementsValidesActifs,
                 'label' => $paiementsValidesActifs.' paiement(s) validé(s) actif(s) — intégrité comptable OHADA',
                 'icon' => 'fa-shield',
+                'bypassable' => false,
             ];
         }
 
-        // Cascade info (suppression cascade DB-level ou via Action dédiée).
-        // Toutes ces entités peuvent être supprimées via `students.force_delete_cascade`
-        // (avec motif obligatoire) car FK constraints ont onDelete('cascade')
-        // OU sont gérées par l'Action ForceDeleteEtudiantWithDependencies.
-        if ($inscriptionsCount > 0) {
-            $cascadingForceDelete[] = [
-                'type' => 'inscriptions',
-                'count' => $inscriptionsCount,
-                'label' => $inscriptionsCount.' inscription(s) active(s) (cascade FK)',
-                'icon' => 'fa-file-signature',
-                'severity' => 'high',
+        // (2) Notes liées = blocage DOUX (bypassable avec permission
+        //     `students.force_delete_bypass_blocking`).
+        if ($notesCount > 0) {
+            $blockingForceDelete[] = [
+                'type' => 'notes',
+                'count' => $notesCount,
+                'label' => $notesCount.' note(s) liée(s) à l\'étudiant',
+                'icon' => 'fa-graduation-cap',
+                'bypassable' => true,
             ];
         }
+
+        // ── Cascading force-delete : entités déjà en corbeille + cascade FK DB
+        // (présences). Ces entités seront supprimées automatiquement par le
+        // force-delete physique, sans blocage.
+        $cascadingForceDelete = [];
         if ($inscriptionsTrashedCount > 0) {
             $cascadingForceDelete[] = [
                 'type' => 'inscriptions_trashed',
                 'count' => $inscriptionsTrashedCount,
                 'label' => $inscriptionsTrashedCount.' inscription(s) déjà dans la corbeille',
                 'icon' => 'fa-trash',
-            ];
-        }
-        if ($paiementsCount > 0) {
-            $cascadingForceDelete[] = [
-                'type' => 'paiements',
-                'count' => $paiementsCount,
-                'label' => $paiementsCount.' paiement(s) actif(s) non validé(s) (cascade FK)',
-                'icon' => 'fa-money-bill-wave',
-                'severity' => 'high',
             ];
         }
         if ($paiementsTrashedCount > 0) {
@@ -132,12 +148,12 @@ class TrashDependencyAnalyzer
                 'icon' => 'fa-trash',
             ];
         }
-        if ($notesCount > 0) {
+        if ($paiementsActifsNonValidesCount > 0) {
             $cascadingForceDelete[] = [
-                'type' => 'notes',
-                'count' => $notesCount,
-                'label' => $notesCount.' note(s) (cascade FK)',
-                'icon' => 'fa-graduation-cap',
+                'type' => 'paiements_non_valides',
+                'count' => $paiementsActifsNonValidesCount,
+                'label' => $paiementsActifsNonValidesCount.' paiement(s) actif(s) non validé(s) (cascade FK)',
+                'icon' => 'fa-money-bill-wave',
             ];
         }
         if ($absencesCount > 0) {
@@ -149,25 +165,31 @@ class TrashDependencyAnalyzer
             ];
         }
 
-        // Flag spécial : indique si une cascade dense (entités actives) est nécessaire
-        // → l'UI affichera l'option "Forcer suppression cascade" (rouge, motif obligatoire)
-        $requiresCascade = ($inscriptionsCount + $paiementsCount) > 0;
+        $hasBypassableBlocking = (bool) collect($blockingForceDelete)
+            ->first(fn ($b) => is_array($b) && ($b['bypassable'] ?? false));
+        $hasHardBlocking = (bool) collect($blockingForceDelete)
+            ->first(fn ($b) => is_array($b) && ! ($b['bypassable'] ?? false));
 
         return [
             'entity_type' => 'etudiants',
             'entity_id' => $id,
             'entity_label' => $label !== '' ? $label : 'Étudiant #'.$id,
             'deleted_at' => optional($etudiant->deleted_at)->toIso8601String(),
-            'blocking_restore' => $blockingRestore,
+            'blocking_restore' => [],
             'cascading_restore' => $cascadingRestore,
             'blocking_force_delete' => $blockingForceDelete,
             'cascading_force_delete' => $cascadingForceDelete,
             'has_blocking' => count($blockingForceDelete) > 0,
-            'requires_cascade' => $requiresCascade,
+            'has_bypassable_blocking' => $hasBypassableBlocking,
+            'has_hard_blocking' => $hasHardBlocking,
             'cascade_counts' => [
-                'inscriptions_actives' => $inscriptionsCount,
-                'paiements_actifs_non_valides' => $paiementsCount,
+                'inscriptions_trashed' => $inscriptionsTrashedCount,
+                'inscriptions_actives' => $inscriptionsActivesCount,
+                'paiements_trashed' => $paiementsTrashedCount,
+                'paiements_actifs_non_valides' => $paiementsActifsNonValidesCount,
                 'paiements_valides_bloquants' => $paiementsValidesActifs,
+                'notes' => $notesCount,
+                'absences' => $absencesCount,
             ],
         ];
     }
@@ -229,6 +251,7 @@ class TrashDependencyAnalyzer
                 'count' => $paiementsActifs,
                 'label' => $paiementsActifs.' paiement(s) actif(s) lié(s) à cette inscription',
                 'icon' => 'fa-money-bill-wave',
+                'bypassable' => false,
             ];
         }
         if ($paiementsTrashed > 0) {
@@ -265,6 +288,8 @@ class TrashDependencyAnalyzer
             'blocking_force_delete' => $blockingForceDelete,
             'cascading_force_delete' => $cascadingForceDelete,
             'has_blocking' => count($blockingForceDelete) > 0,
+            'has_bypassable_blocking' => false,
+            'has_hard_blocking' => count($blockingForceDelete) > 0,
         ];
     }
 
@@ -347,6 +372,8 @@ class TrashDependencyAnalyzer
             'blocking_force_delete' => $blockingForceDelete,
             'cascading_force_delete' => $cascadingForceDelete,
             'has_blocking' => count($blockingForceDelete) > 0,
+            'has_bypassable_blocking' => false,
+            'has_hard_blocking' => count($blockingForceDelete) > 0,
         ];
     }
 }

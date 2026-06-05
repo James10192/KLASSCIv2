@@ -204,9 +204,15 @@ return [
         ],
         'students.force_delete_cascade' => [
             'label' => 'Forcer suppression cascade d\'un étudiant (corbeille)',
-            'description' => 'Action exceptionnelle — supprime l\'étudiant ET tous ses enfants (inscriptions, paiements non validés, notes, présences). Bloquée si paiements validés actifs. Motif texte ≥ 30 chars obligatoire (audit OHADA).',
+            'description' => 'Action exceptionnelle — supprime l\'étudiant ET ses enfants directement cascadables (inscriptions, paiements non validés, présences). Bloquée si paiements validés actifs OU si notes existent (sauf permission de bypass). Motif texte ≥ 30 chars obligatoire (audit OHADA).',
             'group' => 'Corbeille',
             'icon' => 'fa-skull-crossbones',
+        ],
+        'students.force_delete_bypass_blocking' => [
+            'label' => 'Forcer suppression d\'un étudiant malgré dépendances bloquantes (notes)',
+            'description' => 'Permet de contourner le blocage de suppression définitive d\'un étudiant en corbeille quand des notes (ou autres dépendances bloquantes hors paiements validés) existent. Action irréversible avec motif obligatoire ≥ 30 chars. Loggée. Les paiements validés actifs restent toujours bloquants (intégrité OHADA — non bypassable).',
+            'group' => 'Corbeille',
+            'icon' => 'fa-shield-virus',
         ],
         'inscriptions.restore' => [
             'label' => 'Restaurer une inscription supprimée',

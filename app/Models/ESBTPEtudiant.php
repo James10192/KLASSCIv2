@@ -60,27 +60,26 @@ class ESBTPEtudiant extends Model implements Auditable
     protected $table = 'esbtp_etudiants';
 
     /**
-     * Hooks soft-delete / restore : cascade sur les inscriptions actives.
+     * Hooks soft-delete / restore : cascade sur les inscriptions et paiements.
      *
      * Pourquoi : sans cascade, soft-delete d'un étudiant laisse ses inscriptions
      * (et leurs paiements) actifs orphelins, et un restore ne récupère pas les
-     * entités liées. Incident fondateur 5 juin 2026 (yakro) : étudiant
-     * MBTS2025/128 soft-deleted ne peut être ni restauré (orphelins) ni
-     * supprimé définitivement (analyzer bloque sur inscriptions actives).
+     * entités liées.
      *
-     * Comportement :
-     * - Soft-delete : cascade des inscriptions actives (qui via leur propre
-     *   booted::deleting cascadent à leurs paiements).
-     * - Restore : restaure les inscriptions soft-deletées dans la fenêtre
-     *   ±2 min autour du deleted_at de l'étudiant (= celles tuées par CETTE
-     *   soft-delete, pas celles supprimées indépendamment). Le restore de
-     *   l'inscription déclenche son propre booted::restoring qui cascade aux
-     *   paiements.
+     * Comportement (Marcel 5 juin 2026) :
+     * - Soft-delete : cascade des inscriptions actives (leur propre booted
+     *   cascadera aux paiements).
+     * - Restore : restaure TOUTES les inscriptions soft-deletées attachées
+     *   (et leurs paiements via leur propre booted). Pas de fenêtre ±2 min —
+     *   UX intuitive : restaurer un étudiant signifie aussi récupérer toute
+     *   sa cohorte sup­primée. Cohérent avec ce qu'affiche le dialog
+     *   « cascading_restore » dans la corbeille.
      *
      * Notes/absences/résultats ne sont PAS cascadés en soft-delete car ils
-     * sont attachés à des évaluations/séances, pas à l'étudiant directement
-     * (même s'ils ont etudiant_id dénormalisé). Les FK DB ont onDelete cascade
-     * donc ils sont nettoyés au force_delete physique.
+     * sont attachés à des évaluations/séances, pas à l'étudiant directement.
+     * Au force-delete physique, les FK DB ont onDelete cascade et les notes
+     * sont gérées explicitement par ForceDeleteEtudiantWithDependencies (bypass
+     * autorisé avec permission `students.force_delete_bypass_blocking`).
      */
     protected static function booted(): void
     {
@@ -100,21 +99,12 @@ class ESBTPEtudiant extends Model implements Auditable
         });
 
         static::restoring(function (self $etudiant) {
-            $cutoff = $etudiant->deleted_at;
-            if (!$cutoff) {
-                return;
-            }
-            // Restaurer uniquement les inscriptions soft-deletées DANS LA FENÊTRE
-            // (±2 min) — évite de ressusciter des inscriptions supprimées
-            // indépendamment (annulation manuelle, transfert, etc.).
-            $window = [
-                $cutoff->copy()->subMinutes(2),
-                $cutoff->copy()->addMinutes(2),
-            ];
+            // Restaurer TOUTES les inscriptions soft-deletées attachées —
+            // chaque restore d'inscription déclenche son booted::restoring qui
+            // cascade aux paiements soft-deletés correspondants.
             $etudiant->inscriptions()->onlyTrashed()
-                ->whereBetween('deleted_at', $window)
                 ->get()
-                ->each(fn ($i) => $i->restore());  // cascade aux paiements via booted
+                ->each(fn ($i) => $i->restore());
         });
     }
 

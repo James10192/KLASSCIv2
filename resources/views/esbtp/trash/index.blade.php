@@ -771,21 +771,41 @@
                                 </div>
                             </template>
 
-                            {{-- Option Forcer suppression cascade (étudiants uniquement, permission requise) --}}
+                            {{-- Section cascade avancée (étudiants uniquement, permission requise) :
+                                 visible quand l'étudiant a soit des inscriptions/paiements en corbeille à purger,
+                                 soit des dépendances bypassables (notes), tant qu'il n'y a PAS de blocage dur OHADA. --}}
                             @can('students.force_delete_cascade')
                             <template x-if="depAction === 'force'
                                 && depTarget?.type === 'etudiants'
-                                && depData.requires_cascade
-                                && !(depData.cascade_counts?.paiements_valides_bloquants > 0)">
+                                && !depData.has_hard_blocking
+                                && (depData.cascade_counts?.inscriptions_trashed > 0
+                                    || depData.cascade_counts?.paiements_trashed > 0
+                                    || depData.has_bypassable_blocking)">
                                 <div class="tr-cascade-section">
                                     <div class="tr-cascade-title">
                                         <i class="fas fa-skull-crossbones"></i>Forcer la suppression cascade
                                     </div>
                                     <div class="tr-cascade-desc">
-                                        Cette action supprime <strong>DÉFINITIVEMENT</strong> l'étudiant ET tous ses enfants :
-                                        inscriptions, paiements (non validés), notes, présences, souscriptions de frais.
-                                        <strong>Irréversible.</strong> Justification écrite obligatoire (audit OHADA).
+                                        Cette action supprime <strong>DÉFINITIVEMENT</strong> l'étudiant ET ses
+                                        dépendances cascade (inscriptions et paiements de la corbeille, présences,
+                                        souscriptions de frais). <strong>Irréversible.</strong>
+                                        Justification écrite obligatoire (audit OHADA).
                                     </div>
+
+                                    {{-- Bypass blocking (notes) — affiché uniquement si l'utilisateur a la perm --}}
+                                    @can('students.force_delete_bypass_blocking')
+                                    <template x-if="depData.has_bypassable_blocking">
+                                        <label style="display:flex;gap:.55rem;align-items:flex-start;padding:.65rem .75rem;background:rgba(220,38,38,.06);border:1px solid rgba(220,38,38,.3);border-radius:9px;margin-bottom:.85rem;cursor:pointer;">
+                                            <input type="checkbox" x-model="bypassBlocking" :disabled="actionSaving" style="margin-top:.2rem;flex-shrink:0;accent-color:#dc2626;">
+                                            <span style="font-size:.83rem;color:#7f1d1d;line-height:1.5;">
+                                                <strong>Forcer malgré dépendances bloquantes.</strong>
+                                                Supprime aussi physiquement les notes liées à l'étudiant.
+                                                Action exceptionnelle journalisée — violation explicite de l'intégrité notes.
+                                            </span>
+                                        </label>
+                                    </template>
+                                    @endcan
+
                                     <label class="tr-motif-label" for="tr-motif-input">
                                         Motif de la suppression (≥ 30 caractères) <span style="color:#dc2626">*</span>
                                     </label>
@@ -816,29 +836,39 @@
                 <div class="tr-modal-footer">
                     <button class="tr-btn tr-btn--ghost" @click="closeDepModal()" :disabled="actionSaving">Annuler</button>
 
-                    {{-- Bouton cascade (étudiants uniquement, permission, requires_cascade actif) --}}
+                    {{-- Bouton cascade (étudiants, permission, pas de blocage dur OHADA,
+                         et présence de cascadables OU de bypassables) --}}
                     @can('students.force_delete_cascade')
                     <template x-if="depAction === 'force'
                         && depTarget?.type === 'etudiants'
-                        && depData?.requires_cascade
-                        && !(depData?.cascade_counts?.paiements_valides_bloquants > 0)">
+                        && !(depData?.has_hard_blocking)
+                        && (depData?.cascade_counts?.inscriptions_trashed > 0
+                            || depData?.cascade_counts?.paiements_trashed > 0
+                            || depData?.has_bypassable_blocking)">
                         <button
                             class="tr-btn tr-btn--danger-cascade"
-                            :disabled="depLoading || actionSaving || cascadeMotif.trim().length < 30"
+                            :disabled="depLoading || actionSaving
+                                || cascadeMotif.trim().length < 30
+                                || (depData?.has_bypassable_blocking && !bypassBlocking)"
                             @click="confirmForceDeleteCascade()">
                             <i class="fas fa-skull-crossbones"></i>
-                            <span x-show="!actionSaving">Forcer suppression cascade</span>
+                            <span x-show="!actionSaving">Forcer la suppression</span>
                             <span x-show="actionSaving" x-cloak>Suppression…</span>
                         </button>
                     </template>
                     @endcan
 
-                    {{-- Bouton standard restore / force delete --}}
+                    {{-- Bouton standard restore / force delete (caché si la section cascade est active) --}}
                     <button
                         class="tr-btn"
                         :class="depAction === 'restore' ? 'tr-btn--success' : 'tr-btn--danger'"
                         :disabled="depLoading || actionSaving || (depAction === 'force' && depData?.has_blocking)"
-                        x-show="!(depAction === 'force' && depTarget?.type === 'etudiants' && depData?.requires_cascade)"
+                        x-show="!(depAction === 'force'
+                            && depTarget?.type === 'etudiants'
+                            && !depData?.has_hard_blocking
+                            && (depData?.cascade_counts?.inscriptions_trashed > 0
+                                || depData?.cascade_counts?.paiements_trashed > 0
+                                || depData?.has_bypassable_blocking))"
                         @click="confirmAction()">
                         <i :class="depAction === 'restore' ? 'fas fa-rotate-left' : 'fas fa-fire'"></i>
                         <span x-show="!actionSaving" x-text="depAction === 'restore' ? 'Confirmer la restauration' : 'Supprimer définitivement'"></span>
@@ -875,6 +905,7 @@ function trashIndex() {
         depTarget: null,             // { type, id }
         actionSaving: false,
         cascadeMotif: '',            // Motif pour suppression cascade (≥30 chars)
+        bypassBlocking: false,       // Coché pour bypass notes (permission requise)
 
         // Toast
         toast: { show: false, type: 'info', message: '', timer: null },
@@ -946,6 +977,7 @@ function trashIndex() {
             this.depData = null;
             this.depError = null;
             this.cascadeMotif = '';  // reset motif à chaque ouverture
+            this.bypassBlocking = false;  // reset bypass checkbox
             this.depLoading = true;
             this.depModalOpen = true;
 
@@ -975,6 +1007,7 @@ function trashIndex() {
             this.depError = null;
             this.depTarget = null;
             this.cascadeMotif = '';
+            this.bypassBlocking = false;
         },
 
         /**
@@ -1003,7 +1036,10 @@ function trashIndex() {
                         'Content-Type': 'application/json',
                     },
                     credentials: 'same-origin',
-                    body: JSON.stringify({ motif: this.cascadeMotif.trim() }),
+                    body: JSON.stringify({
+                        motif: this.cascadeMotif.trim(),
+                        bypass_blocking: this.bypassBlocking,
+                    }),
                 });
                 const data = await res.json();
                 if (!data.success) throw new Error(data.message || 'Erreur cascade');
@@ -1012,6 +1048,7 @@ function trashIndex() {
                 this.depData = null;
                 this.depTarget = null;
                 this.cascadeMotif = '';
+                this.bypassBlocking = false;
                 await this.reload();
             } catch (e) {
                 this.showToast('error', 'Erreur : ' + e.message, 8000);

@@ -107,8 +107,8 @@ class ESBTPEtudiantTrashController extends Controller
     /**
      * POST /esbtp/trash/etudiants/{id}/restore — Restore un étudiant soft-deleted.
      *
-     * Le hook ESBTPEtudiant::booted::restoring cascade automatiquement les
-     * inscriptions soft-deletées dans la fenêtre ±2 min autour du deleted_at,
+     * Le hook ESBTPEtudiant::booted::restoring cascade TOUTES les inscriptions
+     * soft-deletées attachées (sans fenêtre temporelle — Marcel 5 juin 2026),
      * qui à leur tour cascadent à leurs paiements via leur propre booted.
      */
     public function restore(int $id)
@@ -117,28 +117,15 @@ class ESBTPEtudiantTrashController extends Controller
 
         $etudiant = ESBTPEtudiant::onlyTrashed()->findOrFail($id);
 
-        // Compteurs pour audit + message utilisateur
-        $cutoff = $etudiant->deleted_at;
-        $window = $cutoff
-            ? [$cutoff->copy()->subMinutes(2), $cutoff->copy()->addMinutes(2)]
-            : null;
-
-        $inscriptionsCascadees = 0;
-        $paiementsCascades = 0;
-
-        if ($window) {
-            $inscriptionsCascadees = DB::table('esbtp_inscriptions')
-                ->where('etudiant_id', $id)
-                ->whereNotNull('deleted_at')
-                ->whereBetween('deleted_at', $window)
-                ->count();
-
-            $paiementsCascades = DB::table('esbtp_paiements')
-                ->where('etudiant_id', $id)
-                ->whereNotNull('deleted_at')
-                ->whereBetween('deleted_at', $window)
-                ->count();
-        }
+        // Compteurs AVANT restore (pour message utilisateur)
+        $inscriptionsCascadees = DB::table('esbtp_inscriptions')
+            ->where('etudiant_id', $id)
+            ->whereNotNull('deleted_at')
+            ->count();
+        $paiementsCascades = DB::table('esbtp_paiements')
+            ->where('etudiant_id', $id)
+            ->whereNotNull('deleted_at')
+            ->count();
 
         DB::transaction(function () use ($etudiant) {
             $etudiant->restore();  // déclenche booted::restoring cascade
@@ -226,6 +213,7 @@ class ESBTPEtudiantTrashController extends Controller
 
         $validated = $request->validate([
             'motif' => ['required', 'string', 'min:30', 'max:2000'],
+            'bypass_blocking' => ['nullable', 'boolean'],
         ], [
             'motif.required' => 'Motif obligatoire pour la suppression cascade.',
             'motif.min' => 'Motif doit faire au moins 30 caractères (justification audit).',
@@ -235,7 +223,8 @@ class ESBTPEtudiantTrashController extends Controller
             $result = $action->execute(
                 etudiantId: $id,
                 user: Auth::user(),
-                motif: $validated['motif']
+                motif: $validated['motif'],
+                bypassBlocking: (bool) ($validated['bypass_blocking'] ?? false)
             );
 
             return response()->json([

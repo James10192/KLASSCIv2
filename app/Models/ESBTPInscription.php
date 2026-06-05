@@ -93,19 +93,11 @@ class ESBTPInscription extends Model implements Auditable
         });
 
         static::restoring(function (self $inscription) {
-            $cutoff = $inscription->deleted_at;
-            if (!$cutoff) {
-                return;
-            }
-            // Restaurer uniquement les paiements soft-deletés EN MÊME TEMPS (±2 min)
-            // que l'inscription — évite de ressusciter des paiements supprimés
-            // indépendamment (refund, fraude, annulation manuelle).
+            // Restaurer TOUS les paiements soft-deletés attachés à l'inscription
+            // (Marcel 5 juin 2026 : pas de fenêtre ±2 min — UX intuitive,
+            // cohérent avec ce qu'affiche le dialog cascading_restore corbeille).
             $inscription->paiements()
                 ->onlyTrashed()
-                ->whereBetween('deleted_at', [
-                    $cutoff->copy()->subMinutes(2),
-                    $cutoff->copy()->addMinutes(2),
-                ])
                 ->update([
                     'deleted_at' => null,
                     'updated_at' => now(),
