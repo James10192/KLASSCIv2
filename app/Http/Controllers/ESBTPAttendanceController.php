@@ -229,12 +229,25 @@ class ESBTPAttendanceController extends Controller
         // Get class filter
         $classeId = $request->filled('classe_id') ? $request->classe_id : null;
 
-        // Get all students for the selected class or all active students
+        // Get all students for the selected class or all active students.
+        //
+        // FIX bug doublons (Marcel 2026-06-05) : on n'utilise PLUS $classe->etudiants()
+        // (hasManyThrough sur inscriptions). On filtre par inscription active sur
+        // l'année courante pour avoir 1 ligne par étudiant inscrit dans cette classe.
         $etudiants = collect();
         if ($classeId) {
             $classe = ESBTPClasse::find($classeId);
             if ($classe) {
-                $etudiants = $classe->etudiants()->with('user')->get();
+                $etudiants = ESBTPEtudiant::query()
+                    ->with('user')
+                    ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
+                        $q->where('annee_universitaire_id', $anneeUniversitaire->id)
+                          ->where('status', 'active')
+                          ->where('classe_id', $classe->id);
+                    })
+                    ->orderBy('nom')
+                    ->orderBy('prenoms')
+                    ->get();
             }
         } else {
             // Get students from attendances to avoid loading too many students
@@ -304,7 +317,12 @@ class ESBTPAttendanceController extends Controller
 
             // Récupérer uniquement les étudiants inscrits pour l'année universitaire courante ET actifs
             // IMPORTANT: Filtrer aussi par classe_id pour ne compter que les étudiants de CETTE classe
-            $totalStudents = $classe->etudiants()
+            //
+            // FIX bug doublons (Marcel 2026-06-05) : avec $classe->etudiants() (hasManyThrough),
+            // le count comptait 1 ligne par INSCRIPTION et donc surévaluait les étudiants
+            // (et donc le ratio attendance_rate). On part d'ESBTPEtudiant pour avoir
+            // 1 ligne par étudiant.
+            $totalStudents = ESBTPEtudiant::query()
                 ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                     $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                       ->where('status', 'active')
@@ -1121,13 +1139,20 @@ class ESBTPAttendanceController extends Controller
         $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Récupérer uniquement les étudiants inscrits pour l'année universitaire courante
-        // avec inscription ACTIVE et pour CETTE classe spécifiquement
-        $etudiants = $classe->etudiants()
+        // avec inscription ACTIVE et pour CETTE classe spécifiquement.
+        //
+        // FIX bug doublons (Marcel 2026-06-05) : on n'utilise PLUS $classe->etudiants()
+        // (hasManyThrough sur inscriptions) car le JOIN produit 1 ligne par inscription.
+        // On part directement d'ESBTPEtudiant + whereHas pour avoir 1 ligne par étudiant
+        // (sinon statistiques par étudiant calculées en double).
+        $etudiants = ESBTPEtudiant::query()
             ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                   ->where('status', 'active')
                   ->where('classe_id', $classe->id);
             })
+            ->orderBy('nom')
+            ->orderBy('prenoms')
             ->get();
 
         // Récupérer les séances de cours de la classe
@@ -1215,13 +1240,18 @@ class ESBTPAttendanceController extends Controller
         $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
         // Récupérer uniquement les étudiants inscrits pour l'année universitaire courante
-        // avec inscription ACTIVE et pour CETTE classe spécifiquement
-        $etudiants = $classe->etudiants()
+        // avec inscription ACTIVE et pour CETTE classe spécifiquement.
+        //
+        // FIX bug doublons (Marcel 2026-06-05) : pattern identique à rapport() — on part
+        // d'ESBTPEtudiant pour éviter le JOIN hasManyThrough qui duplique les étudiants.
+        $etudiants = ESBTPEtudiant::query()
             ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                   ->where('status', 'active')
                   ->where('classe_id', $classe->id);
             })
+            ->orderBy('nom')
+            ->orderBy('prenoms')
             ->get();
 
         // Récupérer les séances de cours de la classe
@@ -1927,14 +1957,18 @@ class ESBTPAttendanceController extends Controller
                 ? ESBTPAnneeUniversitaire::findOrFail($request->annee_universitaire_id)
                 : ESBTPAnneeUniversitaire::where('is_current', true)->firstOrFail();
 
-            $etudiants = $classe->etudiants()
+            // FIX bug doublons (Marcel 2026-06-05) : voir explication détaillée dans
+            // create() / loadStudents() (commit 338ee150). Le mode global manuel passe
+            // par loadManualTab() — la query DOIT partir d'ESBTPEtudiant pour ne pas
+            // dupliquer un étudiant qui a plusieurs inscriptions sur la même classe.
+            $etudiants = ESBTPEtudiant::query()
                 ->whereHas('inscriptions', function ($q) use ($anneeUniversitaire, $classe) {
                     $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                         ->where('status', 'active')
                         ->where('classe_id', $classe->id);
                 })
-                ->orderBy('esbtp_etudiants.nom')
-                ->orderBy('esbtp_etudiants.prenoms')
+                ->orderBy('nom')
+                ->orderBy('prenoms')
                 ->get();
 
             $existing = $isGlobal
@@ -2006,13 +2040,17 @@ class ESBTPAttendanceController extends Controller
         $classe = ESBTPClasse::findOrFail($request->classe_id);
         $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($request->annee_universitaire_id);
 
-        $validIds = $classe->etudiants()
+        // FIX bug doublons (Marcel 2026-06-05) : on part d'ESBTPEtudiant pour ne pas
+        // dupliquer les IDs si un étudiant a plusieurs inscriptions sur la classe.
+        // La déduplication n'aurait pas changé `in_array` ci-dessous mais on uniformise
+        // le pattern avec le reste du controller.
+        $validIds = ESBTPEtudiant::query()
             ->whereHas('inscriptions', function ($q) use ($anneeUniversitaire, $classe) {
                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                     ->where('status', 'active')
                     ->where('classe_id', $classe->id);
             })
-            ->pluck('esbtp_etudiants.id')
+            ->pluck('id')
             ->all();
 
         $entries = collect($request->input('entries', []))
