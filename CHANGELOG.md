@@ -12,6 +12,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Juin 2026
 
+### Corrections
+
+- **Inscriptions BTS Tronc Commun** (`/esbtp/inscriptions/{id}`) — incohérence entre le bouton « Choisir la spécialisation » visible en header (qui utilisait `inscriptions.specialisation.manage`) et la banner « Permission requise pour orienter » dans le parcours BTS (qui utilisait `bts_tronc_commun.orient`). Harmonisation : `bts-journey.blade.php` utilise désormais la même permission `inscriptions.specialisation.manage` que le bouton header et que `ESBTPSpecialisationController` middleware, supprimant les faux signaux. La banner « Aucune spécialité configurée pour TRONC COMMUN » expose maintenant un lien direct vers la page filière (anchor `#sorties-tc`) pour configurer les sorties autorisées si l'utilisateur a la permission `bts_tronc_commun.manage_targets` ou `filieres.edit`.
+
 ### Améliorations
 
 - **Pré-inscription caissier** (`/esbtp/inscriptions/pre-inscription`) — la recherche d'étudiant pour réinscription affiche désormais uniquement les étudiants éligibles (inscrits l'année universitaire passée avec workflow validé ET pas encore inscrits pour l'année en cours), évitant les doubles inscriptions accidentelles. Un message dédié s'affiche quand la recherche ne renvoie aucun étudiant éligible. Le matricule provisoire (format `PRE-XXXXXXXX`) est généré automatiquement à l'enregistrement et affiché dans le message de confirmation.
