@@ -208,7 +208,7 @@
                 <div class="pi-body">
                     <div class="pi-info">
                         <i class="fas fa-info-circle"></i>
-                        <div>Recherchez un étudiant existant (réinscription) ou saisissez les informations pour un nouvel étudiant.</div>
+                        <div>Recherchez un étudiant existant (réinscription) ou saisissez les informations pour un nouvel étudiant. Seuls les étudiants éligibles à une réinscription (inscrits l'année passée et pas encore réinscrits cette année) apparaîtront dans la recherche.</div>
                     </div>
 
                     {{-- Recherche étudiant existant --}}
@@ -229,6 +229,11 @@
                                             </div>
                                         </div>
                                     </template>
+                                </div>
+                                {{-- Empty state : aucun étudiant éligible trouvé pour la recherche --}}
+                                <div x-show="searchQuery.length >= 2 && searchResults.length === 0 && !searchLoading" style="margin-top:8px; padding:10px 12px; background:rgba(245,158,11,.06); border:1px solid rgba(245,158,11,.22); border-radius:8px; font-size:.8rem; color:#92400e; display:none;">
+                                    <i class="fas fa-info-circle" style="margin-right:6px;"></i>
+                                    Aucun étudiant éligible à la réinscription trouvé pour « <strong x-text="searchQuery"></strong> ». Soit l'étudiant n'a pas d'inscription active sur l'année passée, soit il est déjà inscrit pour l'année en cours. Vous pouvez le créer comme nouvel étudiant ci-dessous.
                                 </div>
                             </div>
                         </div>
@@ -326,6 +331,18 @@
                             <div class="pi-field">
                                 <label>Téléphone</label>
                                 <input type="text" name="telephone" x-model="telephone" placeholder="Ex: 0708091011">
+                            </div>
+                        </div>
+                        <div class="pi-row full">
+                            <div class="pi-field">
+                                <label>Matricule</label>
+                                <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:rgba(4,83,203,.04); border:1px dashed rgba(4,83,203,.25); border-radius:8px;">
+                                    <i class="fas fa-id-card" style="color:#0453cb;"></i>
+                                    <div style="flex:1; font-size:.82rem; color:#475569;">
+                                        Un matricule provisoire au format <strong style="color:#0453cb; font-family:monospace;">PRE-XXXXXXXX</strong>
+                                        sera attribué automatiquement à l'enregistrement. Il sera affiché en confirmation et restera modifiable par l'administration lors de la validation définitive.
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -613,6 +630,7 @@ function preInscription() {
         classe_id: '{{ old("classe_id", "") }}',
         searchQuery: '',
         searchResults: [],
+        searchLoading: false,
         etudiantExistant: null,
         analyseData: null,
         analyseLoading: false,
@@ -656,13 +674,15 @@ function preInscription() {
         },
 
         searchEtudiants() {
-            if (this.searchQuery.length < 2) { this.searchResults = []; return; }
+            if (this.searchQuery.length < 2) { this.searchResults = []; this.searchLoading = false; return; }
+            this.searchLoading = true;
             fetch(`{{ route('esbtp.inscriptions.search-etudiants') }}?q=${encodeURIComponent(this.searchQuery)}`, {
                 headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
             })
             .then(r => r.json())
             .then(data => { this.searchResults = data; })
-            .catch(() => { this.searchResults = []; });
+            .catch(() => { this.searchResults = []; })
+            .finally(() => { this.searchLoading = false; });
         },
 
         selectEtudiant(etudiant) {

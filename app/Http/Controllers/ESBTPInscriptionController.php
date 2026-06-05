@@ -2262,12 +2262,31 @@ class ESBTPInscriptionController extends Controller
     }
 
     /**
-     * Recherche d'étudiants existants pour pré-inscription (AJAX)
+     * Recherche d'étudiants existants pour pré-inscription / réinscription (AJAX).
+     *
+     * Filtre strict : seuls les étudiants éligibles à une réinscription apparaissent
+     * (ils ONT une inscription active sur l'année précédente ET N'ONT PAS d'inscription
+     * sur l'année courante). Évite les doubles inscriptions par erreur de saisie caissier.
+     *
+     * Pattern aligné sur BulkReinscriptionService::listEligibleStudents() (rule
+     * no-god-code-compta : source canonique unique pour l'éligibilité réinscription).
      */
     public function searchEtudiants(Request $request)
     {
         $q = trim($request->get('q', ''));
         if (strlen($q) < 2) {
+            return response()->json([]);
+        }
+
+        $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (!$anneeCourante) {
+            return response()->json([]);
+        }
+
+        $anneePrecedente = ESBTPAnneeUniversitaire::where('end_date', '<', $anneeCourante->start_date)
+            ->orderBy('end_date', 'desc')
+            ->first();
+        if (!$anneePrecedente) {
             return response()->json([]);
         }
 
@@ -2278,8 +2297,23 @@ class ESBTPInscriptionController extends Controller
                       ->orWhere('telephone', 'like', "%{$q}%");
             })
             ->where('matricule', 'NOT LIKE', 'PRE-%')
-            ->with(['inscriptions' => function ($query) {
-                $query->latest()->with('classe')->take(1);
+            // ÉLIGIBILITÉ RÉINSCRIPTION : inscription active sur l'année n-1
+            ->whereHas('inscriptions', function ($query) use ($anneePrecedente) {
+                $query->where('annee_universitaire_id', $anneePrecedente->id)
+                      ->where('status', 'active')
+                      ->where('workflow_step', 'etudiant_cree');
+            })
+            // ANTI-DOUBLON : pas d'inscription sur l'année courante
+            ->whereDoesntHave('inscriptions', function ($query) use ($anneeCourante) {
+                $query->where('annee_universitaire_id', $anneeCourante->id);
+            })
+            ->with(['inscriptions' => function ($query) use ($anneePrecedente) {
+                $query->where('annee_universitaire_id', $anneePrecedente->id)
+                      ->where('status', 'active')
+                      ->where('workflow_step', 'etudiant_cree')
+                      ->with('classe')
+                      ->latest()
+                      ->take(1);
             }])
             ->orderBy('nom')
             ->take(10)
@@ -2422,7 +2456,11 @@ class ESBTPInscriptionController extends Controller
 
             DB::commit();
 
-            $message = "Pré-inscription créée avec succès pour {$request->nom} {$request->prenoms}.";
+            $nomComplet = $isReinscription
+                ? "{$etudiant->nom} {$etudiant->prenoms}"
+                : "{$request->nom} {$request->prenoms}";
+            $typeLabel = $isReinscription ? 'Réinscription' : 'Pré-inscription';
+            $message = "{$typeLabel} créée avec succès pour {$nomComplet} (matricule : {$etudiant->matricule}).";
             if ($totalSouscrit > 0) {
                 $message .= " Frais souscrits : " . number_format($totalSouscrit, 0, ',', ' ') . " FCFA.";
             }

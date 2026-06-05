@@ -12,6 +12,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ## Juin 2026
 
+### Améliorations
+
+- **Pré-inscription caissier** (`/esbtp/inscriptions/pre-inscription`) — la recherche d'étudiant pour réinscription affiche désormais uniquement les étudiants éligibles (inscrits l'année universitaire passée avec workflow validé ET pas encore inscrits pour l'année en cours), évitant les doubles inscriptions accidentelles. Un message dédié s'affiche quand la recherche ne renvoie aucun étudiant éligible. Un encadré informe le caissier que le matricule provisoire (format PRE-XXXXXXXX) est généré automatiquement à l'enregistrement, et ce matricule est désormais affiché dans le message de confirmation après création.
+
 ### Ajouts
 
 - **Réconciliation paiements ↔ caisse physique (PR6 Dashboard santé + notifications)** — widget `_reconciliation_health_widget` injecté dans dashboard comptable (gated par permission `comptabilite.reconciliation.view`) avec health status badge (ok/vigilance/action requise) et 4 KPIs (sessions overdue, brouillons + en revue, days since last close, % sessions sans écart 90j), bandeau d'alerte rouge si overdue (lien direct vers filtre brouillon), commande artisan `reconciliation:check-overdue` schedulée daily 8h qui notifie via mail + database les utilisateurs ayant la permission `comptabilite.reconciliation.open` (rule customizable-roles : pas de rôle hardcodé), setting tenant `comptabilite.reconciliation.overdue_days` (default 2j) configurable per école, nouveau Service Domain `ReconciliationMetricsService` (rule no-god-code-compta), endpoint CLI `GET /api/cli/comptabilite/reconciliation/metrics` (avg_days_to_close, pct_no_ecart, avg_ecart_by_mode sur 90j).
