@@ -5,12 +5,22 @@
     $timeline = $btsJourney['timeline'] ?? [];
     $hasActiveSpe = collect($timeline)
         ->contains(fn ($p) => ($p['type_phase'] ?? null) === 'specialisation' && ! empty($p['is_active']));
+    // Permission canonique : inscriptions.specialisation.manage (alignée avec
+    // ESBTPSpecialisationController middleware et avec le bouton header de
+    // show.blade.php). bts_tronc_commun.orient était redondant et créait une
+    // incohérence UI (header visible vs banner « Permission requise »).
     $canOrient = $currentType === 'tronc_commun'
         && $sourceModel === 'phase_based'
         && ! $hasActiveSpe
         && $btsInscription !== null
-        && auth()->user()?->can('bts_tronc_commun.orient');
+        && auth()->user()?->can('inscriptions.specialisation.manage');
     $orientationTargetsCount = $btsInscription?->classe?->orientationTargets?->where('is_active', true)->count() ?? 0;
+    // Filière du tronc commun (pour deep-link vers la page de configuration des sorties)
+    $btsTroncFiliere = $btsInscription?->classe?->filiere;
+    // Coordination bug 3 agent : la page filieres.show exposera un ancre #sorties-tc
+    // (ou onglet) pour permettre la configuration des sorties d'un TC.
+    $canConfigureSorties = auth()->user()?->can('bts_tronc_commun.manage_targets')
+        || auth()->user()?->can('filieres.edit');
     $currentPhase = $btsJourney['current_phase'] ?? null;
     $badgeLabel = $btsJourney['badge']['label'] ?? 'Parcours BTS';
     $badgeTone = $btsJourney['badge']['tone'] ?? 'muted';
@@ -143,6 +153,17 @@
             line-height: 1.3;
         }
         .bj-warn i { color: #fef3c7; }
+        .bj-warn-link {
+            color: #fef3c7;
+            text-decoration: underline;
+            font-weight: 600;
+            transition: color .15s ease;
+            white-space: nowrap;
+        }
+        .bj-warn-link:hover {
+            color: #fff;
+            text-decoration: underline;
+        }
 
         .bj-btn {
             display: inline-flex; align-items: center; gap: .35rem;
@@ -304,13 +325,22 @@
                 @elseif($canOrient && $orientationTargetsCount === 0)
                     <div class="bj-warn">
                         <i class="fas fa-circle-exclamation"></i>
-                        <span>Aucune spécialité configurée pour <strong>{{ $btsInscription->classe?->name ?? 'cette classe' }}</strong>. Admin → <em>Sorties BTS Tronc Commun</em>.</span>
+                        <span>
+                            Aucune spécialité configurée pour <strong>{{ $btsInscription->classe?->name ?? 'cette classe' }}</strong>.
+                            @if($canConfigureSorties && $btsTroncFiliere)
+                                <a href="{{ route('esbtp.filieres.show', $btsTroncFiliere) }}#sorties-tc" class="bj-warn-link">
+                                    Configurer les sorties autorisées de la filière TC
+                                </a>.
+                            @else
+                                Contactez un administrateur pour configurer les sorties autorisées de la filière Tronc Commun.
+                            @endif
+                        </span>
                     </div>
                     <button class="bj-btn bj-btn--disabled" disabled title="Aucune spécialité configurée">
                         <i class="fas fa-graduation-cap"></i>
                         Orienter
                     </button>
-                @elseif(! auth()->user()?->can('bts_tronc_commun.orient'))
+                @elseif(! auth()->user()?->can('inscriptions.specialisation.manage'))
                     <div class="bj-info">
                         <i class="fas fa-lock"></i>
                         <span>Permission requise pour orienter cet étudiant. Contactez un admin scolarité.</span>

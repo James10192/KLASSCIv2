@@ -19,6 +19,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ### Corrections
 
 - **Saisie rapide des notes** (`/esbtp/evaluations/{id}/saisie-rapide`) — le bandeau « Consultation uniquement — En tant que coordinateur, vous pouvez les consulter mais pas les modifier » s'affichait à tort pour les superAdmin (et tout utilisateur disposant de `notes.edit` via Gate::before ou rôle custom). Le verrouillage est désormais basé sur la capacité réelle d'édition (`notes.edit` ou `notes.manage_own` + créateur) plutôt que sur l'identité `identity.coordinate`. Le message est rendu neutre, sans mention de rôle hardcodée.
+- **Inscriptions BTS Tronc Commun** (`/esbtp/inscriptions/{id}`) — incohérence entre le bouton « Choisir la spécialisation » visible en header (qui utilisait `inscriptions.specialisation.manage`) et la banner « Permission requise pour orienter » dans le parcours BTS (qui utilisait `bts_tronc_commun.orient`). Harmonisation : `bts-journey.blade.php` utilise désormais la même permission `inscriptions.specialisation.manage` que le bouton header et que `ESBTPSpecialisationController` middleware, supprimant les faux signaux. La banner « Aucune spécialité configurée pour TRONC COMMUN » expose maintenant un lien direct vers la page filière (anchor `#sorties-tc`) pour configurer les sorties autorisées si l'utilisateur a la permission `bts_tronc_commun.manage_targets` ou `filieres.edit`.
 
 ### Améliorations
 
