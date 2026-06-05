@@ -110,6 +110,7 @@ class ESBTPFiliereController extends Controller
         // Sorties BTS Tronc Commun — uniquement si filière marquée TC (et principale)
         $sourceClasses = collect();
         $candidatesByClasse = [];
+        $hasFillesConfigured = false;
 
         if ($filiere->isTroncCommun()) {
             $sourceClasses = ESBTPClasse::query()
@@ -125,19 +126,42 @@ class ESBTPFiliereController extends Controller
                 ->orderBy('name')
                 ->get();
 
-            // Pour chaque classe TC, lister les classes candidates (même niveau, filière non-TC,
-            // exclure les targets déjà configurés).
+            // Pour chaque classe TC, lister les classes candidates issues des
+            // filières-filles de ce tronc commun (rattachées via parent_id).
+            // Convention métier (Marcel, juin 2026) :
+            //   Quand une filière est marquée tronc commun, ses sorties candidates par
+            //   défaut sont les classes des filières qui ont parent_id = TC.id.
+            // Si aucune fille n'est déclarée, on retombe sur les classes de toute filière
+            // non-TC du même niveau (compatibilité écoles qui n'ont pas encore configuré
+            // la hiérarchie filière). Le hint UX en aval indique quoi faire dans chaque cas.
+            //
             // Les classes KLASSCI sont universelles (cf rule classes-universelles-pas-annee.md) :
-            // elles ne sont pas liées à une année universitaire. Ne JAMAIS filtrer par
-            // annee_universitaire_id sur esbtp_classes — c'est ce qui rendait la liste vide.
+            // ne JAMAIS filtrer par annee_universitaire_id sur esbtp_classes.
+            $fillesFiliereIds = ESBTPFiliere::query()
+                ->where('is_active', true)
+                ->where('is_tronc_commun', false)
+                ->where('parent_id', $filiere->id)
+                ->pluck('id');
+            $hasFillesConfigured = $fillesFiliereIds->isNotEmpty();
+
             foreach ($sourceClasses as $source) {
                 $existingTargetIds = $source->orientationTargets->pluck('target_classe_id')->all();
-                $candidatesByClasse[$source->id] = ESBTPClasse::query()
-                    ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false))
+
+                $query = ESBTPClasse::query()
                     ->where('niveau_etude_id', $source->niveau_etude_id)
                     ->whereNotIn('id', $existingTargetIds)
                     ->where('is_active', true)
-                    ->with('filiere:id,name,code')
+                    ->with('filiere:id,name,code,parent_id');
+
+                if ($hasFillesConfigured) {
+                    // Filles déclarées → restreindre strictement aux classes de ces filles
+                    $query->whereIn('filiere_id', $fillesFiliereIds);
+                } else {
+                    // Fallback : toute filière non-TC du même niveau
+                    $query->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false));
+                }
+
+                $candidatesByClasse[$source->id] = $query
                     ->orderBy('name')
                     ->get(['id', 'name', 'filiere_id', 'niveau_etude_id']);
             }
@@ -146,7 +170,8 @@ class ESBTPFiliereController extends Controller
         return view('esbtp.filieres.show', compact(
             'filiere',
             'sourceClasses',
-            'candidatesByClasse'
+            'candidatesByClasse',
+            'hasFillesConfigured'
         ));
     }
 

@@ -1591,12 +1591,12 @@
 
                         <!-- Programs & Classes -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') || Request::routeIs('esbtp.niveaux-etudes.*') || Request::routeIs('esbtp.annees-universitaires.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') || Request::routeIs('esbtp.niveaux-etudes.*') || Request::routeIs('esbtp.annees-universitaires.*') || Request::routeIs('esbtp.admin.orientation-targets.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-school"></i></div>
                                 <div class="menu-text">Filières & Classes</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') || Request::routeIs('esbtp.niveaux-etudes.*') || Request::routeIs('esbtp.annees-universitaires.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.filieres.*') || Request::routeIs('esbtp.classes.*') || Request::routeIs('esbtp.niveaux-etudes.*') || Request::routeIs('esbtp.annees-universitaires.*') || Request::routeIs('esbtp.admin.orientation-targets.*') ? 'show' : '' }}">
                                 @can('filieres.view')
                                 <a href="{{ route('esbtp.filieres.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.filieres.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
@@ -1619,6 +1619,12 @@
                                 <a href="{{ route('esbtp.annees-universitaires.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.annees-universitaires.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Années universitaires</span>
+                                </a>
+                                @endcan
+                                @can('bts_tronc_commun.manage_targets')
+                                <a href="{{ route('esbtp.admin.orientation-targets.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.admin.orientation-targets.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Sorties BTS Tronc Commun</span>
                                 </a>
                                 @endcan
                             </div>

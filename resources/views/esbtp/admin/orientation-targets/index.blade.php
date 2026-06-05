@@ -156,6 +156,10 @@
         @foreach($sourceClasses as $sourceClasse)
             @php
                 $candidates = $candidatesByClasse[$sourceClasse->id] ?? collect();
+                $hasFilles = $hasFillesByClasse[$sourceClasse->id] ?? false;
+                $candidateOptions = $candidates->mapWithKeys(fn ($c) => [
+                    $c->id => $c->name . ($c->filiere ? ' · ' . $c->filiere->name : ''),
+                ])->toArray();
             @endphp
             <div class="ot-card">
                 <div class="ot-card-header">
@@ -173,8 +177,9 @@
                     </span>
                 </div>
                 <div class="ot-card-body">
+                    <div data-targets-for="{{ $sourceClasse->id }}">
                     @forelse($sourceClasse->orientationTargets->sortBy('sort_order') as $target)
-                        <div class="ot-target-row">
+                        <div class="ot-target-row" data-target-id="{{ $target->id }}">
                             <span class="ot-target-icon"><i class="fas fa-graduation-cap"></i></span>
                             <div style="flex:1; min-width:0;">
                                 <div class="ot-target-name">{{ $target->targetClasse?->name ?? '— classe supprimée —' }}</div>
@@ -190,28 +195,27 @@
                                 {{ $target->is_active ? 'checked' : '' }}
                                 @change="toggleActive({{ $target->id }}, $event.target.checked)"
                                 title="Activer/désactiver cette sortie">
-                            <button class="ot-btn ot-btn--danger" @click="deleteTarget({{ $target->id }})" title="Supprimer cette sortie">
+                            <button class="ot-btn ot-btn--danger" @click="deleteTarget({{ $target->id }}, $event.target.closest('button'))" title="Supprimer cette sortie">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
                     @empty
-                        <div style="padding:1rem; text-align:center; color:#94a3b8; font-size:.85rem;">
+                        <div data-empty-marker style="padding:1rem; text-align:center; color:#94a3b8; font-size:.85rem;">
                             <i class="fas fa-arrow-down"></i> Aucune sortie configurée — ajoutez-en une ci-dessous.
                         </div>
                     @endforelse
+                    </div>
 
                     @if($candidates->isNotEmpty())
-                        <form @submit.prevent="addTarget($el)" class="ot-add-form">
+                        <form @submit.prevent="addTarget($el, {{ $sourceClasse->id }})" class="ot-add-form">
                             @csrf
                             <input type="hidden" name="source_classe_id" value="{{ $sourceClasse->id }}">
-                            <select name="target_classe_id" required>
-                                <option value="">+ Ajouter une spécialité possible</option>
-                                @foreach($candidates as $cls)
-                                    <option value="{{ $cls->id }}">
-                                        {{ $cls->name }}@if($cls->filiere) · {{ $cls->filiere->name }} @endif
-                                    </option>
-                                @endforeach
-                            </select>
+                            <x-au-select
+                                name="target_classe_id"
+                                placeholder="+ Ajouter une spécialité possible"
+                                icon="fa-graduation-cap"
+                                :searchable="count($candidateOptions) > 6"
+                                :options="$candidateOptions" />
                             <input type="number" name="semestre_activation" min="1" max="8" value="2" title="Semestre d'activation" placeholder="S2">
                             <input type="text" name="notes" maxlength="500" placeholder="Note (optionnel)" style="flex:1; min-width:120px;">
                             <button type="submit" class="ot-btn ot-btn--primary">
@@ -221,7 +225,11 @@
                     @else
                         <div style="margin-top:.5rem; padding:.65rem; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25); border-radius:9px; font-size:.78rem; color:#92400e;">
                             <i class="fas fa-circle-exclamation"></i>
-                            Aucune classe de spécialité candidate pour cette classe TC (même niveau + même année). Créez d'abord les classes spé.
+                            @if($hasFilles)
+                                Aucune classe de spécialité disponible pour ce niveau dans les filières-filles. Créez d'abord les classes via <a href="{{ route('esbtp.classes.create') }}" style="color:#0453cb;">Admin → Classes</a>.
+                            @else
+                                Aucune filière-fille déclarée pour ce tronc commun. Allez sur <a href="{{ route('esbtp.filieres.index') }}" style="color:#0453cb;">Admin → Filières</a> et cochez ce tronc commun (#{{ $sourceClasse->filiere_id }}) comme « filière parent » sur les filières de spécialité concernées.
+                            @endif
                         </div>
                     @endif
                 </div>
@@ -246,10 +254,15 @@ function orientationTargets() {
         toasts: [], toastId: 0,
         init() {},
 
-        async addTarget(formEl) {
+        async addTarget(formEl, sourceClasseId) {
             const fd = new FormData(formEl);
             const payload = {};
             fd.forEach((v, k) => { if (k !== '_token' && v !== '') payload[k] = v; });
+
+            if (!payload.target_classe_id) {
+                this.toast('error', 'Sélectionnez une classe de spécialité.');
+                return;
+            }
 
             try {
                 const res = await fetch('{{ route("esbtp.admin.orientation-targets.store") }}', {
@@ -268,8 +281,12 @@ function orientationTargets() {
                     return;
                 }
                 if (!res.ok) throw new Error('Erreur ' + res.status);
+                const body = await res.json();
+                this.appendTargetRow(sourceClasseId, body.target);
+                this.removeOptionFromSelect(formEl, payload.target_classe_id);
+                this.resetForm(formEl);
+                this.incrementCardCounter(sourceClasseId);
                 this.toast('success', 'Spécialité ajoutée');
-                setTimeout(() => window.location.reload(), 700);
             } catch (e) {
                 this.toast('error', e.message);
             }
@@ -293,7 +310,7 @@ function orientationTargets() {
             }
         },
 
-        async deleteTarget(id) {
+        async deleteTarget(id, btnEl) {
             if (! confirm('Supprimer définitivement cette sortie de tronc commun ?')) return;
             try {
                 const res = await fetch(`/esbtp/admin/orientation-targets/${id}`, {
@@ -304,11 +321,83 @@ function orientationTargets() {
                     },
                 });
                 if (!res.ok) throw new Error('Erreur ' + res.status);
+                this.removeTargetRow(btnEl);
                 this.toast('success', 'Sortie supprimée');
-                setTimeout(() => window.location.reload(), 700);
             } catch (e) {
                 this.toast('error', e.message);
             }
+        },
+
+        appendTargetRow(sourceClasseId, target) {
+            const container = document.querySelector(`[data-targets-for="${sourceClasseId}"]`);
+            if (!container) { return; }
+            const emptyMarker = container.querySelector('[data-empty-marker]');
+            if (emptyMarker) emptyMarker.remove();
+            const targetName = target.target_classe?.name ?? '— classe inconnue —';
+            const filiereName = target.target_classe?.filiere?.name ?? '—';
+            const html = `
+                <div class="ot-target-row" data-target-id="${target.id}">
+                    <span class="ot-target-icon"><i class="fas fa-graduation-cap"></i></span>
+                    <div style="flex:1; min-width:0;">
+                        <div class="ot-target-name">${this.escape(targetName)}</div>
+                        <div class="ot-target-meta">${this.escape(filiereName)}${target.notes ? ' · <em>' + this.escape(target.notes) + '</em>' : ''}</div>
+                    </div>
+                    <span class="ot-target-semestre" title="Semestre d'activation">S${target.semestre_activation}</span>
+                    <input type="checkbox" class="ot-target-toggle" checked
+                        @change="toggleActive(${target.id}, $event.target.checked)" title="Activer/désactiver">
+                    <button class="ot-btn ot-btn--danger" @click="deleteTarget(${target.id}, $event.target.closest('button'))" title="Supprimer">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>`;
+            container.insertAdjacentHTML('beforeend', html);
+            if (window.Alpine && typeof window.Alpine.initTree === 'function') {
+                window.Alpine.initTree(container.lastElementChild);
+            }
+        },
+
+        removeTargetRow(btnEl) {
+            const row = btnEl?.closest?.('.ot-target-row');
+            if (!row) return;
+            const card = row.closest('.ot-card');
+            row.remove();
+            const counter = card?.querySelector('.ot-card-meta');
+            if (counter) {
+                const n = Math.max(0, parseInt(counter.textContent) - 1);
+                counter.textContent = n + ' spécialité' + (n > 1 ? 's' : '');
+            }
+        },
+
+        incrementCardCounter(sourceClasseId) {
+            const container = document.querySelector(`[data-targets-for="${sourceClasseId}"]`);
+            const counter = container?.closest('.ot-card')?.querySelector('.ot-card-meta');
+            if (counter) {
+                const n = parseInt(counter.textContent) + 1;
+                counter.textContent = n + ' spécialité' + (n > 1 ? 's' : '');
+            }
+        },
+
+        removeOptionFromSelect(formEl, value) {
+            // au-select expose le native select via la classe au-select-native
+            const native = formEl.querySelector('select.au-select-native[name="target_classe_id"]');
+            if (!native) return;
+            const opt = native.querySelector(`option[value="${value}"]`);
+            if (opt) opt.remove();
+        },
+
+        resetForm(formEl) {
+            const native = formEl.querySelector('select.au-select-native[name="target_classe_id"]');
+            if (native) {
+                native.value = '';
+                native.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            const semestre = formEl.querySelector('input[name="semestre_activation"]');
+            const notes = formEl.querySelector('input[name="notes"]');
+            if (semestre) semestre.value = 2;
+            if (notes) notes.value = '';
+        },
+
+        escape(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         },
 
         toast(type, message) {

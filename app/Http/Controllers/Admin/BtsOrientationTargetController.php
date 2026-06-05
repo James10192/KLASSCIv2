@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPClasseOrientationTarget;
+use App\Models\ESBTPFiliere;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -47,24 +48,48 @@ class BtsOrientationTargetController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Classes candidates pour ajout (spé du même niveau, filière non-TC).
+        // Classes candidates pour ajout. Convention métier (Marcel, juin 2026) :
+        //   Quand une filière TC a des filles déclarées (parent_id = TC.id), restreindre
+        //   les candidates aux classes de ces filles. Sinon, fallback non-TC même niveau.
         // Les classes KLASSCI sont universelles (cf rule classes-universelles-pas-annee.md) :
         // ne JAMAIS filtrer par annee_universitaire_id sur esbtp_classes.
+        //
+        // On précompute par TC source filiere_id la liste des filles pour éviter N queries.
+        $tcFiliereIds = $sourceClasses->pluck('filiere_id')->unique()->filter()->values();
+        $fillesByTcFiliere = ESBTPFiliere::query()
+            ->where('is_active', true)
+            ->where('is_tronc_commun', false)
+            ->whereIn('parent_id', $tcFiliereIds)
+            ->get(['id', 'parent_id'])
+            ->groupBy('parent_id')
+            ->map(fn ($group) => $group->pluck('id'));
+
         $candidatesByClasse = [];
+        $hasFillesByClasse = [];
         foreach ($sourceClasses as $source) {
             $existingTargetIds = $source->orientationTargets->pluck('target_classe_id')->all();
-            $candidatesByClasse[$source->id] = ESBTPClasse::query()
-                ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false))
+            $fillesIds = $fillesByTcFiliere->get($source->filiere_id) ?? collect();
+            $hasFillesByClasse[$source->id] = $fillesIds->isNotEmpty();
+
+            $query = ESBTPClasse::query()
                 ->where('niveau_etude_id', $source->niveau_etude_id)
                 ->whereNotIn('id', $existingTargetIds)
                 ->where('is_active', true)
-                ->with('filiere:id,name,code')
+                ->with('filiere:id,name,code,parent_id');
+
+            if ($fillesIds->isNotEmpty()) {
+                $query->whereIn('filiere_id', $fillesIds);
+            } else {
+                $query->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false));
+            }
+
+            $candidatesByClasse[$source->id] = $query
                 ->orderBy('name')
                 ->get(['id', 'name', 'filiere_id']);
         }
 
         return view('esbtp.admin.orientation-targets.index', compact(
-            'sourceClasses', 'candidatesByClasse'
+            'sourceClasses', 'candidatesByClasse', 'hasFillesByClasse'
         ));
     }
 

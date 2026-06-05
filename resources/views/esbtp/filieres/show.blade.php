@@ -682,7 +682,11 @@
                                 @else
                                     <div class="fs-tc-warn">
                                         <i class="fas fa-circle-exclamation"></i>
-                                        Aucune classe candidate (même niveau, filière non-TC). Créez d'abord les classes de spécialité dans Admin → Classes.
+                                        @if(($hasFillesConfigured ?? false))
+                                            Aucune classe de spécialité disponible pour ce niveau dans les filières-filles de ce tronc commun. Créez d'abord les classes via <a href="{{ route('esbtp.classes.create') }}">Admin → Classes</a>.
+                                        @else
+                                            Aucune filière-fille déclarée pour ce tronc commun. Allez sur <a href="{{ route('esbtp.filieres.index') }}">Admin → Filières</a> et cochez ce tronc commun (ID #{{ $filiere->id }}) comme « filière parent » sur les filières de spécialité concernées, puis créez les classes.
+                                        @endif
                                     </div>
                                 @endif
                             @endcan
