@@ -135,6 +135,12 @@
     .pi-slide { display: none; }
     .pi-slide.active { display: block; animation: pi-fadeIn .3s ease; }
     @keyframes pi-fadeIn { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+
+    /* Premium select inside .pi-field — full width + harmonize trigger with surrounding inputs */
+    .pi-field .au-select { display: flex; width: 100%; }
+    .pi-field .au-select-trigger { padding: 11px 14px; border-width: 1.5px; border-radius: 10px; font-size: .88rem; min-height: 44px; }
+    .pi-field .au-select-trigger:hover { border-color: #cbd5e1; }
+    .pi-field .au-select-trigger--open { border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); background: #fafbff; }
 </style>
 @endpush
 
@@ -327,40 +333,48 @@
                                 <div class="field-error" x-show="errors.prenoms" x-text="errors.prenoms" style="display:none;"></div>
                             </div>
                         </div>
-                        <div class="pi-row full">
+                        <div class="pi-row">
                             <div class="pi-field">
                                 <label>Téléphone</label>
                                 <input type="text" name="telephone" x-model="telephone" placeholder="Ex: 0708091011">
                             </div>
-                        </div>
-                        <div class="pi-row full">
                             <div class="pi-field">
                                 <label>Matricule</label>
-                                <div style="display:flex; align-items:center; gap:8px; padding:10px 12px; background:rgba(4,83,203,.04); border:1px dashed rgba(4,83,203,.25); border-radius:8px;">
-                                    <i class="fas fa-id-card" style="color:#0453cb;"></i>
-                                    <div style="flex:1; font-size:.82rem; color:#475569;">
-                                        Un matricule provisoire au format <strong style="color:#0453cb; font-family:monospace;">PRE-XXXXXXXX</strong>
-                                        sera attribué automatiquement à l'enregistrement. Il sera affiché en confirmation et restera modifiable par l'administration lors de la validation définitive.
-                                    </div>
+                                <input type="text" name="matricule" x-model="matricule" placeholder="Laisser vide pour génération auto" maxlength="50" autocomplete="off">
+                                <div style="font-size:.72rem;color:#64748b;margin-top:4px;display:flex;align-items:center;gap:6px;">
+                                    <i class="fas fa-info-circle" style="color:#0453cb;"></i>
+                                    <span>Laissez vide pour génération automatique au format <strong style="color:#0453cb;font-family:monospace;">PRE-XXXXXXXX</strong>.</span>
                                 </div>
+                                <div class="field-error" x-show="errors.matricule" x-text="errors.matricule" style="display:none;"></div>
                             </div>
                         </div>
                     </div>
 
                     {{-- Classe (toujours visible) --}}
+                    @php
+                        $classeOptions = $classes->mapWithKeys(function ($c) {
+                            $contextParts = array_filter([
+                                $c->filiere->name ?? null,
+                                $c->niveau->name ?? null,
+                            ]);
+                            $context = $contextParts ? ' (' . implode(' - ', $contextParts) . ')' : '';
+                            return [$c->id => $c->name . $context];
+                        })->toArray();
+                    @endphp
                     <div class="pi-section">
                         <div class="pi-section-title"><i class="fas fa-graduation-cap"></i> Classe</div>
                         <div class="pi-row full">
                             <div class="pi-field">
                                 <label>Classe <span class="required">*</span></label>
-                                <select name="classe_id" x-model="classe_id" required>
-                                    <option value="">-- Sélectionner une classe --</option>
-                                    @foreach($classes as $classe)
-                                        <option value="{{ $classe->id }}">
-                                            {{ $classe->name }} ({{ $classe->filiere->name ?? '' }} - {{ $classe->niveau->name ?? '' }})
-                                        </option>
-                                    @endforeach
-                                </select>
+                                <x-au-select
+                                    name="classe_id"
+                                    :value="old('classe_id', '')"
+                                    :options="$classeOptions"
+                                    placeholder="— Sélectionner une classe —"
+                                    icon="fa-graduation-cap"
+                                    :searchable="count($classeOptions) > 8"
+                                    x-model="classe_id"
+                                    required />
                                 <div class="field-error" x-show="errors.classe_id" x-text="errors.classe_id" style="display:none;"></div>
                             </div>
                         </div>
@@ -627,6 +641,7 @@ function preInscription() {
         nom: '{{ old("nom", "") }}',
         prenoms: '{{ old("prenoms", "") }}',
         telephone: '{{ old("telephone", "") }}',
+        matricule: '{{ old("matricule", "") }}',
         classe_id: '{{ old("classe_id", "") }}',
         searchQuery: '',
         searchResults: [],
@@ -690,6 +705,7 @@ function preInscription() {
             this.nom = etudiant.nom;
             this.prenoms = etudiant.prenoms;
             this.telephone = etudiant.telephone || '';
+            this.matricule = ''; // En réinscription le matricule existant est conservé côté serveur
             this.searchQuery = '';
             this.searchResults = [];
             this.loadAnalyse(etudiant.id);
@@ -701,6 +717,7 @@ function preInscription() {
             this.nom = '';
             this.prenoms = '';
             this.telephone = '';
+            this.matricule = '';
         },
 
         loadAnalyse(etudiantId) {

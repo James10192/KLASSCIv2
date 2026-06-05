@@ -14,7 +14,9 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Améliorations
 
-- **Pré-inscription caissier** (`/esbtp/inscriptions/pre-inscription`) — la recherche d'étudiant pour réinscription affiche désormais uniquement les étudiants éligibles (inscrits l'année universitaire passée avec workflow validé ET pas encore inscrits pour l'année en cours), évitant les doubles inscriptions accidentelles. Un message dédié s'affiche quand la recherche ne renvoie aucun étudiant éligible. Un encadré informe le caissier que le matricule provisoire (format PRE-XXXXXXXX) est généré automatiquement à l'enregistrement, et ce matricule est désormais affiché dans le message de confirmation après création.
+- **Pré-inscription caissier** (`/esbtp/inscriptions/pre-inscription`) — la recherche d'étudiant pour réinscription affiche désormais uniquement les étudiants éligibles (inscrits l'année universitaire passée avec workflow validé ET pas encore inscrits pour l'année en cours), évitant les doubles inscriptions accidentelles. Un message dédié s'affiche quand la recherche ne renvoie aucun étudiant éligible. Le matricule provisoire (format `PRE-XXXXXXXX`) est généré automatiquement à l'enregistrement et affiché dans le message de confirmation.
+- **Pré-inscription caissier — saisie manuelle optionnelle du matricule** (`/esbtp/inscriptions/pre-inscription`) — le caissier peut désormais saisir un matricule personnalisé (max. 50 caractères, alphanumérique + `-_/`) pour un nouvel étudiant. Laisser le champ vide conserve la génération automatique au format `PRE-XXXXXXXX`. Validation serveur : format strict + unicité contrôlée avec message d'erreur clair si le matricule est déjà attribué.
+- **Pré-inscription caissier — sélecteur de classe premium** (`/esbtp/inscriptions/pre-inscription`) — le `<select>` natif de sélection de classe a été migré vers le composant premium `<x-au-select>` (rule premium-selects) : recherche live activée au-delà de 8 classes, icône, état actif KLASSCI, styling harmonisé avec les autres champs du formulaire.
 
 ### Ajouts
 

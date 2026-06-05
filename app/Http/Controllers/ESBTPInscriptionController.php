@@ -2364,12 +2364,19 @@ class ESBTPInscriptionController extends Controller
             if ($isReinscription) {
                 $etudiant = \App\Models\ESBTPEtudiant::findOrFail($request->etudiant_existant_id);
             } else {
+                // Matricule manuel optionnel ; fallback sur génération auto PRE-XXXXXXXX.
+                // Le format et l'unicité sont garantis par StorePreInscriptionRequest.
+                $matriculeSaisi = $request->input('matricule');
+                $matricule = is_string($matriculeSaisi) && trim($matriculeSaisi) !== ''
+                    ? trim($matriculeSaisi)
+                    : $this->generatePreInscriptionMatricule();
+
                 $etudiant = \App\Models\ESBTPEtudiant::create([
                     'nom' => $request->nom,
                     'prenoms' => $request->prenoms,
                     'telephone' => $request->telephone,
                     'statut' => 'inactif',
-                    'matricule' => $this->generatePreInscriptionMatricule(),
+                    'matricule' => $matricule,
                     'created_by' => Auth::id(),
                 ]);
             }
