@@ -125,14 +125,16 @@ class ESBTPFiliereController extends Controller
                 ->orderBy('name')
                 ->get();
 
-            // Pour chaque classe TC, lister les classes candidates (même niveau + année,
-            // filière non-TC, exclure les targets déjà configurés).
+            // Pour chaque classe TC, lister les classes candidates (même niveau, filière non-TC,
+            // exclure les targets déjà configurés).
+            // Les classes KLASSCI sont universelles (cf rule classes-universelles-pas-annee.md) :
+            // elles ne sont pas liées à une année universitaire. Ne JAMAIS filtrer par
+            // annee_universitaire_id sur esbtp_classes — c'est ce qui rendait la liste vide.
             foreach ($sourceClasses as $source) {
                 $existingTargetIds = $source->orientationTargets->pluck('target_classe_id')->all();
                 $candidatesByClasse[$source->id] = ESBTPClasse::query()
                     ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false))
                     ->where('niveau_etude_id', $source->niveau_etude_id)
-                    ->where('annee_universitaire_id', $source->annee_universitaire_id)
                     ->whereNotIn('id', $existingTargetIds)
                     ->where('is_active', true)
                     ->with('filiere:id,name,code')

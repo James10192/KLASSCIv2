@@ -682,7 +682,7 @@
                                 @else
                                     <div class="fs-tc-warn">
                                         <i class="fas fa-circle-exclamation"></i>
-                                        Aucune classe candidate (même niveau + même année universitaire, filière non-TC). Créez d'abord les classes de spécialité.
+                                        Aucune classe candidate (même niveau, filière non-TC). Créez d'abord les classes de spécialité dans Admin → Classes.
                                     </div>
                                 @endif
                             @endcan

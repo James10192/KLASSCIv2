@@ -47,14 +47,15 @@ class BtsOrientationTargetController extends Controller
             ->orderBy('name')
             ->get();
 
-        // Classes candidates pour ajout (spé du même niveau + année)
+        // Classes candidates pour ajout (spé du même niveau, filière non-TC).
+        // Les classes KLASSCI sont universelles (cf rule classes-universelles-pas-annee.md) :
+        // ne JAMAIS filtrer par annee_universitaire_id sur esbtp_classes.
         $candidatesByClasse = [];
         foreach ($sourceClasses as $source) {
             $existingTargetIds = $source->orientationTargets->pluck('target_classe_id')->all();
             $candidatesByClasse[$source->id] = ESBTPClasse::query()
                 ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false))
                 ->where('niveau_etude_id', $source->niveau_etude_id)
-                ->where('annee_universitaire_id', $source->annee_universitaire_id)
                 ->whereNotIn('id', $existingTargetIds)
                 ->where('is_active', true)
                 ->with('filiere:id,name,code')

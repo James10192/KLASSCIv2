@@ -17,10 +17,10 @@ class BtsOrientationPolicySupport
 
     public function validateTarget(ESBTPInscription $inscription, ESBTPClasse $targetClasse): ?ESBTPClasseOrientationTarget
     {
-        // Garde-fous communs : année + niveau + classe active
-        if ((int) $targetClasse->annee_universitaire_id !== (int) $inscription->annee_universitaire_id) {
-            return null;
-        }
+        // Garde-fous communs : niveau + classe active.
+        // Les classes KLASSCI sont universelles (cf rule classes-universelles-pas-annee.md) :
+        // on ne compare PAS annee_universitaire_id entre la classe et l'inscription —
+        // une même classe peut accueillir des étudiants sur plusieurs années.
         if ((int) $targetClasse->niveau_etude_id !== (int) $inscription->niveau_id) {
             return null;
         }

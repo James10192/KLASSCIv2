@@ -84,10 +84,11 @@ class SeedOrientationTargets extends Command
                     continue;
                 }
 
+                // Les classes KLASSCI sont universelles (cf rule classes-universelles-pas-annee.md) :
+                // on ne filtre PAS par annee_universitaire_id sur esbtp_classes.
                 $classesCibles = ESBTPClasse::query()
                     ->whereIn('filiere_id', $filieresSpeIds)
                     ->where('niveau_etude_id', $sourceClasse->niveau_etude_id)
-                    ->where('annee_universitaire_id', $sourceClasse->annee_universitaire_id)
                     ->where('is_active', true)
                     ->orderBy('name')
                     ->get();

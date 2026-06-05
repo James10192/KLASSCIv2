@@ -111,11 +111,10 @@ class CLIBtsTroncCommunController extends BaseApiController
             return $this->errorResponse('Class not found', [], 404);
         }
 
+        // Les classes KLASSCI sont universelles (cf rule classes-universelles-pas-annee.md) :
+        // on ne compare PAS annee_universitaire_id entre classes — seul le niveau est requis.
         $warnings = [];
         foreach ($classe->orientationTargets as $target) {
-            if ((int) $target->targetClasse?->annee_universitaire_id !== (int) $classe->annee_universitaire_id) {
-                $warnings[] = "La cible {$target->targetClasse?->name} ne partage pas la même année.";
-            }
             if ((int) $target->targetClasse?->niveau_etude_id !== (int) $classe->niveau_etude_id) {
                 $warnings[] = "La cible {$target->targetClasse?->name} ne partage pas le même niveau.";
             }
@@ -243,10 +242,8 @@ class CLIBtsTroncCommunController extends BaseApiController
             return $this->errorResponse('Source or target class not found', [], 404);
         }
 
-        if ((int) $sourceClasse->annee_universitaire_id !== (int) $targetClasse->annee_universitaire_id) {
-            return $this->errorResponse('Target class must share the same academic year', [], 422);
-        }
-
+        // Les classes KLASSCI sont universelles (cf rule classes-universelles-pas-annee.md) :
+        // on ne contraint PAS la même année universitaire — seul le niveau d'études est requis.
         if ((int) $sourceClasse->niveau_etude_id !== (int) $targetClasse->niveau_etude_id) {
             return $this->errorResponse('Target class must share the same study level', [], 422);
         }
