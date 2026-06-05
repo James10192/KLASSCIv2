@@ -521,16 +521,24 @@ class ESBTPAttendanceController extends Controller
                         // Récupérer l'année universitaire courante
                         $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-                        // Récupérer les étudiants directement de la classe sélectionnée
-                        // filtrés par l'année universitaire courante ET statut inscription active
-                        $etudiants = $classe->etudiants()
+                        // Récupérer les étudiants inscrits dans cette classe pour l'année courante,
+                        // filtrés par statut d'inscription active.
+                        //
+                        // FIX bug doublons (Marcel 2026-06-05) : on n'utilise PLUS
+                        // $classe->etudiants() (hasManyThrough sur inscriptions) car le JOIN
+                        // produit 1 ligne par inscription. Si un étudiant a plusieurs
+                        // inscriptions sur la même classe (ex. années différentes, ou anciennes
+                        // archivées non soft-deleted), il apparaissait N fois.
+                        // On part directement d'ESBTPEtudiant + whereHas pour ne charger qu'une
+                        // ligne par étudiant.
+                        $etudiants = ESBTPEtudiant::query()
                             ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                                   ->where('status', 'active')
                                   ->where('classe_id', $classe->id);
                             })
-                            ->orderBy('esbtp_etudiants.nom')
-                            ->orderBy('esbtp_etudiants.prenoms')
+                            ->orderBy('nom')
+                            ->orderBy('prenoms')
                             ->get();
                         $debug['nombre_etudiants'] = $etudiants->count();
                         $debug['etudiants_ids'] = $etudiants->pluck('id')->toArray();
@@ -601,14 +609,18 @@ class ESBTPAttendanceController extends Controller
                     // Récupérer l'année universitaire courante
                     $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-                    $etudiants = $classe->etudiants()
+                    // FIX bug doublons (Marcel 2026-06-05) : voir explication détaillée
+                    // dans la branche seance_id ci-dessus. Même pattern : on évite le JOIN
+                    // hasManyThrough qui duplique les étudiants ayant plusieurs inscriptions
+                    // sur la même classe.
+                    $etudiants = ESBTPEtudiant::query()
                         ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                             $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                               ->where('status', 'active')
                               ->where('classe_id', $classe->id);
                         })
-                        ->orderBy('esbtp_etudiants.nom')
-                        ->orderBy('esbtp_etudiants.prenoms')
+                        ->orderBy('nom')
+                        ->orderBy('prenoms')
                         ->get();
                     $debug['nombre_etudiants_classe'] = $etudiants->count();
 
@@ -807,14 +819,18 @@ class ESBTPAttendanceController extends Controller
             $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
             // Récupérer les étudiants
-            $etudiants = $classe->etudiants()
+            // FIX bug doublons (Marcel 2026-06-05) : on n'utilise PLUS $classe->etudiants()
+            // (hasManyThrough sur inscriptions) qui dupliquait les étudiants ayant plusieurs
+            // inscriptions sur la même classe (années différentes, anciennes archivées, etc.).
+            // On part d'ESBTPEtudiant + whereHas pour garantir 1 ligne par étudiant.
+            $etudiants = ESBTPEtudiant::query()
                 ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
                     $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                       ->where('status', 'active')
                       ->where('classe_id', $classe->id);
                 })
-                ->orderBy('esbtp_etudiants.nom')
-                ->orderBy('esbtp_etudiants.prenoms')
+                ->orderBy('nom')
+                ->orderBy('prenoms')
                 ->get();
 
             if ($etudiants->isEmpty()) {

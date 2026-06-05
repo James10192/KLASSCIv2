@@ -42,6 +42,7 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Corrections
 
+- **Saisie des présences** — étudiants qui apparaissaient en double sur la grille `/esbtp/attendances/create?classe_id=X` quand un étudiant avait plusieurs inscriptions sur la même classe (années différentes, anciennes archivées). Le `hasManyThrough` `$classe->etudiants()` produisait 1 ligne par inscription au lieu d'1 par étudiant. Remplacé par `ESBTPEtudiant::query()->whereHas('inscriptions', ...)` qui garantit 1 ligne par étudiant. Fix appliqué aux 3 endroits : SSR `create()` (avec et sans séance sélectionnée) + AJAX `loadStudents()`.
 - **Saisie rapide des notes** — `step="0.25"` HTML bloquait toute décimale autre que 0.25/0.5/0.75 (impossible de saisir 11,44 ou 12,23). Remplacé par `step="0.01"` + `inputmode="decimal"` + `lang="fr"` sur 7 vues (saisie-rapide BTS/LMD, edit note, notes/index AJAX, teacher grades edit, external grading). Backend (`numeric|min:0`) et DB (`decimal(5,2)`) supportaient déjà les décimales libres.
 - **Personnel** — hero sans `transform` pour libérer le dropdown du stacking context (bug menu masqué) [5a8adf22]
 - **Dropdowns universels** — teleport menu vers `body` à l'ouverture pour échapper aux stacking contexts Popper [0bf8b9c7]
