@@ -241,7 +241,15 @@ class BulkReinscriptionService
     }
 
     /**
-     * Exécute une batch de réinscriptions en transaction atomique.
+     * Exécute une batch de réinscriptions — transaction PAR étudiant (isolation per-row).
+     *
+     * Stratégie : chaque étudiant a sa propre transaction. Un échec sur l'étudiant N
+     * NE rollback PAS les étudiants 1..N-1 déjà commit. L'opérateur reçoit un détail
+     * exhaustif par étudiant (success + errors) et peut relancer uniquement les échecs.
+     *
+     * Raison du changement (juin 2026 — bug 6) : l'all-or-nothing précédent rollbackait
+     * ABA quand ABBE échouait → user voyait "ABA réinscrit" en UI puis disparaissait,
+     * sans message clair sur quel étudiant avait échoué et pourquoi. Silent failure.
      *
      * $items = array<int, [
      *   'etudiant_id' => int,
@@ -251,7 +259,7 @@ class BulkReinscriptionService
      *   'observations' => ?string,
      * ]>
      *
-     * @return array{success: bool, success_count: int, errors: array, batch_id: string}
+     * @return array{success: bool, success_count: int, error_count: int, success_list: array, error_list: array, batch_id: string, message: string}
      */
     public function executeBulk(array $items, ?int $userId = null): array
     {
@@ -260,109 +268,111 @@ class BulkReinscriptionService
         $successItems = [];
         $errors = [];
 
-        DB::beginTransaction();
-        try {
-            foreach ($items as $idx => $item) {
-                if (empty($item['etudiant_id']) || empty($item['classe_id']) || empty($item['decision'])) {
-                    $errors[] = [
-                        'index' => $idx,
-                        'etudiant_id' => $item['etudiant_id'] ?? null,
-                        'message' => 'Payload incomplet (etudiant_id, classe_id ou decision manquant)',
-                    ];
-                    continue;
-                }
-
-                try {
-                    $inscription = $this->reeinscriptionService->effectuerReinscription(
-                        $item['etudiant_id'],
-                        $item['classe_id'],
-                        $item['decision'],
-                        $item['observations'] ?? null,
-                        $item['selected_optionals'] ?? [],
-                        $item['affectation_status'] ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
-                        null, // anneeUniversitaireId
-                        $item['action_reliquat'] ?? null,
-                        true,  // skipTransaction — la batch gère la transaction globale
-                        false  // sendNotification — queued à la fin de la batch
-                    );
-                    $successItems[] = [
-                        'etudiant_id' => $item['etudiant_id'],
-                        'inscription_id' => $inscription->id,
-                        'decision' => $item['decision'],
-                    ];
-                } catch (\Throwable $e) {
-                    $errors[] = [
-                        'index' => $idx,
-                        'etudiant_id' => $item['etudiant_id'],
-                        'message' => $e->getMessage(),
-                    ];
-                }
+        foreach ($items as $idx => $item) {
+            // Validation payload minimale — pas de DB call
+            if (empty($item['etudiant_id']) || empty($item['classe_id']) || empty($item['decision'])) {
+                $errors[] = [
+                    'index' => $idx,
+                    'etudiant_id' => $item['etudiant_id'] ?? null,
+                    'matricule' => null,
+                    'nom_complet' => null,
+                    'error_type' => 'ValidationError',
+                    'message' => 'Payload incomplet (etudiant_id, classe_id ou decision manquant)',
+                ];
+                continue;
             }
 
-            // Strategy : si ANY échec → rollback global. Permet à l'opérateur de corriger
-            // puis relancer. Évite état partiel impossible à débugger.
-            if (!empty($errors)) {
+            // Récupère le contexte étudiant pour enrichir les messages d'erreur
+            // (utile au frontend pour afficher "MATRICULE — Nom : raison")
+            $etudiantContext = ESBTPEtudiant::select('id', 'matricule', 'nom', 'prenoms')
+                ->find($item['etudiant_id']);
+
+            $nomComplet = $etudiantContext
+                ? trim($etudiantContext->nom . ' ' . $etudiantContext->prenoms)
+                : null;
+
+            // Transaction PAR étudiant — isole chaque ligne
+            DB::beginTransaction();
+            try {
+                $inscription = $this->reeinscriptionService->effectuerReinscription(
+                    $item['etudiant_id'],
+                    $item['classe_id'],
+                    $item['decision'],
+                    $item['observations'] ?? null,
+                    $item['selected_optionals'] ?? [],
+                    $item['affectation_status'] ?? ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
+                    null, // anneeUniversitaireId
+                    $item['action_reliquat'] ?? null,
+                    true,  // skipTransaction — on gère la transaction au niveau de cette boucle
+                    false  // sendNotification — queued à la fin de la batch
+                );
+
+                // Tag batch_id en metadata (best-effort, dans la transaction)
+                try {
+                    \App\Models\ESBTPInscription::where('id', $inscription->id)->update([
+                        'reinscription_observations' => \DB::raw("CONCAT(COALESCE(reinscription_observations, ''), '\\n[BATCH " . $batchId . "]')"),
+                    ]);
+                } catch (\Throwable $e) { /* silent — batch_id metadata best-effort */ }
+
+                DB::commit();
+
+                $successItems[] = [
+                    'etudiant_id' => $item['etudiant_id'],
+                    'matricule' => $etudiantContext?->matricule,
+                    'nom_complet' => $nomComplet,
+                    'inscription_id' => $inscription->id,
+                    'decision' => $item['decision'],
+                ];
+            } catch (\Throwable $e) {
                 DB::rollBack();
-                Log::warning('BulkReinscription: rollback due to errors', [
+                Log::warning('BulkReinscription: per-student error', [
                     'batch_id' => $batchId,
-                    'errors_count' => count($errors),
-                    'success_attempts' => count($successItems),
+                    'etudiant_id' => $item['etudiant_id'],
+                    'matricule' => $etudiantContext?->matricule,
+                    'error_type' => class_basename($e),
+                    'error' => $e->getMessage(),
                 ]);
-                return [
-                    'success' => false,
-                    'success_count' => 0,
-                    'errors' => $errors,
-                    'batch_id' => $batchId,
-                    'message' => 'Aucune réinscription effectuée — corrigez les erreurs et relancez',
+                $errors[] = [
+                    'index' => $idx,
+                    'etudiant_id' => $item['etudiant_id'],
+                    'matricule' => $etudiantContext?->matricule,
+                    'nom_complet' => $nomComplet,
+                    'error_type' => class_basename($e),
+                    'message' => $e->getMessage(),
                 ];
             }
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error('BulkReinscription: critical error', [
-                'batch_id' => $batchId,
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-            ]);
-            return [
-                'success' => false,
-                'success_count' => 0,
-                'errors' => [['message' => 'Erreur critique : ' . $e->getMessage()]],
-                'batch_id' => $batchId,
-            ];
         }
 
-        // Queue notifications APRÈS commit pour éviter d'envoyer si rollback
+        // Queue notifications APRÈS toutes les transactions individuelles
         $this->queueNotifications($successItems, $batchId);
 
-        // Audit batch summary : log structuré + tag les nouvelles inscriptions avec batch_id
-        // pour pouvoir retrouver toute la batch via Audit.
-        Log::info('BulkReinscription: success', [
+        // Audit batch summary : log structuré
+        Log::info('BulkReinscription: batch completed', [
             'batch_id' => $batchId,
             'user_id' => $userId,
             'success_count' => count($successItems),
+            'error_count' => count($errors),
             'decisions_breakdown' => collect($successItems)->groupBy('decision')->map->count()->all(),
             'inscription_ids' => collect($successItems)->pluck('inscription_id')->all(),
             'etudiant_ids' => collect($successItems)->pluck('etudiant_id')->all(),
+            'failed_etudiant_ids' => collect($errors)->pluck('etudiant_id')->all(),
         ]);
 
-        // Marque chaque nouvelle inscription avec le batch_id en metadata pour traçabilité.
-        // Réutilise le champ reinscription_observations en mode append (sans écraser).
-        foreach ($successItems as $item) {
-            try {
-                \App\Models\ESBTPInscription::where('id', $item['inscription_id'])->update([
-                    'reinscription_observations' => \DB::raw("CONCAT(COALESCE(reinscription_observations, ''), '\\n[BATCH " . $batchId . "]')"),
-                ]);
-            } catch (\Throwable $e) { /* silent — batch_id metadata best-effort */ }
-        }
+        $allSuccess = empty($errors);
+        $message = $allSuccess
+            ? count($successItems) . ' réinscription(s) effectuée(s) avec succès'
+            : count($successItems) . ' réinscription(s) effectuée(s), ' . count($errors) . ' échec(s) à corriger';
 
         return [
-            'success' => true,
+            'success' => $allSuccess,
             'success_count' => count($successItems),
-            'errors' => [],
+            'error_count' => count($errors),
+            'success_list' => $successItems,
+            'error_list' => $errors,
+            // Retro-compat : 'errors' field name pour consommateurs existants
+            'errors' => $errors,
             'batch_id' => $batchId,
-            'message' => count($successItems) . ' réinscription(s) effectuée(s)',
+            'message' => $message,
         ];
     }
 

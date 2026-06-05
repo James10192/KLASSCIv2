@@ -188,12 +188,34 @@
                                     </div>
                                     <div class="brm-stat">
                                         <div class="brm-stat-label">Décision</div>
-                                        <select class="brm-stat-select" x-model="r.decision_override" @change="recomputeStats()">
-                                            <option value="">Auto (<span x-text="r.decision || '—'"></span>)</option>
-                                            <option value="passage">Passage</option>
-                                            <option value="rattrapage">Rattrapage</option>
-                                            <option value="redoublement">Redoublement</option>
-                                        </select>
+                                        <div class="brm-dd" x-data="brmDropdown()" @click.outside="open = false">
+                                            <button type="button" class="brm-dd-trigger"
+                                                    @click="open = !open"
+                                                    :class="{ 'brm-dd-trigger--open': open }">
+                                                <span x-text="r.decision_override
+                                                    ? (r.decision_override === 'passage' ? 'Passage' : (r.decision_override === 'rattrapage' ? 'Rattrapage' : 'Redoublement'))
+                                                    : ('Auto (' + (r.decision || '—') + ')')"></span>
+                                                <i class="fas fa-chevron-down brm-dd-caret" :class="{ 'brm-dd-caret--open': open }"></i>
+                                            </button>
+                                            <div class="brm-dd-menu" x-show="open" x-cloak x-transition.opacity>
+                                                <button type="button" class="brm-dd-item"
+                                                        @click="r.decision_override = ''; open = false; recomputeStats()">
+                                                    Auto (<span x-text="r.decision || '—'"></span>)
+                                                </button>
+                                                <button type="button" class="brm-dd-item"
+                                                        @click="r.decision_override = 'passage'; open = false; recomputeStats()">
+                                                    <i class="fas fa-arrow-up"></i> Passage
+                                                </button>
+                                                <button type="button" class="brm-dd-item"
+                                                        @click="r.decision_override = 'rattrapage'; open = false; recomputeStats()">
+                                                    <i class="fas fa-rotate"></i> Rattrapage
+                                                </button>
+                                                <button type="button" class="brm-dd-item"
+                                                        @click="r.decision_override = 'redoublement'; open = false; recomputeStats()">
+                                                    <i class="fas fa-arrows-rotate"></i> Redoublement
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="brm-stat">
                                         <div class="brm-stat-label">Solde</div>
@@ -207,30 +229,68 @@
                                 <div class="brm-result-config">
                                     <div class="brm-config-row">
                                         <label class="brm-config-label">Classe cible</label>
-                                        <select class="brm-config-select" x-model.number="r.target_classe_id">
-                                            <template x-if="r.suggested_classes && r.suggested_classes.length > 0">
-                                                <optgroup label="Suggestions auto">
-                                                    <template x-for="c in r.suggested_classes" :key="c.id">
-                                                        <option :value="c.id" x-text="c.name + ' (' + (c.filiere || '—') + ' · ' + (c.niveau || '—') + ')'"></option>
-                                                    </template>
-                                                </optgroup>
-                                            </template>
-                                            <template x-if="allClasses && allClasses.length > 0">
-                                                <optgroup label="Toutes les classes">
-                                                    <template x-for="c in allClasses" :key="'all-' + c.id">
-                                                        <option :value="c.id" x-text="c.name"></option>
-                                                    </template>
-                                                </optgroup>
-                                            </template>
-                                        </select>
+                                        <div class="brm-dd" x-data="brmDropdown()" @click.outside="open = false">
+                                            <button type="button" class="brm-dd-trigger"
+                                                    @click="open = !open"
+                                                    :class="{ 'brm-dd-trigger--open': open }">
+                                                <span x-text="(() => {
+                                                    if (!r.target_classe_id) return '— Aucune —';
+                                                    const suggested = (r.suggested_classes || []).find(c => c.id === r.target_classe_id);
+                                                    if (suggested) return suggested.name + ' (' + (suggested.filiere || '—') + ' · ' + (suggested.niveau || '—') + ')';
+                                                    const all = (allClasses || []).find(c => c.id === r.target_classe_id);
+                                                    return all ? all.name : ('Classe #' + r.target_classe_id);
+                                                })()"></span>
+                                                <i class="fas fa-chevron-down brm-dd-caret" :class="{ 'brm-dd-caret--open': open }"></i>
+                                            </button>
+                                            <div class="brm-dd-menu brm-dd-menu--scroll" x-show="open" x-cloak x-transition.opacity>
+                                                <template x-if="r.suggested_classes && r.suggested_classes.length > 0">
+                                                    <div>
+                                                        <div class="brm-dd-group">Suggestions auto</div>
+                                                        <template x-for="c in r.suggested_classes" :key="'sug-' + c.id">
+                                                            <button type="button" class="brm-dd-item"
+                                                                    :class="{ 'brm-dd-item--active': r.target_classe_id === c.id }"
+                                                                    @click="r.target_classe_id = c.id; open = false">
+                                                                <span x-text="c.name + ' (' + (c.filiere || '—') + ' · ' + (c.niveau || '—') + ')'"></span>
+                                                            </button>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                                <template x-if="allClasses && allClasses.length > 0">
+                                                    <div>
+                                                        <div class="brm-dd-group">Toutes les classes</div>
+                                                        <template x-for="c in allClasses" :key="'all-' + c.id">
+                                                            <button type="button" class="brm-dd-item"
+                                                                    :class="{ 'brm-dd-item--active': r.target_classe_id === c.id }"
+                                                                    @click="r.target_classe_id = c.id; open = false">
+                                                                <span x-text="c.name"></span>
+                                                            </button>
+                                                        </template>
+                                                    </div>
+                                                </template>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="brm-config-row">
                                         <label class="brm-config-label">Affectation</label>
-                                        <select class="brm-config-select" x-model="r.affectation_status">
-                                            <option value="affecté">Affecté</option>
-                                            <option value="non-affecté">Non-affecté</option>
-                                            <option value="réaffecté">Réaffecté</option>
-                                        </select>
+                                        <div class="brm-dd" x-data="brmDropdown()" @click.outside="open = false">
+                                            <button type="button" class="brm-dd-trigger"
+                                                    @click="open = !open"
+                                                    :class="{ 'brm-dd-trigger--open': open }">
+                                                <span x-text="r.affectation_status === 'non-affecté' ? 'Non-affecté' : (r.affectation_status === 'réaffecté' ? 'Réaffecté' : 'Affecté')"></span>
+                                                <i class="fas fa-chevron-down brm-dd-caret" :class="{ 'brm-dd-caret--open': open }"></i>
+                                            </button>
+                                            <div class="brm-dd-menu" x-show="open" x-cloak x-transition.opacity>
+                                                <button type="button" class="brm-dd-item"
+                                                        :class="{ 'brm-dd-item--active': r.affectation_status === 'affecté' }"
+                                                        @click="r.affectation_status = 'affecté'; open = false">Affecté</button>
+                                                <button type="button" class="brm-dd-item"
+                                                        :class="{ 'brm-dd-item--active': r.affectation_status === 'non-affecté' }"
+                                                        @click="r.affectation_status = 'non-affecté'; open = false">Non-affecté</button>
+                                                <button type="button" class="brm-dd-item"
+                                                        :class="{ 'brm-dd-item--active': r.affectation_status === 'réaffecté' }"
+                                                        @click="r.affectation_status = 'réaffecté'; open = false">Réaffecté</button>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="brm-config-row brm-config-row--wide">
                                         <label class="brm-config-label">Observations</label>
@@ -278,12 +338,60 @@
                     Analyser <span x-text="selectedIds.length"></span> étudiant(s)
                 </button>
                 <button type="button" class="brm-btn brm-btn--success"
-                        @click.prevent="executeBulk()"
+                        @click.prevent="requestExecuteBulk()"
                         :disabled="stats.eligible === 0 || executing"
                         x-show="step === 'results'" x-cloak>
                     <i class="fas fa-check-double"></i>
-                    Réinscrire <span x-text="stats.eligible"></span> étudiant(s)
+                    <span x-show="!executing">Réinscrire <span x-text="stats.eligible"></span> étudiant(s)</span>
+                    <span x-show="executing" x-cloak><i class="fas fa-spinner fa-spin"></i> Traitement…</span>
                 </button>
+            </div>
+
+            {{-- Dialog confirmation premium (remplace window.confirm() natif disruptif) --}}
+            <div class="brm-confirm-overlay" x-show="showConfirmDialog" x-cloak x-transition.opacity
+                 @keydown.escape.window="cancelConfirm()">
+                <div class="brm-confirm-dialog" @click.outside="cancelConfirm()">
+                    <div class="brm-confirm-icon"><i class="fas fa-circle-question"></i></div>
+                    <h6 class="brm-confirm-title">Confirmer la réinscription</h6>
+                    <p class="brm-confirm-text">
+                        Vous allez réinscrire <strong x-text="stats.eligible"></strong> étudiant(s).
+                        Chaque réinscription est traitée individuellement — un échec sur un étudiant
+                        n'annule pas les autres. Continuer ?
+                    </p>
+                    <div class="brm-confirm-actions">
+                        <button type="button" class="brm-btn brm-btn--ghost" @click="cancelConfirm()">
+                            Annuler
+                        </button>
+                        <button type="button" class="brm-btn brm-btn--success" @click="executeBulk()">
+                            <i class="fas fa-check-double"></i> Confirmer
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Panneau résultats post-exécution (visible si executionResults non null) --}}
+            <div class="brm-exec-results" x-show="executionResults && executionResults.error_count > 0" x-cloak>
+                <div class="brm-exec-section-bar brm-exec-section-bar--warn">
+                    <i class="fas fa-triangle-exclamation"></i>
+                    <span><strong>Résultat :</strong>
+                        <span x-text="executionResults.success_count"></span> succès,
+                        <span x-text="executionResults.error_count"></span> échec(s)
+                    </span>
+                </div>
+                <div class="brm-exec-errors-list">
+                    <template x-for="err in (executionResults?.error_list || [])" :key="'exec-err-' + err.etudiant_id">
+                        <div class="brm-exec-error-row">
+                            <div class="brm-exec-error-icon"><i class="fas fa-circle-xmark"></i></div>
+                            <div class="brm-exec-error-body">
+                                <div class="brm-exec-error-name">
+                                    <span x-text="err.matricule || ('#' + err.etudiant_id)"></span>
+                                    <span x-show="err.nom_complet" x-text="' — ' + err.nom_complet"></span>
+                                </div>
+                                <div class="brm-exec-error-msg" x-text="err.message"></div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
             </div>
         </div>
     </div>
@@ -359,6 +467,8 @@ window.__brmSharedFactory = function(modalId, students, decisionContext) {
             this.errors = [];
             this.loading = false;
             this.executing = false;
+            this.showConfirmDialog = false;
+            this.executionResults = null;
         },
 
         async analyze() {
@@ -408,11 +518,31 @@ window.__brmSharedFactory = function(modalId, students, decisionContext) {
             this.stats = s;
         },
 
-        async executeBulk() {
+        // Confirmation premium (état Alpine — pas de window.confirm() natif disruptif)
+        showConfirmDialog: false,
+        // Résultats post-submit affichés dans le modal (rule ajax-no-reload-premium)
+        executionResults: null,  // { success_list, error_list, success_count, error_count }
+
+        requestExecuteBulk() {
+            // Construit la liste d'items et déclenche la confirmation premium
             if (this.stats.eligible === 0 || this.executing) return;
-            if (!confirm(`Confirmer la réinscription de ${this.stats.eligible} étudiant(s) ? Action en transaction atomique — rollback complet si une erreur survient.`)) return;
-            this.executing = true;
-            const items = this.results
+            const items = this.buildItemsForExecute();
+            if (items.length === 0) {
+                window.dispatchEvent(new CustomEvent('toast', {
+                    detail: { type: 'warning', message: 'Aucun étudiant prêt à être réinscrit (classe cible manquante ou bloqué).' }
+                }));
+                window.klassciToast?.('warning', 'Aucun étudiant prêt à être réinscrit (classe cible manquante ou bloqué).');
+                return;
+            }
+            this.showConfirmDialog = true;
+        },
+
+        cancelConfirm() {
+            this.showConfirmDialog = false;
+        },
+
+        buildItemsForExecute() {
+            return this.results
                 .filter(r => r.peut_reinscrire && (r.decision_override || r.decision) !== 'inconnu' && r.target_classe_id)
                 .map(r => ({
                     etudiant_id: r.etudiant_id,
@@ -421,11 +551,13 @@ window.__brmSharedFactory = function(modalId, students, decisionContext) {
                     affectation_status: r.affectation_status || 'affecté',
                     observations: r.observations || null,
                 }));
-            if (items.length === 0) {
-                window.klassciToast?.('warning', 'Aucun étudiant prêt à être réinscrit (classe cible manquante ou bloqué).');
-                this.executing = false;
-                return;
-            }
+        },
+
+        async executeBulk() {
+            this.showConfirmDialog = false;
+            const items = this.buildItemsForExecute();
+            if (items.length === 0 || this.executing) return;
+            this.executing = true;
             try {
                 const res = await fetch('/esbtp/reinscription/api/bulk-execute', {
                     method: 'POST',
@@ -437,23 +569,88 @@ window.__brmSharedFactory = function(modalId, students, decisionContext) {
                     body: JSON.stringify({ items, decision_context: this.decisionContext }),
                 });
                 const data = await res.json();
-                if (!res.ok || !data.success) {
-                    const msg = data?.message || 'Échec batch';
-                    const errs = (data?.errors || []).map(e => e.message).join(' · ');
-                    window.klassciToast?.('error', msg + (errs ? ' — ' + errs : ''));
-                } else {
-                    window.klassciToast?.('success',
-                        `<strong>${data.success_count}</strong> réinscription(s) effectuée(s). Notifications email queuées.`);
-                    setTimeout(() => window.location.reload(), 1500);
+
+                // Toast récap global (succès partiel ou complet)
+                const successCount = data.success_count ?? 0;
+                const errorCount = data.error_count ?? (data.errors?.length ?? 0);
+
+                if (successCount > 0) {
+                    const msg = errorCount > 0
+                        ? `${successCount} réinscription(s) effectuée(s), ${errorCount} échec(s)`
+                        : `${successCount} réinscription(s) effectuée(s) avec succès`;
+                    window.dispatchEvent(new CustomEvent('toast', {
+                        detail: { type: errorCount > 0 ? 'warning' : 'success', message: msg }
+                    }));
+                    window.klassciToast?.(errorCount > 0 ? 'warning' : 'success', msg);
+                }
+
+                // Toast détaillé PAR étudiant en échec (ne pas concaténer en une seule ligne)
+                (data.error_list || data.errors || []).forEach(err => {
+                    const label = (err.matricule || '#' + (err.etudiant_id ?? '?')) +
+                                  (err.nom_complet ? ' — ' + err.nom_complet : '');
+                    const detailMsg = label + ' : ' + (err.message || 'Erreur inconnue');
+                    window.dispatchEvent(new CustomEvent('toast', {
+                        detail: { type: 'error', message: detailMsg, duration: 8000 }
+                    }));
+                    window.klassciToast?.('error', detailMsg);
+                });
+
+                // Si zéro succès et zéro detail → toast global d'erreur
+                if (successCount === 0 && errorCount === 0) {
+                    const msg = data?.message || 'Échec de la batch';
+                    window.dispatchEvent(new CustomEvent('toast', {
+                        detail: { type: 'error', message: msg }
+                    }));
+                    window.klassciToast?.('error', msg);
+                }
+
+                // Stocke les résultats pour affichage in-modal (panneau récapitulatif)
+                this.executionResults = {
+                    success_count: successCount,
+                    error_count: errorCount,
+                    success_list: data.success_list || [],
+                    error_list: data.error_list || data.errors || [],
+                };
+
+                // Refresh local sans reload (rule ajax-no-reload-premium)
+                window.dispatchEvent(new CustomEvent('reinscription:refresh', {
+                    detail: { batch_id: data.batch_id, success_count: successCount }
+                }));
+
+                // Si tout est OK, fermer le modal après un court délai
+                if (errorCount === 0 && successCount > 0) {
+                    setTimeout(() => {
+                        const modalEl = document.getElementById(this.modalId);
+                        if (modalEl && window.bootstrap?.Modal?.getInstance) {
+                            const instance = window.bootstrap.Modal.getInstance(modalEl);
+                            instance?.hide();
+                        }
+                        // Retirer du DOM les étudiants réinscrits (refresh local visuel)
+                        const successIds = (data.success_list || []).map(s => s.etudiant_id);
+                        this.students = this.students.filter(s => !successIds.includes(s.id));
+                        this.selectedIds = [];
+                    }, 1500);
                 }
             } catch (err) {
-                window.klassciToast?.('error', err.message || 'Erreur batch');
+                const msg = err.message || 'Erreur batch';
+                window.dispatchEvent(new CustomEvent('toast', {
+                    detail: { type: 'error', message: msg }
+                }));
+                window.klassciToast?.('error', msg);
             } finally {
                 this.executing = false;
             }
         },
     };
 };
+
+// Factory dropdown premium réutilisable (remplace les <select> natifs)
+// Idempotency guard : ne pas re-déclarer si déjà défini (rule premium-selects AJAX-safe)
+if (typeof window.brmDropdown !== 'function') {
+    window.brmDropdown = function () {
+        return { open: false };
+    };
+}
 </script>
 @endpush
 @endonce
@@ -602,6 +799,107 @@ window.{{ $alpineFactory }} = function() {
 .brm-btn--success:hover { box-shadow: 0 8px 20px rgba(16,185,129,.35); }
 .brm-btn--success:disabled { opacity: .55; cursor: not-allowed; }
 .brm-btn--sm { padding: .35rem .75rem; font-size: .75rem; }
+
+/* Dropdown premium (remplace les <select> natifs — rule premium-selects) */
+.brm-dd { position: relative; width: 100%; }
+.brm-dd-trigger {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    gap: .35rem; padding: .35rem .55rem;
+    border: 1px solid #cbd5e1; border-radius: 6px;
+    background: #fff; color: #0f172a;
+    font-size: .76rem; font-weight: 600;
+    cursor: pointer; text-align: left;
+    transition: border-color .15s, box-shadow .15s;
+}
+.brm-dd-trigger:hover { border-color: #94a3b8; }
+.brm-dd-trigger--open,
+.brm-dd-trigger:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 2px rgba(4,83,203,.15); }
+.brm-dd-trigger span:first-child { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.brm-dd-caret { font-size: .65rem; color: #64748b; transition: transform .15s; }
+.brm-dd-caret--open { transform: rotate(180deg); color: #0453cb; }
+.brm-dd-menu {
+    position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+    box-shadow: 0 8px 24px rgba(4,83,203,.12), 0 2px 6px rgba(15,23,42,.06);
+    z-index: 1080; padding: .25rem;
+    max-height: 240px; overflow-y: auto;
+}
+.brm-dd-menu--scroll { max-height: 280px; }
+.brm-dd-group {
+    font-size: .62rem; font-weight: 700; color: #64748b;
+    text-transform: uppercase; letter-spacing: .4px;
+    padding: .4rem .55rem .25rem;
+}
+.brm-dd-item {
+    display: flex; align-items: center; gap: .4rem;
+    width: 100%; padding: .4rem .55rem;
+    border: none; background: transparent;
+    font-size: .76rem; font-weight: 500; color: #0f172a;
+    text-align: left; cursor: pointer; border-radius: 5px;
+    transition: background .12s;
+}
+.brm-dd-item:hover { background: rgba(4,83,203,.06); color: #0453cb; }
+.brm-dd-item--active { background: rgba(4,83,203,.10); color: #0453cb; font-weight: 700; }
+.brm-dd-item i { font-size: .7rem; color: #64748b; }
+.brm-dd-item--active i { color: #0453cb; }
+
+/* Dialog confirmation premium (remplace window.confirm() natif) */
+.brm-confirm-overlay {
+    position: absolute; inset: 0;
+    background: rgba(15,23,42,.55);
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem; z-index: 1090;
+    border-radius: 16px;
+}
+.brm-confirm-dialog {
+    background: #fff; border-radius: 14px;
+    box-shadow: 0 24px 60px rgba(15,23,42,.25);
+    padding: 1.5rem 1.25rem 1.15rem;
+    max-width: 420px; width: 100%;
+    text-align: center;
+}
+.brm-confirm-icon {
+    width: 52px; height: 52px; border-radius: 50%;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff; font-size: 1.4rem;
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto .75rem;
+    box-shadow: 0 6px 18px rgba(4,83,203,.25);
+}
+.brm-confirm-title { font-size: 1rem; font-weight: 700; color: #0f172a; margin: 0 0 .4rem; }
+.brm-confirm-text { font-size: .82rem; color: #475569; margin: 0 0 1.1rem; line-height: 1.5; }
+.brm-confirm-actions { display: flex; gap: .5rem; justify-content: center; }
+.brm-confirm-actions .brm-btn { flex: 1; justify-content: center; }
+
+/* Panneau résultats post-exécution (échecs à corriger) */
+.brm-exec-results {
+    margin-top: 1rem; padding: .85rem;
+    background: rgba(245,158,11,.04);
+    border: 1px solid rgba(245,158,11,.25);
+    border-radius: 10px;
+}
+.brm-exec-section-bar {
+    display: flex; align-items: center; gap: .5rem;
+    padding: .45rem .7rem; border-radius: 6px;
+    font-size: .82rem; color: #1e293b;
+    margin-bottom: .7rem;
+}
+.brm-exec-section-bar--warn {
+    background: rgba(245,158,11,.10);
+    border-left: 3px solid #f59e0b;
+}
+.brm-exec-section-bar--warn i { color: #b45309; }
+.brm-exec-errors-list { display: flex; flex-direction: column; gap: .4rem; }
+.brm-exec-error-row {
+    display: flex; gap: .55rem; align-items: flex-start;
+    padding: .55rem .7rem;
+    background: #fff; border: 1px solid rgba(220,38,38,.2);
+    border-radius: 8px;
+}
+.brm-exec-error-icon { color: #dc2626; font-size: .9rem; padding-top: .1rem; flex-shrink: 0; }
+.brm-exec-error-body { flex: 1; min-width: 0; }
+.brm-exec-error-name { font-size: .78rem; font-weight: 700; color: #0f172a; }
+.brm-exec-error-msg { font-size: .72rem; color: #b91c1c; margin-top: .15rem; word-break: break-word; }
 </style>
 @endpush
 @endonce

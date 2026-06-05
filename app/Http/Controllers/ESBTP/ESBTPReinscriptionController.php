@@ -1443,6 +1443,11 @@ class ESBTPReinscriptionController extends Controller
         }
 
         $result = $bulkService->executeBulk($items);
-        return response()->json($result, $result['success'] ? 200 : 422);
+
+        // HTTP 200 dès qu'on a au moins 1 succès — le frontend lit success_count +
+        // error_count pour afficher les toasts détaillés par étudiant (rule
+        // ajax-no-reload-premium). HTTP 422 uniquement si TOUT a échoué.
+        $hasAnySuccess = ($result['success_count'] ?? 0) > 0;
+        return response()->json($result, $hasAnySuccess ? 200 : 422);
     }
 }
