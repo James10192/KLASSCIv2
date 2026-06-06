@@ -422,6 +422,176 @@
     .cs-kpis { grid-template-columns: 1fr; }
     .cs-matieres-grid { grid-template-columns: 1fr; }
 }
+
+/* ===== Sorties spécialités (TC) ===== */
+.cs-orientation-list {
+    display: flex; flex-direction: column;
+    gap: .55rem;
+    margin-bottom: 1.25rem;
+}
+.cs-orientation-row {
+    display: flex; align-items: center;
+    gap: .9rem;
+    padding: .8rem 1rem;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(15,23,42,.04);
+    transition: border-color .15s, box-shadow .15s, opacity .15s;
+}
+.cs-orientation-row:hover {
+    border-color: rgba(4,83,203,.25);
+    box-shadow: 0 4px 14px rgba(4,83,203,.06);
+}
+.cs-orientation-row--inactive {
+    opacity: .55;
+    background: #f8fafc;
+}
+.cs-orientation-row-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .92rem;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(4,83,203,.18);
+}
+.cs-orientation-row-body { flex: 1; min-width: 0; }
+.cs-orientation-row-name {
+    font-size: .92rem;
+    font-weight: 700;
+    color: var(--cs-text);
+    line-height: 1.2;
+}
+.cs-orientation-row-meta {
+    display: flex; flex-wrap: wrap;
+    gap: .4rem .85rem;
+    margin-top: .25rem;
+    font-size: .73rem;
+    color: var(--cs-muted);
+}
+.cs-orientation-row-meta i {
+    color: #0453cb;
+    margin-right: .25rem;
+    font-size: .72rem;
+}
+.cs-orientation-row-actions {
+    display: flex; align-items: center;
+    gap: .65rem;
+    flex-shrink: 0;
+}
+.cs-orientation-del {
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    background: rgba(220,38,38,.08);
+    color: #dc2626;
+    border: 1px solid rgba(220,38,38,.2);
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .85rem;
+    transition: background .15s, color .15s;
+}
+.cs-orientation-del:hover {
+    background: #dc2626;
+    color: #fff;
+}
+
+.cs-toggle {
+    position: relative;
+    display: inline-block;
+    width: 38px; height: 22px;
+    cursor: pointer;
+}
+.cs-toggle input { opacity: 0; width: 0; height: 0; }
+.cs-toggle-track {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    background: #cbd5e1;
+    border-radius: 999px;
+    transition: background .2s;
+}
+.cs-toggle-track::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 18px; height: 18px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform .2s;
+    box-shadow: 0 1px 3px rgba(15,23,42,.2);
+}
+.cs-toggle input:checked + .cs-toggle-track { background: #0453cb; }
+.cs-toggle input:checked + .cs-toggle-track::after { transform: translateX(16px); }
+
+.cs-orientation-form {
+    background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06));
+    border: 1px solid rgba(4,83,203,.18);
+    border-radius: 14px;
+    padding: 1rem 1.15rem 1.15rem;
+    margin-top: .5rem;
+}
+.cs-orientation-form-header {
+    display: flex; align-items: center;
+    gap: .5rem;
+    font-size: .85rem;
+    font-weight: 700;
+    color: var(--cs-text);
+    margin-bottom: .85rem;
+}
+.cs-orientation-form-header i { color: #0453cb; }
+.cs-orientation-form-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+    gap: .8rem;
+}
+.cs-orientation-form-field { display: flex; flex-direction: column; gap: .35rem; }
+.cs-orientation-form-field label {
+    font-size: .72rem;
+    font-weight: 600;
+    color: var(--cs-muted);
+    text-transform: uppercase;
+    letter-spacing: .4px;
+}
+.cs-orientation-input {
+    width: 100%;
+    padding: .55rem .75rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: .85rem;
+    background: #fff;
+    transition: border-color .15s, box-shadow .15s;
+}
+.cs-orientation-input:focus {
+    outline: none;
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+}
+.cs-orientation-form-actions {
+    display: flex; justify-content: flex-end;
+    margin-top: .85rem;
+}
+.cs-orientation-empty-candidates {
+    display: flex; align-items: flex-start;
+    gap: .75rem;
+    padding: .8rem 1rem;
+    background: rgba(245,158,11,.08);
+    border: 1px solid rgba(245,158,11,.25);
+    border-radius: 10px;
+    font-size: .82rem;
+    color: #92400e;
+    line-height: 1.5;
+}
+.cs-orientation-empty-candidates i {
+    color: #f59e0b;
+    font-size: 1.05rem;
+    margin-top: .15rem;
+    flex-shrink: 0;
+}
+
+@media (max-width: 768px) {
+    .cs-orientation-form-grid { grid-template-columns: 1fr; }
+    .cs-orientation-row { flex-wrap: wrap; }
+}
 </style>
 @endpush
 
@@ -737,9 +907,15 @@
         </div>
 
         {{-- TABS Alpine --}}
+        @php
+            $showOrientationTab = ($isClasseTC ?? false);
+            $allowedTabs = ['etudiants','matieres','heures'];
+            if ($showOrientationTab) { $allowedTabs[] = 'orientation'; }
+            $allowedTabsJson = json_encode($allowedTabs);
+        @endphp
         <div class="cs-tabs"
              x-data="{
-                tab: (location.hash && ['etudiants','matieres','heures'].includes(location.hash.slice(1))) ? location.hash.slice(1) : 'etudiants',
+                tab: (location.hash && {{ $allowedTabsJson }}.includes(location.hash.slice(1))) ? location.hash.slice(1) : 'etudiants',
                 setTab(name) { this.tab = name; history.replaceState(null, '', '#' + name); }
              }"
              x-cloak>
@@ -755,6 +931,12 @@
                 <button type="button" class="cs-tab" :class="{ 'cs-tab--active': tab === 'heures' }" @click="setTab('heures')">
                     <i class="fas fa-chart-line"></i>Suivi des heures
                 </button>
+                @if($showOrientationTab)
+                    <button type="button" class="cs-tab" :class="{ 'cs-tab--active': tab === 'orientation' }" @click="setTab('orientation')">
+                        <i class="fas fa-sitemap"></i>Sorties spécialités
+                        <span class="cs-tab-badge">{{ $orientationTargets->count() }}</span>
+                    </button>
+                @endif
             </div>
 
             {{-- TAB ÉTUDIANTS --}}
@@ -1041,6 +1223,161 @@
                     @endif {{-- end if LMD/BTS --}}
                 </div>
             </div>
+
+            {{-- TAB SORTIES SPÉCIALITÉS (TC uniquement) --}}
+            @if($showOrientationTab)
+                <div class="cs-tab-panel" x-show="tab === 'orientation'" x-cloak>
+                    @php
+                        $canManageTargets = auth()->user()->can('bts_tronc_commun.manage_targets');
+                        $orientationTargetsJson = $orientationTargets->map(function ($t) {
+                            return [
+                                'id' => $t->id,
+                                'target_classe_id' => (int) $t->target_classe_id,
+                                'target_name' => optional($t->targetClasse)->name,
+                                'target_code' => optional($t->targetClasse)->code,
+                                'target_filiere_name' => optional(optional($t->targetClasse)->filiere)->name,
+                                'target_niveau_name' => optional(optional($t->targetClasse)->niveau)->name,
+                                'semestre_activation' => $t->semestre_activation,
+                                'is_active' => (bool) $t->is_active,
+                                'notes' => $t->notes,
+                            ];
+                        })->values()->all();
+                    @endphp
+
+                    <div x-data="csOrientationManager()" x-init="init()">
+                        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;">
+                            <div>
+                                <h4 style="margin:0;font-size:.95rem;font-weight:700;color:var(--cs-text);">
+                                    <i class="fas fa-sitemap" style="color:#0453cb;margin-right:.4rem;"></i>Sorties spécialités configurées
+                                </h4>
+                                <p style="margin:.2rem 0 0;font-size:.78rem;color:var(--cs-muted);max-width:680px;line-height:1.4;">
+                                    Configurez les classes-spécialités vers lesquelles les étudiants de cette classe TC peuvent être orientés en fin de tronc commun.
+                                    L'override manuel ici prévaut sur la hiérarchie filière automatique
+                                    @if($orientationFiliereParentName)
+                                        @if($orientationHasFilles)
+                                            (filles de <strong>{{ $classe->filiere->name }}</strong>).
+                                        @else
+                                            (aucune filière fille configurée pour <strong>{{ $classe->filiere->name }}</strong> — fallback : toutes les filières non-TC du niveau).
+                                        @endif
+                                    @else
+                                        .
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+
+                        {{-- Liste des sorties configurées --}}
+                        <div class="cs-orientation-list">
+                            <template x-for="t in targets" :key="t.id">
+                                <div class="cs-orientation-row" :class="t.is_active ? '' : 'cs-orientation-row--inactive'">
+                                    <div class="cs-orientation-row-icon">
+                                        <i class="fas fa-graduation-cap"></i>
+                                    </div>
+                                    <div class="cs-orientation-row-body">
+                                        <div class="cs-orientation-row-name" x-text="t.target_name"></div>
+                                        <div class="cs-orientation-row-meta">
+                                            <span x-show="t.target_code" x-text="t.target_code"></span>
+                                            <span x-show="t.target_filiere_name"><i class="fas fa-layer-group"></i><span x-text="t.target_filiere_name"></span></span>
+                                            <span x-show="t.target_niveau_name"><i class="fas fa-level-up-alt"></i><span x-text="t.target_niveau_name"></span></span>
+                                            <span x-show="t.semestre_activation"><i class="fas fa-clock"></i>Semestre <span x-text="t.semestre_activation"></span></span>
+                                        </div>
+                                    </div>
+                                    <div class="cs-orientation-row-actions">
+                                        @if($canManageTargets)
+                                            <label class="cs-toggle" :title="t.is_active ? 'Désactiver' : 'Activer'">
+                                                <input type="checkbox" :checked="t.is_active" @change="toggle(t)">
+                                                <span class="cs-toggle-track"></span>
+                                            </label>
+                                            <button type="button" class="cs-orientation-del" @click="remove(t)" title="Retirer cette sortie">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        @endif
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+
+                        <div class="cs-empty" x-show="targets.length === 0" x-cloak>
+                            <div class="cs-empty-icon"><i class="fas fa-sitemap"></i></div>
+                            <div class="cs-empty-title">Aucune sortie spécialité configurée</div>
+                            <div class="cs-empty-text">
+                                @if($canManageTargets)
+                                    Ajoutez la première spécialité ci-dessous. Les étudiants de cette classe TC pourront ensuite être orientés vers ces classes en fin de semestre.
+                                @else
+                                    Contactez un administrateur pour configurer les sorties de spécialité de cette classe.
+                                @endif
+                            </div>
+                        </div>
+
+                        @if($canManageTargets)
+                            {{-- Formulaire d'ajout --}}
+                            <div class="cs-orientation-form">
+                                <div class="cs-orientation-form-header">
+                                    <i class="fas fa-plus-circle"></i>
+                                    <span>Ajouter une sortie</span>
+                                </div>
+
+                                <div class="cs-orientation-form-body">
+                                    @if($orientationCandidates->isEmpty())
+                                        <div class="cs-orientation-empty-candidates">
+                                            <i class="fas fa-info-circle"></i>
+                                            <div>
+                                                @if($orientationHasFilles)
+                                                    Toutes les classes-spécialités des filières filles ({{ $orientationCandidates->count() === 0 ? 'au niveau ' . optional($classe->niveau)->name : '' }}) sont déjà configurées.
+                                                @else
+                                                    Aucune classe candidate disponible au niveau {{ optional($classe->niveau)->name }}.
+                                                    Configurez les filières filles de <strong>{{ optional($classe->filiere)->name }}</strong> (parent_id = TC.id) pour proposer des sorties automatiques,
+                                                    ou créez des classes non-TC au même niveau.
+                                                </div>
+                                            @endif
+                                        </div>
+                                    @else
+                                        <div class="cs-orientation-form-grid">
+                                            <div class="cs-orientation-form-field cs-orientation-form-field--grow">
+                                                <label>Classe spécialité</label>
+                                                <x-au-select
+                                                    name="add_target_classe_id"
+                                                    placeholder="Sélectionner une classe-spécialité"
+                                                    icon="fa-graduation-cap"
+                                                    :searchable="$orientationCandidates->count() > 6"
+                                                    x-model="form.target_classe_id"
+                                                    :options="$orientationCandidates->mapWithKeys(fn ($c) => [$c->id => $c->name . ($c->filiere ? ' — ' . $c->filiere->name : '')])->all()" />
+                                            </div>
+                                            <div class="cs-orientation-form-field">
+                                                <label>Semestre d'activation</label>
+                                                <x-au-select
+                                                    name="add_semestre_activation"
+                                                    placeholder="Semestre 2"
+                                                    icon="fa-clock"
+                                                    x-model="form.semestre_activation"
+                                                    :options="[
+                                                        '1' => 'Semestre 1',
+                                                        '2' => 'Semestre 2',
+                                                        '3' => 'Semestre 3',
+                                                        '4' => 'Semestre 4',
+                                                        '5' => 'Semestre 5',
+                                                        '6' => 'Semestre 6',
+                                                    ]" />
+                                            </div>
+                                        </div>
+                                        <div class="cs-orientation-form-field" style="margin-top:.7rem;">
+                                            <label>Notes (optionnel)</label>
+                                            <input type="text" class="cs-orientation-input" maxlength="500" placeholder="ex : ouverte uniquement aux meilleurs étudiants…" x-model="form.notes">
+                                        </div>
+                                        <div class="cs-orientation-form-actions">
+                                            <button type="button" class="cs-btn--primary" :disabled="saving || !form.target_classe_id" @click="add()">
+                                                <i class="fas fa-plus"></i>
+                                                <span x-show="!saving">Ajouter la sortie</span>
+                                                <span x-show="saving" x-cloak>Ajout…</span>
+                                            </button>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
         </div>
     </div>
 </div>
@@ -1621,4 +1958,111 @@ $(document).ready(function() {
     });
 });
 </script>
+
+@if($showOrientationTab ?? false)
+@php $_csOrientationTargets = $orientationTargetsJson ?? []; @endphp
+<script>
+// Factory Alpine — gestion AJAX no-reload des sorties spécialités d'une classe TC.
+// Pattern conforme rule ajax-no-reload-premium : fetch JSON + maj du state local
+// + toast pour feedback. Idempotency guard pour éviter le double-register
+// (rule premium-selects, partials AJAX-safe).
+if (typeof window.csOrientationManager !== 'function') {
+    window.csOrientationManager = function () {
+        return {
+            targets: @json($_csOrientationTargets),
+            saving: false,
+            form: {
+                target_classe_id: '',
+                semestre_activation: '2',
+                notes: '',
+            },
+            csrf: '',
+            init() {
+                this.csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+            },
+            async add() {
+                if (!this.form.target_classe_id) return;
+                this.saving = true;
+                try {
+                    const res = await fetch('{{ route('esbtp.classes.orientation-targets.add', ['classe' => $classe->id]) }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': this.csrf,
+                        },
+                        body: JSON.stringify({
+                            target_classe_id: parseInt(this.form.target_classe_id, 10),
+                            semestre_activation: parseInt(this.form.semestre_activation, 10) || 2,
+                            notes: this.form.notes || null,
+                        }),
+                    });
+                    if (!res.ok) {
+                        const err = await res.json().catch(() => ({}));
+                        throw new Error(err.message || 'Erreur HTTP ' + res.status);
+                    }
+                    const data = await res.json();
+                    this.targets.push(data.target);
+                    this.form = { target_classe_id: '', semestre_activation: '2', notes: '' };
+                    this._toast('success', 'Sortie ajoutée. Rechargez la page pour voir la liste mise à jour des candidates.');
+                } catch (err) {
+                    this._toast('error', err.message || 'Erreur réseau');
+                } finally {
+                    this.saving = false;
+                }
+            },
+            async toggle(t) {
+                const prev = t.is_active;
+                t.is_active = !t.is_active;
+                try {
+                    const res = await fetch('{{ route('esbtp.classes.orientation-targets.toggle', ['classe' => $classe->id, 'target' => '__ID__']) }}'.replace('__ID__', t.id), {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': this.csrf,
+                        },
+                        body: JSON.stringify({ is_active: t.is_active }),
+                    });
+                    if (!res.ok) throw new Error('Erreur HTTP ' + res.status);
+                    const data = await res.json();
+                    t.is_active = data.is_active;
+                    this._toast('success', t.is_active ? 'Sortie activée.' : 'Sortie désactivée.');
+                } catch (err) {
+                    t.is_active = prev;
+                    this._toast('error', err.message || 'Erreur réseau');
+                }
+            },
+            async remove(t) {
+                if (!confirm('Retirer cette sortie spécialité ?')) return;
+                try {
+                    const res = await fetch('{{ route('esbtp.classes.orientation-targets.remove', ['classe' => $classe->id, 'target' => '__ID__']) }}'.replace('__ID__', t.id), {
+                        method: 'DELETE',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-CSRF-TOKEN': this.csrf,
+                        },
+                    });
+                    if (!res.ok) throw new Error('Erreur HTTP ' + res.status);
+                    this.targets = this.targets.filter(x => x.id !== t.id);
+                    this._toast('success', 'Sortie retirée.');
+                } catch (err) {
+                    this._toast('error', err.message || 'Erreur réseau');
+                }
+            },
+            _toast(type, message) {
+                if (typeof showNotification === 'function') {
+                    showNotification(type === 'success' ? 'success' : 'danger', message);
+                    return;
+                }
+                window.dispatchEvent(new CustomEvent('toast', {
+                    detail: { type: type, message: message },
+                }));
+            },
+        };
+    };
+}
+</script>
+@endif
+
 @endpush

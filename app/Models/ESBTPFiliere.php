@@ -174,6 +174,18 @@ class ESBTPFiliere extends Model
     }
 
     /**
+     * Vérifie si cette filière est une "fille" (spécialité) d'un tronc commun :
+     *  - elle n'est pas elle-même un TC
+     *  - elle a un parent_id défini (rattachée à une filière mère qui est le TC)
+     *
+     * Sur classes.index, ce flag détermine l'affichage du badge « Spécialité ».
+     */
+    public function isFilleDeTC(): bool
+    {
+        return !$this->isTroncCommun() && !empty($this->parent_id);
+    }
+
+    /**
      * Récupère les spécialisations disponibles (filières enfants).
      */
     public function getSpecialisations()

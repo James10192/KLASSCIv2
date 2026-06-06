@@ -170,6 +170,78 @@ class ESBTPClasse extends Model implements Auditable
     }
 
     /**
+     * Vérifie si cette classe appartient à une filière marquée tronc commun.
+     * Utilisé pour afficher le badge « Tronc commun » sur classes.index et la
+     * section « Sorties spécialités » sur classes.show.
+     */
+    public function isTroncCommun(): bool
+    {
+        return optional($this->filiere)->isTroncCommun() ?? false;
+    }
+
+    /**
+     * Vérifie si cette classe est une spécialité (sa filière est fille d'un TC).
+     * Utilisé pour afficher le badge « Spécialité » + provenance sur classes.index.
+     */
+    public function isSpecialite(): bool
+    {
+        return optional($this->filiere)->isFilleDeTC() ?? false;
+    }
+
+    /**
+     * Retourne la classe TC parent dont cette classe est une spécialité.
+     *
+     * Priorité d'override (Marcel, juin 2026) :
+     *  1. Si la classe apparaît comme `target_classe_id` dans un
+     *     `esbtp_classe_orientation_targets` actif, la TC source de ce mapping
+     *     manuel est la priorité (override config admin).
+     *  2. Sinon, fallback automatique via la hiérarchie filière (parent_id) :
+     *     on cherche la classe TC du même niveau d'études dans la filière
+     *     `parent` de la classe courante.
+     *
+     * Renvoie null si non applicable (classe TC, classe sans parent_id filière,
+     * pas de classe TC trouvée au même niveau).
+     *
+     * Note : les classes KLASSCI sont universelles
+     * (cf rule classes-universelles-pas-annee.md), donc on ne filtre PAS par
+     * annee_universitaire_id.
+     */
+    public function classeTroncCommunParent(): ?ESBTPClasse
+    {
+        if ($this->isTroncCommun() || !$this->isSpecialite()) {
+            return null;
+        }
+
+        // 1. Override manuel : la classe est target dans un mapping actif → la source est le TC parent
+        $manual = \Illuminate\Support\Facades\DB::table('esbtp_classe_orientation_targets')
+            ->where('target_classe_id', $this->id)
+            ->where('is_active', true)
+            ->orderBy('id')
+            ->value('source_classe_id');
+
+        if ($manual) {
+            $source = static::find($manual);
+            if ($source && $source->isTroncCommun()) {
+                return $source;
+            }
+        }
+
+        // 2. Fallback hiérarchie filière : on cherche la classe TC du même niveau
+        // dans la filière parent (la filière TC mère de la spécialité courante).
+        $filiereParentId = optional($this->filiere)->parent_id;
+        if (!$filiereParentId) {
+            return null;
+        }
+
+        return static::query()
+            ->where('filiere_id', $filiereParentId)
+            ->where('niveau_etude_id', $this->niveau_etude_id)
+            ->where('is_active', true)
+            ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', true))
+            ->first();
+    }
+
+    /**
      * Retourne les 2 semestres autorises pour cette classe LMD.
      * L1 (year=1) → [1,2], L2 (year=2) → [3,4], L3 → [5,6], M1 → [7,8], M2 → [9,10]
      */

@@ -609,6 +609,56 @@
     font-weight: 400;
 }
 
+/* Badges TC / Spécialité — affichés dans le header de la card pour identifier
+   d'un coup d'oeil les classes de tronc commun vs les spécialités. Palette
+   monochrome bleu (rule premium-redesign) + couleur sémantique success pour
+   distinguer spécialité (verte = vers où l'étudiant orientera son parcours). */
+.ci-card-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .3rem;
+    margin-top: .35rem;
+}
+.ci-tc-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .3rem;
+    padding: .15rem .55rem;
+    border-radius: 6px;
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .3px;
+    line-height: 1;
+}
+.ci-tc-badge i { font-size: .7rem; }
+.ci-tc-badge--tc {
+    background: rgba(4,83,203,.12);
+    color: #0453cb;
+    border: 1px solid rgba(4,83,203,.25);
+}
+.ci-tc-badge--spe {
+    background: rgba(16,185,129,.12);
+    color: #047857;
+    border: 1px solid rgba(16,185,129,.25);
+}
+.ci-card-from {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    margin-top: .3rem;
+    font-size: .72rem;
+    color: var(--ci-muted);
+}
+.ci-card-from i {
+    color: #0453cb;
+    font-size: .7rem;
+}
+.ci-card-from strong {
+    color: #1e293b;
+    font-weight: 600;
+}
+
 .ci-card-stats {
     display: flex;
     align-items: center;

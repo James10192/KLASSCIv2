@@ -15,6 +15,15 @@
         : 0;
     $occLevel = $occupation >= 95 ? 'full' : ($occupation >= 75 ? 'high' : ($occupation >= 40 ? 'mid' : 'low'));
     $showUrl = route('esbtp.classes.show', array_merge(['classe' => $classe->id], request()->query()));
+
+    // Badges Tronc Commun / Spécialité (cf rule classes-universelles-pas-annee + parent_id).
+    // `isTroncCommun()` et `isSpecialite()` sont des helpers ESBTPClasse qui inspectent
+    // la filière (is_tronc_commun + parent_id). Le parent TC est résolu en priorité via
+    // un mapping manuel esbtp_classe_orientation_targets (override admin), avec fallback
+    // automatique via la hiérarchie filière. Voir ESBTPClasse::classeTroncCommunParent().
+    $bIsTC = $classe->isTroncCommun();
+    $bIsSpe = $classe->isSpecialite();
+    $bParentTC = $bIsSpe ? $classe->classeTroncCommunParent() : null;
 @endphp
 
 <article class="ci-card {{ $classe->is_active ? '' : 'ci-card--inactive' }}" data-classe-id="{{ $classe->id }}">
@@ -33,6 +42,21 @@
                     <a href="{{ $showUrl }}" class="stretched-link ci-card-link" title="Voir les détails">{{ $classe->name }}</a>
                 </h3>
                 <span class="ci-card-code">{{ $classe->code }}</span>
+                @if($bIsTC || $bIsSpe)
+                    <div class="ci-card-badges">
+                        @if($bIsTC)
+                            <span class="ci-tc-badge ci-tc-badge--tc" title="Classe rattachée à une filière marquée tronc commun"><i class="fas fa-sitemap"></i>Tronc commun</span>
+                        @elseif($bIsSpe)
+                            <span class="ci-tc-badge ci-tc-badge--spe" title="Classe issue d'une spécialité d'un tronc commun"><i class="fas fa-graduation-cap"></i>Spécialité</span>
+                        @endif
+                    </div>
+                    @if($bIsSpe && $bParentTC)
+                        <div class="ci-card-from" title="Classe TC d'origine pour cette spécialité">
+                            <i class="fas fa-arrow-up-from-bracket"></i>
+                            <span>Sort de <strong>{{ $bParentTC->name }}</strong></span>
+                        </div>
+                    @endif
+                @endif
             </div>
         </div>
 

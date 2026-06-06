@@ -8,6 +8,7 @@ use App\Http\Requests\Classe\StoreClasseRequest;
 use App\Http\Requests\Classe\UpdateClasseRequest;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPClasseOrientationTarget;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPFiliere;
 use App\Models\ESBTPInscription;
@@ -71,7 +72,9 @@ class ESBTPClasseController extends Controller
         // Construction de la requête avec filtres.
         // Eager-load parcours.mention.domaine pour le tree LMD compact dans les cards
         // (cf classe-card.blade.php). Sans ça, chaque card LMD déclenche 3 queries N+1.
-        $query = ESBTPClasse::with(["filiere", "niveau", "annee", "parcours.mention.domaine"]);
+        // Eager-load filiere.parent : nécessaire pour afficher le badge « Spécialité »
+        // + provenance (« Sort de ... ») sur chaque card (cf classe-card.blade.php).
+        $query = ESBTPClasse::with(["filiere.parent", "niveau", "annee", "parcours.mention.domaine"]);
 
         // Filtres disponibles
         if ($request->filled("filiere_id")) {
@@ -601,6 +604,55 @@ class ESBTPClasseController extends Controller
                 ->orderBy('name')
                 ->get(['id', 'name', 'code', 'filiere_id', 'niveau_etude_id', 'places_totales']);
 
+            // BTS Tronc Commun : préparer données pour la section « Sorties spécialités »
+            // Pattern identique à ESBTPFiliereController::show() avec override manuel
+            // prioritaire (esbtp_classe_orientation_targets) puis fallback hiérarchie
+            // filière (parent_id). Les classes KLASSCI sont universelles
+            // (cf rule classes-universelles-pas-annee.md) : pas de filtre annee_universitaire_id.
+            $orientationTargets = collect();
+            $orientationCandidates = collect();
+            $orientationHasFilles = false;
+            $classe->loadMissing('filiere.parent');
+            $orientationFiliereParentName = optional(optional($classe->filiere)->parent)->name;
+            $isClasseTC = $classe->isTroncCommun();
+            $isClasseSpe = $classe->isSpecialite();
+            $classeTCParent = $isClasseSpe ? $classe->classeTroncCommunParent() : null;
+
+            if ($isClasseTC) {
+                $classe->load([
+                    'orientationTargets.targetClasse.filiere:id,name,code,parent_id',
+                    'orientationTargets.targetClasse.niveau:id,name',
+                ]);
+                $orientationTargets = $classe->orientationTargets;
+
+                $existingTargetIds = $orientationTargets->pluck('target_classe_id')->all();
+
+                // Filles déclarées sous la filière TC (parent_id = TC.id)
+                $fillesIds = ESBTPFiliere::query()
+                    ->where('is_active', true)
+                    ->where('is_tronc_commun', false)
+                    ->where('parent_id', $classe->filiere_id)
+                    ->pluck('id');
+                $orientationHasFilles = $fillesIds->isNotEmpty();
+
+                $candidatesQuery = ESBTPClasse::query()
+                    ->where('niveau_etude_id', $classe->niveau_etude_id)
+                    ->where('id', '!=', $classe->id)
+                    ->whereNotIn('id', $existingTargetIds)
+                    ->where('is_active', true)
+                    ->with('filiere:id,name,code,parent_id');
+
+                if ($orientationHasFilles) {
+                    $candidatesQuery->whereIn('filiere_id', $fillesIds);
+                } else {
+                    $candidatesQuery->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false));
+                }
+
+                $orientationCandidates = $candidatesQuery
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'code', 'filiere_id', 'niveau_etude_id']);
+            }
+
             // For admin and secretary - full functionality view
             return view(
                 "esbtp.classes.show",
@@ -616,6 +668,13 @@ class ESBTPClasseController extends Controller
                     "lmdMatieres",
                     "lmdUesAvecEcues",
                     "lmdSemestres",
+                    "isClasseTC",
+                    "isClasseSpe",
+                    "classeTCParent",
+                    "orientationTargets",
+                    "orientationCandidates",
+                    "orientationHasFilles",
+                    "orientationFiliereParentName",
                 ),
             );
         }
@@ -2329,5 +2388,105 @@ class ESBTPClasseController extends Controller
         return redirect()->back()->with('info',
             "Toutes les {$result['total']} classe(s) sont déjà correctement configurées."
         );
+    }
+
+    /**
+     * AJAX — Ajoute une classe-spécialité comme sortie d'une classe TC.
+     * Endpoint : POST /esbtp/classes/{classe}/orientation-targets
+     * Permission : bts_tronc_commun.manage_targets
+     *
+     * Pattern identique à ESBTPFiliereController::addSortieTC() mais scopé sur 1 classe TC.
+     */
+    public function addOrientationTarget(Request $request, ESBTPClasse $classe): \Illuminate\Http\JsonResponse
+    {
+        abort_unless(auth()->user()->can('bts_tronc_commun.manage_targets'), 403);
+        abort_unless($classe->isTroncCommun(), 422, "Cette classe n'appartient pas à un tronc commun.");
+
+        $data = $request->validate([
+            'target_classe_id' => ['required', 'integer', 'exists:esbtp_classes,id', 'different:' . $classe->id],
+            'semestre_activation' => ['nullable', 'integer', 'between:1,8'],
+            'notes' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // Sécurité : la classe target doit être au même niveau que la classe source
+        $target = ESBTPClasse::findOrFail($data['target_classe_id']);
+        abort_unless(
+            (int) $target->niveau_etude_id === (int) $classe->niveau_etude_id,
+            422,
+            'La classe cible doit être au même niveau que la classe TC.'
+        );
+
+        $orientation = ESBTPClasseOrientationTarget::updateOrCreate(
+            [
+                'source_classe_id' => $classe->id,
+                'target_classe_id' => $target->id,
+            ],
+            [
+                'semestre_activation' => $data['semestre_activation'] ?? 2,
+                'is_active' => true,
+                'sort_order' => ESBTPClasseOrientationTarget::where('source_classe_id', $classe->id)->count(),
+                'notes' => $data['notes'] ?? null,
+            ]
+        );
+
+        $orientation->load('targetClasse.filiere:id,name,code', 'targetClasse.niveau:id,name');
+
+        return response()->json([
+            'success' => true,
+            'target' => [
+                'id' => $orientation->id,
+                'target_classe_id' => $orientation->target_classe_id,
+                'target_name' => $orientation->targetClasse?->name,
+                'target_code' => $orientation->targetClasse?->code,
+                'target_filiere_name' => $orientation->targetClasse?->filiere?->name,
+                'target_niveau_name' => $orientation->targetClasse?->niveau?->name,
+                'semestre_activation' => $orientation->semestre_activation,
+                'is_active' => (bool) $orientation->is_active,
+                'notes' => $orientation->notes,
+            ],
+        ]);
+    }
+
+    /**
+     * AJAX — Active/désactive une sortie configurée.
+     * Endpoint : PATCH /esbtp/classes/{classe}/orientation-targets/{target}/toggle
+     */
+    public function toggleOrientationTarget(
+        Request $request,
+        ESBTPClasse $classe,
+        ESBTPClasseOrientationTarget $target
+    ): \Illuminate\Http\JsonResponse {
+        abort_unless(auth()->user()->can('bts_tronc_commun.manage_targets'), 403);
+        abort_unless($classe->isTroncCommun(), 422);
+        abort_unless((int) $target->source_classe_id === (int) $classe->id, 404);
+
+        $newValue = $request->has('is_active')
+            ? $request->boolean('is_active')
+            : ! $target->is_active;
+
+        $target->update(['is_active' => $newValue]);
+
+        return response()->json([
+            'success' => true,
+            'is_active' => (bool) $target->is_active,
+        ]);
+    }
+
+    /**
+     * AJAX — Supprime une sortie configurée.
+     * Endpoint : DELETE /esbtp/classes/{classe}/orientation-targets/{target}
+     */
+    public function removeOrientationTarget(
+        Request $request,
+        ESBTPClasse $classe,
+        ESBTPClasseOrientationTarget $target
+    ): \Illuminate\Http\JsonResponse {
+        abort_unless(auth()->user()->can('bts_tronc_commun.manage_targets'), 403);
+        abort_unless($classe->isTroncCommun(), 422);
+        abort_unless((int) $target->source_classe_id === (int) $classe->id, 404);
+
+        $target->delete();
+
+        return response()->json(['success' => true]);
     }
 }

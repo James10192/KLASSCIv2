@@ -459,6 +459,23 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->name('classes.destroy')
                 ->middleware('permission:classes.delete');
 
+            // AJAX — Sorties spécialités CRUD depuis la page show d'une classe TC
+            // Permission contrôlée dans le controller (bts_tronc_commun.manage_targets)
+            Route::post('classes/{classe}/orientation-targets', [ESBTPClasseController::class, 'addOrientationTarget'])
+                ->middleware('throttle:30,1')
+                ->whereNumber('classe')
+                ->name('classes.orientation-targets.add');
+            Route::patch('classes/{classe}/orientation-targets/{target}/toggle', [ESBTPClasseController::class, 'toggleOrientationTarget'])
+                ->middleware('throttle:60,1')
+                ->whereNumber('classe')
+                ->whereNumber('target')
+                ->name('classes.orientation-targets.toggle');
+            Route::delete('classes/{classe}/orientation-targets/{target}', [ESBTPClasseController::class, 'removeOrientationTarget'])
+                ->middleware('throttle:30,1')
+                ->whereNumber('classe')
+                ->whereNumber('target')
+                ->name('classes.orientation-targets.remove');
+
             // Routes pour les partenariats
             Route::resource('partnerships', \App\Http\Controllers\ESBTP\PartnershipController::class);
 
