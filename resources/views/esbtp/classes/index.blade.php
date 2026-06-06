@@ -882,6 +882,268 @@
 .ci-badge--success { background: rgba(16,185,129,.12); color: #065f46; }
 
 /* =========================================
+   MODAL OVERCAPACITY — namespace cs-overcap-*
+   Redesign premium juin 2026 — monochrome KLASSCI + sémantique
+   Spécificité forte pour battre les règles Bootstrap génériques.
+   ========================================= */
+.cs-overcap-modal .modal-content.cs-overcap-content {
+    border: none;
+    border-radius: 18px;
+    overflow: hidden;
+    box-shadow: 0 30px 80px rgba(15,23,42,.20);
+}
+.cs-overcap-modal .modal-header.cs-overcap-header {
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 45%, #3b7ddb 100%) !important;
+    color: #fff !important;
+    padding: 1.25rem 1.5rem;
+    border-bottom: none;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.cs-overcap-header-left {
+    display: flex;
+    align-items: center;
+    gap: .9rem;
+    flex: 1;
+    min-width: 0;
+}
+.cs-overcap-header-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    background: rgba(255,255,255,.18);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255,255,255,.22);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    color: #fff !important;
+    flex-shrink: 0;
+}
+/* TITRE FORCÉ BLANC — sélecteurs multiples pour battre toute règle globale */
+.cs-overcap-modal .cs-overcap-title,
+.cs-overcap-modal .modal-title.cs-overcap-title,
+.cs-overcap-modal .cs-overcap-header .modal-title {
+    color: #fff !important;
+    font-size: 1.1rem;
+    font-weight: 700;
+    margin: 0;
+    line-height: 1.25;
+}
+.cs-overcap-subtitle {
+    color: rgba(255,255,255,.78) !important;
+    font-size: .8rem;
+    margin-top: .15rem;
+}
+.cs-overcap-close.btn-close {
+    filter: brightness(0) invert(1);
+    opacity: .85;
+    flex-shrink: 0;
+}
+.cs-overcap-close.btn-close:hover { opacity: 1; }
+
+/* Body */
+.cs-overcap-body {
+    padding: 1.5rem;
+    background: #f8fafc;
+}
+
+/* KPIs en tête du body */
+.cs-overcap-kpis {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: .75rem;
+    margin-bottom: 1.25rem;
+}
+.cs-overcap-kpi {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: .85rem 1rem;
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+}
+.cs-overcap-kpi-icon {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .9rem;
+    flex-shrink: 0;
+}
+.cs-overcap-kpi--danger .cs-overcap-kpi-icon {
+    background: linear-gradient(135deg, #dc2626, #f87171);
+}
+.cs-overcap-kpi-value {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #1e293b;
+    line-height: 1.2;
+}
+.cs-overcap-kpi-label {
+    font-size: .7rem;
+    color: #64748b;
+    margin-top: .1rem;
+    font-weight: 500;
+}
+
+/* Table moderne */
+.cs-overcap-table-wrap {
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+}
+.cs-overcap-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .85rem;
+}
+.cs-overcap-table thead th {
+    background: #f1f5f9;
+    color: #475569;
+    font-size: .68rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    padding: .75rem .85rem;
+    text-align: left;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+.cs-overcap-table tbody tr {
+    transition: background .15s;
+}
+.cs-overcap-table tbody tr:nth-child(odd) { background: #fafbfc; }
+.cs-overcap-table tbody tr:hover { background: rgba(4,83,203,.04); }
+.cs-overcap-table tbody td {
+    padding: .8rem .85rem;
+    border-bottom: 1px solid #f1f5f9;
+    vertical-align: middle;
+    color: #1e293b;
+}
+.cs-overcap-table tbody tr:last-child td { border-bottom: none; }
+.cs-overcap-th--center,
+.cs-overcap-td--center { text-align: center; }
+.cs-overcap-th--prog,
+.cs-overcap-td--prog { min-width: 180px; }
+.cs-overcap-td-name strong { color: #033a8e; font-weight: 700; }
+
+/* Progress bar dans la cell taux */
+.cs-overcap-prog {
+    width: 100%;
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+    margin-bottom: .25rem;
+}
+.cs-overcap-prog-bar {
+    height: 100%;
+    border-radius: 999px;
+    transition: width .3s ease;
+}
+.cs-overcap-prog-label {
+    font-size: .78rem;
+    font-weight: 700;
+    display: block;
+}
+
+/* Chips */
+.cs-overcap-chip {
+    display: inline-block;
+    padding: .22rem .6rem;
+    border-radius: 6px;
+    font-size: .75rem;
+    font-weight: 700;
+    line-height: 1.2;
+}
+.cs-overcap-chip--muted   { background: #f1f5f9; color: #64748b; }
+.cs-overcap-chip--primary { background: rgba(4,83,203,.10); color: #0453cb; }
+.cs-overcap-chip--danger  { background: #fee2e2; color: #991b1b; }
+
+/* Recommandations */
+.cs-overcap-reco {
+    display: flex;
+    gap: .85rem;
+    padding: 1rem 1.1rem;
+    background: rgba(4,83,203,.05);
+    border-left: 3px solid #0453cb;
+    border-radius: 8px;
+    color: #1e293b;
+}
+.cs-overcap-reco > i {
+    color: #0453cb;
+    font-size: 1.05rem;
+    flex-shrink: 0;
+    margin-top: .2rem;
+}
+.cs-overcap-reco strong { color: #033a8e; font-size: .9rem; }
+.cs-overcap-reco ul {
+    margin: .35rem 0 0 0;
+    padding-left: 1.1rem;
+    font-size: .82rem;
+    line-height: 1.65;
+    color: #475569;
+}
+
+/* Empty state */
+.cs-overcap-empty {
+    text-align: center;
+    padding: 2.5rem 1rem;
+}
+.cs-overcap-empty > i {
+    font-size: 2.5rem;
+    color: #10b981;
+    margin-bottom: .75rem;
+    display: block;
+}
+.cs-overcap-empty h5 { color: #065f46; font-weight: 700; margin: 0 0 .4rem; }
+.cs-overcap-empty p { color: #64748b; margin: 0; }
+
+/* Footer */
+.cs-overcap-footer {
+    background: #fff;
+    border-top: 1px solid #e2e8f0;
+    padding: 1rem 1.5rem;
+}
+.cs-overcap-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    padding: .55rem 1.1rem;
+    border-radius: 9px;
+    font-size: .85rem;
+    font-weight: 600;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all .15s;
+}
+.cs-overcap-btn--ghost {
+    background: #f1f5f9;
+    color: #475569;
+    border-color: #e2e8f0;
+}
+.cs-overcap-btn--ghost:hover { background: #e2e8f0; color: #1e293b; }
+
+/* Responsive modal */
+@media (max-width: 768px) {
+    .cs-overcap-kpis { grid-template-columns: 1fr; }
+    .cs-overcap-table { font-size: .78rem; }
+    .cs-overcap-table thead th,
+    .cs-overcap-table tbody td { padding: .6rem .55rem; }
+    .cs-overcap-th--prog,
+    .cs-overcap-td--prog { min-width: 110px; }
+}
+
+/* =========================================
    RESPONSIVE
    ========================================= */
 @media (max-width: 992px) {
@@ -1006,8 +1268,8 @@
         <div id="overcapacity-warning" class="ci-banner" style="display: none;">
             <div class="ci-banner-icon"><i class="fas fa-triangle-exclamation"></i></div>
             <div class="ci-banner-body">
-                <div class="ci-banner-title" id="overcapacity-title">Classes en surcapacité détectées</div>
-                <div class="ci-banner-text" id="overcapacity-message">Certaines classes ont dépassé leur capacité maximale autorisée.</div>
+                <div class="ci-banner-title" id="overcapacity-title">Classes en surcapacité</div>
+                <div class="ci-banner-text" id="overcapacity-message">Cliquez pour voir le détail.</div>
             </div>
             <div class="ci-banner-actions">
                 <button type="button" class="ci-btn--outline" onclick="showOvercapacityModal()">
@@ -1158,34 +1420,35 @@
 </div>
 
 {{-- ========================================
-     MODAL OVERCAPACITY (détails surcapacité)
+     MODAL OVERCAPACITY (détails surcapacité) — namespace cs-overcap-*
+     Redesign premium juin 2026 (Marcel)
      ======================================== --}}
-<div class="modal fade" id="overcapacityModal" tabindex="-1" aria-labelledby="overcapacityModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header ci-modal-header">
-                <h5 class="modal-title" id="overcapacityModalLabel">
-                    <i class="fas fa-triangle-exclamation me-2"></i>Classes en surcapacité
-                </h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
-            </div>
-            <div class="modal-body">
-                <div class="ci-info-box mb-3" style="margin-top:0;">
-                    <i class="fas fa-info-circle"></i>
-                    <div><strong>Attention :</strong> les classes ci-dessous ont dépassé leur capacité maximale autorisée.</div>
+<div class="modal fade cs-overcap-modal" id="overcapacityModal" tabindex="-1" aria-labelledby="overcapacityModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content cs-overcap-content">
+            <div class="modal-header cs-overcap-header">
+                <div class="cs-overcap-header-left">
+                    <div class="cs-overcap-header-icon"><i class="fas fa-triangle-exclamation"></i></div>
+                    <div>
+                        <h5 class="modal-title cs-overcap-title" id="overcapacityModalLabel">Classes en surcapacité</h5>
+                        <div class="cs-overcap-subtitle" id="overcapacity-modal-subtitle">Détail des classes qui dépassent leur capacité maximale.</div>
+                    </div>
                 </div>
+                <button type="button" class="btn-close btn-close-white cs-overcap-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body cs-overcap-body">
                 <div id="overcapacity-content">
                     <div class="text-center py-4">
                         <div class="spinner-border text-primary" role="status">
                             <span class="visually-hidden">Chargement...</span>
                         </div>
-                        <div class="mt-2 text-muted">Chargement des classes en surcapacité...</div>
+                        <div class="mt-2 text-muted">Chargement des classes en surcapacité…</div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-times me-1"></i>Fermer
+            <div class="modal-footer cs-overcap-footer">
+                <button type="button" class="cs-overcap-btn cs-overcap-btn--ghost" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i>Fermer
                 </button>
             </div>
         </div>
@@ -1213,8 +1476,10 @@ document.addEventListener('DOMContentLoaded', function() {
                     const warning = document.getElementById('overcapacity-warning');
                     warning.style.display = 'flex';
 
+                    const n = data.classes.length;
+                    const label = n > 1 ? 'classes' : 'classe';
                     document.getElementById('overcapacity-title').textContent =
-                        `${data.classes.length} classe(s) en surcapacité (${data.annee_universitaire})`;
+                        `${n} ${label} au-dessus de la capacité (${data.annee_universitaire})`;
                     document.getElementById('overcapacity-message').textContent = data.message;
 
                     loadOvercapacityModalContent(data.classes);
@@ -1230,43 +1495,89 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (classes.length === 0) {
             content.innerHTML = `
-                <div class="text-center py-4">
-                    <i class="fas fa-check-circle" style="font-size:2.5rem;color:#10b981;margin-bottom:.75rem;"></i>
-                    <h5 style="color:#065f46;">Aucune classe en surcapacité</h5>
-                    <p class="text-muted">Toutes les classes respectent leur capacité maximale.</p>
+                <div class="cs-overcap-empty">
+                    <i class="fas fa-check-circle"></i>
+                    <h5>Aucune classe en surcapacité</h5>
+                    <p>Toutes les classes respectent leur capacité maximale.</p>
                 </div>
             `;
             return;
         }
 
+        // KPIs agrégés en tête
+        const totalDepassement = classes.reduce((sum, c) => sum + (c.depassement || 0), 0);
+        const totalInscrits = classes.reduce((sum, c) => sum + (c.inscriptions_actives || 0), 0);
+        const totalCapacite = classes.reduce((sum, c) => sum + (c.places_totales || 0), 0);
+
         let html = `
-            <div class="table-responsive">
-                <table class="ci-overcapacity-table">
+            <div class="cs-overcap-kpis">
+                <div class="cs-overcap-kpi">
+                    <div class="cs-overcap-kpi-icon"><i class="fas fa-school"></i></div>
+                    <div>
+                        <div class="cs-overcap-kpi-value">${classes.length}</div>
+                        <div class="cs-overcap-kpi-label">Classe${classes.length > 1 ? 's' : ''} en surcapacité</div>
+                    </div>
+                </div>
+                <div class="cs-overcap-kpi">
+                    <div class="cs-overcap-kpi-icon"><i class="fas fa-users"></i></div>
+                    <div>
+                        <div class="cs-overcap-kpi-value">${totalInscrits} / ${totalCapacite}</div>
+                        <div class="cs-overcap-kpi-label">Inscrits / Capacité totale</div>
+                    </div>
+                </div>
+                <div class="cs-overcap-kpi cs-overcap-kpi--danger">
+                    <div class="cs-overcap-kpi-icon"><i class="fas fa-arrow-up"></i></div>
+                    <div>
+                        <div class="cs-overcap-kpi-value">+${totalDepassement}</div>
+                        <div class="cs-overcap-kpi-label">Étudiants au-dessus</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="cs-overcap-table-wrap">
+                <table class="cs-overcap-table">
                     <thead>
                         <tr>
                             <th>Classe</th>
                             <th>Filière</th>
                             <th>Niveau</th>
-                            <th class="text-center">Capacité</th>
-                            <th class="text-center">Inscrits</th>
-                            <th class="text-center">Taux</th>
-                            <th class="text-center">Dépassement</th>
+                            <th class="cs-overcap-th--center">Capacité</th>
+                            <th class="cs-overcap-th--center">Inscrits</th>
+                            <th class="cs-overcap-th--prog">Taux d'occupation</th>
+                            <th class="cs-overcap-th--center">Dépassement</th>
                         </tr>
                     </thead>
                     <tbody>
         `;
 
         classes.forEach(classe => {
-            const tauxClass = classe.taux_occupation >= 150 ? 'danger' : 'warn';
+            const taux = Number(classe.taux_occupation) || 0;
+            // Affichage formatté avec 1 décimale max, on retire le `.0` superflu
+            const tauxAffiche = (Math.round(taux * 10) / 10).toString().replace(/\.0$/, '');
+            // Couleur sémantique de la barre (rule premium-redesign : success/warning/danger
+            // autorisés car portent sens fonctionnel — niveau de criticité de la surcapacité).
+            let progColor;
+            if (taux >= 200) progColor = '#dc2626';        // > 200% → critique rouge
+            else if (taux >= 150) progColor = '#ea580c';   // 150-200% → orange foncé
+            else if (taux >= 110) progColor = '#f59e0b';   // 110-150% → orange
+            else progColor = '#fbbf24';                    // 100-110% → jaune (juste en sur)
+            // Largeur visuelle plafonnée à 100% mais on indique le débord via couleur + chip
+            const progWidth = Math.min(taux, 100);
+
             html += `
                 <tr>
-                    <td><strong>${classe.nom}</strong></td>
-                    <td>${classe.filiere}</td>
-                    <td>${classe.niveau}</td>
-                    <td class="text-center"><span class="ci-badge ci-badge--muted">${classe.places_totales}</span></td>
-                    <td class="text-center"><span class="ci-badge ci-badge--primary">${classe.inscriptions_actives}</span></td>
-                    <td class="text-center"><span class="ci-badge ci-badge--${tauxClass}">${classe.taux_occupation}%</span></td>
-                    <td class="text-center"><span class="ci-badge ci-badge--danger">+${classe.depassement}</span></td>
+                    <td class="cs-overcap-td-name"><strong>${escapeHtml(classe.nom)}</strong></td>
+                    <td>${escapeHtml(classe.filiere)}</td>
+                    <td>${escapeHtml(classe.niveau)}</td>
+                    <td class="cs-overcap-td--center"><span class="cs-overcap-chip cs-overcap-chip--muted">${classe.places_totales}</span></td>
+                    <td class="cs-overcap-td--center"><span class="cs-overcap-chip cs-overcap-chip--primary">${classe.inscriptions_actives}</span></td>
+                    <td class="cs-overcap-td--prog">
+                        <div class="cs-overcap-prog">
+                            <div class="cs-overcap-prog-bar" style="width:${progWidth}%;background:${progColor};"></div>
+                        </div>
+                        <span class="cs-overcap-prog-label" style="color:${progColor};">${tauxAffiche}%</span>
+                    </td>
+                    <td class="cs-overcap-td--center"><span class="cs-overcap-chip cs-overcap-chip--danger">+${classe.depassement}</span></td>
                 </tr>
             `;
         });
@@ -1275,20 +1586,30 @@ document.addEventListener('DOMContentLoaded', function() {
                     </tbody>
                 </table>
             </div>
-            <div class="ci-info-box">
+
+            <div class="cs-overcap-reco">
                 <i class="fas fa-lightbulb"></i>
                 <div>
-                    <strong>Recommandation :</strong>
-                    <ul class="mb-0 mt-2" style="padding-left:1.1rem;line-height:1.6;">
-                        <li>Envisager d'augmenter la capacité des classes concernées</li>
-                        <li>Créer des classes supplémentaires si nécessaire</li>
-                        <li>Les superAdmins et secrétaires peuvent contourner cette limite</li>
+                    <strong>Recommandations</strong>
+                    <ul>
+                        <li>Augmenter la capacité des classes concernées si la salle le permet.</li>
+                        <li>Créer des classes supplémentaires pour répartir les effectifs.</li>
+                        <li>Les superAdmins et secrétaires peuvent contourner cette limite si nécessaire.</li>
                     </ul>
                 </div>
             </div>
         `;
 
         content.innerHTML = html;
+    }
+
+    function escapeHtml(s) {
+        return String(s ?? '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     // Expose pour appels inline

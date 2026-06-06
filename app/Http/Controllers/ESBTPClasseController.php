@@ -2125,7 +2125,13 @@ class ESBTPClasseController extends Controller
                 ]);
             }
 
-            // Récupérer les classes en surcapacité (>= 100% d'occupation)
+            // Récupérer les classes en surcapacité (> 100% d'occupation, strict)
+            // ⚠️ FIX (Marcel juin 2026) :
+            // - Bug B : on alias en `taux_occupation_live` pour éviter le shadowing
+            //   par l'accessor Eloquent getTauxOccupationAttribute() qui calcule à
+            //   partir de places_occupees (souvent stale) et renvoyait 0%.
+            // - Bug C : filtre strict `>` (pas `>=`) — un dépassement de 0 n'est
+            //   pas une surcapacité, c'est une classe pile pleine.
             $classesOvercapacity = ESBTPClasse::with(["filiere", "niveauEtude"])
                 ->select("esbtp_classes.*")
                 ->selectRaw(
@@ -2153,13 +2159,11 @@ class ESBTPClasseController extends Controller
                             ) * 100.0 / places_totales, 1)
                         ELSE 0
                     END
-                ) as taux_occupation',
+                ) as taux_occupation_live',
                     [$anneeCourante->id],
                 )
                 ->whereRaw("places_totales > 0")
-                // FIX MySQL ONLY_FULL_GROUP_BY : on ne peut pas référencer places_totales
-                // (champ non agrégé) dans HAVING sans GROUP BY. Bascule en WHERE avec
-                // la sous-requête expanded pour comparer directement au champ.
+                // Filtre strict `>` (pas `>=`) : surcapacité = dépassement réel.
                 ->whereRaw(
                     '(
                         SELECT COUNT(*)
@@ -2168,35 +2172,42 @@ class ESBTPClasseController extends Controller
                         AND esbtp_inscriptions.status = "active"
                         AND esbtp_inscriptions.workflow_step = "etudiant_cree"
                         AND esbtp_inscriptions.annee_universitaire_id = ?
-                    ) >= esbtp_classes.places_totales',
+                    ) > esbtp_classes.places_totales',
                     [$anneeCourante->id],
                 )
-                ->orderBy("taux_occupation", "desc")
+                ->orderBy("taux_occupation_live", "desc")
                 ->get();
 
             // Formater les données pour le modal
             $classesFormatees = $classesOvercapacity->map(function ($classe) {
+                $inscrits = (int) $classe->inscriptions_actives;
+                $capacite = (int) $classe->places_totales;
+                // Utiliser l'alias SQL `taux_occupation_live` qui contient le vrai
+                // pourcentage (pas l'accessor Eloquent qui dépend de places_occupees).
+                $taux = (float) ($classe->taux_occupation_live ?? 0);
+
                 return [
                     "id" => $classe->id,
                     "nom" => $classe->name,
                     "filiere" => $classe->filiere->name ?? "N/A",
                     "niveau" => $classe->niveauEtude->name ?? "N/A",
-                    "places_totales" => $classe->places_totales,
-                    "inscriptions_actives" => $classe->inscriptions_actives,
-                    "taux_occupation" => $classe->taux_occupation,
-                    "depassement" =>
-                        $classe->inscriptions_actives - $classe->places_totales,
+                    "places_totales" => $capacite,
+                    "inscriptions_actives" => $inscrits,
+                    "taux_occupation" => $taux,
+                    "depassement" => $inscrits - $capacite,
                     "statut" => $classe->is_active ? "Actif" : "Inactif",
                 ];
             });
 
+            $count = $classesFormatees->count();
+
             return response()->json([
                 "success" => true,
-                "message" =>
-                    $classesFormatees->count() .
-                    " classe(s) en surcapacité détectée(s)",
+                "message" => $count > 0
+                    ? "Cliquez pour voir le détail."
+                    : "Aucune classe en surcapacité.",
                 "classes" => $classesFormatees,
-                "total_classes" => $classesFormatees->count(),
+                "total_classes" => $count,
                 "annee_universitaire" => $anneeCourante->name,
             ]);
         } catch (\Exception $e) {
