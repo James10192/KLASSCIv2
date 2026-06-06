@@ -680,13 +680,41 @@
                                         </button>
                                     </form>
                                 @else
+                                    {{-- État vide actionnable (juin 2026 — Marcel) : pas juste un message, mais des CTA pour résoudre l'état. --}}
                                     <div class="fs-tc-warn">
-                                        <i class="fas fa-circle-exclamation"></i>
-                                        @if(($hasFillesConfigured ?? false))
-                                            Aucune classe de spécialité disponible pour ce niveau dans les filières-filles de ce tronc commun. Créez d'abord les classes via <a href="{{ route('esbtp.classes.create') }}">Admin → Classes</a>.
-                                        @else
-                                            Aucune filière-fille déclarée pour ce tronc commun. Allez sur <a href="{{ route('esbtp.filieres.index') }}">Admin → Filières</a> et cochez ce tronc commun (ID #{{ $filiere->id }}) comme « filière parent » sur les filières de spécialité concernées, puis créez les classes.
-                                        @endif
+                                        <div style="display:flex; gap:.55rem; align-items:flex-start;">
+                                            <i class="fas fa-circle-exclamation" style="margin-top:.18rem;"></i>
+                                            <div style="flex:1; min-width:0;">
+                                                @if(($hasFillesConfigured ?? false))
+                                                    <strong>Aucune classe spécialité au niveau <em>{{ $sourceClasse->niveauEtude?->name ?? '—' }}</em>.</strong>
+                                                    <div style="font-size:.78rem; margin-top:.2rem;">
+                                                        Les filières-filles de ce tronc commun existent, mais aucune classe n'est encore créée à ce niveau. Créez-en une pour pouvoir l'ajouter comme sortie.
+                                                    </div>
+                                                @else
+                                                    <strong>Aucune filière-fille déclarée pour ce tronc commun.</strong>
+                                                    <div style="font-size:.78rem; margin-top:.2rem;">
+                                                        Pour configurer des sorties, créez d'abord une filière de spécialité rattachée à <em>{{ $filiere->name }}</em>, puis créez-y une classe au niveau <em>{{ $sourceClasse->niveauEtude?->name ?? '—' }}</em>.
+                                                    </div>
+                                                @endif
+                                            </div>
+                                        </div>
+                                        <div style="display:flex; gap:.4rem; flex-wrap:wrap; margin-top:.7rem;">
+                                            @if(($hasFillesConfigured ?? false))
+                                                <a href="{{ route('esbtp.classes.create', ['niveau_etude_id' => $sourceClasse->niveau_etude_id]) }}"
+                                                   class="fs-btn fs-btn--primary fs-btn--sm">
+                                                    <i class="fas fa-plus"></i> Créer une classe spécialité
+                                                </a>
+                                            @else
+                                                <a href="{{ route('esbtp.filieres.create', ['parent_id' => $filiere->id]) }}"
+                                                   class="fs-btn fs-btn--primary fs-btn--sm">
+                                                    <i class="fas fa-plus"></i> Créer une filière-fille
+                                                </a>
+                                                <a href="{{ route('esbtp.filieres.index') }}"
+                                                   class="fs-btn fs-btn--ghost fs-btn--sm">
+                                                    <i class="fas fa-list"></i> Voir mes filières
+                                                </a>
+                                            @endif
+                                        </div>
                                     </div>
                                 @endif
                             @endcan

@@ -62,7 +62,10 @@
     // Anciens inputs (en cas de validation echec) prennent la priorite
     $oldFiliereId = old('filiere_id', $initialFiliereId);
     $oldParcoursId = old('parcours_id', $initialParcoursId);
-    $oldNiveauId = old('niveau_etude_id', $isEdit ? $classe->niveau_etude_id : '');
+    // Pré-fill niveau_etude_id depuis query string (cross-page navigation depuis
+    // CTA "Créer une classe spécialité" sur /esbtp/admin/orientation-targets et
+    // /esbtp/filieres/{id}). Juin 2026 — Marcel.
+    $oldNiveauId = old('niveau_etude_id', $isEdit ? $classe->niveau_etude_id : request('niveau_etude_id', ''));
 
     // Le mode initial depend du niveau choisi (old/edit) — calcule cote PHP pour SSR correct
     $oldNiveauObj = $oldNiveauId ? $niveaux->firstWhere('id', (int) $oldNiveauId) : null;

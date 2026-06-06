@@ -150,7 +150,15 @@
         <div class="ot-empty">
             <i class="fas fa-route"></i>
             <h3>Aucune classe Tronc Commun configurée</h3>
-            <p>Marquez d'abord une filière comme « tronc commun » dans <em>Filières & Classes</em>, puis revenez ici configurer ses sorties.</p>
+            <p>Pour activer cette page, créez d'abord une filière marquée « tronc commun », puis une classe rattachée à cette filière.</p>
+            <div style="display:flex; gap:.55rem; justify-content:center; flex-wrap:wrap; margin-top:1.25rem;">
+                <a href="{{ route('esbtp.filieres.create') }}" class="ot-btn ot-btn--primary" style="font-size:.82rem;">
+                    <i class="fas fa-plus"></i> Créer une filière TC
+                </a>
+                <a href="{{ route('esbtp.filieres.index') }}" class="ot-btn ot-btn--ghost" style="font-size:.82rem;">
+                    <i class="fas fa-list"></i> Voir mes filières
+                </a>
+            </div>
         </div>
     @else
         @foreach($sourceClasses as $sourceClasse)
@@ -223,13 +231,41 @@
                             </button>
                         </form>
                     @else
-                        <div style="margin-top:.5rem; padding:.65rem; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25); border-radius:9px; font-size:.78rem; color:#92400e;">
-                            <i class="fas fa-circle-exclamation"></i>
-                            @if($hasFilles)
-                                Aucune classe de spécialité disponible pour ce niveau dans les filières-filles. Créez d'abord les classes via <a href="{{ route('esbtp.classes.create') }}" style="color:#0453cb;">Admin → Classes</a>.
-                            @else
-                                Aucune filière-fille déclarée pour ce tronc commun. Allez sur <a href="{{ route('esbtp.filieres.index') }}" style="color:#0453cb;">Admin → Filières</a> et cochez ce tronc commun (#{{ $sourceClasse->filiere_id }}) comme « filière parent » sur les filières de spécialité concernées.
-                            @endif
+                        {{-- État vide actionnable : pas juste un message, mais des boutons CTA précis selon l'état data. --}}
+                        <div style="margin-top:.5rem; padding:.95rem 1rem; background:rgba(245,158,11,.08); border:1px solid rgba(245,158,11,.25); border-radius:10px; color:#92400e;">
+                            <div style="display:flex; gap:.55rem; align-items:flex-start;">
+                                <i class="fas fa-circle-exclamation" style="margin-top:.18rem;"></i>
+                                <div style="flex:1; min-width:0;">
+                                    @if($hasFilles)
+                                        <strong>Aucune classe de spécialité disponible pour ce niveau.</strong>
+                                        <div style="font-size:.78rem; margin-top:.18rem;">
+                                            Les filières-filles de ce tronc commun existent, mais aucune classe n'est encore créée au niveau <em>{{ $sourceClasse->niveauEtude?->name ?? '—' }}</em>. Créez-en une pour pouvoir l'ajouter comme sortie.
+                                        </div>
+                                    @else
+                                        <strong>Aucune filière-fille déclarée pour ce tronc commun.</strong>
+                                        <div style="font-size:.78rem; margin-top:.18rem;">
+                                            Marquez d'abord une filière de spécialité comme rattachée à ce tronc commun (<em>{{ $sourceClasse->filiere?->name ?? '—' }}</em> #{{ $sourceClasse->filiere_id }}), puis créez-y une classe au niveau <em>{{ $sourceClasse->niveauEtude?->name ?? '—' }}</em>.
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:.5rem; flex-wrap:wrap; margin-top:.75rem;">
+                                @if($hasFilles)
+                                    <a href="{{ route('esbtp.classes.create', ['niveau_etude_id' => $sourceClasse->niveau_etude_id]) }}"
+                                       class="ot-btn ot-btn--primary" style="font-size:.78rem;">
+                                        <i class="fas fa-plus"></i> Créer une classe spécialité
+                                    </a>
+                                @else
+                                    <a href="{{ route('esbtp.filieres.create', ['parent_id' => $sourceClasse->filiere_id]) }}"
+                                       class="ot-btn ot-btn--primary" style="font-size:.78rem;">
+                                        <i class="fas fa-plus"></i> Créer une filière-fille
+                                    </a>
+                                    <a href="{{ route('esbtp.filieres.index') }}"
+                                       class="ot-btn ot-btn--ghost" style="font-size:.78rem;">
+                                        <i class="fas fa-list"></i> Voir mes filières
+                                    </a>
+                                @endif
+                            </div>
                         </div>
                     @endif
                 </div>

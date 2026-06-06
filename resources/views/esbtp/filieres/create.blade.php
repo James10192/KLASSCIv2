@@ -356,13 +356,14 @@
                     </div>
                 </div>
 
-                <div class="fe-subblock" x-show="!isTroncCommun" x-cloak>
+                {{-- Filière parente — TOUJOURS visible (cf. edit.blade.php bug juin 2026 Marcel). --}}
+                <div class="fe-subblock">
                     <div class="fe-subblock-title">
-                        <i class="fas fa-sitemap"></i> Rattachement à un tronc commun
+                        <i class="fas fa-sitemap"></i> Filière parente
                     </div>
                     <div class="fe-grid">
                         <div class="fe-field">
-                            <label for="parent_id">Filière parente (tronc commun)</label>
+                            <label for="parent_id">Rattacher à un tronc commun</label>
                             @php
                                 $_parentOptions = ['' => '— Aucune (filière indépendante) —'];
                                 $_parentsAvailable = ($filieresParents ?? null)
@@ -373,12 +374,13 @@
                             @endphp
                             <x-au-select
                                 name="parent_id"
-                                :value="old('parent_id')"
+                                :value="old('parent_id', request('parent_id'))"
                                 placeholder="— Aucune (filière indépendante) —"
                                 icon="fa-sitemap"
                                 :searchable="count($_parentOptions) > 8"
                                 :options="$_parentOptions" />
-                            <div class="fe-hint">Sélectionner la filière tronc commun dont celle-ci est une spécialisation.</div>
+                            <div class="fe-hint" x-show="!isTroncCommun" x-cloak>Sélectionner la filière tronc commun dont celle-ci est une spécialisation (ex : <em>Génie Civil — Option Bâtiment</em> rattaché à <em>Tronc commun BTS1</em>).</div>
+                            <div class="fe-hint" x-show="isTroncCommun" x-cloak>Optionnel pour un tronc commun : utiliser uniquement si ce TC est lui-même rattaché à un tronc commun supérieur (hiérarchie multi-niveaux).</div>
                             @error('parent_id')<div class="fe-error">{{ $message }}</div>@enderror
                         </div>
                     </div>
