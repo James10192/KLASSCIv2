@@ -71,36 +71,37 @@ class ESBTPSpecialisationController extends Controller
     {
         $filiereId = $request->query('filiere_id');
 
-        $inscription->loadMissing(['classe.orientationTargets.targetClasse']);
+        $inscription->loadMissing([
+            'classe.orientationTargets.targetClasse',
+            'niveau:id,name',
+        ]);
 
-        // Source canonique : ClasseOrientationTarget (mapping manuel via admin)
+        // Source canonique : ClasseOrientationTarget (mapping manuel via admin).
+        // Rule classes-universelles-pas-annee : on NE filtre PAS par annee_universitaire_id
+        // sur esbtp_classes — c'est l'inscription qui porte l'année, pas la classe.
         $classes = collect($inscription->classe?->orientationTargets ?? [])
             ->where('is_active', true)
             ->sortBy('sort_order')
             ->map(fn ($target) => $target->targetClasse)
             ->filter()
             ->filter(fn ($classe) => $classe->is_active
-                && (int) $classe->niveau_etude_id === (int) $inscription->niveau_id
-                && (int) $classe->annee_universitaire_id === (int) $inscription->annee_universitaire_id)
+                && (int) $classe->niveau_etude_id === (int) $inscription->niveau_id)
             ->when($filiereId, fn ($items) => $items->where('filiere_id', (int) $filiereId))
             ->values();
 
         // Fallback legacy : pas de target configurée → classes actives de la filière
-        // matching le niveau + année universitaire de l'inscription. Cohérent avec
-        // le fallback parent_id utilisé dans show() pour lister les spécialisations.
+        // matching le niveau de l'inscription. Sans filtre annee_universitaire_id
+        // (cohérent rule classes-universelles-pas-annee).
         if ($classes->isEmpty() && $filiereId) {
             $classes = \App\Models\ESBTPClasse::where('is_active', true)
                 ->where('filiere_id', (int) $filiereId)
                 ->where('niveau_etude_id', $inscription->niveau_id)
-                ->where('annee_universitaire_id', $inscription->annee_universitaire_id)
                 ->orderBy('name')
                 ->get();
         }
 
-        return response()->json([
-            'message' => $classes->isEmpty()
-                ? "Aucune classe disponible pour cette spécialisation. Vérifiez que des classes actives existent pour cette filière au niveau et à l'année courants."
-                : null,
+        $payload = [
+            'message' => null,
             'classes' => $classes->map(function ($classe) {
                 return [
                     'id' => $classe->id,
@@ -111,7 +112,34 @@ class ESBTPSpecialisationController extends Controller
                     'places_disponibles' => $classe->places_disponibles,
                 ];
             })->values(),
-        ]);
+        ];
+
+        if ($classes->isEmpty() && $filiereId) {
+            $filiere = \App\Models\ESBTPFiliere::find((int) $filiereId);
+            $niveauName = $inscription->niveau?->name;
+            $filiereName = $filiere?->name;
+
+            $payload['message'] = sprintf(
+                "Aucune classe de spécialité %s n'est encore créée au niveau %s.",
+                $filiereName ?? '—',
+                $niveauName ?? '—',
+            );
+            $payload['empty_context'] = [
+                'filiere_id' => (int) $filiereId,
+                'filiere_name' => $filiereName,
+                'niveau_id' => $inscription->niveau_id,
+                'niveau_name' => $niveauName,
+                'annee_universitaire_id' => $inscription->annee_universitaire_id,
+                'can_create_classe' => auth()->check() && auth()->user()->can('classes.create'),
+                'create_classe_url' => route('esbtp.classes.create', array_filter([
+                    'filiere_id' => (int) $filiereId,
+                    'niveau_etude_id' => $inscription->niveau_id,
+                    'annee_universitaire_id' => $inscription->annee_universitaire_id,
+                ])),
+            ];
+        }
+
+        return response()->json($payload);
     }
 
     public function store(ESBTPInscription $inscription, Request $request)

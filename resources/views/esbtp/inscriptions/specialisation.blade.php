@@ -209,6 +209,41 @@
 }
 .spc-empty i { font-size:2rem; color:#cbd5e1; display:block; margin-bottom:.65rem; }
 
+/* Empty state premium avec CTA "Créer une classe" */
+.spc-empty-rich {
+    background:linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06));
+    border:1px solid rgba(4,83,203,.18);
+    border-radius:14px;
+    padding:1.75rem 1.25rem;
+    text-align:center;
+    color:#1e293b;
+}
+.spc-empty-rich-icon {
+    width:56px; height:56px; border-radius:14px;
+    background:linear-gradient(135deg,#0453cb,#3b7ddb);
+    display:inline-flex; align-items:center; justify-content:center;
+    margin-bottom:.8rem;
+    color:#fff; font-size:1.45rem;
+    box-shadow:0 6px 20px rgba(4,83,203,.25);
+}
+.spc-empty-rich-title {
+    font-size:.95rem; font-weight:600; color:#1e293b;
+    margin-bottom:.45rem; line-height:1.4;
+}
+.spc-empty-rich-title strong { color:#0453cb; font-weight:700; }
+.spc-empty-rich-text {
+    font-size:.82rem; color:#475569; line-height:1.55;
+    margin:0 auto .9rem; max-width:520px;
+}
+.spc-empty-rich-btn {
+    display:inline-flex; align-items:center; gap:.5rem;
+    margin-top:.25rem;
+}
+.spc-empty-rich-hint {
+    font-size:.75rem; color:#64748b; margin:.55rem 0 0;
+}
+.spc-empty-rich-hint em { color:#0453cb; font-style:normal; font-weight:600; }
+
 .spc-info-banner {
     margin-top:.8rem; padding:.65rem .85rem;
     background:linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06));
@@ -436,7 +471,38 @@
                                 </div>
                             </template>
                         </div>
-                        <div class="spc-empty" x-show="!loadingClasses && classes.length === 0" x-cloak>
+                        <div class="spc-empty-rich" x-show="!loadingClasses && classes.length === 0 && emptyContext" x-cloak>
+                            <div class="spc-empty-rich-icon"><i class="fas fa-chalkboard"></i></div>
+                            <div class="spc-empty-rich-title">
+                                Aucune classe de spécialité
+                                <strong x-text="emptyContext?.filiere_name || ''"></strong>
+                                au niveau
+                                <strong x-text="emptyContext?.niveau_name || ''"></strong>
+                            </div>
+                            <p class="spc-empty-rich-text">
+                                Cette classe accueillera tous les étudiants orientés depuis le tronc commun
+                                vers cette spécialité. Créez-la une seule fois pour l'utiliser ensuite à chaque
+                                orientation.
+                            </p>
+                            <template x-if="emptyContext?.can_create_classe">
+                                <a :href="emptyContext.create_classe_url" target="_blank" rel="noopener"
+                                   class="spc-btn spc-btn--primary spc-empty-rich-btn">
+                                    <i class="fas fa-plus-circle"></i>
+                                    <span>Créer une classe pour <span x-text="emptyContext?.filiere_name || ''"></span></span>
+                                </a>
+                            </template>
+                            <template x-if="!emptyContext?.can_create_classe">
+                                <p class="spc-empty-rich-hint">
+                                    Demandez à un administrateur de créer une classe pour cette spécialité,
+                                    puis revenez sur cette page pour orienter l'étudiant.
+                                </p>
+                            </template>
+                            <p class="spc-empty-rich-hint" style="margin-top:.55rem;">
+                                Astuce : un admin peut aussi configurer un mapping précis via
+                                <em>Administration → Sorties BTS Tronc Commun</em>.
+                            </p>
+                        </div>
+                        <div class="spc-empty" x-show="!loadingClasses && classes.length === 0 && !emptyContext" x-cloak>
                             <i class="fas fa-circle-exclamation"></i>
                             <strong>Aucune classe cible n'est configurée pour cette spécialisation.</strong>
                             <p style="margin-top:.4rem;">
@@ -493,6 +559,7 @@ function specialisation() {
         filiereId: null,
         classeId: null,
         classes: [],
+        emptyContext: null,
         loadingClasses: false,
         saving: false,
         toasts: [], toastId: 0,
@@ -503,6 +570,7 @@ function specialisation() {
             this.filiereId = id;
             this.classeId = null;
             this.classes = [];
+            this.emptyContext = null;
             await this.loadClasses(id);
         },
 
@@ -512,15 +580,18 @@ function specialisation() {
 
         async loadClasses(filiereId) {
             this.loadingClasses = true;
+            this.emptyContext = null;
             try {
                 const url = '{{ route("esbtp.inscriptions.specialisation.classes", $inscription) }}?filiere_id=' + filiereId;
                 const res = await fetch(url, { headers: { Accept: 'application/json' } });
                 if (!res.ok) throw new Error('Erreur ' + res.status);
                 const data = await res.json();
                 this.classes = data.classes || [];
+                this.emptyContext = data.empty_context || null;
             } catch (e) {
                 this.toast('error', 'Impossible de charger les classes : ' + e.message);
                 this.classes = [];
+                this.emptyContext = null;
             } finally {
                 this.loadingClasses = false;
             }

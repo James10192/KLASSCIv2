@@ -293,6 +293,21 @@ class ESBTPClasseController extends Controller
      */
     public function create(Request $request)
     {
+        // Pré-remplissage depuis query params (ex: bouton "Créer une classe"
+        // depuis la page Specialisation TC → spé quand aucune classe candidate).
+        // On utilise session flash input pour que les `old('field')` du form
+        // récupèrent les valeurs sans modification du partial.
+        $prefill = array_filter([
+            'filiere_id' => $request->query('filiere_id'),
+            'niveau_etude_id' => $request->query('niveau_etude_id'),
+            'annee_universitaire_id' => $request->query('annee_universitaire_id'),
+            'parcours_id' => $request->query('parcours_id'),
+        ], fn ($v) => $v !== null && $v !== '');
+        if (! empty($prefill)) {
+            $request->flashOnly([]);  // reset
+            $request->session()->flashInput($prefill);
+        }
+
         $filieres = ESBTPFiliere::where("is_active", true)->get();
         $niveaux = ESBTPNiveauEtude::where("is_active", true)->get();
         $annees = ESBTPAnneeUniversitaire::where("is_active", true)->get();
