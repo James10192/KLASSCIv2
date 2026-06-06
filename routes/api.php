@@ -341,6 +341,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // LMD bulk import (Domaine + Mention + Parcours + Filière + UEs + ECUEs + Planifications)
         Route::post('/lmd/import', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'import'])->name('lmd.import');
 
+        // LMD cleanup — soft-delete UE/ECUE/planifs d'un parcours pour ré-import propre
+        // (dry_run par défaut SAFE, garde-fou évaluations). Idempotent.
+        Route::post('/lmd/cleanup', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'cleanup'])->name('lmd.cleanup');
+
         // LMD bulk import — enseignants UEMOA (W1.3) — assigne Users + planifications
         // depuis JSONs `database/seeds-data/lmd-enseignants/*.json`. Throttle hérité
         // 60/min suffit (1 appel par filière ou 1 appel `all` par tenant).

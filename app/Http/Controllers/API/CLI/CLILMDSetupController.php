@@ -9,6 +9,7 @@ use App\Models\ESBTPLMDMention;
 use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPUniteEnseignement;
 use App\Console\Commands\LMDImportEnseignantsCommand;
+use App\Services\LMD\LMDCleanupService;
 use App\Services\LMD\LMDEnseignantsImporter;
 use App\Services\LMD\LMDImportService;
 use App\Services\LMD\ParcoursUeSyncService;
@@ -245,6 +246,47 @@ class CLILMDSetupController extends BaseApiController
             $result['stats']['planifs_attached'],
             $result['stats']['planifs_updated'],
         ));
+    }
+
+    /**
+     * POST /api/cli/lmd/cleanup
+     *
+     * Soft-delete les UE / ECUE / planifications d'un ou plusieurs parcours LMD
+     * pour permettre un ré-import de maquette propre (sans codes en doublon).
+     * Idempotent. Les UE dont une ECUE porte déjà des évaluations sont protégées.
+     *
+     * Body : { "parcours": ["TIR","BU"], "dry_run": true }
+     * Défaut SAFE : dry_run = true (aucun commit DB).
+     *
+     * Permission token : cli:admin.
+     */
+    public function cleanup(Request $request, LMDCleanupService $service): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'parcours' => 'required|array|min:1',
+            'parcours.*' => 'required|string|max:50',
+            'dry_run' => 'sometimes|boolean',
+        ]);
+
+        $dryRun = $request->boolean('dry_run', true);
+        $result = $service->cleanupParcours($validated['parcours'], $dryRun);
+        $t = $result['totals'];
+
+        $message = $dryRun
+            ? sprintf(
+                'Dry-run : %d UE / %d ECUE / %d planif supprimables, %d UE protégée(s) par des évaluations (aucun commit DB)',
+                $t['ues'], $t['ecues'], $t['planifs'], $t['ues_blocked']
+            )
+            : sprintf(
+                'Nettoyage terminé : %d UE, %d ECUE, %d planif supprimés ; %d UE protégée(s)',
+                $t['ues'], $t['ecues'], $t['planifs'], $t['ues_blocked']
+            );
+
+        return $this->successResponse($result, $message);
     }
 
     /**
