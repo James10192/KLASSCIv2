@@ -20,11 +20,36 @@ class ESBTPFiliereController extends Controller
      */
     public function index()
     {
-        $filieres = ESBTPFiliere::with(['niveaux', 'matieres', 'parent', 'options'])
+        $filieres = ESBTPFiliere::with(['parent:id,name,is_tronc_commun'])
+            ->withCount(['filieresFilles', 'classes'])
             ->orderBy('name')
             ->get();
 
-        return view('esbtp.filieres.index', compact('filieres'));
+        $filieresData = $filieres->map(function ($f) {
+            return [
+                'id' => $f->id,
+                'name' => $f->name,
+                'code' => $f->code,
+                'is_tronc_commun' => $f->isTroncCommun(),
+                'is_fille_de_tc' => $f->isFilleDeTC(),
+                'parent_id' => $f->parent_id,
+                'parent_name' => optional($f->parent)->name,
+                'parent_is_tc' => (bool) optional($f->parent)->is_tronc_commun,
+                'filles_count' => (int) $f->filieres_filles_count,
+                'classes_count' => (int) $f->classes_count,
+                'is_active' => (bool) $f->is_active,
+            ];
+        })->values()->all();
+
+        $kpis = [
+            'total' => $filieres->count(),
+            'tc' => $filieres->filter(fn ($f) => $f->isTroncCommun())->count(),
+            'specialite' => $filieres->filter(fn ($f) => $f->isFilleDeTC())->count(),
+            'option' => $filieres->filter(fn ($f) => !$f->isTroncCommun() && !$f->parent_id)->count(),
+            'inactives' => $filieres->where('is_active', false)->count(),
+        ];
+
+        return view('esbtp.filieres.index', compact('filieres', 'filieresData', 'kpis'));
     }
 
     /**
@@ -346,9 +371,24 @@ class ESBTPFiliereController extends Controller
      * @param  \App\Models\ESBTPFiliere  $filiere
      * @return \Illuminate\Http\Response
      */
-    public function destroy(ESBTPFiliere $filiere)
+    public function destroy(Request $request, ESBTPFiliere $filiere)
     {
+        // Garde métier : refuser suppression si classes ou filles rattachées
+        $hasClasses = $filiere->classes()->exists();
+        $hasFilles = $filiere->filieresFilles()->exists();
+        if ($hasClasses || $hasFilles) {
+            $msg = 'Suppression impossible : la filière est encore utilisée (classes ou filières filles rattachées).';
+            if ($request->expectsJson() || $request->ajax()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            return redirect()->route('esbtp.filieres.index')->with('error', $msg);
+        }
+
         $filiere->delete();
+
+        if ($request->expectsJson() || $request->ajax()) {
+            return response()->json(['success' => true, 'message' => 'Filière supprimée avec succès.']);
+        }
         return redirect()->route('esbtp.filieres.index')
             ->with('success', 'Filière supprimée avec succès.');
     }

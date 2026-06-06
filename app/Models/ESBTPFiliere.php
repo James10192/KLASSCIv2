@@ -194,6 +194,15 @@ class ESBTPFiliere extends Model
     }
 
     /**
+     * Alias sémantique de options() — filières filles d'un TC.
+     * Utilisé par /esbtp/filieres pour compter les spécialités configurées sous un TC.
+     */
+    public function filieresFilles()
+    {
+        return $this->hasMany(self::class, 'parent_id');
+    }
+
+    /**
      * Scope pour les filières tronc commun.
      */
     public function scopeTroncCommun($query)
