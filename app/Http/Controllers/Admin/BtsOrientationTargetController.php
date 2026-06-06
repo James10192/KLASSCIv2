@@ -34,8 +34,13 @@ class BtsOrientationTargetController extends Controller
 
     public function index(Request $request): View
     {
+        // Bug 8b (juin 2026) : ne lister que les classes dont la filière est
+        // un VRAI tronc commun (is_tronc_commun=true ET parent_id IS NULL).
+        // Cohérent avec ESBTPFiliere::isTroncCommun() qui exige parent_id NULL
+        // pour se protéger contre les données corrompues où une filière OPTION
+        // serait marquée is_tronc_commun=true (ex: yakro filière id=8 GBAT).
         $sourceClasses = ESBTPClasse::query()
-            ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', true))
+            ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', true)->whereNull('parent_id'))
             ->with([
                 'filiere',
                 'niveauEtude',

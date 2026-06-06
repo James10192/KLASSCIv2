@@ -368,8 +368,10 @@
                 </div>
             </div>
 
-            @if(\App\Helpers\SettingsHelper::get('tronc_commun_enabled', false))
-            {{-- Section Hiérarchie & Tronc commun --}}
+            {{-- Section Hiérarchie & Tronc commun : toujours affichée pour permettre la gestion
+                 de la hiérarchie filière TC ↔ filière fille (bug 8a, juin 2026).
+                 Auparavant gated derrière SettingsHelper::get('tronc_commun_enabled') ce qui
+                 masquait le champ parent_id alors que la donnée existait déjà en DB. --}}
             <div class="fe-card">
                 <div class="fe-section-header">
                     <div class="fe-section-icon"><i class="fas fa-network-wired"></i></div>
@@ -446,7 +448,6 @@
                     </div>
                 </div>
             </div>
-            @endif
 
             {{-- Section Statut --}}
             <div class="fe-card">
