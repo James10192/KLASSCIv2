@@ -1165,6 +1165,12 @@
     .ci-hero-icon { width: 44px; height: 44px; font-size: 1.1rem; }
 }
 </style>
+
+{{-- Tree hiérarchie LMD (Domaine→Mention→Parcours) des cards : chargé en <head>
+     pour rester stylé après rechargement AJAX des cards (fetchResults remplace
+     l'innerHTML, le @push('styles') du composant serait perdu). Source unique +
+     @once dans le partial → pas de doublon avec le push du composant. --}}
+@include('partials.lmd-tree-styles')
 @endpush
 
 @section('content')
