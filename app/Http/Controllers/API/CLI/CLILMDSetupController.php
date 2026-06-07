@@ -10,6 +10,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPUniteEnseignement;
 use App\Console\Commands\LMDImportEnseignantsCommand;
 use App\Services\LMD\LMDCleanupService;
+use App\Services\LMD\LMDClassLinkService;
 use App\Services\LMD\LMDEnseignantsImporter;
 use App\Services\LMD\LMDImportService;
 use App\Services\LMD\ParcoursUeSyncService;
@@ -285,6 +286,46 @@ class CLILMDSetupController extends BaseApiController
                 'Nettoyage terminé : %d UE, %d ECUE, %d planif supprimés ; %d UE protégée(s)',
                 $t['ues'], $t['ecues'], $t['planifs'], $t['ues_blocked']
             );
+
+        return $this->successResponse($result, $message);
+    }
+
+    /**
+     * POST /api/cli/lmd/link-classes
+     *
+     * Rattache des classes LMD à un parcours : pose parcours_id, dérive
+     * filiere_id = parcours.filiere_id, force systeme_academique = LMD. Le
+     * Domaine + la Mention en découlent via parcours -> mention -> domaine.
+     * Garde-fou : classes non-LMD ignorées. Idempotent. Dry-run par défaut.
+     *
+     * Body : { "parcours": "TIR", "classes": [63,66,...], "dry_run": true }
+     */
+    public function linkClasses(Request $request, LMDClassLinkService $service): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'parcours' => 'required|string|max:50',
+            'classes' => 'required|array|min:1',
+            'classes.*' => 'required|integer',
+            'dry_run' => 'sometimes|boolean',
+        ]);
+
+        $dryRun = $request->boolean('dry_run', true);
+        $result = $service->link($validated['parcours'], $validated['classes'], $dryRun);
+
+        if ($result['parcours'] === null) {
+            return $this->errorResponse("Parcours introuvable : {$validated['parcours']}", [], 404);
+        }
+
+        $t = $result['totals'];
+        $message = $dryRun
+            ? sprintf('Dry-run : %d classe(s) rattachable(s) au parcours %s, %d ignorée(s) (aucun commit)',
+                $t['linked'], $validated['parcours'], $t['skipped'])
+            : sprintf('%d classe(s) rattachée(s) au parcours %s, %d ignorée(s)',
+                $t['linked'], $validated['parcours'], $t['skipped']);
 
         return $this->successResponse($result, $message);
     }
