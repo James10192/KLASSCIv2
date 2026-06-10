@@ -2,6 +2,8 @@
 
 namespace Tests\Unit\Services;
 
+use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
+use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Services\BulletinService;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use Mockery;
@@ -28,7 +30,7 @@ class BulletinServiceCalculTest extends TestCase
         // Mockery sur le seul collaborateur du constructeur — la fonction testée
         // ne touche à rien de DB-dépendant donc les méthodes du mock ne sont jamais appelées.
         $absenceService = Mockery::mock(ESBTPAbsenceService::class);
-        $this->service = new BulletinService($absenceService);
+        $this->service = new BulletinService($absenceService, new BtsAnnualClassMapResolver(new BtsPhaseResolver()));
     }
 
     protected function tearDown(): void

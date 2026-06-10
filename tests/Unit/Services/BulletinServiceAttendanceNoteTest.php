@@ -5,6 +5,8 @@ namespace Tests\Unit\Services;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
 use App\Models\Setting;
+use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
+use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Services\BulletinService;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,7 +20,7 @@ class BulletinServiceAttendanceNoteTest extends TestCase
     {
         $absenceService ??= \Mockery::mock(ESBTPAbsenceService::class);
 
-        return new BulletinService($absenceService);
+        return new BulletinService($absenceService, new BtsAnnualClassMapResolver(new BtsPhaseResolver()));
     }
 
     private function seedAttendanceSettings(string $enabled = '1'): void

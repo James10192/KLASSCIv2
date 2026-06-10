@@ -13,6 +13,7 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use App\Support\InscriptionWorkflowAlertPresenter;
 use App\Models\ESBTPConfigMatiere;
@@ -40,13 +41,16 @@ class BulletinService
 
     private $absenceService;
 
+    private BtsAnnualClassMapResolver $classMapResolver;
+
     private array $coefficientCache = [];
 
     private array $classeCache = [];
 
-    public function __construct(ESBTPAbsenceService $absenceService)
+    public function __construct(ESBTPAbsenceService $absenceService, BtsAnnualClassMapResolver $classMapResolver)
     {
         $this->absenceService = $absenceService;
+        $this->classMapResolver = $classMapResolver;
     }
 
     public function isAttendanceNoteEnabled(): bool
@@ -451,21 +455,16 @@ class BulletinService
             ->where('moyenne_generale', '>', 0)
             ->exists();
 
-        // Tronc commun : si l'inscription est une spécialisation, chercher S1 dans la classe d'origine
+        // Tronc commun : resoudre la classe portant les notes du S1 via le class-map
+        // resolveur stateless (modele phases ET legacy). CLASS MAP only.
         $classeIdS1 = $classeId;
         $classeTroncCommun = null;
-        $inscription = \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
-            ->where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->whereIn('status', ['active', 'terminée'])
-            ->first();
-
-        if ($inscription && $inscription->isSpecialisation()
-            && \App\Helpers\SettingsHelper::get('tronc_commun_mga_include_s1', true)) {
-            $origine = $inscription->inscriptionOrigine;
-            if ($origine && $origine->classe_id) {
-                $classeIdS1 = $origine->classe_id;
-                $classeTroncCommun = $origine->classe;
+        if (\App\Helpers\SettingsHelper::get('tronc_commun_mga_include_s1', true)) {
+            $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
+            $resolvedS1ClasseId = $classMap['semestre1_classe_id'] ?? $classeId;
+            if ($resolvedS1ClasseId && (int) $resolvedS1ClasseId !== (int) $classeId) {
+                $classeIdS1 = (int) $resolvedS1ClasseId;
+                $classeTroncCommun = ESBTPClasse::with('filiere')->find($resolvedS1ClasseId);
             }
         }
 
