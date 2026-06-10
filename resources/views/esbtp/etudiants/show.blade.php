@@ -3300,6 +3300,23 @@
     /* Résultats groupés par semestre pour l'affichage détail */
     $acadSemestres = $acadResultatsRef->groupBy(fn($r) => $r->periode ?? 'N/A')->sortKeys();
 
+    /* Fallback PROVISOIRE : aucun bulletin ET aucun esbtp_resultats (= bulletin
+       non encore généré), mais des notes ont été saisies. On affiche alors le
+       snapshot live calculé depuis esbtp_notes, clairement marqué "provisoire".
+       Dès qu'un bulletin/résultat existe, ce fallback est ignoré : les bulletins
+       et esbtp_resultats ci-dessus priment toujours (override officiel). */
+    $acadLiveSemestres = collect();
+    if ($acadBuls->isEmpty() && $acadSemestres->isEmpty() && is_array($btsAnnualSnapshot ?? null)) {
+        foreach (($btsAnnualSnapshot['semester_snapshots'] ?? []) as $semKey => $snap) {
+            $subjects = collect($snap['subjects'] ?? [])
+                ->filter(fn($s) => ($s['moyenne'] ?? null) !== null)
+                ->values();
+            if ($subjects->isNotEmpty()) {
+                $acadLiveSemestres[$semKey] = $subjects;
+            }
+        }
+    }
+
     /* Années précédentes */
     $acadAutres = $acadInscs->filter(fn($i) => !$acadRef || $i->id !== $acadRef->id);
 
@@ -4108,6 +4125,80 @@
             </div>
         </div>
         @endforeach
+
+    @elseif($acadLiveSemestres->isNotEmpty())
+        {{-- PROVISOIRE : des notes sont saisies mais le bulletin n'est pas encore
+             généré (aucun esbtp_resultats). On affiche le calcul live des notes,
+             explicitement marqué comme provisoire. Le bulletin officiel l'écrasera. --}}
+        <div class="s-card" style="background:rgba(245,158,11,.06); border:1px solid rgba(245,158,11,.28); border-radius:10px; padding:.7rem .9rem; margin-bottom:.75rem; display:flex; align-items:flex-start; gap:.6rem;">
+            <i class="fas fa-hourglass-half" style="color:#b45309; font-size:.85rem; margin-top:.15rem;"></i>
+            <span style="font-size:.78rem; color:#92400e; line-height:1.45;">
+                <strong>Résultats provisoires</strong> — calculés à partir des notes saisies. Le bulletin de cette année n'a pas encore été généré ; ces moyennes seront figées et remplacées par le bulletin officiel une fois publié.
+            </span>
+        </div>
+        @foreach($acadLiveSemestres as $periodeKey => $semSubjects)
+        @php
+            /* Moyenne pondérée par coefficient pour ce semestre (live) */
+            $_lsp = 0; $_lsc = 0;
+            foreach ($semSubjects as $_ss) {
+                $_lc = $_ss['coefficient'] ?? 1;
+                $_lsp += $_ss['moyenne'] * $_lc;
+                $_lsc += $_lc;
+            }
+            $mgLive = $_lsc > 0 ? round($_lsp / $_lsc, 2) : 0;
+            $semKeyL = 'acad-sem-l-' . Str::slug($periodeKey);
+            $semBadgeClsL = $mgLive >= 12 ? 'green' : ($mgLive >= 10 ? 'amber' : 'red');
+            $semLabelL = ucfirst(str_replace(['semestre', '_', '-'], ['Semestre ', ' ', ' '], strtolower($periodeKey)));
+        @endphp
+        <div class="acad-sem-block">
+            <div class="acad-sem-header"
+                 data-bs-toggle="collapse"
+                 data-bs-target="#{{ $semKeyL }}"
+                 aria-expanded="{{ $loop->first ? 'true' : 'false' }}">
+                <div class="acad-sem-header-left">
+                    <i class="fas fa-book-open" style="color:var(--k-blue); font-size:.8rem;"></i>
+                    <span class="acad-sem-period">{{ $semLabelL ?: 'Semestre' }}</span>
+                    <span style="font-size:.6rem; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:#b45309; background:rgba(245,158,11,.12); border:1px solid rgba(245,158,11,.3); padding:.1rem .4rem; border-radius:5px;">Provisoire</span>
+                </div>
+                <div class="acad-sem-header-right">
+                    @if($mgLive)
+                        <span class="acad-sem-badge {{ $semBadgeClsL }}">{{ number_format($mgLive, 2) }}/20</span>
+                    @endif
+                    <i class="fas fa-chevron-down acad-sem-chevron"></i>
+                </div>
+            </div>
+            <div class="collapse {{ $loop->first ? 'show' : '' }}" id="{{ $semKeyL }}">
+                <div class="acad-mat-list">
+                    @foreach($semSubjects->sortBy(fn($s) => $s['matiere'] ?? '') as $ssub)
+                    @php
+                        $ln = $ssub['moyenne'] ?? null;
+                        $lc = $ssub['coefficient'] ?? null;
+                        $lnom = $ssub['matiere'] ?? '—';
+                        $lclass = $ln === null ? '' : ($ln >= 12 ? 'good' : ($ln >= 10 ? 'mid' : 'bad'));
+                        $lcolor = $ln === null ? '#94a3b8' : ($ln >= 12 ? '#10b981' : ($ln >= 10 ? '#f59e0b' : '#ef4444'));
+                        $lpct = $ln !== null ? min(100, round($ln / 20 * 100)) : 0;
+                    @endphp
+                    <div class="acad-mat-item">
+                        <div class="acad-mat-top">
+                            <span class="acad-mat-name">{{ $lnom }}</span>
+                            @if($lc) <span class="acad-mat-coeff-pill">Coef. {{ $lc }}</span> @endif
+                            <span class="acad-mat-score {{ $lclass }}">
+                                {{ $ln !== null ? number_format($ln, 2) : '—' }}
+                                @if($ln !== null)<span style="font-size:.65em; font-weight:500; opacity:.6;">/20</span>@endif
+                            </span>
+                        </div>
+                        @if($ln !== null)
+                        <div class="acad-mat-bar-wrap">
+                            <div class="acad-mat-bar" style="width:{{ $lpct }}%; background:{{ $lcolor }};"></div>
+                        </div>
+                        @endif
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+        </div>
+        @endforeach
+
     @else
         <div class="s-card">
             <p style="text-align:center; color:var(--k-muted); font-size:.85rem; padding:16px 0; margin:0;">

@@ -196,6 +196,43 @@ bootstrap.Dropdown.prototype._getPopperConfig = function() {
 
 ---
 
+### Piège #12 — Colonne sélectionnée dans un `->get([...])` / `select()` mais JAMAIS migrée (500 `Unknown column`)
+
+**Symptôme** : un endpoint (souvent API CLI ou un eager-load) renvoie un **500** `SQLSTATE[42S22] ... Unknown column 'xxx' in 'SELECT'`. Le bug est INVISIBLE en lecture de code (la colonne « a l'air » légitime) et ne se déclenche qu'au runtime, uniquement quand la requête retourne des lignes.
+
+**Incident fondateur (juin 2026)** : `klassci students:show esbtp-abidjan 2743` → 500 `Unknown column 'note_rattrapage' in esbtp_notes`. `CLIStudentController.php:160` faisait `->get(['id','matiere_id','evaluation_id','note','note_rattrapage','is_absent'])` sur `esbtp_notes`. Or :
+- AUCUNE migration n'ajoute `note_rattrapage` à `esbtp_notes` (la seule migration `note_rattrapage` cible `esbtp_lmd_resultat_ecue`, table LMD totalement différente) ;
+- la colonne est **absente du `$fillable`/casts du modèle `ESBTPNote`**.
+→ Copier-coller depuis le contexte LMD (rattrapage = concept ECUE-level LMD, pas note BTS brute). Cassait `students:show` pour **tout étudiant ayant une note sur l'année courante, sur TOUS les tenants** (le CLI parle à l'app déployée).
+
+**Règle** : avant d'ajouter un nom de colonne dans un `select()` / `->get([...])` / `->pluck()`, vérifier qu'une migration la crée RÉELLEMENT sur CETTE table :
+```bash
+grep -rln "nom_colonne" database/migrations/   # doit matcher une migration sur LA bonne table
+grep -n "nom_colonne" app/Models/LeModele.php  # idéalement dans $fillable/casts
+```
+Si la colonne est un concept d'une autre entité (ex: rattrapage LMD vs note BTS), ne PAS la sélectionner sur la table voisine.
+
+**Diagnostic** : un endpoint API qui 500 mais dont le code « semble bon » → reproduire avec le CLI (`klassci <cmd> <tenant>`) qui RENVOIE le message SQL exact, bien plus parlant que le 500 web générique. Le CLI est un excellent révélateur de schema/colonnes.
+
+---
+
+### Piège #13 — Snapshot live (notes brutes) vs table agrégat (`esbtp_resultats`) : « Aucune note » trompeur
+
+**Symptôme** : sur `/esbtp/etudiants/{id}` onglet Académique, le **Bilan** affiche une Moyenne/Rang/Mention (ex: 10.64, 9/25, Assez Bien) MAIS la section détaillée juste en dessous dit « Aucune note enregistrée pour cette année ». Contradiction apparente alors que des notes existent bien en DB.
+
+**Cause** : deux sources de vérité différentes dans la même page.
+- Le **Bilan** (KPIs moyenne/rang/mention) est calculé EN LIVE depuis `esbtp_notes` via `BtsCurrentResultSnapshotService::getAnnualSnapshot()` (retourne `state`, `effective_total`, `semester_snapshots[*].subjects`).
+- La **section détaillée** (liste matières par semestre) lit la table AGRÉGAT `esbtp_resultats` (`show.blade.php` ~3300, `$acadResultatsRef` → `$acadSemestres`). Or `esbtp_resultats` n'est peuplé qu'à la **génération du bulletin**. Tant qu'aucun bulletin n'est généré, l'agrégat est vide → « aucune note », même si les notes brutes existent.
+
+**Fix canonique (validé Marcel juin 2026)** : fallback PROVISOIRE.
+- Si `esbtp_resultats` (et bulletins) vides MAIS le snapshot live a des `subjects` → afficher le détail calculé depuis les notes, **explicitement marqué « Provisoire »** (notes saisies, bulletin non encore généré).
+- Dès qu'un bulletin / `esbtp_resultats` existe → il **PRIME** (override officiel) ; le fallback est ignoré.
+- Implémentation : `$acadLiveSemestres` construit depuis `$btsAnnualSnapshot['semester_snapshots']` seulement si `$acadBuls->isEmpty() && $acadSemestres->isEmpty()`, rendu via une branche `@elseif($acadLiveSemestres->isNotEmpty())` AVANT le `@else` « Aucune note ».
+
+**Règle générale** : quand un KPI agrégé et une liste de détail divergent, vérifier qu'ils lisent la MÊME source. Un bilan « live » + un détail « agrégat figé » divergent toujours tant que l'agrégat n'est pas régénéré. Cf. Piège #6 (snapshot `moyenne_generale` figé) et Piège #7 (dénormalisation stale).
+
+---
+
 ## Workflow systematic pour debug d'un bug "mes changements ne prennent pas effet"
 
 Quand tu vois le symptôme « mes logs/changements n'apparaissent pas », exécute ce checklist DANS L'ORDRE :
