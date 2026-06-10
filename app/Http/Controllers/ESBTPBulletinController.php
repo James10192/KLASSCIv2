@@ -1630,6 +1630,10 @@ class ESBTPBulletinController extends Controller
                 'totalEtudiants'
             ));
 
+        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+            // Laisser passer les réponses HTTP volontaires (ex: garde LMD abort_if(422)).
+            // Sinon le catch générique ci-dessous les convertirait en redirect 302.
+            throw $e;
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la prévisualisation du bulletin: '.$e->getMessage());
 
