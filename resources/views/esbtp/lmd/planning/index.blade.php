@@ -31,6 +31,7 @@
                 </div>
             </div>
             <div class="lp-hero-actions">
+                <x-lmd-reconciliation-trigger variant="glass" />
                 <button type="button" class="lp-btn-glass" data-page-tour-open>
                     <i class="fas fa-route"></i> Guide
                 </button>

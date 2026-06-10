@@ -172,7 +172,8 @@
                     <p>Gestion des UE et de leurs ECUEs associés</p>
                 </div>
             </div>
-            <div style="display:flex; gap:.5rem;">
+            <div style="display:flex; gap:.5rem; align-items:center;">
+                <x-lmd-reconciliation-trigger variant="glass" />
                 <button type="button" class="lu-hero-btn--solid lu-hero-btn" @click="openCreateModal()">
                     <i class="fas fa-plus"></i>Nouvelle UE
                 </button>
