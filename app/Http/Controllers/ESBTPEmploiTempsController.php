@@ -378,34 +378,6 @@ class ESBTPEmploiTempsController extends Controller
     /**
      * Récupérer les données de planification pour une classe donnée
      */
-    /**
-     * Normalise le champ string esbtp_emploi_temps.semestre ("Semestre 1", "Semestre 2",
-     * "1", "2", "Année"...) vers un ?int attendu par MatiereTreeBuilder::buildWithVolumeBudget().
-     * Retourne null pour "année complète" / valeur inconnue (= pas de filtre semestre).
-     * Mirroir de la logique inline de getPlanificationDataForClasse().
-     */
-    private function semestreToInt($semestre): ?int
-    {
-        if ($semestre === null || $semestre === '') {
-            return null;
-        }
-        if (is_string($semestre)) {
-            if (strpos($semestre, 'Semestre 1') !== false) {
-                return 1;
-            }
-            if (strpos($semestre, 'Semestre 2') !== false) {
-                return 2;
-            }
-            if (is_numeric($semestre)) {
-                return (int) $semestre;
-            }
-
-            return null; // Année complète / inconnu — ne pas filtrer par semestre
-        }
-
-        return (int) $semestre;
-    }
-
     private function getPlanificationDataForClasse($classe, $annee, $semestre = null)
     {
         $data = [
@@ -746,8 +718,12 @@ class ESBTPEmploiTempsController extends Controller
             // Feedback Marcel : "Dans bulk-edit il n'y a pas budgetisation par CM tp etc"
             if (($emploiTemps->classe->systeme_academique ?? '') === 'LMD'
                 || in_array($emploiTemps->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true)) {
+                // Pas de filtre semestre : la planification académique (UE/ECUE) couvre tout le
+                // niveau (ex L3 = S5+S6). Le label esbtp_emploi_temps.semestre est BTS-orienté et
+                // ne correspond pas aux semestres LMD réels → on charge la planification complète,
+                // identique à la source de l'onglet "Suivi des heures" (loadLmdMatieresForClasse sans semestre).
                 $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)
-                    ->buildWithVolumeBudget($planificationData, $emploiTemps->classe, $emploiTemps->annee, $this->semestreToInt($emploiTemps->semestre));
+                    ->buildWithVolumeBudget($planificationData, $emploiTemps->classe, $emploiTemps->annee);
             }
         }
 
@@ -908,8 +884,10 @@ class ESBTPEmploiTempsController extends Controller
             // via VolumeBudgetService pour les KPIs hero "heures restantes / % realise".
             if (($emploi_temp->classe->systeme_academique ?? '') === 'LMD'
                 || in_array($emploi_temp->classe->niveau->type ?? '', ['Licence', 'Master', 'Doctorat'], true)) {
+                // Pas de filtre semestre : planification complète du niveau LMD (cf. note bulk-edit
+                // plus haut). Le label semestre BTS de l'emploi du temps ne mappe pas les semestres LMD.
                 $planificationData = app(\App\Services\LMD\MatiereTreeBuilder::class)
-                    ->buildWithVolumeBudget($planificationData, $emploi_temp->classe, $emploi_temp->annee, $this->semestreToInt($emploi_temp->semestre));
+                    ->buildWithVolumeBudget($planificationData, $emploi_temp->classe, $emploi_temp->annee);
             }
         }
 
