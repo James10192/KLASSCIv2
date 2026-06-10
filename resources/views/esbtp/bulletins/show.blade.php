@@ -402,9 +402,6 @@
                             </a>
                             @endcan
                             @can('bulletins.configure')
-                                <a href="{{ route('esbtp.bulletins.migrate-resultats-to-details', $bulletin) }}" class="btn btn-info ml-2">
-                                    <i class="fas fa-sync"></i> Migrer résultats vers détails
-                                </a>
                                 <a href="{{ route('esbtp.bulletins.edit-professeurs') }}?bulletin={{ $bulletin->etudiant_id }}&classe_id={{ $bulletin->classe_id }}&periode={{ $bulletin->periode }}&annee_universitaire_id={{ $bulletin->annee_universitaire_id }}" class="btn btn-info ml-2">
                                     <i class="fas fa-chalkboard-teacher"></i> Éditer professeurs
                                 </a>
@@ -414,7 +411,7 @@
                             @endcan
                         </div>
                         <div>
-                            <a href="{{ route('esbtp.bulletins.pdf', $bulletin) }}" class="btn btn-success" target="_blank">
+                            <a href="{{ route('esbtp.bulletins.download', $bulletin) }}" class="btn btn-success" target="_blank">
                                 <i class="fas fa-file-pdf"></i> Générer PDF
                             </a>
                         </div>
