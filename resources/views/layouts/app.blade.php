@@ -1868,6 +1868,12 @@
                                     <span>Jurys de délibération</span>
                                 </a>
                                 @endcan
+                                @can('lmd.reconciliation.manage')
+                                <a href="{{ route('esbtp.lmd.reconciliation.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.lmd.reconciliation.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Réconciliation doublons</span>
+                                </a>
+                                @endcan
                             </div>
                         </div>
                     @endcan

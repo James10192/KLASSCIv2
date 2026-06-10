@@ -385,6 +385,7 @@
                 </div>
             </div>
             <div class="lp-hero-actions">
+                <x-lmd-reconciliation-trigger variant="glass" />
                 <a href="{{ route('esbtp.lmd.parcours-domain.index') }}" class="lp-hero-btn">
                     <i class="fas fa-sync-alt"></i>Actualiser
                 </a>
