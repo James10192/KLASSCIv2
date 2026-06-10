@@ -73,6 +73,45 @@
 
 @push('styles')
 <style>
+/* KPIs + empty state — empruntés au namespace cs-planning de classes/show,
+   embarqués ici car ce partial est rendu hors de classes/show (rule embedded-styles-pattern). */
+.sh-bts .cs-planning-kpis {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: .75rem; margin-bottom: 1.25rem;
+}
+.sh-bts .cs-planning-kpi {
+    background: #fff; border: 1px solid #e2e8f0;
+    border-radius: 12px; padding: .85rem 1rem;
+    position: relative; overflow: hidden;
+}
+.sh-bts .cs-planning-kpi::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0;
+    height: 3px; background: var(--kpi-color, #0453cb);
+    border-radius: 12px 12px 0 0;
+}
+.sh-bts .cs-planning-kpi-icon {
+    width: 32px; height: 32px; border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: .88rem;
+    background: color-mix(in srgb, var(--kpi-color, #0453cb) 12%, transparent);
+    color: var(--kpi-color, #0453cb);
+    margin-bottom: .35rem;
+}
+.sh-bts .cs-planning-kpi-value { font-size: 1.4rem; font-weight: 800; color: #1e293b; line-height: 1; }
+.sh-bts .cs-planning-kpi-label {
+    font-size: .68rem; font-weight: 600;
+    text-transform: uppercase; letter-spacing: .05em;
+    color: #64748b; margin-top: .25rem;
+}
+.sh-bts .cs-empty { text-align: center; padding: 3rem 1.5rem; }
+.sh-bts .cs-empty-icon {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: #f8fafc;
+    display: inline-flex; align-items: center; justify-content: center;
+    margin-bottom: 1rem; color: #64748b; font-size: 1.4rem;
+}
+.sh-bts .cs-empty-title { font-weight: 600; color: #1e293b; margin-bottom: .3rem; }
+.sh-bts .cs-empty-text { color: #64748b; font-size: .88rem; }
 .sh-bts-list { display: flex; flex-direction: column; gap: .65rem; }
 .sh-bts-matiere-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 12px; padding: .85rem 1rem; transition: all .15s; }
 .sh-bts-matiere-card:hover { box-shadow: 0 4px 16px rgba(4,83,203,.06); border-color: rgba(4,83,203,.2); }

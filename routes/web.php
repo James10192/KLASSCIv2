@@ -1111,12 +1111,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 Route::delete('/{bulletin}', [ESBTPBulletinController::class, 'destroy'])->whereNumber('bulletin')->name('destroy');
 
                 // Route pour la signature des bulletins
-                Route::post('bulletins/{bulletin}/signer/{role}', [ESBTPBulletinController::class, 'signer'])
-                    ->name('bulletins.signer')
+                Route::post('{bulletin}/signer/{role}', [ESBTPBulletinController::class, 'signer'])
+                    ->whereNumber('bulletin')
+                    ->name('signer')
                     ->middleware(['permission:bulletins.edit']);
                 // Route pour basculer la publication d'un bulletin
-                Route::put('bulletins/{bulletin}/toggle-publication', [ESBTPBulletinController::class, 'togglePublication'])
-                    ->name('bulletins.toggle-publication')
+                Route::put('{bulletin}/toggle-publication', [ESBTPBulletinController::class, 'togglePublication'])
+                    ->whereNumber('bulletin')
+                    ->name('toggle-publication')
                     ->middleware(['permission:bulletins.edit']);
 
                 // Route pour les bulletins en attente
