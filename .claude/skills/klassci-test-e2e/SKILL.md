@@ -20,6 +20,68 @@ Méthode courte et reproductible pour valider un flux réel sur tenant, sans s'a
 3. Ne pas conclure "c'est bon" sans données métiers réelles.
 4. En cas d'outil `klassci-cli` cassé sur un POST, basculer vers l'endpoint `api/cli` signé par token tenant.
 5. Quand le moteur et l'UI divergent, corriger d'abord la source de vérité puis la projection.
+6. **Tester le code DÉPLOYÉ** : l'e2e valide le code en prod sur le tenant. Si tu viens de merger une feature,
+   **déploie d'abord** (`klassci pull <tenant> && klassci cache:clear <tenant>`) sinon tu testes l'ancien code.
+
+## Deux CLI distincts (ne pas confondre)
+
+| Outil | Quoi | Commandes |
+|---|---|---|
+| `klassci` (binaire sur PATH) | Ops tenant + KPIs | `pull`, `cache:clear`, `migrate`, `permissions:fix`, `stats`, `students:list`, `students:show <id>`, `classes:list`, `inscriptions:list`, `payments:list`, `config:list` |
+| `klassci-cli.ps1` (repo, à la racine) | **Diagnostics BTS-TC / résultats riches** | `bts-tc:student-journey`, `bts-tc:diagnose`, `bts-tc:legacy-audit`, `bts-tc:results-consistency`, `bts-tc:orient`, `bts-tc:seed-academic-sample`, `resultats:diagnose`, `resultats:bulletin-consistency-diagnose`, `resultats:bts-annual-snapshot` |
+
+`powershell -ExecutionPolicy Bypass -File ./klassci-cli.ps1 <cmd>` — chaque sous-commande sans arg affiche son `Usage:`.
+Le binaire `klassci` n'a **pas** de passthrough artisan : une commande custom serveur (ex: backfill) se lance
+via le **terminal cPanel** (pas de SSH:22 vers LWS depuis la machine dev), ou via un endpoint `/api/cli/*` dédié.
+
+## ⚡ Chemin rapide « le bulletin annuel prend-il bien le S1 du Tronc Commun ? » (validé Plan C 2026-06-10)
+
+Pour valider en ~3 commandes que la chaîne TC→spécialité fonctionne sur le code déployé, **sans construire
+un cas from scratch** : utilise un étudiant déjà orienté en **modèle phases** (`source_model: phase_based`,
+le cas qui était cassé).
+
+```bash
+# 1. Trouver/confirmer un étudiant orienté phases (cas de réf presentation : 831, TC=classe 98 / spé=99, année 1)
+powershell -ExecutionPolicy Bypass -File ./klassci-cli.ps1 bts-tc:student-journey presentation 831 1
+#    → vérifier source_model=phase_based + timeline tronc_commun(S1, classe TC) → specialisation(S2, classe spé)
+
+# 2. Diagnostic résultats ANNUEL (exécute le code déployé)
+powershell -ExecutionPolicy Bypass -File ./klassci-cli.ps1 resultats:diagnose presentation 831 99 1 annuel 1
+#    ✅ ATTENDU : class_map.semestre1_classe_id = la classe TC (98, pas la spé 99)
+#              + semestre1.moyenne lue depuis la classe TC, semestre2 depuis la spé
+#              + annual_state = "annual_complete" + annual_weighted = agrégat des DEUX semestres
+#    ❌ BUG (pré-Plan C) : S1 perdu, annuel incomplet ou ne reflétant que la spé
+
+# 3. Cohérence fiche ↔ bulletin (snapshot vs bulletin officiel)
+powershell -ExecutionPolicy Bypass -File ./klassci-cli.ps1 resultats:bulletin-consistency-diagnose presentation 831 99 1 annuel
+#    → has_divergence=false attendu. NB : si official_bulletin_exists=false (pas de bulletin persisté),
+#      la divergence ne peut pas se mesurer → la preuve vient de l'étape 2 (class_map + annual_complete).
+```
+
+Si aucun étudiant orienté phases n'existe (`bts-tc:legacy-audit` renvoie items vides), construire le cas :
+`bts-tc:orient <inscription_id> <target_classe_id>` puis `bts-tc:seed-academic-sample <inscription_id> <noteS1> <noteS2>`
+(écrit sur une inscription de test, **jamais** de `migrate:fresh`/wipe).
+
+## Backfill des bulletins annuels existants (post-correctif TC)
+
+Quand un correctif change le calcul du bulletin (ex: Plan C), les bulletins **déjà persistés** gardent
+l'ancienne valeur jusqu'à régénération. La commande dédiée est **idempotente** et **dry-run par défaut** :
+
+```bash
+# DRY-RUN d'abord (read-only, recompute en transaction+rollback) — sur le serveur tenant via cPanel :
+!  cd ~/public_html/presentation && php artisan bts:tc-bulletins-backfill presentation --dry-run --annee=<id>
+# Lire le compte de bulletins divergents. Si OK → run réel (sans --dry-run), backup mysqldump AVANT.
+```
+
+**Ordre tenants** (moins→plus critique) : `presentation` → `hetec` → `rostan` → `ephrata` → `esbtp-yakro`
+→ `esbtp-abidjan`. **JAMAIS** prod Élite direct sans dry-run validé. Runbook : `docs/runbooks/bts-tc-bulletins-backfill.md`.
+
+## Pré-requis machine (tests + diagnostics locaux)
+
+- MySQL local (XAMPP) doit tourner pour les diagnostics/tests qui tapent une DB locale — voir rule
+  `klassci-local-test-suite.md` (démarrage `mysqld`, DB `klassci_testing`, lenteur RefreshDatabase, pièges seed).
+- `klassci_local` peut être **vide** de données métier → un dry-run/diagnostic local n'y trouvera rien ;
+  les diagnostics réels se font contre le tenant (`presentation`) via le CLI signé par token.
 
 ## Boucle E2E standard
 
