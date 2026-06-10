@@ -99,7 +99,12 @@
         margin-top: 1rem; padding: .85rem 1rem; border-radius: 10px;
         background: rgba(4,83,203,.04); border-left: 3px solid #0453cb; color: #334155; font-size: .85rem;
     }
-    .ns-meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+    .ns-meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: 1rem; }
+    .ns-meta-item { display: flex; align-items: center; gap: .5rem; padding: .65rem .85rem; background: #f8fafc; border: 1px solid #eef2f7; border-radius: 10px; font-size: .82rem; min-width: 0; }
+    .ns-meta-item > i { color: #94a3b8; font-size: .85rem; flex-shrink: 0; }
+    .ns-meta-label { color: #64748b; font-weight: 600; white-space: nowrap; }
+    .ns-meta-label::after { content: ':'; }
+    .ns-meta-value { color: #1e293b; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
     .ns-footer-actions { display: flex; justify-content: space-between; gap: .75rem; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #eef2f7; flex-wrap: wrap; }
     .ns-btn--danger { background: #fff; color: #b91c1c; border-color: rgba(220,38,38,.3); }
@@ -271,9 +276,17 @@
                 @endif
 
                 <div class="ns-meta-row">
-                    <div class="ns-info"><span class="ns-info-label"><i class="fas fa-user me-1"></i>Créé par</span><span class="ns-info-value">{{ optional($note->createdBy)->name ?? '—' }}</span></div>
+                    <div class="ns-meta-item">
+                        <i class="fas fa-user"></i>
+                        <span class="ns-meta-label">Créé par</span>
+                        <span class="ns-meta-value">{{ optional($note->createdBy)->name ?? '—' }}</span>
+                    </div>
                     @if($note->updatedBy)
-                    <div class="ns-info"><span class="ns-info-label"><i class="fas fa-user-edit me-1"></i>Mis à jour par</span><span class="ns-info-value">{{ $note->updatedBy->name }}</span></div>
+                    <div class="ns-meta-item">
+                        <i class="fas fa-user-edit"></i>
+                        <span class="ns-meta-label">Mis à jour par</span>
+                        <span class="ns-meta-value">{{ $note->updatedBy->name }}</span>
+                    </div>
                     @endif
                 </div>
 
