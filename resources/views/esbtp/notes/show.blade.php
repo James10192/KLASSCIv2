@@ -1,250 +1,305 @@
 @extends('layouts.app')
 
-@section('title', 'Détails de la note - KLASSCI')
+@section('title', 'Détail de la note - KLASSCI')
+
+@push('styles')
+<style>
+    /* ══ Notes — Détail (namespace ns-*) ══════════════════════════ */
+    .ns-page { padding-bottom: 2rem; }
+
+    /* Hero */
+    .ns-hero {
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+        border-radius: 18px;
+        padding: 2rem 2.5rem 1.5rem;
+        color: #fff;
+        margin-bottom: 1.25rem;
+        box-shadow: 0 8px 30px rgba(4,83,203,.18);
+    }
+    .ns-hero-top {
+        display: flex; align-items: flex-start; justify-content: space-between;
+        flex-wrap: wrap; gap: 1rem;
+    }
+    .ns-hero-left { display: flex; align-items: center; gap: 1rem; }
+    .ns-hero-icon {
+        width: 52px; height: 52px; border-radius: 14px;
+        background: rgba(255,255,255,.12); backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,.15);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 1.35rem; flex-shrink: 0; color: #fff;
+    }
+    .ns-hero h1 { font-size: 1.45rem; font-weight: 700; color: #fff; margin: 0; }
+    .ns-hero-sub { color: rgba(255,255,255,.72); font-size: .88rem; margin: .15rem 0 0; }
+    .ns-hero-actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+    .ns-btn {
+        display: inline-flex; align-items: center; gap: .45rem;
+        border-radius: 10px; padding: .5rem 1rem; font-size: .82rem; font-weight: 600;
+        text-decoration: none; border: 1px solid transparent; cursor: pointer;
+        transition: background .15s, color .15s, border-color .15s;
+    }
+    .ns-btn--glass { background: rgba(255,255,255,.15); color: #fff; border-color: rgba(255,255,255,.2); }
+    .ns-btn--glass:hover { background: rgba(255,255,255,.25); color: #fff; }
+    .ns-btn--white { background: #fff; color: #0453cb; }
+    .ns-btn--white:hover { background: #eef4ff; color: #033a8e; }
+
+    /* KPIs hero */
+    .ns-kpis { display: flex; gap: .75rem; margin-top: 1.5rem; flex-wrap: wrap; }
+    .ns-kpi {
+        flex: 1; min-width: 130px;
+        background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15);
+        border-radius: 12px; padding: .9rem 1rem;
+    }
+    .ns-kpi-value { font-size: 1.35rem; font-weight: 700; color: #fff; line-height: 1.1; }
+    .ns-kpi-label { font-size: .68rem; color: rgba(255,255,255,.65); margin-top: .2rem; text-transform: uppercase; letter-spacing: .5px; }
+
+    /* Cards */
+    .ns-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+    .ns-card {
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 14px;
+        box-shadow: 0 1px 3px rgba(15,23,42,.04), 0 1px 2px rgba(15,23,42,.06);
+        overflow: hidden;
+    }
+    .ns-card-head { display: flex; align-items: center; gap: .75rem; padding: 1rem 1.25rem; border-bottom: 1px solid #eef2f7; }
+    .ns-card-icon {
+        width: 40px; height: 40px; border-radius: 10px; flex-shrink: 0;
+        background: linear-gradient(135deg, #0453cb, #3b7ddb);
+        display: flex; align-items: center; justify-content: center; color: #fff; font-size: .95rem;
+    }
+    .ns-card-title { font-size: .95rem; font-weight: 700; color: #1e293b; margin: 0; }
+    .ns-card-body { padding: 1.1rem 1.25rem; }
+
+    .ns-info { display: flex; justify-content: space-between; align-items: center; gap: 1rem; padding: .55rem 0; border-bottom: 1px dashed #eef2f7; }
+    .ns-info:last-child { border-bottom: none; }
+    .ns-info-label { font-size: .76rem; color: #64748b; font-weight: 600; }
+    .ns-info-value { font-size: .85rem; color: #1e293b; font-weight: 600; text-align: right; }
+
+    /* Note showcase */
+    .ns-score-wrap { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+    .ns-score {
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        width: 120px; height: 120px; border-radius: 18px; flex-shrink: 0;
+        border: 2px solid; background: #f8fafc;
+    }
+    .ns-score--good { border-color: #10b981; color: #047857; background: rgba(16,185,129,.06); }
+    .ns-score--mid  { border-color: #f59e0b; color: #b45309; background: rgba(245,158,11,.06); }
+    .ns-score--bad  { border-color: #dc2626; color: #b91c1c; background: rgba(220,38,38,.06); }
+    .ns-score--absent { border-color: #94a3b8; color: #475569; background: #f1f5f9; }
+    .ns-score-num { font-size: 2rem; font-weight: 800; line-height: 1; }
+    .ns-score-den { font-size: .8rem; font-weight: 600; opacity: .7; margin-top: .15rem; }
+    .ns-score-meta { display: flex; flex-direction: column; gap: .5rem; }
+    .ns-badge { display: inline-flex; align-items: center; gap: .4rem; font-size: .78rem; font-weight: 700; padding: .3rem .7rem; border-radius: 8px; width: fit-content; }
+    .ns-badge--good { background: rgba(16,185,129,.1); color: #047857; }
+    .ns-badge--mid  { background: rgba(245,158,11,.12); color: #b45309; }
+    .ns-badge--bad  { background: rgba(220,38,38,.1); color: #b91c1c; }
+    .ns-badge--absent { background: #f1f5f9; color: #475569; }
+    .ns-sur20 { font-size: .82rem; color: #64748b; }
+    .ns-sur20 strong { color: #0453cb; }
+
+    .ns-comment {
+        margin-top: 1rem; padding: .85rem 1rem; border-radius: 10px;
+        background: rgba(4,83,203,.04); border-left: 3px solid #0453cb; color: #334155; font-size: .85rem;
+    }
+    .ns-meta-row { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 1rem; }
+
+    .ns-footer-actions { display: flex; justify-content: space-between; gap: .75rem; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px solid #eef2f7; flex-wrap: wrap; }
+    .ns-btn--danger { background: #fff; color: #b91c1c; border-color: rgba(220,38,38,.3); }
+    .ns-btn--danger:hover { background: rgba(220,38,38,.06); }
+    .ns-btn--success { background: #0453cb; color: #fff; }
+    .ns-btn--success:hover { background: #033a8e; color: #fff; }
+
+    @media (max-width: 768px) {
+        .ns-hero { padding: 1.5rem 1.25rem 1.25rem; }
+        .ns-grid, .ns-meta-row { grid-template-columns: 1fr; }
+        .ns-hero-actions { width: 100%; }
+    }
+</style>
+@endpush
 
 @section('content')
+@php
+    $_bareme = (float) ($note->evaluation->bareme ?: 20);
+    $_sur20 = (!$note->is_absent && $_bareme > 0) ? round(((float) $note->note * 20) / $_bareme, 2) : null;
+    $_tone = $note->is_absent ? 'absent' : ($_sur20 === null ? 'absent' : ($_sur20 >= 12 ? 'good' : ($_sur20 >= 10 ? 'mid' : 'bad')));
+    $_prenoms = $note->etudiant->prenoms ?? ($note->etudiant->prenom ?? '');
+    $_mention = $note->is_absent ? 'Absent' : ($note->mention ?? '—');
+@endphp
 <div class="dashboard-acasi">
-    <div class="main-content">
-        <!-- Header Section -->
-        <div class="dashboard-header">
-            <div class="header-left">
-                <h1><i class="fas fa-eye me-2"></i>Détails de la note</h1>
-                <p class="header-subtitle">{{ $note->etudiant->nom }} {{ $note->etudiant->prenom }} - {{ $note->evaluation->titre }}</p>
+    <div class="main-content ns-page">
+
+        {{-- ══ HERO ══════════════════════════════════════════════ --}}
+        <div class="ns-hero">
+            <div class="ns-hero-top">
+                <div class="ns-hero-left">
+                    <div class="ns-hero-icon"><i class="fas fa-star"></i></div>
+                    <div>
+                        <h1>Détail de la note</h1>
+                        <p class="ns-hero-sub">
+                            {{ $note->etudiant->nom }} {{ $_prenoms }}
+                            @if($note->evaluation) · {{ $note->evaluation->titre }} @endif
+                        </p>
+                    </div>
+                </div>
+                <div class="ns-hero-actions">
+                    @if($note->evaluation)
+                    <a href="{{ route('esbtp.evaluations.show', $note->evaluation) }}" class="ns-btn ns-btn--glass">
+                        <i class="fas fa-arrow-left"></i>Retour à l'évaluation
+                    </a>
+                    @endif
+                    @can('notes.edit')
+                    <a href="{{ route('esbtp.notes.edit', $note) }}" class="ns-btn ns-btn--white">
+                        <i class="fas fa-edit"></i>Modifier
+                    </a>
+                    @endcan
+                </div>
             </div>
-            <div class="header-actions">
-                <a href="{{ route('esbtp.evaluations.show', $note->evaluation) }}" class="btn-acasi secondary me-2">
-                    <i class="fas fa-arrow-left"></i>Retour à l'évaluation
-                </a>
-                @can('notes.edit')
-                <a href="{{ route('esbtp.notes.edit', $note) }}" class="btn-acasi warning">
-                    <i class="fas fa-edit"></i>Modifier cette note
-                </a>
-                @endcan
+
+            <div class="ns-kpis">
+                <div class="ns-kpi">
+                    <div class="ns-kpi-value">
+                        @if($note->is_absent) Absent @else {{ rtrim(rtrim(number_format((float)$note->note, 2), '0'), '.') }}/{{ rtrim(rtrim(number_format($_bareme, 2), '0'), '.') }} @endif
+                    </div>
+                    <div class="ns-kpi-label">Note brute</div>
+                </div>
+                <div class="ns-kpi">
+                    <div class="ns-kpi-value">{{ $_sur20 !== null ? number_format($_sur20, 2) : '—' }}</div>
+                    <div class="ns-kpi-label">Note / 20</div>
+                </div>
+                <div class="ns-kpi">
+                    <div class="ns-kpi-value" style="font-size:1.05rem;">{{ $_mention }}</div>
+                    <div class="ns-kpi-label">Mention</div>
+                </div>
+                <div class="ns-kpi">
+                    <div class="ns-kpi-value">{{ $note->evaluation ? ucfirst($note->evaluation->type) : '—' }}</div>
+                    <div class="ns-kpi-label">Type d'évaluation</div>
+                </div>
             </div>
         </div>
+
         @if (session('success'))
-            <div class="alert alert-success alert-dismissible fade show mb-4" role="alert">
+            <div class="alert alert-success alert-dismissible fade show" role="alert">
                 <i class="fas fa-check-circle me-2"></i>{{ session('success') }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         @endif
-
         @if (session('error'))
-            <div class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+            <div class="alert alert-danger alert-dismissible fade show" role="alert">
                 <i class="fas fa-exclamation-circle me-2"></i>{{ session('error') }}
                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
         @endif
 
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="main-card h-100">
-                    <div class="main-card-header" style="background: linear-gradient(135deg, rgba(30, 58, 138, 0.1), rgba(30, 64, 175, 0.05));">
-                        <div class="main-card-title">
-                            <i class="fas fa-file-alt"></i>
-                            Informations sur l'évaluation
-                        </div>
-                    </div>
-                    <div class="main-card-body">
-                        <div class="info-item">
-                            <div class="info-label">Titre</div>
-                            <div class="info-value">{{ $note->evaluation->titre }}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Type</div>
-                            <div class="info-value">
-                                @php
-                                    $typeIcons = [
-                                        'examen' => '<i class="fas fa-file-alt color-primary me-1"></i>',
-                                        'devoir' => '<i class="fas fa-pencil-alt color-success me-1"></i>',
-                                        'tp' => '<i class="fas fa-flask color-warning me-1"></i>',
-                                        'projet' => '<i class="fas fa-project-diagram color-accent me-1"></i>',
-                                        'controle' => '<i class="fas fa-tasks color-neutral me-1"></i>',
-                                        'rattrapage' => '<i class="fas fa-redo color-danger me-1"></i>',
-                                    ];
-                                    $icon = $typeIcons[$note->evaluation->type] ?? '<i class="fas fa-file-alt color-primary me-1"></i>';
-                                @endphp
-                                {!! $icon !!} {{ ucfirst($note->evaluation->type) }}
-                            </div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Date</div>
-                            <div class="info-value">
-                                <i class="far fa-calendar-alt color-neutral me-1"></i>
-                                {{ date('d/m/Y', strtotime($note->evaluation->date_evaluation)) }}
-                            </div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Classe</div>
-                            <div class="info-value">
-                                <i class="fas fa-users color-neutral me-1"></i>
-                                {{ $note->evaluation->classe ? $note->evaluation->classe->name : 'N/A' }}
-                            </div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Matière</div>
-                            <div class="info-value">
-                                <i class="fas fa-book color-neutral me-1"></i>
-                                {{ $note->evaluation->matiere ? $note->evaluation->matiere->name : 'N/A' }}
-                            </div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Barème</div>
-                            <div class="info-value">
-                                <i class="fas fa-calculator color-neutral me-1"></i>
-                                {{ $note->evaluation->bareme }} points
-                            </div>
-                        </div>
-                    </div>
+        {{-- ══ CARDS Évaluation + Étudiant ══════════════════════ --}}
+        <div class="ns-grid">
+            <div class="ns-card">
+                <div class="ns-card-head">
+                    <div class="ns-card-icon"><i class="fas fa-file-alt"></i></div>
+                    <h2 class="ns-card-title">Évaluation</h2>
+                </div>
+                <div class="ns-card-body">
+                    @if($note->evaluation)
+                    <div class="ns-info"><span class="ns-info-label">Titre</span><span class="ns-info-value">{{ $note->evaluation->titre }}</span></div>
+                    <div class="ns-info"><span class="ns-info-label">Type</span><span class="ns-info-value">{{ ucfirst($note->evaluation->type) }}</span></div>
+                    <div class="ns-info"><span class="ns-info-label">Date</span><span class="ns-info-value">{{ $note->evaluation->date_evaluation ? \Carbon\Carbon::parse($note->evaluation->date_evaluation)->format('d/m/Y') : '—' }}</span></div>
+                    <div class="ns-info"><span class="ns-info-label">Classe</span><span class="ns-info-value">{{ optional($note->evaluation->classe)->name ?? '—' }}</span></div>
+                    <div class="ns-info"><span class="ns-info-label">Matière</span><span class="ns-info-value">{{ optional($note->evaluation->matiere)->name ?? '—' }}</span></div>
+                    <div class="ns-info"><span class="ns-info-label">Barème</span><span class="ns-info-value">{{ rtrim(rtrim(number_format($_bareme, 2), '0'), '.') }} points</span></div>
+                    @else
+                    <div class="ns-info"><span class="ns-info-label">Évaluation</span><span class="ns-info-value">Aucune évaluation liée</span></div>
+                    @endif
                 </div>
             </div>
-            <div class="col-md-6">
-                <div class="main-card h-100">
-                    <div class="main-card-header" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1), rgba(16, 185, 129, 0.05));">
-                        <div class="main-card-title">
-                            <i class="fas fa-user-graduate"></i>
-                            Informations sur l'étudiant
-                        </div>
-                    </div>
-                    <div class="main-card-body">
-                        <div class="info-item">
-                            <div class="info-label">Matricule</div>
-                            <div class="info-value">{{ $note->etudiant->matricule }}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Nom</div>
-                            <div class="info-value">{{ $note->etudiant->nom }}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Prénom</div>
-                            <div class="info-value">{{ $note->etudiant->prenom }}</div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Classe</div>
-                            <div class="info-value">
-                                <i class="fas fa-users color-neutral me-1"></i>
-                                {{ $note->etudiant->classe ? $note->etudiant->classe->name : 'N/A' }}
-                            </div>
-                        </div>
-                        <div class="info-item">
-                            <div class="info-label">Statut</div>
-                            <div class="info-value">
-                                @if($note->etudiant->active)
-                                    <span class="status-badge success">Actif</span>
-                                @else
-                                    <span class="status-badge danger">Inactif</span>
-                                @endif
-                            </div>
-                        </div>
+
+            <div class="ns-card">
+                <div class="ns-card-head">
+                    <div class="ns-card-icon" style="background:linear-gradient(135deg,#3b7ddb,#5e91de);"><i class="fas fa-user-graduate"></i></div>
+                    <h2 class="ns-card-title">Étudiant</h2>
+                </div>
+                <div class="ns-card-body">
+                    <div class="ns-info"><span class="ns-info-label">Matricule</span><span class="ns-info-value">{{ $note->etudiant->matricule }}</span></div>
+                    <div class="ns-info"><span class="ns-info-label">Nom</span><span class="ns-info-value">{{ $note->etudiant->nom }}</span></div>
+                    <div class="ns-info"><span class="ns-info-label">Prénoms</span><span class="ns-info-value">{{ $_prenoms ?: '—' }}</span></div>
+                    <div class="ns-info"><span class="ns-info-label">Classe</span><span class="ns-info-value">{{ optional($note->etudiant->classe)->name ?? optional($note->classe)->name ?? '—' }}</span></div>
+                    <div class="ns-info">
+                        <span class="ns-info-label">Statut</span>
+                        <span class="ns-info-value">
+                            @if($note->etudiant->active ?? true)
+                                <span class="ns-badge ns-badge--good">Actif</span>
+                            @else
+                                <span class="ns-badge ns-badge--bad">Inactif</span>
+                            @endif
+                        </span>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="main-card">
-            <div class="main-card-header" style="background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(6, 182, 212, 0.05));">
-                <div class="main-card-title">
-                    <i class="fas fa-star"></i>
-                    Informations de la note
-                </div>
+        {{-- ══ CARD Note ════════════════════════════════════════ --}}
+        <div class="ns-card">
+            <div class="ns-card-head">
+                <div class="ns-card-icon"><i class="fas fa-award"></i></div>
+                <h2 class="ns-card-title">Résultat</h2>
             </div>
-            <div class="main-card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <div class="info-item">
-                            <div class="info-label">Note</div>
-                            <div class="info-value">
-                                @if($note->is_absent)
-                                    <span class="status-badge danger">
-                                        <i class="fas fa-user-slash me-1"></i>Absent
-                                    </span>
-                                @else
-                                    <div class="d-flex align-items-center gap-3">
-                                        <span class="fs-4 fw-bold color-primary">{{ $note->note }}/{{ $note->evaluation->bareme }}</span>
-                                        <div class="text-muted small">
-                                            <i class="fas fa-calculator me-1"></i>
-                                            Note sur 20 : {{ number_format(($note->note * 20) / $note->evaluation->bareme, 2) }}/20
-                                        </div>
-                                    </div>
-                                @endif
-                            </div>
-                        </div>
+            <div class="ns-card-body">
+                <div class="ns-score-wrap">
+                    <div class="ns-score ns-score--{{ $_tone }}">
+                        @if($note->is_absent)
+                            <i class="fas fa-user-slash" style="font-size:1.6rem;"></i>
+                            <span class="ns-score-den" style="margin-top:.4rem;">Absent</span>
+                        @else
+                            <span class="ns-score-num">{{ rtrim(rtrim(number_format((float)$note->note, 2), '0'), '.') }}</span>
+                            <span class="ns-score-den">/ {{ rtrim(rtrim(number_format($_bareme, 2), '0'), '.') }}</span>
+                        @endif
                     </div>
-                    <div class="col-md-6">
-                        <div class="info-item">
-                            <div class="info-label">Date de saisie</div>
-                            <div class="info-value">
-                                <i class="far fa-calendar-alt color-neutral me-1"></i>
-                                {{ $note->created_at->format('d/m/Y à H:i') }}
-                            </div>
-                        </div>
+                    <div class="ns-score-meta">
+                        <span class="ns-badge ns-badge--{{ $_tone }}">
+                            <i class="fas fa-medal"></i>{{ $_mention }}
+                        </span>
+                        @unless($note->is_absent)
+                        <div class="ns-sur20">Sur 20 : <strong>{{ $_sur20 !== null ? number_format($_sur20, 2) : '—' }}/20</strong></div>
+                        @endunless
+                        <div class="ns-sur20">Saisie le {{ $note->created_at?->format('d/m/Y à H:i') }}</div>
                         @if($note->updated_at && $note->updated_at != $note->created_at)
-                        <div class="info-item">
-                            <div class="info-label">Dernière modification</div>
-                            <div class="info-value">
-                                <i class="far fa-clock color-neutral me-1"></i>
-                                {{ $note->updated_at->format('d/m/Y à H:i') }}
-                            </div>
-                        </div>
+                        <div class="ns-sur20">Modifiée le {{ $note->updated_at->format('d/m/Y à H:i') }}</div>
                         @endif
                     </div>
                 </div>
 
                 @if($note->commentaire)
-                <div class="info-item mt-4">
-                    <div class="info-label">Commentaire</div>
-                    <div class="info-value">
-                        <div class="p-3 bg-light rounded border-start border-4 border-primary">
-                            <i class="fas fa-quote-left color-primary me-2"></i>
-                            {{ $note->commentaire }}
-                        </div>
-                    </div>
+                <div class="ns-comment">
+                    <i class="fas fa-quote-left" style="color:#0453cb; margin-right:.4rem;"></i>{{ $note->commentaire }}
                 </div>
                 @endif
 
-                <div class="row mt-4">
-                    <div class="col-md-6">
-                        <div class="info-item">
-                            <div class="info-label">Créé par</div>
-                            <div class="info-value">
-                                <i class="fas fa-user color-neutral me-1"></i>
-                                {{ $note->createdBy ? $note->createdBy->name : 'N/A' }}
-                            </div>
-                        </div>
-                    </div>
+                <div class="ns-meta-row">
+                    <div class="ns-info"><span class="ns-info-label"><i class="fas fa-user me-1"></i>Créé par</span><span class="ns-info-value">{{ optional($note->createdBy)->name ?? '—' }}</span></div>
                     @if($note->updatedBy)
-                    <div class="col-md-6">
-                        <div class="info-item">
-                            <div class="info-label">Mis à jour par</div>
-                            <div class="info-value">
-                                <i class="fas fa-user-edit color-neutral me-1"></i>
-                                {{ $note->updatedBy->name }}
-                            </div>
-                        </div>
-                    </div>
+                    <div class="ns-info"><span class="ns-info-label"><i class="fas fa-user-edit me-1"></i>Mis à jour par</span><span class="ns-info-value">{{ $note->updatedBy->name }}</span></div>
                     @endif
                 </div>
 
-                <div class="d-flex justify-content-between mt-4 pt-4 border-top">
+                <div class="ns-footer-actions">
                     @can('notes.delete')
-                    <button type="button" class="btn-acasi danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
-                        <i class="fas fa-trash"></i>Supprimer la note
+                    <button type="button" class="ns-btn ns-btn--danger" data-bs-toggle="modal" data-bs-target="#deleteModal">
+                        <i class="fas fa-trash"></i>Supprimer
                     </button>
                     @endcan
                     @can('notes.edit')
-                    <a href="{{ route('esbtp.notes.edit', $note) }}" class="btn-acasi success">
+                    <a href="{{ route('esbtp.notes.edit', $note) }}" class="ns-btn ns-btn--success">
                         <i class="fas fa-edit"></i>Modifier cette note
                     </a>
                     @endcan
                 </div>
             </div>
         </div>
+
     </div>
 </div>
 
-<!-- Modal de suppression -->
+{{-- Modal de suppression --}}
+{{-- EXCEPTION ajax-no-reload-premium : la suppression retire l'entité affichée, donc
+     une navigation post-action (redirect vers l'évaluation) est justifiée (migration page). --}}
 <div class="modal fade" id="deleteModal" tabindex="-1" aria-labelledby="deleteModalLabel" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="deleteModalLabel">Confirmer la suppression</h5>
@@ -252,19 +307,19 @@
             </div>
             <div class="modal-body">
                 <p>Êtes-vous sûr de vouloir supprimer cette note ?</p>
-                <div class="alert alert-warning">
+                <div class="alert alert-warning mb-0">
                     <i class="fas fa-exclamation-triangle me-2"></i>
-                    Cette action est irréversible et pourrait affecter les calculs de moyennes et les bulletins.
+                    Cette action est irréversible et peut affecter les moyennes et bulletins.
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn-acasi secondary" data-bs-dismiss="modal">
+                <button type="button" class="ns-btn ns-btn--glass" style="background:#f1f5f9;color:#475569;border-color:#e2e8f0;" data-bs-dismiss="modal">
                     <i class="fas fa-times"></i>Annuler
                 </button>
                 <form action="{{ route('esbtp.notes.destroy', $note) }}" method="POST" class="d-inline">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn-acasi danger">
+                    <button type="submit" class="ns-btn ns-btn--danger">
                         <i class="fas fa-trash"></i>Supprimer définitivement
                     </button>
                 </form>
@@ -272,15 +327,4 @@
         </div>
     </div>
 </div>
-@endsection
-
-@section('scripts')
-<script>
-    $(document).ready(function() {
-        // Initialisation des tooltips si nécessaire
-        if (typeof $().tooltip === 'function') {
-            $('[data-bs-toggle="tooltip"]').tooltip();
-        }
-    });
-</script>
 @endsection
