@@ -285,11 +285,21 @@ class ESBTPBulletinController extends Controller
                 $moyenne = $sommeCoefficients > 0 ? $sommeNotes / $sommeCoefficients : null;
 
                 // Récupérer le coefficient de la matière pour cette classe
-                $coefficient = $this->bulletinService->getCoefficientForCombination(
-                    $matiere->id,
-                    $classe->id,
-                    $request->annee_universitaire_id
-                );
+                try {
+                    $coefficient = $this->bulletinService->getCoefficientForCombination(
+                        $matiere->id,
+                        $classe->id,
+                        $request->annee_universitaire_id,
+                        $request->periode,
+                        $request->etudiant_id
+                    );
+                } catch (\RuntimeException $e) {
+                    if (! str_contains($e->getMessage(), 'Coefficient manquant')) {
+                        throw $e;
+                    }
+                    Log::warning('Coef introuvable matiere TC, skip', ['matiere_id' => $matiere->id, 'classe_id' => $classe->id]);
+                    continue;
+                }
 
                 // Créer le résultat pour cette matière
                 $resultat = new ESBTPResultatMatiere;
@@ -750,9 +760,14 @@ class ESBTPBulletinController extends Controller
                             $coefficient = $this->bulletinService->getCoefficientForCombination(
                                 $matiere->id,
                                 $bulletin->classe_id,
-                                $bulletin->annee_universitaire_id
+                                $bulletin->annee_universitaire_id,
+                                $bulletin->periode,
+                                $bulletin->etudiant_id
                             );
                         } catch (\RuntimeException $e) {
+                            if (! str_contains($e->getMessage(), 'Coefficient manquant')) {
+                                throw $e;
+                            }
                             $coefficient = 1;
                             Log::warning('Coefficient manquant pour matière #'.$matiere->id.' bulletin #'.$bulletin->id.' — fallback à 1');
                         }
@@ -1140,11 +1155,21 @@ class ESBTPBulletinController extends Controller
                                 // Créer un résultat vide pour cette matière
                                 try {
                                     // Récupérer le coefficient de la matière pour cette classe
-                                    $coefficient = $this->bulletinService->getCoefficientForCombination(
-                                        $matiere->id,
-                                        $classe->id,
-                                        $request->annee_universitaire_id
-                                    );
+                                    try {
+                                        $coefficient = $this->bulletinService->getCoefficientForCombination(
+                                            $matiere->id,
+                                            $classe->id,
+                                            $request->annee_universitaire_id,
+                                            $request->periode,
+                                            $etudiant->id
+                                        );
+                                    } catch (\RuntimeException $e) {
+                                        if (! str_contains($e->getMessage(), 'Coefficient manquant')) {
+                                            throw $e;
+                                        }
+                                        Log::warning('Coef introuvable matiere TC, skip', ['matiere_id' => $matiere->id, 'classe_id' => $classe->id]);
+                                        continue;
+                                    }
 
                                     $resultat = new ESBTPResultatMatiere;
                                     $resultat->bulletin_id = $bulletin->id;
@@ -1205,11 +1230,21 @@ class ESBTPBulletinController extends Controller
                         $moyenne = $sommeCoefficients > 0 ? $sommeNotes / $sommeCoefficients : null;
 
                         // Récupérer le coefficient de la matière pour cette classe
-                        $coefficient = $this->bulletinService->getCoefficientForCombination(
-                            $matiere->id,
-                            $classe->id,
-                            $request->annee_universitaire_id
-                        );
+                        try {
+                            $coefficient = $this->bulletinService->getCoefficientForCombination(
+                                $matiere->id,
+                                $classe->id,
+                                $request->annee_universitaire_id,
+                                $request->periode,
+                                $etudiant->id
+                            );
+                        } catch (\RuntimeException $e) {
+                            if (! str_contains($e->getMessage(), 'Coefficient manquant')) {
+                                throw $e;
+                            }
+                            Log::warning('Coef introuvable matiere TC, skip', ['matiere_id' => $matiere->id, 'classe_id' => $classe->id]);
+                            continue;
+                        }
 
                         // Créer le résultat pour cette matière
                         try {

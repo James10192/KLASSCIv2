@@ -2183,7 +2183,7 @@ class BulletinService
     }
 
 
-    public function getCoefficientForCombination(int $matiereId, int $classeId, int $anneeUniversitaireId, ?string $periode = null): float
+    public function getCoefficientForCombination(int $matiereId, int $classeId, int $anneeUniversitaireId, ?string $periode = null, ?int $etudiantId = null): float
     {
         // Sous-lot α : coefficients désormais par-périodes. Si $periode null, on prend
         // n'importe quelle ligne (fallback semestre1) pour rétrocompat des appelants
@@ -2193,7 +2193,7 @@ class BulletinService
             $periode = 'semestre1';
         }
 
-        $cacheKey = $matiereId.'|'.$classeId.'|'.$anneeUniversitaireId.'|'.$periode;
+        $cacheKey = $matiereId.'|'.$classeId.'|'.$anneeUniversitaireId.'|'.$periode.'|'.($etudiantId ?? '');
 
         if (isset($this->coefficientCache[$cacheKey])) {
             return $this->coefficientCache[$cacheKey];
@@ -2227,6 +2227,20 @@ class BulletinService
                 ->value('coefficient');
         }
 
+        // Fallback Tronc Commun (P1-a) : pour un etudiant orienté TC → spécialité, les
+        // matières du Semestre 1 portent leur coefficient sur la classe TC (filière TC
+        // parente), pas sur la classe de spécialité demandée. On résout la classe S1 via
+        // le class-map resolver stateless et on cherche le coefficient là-bas.
+        if ($coefficient === null && $etudiantId !== null) {
+            $coefficient = $this->resolveTroncCommunCoefficient(
+                $matiereId,
+                $classeId,
+                $anneeUniversitaireId,
+                $periode,
+                $etudiantId
+            );
+        }
+
         if ($coefficient === null) {
             throw new \RuntimeException('Coefficient manquant pour la matière sélectionnée.');
         }
@@ -2234,6 +2248,56 @@ class BulletinService
         $this->coefficientCache[$cacheKey] = (float) $coefficient;
 
         return $this->coefficientCache[$cacheKey];
+    }
+
+    /**
+     * Résout le coefficient d'une matière Tronc Commun pour un étudiant orienté
+     * (TC → spécialité). Cherche le coefficient sur la classe S1 (TC) si elle diffère
+     * de la classe de spécialité demandée. BTS uniquement.
+     */
+    private function resolveTroncCommunCoefficient(
+        int $matiereId,
+        int $classeId,
+        int $anneeUniversitaireId,
+        string $periode,
+        int $etudiantId
+    ): ?float {
+        $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
+        $resolvedS1ClasseId = $classMap['semestre1_classe_id'] ?? $classeId;
+
+        if (! $resolvedS1ClasseId || (int) $resolvedS1ClasseId === (int) $classeId) {
+            return null;
+        }
+
+        if (! isset($this->classeCache[$resolvedS1ClasseId])) {
+            $this->classeCache[$resolvedS1ClasseId] = ESBTPClasse::find($resolvedS1ClasseId);
+        }
+
+        $classeTc = $this->classeCache[$resolvedS1ClasseId];
+
+        if (! $classeTc || ! $classeTc->filiere_id || ! $classeTc->niveau_etude_id) {
+            return null;
+        }
+
+        $coefficient = ESBTPMatiereCoefficient::where('matiere_id', $matiereId)
+            ->where('filiere_id', $classeTc->filiere_id)
+            ->where('niveau_etude_id', $classeTc->niveau_etude_id)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('periode', $periode)
+            ->value('coefficient');
+
+        // Fallback périodique sur la classe TC (rétrocompat pré-migration par-période).
+        if ($coefficient === null) {
+            $altPeriode = $periode === 'semestre1' ? 'semestre2' : 'semestre1';
+            $coefficient = ESBTPMatiereCoefficient::where('matiere_id', $matiereId)
+                ->where('filiere_id', $classeTc->filiere_id)
+                ->where('niveau_etude_id', $classeTc->niveau_etude_id)
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->where('periode', $altPeriode)
+                ->value('coefficient');
+        }
+
+        return $coefficient === null ? null : (float) $coefficient;
     }
 
 
