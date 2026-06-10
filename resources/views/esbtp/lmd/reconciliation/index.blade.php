@@ -58,7 +58,8 @@
     .rec-btn--ghost:hover:not(:disabled) { background: rgba(4,83,203,.12); }
     .rec-btn--danger { background: #dc2626; color: #fff; }
     .rec-btn--danger:hover:not(:disabled) { background: #b91c1c; }
-    .rec-btn:disabled { opacity: .6; cursor: wait; }
+    .rec-btn:disabled { opacity: .6; cursor: not-allowed; }
+    .rec-disabled-hint { margin: .5rem 1.25rem 0; font-size: .76rem; color: #b45309; text-align: right; }
 
     /* Group card */
     .rec-group { border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 1rem; overflow: hidden; }
@@ -348,15 +349,16 @@
             </div>
             <div class="rec-modal-foot">
                 <button class="rec-btn rec-btn--ghost" @click="closeModal()">Annuler</button>
-                <template x-if="modal.report && (modal.report.blocking && (modal.report.blocking.evaluations || modal.report.blocking.notes || modal.report.blocking.resultats_ue))">
-                    <label class="rec-check"><input type="checkbox" x-model="modal.force"> Forcer (repointe évaluations/notes)</label>
+                <template x-if="modal.report && modal.report.blocked">
+                    <label class="rec-check"><input type="checkbox" x-model="modal.force"> Forcer (repointe évaluations / notes / résultats)</label>
                 </template>
-                <button class="rec-btn rec-btn--danger" @click="confirmMerge()" :disabled="busy || (modal.report && modal.report.blocked && !modal.force)">
+                <button class="rec-btn rec-btn--danger" @click="confirmMerge()" :disabled="mergeDisabled">
                     <i class="fas fa-object-group" x-show="!busy"></i>
                     <i class="fas fa-spinner fa-spin" x-show="busy" x-cloak></i>
                     Fusionner
                 </button>
             </div>
+            <p class="rec-disabled-hint" x-show="mergeDisabled && mergeDisabledReason" x-cloak x-text="mergeDisabledReason"></p>
         </div>
     </div>
 
@@ -408,6 +410,21 @@ function recManager() {
             if (b.notes) parts.push(b.notes + ' note(s)');
             if (b.resultats_ue) parts.push(b.resultats_ue + ' résultat(s) UE');
             return parts.length ? parts.join(', ') : 'aucune';
+        },
+
+        get mergeDisabled() {
+            if (this.busy) return true;
+            if (!this.modal.report) return true;
+            if (this.modal.report.blocked && !this.modal.force) return true;
+            return false;
+        },
+        get mergeDisabledReason() {
+            if (this.busy) return 'Fusion en cours…';
+            if (!this.modal.report) return 'Aperçu en cours…';
+            if (this.modal.report.blocked && !this.modal.force) {
+                return 'Données pédagogiques liées (' + this.blockingSummary(this.modal.report.blocking || {}) + ') — cochez « Forcer » pour fusionner quand même.';
+            }
+            return '';
         },
 
         async detect() {
