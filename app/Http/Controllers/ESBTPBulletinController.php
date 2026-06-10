@@ -1301,17 +1301,39 @@ class ESBTPBulletinController extends Controller
      * @param  string  $role
      * @return \Illuminate\Http\Response
      */
-    public function signer(ESBTPBulletin $bulletin, $role)
+    public function signer(Request $request, ESBTPBulletin $bulletin, $role)
     {
         if (! in_array($role, ['directeur', 'responsable', 'parent'])) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Rôle de signature invalide.'], 422);
+            }
+
             return back()->with('error', 'Rôle de signature invalide.');
         }
 
         try {
             $bulletin->signer($role);
+            $bulletin->refresh();
+
+            if ($request->expectsJson()) {
+                $dateRaw = $bulletin->{'date_signature_'.$role} ?? null;
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Bulletin signé avec succès.',
+                    'role' => $role,
+                    'signed_at' => $dateRaw
+                        ? \Illuminate\Support\Carbon::parse($dateRaw)->format('d/m/Y à H:i')
+                        : now()->format('d/m/Y à H:i'),
+                ]);
+            }
 
             return back()->with('success', 'Bulletin signé avec succès.');
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Erreur lors de la signature : '.$e->getMessage()], 500);
+            }
+
             return back()->with('error', 'Erreur lors de la signature: '.$e->getMessage());
         }
     }
@@ -1321,7 +1343,7 @@ class ESBTPBulletinController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function togglePublication(ESBTPBulletin $bulletin)
+    public function togglePublication(Request $request, ESBTPBulletin $bulletin)
     {
         try {
             $wasPublished = $bulletin->is_published;
@@ -1345,8 +1367,20 @@ class ESBTPBulletinController extends Controller
                 ? 'Le bulletin a été publié avec succès.'
                 : 'Le bulletin a été dépublié avec succès.';
 
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $message,
+                    'is_published' => (bool) $bulletin->is_published,
+                ]);
+            }
+
             return back()->with('success', $message);
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Erreur lors du changement de statut : '.$e->getMessage()], 500);
+            }
+
             return back()->with('error', 'Erreur lors du changement de statut: '.$e->getMessage());
         }
     }
