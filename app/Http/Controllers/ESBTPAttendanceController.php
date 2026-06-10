@@ -1909,10 +1909,20 @@ class ESBTPAttendanceController extends Controller
             return collect();
         }
 
-        $matiereIds = ESBTPMatiereFilierNiveau::matiereIdsForCombo(
-            $classe->filiere_id,
-            $classe->niveau_etude_id
-        );
+        // Tronc commun (C9) : on inclut aussi les matières définies au niveau de
+        // la filière mère (tronc commun) pour que les classes de spécialité héritent
+        // des matières communes lors de la saisie des présences.
+        $unionFiliereIds = $classe->filiere
+            ? $classe->filiere->troncCommunUnionFiliereIds()
+            : [$classe->filiere_id];
+
+        $matiereIds = collect($unionFiliereIds)
+            ->flatMap(fn ($filiereId) => ESBTPMatiereFilierNiveau::matiereIdsForCombo(
+                $filiereId,
+                $classe->niveau_etude_id
+            ))
+            ->unique()
+            ->values();
 
         $matieres = ESBTPMatiere::whereIn('id', $matiereIds)
             ->where('is_active', true)

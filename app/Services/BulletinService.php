@@ -13,6 +13,8 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
+use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use App\Support\InscriptionWorkflowAlertPresenter;
 use App\Models\ESBTPConfigMatiere;
@@ -40,13 +42,19 @@ class BulletinService
 
     private $absenceService;
 
+    private BtsAnnualClassMapResolver $classMapResolver;
+
+    private BtsBulletinCohortResolver $cohortResolver;
+
     private array $coefficientCache = [];
 
     private array $classeCache = [];
 
-    public function __construct(ESBTPAbsenceService $absenceService)
+    public function __construct(ESBTPAbsenceService $absenceService, BtsAnnualClassMapResolver $classMapResolver, BtsBulletinCohortResolver $cohortResolver)
     {
         $this->absenceService = $absenceService;
+        $this->classMapResolver = $classMapResolver;
+        $this->cohortResolver = $cohortResolver;
     }
 
     public function isAttendanceNoteEnabled(): bool
@@ -451,21 +459,16 @@ class BulletinService
             ->where('moyenne_generale', '>', 0)
             ->exists();
 
-        // Tronc commun : si l'inscription est une spécialisation, chercher S1 dans la classe d'origine
+        // Tronc commun : resoudre la classe portant les notes du S1 via le class-map
+        // resolveur stateless (modele phases ET legacy). CLASS MAP only.
         $classeIdS1 = $classeId;
         $classeTroncCommun = null;
-        $inscription = \App\Models\ESBTPInscription::where('etudiant_id', $etudiantId)
-            ->where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->whereIn('status', ['active', 'terminée'])
-            ->first();
-
-        if ($inscription && $inscription->isSpecialisation()
-            && \App\Helpers\SettingsHelper::get('tronc_commun_mga_include_s1', true)) {
-            $origine = $inscription->inscriptionOrigine;
-            if ($origine && $origine->classe_id) {
-                $classeIdS1 = $origine->classe_id;
-                $classeTroncCommun = $origine->classe;
+        if (\App\Helpers\SettingsHelper::get('tronc_commun_mga_include_s1', true)) {
+            $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
+            $resolvedS1ClasseId = $classMap['semestre1_classe_id'] ?? $classeId;
+            if ($resolvedS1ClasseId && (int) $resolvedS1ClasseId !== (int) $classeId) {
+                $classeIdS1 = (int) $resolvedS1ClasseId;
+                $classeTroncCommun = ESBTPClasse::with('filiere')->find($resolvedS1ClasseId);
             }
         }
 
@@ -1598,13 +1601,17 @@ class BulletinService
 
     public function calculerRang($bulletin)
     {
-        $base = ESBTPBulletin::where('classe_id', $bulletin->classe_id)
+        // Tronc commun : pour un bulletin S1 d'un étudiant orienté, la cohorte de rang
+        // est la classe TC qui portait les notes du S1 (pas la spécialité courante).
+        $cohorteClasseId = $this->cohortResolver->resolveRankCohortClasseId($bulletin);
+
+        $base = ESBTPBulletin::where('classe_id', $cohorteClasseId)
             ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
             ->where('periode', $bulletin->periode)
             ->whereNotNull('moyenne_generale');
 
         $bulletin->effectif_classe = $this->getValidatedClassStudentCount(
-            $bulletin->classe_id,
+            $cohorteClasseId,
             $bulletin->annee_universitaire_id
         );
         $bulletin->rang = (clone $base)
@@ -2184,7 +2191,7 @@ class BulletinService
     }
 
 
-    public function getCoefficientForCombination(int $matiereId, int $classeId, int $anneeUniversitaireId, ?string $periode = null): float
+    public function getCoefficientForCombination(int $matiereId, int $classeId, int $anneeUniversitaireId, ?string $periode = null, ?int $etudiantId = null): float
     {
         // Sous-lot α : coefficients désormais par-périodes. Si $periode null, on prend
         // n'importe quelle ligne (fallback semestre1) pour rétrocompat des appelants
@@ -2194,7 +2201,7 @@ class BulletinService
             $periode = 'semestre1';
         }
 
-        $cacheKey = $matiereId.'|'.$classeId.'|'.$anneeUniversitaireId.'|'.$periode;
+        $cacheKey = $matiereId.'|'.$classeId.'|'.$anneeUniversitaireId.'|'.$periode.'|'.($etudiantId ?? '');
 
         if (isset($this->coefficientCache[$cacheKey])) {
             return $this->coefficientCache[$cacheKey];
@@ -2228,6 +2235,20 @@ class BulletinService
                 ->value('coefficient');
         }
 
+        // Fallback Tronc Commun (P1-a) : pour un etudiant orienté TC → spécialité, les
+        // matières du Semestre 1 portent leur coefficient sur la classe TC (filière TC
+        // parente), pas sur la classe de spécialité demandée. On résout la classe S1 via
+        // le class-map resolver stateless et on cherche le coefficient là-bas.
+        if ($coefficient === null && $etudiantId !== null) {
+            $coefficient = $this->resolveTroncCommunCoefficient(
+                $matiereId,
+                $classeId,
+                $anneeUniversitaireId,
+                $periode,
+                $etudiantId
+            );
+        }
+
         if ($coefficient === null) {
             throw new \RuntimeException('Coefficient manquant pour la matière sélectionnée.');
         }
@@ -2235,6 +2256,56 @@ class BulletinService
         $this->coefficientCache[$cacheKey] = (float) $coefficient;
 
         return $this->coefficientCache[$cacheKey];
+    }
+
+    /**
+     * Résout le coefficient d'une matière Tronc Commun pour un étudiant orienté
+     * (TC → spécialité). Cherche le coefficient sur la classe S1 (TC) si elle diffère
+     * de la classe de spécialité demandée. BTS uniquement.
+     */
+    private function resolveTroncCommunCoefficient(
+        int $matiereId,
+        int $classeId,
+        int $anneeUniversitaireId,
+        string $periode,
+        int $etudiantId
+    ): ?float {
+        $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
+        $resolvedS1ClasseId = $classMap['semestre1_classe_id'] ?? $classeId;
+
+        if (! $resolvedS1ClasseId || (int) $resolvedS1ClasseId === (int) $classeId) {
+            return null;
+        }
+
+        if (! isset($this->classeCache[$resolvedS1ClasseId])) {
+            $this->classeCache[$resolvedS1ClasseId] = ESBTPClasse::find($resolvedS1ClasseId);
+        }
+
+        $classeTc = $this->classeCache[$resolvedS1ClasseId];
+
+        if (! $classeTc || ! $classeTc->filiere_id || ! $classeTc->niveau_etude_id) {
+            return null;
+        }
+
+        $coefficient = ESBTPMatiereCoefficient::where('matiere_id', $matiereId)
+            ->where('filiere_id', $classeTc->filiere_id)
+            ->where('niveau_etude_id', $classeTc->niveau_etude_id)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('periode', $periode)
+            ->value('coefficient');
+
+        // Fallback périodique sur la classe TC (rétrocompat pré-migration par-période).
+        if ($coefficient === null) {
+            $altPeriode = $periode === 'semestre1' ? 'semestre2' : 'semestre1';
+            $coefficient = ESBTPMatiereCoefficient::where('matiere_id', $matiereId)
+                ->where('filiere_id', $classeTc->filiere_id)
+                ->where('niveau_etude_id', $classeTc->niveau_etude_id)
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->where('periode', $altPeriode)
+                ->value('coefficient');
+        }
+
+        return $coefficient === null ? null : (float) $coefficient;
     }
 
 

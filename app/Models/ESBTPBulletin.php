@@ -274,8 +274,13 @@ class ESBTPBulletin extends Model implements Auditable
      */
     public function calculerRang(): void
     {
-        // Get all bulletins from the same class, period and academic year
-        $bulletins = self::where('classe_id', $this->classe_id)
+        // Tronc commun : pour un bulletin S1 d'un étudiant orienté, la cohorte de rang
+        // est la classe TC qui portait les notes du S1 (pas la spécialité courante).
+        $cohorteClasseId = app(\App\Domain\BtsTroncCommun\BtsBulletinCohortResolver::class)
+            ->resolveRankCohortClasseId($this);
+
+        // Get all bulletins from the cohort class, period and academic year
+        $bulletins = self::where('classe_id', $cohorteClasseId)
             ->where('annee_universitaire_id', $this->annee_universitaire_id)
             ->where('periode', $this->periode)
             ->whereNotNull('moyenne_generale')
@@ -283,20 +288,29 @@ class ESBTPBulletin extends Model implements Auditable
             ->get();
 
         // Keep displayed class size aligned with validated enrollments, not only generated bulletins.
-        $this->effectif_classe = ESBTPInscription::where('classe_id', $this->classe_id)
+        $this->effectif_classe = ESBTPInscription::where('classe_id', $cohorteClasseId)
             ->where('annee_universitaire_id', $this->annee_universitaire_id)
             ->where('status', 'active')
             ->where('workflow_step', 'etudiant_cree')
             ->distinct('etudiant_id')
             ->count('etudiant_id');
 
-        // Find student's rank
+        // Find student's rank. Quand la cohorte diffère de la classe du bulletin
+        // (étudiant orienté), le bulletin courant n'est pas dans la liste cohorte :
+        // on classe alors par nombre de moyennes strictement supérieures + 1.
+        $rang = null;
         foreach ($bulletins as $index => $bulletin) {
             if ($bulletin->id === $this->id) {
-                $this->rang = $index + 1;
+                $rang = $index + 1;
                 break;
             }
         }
+
+        if ($rang === null) {
+            $rang = $bulletins->where('moyenne_generale', '>', $this->moyenne_generale ?? 0)->count() + 1;
+        }
+
+        $this->rang = $rang;
 
         $this->save();
     }

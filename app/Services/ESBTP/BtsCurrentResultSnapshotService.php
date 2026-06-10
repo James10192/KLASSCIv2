@@ -2,8 +2,7 @@
 
 namespace App\Services\ESBTP;
 
-use App\Domain\BtsTroncCommun\BtsPhaseResolver;
-use App\Models\ESBTPInscription;
+use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Services\BulletinService;
@@ -12,7 +11,7 @@ class BtsCurrentResultSnapshotService
 {
     public function __construct(
         private BulletinService $bulletinService,
-        private BtsPhaseResolver $btsPhaseResolver
+        private BtsAnnualClassMapResolver $classMapResolver
     )
     {
     }
@@ -213,7 +212,7 @@ class BtsCurrentResultSnapshotService
 
     private function buildAnnualSnapshot(int $etudiantId, int $classeId, int $anneeUniversitaireId): array
     {
-        $classMap = $this->resolveAnnualClassMap($etudiantId, $classeId, $anneeUniversitaireId);
+        $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
         $semestre1 = $this->buildSemesterSnapshot(
             $etudiantId,
             $classMap['semestre1_classe_id'] ?? $classeId,
@@ -292,44 +291,6 @@ class BtsCurrentResultSnapshotService
                 'semestre1' => $semestre1,
                 'semestre2' => $semestre2,
             ],
-        ];
-    }
-
-    private function resolveAnnualClassMap(int $etudiantId, int $requestedClasseId, int $anneeUniversitaireId): array
-    {
-        $inscription = ESBTPInscription::query()
-            ->with([
-                'filiere',
-                'phases.classe.filiere',
-                'inscriptionOrigine.classe.filiere',
-                'inscriptionSpecialisation.classe.filiere',
-            ])
-            ->where('etudiant_id', $etudiantId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->orderByRaw('CASE WHEN classe_id = ? THEN 0 ELSE 1 END', [$requestedClasseId])
-            ->orderByRaw("CASE WHEN status = 'active' THEN 0 ELSE 1 END")
-            ->orderByDesc('date_inscription')
-            ->orderByDesc('id')
-            ->first();
-
-        if (! $inscription) {
-            return [
-                'inscription_id' => null,
-                'source_model' => 'phase_based',
-                'semestre1_classe_id' => $requestedClasseId,
-                'semestre2_classe_id' => $requestedClasseId,
-            ];
-        }
-
-        $journey = $this->btsPhaseResolver->buildJourney($inscription);
-        $semestre1Phase = $this->btsPhaseResolver->resolveSemesterPhase($inscription, 1);
-        $semestre2Phase = $this->btsPhaseResolver->resolveSemesterPhase($inscription, 2);
-
-        return [
-            'inscription_id' => $inscription->id,
-            'source_model' => $journey['source_model'] ?? 'phase_based',
-            'semestre1_classe_id' => $semestre1Phase['classe_id'] ?? $inscription->classe_id,
-            'semestre2_classe_id' => $semestre2Phase['classe_id'] ?? $inscription->classe_id,
         ];
     }
 }

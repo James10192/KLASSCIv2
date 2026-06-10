@@ -13,6 +13,8 @@ return new class extends Migration
     public function up(): void
     {
         $now = now();
+        // 1er user existant (null si DB vide, ex: klassci_testing). FK ON DELETE SET NULL → null OK.
+        $creatorId = DB::table('users')->min('id');
         $rows = [
             [
                 'key' => 'comptabilite.reconciliation.ecart_tolerance',
@@ -82,8 +84,8 @@ return new class extends Migration
         if (!empty($toInsert)) {
             $toInsert = array_map(fn ($r) => array_merge($r, [
                 'is_active' => 1,
-                'created_by' => 1,
-                'updated_by' => 1,
+                'created_by' => $creatorId,
+                'updated_by' => $creatorId,
                 'created_at' => $now,
                 'updated_at' => $now,
             ]), $toInsert);
