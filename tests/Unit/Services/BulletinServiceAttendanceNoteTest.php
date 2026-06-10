@@ -6,6 +6,7 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPBulletin;
 use App\Models\Setting;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
+use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
 use App\Domain\BtsTroncCommun\BtsPhaseResolver;
 use App\Services\BulletinService;
 use App\Services\ESBTP\ESBTPAbsenceService;
@@ -20,7 +21,11 @@ class BulletinServiceAttendanceNoteTest extends TestCase
     {
         $absenceService ??= \Mockery::mock(ESBTPAbsenceService::class);
 
-        return new BulletinService($absenceService, new BtsAnnualClassMapResolver(new BtsPhaseResolver()));
+        return new BulletinService(
+            $absenceService,
+            new BtsAnnualClassMapResolver(new BtsPhaseResolver()),
+            new BtsBulletinCohortResolver(new BtsAnnualClassMapResolver(new BtsPhaseResolver()))
+        );
     }
 
     private function seedAttendanceSettings(string $enabled = '1'): void

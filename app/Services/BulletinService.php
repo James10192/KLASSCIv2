@@ -14,6 +14,7 @@ use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
+use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use App\Support\InscriptionWorkflowAlertPresenter;
 use App\Models\ESBTPConfigMatiere;
@@ -43,14 +44,17 @@ class BulletinService
 
     private BtsAnnualClassMapResolver $classMapResolver;
 
+    private BtsBulletinCohortResolver $cohortResolver;
+
     private array $coefficientCache = [];
 
     private array $classeCache = [];
 
-    public function __construct(ESBTPAbsenceService $absenceService, BtsAnnualClassMapResolver $classMapResolver)
+    public function __construct(ESBTPAbsenceService $absenceService, BtsAnnualClassMapResolver $classMapResolver, BtsBulletinCohortResolver $cohortResolver)
     {
         $this->absenceService = $absenceService;
         $this->classMapResolver = $classMapResolver;
+        $this->cohortResolver = $cohortResolver;
     }
 
     public function isAttendanceNoteEnabled(): bool
@@ -1597,13 +1601,17 @@ class BulletinService
 
     public function calculerRang($bulletin)
     {
-        $base = ESBTPBulletin::where('classe_id', $bulletin->classe_id)
+        // Tronc commun : pour un bulletin S1 d'un étudiant orienté, la cohorte de rang
+        // est la classe TC qui portait les notes du S1 (pas la spécialité courante).
+        $cohorteClasseId = $this->cohortResolver->resolveRankCohortClasseId($bulletin);
+
+        $base = ESBTPBulletin::where('classe_id', $cohorteClasseId)
             ->where('annee_universitaire_id', $bulletin->annee_universitaire_id)
             ->where('periode', $bulletin->periode)
             ->whereNotNull('moyenne_generale');
 
         $bulletin->effectif_classe = $this->getValidatedClassStudentCount(
-            $bulletin->classe_id,
+            $cohorteClasseId,
             $bulletin->annee_universitaire_id
         );
         $bulletin->rang = (clone $base)
