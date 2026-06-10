@@ -17,9 +17,17 @@
         'annuel' => 'Annuel',
         default => $bulletin->periode,
     };
-    $bshAnnee = $bulletin->anneeUniversitaire
-        ? $bulletin->anneeUniversitaire->annee_debut . '-' . $bulletin->anneeUniversitaire->annee_fin
-        : date('Y') . '-' . (date('Y') + 1);
+    $bshAnnee = '—';
+    if ($bulletin->anneeUniversitaire) {
+        $bshAu = $bulletin->anneeUniversitaire;
+        if (! empty($bshAu->annee_debut) && ! empty($bshAu->annee_fin)) {
+            $bshAnnee = $bshAu->annee_debut . '-' . $bshAu->annee_fin;
+        } elseif (! empty($bshAu->name)) {
+            $bshAnnee = $bshAu->name;
+        } elseif (! empty($bshAu->libelle)) {
+            $bshAnnee = $bshAu->libelle;
+        }
+    }
     $bshRoles = [
         'directeur' => 'Directeur',
         'responsable' => 'Responsable pédagogique',
@@ -243,7 +251,7 @@
                 <div class="bsh-kpi-label">Rang</div>
                 <div class="bsh-kpi-value">
                     @if($bulletin->rang)
-                        {{ $bulletin->rang }}<small>e / {{ $bulletin->total_etudiants }}</small>
+                        {{ $bulletin->rang }}<small>{{ $bulletin->rang == 1 ? 'er' : 'e' }}@if(!empty($bulletin->total_etudiants)) / {{ $bulletin->total_etudiants }}@endif</small>
                     @else
                         <span class="bsh-kpi-chip bsh-chip--neutral">Non classé</span>
                     @endif
