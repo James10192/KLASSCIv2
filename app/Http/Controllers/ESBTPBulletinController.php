@@ -48,15 +48,19 @@ class ESBTPBulletinController extends Controller
 
     protected $bulletinConsistencyService;
 
+    protected \App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver $subjectResolver;
+
     public function __construct(
         ESBTPAbsenceService $absenceService,
         \App\Services\BulletinService $bulletinService,
-        BulletinConsistencyService $bulletinConsistencyService
+        BulletinConsistencyService $bulletinConsistencyService,
+        \App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver $subjectResolver
     )
     {
         $this->absenceService = $absenceService;
         $this->bulletinService = $bulletinService;
         $this->bulletinConsistencyService = $bulletinConsistencyService;
+        $this->subjectResolver = $subjectResolver;
     }
 
     /**
@@ -233,13 +237,14 @@ class ESBTPBulletinController extends Controller
             // ESBTPBulletinController est BTS-only. Les classes LMD doivent passer par
             // ESBTPLMDBulletinController + LMDBulletinService (architecture separee).
             // Rule .claude/rules/lmd-bts-bulletin-separation.md
-            $classe = ESBTPClasse::with('matieres')->findOrFail($request->classe_id);
+            $classe = ESBTPClasse::with(['matieres', 'filiere'])->findOrFail($request->classe_id);
             abort_if(
                 ($classe->systeme_academique ?? '') === 'LMD',
                 422,
                 'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour générer des bulletins LMD.'
             );
-            $matieres = $classe->matieres;
+            // Tronc commun (C10) : union [filière classe, filière TC parente] + fallback pivot.
+            $matieres = $this->subjectResolver->subjectsForClasse($classe);
 
             // Précharger toutes les évaluations pour cette classe et période
             $allEvaluations = ESBTPEvaluation::where('classe_id', $classe->id)
@@ -1503,11 +1508,9 @@ class ESBTPBulletinController extends Controller
                 ->where('annee_universitaire_id', $anneeUniversitaire->id)
                 ->first();
 
-            // Récupérer les matières de la classe via la relation pivot
-            $matieres = $classe->matieres()
-                ->where('esbtp_matieres.is_active', true)
-                ->orderBy('esbtp_matieres.name')
-                ->get();
+            // Récupérer les matières de la classe (tronc commun-aware, C10) :
+            // union [filière classe, filière TC parente] + fallback pivot.
+            $matieres = $this->subjectResolver->subjectsForClasse($classe);
 
             // Grouper les matières par filière
             $matieresByFiliere = $matieres->groupBy(function ($matiere) use ($classe) {
