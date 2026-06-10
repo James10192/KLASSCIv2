@@ -66,6 +66,12 @@ class TroncCommunService
      * 3. Crée la nouvelle inscription avec lien vers l'origine
      * 4. Reporte les paiements si configuré
      * 5. Met à jour les places des classes
+     *
+     * @deprecated CODE MORT — aucun call site externe. Le flux d'orientation
+     * tronc commun → spécialité passe désormais par BtsOrientationService::orient()
+     * qui matérialise les phases (modèle phases), sans créer une seconde
+     * inscription dual (inscription_origine_id + type_changement). Conservé pour
+     * rétro-compat du modèle legacy dual ; ne PAS appeler dans du code neuf.
      */
     public function creerInscriptionSpecialisation(
         ESBTPInscription $inscriptionOrigine,
@@ -147,6 +153,11 @@ class TroncCommunService
      *
      * Ne duplique pas les paiements — met à jour les metadata pour référencer
      * la nouvelle inscription et génère les frais de la spécialisation.
+     *
+     * @deprecated CODE MORT — public mais uniquement invoqué par
+     * creerInscriptionSpecialisation() (elle-même dépréciée). Le modèle phases
+     * (BtsOrientationService::orient) ne crée pas de seconde inscription, donc
+     * aucun report de paiement n'est nécessaire. Ne PAS appeler dans du code neuf.
      */
     public function reporterPaiements(
         ESBTPInscription $origine,
