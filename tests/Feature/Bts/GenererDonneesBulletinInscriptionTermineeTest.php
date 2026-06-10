@@ -12,6 +12,7 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\Setting;
 use App\Services\BulletinService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Feature\Bts\Concerns\SeedsConfiguredBulletin;
 use Tests\TestCase;
 
 /**
@@ -27,6 +28,7 @@ use Tests\TestCase;
 class GenererDonneesBulletinInscriptionTermineeTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsConfiguredBulletin;
 
     /** @test */
     public function it_resolves_tronc_commun_classe_even_when_inscription_is_terminated(): void
@@ -67,6 +69,8 @@ class GenererDonneesBulletinInscriptionTermineeTest extends TestCase
             'semestre_debut' => 2,
             'is_active' => true,
         ]);
+
+        $this->seedConfiguredBulletin($etudiant->id, $specClasse->id, $annee->id, 'semestre1');
 
         $service = app(BulletinService::class);
         $data = $service->genererDonneesBulletin($etudiant->id, $specClasse->id, $annee->id, 'semestre1');

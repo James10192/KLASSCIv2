@@ -12,6 +12,7 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\Setting;
 use App\Services\BulletinService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Feature\Bts\Concerns\SeedsConfiguredBulletin;
 use Tests\TestCase;
 
 /**
@@ -26,6 +27,7 @@ use Tests\TestCase;
 class GenererDonneesBulletinS1TroncCommunTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsConfiguredBulletin;
 
     /** @test */
     public function it_resolves_tronc_commun_classe_for_s1_when_student_is_oriented_via_phases(): void
@@ -33,6 +35,13 @@ class GenererDonneesBulletinS1TroncCommunTest extends TestCase
         $this->setSetting('tronc_commun_mga_include_s1', '1');
 
         [$inscription, $tcClasse, $specClasse] = $this->makePhaseBasedInscription();
+
+        $this->seedConfiguredBulletin(
+            $inscription->etudiant_id,
+            $specClasse->id,
+            $inscription->annee_universitaire_id,
+            'semestre1'
+        );
 
         $service = app(BulletinService::class);
         $data = $service->genererDonneesBulletin(

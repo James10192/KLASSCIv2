@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Bts;
 
-use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -13,7 +12,7 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\Setting;
 use App\Services\BulletinService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Mockery;
+use Tests\Feature\Bts\Concerns\SeedsConfiguredBulletin;
 use Tests\TestCase;
 
 /**
@@ -27,6 +26,7 @@ use Tests\TestCase;
 class SettingTroncCommunMgaIncludeS1Test extends TestCase
 {
     use RefreshDatabase;
+    use SeedsConfiguredBulletin;
 
     /** @test */
     public function when_setting_on_the_resolver_substitutes_the_tronc_commun_classe(): void
@@ -34,6 +34,13 @@ class SettingTroncCommunMgaIncludeS1Test extends TestCase
         $this->setSetting('tronc_commun_mga_include_s1', '1');
 
         [$inscription, $tcClasse, $specClasse] = $this->makePhaseBasedInscription();
+
+        $this->seedConfiguredBulletin(
+            $inscription->etudiant_id,
+            $specClasse->id,
+            $inscription->annee_universitaire_id,
+            'semestre1'
+        );
 
         $service = app(BulletinService::class);
         $data = $service->genererDonneesBulletin(
@@ -48,17 +55,25 @@ class SettingTroncCommunMgaIncludeS1Test extends TestCase
     }
 
     /** @test */
-    public function when_setting_off_the_resolver_is_never_called(): void
+    public function when_setting_off_no_tronc_commun_substitution_happens(): void
     {
         $this->setSetting('tronc_commun_mga_include_s1', '0');
 
         [$inscription, $tcClasse, $specClasse] = $this->makePhaseBasedInscription();
 
-        // Le résolveur ne doit JAMAIS être consulté quand le setting est OFF.
-        $resolverSpy = Mockery::mock(BtsAnnualClassMapResolver::class);
-        $resolverSpy->shouldNotReceive('resolve');
-        $this->app->instance(BtsAnnualClassMapResolver::class, $resolverSpy);
+        $this->seedConfiguredBulletin(
+            $inscription->etudiant_id,
+            $specClasse->id,
+            $inscription->annee_universitaire_id,
+            'semestre1'
+        );
 
+        // Setting OFF : la branche d'inclusion S1 (BulletinService.php:466) est sautée,
+        // donc AUCUNE substitution de classe TC pour le MGA. La classe reste la
+        // spécialité. NB : le BtsCurrentResultSnapshotService consulte le class-map
+        // resolver indépendamment de ce setting (comportement Plan C voulu, couvert
+        // par BtsCurrentResultSnapshotClassMapTest) — on ne le mocke donc PAS ici,
+        // on vérifie uniquement l'absence de substitution observable.
         $service = app(BulletinService::class);
         $data = $service->genererDonneesBulletin(
             $inscription->etudiant_id,

@@ -103,11 +103,25 @@ class BulletinServiceAttendanceNoteTest extends TestCase
         $this->seedAttendanceSettings('1');
         $annee = ESBTPAnneeUniversitaire::factory()->create();
 
+        // Le service re-hydrate l'année via ESBTPAnneeUniversitaire::find(), donc les
+        // dates passées sont des instances Carbon DISTINCTES de celles du modèle factory.
+        // Mockery compare les objets par identité : on matche donc les dates par valeur
+        // (string) via Mockery::on, tout en vérifiant strictement les IDs et la période.
+        $expectedDebut = optional($annee->date_debut)->toDateString();
+        $expectedFin = optional($annee->date_fin)->toDateString();
+
         $absenceService = \Mockery::mock(ESBTPAbsenceService::class);
         $absenceService
             ->shouldReceive('calculerDetailAbsences')
             ->once()
-            ->with(10, 20, $annee->date_debut ?? null, $annee->date_fin ?? null, $annee->id, 'annuel')
+            ->with(
+                10,
+                20,
+                \Mockery::on(fn ($d) => optional($d)->toDateString() === $expectedDebut),
+                \Mockery::on(fn ($d) => optional($d)->toDateString() === $expectedFin),
+                $annee->id,
+                'annuel'
+            )
             ->andReturn([
                 'justifiees' => 0,
                 'non_justifiees' => 2,

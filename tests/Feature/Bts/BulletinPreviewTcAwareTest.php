@@ -50,7 +50,11 @@ class BulletinPreviewTcAwareTest extends TestCase
         $this->actingAs($user);
 
         $annee = ESBTPAnneeUniversitaire::factory()->create();
-        $niveau = ESBTPNiveauEtude::factory()->create();
+        // Le modèle ESBTPClasse dérive systeme_academique du type du niveau via son hook
+        // saving() (ClasseManagementService::determinerSystemeAcademique). Pour obtenir une
+        // classe LMD, le niveau doit avoir un type LMD ('Licence'/'Master'/'Doctorat'),
+        // sinon la valeur 'LMD' passée au create est écrasée par 'BTS'.
+        $niveau = ESBTPNiveauEtude::factory()->create(['type' => 'Licence']);
         $filiere = ESBTPFiliere::factory()->create();
         $classeLmd = ESBTPClasse::factory()->create([
             'filiere_id' => $filiere->id,

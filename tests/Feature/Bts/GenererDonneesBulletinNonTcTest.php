@@ -11,6 +11,7 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\Setting;
 use App\Services\BulletinService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Feature\Bts\Concerns\SeedsConfiguredBulletin;
 use Tests\TestCase;
 
 /**
@@ -25,6 +26,7 @@ use Tests\TestCase;
 class GenererDonneesBulletinNonTcTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsConfiguredBulletin;
 
     /** @test */
     public function it_does_not_substitute_classe_for_pure_bts_student(): void
@@ -47,6 +49,8 @@ class GenererDonneesBulletinNonTcTest extends TestCase
             'classe_id' => $classe->id,
             'annee_universitaire_id' => $annee->id,
         ]);
+
+        $this->seedConfiguredBulletin($etudiant->id, $classe->id, $annee->id, 'semestre1');
 
         $service = app(BulletinService::class);
         $data = $service->genererDonneesBulletin($etudiant->id, $classe->id, $annee->id, 'semestre1');

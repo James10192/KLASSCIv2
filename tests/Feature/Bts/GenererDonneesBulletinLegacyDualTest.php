@@ -11,6 +11,7 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\Setting;
 use App\Services\BulletinService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\Feature\Bts\Concerns\SeedsConfiguredBulletin;
 use Tests\TestCase;
 
 /**
@@ -25,6 +26,7 @@ use Tests\TestCase;
 class GenererDonneesBulletinLegacyDualTest extends TestCase
 {
     use RefreshDatabase;
+    use SeedsConfiguredBulletin;
 
     /** @test */
     public function it_resolves_origine_classe_for_s1_on_legacy_dual_inscription(): void
@@ -32,6 +34,13 @@ class GenererDonneesBulletinLegacyDualTest extends TestCase
         $this->setSetting('tronc_commun_mga_include_s1', '1');
 
         [$specialisation, $tcClasse, $specClasse] = $this->makeLegacyJourney();
+
+        $this->seedConfiguredBulletin(
+            $specialisation->etudiant_id,
+            $specClasse->id,
+            $specialisation->annee_universitaire_id,
+            'semestre1'
+        );
 
         $service = app(BulletinService::class);
         $data = $service->genererDonneesBulletin(
