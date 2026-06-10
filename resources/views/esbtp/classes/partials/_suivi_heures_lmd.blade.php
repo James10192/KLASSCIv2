@@ -1,6 +1,8 @@
 {{-- Partial LMD pour la tab "Suivi des heures" de classes.show --}}
 {{-- Recoit : $classe, $planningMatiere, $lmdVolumeBudget, $lmdUesAvecEcues, $lmdSemestres, $periode, $kpiTaux --}}
 @php
+    // Scope parcours : ids des ECUE de la classe (vide pour tronc commun / fallback = pas de filtre).
+    $lmdMatiereIds = $lmdMatiereIds ?? [];
     // CM/TD/TP : volume reel suivi via VolumeBudgetService (planifie vs realise par seance)
     $vbTotalsTab = ['cm'=>['p'=>0,'r'=>0],'td'=>['p'=>0,'r'=>0],'tp'=>['p'=>0,'r'=>0]];
     foreach ($lmdVolumeBudget as $budget) {
@@ -17,6 +19,7 @@
         $planifSums = \App\Models\ESBTPPlanificationAcademique::query()
             ->where('filiere_id', $classe->parcours && $classe->parcours->filiere_id ? $classe->parcours->filiere_id : $classe->filiere_id)
             ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->when(!empty($lmdMatiereIds), fn ($q) => $q->whereIn('matiere_id', $lmdMatiereIds))
             ->selectRaw('SUM(COALESCE(volume_horaire_projet,0)) as tot_projet, SUM(COALESCE(volume_horaire_tpe,0)) as tot_tpe')
             ->first();
         $allocProjet = (float) ($planifSums->tot_projet ?? 0);

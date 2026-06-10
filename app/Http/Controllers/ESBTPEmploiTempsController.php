@@ -929,6 +929,7 @@ class ESBTPEmploiTempsController extends Controller
         $periode = $suiviData['periode'];
         $lmdVolumeBudget = $suiviData['lmdVolumeBudget'];
         $lmdMatieres = $suiviData['lmdMatieres'];
+        $lmdMatiereIds = $suiviData['lmdMatiereIds'];
         $lmdSemestres = $suiviData['lmdSemestres'];
         $lmdUesAvecEcues = $suiviData['lmdUesAvecEcues'];
 
@@ -938,7 +939,7 @@ class ESBTPEmploiTempsController extends Controller
             'heroKpis', 'showSunday',
             // Tab Suivi heures
             'classe', 'planningMatiere', 'kpiTaux', 'periode',
-            'lmdVolumeBudget', 'lmdMatieres', 'lmdSemestres', 'lmdUesAvecEcues'
+            'lmdVolumeBudget', 'lmdMatieres', 'lmdMatiereIds', 'lmdSemestres', 'lmdUesAvecEcues'
         ));
     }
 
@@ -963,12 +964,13 @@ class ESBTPEmploiTempsController extends Controller
         $periode = $suiviData['periode'];
         $lmdVolumeBudget = $suiviData['lmdVolumeBudget'];
         $lmdMatieres = $suiviData['lmdMatieres'];
+        $lmdMatiereIds = $suiviData['lmdMatiereIds'];
         $lmdSemestres = $suiviData['lmdSemestres'];
         $lmdUesAvecEcues = $suiviData['lmdUesAvecEcues'];
 
         return view('esbtp.classes.partials._suivi_heures_lmd', compact(
             'classe', 'planningMatiere', 'kpiTaux', 'periode',
-            'lmdVolumeBudget', 'lmdMatieres', 'lmdSemestres', 'lmdUesAvecEcues'
+            'lmdVolumeBudget', 'lmdMatieres', 'lmdMatiereIds', 'lmdSemestres', 'lmdUesAvecEcues'
         ))->render();
     }
 
@@ -1023,6 +1025,7 @@ class ESBTPEmploiTempsController extends Controller
         $lmdVolumeBudget = [];
         $lmdMatieres = collect();
         $lmdUesAvecEcues = collect();
+        $lmdMatiereIds = [];
 
         if ($isLmd && $anneeCourante) {
             // Semestres effectivement chargés selon periode :
@@ -1061,6 +1064,37 @@ class ESBTPEmploiTempsController extends Controller
             }
 
             if ($lmdMatieres->isNotEmpty()) {
+                // Scope PARCOURS : ids des ECUE réellement attachées à la classe. Sans ça, la KPI
+                // "Planifiées" et la répartition compteraient TOUTES les planifs filière+niveau
+                // (ClassPlanningService), incohérent avec l'onglet "Planification académique" qui
+                // est scopé parcours (MatiereTreeBuilder, SSOT). cf rule lmd-bts-matieres-single-source.
+                $lmdMatiereIds = $lmdMatieres
+                    ->map(fn ($row) => optional($row['matiere'])->id)
+                    ->filter()
+                    ->values()
+                    ->all();
+
+                // Répartition CM/TD/TP restreinte aux ECUE du parcours.
+                $lmdVolumeBudget = array_intersect_key($lmdVolumeBudget, array_flip($lmdMatiereIds));
+
+                // KPI "Planifiées" = total parcours (= onglet Planification), pas filière+niveau.
+                // Période-aware : 'annee' = tout le niveau ; 'semestre1/2' = le semestre concerné.
+                $semestreKpi = match ($periode) {
+                    'semestre1' => $lmdSemestres[0] ?? null,
+                    'semestre2' => $lmdSemestres[1] ?? null,
+                    default => null,
+                };
+                $lmdMatieresKpi = $semestreKpi !== null
+                    ? app(\App\Services\LMD\MatiereTreeBuilder::class)->loadLmdMatieresForClasse($classe, $semestreKpi)
+                    : $lmdMatieres;
+                $lmdPlanifieTotal = (float) $lmdMatieresKpi->sum('volume_horaire_total');
+                $planningMatiere['stats']['heures_planifiees'] = $lmdPlanifieTotal;
+                $realiseesKpi = (float) ($planningMatiere['stats']['heures_realisees'] ?? 0);
+                $planningMatiere['stats']['taux_realisation'] = $lmdPlanifieTotal > 0
+                    ? round($realiseesKpi / $lmdPlanifieTotal * 100, 1)
+                    : ($realiseesKpi > 0 ? 100 : 0);
+                $kpiTaux = $planningMatiere['stats']['taux_realisation'];
+
                 $lmdUesAvecEcues = app(\App\Services\LMD\MatiereTreeBuilder::class)
                     ->forClasse($lmdMatieres, $lmdVolumeBudget);
             }
@@ -1073,6 +1107,7 @@ class ESBTPEmploiTempsController extends Controller
             'periode' => $periode,
             'lmdVolumeBudget' => $lmdVolumeBudget,
             'lmdMatieres' => $lmdMatieres,
+            'lmdMatiereIds' => $lmdMatiereIds,
             'lmdSemestres' => $lmdSemestres,
             'lmdUesAvecEcues' => $lmdUesAvecEcues,
         ];

@@ -1075,6 +1075,7 @@
                             'planningMatiere' => $planningMatiere,
                             'lmdVolumeBudget' => $lmdVolumeBudget,
                             'lmdUesAvecEcues' => $lmdUesAvecEcues,
+                            'lmdMatiereIds' => $lmdMatiereIds ?? [],
                             'lmdSemestres' => $lmdSemestres,
                             'periode' => $periode,
                             'kpiTaux' => $kpiTaux,
