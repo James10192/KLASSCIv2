@@ -212,6 +212,8 @@ grep -n "nom_colonne" app/Models/LeModele.php  # idéalement dans $fillable/cast
 ```
 Si la colonne est un concept d'une autre entité (ex: rattrapage LMD vs note BTS), ne PAS la sélectionner sur la table voisine.
 
+**Variante `nom` vs `name` (récurrente dans `CLIStudentController`)** : `esbtp_etudiants` utilise bien `nom` (français, nom de famille), MAIS `esbtp_matieres` / `esbtp_filieres` / `esbtp_niveaux_etudes` utilisent `name`. Les eager-loads `->with('matiere:id,nom')` / `->with('filiere:id,nom')` lèvent `Unknown column 'nom'`. Toujours vérifier le `$fillable` de CHAQUE modèle ciblé : `grep "'nom'\|'name'" app/Models/ESBTPXxx.php`. Bugs corrigés en série (commit `6f18f30b` filiere/niveau, puis juin 2026 matiere) — vérifier les 3 d'un coup quand on touche un eager-load de ce controller.
+
 **Diagnostic** : un endpoint API qui 500 mais dont le code « semble bon » → reproduire avec le CLI (`klassci <cmd> <tenant>`) qui RENVOIE le message SQL exact, bien plus parlant que le 500 web générique. Le CLI est un excellent révélateur de schema/colonnes.
 
 ---
