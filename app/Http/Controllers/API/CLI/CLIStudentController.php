@@ -155,7 +155,7 @@ class CLIStudentController extends BaseApiController
                     $q->where('annee_universitaire_id', $annee->id);
                 })
                 ->with('evaluation:id,titre,type')
-                ->with('matiere:id,nom')
+                ->with('matiere:id,name')
                 ->limit(20)
                 ->get(['id', 'matiere_id', 'evaluation_id', 'note', 'is_absent'])
             : collect();
@@ -175,8 +175,8 @@ class CLIStudentController extends BaseApiController
                 'status' => $inscription->status,
                 'workflow_step' => $inscription->workflow_step,
                 'classe' => $inscription->classe?->name,
-                'filiere' => $inscription->filiere?->nom,
-                'niveau' => $inscription->niveau?->nom,
+                'filiere' => $inscription->filiere?->name,
+                'niveau' => $inscription->niveau?->name,
                 'date_inscription' => $inscription->date_inscription?->format('Y-m-d'),
             ] : null,
             'paiements' => $paiements->map(fn ($p) => [
@@ -189,7 +189,7 @@ class CLIStudentController extends BaseApiController
             ]),
             'notes' => $notes->map(fn ($n) => [
                 'id' => $n->id,
-                'matiere' => $n->matiere?->nom,
+                'matiere' => $n->matiere?->name,
                 'evaluation' => $n->evaluation?->titre,
                 'type' => $n->evaluation?->type,
                 'note' => $n->note,
