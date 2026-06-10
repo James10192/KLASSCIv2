@@ -11,6 +11,10 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // created_by/updated_by : 1er user existant (null si DB vide, ex: klassci_testing).
+        // La FK settings.created_by est ON DELETE SET NULL → null accepté.
+        $creatorId = DB::table('users')->min('id');
+
         $rows = [
             [
                 'key' => 'comptabilite.reconciliation.frequency',
@@ -24,8 +28,8 @@ return new class extends Migration
                 'validation_rules' => json_encode(['required', 'in:daily,weekly,monthly']),
                 'sort_order' => 10,
                 'is_active' => 1,
-                'created_by' => 1,
-                'updated_by' => 1,
+                'created_by' => $creatorId,
+                'updated_by' => $creatorId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
@@ -41,8 +45,8 @@ return new class extends Migration
                 'validation_rules' => json_encode(['required', 'boolean']),
                 'sort_order' => 11,
                 'is_active' => 1,
-                'created_by' => 1,
-                'updated_by' => 1,
+                'created_by' => $creatorId,
+                'updated_by' => $creatorId,
                 'created_at' => now(),
                 'updated_at' => now(),
             ],

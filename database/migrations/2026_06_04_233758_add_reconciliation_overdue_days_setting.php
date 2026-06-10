@@ -27,8 +27,8 @@ return new class extends Migration
             'validation_rules' => json_encode(['required', 'integer', 'min:1', 'max:60']),
             'sort_order' => 17,
             'is_active' => 1,
-            'created_by' => 1,
-            'updated_by' => 1,
+            'created_by' => DB::table('users')->min('id'),
+            'updated_by' => DB::table('users')->min('id'),
             'created_at' => now(),
             'updated_at' => now(),
         ]);
