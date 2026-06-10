@@ -2584,6 +2584,13 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
     Route::get('ue/{ue}/parcours-disponibles', [\App\Http\Controllers\ESBTPLMDUEController::class, 'parcoursDisponibles'])->name('ue.parcours-disponibles');
     Route::post('ue/{ue}/sync-parcours', [\App\Http\Controllers\ESBTPLMDUEController::class, 'syncParcours'])->name('ue.sync-parcours');
 
+    // --- Réconciliation des doublons UE/ECUE ---
+    Route::get('reconciliation', [\App\Http\Controllers\ESBTPLMDReconciliationController::class, 'index'])->name('reconciliation.index');
+    Route::get('reconciliation/detect', [\App\Http\Controllers\ESBTPLMDReconciliationController::class, 'detect'])
+        ->middleware('throttle:30,1')->name('reconciliation.detect');
+    Route::post('reconciliation/merge', [\App\Http\Controllers\ESBTPLMDReconciliationController::class, 'merge'])
+        ->middleware('throttle:20,1')->name('reconciliation.merge');
+
     // --- Notes LMD ---
     Route::get('notes', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'index'])->name('notes.index');
     Route::get('notes/saisie/{evaluation}', [\App\Http\Controllers\ESBTPLMDNoteController::class, 'saisieRapide'])->name('notes.saisie');

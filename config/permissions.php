@@ -1178,6 +1178,14 @@ return [
             'icon' => 'fa-file-signature',
         ],
 
+        // ===== Réconciliation des doublons UE/ECUE LMD =====
+        'lmd.reconciliation.manage' => [
+            'label' => 'Détecter et fusionner les doublons UE/ECUE LMD',
+            'description' => 'Permet de détecter les quasi-doublons d\'UE et d\'ECUE issus d\'imports de maquettes multi-parcours, puis de les fusionner en une entité partagée liée à plusieurs parcours.',
+            'group' => 'LMD',
+            'icon' => 'fa-object-group',
+        ],
+
         'timetables.view' => [
             'label' => 'Voir les emplois du temps',
             'group' => 'Planning',
