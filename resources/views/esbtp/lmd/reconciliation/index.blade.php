@@ -460,8 +460,16 @@ function recManager() {
                 typeLabel: (type === 'ue' ? 'Unité d\'enseignement' : 'ECUE') + ' — ' + this.prettyName(group.normalized_name),
                 report: null, force: false,
             };
-            const report = await this.callMerge(type, canonicalId, absorbed, true, false);
-            this.modal.report = report;
+            try {
+                const report = await this.callMerge(type, canonicalId, absorbed, true, false);
+                if (!report || typeof report !== 'object') {
+                    throw new Error('Aperçu indisponible (réponse vide).');
+                }
+                this.modal.report = report;
+            } catch (err) {
+                this.toast('error', err.message || 'Aperçu impossible — réessayez.');
+                this.closeModal();
+            }
         },
 
         async confirmMerge() {
