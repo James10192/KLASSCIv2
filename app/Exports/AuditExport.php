@@ -72,7 +72,7 @@ class AuditExport implements FromCollection, WithHeadings, WithMapping, ShouldAu
             $audit->id,
             $audit->created_at?->format('d/m/Y H:i:s'),
             $eventLabels[$audit->event] ?? $audit->event,
-            class_basename($audit->auditable_type),
+            \App\Helpers\EntityLabelHelper::for($audit->auditable_type),
             $audit->auditable_id,
             $audit->user?->name ?? 'Système',
             $audit->ip_address,

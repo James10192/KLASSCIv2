@@ -55,7 +55,7 @@
                     </td>
                     <td><span class="chip chip-{{ $event }}">{{ $eventLabels[$event] ?? mb_strtoupper($event, 'UTF-8') }}</span></td>
                     <td>
-                        {{ class_basename($audit->auditable_type) }} #{{ $audit->auditable_id }}
+                        {{ \App\Helpers\EntityLabelHelper::for($audit->auditable_type) }} #{{ $audit->auditable_id }}
                     </td>
                     <td class="ip">{{ $audit->ip_address ?? '—' }}</td>
                     <td>

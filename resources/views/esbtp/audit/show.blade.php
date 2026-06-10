@@ -27,19 +27,8 @@
     ];
     $eventLabel = $eventLabels[$eventRaw] ?? mb_strtoupper($eventRaw, 'UTF-8');
 
-    $modelLabels = [
-        'App\Models\ESBTPPaiement' => 'Paiement',
-        'App\Models\ESBTPDepense' => 'Dépense',
-        'App\Models\ESBTPFacture' => 'Facture',
-        'App\Models\ESBTPFactureDetail' => 'Détail facture',
-        'App\Models\ESBTPFraisScolarite' => 'Frais scolarité',
-        'App\Models\ESBTPSalaire' => 'Salaire',
-        'App\Models\ESBTPBourse' => 'Bourse',
-        'App\Models\ESBTPEtudiant' => 'Étudiant',
-        'App\Models\ESBTPInscription' => 'Inscription',
-        'App\Models\User' => 'Utilisateur',
-    ];
-    $modelLabel = $modelLabels[$audit->auditable_type] ?? class_basename($audit->auditable_type);
+    // Libellé d'entité sans préfixe « ESBTP » (source unique : EntityLabelHelper)
+    $modelLabel = \App\Helpers\EntityLabelHelper::for($audit->auditable_type);
 
     $riskMap = [
         'Critique' => 'critique',
