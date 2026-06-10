@@ -174,6 +174,26 @@ class ESBTPFiliere extends Model
     }
 
     /**
+     * Filière IDs à considérer pour l'union TC → spécialité côté planning/présences.
+     *
+     * Retourne `[id]` pour une filière normale ; `[id, parent_id]` lorsque le parent
+     * est un véritable tronc commun. Permet aux classes de spécialité d'hériter des
+     * matières/planifications définies au niveau du tronc commun parent (C9).
+     *
+     * @return array<int>
+     */
+    public function troncCommunUnionFiliereIds(): array
+    {
+        $ids = [$this->id];
+
+        if ($this->parent_id && $this->parent && $this->parent->isTroncCommun()) {
+            $ids[] = $this->parent_id;
+        }
+
+        return $ids;
+    }
+
+    /**
      * Vérifie si cette filière est une "fille" (spécialité) d'un tronc commun :
      *  - elle n'est pas elle-même un TC
      *  - elle a un parent_id défini (rattachée à une filière mère qui est le TC)

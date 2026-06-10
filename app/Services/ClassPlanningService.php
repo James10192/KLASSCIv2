@@ -48,9 +48,16 @@ class ClassPlanningService
         $sem1Variants = $this->semestreVariants($sem1Number);
         $sem2Variants = $this->semestreVariants($sem2Number);
 
+        // Tronc commun (C9) : une classe de spécialité hérite des planifications
+        // définies au niveau de sa filière mère (le tronc commun). On élargit donc
+        // le filtre à l'union [filière classe, filière TC parente] via le helper modèle.
+        $unionFiliereIds = $classe->filiere
+            ? $classe->filiere->troncCommunUnionFiliereIds()
+            : [$classe->filiere_id];
+
         $planificationsQuery = ESBTPPlanificationAcademique::with(['matiere'])
             ->where('annee_universitaire_id', $anneeCourante->id)
-            ->where('filiere_id', $classe->filiere_id)
+            ->whereIn('filiere_id', $unionFiliereIds)
             ->where('niveau_etude_id', $classe->niveau_etude_id)
             ->select(
                 'matiere_id',
