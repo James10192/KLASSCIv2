@@ -130,7 +130,7 @@
                                 $newValues = is_array($a->new_values) ? $a->new_values : (json_decode($a->new_values, true) ?? []);
                                 $oldMontant = $oldValues['montant'] ?? null;
                                 $newMontant = $newValues['montant'] ?? null;
-                                $modelLabel = $financialModelsLabels[$a->auditable_type] ?? class_basename($a->auditable_type);
+                                $modelLabel = $financialModelsLabels[$a->auditable_type] ?? \App\Helpers\EntityLabelHelper::for($a->auditable_type);
                                 $rowLinks = $entityLinksMap[$a->id] ?? [];
                                 $rowLinksCount = count($rowLinks);
                             @endphp

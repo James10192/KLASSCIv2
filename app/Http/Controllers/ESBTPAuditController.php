@@ -438,7 +438,8 @@ class ESBTPAuditController extends Controller
     private function formatModelType($type)
     {
         $models = $this->getAuditableModels();
-        return $models[$type] ?? class_basename($type);
+        // Fallback centralisé : retire le préfixe technique « ESBTP » des libellés.
+        return $models[$type] ?? \App\Helpers\EntityLabelHelper::for($type);
     }
 
     /**

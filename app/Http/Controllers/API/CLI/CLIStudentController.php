@@ -157,7 +157,7 @@ class CLIStudentController extends BaseApiController
                 ->with('evaluation:id,titre,type')
                 ->with('matiere:id,nom')
                 ->limit(20)
-                ->get(['id', 'matiere_id', 'evaluation_id', 'note', 'note_rattrapage', 'is_absent'])
+                ->get(['id', 'matiere_id', 'evaluation_id', 'note', 'is_absent'])
             : collect();
 
         return $this->successResponse([
@@ -193,7 +193,6 @@ class CLIStudentController extends BaseApiController
                 'evaluation' => $n->evaluation?->titre,
                 'type' => $n->evaluation?->type,
                 'note' => $n->note,
-                'note_rattrapage' => $n->note_rattrapage,
                 'is_absent' => $n->is_absent,
             ]),
         ]);

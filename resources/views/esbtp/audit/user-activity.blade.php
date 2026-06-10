@@ -232,7 +232,7 @@
                         @php
                             $day = $audit->created_at->format('Y-m-d');
                             $event = $audit->event;
-                            $modelLabel = class_basename($audit->auditable_type);
+                            $modelLabel = \App\Helpers\EntityLabelHelper::for($audit->auditable_type);
                             $rowLinks = $entityLinksMap[$audit->id] ?? [];
                             $rowLinksCount = count($rowLinks);
                         @endphp
