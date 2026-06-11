@@ -114,6 +114,23 @@ if ($matieres->isEmpty()) {
 }
 ```
 
+## Fuite ECUE LMD dans les sélecteurs de matières BTS (incident juin 2026)
+
+**Symptôme** : après import de maquettes LMD (ECUE), les ECUE apparaissent dans des contextes **BTS** (modal gestion des notes `/esbtp/notes`, `evaluations.create`/`edit`/index filtre, et tout picker global de matières) → **doublons** avec les matières BTS.
+
+**Cause** : un listing **global non scopé** `ESBTPMatiere::orderBy('name')->get()` (ou `where('is_active', true)->get()`) retourne TOUTES les matières, y compris les ECUE LMD (qui ont `unite_enseignement_id` non nul).
+
+**Règle** : tout listing de matières destiné à un **contexte BTS classique** (évaluations, notes, présences BTS…) DOIT exclure les ECUE LMD :
+```php
+ESBTPMatiere::whereNull('unite_enseignement_id') // BTS only : exclure les ECUE LMD
+    ->orderBy('name')->get();
+```
+- `whereNull('unite_enseignement_id')` = matières BTS pures (le pivot `esbtp_matiere_filiere_niveau` 3-way n'est PAS peuplé par l'import LMD, donc les requêtes scopées filière+niveau via `liaisonsFilieresNiveaux` ne fuitent pas — seuls les listings GLOBAUX fuitent).
+- Inversement, un contexte **LMD strict** utilise `whereNotNull('unite_enseignement_id')` (cf. `ESBTPLMDNoteController`, `ESBTPTpeDeclarationController`).
+- Référence du pattern : `ESBTPMatiereController` (la liste des matières BTS l'applique déjà).
+
+Sites corrigés (juin 2026) : `ESBTPEvaluationController` (index/create/edit), `ESBTPNoteController` (notes.index ×2). À étendre à tout nouveau picker BTS global (présences, etc.) **avant** d'importer d'autres semestres LMD.
+
 ## Audit avant tout commit
 
 ```bash
@@ -121,6 +138,8 @@ if ($matieres->isEmpty()) {
 grep -rn '$classe->matieres' app/Http/Controllers/
 grep -rn "whereHas('filieres')" app/Http/Controllers/
 grep -rn "whereHas('niveaux')" app/Http/Controllers/
+# Listings globaux de matières BTS sans filtre ECUE LMD (fuite potentielle)
+grep -rnE "ESBTPMatiere::(orderBy|where\('is_active'.*\))->.*get\(\)" app/Http/Controllers/ | grep -v "unite_enseignement_id"
 ```
 
 Si grep trouve nouvelle occurrence non documentée → BLOQUE le commit.
