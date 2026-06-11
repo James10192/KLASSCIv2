@@ -123,8 +123,14 @@ class CLILMDSetupController extends BaseApiController
                             ->merge(DB::table('esbtp_unites_enseignement')->where('parcours_id', $p->id)
                                 ->whereNull('deleted_at')->pluck('id'))
                             ->unique()->values();
-                        $ueSemestres = DB::table('esbtp_unites_enseignement')
+                        // Comptage par la colonne UE.semestre
+                        $ueSemColonne = DB::table('esbtp_unites_enseignement')
                             ->whereIn('id', $ueIds)->whereNull('deleted_at')
+                            ->selectRaw('semestre, COUNT(*) as n')
+                            ->groupBy('semestre')->orderBy('semestre')
+                            ->pluck('n', 'semestre');
+                        // Comptage par la colonne PIVOT (esbtp_lmd_parcours_ue.semestre) — autorité du rattachement
+                        $ueSemPivot = DB::table('esbtp_lmd_parcours_ue')->where('parcours_id', $p->id)
                             ->selectRaw('semestre, COUNT(*) as n')
                             ->groupBy('semestre')->orderBy('semestre')
                             ->pluck('n', 'semestre');
@@ -137,7 +143,8 @@ class CLILMDSetupController extends BaseApiController
                             'credits_licence' => $p->credits_licence,
                             'credits_master' => $p->credits_master,
                             'ue_total' => $ueIds->count(),
-                            'ue_par_semestre' => $ueSemestres,
+                            'ue_par_semestre_col' => $ueSemColonne,
+                            'ue_par_semestre_pivot' => $ueSemPivot,
                         ];
                     })->values(),
                 ])->values(),
