@@ -97,7 +97,8 @@ class ESBTPEvaluationController extends Controller
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
 
         // Récupération des matières pour le filtre
-        $matieres = ESBTPMatiere::orderBy('name')->get();
+        $matieres = ESBTPMatiere::whereNull('unite_enseignement_id') // BTS only : exclure les ECUE LMD
+            ->orderBy('name')->get();
 
         // Récupération des types d'évaluation pour le filtre
         $types = ESBTPEvaluation::select('type')->distinct()->pluck('type');
@@ -290,7 +291,9 @@ class ESBTPEvaluationController extends Controller
 
         $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
-        $matieres = ESBTPMatiere::where('is_active', true)->orderBy('name')->get();
+        $matieres = ESBTPMatiere::where('is_active', true)
+            ->whereNull('unite_enseignement_id') // BTS only : exclure les ECUE LMD
+            ->orderBy('name')->get();
         $types = ESBTPEvaluation::getTypes();
 
         // Récupérer la liste des enseignants pour l'assignation (seulement pour les non-enseignants)
@@ -568,7 +571,8 @@ $evaluation = new ESBTPEvaluation;
     public function edit(ESBTPEvaluation $evaluation)
     {
         $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
-        $matieres = ESBTPMatiere::orderBy('name')->get();
+        $matieres = ESBTPMatiere::whereNull('unite_enseignement_id') // BTS only : exclure les ECUE LMD
+            ->orderBy('name')->get();
         $types = ESBTPEvaluation::getTypes();
         $dateEval = $evaluation->date_evaluation ? Carbon::parse($evaluation->date_evaluation) : null;
         $heureDebut = $dateEval?->format('H:i');

@@ -283,7 +283,8 @@ class ESBTPNoteController extends Controller
 
             // Get filter options
             $classes = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
-            $matieres = ESBTPMatiere::orderBy('name')->get();
+            $matieres = ESBTPMatiere::whereNull('unite_enseignement_id') // BTS only : exclure les ECUE LMD
+            ->orderBy('name')->get();
             $filieres = ESBTPFiliere::orderBy('name')->get();
             $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
             $allClasses = $classes;
@@ -298,7 +299,8 @@ class ESBTPNoteController extends Controller
 
         // Get filter options for dropdowns (if needed)
         $allClasses = ESBTPClasse::where('is_active', true)->orderBy('name')->get();
-        $matieres = ESBTPMatiere::orderBy('name')->get();
+        $matieres = ESBTPMatiere::whereNull('unite_enseignement_id') // BTS only : exclure les ECUE LMD
+            ->orderBy('name')->get();
 
         $filieres = ESBTPFiliere::orderBy('name')->get();
         $niveaux = ESBTPNiveauEtude::orderBy('name')->get();
