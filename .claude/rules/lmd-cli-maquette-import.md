@@ -74,8 +74,10 @@ Une **UE et ses ECUE peuvent être partagées** entre plusieurs domaines / menti
 - **Intégrés juin 2026 via `/api/cli/lmd/import`** :
   - **S1 L1** : `LBU1` (BU, 6 UE/19 ECUE) + `LTP1` (TIR, 5 UE/15 ECUE). RDM TP renommée `TPPM311` (lossless).
   - **S3 L2** : `LBU2` (BU, 7 UE/19 ECUE) + `LTP2` (TIR, 7 UE/22 ECUE). 4 ECUE partagées BU↔TP à crédits divergents rendues distinctes côté TIR (`BSMII132→TPSMII132`, `BSMII134→TPSMII134`, `BLSH632→TPLSH632`, `BOJG733→TPOJG733`) → à fusionner via la réconciliation UI.
-- Pattern de transcription : `.lmd_import_tmp/gen.py` (S1) et `gen_s3.py` (S3) — valident Σ crédits = 30/semestre avant POST.
-- Restants attendus de l'école : autres semestres (cf `RAPPORT-ESBTP-Abidjan-Maquettes-LMD.pdf`).
+  - **S5 L3** : `SEM5_LBU3` (BU, 9 UE/19 ECUE) + `SEM5_LTP3` (TIR, 7 UE/18 ECUE). Codes B*/TP* distincts, pas de collision.
+- **En attente clarification école** : `MAQUETTE SEM 4.pdf` — en-tête PDF « LICENCE 1 » mais pied « 4ème semestre » + codes BU (probable **L2-BU-S4**, contrepartie du L2-TP-S4 déjà fait). Coquille connue : `BSTM321` en triple → corriger en `BSTM321/322/323` à l'import.
+- Pattern de transcription : `.lmd_import_tmp/gen.py` (S1), `gen_s3.py` (S3), `gen_s45.py` (S4/S5) — valident Σ crédits = 30/semestre avant POST.
+- **État couverture** : BU = S1,S2(initial),S3,S5,S6(initial) — manque S4 (en attente). TIR = S1,S3,S4(initial),S5,S6(initial) — manque S2.
 
 ## Référentiel UEMOA / CAMES — crédits & tronc commun (deep research, juin 2026)
 
