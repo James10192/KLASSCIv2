@@ -77,10 +77,11 @@ Une **UE et ses ECUE peuvent être partagées** entre plusieurs domaines / menti
   - **S5 L3** : `SEM5_LBU3` (BU, 9 UE/19 ECUE) + `SEM5_LTP3` (TIR, 7 UE/18 ECUE). Codes B*/TP* distincts, pas de collision.
   - **S4 L2** : `SEM4_BU` (BU, 7 UE/23 ECUE) — en-tête PDF « LICENCE 1 » erroné, c'est bien Semestre 4 (confirmé école). Coquille `BSTM321` triple corrigée en `BSTM321/322/323`.
 - Pattern de transcription : `.lmd_import_tmp/gen.py` (S1), `gen_s3.py` (S3), `gen_s45.py` (S4/S5) — valident Σ crédits = 30/semestre avant POST.
-- **Vérification couverture via `/api/cli/lmd/tree`** (champ `ue_par_semestre` ajouté juin 2026) :
-  - **BU** : S1=6, S3=7, S4=7, S5=9, S6=3 — **manque S2** ; **S6 light (3 UE)** possiblement incomplet à vérifier.
-  - **TIR** : S1=5, S2=6, S3=7, S4=7, S5=7, S6=7 — **complet S1→S6**.
-- **Reste à intégrer** : **BU-S2** (Licence 1 BU, Semestre 2) — maquette pas encore reçue.
+- **Vérification couverture via `/api/cli/lmd/tree`** (champs `ue_par_semestre_col` + `ue_par_semestre_pivot`, juin 2026). ⚠️ **Compter par le PIVOT `esbtp_lmd_parcours_ue.semestre` (autorité), PAS par `UE.semestre`** : la colonne UE peut être désynchronisée (réécrite par un import d'un autre semestre partageant le même code UE) → faux « semestre manquant ». Couverture réelle (pivot) :
+  - **BU** : S1=6, **S2=7**, S3=7, S4=7, S5=9, S6=3 → **complet S1→S6** (S6 light à 3 UE = possiblement partiel).
+  - **TIR** : S1=5, S2=6, S3=7, S4=7, S5=7, S6=7 → **complet S1→S6**.
+- **Note** : 7 UE de BU rattachées à 2 semestres dans le pivot (UE partagées S2/S3 ou artefact import initial) — à réconcilier/nettoyer si non voulu.
+- **État : maquettes Génie Civil complètes** (les 2 parcours, S1→S6). Restent des vérifs qualité : BU-S6 (3 UE, à compléter ?) + doublons cross-parcours à fusionner via la réconciliation.
 
 ## Référentiel UEMOA / CAMES — crédits & tronc commun (deep research, juin 2026)
 
