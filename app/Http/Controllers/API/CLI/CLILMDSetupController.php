@@ -116,14 +116,30 @@ class CLILMDSetupController extends BaseApiController
                     'id' => $m->id,
                     'name' => $m->name,
                     'code' => $m->code,
-                    'parcours' => $m->parcours->map(fn (ESBTPLMDParcours $p) => [
-                        'id' => $p->id,
-                        'name' => $p->name,
-                        'code' => $p->code,
-                        'filiere' => $p->filiere?->only(['id', 'name', 'code']),
-                        'credits_licence' => $p->credits_licence,
-                        'credits_master' => $p->credits_master,
-                    ])->values(),
+                    'parcours' => $m->parcours->map(function (ESBTPLMDParcours $p) {
+                        // UE rattachées au parcours = pivot many-to-many UNION FK directe
+                        $ueIds = DB::table('esbtp_lmd_parcours_ue')->where('parcours_id', $p->id)
+                            ->pluck('unite_enseignement_id')
+                            ->merge(DB::table('esbtp_unites_enseignement')->where('parcours_id', $p->id)
+                                ->whereNull('deleted_at')->pluck('id'))
+                            ->unique()->values();
+                        $ueSemestres = DB::table('esbtp_unites_enseignement')
+                            ->whereIn('id', $ueIds)->whereNull('deleted_at')
+                            ->selectRaw('semestre, COUNT(*) as n')
+                            ->groupBy('semestre')->orderBy('semestre')
+                            ->pluck('n', 'semestre');
+
+                        return [
+                            'id' => $p->id,
+                            'name' => $p->name,
+                            'code' => $p->code,
+                            'filiere' => $p->filiere?->only(['id', 'name', 'code']),
+                            'credits_licence' => $p->credits_licence,
+                            'credits_master' => $p->credits_master,
+                            'ue_total' => $ueIds->count(),
+                            'ue_par_semestre' => $ueSemestres,
+                        ];
+                    })->values(),
                 ])->values(),
             ]);
 
