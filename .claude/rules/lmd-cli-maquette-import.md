@@ -70,9 +70,12 @@ Une **UE et ses ECUE peuvent être partagées** entre plusieurs domaines / menti
 
 - Domaine `ST` (Sciences et Technologies) · Mention `GC` (Génie Civil).
 - Parcours `BU` (Bâtiment et Urbanisme, filière BU) et `TIR` (Travaux Publics, filière TP).
-- Déjà intégrés (5 maquettes) : L1-BU-S2, L2-TP-S4, L3-TIR-S6, L1-BU(doublon écarté), L3-BU-S6.
-- Reçus à intégrer : **S1 L1 BU** (`MAQUETTE SEM1 LBU 1.pdf`) → parcours BU ; **S1 L1 TP** (`MAQUETTE SEM1 LTP1.pdf`) → parcours TIR.
-- Restants attendus de l'école : 7 maquettes-semestres (cf `RAPPORT-ESBTP-Abidjan-Maquettes-LMD.pdf`).
+- Déjà intégrés (5 maquettes initiales) : L1-BU-S2, L2-TP-S4, L3-TIR-S6, L1-BU(doublon écarté), L3-BU-S6.
+- **Intégrés juin 2026 via `/api/cli/lmd/import`** :
+  - **S1 L1** : `LBU1` (BU, 6 UE/19 ECUE) + `LTP1` (TIR, 5 UE/15 ECUE). RDM TP renommée `TPPM311` (lossless).
+  - **S3 L2** : `LBU2` (BU, 7 UE/19 ECUE) + `LTP2` (TIR, 7 UE/22 ECUE). 4 ECUE partagées BU↔TP à crédits divergents rendues distinctes côté TIR (`BSMII132→TPSMII132`, `BSMII134→TPSMII134`, `BLSH632→TPLSH632`, `BOJG733→TPOJG733`) → à fusionner via la réconciliation UI.
+- Pattern de transcription : `.lmd_import_tmp/gen.py` (S1) et `gen_s3.py` (S3) — valident Σ crédits = 30/semestre avant POST.
+- Restants attendus de l'école : autres semestres (cf `RAPPORT-ESBTP-Abidjan-Maquettes-LMD.pdf`).
 
 ## Référentiel UEMOA / CAMES — crédits & tronc commun (deep research, juin 2026)
 
