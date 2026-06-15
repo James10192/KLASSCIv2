@@ -43,6 +43,7 @@ class ESBTPSalaireController extends Controller
 
         $recap = $this->buildRecap($filtres);
         $kpis = $this->recapKpis($recap);
+        $periodLabel = $this->periodLabel($this->resolvePeriode($filtres)[2]);
 
         $teachers = ESBTPTeacher::with('user:id,name')->get()
             ->map(fn ($t) => ['id' => $t->id, 'name' => $t->user->name ?? $t->name ?? 'Enseignant'])
@@ -52,6 +53,8 @@ class ESBTPSalaireController extends Controller
             'recap'       => $recap,
             'kpis'        => $kpis,
             'filtres'     => $filtres,
+            'periodLabel' => $periodLabel,
+            'presets'     => ['month' => 'Mois', 'quarter' => 'Trimestre', 'semester' => 'Semestre', 'year' => 'Année', 'custom' => 'Plage'],
             'annee'       => $annee,
             'teachers'    => $teachers,
             'moisOptions' => self::MOIS_FR,
@@ -78,18 +81,102 @@ class ESBTPSalaireController extends Controller
                 'canCreate'    => auth()->user()->can('comptabilite.salaires.create'),
             ])->render(),
             'kpis_html' => view('esbtp.comptabilite.salaires.partials._kpis', ['kpis' => $kpis])->render(),
-            'period_label' => (self::MOIS_FR[$filtres['mois']] ?? '') . ' ' . $filtres['annee'],
+            'period_label' => $this->periodLabel($this->resolvePeriode($filtres)[2]),
         ]);
     }
 
     private function filtres(Request $request): array
     {
         return [
-            'mois'   => (int) $request->get('mois', now()->month),
-            'annee'  => (int) $request->get('annee', now()->year),
+            'preset' => in_array($request->get('preset'), ['month', 'quarter', 'semester', 'year', 'custom'], true)
+                ? $request->get('preset') : 'month',
+            'mois'   => (int) $request->get('mois', now()->month),   // mois d'ancrage
+            'annee'  => (int) $request->get('annee', now()->year),   // année d'ancrage
+            'from'   => $request->get('from'),                       // plage perso (mois)
+            'to'     => $request->get('to'),
             'statut' => $request->get('statut'),
             'q'      => trim((string) $request->get('q', '')),
         ];
+    }
+
+    /**
+     * Résout la période (préset ou plage) en [from, to, mois[]].
+     * Les bulletins étant MENSUELS, on décompose toujours en mois calendaires
+     * (l'ITS est progressif PAR MOIS : impossible de l'appliquer sur un total trimestriel).
+     *
+     * @return array{0: Carbon, 1: Carbon, 2: array<int, array{mois:int, annee:int}>}
+     */
+    private function resolvePeriode(array $f): array
+    {
+        if ($f['preset'] === 'custom' && !empty($f['from']) && !empty($f['to'])) {
+            $from = Carbon::parse($f['from'])->startOfMonth();
+            $to   = Carbon::parse($f['to'])->endOfMonth();
+            if ($to->lt($from)) {
+                [$from, $to] = [$to->copy()->startOfMonth(), $from->copy()->endOfMonth()];
+            }
+        } else {
+            $anchor = Carbon::create($f['annee'], max(1, min(12, $f['mois'])), 1);
+            switch ($f['preset']) {
+                case 'quarter':
+                    $from = $anchor->copy()->subMonths(2)->startOfMonth();
+                    $to   = $anchor->copy()->endOfMonth();
+                    break;
+                case 'semester':
+                    $from = $anchor->copy()->subMonths(5)->startOfMonth();
+                    $to   = $anchor->copy()->endOfMonth();
+                    break;
+                case 'year':
+                    $au = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+                    if ($au && $au->date_debut && $au->date_fin) {
+                        $from = Carbon::parse($au->date_debut)->startOfMonth();
+                        $to   = Carbon::parse($au->date_fin)->endOfMonth();
+                    } else {
+                        $from = $anchor->copy()->subMonths(11)->startOfMonth();
+                        $to   = $anchor->copy()->endOfMonth();
+                    }
+                    break;
+                default: // month
+                    $from = $anchor->copy()->startOfMonth();
+                    $to   = $anchor->copy()->endOfMonth();
+            }
+        }
+
+        return [$from, $to, $this->listMonths($from, $to)];
+    }
+
+    /** Liste des mois calendaires [from, to], plafonnée au mois courant (pas de futur sans heures). */
+    private function listMonths(Carbon $from, Carbon $to): array
+    {
+        $months = [];
+        $cursor = $from->copy()->startOfMonth();
+        $end    = $to->copy()->startOfMonth();
+        $now    = Carbon::now()->startOfMonth();
+        while ($cursor->lte($end) && count($months) < 24) {
+            if ($cursor->lte($now)) {
+                $months[] = ['mois' => (int) $cursor->month, 'annee' => (int) $cursor->year];
+            }
+            $cursor->addMonth();
+        }
+        if (empty($months)) {
+            $months[] = ['mois' => (int) $end->month, 'annee' => (int) $end->year];
+        }
+        return $months;
+    }
+
+    /** Libellé période lisible (« Mai 2026 » ou « Mars – Juin 2026 »). */
+    private function periodLabel(array $months): string
+    {
+        if (empty($months)) {
+            return '';
+        }
+        $first = $months[0];
+        $last  = $months[count($months) - 1];
+        if (count($months) === 1) {
+            return (self::MOIS_FR[$first['mois']] ?? '') . ' ' . $first['annee'];
+        }
+        $a = self::MOIS_FR[$first['mois']] ?? '';
+        $b = (self::MOIS_FR[$last['mois']] ?? '') . ' ' . $last['annee'];
+        return $first['annee'] === $last['annee'] ? "$a – $b" : "$a {$first['annee']} – $b";
     }
 
     /** Libellés statut incluant le pseudo-statut « à préparer ». */
@@ -107,62 +194,77 @@ class ESBTPSalaireController extends Controller
      */
     private function buildRecap(array $filtres): array
     {
-        [$from, $to] = $this->moisRange($filtres['mois'], $filtres['annee']);
-        $report = $this->hours->report($from, $to);
+        [, , $months] = $this->resolvePeriode($filtres);
 
         $teachers = ESBTPTeacher::with(['tauxSeances', 'user:id,name'])->get()->keyBy('id');
-        $bulletins = ESBTPSalaire::where('mois', $filtres['mois'])
-            ->where('annee', $filtres['annee'])->get()->keyBy('teacher_id');
+
+        // Tous les bulletins des mois de la période, indexés teacher-mois-annee.
+        $bulletins = ESBTPSalaire::where(function ($q) use ($months) {
+            foreach ($months as $m) {
+                $q->orWhere(fn ($w) => $w->where('mois', $m['mois'])->where('annee', $m['annee']));
+            }
+        })->get()->keyBy(fn ($b) => $b->teacher_id . '-' . $b->mois . '-' . $b->annee);
 
         $cnpsTaux = $this->payroll->tauxCnps();
-        $rows = [];
-        $seen = [];
+        $agg = []; // teacher_id => agrégat période (avec cellules mensuelles)
 
-        foreach ($report['enseignants'] as $ens) {
-            $teacher = $teachers->get($ens['teacher_id']);
-            if (!$teacher) {
-                continue;
-            }
-            $base = 0.0;
-            $heures = 0.0;
-            $types = [];
-            foreach ($ens['par_type'] as $pt) {
-                if (!$pt['facturable'] || $pt['heures_realisees'] <= 0) {
+        // Pour chaque mois : calculer les heures réelles → estimation, OU lire le bulletin existant.
+        foreach ($months as $m) {
+            [$mFrom, $mTo] = $this->moisRange($m['mois'], $m['annee']);
+            $report = $this->hours->report($mFrom, $mTo);
+            $withHours = [];
+
+            foreach ($report['enseignants'] as $ens) {
+                $teacher = $teachers->get($ens['teacher_id']);
+                if (!$teacher) {
                     continue;
                 }
-                $taux = $teacher->tauxPour($pt['type']);
-                $base += $pt['heures_realisees'] * $taux;
-                $heures += $pt['heures_realisees'];
-                $types[] = [
-                    'type' => $pt['type'], 'icon' => $pt['icon'], 'style' => $pt['style'],
-                    'heures' => $pt['heures_realisees'], 'taux' => $taux,
-                ];
+                $withHours[$ens['teacher_id']] = true;
+                $base = 0.0;
+                $heures = 0.0;
+                $byType = [];
+                foreach ($ens['par_type'] as $pt) {
+                    if (!$pt['facturable'] || $pt['heures_realisees'] <= 0) {
+                        continue;
+                    }
+                    $taux = $teacher->tauxPour($pt['type']);
+                    $base += $pt['heures_realisees'] * $taux;
+                    $heures += $pt['heures_realisees'];
+                    $byType[$pt['type']] = [
+                        'type' => $pt['type'], 'icon' => $pt['icon'], 'style' => $pt['style'],
+                        'heures' => $pt['heures_realisees'], 'taux' => $taux,
+                    ];
+                }
+                $base = round($base, 2);
+                $bulletin = $bulletins->get($ens['teacher_id'] . '-' . $m['mois'] . '-' . $m['annee']);
+                if ($base <= 0 && !$bulletin) {
+                    continue;
+                }
+                $its = $this->payroll->computeIts($base);
+                $cnps = round($base * $cnpsTaux / 100, 2);
+                $this->accumulateMonth($agg, $teacher, $ens['name'], $m, $heures, $byType, $base, $its, $cnps, $bulletin);
             }
-            $base = round($base, 2);
-            $bulletin = $bulletins->get($ens['teacher_id']);
-            if ($base <= 0 && !$bulletin) {
-                continue;
-            }
-            $its = $this->payroll->computeIts($base);
-            $cnps = round($base * $cnpsTaux / 100, 2);
 
-            $rows[] = $this->recapRow($ens['teacher_id'], $ens['name'], $heures, $types, $base, $its, $cnps, $bulletin);
-            $seen[$ens['teacher_id']] = true;
+            // Bulletins du mois sans heures dans le report (ex: saisie manuelle).
+            foreach ($bulletins as $key => $bulletin) {
+                if ((int) $bulletin->mois !== $m['mois'] || (int) $bulletin->annee !== $m['annee']) {
+                    continue;
+                }
+                if (isset($withHours[$bulletin->teacher_id])) {
+                    continue;
+                }
+                $teacher = $teachers->get($bulletin->teacher_id);
+                $name = $teacher?->user?->name ?? $teacher?->name ?? 'Enseignant';
+                $this->accumulateMonth($agg, $teacher, $name, $m, (float) $bulletin->heures_total, [], (float) $bulletin->salaire_base, (float) $bulletin->impot_its, (float) $bulletin->cnps, $bulletin);
+            }
         }
 
-        // Bulletins dont l'enseignant n'a pas d'heures dans le report (ex: saisie manuelle).
-        foreach ($bulletins as $tid => $bulletin) {
-            if (isset($seen[$tid])) {
-                continue;
-            }
-            $teacher = $teachers->get($tid);
-            $name = $teacher?->user?->name ?? $teacher?->name ?? 'Enseignant';
-            $rows[] = $this->recapRow($tid, $name, (float) $bulletin->heures_total, [], (float) $bulletin->salaire_base, (float) $bulletin->impot_its, (float) $bulletin->cnps, $bulletin);
-        }
+        $rows = array_map(fn ($a) => $this->finalizeRow($a), array_values($agg));
 
-        // Filtres statut + recherche.
+        // Filtre statut : la ligne matche si son statut global OU une de ses cellules matche.
         if (!empty($filtres['statut'])) {
-            $rows = array_values(array_filter($rows, fn ($r) => $r['statut'] === $filtres['statut']));
+            $rows = array_values(array_filter($rows, fn ($r) => $r['statut'] === $filtres['statut']
+                || in_array($filtres['statut'], array_column($r['months'], 'statut'), true)));
         }
         if ($filtres['q'] !== '') {
             $q = mb_strtolower($filtres['q']);
@@ -174,24 +276,65 @@ class ESBTPSalaireController extends Controller
         return $rows;
     }
 
-    /** Construit une ligne de récap (statut = bulletin ou « à préparer »). */
-    private function recapRow($teacherId, string $name, float $heures, array $types, float $base, float $its, float $cnps, ?ESBTPSalaire $bulletin): array
+    /** Accumule une cellule mensuelle (estimation ou bulletin) dans l'agrégat période d'un enseignant. */
+    private function accumulateMonth(array &$agg, $teacher, string $name, array $m, float $heures, array $byType, float $base, float $its, float $cnps, ?ESBTPSalaire $bulletin): void
     {
-        $netEstime = round($base - $its - $cnps, 2);
+        $tid = $teacher?->id;
+        if ($tid === null) {
+            return;
+        }
+        if (!isset($agg[$tid])) {
+            $agg[$tid] = ['teacher_id' => (int) $tid, 'name' => $name, 'heures' => 0.0, 'types' => [],
+                'base' => 0.0, 'retenues' => 0.0, 'net' => 0.0, 'months' => []];
+        }
+        $monthNet = $bulletin ? (float) $bulletin->net_a_payer : round($base - $its - $cnps, 2);
+        $monthRet = $bulletin ? (float) $bulletin->retenues : round($its + $cnps, 2);
 
-        return [
-            'teacher_id'  => (int) $teacherId,
-            'name'        => $name,
-            'heures'      => round($heures, 2),
-            'types'       => $types,
-            'base'        => $base,
-            'retenues'    => $bulletin ? (float) $bulletin->retenues : round($its + $cnps, 2),
-            'net'         => $bulletin ? (float) $bulletin->net_a_payer : $netEstime,
-            'estimation'  => !$bulletin,
-            'has_bulletin'=> (bool) $bulletin,
-            'bulletin_id' => $bulletin?->id,
-            'statut'      => $bulletin ? $bulletin->workflow_status : 'a_preparer',
+        $agg[$tid]['heures'] += $heures;
+        $agg[$tid]['base'] += $base;
+        $agg[$tid]['retenues'] += $monthRet;
+        $agg[$tid]['net'] += $monthNet;
+        foreach ($byType as $type => $t) {
+            if (!isset($agg[$tid]['types'][$type])) {
+                $agg[$tid]['types'][$type] = $t;
+            } else {
+                $agg[$tid]['types'][$type]['heures'] += $t['heures'];
+            }
+        }
+        $agg[$tid]['months'][] = [
+            'mois' => $m['mois'], 'annee' => $m['annee'],
+            'label' => self::MOIS_FR[$m['mois']] ?? (string) $m['mois'],
+            'short' => mb_substr(self::MOIS_FR[$m['mois']] ?? '', 0, 4, 'UTF-8'),
+            'net' => $monthNet, 'base' => round($base, 2), 'retenues' => $monthRet, 'heures' => round($heures, 2),
+            'statut' => $bulletin ? $bulletin->workflow_status : 'a_preparer',
+            'has_bulletin' => (bool) $bulletin, 'bulletin_id' => $bulletin?->id, 'estimation' => !$bulletin,
         ];
+    }
+
+    /** Finalise une ligne : tri chrono des mois + statut global + arrondis. */
+    private function finalizeRow(array $a): array
+    {
+        usort($a['months'], fn ($x, $y) => [$x['annee'], $x['mois']] <=> [$y['annee'], $y['mois']]);
+        $statuts = array_column($a['months'], 'statut');
+        $overall = 'paye';
+        if (in_array('a_preparer', $statuts, true)) {
+            $overall = 'a_preparer';
+        } elseif (in_array('brouillon', $statuts, true)) {
+            $overall = 'brouillon';
+        } elseif (in_array('valide', $statuts, true)) {
+            $overall = 'valide';
+        } elseif (array_unique($statuts) === ['annule']) {
+            $overall = 'annule';
+        }
+        $a['types'] = array_values($a['types']);
+        $a['base'] = round($a['base'], 2);
+        $a['retenues'] = round($a['retenues'], 2);
+        $a['net'] = round($a['net'], 2);
+        $a['heures'] = round($a['heures'], 2);
+        $a['statut'] = $overall;
+        $a['nb_mois'] = count($a['months']);
+        $a['nb_a_preparer'] = count(array_filter($a['months'], fn ($mm) => $mm['statut'] === 'a_preparer'));
+        return $a;
     }
 
     /**
@@ -202,18 +345,26 @@ class ESBTPSalaireController extends Controller
      */
     private function recapKpis(array $recap): array
     {
-        $sum = fn ($pred) => array_sum(array_map(fn ($r) => $r['net'], array_filter($recap, $pred)));
-        $count = fn ($pred) => count(array_filter($recap, $pred));
+        // Cellules = (enseignant × mois) — un bulletin est mensuel, on compte les cellules.
+        $cells = [];
+        foreach ($recap as $r) {
+            foreach ($r['months'] as $m) {
+                $cells[] = $m;
+            }
+        }
+        $sum = fn ($pred) => round(array_sum(array_map(fn ($c) => $c['net'], array_filter($cells, $pred))), 2);
+        $count = fn ($pred) => count(array_filter($cells, $pred));
 
         return [
-            'total_net'    => round(array_sum(array_column($recap, 'net')), 2),
-            'nb_total'     => count($recap),
-            'nb_a_preparer'=> $count(fn ($r) => $r['statut'] === 'a_preparer'),
-            'nb_brouillon' => $count(fn ($r) => $r['statut'] === ESBTPSalaire::ST_BROUILLON),
-            'nb_valide'    => $count(fn ($r) => $r['statut'] === ESBTPSalaire::ST_VALIDE),
-            'nb_paye'      => $count(fn ($r) => $r['statut'] === ESBTPSalaire::ST_PAYE),
-            'net_paye'     => round($sum(fn ($r) => $r['statut'] === ESBTPSalaire::ST_PAYE), 2),
-            'net_a_preparer' => round($sum(fn ($r) => $r['statut'] === 'a_preparer'), 2),
+            'total_net'      => round(array_sum(array_column($recap, 'net')), 2),
+            'nb_total'       => count($recap),
+            'nb_mois'        => count(array_unique(array_map(fn ($c) => $c['annee'] . '-' . $c['mois'], $cells))),
+            'nb_a_preparer'  => $count(fn ($c) => $c['statut'] === 'a_preparer'),
+            'net_a_preparer' => $sum(fn ($c) => $c['statut'] === 'a_preparer'),
+            'nb_brouillon'   => $count(fn ($c) => $c['statut'] === ESBTPSalaire::ST_BROUILLON),
+            'nb_valide'      => $count(fn ($c) => $c['statut'] === ESBTPSalaire::ST_VALIDE),
+            'nb_paye'        => $count(fn ($c) => $c['statut'] === ESBTPSalaire::ST_PAYE),
+            'net_paye'       => $sum(fn ($c) => $c['statut'] === ESBTPSalaire::ST_PAYE),
         ];
     }
 
@@ -223,7 +374,7 @@ class ESBTPSalaireController extends Controller
         $filtres = $this->filtres($request);
         $recap = $this->buildRecap($filtres);
         $kpis = $this->recapKpis($recap);
-        $periodLabel = (self::MOIS_FR[$filtres['mois']] ?? '') . ' ' . $filtres['annee'];
+        $periodLabel = $this->periodLabel($this->resolvePeriode($filtres)[2]);
 
         return new PaiePayrollReport($recap, $kpis, [
             'Période' => $periodLabel,
