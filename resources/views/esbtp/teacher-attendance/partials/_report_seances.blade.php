@@ -6,7 +6,21 @@
         $m = (int) round(($row['duree'] - $h) * 60);
         $dureeFmt = $h . 'h' . ($m > 0 ? sprintf('%02d', $m) : '');
     @endphp
-    <div class="tar-seance-row" data-seance-id="{{ $row['id'] }}">
+    <div class="tar-seance-row" data-seance-id="{{ $row['id'] }}"
+         data-matiere="{{ $row['matiere'] }}"
+         data-classe="{{ $row['classe'] }}"
+         data-teacher="{{ $row['teacher'] }}"
+         data-type="{{ $row['type']->label() }}"
+         data-type-style="{{ $row['type']->badgeInlineStyle() }}"
+         data-type-icon="{{ $row['type']->badgeIcon() }}"
+         data-date="{{ $row['date_full'] }}"
+         data-horaire="{{ $row['heure_debut'] ? $row['heure_debut'].'–'.$row['heure_fin'] : '' }}"
+         data-duree="{{ $dureeFmt }}"
+         data-salle="{{ $row['salle'] }}"
+         data-statut-label="{{ $row['statut_label'] }}"
+         data-statut-bg="{{ $row['statut_bg'] }}"
+         data-statut-color="{{ $row['statut_color'] }}"
+         data-show-url="{{ $row['show_url'] }}">
         <div class="tar-seance-date">
             <div class="tar-seance-day">{{ $row['date'] ? $row['date']->format('d') : '--' }}</div>
             <div class="tar-seance-mon">{{ $row['date'] ? $row['date']->translatedFormat('M') : '' }}</div>
@@ -59,6 +73,11 @@
                     @endif
                 </div>
             @endif
+            <div class="tar-seance-view">
+                <button type="button" class="tar-vw" title="Aperçu de la séance"
+                        onclick="openSeanceModal({{ $row['id'] }})"><i class="fas fa-eye"></i></button>
+                <a href="{{ $row['show_url'] }}" class="tar-vw" title="Ouvrir la séance complète"><i class="fas fa-up-right-from-square"></i></a>
+            </div>
         </div>
     </div>
 @endforeach

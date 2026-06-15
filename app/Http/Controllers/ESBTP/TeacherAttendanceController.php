@@ -570,6 +570,10 @@ class TeacherAttendanceController extends Controller
                 'en_retard'    => $statut === 'late',
                 'non_emarge'   => $estPassee && $statut === 'not_signed',
                 'future'       => $estFuture,
+                'salle'        => $seance->salle,
+                'date_full'    => $seance->date_seance
+                    ? Carbon::parse($seance->date_seance)->translatedFormat('l d F Y') : null,
+                'show_url'     => route('esbtp.seances-cours.show', $seance->id),
             ];
         });
     }
