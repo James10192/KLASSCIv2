@@ -124,7 +124,14 @@
     .tar-seance-row {
         display: flex; align-items: center; gap: .85rem;
         padding: .75rem .35rem; border-bottom: 1px solid #f1f5f9;
+        position: relative; overflow: hidden;
     }
+    /* Travelling-light feedback sur marquage présent/absent/retard */
+    .tar-rowhl { position: absolute; top: 0; left: -80%; width: 160%; height: 100%; opacity: 0; pointer-events: none; transform: translateX(-65%) skewX(-12deg); z-index: 5; background: linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.55) 50%, rgba(16,185,129,0) 100%); }
+    .tar-rowhl--absent { background: linear-gradient(90deg, rgba(220,38,38,0) 0%, rgba(220,38,38,.55) 50%, rgba(220,38,38,0) 100%); }
+    .tar-rowhl--late { background: linear-gradient(90deg, rgba(245,158,11,0) 0%, rgba(245,158,11,.55) 50%, rgba(245,158,11,0) 100%); }
+    .tar-rowhl.animate { animation: tar-rowhl-move 3.2s ease-out forwards; }
+    @keyframes tar-rowhl-move { 0% { opacity: 0; transform: translateX(-65%) skewX(-12deg); } 18% { opacity: .92; } 55% { opacity: .72; } 100% { opacity: 0; transform: translateX(115%) skewX(-12deg); } }
     .tar-seance-row:last-child { border-bottom: none; }
     .tar-seance-date { width: 44px; text-align: center; flex-shrink: 0; }
     .tar-seance-day { font-size: 1.05rem; font-weight: 800; color: #0453cb; line-height: 1; }
@@ -143,6 +150,14 @@
     .tar-warn { font-size: .62rem; font-weight: 700; white-space: nowrap; }
     .tar-warn--late { color: #92400e; }
     .tar-warn--miss { color: #b91c1c; }
+    .tar-seance-actions { display: flex; gap: .3rem; margin-top: .3rem; }
+    .tar-act { width: 26px; height: 26px; border-radius: 7px; border: 1px solid; background: #fff; cursor: pointer; font-size: .68rem; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+    .tar-act--ok { color: #059669; border-color: rgba(16,185,129,.4); }
+    .tar-act--ok:hover { background: #10b981; color: #fff; }
+    .tar-act--late { color: #b45309; border-color: rgba(245,158,11,.4); }
+    .tar-act--late:hover { background: #f59e0b; color: #fff; }
+    .tar-act--no { color: #dc2626; border-color: rgba(220,38,38,.4); }
+    .tar-act--no:hover { background: #dc2626; color: #fff; }
 
     .tar-sentinel { padding: 1rem; text-align: center; color: #94a3b8; font-size: .8rem; }
     .tar-empty { text-align: center; padding: 2.5rem 1rem; color: #94a3b8; }
@@ -307,6 +322,8 @@ function reportPage() {
             this.hasMore = this.$root.dataset.hasMore === '1';
             this.nextPage = parseInt(this.$root.dataset.nextPage, 10) || 2;
             this.observeSentinel();
+            // Un marquage présent/absent met à jour KPIs + baromètre + liste.
+            window.addEventListener('seance:status-updated', () => this.applyFilters());
         },
 
         setPreset(p) {
@@ -318,11 +335,18 @@ function reportPage() {
 
         buildParams(extra) {
             const form = document.getElementById('tarFilters');
-            const params = new URLSearchParams(new FormData(form));
-            if (this.filters.preset !== 'custom') {
-                params.delete('from');
-                params.delete('to');
+            const params = new URLSearchParams();
+            // Préset + dates lus depuis l'état Alpine (le DOM :value peut être stale).
+            params.set('preset', this.filters.preset);
+            if (this.filters.preset === 'custom') {
+                params.set('from', this.filters.from);
+                params.set('to', this.filters.to);
             }
+            // Filtres au-select (selects natifs cachés, déjà à jour dans le DOM).
+            ['teacher_id', 'classe_id', 'matiere_id', 'type_seance'].forEach(function (n) {
+                const el = form.querySelector('[name="' + n + '"]');
+                if (el && el.value) params.set(n, el.value);
+            });
             Object.entries(extra || {}).forEach(function (e) { params.set(e[0], e[1]); });
             return params;
         },
@@ -379,6 +403,42 @@ function reportPage() {
             }, { rootMargin: '120px' });
             obs.observe(sentinel);
         },
+    };
+}
+
+// Marquage présent/absent/retard d'une séance (coordinateur/admin). Global car les
+// lignes séances sont injectées en AJAX. Guard d'idempotence (page report ET fiche).
+if (typeof window.triggerRowHighlight !== 'function') {
+    window.triggerRowHighlight = function (seanceId, status) {
+        const row = document.querySelector('.tar-seance-row[data-seance-id="' + seanceId + '"]');
+        if (!row) return;
+        const hl = document.createElement('div');
+        hl.className = 'tar-rowhl' + (status === 'absent' ? ' tar-rowhl--absent' : (status === 'late' ? ' tar-rowhl--late' : ''));
+        row.appendChild(hl);
+        requestAnimationFrame(() => hl.classList.add('animate'));
+        hl.addEventListener('animationend', () => hl.remove());
+    };
+}
+if (typeof window.markSeanceStatus !== 'function') {
+    window.markSeanceStatus = async function (seanceId, status) {
+        const token = document.querySelector('meta[name="csrf-token"]').content;
+        const base = @json(url('esbtp/teacher-attendance/seance'));
+        // Feedback immédiat : sweep lumineux vert/orange/rouge sur la ligne.
+        window.triggerRowHighlight(seanceId, status);
+        try {
+            const res = await fetch(base + '/' + seanceId + '/update-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+                body: JSON.stringify({ status: status, type: 'start' }),
+            });
+            if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.message || ('Erreur ' + res.status)); }
+            const labels = { present: 'présent', late: 'en retard', absent: 'absent' };
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Enseignant marqué ' + (labels[status] || status) + '.' } }));
+            // Laisse l'animation passer (~80%) avant de rafraîchir KPIs + baromètre + liste.
+            setTimeout(() => window.dispatchEvent(new CustomEvent('seance:status-updated')), 2600);
+        } catch (e) {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: e.message } }));
+        }
     };
 }
 </script>

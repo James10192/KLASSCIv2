@@ -48,17 +48,26 @@
     .cad-panel-sub { font-size: .73rem; color: #94a3b8; }
     .cad-panel-body { padding: 1.1rem 1.25rem; }
 
-    /* Workflow steps */
-    .cad-step { display: flex; align-items: center; gap: .8rem; margin-bottom: 1rem; }
-    .cad-step:last-child { margin-bottom: 0; }
-    .cad-step-ico { width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0; background: rgba(4,83,203,.08); color: #0453cb; display: flex; align-items: center; justify-content: center; font-size: .9rem; }
-    .cad-step-body { flex: 1; min-width: 0; }
-    .cad-step-top { display: flex; justify-content: space-between; align-items: baseline; }
-    .cad-step-lbl { font-size: .82rem; font-weight: 600; color: #334155; }
-    .cad-step-val { font-size: .95rem; font-weight: 800; color: #0f172a; }
-    .cad-step-tot { font-size: .75rem; font-weight: 600; color: #94a3b8; }
-    .cad-step-bar { height: 7px; border-radius: 5px; background: #eef2f7; overflow: hidden; margin-top: .35rem; }
-    .cad-step-bar-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #0453cb, #3b7ddb); transition: width .3s; }
+    /* Workflow — cartographie pipeline */
+    .cad-flow { display: flex; align-items: stretch; gap: .35rem; flex-wrap: wrap; }
+    .cad-node { flex: 1; min-width: 102px; text-align: center; border: 1px solid #e9eef5; border-radius: 12px; padding: .8rem .5rem; background: #fff; transition: box-shadow .2s, border-color .2s; }
+    .cad-node:hover { border-color: #c7d4e5; box-shadow: 0 4px 14px rgba(4,83,203,.07); }
+    .cad-node-ico { width: 40px; height: 40px; border-radius: 11px; margin: 0 auto .5rem; display: flex; align-items: center; justify-content: center; color: #fff; font-size: .95rem; }
+    .cad-node--start .cad-node-ico { background: linear-gradient(135deg, #033a8e, #0453cb); }
+    .cad-node--step .cad-node-ico { background: linear-gradient(135deg, #0453cb, #3b7ddb); }
+    .cad-node--done .cad-node-ico { background: linear-gradient(135deg, #059669, #10b981); }
+    .cad-node-val { font-size: 1.35rem; font-weight: 800; color: #0f172a; line-height: 1; }
+    .cad-node-title { font-size: .73rem; font-weight: 700; color: #334155; margin-top: .3rem; }
+    .cad-node-sub { font-size: .63rem; color: #94a3b8; margin-top: .1rem; text-transform: uppercase; letter-spacing: .3px; }
+    .cad-flow-arrow { display: flex; align-items: center; color: #cbd5e1; font-size: .8rem; flex: 0 0 auto; }
+    .cad-flow-summary { margin-top: 1.1rem; padding-top: 1rem; border-top: 1px dashed #e2e8f0; }
+    .cad-flow-summary-head { display: flex; justify-content: space-between; align-items: center; font-size: .82rem; color: #475569; font-weight: 600; }
+    .cad-flow-summary-head i { color: #0453cb; margin-right: .35rem; }
+    .cad-flow-summary-head strong { font-size: 1.1rem; color: #0453cb; }
+    .cad-flow-bar { height: 9px; border-radius: 6px; background: #eef2f7; overflow: hidden; margin: .5rem 0 .35rem; }
+    .cad-flow-bar-fill { height: 100%; border-radius: 6px; background: linear-gradient(90deg, #0453cb, #10b981); transition: width .4s; }
+    .cad-flow-summary-meta { font-size: .72rem; color: #94a3b8; }
+    @media (max-width: 700px) { .cad-flow-arrow { display: none; } .cad-node { min-width: 44%; } }
 
     /* Subjects */
     .cad-subject { display: flex; align-items: center; gap: 1rem; padding: .7rem .25rem; border-bottom: 1px solid #f1f5f9; }
@@ -121,34 +130,32 @@
         </div>
     </div>
 
+    {{-- Workflow — cartographie pleine largeur --}}
+    <div class="cad-panel" style="margin-bottom:1.25rem;">
+        <div class="cad-panel-head">
+            <div class="cad-panel-ico"><i class="fas fa-diagram-project"></i></div>
+            <div>
+                <div class="cad-panel-title">Cartographie du workflow</div>
+                <div class="cad-panel-sub">Séance → Émargement → Appel → Bouclage du cours</div>
+            </div>
+        </div>
+        <div class="cad-panel-body" id="cadWorkflow">
+            @include('coordinateur.partials._cad_workflow', ['stats' => $stats])
+        </div>
+    </div>
+
     <div class="cad-grid">
-        <div>
-            {{-- Workflow --}}
-            <div class="cad-panel">
-                <div class="cad-panel-head">
-                    <div class="cad-panel-ico"><i class="fas fa-diagram-project"></i></div>
-                    <div>
-                        <div class="cad-panel-title">Workflow de la journée</div>
-                        <div class="cad-panel-sub">Émargement → Appel → Bouclage</div>
-                    </div>
-                </div>
-                <div class="cad-panel-body" id="cadWorkflow">
-                    @include('coordinateur.partials._cad_workflow', ['stats' => $stats])
+        {{-- Alertes --}}
+        <div class="cad-panel">
+            <div class="cad-panel-head">
+                <div class="cad-panel-ico" style="background:linear-gradient(135deg,#f59e0b,#d97706);"><i class="fas fa-bell"></i></div>
+                <div>
+                    <div class="cad-panel-title">Alertes</div>
+                    <div class="cad-panel-sub">Points d'attention du jour</div>
                 </div>
             </div>
-
-            {{-- Alertes --}}
-            <div class="cad-panel">
-                <div class="cad-panel-head">
-                    <div class="cad-panel-ico" style="background:linear-gradient(135deg,#f59e0b,#d97706);"><i class="fas fa-bell"></i></div>
-                    <div>
-                        <div class="cad-panel-title">Alertes</div>
-                        <div class="cad-panel-sub">Points d'attention du jour</div>
-                    </div>
-                </div>
-                <div class="cad-panel-body" id="cadAlerts">
-                    @include('coordinateur.partials._cad_alerts', ['stats' => $stats])
-                </div>
+            <div class="cad-panel-body" id="cadAlerts">
+                @include('coordinateur.partials._cad_alerts', ['stats' => $stats])
             </div>
         </div>
 

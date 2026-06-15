@@ -535,6 +535,17 @@ class TeacherAttendanceController extends Controller
                 : TypeSeance::fromLegacy($seance->type_seance);
             $estPassee = $seance->date_seance && Carbon::parse($seance->date_seance)->endOfDay()->isPast();
 
+            // Séance encore à venir (date future, ou aujourd'hui avant la fin) → pas d'action.
+            $estFuture = false;
+            if ($seance->date_seance) {
+                $dateSeance = Carbon::parse($seance->date_seance)->startOfDay();
+                if ($dateSeance->gt($today)) {
+                    $estFuture = true;
+                } elseif ($dateSeance->eq($today) && $seance->heure_fin) {
+                    $estFuture = $seance->heure_fin->gt(now());
+                }
+            }
+
             $statutMeta = [
                 'present'    => ['label' => 'Présent', 'bg' => 'rgba(16,185,129,.12)', 'color' => '#065f46'],
                 'late'       => ['label' => 'En retard', 'bg' => 'rgba(245,158,11,.14)', 'color' => '#92400e'],
@@ -559,6 +570,7 @@ class TeacherAttendanceController extends Controller
                 'statut_color' => $statutMeta['color'],
                 'en_retard'    => $statut === 'late',
                 'non_emarge'   => $estPassee && $statut === 'not_signed',
+                'future'       => $estFuture,
             ];
         });
     }
