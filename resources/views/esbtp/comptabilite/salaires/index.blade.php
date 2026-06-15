@@ -54,7 +54,7 @@
 
     /* Modals */
     .pay-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); backdrop-filter: blur(2px); display: flex; align-items: flex-start; justify-content: center; padding: 3rem 1rem; z-index: 1080; overflow-y: auto; }
-    .pay-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 720px; box-shadow: 0 24px 60px rgba(15,23,42,.25); }
+    .pay-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 760px; box-shadow: 0 24px 60px rgba(15,23,42,.25); }
     .pay-modal--narrow { max-width: 540px; }
     .pay-modal-head { display: flex; align-items: center; gap: .7rem; padding: 1.1rem 1.4rem; border-bottom: 1px solid #f1f5f9; }
     .pay-modal-head-ico { width: 38px; height: 38px; border-radius: 10px; background: linear-gradient(135deg, #0453cb, #3b7ddb); color: #fff; display: flex; align-items: center; justify-content: center; }
@@ -67,6 +67,10 @@
     .pay-input { border: 1px solid #e2e8f0; border-radius: 9px; padding: .5rem .7rem; font-size: .82rem; color: #1e293b; width: 100%; }
     .pay-input:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
     .pay-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .7rem; }
+    .pay-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: .7rem; }
+    /* Force le picker premium à remplir sa colonne (sinon inline-flex rétrécit → menu trop étroit, noms tronqués). */
+    .pay-au-full { display: flex !important; width: 100%; }
+    .pay-au-full .au-select-trigger { width: 100%; }
 
     .pay-prev { margin-top: 1.1rem; border: 1px solid #e9eef5; border-radius: 12px; overflow: hidden; }
     .pay-prev-sec { padding: .8rem 1rem; }
@@ -89,7 +93,7 @@
     .pay-help { font-size: .72rem; color: #94a3b8; margin-top: .3rem; }
     [x-cloak] { display: none !important; }
 
-    @media (max-width: 768px) { .pay-hero { padding: 1.4rem 1.25rem; } .pay-grid3 { grid-template-columns: 1fr; } .pay-override { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .pay-hero { padding: 1.4rem 1.25rem; } .pay-grid3 { grid-template-columns: 1fr; } .pay-grid2 { grid-template-columns: 1fr; } .pay-override { grid-template-columns: 1fr; } }
 </style>
 @endpush
 
@@ -160,26 +164,26 @@
                 <button type="button" class="pay-modal-close" @click="showPrepare=false"><i class="fas fa-xmark"></i></button>
             </div>
             <div class="pay-modal-body">
-                <div class="pay-grid3">
-                    <div>
-                        <span class="pay-field-lbl">Enseignant</span>
-                        <x-au-select name="prep_teacher" placeholder="Choisir…" icon="fa-user-tie" :searchable="true"
-                            :options="$teachers->pluck('name','id')->toArray()"
-                            x-on:change="prep.teacher_id = $event.target.value; preview=null" />
-                    </div>
-                    <div>
+                <div class="pay-field" style="margin-bottom:.8rem;">
+                    <span class="pay-field-lbl">Enseignant</span>
+                    <x-au-select name="prep_teacher" class="pay-au-full" placeholder="Choisir un enseignant…" icon="fa-user-tie" :searchable="true"
+                        :options="$teachers->pluck('name','id')->toArray()"
+                        x-on:change="prep.teacher_id = $event.target.value; preview=null" />
+                </div>
+                <div class="pay-grid2">
+                    <div class="pay-field">
                         <span class="pay-field-lbl">Mois</span>
-                        <x-au-select name="prep_mois" :value="(string) $filtres['mois']" :options="$moisOptions" icon="fa-calendar"
+                        <x-au-select name="prep_mois" class="pay-au-full" :value="(string) $filtres['mois']" :options="$moisOptions" icon="fa-calendar"
                             x-on:change="prep.mois = $event.target.value; preview=null" />
                     </div>
-                    <div>
+                    <div class="pay-field">
                         <span class="pay-field-lbl">Année</span>
-                        <x-au-select name="prep_annee" :value="(string) $filtres['annee']"
+                        <x-au-select name="prep_annee" class="pay-au-full" :value="(string) $filtres['annee']"
                             :options="collect(range(now()->year - 3, now()->year + 1))->mapWithKeys(fn($y) => [$y => (string) $y])->toArray()" icon="fa-calendar-days"
                             x-on:change="prep.annee = $event.target.value; preview=null" />
                     </div>
                 </div>
-                <div style="margin-top:.5rem;text-align:right;">
+                <div style="margin-top:.8rem;text-align:right;">
                     <button type="button" class="pay-btn pay-btn--primary" :disabled="calculating || !prep.teacher_id" @click="calculate()">
                         <span x-show="!calculating"><i class="fas fa-bolt"></i> Calculer</span>
                         <span x-show="calculating" x-cloak><i class="fas fa-circle-notch fa-spin"></i> Calcul…</span>
