@@ -1787,6 +1787,27 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     // KPIs temps réel
     Route::get('/kpis-temps-reel', [ESBTPComptabiliteController::class, 'kpisTempsReel'])->name('kpis-temps-reel');
 
+    // ===== Paie enseignants =====
+    Route::prefix('salaires')->name('salaires.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ESBTPSalaireController::class, 'index'])
+            ->name('index')->middleware('permission:comptabilite.salaires.view');
+        Route::get('/data', [\App\Http\Controllers\ESBTPSalaireController::class, 'data'])
+            ->name('data')->middleware(['permission:comptabilite.salaires.view', 'throttle:120,1']);
+        Route::post('/prepare', [\App\Http\Controllers\ESBTPSalaireController::class, 'prepare'])
+            ->name('prepare')->middleware(['permission:comptabilite.salaires.create', 'throttle:60,1']);
+        Route::post('/', [\App\Http\Controllers\ESBTPSalaireController::class, 'store'])
+            ->name('store')->middleware('permission:comptabilite.salaires.create');
+        Route::post('/config', [\App\Http\Controllers\ESBTPSalaireController::class, 'updateConfig'])
+            ->name('config')->middleware('permission:comptabilite.salaires.configure');
+        Route::get('/{salaire}', [\App\Http\Controllers\ESBTPSalaireController::class, 'show'])
+            ->name('show')->middleware('permission:comptabilite.salaires.view');
+        // Validation : permission validate OU validate_own vérifiée dans le contrôleur.
+        Route::post('/{salaire}/validate', [\App\Http\Controllers\ESBTPSalaireController::class, 'approve'])
+            ->name('validate');
+        Route::post('/{salaire}/pay', [\App\Http\Controllers\ESBTPSalaireController::class, 'pay'])
+            ->name('pay')->middleware('permission:comptabilite.salaires.pay');
+    });
+
     // Analytics Prédictifs (Phase 3 + Phase 4)
     Route::get('/analytics', [\App\Http\Controllers\ESBTPAnalyticsController::class, 'index'])
         ->name('analytics.index');
