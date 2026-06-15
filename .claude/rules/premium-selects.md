@@ -179,6 +179,54 @@ Règles à respecter pour un nouveau composant picker :
 </form>
 ```
 
+## ⚠ Piège largeur : `<x-au-select>` rétréci hors d'un parent flex/grid (modals)
+
+Le wrapper `.au-select` est `display: inline-flex; flex: 1 1 0%`. Le `flex: 1` ne
+s'applique **que si le parent est lui-même un conteneur flex/grid**. Dans les pages
+de filtres ça marche car le composant est dans `.au-filters-row` (flex) ou `.xx-field`
+(flex-column → `align-items: stretch` étire la largeur). **Mais dans une cellule de
+modal en `<div>` nu, l'`inline-flex` rétrécit à son contenu** → le trigger fait ~150px,
+le menu `.au-select-menu` (`left:8px; right:8px` du wrapper) devient minuscule, et les
+libellés longs (noms d'enseignants, intitulés) sont **tronqués**.
+
+### ❌ INTERDIT (cellule de modal sans parent flex)
+
+```blade
+<div class="pay-grid3">       {{-- grid OK, mais la cellule enfant est un <div> nu --}}
+    <div>
+        <span class="field-lbl">Enseignant</span>
+        <x-au-select name="teacher_id" :searchable="true" :options="$teachers" />
+    </div>  {{-- ← au-select rétréci → menu étroit → noms tronqués --}}
+</div>
+```
+
+### ✅ CORRECT — conteneur flex-column + largeur explicite
+
+```blade
+{{-- Liste longue (enseignants) : pleine largeur sur sa propre ligne --}}
+<div class="xx-field">  {{-- .xx-field = display:flex; flex-direction:column --}}
+    <span class="field-lbl">Enseignant</span>
+    <x-au-select class="xx-au-full" name="teacher_id" :searchable="true" :options="$teachers" />
+</div>
+```
+
+```css
+/* Force le picker à remplir sa colonne même hors d'un parent flex */
+.xx-au-full { display: flex !important; width: 100%; }
+.xx-au-full .au-select-trigger { width: 100%; }
+```
+
+**Règles** :
+1. Toujours placer `<x-au-select>` dans un parent **flex/grid** (idéalement `flex-direction: column`
+   pour les formulaires) — jamais dans un `<div>` nu.
+2. Pour les **listes longues** (enseignants, étudiants, matières), donner au picker
+   une **ligne pleine largeur** (pas une colonne 1/3) pour que le menu ait la place
+   d'afficher les libellés complets.
+3. En cas de doute, ajouter une classe `width:100%; display:flex` sur le composant.
+
+Incident fondateur : modal « Préparer un bulletin de paie » (juin 2026) — picker
+enseignant tronqué (« BEDE ABE… », « GUESSA… ») car cellules de modal en `<div>` nu.
+
 ## Anti-patterns à BLOQUER en review
 
 1. ❌ `<select class="form-select">` ou `<select class="form-control">` direct dans une page premium — utiliser `<x-au-select>`.
