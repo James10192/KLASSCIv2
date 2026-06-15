@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Domain\Comptabilite\Paie\PayrollComputationService;
+use App\Domain\Exports\Reports\PaiePayrollReport;
+use App\Enums\TypeSeance;
+use App\Services\ExportRenderer;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPSalaire;
 use App\Models\ESBTPSalaireDetail;
 use App\Models\ESBTPTeacher;
+use App\Services\TeacherHoursService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,8 +25,10 @@ use Illuminate\Support\Facades\Log;
  */
 class ESBTPSalaireController extends Controller
 {
-    public function __construct(private PayrollComputationService $payroll)
-    {
+    public function __construct(
+        private PayrollComputationService $payroll,
+        private TeacherHoursService $hours,
+    ) {
     }
 
     private const MOIS_FR = [
@@ -33,54 +39,211 @@ class ESBTPSalaireController extends Controller
     public function index(Request $request)
     {
         $annee = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $filtres = $this->filtres($request);
 
-        $filtres = [
-            'mois'    => (int) $request->get('mois', now()->month),
-            'annee'   => (int) $request->get('annee', now()->year),
-            'statut'  => $request->get('statut'),
-        ];
-
-        $bulletins = $this->bulletinsQuery($filtres)->get();
-        $kpis = $this->kpis($filtres);
+        $recap = $this->buildRecap($filtres);
+        $kpis = $this->recapKpis($recap);
 
         $teachers = ESBTPTeacher::with('user:id,name')->get()
             ->map(fn ($t) => ['id' => $t->id, 'name' => $t->user->name ?? $t->name ?? 'Enseignant'])
             ->sortBy('name')->values();
 
         return view('esbtp.comptabilite.salaires.index', [
-            'bulletins'   => $bulletins,
+            'recap'       => $recap,
             'kpis'        => $kpis,
             'filtres'     => $filtres,
             'annee'       => $annee,
             'teachers'    => $teachers,
             'moisOptions' => self::MOIS_FR,
-            'statutLabels'=> ESBTPSalaire::statutLabels(),
+            'statutLabels'=> $this->statutLabels(),
             'canCreate'   => auth()->user()->can('comptabilite.salaires.create'),
             'canConfigure'=> auth()->user()->can('comptabilite.salaires.configure'),
+            'canExport'   => auth()->user()->can('comptabilite.salaires.export'),
             'cnpsTaux'    => $this->payroll->tauxCnps(),
             'bareme'      => $this->payroll->baremeIts(),
         ]);
     }
 
-    /** AJAX : liste filtrée + KPIs (no-reload). */
+    /** AJAX : récap filtré + KPIs (no-reload). */
     public function data(Request $request)
     {
-        $filtres = [
+        $filtres = $this->filtres($request);
+        $recap = $this->buildRecap($filtres);
+        $kpis = $this->recapKpis($recap);
+
+        return response()->json([
+            'list_html' => view('esbtp.comptabilite.salaires.partials._recap', [
+                'recap'        => $recap,
+                'statutLabels' => $this->statutLabels(),
+                'canCreate'    => auth()->user()->can('comptabilite.salaires.create'),
+            ])->render(),
+            'kpis_html' => view('esbtp.comptabilite.salaires.partials._kpis', ['kpis' => $kpis])->render(),
+            'period_label' => (self::MOIS_FR[$filtres['mois']] ?? '') . ' ' . $filtres['annee'],
+        ]);
+    }
+
+    private function filtres(Request $request): array
+    {
+        return [
             'mois'   => (int) $request->get('mois', now()->month),
             'annee'  => (int) $request->get('annee', now()->year),
             'statut' => $request->get('statut'),
+            'q'      => trim((string) $request->get('q', '')),
         ];
+    }
 
-        $bulletins = $this->bulletinsQuery($filtres)->get();
-        $kpis = $this->kpis($filtres);
+    /** Libellés statut incluant le pseudo-statut « à préparer ». */
+    private function statutLabels(): array
+    {
+        return ['a_preparer' => 'À préparer'] + ESBTPSalaire::statutLabels();
+    }
 
-        return response()->json([
-            'list_html' => view('esbtp.comptabilite.salaires.partials._list', [
-                'bulletins'    => $bulletins,
-                'statutLabels' => ESBTPSalaire::statutLabels(),
-            ])->render(),
-            'kpis_html' => view('esbtp.comptabilite.salaires.partials._kpis', ['kpis' => $kpis])->render(),
-        ]);
+    /**
+     * Récapitulatif paie : TOUS les enseignants avec heures facturables ce mois,
+     * leur montant estimé (heures × taux − ITS/CNPS), fusionné avec les bulletins
+     * déjà préparés (statut + net réel). C'est la vue « ce qu'on doit verser ».
+     *
+     * @return array<int, array<string,mixed>>
+     */
+    private function buildRecap(array $filtres): array
+    {
+        [$from, $to] = $this->moisRange($filtres['mois'], $filtres['annee']);
+        $report = $this->hours->report($from, $to);
+
+        $teachers = ESBTPTeacher::with(['tauxSeances', 'user:id,name'])->get()->keyBy('id');
+        $bulletins = ESBTPSalaire::where('mois', $filtres['mois'])
+            ->where('annee', $filtres['annee'])->get()->keyBy('teacher_id');
+
+        $cnpsTaux = $this->payroll->tauxCnps();
+        $rows = [];
+        $seen = [];
+
+        foreach ($report['enseignants'] as $ens) {
+            $teacher = $teachers->get($ens['teacher_id']);
+            if (!$teacher) {
+                continue;
+            }
+            $base = 0.0;
+            $heures = 0.0;
+            $types = [];
+            foreach ($ens['par_type'] as $pt) {
+                if (!$pt['facturable'] || $pt['heures_realisees'] <= 0) {
+                    continue;
+                }
+                $taux = $teacher->tauxPour($pt['type']);
+                $base += $pt['heures_realisees'] * $taux;
+                $heures += $pt['heures_realisees'];
+                $types[] = [
+                    'type' => $pt['type'], 'icon' => $pt['icon'], 'style' => $pt['style'],
+                    'heures' => $pt['heures_realisees'], 'taux' => $taux,
+                ];
+            }
+            $base = round($base, 2);
+            $bulletin = $bulletins->get($ens['teacher_id']);
+            if ($base <= 0 && !$bulletin) {
+                continue;
+            }
+            $its = $this->payroll->computeIts($base);
+            $cnps = round($base * $cnpsTaux / 100, 2);
+
+            $rows[] = $this->recapRow($ens['teacher_id'], $ens['name'], $heures, $types, $base, $its, $cnps, $bulletin);
+            $seen[$ens['teacher_id']] = true;
+        }
+
+        // Bulletins dont l'enseignant n'a pas d'heures dans le report (ex: saisie manuelle).
+        foreach ($bulletins as $tid => $bulletin) {
+            if (isset($seen[$tid])) {
+                continue;
+            }
+            $teacher = $teachers->get($tid);
+            $name = $teacher?->user?->name ?? $teacher?->name ?? 'Enseignant';
+            $rows[] = $this->recapRow($tid, $name, (float) $bulletin->heures_total, [], (float) $bulletin->salaire_base, (float) $bulletin->impot_its, (float) $bulletin->cnps, $bulletin);
+        }
+
+        // Filtres statut + recherche.
+        if (!empty($filtres['statut'])) {
+            $rows = array_values(array_filter($rows, fn ($r) => $r['statut'] === $filtres['statut']));
+        }
+        if ($filtres['q'] !== '') {
+            $q = mb_strtolower($filtres['q']);
+            $rows = array_values(array_filter($rows, fn ($r) => str_contains(mb_strtolower($r['name']), $q)));
+        }
+
+        usort($rows, fn ($a, $b) => $b['net'] <=> $a['net']);
+
+        return $rows;
+    }
+
+    /** Construit une ligne de récap (statut = bulletin ou « à préparer »). */
+    private function recapRow($teacherId, string $name, float $heures, array $types, float $base, float $its, float $cnps, ?ESBTPSalaire $bulletin): array
+    {
+        $netEstime = round($base - $its - $cnps, 2);
+
+        return [
+            'teacher_id'  => (int) $teacherId,
+            'name'        => $name,
+            'heures'      => round($heures, 2),
+            'types'       => $types,
+            'base'        => $base,
+            'retenues'    => $bulletin ? (float) $bulletin->retenues : round($its + $cnps, 2),
+            'net'         => $bulletin ? (float) $bulletin->net_a_payer : $netEstime,
+            'estimation'  => !$bulletin,
+            'has_bulletin'=> (bool) $bulletin,
+            'bulletin_id' => $bulletin?->id,
+            'statut'      => $bulletin ? $bulletin->workflow_status : 'a_preparer',
+        ];
+    }
+
+    /**
+     * KPIs depuis le récap.
+     *
+     * @param  array<int, array<string,mixed>>  $recap
+     * @return array<string, float|int>
+     */
+    private function recapKpis(array $recap): array
+    {
+        $sum = fn ($pred) => array_sum(array_map(fn ($r) => $r['net'], array_filter($recap, $pred)));
+        $count = fn ($pred) => count(array_filter($recap, $pred));
+
+        return [
+            'total_net'    => round(array_sum(array_column($recap, 'net')), 2),
+            'nb_total'     => count($recap),
+            'nb_a_preparer'=> $count(fn ($r) => $r['statut'] === 'a_preparer'),
+            'nb_brouillon' => $count(fn ($r) => $r['statut'] === ESBTPSalaire::ST_BROUILLON),
+            'nb_valide'    => $count(fn ($r) => $r['statut'] === ESBTPSalaire::ST_VALIDE),
+            'nb_paye'      => $count(fn ($r) => $r['statut'] === ESBTPSalaire::ST_PAYE),
+            'net_paye'     => round($sum(fn ($r) => $r['statut'] === ESBTPSalaire::ST_PAYE), 2),
+            'net_a_preparer' => round($sum(fn ($r) => $r['statut'] === 'a_preparer'), 2),
+        ];
+    }
+
+    // ── Exports (PDF / Excel) ───────────────────────────────
+    private function buildReport(Request $request): PaiePayrollReport
+    {
+        $filtres = $this->filtres($request);
+        $recap = $this->buildRecap($filtres);
+        $kpis = $this->recapKpis($recap);
+        $periodLabel = (self::MOIS_FR[$filtres['mois']] ?? '') . ' ' . $filtres['annee'];
+
+        return new PaiePayrollReport($recap, $kpis, [
+            'Période' => $periodLabel,
+            'Statut'  => $filtres['statut'] ? ($this->statutLabels()[$filtres['statut']] ?? $filtres['statut']) : 'Tous',
+        ], $periodLabel, $this->statutLabels());
+    }
+
+    public function previewPdf(Request $request, ExportRenderer $renderer)
+    {
+        return $renderer->pdfPreview($this->buildReport($request));
+    }
+
+    public function exportPdf(Request $request, ExportRenderer $renderer)
+    {
+        return $renderer->pdfDownload($this->buildReport($request));
+    }
+
+    public function exportExcel(Request $request, ExportRenderer $renderer)
+    {
+        return $renderer->excelDownload($this->buildReport($request));
     }
 
     /** AJAX : calcule un aperçu de bulletin (sans persistance). */
@@ -303,39 +466,6 @@ class ESBTPSalaireController extends Controller
     }
 
     // ── Helpers ─────────────────────────────────────────────
-    private function bulletinsQuery(array $filtres)
-    {
-        $q = ESBTPSalaire::with('teacher.user:id,name')
-            ->where('mois', $filtres['mois'])
-            ->where('annee', $filtres['annee']);
-
-        if (!empty($filtres['statut'])) {
-            $q->where('workflow_status', $filtres['statut']);
-        }
-
-        return $q->orderByDesc('updated_at');
-    }
-
-    private function kpis(array $filtres): array
-    {
-        $base = ESBTPSalaire::where('mois', $filtres['mois'])->where('annee', $filtres['annee']);
-
-        // ⚠️ toBase() : requête d'agrégat SANS hydrater de modèles ESBTPSalaire.
-        // Sinon des modèles sans `id` (colonnes id non sélectionnées) déclenchent
-        // l'audit OwenIt « retrieved » → insert audits.auditable_id NULL → 500.
-        $byStatut = (clone $base)->toBase()
-            ->select('workflow_status', DB::raw('count(*) as n'), DB::raw('sum(net_a_payer) as net'))
-            ->groupBy('workflow_status')->get()->keyBy('workflow_status');
-
-        return [
-            'total_net'   => (float) (clone $base)->sum('net_a_payer'),
-            'nb_total'    => (clone $base)->count(),
-            'nb_brouillon'=> (int) ($byStatut[ESBTPSalaire::ST_BROUILLON]->n ?? 0),
-            'nb_valide'   => (int) ($byStatut[ESBTPSalaire::ST_VALIDE]->n ?? 0),
-            'nb_paye'     => (int) ($byStatut[ESBTPSalaire::ST_PAYE]->n ?? 0),
-            'net_paye'    => (float) ($byStatut[ESBTPSalaire::ST_PAYE]->net ?? 0),
-        ];
-    }
 
     /** @return array{0:Carbon,1:Carbon} */
     private function moisRange(int $mois, int $annee): array
