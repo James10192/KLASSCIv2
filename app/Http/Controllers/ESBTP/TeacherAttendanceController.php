@@ -530,9 +530,8 @@ class TeacherAttendanceController extends Controller
 
         return $seances->map(function ($seance) use ($hours, $today) {
             $statut = $this->resolveAttendanceStatus($seance, $today);
-            $type = $seance->type_seance instanceof TypeSeance
-                ? $seance->type_seance
-                : TypeSeance::fromLegacy($seance->type_seance);
+            // Valeur brute : le cast enum lève une ValueError sur les valeurs legacy ('cours').
+            $type = TypeSeance::fromLegacy($seance->getRawOriginal('type_seance'));
             $estPassee = $seance->date_seance && Carbon::parse($seance->date_seance)->endOfDay()->isPast();
 
             // Séance encore à venir (date future, ou aujourd'hui avant la fin) → pas d'action.

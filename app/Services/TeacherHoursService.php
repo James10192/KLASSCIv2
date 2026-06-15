@@ -133,9 +133,9 @@ class TeacherHoursService
         $warnings = [];
 
         foreach ($seances as $seance) {
-            $type = $seance->type_seance instanceof TypeSeance
-                ? $seance->type_seance
-                : TypeSeance::fromLegacy($seance->type_seance);
+            // ⚠️ Lire la valeur BRUTE : le cast enum du modèle lève une ValueError sur
+            // les valeurs legacy (ex 'cours') stockées en DB. fromLegacy les normalise.
+            $type = TypeSeance::fromLegacy($seance->getRawOriginal('type_seance'));
             $key = $type->value;
 
             if (!isset($parType[$key])) {
