@@ -90,6 +90,45 @@
         .pay-rrow-end { width: 100%; flex-direction: row; justify-content: space-between; padding-left: 54px; }
     }
 
+    /* ── Sélecteur de période (présets segmentés) ─────────── */
+    .pay-presets { display: inline-flex; background: #f1f5f9; border-radius: 10px; padding: .22rem; gap: .15rem; flex-wrap: wrap; }
+    .pay-preset { border: none; background: transparent; color: #475569; font-size: .76rem; font-weight: 700; padding: .42rem .8rem; border-radius: 8px; cursor: pointer; transition: background .15s, color .15s, box-shadow .15s; }
+    .pay-preset--on { background: #fff; color: #0453cb; box-shadow: 0 1px 3px rgba(15,23,42,.1); }
+    .pay-preset:hover:not(.pay-preset--on) { color: #0453cb; }
+    .pay-field--anchor { min-width: 130px; }
+
+    /* ── Bandeau mensuel cliquable (récap période) ────────── */
+    .pay-rrow-id { flex: 1 1 210px; }
+    .pay-rrow-months { display: flex; flex-wrap: wrap; gap: .4rem; flex: 2 1 300px; align-content: center; }
+    .pay-mchip { display: inline-flex; flex-direction: column; align-items: stretch; min-width: 60px; border-radius: 9px; padding: .3rem .5rem; text-decoration: none; border: 1px solid transparent; cursor: pointer; font-family: inherit; transition: box-shadow .12s, filter .12s; }
+    .pay-mchip:hover { box-shadow: 0 4px 12px rgba(15,23,42,.12); filter: brightness(1.02); }
+    .pay-mchip-top { display: flex; align-items: center; justify-content: space-between; gap: .3rem; }
+    .pay-mchip-m { font-size: .63rem; font-weight: 800; text-transform: uppercase; letter-spacing: .3px; }
+    .pay-mchip-top i { font-size: .58rem; opacity: .75; }
+    .pay-mchip-net { font-size: .78rem; font-weight: 800; margin-top: .12rem; white-space: nowrap; }
+    .pay-mchip--a_preparer { background: rgba(245,158,11,.1); border-color: rgba(245,158,11,.32); color: #b45309; }
+    .pay-mchip--a_preparer:hover { background: rgba(245,158,11,.18); }
+    .pay-mchip--brouillon { background: rgba(100,116,139,.1); border-color: rgba(100,116,139,.26); color: #475569; }
+    .pay-mchip--valide { background: rgba(4,83,203,.1); border-color: rgba(4,83,203,.3); color: #0453cb; }
+    .pay-mchip--paye { background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.32); color: #065f46; }
+    .pay-mchip--annule { background: rgba(220,38,38,.1); border-color: rgba(220,38,38,.3); color: #b91c1c; }
+    .pay-mchip--annule .pay-mchip-net { text-decoration: line-through; }
+
+    .pay-rrow-netcol { flex-shrink: 0; min-width: 132px; display: flex; flex-direction: column; align-items: flex-end; gap: .25rem; }
+    .pay-rrow-net-lbl { font-size: .57rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .3px; font-weight: 700; }
+    .pay-rrow-net-val { font-size: 1.15rem; font-weight: 800; color: #0453cb; }
+    .pay-rrow-net-val small { font-size: .58rem; color: #94a3b8; font-weight: 700; }
+    .pay-rrow-statusline { display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; justify-content: flex-end; }
+    .pay-rrow-hint { font-size: .62rem; color: #b45309; font-weight: 700; white-space: nowrap; }
+
+    .pay-legend { display: flex; flex-wrap: wrap; gap: .8rem; padding: .5rem 1.25rem .7rem; border-bottom: 1px solid #f1f5f9; }
+    .pay-legend-item { display: inline-flex; align-items: center; gap: .35rem; font-size: .66rem; color: #64748b; font-weight: 600; }
+    .pay-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+    @media (max-width: 860px) {
+        .pay-rrow-months { flex-basis: 100%; padding-left: 54px; }
+        .pay-rrow-netcol { width: 100%; flex-direction: row; justify-content: space-between; align-items: center; padding-left: 54px; }
+    }
+
     /* Modals */
     .pay-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); backdrop-filter: blur(2px); display: flex; align-items: flex-start; justify-content: center; padding: 3rem 1rem; z-index: 1080; overflow-y: auto; }
     .pay-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 760px; box-shadow: 0 24px 60px rgba(15,23,42,.25); }
@@ -172,17 +211,38 @@
         </div>
     </div>
 
-    {{-- Filtres --}}
+    {{-- Filtres période --}}
     <div class="pay-filters">
         <div class="pay-field">
-            <span class="pay-field-lbl">Mois</span>
+            <span class="pay-field-lbl">Période</span>
+            <div class="pay-presets">
+                @foreach($presets as $key => $lbl)
+                    <button type="button" class="pay-preset" :class="filters.preset==='{{ $key }}' ? 'pay-preset--on' : ''" @click="setPreset('{{ $key }}')">{{ $lbl }}</button>
+                @endforeach
+            </div>
+        </div>
+
+        {{-- Ancrage mois/année (présets relatifs : la période se termine à ce mois) --}}
+        <div class="pay-field pay-field--anchor" x-show="['month','quarter','semester'].includes(filters.preset)">
+            <span class="pay-field-lbl" x-text="filters.preset==='month' ? 'Mois' : 'Jusqu’au mois'">Mois</span>
             <x-au-select name="mois_filter" :value="(string) $filtres['mois']" :options="$moisOptions" icon="fa-calendar" />
         </div>
-        <div class="pay-field">
+        <div class="pay-field pay-field--anchor" x-show="['month','quarter','semester'].includes(filters.preset)">
             <span class="pay-field-lbl">Année</span>
             <x-au-select name="annee_filter" :value="(string) $filtres['annee']"
                 :options="collect(range(now()->year - 3, now()->year + 1))->mapWithKeys(fn($y) => [$y => (string) $y])->toArray()" icon="fa-calendar-days" />
         </div>
+
+        {{-- Plage libre --}}
+        <div class="pay-field pay-field--anchor" x-show="filters.preset==='custom'" x-cloak>
+            <span class="pay-field-lbl">Du (mois)</span>
+            <input type="month" class="pay-input" x-model="filters.from" @change="filters.preset==='custom' && filters.from && filters.to && applyFilters()">
+        </div>
+        <div class="pay-field pay-field--anchor" x-show="filters.preset==='custom'" x-cloak>
+            <span class="pay-field-lbl">Au (mois)</span>
+            <input type="month" class="pay-input" x-model="filters.to" @change="filters.preset==='custom' && filters.from && filters.to && applyFilters()">
+        </div>
+
         <div class="pay-field">
             <span class="pay-field-lbl">Statut</span>
             <x-au-select name="statut_filter" :value="$filtres['statut'] ?? ''" placeholder="Tous statuts" icon="fa-filter" :options="$statutLabels" />
@@ -202,9 +262,15 @@
         <div class="pay-recap-head">
             <div class="pay-recap-head-ico"><i class="fas fa-list-check"></i></div>
             <div>
-                <div class="pay-recap-head-title">Enseignants à payer — <span x-text="periodLabel">{{ $moisOptions[$filtres['mois']] ?? '' }} {{ $filtres['annee'] }}</span></div>
-                <div class="pay-recap-head-sub">Heures réalisées × taux par type · montant estimé tant que le bulletin n'est pas préparé</div>
+                <div class="pay-recap-head-title">Enseignants à payer — <span x-text="periodLabel">{{ $periodLabel }}</span></div>
+                <div class="pay-recap-head-sub">Heures réalisées × taux par type · chaque mois est cliquable (préparer ou voir le bulletin)</div>
             </div>
+        </div>
+        <div class="pay-legend">
+            <span class="pay-legend-item"><span class="pay-legend-dot" style="background:#f59e0b;"></span> À préparer (estimé)</span>
+            <span class="pay-legend-item"><span class="pay-legend-dot" style="background:#64748b;"></span> Brouillon</span>
+            <span class="pay-legend-item"><span class="pay-legend-dot" style="background:#0453cb;"></span> Validé</span>
+            <span class="pay-legend-item"><span class="pay-legend-dot" style="background:#10b981;"></span> Payé</span>
         </div>
         <div class="pay-panel-body" id="payList">
             @include('esbtp.comptabilite.salaires.partials._recap', ['recap' => $recap, 'statutLabels' => $statutLabels, 'canCreate' => $canCreate])
@@ -383,8 +449,8 @@ function salairesPage() {
     return {
         urls: {},
         loading: false,
-        filters: { mois: @json((string) $filtres['mois']), annee: @json((string) $filtres['annee']), statut: @json($filtres['statut'] ?? ''), q: '' },
-        periodLabel: @json(($moisOptions[$filtres['mois']] ?? '') . ' ' . $filtres['annee']),
+        filters: { preset: @json($filtres['preset']), mois: @json((string) $filtres['mois']), annee: @json((string) $filtres['annee']), from: @json($filtres['from'] ?? ''), to: @json($filtres['to'] ?? ''), statut: @json($filtres['statut'] ?? ''), q: '' },
+        periodLabel: @json($periodLabel),
         showPrepare: false, showConfig: false,
         calculating: false, saving: false, savingConfig: false,
         preview: null, exists: false, locked: false,
@@ -394,14 +460,19 @@ function salairesPage() {
         init() {
             const d = this.$root.dataset;
             this.urls = { data: d.urlData, prepare: d.urlPrepare, store: d.urlStore, config: d.urlConfig };
-            this.$watch('filters.mois', () => this.applyFilters());
-            this.$watch('filters.annee', () => this.applyFilters());
+            this.$watch('filters.mois', () => { if (this.filters.preset !== 'custom') this.applyFilters(); });
+            this.$watch('filters.annee', () => { if (this.filters.preset !== 'custom') this.applyFilters(); });
             this.$watch('filters.statut', () => this.applyFilters());
             this.bindFilterSelects();
-            // Bouton « Préparer » sur une ligne du récap → ouvre le modal pré-rempli.
-            window.addEventListener('paie:prepare-teacher', (ev) => this.preparePour(ev.detail.id));
+            // Mois cliquable sur une ligne du récap → ouvre le modal pré-rempli sur CE mois.
+            window.addEventListener('paie:prepare-teacher', (ev) => this.preparePour(ev.detail.id, ev.detail.mois, ev.detail.annee));
             // Filtres repris par les exports PDF/Excel.
-            window.exportFilters = () => ({ mois: this.filters.mois, annee: this.filters.annee, statut: this.filters.statut, q: this.filters.q });
+            window.exportFilters = () => ({ preset: this.filters.preset, mois: this.filters.mois, annee: this.filters.annee, from: this.filters.from, to: this.filters.to, statut: this.filters.statut, q: this.filters.q });
+        },
+
+        setPreset(p) {
+            this.filters.preset = p;
+            if (p !== 'custom' || (this.filters.from && this.filters.to)) this.applyFilters();
         },
 
         bindFilterSelects() {
@@ -429,15 +500,20 @@ function salairesPage() {
             } catch (e) { this.toast('error', e.message); } finally { this.loading = false; }
         },
 
-        // Ouvre le modal de préparation pré-rempli pour un enseignant donné (récap → « Préparer »).
-        preparePour(teacherId) {
+        // Ouvre le modal de préparation pré-rempli pour un enseignant + un mois précis (clic sur la pastille mensuelle).
+        preparePour(teacherId, mois, annee) {
             this.preview = null; this.exists = false; this.locked = false;
-            this.prep = { teacher_id: String(teacherId), mois: this.filters.mois, annee: this.filters.annee, impot_its: '', cnps: '', primes: [], retenues: [] };
+            this.prep = { teacher_id: String(teacherId), mois: String(mois || this.filters.mois), annee: String(annee || this.filters.annee), impot_its: '', cnps: '', primes: [], retenues: [] };
             this.showPrepare = true;
-            // pré-sélectionne l'enseignant dans le picker du modal + calcule.
+            // pré-sélectionne enseignant + mois + année dans les pickers du modal, puis calcule.
             this.$nextTick(() => {
-                const sel = document.querySelector('select[name="prep_teacher"]');
-                if (sel) { sel.value = String(teacherId); sel.dispatchEvent(new Event('change', { bubbles: true })); }
+                const setSel = (name, val) => {
+                    const sel = document.querySelector('select[name="' + name + '"]');
+                    if (sel) { sel.value = String(val); sel.dispatchEvent(new Event('change', { bubbles: true })); }
+                };
+                setSel('prep_teacher', teacherId);
+                setSel('prep_mois', this.prep.mois);
+                setSel('prep_annee', this.prep.annee);
                 this.calculate();
             });
         },
