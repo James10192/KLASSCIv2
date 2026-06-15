@@ -278,6 +278,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     // Read endpoints — Users
     Route::get('/users', [App\Http\Controllers\API\CLI\CLIUserController::class, 'users'])->name('users');
 
+    // Paie enseignants — seed démo (taux profs + séances suivant le planning horaire)
+    Route::post('/paie/seed-demo', [App\Http\Controllers\API\CLI\CLIPaieController::class, 'seedDemo'])->name('paie.seed-demo');
+
     // Write endpoints
     Route::post('/inscriptions/{id}/validate', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'validateInscription'])->name('inscriptions.validate');
     Route::post('/inscriptions/move', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'moveStudents'])->name('inscriptions.move');
