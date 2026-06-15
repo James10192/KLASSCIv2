@@ -32,7 +32,7 @@ use Illuminate\Support\Facades\DB;
 class PaieSeedDemoCommand extends Command
 {
     protected $signature = 'paie:seed-demo
-        {--weeks=6 : Nombre de semaines passées de séances à générer}
+        {--weeks=4 : Nombre de semaines (= nombre d\'emplois du temps hebdomadaires) à générer}
         {--max-matieres=5 : Nombre max de matières (planifications) par classe}
         {--dry-run : Ne rien écrire, juste rapporter ce qui serait fait}';
 
@@ -120,54 +120,56 @@ class PaieSeedDemoCommand extends Command
                     continue;
                 }
                 $semestre = (int) ($planifs->first()->semestre ?? 1);
+                $latestEmploiId = null;
 
-                // Réutilise l'emploi du temps démo s'il existe (idempotent), sinon le crée.
-                $emploi = ESBTPEmploiTemps::firstOrNew([
-                    'titre' => self::ET_PREFIX . $classe->name,
-                    'classe_id' => $classe->id,
-                    'annee_universitaire_id' => $annee->id,
-                ]);
-                $emploi->fill([
-                    'semestre' => $semestre,
-                    'date_debut' => Carbon::now()->subWeeks($weeks + 1)->startOfWeek()->toDateString(),
-                    'date_fin' => Carbon::now()->addWeeks(3)->toDateString(),
-                    'is_active' => true,
-                ])->save();
-                // En faire l'emploi du temps COURANT de la classe (sinon les séances
-                // ne sont pas visibles : la page classe affiche l'emploi du temps courant).
-                ESBTPEmploiTemps::setAsCurrent($emploi->id);
-                $stats['emplois']++;
+                // L'emploi du temps est HEBDOMADAIRE : 1 emploi du temps PAR SEMAINE,
+                // avec ses séances datées DANS sa semaine (date_seance = lundi + jour-1).
+                // → chaque grille hebdo est propre (pas 6 jeudis empilés).
+                for ($w = $weeks - 1; $w >= 0; $w--) {
+                    $weekStart = Carbon::now()->subWeeks($w)->startOfWeek(); // lundi
+                    $emploi = ESBTPEmploiTemps::firstOrNew([
+                        'titre' => self::ET_PREFIX . $classe->name . ' — sem. ' . $weekStart->format('d/m/Y'),
+                        'classe_id' => $classe->id,
+                        'annee_universitaire_id' => $annee->id,
+                    ]);
+                    $emploi->fill([
+                        'semestre' => $semestre,
+                        'date_debut' => $weekStart->toDateString(),
+                        'date_fin' => $weekStart->copy()->addDays(5)->toDateString(), // lundi→samedi
+                        'is_active' => true,
+                    ])->save();
+                    $stats['emplois']++;
+                    $latestEmploiId = $emploi->id; // dernière itération (w=0) = semaine courante
 
-                foreach ($planifs as $mIdx => $planif) {
-                    // Enseignant : principal assigné, sinon round-robin du pool.
-                    $teacher = $planif->enseignant_principal_id
-                        ? $pool->firstWhere('user_id', $planif->enseignant_principal_id)
-                        : null;
-                    if (!$teacher) {
-                        $teacher = $pool[$teacherCursor % $pool->count()];
-                        $teacherCursor++;
-                    }
-                    $usedTeachers->put($teacher->id, $teacher);
+                    // Une séance par (matière planifiée, type), sur des créneaux distincts de la semaine.
+                    $slot = 0;
+                    foreach ($planifs as $planif) {
+                        $teacher = $planif->enseignant_principal_id
+                            ? $pool->firstWhere('user_id', $planif->enseignant_principal_id)
+                            : null;
+                        if (!$teacher) {
+                            $teacher = $pool[$teacherCursor % $pool->count()];
+                            $teacherCursor++;
+                        }
+                        $usedTeachers->put($teacher->id, $teacher);
 
-                    // Types présents dans le planning de cette matière.
-                    $types = [];
-                    if (($planif->volume_horaire_cm ?? 0) > 0) $types[] = TypeSeance::CM;
-                    if (($planif->volume_horaire_td ?? 0) > 0) $types[] = TypeSeance::TD;
-                    if (($planif->volume_horaire_tp ?? 0) > 0) $types[] = TypeSeance::TP;
-                    if (empty($types)) {
-                        $types[] = TypeSeance::CM; // matière planifiée sans détail → CM par défaut
-                    }
+                        $types = [];
+                        if (($planif->volume_horaire_cm ?? 0) > 0) $types[] = TypeSeance::CM;
+                        if (($planif->volume_horaire_td ?? 0) > 0) $types[] = TypeSeance::TD;
+                        if (($planif->volume_horaire_tp ?? 0) > 0) $types[] = TypeSeance::TP;
+                        if (empty($types)) {
+                            $types[] = TypeSeance::CM;
+                        }
 
-                    foreach ($types as $tIdx => $type) {
-                        // 1 séance / semaine sur la fenêtre.
-                        for ($w = 0; $w < $weeks; $w++) {
-                            $date = Carbon::now()->subWeeks($w)->startOfWeek()
-                                ->addDays(($mIdx + $tIdx) % 5); // lundi..vendredi
+                        foreach ($types as $type) {
+                            $jour = ($slot % 5) + 1;                 // ISO lundi(1)→vendredi(5)
+                            $date = $weekStart->copy()->addDays($jour - 1); // DANS la semaine
+                            $slot++;
                             if ($date->isFuture()) {
                                 continue;
                             }
-                            $startStr = $startHours[($mIdx + $tIdx + $w) % count($startHours)];
-                            $duration = $durations[($w + $tIdx) % count($durations)];
+                            $startStr = $startHours[$slot % count($startHours)];
+                            $duration = $durations[($slot + $w) % count($durations)];
                             $debut = Carbon::parse($date->toDateString() . ' ' . $startStr);
                             $fin = (clone $debut)->addMinutes($duration);
 
@@ -176,7 +178,7 @@ class PaieSeedDemoCommand extends Command
                                 'classe_id' => $classe->id,
                                 'matiere_id' => $planif->matiere_id,
                                 'teacher_id' => $teacher->id,
-                                'jour' => (int) $date->dayOfWeekIso,
+                                'jour' => $jour,
                                 'heure_debut' => $debut->format('H:i:s'),
                                 'heure_fin' => $fin->format('H:i:s'),
                                 'salle' => 'DEMO-' . $type->value,
@@ -189,34 +191,37 @@ class PaieSeedDemoCommand extends Command
                             ]);
                             $stats['seances']++;
 
-                            // Émargement des séances de + de 2 semaines (passées/faites) ~75%.
-                            $est2sPlus = $date->lt(Carbon::now()->subWeeks(2));
-                            if ($est2sPlus && (($w + $mIdx + $tIdx) % 4 !== 0)) {
-                                $status = (($w + $mIdx) % 6 === 0) ? 'late' : 'present';
+                            // Émarge les séances bien passées (> 3 jours) ~75% ; laisse les
+                            // récentes à émarger (test du marquage côté UI).
+                            if ($date->lt(Carbon::now()->subDays(3)) && ($slot % 4 !== 0)) {
+                                $status = ($slot % 6 === 0) ? 'late' : 'present';
                                 ESBTPTeacherAttendance::create([
-                                    'teacher_id' => $teacher->user_id,
-                                    'course_id' => $seance->id,
-                                    'date' => $date->toDateString(),
-                                    'status' => $status,
-                                    'type' => 'start',
-                                    'attempts' => 1,
-                                    'validated_at' => (clone $debut),
+                                    'teacher_id' => $teacher->user_id, 'course_id' => $seance->id,
+                                    'date' => $date->toDateString(), 'status' => $status,
+                                    'type' => 'start', 'attempts' => 1, 'validated_at' => (clone $debut),
                                 ]);
                                 ESBTPTeacherAttendance::create([
-                                    'teacher_id' => $teacher->user_id,
-                                    'course_id' => $seance->id,
-                                    'date' => $date->toDateString(),
-                                    'status' => 'present',
-                                    'type' => 'end',
-                                    'attempts' => 1,
-                                    'validated_at' => (clone $fin),
+                                    'teacher_id' => $teacher->user_id, 'course_id' => $seance->id,
+                                    'date' => $date->toDateString(), 'status' => 'present',
+                                    'type' => 'end', 'attempts' => 1, 'validated_at' => (clone $fin),
                                 ]);
                                 $stats['emargements'] += 2;
                             }
                         }
                     }
                 }
+
+                // La semaine courante (w=0) devient l'emploi du temps courant (visible).
+                if ($latestEmploiId) {
+                    ESBTPEmploiTemps::setAsCurrent($latestEmploiId);
+                }
             }
+
+            // Purge des emplois du temps démo orphelins (semaines décalées d'un run précédent).
+            ESBTPEmploiTemps::where('titre', 'like', self::ET_PREFIX . '%')
+                ->where('is_current', false)
+                ->whereDoesntHave('seances')
+                ->forceDelete();
 
             // Taux horaires des enseignants utilisés (table esbtp_enseignant_taux_seance + défaut).
             foreach ($usedTeachers->values() as $i => $teacher) {
@@ -232,8 +237,8 @@ class PaieSeedDemoCommand extends Command
             }
         });
 
-        $this->info("✓ Emplois du temps démo : {$stats['emplois']}");
-        $this->info("✓ Séances (suivant le planning) : {$stats['seances']}");
+        $this->info("✓ Emplois du temps hebdomadaires démo : {$stats['emplois']}");
+        $this->info("✓ Séances (suivant le planning, datées dans leur semaine) : {$stats['seances']}");
         $this->info("✓ Émargements (séances passées) : {$stats['emargements']}");
         $this->info("✓ Taux par type définis : {$stats['taux']} (sur " . $usedTeachers->count() . ' enseignants)');
         $this->newLine();
