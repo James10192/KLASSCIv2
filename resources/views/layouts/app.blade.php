@@ -2253,6 +2253,13 @@
                                     <span>Réconciliation caisse</span>
                                 </a>
                                 @endcan
+                                {{-- Paie enseignants --}}
+                                @can('comptabilite.salaires.view')
+                                <a href="{{ route('esbtp.comptabilite.salaires.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.comptabilite.salaires.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Paie enseignants</span>
+                                </a>
+                                @endcan
                             </div>
                         </div>
                     @endcan

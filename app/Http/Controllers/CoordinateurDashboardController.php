@@ -23,29 +23,51 @@ class CoordinateurDashboardController extends Controller
     public function __construct(NotificationService $notificationService)
     {
         $this->middleware(['auth', 'role:coordinateur|secretaire|superAdmin']);
-        $this->middleware('permission:module.presences.access')->only('attendanceDashboard');
+        $this->middleware('permission:module.presences.access')->only(['attendanceDashboard', 'attendanceDashboardData']);
         $this->notificationService = $notificationService;
     }
 
     /**
      * Affiche le tableau de bord des présences pour les coordinateurs
      */
-    public function attendanceDashboard()
+    public function attendanceDashboard(Request $request)
     {
-        $today = Carbon::today();
-        $stats = $this->calculateAttendanceStats($today);
+        $date = $request->filled('date') ? Carbon::parse($request->get('date'))->startOfDay() : Carbon::today();
+        $stats = $this->calculateAttendanceStats($date);
 
         // Nombre de notifications non lues
         $unreadNotifications = Notification::where('user_id', Auth::id())
             ->where('is_read', false)
             ->count();
 
-        // Envoyer des notifications pour les alertes critiques
-        if (!empty($stats['alerts'])) {
-            $this->notificationService->notifyCoordinateurCriticalAlerts($stats['alerts'], $today);
+        // Envoyer des notifications pour les alertes critiques — uniquement pour aujourd'hui
+        // (ne pas spammer quand le coordinateur consulte une journée passée).
+        if (!empty($stats['alerts']) && $date->isToday()) {
+            $this->notificationService->notifyCoordinateurCriticalAlerts($stats['alerts'], $date);
         }
 
-        return view('coordinateur.dashboard-attendance', compact('stats', 'unreadNotifications'));
+        return view('coordinateur.dashboard-attendance', [
+            'stats'               => $stats,
+            'unreadNotifications' => $unreadNotifications,
+            'date'                => $date,
+        ]);
+    }
+
+    /**
+     * Endpoint AJAX : recharge les statistiques d'une journée sans recharger la page.
+     */
+    public function attendanceDashboardData(Request $request)
+    {
+        $date = $request->filled('date') ? Carbon::parse($request->get('date'))->startOfDay() : Carbon::today();
+        $stats = $this->calculateAttendanceStats($date);
+
+        return response()->json([
+            'kpis_html'     => view('coordinateur.partials._cad_kpis', ['stats' => $stats])->render(),
+            'workflow_html' => view('coordinateur.partials._cad_workflow', ['stats' => $stats])->render(),
+            'subjects_html' => view('coordinateur.partials._cad_subjects', ['stats' => $stats])->render(),
+            'alerts_html'   => view('coordinateur.partials._cad_alerts', ['stats' => $stats])->render(),
+            'date_label'    => $date->translatedFormat('l d F Y'),
+        ]);
     }
 
     /**

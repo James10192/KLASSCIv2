@@ -27,6 +27,9 @@ class StoreEnseignantRequest extends FormRequest
 
             'regime' => ['nullable', Rule::in(TeacherRegime::values())],
             'taux_horaire' => 'nullable|numeric|min:0',
+            // Taux par type de séance (CM/TD/TP) — facturation LMD.
+            'taux_par_type' => 'nullable|array',
+            'taux_par_type.*' => 'nullable|numeric|min:0',
             'charge_horaire_max_semaine' => 'nullable|integer|min:1|max:60',
             'date_debut_activite' => 'nullable|date',
 

@@ -1,703 +1,295 @@
 @extends('layouts.app')
 
-@section('title', 'Détail émargement enseignant - KLASSCI')
+@section('title', 'Heures de l\'enseignant — KLASSCI')
 
-@section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
+@push('styles')
 <style>
-    /* Hero gradient */
-    .teacher-hero {
-        background: linear-gradient(135deg, #0453cb, #1b64d4);
-        border-radius: 16px;
-        padding: 28px 32px;
-        color: white;
-        margin-bottom: 20px;
-        display: flex;
-        align-items: center;
-        gap: 20px;
-        box-shadow: 0 4px 20px rgba(4,83,203,.25);
-    }
-    .teacher-avatar-hero {
-        width: 72px; height: 72px;
-        border-radius: 50%;
-        background: rgba(255,255,255,.2);
-        border: 2px solid rgba(255,255,255,.4);
-        color: white;
-        display: flex; align-items: center; justify-content: center;
-        font-weight: 700; font-size: 1.4rem;
-        flex-shrink: 0;
-    }
+    .tdr-wrap { max-width: 1180px; margin: 0 auto; }
 
-    /* KPI cards */
-    .th-kpi-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-        gap: 16px;
-        margin-bottom: 20px;
+    .tdr-hero {
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+        border-radius: 18px; padding: 1.9rem 2.25rem 1.5rem; color: #fff;
+        margin-bottom: 1.25rem; box-shadow: 0 8px 30px rgba(4,83,203,.18);
     }
-    .th-kpi-card {
-        background: #fff;
-        border-radius: 14px;
-        padding: 20px;
-        border: 1px solid #e2e8f0;
-        box-shadow: 0 1px 4px rgba(0,0,0,.05);
-        position: relative;
-        overflow: hidden;
-        transition: box-shadow .2s;
+    .tdr-hero-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+    .tdr-hero-left { display: flex; align-items: center; gap: 1rem; }
+    .tdr-hero-avatar {
+        width: 60px; height: 60px; border-radius: 16px; flex-shrink: 0;
+        background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.2);
+        display: flex; align-items: center; justify-content: center; font-size: 1.6rem; font-weight: 800; color: #fff;
     }
-    .th-kpi-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.09); }
-    .th-kpi-card::before {
-        content: '';
-        position: absolute;
-        top: 0; left: 0; right: 0;
-        height: 3px;
-        background: var(--kpi-accent, #0453cb);
-        border-radius: 14px 14px 0 0;
+    .tdr-hero h1 { font-size: 1.4rem; font-weight: 700; color: #fff; margin: 0; }
+    .tdr-hero-meta { display: flex; gap: .5rem; flex-wrap: wrap; margin-top: .35rem; }
+    .tdr-hero-pill {
+        display: inline-flex; align-items: center; gap: .35rem;
+        background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
+        border-radius: 7px; padding: .2rem .55rem; font-size: .73rem; font-weight: 600; color: rgba(255,255,255,.9);
     }
-    .th-kpi-icon {
-        width: 38px; height: 38px;
-        border-radius: 10px;
-        display: flex; align-items: center; justify-content: center;
-        font-size: .95rem;
-        margin-bottom: 10px;
+    .tdr-back {
+        display: inline-flex; align-items: center; gap: .4rem; text-decoration: none;
+        background: rgba(255,255,255,.15); color: #fff; border: 1px solid rgba(255,255,255,.2);
+        border-radius: 10px; padding: .5rem .9rem; font-size: .82rem; font-weight: 600;
     }
-    .th-kpi-value {
-        font-size: 1.8rem;
-        font-weight: 800;
-        color: #1e293b;
-        line-height: 1;
-    }
-    .th-kpi-label {
-        font-size: .7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .06em;
-        color: #94a3b8;
-        margin-top: 4px;
-    }
-    .th-kpi-sub {
-        font-size: .8rem;
-        color: #64748b;
-        margin-top: 8px;
-        padding-top: 8px;
-        border-top: 1px solid #f1f5f9;
-    }
+    .tdr-back:hover { background: rgba(255,255,255,.25); color: #fff; }
 
-    /* Status badges in table */
-    .status-badge {
-        display: inline-flex; align-items: center; gap: 5px;
-        padding: 4px 10px; border-radius: 99px;
-        font-size: .78rem; font-weight: 600;
-    }
+    .tdr-kpis { display: flex; gap: .75rem; margin-top: 1.4rem; flex-wrap: wrap; }
+    .tdr-kpi { flex: 1; min-width: 150px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; padding: .85rem 1rem; display: flex; align-items: center; gap: .7rem; }
+    .tdr-kpi-ico { width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; font-size: .95rem; color: #fff; }
+    .tdr-kpi--warn .tdr-kpi-ico { background: rgba(245,158,11,.28); }
+    .tdr-kpi-val { font-size: 1.3rem; font-weight: 700; color: #fff; line-height: 1; }
+    .tdr-kpi-sub { font-size: .85rem; font-weight: 600; color: rgba(255,255,255,.6); }
+    .tdr-kpi-lbl { font-size: .68rem; color: rgba(255,255,255,.65); margin-top: .2rem; }
 
-    /* Bulk nav */
-    #bulkNavBar {
-        position: fixed;
-        bottom: 24px;
-        left: 50%;
-        transform: translateX(-50%) translateY(100px);
-        z-index: 1050;
-        background: linear-gradient(135deg, #0453cb, #5e91de);
-        color: white;
-        border-radius: 99px;
-        padding: 12px 24px;
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        box-shadow: 0 8px 32px rgba(4,83,203,.45);
-        transition: transform .3s cubic-bezier(.34,1.56,.64,1);
-        white-space: nowrap;
-    }
-    #bulkNavBar.visible {
-        transform: translateX(-50%) translateY(0);
-    }
-    #bulkNavBar .bulk-count {
-        background: rgba(255,255,255,.25);
-        border-radius: 99px;
-        padding: 2px 10px;
-        font-weight: 700;
-        font-size: .85rem;
-    }
-    #bulkNavBar .btn-bulk {
-        background: rgba(255,255,255,.15);
-        border: 1px solid rgba(255,255,255,.35);
-        color: white;
-        border-radius: 99px;
-        padding: 6px 16px;
-        font-size: .82rem;
-        font-weight: 600;
-        cursor: pointer;
-        transition: background .15s;
-    }
-    #bulkNavBar .btn-bulk:hover { background: rgba(255,255,255,.28); }
-    #bulkNavBar .btn-bulk-danger {
-        background: rgba(239,68,68,.25);
-        border-color: rgba(239,68,68,.5);
-    }
-    #bulkNavBar .btn-bulk-danger:hover { background: rgba(239,68,68,.4); }
-    #bulkNavBar .btn-bulk-close {
-        background: transparent;
-        border: none;
-        color: rgba(255,255,255,.7);
-        font-size: 1.1rem;
-        cursor: pointer;
-        padding: 0 4px;
-        line-height: 1;
-    }
-    #bulkNavBar .btn-bulk-close:hover { color: white; }
+    .tdr-filters { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; padding: .85rem 1.1rem; margin-bottom: 1.25rem; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; box-shadow: 0 1px 3px rgba(15,23,42,.04); }
+    .tdr-presets { display: inline-flex; background: #f1f5f9; border-radius: 9px; padding: .2rem; gap: .2rem; }
+    .tdr-preset { border: none; background: transparent; cursor: pointer; padding: .42rem .85rem; border-radius: 7px; font-size: .78rem; font-weight: 600; color: #475569; transition: background .15s, color .15s; }
+    .tdr-preset:hover:not(.tdr-preset--active) { background: rgba(4,83,203,.06); color: #0453cb; }
+    .tdr-preset--active { background: #0453cb; color: #fff; }
+    .tdr-date-fields { display: none; gap: .5rem; align-items: center; }
+    .tdr-date-fields.show { display: flex; }
+    .tdr-input { border: 1px solid #e2e8f0; border-radius: 9px; padding: .45rem .7rem; font-size: .82rem; color: #1e293b; }
+    .tdr-input:focus { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
+    .tdr-period-lbl { margin-left: auto; font-size: .8rem; color: #64748b; font-weight: 600; }
+    .tdr-spin { color: #0453cb; font-size: .82rem; display: none; align-items: center; gap: .4rem; }
+    .tdr-spin.show { display: inline-flex; }
 
-    /* Future row */
-    tr.seance-future { opacity: .72; }
+    .tdr-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+    .tdr-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.04); margin-bottom: 1.25rem; }
+    .tdr-panel-head { display: flex; align-items: center; gap: .65rem; padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9; }
+    .tdr-panel-ico { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #0453cb, #3b7ddb); color: #fff; display: flex; align-items: center; justify-content: center; font-size: .85rem; }
+    .tdr-panel-title { font-size: .95rem; font-weight: 700; color: #1e293b; }
+    .tdr-panel-sub { font-size: .73rem; color: #94a3b8; }
+    .tdr-panel-body { padding: 1.1rem 1.25rem; }
 
-    /* Rapport modal */
-    .rapport-section-title {
-        font-size: .7rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: .07em;
-        color: #94a3b8;
-        margin-bottom: 6px;
-        margin-top: 12px;
-    }
-    .rapport-section-body {
-        background: #f8fafc;
-        border-radius: 8px;
-        padding: 10px 14px;
-        font-size: .9rem;
-        color: #334155;
-    }
+    .tdr-types { display: flex; flex-direction: column; gap: .8rem; }
+    .tdr-type-card { border: 1px solid #e9eef5; border-radius: 12px; padding: .85rem 1rem; }
+    .tdr-type-head { display: flex; align-items: center; gap: .55rem; }
+    .tdr-type-chip { display: inline-flex; align-items: center; gap: .3rem; font-size: .7rem; font-weight: 700; padding: .2rem .5rem; border-radius: 7px; }
+    .tdr-type-name { font-size: .85rem; font-weight: 700; color: #1e293b; }
+    .tdr-type-nf { font-size: .64rem; color: #94a3b8; margin-left: auto; }
+    .tdr-type-val { font-size: 1.25rem; font-weight: 800; color: #0f172a; margin-top: .5rem; }
+    .tdr-type-plan { font-size: .82rem; font-weight: 600; color: #94a3b8; }
+    .tdr-type-bar { height: 7px; border-radius: 5px; background: #eef2f7; overflow: hidden; margin-top: .5rem; }
+    .tdr-type-bar-fill { height: 100%; border-radius: 5px; transition: width .3s; }
+    .tdr-type-meta { display: flex; justify-content: space-between; font-size: .68rem; color: #64748b; margin-top: .3rem; }
+
+    .tdr-noalert { font-size: .82rem; color: #065f46; background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); border-radius: 10px; padding: .8rem 1rem; display: flex; align-items: center; gap: .5rem; }
+    .tdr-alert { display: flex; align-items: flex-start; gap: .55rem; font-size: .8rem; padding: .65rem .85rem; border-radius: 10px; margin-bottom: .5rem; }
+    .tdr-alert:last-child { margin-bottom: 0; }
+    .tdr-alert--warning { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25); color: #92400e; }
+    .tdr-alert--danger { background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.2); color: #b91c1c; }
+    .tdr-alert i { margin-top: 2px; }
+    .tdr-alerts-scroll { max-height: 260px; overflow-y: auto; }
+
+    /* Réutilise les styles de lignes séances de la page report (tar-*) */
+    .tdr-seances { max-height: 62vh; overflow-y: auto; }
+    .tdr-seance-empty { text-align: center; padding: 2rem 1rem; color: #94a3b8; }
+    .tdr-sentinel { padding: 1rem; text-align: center; color: #94a3b8; font-size: .8rem; }
+    .tdr-empty { text-align: center; padding: 2rem 1rem; color: #94a3b8; }
+    .tdr-empty i { font-size: 1.8rem; display: block; margin-bottom: .5rem; color: #cbd5e1; }
+
+    /* lignes séances (mêmes classes que report) */
+    .tar-seance-row { display: flex; align-items: center; gap: .85rem; padding: .75rem .35rem; border-bottom: 1px solid #f1f5f9; }
+    .tar-seance-row:last-child { border-bottom: none; }
+    .tar-seance-date { width: 44px; text-align: center; flex-shrink: 0; }
+    .tar-seance-day { font-size: 1.05rem; font-weight: 800; color: #0453cb; line-height: 1; }
+    .tar-seance-mon { font-size: .62rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .4px; }
+    .tar-seance-main { flex: 1; min-width: 0; }
+    .tar-seance-top { display: flex; align-items: center; gap: .5rem; }
+    .tar-seance-matiere { font-size: .85rem; font-weight: 700; color: #1e293b; }
+    .tar-seance-typechip { display: inline-flex; align-items: center; gap: .25rem; font-size: .62rem; font-weight: 700; padding: .1rem .4rem; border-radius: 5px; }
+    .tar-seance-meta { display: flex; flex-wrap: wrap; gap: .65rem; font-size: .72rem; color: #64748b; margin-top: .2rem; }
+    .tar-seance-meta i { color: #94a3b8; margin-right: .15rem; }
+    .tar-seance-duree { text-align: center; flex-shrink: 0; width: 56px; }
+    .tar-seance-duree-val { font-size: .95rem; font-weight: 800; color: #0f172a; }
+    .tar-seance-duree-lbl { font-size: .6rem; color: #94a3b8; text-transform: uppercase; }
+    .tar-seance-statut { display: flex; flex-direction: column; align-items: flex-end; gap: .25rem; flex-shrink: 0; min-width: 88px; }
+    .tar-statut-badge { font-size: .68rem; font-weight: 700; padding: .18rem .5rem; border-radius: 6px; white-space: nowrap; }
+    .tar-warn { font-size: .62rem; font-weight: 700; white-space: nowrap; }
+    .tar-warn--late { color: #92400e; }
+    .tar-warn--miss { color: #b91c1c; }
+
+    @media (max-width: 992px) { .tdr-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .tdr-hero { padding: 1.4rem 1.25rem; } }
 </style>
-@endsection
+@endpush
 
 @section('content')
-<div class="dashboard-acasi">
-    <div class="main-content">
+<div class="tdr-wrap"
+     x-data="teacherPage()"
+     data-has-more="{{ $paginator->hasMorePages() ? '1' : '0' }}"
+     data-next-page="2"
+     data-url="{{ route('esbtp.teacher-attendance.teacher-report.data', $teacher->id) }}">
 
-        {{-- Hero --}}
-        <div class="teacher-hero">
-            @php
-                $parts = preg_split('/\s+/', trim($teacher->user?->name ?? 'Enseignant'));
-                $initials = strtoupper(collect($parts)->filter()->take(2)->map(fn($p) => mb_substr($p, 0, 1))->implode(''));
-                $rateColor = $attendanceRate >= 70 ? '#10b981' : ($attendanceRate >= 30 ? '#f59e0b' : '#ef4444');
-            @endphp
-            <div class="teacher-avatar-hero">{{ $initials }}</div>
-            <div class="flex-grow-1">
-                <h2 class="mb-1 fw-bold" style="color:white; font-size:1.4rem;">{{ $teacher->user?->name ?? 'Enseignant' }}</h2>
-                @if($teacher->user?->email)
-                    <div style="color:rgba(255,255,255,.7); font-size:.9rem;">
-                        <i class="fas fa-envelope me-1" style="font-size:.8rem;"></i>{{ $teacher->user->email }}
+    {{-- Hero --}}
+    <div class="tdr-hero">
+        <div class="tdr-hero-top">
+            <div class="tdr-hero-left">
+                <div class="tdr-hero-avatar">{{ \Illuminate\Support\Str::substr($teacher->user->name ?? 'E', 0, 1) }}</div>
+                <div>
+                    <h1>{{ $teacher->user->name ?? $teacher->name ?? 'Enseignant' }}</h1>
+                    <div class="tdr-hero-meta">
+                        @if($teacher->regime)
+                            <span class="tdr-hero-pill"><i class="fas fa-file-contract"></i> {{ ucfirst($teacher->regime) }}</span>
+                        @endif
+                        @if($teacher->specialization)
+                            <span class="tdr-hero-pill"><i class="fas fa-graduation-cap"></i> {{ $teacher->specialization }}</span>
+                        @endif
+                        <span class="tdr-hero-pill"><i class="fas fa-calendar"></i> {{ $anneeEnCours->name ?? 'Année courante' }}</span>
                     </div>
-                @endif
+                </div>
             </div>
-            <div class="ms-auto flex-shrink-0">
-                <a href="{{ route('esbtp.teacher-attendance.report') }}" class="btn btn-light btn-sm">
-                    <i class="fas fa-arrow-left me-2"></i>Retour rapport
-                </a>
+            <a href="{{ route('esbtp.teacher-attendance.report') }}" class="tdr-back"><i class="fas fa-arrow-left"></i> Tous les enseignants</a>
+        </div>
+        <div class="tdr-kpis" id="tdrKpis">
+            @include('esbtp.teacher-attendance.partials._teacher_kpis', ['summary' => $summary])
+        </div>
+    </div>
+
+    {{-- Filtres période --}}
+    <div class="tdr-filters">
+        <span style="font-size:.7rem;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.4px;">Période</span>
+        <div class="tdr-presets">
+            <button type="button" class="tdr-preset" :class="filters.preset === 'month' ? 'tdr-preset--active' : ''" @click="setPreset('month')">Ce mois</button>
+            <button type="button" class="tdr-preset" :class="filters.preset === 'year' ? 'tdr-preset--active' : ''" @click="setPreset('year')">Année</button>
+            <button type="button" class="tdr-preset" :class="filters.preset === 'custom' ? 'tdr-preset--active' : ''" @click="setPreset('custom')">Plage</button>
+        </div>
+        <div class="tdr-date-fields" :class="filters.preset === 'custom' ? 'show' : ''">
+            <input type="date" class="tdr-input" x-model="filters.from" @change="applyPeriode()">
+            <span style="color:#94a3b8;">→</span>
+            <input type="date" class="tdr-input" x-model="filters.to" @change="applyPeriode()">
+        </div>
+        <span class="tdr-spin" :class="loading ? 'show' : ''"><i class="fas fa-circle-notch fa-spin"></i> Mise à jour…</span>
+        <span class="tdr-period-lbl" x-text="periodeLabel">{{ $from->format('d/m/Y') }} → {{ $to->format('d/m/Y') }}</span>
+    </div>
+
+    <div class="tdr-grid">
+        <div>
+            {{-- Ventilation par type --}}
+            <div class="tdr-panel">
+                <div class="tdr-panel-head">
+                    <div class="tdr-panel-ico"><i class="fas fa-shapes"></i></div>
+                    <div>
+                        <div class="tdr-panel-title">Heures par type de séance</div>
+                        <div class="tdr-panel-sub">Réalisées vs planifiées — CM / TD / TP</div>
+                    </div>
+                </div>
+                <div class="tdr-panel-body">
+                    <div class="tdr-types" id="tdrTypes">
+                        @include('esbtp.teacher-attendance.partials._teacher_types', ['summary' => $summary])
+                    </div>
+                </div>
+            </div>
+
+            {{-- Alertes ponctualité --}}
+            <div class="tdr-panel">
+                <div class="tdr-panel-head">
+                    <div class="tdr-panel-ico" style="background:linear-gradient(135deg,#f59e0b,#d97706);"><i class="fas fa-triangle-exclamation"></i></div>
+                    <div>
+                        <div class="tdr-panel-title">Ponctualité</div>
+                        <div class="tdr-panel-sub">Retards et séances non émargées</div>
+                    </div>
+                </div>
+                <div class="tdr-panel-body">
+                    <div class="tdr-alerts-scroll" id="tdrWarnings">
+                        @include('esbtp.teacher-attendance.partials._teacher_warnings', ['summary' => $summary])
+                    </div>
+                </div>
             </div>
         </div>
 
-        {{-- KPI Cards --}}
-        <div class="th-kpi-grid">
-            {{-- Taux de présence --}}
-            <div class="th-kpi-card" style="--kpi-accent: {{ $rateColor }}">
-                <div class="th-kpi-icon" style="background: {{ $attendanceRate >= 70 ? 'rgba(16,185,129,.12)' : ($attendanceRate >= 30 ? 'rgba(245,158,11,.12)' : 'rgba(239,68,68,.12)') }}; color: {{ $rateColor }};">
-                    <i class="fas fa-percentage"></i>
-                </div>
-                <div class="th-kpi-value" style="color: {{ $rateColor }};">{{ $attendanceRate }}%</div>
-                <div class="th-kpi-label">Taux de présence</div>
-            </div>
-
-            {{-- Séances --}}
-            <div class="th-kpi-card" style="--kpi-accent: #0453cb">
-                <div class="th-kpi-icon" style="background: rgba(4,83,203,.1); color:#0453cb;">
-                    <i class="fas fa-chalkboard-teacher"></i>
-                </div>
-                <div class="th-kpi-value">{{ $stats['total'] }}</div>
-                <div class="th-kpi-label">Séances planifiées</div>
-            </div>
-
-            {{-- Présents --}}
-            <div class="th-kpi-card" style="--kpi-accent: #10b981">
-                <div class="th-kpi-icon" style="background: rgba(16,185,129,.1); color:#10b981;">
-                    <i class="fas fa-user-check"></i>
-                </div>
-                <div class="th-kpi-value" style="color:#10b981;">{{ $stats['present'] }}</div>
-                <div class="th-kpi-label">Présents</div>
-                <div class="th-kpi-sub">
-                    <i class="fas fa-clock me-1" style="color:#f59e0b;"></i>Retards : <strong>{{ $stats['late'] }}</strong>
+        {{-- Séances --}}
+        <div class="tdr-panel">
+            <div class="tdr-panel-head">
+                <div class="tdr-panel-ico"><i class="fas fa-list-check"></i></div>
+                <div>
+                    <div class="tdr-panel-title">Détail des séances</div>
+                    <div class="tdr-panel-sub"><span x-text="totalLabel">{{ $paginator->total() }} séance(s)</span> · durées précises</div>
                 </div>
             </div>
-
-            {{-- Absents --}}
-            <div class="th-kpi-card" style="--kpi-accent: #ef4444">
-                <div class="th-kpi-icon" style="background: rgba(239,68,68,.1); color:#ef4444;">
-                    <i class="fas fa-user-times"></i>
+            <div class="tdr-panel-body" style="padding-top:.4rem;padding-bottom:.4rem;">
+                <div class="tdr-seances" id="tdrSeances">
+                    @if($rows->isEmpty())
+                        <div class="tdr-empty"><i class="fas fa-calendar-xmark"></i><p>Aucune séance sur cette période.</p></div>
+                    @else
+                        @include('esbtp.teacher-attendance.partials._report_seances', ['rows' => $rows])
+                    @endif
                 </div>
-                <div class="th-kpi-value" style="color:#ef4444;">{{ $stats['absent'] }}</div>
-                <div class="th-kpi-label">Absents</div>
-                <div class="th-kpi-sub">
-                    <i class="fas fa-minus-circle me-1" style="color:#94a3b8;"></i>Non émargé : <strong>{{ $stats['not_signed'] }}</strong>
-                </div>
-            </div>
-        </div>
-
-        {{-- Chart Card --}}
-        <div class="main-card mb-4">
-            <div class="main-card-header">
-                <div class="main-card-title">
-                    <i class="fas fa-chart-line"></i>
-                    Évolution mensuelle des émargements
-                </div>
-            </div>
-            <div class="main-card-body">
-                <script type="application/json" id="monthlyStatsData">{!! json_encode($monthlyStats) !!}</script>
-                <canvas id="attendanceChart" height="100"></canvas>
-            </div>
-        </div>
-
-        {{-- Historique séances --}}
-        <div class="main-card">
-            <div class="main-card-header">
-                <div class="main-card-title">
-                    <i class="fas fa-history"></i>
-                    Historique des séances
-                </div>
-                <div class="main-card-subtitle">{{ $seances->total() }} séance(s)</div>
-            </div>
-            <div class="main-card-body">
-                <div class="table-responsive">
-                    <table class="table table-hover table-striped mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th style="width:36px;">
-                                    <input type="checkbox" id="selectAllSeances" class="form-check-input"
-                                           title="Tout sélectionner" onchange="toggleSelectAll(this)">
-                                </th>
-                                <th>Matière</th>
-                                <th>Classe</th>
-                                <th>Horaires</th>
-                                <th>Date</th>
-                                <th>Statut</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse($seances as $seance)
-                                @php
-                                    $today2 = \Carbon\Carbon::today();
-                                    $seanceEstFuture = false;
-                                    if ($seance->date_seance) {
-                                        $dateSeance = \Carbon\Carbon::parse($seance->date_seance)->startOfDay();
-                                        if ($dateSeance->gt($today2)) {
-                                            $seanceEstFuture = true;
-                                        } elseif ($dateSeance->eq($today2) && $seance->heure_fin) {
-                                            $seanceEstFuture = \Carbon\Carbon::parse($seance->heure_fin)->gt(now());
-                                        }
-                                    }
-
-                                    // Résoudre le statut d'émargement
-                                    $attendance = $seance->teacherAttendances
-                                        ->first(function($a) use ($today2) {
-                                            $d = $a->date instanceof \Carbon\Carbon ? $a->date : \Carbon\Carbon::parse($a->date);
-                                            return $d->isSameDay($today2);
-                                        });
-                                    if (!$attendance) {
-                                        $attendance = $seance->teacherAttendances
-                                            ->first(function($a) use ($seance) {
-                                                $d = $a->date instanceof \Carbon\Carbon ? $a->date : \Carbon\Carbon::parse($a->date);
-                                                return $d->isSameDay(\Carbon\Carbon::parse($seance->date_seance));
-                                            });
-                                    }
-                                    if (!$attendance) {
-                                        $attendance = $seance->teacherAttendances->sortByDesc('created_at')->first();
-                                    }
-                                    $status = $attendance?->status ?? 'not_signed';
-
-                                    $hasSessionReport = isset($seance->sessionReport) && $seance->sessionReport && $seance->sessionReport->status === 'submitted';
-                                @endphp
-                                <tr class="{{ $seanceEstFuture ? 'seance-future' : '' }}" data-seance-id="{{ $seance->id }}">
-                                    <td>
-                                        @if(!$seanceEstFuture)
-                                            <input type="checkbox" class="seance-checkbox form-check-input"
-                                                   value="{{ $seance->id }}" onchange="updateBulkBar()">
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <span style="font-weight:600; color:#0453cb;">
-                                            {{ $seance->matiere?->name ?? 'N/A' }}
-                                        </span>
-                                    </td>
-                                    <td>{{ $seance->emploiTemps?->classe?->name ?? 'N/A' }}</td>
-                                    <td>
-                                        <span style="font-size:.85rem; color:#64748b;">
-                                            <i class="fas fa-clock me-1" style="font-size:.75rem;"></i>
-                                            {{ $seance->heure_debut ? \Carbon\Carbon::parse($seance->heure_debut)->format('H:i') : 'N/A' }} –
-                                            {{ $seance->heure_fin ? \Carbon\Carbon::parse($seance->heure_fin)->format('H:i') : 'N/A' }}
-                                        </span>
-                                    </td>
-                                    <td style="font-size:.85rem;">
-                                        {{ $seance->getDateCompleteFormattee() }}
-                                        @if($seanceEstFuture)
-                                            <span class="badge mt-1 d-inline-block" style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white; font-size:.7rem;">
-                                                <i class="fas fa-clock me-1"></i>À venir
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        @if($seanceEstFuture)
-                                            <span class="status-badge" style="background:rgba(100,116,139,.08); color:#94a3b8;">
-                                                <i class="fas fa-hourglass-half" style="font-size:.78rem;"></i>En attente
-                                            </span>
-                                        @elseif($status === 'present')
-                                            <span class="status-badge" style="background:rgba(16,185,129,.1); color:#059669;">
-                                                <i class="fas fa-check-circle" style="font-size:.8rem;"></i>Présent
-                                            </span>
-                                        @elseif($status === 'late')
-                                            <span class="status-badge" style="background:rgba(245,158,11,.1); color:#d97706;">
-                                                <i class="fas fa-clock" style="font-size:.8rem;"></i>Retard
-                                            </span>
-                                        @elseif($status === 'absent')
-                                            <span class="status-badge" style="background:rgba(239,68,68,.1); color:#dc2626;">
-                                                <i class="fas fa-times-circle" style="font-size:.8rem;"></i>Absent
-                                            </span>
-                                        @else
-                                            <span class="status-badge" style="background:rgba(100,116,139,.1); color:#475569;">
-                                                <i class="fas fa-minus-circle" style="font-size:.8rem;"></i>Non émargé
-                                            </span>
-                                        @endif
-                                    </td>
-                                    <td>
-                                        <div class="d-flex gap-1 align-items-center">
-                                            @if(!$seanceEstFuture)
-                                                {{-- Bouton marquer présent --}}
-                                                @if($status !== 'present')
-                                                <button type="button"
-                                                        class="btn btn-sm btn-outline-success mark-status-btn"
-                                                        data-seance-id="{{ $seance->id }}"
-                                                        data-status="present"
-                                                        title="Marquer présent">
-                                                    <i class="fas fa-check"></i>
-                                                </button>
-                                                @endif
-                                                {{-- Bouton marquer absent --}}
-                                                @if($status !== 'absent')
-                                                <button type="button"
-                                                        class="btn btn-sm btn-outline-danger mark-status-btn"
-                                                        data-seance-id="{{ $seance->id }}"
-                                                        data-status="absent"
-                                                        title="Marquer absent">
-                                                    <i class="fas fa-user-times"></i>
-                                                </button>
-                                                @endif
-                                            @endif
-
-                                            {{-- Bouton rapport de cours --}}
-                                            @if(!$seanceEstFuture && $hasSessionReport)
-                                                <button type="button"
-                                                        class="btn btn-sm btn-outline-warning"
-                                                        data-bs-toggle="modal"
-                                                        data-bs-target="#rapportModal{{ $seance->id }}"
-                                                        title="Voir le rapport de cours">
-                                                    <i class="fas fa-file-alt"></i>
-                                                </button>
-                                            @endif
-
-                                            {{-- Lien vers la séance --}}
-                                            <a href="{{ route('esbtp.seances-cours.show', $seance->id) }}"
-                                               class="btn btn-sm btn-outline-info"
-                                               title="Voir la séance">
-                                                <i class="fas fa-calendar-day"></i>
-                                            </a>
-
-                                            {{-- Spinner --}}
-                                            <div class="seance-spinner d-none" id="spinner-{{ $seance->id }}">
-                                                <div class="spinner-border spinner-border-sm text-primary" role="status">
-                                                    <span class="visually-hidden">Chargement...</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="7" class="text-center text-muted py-4">
-                                        <i class="fas fa-inbox fa-2x mb-2 d-block" style="color:#cbd5e1;"></i>
-                                        Aucune séance trouvée.
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-                <div class="mt-3">
-                    {{ $seances->links() }}
+                <div class="tdr-sentinel" id="tdrSentinel" x-show="hasMore">
+                    <i class="fas fa-circle-notch fa-spin" x-show="loadingMore"></i>
+                    <span x-show="!loadingMore">Faites défiler pour charger plus…</span>
                 </div>
             </div>
         </div>
     </div>
 </div>
-
-{{-- Modals rapport de cours --}}
-@foreach($seances as $seance)
-    @if(isset($seance->sessionReport) && $seance->sessionReport && $seance->sessionReport->status === 'submitted')
-        @php $rapport = $seance->sessionReport; @endphp
-        <div class="modal fade" id="rapportModal{{ $seance->id }}" tabindex="-1">
-            <div class="modal-dialog modal-lg modal-dialog-scrollable">
-                <div class="modal-content">
-                    <div class="modal-header" style="background: linear-gradient(135deg, #0453cb, #5e91de); color: white;">
-                        <div>
-                            <h5 class="modal-title mb-1">
-                                <i class="fas fa-file-alt me-2"></i>Rapport de cours
-                            </h5>
-                            <div style="font-size:.85rem; opacity:.85;">
-                                {{ $seance->matiere?->name ?? 'N/A' }} — {{ $seance->emploiTemps?->classe?->name ?? 'N/A' }}
-                                — {{ $seance->getDateCompleteFormattee() }}
-                            </div>
-                        </div>
-                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body">
-                        {{-- Badges --}}
-                        <div class="d-flex flex-wrap gap-2 mb-3">
-                            <span class="badge bg-success">
-                                <i class="fas fa-check me-1"></i>Rapport soumis
-                            </span>
-                            @if($rapport->submitted_at ?? $rapport->created_at)
-                                <span class="badge bg-light text-dark border">
-                                    <i class="fas fa-calendar me-1"></i>
-                                    {{ ($rapport->submitted_at ?? $rapport->created_at)?->format('d/m/Y à H:i') }}
-                                </span>
-                            @endif
-                            @if($rapport->behavior_rating ?? null)
-                                <span class="badge" style="background: rgba(4,83,203,.1); color:#0453cb;">
-                                    <i class="fas fa-star me-1"></i>Comportement : {{ $rapport->behavior_rating }}/5
-                                </span>
-                            @endif
-                        </div>
-
-                        {{-- Contenu --}}
-                        @if($rapport->content_summary ?? null)
-                            <div class="rapport-section-title">Résumé du cours</div>
-                            <div class="rapport-section-body">{{ $rapport->content_summary }}</div>
-                        @endif
-
-                        @if($rapport->teaching_methods ?? null)
-                            <div class="rapport-section-title">Méthodes pédagogiques</div>
-                            <div class="rapport-section-body">{{ $rapport->teaching_methods }}</div>
-                        @endif
-
-                        @if($rapport->difficulties ?? null)
-                            <div class="rapport-section-title">Difficultés rencontrées</div>
-                            <div class="rapport-section-body">{{ $rapport->difficulties }}</div>
-                        @endif
-
-                        @if($rapport->homework_assigned ?? null)
-                            <div class="rapport-section-title">Devoirs assignés</div>
-                            <div class="rapport-section-body">{{ $rapport->homework_assigned }}</div>
-                        @endif
-
-                        @if($rapport->next_session_plan ?? null)
-                            <div class="rapport-section-title">Prochaine séance</div>
-                            <div class="rapport-section-body">{{ $rapport->next_session_plan }}</div>
-                        @endif
-
-                        @if($rapport->notes ?? null)
-                            <div class="rapport-section-title">Notes complémentaires</div>
-                            <div class="rapport-section-body">{{ $rapport->notes }}</div>
-                        @endif
-                    </div>
-                    <div class="modal-footer">
-                        <a href="{{ route('esbtp.seances-cours.show', $seance->id) }}"
-                           class="btn btn-outline-primary btn-sm">
-                            <i class="fas fa-calendar-day me-1"></i>Voir la séance
-                        </a>
-                        <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Fermer</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    @endif
-@endforeach
-
-{{-- Bulk nav bar --}}
-<div id="bulkNavBar">
-    <span style="font-size:.85rem; font-weight:600;">
-        <i class="fas fa-check-square me-2"></i>
-        <span class="bulk-count" id="bulkCount">0</span> sélectionnée(s)
-    </span>
-    <button class="btn-bulk" onclick="bulkMarkStatus('present')">
-        <i class="fas fa-check me-1"></i>Marquer présent
-    </button>
-    <button class="btn-bulk btn-bulk-danger" onclick="bulkMarkStatus('absent')">
-        <i class="fas fa-user-times me-1"></i>Marquer absent
-    </button>
-    <button class="btn-bulk-close" onclick="clearBulkSelection()" title="Annuler">
-        <i class="fas fa-times"></i>
-    </button>
-</div>
-
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-    /* -------------------------------------------------- */
-    /* Chart                                              */
-    /* -------------------------------------------------- */
-    const monthlyStats = JSON.parse(document.getElementById('monthlyStatsData').textContent);
-    const labels = monthlyStats.map(item => item.label);
-    const presentData = monthlyStats.map(item => item.present + item.late);
-    const absentData = monthlyStats.map(item => item.absent);
-    const notSignedData = monthlyStats.map(item => item.not_signed);
+function teacherPage() {
+    return {
+        filters: { preset: @json($preset), from: @json($from->toDateString()), to: @json($to->toDateString()) },
+        loading: false, loadingMore: false, hasMore: false, nextPage: 2, url: '',
+        periodeLabel: @json($from->format('d/m/Y') . ' → ' . $to->format('d/m/Y')),
+        totalLabel: @json($paginator->total() . ' séance(s)'),
 
-    const ctx = document.getElementById('attendanceChart');
-    if (ctx) {
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels,
-                datasets: [
-                    {
-                        label: 'Présent + Retard',
-                        data: presentData,
-                        borderColor: '#10b981',
-                        backgroundColor: 'rgba(16, 185, 129, 0.15)',
-                        fill: true,
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Absent',
-                        data: absentData,
-                        borderColor: '#ef4444',
-                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                        fill: true,
-                        tension: 0.3
-                    },
-                    {
-                        label: 'Non émargé',
-                        data: notSignedData,
-                        borderColor: '#64748b',
-                        backgroundColor: 'rgba(100, 116, 139, 0.1)',
-                        fill: true,
-                        tension: 0.3
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                plugins: { legend: { position: 'bottom' } },
-                scales: { y: { beginAtZero: true } }
-            }
-        });
-    }
+        init() {
+            this.url = this.$root.dataset.url;
+            this.hasMore = this.$root.dataset.hasMore === '1';
+            this.nextPage = parseInt(this.$root.dataset.nextPage, 10) || 2;
+            this.observeSentinel();
+        },
 
-    /* -------------------------------------------------- */
-    /* Mark status (single)                               */
-    /* -------------------------------------------------- */
-    document.querySelectorAll('.mark-status-btn').forEach(btn => {
-        btn.addEventListener('click', function () {
-            const seanceId = this.dataset.seanceId;
-            const status = this.dataset.status;
-            markSeanceStatus([seanceId], status, () => {
-                // Reload row via page refresh partiel si besoin
-                location.reload();
-            });
-        });
-    });
+        setPreset(p) { this.filters.preset = p; if (p !== 'custom') this.applyPeriode(); },
 
-    /* -------------------------------------------------- */
-    /* Bulk selection                                     */
-    /* -------------------------------------------------- */
-    let selectedSeances = new Set();
+        params(extra) {
+            const p = new URLSearchParams();
+            p.set('preset', this.filters.preset);
+            if (this.filters.preset === 'custom') { p.set('from', this.filters.from); p.set('to', this.filters.to); }
+            Object.entries(extra || {}).forEach(function (e) { p.set(e[0], e[1]); });
+            return p;
+        },
 
-    function toggleSelectAll(masterCb) {
-        document.querySelectorAll('.seance-checkbox').forEach(cb => {
-            cb.checked = masterCb.checked;
-            if (masterCb.checked) {
-                selectedSeances.add(cb.value);
-            } else {
-                selectedSeances.delete(cb.value);
-            }
-        });
-        updateBulkBar();
-    }
+        async applyPeriode() {
+            this.loading = true;
+            try {
+                const res = await fetch(this.url + '?' + this.params({ mode: 'filter' }).toString(), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!res.ok) throw new Error('Erreur ' + res.status);
+                const d = await res.json();
+                document.getElementById('tdrKpis').innerHTML = d.kpis_html;
+                document.getElementById('tdrTypes').innerHTML = d.types_html;
+                document.getElementById('tdrWarnings').innerHTML = d.warnings_html;
+                document.getElementById('tdrSeances').innerHTML = d.seances_html
+                    || '<div class="tdr-empty"><i class="fas fa-calendar-xmark"></i><p>Aucune séance.</p></div>';
+                this.hasMore = d.has_more; this.nextPage = d.next_page;
+                this.periodeLabel = d.periode.from + ' → ' + d.periode.to;
+                this.totalLabel = d.total + ' séance(s)';
+            } catch (e) {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: e.message } }));
+            } finally { this.loading = false; }
+        },
 
-    function updateBulkBar() {
-        selectedSeances = new Set();
-        document.querySelectorAll('.seance-checkbox:checked').forEach(cb => {
-            selectedSeances.add(cb.value);
-        });
-        const count = selectedSeances.size;
-        document.getElementById('bulkCount').textContent = count;
-        const bar = document.getElementById('bulkNavBar');
-        if (count > 0) {
-            bar.classList.add('visible');
-        } else {
-            bar.classList.remove('visible');
-            const masterCb = document.getElementById('selectAllSeances');
-            if (masterCb) masterCb.checked = false;
-        }
-    }
+        async loadMore() {
+            if (!this.hasMore || this.loadingMore) return;
+            this.loadingMore = true;
+            try {
+                const res = await fetch(this.url + '?' + this.params({ mode: 'scroll', page: this.nextPage }).toString(), { headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' } });
+                if (!res.ok) throw new Error('Erreur ' + res.status);
+                const d = await res.json();
+                document.getElementById('tdrSeances').insertAdjacentHTML('beforeend', d.seances_html);
+                this.hasMore = d.has_more; this.nextPage = d.next_page;
+            } catch (e) {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: e.message } }));
+            } finally { this.loadingMore = false; }
+        },
 
-    function clearBulkSelection() {
-        document.querySelectorAll('.seance-checkbox').forEach(cb => cb.checked = false);
-        const masterCb = document.getElementById('selectAllSeances');
-        if (masterCb) masterCb.checked = false;
-        selectedSeances.clear();
-        updateBulkBar();
-    }
-
-    function bulkMarkStatus(status) {
-        if (selectedSeances.size === 0) return;
-        const label = status === 'present' ? 'présent' : 'absent';
-        if (!confirm(`Marquer ${selectedSeances.size} séance(s) comme ${label} ?`)) return;
-
-        const ids = Array.from(selectedSeances);
-        markSeanceStatus(ids, status, () => {
-            clearBulkSelection();
-            location.reload();
-        });
-    }
-
-    /* -------------------------------------------------- */
-    /* Core AJAX call                                     */
-    /* -------------------------------------------------- */
-    function markSeanceStatus(seanceIds, status, onSuccess) {
-        // Afficher spinners
-        seanceIds.forEach(id => {
-            const spinner = document.getElementById('spinner-' + id);
-            if (spinner) spinner.classList.remove('d-none');
-        });
-
-        fetch('{{ url("/esbtp/teacher-attendance/bulk-update-status") }}', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '{{ csrf_token() }}',
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify({ seance_ids: seanceIds, status: status })
-        })
-        .then(r => r.json())
-        .then(data => {
-            seanceIds.forEach(id => {
-                const spinner = document.getElementById('spinner-' + id);
-                if (spinner) spinner.classList.add('d-none');
-            });
-            if (data.success) {
-                if (typeof onSuccess === 'function') onSuccess();
-            } else {
-                alert('Erreur : ' + (data.message || 'Une erreur est survenue'));
-            }
-        })
-        .catch(err => {
-            seanceIds.forEach(id => {
-                const spinner = document.getElementById('spinner-' + id);
-                if (spinner) spinner.classList.add('d-none');
-            });
-            console.error(err);
-            alert('Erreur réseau. Veuillez réessayer.');
-        });
-    }
+        observeSentinel() {
+            const s = document.getElementById('tdrSentinel');
+            if (!s || !('IntersectionObserver' in window)) return;
+            new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) this.loadMore(); }); }, { rootMargin: '120px' }).observe(s);
+        },
+    };
+}
 </script>
 @endpush

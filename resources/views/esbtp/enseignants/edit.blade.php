@@ -282,6 +282,7 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                         $currentDate = old('date_debut_activite', $teacher->date_debut_activite ? $teacher->date_debut_activite->format('Y-m-d') : '');
                         $currentTaux = old('taux_horaire', $teacher->taux_horaire ?? '');
                         $currentCharge = old('charge_horaire_max_semaine', $teacher->teaching_hours_due ?? 18);
+                        $currentTauxParType = old('taux_par_type', $teacher->tauxParTypeMap());
                     @endphp
 
                     <div class="ee-regime-grid" id="regimeGrid">
@@ -296,14 +297,17 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                     </div>
 
                     <div class="ee-grid" style="margin-top: 1.25rem;">
+                        @can('comptabilite.salaires.set_rate')
                         <div class="ee-field ee-conditional {{ $selectedRegime !== 'permanent' ? 'show' : '' }}" id="tauxField">
-                            <label for="taux_horaire" class="ee-label">Taux horaire (FCFA/heure)</label>
+                            <label for="taux_horaire" class="ee-label">Taux horaire par défaut (FCFA/heure)</label>
                             <input type="number" name="taux_horaire" id="taux_horaire"
                                    value="{{ $currentTaux }}"
                                    min="0" step="500"
                                    class="ee-input @error('taux_horaire') is-invalid @enderror">
+                            <small class="ee-help">Appliqué quand aucun taux par type n'est défini.</small>
                             @error('taux_horaire') <div class="ee-error">{{ $message }}</div> @enderror
                         </div>
+                        @endcan
 
                         <div class="ee-field ee-conditional {{ $selectedRegime === 'permanent' ? 'show' : '' }}" id="chargeField">
                             <label for="charge_horaire_max_semaine" class="ee-label">Charge hebdomadaire (h/sem)</label>
@@ -322,6 +326,41 @@ input[type="checkbox"]:checked + .ee-status-switch::before { transform: translat
                             @error('date_debut_activite') <div class="ee-error">{{ $message }}</div> @enderror
                         </div>
                     </div>
+
+                    @can('comptabilite.salaires.set_rate')
+                    {{-- Taux par type de séance (LMD) — gated comptabilite.salaires.set_rate --}}
+                    <div class="ee-taux-types" id="tauxTypesBlock">
+                        <div class="ee-taux-types-head">
+                            <i class="fas fa-coins"></i>
+                            <div>
+                                <p class="ee-taux-types-title">Taux par type de séance <span class="ee-taux-badge">LMD</span></p>
+                                <p class="ee-taux-types-sub">Optionnel — un taux distinct par CM / TD / TP. Laissez vide pour utiliser le taux par défaut.</p>
+                            </div>
+                        </div>
+                        <div class="ee-taux-grid">
+                            @foreach(\App\Enums\TypeSeance::cases() as $t)
+                                @if($t->isVolumeTracked())
+                                    <div class="ee-taux-cell">
+                                        <label for="taux_{{ $t->value }}" class="ee-taux-label">
+                                            <span class="ee-taux-chip" style="{{ $t->badgeInlineStyle() }}">
+                                                <i class="fas {{ $t->badgeIcon() }}"></i> {{ $t->value }}
+                                            </span>
+                                            {{ $t->label() }}
+                                        </label>
+                                        <div class="ee-taux-input-wrap">
+                                            <input type="number" name="taux_par_type[{{ $t->value }}]" id="taux_{{ $t->value }}"
+                                                   value="{{ $currentTauxParType[$t->value] ?? '' }}"
+                                                   min="0" step="500" placeholder="défaut"
+                                                   class="ee-input @error('taux_par_type.' . $t->value) is-invalid @enderror">
+                                            <span class="ee-taux-unit">FCFA/h</span>
+                                        </div>
+                                        @error('taux_par_type.' . $t->value) <div class="ee-error">{{ $message }}</div> @enderror
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    </div>
+                    @endcan
                 </div>
             </div>
 

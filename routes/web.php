@@ -265,6 +265,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     // Tableau de bord des présences — accessible coordinateur, secrétaire, superAdmin
     Route::middleware(['auth', 'role:coordinateur|secretaire|superAdmin', 'permission:module.presences.access'])->group(function () {
         Route::get('/coordinateur/attendance-dashboard', [App\Http\Controllers\CoordinateurDashboardController::class, 'attendanceDashboard'])->name('coordinateur.attendance-dashboard');
+        Route::get('/coordinateur/attendance-dashboard/data', [App\Http\Controllers\CoordinateurDashboardController::class, 'attendanceDashboardData'])->name('coordinateur.attendance-dashboard.data')->middleware('throttle:120,1');
         Route::get('/coordinateur/recent-activities', [App\Http\Controllers\CoordinateurDashboardController::class, 'getRecentActivities'])->name('coordinateur.recent-activities');
         Route::post('/coordinateur/daily-report', [App\Http\Controllers\CoordinateurDashboardController::class, 'generateDailyReport'])->name('coordinateur.daily-report');
     });
@@ -1786,6 +1787,27 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
     // KPIs temps réel
     Route::get('/kpis-temps-reel', [ESBTPComptabiliteController::class, 'kpisTempsReel'])->name('kpis-temps-reel');
 
+    // ===== Paie enseignants =====
+    Route::prefix('salaires')->name('salaires.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\ESBTPSalaireController::class, 'index'])
+            ->name('index')->middleware('permission:comptabilite.salaires.view');
+        Route::get('/data', [\App\Http\Controllers\ESBTPSalaireController::class, 'data'])
+            ->name('data')->middleware(['permission:comptabilite.salaires.view', 'throttle:120,1']);
+        Route::post('/prepare', [\App\Http\Controllers\ESBTPSalaireController::class, 'prepare'])
+            ->name('prepare')->middleware(['permission:comptabilite.salaires.create', 'throttle:60,1']);
+        Route::post('/', [\App\Http\Controllers\ESBTPSalaireController::class, 'store'])
+            ->name('store')->middleware('permission:comptabilite.salaires.create');
+        Route::post('/config', [\App\Http\Controllers\ESBTPSalaireController::class, 'updateConfig'])
+            ->name('config')->middleware('permission:comptabilite.salaires.configure');
+        Route::get('/{salaire}', [\App\Http\Controllers\ESBTPSalaireController::class, 'show'])
+            ->name('show')->middleware('permission:comptabilite.salaires.view');
+        // Validation : permission validate OU validate_own vérifiée dans le contrôleur.
+        Route::post('/{salaire}/validate', [\App\Http\Controllers\ESBTPSalaireController::class, 'approve'])
+            ->name('validate');
+        Route::post('/{salaire}/pay', [\App\Http\Controllers\ESBTPSalaireController::class, 'pay'])
+            ->name('pay')->middleware('permission:comptabilite.salaires.pay');
+    });
+
     // Analytics Prédictifs (Phase 3 + Phase 4)
     Route::get('/analytics', [\App\Http\Controllers\ESBTPAnalyticsController::class, 'index'])
         ->name('analytics.index');
@@ -1991,9 +2013,19 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
         ->name('teacher-attendance.report')
         ->middleware(['auth', 'permission:attendances.view']);
 
+    // Endpoint AJAX du rapport heures (filtres no-reload + infinity scroll)
+    Route::get('teacher-attendance/report/data', [TeacherAttendanceController::class, 'reportData'])
+        ->name('teacher-attendance.report.data')
+        ->middleware(['auth', 'permission:attendances.view', 'throttle:120,1']);
+
     Route::get('teacher-attendance/teacher/{teacher}', [TeacherAttendanceController::class, 'teacherReport'])
         ->name('teacher-attendance.teacher-report')
         ->middleware(['auth', 'permission:attendances.view']);
+
+    // Endpoint AJAX fiche enseignant (période no-reload + infinity scroll)
+    Route::get('teacher-attendance/teacher/{teacher}/data', [TeacherAttendanceController::class, 'teacherReportData'])
+        ->name('teacher-attendance.teacher-report.data')
+        ->middleware(['auth', 'permission:attendances.view', 'throttle:120,1']);
 
     // Routes AJAX pour update statut et refresh ligne (coordinateur/admin)
     Route::post('teacher-attendance/seance/{seance}/update-status', [ESBTPTeacherAttendanceController::class, 'updateStatus'])

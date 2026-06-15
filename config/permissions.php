@@ -953,6 +953,56 @@ return [
             'icon' => 'fa-lock',
         ],
 
+        // ===== Comptabilité — Paie enseignants =====
+        'comptabilite.salaires.view' => [
+            'label' => 'Voir la paie des enseignants',
+            'description' => 'Donne accès à la page « Paie enseignants » : heures facturables, taux, montants dûs, bulletins. Lecture seule. Assignable à un rôle custom (Directeur Financier, Auditeur).',
+            'group' => 'Comptabilité — Paie enseignants',
+            'icon' => 'fa-money-check-dollar',
+        ],
+        'comptabilite.salaires.create' => [
+            'label' => 'Préparer / calculer la paie d\'un enseignant',
+            'description' => 'Permet de générer un bulletin de paie pour une période : calcul des heures réelles × taux par type, primes, retenues (impôt ITS, CNPS…). Statut « en attente » jusqu\'à validation.',
+            'group' => 'Comptabilité — Paie enseignants',
+            'icon' => 'fa-calculator',
+        ],
+        'comptabilite.salaires.validate' => [
+            'label' => 'Valider la paie (2e validation)',
+            'description' => 'Validation OHADA (séparation des devoirs) d\'un bulletin préparé. Par défaut, le validateur DOIT être différent du préparateur, sauf si le rôle dispose aussi de « Valider sa propre paie ».',
+            'group' => 'Comptabilité — Paie enseignants',
+            'icon' => 'fa-check-double',
+        ],
+        'comptabilite.salaires.validate_own' => [
+            'label' => 'Valider sa propre préparation de paie',
+            'description' => 'Lève la séparation des devoirs : permet à la même personne de préparer ET valider un bulletin (pour les petites écoles à une seule comptable). À attribuer avec discernement.',
+            'group' => 'Comptabilité — Paie enseignants',
+            'icon' => 'fa-user-check',
+        ],
+        'comptabilite.salaires.pay' => [
+            'label' => 'Marquer une paie comme payée',
+            'description' => 'Enregistre le règlement effectif d\'un bulletin validé (date, mode, référence). Verrouille le bulletin.',
+            'group' => 'Comptabilité — Paie enseignants',
+            'icon' => 'fa-hand-holding-dollar',
+        ],
+        'comptabilite.salaires.configure' => [
+            'label' => 'Configurer les paramètres de paie',
+            'description' => 'Règle le barème fiscal d\'imposition (ITS), le taux CNPS, la période de grâce de ponctualité et les options de dépassement horaire payé.',
+            'group' => 'Comptabilité — Paie enseignants',
+            'icon' => 'fa-sliders',
+        ],
+        'comptabilite.salaires.export' => [
+            'label' => 'Exporter la paie (PDF / Excel)',
+            'description' => 'Génère et télécharge les bulletins de paie et états récapitulatifs.',
+            'group' => 'Comptabilité — Paie enseignants',
+            'icon' => 'fa-file-export',
+        ],
+        'comptabilite.salaires.set_rate' => [
+            'label' => 'Définir les taux horaires d\'un enseignant',
+            'description' => 'Rend visible et modifiable la section « Rémunération / taux par type de séance » dans la fiche enseignant. Sans cette permission, un coordinateur peut éditer un enseignant sans voir les montants (séparation pédagogie / comptabilité).',
+            'group' => 'Comptabilité — Paie enseignants',
+            'icon' => 'fa-coins',
+        ],
+
         // ===== Personnel & enseignants =====
         'teachers.view' => [
             'label' => 'Voir les enseignants',
@@ -1587,6 +1637,11 @@ return [
             // PR1 réconciliation — view+open+resolve+export. Approve réservé au coordinateur (séparation OHADA).
             'comptabilite.reconciliation.view', 'comptabilite.reconciliation.open',
             'comptabilite.reconciliation.resolve', 'comptabilite.reconciliation.export',
+            // Paie enseignants — préparation + export + taux + config. Validation séparée
+            // attribuée par l'école (sinon validate_own pour une comptable unique).
+            'comptabilite.salaires.view', 'comptabilite.salaires.create',
+            'comptabilite.salaires.pay', 'comptabilite.salaires.configure',
+            'comptabilite.salaires.export', 'comptabilite.salaires.set_rate',
             'paiements.view', 'paiements.create', 'paiements.edit', 'paiements.validate',
             'paiements.export',  // Lot 15
             'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
