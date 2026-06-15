@@ -158,4 +158,51 @@ class ESBTPTeacher extends Model implements Auditable
     {
         return $this->hasMany(ESBTPTeacherAvailability::class, 'teacher_id');
     }
+
+    /**
+     * Taux horaires par type de séance (CM/TD/TP…) — voir ESBTPEnseignantTauxSeance.
+     */
+    public function tauxSeances()
+    {
+        return $this->hasMany(ESBTPEnseignantTauxSeance::class, 'teacher_id');
+    }
+
+    /**
+     * Taux horaire applicable pour un type de séance donné.
+     *
+     * Cascade : taux spécifique du type → taux par défaut (taux_horaire) → 0.
+     * Accepte un App\Enums\TypeSeance ou sa valeur string.
+     *
+     * @param  \App\Enums\TypeSeance|string|null  $type
+     */
+    public function tauxPour($type): float
+    {
+        $value = $type instanceof \App\Enums\TypeSeance ? $type->value : (string) $type;
+
+        $specifique = $this->tauxSeances
+            ->firstWhere(fn ($t) => ($t->type_seance instanceof \App\Enums\TypeSeance
+                ? $t->type_seance->value : $t->type_seance) === $value);
+
+        if ($specifique && $specifique->taux_horaire !== null) {
+            return (float) $specifique->taux_horaire;
+        }
+
+        return (float) ($this->taux_horaire ?? 0);
+    }
+
+    /**
+     * Map [type_seance => taux] pour les types facturables (CM/TD/TP) — UI fiche.
+     *
+     * @return array<string, float|null>
+     */
+    public function tauxParTypeMap(): array
+    {
+        $map = [];
+        foreach ($this->tauxSeances as $t) {
+            $key = $t->type_seance instanceof \App\Enums\TypeSeance
+                ? $t->type_seance->value : $t->type_seance;
+            $map[$key] = $t->taux_horaire !== null ? (float) $t->taux_horaire : null;
+        }
+        return $map;
+    }
 }

@@ -168,10 +168,61 @@
 }
 .{{ $ns }}-alert-icon { margin-top: 2px; flex-shrink: 0; }
 
+/* ── Taux par type de séance (LMD) ───────────────────────────── */
+.{{ $ns }}-taux-types {
+    margin-top: 1.25rem;
+    padding: 1.1rem 1.25rem 1.25rem;
+    background: linear-gradient(135deg, rgba(4,83,203,.04), rgba(59,125,219,.06));
+    border: 1px solid rgba(4,83,203,.16);
+    border-radius: 12px;
+}
+.{{ $ns }}-taux-types-head {
+    display: flex; align-items: flex-start; gap: .7rem;
+    margin-bottom: 1rem;
+}
+.{{ $ns }}-taux-types-head > i {
+    width: 34px; height: 34px; flex-shrink: 0;
+    border-radius: 9px;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff; font-size: .85rem;
+    display: flex; align-items: center; justify-content: center;
+}
+.{{ $ns }}-taux-types-title {
+    font-size: .92rem; font-weight: 700; color: #1e293b; margin: 0;
+    display: flex; align-items: center; gap: .5rem;
+}
+.{{ $ns }}-taux-badge {
+    font-size: .6rem; font-weight: 800; letter-spacing: .5px;
+    color: #0453cb; background: rgba(4,83,203,.1);
+    border: 1px solid rgba(4,83,203,.22);
+    padding: .1rem .4rem; border-radius: 5px;
+}
+.{{ $ns }}-taux-types-sub { font-size: .76rem; color: #64748b; margin: .15rem 0 0; }
+.{{ $ns }}-taux-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: .85rem;
+}
+.{{ $ns }}-taux-cell { display: flex; flex-direction: column; gap: .4rem; }
+.{{ $ns }}-taux-label {
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .8rem; font-weight: 600; color: #334155;
+}
+.{{ $ns }}-taux-chip {
+    display: inline-flex; align-items: center; gap: .3rem;
+    font-size: .68rem; font-weight: 700;
+    padding: .15rem .45rem; border-radius: 6px;
+}
+.{{ $ns }}-taux-input-wrap { position: relative; }
+.{{ $ns }}-taux-input-wrap .{{ $ns }}-input { padding-right: 3.5rem; }
+.{{ $ns }}-taux-unit {
+    position: absolute; right: .7rem; top: 50%; transform: translateY(-50%);
+    font-size: .68rem; color: #94a3b8; font-weight: 600; pointer-events: none;
+}
+
 @media (max-width: 768px) {
     .{{ $ns }}-card-body { padding: 1.1rem; }
     .{{ $ns }}-grid { grid-template-columns: 1fr; }
     .{{ $ns }}-regime-grid { grid-template-columns: 1fr; }
+    .{{ $ns }}-taux-grid { grid-template-columns: 1fr; }
     .{{ $ns }}-actions { flex-direction: column-reverse; }
     .{{ $ns }}-actions .btn-acasi { width: 100%; justify-content: center; }
 }

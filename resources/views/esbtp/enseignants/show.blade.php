@@ -664,12 +664,28 @@
                         <span class="es-info-value">{{ ucfirst($teacher->regime) }}</span>
                     </div>
                     @endif
+                    @can('comptabilite.salaires.view')
                     @if($teacher->taux_horaire)
                     <div class="es-info-row">
-                        <span class="es-info-label"><i class="fas fa-coins"></i> Taux horaire</span>
+                        <span class="es-info-label"><i class="fas fa-coins"></i> Taux horaire par défaut</span>
                         <span class="es-info-value">{{ number_format($teacher->taux_horaire, 0, ',', ' ') }} FCFA/h</span>
                     </div>
                     @endif
+                    @php $tauxMap = $teacher->tauxParTypeMap(); @endphp
+                    @foreach(\App\Enums\TypeSeance::cases() as $t)
+                        @if($t->isVolumeTracked() && isset($tauxMap[$t->value]))
+                        <div class="es-info-row">
+                            <span class="es-info-label">
+                                <span style="{{ $t->badgeInlineStyle() }}display:inline-flex;align-items:center;gap:.25rem;padding:.1rem .4rem;border-radius:5px;font-size:.66rem;font-weight:700;">
+                                    <i class="fas {{ $t->badgeIcon() }}"></i> {{ $t->value }}
+                                </span>
+                                Taux {{ $t->value }}
+                            </span>
+                            <span class="es-info-value">{{ number_format($tauxMap[$t->value], 0, ',', ' ') }} FCFA/h</span>
+                        </div>
+                        @endif
+                    @endforeach
+                    @endcan
                     @if($teacher->date_debut_activite)
                     <div class="es-info-row">
                         <span class="es-info-label"><i class="fas fa-calendar-check"></i> Debut d'activite</span>

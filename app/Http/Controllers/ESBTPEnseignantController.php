@@ -7,8 +7,10 @@ use App\Enums\TeacherStatus;
 use App\Http\Requests\Enseignant\QuickStoreEnseignantRequest;
 use App\Http\Requests\Enseignant\StoreEnseignantRequest;
 use App\Http\Requests\Enseignant\UpdateEnseignantRequest;
+use App\Enums\TypeSeance;
 use App\Models\User;
 use App\Models\ESBTPTeacher;
+use App\Models\ESBTPEnseignantTauxSeance;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -153,6 +155,8 @@ class ESBTPEnseignantController extends Controller
                     : 0,
                 "created_by" => auth()->id(),
             ]);
+
+            $this->syncTauxSeances($teacher, $request);
 
             DB::commit();
 
@@ -459,6 +463,8 @@ class ESBTPEnseignantController extends Controller
                 "updated_by" => auth()->id(),
             ]);
 
+            $this->syncTauxSeances($enseignant, $request);
+
             // Disponibilités : reset + recréation si fournies.
             if ($request->has("availability")) {
                 $enseignant->availabilities()->delete();
@@ -490,6 +496,47 @@ class ESBTPEnseignantController extends Controller
                 ->back()
                 ->with("error", "Erreur lors de la mise à jour : " . $e->getMessage())
                 ->withInput();
+        }
+    }
+
+    /**
+     * Persiste les taux horaires par type de séance (CM/TD/TP) depuis le formulaire.
+     *
+     * Sécurité : ne touche aux taux QUE si l'utilisateur détient la permission
+     * comptabilite.salaires.set_rate (séparation pédagogie / comptabilité). Un
+     * coordinateur sans la permission peut enregistrer la fiche sans écraser les taux.
+     *
+     * Champ attendu : taux_par_type[CM|TD|TP] (vide = retrait de l'override).
+     */
+    private function syncTauxSeances(ESBTPTeacher $teacher, Request $request): void
+    {
+        if (!auth()->user()?->can('comptabilite.salaires.set_rate')) {
+            return;
+        }
+
+        $input = $request->input('taux_par_type', []);
+        if (!is_array($input)) {
+            return;
+        }
+
+        foreach (TypeSeance::cases() as $type) {
+            if (!$type->isVolumeTracked()) {
+                continue; // seuls CM/TD/TP ont un taux configurable
+            }
+
+            $raw = $input[$type->value] ?? null;
+            $value = ($raw === null || $raw === '') ? null : (float) $raw;
+
+            if ($value === null) {
+                $teacher->tauxSeances()->where('type_seance', $type->value)->delete();
+                continue;
+            }
+
+            ESBTPEnseignantTauxSeance::updateOrCreate(
+                ['teacher_id' => $teacher->id, 'type_seance' => $type->value],
+                ['taux_horaire' => $value, 'updated_by' => auth()->id(),
+                 'created_by' => auth()->id()],
+            );
         }
     }
 

@@ -195,16 +195,18 @@
                     </div>
 
                     <div class="ec-grid" style="margin-top: 1.25rem;">
+                        @can('comptabilite.salaires.set_rate')
                         <div class="ec-field ec-conditional show" id="tauxField">
-                            <label for="taux_horaire" class="ec-label">Taux horaire (FCFA/heure)</label>
+                            <label for="taux_horaire" class="ec-label">Taux horaire par défaut (FCFA/heure)</label>
                             <input type="number" name="taux_horaire" id="taux_horaire"
                                    value="{{ old('taux_horaire') }}"
                                    min="0" step="500"
                                    placeholder="ex: 5000"
                                    class="ec-input @error('taux_horaire') is-invalid @enderror">
-                            <small class="ec-help">Tarif facturé par heure de cours. Optionnel.</small>
+                            <small class="ec-help">Tarif appliqué quand aucun taux par type n'est défini. Optionnel.</small>
                             @error('taux_horaire') <div class="ec-error">{{ $message }}</div> @enderror
                         </div>
+                        @endcan
 
                         <div class="ec-field ec-conditional" id="chargeField">
                             <label for="charge_horaire_max_semaine" class="ec-label">Charge hebdomadaire (h/sem)</label>
@@ -225,6 +227,42 @@
                             @error('date_debut_activite') <div class="ec-error">{{ $message }}</div> @enderror
                         </div>
                     </div>
+
+                    @can('comptabilite.salaires.set_rate')
+                    {{-- Taux par type de séance (LMD) — gated comptabilite.salaires.set_rate --}}
+                    <div class="ec-taux-types" id="tauxTypesBlock">
+                        <div class="ec-taux-types-head">
+                            <i class="fas fa-coins"></i>
+                            <div>
+                                <p class="ec-taux-types-title">Taux par type de séance <span class="ec-taux-badge">LMD</span></p>
+                                <p class="ec-taux-types-sub">Optionnel — un taux distinct par CM / TD / TP. Laissez vide pour utiliser le taux par défaut.</p>
+                            </div>
+                        </div>
+                        <div class="ec-taux-grid">
+                            @foreach(\App\Enums\TypeSeance::cases() as $t)
+                                @if($t->isVolumeTracked())
+                                    @php $style = $t->badgeStyle(); @endphp
+                                    <div class="ec-taux-cell">
+                                        <label for="taux_{{ $t->value }}" class="ec-taux-label">
+                                            <span class="ec-taux-chip" style="{{ $t->badgeInlineStyle() }}">
+                                                <i class="fas {{ $t->badgeIcon() }}"></i> {{ $t->value }}
+                                            </span>
+                                            {{ $t->label() }}
+                                        </label>
+                                        <div class="ec-taux-input-wrap">
+                                            <input type="number" name="taux_par_type[{{ $t->value }}]" id="taux_{{ $t->value }}"
+                                                   value="{{ old('taux_par_type.' . $t->value) }}"
+                                                   min="0" step="500" placeholder="défaut"
+                                                   class="ec-input @error('taux_par_type.' . $t->value) is-invalid @enderror">
+                                            <span class="ec-taux-unit">FCFA/h</span>
+                                        </div>
+                                        @error('taux_par_type.' . $t->value) <div class="ec-error">{{ $message }}</div> @enderror
+                                    </div>
+                                @endif
+                            @endforeach
+                        </div>
+                    </div>
+                    @endcan
                 </div>
             </div>
 
