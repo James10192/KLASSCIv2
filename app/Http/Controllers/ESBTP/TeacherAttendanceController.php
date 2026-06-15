@@ -573,94 +573,68 @@ class TeacherAttendanceController extends Controller
         return $out;
     }
 
-    public function teacherReport(Request $request, \App\Models\ESBTPTeacher $teacher)
+    /**
+     * Fiche premium d'un enseignant : heures précises CM/TD/TP sur la période,
+     * baromètre de réalisation, alertes de ponctualité et séances en infinity scroll.
+     * Page pédagogique (heures seulement, aucun montant).
+     */
+    public function teacherReport(Request $request, \App\Models\ESBTPTeacher $teacher, TeacherHoursService $hours)
     {
         $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
         if (! $anneeEnCours) {
             return redirect()->back()->with('error', 'Aucune année universitaire définie comme courante.');
         }
 
-        $today = \Carbon\Carbon::today();
+        [$from, $to] = $this->resolvePeriode($request, $anneeEnCours);
+        $summary = $hours->summary($teacher, $from, $to);
 
-        $seancesQuery = \App\Models\ESBTPSeanceCours::with([
-            'matiere:id,name',
-            'teacher:id,user_id',
-            'teacher.user:id,name,email',
-            'emploiTemps:id,classe_id,titre,annee_universitaire_id,is_active,date_debut,date_fin',
-            'emploiTemps.classe:id,name,filiere_id,niveau_etude_id',
-            'emploiTemps.classe.filiere:id,name',
-            'emploiTemps.classe.niveau:id,name',
-            'teacherAttendances',
-            'sessionReport'
-        ])
-            ->where('type', 'course')
-            ->where('teacher_id', $teacher->id)
-            ->whereHas('emploiTemps', function ($q) use ($anneeEnCours) {
-                $q->where('annee_universitaire_id', $anneeEnCours->id);
-            });
-
-        if ($request->filled('date')) {
-            $seancesQuery->whereDate('date_seance', $request->date);
-        }
-
-        $seances = $seancesQuery->orderBy('date_seance', 'desc')
-            ->orderBy('heure_debut', 'asc')
-            ->paginate(20);
-
-        $seancesAll = (clone $seancesQuery)->get();
-        $stats = [
-            'total' => 0,
-            'present' => 0,
-            'late' => 0,
-            'absent' => 0,
-            'not_signed' => 0,
-        ];
-
-        $monthly = [];
-        $monthLabels = [
-            1 => 'Jan', 2 => 'Fev', 3 => 'Mar', 4 => 'Avr', 5 => 'Mai', 6 => 'Juin',
-            7 => 'Juil', 8 => 'Aout', 9 => 'Sep', 10 => 'Oct', 11 => 'Nov', 12 => 'Dec'
-        ];
-
-        foreach ($seancesAll as $seance) {
-            $status = $this->resolveAttendanceStatus($seance, $today);
-            $stats['total']++;
-            if (isset($stats[$status])) {
-                $stats[$status]++;
-            } else {
-                $stats['not_signed']++;
-            }
-
-            $monthIndex = (int) \Carbon\Carbon::parse($seance->date_seance)->format('n');
-            if (! isset($monthly[$monthIndex])) {
-                $monthly[$monthIndex] = [
-                    'label' => $monthLabels[$monthIndex] ?? (string) $monthIndex,
-                    'present' => 0,
-                    'late' => 0,
-                    'absent' => 0,
-                    'not_signed' => 0,
-                ];
-            }
-            if (isset($monthly[$monthIndex][$status])) {
-                $monthly[$monthIndex][$status]++;
-            } else {
-                $monthly[$monthIndex]['not_signed']++;
-            }
-        }
-
-        ksort($monthly);
-        $monthlyStats = array_values($monthly);
-        $presentLike = $stats['present'] + $stats['late'];
-        $attendanceRate = $stats['total'] > 0 ? round(($presentLike / $stats['total']) * 100) : 0;
+        $paginator = $this->buildSeanceListQuery($from, $to, ['teacher_id' => $teacher->id])->paginate(20);
+        $rows = $this->decorateSeances($paginator->getCollection(), $hours);
 
         return view('esbtp.teacher-attendance.teacher-report', [
-            'teacher' => $teacher,
+            'teacher'      => $teacher,
             'anneeEnCours' => $anneeEnCours,
-            'seances' => $seances,
-            'stats' => $stats,
-            'attendanceRate' => $attendanceRate,
-            'monthlyStats' => $monthlyStats,
+            'summary'      => $summary,
+            'from'         => $from,
+            'to'           => $to,
+            'preset'       => $request->get('preset', 'year'),
+            'rows'         => $rows,
+            'paginator'    => $paginator,
         ]);
+    }
+
+    /**
+     * Endpoint AJAX de la fiche enseignant : recalcul période + infinity scroll.
+     */
+    public function teacherReportData(Request $request, \App\Models\ESBTPTeacher $teacher, TeacherHoursService $hours)
+    {
+        $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $anneeEnCours) {
+            return response()->json(['error' => 'Aucune année universitaire courante.'], 422);
+        }
+
+        [$from, $to] = $this->resolvePeriode($request, $anneeEnCours);
+        $mode = $request->get('mode', 'filter');
+
+        $paginator = $this->buildSeanceListQuery($from, $to, ['teacher_id' => $teacher->id])->paginate(20);
+        $rows = $this->decorateSeances($paginator->getCollection(), $hours);
+
+        $payload = [
+            'seances_html' => view('esbtp.teacher-attendance.partials._report_seances', ['rows' => $rows])->render(),
+            'has_more'     => $paginator->hasMorePages(),
+            'next_page'    => $paginator->currentPage() + 1,
+            'total'        => $paginator->total(),
+            'periode'      => ['from' => $from->format('d/m/Y'), 'to' => $to->format('d/m/Y')],
+        ];
+
+        if ($mode === 'filter') {
+            $summary = $hours->summary($teacher, $from, $to);
+            $payload['kpis_html'] = view('esbtp.teacher-attendance.partials._teacher_kpis', ['summary' => $summary])->render();
+            $payload['types_html'] = view('esbtp.teacher-attendance.partials._teacher_types', ['summary' => $summary])->render();
+            $payload['warnings_html'] = view('esbtp.teacher-attendance.partials._teacher_warnings', ['summary' => $summary])->render();
+        }
+
+        return response()->json($payload);
     }
 
     private function resolveAttendanceStatus($seance, \Carbon\Carbon $today): string

@@ -2000,6 +2000,11 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
         ->name('teacher-attendance.teacher-report')
         ->middleware(['auth', 'permission:attendances.view']);
 
+    // Endpoint AJAX fiche enseignant (période no-reload + infinity scroll)
+    Route::get('teacher-attendance/teacher/{teacher}/data', [TeacherAttendanceController::class, 'teacherReportData'])
+        ->name('teacher-attendance.teacher-report.data')
+        ->middleware(['auth', 'permission:attendances.view', 'throttle:120,1']);
+
     // Routes AJAX pour update statut et refresh ligne (coordinateur/admin)
     Route::post('teacher-attendance/seance/{seance}/update-status', [ESBTPTeacherAttendanceController::class, 'updateStatus'])
         ->name('esbtp.teacher-attendance.update-status')
