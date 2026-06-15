@@ -12,6 +12,8 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPSessionWorkflow;
 use App\Services\NotificationService;
+use App\Services\TeacherHoursService;
+use App\Enums\TypeSeance;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Carbon\Carbon;
@@ -357,182 +359,218 @@ class TeacherAttendanceController extends Controller
         return redirect()->back()->with('success', 'Présence enregistrée avec succès.');
     }
 
-    public function report(Request $request)
+    /**
+     * Rapport premium des HEURES enseignants (coordination/pédagogie — sans montants).
+     *
+     * Heures précises réelles via TeacherHoursService, ventilées CM/TD/TP par
+     * enseignant (baromètre comme emploi-temps.show), filtres classe/période/prof,
+     * warnings de ponctualité, liste de séances en infinity scroll. AJAX no-reload.
+     */
+    public function report(Request $request, TeacherHoursService $hours)
     {
-        // Autorisation gérée par le middleware de route (teacher|superAdmin)
-        // $this->authorize('attendances.view_reports');
-
-        // Récupérer l'année universitaire en cours
         $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        
         if (!$anneeEnCours) {
             return redirect()->back()->with('error', 'Aucune année universitaire définie comme courante.');
         }
 
-        // Récupérer toutes les données pour les filtres
-        $teachers = \App\Models\User::role(['enseignant', 'teacher'])->orderBy('name')->get();
-        $matieres = \App\Models\ESBTPMatiere::orderBy('name')->get();
-        $classes = \App\Models\ESBTPClasse::with('filiere', 'niveau')->orderBy('name')->get();
-        
-        // Statistiques globales pour l'année en cours (seulement les cours)
-        $totalSeances = \App\Models\ESBTPSeanceCours::whereHas('emploiTemps', function($q) use ($anneeEnCours) {
-            $q->where('annee_universitaire_id', $anneeEnCours->id);
-        })->where('type', 'course')->count();
-        
-        $totalAttendances = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
-            $q->where('annee_universitaire_id', $anneeEnCours->id);
-        })->whereHas('course', function($q) {
-            $q->where('type', 'course');
-        })->whereIn('status', ['present', 'late'])->count();
-        
-        // IMPORTANT: Compter d'abord les présents ET les retards séparément
-        $presentOnly = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
-            $q->where('annee_universitaire_id', $anneeEnCours->id);
-        })->whereHas('course', function($q) {
-            $q->where('type', 'course');
-        })->where('status', 'present')->count();
+        [$from, $to] = $this->resolvePeriode($request, $anneeEnCours);
+        $filtres = $this->reportFiltres($request);
 
-        $attendancesLate = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
-            $q->where('annee_universitaire_id', $anneeEnCours->id);
-        })->whereHas('course', function($q) {
-            $q->where('type', 'course');
-        })->where('status', 'late')->count();
+        $report = $hours->report($from, $to, $filtres);
 
-        $attendancesAbsent = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
-            $q->where('annee_universitaire_id', $anneeEnCours->id);
-        })->whereHas('course', function($q) {
-            $q->where('type', 'course');
-        })->where('status', 'absent')->count();
+        $teachers = \App\Models\ESBTPTeacher::with('user:id,name')->get()
+            ->map(fn ($t) => ['id' => $t->id, 'name' => $t->user->name ?? $t->name ?? 'Enseignant'])
+            ->sortBy('name')->values();
+        $classes  = \App\Models\ESBTPClasse::orderBy('name')->get(['id', 'name']);
+        $matieres = \App\Models\ESBTPMatiere::orderBy('name')->get(['id', 'name']);
 
-        // Le KPI "Présents" doit inclure les retards car un retard = présence quand même pour la comptabilité globale
-        $attendancesPresent = $presentOnly + $attendancesLate;
-        
-        $attendancesToday = ESBTPTeacherAttendance::whereHas('course.emploiTemps', function($q) use ($anneeEnCours) {
-            $q->where('annee_universitaire_id', $anneeEnCours->id);
-        })->whereHas('course', function($q) {
-            $q->where('type', 'course');
-        })->whereDate('created_at', today())->count();
+        $paginator = $this->buildSeanceListQuery($from, $to, $filtres)->paginate(20);
+        $rows = $this->decorateSeances($paginator->getCollection(), $hours);
 
-        // Récupérer toutes les séances de cours de l'année avec leur statut d'émargement
-        $seancesQuery = \App\Models\ESBTPSeanceCours::with([
-            'matiere:id,name',
-            'teacher:id,user_id',
-            'teacher.user:id,name,email',
-            'emploiTemps:id,classe_id,titre,annee_universitaire_id,is_active,date_debut,date_fin',
-            'emploiTemps.classe:id,name,filiere_id,niveau_etude_id',
-            'emploiTemps.classe.filiere:id,name',
-            'emploiTemps.classe.niveau:id,name',
-            'teacherAttendances',
-            'sessionReport'
-        ])
-        ->where('type', 'course') // Filtrer seulement les cours
-        ->whereHas('emploiTemps', function($q) use ($anneeEnCours, $request) {
-            $q->where('annee_universitaire_id', $anneeEnCours->id);
-            
-            // Filtre emploi du temps actifs/tous
-            if ($request->filled('emploi_status') && $request->emploi_status === 'active_only') {
-                $q->where('is_active', true);
+        return view('esbtp.teacher-attendance.report', [
+            'report'       => $report,
+            'anneeEnCours' => $anneeEnCours,
+            'from'         => $from,
+            'to'           => $to,
+            'preset'       => $request->get('preset', 'month'),
+            'filtres'      => $filtres,
+            'teachers'     => $teachers,
+            'classes'      => $classes,
+            'matieres'     => $matieres,
+            'rows'         => $rows,
+            'paginator'    => $paginator,
+            'typeOptions'  => $this->typeSeanceOptions(),
+        ]);
+    }
+
+    /**
+     * Endpoint AJAX du rapport heures : recalcul filtres + pagination infinite scroll.
+     * mode=filter → KPIs + cartes enseignants + 1ʳᵉ page ; mode=scroll → page séances seule.
+     */
+    public function reportData(Request $request, TeacherHoursService $hours)
+    {
+        $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (!$anneeEnCours) {
+            return response()->json(['error' => 'Aucune année universitaire courante.'], 422);
+        }
+
+        [$from, $to] = $this->resolvePeriode($request, $anneeEnCours);
+        $filtres = $this->reportFiltres($request);
+        $mode = $request->get('mode', 'filter');
+
+        $paginator = $this->buildSeanceListQuery($from, $to, $filtres)->paginate(20);
+        $rows = $this->decorateSeances($paginator->getCollection(), $hours);
+
+        $payload = [
+            'seances_html' => view('esbtp.teacher-attendance.partials._report_seances', [
+                'rows' => $rows,
+            ])->render(),
+            'has_more'    => $paginator->hasMorePages(),
+            'next_page'   => $paginator->currentPage() + 1,
+            'total'       => $paginator->total(),
+            'periode'     => ['from' => $from->format('d/m/Y'), 'to' => $to->format('d/m/Y')],
+        ];
+
+        if ($mode === 'filter') {
+            $report = $hours->report($from, $to, $filtres);
+            $payload['kpis_html'] = view('esbtp.teacher-attendance.partials._report_kpis', [
+                'report' => $report,
+            ])->render();
+            $payload['teachers_html'] = view('esbtp.teacher-attendance.partials._report_teachers', [
+                'report' => $report,
+            ])->render();
+        }
+
+        return response()->json($payload);
+    }
+
+    /**
+     * Résout la période [from, to] depuis preset (month|year) ou from/to explicites.
+     *
+     * @return array{0:\Carbon\Carbon,1:\Carbon\Carbon}
+     */
+    private function resolvePeriode(Request $request, $annee): array
+    {
+        if ($request->filled('from') && $request->filled('to')) {
+            return [
+                Carbon::parse($request->get('from'))->startOfDay(),
+                Carbon::parse($request->get('to'))->endOfDay(),
+            ];
+        }
+
+        if ($request->get('preset') === 'year') {
+            if ($annee && $annee->date_debut && $annee->date_fin) {
+                return [Carbon::parse($annee->date_debut)->startOfDay(), Carbon::parse($annee->date_fin)->endOfDay()];
             }
-            // Par défaut, on montre tous les emplois du temps (actifs et inactifs)
+            return [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()];
+        }
+
+        // Défaut : mois courant (période de paie naturelle).
+        return [Carbon::now()->startOfMonth(), Carbon::now()->endOfMonth()];
+    }
+
+    /**
+     * Filtres normalisés du rapport (sans annee : la période temporelle borne déjà).
+     *
+     * @return array<string,mixed>
+     */
+    private function reportFiltres(Request $request): array
+    {
+        return array_filter([
+            'teacher_id'  => $request->get('teacher_id'),
+            'classe_id'   => $request->get('classe_id'),
+            'matiere_id'  => $request->get('matiere_id'),
+            'type_seance' => $request->get('type_seance'),
+        ], fn ($v) => $v !== null && $v !== '');
+    }
+
+    /**
+     * Requête de la liste des séances (infinity scroll), scopée période + filtres.
+     */
+    private function buildSeanceListQuery(Carbon $from, Carbon $to, array $filtres)
+    {
+        $query = ESBTPSeanceCours::query()
+            ->whereNotNull('teacher_id')
+            ->whereNotIn('type', [ESBTPSeanceCours::TYPE_BREAK, ESBTPSeanceCours::TYPE_LUNCH])
+            ->whereNotNull('date_seance')
+            ->whereDate('date_seance', '>=', $from->toDateString())
+            ->whereDate('date_seance', '<=', $to->toDateString())
+            ->with([
+                'matiere:id,name',
+                'teacher:id,user_id',
+                'teacher.user:id,name',
+                'classe:id,name',
+                'teacherAttendances',
+            ]);
+
+        if (!empty($filtres['teacher_id'])) {
+            $query->where('teacher_id', $filtres['teacher_id']);
+        }
+        if (!empty($filtres['classe_id'])) {
+            $query->where('classe_id', $filtres['classe_id']);
+        }
+        if (!empty($filtres['matiere_id'])) {
+            $query->where('matiere_id', $filtres['matiere_id']);
+        }
+        if (!empty($filtres['type_seance'])) {
+            $query->where('type_seance', $filtres['type_seance']);
+        }
+
+        return $query->orderBy('date_seance', 'desc')->orderBy('heure_debut', 'asc');
+    }
+
+    /**
+     * Décore les séances pour l'affichage (durée précise, statut, ponctualité).
+     *
+     * @return \Illuminate\Support\Collection<int, array<string,mixed>>
+     */
+    private function decorateSeances($seances, TeacherHoursService $hours)
+    {
+        $today = Carbon::today();
+
+        return $seances->map(function ($seance) use ($hours, $today) {
+            $statut = $this->resolveAttendanceStatus($seance, $today);
+            $type = $seance->type_seance instanceof TypeSeance
+                ? $seance->type_seance
+                : TypeSeance::fromLegacy($seance->type_seance);
+            $estPassee = $seance->date_seance && Carbon::parse($seance->date_seance)->endOfDay()->isPast();
+
+            $statutMeta = [
+                'present'    => ['label' => 'Présent', 'bg' => 'rgba(16,185,129,.12)', 'color' => '#065f46'],
+                'late'       => ['label' => 'En retard', 'bg' => 'rgba(245,158,11,.14)', 'color' => '#92400e'],
+                'absent'     => ['label' => 'Absent', 'bg' => 'rgba(220,38,38,.12)', 'color' => '#b91c1c'],
+                'not_signed' => ['label' => $estPassee ? 'Non émargé' : 'À venir', 'bg' => 'rgba(100,116,139,.12)', 'color' => '#475569'],
+            ][$statut] ?? ['label' => $statut, 'bg' => 'rgba(100,116,139,.12)', 'color' => '#475569'];
+
+            return [
+                'id'           => $seance->id,
+                'date'         => $seance->date_seance ? Carbon::parse($seance->date_seance) : null,
+                'classe'       => $seance->classe->name ?? '—',
+                'matiere'      => $seance->matiere->name ?? '—',
+                'teacher_id'   => $seance->teacher_id,
+                'teacher'      => $seance->teacher?->user?->name ?? $seance->teacher?->name ?? 'Enseignant',
+                'type'         => $type,
+                'heure_debut'  => $seance->heure_debut?->format('H:i'),
+                'heure_fin'    => $seance->heure_fin?->format('H:i'),
+                'duree'        => $hours->dureeSeance($seance),
+                'statut'       => $statut,
+                'statut_label' => $statutMeta['label'],
+                'statut_bg'    => $statutMeta['bg'],
+                'statut_color' => $statutMeta['color'],
+                'en_retard'    => $statut === 'late',
+                'non_emarge'   => $estPassee && $statut === 'not_signed',
+            ];
         });
+    }
 
-        // Appliquer les filtres
-        if ($request->filled('date')) {
-            $seancesQuery->whereDate('date_seance', $request->date);
+    /** Options de type de séance pour le filtre (CM/TD/TP/… via l'enum). */
+    private function typeSeanceOptions(): array
+    {
+        $out = [];
+        foreach (TypeSeance::plannableCases() as $t) {
+            $out[$t->value] = $t->label();
         }
-
-        if ($request->filled('teacher_id')) {
-            $seancesQuery->where('teacher_id', $request->teacher_id);
-        }
-
-        if ($request->filled('matiere_id')) {
-            $seancesQuery->where('matiere_id', $request->matiere_id);
-        }
-
-        if ($request->filled('classe_id')) {
-            $seancesQuery->whereHas('emploiTemps', function($q) use ($request) {
-                $q->where('classe_id', $request->classe_id);
-            });
-        }
-
-        // Filtre par statut d'émargement
-        if ($request->filled('status')) {
-            if ($request->status === 'not_signed') {
-                // Séances sans émargement
-                $seancesQuery->whereDoesntHave('teacherAttendances');
-            } else {
-                // Séances avec émargement du statut demandé
-                $seancesQuery->whereHas('teacherAttendances', function($q) use ($request) {
-                    $q->where('status', $request->status);
-                });
-            }
-        }
-
-        $seances = $seancesQuery->orderBy('date_seance', 'desc')
-                              ->orderBy('heure_debut', 'asc')
-                              ->paginate(20);
-
-        $seancesForStats = (clone $seancesQuery)->get();
-        $teacherStats = [];
-        $today = \Carbon\Carbon::today();
-
-        foreach ($seancesForStats as $seance) {
-            if (! $seance->teacher_id) {
-                continue;
-            }
-
-            $teacherId = $seance->teacher_id;
-            $teacherName = $seance->teacher?->user?->name
-                ?? $seance->teacher?->name
-                ?? 'Enseignant';
-
-            if (! isset($teacherStats[$teacherId])) {
-                $teacherStats[$teacherId] = [
-                    'teacher_id' => $teacherId,
-                    'name' => $teacherName,
-                    'total' => 0,
-                    'present' => 0,
-                    'late' => 0,
-                    'absent' => 0,
-                    'not_signed' => 0,
-                ];
-            }
-
-            $status = $this->resolveAttendanceStatus($seance, $today);
-            $teacherStats[$teacherId]['total']++;
-
-            if (isset($teacherStats[$teacherId][$status])) {
-                $teacherStats[$teacherId][$status]++;
-            } else {
-                $teacherStats[$teacherId]['not_signed']++;
-            }
-        }
-
-        $teacherStats = collect($teacherStats)
-            ->map(function ($stats) {
-                $presentLike = $stats['present'] + $stats['late'];
-                $stats['taux'] = $stats['total'] > 0
-                    ? round(($presentLike / $stats['total']) * 100)
-                    : 0;
-                return $stats;
-            })
-            ->sortByDesc('taux')
-            ->values();
-
-        return view('esbtp.teacher-attendance.report', compact(
-            'seances',
-            'teachers', 
-            'matieres',
-            'classes',
-            'anneeEnCours',
-            'totalSeances',
-            'totalAttendances',
-            'attendancesPresent', 
-            'attendancesLate',
-            'attendancesAbsent',
-            'attendancesToday',
-            'teacherStats'
-        ));
+        return $out;
     }
 
     public function teacherReport(Request $request, \App\Models\ESBTPTeacher $teacher)

@@ -53,8 +53,82 @@ class TeacherHoursService
     public function summary(ESBTPTeacher $teacher, Carbon $from, Carbon $to, array $filtres = []): array
     {
         $seances = $this->seancesDeLaPeriode($teacher, $from, $to, $filtres);
-        $emargements = $this->emargementsParSeance($teacher, $seances->pluck('id')->all());
+        $emargements = $this->emargementsParSeance($seances->pluck('id')->all());
 
+        $acc = $this->accumuler($seances, $emargements);
+        $totaux = $this->totaux($acc['par_type']);
+
+        return [
+            'periode'          => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+            'par_type'         => array_values($acc['par_type']),
+            'totaux'           => $totaux,
+            'warnings'         => $acc['warnings'],
+            'taux_realisation' => $this->tauxRealisation($totaux),
+        ];
+    }
+
+    /**
+     * Rapport global : heures par enseignant sur la période (page report coordination).
+     *
+     * Charge toutes les séances de la période en une requête, les émargements en une
+     * autre, puis ventile par enseignant. Évite le N+1 d'un summary() par enseignant.
+     *
+     * @param  array<string,mixed>  $filtres  classe_id, matiere_id, type_seance, annee_universitaire_id, teacher_id
+     * @return array{
+     *     periode: array{from:string,to:string},
+     *     enseignants: array<int, array<string,mixed>>,
+     *     global: array<string,float|int>,
+     *     taux_realisation: float,
+     *     nb_warnings: int
+     * }
+     */
+    public function report(Carbon $from, Carbon $to, array $filtres = []): array
+    {
+        $seances = $this->seancesGlobalesDeLaPeriode($from, $to, $filtres);
+        $emargements = $this->emargementsParSeance($seances->pluck('id')->all());
+
+        $parEnseignant = [];
+        foreach ($seances->groupBy('teacher_id') as $teacherId => $sesEns) {
+            if (!$teacherId) {
+                continue;
+            }
+            $first = $sesEns->first();
+            $acc = $this->accumuler($sesEns, $emargements);
+            $totaux = $this->totaux($acc['par_type']);
+
+            $parEnseignant[] = [
+                'teacher_id'       => (int) $teacherId,
+                'name'             => $first->teacher?->user?->name ?? $first->teacher?->name ?? 'Enseignant',
+                'par_type'         => array_values($acc['par_type']),
+                'totaux'           => $totaux,
+                'taux_realisation' => $this->tauxRealisation($totaux),
+                'nb_warnings'      => count($acc['warnings']),
+            ];
+        }
+
+        // Tri par heures réalisées décroissantes (les plus actifs en tête).
+        usort($parEnseignant, fn ($a, $b) => $b['totaux']['heures_realisees'] <=> $a['totaux']['heures_realisees']);
+
+        $global = $this->totauxGlobaux($parEnseignant);
+
+        return [
+            'periode'          => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
+            'enseignants'      => $parEnseignant,
+            'global'           => $global,
+            'taux_realisation' => $this->tauxRealisation($global),
+            'nb_warnings'      => array_sum(array_column($parEnseignant, 'nb_warnings')),
+        ];
+    }
+
+    /**
+     * Cœur de calcul : ventile une collection de séances par type + collecte warnings.
+     *
+     * @param  \Illuminate\Support\Collection<int, ESBTPSeanceCours>  $seances
+     * @param  \Illuminate\Support\Collection<int, \Illuminate\Support\Collection>  $emargements  groupés par course_id
+     * @return array{par_type: array<string, array<string,mixed>>, warnings: array<int, array<string,mixed>>}
+     */
+    private function accumuler(Collection $seances, Collection $emargements): array
+    {
         $parType = [];
         $warnings = [];
 
@@ -69,6 +143,8 @@ class TeacherHoursService
                     'type'              => $key,
                     'label'             => $type->label(),
                     'facturable'        => $type->isVolumeTracked(),
+                    'icon'              => $type->badgeIcon(),
+                    'style'             => $type->badgeInlineStyle(),
                     'nb_seances'        => 0,
                     'nb_realisees'      => 0,
                     'heures_planifiees' => 0.0,
@@ -86,7 +162,7 @@ class TeacherHoursService
             if ($realisee) {
                 $parType[$key]['nb_realisees']++;
                 // Meilleure estimation actuelle : durée planifiée de la séance réalisée.
-                // (PR2 remplacera par la durée réelle émargée / saisie coordinateur.)
+                // (PR2+ remplacera par la durée réelle émargée / saisie coordinateur.)
                 $parType[$key]['heures_realisees'] += $dureeH;
             }
 
@@ -95,22 +171,23 @@ class TeacherHoursService
             }
         }
 
+        foreach ($parType as $k => $row) {
+            $parType[$k]['heures_planifiees'] = round($row['heures_planifiees'], 2);
+            $parType[$k]['heures_realisees'] = round($row['heures_realisees'], 2);
+        }
+
         // Tri stable : CM, TD, TP d'abord, puis le reste dans l'ordre de l'enum.
         $ordre = array_flip(TypeSeance::values());
         uasort($parType, fn ($a, $b) => ($ordre[$a['type']] ?? 99) <=> ($ordre[$b['type']] ?? 99));
 
-        $totaux = $this->totaux($parType);
-        $tauxReal = $totaux['heures_planifiees'] > 0
+        return ['par_type' => $parType, 'warnings' => $warnings];
+    }
+
+    private function tauxRealisation(array $totaux): float
+    {
+        return $totaux['heures_planifiees'] > 0
             ? round($totaux['heures_realisees'] / $totaux['heures_planifiees'] * 100, 1)
             : 0.0;
-
-        return [
-            'periode'          => ['from' => $from->toDateString(), 'to' => $to->toDateString()],
-            'par_type'         => array_values($parType),
-            'totaux'           => $totaux,
-            'warnings'         => $warnings,
-            'taux_realisation' => $tauxReal,
-        ];
     }
 
     /**
@@ -123,6 +200,8 @@ class TeacherHoursService
     {
         $query = ESBTPSeanceCours::query()
             ->where('teacher_id', $teacher->id)
+            // Séances d'enseignement uniquement (exclut récréations / pauses déjeuner).
+            ->whereNotIn('type', [ESBTPSeanceCours::TYPE_BREAK, ESBTPSeanceCours::TYPE_LUNCH])
             ->whereNotNull('date_seance')
             ->whereDate('date_seance', '>=', $from->toDateString())
             ->whereDate('date_seance', '<=', $to->toDateString());
@@ -143,20 +222,69 @@ class TeacherHoursService
     }
 
     /**
-     * Émargements enseignant groupés par séance (course_id).
-     * Note : esbtp_teacher_attendances.teacher_id référence users.id (= teacher->user_id).
+     * Séances de TOUS les enseignants sur la période (rapport global), filtrables.
+     *
+     * @param  array<string,mixed>  $filtres
+     * @return \Illuminate\Support\Collection<int, ESBTPSeanceCours>
+     */
+    public function seancesGlobalesDeLaPeriode(Carbon $from, Carbon $to, array $filtres = []): Collection
+    {
+        $query = ESBTPSeanceCours::query()
+            ->whereNotNull('teacher_id')
+            ->whereNotIn('type', [ESBTPSeanceCours::TYPE_BREAK, ESBTPSeanceCours::TYPE_LUNCH])
+            ->whereNotNull('date_seance')
+            ->whereDate('date_seance', '>=', $from->toDateString())
+            ->whereDate('date_seance', '<=', $to->toDateString());
+
+        if (!empty($filtres['teacher_id'])) {
+            $query->where('teacher_id', $filtres['teacher_id']);
+        }
+        if (!empty($filtres['classe_id'])) {
+            $query->where('classe_id', $filtres['classe_id']);
+        }
+        if (!empty($filtres['matiere_id'])) {
+            $query->where('matiere_id', $filtres['matiere_id']);
+        }
+        if (!empty($filtres['type_seance'])) {
+            $query->where('type_seance', $filtres['type_seance']);
+        }
+        if (!empty($filtres['annee_universitaire_id'])) {
+            $query->where('annee_universitaire_id', $filtres['annee_universitaire_id']);
+        }
+
+        return $query->with([
+            'teacher:id,user_id',
+            'teacher.user:id,name',
+            'matiere:id,name',
+            'classe:id,name',
+        ])->orderBy('date_seance')->get();
+    }
+
+    /**
+     * Durée précise (heures) d'une séance — exposée pour le rendu des listes.
+     */
+    public function dureeSeance(ESBTPSeanceCours $seance): float
+    {
+        return $this->dureeHeures($seance);
+    }
+
+    /**
+     * Émargements groupés par séance (course_id).
+     *
+     * Les séances sont déjà scopées à l'enseignant (seance.teacher_id = teachers.id),
+     * donc un filtre sur course_id suffit — on évite l'ambiguïté
+     * teacher_id(users.id) vs teacher_id(teachers.id) des émargements.
      *
      * @param  array<int>  $seanceIds
      * @return \Illuminate\Support\Collection<int, \Illuminate\Support\Collection<int, ESBTPTeacherAttendance>>
      */
-    private function emargementsParSeance(ESBTPTeacher $teacher, array $seanceIds): Collection
+    private function emargementsParSeance(array $seanceIds): Collection
     {
-        if (empty($seanceIds) || empty($teacher->user_id)) {
+        if (empty($seanceIds)) {
             return collect();
         }
 
         return ESBTPTeacherAttendance::query()
-            ->where('teacher_id', $teacher->user_id)
             ->whereIn('course_id', $seanceIds)
             ->get()
             ->groupBy('course_id');
@@ -262,5 +390,37 @@ class TeacherHoursService
         $t['heures_realisees_facturables'] = round($t['heures_realisees_facturables'], 2);
 
         return $t;
+    }
+
+    /**
+     * Agrège les totaux globaux depuis les lignes par enseignant.
+     *
+     * @param  array<int, array<string,mixed>>  $parEnseignant
+     * @return array<string, float|int>
+     */
+    private function totauxGlobaux(array $parEnseignant): array
+    {
+        $g = [
+            'nb_enseignants'               => count($parEnseignant),
+            'nb_seances'                   => 0,
+            'nb_realisees'                 => 0,
+            'heures_planifiees'            => 0.0,
+            'heures_realisees'             => 0.0,
+            'heures_realisees_facturables' => 0.0,
+        ];
+
+        foreach ($parEnseignant as $ens) {
+            $g['nb_seances']                   += $ens['totaux']['nb_seances'];
+            $g['nb_realisees']                 += $ens['totaux']['nb_realisees'];
+            $g['heures_planifiees']            += $ens['totaux']['heures_planifiees'];
+            $g['heures_realisees']             += $ens['totaux']['heures_realisees'];
+            $g['heures_realisees_facturables'] += $ens['totaux']['heures_realisees_facturables'];
+        }
+
+        $g['heures_planifiees']            = round($g['heures_planifiees'], 2);
+        $g['heures_realisees']             = round($g['heures_realisees'], 2);
+        $g['heures_realisees_facturables'] = round($g['heures_realisees_facturables'], 2);
+
+        return $g;
     }
 }

@@ -1991,6 +1991,11 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth'])->group(function () 
         ->name('teacher-attendance.report')
         ->middleware(['auth', 'permission:attendances.view']);
 
+    // Endpoint AJAX du rapport heures (filtres no-reload + infinity scroll)
+    Route::get('teacher-attendance/report/data', [TeacherAttendanceController::class, 'reportData'])
+        ->name('teacher-attendance.report.data')
+        ->middleware(['auth', 'permission:attendances.view', 'throttle:120,1']);
+
     Route::get('teacher-attendance/teacher/{teacher}', [TeacherAttendanceController::class, 'teacherReport'])
         ->name('teacher-attendance.teacher-report')
         ->middleware(['auth', 'permission:attendances.view']);
