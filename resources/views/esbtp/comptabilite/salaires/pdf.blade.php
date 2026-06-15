@@ -9,7 +9,9 @@
     <style>
         .pp-table { width: 100%; border-collapse: collapse; font-size: 10px; }
         .pp-table th { background: #0453cb; color: #fff; text-align: left; padding: 6px 8px; font-size: 9px; text-transform: uppercase; letter-spacing: .3px; }
+        .pp-table th.pp-num { text-align: right; }   /* sinon `.pp-table th` (spécificité +) écrase `.pp-num` → en-têtes mal alignés */
         .pp-table td { padding: 5px 8px; border-bottom: 1px solid #e5e7eb; }
+        .pp-table td.pp-num { text-align: right; }
         .pp-table tr:nth-child(even) td { background: #f8fafc; }
         .pp-num { text-align: right; white-space: nowrap; }
         .pp-net { font-weight: 700; color: #0453cb; }
