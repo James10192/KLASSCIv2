@@ -121,6 +121,9 @@
     .tar-act--late:hover { background: #f59e0b; color: #fff; }
     .tar-act--no { color: #dc2626; border-color: rgba(220,38,38,.4); }
     .tar-act--no:hover { background: #dc2626; color: #fff; }
+    .tar-seance-view { display: flex; gap: .3rem; margin-top: .3rem; }
+    .tar-vw { width: 26px; height: 26px; border-radius: 7px; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: .66rem; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all .15s; }
+    .tar-vw:hover { border-color: #0453cb; color: #0453cb; background: rgba(4,83,203,.05); }
 
     @media (max-width: 992px) { .tdr-grid { grid-template-columns: 1fr; } }
     @media (max-width: 768px) { .tdr-hero { padding: 1.4rem 1.25rem; } }
@@ -235,6 +238,8 @@
             </div>
         </div>
     </div>
+
+    @include('esbtp.teacher-attendance.partials._seance_modal')
 </div>
 @endsection
 
@@ -252,7 +257,21 @@ function teacherPage() {
             this.hasMore = this.$root.dataset.hasMore === '1';
             this.nextPage = parseInt(this.$root.dataset.nextPage, 10) || 2;
             this.observeSentinel();
-            window.addEventListener('seance:status-updated', () => this.applyPeriode());
+            window.addEventListener('seance:status-updated', () => this.refreshAggregates());
+        },
+
+        async refreshAggregates() {
+            try {
+                const res = await fetch(this.url + '?' + this.params({ mode: 'filter' }).toString(), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) return;
+                const d = await res.json();
+                document.getElementById('tdrKpis').innerHTML = d.kpis_html;
+                document.getElementById('tdrTypes').innerHTML = d.types_html;
+                document.getElementById('tdrWarnings').innerHTML = d.warnings_html;
+                // NE PAS toucher #tdrSeances : la ligne animée reste intacte.
+            } catch (e) { /* silencieux */ }
         },
 
         setPreset(p) { this.filters.preset = p; if (p !== 'custom') this.applyPeriode(); },
@@ -306,36 +325,6 @@ function teacherPage() {
     };
 }
 
-if (typeof window.triggerRowHighlight !== 'function') {
-    window.triggerRowHighlight = function (seanceId, status) {
-        const row = document.querySelector('.tar-seance-row[data-seance-id="' + seanceId + '"]');
-        if (!row) return;
-        const hl = document.createElement('div');
-        hl.className = 'tar-rowhl' + (status === 'absent' ? ' tar-rowhl--absent' : (status === 'late' ? ' tar-rowhl--late' : ''));
-        row.appendChild(hl);
-        requestAnimationFrame(() => hl.classList.add('animate'));
-        hl.addEventListener('animationend', () => hl.remove());
-    };
-}
-if (typeof window.markSeanceStatus !== 'function') {
-    window.markSeanceStatus = async function (seanceId, status) {
-        const token = document.querySelector('meta[name="csrf-token"]').content;
-        const base = @json(url('esbtp/teacher-attendance/seance'));
-        window.triggerRowHighlight(seanceId, status);
-        try {
-            const res = await fetch(base + '/' + seanceId + '/update-status', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
-                body: JSON.stringify({ status: status, type: 'start' }),
-            });
-            if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.message || ('Erreur ' + res.status)); }
-            const labels = { present: 'présent', late: 'en retard', absent: 'absent' };
-            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Enseignant marqué ' + (labels[status] || status) + '.' } }));
-            setTimeout(() => window.dispatchEvent(new CustomEvent('seance:status-updated')), 2600);
-        } catch (e) {
-            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: e.message } }));
-        }
-    };
-}
+@include('esbtp.teacher-attendance.partials._mark_status_js')
 </script>
 @endpush

@@ -158,6 +158,9 @@
     .tar-act--late:hover { background: #f59e0b; color: #fff; }
     .tar-act--no { color: #dc2626; border-color: rgba(220,38,38,.4); }
     .tar-act--no:hover { background: #dc2626; color: #fff; }
+    .tar-seance-view { display: flex; gap: .3rem; margin-top: .3rem; }
+    .tar-vw { width: 26px; height: 26px; border-radius: 7px; border: 1px solid #e2e8f0; background: #fff; color: #475569; cursor: pointer; font-size: .66rem; display: flex; align-items: center; justify-content: center; text-decoration: none; transition: all .15s; }
+    .tar-vw:hover { border-color: #0453cb; color: #0453cb; background: rgba(4,83,203,.05); }
 
     .tar-sentinel { padding: 1rem; text-align: center; color: #94a3b8; font-size: .8rem; }
     .tar-empty { text-align: center; padding: 2.5rem 1rem; color: #94a3b8; }
@@ -297,6 +300,8 @@
             </div>
         </div>
     </div>
+
+    @include('esbtp.teacher-attendance.partials._seance_modal')
 </div>
 @endsection
 
@@ -322,8 +327,23 @@ function reportPage() {
             this.hasMore = this.$root.dataset.hasMore === '1';
             this.nextPage = parseInt(this.$root.dataset.nextPage, 10) || 2;
             this.observeSentinel();
-            // Un marquage présent/absent met à jour KPIs + baromètre + liste.
-            window.addEventListener('seance:status-updated', () => this.applyFilters());
+            // Après un marquage : rafraîchir KPIs + baromètre seulement (préserver la
+            // ligne animée — le statut de la ligne est mis à jour en place côté handler).
+            window.addEventListener('seance:status-updated', () => this.refreshAggregates());
+        },
+
+        async refreshAggregates() {
+            try {
+                const params = this.buildParams({ mode: 'filter' });
+                const res = await fetch(this.url + '?' + params.toString(), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                document.getElementById('tarKpis').innerHTML = data.kpis_html;
+                document.getElementById('tarTeachers').innerHTML = data.teachers_html;
+                // NE PAS toucher #tarSeances : la ligne animée reste intacte.
+            } catch (e) { /* silencieux */ }
         },
 
         setPreset(p) {
@@ -406,40 +426,6 @@ function reportPage() {
     };
 }
 
-// Marquage présent/absent/retard d'une séance (coordinateur/admin). Global car les
-// lignes séances sont injectées en AJAX. Guard d'idempotence (page report ET fiche).
-if (typeof window.triggerRowHighlight !== 'function') {
-    window.triggerRowHighlight = function (seanceId, status) {
-        const row = document.querySelector('.tar-seance-row[data-seance-id="' + seanceId + '"]');
-        if (!row) return;
-        const hl = document.createElement('div');
-        hl.className = 'tar-rowhl' + (status === 'absent' ? ' tar-rowhl--absent' : (status === 'late' ? ' tar-rowhl--late' : ''));
-        row.appendChild(hl);
-        requestAnimationFrame(() => hl.classList.add('animate'));
-        hl.addEventListener('animationend', () => hl.remove());
-    };
-}
-if (typeof window.markSeanceStatus !== 'function') {
-    window.markSeanceStatus = async function (seanceId, status) {
-        const token = document.querySelector('meta[name="csrf-token"]').content;
-        const base = @json(url('esbtp/teacher-attendance/seance'));
-        // Feedback immédiat : sweep lumineux vert/orange/rouge sur la ligne.
-        window.triggerRowHighlight(seanceId, status);
-        try {
-            const res = await fetch(base + '/' + seanceId + '/update-status', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
-                body: JSON.stringify({ status: status, type: 'start' }),
-            });
-            if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.message || ('Erreur ' + res.status)); }
-            const labels = { present: 'présent', late: 'en retard', absent: 'absent' };
-            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Enseignant marqué ' + (labels[status] || status) + '.' } }));
-            // Laisse l'animation passer (~80%) avant de rafraîchir KPIs + baromètre + liste.
-            setTimeout(() => window.dispatchEvent(new CustomEvent('seance:status-updated')), 2600);
-        } catch (e) {
-            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: e.message } }));
-        }
-    };
-}
+@include('esbtp.teacher-attendance.partials._mark_status_js')
 </script>
 @endpush
