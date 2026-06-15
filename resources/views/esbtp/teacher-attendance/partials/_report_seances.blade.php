@@ -1,11 +1,12 @@
 {{-- Lignes de séances (infinity scroll). Reçoit $rows (collection décorée). --}}
+@php $canEditAttendance = auth()->user()?->can('attendances.edit'); @endphp
 @foreach($rows as $row)
     @php
         $h = (int) floor($row['duree']);
         $m = (int) round(($row['duree'] - $h) * 60);
         $dureeFmt = $h . 'h' . ($m > 0 ? sprintf('%02d', $m) : '');
     @endphp
-    <div class="tar-seance-row">
+    <div class="tar-seance-row" data-seance-id="{{ $row['id'] }}">
         <div class="tar-seance-date">
             <div class="tar-seance-day">{{ $row['date'] ? $row['date']->format('d') : '--' }}</div>
             <div class="tar-seance-mon">{{ $row['date'] ? $row['date']->translatedFormat('M') : '' }}</div>
@@ -41,6 +42,22 @@
                 <span class="tar-warn tar-warn--miss" title="Séance passée sans émargement">
                     <i class="fas fa-circle-exclamation"></i> Non émargé
                 </span>
+            @endif
+            @if($canEditAttendance && !$row['future'])
+                <div class="tar-seance-actions">
+                    @if($row['statut'] !== 'present')
+                        <button type="button" class="tar-act tar-act--ok" title="Marquer présent"
+                                onclick="markSeanceStatus({{ $row['id'] }}, 'present')"><i class="fas fa-check"></i></button>
+                    @endif
+                    @if($row['statut'] !== 'late')
+                        <button type="button" class="tar-act tar-act--late" title="Marquer en retard"
+                                onclick="markSeanceStatus({{ $row['id'] }}, 'late')"><i class="fas fa-clock"></i></button>
+                    @endif
+                    @if($row['statut'] !== 'absent')
+                        <button type="button" class="tar-act tar-act--no" title="Marquer absent"
+                                onclick="markSeanceStatus({{ $row['id'] }}, 'absent')"><i class="fas fa-user-xmark"></i></button>
+                    @endif
+                </div>
             @endif
         </div>
     </div>

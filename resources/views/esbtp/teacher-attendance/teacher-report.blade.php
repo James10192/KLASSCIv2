@@ -89,7 +89,12 @@
     .tdr-empty i { font-size: 1.8rem; display: block; margin-bottom: .5rem; color: #cbd5e1; }
 
     /* lignes séances (mêmes classes que report) */
-    .tar-seance-row { display: flex; align-items: center; gap: .85rem; padding: .75rem .35rem; border-bottom: 1px solid #f1f5f9; }
+    .tar-seance-row { display: flex; align-items: center; gap: .85rem; padding: .75rem .35rem; border-bottom: 1px solid #f1f5f9; position: relative; overflow: hidden; }
+    .tar-rowhl { position: absolute; top: 0; left: -80%; width: 160%; height: 100%; opacity: 0; pointer-events: none; transform: translateX(-65%) skewX(-12deg); z-index: 5; background: linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.55) 50%, rgba(16,185,129,0) 100%); }
+    .tar-rowhl--absent { background: linear-gradient(90deg, rgba(220,38,38,0) 0%, rgba(220,38,38,.55) 50%, rgba(220,38,38,0) 100%); }
+    .tar-rowhl--late { background: linear-gradient(90deg, rgba(245,158,11,0) 0%, rgba(245,158,11,.55) 50%, rgba(245,158,11,0) 100%); }
+    .tar-rowhl.animate { animation: tar-rowhl-move 3.2s ease-out forwards; }
+    @keyframes tar-rowhl-move { 0% { opacity: 0; transform: translateX(-65%) skewX(-12deg); } 18% { opacity: .92; } 55% { opacity: .72; } 100% { opacity: 0; transform: translateX(115%) skewX(-12deg); } }
     .tar-seance-row:last-child { border-bottom: none; }
     .tar-seance-date { width: 44px; text-align: center; flex-shrink: 0; }
     .tar-seance-day { font-size: 1.05rem; font-weight: 800; color: #0453cb; line-height: 1; }
@@ -108,6 +113,14 @@
     .tar-warn { font-size: .62rem; font-weight: 700; white-space: nowrap; }
     .tar-warn--late { color: #92400e; }
     .tar-warn--miss { color: #b91c1c; }
+    .tar-seance-actions { display: flex; gap: .3rem; margin-top: .3rem; }
+    .tar-act { width: 26px; height: 26px; border-radius: 7px; border: 1px solid; background: #fff; cursor: pointer; font-size: .68rem; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+    .tar-act--ok { color: #059669; border-color: rgba(16,185,129,.4); }
+    .tar-act--ok:hover { background: #10b981; color: #fff; }
+    .tar-act--late { color: #b45309; border-color: rgba(245,158,11,.4); }
+    .tar-act--late:hover { background: #f59e0b; color: #fff; }
+    .tar-act--no { color: #dc2626; border-color: rgba(220,38,38,.4); }
+    .tar-act--no:hover { background: #dc2626; color: #fff; }
 
     @media (max-width: 992px) { .tdr-grid { grid-template-columns: 1fr; } }
     @media (max-width: 768px) { .tdr-hero { padding: 1.4rem 1.25rem; } }
@@ -239,6 +252,7 @@ function teacherPage() {
             this.hasMore = this.$root.dataset.hasMore === '1';
             this.nextPage = parseInt(this.$root.dataset.nextPage, 10) || 2;
             this.observeSentinel();
+            window.addEventListener('seance:status-updated', () => this.applyPeriode());
         },
 
         setPreset(p) { this.filters.preset = p; if (p !== 'custom') this.applyPeriode(); },
@@ -289,6 +303,38 @@ function teacherPage() {
             if (!s || !('IntersectionObserver' in window)) return;
             new IntersectionObserver((es) => { es.forEach((e) => { if (e.isIntersecting) this.loadMore(); }); }, { rootMargin: '120px' }).observe(s);
         },
+    };
+}
+
+if (typeof window.triggerRowHighlight !== 'function') {
+    window.triggerRowHighlight = function (seanceId, status) {
+        const row = document.querySelector('.tar-seance-row[data-seance-id="' + seanceId + '"]');
+        if (!row) return;
+        const hl = document.createElement('div');
+        hl.className = 'tar-rowhl' + (status === 'absent' ? ' tar-rowhl--absent' : (status === 'late' ? ' tar-rowhl--late' : ''));
+        row.appendChild(hl);
+        requestAnimationFrame(() => hl.classList.add('animate'));
+        hl.addEventListener('animationend', () => hl.remove());
+    };
+}
+if (typeof window.markSeanceStatus !== 'function') {
+    window.markSeanceStatus = async function (seanceId, status) {
+        const token = document.querySelector('meta[name="csrf-token"]').content;
+        const base = @json(url('esbtp/teacher-attendance/seance'));
+        window.triggerRowHighlight(seanceId, status);
+        try {
+            const res = await fetch(base + '/' + seanceId + '/update-status', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token },
+                body: JSON.stringify({ status: status, type: 'start' }),
+            });
+            if (!res.ok) { const b = await res.json().catch(() => ({})); throw new Error(b.message || ('Erreur ' + res.status)); }
+            const labels = { present: 'présent', late: 'en retard', absent: 'absent' };
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'success', message: 'Enseignant marqué ' + (labels[status] || status) + '.' } }));
+            setTimeout(() => window.dispatchEvent(new CustomEvent('seance:status-updated')), 2600);
+        } catch (e) {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: e.message } }));
+        }
     };
 }
 </script>
