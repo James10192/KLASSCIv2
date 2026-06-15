@@ -52,6 +52,44 @@
     .pay-empty { text-align: center; padding: 2.5rem 1rem; color: #94a3b8; }
     .pay-empty i { font-size: 2rem; display: block; margin-bottom: .6rem; color: #cbd5e1; }
 
+    /* ── Récap enseignants à payer ─────────────────────────── */
+    .pay-field--grow { flex: 1; min-width: 200px; }
+    .pay-search { position: relative; display: flex; align-items: center; }
+    .pay-search > i { position: absolute; left: .7rem; color: #94a3b8; font-size: .8rem; }
+    .pay-search .pay-input { padding-left: 2rem; }
+    .pay-recap-head { display: flex; align-items: center; gap: .65rem; padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9; }
+    .pay-recap-head-ico { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #0453cb, #3b7ddb); color: #fff; display: flex; align-items: center; justify-content: center; font-size: .85rem; flex-shrink: 0; }
+    .pay-recap-head-title { font-size: .95rem; font-weight: 700; color: #1e293b; }
+    .pay-recap-head-sub { font-size: .73rem; color: #94a3b8; }
+
+    .pay-rrow { display: flex; align-items: center; gap: 1rem; padding: .9rem .4rem; border-bottom: 1px solid #f1f5f9; }
+    .pay-rrow:last-child { border-bottom: none; }
+    .pay-rrow:hover { background: rgba(4,83,203,.025); }
+    .pay-rrow-avatar { width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0; background: linear-gradient(135deg, #0453cb, #5e91de); color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; }
+    .pay-rrow-id { flex: 1; min-width: 0; }
+    .pay-rrow-name { font-size: .9rem; font-weight: 700; color: #1e293b; }
+    .pay-rrow-types { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .3rem; align-items: center; }
+    .pay-rrow-h { font-size: .72rem; font-weight: 700; color: #334155; }
+    .pay-rrow-h i { color: #94a3b8; margin-right: .15rem; }
+    .pay-rrow-chip { display: inline-flex; align-items: center; gap: .25rem; font-size: .66rem; font-weight: 700; padding: .12rem .4rem; border-radius: 6px; }
+    .pay-rrow-amounts { display: flex; gap: 1.25rem; flex-shrink: 0; }
+    .pay-rrow-amt { text-align: right; font-size: .9rem; font-weight: 700; color: #334155; }
+    .pay-rrow-amt-lbl { display: block; font-size: .58rem; color: #94a3b8; text-transform: uppercase; letter-spacing: .3px; font-weight: 600; margin-bottom: .1rem; }
+    .pay-rrow-amt--neg { color: #b91c1c; }
+    .pay-rrow-amt--net strong { font-size: 1.1rem; font-weight: 800; color: #0453cb; }
+    .pay-rrow-end { display: flex; flex-direction: column; align-items: flex-end; gap: .4rem; flex-shrink: 0; min-width: 110px; }
+    .pay-rrow-badge { font-size: .66rem; font-weight: 700; padding: .2rem .55rem; border-radius: 6px; white-space: nowrap; }
+    .pay-rrow-btn { display: inline-flex; align-items: center; gap: .35rem; border: 1px solid #e2e8f0; background: #fff; cursor: pointer; border-radius: 8px; padding: .35rem .7rem; font-size: .74rem; font-weight: 700; text-decoration: none; transition: all .15s; }
+    .pay-rrow-btn--prep { color: #0453cb; border-color: rgba(4,83,203,.3); }
+    .pay-rrow-btn--prep:hover { background: #0453cb; color: #fff; }
+    .pay-rrow-btn--view { color: #475569; }
+    .pay-rrow-btn--view:hover { border-color: #0453cb; color: #0453cb; }
+    @media (max-width: 860px) {
+        .pay-rrow { flex-wrap: wrap; }
+        .pay-rrow-amounts { gap: .9rem; width: 100%; justify-content: space-between; padding-left: 54px; }
+        .pay-rrow-end { width: 100%; flex-direction: row; justify-content: space-between; padding-left: 54px; }
+    }
+
     /* Modals */
     .pay-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,.5); backdrop-filter: blur(2px); display: flex; align-items: flex-start; justify-content: center; padding: 3rem 1rem; z-index: 1080; overflow-y: auto; }
     .pay-modal { background: #fff; border-radius: 16px; width: 100%; max-width: 760px; box-shadow: 0 24px 60px rgba(15,23,42,.25); }
@@ -114,6 +152,13 @@
                 </div>
             </div>
             <div class="pay-hero-actions">
+                @if($canExport)
+                    <x-export-modal
+                        :preview-url="route('esbtp.comptabilite.salaires.export.preview-pdf')"
+                        :pdf-url="route('esbtp.comptabilite.salaires.export.pdf')"
+                        :excel-url="route('esbtp.comptabilite.salaires.export.excel')"
+                        button-class="pay-btn pay-btn--glass" />
+                @endif
                 @if($canConfigure)
                     <button type="button" class="pay-btn pay-btn--glass" @click="openConfig()"><i class="fas fa-sliders"></i> Paramètres</button>
                 @endif
@@ -142,13 +187,27 @@
             <span class="pay-field-lbl">Statut</span>
             <x-au-select name="statut_filter" :value="$filtres['statut'] ?? ''" placeholder="Tous statuts" icon="fa-filter" :options="$statutLabels" />
         </div>
+        <div class="pay-field pay-field--grow">
+            <span class="pay-field-lbl">Rechercher un enseignant</span>
+            <div class="pay-search">
+                <i class="fas fa-search"></i>
+                <input type="text" class="pay-input" placeholder="Nom de l'enseignant…" x-model="filters.q" @input.debounce.400ms="applyFilters()">
+            </div>
+        </div>
         <span class="pay-spin" :class="loading ? 'show' : ''"><i class="fas fa-circle-notch fa-spin"></i> Mise à jour…</span>
     </div>
 
-    {{-- Liste --}}
+    {{-- Récap : tous les enseignants à payer ce mois --}}
     <div class="pay-panel">
+        <div class="pay-recap-head">
+            <div class="pay-recap-head-ico"><i class="fas fa-list-check"></i></div>
+            <div>
+                <div class="pay-recap-head-title">Enseignants à payer — <span x-text="periodLabel">{{ $moisOptions[$filtres['mois']] ?? '' }} {{ $filtres['annee'] }}</span></div>
+                <div class="pay-recap-head-sub">Heures réalisées × taux par type · montant estimé tant que le bulletin n'est pas préparé</div>
+            </div>
+        </div>
         <div class="pay-panel-body" id="payList">
-            @include('esbtp.comptabilite.salaires.partials._list', ['bulletins' => $bulletins, 'statutLabels' => $statutLabels])
+            @include('esbtp.comptabilite.salaires.partials._recap', ['recap' => $recap, 'statutLabels' => $statutLabels, 'canCreate' => $canCreate])
         </div>
     </div>
 
@@ -324,7 +383,8 @@ function salairesPage() {
     return {
         urls: {},
         loading: false,
-        filters: { mois: @json((string) $filtres['mois']), annee: @json((string) $filtres['annee']), statut: @json($filtres['statut'] ?? '') },
+        filters: { mois: @json((string) $filtres['mois']), annee: @json((string) $filtres['annee']), statut: @json($filtres['statut'] ?? ''), q: '' },
+        periodLabel: @json(($moisOptions[$filtres['mois']] ?? '') . ' ' . $filtres['annee']),
         showPrepare: false, showConfig: false,
         calculating: false, saving: false, savingConfig: false,
         preview: null, exists: false, locked: false,
@@ -334,8 +394,14 @@ function salairesPage() {
         init() {
             const d = this.$root.dataset;
             this.urls = { data: d.urlData, prepare: d.urlPrepare, store: d.urlStore, config: d.urlConfig };
-            this.$watch('filters', () => this.applyFilters());
+            this.$watch('filters.mois', () => this.applyFilters());
+            this.$watch('filters.annee', () => this.applyFilters());
+            this.$watch('filters.statut', () => this.applyFilters());
             this.bindFilterSelects();
+            // Bouton « Préparer » sur une ligne du récap → ouvre le modal pré-rempli.
+            window.addEventListener('paie:prepare-teacher', (ev) => this.preparePour(ev.detail.id));
+            // Filtres repris par les exports PDF/Excel.
+            window.exportFilters = () => ({ mois: this.filters.mois, annee: this.filters.annee, statut: this.filters.statut, q: this.filters.q });
         },
 
         bindFilterSelects() {
@@ -359,7 +425,21 @@ function salairesPage() {
                 const d = await res.json();
                 document.getElementById('payList').innerHTML = d.list_html;
                 document.getElementById('payKpis').innerHTML = d.kpis_html;
+                if (d.period_label) this.periodLabel = d.period_label;
             } catch (e) { this.toast('error', e.message); } finally { this.loading = false; }
+        },
+
+        // Ouvre le modal de préparation pré-rempli pour un enseignant donné (récap → « Préparer »).
+        preparePour(teacherId) {
+            this.preview = null; this.exists = false; this.locked = false;
+            this.prep = { teacher_id: String(teacherId), mois: this.filters.mois, annee: this.filters.annee, impot_its: '', cnps: '', primes: [], retenues: [] };
+            this.showPrepare = true;
+            // pré-sélectionne l'enseignant dans le picker du modal + calcule.
+            this.$nextTick(() => {
+                const sel = document.querySelector('select[name="prep_teacher"]');
+                if (sel) { sel.value = String(teacherId); sel.dispatchEvent(new Event('change', { bubbles: true })); }
+                this.calculate();
+            });
         },
 
         openPrepare() {

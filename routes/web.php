@@ -1793,6 +1793,13 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
             ->name('index')->middleware('permission:comptabilite.salaires.view');
         Route::get('/data', [\App\Http\Controllers\ESBTPSalaireController::class, 'data'])
             ->name('data')->middleware(['permission:comptabilite.salaires.view', 'throttle:120,1']);
+        // Exports état de paie (avant /{salaire} pour ne pas être capturés comme param)
+        Route::get('/export/preview-pdf', [\App\Http\Controllers\ESBTPSalaireController::class, 'previewPdf'])
+            ->name('export.preview-pdf')->middleware(['permission:comptabilite.salaires.export', 'throttle:60,1']);
+        Route::get('/export/pdf', [\App\Http\Controllers\ESBTPSalaireController::class, 'exportPdf'])
+            ->name('export.pdf')->middleware(['permission:comptabilite.salaires.export', 'throttle:10,1']);
+        Route::get('/export/excel', [\App\Http\Controllers\ESBTPSalaireController::class, 'exportExcel'])
+            ->name('export.excel')->middleware(['permission:comptabilite.salaires.export', 'throttle:10,1']);
         Route::post('/prepare', [\App\Http\Controllers\ESBTPSalaireController::class, 'prepare'])
             ->name('prepare')->middleware(['permission:comptabilite.salaires.create', 'throttle:60,1']);
         Route::post('/', [\App\Http\Controllers\ESBTPSalaireController::class, 'store'])

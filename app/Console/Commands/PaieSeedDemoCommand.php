@@ -109,7 +109,8 @@ class PaieSeedDemoCommand extends Command
                 ESBTPTeacherAttendance::whereIn('course_id', $oldSeances)->delete();
                 ESBTPSeanceCours::whereIn('id', $oldSeances)->forceDelete();
             }
-            ESBTPEmploiTemps::where('titre', 'like', self::ET_PREFIX . '%')->forceDelete();
+            // On NE supprime PAS l'emploi du temps démo (réutilisé) : sinon, après
+            // setAsCurrent, la classe se retrouverait sans emploi du temps courant.
 
             $teacherCursor = 0;
 
@@ -120,16 +121,21 @@ class PaieSeedDemoCommand extends Command
                 }
                 $semestre = (int) ($planifs->first()->semestre ?? 1);
 
-                $emploi = ESBTPEmploiTemps::create([
+                // Réutilise l'emploi du temps démo s'il existe (idempotent), sinon le crée.
+                $emploi = ESBTPEmploiTemps::firstOrNew([
                     'titre' => self::ET_PREFIX . $classe->name,
                     'classe_id' => $classe->id,
                     'annee_universitaire_id' => $annee->id,
+                ]);
+                $emploi->fill([
                     'semestre' => $semestre,
                     'date_debut' => Carbon::now()->subWeeks($weeks + 1)->startOfWeek()->toDateString(),
                     'date_fin' => Carbon::now()->addWeeks(3)->toDateString(),
                     'is_active' => true,
-                    'is_current' => false,
-                ]);
+                ])->save();
+                // En faire l'emploi du temps COURANT de la classe (sinon les séances
+                // ne sont pas visibles : la page classe affiche l'emploi du temps courant).
+                ESBTPEmploiTemps::setAsCurrent($emploi->id);
                 $stats['emplois']++;
 
                 foreach ($planifs as $mIdx => $planif) {
