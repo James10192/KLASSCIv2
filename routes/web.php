@@ -265,6 +265,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     // Tableau de bord des présences — accessible coordinateur, secrétaire, superAdmin
     Route::middleware(['auth', 'role:coordinateur|secretaire|superAdmin', 'permission:module.presences.access'])->group(function () {
         Route::get('/coordinateur/attendance-dashboard', [App\Http\Controllers\CoordinateurDashboardController::class, 'attendanceDashboard'])->name('coordinateur.attendance-dashboard');
+        Route::get('/coordinateur/attendance-dashboard/data', [App\Http\Controllers\CoordinateurDashboardController::class, 'attendanceDashboardData'])->name('coordinateur.attendance-dashboard.data')->middleware('throttle:120,1');
         Route::get('/coordinateur/recent-activities', [App\Http\Controllers\CoordinateurDashboardController::class, 'getRecentActivities'])->name('coordinateur.recent-activities');
         Route::post('/coordinateur/daily-report', [App\Http\Controllers\CoordinateurDashboardController::class, 'generateDailyReport'])->name('coordinateur.daily-report');
     });

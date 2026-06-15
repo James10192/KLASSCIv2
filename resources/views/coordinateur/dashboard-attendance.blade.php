@@ -1,692 +1,205 @@
 @extends('layouts.app')
 
-@section('title', 'Dashboard Coordinateur - Suivi des Présences')
+@section('title', 'Suivi des présences — Coordination')
 
-@section('styles')
-<link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
-@endsection
+@push('styles')
+<style>
+    .cad-wrap { max-width: 1280px; margin: 0 auto; }
+
+    .cad-hero {
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+        border-radius: 18px; padding: 1.9rem 2.25rem 1.5rem; color: #fff;
+        margin-bottom: 1.25rem; box-shadow: 0 8px 30px rgba(4,83,203,.18);
+    }
+    .cad-hero-top { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1rem; }
+    .cad-hero-left { display: flex; align-items: center; gap: 1rem; }
+    .cad-hero-icon { width: 52px; height: 52px; border-radius: 14px; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.15); display: flex; align-items: center; justify-content: center; font-size: 1.35rem; color: #fff; flex-shrink: 0; }
+    .cad-hero h1 { font-size: 1.4rem; font-weight: 700; color: #fff; margin: 0; }
+    .cad-hero p { color: rgba(255,255,255,.72); font-size: .85rem; margin: .15rem 0 0; }
+    .cad-hero-actions { display: flex; align-items: center; gap: .6rem; flex-wrap: wrap; }
+    .cad-date {
+        display: inline-flex; align-items: center; gap: .45rem;
+        background: rgba(255,255,255,.14); border: 1px solid rgba(255,255,255,.2);
+        border-radius: 10px; padding: .35rem .65rem;
+    }
+    .cad-date input { background: transparent; border: none; color: #fff; font-size: .82rem; font-weight: 600; outline: none; }
+    .cad-date input::-webkit-calendar-picker-indicator { filter: invert(1); }
+    .cad-btn-link {
+        display: inline-flex; align-items: center; gap: .4rem; text-decoration: none;
+        background: #fff; color: #0453cb; border-radius: 10px; padding: .5rem .9rem; font-size: .82rem; font-weight: 700;
+    }
+    .cad-btn-link:hover { color: #033a8e; }
+    .cad-spin { color: #fff; font-size: .82rem; display: none; align-items: center; gap: .4rem; }
+    .cad-spin.show { display: inline-flex; }
+
+    .cad-kpis { display: flex; gap: .7rem; margin-top: 1.4rem; flex-wrap: wrap; }
+    .cad-kpi { flex: 1; min-width: 140px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; padding: .8rem .9rem; display: flex; align-items: center; gap: .65rem; }
+    .cad-kpi-ico { width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; font-size: .9rem; color: #fff; }
+    .cad-kpi--warn .cad-kpi-ico { background: rgba(245,158,11,.28); }
+    .cad-kpi-val { font-size: 1.25rem; font-weight: 700; color: #fff; line-height: 1; }
+    .cad-kpi-sub { font-size: .8rem; font-weight: 600; color: rgba(255,255,255,.6); }
+    .cad-kpi-lbl { font-size: .66rem; color: rgba(255,255,255,.65); margin-top: .2rem; }
+
+    .cad-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; align-items: start; }
+    .cad-panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 1px 3px rgba(15,23,42,.04); margin-bottom: 1.25rem; }
+    .cad-panel-head { display: flex; align-items: center; gap: .65rem; padding: 1rem 1.25rem; border-bottom: 1px solid #f1f5f9; }
+    .cad-panel-ico { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #0453cb, #3b7ddb); color: #fff; display: flex; align-items: center; justify-content: center; font-size: .85rem; }
+    .cad-panel-title { font-size: .95rem; font-weight: 700; color: #1e293b; }
+    .cad-panel-sub { font-size: .73rem; color: #94a3b8; }
+    .cad-panel-body { padding: 1.1rem 1.25rem; }
+
+    /* Workflow steps */
+    .cad-step { display: flex; align-items: center; gap: .8rem; margin-bottom: 1rem; }
+    .cad-step:last-child { margin-bottom: 0; }
+    .cad-step-ico { width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0; background: rgba(4,83,203,.08); color: #0453cb; display: flex; align-items: center; justify-content: center; font-size: .9rem; }
+    .cad-step-body { flex: 1; min-width: 0; }
+    .cad-step-top { display: flex; justify-content: space-between; align-items: baseline; }
+    .cad-step-lbl { font-size: .82rem; font-weight: 600; color: #334155; }
+    .cad-step-val { font-size: .95rem; font-weight: 800; color: #0f172a; }
+    .cad-step-tot { font-size: .75rem; font-weight: 600; color: #94a3b8; }
+    .cad-step-bar { height: 7px; border-radius: 5px; background: #eef2f7; overflow: hidden; margin-top: .35rem; }
+    .cad-step-bar-fill { height: 100%; border-radius: 5px; background: linear-gradient(90deg, #0453cb, #3b7ddb); transition: width .3s; }
+
+    /* Subjects */
+    .cad-subject { display: flex; align-items: center; gap: 1rem; padding: .7rem .25rem; border-bottom: 1px solid #f1f5f9; }
+    .cad-subject:last-child { border-bottom: none; }
+    .cad-subject-info { flex: 1; min-width: 0; }
+    .cad-subject-name { font-size: .85rem; font-weight: 700; color: #1e293b; }
+    .cad-subject-meta { display: flex; flex-wrap: wrap; gap: .65rem; font-size: .7rem; color: #64748b; margin-top: .2rem; }
+    .cad-subject-meta i { color: #94a3b8; margin-right: .12rem; }
+    .cad-subject-prog { display: flex; align-items: center; gap: .55rem; width: 150px; flex-shrink: 0; }
+    .cad-subject-bar { flex: 1; height: 7px; border-radius: 5px; background: #eef2f7; overflow: hidden; }
+    .cad-subject-bar-fill { height: 100%; border-radius: 5px; transition: width .3s; }
+    .cad-subject-pct { font-size: .75rem; font-weight: 800; width: 38px; text-align: right; }
+
+    /* Alerts */
+    .cad-noalert { font-size: .82rem; color: #065f46; background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); border-radius: 10px; padding: .8rem 1rem; display: flex; align-items: center; gap: .5rem; }
+    .cad-alert { display: flex; align-items: flex-start; gap: .6rem; padding: .75rem .9rem; border-radius: 10px; margin-bottom: .6rem; }
+    .cad-alert:last-child { margin-bottom: 0; }
+    .cad-alert--danger { background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.2); color: #b91c1c; }
+    .cad-alert--warning { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25); color: #92400e; }
+    .cad-alert--info { background: rgba(4,83,203,.06); border: 1px solid rgba(4,83,203,.18); color: #1e3a8a; }
+    .cad-alert i { margin-top: 2px; }
+    .cad-alert-title { font-size: .83rem; font-weight: 700; }
+    .cad-alert-msg { font-size: .77rem; margin-top: .1rem; }
+    .cad-alert-details { margin: .35rem 0 0; padding-left: 1.1rem; font-size: .72rem; opacity: .9; }
+
+    .cad-empty { text-align: center; padding: 2rem 1rem; color: #94a3b8; }
+    .cad-empty i { font-size: 1.8rem; display: block; margin-bottom: .5rem; color: #cbd5e1; }
+
+    @media (max-width: 992px) { .cad-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 768px) { .cad-hero { padding: 1.4rem 1.25rem; } .cad-subject-prog { width: 110px; } }
+</style>
+@endpush
 
 @section('content')
-<div class="dashboard-acasi">
-    <div class="main-content">
-        <!-- Header Section -->
-        <x-dashboard.dashboard-header 
-            title="Dashboard Coordinateur - Suivi des Présences"
-            subtitle="Monitoring en temps réel des émargements et présences - {{ \Carbon\Carbon::today()->format('d/m/Y') }}"
-            icon="fa-chart-pie"
-        />
+<div class="cad-wrap"
+     x-data="coordDashboard()"
+     data-url="{{ route('coordinateur.attendance-dashboard.data') }}">
 
-        <!-- Statistiques KPI -->
-        <x-dashboard.kpi-grid :stats="$stats" />
-
-        <!-- Section: Vue d'ensemble du workflow -->
-        <div class="mb-4">
-            <x-dashboard.main-card 
-            title="État du Workflow Aujourd'hui"
-            subtitle="Progression du processus: Émargement → Appel → Validation"
-            icon="fa-project-diagram"
-        >
-            <div class="workflow-container">
-                <div class="row text-center">
-                    <!-- Étape 1: Séance -->
-                    <div class="col-md-2 mb-3">
-                        <div class="workflow-step">
-                            <div class="workflow-icon primary">
-                                <i class="fas fa-calendar-alt"></i>
-                            </div>
-                            <h4 class="workflow-value text-primary">{{ $stats['scheduled_courses_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Séance</h6>
-                            <small class="workflow-subtitle">Programmés</small>
-                        </div>
-                    </div>
-
-                    <!-- Flèche 1 -->
-                    <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
-                        <i class="fas fa-arrow-right text-muted fa-lg workflow-arrow"></i>
-                    </div>
-
-                    <!-- Étape 2: Émargement Début -->
-                    <div class="col-md-2 mb-3">
-                        <div class="workflow-step">
-                            <div class="workflow-icon success">
-                                <i class="fas fa-signature"></i>
-                            </div>
-                            <h4 class="workflow-value text-success">{{ $stats['teacher_start_attendances_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Émargement début</h6>
-                            <small class="workflow-subtitle">Début émargé</small>
-                        </div>
-                    </div>
-
-                    <!-- Flèche 2 -->
-                    <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
-                        <i class="fas fa-arrow-right text-muted fa-lg workflow-arrow"></i>
-                    </div>
-
-                    <!-- Étape 3: Appel Début -->
-                    <div class="col-md-2 mb-3">
-                        <div class="workflow-step">
-                            <div class="workflow-icon info">
-                                <i class="fas fa-play"></i>
-                            </div>
-                            <h4 class="workflow-value text-info">{{ $stats['call_start_done_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Appel début</h6>
-                            <small class="workflow-subtitle">Appel fait</small>
-                        </div>
-                    </div>
-
-                    <!-- Flèche 3 -->
-                    <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
-                        <i class="fas fa-arrow-right text-muted fa-lg workflow-arrow"></i>
-                    </div>
-
-                    <!-- Étape 4: Émargement Fin -->
-                    <div class="col-md-2 mb-3">
-                        <div class="workflow-step">
-                            <div class="workflow-icon warning">
-                                <i class="fas fa-signature"></i>
-                            </div>
-                            <h4 class="workflow-value text-warning">{{ $stats['teacher_end_attendances_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Émargement fin</h6>
-                            <small class="workflow-subtitle">Fin émargée</small>
-                        </div>
-                    </div>
+    {{-- Hero --}}
+    <div class="cad-hero">
+        <div class="cad-hero-top">
+            <div class="cad-hero-left">
+                <div class="cad-hero-icon"><i class="fas fa-chart-pie"></i></div>
+                <div>
+                    <h1>Suivi des présences</h1>
+                    <p>Monitoring émargements enseignants & présences étudiants — <span x-text="dateLabel">{{ $date->translatedFormat('l d F Y') }}</span></p>
                 </div>
-
-                <div class="row text-center mt-3">
-                    <!-- Étape 5: Émargement Complet -->
-                    <div class="col-md-2 mb-3 offset-md-1">
-                        <div class="workflow-step">
-                            <div class="workflow-icon success">
-                                <i class="fas fa-check-double"></i>
-                            </div>
-                            <h4 class="workflow-value text-success">{{ $stats['teacher_attendances_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Émargement complet</h6>
-                            <small class="workflow-subtitle">Début + Fin</small>
-                        </div>
-                    </div>
-
-                    <!-- Flèche 5 -->
-                    <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
-                        <i class="fas fa-arrow-right text-muted fa-lg workflow-arrow"></i>
-                    </div>
-
-                    <!-- Étape 6: Appel Fin -->
-                    <div class="col-md-2 mb-3">
-                        <div class="workflow-step">
-                            <div class="workflow-icon info">
-                                <i class="fas fa-stop"></i>
-                            </div>
-                            <h4 class="workflow-value text-info">{{ $stats['call_end_done_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Appel fin</h6>
-                            <small class="workflow-subtitle">Clôture</small>
-                        </div>
-                    </div>
-
-                    <!-- Flèche 6 -->
-                    <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
-                        <i class="fas fa-arrow-right text-muted fa-lg workflow-arrow"></i>
-                    </div>
-
-                    <!-- Étape 7: Appels Terminés -->
-                    <div class="col-md-2 mb-3">
-                        <div class="workflow-step">
-                            <div class="workflow-icon primary">
-                                <i class="fas fa-clipboard-check"></i>
-                            </div>
-                            <h4 class="workflow-value text-primary">{{ $stats['roll_calls_completed_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Appels</h6>
-                            <small class="workflow-subtitle">Terminés</small>
-                        </div>
-                    </div>
-
-                    <!-- Flèche 7 -->
-                    <div class="col-md-1 d-none d-md-flex align-items-center justify-content-center">
-                        <i class="fas fa-arrow-right text-muted fa-lg workflow-arrow"></i>
-                    </div>
-
-                    <!-- Étape 8: Workflow Complet -->
-                    <div class="col-md-2 mb-3">
-                        <div class="workflow-step">
-                            <div class="workflow-icon success">
-                                <i class="fas fa-check-circle"></i>
-                            </div>
-                            <h4 class="workflow-value text-success">{{ $stats['courses_completed_today'] ?? 0 }}</h4>
-                            <h6 class="workflow-title">Complet</h6>
-                            <small class="workflow-subtitle">Terminé ✓</small>
-                            @php
-                                $totalCourses = $stats['scheduled_courses_today'] ?? 0;
-                                $completedCourses = $stats['courses_completed_today'] ?? 0;
-                                $completionRate = $totalCourses > 0 ? round(($completedCourses / $totalCourses) * 100, 1) : 0;
-                            @endphp
-                            <div class="workflow-progress">
-                                <div class="progress-bar-workflow bg-success" style="width: {{ $completionRate }}%"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                @if($totalCourses > 0)
-                <div class="workflow-summary">
-                    <div class="d-flex align-items-center justify-content-center">
-                        <div class="workflow-icon primary small me-3">
-                            <i class="fas fa-chart-pie"></i>
-                        </div>
-                        <div class="text-center">
-                            <span class="text-muted me-2">Progression globale:</span>
-                            <strong class="text-primary fs-5">{{ $completionRate }}%</strong>
-                            <span class="text-muted ms-2">({{ $completedCourses }}/{{ $totalCourses }})</span>
-                        </div>
-                    </div>
-                </div>
-                @endif
             </div>
-        </x-dashboard.main-card>
+            <div class="cad-hero-actions">
+                <span class="cad-spin" :class="loading ? 'show' : ''"><i class="fas fa-circle-notch fa-spin"></i></span>
+                <label class="cad-date">
+                    <i class="fas fa-calendar-day"></i>
+                    <input type="date" x-model="date" @change="reload()" value="{{ $date->toDateString() }}">
+                </label>
+                <a href="{{ route('esbtp.teacher-attendance.report') }}" class="cad-btn-link"><i class="fas fa-business-time"></i> Heures enseignants</a>
+            </div>
+        </div>
+        <div class="cad-kpis" id="cadKpis">
+            @include('coordinateur.partials._cad_kpis', ['stats' => $stats])
+        </div>
+    </div>
+
+    <div class="cad-grid">
+        <div>
+            {{-- Workflow --}}
+            <div class="cad-panel">
+                <div class="cad-panel-head">
+                    <div class="cad-panel-ico"><i class="fas fa-diagram-project"></i></div>
+                    <div>
+                        <div class="cad-panel-title">Workflow de la journée</div>
+                        <div class="cad-panel-sub">Émargement → Appel → Bouclage</div>
+                    </div>
+                </div>
+                <div class="cad-panel-body" id="cadWorkflow">
+                    @include('coordinateur.partials._cad_workflow', ['stats' => $stats])
+                </div>
+            </div>
+
+            {{-- Alertes --}}
+            <div class="cad-panel">
+                <div class="cad-panel-head">
+                    <div class="cad-panel-ico" style="background:linear-gradient(135deg,#f59e0b,#d97706);"><i class="fas fa-bell"></i></div>
+                    <div>
+                        <div class="cad-panel-title">Alertes</div>
+                        <div class="cad-panel-sub">Points d'attention du jour</div>
+                    </div>
+                </div>
+                <div class="cad-panel-body" id="cadAlerts">
+                    @include('coordinateur.partials._cad_alerts', ['stats' => $stats])
+                </div>
+            </div>
         </div>
 
-        <!-- Section: Statistiques par Matière -->
-        <div class="mb-4">
-            <x-dashboard.main-card 
-            title="Statistiques par Matière"
-            subtitle="Progression des cours par matière aujourd'hui"
-            icon="fa-book-open"
-        >
-            @if(!empty($stats['subjects_stats']) && count($stats['subjects_stats']) > 0)
-            <div class="row">
-                @foreach($stats['subjects_stats'] as $subject)
-                <div class="col-lg-6 col-xl-4 mb-4">
-                    <div class="subject-card">
-                        <div class="subject-header">
-                            <h6 class="subject-name">{{ $subject['matiere_name'] }}</h6>
-                            @php
-                                $taux = $subject['taux_completion'] ?? 0;
-                                $badgeClass = $taux >= 80 ? 'success' : ($taux >= 50 ? 'warning' : 'primary');
-                            @endphp
-                            <span class="subject-badge badge-{{ $badgeClass }}">{{ $taux }}%</span>
-                        </div>
-                        
-                        <div class="subject-stats">
-                            <div class="stat-item">
-                                <div class="stat-value text-primary">{{ $subject['total_seances'] ?? 0 }}</div>
-                                <small class="stat-label">Séances</small>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-value text-success">
-                                    {{ $subject['emargements_effectues'] ?? 0 }}/{{ $subject['emargements_possibles'] ?? 0 }}
-                                </div>
-                                <small class="stat-label">Émargements</small>
-                            </div>
-                            <div class="stat-item">
-                                <div class="stat-value text-info">
-                                    {{ $subject['appels_effectues'] ?? 0 }}/{{ $subject['appels_possibles'] ?? 0 }}
-                                </div>
-                                <small class="stat-label">Appels</small>
-                            </div>
-                        </div>
-                        
-                        <div class="subject-progress">
-                            <div class="progress-bar-subject bg-{{ $badgeClass }}" style="width: {{ $taux }}%"></div>
-                        </div>
-                    </div>
+        {{-- Matières --}}
+        <div class="cad-panel">
+            <div class="cad-panel-head">
+                <div class="cad-panel-ico"><i class="fas fa-book"></i></div>
+                <div>
+                    <div class="cad-panel-title">Avancement par matière</div>
+                    <div class="cad-panel-sub">Émargements + appels effectués</div>
                 </div>
-                @endforeach
             </div>
-            @else
-            <div class="empty-state">
-                <i class="fas fa-book-open"></i>
-                <p>
-                    Aucune statistique par matière aujourd'hui
-                    <br><small class="text-muted">Les données apparaîtront dès qu'il y aura des cours planifiés.</small>
-                </p>
-            </div>
-            @endif
-        </x-dashboard.main-card>
-        </div>
-
-        <!-- Section: Alertes et Actions Rapides -->
-        <div class="row">
-            <div class="col-lg-8 mb-4">
-                <x-dashboard.main-card 
-                    title="Alertes et Notifications"
-                    subtitle="Alertes importantes du jour"
-                    icon="fa-bell"
-                >
-                    @if(!empty($stats['alerts']) && count($stats['alerts']) > 0)
-                        @foreach($stats['alerts'] as $alert)
-                        <div class="alert-item alert-{{ $alert['type'] }}">
-                            <div class="alert-icon">
-                                <i class="fas fa-{{ $alert['type'] === 'warning' ? 'exclamation-triangle' : ($alert['type'] === 'danger' ? 'times-circle' : 'info-circle') }}"></i>
-                            </div>
-                            <div class="alert-content">
-                                <strong class="alert-title">{{ $alert['title'] }}</strong>
-                                <p class="alert-message">{{ $alert['message'] }}</p>
-                                @if(!empty($alert['details']))
-                                    <ul class="alert-details">
-                                        @foreach(array_slice($alert['details'], 0, 3) as $detail)
-                                        <li>{{ $detail }}</li>
-                                        @endforeach
-                                    </ul>
-                                @endif
-                            </div>
-                        </div>
-                        @endforeach
-                    @else
-                    <div class="alert-item alert-success">
-                        <div class="alert-icon">
-                            <i class="fas fa-check-circle"></i>
-                        </div>
-                        <div class="alert-content">
-                            <strong class="alert-title">Situation normale</strong>
-                            <p class="alert-message">Aucune alerte aujourd'hui</p>
-                        </div>
-                    </div>
-                    @endif
-                </x-dashboard.main-card>
-            </div>
-
-            <div class="col-lg-4 mb-4">
-                <x-dashboard.main-card 
-                    title="Actions Rapides"
-                    subtitle="Raccourcis et outils"
-                    icon="fa-bolt"
-                >
-                    <div class="actions-grid">
-                        <a href="{{ route('esbtp.teacher-attendance.report') }}" class="action-button primary">
-                            <i class="fas fa-clipboard-list"></i>
-                            <span>Rapport Émargements</span>
-                        </a>
-                        <a href="{{ route('esbtp.attendances.index') }}" class="action-button success">
-                            <i class="fas fa-users"></i>
-                            <span>Gérer Présences</span>
-                        </a>
-                        <button class="action-button warning" onclick="generateReport()">
-                            <i class="fas fa-file-export"></i>
-                            <span>Export Journalier</span>
-                        </button>
-                        <button class="action-button info" onclick="refreshData()">
-                            <i class="fas fa-sync-alt"></i>
-                            <span>Actualiser</span>
-                        </button>
-                    </div>
-
-                    <!-- Stats supplémentaires -->
-                    <div class="additional-stats">
-                        <div class="stat-row">
-                            <span class="stat-label">Émargements complets (début+fin):</span>
-                            <span class="stat-value text-success">{{ $stats['teacher_attendances_today'] ?? 0 }}</span>
-                        </div>
-                        @if(isset($stats['teacher_start_attendances_today']) && $stats['teacher_start_attendances_today'] > 0)
-                        <div class="stat-row">
-                            <span class="stat-label">Émargements début seulement:</span>
-                            <span class="stat-value text-warning">{{ $stats['teacher_start_attendances_today'] - ($stats['teacher_attendances_today'] ?? 0) }}</span>
-                        </div>
-                        @endif
-                        <div class="stat-row">
-                            <span class="stat-label">Total appels faits:</span>
-                            <span class="stat-value text-primary">{{ $stats['total_calls_today'] ?? 0 }}</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Présences:</span>
-                            <span class="stat-value text-success">{{ $stats['presences_today'] ?? 0 }}</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Absences:</span>
-                            <span class="stat-value text-danger">{{ $stats['absences_today'] ?? 0 }}</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Retards:</span>
-                            <span class="stat-value text-warning">{{ $stats['retards_today'] ?? 0 }}</span>
-                        </div>
-                        <div class="stat-row">
-                            <span class="stat-label">Enseignants actifs:</span>
-                            <span class="stat-value text-info">{{ $stats['active_teachers_today'] ?? 0 }}</span>
-                        </div>
-                        @if(($stats['delays_today'] ?? 0) > 0)
-                        <div class="stat-row">
-                            <span class="stat-label">Retards:</span>
-                            <span class="stat-value text-warning">{{ $stats['delays_today'] }}</span>
-                        </div>
-                        @endif
-                    </div>
-                </x-dashboard.main-card>
+            <div class="cad-panel-body" id="cadSubjects">
+                @include('coordinateur.partials._cad_subjects', ['stats' => $stats])
             </div>
         </div>
     </div>
 </div>
 @endsection
 
-@section('scripts')
+@push('scripts')
 <script>
-function refreshData() {
-    window.location.reload();
+function coordDashboard() {
+    return {
+        date: @json($date->toDateString()),
+        dateLabel: @json($date->translatedFormat('l d F Y')),
+        loading: false,
+        url: '',
+
+        init() { this.url = this.$root.dataset.url; },
+
+        async reload() {
+            this.loading = true;
+            try {
+                const res = await fetch(this.url + '?date=' + encodeURIComponent(this.date), {
+                    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                if (!res.ok) throw new Error('Erreur ' + res.status);
+                const d = await res.json();
+                document.getElementById('cadKpis').innerHTML = d.kpis_html;
+                document.getElementById('cadWorkflow').innerHTML = d.workflow_html;
+                document.getElementById('cadSubjects').innerHTML = d.subjects_html;
+                document.getElementById('cadAlerts').innerHTML = d.alerts_html;
+                this.dateLabel = d.date_label;
+            } catch (e) {
+                window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: e.message } }));
+            } finally {
+                this.loading = false;
+            }
+        },
+    };
 }
-
-function generateReport() {
-    window.open('{{ route("coordinateur.daily-report") }}?date={{ \Carbon\Carbon::today()->format("Y-m-d") }}', '_blank');
-}
-
-// Auto-refresh every 2 minutes
-setInterval(function() {
-    if (document.visibilityState === 'visible') {
-        refreshData();
-    }
-}, 120000);
-
-// Animate cards on load
-document.addEventListener('DOMContentLoaded', function() {
-    const cards = document.querySelectorAll('.main-card, .kpi-card');
-    cards.forEach((card, index) => {
-        card.style.opacity = '0';
-        card.style.transform = 'translateY(20px)';
-        
-        setTimeout(() => {
-            card.style.transition = 'all 0.5s ease';
-            card.style.opacity = '1';
-            card.style.transform = 'translateY(0)';
-        }, index * 100);
-    });
-});
 </script>
-@endsection
-
-@push('styles')
-<style>
-/* Workflow Styles */
-.workflow-container {
-    padding: 1.5rem 0;
-}
-
-.workflow-step {
-    text-align: center;
-}
-
-.workflow-icon {
-    width: 60px;
-    height: 60px;
-    border-radius: var(--radius-circle);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    color: white;
-    margin: 0 auto 1rem auto;
-}
-
-.workflow-icon.small {
-    width: 32px;
-    height: 32px;
-    font-size: 16px;
-}
-
-.workflow-icon.primary { background: linear-gradient(135deg, var(--primary), #60a5fa); }
-.workflow-icon.success { background: linear-gradient(135deg, var(--success), #34d399); }
-.workflow-icon.info { background: linear-gradient(135deg, var(--accent-blue), #38bdf8); }
-.workflow-icon.warning { background: linear-gradient(135deg, var(--warning), #fbbf24); }
-
-.workflow-value {
-    font-size: 2rem;
-    font-weight: 800;
-    margin: 0.5rem 0 0.25rem 0;
-}
-
-.workflow-title {
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-}
-
-.workflow-subtitle {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-.workflow-progress {
-    width: 80%;
-    height: 4px;
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 2px;
-    margin: 0.5rem auto 0;
-    overflow: hidden;
-}
-
-.progress-bar-workflow {
-    height: 100%;
-    border-radius: 2px;
-    transition: width 0.8s ease;
-}
-
-.workflow-arrow {
-    opacity: 0.6;
-}
-
-.workflow-summary {
-    margin-top: 2rem;
-    padding-top: 1.5rem;
-    border-top: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-/* Subject Cards */
-.subject-card {
-    background: var(--surface);
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    border-radius: var(--radius-medium);
-    padding: 1.25rem;
-    height: 100%;
-    transition: all 0.2s ease;
-}
-
-.subject-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-elevated);
-}
-
-.subject-header {
-    display: flex;
-    justify-content: between;
-    align-items: flex-start;
-    margin-bottom: 1rem;
-}
-
-.subject-name {
-    font-weight: 600;
-    color: var(--text-primary);
-    margin: 0;
-    flex: 1;
-}
-
-.subject-badge {
-    padding: 0.25rem 0.75rem;
-    border-radius: var(--radius-full);
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: white;
-}
-
-.badge-success { background: var(--success); }
-.badge-warning { background: var(--warning); }
-.badge-primary { background: var(--primary); }
-
-.subject-stats {
-    display: flex;
-    justify-content: space-between;
-    margin-bottom: 1rem;
-}
-
-.stat-item {
-    text-align: center;
-    flex: 1;
-}
-
-.stat-value {
-    font-size: 1.25rem;
-    font-weight: 700;
-}
-
-.stat-label {
-    color: var(--text-secondary);
-    font-size: 0.75rem;
-}
-
-.subject-progress {
-    height: 6px;
-    background: rgba(0, 0, 0, 0.1);
-    border-radius: 3px;
-    overflow: hidden;
-}
-
-.progress-bar-subject {
-    height: 100%;
-    border-radius: 3px;
-    transition: width 0.8s ease;
-}
-
-/* Alert Items */
-.alert-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 1rem;
-    padding: 1rem;
-    border-left: 4px solid;
-    background: var(--surface);
-    border-radius: var(--radius-small);
-    margin-bottom: 1rem;
-}
-
-.alert-item.alert-success { border-left-color: var(--success); }
-.alert-item.alert-warning { border-left-color: var(--warning); }
-.alert-item.alert-danger { border-left-color: var(--danger); }
-.alert-item.alert-info { border-left-color: var(--accent-blue); }
-
-.alert-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: var(--radius-circle);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 18px;
-    color: white;
-    flex-shrink: 0;
-}
-
-.alert-success .alert-icon { background: var(--success); }
-.alert-warning .alert-icon { background: var(--warning); }
-.alert-danger .alert-icon { background: var(--danger); }
-.alert-info .alert-icon { background: var(--accent-blue); }
-
-.alert-content {
-    flex: 1;
-}
-
-.alert-title {
-    font-weight: 600;
-    margin-bottom: 0.25rem;
-    color: var(--text-primary);
-}
-
-.alert-message {
-    margin: 0 0 0.5rem 0;
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-.alert-details {
-    margin: 0;
-    padding-left: 1.25rem;
-    color: var(--text-secondary);
-    font-size: 0.8rem;
-}
-
-/* Action Buttons */
-.actions-grid {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-}
-
-.action-button {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.5rem;
-    padding: 1rem;
-    border: none;
-    border-radius: var(--radius-medium);
-    color: white;
-    text-decoration: none;
-    transition: all 0.2s ease;
-    font-size: 0.875rem;
-    font-weight: 500;
-    cursor: pointer;
-}
-
-.action-button.primary { background: linear-gradient(135deg, var(--primary), #60a5fa); }
-.action-button.success { background: linear-gradient(135deg, var(--success), #34d399); }
-.action-button.warning { background: linear-gradient(135deg, var(--warning), #fbbf24); }
-.action-button.info { background: linear-gradient(135deg, var(--accent-blue), #38bdf8); }
-
-.action-button:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    color: white;
-}
-
-.action-button i {
-    font-size: 1.25rem;
-}
-
-/* Additional Stats */
-.additional-stats {
-    padding-top: 1rem;
-    border-top: 1px solid rgba(0, 0, 0, 0.1);
-}
-
-.stat-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-}
-
-.stat-row:last-child {
-    border-bottom: none;
-}
-
-.stat-row .stat-label {
-    color: var(--text-secondary);
-    font-size: 0.875rem;
-}
-
-.stat-row .stat-value {
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-/* Mobile Responsiveness */
-@media (max-width: 768px) {
-    .workflow-step {
-        margin-bottom: 1.5rem;
-    }
-    
-    .workflow-arrow {
-        display: none !important;
-    }
-    
-    .subject-stats {
-        flex-direction: column;
-        gap: 0.5rem;
-        text-align: left;
-    }
-    
-    .stat-item {
-        display: flex;
-        justify-content: space-between;
-        text-align: left;
-    }
-    
-    .actions-grid {
-        grid-template-columns: 1fr;
-    }
-}
-</style>
 @endpush
