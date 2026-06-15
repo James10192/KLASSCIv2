@@ -320,7 +320,11 @@ class ESBTPSalaireController extends Controller
     {
         $base = ESBTPSalaire::where('mois', $filtres['mois'])->where('annee', $filtres['annee']);
 
-        $byStatut = (clone $base)->select('workflow_status', DB::raw('count(*) as n'), DB::raw('sum(net_a_payer) as net'))
+        // ⚠️ toBase() : requête d'agrégat SANS hydrater de modèles ESBTPSalaire.
+        // Sinon des modèles sans `id` (colonnes id non sélectionnées) déclenchent
+        // l'audit OwenIt « retrieved » → insert audits.auditable_id NULL → 500.
+        $byStatut = (clone $base)->toBase()
+            ->select('workflow_status', DB::raw('count(*) as n'), DB::raw('sum(net_a_payer) as net'))
             ->groupBy('workflow_status')->get()->keyBy('workflow_status');
 
         return [

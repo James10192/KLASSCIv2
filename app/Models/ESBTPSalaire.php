@@ -33,6 +33,12 @@ class ESBTPSalaire extends Model implements Auditable
         'date_paiement', 'mode_paiement', 'reference_paiement',
     ];
 
+    /**
+     * Pas d'audit « retrieved » (spam à chaque chargement de liste + casse les
+     * agrégats sans id). On audite uniquement les mutations significatives.
+     */
+    protected $auditEvents = ['created', 'updated', 'deleted'];
+
     protected $fillable = [
         'user_id', 'teacher_id', 'annee_universitaire_id', 'mois', 'annee',
         'period_start', 'period_end',
