@@ -32,7 +32,7 @@ class PaiePayrollExport implements FromCollection, WithHeadings, WithMapping, Wi
 
     public function headings(): array
     {
-        return ['Enseignant', 'Heures réalisées', 'Base (FCFA)', 'Retenues (FCFA)', 'Net à payer (FCFA)', 'Statut'];
+        return ['Enseignant', 'Mois', 'Heures réalisées', 'Base (FCFA)', 'Retenues (FCFA)', 'Net à payer (FCFA)', 'Statut'];
     }
 
     /** @param array $row */
@@ -40,6 +40,7 @@ class PaiePayrollExport implements FromCollection, WithHeadings, WithMapping, Wi
     {
         return [
             $row['name'] ?? '',
+            (int) ($row['nb_mois'] ?? 1),
             (float) ($row['heures'] ?? 0),
             (float) ($row['base'] ?? 0),
             (float) ($row['retenues'] ?? 0),

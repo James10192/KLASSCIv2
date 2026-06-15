@@ -21,6 +21,7 @@
         <thead>
             <tr>
                 <th>Enseignant</th>
+                <th class="pp-num">Mois</th>
                 <th class="pp-num">Heures réalisées</th>
                 <th class="pp-num">Base</th>
                 <th class="pp-num">Retenues</th>
@@ -30,17 +31,20 @@
         </thead>
         <tbody>
             @foreach($rows as $r)
+                @php $estime = ($r['nb_a_preparer'] ?? 0) > 0; @endphp
                 <tr>
                     <td>{{ $r['name'] }}</td>
+                    <td class="pp-num">{{ $r['nb_mois'] ?? 1 }}</td>
                     <td class="pp-num">{{ $fmtH($r['heures']) }}</td>
                     <td class="pp-num">{{ $fmt($r['base']) }}</td>
                     <td class="pp-num">− {{ $fmt($r['retenues']) }}</td>
-                    <td class="pp-num pp-net">{{ $fmt($r['net']) }}@if($r['estimation'])<br><span class="pp-est">estimé</span>@endif</td>
+                    <td class="pp-num pp-net">{{ $fmt($r['net']) }}@if($estime)<br><span class="pp-est">estimé</span>@endif</td>
                     <td>{{ $statutLabels[$r['statut']] ?? $r['statut'] }}</td>
                 </tr>
             @endforeach
             <tr class="pp-total">
                 <td>TOTAL ({{ count($rows) }} enseignant{{ count($rows) > 1 ? 's' : '' }})</td>
+                <td class="pp-num"></td>
                 <td class="pp-num"></td>
                 <td class="pp-num">{{ $fmt($totalBase) }}</td>
                 <td class="pp-num">− {{ $fmt($totalRet) }}</td>
