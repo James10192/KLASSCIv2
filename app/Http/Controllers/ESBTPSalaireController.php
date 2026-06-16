@@ -16,6 +16,8 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\Rule;
+use PDF;
 
 /**
  * Paie enseignants (comptabilité). Page dédiée, séparée de la pédagogie.
@@ -527,12 +529,67 @@ class ESBTPSalaireController extends Controller
         $user = auth()->user();
 
         return view('esbtp.comptabilite.salaires.show', [
-            'salaire'      => $salaire,
-            'gains'        => $salaire->details->where('categorie', 'gain')->values(),
-            'retenues'     => $salaire->details->where('categorie', 'retenue')->values(),
-            'moisLabel'    => self::MOIS_FR[$salaire->mois] ?? $salaire->mois,
-            'canValidate'  => $user->can('comptabilite.salaires.validate') || $user->can('comptabilite.salaires.validate_own'),
-            'canPay'       => $user->can('comptabilite.salaires.pay'),
+            'salaire'       => $salaire,
+            'gains'         => $salaire->details->where('categorie', 'gain')->values(),
+            'retenues'      => $salaire->details->where('categorie', 'retenue')->values(),
+            'moisLabel'     => self::MOIS_FR[$salaire->mois] ?? $salaire->mois,
+            'modesPaiement' => $this->modesPaiementOptions(),
+            'modeLabel'     => $this->modeLabel($salaire->mode_paiement),
+            'canValidate'   => $user->can('comptabilite.salaires.validate') || $user->can('comptabilite.salaires.validate_own'),
+            'canPay'        => $user->can('comptabilite.salaires.pay'),
+        ]);
+    }
+
+    /** Options du select mode de paiement : code canonique → libellé FR (config payment_modes). */
+    private function modesPaiementOptions(): array
+    {
+        return collect(config('payment_modes.labels', []))->map(fn ($m) => $m['label'])->toArray();
+    }
+
+    /** Libellé lisible d'un mode_paiement stocké (code canonique OU libellé legacy). */
+    private function modeLabel(?string $mode): ?string
+    {
+        if (empty($mode)) {
+            return null;
+        }
+        $labels = config('payment_modes.labels', []);
+        if (isset($labels[$mode])) {
+            return $labels[$mode]['label'];
+        }
+        $alias = config('payment_modes.aliases', [])[\Illuminate\Support\Str::slug($mode, '_')] ?? null;
+        return $alias && isset($labels[$alias]) ? $labels[$alias]['label'] : $mode;
+    }
+
+    // ── Bulletin de paie individuel (PDF via <x-pdf-document>) ──
+    /** @return array{0:\Barryvdh\DomPDF\PDF,1:string} */
+    private function buildPayslipPdf(ESBTPSalaire $salaire): array
+    {
+        $salaire->load(['details', 'teacher.user', 'preparePar', 'validePar', 'payePar', 'anneeUniversitaire']);
+        $teacherName = $salaire->teacher->user->name ?? $salaire->teacher->name ?? 'Enseignant';
+        $pdf = PDF::loadView('esbtp.comptabilite.salaires.payslip-pdf', [
+            'salaire'   => $salaire,
+            'gains'     => $salaire->details->where('categorie', 'gain')->values(),
+            'retenues'  => $salaire->details->where('categorie', 'retenue')->values(),
+            'moisLabel' => self::MOIS_FR[$salaire->mois] ?? $salaire->mois,
+            'modeLabel' => $this->modeLabel($salaire->mode_paiement),
+        ])->setPaper('a4', 'portrait');
+
+        $slug = \Illuminate\Support\Str::slug($teacherName);
+        return [$pdf, "bulletin_paie_{$slug}_{$salaire->mois}_{$salaire->annee}.pdf"];
+    }
+
+    public function payslipPdf(ESBTPSalaire $salaire)
+    {
+        [$pdf, $filename] = $this->buildPayslipPdf($salaire);
+        return $pdf->download($filename);
+    }
+
+    public function payslipPdfPreview(ESBTPSalaire $salaire)
+    {
+        [$pdf, $filename] = $this->buildPayslipPdf($salaire);
+        return new \Illuminate\Http\Response($pdf->output(), 200, [
+            'Content-Type'        => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
         ]);
     }
 
@@ -579,7 +636,7 @@ class ESBTPSalaireController extends Controller
         }
 
         $data = $request->validate([
-            'mode_paiement'      => 'required|string|max:50',
+            'mode_paiement'      => ['required', Rule::in(array_keys(config('payment_modes.labels', [])))],
             'reference_paiement' => 'nullable|string|max:100',
             'date_paiement'      => 'nullable|date',
         ]);
