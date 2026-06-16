@@ -54,6 +54,9 @@
     .pys-modal-foot { padding: 1rem 1.4rem; border-top: 1px solid #f1f5f9; display: flex; justify-content: flex-end; gap: .6rem; }
     .pys-input { border: 1px solid #e2e8f0; border-radius: 9px; padding: .55rem .7rem; font-size: .85rem; width: 100%; }
     .pys-field-lbl { font-size: .68rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: .4px; display: block; margin-bottom: .25rem; }
+    /* Force le picker premium à remplir la cellule du modal (sinon inline-flex rétrécit). */
+    .pys-au-full { display: flex !important; width: 100%; }
+    .pys-au-full .au-select-trigger { width: 100%; }
     [x-cloak] { display: none !important; }
 
     @media (max-width: 992px) { .pys-grid { grid-template-columns: 1fr; } }
@@ -175,7 +178,7 @@
                         <div class="pys-meta-row">
                             <div class="pys-meta-ico"><i class="fas fa-money-bill-transfer"></i></div>
                             <span class="pys-meta-lbl">Mode</span>
-                            <span class="pys-meta-val">{{ $salaire->mode_paiement ?? '—' }}</span>
+                            <span class="pys-meta-val">{{ $modeLabel ?? '—' }}</span>
                         </div>
                     @endif
                 </div>
@@ -200,6 +203,14 @@
                         @if($salaire->isBrouillon() && !$canValidate)
                             <div class="pys-locked" style="color:#475569;background:rgba(100,116,139,.08);border-color:rgba(100,116,139,.2);">En attente de validation.</div>
                         @endif
+
+                        {{-- Bulletin de paie individuel (aperçu + téléchargement) --}}
+                        <div style="border-top:1px solid #f1f5f9;margin-top:.4rem;padding-top:.8rem;">
+                            <span class="pys-field-lbl" style="margin-bottom:.5rem;">Bulletin de paie</span>
+                            <x-pdf-actions
+                                :preview-url="route('esbtp.comptabilite.salaires.payslip.preview', $salaire->id)"
+                                :download-url="route('esbtp.comptabilite.salaires.payslip', $salaire->id)" />
+                        </div>
                     </div>
                 </div>
             </div>
@@ -217,7 +228,8 @@
                 <div class="pys-modal-body">
                     <div>
                         <label class="pys-field-lbl">Mode de paiement</label>
-                        <input type="text" name="mode_paiement" class="pys-input" placeholder="Espèces, Virement, Mobile Money…" required>
+                        <x-au-select name="mode_paiement" class="pys-au-full" :options="$modesPaiement"
+                            placeholder="Choisir un mode…" icon="fa-money-bill-transfer" :searchable="true" />
                     </div>
                     <div>
                         <label class="pys-field-lbl">Référence (optionnel)</label>

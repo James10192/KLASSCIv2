@@ -1813,6 +1813,11 @@ Route::middleware(['auth', 'comptabilite.access'])->prefix('esbtp/comptabilite')
             ->name('validate');
         Route::post('/{salaire}/pay', [\App\Http\Controllers\ESBTPSalaireController::class, 'pay'])
             ->name('pay')->middleware('permission:comptabilite.salaires.pay');
+        // Bulletin de paie individuel (PDF) — aperçu inline + téléchargement
+        Route::get('/{salaire}/payslip', [\App\Http\Controllers\ESBTPSalaireController::class, 'payslipPdf'])
+            ->name('payslip')->middleware(['permission:comptabilite.salaires.view', 'throttle:20,1']);
+        Route::get('/{salaire}/payslip/preview', [\App\Http\Controllers\ESBTPSalaireController::class, 'payslipPdfPreview'])
+            ->name('payslip.preview')->middleware(['permission:comptabilite.salaires.view', 'throttle:60,1']);
     });
 
     // Analytics Prédictifs (Phase 3 + Phase 4)
