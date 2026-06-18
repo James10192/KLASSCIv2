@@ -407,8 +407,8 @@ class CoordinateurDashboardController extends Controller
             }
 
             // Alerte : Enseignants présents mais workflow incomplet (séance non clôturée)
-            $enseignantsNonClotures = \App\Models\ESBTPSessionWorkflow::whereDate('attendance_signed_at', $date)
-                ->where('attendance_signed', true)
+            $enseignantsNonClotures = \App\Models\ESBTPSessionWorkflow::whereDate('attendance_start_signed_at', $date)
+                ->where('attendance_start_signed', true)
                 ->where('current_step', 'closed_incomplete')
                 ->with(['seanceCours.teacher.user', 'seanceCours.matiere', 'seanceCours.classe'])
                 ->get();

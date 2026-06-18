@@ -305,7 +305,7 @@ class NavbarController extends Controller
             $classeId = $etudiant ? $etudiant->inscriptions()->anneeEnCours()->latest()->value('classe_id') : null;
 
             $messages = ESBTPAnnonce::with(['createdBy', 'classes', 'etudiants']) // Charger les relations nécessaires
-                ->where(function ($query) use ($etudiant) {
+                ->where(function ($query) use ($etudiant, $classeId) {
                     // Annonces générales pour tous les étudiants
                     $query->where('type', 'general');
 

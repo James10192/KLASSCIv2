@@ -1328,7 +1328,7 @@ class ESBTPAttendanceController extends Controller
 
         // Current academic year + inscription
         $anneeCourante = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
-        $anneesUniversitaires = \App\Models\ESBTPAnneeUniversitaire::orderByDesc('date_debut')->get();
+        $anneesUniversitaires = \App\Models\ESBTPAnneeUniversitaire::orderByDesc('start_date')->get();
         $inscription = null;
 
         if ($anneeCourante) {
@@ -1846,9 +1846,15 @@ class ESBTPAttendanceController extends Controller
             // 3. Retards détectés
             $stats['delays_today'] = max(0, $stats['scheduled_courses_today'] - $stats['teacher_attendances_today']);
 
-            // 4. Cours clôturés
+            // 4. Cours clôturés (émargement début + fin + appels effectués)
             $stats['courses_closed_today'] = ESBTPSeanceCours::whereDate('date_seance', $date)
-                ->where('status', 'completed')
+                ->whereHas('teacherAttendances', function ($q) use ($date) {
+                    $q->whereDate('date', $date)->where('type', 'start');
+                })
+                ->whereHas('teacherAttendances', function ($q) use ($date) {
+                    $q->whereDate('date', $date)->where('type', 'end');
+                })
+                ->whereHas('attendances')
                 ->count();
 
             // 5. Classes avec forte absentéisme (plus de 30% d'absences)
