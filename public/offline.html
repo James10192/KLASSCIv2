@@ -1,72 +1,94 @@
 <!DOCTYPE html>
 <html lang="fr">
-    <head>
-        <meta charset="UTF-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>ESBTP - Mode Hors Ligne</title>
-        <link href="/css/app.css" rel="stylesheet" />
-        <style>
-            .offline-container {
-                min-height: 100vh;
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                text-align: center;
-                padding: 20px;
-            }
-            .offline-icon {
-                font-size: 64px;
-                margin-bottom: 20px;
-                color: #dc3545;
-            }
-            .offline-title {
-                font-size: 24px;
-                margin-bottom: 10px;
-                color: #333;
-            }
-            .offline-message {
-                font-size: 16px;
-                color: #666;
-                margin-bottom: 20px;
-            }
-            .offline-info {
-                font-size: 14px;
-                color: #888;
-                max-width: 600px;
-                margin: 0 auto;
-            }
-        </style>
-    </head>
-    <body>
-        <div class="offline-container">
-            <div class="offline-icon">
-                <i class="fas fa-wifi-slash"></i>
-            </div>
-            <h1 class="offline-title">Mode Hors Ligne</h1>
-            <p class="offline-message">Vous êtes actuellement hors ligne</p>
-            <div class="offline-info">
-                <p>
-                    Ne vous inquiétez pas, vous pouvez continuer à marquer les
-                    présences. Elles seront synchronisées automatiquement
-                    lorsque la connexion sera rétablie.
-                </p>
-                <p>Fonctionnalités disponibles hors ligne :</p>
-                <ul class="list-unstyled">
-                    <li>✓ Marquage des présences</li>
-                    <li>✓ Consultation de l'historique récent</li>
-                    <li>✓ Accès aux codes d'émargement déjà générés</li>
-                </ul>
-                <p class="mt-4">
-                    <button
-                        class="btn btn-primary"
-                        onclick="window.location.reload()"
-                    >
-                        <i class="fas fa-sync-alt"></i> Réessayer
-                    </button>
-                </p>
-            </div>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="theme-color" content="#0453cb">
+    <title>Hors-ligne — KLASSCI</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body { height: 100%; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(160deg, #0a3d8f 0%, #0453cb 45%, #5e91de 100%);
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            padding: calc(2rem + env(safe-area-inset-top)) 1.5rem calc(2rem + env(safe-area-inset-bottom));
+            text-align: center;
+        }
+        .card {
+            width: 100%;
+            max-width: 380px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1.25rem;
+        }
+        .logo-wrap {
+            width: 96px;
+            height: 96px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .logo-wrap img { width: 64px; height: 64px; object-fit: contain; }
+        .icon-cloud { width: 56px; height: 56px; opacity: 0.85; }
+        h1 { font-size: 1.4rem; font-weight: 700; line-height: 1.3; }
+        p { font-size: 0.95rem; color: rgba(255, 255, 255, 0.78); line-height: 1.5; max-width: 300px; }
+        button {
+            margin-top: 0.5rem;
+            min-height: 48px;
+            padding: 0 1.75rem;
+            border: none;
+            border-radius: 12px;
+            background: #fff;
+            color: #0453cb;
+            font-size: 0.95rem;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+        }
+        button:active { transform: scale(0.97); }
+        .hint { font-size: 0.78rem; color: rgba(255, 255, 255, 0.6); margin-top: 0.25rem; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="logo-wrap">
+            <img src="/icons/icon-192.png" alt="KLASSCI" onerror="this.style.display='none'">
         </div>
-        <script src="https://kit.fontawesome.com/your-fontawesome-kit.js"></script>
-    </body>
+        <svg class="icon-cloud" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M17.5 19a4.5 4.5 0 0 0 .9-8.9A6 6 0 0 0 6.6 8.5"/>
+            <path d="M6.5 19a4 4 0 0 1-.4-7.98"/>
+            <line x1="2" y1="2" x2="22" y2="22"/>
+        </svg>
+        <h1>Vous êtes hors-ligne</h1>
+        <p>Impossible de joindre KLASSCI. Vérifiez votre connexion internet, puis réessayez. Vos dernières pages consultées restent accessibles.</p>
+        <button type="button" onclick="location.reload()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+            </svg>
+            Réessayer
+        </button>
+        <span class="hint">La page se rechargera automatiquement dès le retour du réseau.</span>
+    </div>
+    <script>
+        // Recharge automatiquement dès que la connexion revient.
+        window.addEventListener('online', function () { location.reload(); });
+    </script>
+</body>
 </html>

@@ -92,6 +92,10 @@ if (app()->environment('local')) {
 // redirige vers le login pour ne plus exposer de page marketing.
 Route::get('/', fn () => redirect()->route('login'))->name('welcome');
 
+// PWA — manifest dynamique par tenant (hors auth : disponible avant login).
+Route::get('/manifest.webmanifest', [\App\Http\Controllers\PwaController::class, 'manifest'])
+    ->name('pwa.manifest');
+
 // Les routes /inscriptions/{inscription} ne doivent pas capturer les routes
 // statiques comme /inscriptions/create.
 Route::pattern('inscription', '[0-9]+');
