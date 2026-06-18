@@ -1,6 +1,6 @@
 ---
 name: klassci-test-e2e
-description: Rejouer un test end-to-end KLASSCI supérieur sur un tenant réel, avec priorité aux flux BTS tronc commun, diagnostics klassci-cli, mutations API CLI, seed académique contrôlée et vérification navigateur. À utiliser pour "continue le test e2e", "valide de bout en bout", "teste sur presentation", "BTS TC end-to-end".
+description: Rejouer un test end-to-end KLASSCI supérieur sur un tenant réel. PRIORITÉ ABSOLUE = valider le fix ou la feature livré(e) dans la session courante (le code qu'on vient de merger/déployer), via logs avant/après + route affectée authentifiée + écran navigateur. Le flux BTS tronc commun n'est qu'UN scénario de régression parmi d'autres, pas la cible par défaut. Diagnostics klassci-cli, mutations API CLI, seed académique contrôlée. À utiliser pour "continue le test e2e", "valide de bout en bout", "teste sur presentation", "valide mon fix/feature", "BTS TC end-to-end".
 ---
 
 # KLASSCI Test E2E
@@ -9,9 +9,17 @@ Méthode courte et reproductible pour valider un flux réel sur tenant, sans s'a
 
 ## Quand utiliser ce skill
 
+- **On vient de livrer un fix ou une feature et il faut prouver qu'il/elle marche en prod** (cas n°1, par défaut)
 - L'utilisateur demande une validation de bout en bout sur un tenant
 - Il faut vérifier UI + données + endpoints + mutations réelles
-- Le chantier touche BTS tronc commun, résultats, bulletins, inscriptions, orientation
+- Le chantier touche BTS tronc commun, résultats, bulletins, inscriptions, orientation (scénario de régression, pas la cible imposée)
+
+## ⚠️ Cible du test = ce qui a été livré dans la session, PAS le BTS TC par défaut
+
+Le scénario BTS TC ci-dessous est **un exemple** de validation feature. La cible réelle de l'e2e est
+**toujours le fix/feature de la session courante**. Si la session a corrigé des routes, des colonnes, un
+écran présences, une page paie… c'est CELA qu'on valide d'abord et en priorité. Le BTS TC ne se rejoue
+que s'il a été touché OU comme régression rapide optionnelle.
 
 ## Principes
 
@@ -22,6 +30,55 @@ Méthode courte et reproductible pour valider un flux réel sur tenant, sans s'a
 5. Quand le moteur et l'UI divergent, corriger d'abord la source de vérité puis la projection.
 6. **Tester le code DÉPLOYÉ** : l'e2e valide le code en prod sur le tenant. Si tu viens de merger une feature,
    **déploie d'abord** (`klassci pull <tenant> && klassci cache:clear <tenant>`) sinon tu testes l'ancien code.
+7. **La cible n°1 est le fix/feature de la session**, pas un parcours générique. Toujours commencer par l'Étape 0.
+
+## Étape 0 — Valider d'abord le fix / feature de la session courante (OBLIGATOIRE)
+
+Avant tout scénario générique : lister ce qui a été livré cette session (diff des fichiers, commits, PRs) et
+dériver un test ciblé par changement. Ne JAMAIS conclure « validé » sur un fix sans avoir exécuté le **chemin
+réel qui plantait**.
+
+**0.1 — Inventaire de ce qui a été livré**
+```bash
+git log --oneline origin/presentation -10        # commits de la session
+git show --stat <sha>                              # fichiers touchés par chaque commit
+```
+Pour chaque changement, identifier : la **route/page** affectée, le **rôle** qui l'atteint, et le **symptôme**
+d'origine (404 ? 500 ? colonne inconnue ? indicateur à zéro ? variable indéfinie ?).
+
+**0.2 — Baseline logs AVANT (motif d'erreur d'origine)**
+```bash
+# le wrapper n'a pas de cmd logs → API directe signée par token
+$cfg=Get-Content "$HOME\.klassci\config.json"|ConvertFrom-Json; $t=$cfg.tenants.<tenant>
+Invoke-RestMethod "$($t.url)/api/cli/logs?lines=200&level=error" -Headers @{Authorization="Bearer $($t.token)"}
+```
+Noter l'horodatage du dernier message d'erreur du motif visé.
+
+**0.3 — Déployer le fix, puis exercer le VRAI chemin authentifié**
+- Déployer : `klassci pull <tenant> && klassci cache:clear <tenant>` (route:clear + opcache reset).
+- Se connecter en navigateur avec le **rôle concerné** (cf. `presentation-tenant-login.md` : superadmin / Bonjour@123)
+  et viser l'URL exacte du symptôme. **Capturer le code HTTP réel** (`response.status()`), pas seulement un screenshot.
+
+  ⚠️ **Piège fondateur (404 routes)** : un test **non authentifié** renvoie 302 (login) pour TOUTE route matchée
+  comme non matchée → **n'discrimine pas** un 404 de route. **Toujours tester authentifié** pour un bug de route/permission.
+  Un 200 + titre de page attendu = preuve ; un 404/500 = encore cassé.
+
+- Pour un endpoint qui renvoie du JSON (KPIs, data), le hit direct authentifié suffit à exécuter le code corrigé
+  (ex : `/coordinateur/attendance-dashboard/data` exécute `calculateAttendanceStats`).
+
+**0.4 — Baseline logs APRÈS**
+Re-tirer `?level=error` et vérifier **0 occurrence du motif d'origine** avec un horodatage **postérieur au déploiement**
+(attention : une occurrence juste avant l'heure de déploiement est un faux positif).
+
+**0.5 — Cas particuliers de routes (leçon 2026-06-18)**
+Un `whereNumber`/contrainte sur une route peut être **annulé par un doublon** de la même `méthode+URI` défini
+plus loin (la dernière définition écrase la position de la première dans la `RouteCollection`). Si une route
+contrainte « ne prend pas » : `grep -nE "<path>/\{" routes/web.php` pour débusquer les **doublons** (cf.
+`feedback_duplicate_route_definitions`). `php artisan route:list` local échoue souvent (DB requise) → la
+**preuve vient du tenant** (hit authentifié + logs), pas de route:list local.
+
+**0.6 — Verdict par changement** : pour CHAQUE fix/feature livré, statuer `Validé en prod` / `Encore cassé` /
+`Non exercé (raison)`. Ne pas masquer un changement non testé derrière un autre qui passe.
 
 ## Deux CLI distincts (ne pas confondre)
 
@@ -34,7 +91,11 @@ Méthode courte et reproductible pour valider un flux réel sur tenant, sans s'a
 Le binaire `klassci` n'a **pas** de passthrough artisan : une commande custom serveur (ex: backfill) se lance
 via le **terminal cPanel** (pas de SSH:22 vers LWS depuis la machine dev), ou via un endpoint `/api/cli/*` dédié.
 
-## ⚡ Chemin rapide « le bulletin annuel prend-il bien le S1 du Tronc Commun ? » (validé Plan C 2026-06-10)
+## ⚡ EXEMPLE de validation feature — « le bulletin annuel prend-il bien le S1 du Tronc Commun ? » (validé Plan C 2026-06-10)
+
+> Ceci est **un exemple** de validation d'une feature précise (régression BTS TC). Ne le rejoue que si la session
+> a touché le TC/bulletins, ou comme régression rapide optionnelle après l'Étape 0. Pour un autre fix/feature,
+> applique la même rigueur (logs avant/après + chemin réel authentifié) sur SA route, pas sur celle-ci.
 
 Pour valider en ~3 commandes que la chaîne TC→spécialité fonctionne sur le code déployé, **sans construire
 un cas from scratch** : utilise un étudiant déjà orienté en **modèle phases** (`source_model: phase_based`,
