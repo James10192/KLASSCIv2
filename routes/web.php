@@ -2519,7 +2519,11 @@ Route::middleware(['auth', 'permission:admin.access'])->prefix('esbtp')->name('e
     // Routes pour les présences (attendances)
     Route::get('/attendances', [\App\Http\Controllers\ESBTPAttendanceController::class, 'index'])->name('attendances.index')
         ->middleware('permission:attendances.view');
+    // NB: doublon de esbtp.attendances.show (def. canonique ~ligne 876). Même méthode+URI ⇒
+    // écrase la route canonique dans la collection : DOIT garder whereNumber sinon /attendances/justifications
+    // est capturé comme {attendance} (404). Voir feedback_duplicate_route_definitions.
     Route::get('/attendances/{attendance}', [\App\Http\Controllers\ESBTPAttendanceController::class, 'show'])->name('attendances.show')
+        ->whereNumber('attendance')
         ->middleware('permission:attendances.view');
 
     // Routes pour le planning général coordinateur
