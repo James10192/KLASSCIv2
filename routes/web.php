@@ -871,20 +871,25 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->name('manual.destroy')
                     ->middleware('permission:attendances.create');
 
-                // Then parameter routes
+                // Then parameter routes (numeric only, so static paths like
+                // /attendances/justifications are not captured as {attendance})
                 Route::get('/attendances/{attendance}', [ESBTPAttendanceController::class, 'show'])
+                    ->whereNumber('attendance')
                     ->name('show')
                     ->middleware('permission:attendances.view');
 
                 Route::get('/attendances/{attendance}/edit', [ESBTPAttendanceController::class, 'edit'])
+                    ->whereNumber('attendance')
                     ->name('edit')
                     ->middleware('permission:attendances.edit');
 
                 Route::put('/attendances/{attendance}', [ESBTPAttendanceController::class, 'update'])
+                    ->whereNumber('attendance')
                     ->name('update')
                     ->middleware('permission:attendances.edit');
 
                 Route::delete('/attendances/{attendance}', [ESBTPAttendanceController::class, 'destroy'])
+                    ->whereNumber('attendance')
                     ->name('destroy')
                     ->middleware('permission:attendances.delete');
 
