@@ -11,10 +11,11 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Support\Facades\Hash; // ✅ CORRIGÉ : Ajouté pour le hashing
 use OwenIt\Auditing\Contracts\Auditable;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 
 class User extends Authenticatable implements Auditable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles, \OwenIt\Auditing\Auditable;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles, \OwenIt\Auditing\Auditable, HasPushSubscriptions;
 
     /** Seuil de présence "en ligne" : last_seen_at < N minutes. */
     public const PRESENCE_ONLINE_THRESHOLD_MINUTES = 2;

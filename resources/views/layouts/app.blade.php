@@ -40,6 +40,8 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="apple-mobile-web-app-title" content="{{ $pwaAppTitle }}">
+    {{-- PWA : clé VAPID publique (Web Push) — une seule paire pour toute l'app --}}
+    <meta name="vapid-public-key" content="{{ config('webpush.vapid.public_key', '') }}">
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 
     <!-- Fonts -->

@@ -1701,6 +1701,18 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:etudiant'])->g
     Route::post('/mes-notifications/{id}/read', [ESBTPNotificationController::class, 'markAsRead'])->name('mes-notifications.read');
     Route::post('/mes-notifications/mark-all-read', [ESBTPNotificationController::class, 'markAllAsRead'])->name('mes-notifications.markAllAsRead');
     Route::get('/notifications/unread-count', [ESBTPNotificationController::class, 'getUnreadCount'])->name('notifications.unreadCount');
+
+    // PWA — Préférences étudiant (opt-in push + bouton installer)
+    Route::get('/preferences', [\App\Http\Controllers\ESBTP\PreferencesController::class, 'index'])
+        ->name('preferences.index');
+
+    // PWA — Abonnements Web Push (AJAX JSON depuis la page Préférences)
+    Route::post('/push/subscribe', [\App\Http\Controllers\ESBTP\PushSubscriptionController::class, 'store'])
+        ->name('push.subscribe')
+        ->middleware('throttle:20,1');
+    Route::post('/push/unsubscribe', [\App\Http\Controllers\ESBTP\PushSubscriptionController::class, 'destroy'])
+        ->name('push.unsubscribe')
+        ->middleware('throttle:20,1');
 });
 
 // Ajouter la route pour générer le PDF d'une évaluation
