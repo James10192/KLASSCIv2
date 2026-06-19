@@ -516,8 +516,80 @@
                         </p>
                     </div>
                 @else
-                    <!-- Table -->
-                    <div class="table-responsive">
+                    <!-- ===== Cartes empilées (mobile only, < 640px) ===== -->
+                    <div class="stu-pay-cards">
+                        @foreach($paiements as $paiement)
+                            @php
+                                $modeLabels = [
+                                    'especes' => 'Espèces',
+                                    'cheque' => 'Chèque',
+                                    'virement' => 'Virement',
+                                    'carte' => 'Carte',
+                                    'mobile_money' => 'Mobile Money',
+                                ];
+                                $modeLabel = $modeLabels[$paiement->mode_paiement] ?? ucfirst((string) $paiement->mode_paiement);
+                            @endphp
+                            <div class="stu-pay-card">
+                                <div class="stu-pay-card-top">
+                                    <div>
+                                        <div class="stu-pay-card-montant">{{ number_format($paiement->montant, 0, ',', ' ') }} FCFA</div>
+                                        <div class="stu-pay-card-date">
+                                            <i class="fas fa-calendar-alt me-1"></i>
+                                            {{ \Carbon\Carbon::parse($paiement->date_paiement)->format('d/m/Y à H:i') }}
+                                        </div>
+                                    </div>
+                                    @if($paiement->status === 'validé')
+                                        <span class="status-badge status-valide"><i class="fas fa-check-circle"></i> Validé</span>
+                                    @elseif($paiement->status === 'en_attente')
+                                        <span class="status-badge status-en-attente"><i class="fas fa-clock"></i> En attente</span>
+                                    @elseif($paiement->status === 'rejeté')
+                                        <span class="status-badge status-rejete"><i class="fas fa-times-circle"></i> Rejeté</span>
+                                    @else
+                                        <span class="status-badge">{{ ucfirst($paiement->status) }}</span>
+                                    @endif
+                                </div>
+
+                                <div class="stu-pay-card-rows">
+                                    <div class="stu-pay-card-row">
+                                        <span class="stu-pay-card-label">Mode</span>
+                                        <span class="stu-pay-card-value">{{ $modeLabel }}</span>
+                                    </div>
+                                    <div class="stu-pay-card-row">
+                                        <span class="stu-pay-card-label">Référence</span>
+                                        <span class="stu-pay-card-value stu-pay-card-value--ref">{{ $paiement->reference_paiement ?? 'N/A' }}</span>
+                                    </div>
+                                </div>
+
+                                <div class="stu-pay-card-actions">
+                                    <button type="button"
+                                        class="action-btn btn-info"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#paiementDetailModal"
+                                        data-paiement-id="{{ $paiement->id }}"
+                                        data-date="{{ \Carbon\Carbon::parse($paiement->date_paiement)->format('d/m/Y') }}"
+                                        data-montant="{{ number_format($paiement->montant, 0, ',', ' ') }}"
+                                        data-mode="{{ $paiement->mode_paiement }}"
+                                        data-reference="{{ $paiement->reference_paiement ?? 'N/A' }}"
+                                        data-motif="{{ $paiement->motif ?? 'N/A' }}"
+                                        data-status="{{ $paiement->status }}"
+                                        data-observations="{{ $paiement->observations ?? '' }}"
+                                        data-numero-recu="{{ $paiement->numero_recu ?? 'N/A' }}">
+                                        <i class="fas fa-eye"></i> Détails
+                                    </button>
+                                    @if($paiement->status === 'validé')
+                                        <a href="{{ route('esbtp.paiements.recu', $paiement->id) }}"
+                                           class="action-btn btn-success"
+                                           target="_blank">
+                                            <i class="fas fa-download"></i> Reçu
+                                        </a>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <!-- ===== Tableau (desktop / tablette >= 640px) ===== -->
+                    <div class="table-responsive stu-pay-table-wrap">
                         <table class="paiements-table">
                             <thead>
                                 <tr>
