@@ -39,7 +39,7 @@
                     </div>
                 </div>
                 <div>
-                    <a href="{{ isset($student) ? route('esbtp.etudiants.show', ['etudiant' => $student->id]) : '#' }}" class="btn-acasi primary" style="font-size: var(--text-small); padding: var(--space-sm) var(--space-md); white-space: nowrap;">
+                    <a href="{{ route('esbtp.mon-profil.index') }}" class="btn-acasi primary" style="font-size: var(--text-small); padding: var(--space-sm) var(--space-md);">
                         <i class="fas fa-user" style="margin-right: var(--space-xs);"></i>
                         Voir mon profil
                     </a>
@@ -417,12 +417,10 @@
                     <span>Notifications</span>
                 </a>
 
-                @if(isset($student))
-                <a href="{{ route('esbtp.etudiants.show', ['etudiant' => $student->id]) }}" class="quick-action-card">
+                <a href="{{ route('esbtp.mon-profil.index') }}" class="quick-action-card">
                     <i class="fas fa-user-circle"></i>
                     <span>Mon Profil</span>
                 </a>
-                @endif
             </div>
         </div>
     </div>

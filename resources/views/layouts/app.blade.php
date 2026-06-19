@@ -68,6 +68,10 @@
     <!-- Chatbot Widget -->
     <link href="{{ asset('css/chatbot-widget.css') }}" rel="stylesheet">
 
+    {{-- Shell mobile etudiant (PWA) : bottom-nav + grilles 2x2 + anti-overflow.
+         Charge APRES dashboard-moderne.css pour pouvoir override en mobile. --}}
+    <link href="{{ asset('css/mobile-student.css') }}" rel="stylesheet">
+
     <!-- Styles supplémentaires -->
     <style>
         /* Variables CSS ACASI pour cohérence */
@@ -1578,7 +1582,7 @@
     @yield('styles')
     @stack('styles')
 </head>
-<body>
+<body class="{{ (auth()->check() && auth()->user()->hasRole('etudiant')) ? 'has-stu-bottomnav' : '' }}">
     <div class="nextadmin-wrapper">
         <!-- Sidebar -->
         <aside class="nextadmin-sidebar" id="sidebar">
@@ -4405,5 +4409,10 @@
         });
     })();
     </script>
+
+    {{-- Bottom navigation mobile : strictement etudiant (cachee >=768px via CSS) --}}
+    @role('etudiant')
+        @include('layouts.partials.student-bottom-nav')
+    @endrole
 </body>
 </html>

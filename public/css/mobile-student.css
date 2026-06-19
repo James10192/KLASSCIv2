@@ -1,0 +1,214 @@
+/* =============================================================
+   KLASSCI — Shell mobile etudiant (PWA)
+   Mobile-first : tout est scope sous @media (max-width: 767.98px).
+   Design system : monochrome bleu --primary #0453cb, gradient ->#5e91de.
+   Touch targets >= 44px. Safe-area iOS via env(safe-area-inset-*).
+   ============================================================= */
+
+/* Hauteur de la bottom-nav, reutilisee pour le padding du contenu + FAB. */
+:root {
+    --stu-bottomnav-h: 58px;
+}
+
+/* ---------- Bottom navigation etudiant (mobile only) ---------- */
+.stu-bottomnav {
+    display: none; /* cache par defaut, active uniquement en mobile ci-dessous */
+}
+
+@media (max-width: 767.98px) {
+    .stu-bottomnav {
+        display: flex;
+        position: fixed;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 1080; /* sous les modals (1050+backdrop) et le chatbot panel, au-dessus du contenu */
+        align-items: stretch;
+        justify-content: space-around;
+        background: #ffffff;
+        border-top: 1px solid #e2e8f0;
+        box-shadow: 0 -4px 18px rgba(15, 23, 42, .08), 0 -1px 4px rgba(15, 23, 42, .04);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        min-height: var(--stu-bottomnav-h);
+    }
+
+    .stu-bottomnav__item {
+        flex: 1 1 0;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 3px;
+        min-height: var(--stu-bottomnav-h);
+        padding: 6px 2px;
+        color: #64748b;
+        text-decoration: none;
+        font-size: .65rem;
+        font-weight: 600;
+        line-height: 1.1;
+        text-align: center;
+        background: none;
+        border: none;
+        transition: color .15s ease;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    .stu-bottomnav__item i {
+        font-size: 1.18rem;
+        line-height: 1;
+    }
+
+    .stu-bottomnav__item:hover,
+    .stu-bottomnav__item:focus {
+        color: #0453cb;
+    }
+
+    .stu-bottomnav__item.is-active {
+        color: #0453cb;
+    }
+
+    .stu-bottomnav__item.is-active i {
+        transform: translateY(-1px);
+    }
+
+    /* Reserve l'espace bas pour que le contenu ne soit jamais masque par la nav. */
+    body.has-stu-bottomnav .main-content,
+    body.has-stu-bottomnav .dashboard-acasi,
+    body.has-stu-bottomnav main,
+    body.has-stu-bottomnav .content-wrapper {
+        padding-bottom: calc(var(--stu-bottomnav-h) + env(safe-area-inset-bottom, 0px) + 16px) !important;
+    }
+
+    /* FAB chatbot remonte au-dessus de la bottom-nav, ne chevauche plus les tableaux. */
+    body.has-stu-bottomnav .chatbot-widget {
+        bottom: calc(var(--stu-bottomnav-h) + env(safe-area-inset-bottom, 0px) + 12px) !important;
+    }
+    /* Si le FAB encaisser existe aussi, on l'empile au-dessus de la nav. */
+    body.has-stu-bottomnav:has(#fab-encaisser) .chatbot-widget {
+        bottom: calc(var(--stu-bottomnav-h) + env(safe-area-inset-bottom, 0px) + 96px) !important;
+    }
+}
+
+/* ---------- Utilitaires affichage mobile ---------- */
+.show-mobile { display: none; }
+@media (max-width: 767.98px) {
+    .hide-mobile { display: none !important; }
+    .show-mobile { display: initial; }
+}
+
+/* ---------- Anti-overflow horizontal global (mobile) ---------- */
+@media (max-width: 767.98px) {
+    img,
+    video,
+    canvas,
+    svg {
+        max-width: 100%;
+        height: auto;
+    }
+
+    pre,
+    code {
+        max-width: 100%;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+
+    table {
+        max-width: 100%;
+    }
+
+    .table-responsive {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Safe-area pour les headers fixes/sticky eventuels. */
+    .navbar,
+    .topbar,
+    header.app-header {
+        padding-left: max(.75rem, env(safe-area-inset-left));
+        padding-right: max(.75rem, env(safe-area-inset-right));
+    }
+}
+
+/* ---------- Touch targets confortables (mobile) ---------- */
+@media (max-width: 767.98px) {
+    .btn-acasi,
+    .quick-action-card,
+    .stu-bottomnav__item {
+        min-height: 44px;
+    }
+}
+
+/* =============================================================
+   Dashboard etudiant — KPIs en grille 2x2 sur mobile
+   Override de dashboard-moderne.css qui passe .admin-stats en 1 colonne
+   sous 768px. mobile-student.css est charge APRES -> il gagne.
+   ============================================================= */
+@media (max-width: 767.98px) {
+    .dashboard-acasi .admin-stats {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: .6rem !important;
+    }
+
+    /* Carte KPI compacte : icone + valeur + label en haut, puis le bloc
+       d'action (bouton / legende) en dessous, pleine largeur. Aucun bouton
+       n'est tronque : la carte empile verticalement au lieu de space-between. */
+    .dashboard-acasi .admin-stats .stat-card {
+        flex-direction: column !important;
+        align-items: stretch !important;
+        gap: .55rem !important;
+        padding: .85rem .8rem !important;
+    }
+
+    .dashboard-acasi .admin-stats .stat-card > div {
+        width: 100%;
+        gap: .55rem !important;
+    }
+
+    /* Bloc d'action / legende sous la valeur : bouton pleine largeur, centre. */
+    .dashboard-acasi .admin-stats .stat-card > div:last-child:not(:first-child) {
+        justify-content: flex-start;
+    }
+
+    .dashboard-acasi .admin-stats .stat-card > div:last-child:not(:first-child) .btn-acasi {
+        width: 100%;
+        justify-content: center;
+        padding: .55rem .6rem !important;
+        font-size: .72rem !important;
+    }
+
+    .dashboard-acasi .admin-stats .stat-icon {
+        width: 38px;
+        height: 38px;
+        font-size: 1rem;
+        flex-shrink: 0;
+    }
+
+    .dashboard-acasi .admin-stats .stat-value {
+        font-size: 1.15rem !important;
+        line-height: 1.15;
+        word-break: break-word;
+    }
+
+    .dashboard-acasi .admin-stats .stat-label {
+        font-size: .68rem !important;
+    }
+
+    /* Header dashboard plus compact sur mobile. */
+    .dashboard-acasi .dashboard-header h1 {
+        font-size: 1.35rem;
+    }
+
+    /* Bouton "Voir mon profil" : jamais tronque, pleine largeur de sa colonne. */
+    .dashboard-acasi .admin-stats .stat-card .btn-acasi {
+        white-space: normal;
+        word-break: break-word;
+    }
+
+    /* Actions rapides : 2 colonnes serrees, touch-friendly. */
+    .dashboard-acasi .quick-actions-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: .6rem;
+    }
+}
