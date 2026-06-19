@@ -11,11 +11,14 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Support\Facades\Hash; // ✅ CORRIGÉ : Ajouté pour le hashing
 use OwenIt\Auditing\Contracts\Auditable;
-use NotificationChannels\WebPush\HasPushSubscriptions;
+// NOTE: le trait HasPushSubscriptions (laravel-notification-channels/webpush) n'est
+// re-active QU'APRES `klassci composer:install <tenant>` sur le serveur (vendor/ est
+// gitignored, donc `git pull` ne l'installe pas). Sans le package, le `use` ferait
+// fataler le modele User a chaque requete authentifiee. Le push degrade gracieusement.
 
 class User extends Authenticatable implements Auditable
 {
-    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles, \OwenIt\Auditing\Auditable, HasPushSubscriptions;
+    use HasApiTokens, HasFactory, Notifiable, SoftDeletes, HasRoles, \OwenIt\Auditing\Auditable;
 
     /** Seuil de présence "en ligne" : last_seen_at < N minutes. */
     public const PRESENCE_ONLINE_THRESHOLD_MINUTES = 2;

@@ -327,6 +327,7 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         Route::post('/permissions/sync', [App\Http\Controllers\API\CLI\CLIPermissionController::class, 'sync'])->name('permissions.sync');
         Route::post('/db/fix-duplicates', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'fixDuplicates'])->name('db.fix-duplicates');
         Route::post('/migrate', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'migrate'])->name('migrate');
+        Route::post('/composer/install', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'composerInstall'])->name('composer.install');
         Route::post('/pull', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'pull'])->name('pull');
         Route::post('/seed-demo', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'seedDemo'])->name('seed-demo');
         Route::post('/evaluations/sync-notes', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'evaluationsSyncNotes'])->name('evaluations.sync-notes');

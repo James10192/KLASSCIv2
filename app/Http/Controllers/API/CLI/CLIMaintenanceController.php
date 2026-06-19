@@ -652,6 +652,101 @@ class CLIMaintenanceController extends BaseApiController
     }
 
     /**
+     * POST /api/cli/composer/install — Installe les dependances composer sur le serveur tenant.
+     *
+     * Necessaire car vendor/ est gitignored : `git pull` ne deploie PAS les dependances.
+     * A lancer apres un pull qui introduit une nouvelle dependance (ex: webpush).
+     * Params: action=install|update|dump-autoload (defaut install), binary=/chemin/composer (optionnel).
+     */
+    public function composerInstall(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        @set_time_limit(600);
+
+        $action = $request->get('action', 'install');
+        if (!in_array($action, ['install', 'update', 'dump-autoload'], true)) {
+            return $this->errorResponse('Invalid action (install|update|dump-autoload)', [], 422);
+        }
+
+        $composerHome = storage_path('app/.composer');
+        if (!is_dir($composerHome)) {
+            @mkdir($composerHome, 0775, true);
+        }
+        $env = [
+            'COMPOSER_HOME' => $composerHome,
+            'HOME' => $composerHome,
+            'COMPOSER_MEMORY_LIMIT' => '-1',
+            'COMPOSER_NO_INTERACTION' => '1',
+            'PATH' => getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin',
+        ];
+
+        // Detecter le binaire composer
+        $candidates = array_values(array_filter([
+            $request->get('binary'),
+            'composer',
+            '/usr/local/bin/composer',
+            '/opt/cpanel/composer/bin/composer',
+            base_path('composer.phar'),
+            ($home = getenv('HOME')) ? $home . '/composer.phar' : null,
+        ]));
+
+        $composerCmd = null;
+        $detect = [];
+        foreach ($candidates as $cand) {
+            $prefix = str_ends_with((string) $cand, '.phar') ? [PHP_BINARY, $cand] : [$cand];
+            try {
+                $p = new \Symfony\Component\Process\Process(array_merge($prefix, ['--version']), base_path(), $env, null, 60);
+                $p->run();
+                if ($p->isSuccessful()) {
+                    $composerCmd = $prefix;
+                    $detect[] = ['candidate' => $cand, 'ok' => true, 'version' => trim($p->getOutput())];
+                    break;
+                }
+                $detect[] = ['candidate' => $cand, 'ok' => false];
+            } catch (\Throwable $e) {
+                $detect[] = ['candidate' => $cand, 'ok' => false, 'error' => substr($e->getMessage(), 0, 120)];
+            }
+        }
+
+        if (!$composerCmd) {
+            return $this->errorResponse('Composer binary not found. Passe ?binary=/chemin/composer', ['tried' => $detect], 500);
+        }
+
+        $args = match ($action) {
+            'update' => ['update', '--no-dev', '--optimize-autoloader', '--no-interaction', '--no-progress'],
+            'dump-autoload' => ['dump-autoload', '--optimize', '--no-interaction'],
+            default => ['install', '--no-dev', '--optimize-autoloader', '--no-interaction', '--no-progress', '--prefer-dist'],
+        };
+
+        try {
+            $proc = new \Symfony\Component\Process\Process(array_merge($composerCmd, $args), base_path(), $env, null, 540);
+            $proc->run();
+            $out = mb_substr(trim($proc->getOutput() . "\n" . $proc->getErrorOutput()), -6000);
+
+            if ($proc->isSuccessful()) {
+                Artisan::call('config:clear');
+                Artisan::call('cache:clear');
+                if (function_exists('opcache_reset')) {
+                    @opcache_reset();
+                }
+            }
+
+            return $this->successResponse([
+                'action' => $action,
+                'composer' => $composerCmd,
+                'exit_code' => $proc->getExitCode(),
+                'output' => $out,
+            ], $proc->isSuccessful() ? "composer {$action} OK" : "composer {$action} FAILED (exit {$proc->getExitCode()})");
+        } catch (\Throwable $e) {
+            Log::error('CLI: composer install failed', ['error' => $e->getMessage()]);
+            return $this->errorResponse('Composer process error: ' . $e->getMessage(), [], 500);
+        }
+    }
+
+    /**
      * POST /api/cli/permissions/fix — Sync all permissions and roles.
      *
      * Legacy endpoint kept for klassci-cli backward compatibility.

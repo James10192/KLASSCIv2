@@ -423,6 +423,13 @@ switch ($Command) {
         Invoke-KlassciApi -Method "POST" -Path "/migrate" -Config $cfg | ConvertTo-Json -Depth 8
         break
     }
+    "composer:install" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $body = @{ action = if ($ExtraArgs.Count -ge 1) { $ExtraArgs[0] } else { "install" } }
+        if ($ExtraArgs.Count -ge 2) { $body["binary"] = $ExtraArgs[1] }
+        Invoke-KlassciApi -Method "POST" -Path "/composer/install" -Config $cfg -Body $body | ConvertTo-Json -Depth 8
+        break
+    }
     "cache:clear" {
         $cfg = Get-KlassciConfig -TenantCode $Tenant
         Invoke-KlassciApi -Method "POST" -Path "/cache/clear" -Config $cfg | ConvertTo-Json -Depth 8
@@ -615,6 +622,7 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
         Write-Host "  .\klassci-cli.ps1 pull [presentation]"
         Write-Host "  .\klassci-cli.ps1 migrate [presentation]"
+        Write-Host "  .\klassci-cli.ps1 composer:install [presentation] [install|update|dump-autoload] [binaire-composer]"
         Write-Host "  .\klassci-cli.ps1 cache:clear [presentation]"
         Write-Host "  .\klassci-cli.ps1 classes [presentation]"
         Write-Host "  .\klassci-cli.ps1 classes:raw [presentation]"
