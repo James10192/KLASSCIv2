@@ -154,6 +154,28 @@ class PermissionSyncService
             }
         }
 
+        // Self-service baseline : tout rôle portant l'identité étudiant DOIT pouvoir
+        // consulter ses propres données (notes, bulletin, EDT, absences, profil...).
+        // Évite la dérive multi-tenant où un rôle etudiant seedé avant l'ajout d'une
+        // permission view_own (ex: notes.view_own) la garde manquante (403 silencieux),
+        // car le sync préserve les rôles non vides. Healing idempotent.
+        if (in_array('identity.student', $permissions, true)) {
+            foreach ([
+                'notes.view_own',
+                'bulletins.view_own',
+                'attendances.view_own',
+                'attendances.justify_own',
+                'schedules.view_own',
+                'timetables.view_own',
+                'profile.view_own',
+                'exams.view_own',
+            ] as $selfServicePerm) {
+                if (! in_array($selfServicePerm, $permissions, true)) {
+                    $permissions[] = $selfServicePerm;
+                }
+            }
+        }
+
         return array_values(array_unique($permissions));
     }
 }

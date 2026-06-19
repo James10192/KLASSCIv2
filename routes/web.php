@@ -1376,17 +1376,19 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:bulletins.view_own|bulletins.view']);
 
             // Route pour accéder à la page des absences
-            Route::get('/esbtp/mes-absences', [ESBTPAttendanceController::class, 'studentAttendance'])
+            // NB: le path est relatif au groupe Route::prefix('esbtp') => URL finale /esbtp/mes-absences.
+            // (Avant: '/esbtp/mes-absences' produisait le double préfixe /esbtp/esbtp/mes-absences.)
+            Route::get('/mes-absences', [ESBTPAttendanceController::class, 'studentAttendance'])
                 ->name('mes-absences.index')
                 ->middleware(['permission:attendances.view_own|attendances.view']);
 
             // Route pour justifier une absence (throttle 6/min anti spam upload)
-            Route::post('/esbtp/mes-absences/{absenceId}/justify', [ESBTPAttendanceController::class, 'justifyAbsence'])
+            Route::post('/mes-absences/{absenceId}/justify', [ESBTPAttendanceController::class, 'justifyAbsence'])
                 ->name('mes-absences.justify')
                 ->middleware(['permission:attendances.justify_own|attendances.justify_process', 'throttle:6,1']);
 
             // Download signed URL — Policy::viewDocument authorize, private disk
-            Route::get('/esbtp/justifications/{absence}/document', [ESBTPAttendanceController::class, 'downloadJustificationDocument'])
+            Route::get('/justifications/{absence}/document', [ESBTPAttendanceController::class, 'downloadJustificationDocument'])
                 ->name('justifications.document')
                 ->middleware(['signed', 'throttle:30,1']);
 

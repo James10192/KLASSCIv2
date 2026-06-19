@@ -2745,9 +2745,15 @@
                                         @endrole
                             </li>
                             <li>
-                                <a class="dropdown-item" href="{{ route('settings.index') }}">
-                                    <i class="fas fa-cog me-2"></i> Paramètres
-                                </a>
+                                @role('etudiant')
+                                    <a class="dropdown-item" href="{{ \Illuminate\Support\Facades\Route::has('esbtp.preferences.index') ? route('esbtp.preferences.index') : url('/esbtp/preferences') }}">
+                                        <i class="fas fa-cog me-2"></i> Paramètres
+                                    </a>
+                                @else
+                                    <a class="dropdown-item" href="{{ route('settings.index') }}">
+                                        <i class="fas fa-cog me-2"></i> Paramètres
+                                    </a>
+                                @endrole
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
