@@ -65,7 +65,7 @@ class PermissionSyncService
             }
 
             $expanded = $this->expandWithAliases(
-                $this->applyPermissionDependencies($this->registry->defaultPermissionsFor($roleName))
+                $this->applyPermissionDependencies($this->registry->defaultPermissionsFor($roleName), $roleName)
             );
             $role->syncPermissions($expanded);
             $assignedRoles[] = ['role' => $roleName, 'permissions_count' => count($expanded)];
@@ -92,7 +92,7 @@ class PermissionSyncService
         foreach ($roles->keys() as $roleName) {
             $role = $roleModels[$roleName];
             $existingNames = $role->permissions()->pluck('name')->all();
-            $withDependencies = $this->expandWithAliases($this->applyPermissionDependencies($existingNames));
+            $withDependencies = $this->expandWithAliases($this->applyPermissionDependencies($existingNames, $roleName));
             $toAdd = array_values(array_diff($withDependencies, $existingNames));
             if (! empty($toAdd)) {
                 $role->givePermissionTo($toAdd);
@@ -139,7 +139,7 @@ class PermissionSyncService
      * @param  array<int, string>  $permissions
      * @return array<int, string>
      */
-    private function applyPermissionDependencies(array $permissions): array
+    private function applyPermissionDependencies(array $permissions, ?string $roleName = null): array
     {
         if (in_array('personnel.manage', $permissions, true) && ! in_array('personnel.view', $permissions, true)) {
             $permissions[] = 'personnel.view';
@@ -159,8 +159,12 @@ class PermissionSyncService
         // Évite la dérive multi-tenant où un rôle etudiant seedé avant l'ajout d'une
         // permission view_own (ex: notes.view_own) la garde manquante (403 silencieux),
         // car le sync préserve les rôles non vides. Healing idempotent.
-        if (in_array('identity.student', $permissions, true)) {
+        if ($roleName === 'etudiant' || in_array('identity.student', $permissions, true)) {
             foreach ([
+                'identity.student',
+                'dashboard.view',
+                'annonces.view',
+                'messages.receive',
                 'notes.view_own',
                 'bulletins.view_own',
                 'attendances.view_own',
