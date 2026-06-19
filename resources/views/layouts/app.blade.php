@@ -16,7 +16,7 @@
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <meta name="app-debug" content="{{ config('app.debug') ? '1' : '0' }}">
     <meta name="navbar-mark-all-read-url" content="{{ url('/navbar/notifications/mark-all-read') }}">
@@ -25,6 +25,24 @@
 
     <!-- Favicon -->
     <link rel="shortcut icon" href="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" type="image/x-icon">
+
+    {{-- PWA : manifest dynamique par tenant + meta installables (branding via SettingsHelper) --}}
+    @php
+        $pwaPdf = \App\Helpers\SettingsHelper::getPdfSettings();
+        $pwaThemeColor = preg_match('/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/', (string) ($pwaPdf['primary_color'] ?? ''))
+            ? $pwaPdf['primary_color'] : '#0453cb';
+        $pwaSchool = \App\Helpers\SettingsHelper::getSchoolInfo();
+        $pwaAppTitle = trim((string) ($pwaSchool['name'] ?? '')) ?: 'KLASSCI';
+    @endphp
+    <link rel="manifest" href="/manifest.webmanifest">
+    <meta name="theme-color" content="{{ $pwaThemeColor }}">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="{{ $pwaAppTitle }}">
+    {{-- PWA : clé VAPID publique (Web Push) — une seule paire pour toute l'app --}}
+    <meta name="vapid-public-key" content="{{ config('webpush.vapid.public_key', '') }}">
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -51,6 +69,10 @@
     <link href="{{ asset('css/modal-force-fix.css') }}" rel="stylesheet">
     <!-- Chatbot Widget -->
     <link href="{{ asset('css/chatbot-widget.css') }}" rel="stylesheet">
+
+    {{-- Shell mobile etudiant (PWA) : bottom-nav + grilles 2x2 + anti-overflow.
+         Charge APRES dashboard-moderne.css pour pouvoir override en mobile. --}}
+    <link href="{{ asset('css/mobile-student.css') }}" rel="stylesheet">
 
     <!-- Styles supplémentaires -->
     <style>
@@ -1562,7 +1584,7 @@
     @yield('styles')
     @stack('styles')
 </head>
-<body>
+<body class="{{ (auth()->check() && auth()->user()->hasRole('etudiant')) ? 'has-stu-bottomnav' : '' }}">
     <div class="nextadmin-wrapper">
         <!-- Sidebar -->
         <aside class="nextadmin-sidebar" id="sidebar">
@@ -2725,9 +2747,15 @@
                                         @endrole
                             </li>
                             <li>
-                                <a class="dropdown-item" href="{{ route('settings.index') }}">
-                                    <i class="fas fa-cog me-2"></i> Paramètres
-                                </a>
+                                @role('etudiant')
+                                    <a class="dropdown-item" href="{{ \Illuminate\Support\Facades\Route::has('esbtp.preferences.index') ? route('esbtp.preferences.index') : url('/esbtp/preferences') }}">
+                                        <i class="fas fa-cog me-2"></i> Paramètres
+                                    </a>
+                                @else
+                                    <a class="dropdown-item" href="{{ route('settings.index') }}">
+                                        <i class="fas fa-cog me-2"></i> Paramètres
+                                    </a>
+                                @endrole
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
@@ -4328,5 +4356,71 @@
     @if(auth()->check())
         @include('components.contract-expiry-modal')
     @endif
+
+    {{-- PWA : enregistrement global du service worker (tous rôles) + invite de mise à jour --}}
+    <script>
+    (function () {
+        if (!('serviceWorker' in navigator)) return;
+
+        function showUpdateToast(worker) {
+            if (document.getElementById('pwa-update-toast')) return;
+            var toast = document.createElement('div');
+            toast.id = 'pwa-update-toast';
+            toast.setAttribute('role', 'status');
+            toast.style.cssText = [
+                'position:fixed', 'left:50%', 'transform:translateX(-50%)',
+                'bottom:calc(1rem + env(safe-area-inset-bottom))', 'z-index:99999',
+                'max-width:calc(100vw - 2rem)', 'display:flex', 'align-items:center', 'gap:.75rem',
+                'padding:.7rem .9rem .7rem 1rem', 'border-radius:12px',
+                'background:#0453cb', 'color:#fff',
+                'box-shadow:0 8px 30px rgba(4,83,203,.35),0 2px 8px rgba(15,23,42,.2)',
+                'font-family:Inter,-apple-system,BlinkMacSystemFont,\'Segoe UI\',Roboto,sans-serif',
+                'font-size:.85rem', 'line-height:1.3'
+            ].join(';');
+            toast.innerHTML =
+                '<span style="flex:1">Nouvelle version disponible</span>' +
+                '<button type="button" id="pwa-update-btn" style="min-height:36px;padding:0 .9rem;border:none;border-radius:8px;background:#fff;color:#0453cb;font-weight:600;font-size:.82rem;cursor:pointer;font-family:inherit">Actualiser</button>' +
+                '<button type="button" id="pwa-update-dismiss" aria-label="Fermer" style="min-height:36px;width:36px;border:none;border-radius:8px;background:rgba(255,255,255,.18);color:#fff;font-size:1rem;cursor:pointer;font-family:inherit">&times;</button>';
+            document.body.appendChild(toast);
+
+            document.getElementById('pwa-update-btn').addEventListener('click', function () {
+                if (worker) worker.postMessage({ type: 'SKIP_WAITING' });
+            });
+            document.getElementById('pwa-update-dismiss').addEventListener('click', function () {
+                toast.remove();
+            });
+        }
+
+        var refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', function () {
+            if (refreshing) return;
+            refreshing = true;
+            window.location.reload();
+        });
+
+        window.addEventListener('load', function () {
+            navigator.serviceWorker.register('/sw.js').then(function (reg) {
+                // SW déjà en attente au chargement (mise à jour prête)
+                if (reg.waiting && navigator.serviceWorker.controller) {
+                    showUpdateToast(reg.waiting);
+                }
+                reg.addEventListener('updatefound', function () {
+                    var installing = reg.installing;
+                    if (!installing) return;
+                    installing.addEventListener('statechange', function () {
+                        if (installing.state === 'installed' && navigator.serviceWorker.controller) {
+                            showUpdateToast(reg.waiting || installing);
+                        }
+                    });
+                });
+            }).catch(function () { /* silencieux : pas de SW = dégradation gracieuse */ });
+        });
+    })();
+    </script>
+
+    {{-- Bottom navigation mobile : strictement etudiant (cachee >=768px via CSS) --}}
+    @role('etudiant')
+        @include('layouts.partials.student-bottom-nav')
+    @endrole
 </body>
 </html>

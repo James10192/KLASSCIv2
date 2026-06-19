@@ -262,5 +262,50 @@
             }
         });
     }
+
+    /* ── Mobile bottom-sheet : swipe vers le bas pour fermer (forme uniquement) ──
+       Reprend EXACTEMENT la même règle que le clic overlay : autorisé seulement
+       si le contrat n'est pas expiré. Ne change ni la condition d'affichage ni
+       la fréquence (12h). Actif sous 768px uniquement. */
+    var card = overlay ? overlay.querySelector('.ce-card') : null;
+    if (card && window.matchMedia && window.matchMedia('(max-width: 767.98px)').matches) {
+        var startY = null;
+        var deltaY = 0;
+        var dragging = false;
+
+        card.addEventListener('touchstart', function (e) {
+            // On ne démarre le drag que si le contenu est en haut (pas de scroll interne en cours).
+            if (card.scrollTop > 0) { startY = null; return; }
+            startY = e.touches[0].clientY;
+            deltaY = 0;
+            dragging = true;
+            card.style.transition = 'none';
+        }, { passive: true });
+
+        card.addEventListener('touchmove', function (e) {
+            if (!dragging || startY === null) return;
+            deltaY = e.touches[0].clientY - startY;
+            if (deltaY > 0) {
+                card.style.transform = 'translateY(' + deltaY + 'px)';
+            }
+        }, { passive: true });
+
+        card.addEventListener('touchend', function () {
+            if (!dragging) return;
+            dragging = false;
+            card.style.transition = 'transform 0.25s ease';
+
+            // Seuil de fermeture : 110px de glissement vers le bas.
+            if (deltaY > 110 && !IS_EXPIRED) {
+                card.style.transform = 'translateY(100%)';
+                setTimeout(function () { window.ceDismiss(); }, 200);
+            } else {
+                // Retour en place (et rappel discret du blocage si expiré).
+                card.style.transform = 'translateY(0)';
+            }
+            startY = null;
+            deltaY = 0;
+        });
+    }
 })();
 </script>

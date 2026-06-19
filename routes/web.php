@@ -92,6 +92,10 @@ if (app()->environment('local')) {
 // redirige vers le login pour ne plus exposer de page marketing.
 Route::get('/', fn () => redirect()->route('login'))->name('welcome');
 
+// PWA — manifest dynamique par tenant (hors auth : disponible avant login).
+Route::get('/manifest.webmanifest', [\App\Http\Controllers\PwaController::class, 'manifest'])
+    ->name('pwa.manifest');
+
 // Les routes /inscriptions/{inscription} ne doivent pas capturer les routes
 // statiques comme /inscriptions/create.
 Route::pattern('inscription', '[0-9]+');
@@ -1372,17 +1376,19 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:bulletins.view_own|bulletins.view']);
 
             // Route pour accéder à la page des absences
-            Route::get('/esbtp/mes-absences', [ESBTPAttendanceController::class, 'studentAttendance'])
+            // NB: le path est relatif au groupe Route::prefix('esbtp') => URL finale /esbtp/mes-absences.
+            // (Avant: '/esbtp/mes-absences' produisait le double préfixe /esbtp/esbtp/mes-absences.)
+            Route::get('/mes-absences', [ESBTPAttendanceController::class, 'studentAttendance'])
                 ->name('mes-absences.index')
                 ->middleware(['permission:attendances.view_own|attendances.view']);
 
             // Route pour justifier une absence (throttle 6/min anti spam upload)
-            Route::post('/esbtp/mes-absences/{absenceId}/justify', [ESBTPAttendanceController::class, 'justifyAbsence'])
+            Route::post('/mes-absences/{absenceId}/justify', [ESBTPAttendanceController::class, 'justifyAbsence'])
                 ->name('mes-absences.justify')
                 ->middleware(['permission:attendances.justify_own|attendances.justify_process', 'throttle:6,1']);
 
             // Download signed URL — Policy::viewDocument authorize, private disk
-            Route::get('/esbtp/justifications/{absence}/document', [ESBTPAttendanceController::class, 'downloadJustificationDocument'])
+            Route::get('/justifications/{absence}/document', [ESBTPAttendanceController::class, 'downloadJustificationDocument'])
                 ->name('justifications.document')
                 ->middleware(['signed', 'throttle:30,1']);
 
@@ -1695,6 +1701,18 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:etudiant'])->g
     Route::post('/mes-notifications/{id}/read', [ESBTPNotificationController::class, 'markAsRead'])->name('mes-notifications.read');
     Route::post('/mes-notifications/mark-all-read', [ESBTPNotificationController::class, 'markAllAsRead'])->name('mes-notifications.markAllAsRead');
     Route::get('/notifications/unread-count', [ESBTPNotificationController::class, 'getUnreadCount'])->name('notifications.unreadCount');
+
+    // PWA — Préférences étudiant (opt-in push + bouton installer)
+    Route::get('/preferences', [\App\Http\Controllers\ESBTP\PreferencesController::class, 'index'])
+        ->name('preferences.index');
+
+    // PWA — Abonnements Web Push (AJAX JSON depuis la page Préférences)
+    Route::post('/push/subscribe', [\App\Http\Controllers\ESBTP\PushSubscriptionController::class, 'store'])
+        ->name('push.subscribe')
+        ->middleware('throttle:20,1');
+    Route::post('/push/unsubscribe', [\App\Http\Controllers\ESBTP\PushSubscriptionController::class, 'destroy'])
+        ->name('push.unsubscribe')
+        ->middleware('throttle:20,1');
 });
 
 // Ajouter la route pour générer le PDF d'une évaluation

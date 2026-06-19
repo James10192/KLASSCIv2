@@ -494,8 +494,121 @@
         @endif
 
         @if($emploiTemps)
-            <!-- Tableau d'emploi du temps moderne -->
-            <div class="card-moderne">
+            @php
+                // ----- Données EDT pour la vue MOBILE (onglets par jour) -----
+                // Convention identique à la grille desktop : jour 1=Lundi … 6=Samedi.
+                $stuJours = [
+                    1 => ['label' => 'Lundi',    'court' => 'Lun'],
+                    2 => ['label' => 'Mardi',    'court' => 'Mar'],
+                    3 => ['label' => 'Mercredi', 'court' => 'Mer'],
+                    4 => ['label' => 'Jeudi',    'court' => 'Jeu'],
+                    5 => ['label' => 'Vendredi', 'court' => 'Ven'],
+                    6 => ['label' => 'Samedi',   'court' => 'Sam'],
+                ];
+
+                $stuSeancesParJour = [];
+                foreach (array_keys($stuJours) as $jourNum) {
+                    $items = [];
+                    if (isset($seancesGroupees[$jourNum])) {
+                        foreach ($seancesGroupees[$jourNum] as $s) {
+                            $hd = $s->heure_debut;
+                            $hf = $s->heure_fin;
+                            $hd = ($hd instanceof \DateTime || $hd instanceof \Carbon\Carbon) ? $hd->format('H:i') : substr((string) $hd, 0, 5);
+                            $hf = ($hf instanceof \DateTime || $hf instanceof \Carbon\Carbon) ? $hf->format('H:i') : substr((string) $hf, 0, 5);
+                            $items[] = [
+                                'seance' => $s,
+                                'hd' => $hd,
+                                'hf' => $hf,
+                            ];
+                        }
+                        // Tri par heure de début pour un affichage chronologique.
+                        usort($items, fn ($a, $b) => strcmp($a['hd'], $b['hd']));
+                    }
+                    $stuSeancesParJour[$jourNum] = $items;
+                }
+
+                // Jour actif par défaut = aujourd'hui (Carbon dayOfWeekIso : 1=Lun … 7=Dim).
+                $stuToday = (int) now()->dayOfWeekIso;
+                $stuDefaultDay = isset($stuJours[$stuToday]) ? $stuToday : 1;
+            @endphp
+
+            <!-- ===== Vue MOBILE : onglets par jour (mobile only) ===== -->
+            <div class="card-moderne show-mobile stu-edt-mobile" x-data="{ jour: {{ $stuDefaultDay }} }">
+                <div class="section-card-header">
+                    <h6 class="section-card-title">
+                        <i class="fas fa-calendar-day"></i>
+                        Emploi du temps - {{ $inscription->classe->name ?? 'Classe non définie' }}
+                    </h6>
+                </div>
+                <div class="section-card-body">
+                    <!-- Sélecteur de jours -->
+                    <div class="stu-edt-days" role="tablist" aria-label="Jours de la semaine">
+                        @foreach($stuJours as $jourNum => $jourInfo)
+                            @php $nb = count($stuSeancesParJour[$jourNum]); @endphp
+                            <button type="button"
+                                    class="stu-edt-day"
+                                    :class="jour === {{ $jourNum }} ? 'is-active' : ''"
+                                    @click="jour = {{ $jourNum }}"
+                                    role="tab"
+                                    :aria-selected="jour === {{ $jourNum }} ? 'true' : 'false'">
+                                <span>{{ $jourInfo['court'] }}</span>
+                                <small>{{ $nb }} {{ $nb > 1 ? 'cours' : 'cours' }}</small>
+                                <span class="stu-edt-day-dot {{ $nb === 0 ? 'stu-edt-day-dot--empty' : '' }}"></span>
+                            </button>
+                        @endforeach
+                    </div>
+
+                    <!-- Liste des cours par jour -->
+                    @foreach($stuJours as $jourNum => $jourInfo)
+                        <div x-show="jour === {{ $jourNum }}" x-cloak role="tabpanel">
+                            @if(count($stuSeancesParJour[$jourNum]) === 0)
+                                <div class="stu-edt-empty">
+                                    <i class="fas fa-mug-hot"></i>
+                                    <p>Aucun cours le {{ $jourInfo['label'] }}.</p>
+                                </div>
+                            @else
+                                <div class="stu-edt-list">
+                                    @foreach($stuSeancesParJour[$jourNum] as $row)
+                                        @php
+                                            $s = $row['seance'];
+                                            $type = $s->type ?? 'course';
+                                            $isLesson = in_array($type, ['course', 'homework']);
+                                        @endphp
+                                        <div class="stu-edt-item stu-edt-item--{{ $type }}">
+                                            <div class="stu-edt-item-head">
+                                                <span class="stu-edt-item-time">
+                                                    <i class="fas fa-clock"></i>
+                                                    {{ $row['hd'] }} - {{ $row['hf'] }}
+                                                </span>
+                                                <span class="stu-edt-item-type">
+                                                    <i class="fas {{ $s->getTypeIcon() }}"></i>
+                                                    {{ $s->getSessionTypeText() }}
+                                                </span>
+                                            </div>
+
+                                            @if($isLesson)
+                                                <div class="stu-edt-item-matiere">{{ $s->matiere->name ?? 'Matière non définie' }}</div>
+                                            @endif
+
+                                            <div class="stu-edt-item-meta">
+                                                @if($s->salle)
+                                                    <span><i class="fas fa-door-open"></i> {{ $s->salle }}</span>
+                                                @endif
+                                                @if($isLesson && $s->teacher)
+                                                    <span><i class="fas fa-user-tie"></i> {{ $s->teacher->name ?? 'Enseignant' }}</span>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            @endif
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <!-- ===== Vue DESKTOP : grille semaine (cachée en mobile) ===== -->
+            <div class="card-moderne hide-mobile">
                 <div class="section-card-header">
                     <h6 class="section-card-title">
                         <i class="fas fa-table"></i>

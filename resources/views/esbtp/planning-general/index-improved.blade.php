@@ -701,10 +701,8 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
-// Progressive Enhancement - Service Worker for Offline Support
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(console.error);
-}
+// Service Worker : l'enregistrement est desormais global (resources/views/layouts/app.blade.php).
+// L'ancien register('/sw.js') mono-page a ete retire pour eviter un double enregistrement.
 
 // Performance Monitoring
 const observer = new PerformanceObserver((list) => {

@@ -17,6 +17,7 @@
         "google-gemini-php/laravel": "^2.0",
         "guzzlehttp/guzzle": "^7.2",
         "jenssegers/agent": "^2.6",
+        "laravel-notification-channels/webpush": "^8.0",
         "laravel/framework": "^9.0|^10.0",
         "laravel/sanctum": "^3.0",
         "laravel/tinker": "^2.7",
