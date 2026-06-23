@@ -37,6 +37,7 @@ class ForceDeleteEtudiantWithDependencies
      *   notes_cascade: int,
      *   absences_cascade: int,
      *   frais_subscriptions_cascade: int,
+     *   factures_cascade: int,
      *   bypass_blocking: bool,
      * }
      *
@@ -102,11 +103,12 @@ class ForceDeleteEtudiantWithDependencies
         $notesCascade = $notesCount;  // ce qui sera physiquement supprimé (si bypass)
         $absencesCascade = 0;
         $fraisSubsCascade = 0;
+        $facturesCascade = 0;
 
         DB::transaction(function () use (
             $etudiant, $etudiantId, $user, $motifTrim, $label, $bypassBlocking, $notesCount,
             &$inscriptionsDeleted, &$paiementsDeleted,
-            &$absencesCascade, &$fraisSubsCascade
+            &$absencesCascade, &$fraisSubsCascade, &$facturesCascade
         ) {
             // 1. Compte les cascades DB-level (informatif pour log)
             if (Schema::hasTable('esbtp_attendances')) {
@@ -117,6 +119,17 @@ class ForceDeleteEtudiantWithDependencies
             //    explicite des notes (sinon FK RESTRICT pourrait bloquer)
             if ($bypassBlocking && $notesCount > 0) {
                 DB::table('esbtp_notes')->where('etudiant_id', $etudiantId)->delete();
+            }
+
+            // 2.5. Force-delete toutes les factures liées à l'étudiant (trashed + actives).
+            //      esbtp_factures a deux FK RESTRICT : inscription_id et etudiant_id.
+            //      Sans cette suppression, forceDelete() sur inscription ou sur l'étudiant
+            //      serait bloqué par l'une ou l'autre contrainte.
+            //      Les esbtp_facture_details cascadent au niveau DB (ON DELETE CASCADE).
+            if (Schema::hasTable('esbtp_factures')) {
+                $facturesCascade = DB::table('esbtp_factures')
+                    ->where('etudiant_id', $etudiantId)
+                    ->delete();
             }
 
             // 3. Force-delete inscriptions soft-deletées en premier (avec cascade FK)
@@ -170,6 +183,7 @@ class ForceDeleteEtudiantWithDependencies
                 'bypass_blocking' => $bypassBlocking,
                 'inscriptions_force_deleted' => $inscriptionsDeleted,
                 'paiements_force_deleted' => $paiementsDeleted,
+                'factures_force_deleted' => $facturesCascade,
                 'notes_physically_deleted' => $bypassBlocking ? $notesCount : 0,
                 'absences_cascade_db' => $absencesCascade,
                 'frais_subscriptions_cascade_db' => $fraisSubsCascade,
@@ -185,6 +199,7 @@ class ForceDeleteEtudiantWithDependencies
             'notes_cascade' => $bypassBlocking ? $notesCascade : 0,
             'absences_cascade' => $absencesCascade,
             'frais_subscriptions_cascade' => $fraisSubsCascade,
+            'factures_cascade' => $facturesCascade,
             'bypass_blocking' => $bypassBlocking,
         ];
     }
