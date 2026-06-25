@@ -1,29 +1,96 @@
-{{-- Radio cards type_seance BTS legacy — 3 options plannables (CM/TD/TP) --}}
+{{-- Radio cards type_seance BTS — 2 groupes selon le top-type (Cours vs Devoir) --}}
 {{--
-    PR5 chantier emploi-temps-lmd-unification : variante BTS du selecteur sous-type.
-    Sister partial : _form_type_seance_lmd.blade.php (6 options UEMOA).
-    Inclus conditionnel dans seances-cours/create.blade.php + edit.blade.php selon
-    classe.systeme_academique === 'BTS'.
+    Chantier type_seance Cours/Devoir (juin 2026) : le sous-type affiche depend du top-type :
+      - Cours  (topType === 'course')   -> modalites d'enseignement : CM / TD / TP
+      - Devoir (topType === 'homework') -> types d'evaluation : Examen / Controle continu / Rattrapage
+    Un seul <input name="type_seance"> ; bascule de groupe pilotee par l'evenement
+    'session-type-changed' dispatch par selectSessionType() (cf create.blade.php).
+    Aucun nouveau case d'enum : on reutilise EXAMEN/PARTIEL/RATTRAPAGE.
 
+    Sister partial : _form_type_seance_lmd.blade.php (sets UEMOA enrichis).
     Rule .claude/rules/type-seance-enum-extension.md
-    Rule .claude/rules/blade-alpine-pitfalls.md (Piege #1 : :style override style inline)
+    Rule .claude/rules/blade-alpine-pitfalls.md (pas de {{ }} dans un object-literal Alpine)
 --}}
 @php
-    $currentType = old('type_seance', $seancesCour->type_seance ?? 'CM');
-    // 3 types BTS canoniques (pas de PROJET/EXAMEN/RATTRAPAGE/SOUTENANCE qui sont LMD)
-    $types = [
-        'CM' => ['label' => 'Cours Magistral', 'desc' => 'Cours theorique en classe',     'icon' => 'fa-chalkboard-user'],
-        'TD' => ['label' => 'Travaux Diriges', 'desc' => 'Exercices encadres',             'icon' => 'fa-pen-ruler'],
-        'TP' => ['label' => 'Travaux Pratiques', 'desc' => 'Manipulation atelier',         'icon' => 'fa-flask-vial'],
+    $rawCurrent = old('type_seance');
+    if ($rawCurrent === null && isset($seancesCour) && $seancesCour && $seancesCour->type_seance) {
+        $rawCurrent = $seancesCour->type_seance instanceof \App\Enums\TypeSeance
+            ? $seancesCour->type_seance->value
+            : (string) $seancesCour->type_seance;
+    }
+    $currentType = $rawCurrent ?: 'CM';
+
+    // Cours : modalites d'enseignement BTS
+    $teachingTypes = [
+        'CM' => ['label' => 'Cours Magistral',   'desc' => 'Cours theorique en classe', 'icon' => 'fa-chalkboard-user', 'tone' => 'primary'],
+        'TD' => ['label' => 'Travaux Diriges',    'desc' => 'Exercices encadres',        'icon' => 'fa-pen-ruler',       'tone' => 'primary'],
+        'TP' => ['label' => 'Travaux Pratiques',  'desc' => 'Manipulation atelier',      'icon' => 'fa-flask-vial',      'tone' => 'primary'],
+    ];
+
+    // Devoir : types d'evaluation BTS (genere une note)
+    $evalTypes = [
+        'EXAMEN'     => ['label' => 'Examen',           'desc' => 'Devoir surveille / examen', 'icon' => 'fa-file-pen',     'tone' => 'primary'],
+        'PARTIEL'    => ['label' => 'Controle continu', 'desc' => 'Controle de mi-parcours',   'icon' => 'fa-file-lines',   'tone' => 'accent'],
+        'RATTRAPAGE' => ['label' => 'Rattrapage',       'desc' => 'Session de rattrapage',     'icon' => 'fa-rotate-right', 'tone' => 'muted'],
     ];
 @endphp
 
-<div class="sce-type-seance" x-data="{ value: '{{ $currentType }}' }">
+<div class="sce-type-seance"
+     data-teach-default="CM"
+     data-eval-default="EXAMEN"
+     data-teach-set="CM,TD,TP"
+     data-eval-set="EXAMEN,PARTIEL,RATTRAPAGE"
+     data-initial="{{ $currentType }}"
+     x-data="{
+        value: '',
+        topType: 'course',
+        teachDefault: '', evalDefault: '',
+        teachSet: [], evalSet: [],
+        init() {
+            const d = this.$el.dataset;
+            this.teachDefault = d.teachDefault;
+            this.evalDefault = d.evalDefault;
+            this.teachSet = (d.teachSet || '').split(',');
+            this.evalSet = (d.evalSet || '').split(',');
+            const st = document.getElementById('sessionType');
+            this.topType = st ? st.value : 'course';
+            this.value = d.initial || (this.topType === 'homework' ? this.evalDefault : this.teachDefault);
+            document.addEventListener('session-type-changed', (e) => {
+                this.topType = e.detail;
+                if (this.topType === 'homework') {
+                    if (!this.evalSet.includes(this.value)) this.value = this.evalDefault;
+                } else if (this.topType === 'course') {
+                    if (!this.teachSet.includes(this.value)) this.value = this.teachDefault;
+                }
+            });
+        }
+     }">
     <input type="hidden" name="type_seance" :value="value">
-    <div class="sce-type-radio-group">
-        @foreach($types as $code => $cfg)
+
+    {{-- Groupe Cours : modalites d'enseignement --}}
+    <div class="sce-type-radio-group" x-show="topType === 'course'" x-cloak>
+        @foreach($teachingTypes as $code => $cfg)
             <button type="button"
-                    class="sce-type-radio sce-type-radio--primary"
+                    class="sce-type-radio sce-type-radio--{{ $cfg['tone'] }}"
+                    :class="value === '{{ $code }}' ? 'is-active' : ''"
+                    @click="value = '{{ $code }}'"
+                    :aria-pressed="value === '{{ $code }}' ? 'true' : 'false'">
+                <div class="sce-type-radio-icon"><i class="fas {{ $cfg['icon'] }}"></i></div>
+                <div class="sce-type-radio-body">
+                    <div class="sce-type-radio-label">{{ $code }}</div>
+                    <div class="sce-type-radio-name">{{ $cfg['label'] }}</div>
+                    <div class="sce-type-radio-desc">{{ $cfg['desc'] }}</div>
+                </div>
+                <i class="fas fa-check-circle sce-type-radio-check" x-show="value === '{{ $code }}'" x-cloak></i>
+            </button>
+        @endforeach
+    </div>
+
+    {{-- Groupe Devoir : types d'evaluation --}}
+    <div class="sce-type-radio-group" x-show="topType === 'homework'" x-cloak>
+        @foreach($evalTypes as $code => $cfg)
+            <button type="button"
+                    class="sce-type-radio sce-type-radio--{{ $cfg['tone'] }}"
                     :class="value === '{{ $code }}' ? 'is-active' : ''"
                     @click="value = '{{ $code }}'"
                     :aria-pressed="value === '{{ $code }}' ? 'true' : 'false'">

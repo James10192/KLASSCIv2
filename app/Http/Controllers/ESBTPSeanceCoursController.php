@@ -425,14 +425,17 @@ class ESBTPSeanceCoursController extends Controller
             if ($isLmdClasse && $request->filled('type_seance')) {
                 $typeSeanceEnum = \App\Enums\TypeSeance::tryFrom($request->input('type_seance'));
                 if ($typeSeanceEnum) {
-                    $derivedType = $typeSeanceEnum->mapToType();
-                    if ($derivedType === null) {
-                        // TPE n'est pas plannable
+                    // TPE n'est jamais plannable (volume theorique ECUE, pas une seance).
+                    if ($typeSeanceEnum === \App\Enums\TypeSeance::TPE) {
                         throw ValidationException::withMessages([
                             'type_seance' => 'Le TPE n\'est pas planifiable en emploi du temps. C\'est une métadonnée de l\'ECUE configurée dans /esbtp/lmd/planning.',
                         ]);
                     }
-                    $request->merge(['type' => $derivedType]);
+                    // Derive le top-type (creneau) depuis la nature du sous-type :
+                    // evaluation (Examen/Partiel/Rattrapage/Soutenance) -> homework, enseignement -> course.
+                    // NB: on n'utilise PAS mapToType() ici car son contrat mappe les evaluations a null
+                    //     (cf rule type-seance-enum-extension.md). La nature est lue via isEvaluation().
+                    $request->merge(['type' => $typeSeanceEnum->isEvaluation() ? 'homework' : 'course']);
                 }
             }
 
@@ -559,10 +562,12 @@ class ESBTPSeanceCoursController extends Controller
                 }
 
                 // Création automatique d'évaluations :
-                // - LMD : uniquement si type_seance === EXAMEN (TPE/TD/TP ne génèrent PAS d'évaluation)
+                // - LMD : si le type_seance est une évaluation (Examen/Partiel/Rattrapage/Soutenance).
+                //         CM/TD/TP/PROJET/AUTRE ne génèrent PAS d'évaluation.
                 // - BTS legacy : si type === homework (comportement preserve, zero régression)
+                $typeSeanceEnumForEval = \App\Enums\TypeSeance::tryFrom((string) $request->input('type_seance'));
                 $shouldGenerateEvaluation = $isLmdClasse
-                    ? ($request->input('type_seance') === 'EXAMEN')
+                    ? ($typeSeanceEnumForEval?->isEvaluation() ?? false)
                     : ($request->type === 'homework');
 
                 if ($shouldGenerateEvaluation) {

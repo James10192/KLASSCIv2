@@ -244,11 +244,12 @@
         $backgroundColor = $seance->color ?: $style['bg'];
         $textColor = $computeTextColor($backgroundColor, $style['text']);
 
-        // LMD : afficher type_seance UEMOA (CM/TD/TP/EXAMEN/...) au lieu du type generique "COURS".
-        // BTS : fallback sur le type generique (Cours/Devoir/Récréation/Pause).
-        $classeLmd = ($seance->classe?->systeme_academique ?? null) === 'LMD'
-            || (isset($emploiTemps) && ($emploiTemps->classe?->systeme_academique ?? null) === 'LMD');
-        $typeSeanceValue = $classeLmd && $seance->type_seance ? $seance->type_seance->value : null;
+        // Afficher le sous-type type_seance (CM/TD/TP/EXAMEN/...) des qu'il est defini,
+        // que la classe soit BTS ou LMD. Fallback sur le type generique (Cours/Devoir/
+        // Récréation/Pause) seulement si type_seance est null (récréation, pause, ancien data).
+        $typeSeanceValue = $seance->type_seance
+            ? ($seance->type_seance instanceof \App\Enums\TypeSeance ? $seance->type_seance->value : (string) $seance->type_seance)
+            : null;
 
         $matiere = $seance->matiere->name ?? 'Matière';
         $enseignant = $seance->enseignant_nom ?? optional(optional($seance->teacher)->user)->name;

@@ -333,8 +333,10 @@
                                     $typeKey = $seance->type ?? 'course';
                                     $typeLabel = $typeLabels[$typeKey] ?? 'COURS';
                                 @endphp
+                                {{-- Affiche le sous-type type_seance (CM/TD/EXAMEN/...) quand defini,
+                                     sinon le type generique (Cours/Devoir/Récréation/Pause). --}}
                                 <span class="els-type-badge els-type-badge--{{ $typeKey }}">
-                                    {{ $typeLabel }}
+                                    {{ $typeSeanceValue ?: $typeLabel }}
                                 </span>
                             </td>
                             @if($isClasseLmd)

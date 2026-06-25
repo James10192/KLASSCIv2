@@ -605,7 +605,9 @@
                                  x-show="topType === 'course' || topType === 'homework'"
                                  x-cloak>
                                 <label class="sce-form-label">
-                                    Sous-type pédagogique <span class="text-danger">*</span>
+                                    <span x-show="topType !== 'homework'">Sous-type pédagogique</span>
+                                    <span x-show="topType === 'homework'" x-cloak>Type d'évaluation</span>
+                                    <span class="text-danger">*</span>
                                     @if($isClasseLmd)
                                         <span class="sce-form-label-chip"><i class="fas fa-university"></i>LMD — UEMOA</span>
                                     @else
