@@ -715,6 +715,21 @@ class CLIMaintenanceController extends BaseApiController
             return $this->errorResponse('Composer binary not found. Passe ?binary=/chemin/composer', ['tried' => $detect], 500);
         }
 
+        // Purger le manifest de packages en cache AVANT l'install. Sinon le hook
+        // post-autoload-dump (artisan package:discover) boote en lisant un
+        // bootstrap/cache/packages.php stale qui reference un dev-package (ex:
+        // laravel/sail) que --no-dev vient de retirer du vendor -> fatal
+        // "include SailServiceProvider.php: No such file" -> l'install avorte.
+        // Fichiers absents = regeneres proprement par package:discover (sans le
+        // dev-package) durant l'install ; Laravel les rebuild sinon a la requete suivante.
+        $purgedCaches = [];
+        foreach (['packages.php', 'services.php'] as $cacheFile) {
+            $cachePath = base_path('bootstrap/cache/' . $cacheFile);
+            if (is_file($cachePath) && @unlink($cachePath)) {
+                $purgedCaches[] = $cacheFile;
+            }
+        }
+
         $args = match ($action) {
             'update' => ['update', '--no-dev', '--optimize-autoloader', '--no-interaction', '--no-progress'],
             'dump-autoload' => ['dump-autoload', '--optimize', '--no-interaction'],
@@ -737,6 +752,7 @@ class CLIMaintenanceController extends BaseApiController
             return $this->successResponse([
                 'action' => $action,
                 'composer' => $composerCmd,
+                'purged_caches' => $purgedCaches,
                 'exit_code' => $proc->getExitCode(),
                 'output' => $out,
             ], $proc->isSuccessful() ? "composer {$action} OK" : "composer {$action} FAILED (exit {$proc->getExitCode()})");
