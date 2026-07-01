@@ -2259,10 +2259,7 @@ if (app()->environment('local')) {
 }
 
 // Routes spéciales pour le workflow des bulletins — PROTÉGÉES.
-// Lot 4 fix: ouvert à 'bulletins.configure' OU 'admin.access' (rule customizable-roles :
-// le secretaire/comptable/rôle custom peut gérer les bulletins via bulletins.configure
-// sans avoir admin.access global). Les controllers font leurs propres checks fins.
-Route::middleware(['auth', 'permission:admin.access|bulletins.configure'])->group(function () {
+Route::middleware(['auth', 'permission:admin.access'])->group(function () {
     Route::get('/esbtp-special/bulletins-pdf', [ESBTPBulletinController::class, 'genererPDFParParamsUnified'])->name('esbtp.bulletins.pdf-params');
     Route::get('/esbtp-special/bulletins-pdf/preview', [ESBTPBulletinController::class, 'previewPDFParParamsUnified'])
         ->name('esbtp.bulletins.pdf-params-preview')
@@ -2279,8 +2276,19 @@ Route::middleware(['auth', 'permission:admin.access|bulletins.configure'])->grou
     Route::get('/esbtp-special/bulletins/moyennes-preview', [ESBTPResultatController::class, 'previewMoyennes'])->name('esbtp.bulletins.moyennes-preview');
     Route::post('/esbtp-special/bulletins/moyennes-update', [ESBTPResultatController::class, 'updateMoyennes'])->name('esbtp.bulletins.moyennes-update');
     Route::delete('/esbtp-special/bulletins/moyennes-delete', [ESBTPResultatController::class, 'deleteMoyenne'])->name('esbtp.bulletins.moyennes-delete');
+    Route::get('/esbtp-special/bulletins/edit-absences', [ESBTPBulletinConfigController::class, 'editAbsences'])->name('esbtp.bulletins.edit-absences');
+    Route::post('/esbtp-special/bulletins/save-absences', [ESBTPBulletinConfigController::class, 'saveAbsences'])->name('esbtp.bulletins.save-absences');
+    Route::get('/esbtp-special/bulletins/generate', [ESBTPBulletinController::class, 'generate'])->name('esbtp.bulletins.generate-special');
 
-    // Configuration matières, professeurs, absences bulletins
+    // Bulletins configurables
+    Route::get('/bulletins/configurable', [ESBTPBulletinController::class, 'generateConfigurableBulletin'])->name('esbtp.bulletins.configurable');
+    Route::post('/bulletins/configurable', [ESBTPBulletinController::class, 'generateConfigurableBulletin'])->name('esbtp.bulletins.configurable.generate');
+});
+
+// Prérequis bulletin configurables via la gestion des rôles.
+// La permission bulletins.configure doit donner accès uniquement à config-matieres
+// et edit-professeurs, pas aux étapes plus sensibles comme les absences/moyennes.
+Route::middleware(['auth', 'permission:bulletins.configure'])->group(function () {
     Route::get('/esbtp-special/bulletins/config-matieres', [ESBTPBulletinConfigController::class, 'configMatieresTypeFormation'])->name('esbtp.bulletins.config-matieres');
     Route::post('/esbtp-special/bulletins/save-config-matieres', [ESBTPBulletinConfigController::class, 'saveConfigMatieresTypeFormation'])->name('esbtp.bulletins.save-config-matieres');
     // Sous-lot δ — copy config-matieres entre semestres
@@ -2292,13 +2300,6 @@ Route::middleware(['auth', 'permission:admin.access|bulletins.configure'])->grou
         ->middleware('throttle:30,1')
         ->name('esbtp.bulletins.copy-professeurs-from-other-semestre');
     Route::post('/esbtp-special/bulletins/save-professeurs', [ESBTPBulletinConfigController::class, 'saveProfesseurs'])->name('esbtp.bulletins.save-professeurs');
-    Route::get('/esbtp-special/bulletins/edit-absences', [ESBTPBulletinConfigController::class, 'editAbsences'])->name('esbtp.bulletins.edit-absences');
-    Route::post('/esbtp-special/bulletins/save-absences', [ESBTPBulletinConfigController::class, 'saveAbsences'])->name('esbtp.bulletins.save-absences');
-    Route::get('/esbtp-special/bulletins/generate', [ESBTPBulletinController::class, 'generate'])->name('esbtp.bulletins.generate-special');
-
-    // Bulletins configurables
-    Route::get('/bulletins/configurable', [ESBTPBulletinController::class, 'generateConfigurableBulletin'])->name('esbtp.bulletins.configurable');
-    Route::post('/bulletins/configurable', [ESBTPBulletinController::class, 'generateConfigurableBulletin'])->name('esbtp.bulletins.configurable.generate');
 });
 
 // Routes classes — PROTÉGÉES

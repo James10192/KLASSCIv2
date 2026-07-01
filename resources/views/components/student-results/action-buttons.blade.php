@@ -43,7 +43,7 @@
                     </a>
                 @endif
 
-                @if(auth()->user()->can('admin.access'))
+                @can('bulletins.configure')
                     <a href="{{ route('esbtp.bulletins.config-matieres', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $workflowPeriode, 'annee_universitaire_id' => $annee_id]) }}"
                        class="sr-action-btn">
                         <div class="sr-action-btn-icon sr-action-btn-icon--info">
@@ -71,6 +71,9 @@
                         </div>
                         <span class="sr-action-btn-text">Éditer professeurs{{ $annualActionSuffix }}</span>
                     </a>
+                @endcan
+
+                @if(auth()->user()->can('admin.access'))
                     <a href="{{ route('esbtp.bulletins.edit-absences', ['bulletin' => $etudiant->id, 'classe_id' => $classe->id, 'periode' => $workflowPeriode, 'annee_universitaire_id' => $annee_id]) }}"
                        class="sr-action-btn">
                         <div class="sr-action-btn-icon sr-action-btn-icon--warning">

@@ -931,6 +931,10 @@ class ESBTPBulletinConfigController extends Controller
     public function saveProfesseurs(Request $request)
     {
         try {
+            if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
+                abort(403, 'Accès non autorisé. Vous n\'avez pas la permission de configurer les bulletins.');
+            }
+
             // Log au début de la méthode
             Log::info('🔍 Début de saveProfesseurs', [
                 'request_path' => $request->path(),
@@ -1094,8 +1098,8 @@ class ESBTPBulletinConfigController extends Controller
     public function editAbsences(Request $request)
     {
         // Vérifier les permissions
-        if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
-            abort(403, 'Accès non autorisé. Vous n\'avez pas la permission de configurer les bulletins.');
+        if (! Auth::check() || ! Auth::user()->can('admin.access')) {
+            abort(403, 'Accès non autorisé. Vous n\'avez pas la permission d\'accéder à cette étape du bulletin.');
         }
 
         // Récupérer les paramètres
@@ -1234,6 +1238,10 @@ class ESBTPBulletinConfigController extends Controller
     public function saveAbsences(Request $request)
     {
         try {
+            if (! Auth::check() || ! Auth::user()->can('admin.access')) {
+                abort(403, 'Accès non autorisé. Vous n\'avez pas la permission d\'accéder à cette étape du bulletin.');
+            }
+
             // Log au début de la méthode
             Log::info('🔍 Début de saveAbsences', [
                 'request_path' => $request->path(),
