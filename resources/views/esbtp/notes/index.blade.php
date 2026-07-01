@@ -1548,9 +1548,10 @@ $(document).on('submit', '#evaluationCreateForm', function (e) {
                 evalResetSubmitBtn();
                 return;
             }
+            evalResetSubmitBtn();
+            showSuccessMessage('Évaluation créée avec succès !');
             closeEvaluationModal();
             loadEvaluationsAndNotes();
-            showSuccessMessage('Évaluation créée avec succès !');
         },
         error: function (xhr) {
             evalResetSubmitBtn();
