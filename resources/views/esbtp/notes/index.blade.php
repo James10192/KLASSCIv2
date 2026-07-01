@@ -851,6 +851,17 @@ function loadEvaluationsAndNotes() {
         },
         error: function(xhr) {
             if (xhr.statusText === 'abort') return;
+            if (nmHandleSessionExpired(xhr)) {
+                $('#studentsRows').html(`
+                    <tr>
+                        <td colspan="10" class="text-center text-warning py-5">
+                            <i class="fas fa-user-clock fa-2x mb-3 d-block"></i>
+                            Session expirée. Actualisez la page puis reconnectez-vous.
+                        </td>
+                    </tr>
+                `);
+                return;
+            }
             console.error('Erreur lors du chargement des données:', xhr);
             $('#studentsRows').html(`
                 <tr>
@@ -1170,6 +1181,7 @@ function saveNote(studentId, evaluationId, noteValue) {
             markBulletinSynced();
         },
         error: function(xhr) {
+            if (nmHandleSessionExpired(xhr)) return;
             console.error('Erreur lors de la sauvegarde:', xhr.responseJSON || xhr);
             const msg = (xhr.responseJSON && xhr.responseJSON.message)
                 ? xhr.responseJSON.message
@@ -1482,6 +1494,11 @@ $('#saveAllNotesBtn').on('click', function() {
             setTimeout(() => { btn.html(originalText); }, 2500);
         },
         error: function(xhr) {
+            if (nmHandleSessionExpired(xhr)) {
+                btn.html(`<i class="fas fa-user-clock me-1"></i> Session expirée`).prop('disabled', false);
+                setTimeout(() => { btn.html(originalText); }, 2500);
+                return;
+            }
             const msg = xhr.responseJSON?.message || 'Erreur lors de la sauvegarde.';
             btn.html(`<i class="fas fa-times me-1"></i> Échec`).prop('disabled', false);
             alert(msg);
@@ -1555,6 +1572,7 @@ $(document).on('submit', '#evaluationCreateForm', function (e) {
         },
         error: function (xhr) {
             evalResetSubmitBtn();
+            if (nmHandleSessionExpired(xhr)) return;
             if (xhr.status === 422 && xhr.responseJSON && xhr.responseJSON.errors) {
                 showEvaluationErrors(xhr.responseJSON.errors);
                 return;
@@ -1682,6 +1700,42 @@ function showSuccessMessage(message) {
     if (hero) hero.after(alertEl);
     setTimeout(() => { alertEl.remove(); }, 5000);
 }
+
+let nmSessionExpiredNotified = false;
+
+function nmIsSessionExpiredResponse(xhr) {
+    if (!xhr) return false;
+
+    const status = Number(xhr.status);
+    if (status === 401 || status === 419) return true;
+
+    const responseMessage = xhr.responseJSON
+        ? [xhr.responseJSON.message, xhr.responseJSON.error].filter(Boolean).join(' ')
+        : '';
+    const rawText = xhr.responseText || '';
+
+    return /Unauthenticated|CSRF token mismatch|Page Expired|session expir/i.test(`${responseMessage} ${rawText}`);
+}
+
+function nmHandleSessionExpired(xhr) {
+    if (!nmIsSessionExpiredResponse(xhr)) return false;
+
+    const message = 'Votre session a expiré. Actualisez la page puis reconnectez-vous avant de continuer.';
+    if (!nmSessionExpiredNotified) {
+        nmSessionExpiredNotified = true;
+        if (typeof nmShowToast === 'function') {
+            nmShowToast('warning', message, 9000);
+        } else {
+            alert(message);
+        }
+    }
+
+    return true;
+}
+
+$(document).ajaxError(function(_event, jqxhr) {
+    nmHandleSessionExpired(jqxhr);
+});
 
 function showYearChangeInfo() {
     const modalEl = document.getElementById('yearChangeInfoModal');
@@ -2881,6 +2935,10 @@ $(document).on('click', '#nm-eval-quick-save', function() {
             }
         })
         .fail(function(xhr) {
+            if (nmHandleSessionExpired(xhr)) {
+                $('#nm-eval-quick-error').text('Session expirée. Actualisez la page puis reconnectez-vous.').show();
+                return;
+            }
             let msg = 'Erreur lors de la mise à jour.';
             if (xhr.responseJSON) {
                 if (xhr.responseJSON.message) msg = xhr.responseJSON.message;
