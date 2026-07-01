@@ -129,7 +129,7 @@ class RecomputeStudentResultatJob implements ShouldQueue
             }
 
             // 5. Persister le nouveau résultat (transactionnel)
-            DB::transaction(function () use ($moyenneApres, $moyenneAvant, $periode, $resultatExistant) {
+            DB::transaction(function () use ($calc, $moyenneApres, $moyenneAvant, $periode, $resultatExistant) {
                 ESBTPResultat::updateOrCreate(
                     [
                         'etudiant_id' => $this->etudiantId,

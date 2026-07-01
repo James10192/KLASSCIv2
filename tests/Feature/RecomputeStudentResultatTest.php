@@ -10,6 +10,7 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Services\NoteCalculationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
@@ -81,6 +82,11 @@ class RecomputeStudentResultatTest extends TestCase
             'annee_universitaire_id' => $this->annee->id,
             'status' => 'active',
         ]);
+    }
+
+    private function handleRecomputeJob(RecomputeStudentResultatJob $job): void
+    {
+        $job->handle(app(NoteCalculationService::class));
     }
 
     public function test_it_dispatches_job_when_note_saved(): void
@@ -156,14 +162,14 @@ class RecomputeStudentResultatTest extends TestCase
 
         \App\Observers\ESBTPNoteObserver::$muted = false;
 
-        (new RecomputeStudentResultatJob(
+        $this->handleRecomputeJob(new RecomputeStudentResultatJob(
             etudiantId: $this->etudiant->id,
             classeId: $this->classe->id,
             matiereId: $this->matiere->id,
             anneeUniversitaireId: $this->annee->id,
             periode: 'semestre1',
             source: 'manual',
-        ))->handle();
+        ));
 
         $resultat = ESBTPResultat::where('etudiant_id', $this->etudiant->id)
             ->where('matiere_id', $this->matiere->id)
@@ -172,6 +178,7 @@ class RecomputeStudentResultatTest extends TestCase
 
         $this->assertNotNull($resultat);
         $this->assertEqualsWithDelta(13.33, (float) $resultat->moyenne, 0.01);
+        $this->assertNotEmpty($resultat->appreciation);
     }
 
     public function test_it_normalizes_note_via_bareme(): void
@@ -192,13 +199,13 @@ class RecomputeStudentResultatTest extends TestCase
 
         \App\Observers\ESBTPNoteObserver::$muted = false;
 
-        (new RecomputeStudentResultatJob(
+        $this->handleRecomputeJob(new RecomputeStudentResultatJob(
             etudiantId: $this->etudiant->id,
             classeId: $this->classe->id,
             matiereId: $this->matiere->id,
             anneeUniversitaireId: $this->annee->id,
             periode: 'semestre1',
-        ))->handle();
+        ));
 
         $resultat = ESBTPResultat::where('etudiant_id', $this->etudiant->id)->first();
 
@@ -232,13 +239,13 @@ class RecomputeStudentResultatTest extends TestCase
 
         \App\Observers\ESBTPNoteObserver::$muted = false;
 
-        (new RecomputeStudentResultatJob(
+        $this->handleRecomputeJob(new RecomputeStudentResultatJob(
             etudiantId: $this->etudiant->id,
             classeId: $this->classe->id,
             matiereId: $this->matiere->id,
             anneeUniversitaireId: $this->annee->id,
             periode: 'semestre1',
-        ))->handle();
+        ));
 
         $resultat = ESBTPResultat::where('etudiant_id', $this->etudiant->id)->first();
 
@@ -265,14 +272,14 @@ class RecomputeStudentResultatTest extends TestCase
 
         $this->assertSame(0, DB::table('esbtp_resultats_recompute_log')->count());
 
-        (new RecomputeStudentResultatJob(
+        $this->handleRecomputeJob(new RecomputeStudentResultatJob(
             etudiantId: $this->etudiant->id,
             classeId: $this->classe->id,
             matiereId: $this->matiere->id,
             anneeUniversitaireId: $this->annee->id,
             periode: 'semestre1',
             source: 'command',
-        ))->handle();
+        ));
 
         $logs = DB::table('esbtp_resultats_recompute_log')->get();
         $this->assertCount(1, $logs);
@@ -289,13 +296,13 @@ class RecomputeStudentResultatTest extends TestCase
         // Pas d'évaluation, pas de note — Job doit no-op gracieusement
         $this->expectNotToPerformAssertions();
 
-        (new RecomputeStudentResultatJob(
+        $this->handleRecomputeJob(new RecomputeStudentResultatJob(
             etudiantId: $this->etudiant->id,
             classeId: $this->classe->id,
             matiereId: $this->matiere->id,
             anneeUniversitaireId: $this->annee->id,
             periode: 'semestre1',
-        ))->handle();
+        ));
     }
 
     public function test_observer_muted_does_not_dispatch(): void

@@ -1559,7 +1559,10 @@ $(document).on('submit', '#evaluationCreateForm', function (e) {
                 return;
             }
             console.error('Erreur lors de la création:', xhr);
-            alert('Erreur lors de la création de l\'évaluation.');
+            const message = (xhr.responseJSON && xhr.responseJSON.message)
+                ? xhr.responseJSON.message
+                : 'Erreur lors de la création de l\'évaluation.';
+            alert(message);
         }
     });
 });
