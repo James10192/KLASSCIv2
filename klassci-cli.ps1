@@ -273,6 +273,28 @@ function New-KlassciQueryString {
     return "?" + ($pairs -join "&")
 }
 
+function New-PersonnelScoresQuery {
+    param([string[]]$Args)
+
+    $query = @{}
+    $positionals = @()
+
+    foreach ($arg in @($Args)) {
+        if ($arg -match '^(?<key>[A-Za-z_][A-Za-z0-9_]*)=(?<value>.*)$') {
+            $query[$Matches.key] = $Matches.value
+        } elseif ($arg) {
+            $positionals += $arg
+        }
+    }
+
+    if ($positionals.Count -ge 1 -and -not $query.ContainsKey("period")) { $query["period"] = $positionals[0] }
+    if ($positionals.Count -ge 2 -and -not $query.ContainsKey("role")) { $query["role"] = $positionals[1] }
+    if ($positionals.Count -ge 3 -and -not $query.ContainsKey("limit")) { $query["limit"] = $positionals[2] }
+    if (-not $query.ContainsKey("period")) { $query["period"] = "month" }
+
+    return $query
+}
+
 function Invoke-KlassciApiJson {
     param(
         [string]$Method,
@@ -454,6 +476,13 @@ switch ($Command) {
         Get-LmdCoverageReport -TenantCode $Tenant | ConvertTo-Json -Depth 8
         break
     }
+    "personnel-scores" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $query = New-PersonnelScoresQuery -Args $ExtraArgs
+        $path = "/personnel-scores{0}" -f (New-KlassciQueryString -Query $query)
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
+        break
+    }
     "resultats:diagnose" {
         if ($ExtraArgs.Count -lt 1) {
             throw "Usage: .\klassci-cli.ps1 resultats:diagnose [tenant] <etudiant_id> [classe_id] [annee_universitaire_id] [periode] [include_all_statuses]"
@@ -628,6 +657,7 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 classes:raw [presentation]"
         Write-Host "  .\klassci-cli.ps1 lmd:tree [presentation]"
         Write-Host "  .\klassci-cli.ps1 lmd:coverage [presentation]"
+        Write-Host "  .\klassci-cli.ps1 personnel-scores [presentation] [period=month|quarter|year] [role=enseignant] [user_id=ID] [teacher_id=ID] [level=critical] [limit=50]"
         Write-Host "  .\klassci-cli.ps1 resultats:diagnose [presentation] <etudiant_id> [classe_id] [annee_universitaire_id] [periode] [include_all_statuses]"
         Write-Host "  .\klassci-cli.ps1 resultats:bulletin-consistency-diagnose [presentation] <etudiant_id> <classe_id> <annee_universitaire_id> <periode>"
         Write-Host "  .\klassci-cli.ps1 resultats:bts-annual-snapshot [presentation] <etudiant_id> <classe_id> <annee_universitaire_id> [include_all_statuses]"

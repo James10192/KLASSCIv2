@@ -10,6 +10,7 @@ use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPPaiement;
+use App\Models\ESBTPPersonnelScoreSnapshot;
 use App\Models\ESBTPRelance;
 use App\Models\Setting;
 use Illuminate\Http\Request;
@@ -183,6 +184,84 @@ class CLIDataController extends BaseApiController
                 'total' => $paginated->total(),
             ],
         ]);
+    }
+
+    /**
+     * GET /api/cli/personnel-scores — Inspect personnel scoring snapshots.
+     */
+    public function personnelScores(Request $request): JsonResponse
+    {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $period = $request->query('period', 'month');
+        if (! in_array($period, ['month', 'quarter', 'year'], true)) {
+            return $this->errorResponse('Invalid period. Expected month, quarter or year.', [], 422);
+        }
+
+        $limit = min(max((int) $request->query('limit', 50), 1), 500);
+        $query = ESBTPPersonnelScoreSnapshot::query()
+            ->with(['user:id,name,email,username', 'teacher:id,user_id'])
+            ->where('period_type', $period)
+            ->latest('period_end')
+            ->orderByDesc('total_score');
+
+        if ($role = $request->query('role')) {
+            $query->where('role_name', $role);
+        }
+
+        if ($level = $request->query('level')) {
+            $query->where('level', $level);
+        }
+
+        if ($userId = $request->query('user_id')) {
+            $query->where('user_id', (int) $userId);
+        }
+
+        if ($teacherId = $request->query('teacher_id')) {
+            $query->where('teacher_id', (int) $teacherId);
+        }
+
+        $allRows = $query->get()->unique('user_id')->values();
+        $rows = $allRows->take($limit)->map(function (ESBTPPersonnelScoreSnapshot $score) {
+            return [
+                'id' => $score->id,
+                'user_id' => $score->user_id,
+                'teacher_id' => $score->teacher_id,
+                'name' => $score->user?->name,
+                'username' => $score->user?->username,
+                'email' => $score->user?->email,
+                'role' => $score->role_name,
+                'period_type' => $score->period_type,
+                'period' => trim(($score->period_start?->format('Y-m-d') ?? '').' - '.($score->period_end?->format('Y-m-d') ?? '')),
+                'total_score' => $score->total_score,
+                'level' => $score->level,
+                'level_label' => config("personnel_scoring.levels.{$score->level}.label", $score->level),
+                'applicable_dimensions_count' => $score->applicable_dimensions_count,
+                'excluded_dimensions_count' => $score->excluded_dimensions_count,
+                'calculated_at' => $score->calculated_at?->toIso8601String(),
+            ];
+        });
+
+        return $this->successResponse([
+            'filters' => [
+                'period' => $period,
+                'role' => $request->query('role'),
+                'level' => $request->query('level'),
+                'user_id' => $request->query('user_id'),
+                'teacher_id' => $request->query('teacher_id'),
+                'limit' => $limit,
+            ],
+            'summary' => [
+                'count' => $allRows->count(),
+                'average' => (int) round($allRows->avg('total_score') ?? 0),
+                'watch_count' => $allRows->whereIn('level', ['watch', 'critical'])->count(),
+                'by_role' => $allRows->groupBy('role_name')->map->count()->sortKeys(),
+                'by_level' => $allRows->groupBy('level')->map->count()->sortKeys(),
+            ],
+            'scores' => $rows,
+        ], 'Personnel score snapshots');
     }
 
     /**
