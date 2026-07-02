@@ -9,14 +9,20 @@ use Illuminate\Support\Facades\Schema;
 
 trait ScoresDatabaseActivity
 {
+    private array $tableExistsCache = [];
+
+    private array $columnExistsCache = [];
+
     protected function tableExists(string $table): bool
     {
-        return Schema::hasTable($table);
+        return $this->tableExistsCache[$table] ??= Schema::hasTable($table);
     }
 
     protected function columnExists(string $table, string $column): bool
     {
-        return Schema::hasColumn($table, $column);
+        $key = "{$table}.{$column}";
+
+        return $this->columnExistsCache[$key] ??= Schema::hasColumn($table, $column);
     }
 
     protected function table(string $table): ?Builder
@@ -63,6 +69,31 @@ trait ScoresDatabaseActivity
         }
 
         return max(0, min(100, (int) round(($good / $total) * 100)));
+    }
+
+    protected function whereActorColumns(Builder $query, string $table, int $userId): void
+    {
+        $hasCreatedBy = $this->columnExists($table, 'created_by');
+        $hasUpdatedBy = $this->columnExists($table, 'updated_by');
+
+        if ($hasCreatedBy && $hasUpdatedBy) {
+            $query->where(function ($q) use ($userId) {
+                $q->where('created_by', $userId)->orWhere('updated_by', $userId);
+            });
+            return;
+        }
+
+        if ($hasCreatedBy) {
+            $query->where('created_by', $userId);
+            return;
+        }
+
+        if ($hasUpdatedBy) {
+            $query->where('updated_by', $userId);
+            return;
+        }
+
+        $query->whereRaw('1 = 0');
     }
 
     private function dateColumn(string $table): ?string

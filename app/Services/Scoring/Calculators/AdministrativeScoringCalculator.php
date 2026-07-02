@@ -24,10 +24,10 @@ class AdministrativeScoringCalculator
     private function administrative(string $dimension, array $definition, User $user, CarbonInterface $start, CarbonInterface $end): PersonnelScoreResult
     {
         $students = $this->countRows('esbtp_etudiants', $start, $end, function ($query) use ($user) {
-            $this->whereActorColumns($query, 'esbtp_etudiants', $user);
+            $this->whereActorColumns($query, 'esbtp_etudiants', $user->id);
         });
         $inscriptions = $this->countRows('esbtp_inscriptions', $start, $end, function ($query) use ($user) {
-            $this->whereActorColumns($query, 'esbtp_inscriptions', $user);
+            $this->whereActorColumns($query, 'esbtp_inscriptions', $user->id);
         });
 
         $score = min(100, $this->scoreByTarget($students, 10) * 0.45 + $this->scoreByTarget($inscriptions, 10) * 0.55);
@@ -76,27 +76,5 @@ class AdministrativeScoringCalculator
         return new PersonnelScoreResult($dimension, $definition['label'], $score, $definition['weight'], [
             'derniere_activite' => $lastSeen?->toDateTimeString(),
         ]);
-    }
-
-    private function whereActorColumns($query, string $table, User $user): void
-    {
-        if ($this->columnExists($table, 'created_by') && $this->columnExists($table, 'updated_by')) {
-            $query->where(function ($q) use ($user) {
-                $q->where('created_by', $user->id)->orWhere('updated_by', $user->id);
-            });
-            return;
-        }
-
-        if ($this->columnExists($table, 'created_by')) {
-            $query->where('created_by', $user->id);
-            return;
-        }
-
-        if ($this->columnExists($table, 'updated_by')) {
-            $query->where('updated_by', $user->id);
-            return;
-        }
-
-        $query->whereRaw('1 = 0');
     }
 }

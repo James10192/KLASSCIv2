@@ -40,6 +40,14 @@ class PersonnelScoringServiceTest extends TestCase
         $this->assertSame('critical', $method->invoke($service, 20));
     }
 
+    public function test_invalid_period_defaults_to_month(): void
+    {
+        $service = $this->service();
+
+        $this->assertSame('month', $service->normalizePeriodType('unexpected'));
+        $this->assertSame('quarter', $service->normalizePeriodType('quarter'));
+    }
+
     private function service(): PersonnelScoringService
     {
         return new PersonnelScoringService(

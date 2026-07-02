@@ -12,6 +12,7 @@ use App\Services\Scoring\Calculators\FinanceScoringCalculator;
 use App\Services\Scoring\Calculators\TeacherScoringCalculator;
 use Carbon\Carbon;
 use Carbon\CarbonInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class PersonnelScoringService
@@ -28,6 +29,7 @@ class PersonnelScoringService
 
     public function calculate(User $user, string $periodType = 'month', ?CarbonInterface $referenceDate = null): array
     {
+        $periodType = $this->normalizePeriodType($periodType);
         [$start, $end] = $this->periodBounds($periodType, $referenceDate ?: now());
         $permissions = $this->effectivePermissions($user);
         $roleName = $this->primaryRole($user);
@@ -108,6 +110,8 @@ class PersonnelScoringService
 
     public function latestFor(User $user, string $periodType = 'month'): ?ESBTPPersonnelScoreSnapshot
     {
+        $periodType = $this->normalizePeriodType($periodType);
+
         return ESBTPPersonnelScoreSnapshot::where('user_id', $user->id)
             ->where('period_type', $periodType)
             ->latest('period_end')
@@ -116,6 +120,8 @@ class PersonnelScoringService
 
     public function scoreRows(string $periodType = 'month'): Collection
     {
+        $periodType = $this->normalizePeriodType($periodType);
+
         return ESBTPPersonnelScoreSnapshot::with('user')
             ->where('period_type', $periodType)
             ->latest('period_end')
@@ -125,8 +131,50 @@ class PersonnelScoringService
             ->values();
     }
 
+    public function recalculateStaff(
+        string $periodType = 'month',
+        ?CarbonInterface $referenceDate = null,
+        bool $includeInactive = false,
+        ?string $role = null,
+        ?int $userId = null
+    ): int {
+        $periodType = $this->normalizePeriodType($periodType);
+        $referenceDate ??= now();
+        $count = 0;
+
+        $this->staffUsersQuery($includeInactive, $role, $userId)
+            ->chunkById(100, function ($users) use ($periodType, $referenceDate, &$count) {
+                foreach ($users as $user) {
+                    $this->calculateAndStore($user, $periodType, $referenceDate);
+                    $count++;
+                }
+            });
+
+        return $count;
+    }
+
+    public function staffUsersQuery(bool $includeInactive = false, ?string $role = null, ?int $userId = null): Builder
+    {
+        $query = User::query()->with(['roles', 'permissions', 'teacherProfile']);
+
+        if (! $includeInactive) {
+            $query->where('is_active', true);
+        }
+
+        if ($userId) {
+            return $query->whereKey($userId);
+        }
+
+        if ($role) {
+            return $query->role($role);
+        }
+
+        return $query->whereHas('roles', fn ($q) => $q->whereNotIn('name', ['etudiant', 'parent']));
+    }
+
     public function periodBounds(string $periodType, CarbonInterface $referenceDate): array
     {
+        $periodType = $this->normalizePeriodType($periodType);
         $date = Carbon::parse($referenceDate);
 
         return match ($periodType) {
@@ -175,6 +223,13 @@ class PersonnelScoringService
 
     private function primaryRole(User $user): ?string
     {
-        return $user->getRoleNames()->first();
+        return $user->getRoleNames()->first() ?: 'sans_role';
+    }
+
+    public function normalizePeriodType(string $periodType): string
+    {
+        return array_key_exists($periodType, config('personnel_scoring.periods', []))
+            ? $periodType
+            : 'month';
     }
 }

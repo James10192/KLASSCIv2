@@ -23,7 +23,7 @@ class AcademicCoordinatorScoringCalculator
     private function academic(string $dimension, array $definition, User $user, CarbonInterface $start, CarbonInterface $end): PersonnelScoreResult
     {
         $evaluations = $this->countRows('esbtp_evaluations', $start, $end, function ($query) use ($user) {
-            $this->whereActorColumns($query, 'esbtp_evaluations', $user);
+            $this->whereActorColumns($query, 'esbtp_evaluations', $user->id);
         });
         $planning = $this->countRows('esbtp_seance_cours', $start, $end, function ($query) use ($user) {
             if ($this->columnExists('esbtp_seance_cours', 'created_by')) {
@@ -35,7 +35,7 @@ class AcademicCoordinatorScoringCalculator
             }
         });
         $matieres = $this->countRows('esbtp_matieres', $start, $end, function ($query) use ($user) {
-            $this->whereActorColumns($query, 'esbtp_matieres', $user);
+            $this->whereActorColumns($query, 'esbtp_matieres', $user->id);
         });
 
         $score = min(100, $this->scoreByTarget($evaluations, 4) * 0.45 + $this->scoreByTarget($planning, 10) * 0.35 + $this->scoreByTarget($matieres, 2) * 0.2);
@@ -50,7 +50,7 @@ class AcademicCoordinatorScoringCalculator
     private function attendanceSupervision(string $dimension, array $definition, User $user, CarbonInterface $start, CarbonInterface $end): PersonnelScoreResult
     {
         $attendanceActions = $this->countRows('esbtp_attendances', $start, $end, function ($query) use ($user) {
-            $this->whereActorColumns($query, 'esbtp_attendances', $user);
+            $this->whereActorColumns($query, 'esbtp_attendances', $user->id);
         });
 
         $audits = $this->countRows('audits', $start, $end, fn ($query) => $query
@@ -63,27 +63,5 @@ class AcademicCoordinatorScoringCalculator
             'presences_traitees' => $attendanceActions,
             'actions_auditees' => $audits,
         ]);
-    }
-
-    private function whereActorColumns($query, string $table, User $user): void
-    {
-        if ($this->columnExists($table, 'created_by') && $this->columnExists($table, 'updated_by')) {
-            $query->where(function ($q) use ($user) {
-                $q->where('created_by', $user->id)->orWhere('updated_by', $user->id);
-            });
-            return;
-        }
-
-        if ($this->columnExists($table, 'created_by')) {
-            $query->where('created_by', $user->id);
-            return;
-        }
-
-        if ($this->columnExists($table, 'updated_by')) {
-            $query->where('updated_by', $user->id);
-            return;
-        }
-
-        $query->whereRaw('1 = 0');
     }
 }

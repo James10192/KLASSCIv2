@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Models\User;
 use App\Services\Scoring\PersonnelScoringService;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
@@ -27,19 +26,11 @@ class RecalculatePersonnelScoresCommand extends Command
         }
 
         $referenceDate = $this->option('date') ? Carbon::parse($this->option('date')) : now();
-        $query = User::query()->with(['roles', 'permissions', 'teacherProfile']);
-
-        if (! $this->option('include-inactive')) {
-            $query->where('is_active', true);
-        }
-
-        if ($this->option('user')) {
-            $query->whereKey((int) $this->option('user'));
-        } elseif ($this->option('role')) {
-            $query->role((string) $this->option('role'));
-        } else {
-            $query->whereHas('roles', fn ($q) => $q->whereNotIn('name', ['etudiant', 'parent']));
-        }
+        $query = $scoring->staffUsersQuery(
+            includeInactive: (bool) $this->option('include-inactive'),
+            role: $this->option('role') ? (string) $this->option('role') : null,
+            userId: $this->option('user') ? (int) $this->option('user') : null
+        );
 
         $count = 0;
         $bar = $this->output->createProgressBar((clone $query)->count());
