@@ -212,7 +212,12 @@
         vertical-align: middle;
     }
     .pp-table tbody tr { transition: background .2s ease; }
-    .pp-table tbody tr:hover { background: rgba(4,83,203,.035); }
+    .pp-table tbody tr:hover,
+    .pp-table tbody tr:focus { background: rgba(4,83,203,.035); }
+    .pp-clickable-row { cursor: pointer; outline: none; }
+    .pp-clickable-row:focus-visible {
+        box-shadow: inset 0 0 0 2px rgba(4,83,203,.28);
+    }
     .pp-person { display: flex; align-items: center; gap: .7rem; min-width: 0; }
     .pp-avatar {
         width: 34px;
@@ -485,7 +490,12 @@
                     </thead>
                     <tbody>
                         <template x-for="row in rows" :key="row.id">
-                            <tr>
+                            <tr class="pp-clickable-row"
+                                tabindex="0"
+                                role="link"
+                                @click="openDetail(row)"
+                                @keydown.enter.prevent="openDetail(row)"
+                                @keydown.space.prevent="openDetail(row)">
                                 <td>
                                     <div class="pp-person">
                                         <div class="pp-avatar" x-text="initials(row.name)"></div>
@@ -503,7 +513,7 @@
                                 <td x-text="row.dimensions"></td>
                                 <td x-text="row.period"></td>
                                 <td>
-                                    <a class="pp-row-action" :href="row.show_url + '?period=' + encodeURIComponent(period)" title="Voir le detail">
+                                    <a class="pp-row-action" :href="detailUrl(row)" title="Voir le detail" @click.stop>
                                         <i class="fas fa-eye"></i>
                                     </a>
                                 </td>
@@ -585,6 +595,12 @@ function personnelPerformancePage(config) {
                 }
             });
             return url;
+        },
+        detailUrl(row) {
+            return row.show_url + '?period=' + encodeURIComponent(this.period);
+        },
+        openDetail(row) {
+            window.location.href = this.detailUrl(row);
         },
         async refresh() {
             this.loading = true;
