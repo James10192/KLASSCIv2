@@ -34,12 +34,12 @@
         color: white;
     }
     
-    .section-icon.school { background: linear-gradient(135deg, var(--primary), var(--secondary)); }
-    .section-icon.pdf { background: linear-gradient(135deg, #e74c3c, #c0392b); }
-    .section-icon.bulletin { background: linear-gradient(135deg, #f39c12, #e67e22); }
-    .section-icon.display { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
-    .section-icon.mentions { background: linear-gradient(135deg, #1abc9c, #16a085); }
-    .section-icon.stats { background: linear-gradient(135deg, #34495e, #2c3e50); }
+    .section-icon.school,
+    .section-icon.pdf,
+    .section-icon.bulletin,
+    .section-icon.display,
+    .section-icon.mentions,
+    .section-icon.stats { background: linear-gradient(135deg, #0453cb, #3b7ddb); }
 
     /* ── Zone upload logo premium ──────────────────────────── */
     .pdf-logo-zone {
@@ -373,10 +373,10 @@
         margin-right: var(--space-xs);
     }
 
-    .section-icon.notifications { background: linear-gradient(135deg, #3498db, #2980b9); }
-    .section-icon.conduite { background: linear-gradient(135deg, #e74c3c, #c0392b); }
-    .section-icon.ponderation { background: linear-gradient(135deg, #2563eb, #1d4ed8); }
-    .section-icon.tronc { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+    .section-icon.notifications,
+    .section-icon.conduite,
+    .section-icon.ponderation,
+    .section-icon.tronc { background: linear-gradient(135deg, #0453cb, #3b7ddb); }
 
     /* ── Bulletin Config Premium Cards ────────────────────── */
     .bc-grid { display: grid; gap: 12px; }
@@ -488,12 +488,354 @@
     @media (max-width: 992px) {
         .mailpulse-info-grid { grid-template-columns: 1fr; }
     }
+
+    .settings-page-premium {
+        --sp-ink: #0f172a;
+        --sp-muted: #64748b;
+        --sp-line: #e2e8f0;
+        --sp-soft: #f8fafc;
+        --sp-primary: #0453cb;
+        --sp-primary-2: #5e91de;
+    }
+    .settings-page-premium .main-content {
+        background:
+            linear-gradient(180deg, rgba(4,83,203,.045), rgba(255,255,255,0) 360px);
+        border-radius: 0;
+    }
+    .settings-page-premium .dashboard-header {
+        display: none;
+    }
+    .settings-page-premium .settings-hero {
+        position: relative;
+        overflow: hidden;
+        border-radius: 18px;
+        padding: 2rem 2.5rem 1.5rem;
+        margin-bottom: 1.25rem;
+        color: #fff;
+        background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 40%, #3b7ddb 100%);
+        box-shadow: 0 18px 45px rgba(15, 23, 42, .18);
+    }
+    .settings-page-premium .settings-hero-content {
+        position: relative;
+        z-index: 1;
+    }
+    .settings-page-premium .settings-hero-top {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 1rem;
+    }
+    .settings-page-premium .settings-hero-left {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        min-width: 0;
+    }
+    .settings-page-premium .settings-hero-icon {
+        width: 52px;
+        height: 52px;
+        border-radius: 14px;
+        background: rgba(255,255,255,.12);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255,255,255,.15);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.35rem;
+        flex-shrink: 0;
+        color: #fff;
+    }
+    .settings-page-premium .settings-eyebrow {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 7px 11px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.11);
+        border: 1px solid rgba(255,255,255,.18);
+        color: rgba(255,255,255,.84);
+        font-size: .78rem;
+        font-weight: 700;
+        margin-bottom: .65rem;
+    }
+    .settings-page-premium .settings-hero-title {
+        margin: 0;
+        color: #fff;
+        font-size: 1.45rem;
+        font-weight: 700;
+        letter-spacing: 0;
+    }
+    .settings-page-premium .settings-hero-subtitle {
+        max-width: 720px;
+        margin: .35rem 0 0;
+        color: rgba(255,255,255,.72);
+        font-size: .88rem;
+        line-height: 1.5;
+    }
+    .settings-page-premium .settings-hero-metrics {
+        display: flex;
+        gap: .75rem;
+        margin-top: 1.5rem;
+        flex-wrap: wrap;
+    }
+    .settings-page-premium .settings-hero-metric {
+        flex: 1;
+        min-width: 140px;
+        padding: .9rem 1rem;
+        border-radius: 12px;
+        background: rgba(255,255,255,.1);
+        border: 1px solid rgba(255,255,255,.15);
+        display: flex;
+        align-items: center;
+        gap: .75rem;
+    }
+    .settings-page-premium .settings-hero-metric i {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,.12);
+        color: #fff;
+        flex-shrink: 0;
+    }
+    .settings-page-premium .settings-hero-metric span {
+        display: block;
+        color: rgba(255,255,255,.62);
+        font-size: .72rem;
+        font-weight: 700;
+        margin-top: .15rem;
+    }
+    .settings-page-premium .settings-hero-metric strong {
+        display: block;
+        margin-top: 0;
+        color: #fff;
+        font-size: 1.35rem;
+        font-weight: 700;
+        line-height: 1.1;
+    }
+    .settings-page-premium .settings-hero-metric.is-ready strong { color: #86efac; }
+    .settings-page-premium .settings-hero-metric.is-warning strong { color: #fde68a; }
+
+    .settings-page-premium .alert-modern {
+        border-radius: 14px;
+        border: 1px solid transparent;
+        box-shadow: 0 12px 28px rgba(15, 23, 42, .06);
+    }
+    .settings-page-premium .nav-tabs-modern {
+        display: flex;
+        gap: 8px;
+        overflow-x: auto;
+        padding: 8px;
+        margin: 0 0 20px;
+        border: 1px solid var(--sp-line);
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 12px 28px rgba(15,23,42,.05);
+        scrollbar-width: thin;
+    }
+    .settings-page-premium .nav-tabs-modern .nav-item { flex: 0 0 auto; }
+    .settings-page-premium .nav-tabs-modern .nav-link {
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border: 1px solid transparent;
+        border-radius: 12px;
+        padding: 10px 13px;
+        margin: 0;
+        color: #475569;
+        background: transparent;
+        font-size: .88rem;
+        white-space: nowrap;
+    }
+    .settings-page-premium .nav-tabs-modern .nav-link i { margin-right: 0; }
+    .settings-page-premium .nav-tabs-modern .nav-link:hover {
+        color: var(--sp-primary);
+        background: #f8fafc;
+        border-color: #e2e8f0;
+    }
+    .settings-page-premium .nav-tabs-modern .nav-link.active {
+        color: #fff;
+        background: var(--sp-primary);
+        border-color: var(--sp-primary);
+        box-shadow: 0 10px 24px rgba(4,83,203,.22);
+    }
+
+    .settings-page-premium .settings-section {
+        border-radius: 18px;
+        border: 1px solid rgba(226,232,240,.95);
+        background: rgba(255,255,255,.96);
+        box-shadow: 0 14px 34px rgba(15,23,42,.055);
+        padding: clamp(18px, 2.2vw, 26px);
+    }
+    .settings-page-premium .settings-section:hover {
+        box-shadow: 0 18px 42px rgba(15,23,42,.075);
+    }
+    .settings-page-premium .section-header {
+        align-items: flex-start;
+        gap: 14px;
+        border-bottom: 1px solid #e2e8f0;
+        padding-bottom: 16px;
+    }
+    .settings-page-premium .section-icon {
+        width: 42px;
+        height: 42px;
+        margin-right: 0;
+        border-radius: 12px;
+        background: #0453cb !important;
+        color: #fff;
+        box-shadow: 0 10px 22px rgba(4,83,203,.2);
+    }
+    .settings-page-premium .section-icon.mailpulse {
+        background: #09090b !important;
+        color: #f97316;
+        box-shadow: 0 10px 24px rgba(9,9,11,.18);
+    }
+    .settings-page-premium .section-title {
+        margin: 0;
+        color: var(--sp-ink);
+        font-size: 1.08rem;
+        font-weight: 800;
+    }
+    .settings-page-premium .section-description {
+        margin: 4px 0 0;
+        color: var(--sp-muted);
+        font-size: .86rem;
+        line-height: 1.5;
+    }
+    .settings-page-premium .form-group {
+        min-width: 0;
+    }
+    .settings-page-premium .form-label-modern {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #334155;
+        font-size: .83rem;
+        font-weight: 750;
+        margin-bottom: 8px;
+    }
+    .settings-page-premium .form-control-modern,
+    .settings-page-premium .ls-input {
+        min-height: 44px;
+        border: 1px solid #dbe3ef;
+        border-radius: 12px;
+        background: #fff;
+        color: var(--sp-ink);
+        box-shadow: 0 1px 0 rgba(15,23,42,.02);
+    }
+    .settings-page-premium .form-control-modern:focus,
+    .settings-page-premium .ls-input:focus {
+        border-color: var(--sp-primary);
+        box-shadow: 0 0 0 4px rgba(4,83,203,.09);
+    }
+    .settings-page-premium .text-muted,
+    .settings-page-premium small {
+        color: #64748b !important;
+    }
+    .settings-page-premium .settings-actions-bar {
+        position: sticky;
+        bottom: 12px;
+        z-index: 25;
+        display: flex;
+        justify-content: center;
+        padding: 12px;
+        margin-top: 22px;
+        border: 1px solid rgba(226,232,240,.9);
+        border-radius: 18px;
+        background: rgba(255,255,255,.9);
+        backdrop-filter: blur(12px);
+        box-shadow: 0 18px 44px rgba(15,23,42,.14);
+    }
+    .settings-page-premium .btn-save {
+        min-height: 48px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        padding: 0 22px;
+        border-radius: 13px;
+        background: #0453cb;
+        color: #fff;
+        box-shadow: 0 12px 24px rgba(4,83,203,.24);
+    }
+    .settings-page-premium .btn-save:hover {
+        transform: translateY(-1px);
+        background: #0345aa;
+        box-shadow: 0 15px 30px rgba(4,83,203,.3);
+    }
+    @media (max-width: 992px) {
+        .settings-page-premium .settings-hero-metrics { flex-direction: column; }
+    }
+    @media (max-width: 576px) {
+        .settings-page-premium .settings-hero { padding: 1.25rem; border-radius: 18px; }
+        .settings-page-premium .settings-hero-left { align-items: flex-start; }
+        .settings-page-premium .settings-hero-icon { width: 46px; height: 46px; }
+        .settings-page-premium .settings-section { border-radius: 16px; }
+        .settings-page-premium .section-header { flex-direction: column; }
+        .settings-page-premium .settings-actions-bar { bottom: 8px; }
+        .settings-page-premium .btn-save { width: 100%; }
+    }
 </style>
 @endpush
 
 @section('content')
-<div class="dashboard-acasi">
+<div class="dashboard-acasi settings-page-premium">
     <div class="main-content">
+        @php
+            $settingsTotal = isset($flatSettings) ? $flatSettings->count() : 0;
+            $settingsGroups = isset($settings) ? $settings->count() : 0;
+            $mailpulseReady = \App\Helpers\SettingsHelper::get('mailpulse_api_key', '') !== ''
+                && \App\Helpers\SettingsHelper::get('mailpulse_test_email', '') !== '';
+        @endphp
+
+        <div class="settings-hero">
+            <div class="settings-hero-content">
+                <div class="settings-hero-top">
+                    <div class="settings-hero-left">
+                        <div class="settings-hero-icon">
+                            <i class="fas fa-sliders-h"></i>
+                        </div>
+                        <div>
+                            <div class="settings-eyebrow">
+                                <i class="fas fa-shield-alt"></i>
+                                Configuration établissement
+                            </div>
+                            <h1 class="settings-hero-title">Paramètres du système</h1>
+                            <p class="settings-hero-subtitle">
+                                Pilotez les informations de l'établissement, les documents, les bulletins, la comptabilité et les canaux MailPulse depuis un centre de contrôle unique.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-hero-metrics" aria-label="Synthèse des paramètres">
+                    <div class="settings-hero-metric">
+                        <i class="fas fa-list-check"></i>
+                        <div>
+                            <strong>{{ $settingsTotal }}</strong>
+                            <span>Paramètres</span>
+                        </div>
+                    </div>
+                    <div class="settings-hero-metric">
+                        <i class="fas fa-layer-group"></i>
+                        <div>
+                            <strong>{{ $settingsGroups }}</strong>
+                            <span>Groupes</span>
+                        </div>
+                    </div>
+                    <div class="settings-hero-metric {{ $mailpulseReady ? 'is-ready' : 'is-warning' }}">
+                        <i class="fas fa-envelope"></i>
+                        <div>
+                            <strong>{{ $mailpulseReady ? 'Prêt' : 'À configurer' }}</strong>
+                            <span>MailPulse</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
         <!-- En-tête moderne -->
         <div class="dashboard-header mb-lg">
             <div class="header-content">
@@ -2726,9 +3068,9 @@
             <!-- End Tab Content -->
 
             <!-- Bouton de sauvegarde -->
-            <div class="text-center mt-xl">
+            <div class="settings-actions-bar">
                 <button type="submit" class="btn btn-save">
-                    <i class="fas fa-save me-2"></i>
+                    <i class="fas fa-save"></i>
                     Sauvegarder les Paramètres
                 </button>
             </div>
