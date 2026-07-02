@@ -13,6 +13,7 @@ use App\Models\ESBTPPersonnelScoreSnapshot;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPSessionWorkflow;
 use App\Services\NotificationService;
+use App\Services\Scoring\PersonnelScoringService;
 use App\Services\TeacherHoursService;
 use App\Enums\TypeSeance;
 use Illuminate\Http\Request;
@@ -367,7 +368,7 @@ class TeacherAttendanceController extends Controller
      * enseignant (baromètre comme emploi-temps.show), filtres classe/période/prof,
      * warnings de ponctualité, liste de séances en infinity scroll. AJAX no-reload.
      */
-    public function report(Request $request, TeacherHoursService $hours)
+    public function report(Request $request, TeacherHoursService $hours, PersonnelScoringService $scoring)
     {
         $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
         if (!$anneeEnCours) {
@@ -379,7 +380,7 @@ class TeacherAttendanceController extends Controller
 
         $report = $hours->report($from, $to, $filtres);
         $performanceScores = $this->canViewAllPerformance()
-            ? $this->performanceScoresForReport($report, $this->scorePeriodFromRequest($request))
+            ? $this->performanceScoresForReport($report, $this->scorePeriodFromRequest($request), $scoring)
             : collect();
 
         $teachers = \App\Models\ESBTPTeacher::with('user:id,name')->get()
@@ -413,7 +414,7 @@ class TeacherAttendanceController extends Controller
      * Endpoint AJAX du rapport heures : recalcul filtres + pagination infinite scroll.
      * mode=filter → KPIs + cartes enseignants + 1ʳᵉ page ; mode=scroll → page séances seule.
      */
-    public function reportData(Request $request, TeacherHoursService $hours)
+    public function reportData(Request $request, TeacherHoursService $hours, PersonnelScoringService $scoring)
     {
         $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
         if (!$anneeEnCours) {
@@ -440,7 +441,7 @@ class TeacherAttendanceController extends Controller
         if ($mode === 'filter') {
             $report = $hours->report($from, $to, $filtres);
             $performanceScores = $this->canViewAllPerformance()
-                ? $this->performanceScoresForReport($report, $this->scorePeriodFromRequest($request))
+                ? $this->performanceScoresForReport($report, $this->scorePeriodFromRequest($request), $scoring)
                 : collect();
             $payload['kpis_html'] = view('esbtp.teacher-attendance.partials._report_kpis', [
                 'report' => $report,
@@ -607,7 +608,7 @@ class TeacherAttendanceController extends Controller
      * baromètre de réalisation, alertes de ponctualité et séances en infinity scroll.
      * Page pédagogique (heures seulement, aucun montant).
      */
-    public function teacherReport(Request $request, \App\Models\ESBTPTeacher $teacher, TeacherHoursService $hours)
+    public function teacherReport(Request $request, \App\Models\ESBTPTeacher $teacher, TeacherHoursService $hours, PersonnelScoringService $scoring)
     {
         $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
         if (! $anneeEnCours) {
@@ -617,7 +618,7 @@ class TeacherAttendanceController extends Controller
         [$from, $to] = $this->resolvePeriode($request, $anneeEnCours);
         $summary = $hours->summary($teacher, $from, $to);
         $performanceScore = $this->canViewTeacherPerformance($teacher)
-            ? $this->performanceScoreForTeacher($teacher, $this->scorePeriodFromRequest($request))
+            ? $this->performanceScoreForTeacher($teacher, $this->scorePeriodFromRequest($request), $scoring)
             : null;
 
         $paginator = $this->buildSeanceListQuery($from, $to, ['teacher_id' => $teacher->id])->paginate(20);
@@ -639,7 +640,7 @@ class TeacherAttendanceController extends Controller
     /**
      * Endpoint AJAX de la fiche enseignant : recalcul période + infinity scroll.
      */
-    public function teacherReportData(Request $request, \App\Models\ESBTPTeacher $teacher, TeacherHoursService $hours)
+    public function teacherReportData(Request $request, \App\Models\ESBTPTeacher $teacher, TeacherHoursService $hours, PersonnelScoringService $scoring)
     {
         $anneeEnCours = \App\Models\ESBTPAnneeUniversitaire::where('is_current', true)->first();
         if (! $anneeEnCours) {
@@ -663,7 +664,7 @@ class TeacherAttendanceController extends Controller
         if ($mode === 'filter') {
             $summary = $hours->summary($teacher, $from, $to);
             $performanceScore = $this->canViewTeacherPerformance($teacher)
-                ? $this->performanceScoreForTeacher($teacher, $this->scorePeriodFromRequest($request))
+                ? $this->performanceScoreForTeacher($teacher, $this->scorePeriodFromRequest($request), $scoring)
                 : null;
             $payload['kpis_html'] = view('esbtp.teacher-attendance.partials._teacher_kpis', ['summary' => $summary])->render();
             $payload['types_html'] = view('esbtp.teacher-attendance.partials._teacher_types', ['summary' => $summary])->render();
@@ -703,7 +704,9 @@ class TeacherAttendanceController extends Controller
 
     private function scorePeriodFromRequest(Request $request): string
     {
-        return $request->get('preset') === 'year' ? 'year' : 'month';
+        $period = $request->get('period', $request->get('preset', 'month'));
+
+        return in_array($period, ['month', 'quarter', 'year'], true) ? $period : 'month';
     }
 
     private function canViewAllPerformance(): bool
@@ -725,21 +728,31 @@ class TeacherAttendanceController extends Controller
         return (int) $teacher->user_id === (int) $user->id && $user->can('performance.view');
     }
 
-    private function performanceScoreForTeacher(ESBTPTeacher $teacher, string $periodType): ?ESBTPPersonnelScoreSnapshot
+    private function performanceScoreForTeacher(ESBTPTeacher $teacher, string $periodType, PersonnelScoringService $scoring): ?ESBTPPersonnelScoreSnapshot
     {
         if (! $teacher->user_id) {
             return null;
         }
 
-        return ESBTPPersonnelScoreSnapshot::query()
+        $snapshot = ESBTPPersonnelScoreSnapshot::query()
             ->where('user_id', $teacher->user_id)
             ->where('period_type', $periodType)
             ->latest('period_end')
             ->latest('calculated_at')
             ->first();
+
+        if ($snapshot) {
+            return $snapshot;
+        }
+
+        $teacher->loadMissing('user.roles', 'user.permissions', 'user.teacherProfile');
+
+        return $teacher->user
+            ? $this->scoreDataToSnapshot($scoring->calculate($teacher->user, $periodType), $teacher->user)
+            : null;
     }
 
-    private function performanceScoresForReport(array $report, string $periodType)
+    private function performanceScoresForReport(array $report, string $periodType, PersonnelScoringService $scoring)
     {
         $teacherIds = collect($report['enseignants'] ?? [])
             ->pluck('teacher_id')
@@ -760,7 +773,7 @@ class TeacherAttendanceController extends Controller
             return collect();
         }
 
-        return ESBTPPersonnelScoreSnapshot::query()
+        $scores = ESBTPPersonnelScoreSnapshot::query()
             ->with('user:id,name')
             ->whereIn('user_id', $teacherUserIds->values())
             ->where('period_type', $periodType)
@@ -772,6 +785,58 @@ class TeacherAttendanceController extends Controller
                 $teacherId = $teacherUserIds->search($score->user_id);
                 return $teacherId ? [(int) $teacherId => $score] : [];
             });
+
+        $missingTeacherIds = $teacherUserIds->keys()
+            ->map(fn ($teacherId) => (int) $teacherId)
+            ->diff($scores->keys()->map(fn ($teacherId) => (int) $teacherId));
+
+        if ($missingTeacherIds->isEmpty()) {
+            return $scores;
+        }
+
+        $teachers = ESBTPTeacher::query()
+            ->with('user.roles', 'user.permissions', 'user.teacherProfile')
+            ->whereIn('id', $missingTeacherIds)
+            ->get()
+            ->keyBy('id');
+
+        foreach ($missingTeacherIds as $teacherId) {
+            $teacher = $teachers->get((int) $teacherId);
+            if (! $teacher?->user) {
+                continue;
+            }
+
+            $scores->put(
+                (int) $teacherId,
+                $this->scoreDataToSnapshot($scoring->calculate($teacher->user, $periodType), $teacher->user)
+            );
+        }
+
+        return $scores;
+    }
+
+    private function scoreDataToSnapshot(array $scoreData, \App\Models\User $user): ESBTPPersonnelScoreSnapshot
+    {
+        $snapshot = new ESBTPPersonnelScoreSnapshot([
+            'user_id' => $scoreData['user_id'] ?? $user->id,
+            'teacher_id' => $scoreData['teacher_id'] ?? null,
+            'role_name' => $scoreData['role_name'] ?? null,
+            'period_type' => $scoreData['period_type'] ?? 'month',
+            'period_start' => $scoreData['period_start'] ?? null,
+            'period_end' => $scoreData['period_end'] ?? null,
+            'total_score' => $scoreData['total_score'] ?? 0,
+            'level' => $scoreData['level'] ?? 'insufficient_data',
+            'applicable_dimensions_count' => $scoreData['applicable_dimensions_count'] ?? 0,
+            'excluded_dimensions_count' => $scoreData['excluded_dimensions_count'] ?? 0,
+            'permissions' => $scoreData['permissions'] ?? [],
+            'metrics' => $scoreData['metrics'] ?? [],
+            'breakdown' => $scoreData['breakdown'] ?? [],
+            'calculated_at' => $scoreData['calculated_at'] ?? now(),
+        ]);
+        $snapshot->exists = false;
+        $snapshot->setRelation('user', $user);
+
+        return $snapshot;
     }
 
     private function buildPerformanceSummary($performanceScores): array
