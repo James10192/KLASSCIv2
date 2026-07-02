@@ -274,12 +274,12 @@ function New-KlassciQueryString {
 }
 
 function New-PersonnelScoresQuery {
-    param([string[]]$Args)
+    param([string[]]$Filters)
 
     $query = @{}
     $positionals = @()
 
-    foreach ($arg in @($Args)) {
+    foreach ($arg in @($Filters)) {
         if ($arg -match '^(?<key>[A-Za-z_][A-Za-z0-9_]*)=(?<value>.*)$') {
             $query[$Matches.key] = $Matches.value
         } elseif ($arg) {
@@ -478,7 +478,7 @@ switch ($Command) {
     }
     "personnel-scores" {
         $cfg = Get-KlassciConfig -TenantCode $Tenant
-        $query = New-PersonnelScoresQuery -Args $ExtraArgs
+        $query = New-PersonnelScoresQuery -Filters $ExtraArgs
         $path = "/personnel-scores{0}" -f (New-KlassciQueryString -Query $query)
         Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
         break
