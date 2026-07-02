@@ -92,7 +92,7 @@
     .pd-kpi-label { font-size: .72rem; color: rgba(255,255,255,.68); margin-top: .2rem; text-transform: uppercase; font-weight: 700; }
     .pd-grid {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) 340px;
+        grid-template-columns: minmax(620px, 1fr) 340px;
         gap: 1rem;
         align-items: start;
     }
@@ -135,7 +135,7 @@
         background: #f8fafc;
         font-size: .86rem;
     }
-    @media (max-width: 992px) {
+    @media (max-width: 1200px) {
         .pd-page { padding: 1rem; }
         .pd-hero { padding: 1.5rem; }
         .pd-grid { grid-template-columns: 1fr; }
@@ -180,7 +180,7 @@
 
             <div class="pd-kpis">
                 <div class="pd-kpi">
-                    <div class="pd-kpi-icon"><i class="fas fa-gauge-high"></i></div>
+                    <div class="pd-kpi-icon"><i class="fas fa-tachometer-alt"></i></div>
                     <div><div class="pd-kpi-value">{{ (int) $totalScore }}%</div><div class="pd-kpi-label">Score global</div></div>
                 </div>
                 <div class="pd-kpi">
@@ -200,12 +200,12 @@
 
         <div class="pd-grid">
             <div>
-                @include('esbtp.personnel.partials.performance-score', ['performanceScore' => $scoreData])
+                @include('esbtp.personnel.partials.performance-score', ['performanceScore' => $scoreData, 'showDetailLink' => false])
             </div>
 
             <div class="pd-card">
                 <div class="pd-section-header">
-                    <div class="pd-section-icon"><i class="fas fa-list-check"></i></div>
+                    <div class="pd-section-icon"><i class="fas fa-tasks"></i></div>
                     <div>
                         <h2 class="pd-section-title">Perimetre de scoring</h2>
                         <p class="pd-section-sub">Dimensions applicables et hors perimetre.</p>

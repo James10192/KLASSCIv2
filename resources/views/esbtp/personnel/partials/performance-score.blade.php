@@ -21,6 +21,7 @@
     $applicableCount = (int)($scoreData['applicable_dimensions_count'] ?? $breakdown->count());
     $excludedCount = (int)($scoreData['excluded_dimensions_count'] ?? 0);
     $detailUrl = !empty($scoreData['user_id']) ? route('esbtp.personnel.performance.show', $scoreData['user_id']) : null;
+    $showDetailLink = $showDetailLink ?? true;
 @endphp
 
 @once
@@ -504,7 +505,7 @@
                 </div>
 
                 @can('performance.view_all')
-                    @if($detailUrl)
+                    @if($showDetailLink && $detailUrl)
                         <a href="{{ $detailUrl }}" class="ps-detail-link">
                             <i class="fas fa-external-link-alt"></i>
                             Detail complet
