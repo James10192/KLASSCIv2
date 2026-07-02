@@ -85,7 +85,8 @@
         background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; margin-bottom: 1.25rem;
         padding: 1rem 1.1rem; box-shadow: 0 1px 3px rgba(15,23,42,.04);
     }
-    .tdr-score-head { display: flex; align-items: center; gap: .75rem; margin-bottom: .9rem; }
+    .tdr-score-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .9rem; }
+    .tdr-score-head-main { display: flex; align-items: center; gap: .75rem; min-width: 0; }
     .tdr-score-icon {
         width: 38px; height: 38px; border-radius: 10px;
         background: linear-gradient(135deg, #0453cb, #5e91de); color: #fff;
@@ -93,6 +94,13 @@
     }
     .tdr-score-title { color: #1e293b; font-size: .96rem; font-weight: 800; }
     .tdr-score-sub { color: #64748b; font-size: .76rem; margin-top: .1rem; }
+    .tdr-score-link {
+        display: inline-flex; align-items: center; justify-content: center; gap: .4rem;
+        min-height: 34px; padding: .4rem .75rem; border-radius: 999px;
+        background: #0453cb; color: #fff; font-size: .74rem; font-weight: 900;
+        text-decoration: none; white-space: nowrap; box-shadow: 0 8px 18px rgba(4,83,203,.14);
+    }
+    .tdr-score-link:hover { background: #0346ad; color: #fff; text-decoration: none; }
     .tdr-score-main { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: .9rem; align-items: stretch; }
     .tdr-score-value {
         border-radius: 14px; color: #fff; padding: 1rem;
@@ -173,6 +181,8 @@
     @media (max-width: 992px) { .tdr-grid { grid-template-columns: 1fr; } }
     @media (max-width: 768px) {
         .tdr-hero { padding: 1.4rem 1.25rem; }
+        .tdr-score-head { align-items: flex-start; flex-direction: column; }
+        .tdr-score-link { width: 100%; }
         .tdr-score-main { grid-template-columns: 1fr; }
     }
 </style>

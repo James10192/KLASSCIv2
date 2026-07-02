@@ -12,6 +12,7 @@
             'excluded_dimensions_count' => $performanceScore->excluded_dimensions_count,
             'breakdown' => $performanceScore->breakdown ?? [],
             'calculated_at' => optional($performanceScore->calculated_at)->format('d/m/Y H:i'),
+            'period_type' => $performanceScore->period_type,
         ]
         : ($performanceScore ?? []);
 
@@ -20,7 +21,12 @@
     $scoreValue = max(0, min(100, (int)($scoreData['total_score'] ?? 0)));
     $applicableCount = (int)($scoreData['applicable_dimensions_count'] ?? $breakdown->count());
     $excludedCount = (int)($scoreData['excluded_dimensions_count'] ?? 0);
-    $detailUrl = !empty($scoreData['user_id']) ? route('esbtp.personnel.performance.show', $scoreData['user_id']) : null;
+    $detailUrl = !empty($scoreData['user_id'])
+        ? route('esbtp.personnel.performance.show', [
+            'user' => $scoreData['user_id'],
+            'period' => $scoreData['period_type'] ?? request('period', 'month'),
+        ])
+        : null;
     $showDetailLink = $showDetailLink ?? true;
 @endphp
 
@@ -166,6 +172,7 @@
     .ps-meta-line {
         display: flex;
         flex-wrap: wrap;
+        align-items: center;
         gap: 8px;
     }
 
@@ -182,6 +189,31 @@
         font-size: .72rem;
         font-weight: 800;
         white-space: nowrap;
+    }
+
+    .ps-hero-link {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 7px;
+        min-height: 34px;
+        margin-left: auto;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: #ffffff;
+        border: 1px solid rgba(255, 255, 255, .24);
+        color: var(--ps-primary);
+        font-size: .75rem;
+        font-weight: 900;
+        text-decoration: none;
+        white-space: nowrap;
+        box-shadow: 0 10px 22px rgba(15, 23, 42, .12);
+    }
+
+    .ps-hero-link:hover {
+        color: #0346ad;
+        text-decoration: none;
+        transform: translateY(-1px);
     }
 
     .ps-score-pill {
@@ -524,6 +556,11 @@
         .ps-detail-link {
             width: 100%;
         }
+
+        .ps-hero-link {
+            width: 100%;
+            margin-left: 0;
+        }
     }
 </style>
 @endpush
@@ -564,6 +601,14 @@
             <div class="ps-meta-line">
                 <span class="ps-hero-badge"><i class="fas fa-layer-group"></i>{{ $applicableCount }} dimensions evaluees</span>
                 <span class="ps-hero-badge"><i class="fas fa-ban"></i>{{ $excludedCount }} hors perimetre</span>
+                @can('performance.view_all')
+                    @if($showDetailLink && $detailUrl)
+                        <a href="{{ $detailUrl }}" class="ps-hero-link" aria-label="Voir le detail performance">
+                            <i class="fas fa-external-link-alt"></i>
+                            Voir detail
+                        </a>
+                    @endif
+                @endcan
             </div>
         </div>
 

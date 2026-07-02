@@ -4,15 +4,31 @@
     $levelClass = config("personnel_scoring.levels.{$level}.class", 'muted');
     $levelLabel = config("personnel_scoring.levels.{$level}.label", 'Donnees insuffisantes');
     $breakdown = collect($score?->breakdown ?? [])->take(3);
+    $detailUrl = $score?->user_id
+        ? route('esbtp.personnel.performance.show', [
+            'user' => $score->user_id,
+            'period' => $score->period_type ?? request('period', 'month'),
+        ])
+        : null;
 @endphp
 
 <div class="tdr-score-card">
     <div class="tdr-score-head">
-        <div class="tdr-score-icon"><i class="fas fa-chart-line"></i></div>
-        <div>
-            <div class="tdr-score-title">Performance KLASSCI</div>
-            <div class="tdr-score-sub">Score automatique base sur les permissions et activites</div>
+        <div class="tdr-score-head-main">
+            <div class="tdr-score-icon"><i class="fas fa-chart-line"></i></div>
+            <div>
+                <div class="tdr-score-title">Performance KLASSCI</div>
+                <div class="tdr-score-sub">Score automatique base sur les permissions et activites</div>
+            </div>
         </div>
+        @can('performance.view_all')
+            @if($detailUrl)
+                <a href="{{ $detailUrl }}" class="tdr-score-link" aria-label="Voir le detail performance">
+                    <i class="fas fa-external-link-alt"></i>
+                    Voir detail
+                </a>
+            @endif
+        @endcan
     </div>
 
     @if(! $score)
