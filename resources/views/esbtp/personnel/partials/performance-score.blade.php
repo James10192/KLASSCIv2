@@ -43,17 +43,17 @@
     .ps-hero {
         position: relative;
         overflow: hidden;
-        min-height: 168px;
+        min-height: 176px;
         border-radius: 18px;
-        padding: 24px;
+        padding: 18px;
         color: #ffffff;
         background:
-            linear-gradient(135deg, rgba(4, 83, 203, .98) 0%, rgba(38, 112, 215, .96) 52%, rgba(94, 145, 222, .94) 100%);
+            linear-gradient(135deg, #0346ad 0%, #0453cb 48%, #5e91de 100%);
         box-shadow: 0 18px 45px rgba(4, 83, 203, .18);
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        align-items: center;
-        gap: 20px;
+        grid-template-columns: minmax(0, 1fr) 174px;
+        align-items: stretch;
+        gap: 16px;
     }
 
     .ps-hero-main,
@@ -62,17 +62,23 @@
         z-index: 1;
     }
 
-    .ps-title-row {
+    .ps-hero-main {
+        display: grid;
+        grid-template-rows: auto 1fr auto;
+        gap: 14px;
+        min-width: 0;
+    }
+
+    .ps-hero-header {
         display: flex;
         align-items: center;
         gap: 12px;
         min-width: 0;
-        margin-bottom: 12px;
     }
 
     .ps-title-icon {
-        width: 42px;
-        height: 42px;
+        width: 46px;
+        height: 46px;
         border-radius: 12px;
         background: rgba(255, 255, 255, .16);
         border: 1px solid rgba(255, 255, 255, .26);
@@ -82,58 +88,139 @@
         flex-shrink: 0;
     }
 
+    .ps-hero-copy {
+        min-width: 0;
+    }
+
     .ps-title {
         margin: 0;
-        font-size: 1.15rem;
+        font-size: 1.12rem;
         font-weight: 800;
         line-height: 1.2;
         letter-spacing: 0;
     }
 
-    .ps-subtitle {
-        margin: 3px 0 0;
-        color: rgba(255, 255, 255, .78);
-        font-size: .84rem;
-        line-height: 1.45;
+    .ps-eyebrow {
+        margin-top: 5px;
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 24px;
+        padding: 4px 9px;
+        border-radius: 999px;
+        color: rgba(255, 255, 255, .86);
+        background: rgba(255, 255, 255, .11);
+        border: 1px solid rgba(255, 255, 255, .16);
+        font-size: .72rem;
+        font-weight: 800;
+        line-height: 1.2;
+    }
+
+    .ps-hero-context {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+        align-self: center;
+    }
+
+    .ps-context-item {
+        min-width: 0;
+        min-height: 58px;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(255, 255, 255, .12);
+        border: 1px solid rgba(255, 255, 255, .18);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .ps-context-icon {
+        width: 34px;
+        height: 34px;
+        border-radius: 10px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255, 255, 255, .15);
+        flex-shrink: 0;
+    }
+
+    .ps-context-label {
+        color: rgba(255, 255, 255, .70);
+        font-size: .68rem;
+        font-weight: 900;
+        line-height: 1.1;
+        text-transform: uppercase;
+    }
+
+    .ps-context-value {
+        margin-top: 3px;
+        color: #ffffff;
+        font-size: .82rem;
+        font-weight: 800;
+        line-height: 1.2;
+        overflow-wrap: anywhere;
     }
 
     .ps-meta-line {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        margin-top: 16px;
     }
 
     .ps-hero-badge {
         display: inline-flex;
         align-items: center;
         gap: 7px;
-        min-height: 34px;
-        padding: 7px 12px;
+        min-height: 30px;
+        padding: 6px 10px;
         border-radius: 999px;
-        background: rgba(255, 255, 255, .14);
-        border: 1px solid rgba(255, 255, 255, .22);
+        background: rgba(255, 255, 255, .10);
+        border: 1px solid rgba(255, 255, 255, .18);
         color: #ffffff;
-        font-size: .78rem;
+        font-size: .72rem;
         font-weight: 800;
         white-space: nowrap;
     }
 
     .ps-score-pill {
-        width: 148px;
-        min-height: 148px;
-        border-radius: 22px;
-        background: rgba(255, 255, 255, .14);
-        border: 1px solid rgba(255, 255, 255, .24);
+        min-height: 140px;
+        border-radius: 18px;
+        padding: 16px;
+        background: rgba(255, 255, 255, .16);
+        border: 1px solid rgba(255, 255, 255, .25);
         display: grid;
-        place-items: center;
+        align-content: center;
+        justify-items: center;
+        gap: 12px;
         text-align: center;
         backdrop-filter: blur(8px);
     }
 
+    .ps-score-ring {
+        width: 92px;
+        height: 92px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background:
+            conic-gradient(#ffffff calc(var(--ps-score-value, 0) * 1%), rgba(255, 255, 255, .22) 0);
+        box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .26);
+    }
+
+    .ps-score-ring-inner {
+        width: 72px;
+        height: 72px;
+        border-radius: 50%;
+        display: grid;
+        place-items: center;
+        background: rgba(4, 83, 203, .72);
+    }
+
     .ps-score-pill strong {
         display: block;
-        font-size: 2.55rem;
+        font-size: 1.85rem;
         font-weight: 900;
         line-height: .95;
         letter-spacing: 0;
@@ -147,6 +234,13 @@
         color: rgba(255, 255, 255, .82);
         text-transform: uppercase;
         letter-spacing: .05em;
+    }
+
+    .ps-score-caption {
+        color: rgba(255, 255, 255, .84);
+        font-size: .72rem;
+        font-weight: 800;
+        line-height: 1.35;
     }
 
     .ps-kpi-grid {
@@ -381,10 +475,14 @@
         }
 
         .ps-score-pill {
-            width: 100%;
-            min-height: 104px;
+            min-height: 108px;
+            grid-template-columns: auto 1fr;
             justify-items: start;
             padding: 18px;
+            text-align: left;
+        }
+
+        .ps-score-caption {
             text-align: left;
         }
 
@@ -397,6 +495,15 @@
         .ps-hero {
             border-radius: 14px;
             padding: 18px;
+        }
+
+        .ps-hero-header,
+        .ps-context-item {
+            align-items: flex-start;
+        }
+
+        .ps-hero-context {
+            grid-template-columns: 1fr;
         }
 
         .ps-kpi-grid {
@@ -425,33 +532,49 @@
 <div class="ps-performance-tab">
     <section class="ps-hero" aria-label="Resume performance">
         <div class="ps-hero-main">
-            <div class="ps-title-row">
+            <div class="ps-hero-header">
                 <div class="ps-title-icon"><i class="fas fa-chart-line"></i></div>
-                <div>
+                <div class="ps-hero-copy">
                     <h3 class="ps-title">Performance operationnelle</h3>
-                    <p class="ps-subtitle">
-                        {{ $scoreData['period_start'] ?? 'Debut periode' }}
-                        -
-                        {{ $scoreData['period_end'] ?? 'Fin periode' }}
-                        @if(!empty($scoreData['calculated_at']))
-                            - calcule le {{ $scoreData['calculated_at'] }}
-                        @endif
-                    </p>
+                    <span class="ps-eyebrow"><i class="fas fa-shield-alt"></i> Scoring base permissions</span>
+                </div>
+            </div>
+
+            <div class="ps-hero-context" aria-label="Contexte du score">
+                <div class="ps-context-item">
+                    <span class="ps-context-icon"><i class="fas fa-calendar-day"></i></span>
+                    <span>
+                        <span class="ps-context-label">Periode</span>
+                        <span class="ps-context-value">
+                            {{ $scoreData['period_start'] ?? 'Debut periode' }}
+                            -
+                            {{ $scoreData['period_end'] ?? 'Fin periode' }}
+                        </span>
+                    </span>
+                </div>
+                <div class="ps-context-item">
+                    <span class="ps-context-icon"><i class="fas fa-rotate"></i></span>
+                    <span>
+                        <span class="ps-context-label">Dernier calcul</span>
+                        <span class="ps-context-value">{{ $scoreData['calculated_at'] ?? 'Non calcule' }}</span>
+                    </span>
                 </div>
             </div>
 
             <div class="ps-meta-line">
                 <span class="ps-hero-badge"><i class="fas fa-layer-group"></i>{{ $applicableCount }} dimensions evaluees</span>
                 <span class="ps-hero-badge"><i class="fas fa-ban"></i>{{ $excludedCount }} hors perimetre</span>
-                <span class="ps-hero-badge"><i class="fas fa-shield-alt"></i>Base permissions</span>
             </div>
         </div>
 
-        <div class="ps-score-pill">
-            <div>
-                <strong>{{ $scoreValue }}%</strong>
-                <span>score global</span>
+        <div class="ps-score-pill" style="--ps-score-value: {{ $scoreValue }};">
+            <div class="ps-score-ring" aria-hidden="true">
+                <div class="ps-score-ring-inner">
+                    <strong>{{ $scoreValue }}%</strong>
+                </div>
             </div>
+            <span>score global</span>
+            <div class="ps-score-caption">{{ $scoreData['level_label'] ?? 'Donnees insuffisantes' }}</div>
         </div>
     </section>
 
