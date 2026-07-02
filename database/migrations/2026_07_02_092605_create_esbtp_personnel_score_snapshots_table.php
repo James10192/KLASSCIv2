@@ -2,6 +2,7 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
@@ -13,6 +14,11 @@ return new class extends Migration
      */
     public function up()
     {
+        if (Schema::hasTable('esbtp_personnel_score_snapshots')) {
+            $this->ensureIndexes();
+            return;
+        }
+
         Schema::create('esbtp_personnel_score_snapshots', function (Blueprint $table) {
             $table->id();
             $table->foreignId('user_id')->constrained('users')->cascadeOnDelete();
@@ -33,10 +39,10 @@ return new class extends Migration
 
             $table->unique(
                 ['user_id', 'role_name', 'period_type', 'period_start', 'period_end'],
-                'esbtp_personnel_scores_period_unique'
+                'epss_period_unique'
             );
-            $table->index(['role_name', 'period_type', 'period_start']);
-            $table->index(['level', 'total_score']);
+            $table->index(['role_name', 'period_type', 'period_start'], 'epss_role_period_idx');
+            $table->index(['level', 'total_score'], 'epss_level_score_idx');
         });
     }
 
@@ -48,5 +54,24 @@ return new class extends Migration
     public function down()
     {
         Schema::dropIfExists('esbtp_personnel_score_snapshots');
+    }
+
+    private function ensureIndexes(): void
+    {
+        Schema::table('esbtp_personnel_score_snapshots', function (Blueprint $table) {
+            if (! $this->indexExists('esbtp_personnel_score_snapshots', 'epss_role_period_idx')) {
+                $table->index(['role_name', 'period_type', 'period_start'], 'epss_role_period_idx');
+            }
+
+            if (! $this->indexExists('esbtp_personnel_score_snapshots', 'epss_level_score_idx')) {
+                $table->index(['level', 'total_score'], 'epss_level_score_idx');
+            }
+        });
+    }
+
+    private function indexExists(string $table, string $index): bool
+    {
+        return collect(DB::select("SHOW INDEX FROM {$table}"))
+            ->contains(fn ($row) => ($row->Key_name ?? null) === $index);
     }
 };
