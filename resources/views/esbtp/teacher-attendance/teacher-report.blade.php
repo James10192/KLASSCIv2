@@ -35,7 +35,7 @@
     .tdr-kpis { display: flex; gap: .75rem; margin-top: 1.4rem; flex-wrap: wrap; }
     .tdr-kpi { flex: 1; min-width: 150px; background: rgba(255,255,255,.1); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; padding: .85rem 1rem; display: flex; align-items: center; gap: .7rem; }
     .tdr-kpi-ico { width: 38px; height: 38px; border-radius: 10px; flex-shrink: 0; background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center; font-size: .95rem; color: #fff; }
-    .tdr-kpi--warn .tdr-kpi-ico { background: rgba(245,158,11,.28); }
+    .tdr-kpi--warn .tdr-kpi-ico { background: rgba(217,119,6,.28); }
     .tdr-kpi-val { font-size: 1.3rem; font-weight: 700; color: #fff; line-height: 1; }
     .tdr-kpi-sub { font-size: .85rem; font-weight: 600; color: rgba(255,255,255,.6); }
     .tdr-kpi-lbl { font-size: .68rem; color: rgba(255,255,255,.65); margin-top: .2rem; }
@@ -76,10 +76,55 @@
     .tdr-noalert { font-size: .82rem; color: #065f46; background: rgba(16,185,129,.08); border: 1px solid rgba(16,185,129,.2); border-radius: 10px; padding: .8rem 1rem; display: flex; align-items: center; gap: .5rem; }
     .tdr-alert { display: flex; align-items: flex-start; gap: .55rem; font-size: .8rem; padding: .65rem .85rem; border-radius: 10px; margin-bottom: .5rem; }
     .tdr-alert:last-child { margin-bottom: 0; }
-    .tdr-alert--warning { background: rgba(245,158,11,.1); border: 1px solid rgba(245,158,11,.25); color: #92400e; }
+    .tdr-alert--warning { background: rgba(217,119,6,.1); border: 1px solid rgba(217,119,6,.25); color: #92400e; }
     .tdr-alert--danger { background: rgba(220,38,38,.08); border: 1px solid rgba(220,38,38,.2); color: #b91c1c; }
     .tdr-alert i { margin-top: 2px; }
     .tdr-alerts-scroll { max-height: 260px; overflow-y: auto; }
+
+    .tdr-score-card {
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; margin-bottom: 1.25rem;
+        padding: 1rem 1.1rem; box-shadow: 0 1px 3px rgba(15,23,42,.04);
+    }
+    .tdr-score-head { display: flex; align-items: center; gap: .75rem; margin-bottom: .9rem; }
+    .tdr-score-icon {
+        width: 38px; height: 38px; border-radius: 10px;
+        background: linear-gradient(135deg, #0453cb, #5e91de); color: #fff;
+        display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .tdr-score-title { color: #1e293b; font-size: .96rem; font-weight: 800; }
+    .tdr-score-sub { color: #64748b; font-size: .76rem; margin-top: .1rem; }
+    .tdr-score-main { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: .9rem; align-items: stretch; }
+    .tdr-score-value {
+        border-radius: 14px; color: #fff; padding: 1rem;
+        background: linear-gradient(135deg, #0453cb, #5e91de);
+        display: flex; flex-direction: column; justify-content: center; min-height: 110px;
+    }
+    .tdr-score-value strong { font-size: 2rem; line-height: 1; font-weight: 900; }
+    .tdr-score-value span { margin-top: .45rem; font-size: .72rem; font-weight: 800; text-transform: uppercase; opacity: .82; }
+    .tdr-score-meta { display: flex; flex-wrap: wrap; align-content: center; gap: .5rem; }
+    .tdr-score-badge,
+    .tdr-score-chip {
+        display: inline-flex; align-items: center; gap: .35rem; min-height: 34px;
+        border-radius: 999px; padding: .35rem .7rem; font-size: .74rem; font-weight: 800;
+        border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b;
+    }
+    .tdr-score-badge.success { background: rgba(16,185,129,.12); color: #047857; border-color: rgba(16,185,129,.22); }
+    .tdr-score-badge.primary { background: rgba(4,83,203,.10); color: #0453cb; border-color: rgba(4,83,203,.18); }
+    .tdr-score-badge.warning { background: rgba(217,119,6,.12); color: #92400e; border-color: rgba(217,119,6,.22); }
+    .tdr-score-badge.danger { background: rgba(220,38,38,.10); color: #b91c1c; border-color: rgba(220,38,38,.18); }
+    .tdr-score-badge.muted { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+    .tdr-score-dims { display: grid; gap: .65rem; margin-top: .95rem; }
+    .tdr-score-dim { border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; padding: .75rem .85rem; }
+    .tdr-score-dim-top { display: flex; align-items: center; justify-content: space-between; gap: .75rem; font-size: .8rem; font-weight: 800; color: #1e293b; }
+    .tdr-score-dim-top b { color: #0453cb; white-space: nowrap; }
+    .tdr-score-bar { height: 8px; border-radius: 999px; overflow: hidden; background: #e2e8f0; margin-top: .55rem; }
+    .tdr-score-bar span { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #0453cb, #5e91de); }
+    .tdr-score-empty {
+        border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #64748b;
+        padding: .9rem 1rem; display: flex; align-items: center; gap: .65rem; font-size: .82rem; font-weight: 700;
+    }
+    .tdr-score-empty i { color: #0453cb; }
+    .tdr-score-empty.compact { display: block; padding: .7rem .85rem; }
 
     /* Réutilise les styles de lignes séances de la page report (tar-*) */
     .tdr-seances { max-height: 62vh; overflow-y: auto; }
@@ -92,7 +137,7 @@
     .tar-seance-row { display: flex; align-items: center; gap: .85rem; padding: .75rem .35rem; border-bottom: 1px solid #f1f5f9; position: relative; overflow: hidden; }
     .tar-rowhl { position: absolute; top: 0; left: -80%; width: 160%; height: 100%; opacity: 0; pointer-events: none; transform: translateX(-65%) skewX(-12deg); z-index: 5; background: linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.55) 50%, rgba(16,185,129,0) 100%); }
     .tar-rowhl--absent { background: linear-gradient(90deg, rgba(220,38,38,0) 0%, rgba(220,38,38,.55) 50%, rgba(220,38,38,0) 100%); }
-    .tar-rowhl--late { background: linear-gradient(90deg, rgba(245,158,11,0) 0%, rgba(245,158,11,.55) 50%, rgba(245,158,11,0) 100%); }
+    .tar-rowhl--late { background: linear-gradient(90deg, rgba(217,119,6,0) 0%, rgba(217,119,6,.55) 50%, rgba(217,119,6,0) 100%); }
     .tar-rowhl.animate { animation: tar-rowhl-move 3.2s ease-out forwards; }
     @keyframes tar-rowhl-move { 0% { opacity: 0; transform: translateX(-65%) skewX(-12deg); } 18% { opacity: .92; } 55% { opacity: .72; } 100% { opacity: 0; transform: translateX(115%) skewX(-12deg); } }
     .tar-seance-row:last-child { border-bottom: none; }
@@ -117,8 +162,8 @@
     .tar-act { width: 26px; height: 26px; border-radius: 7px; border: 1px solid; background: #fff; cursor: pointer; font-size: .68rem; display: flex; align-items: center; justify-content: center; transition: all .15s; }
     .tar-act--ok { color: #059669; border-color: rgba(16,185,129,.4); }
     .tar-act--ok:hover { background: #10b981; color: #fff; }
-    .tar-act--late { color: #b45309; border-color: rgba(245,158,11,.4); }
-    .tar-act--late:hover { background: #f59e0b; color: #fff; }
+    .tar-act--late { color: #b45309; border-color: rgba(217,119,6,.4); }
+    .tar-act--late:hover { background: #d97706; color: #fff; }
     .tar-act--no { color: #dc2626; border-color: rgba(220,38,38,.4); }
     .tar-act--no:hover { background: #dc2626; color: #fff; }
     .tar-seance-view { display: flex; gap: .3rem; margin-top: .3rem; }
@@ -126,7 +171,10 @@
     .tar-vw:hover { border-color: #0453cb; color: #0453cb; background: rgba(4,83,203,.05); }
 
     @media (max-width: 992px) { .tdr-grid { grid-template-columns: 1fr; } }
-    @media (max-width: 768px) { .tdr-hero { padding: 1.4rem 1.25rem; } }
+    @media (max-width: 768px) {
+        .tdr-hero { padding: 1.4rem 1.25rem; }
+        .tdr-score-main { grid-template-columns: 1fr; }
+    }
 </style>
 @endpush
 
@@ -179,6 +227,12 @@
         <span class="tdr-period-lbl" x-text="periodeLabel">{{ $from->format('d/m/Y') }} → {{ $to->format('d/m/Y') }}</span>
     </div>
 
+    @if($performanceScore || auth()->user()?->can('performance.view_all') || ((int) $teacher->user_id === (int) auth()->id() && auth()->user()?->can('performance.view')))
+        <div id="tdrPerformance">
+            @include('esbtp.teacher-attendance.partials._teacher_performance', ['performanceScore' => $performanceScore])
+        </div>
+    @endif
+
     <div class="tdr-grid">
         <div>
             {{-- Ventilation par type --}}
@@ -200,7 +254,7 @@
             {{-- Alertes ponctualité --}}
             <div class="tdr-panel">
                 <div class="tdr-panel-head">
-                    <div class="tdr-panel-ico" style="background:linear-gradient(135deg,#f59e0b,#d97706);"><i class="fas fa-triangle-exclamation"></i></div>
+                    <div class="tdr-panel-ico" style="background:linear-gradient(135deg,#b45309,#d97706);"><i class="fas fa-exclamation-triangle"></i></div>
                     <div>
                         <div class="tdr-panel-title">Ponctualité</div>
                         <div class="tdr-panel-sub">Retards et séances non émargées</div>
@@ -217,7 +271,7 @@
         {{-- Séances --}}
         <div class="tdr-panel">
             <div class="tdr-panel-head">
-                <div class="tdr-panel-ico"><i class="fas fa-list-check"></i></div>
+                <div class="tdr-panel-ico"><i class="fas fa-tasks"></i></div>
                 <div>
                     <div class="tdr-panel-title">Détail des séances</div>
                     <div class="tdr-panel-sub"><span x-text="totalLabel">{{ $paginator->total() }} séance(s)</span> · durées précises</div>
@@ -226,7 +280,7 @@
             <div class="tdr-panel-body" style="padding-top:.4rem;padding-bottom:.4rem;">
                 <div class="tdr-seances" id="tdrSeances">
                     @if($rows->isEmpty())
-                        <div class="tdr-empty"><i class="fas fa-calendar-xmark"></i><p>Aucune séance sur cette période.</p></div>
+                        <div class="tdr-empty"><i class="fas fa-calendar-times"></i><p>Aucune séance sur cette période.</p></div>
                     @else
                         @include('esbtp.teacher-attendance.partials._report_seances', ['rows' => $rows])
                     @endif
@@ -270,6 +324,9 @@ function teacherPage() {
                 document.getElementById('tdrKpis').innerHTML = d.kpis_html;
                 document.getElementById('tdrTypes').innerHTML = d.types_html;
                 document.getElementById('tdrWarnings').innerHTML = d.warnings_html;
+                if (d.performance_html && document.getElementById('tdrPerformance')) {
+                    document.getElementById('tdrPerformance').innerHTML = d.performance_html;
+                }
                 // NE PAS toucher #tdrSeances : la ligne animée reste intacte.
             } catch (e) { /* silencieux */ }
         },
@@ -293,8 +350,11 @@ function teacherPage() {
                 document.getElementById('tdrKpis').innerHTML = d.kpis_html;
                 document.getElementById('tdrTypes').innerHTML = d.types_html;
                 document.getElementById('tdrWarnings').innerHTML = d.warnings_html;
+                if (d.performance_html && document.getElementById('tdrPerformance')) {
+                    document.getElementById('tdrPerformance').innerHTML = d.performance_html;
+                }
                 document.getElementById('tdrSeances').innerHTML = d.seances_html
-                    || '<div class="tdr-empty"><i class="fas fa-calendar-xmark"></i><p>Aucune séance.</p></div>';
+                    || '<div class="tdr-empty"><i class="fas fa-calendar-times"></i><p>Aucune séance.</p></div>';
                 this.hasMore = d.has_more; this.nextPage = d.next_page;
                 this.periodeLabel = d.periode.from + ' → ' + d.periode.to;
                 this.totalLabel = d.total + ' séance(s)';

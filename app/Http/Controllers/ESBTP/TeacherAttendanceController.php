@@ -9,6 +9,7 @@ use App\Models\ESBTPTeacherAttendance;
 use App\Models\ESBTPAttendanceSettings;
 use App\Models\ESBTPEmploiTemps;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPPersonnelScoreSnapshot;
 use App\Models\ESBTPSeanceCours;
 use App\Models\ESBTPSessionWorkflow;
 use App\Services\NotificationService;
@@ -377,6 +378,9 @@ class TeacherAttendanceController extends Controller
         $filtres = $this->reportFiltres($request);
 
         $report = $hours->report($from, $to, $filtres);
+        $performanceScores = $this->canViewAllPerformance()
+            ? $this->performanceScoresForReport($report, $this->scorePeriodFromRequest($request))
+            : collect();
 
         $teachers = \App\Models\ESBTPTeacher::with('user:id,name')->get()
             ->map(fn ($t) => ['id' => $t->id, 'name' => $t->user->name ?? $t->name ?? 'Enseignant'])
@@ -400,6 +404,8 @@ class TeacherAttendanceController extends Controller
             'rows'         => $rows,
             'paginator'    => $paginator,
             'typeOptions'  => $this->typeSeanceOptions(),
+            'performanceScores' => $performanceScores,
+            'performanceSummary' => $this->buildPerformanceSummary($performanceScores),
         ]);
     }
 
@@ -433,11 +439,19 @@ class TeacherAttendanceController extends Controller
 
         if ($mode === 'filter') {
             $report = $hours->report($from, $to, $filtres);
+            $performanceScores = $this->canViewAllPerformance()
+                ? $this->performanceScoresForReport($report, $this->scorePeriodFromRequest($request))
+                : collect();
             $payload['kpis_html'] = view('esbtp.teacher-attendance.partials._report_kpis', [
                 'report' => $report,
             ])->render();
             $payload['teachers_html'] = view('esbtp.teacher-attendance.partials._report_teachers', [
                 'report' => $report,
+                'performanceScores' => $performanceScores,
+            ])->render();
+            $payload['performance_html'] = view('esbtp.teacher-attendance.partials._report_performance', [
+                'performanceScores' => $performanceScores,
+                'performanceSummary' => $this->buildPerformanceSummary($performanceScores),
             ])->render();
         }
 
@@ -602,6 +616,9 @@ class TeacherAttendanceController extends Controller
 
         [$from, $to] = $this->resolvePeriode($request, $anneeEnCours);
         $summary = $hours->summary($teacher, $from, $to);
+        $performanceScore = $this->canViewTeacherPerformance($teacher)
+            ? $this->performanceScoreForTeacher($teacher, $this->scorePeriodFromRequest($request))
+            : null;
 
         $paginator = $this->buildSeanceListQuery($from, $to, ['teacher_id' => $teacher->id])->paginate(20);
         $rows = $this->decorateSeances($paginator->getCollection(), $hours);
@@ -615,6 +632,7 @@ class TeacherAttendanceController extends Controller
             'preset'       => $request->get('preset', 'year'),
             'rows'         => $rows,
             'paginator'    => $paginator,
+            'performanceScore' => $performanceScore,
         ]);
     }
 
@@ -644,9 +662,13 @@ class TeacherAttendanceController extends Controller
 
         if ($mode === 'filter') {
             $summary = $hours->summary($teacher, $from, $to);
+            $performanceScore = $this->canViewTeacherPerformance($teacher)
+                ? $this->performanceScoreForTeacher($teacher, $this->scorePeriodFromRequest($request))
+                : null;
             $payload['kpis_html'] = view('esbtp.teacher-attendance.partials._teacher_kpis', ['summary' => $summary])->render();
             $payload['types_html'] = view('esbtp.teacher-attendance.partials._teacher_types', ['summary' => $summary])->render();
             $payload['warnings_html'] = view('esbtp.teacher-attendance.partials._teacher_warnings', ['summary' => $summary])->render();
+            $payload['performance_html'] = view('esbtp.teacher-attendance.partials._teacher_performance', ['performanceScore' => $performanceScore])->render();
         }
 
         return response()->json($payload);
@@ -677,6 +699,102 @@ class TeacherAttendanceController extends Controller
         }
 
         return $attendance ? $attendance->status : 'not_signed';
+    }
+
+    private function scorePeriodFromRequest(Request $request): string
+    {
+        return $request->get('preset') === 'year' ? 'year' : 'month';
+    }
+
+    private function canViewAllPerformance(): bool
+    {
+        return auth()->check() && auth()->user()->can('performance.view_all');
+    }
+
+    private function canViewTeacherPerformance(ESBTPTeacher $teacher): bool
+    {
+        $user = auth()->user();
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->can('performance.view_all')) {
+            return true;
+        }
+
+        return (int) $teacher->user_id === (int) $user->id && $user->can('performance.view');
+    }
+
+    private function performanceScoreForTeacher(ESBTPTeacher $teacher, string $periodType): ?ESBTPPersonnelScoreSnapshot
+    {
+        if (! $teacher->user_id) {
+            return null;
+        }
+
+        return ESBTPPersonnelScoreSnapshot::query()
+            ->where('user_id', $teacher->user_id)
+            ->where('period_type', $periodType)
+            ->latest('period_end')
+            ->latest('calculated_at')
+            ->first();
+    }
+
+    private function performanceScoresForReport(array $report, string $periodType)
+    {
+        $teacherIds = collect($report['enseignants'] ?? [])
+            ->pluck('teacher_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($teacherIds->isEmpty()) {
+            return collect();
+        }
+
+        $teacherUserIds = ESBTPTeacher::query()
+            ->whereIn('id', $teacherIds)
+            ->whereNotNull('user_id')
+            ->pluck('user_id', 'id');
+
+        if ($teacherUserIds->isEmpty()) {
+            return collect();
+        }
+
+        return ESBTPPersonnelScoreSnapshot::query()
+            ->with('user:id,name')
+            ->whereIn('user_id', $teacherUserIds->values())
+            ->where('period_type', $periodType)
+            ->orderByDesc('period_end')
+            ->orderByDesc('calculated_at')
+            ->get()
+            ->unique('user_id')
+            ->mapWithKeys(function ($score) use ($teacherUserIds) {
+                $teacherId = $teacherUserIds->search($score->user_id);
+                return $teacherId ? [(int) $teacherId => $score] : [];
+            });
+    }
+
+    private function buildPerformanceSummary($performanceScores): array
+    {
+        $scores = collect($performanceScores)->filter();
+
+        if ($scores->isEmpty()) {
+            return [
+                'count' => 0,
+                'average' => 0,
+                'top' => null,
+                'watch_count' => 0,
+            ];
+        }
+
+        $top = $scores->sortByDesc('total_score')->first();
+
+        return [
+            'count' => $scores->count(),
+            'average' => (int) round($scores->avg('total_score')),
+            'top' => $top,
+            'watch_count' => $scores->filter(fn ($score) => in_array($score->level, ['watch', 'critical'], true))->count(),
+        ];
     }
 
     /**

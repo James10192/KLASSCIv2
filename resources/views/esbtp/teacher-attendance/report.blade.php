@@ -43,7 +43,7 @@
         background: rgba(255,255,255,.12); display: flex; align-items: center; justify-content: center;
         font-size: .95rem; color: #fff;
     }
-    .tar-kpi--warn .tar-kpi-ico { background: rgba(245,158,11,.28); }
+    .tar-kpi--warn .tar-kpi-ico { background: rgba(217,119,6,.28); }
     .tar-kpi-val { font-size: 1.3rem; font-weight: 700; color: #fff; line-height: 1; }
     .tar-kpi-sub { font-size: .85rem; font-weight: 600; color: rgba(255,255,255,.6); }
     .tar-kpi-lbl { font-size: .68rem; color: rgba(255,255,255,.65); margin-top: .2rem; }
@@ -105,7 +105,7 @@
     .tar-tcard-sub { font-size: .72rem; color: #64748b; margin-top: .1rem; }
     .tar-tcard-warn {
         font-size: .68rem; font-weight: 700; color: #92400e;
-        background: rgba(245,158,11,.12); border: 1px solid rgba(245,158,11,.28);
+        background: rgba(217,119,6,.12); border: 1px solid rgba(217,119,6,.28);
         padding: .15rem .45rem; border-radius: 6px; white-space: nowrap;
     }
     .tar-tcard-bar { height: 7px; border-radius: 5px; background: #eef2f7; overflow: hidden; margin-top: .75rem; }
@@ -118,6 +118,47 @@
     }
     .tar-type-code { font-size: .65rem; opacity: .85; }
     .tar-type-nf { opacity: .5; }
+    .tar-score-badge {
+        display: inline-flex; align-items: center; gap: .3rem; flex-shrink: 0;
+        border-radius: 999px; padding: .24rem .55rem; font-size: .68rem; font-weight: 800;
+        border: 1px solid #e2e8f0; background: #f8fafc; color: #64748b;
+    }
+    .tar-score-badge.success { background: rgba(16,185,129,.12); color: #047857; border-color: rgba(16,185,129,.22); }
+    .tar-score-badge.primary { background: rgba(4,83,203,.10); color: #0453cb; border-color: rgba(4,83,203,.18); }
+    .tar-score-badge.warning { background: rgba(217,119,6,.12); color: #92400e; border-color: rgba(217,119,6,.22); }
+    .tar-score-badge.danger { background: rgba(220,38,38,.10); color: #b91c1c; border-color: rgba(220,38,38,.18); }
+    .tar-score-badge.muted { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+
+    .tar-score-panel {
+        background: #fff; border: 1px solid #e2e8f0; border-radius: 14px; margin-bottom: 1.25rem;
+        padding: 1rem 1.1rem; box-shadow: 0 1px 3px rgba(15,23,42,.04);
+    }
+    .tar-score-head { display: flex; align-items: center; gap: .75rem; margin-bottom: .9rem; }
+    .tar-score-icon {
+        width: 38px; height: 38px; border-radius: 10px;
+        background: linear-gradient(135deg, #0453cb, #5e91de); color: #fff;
+        display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .tar-score-title { color: #1e293b; font-size: .96rem; font-weight: 800; }
+    .tar-score-sub { color: #64748b; font-size: .76rem; margin-top: .1rem; }
+    .tar-score-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; }
+    .tar-score-metric {
+        border: 1px solid #e2e8f0; border-radius: 12px; background: #f8fafc; padding: .85rem .95rem;
+    }
+    .tar-score-metric span { display: block; color: #0453cb; font-size: 1.25rem; font-weight: 900; line-height: 1; }
+    .tar-score-metric small { display: block; color: #64748b; font-size: .7rem; font-weight: 800; margin-top: .35rem; text-transform: uppercase; }
+    .tar-score-top {
+        margin-top: .75rem; border: 1px solid rgba(4,83,203,.16); border-radius: 12px;
+        background: #f8fbff; padding: .8rem .95rem; display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+    }
+    .tar-score-top strong { display: block; color: #1e293b; font-size: .86rem; }
+    .tar-score-top span { display: block; color: #64748b; font-size: .73rem; margin-top: .1rem; }
+    .tar-score-top b { color: #0453cb; font-size: 1.2rem; }
+    .tar-score-empty {
+        border: 1px dashed #cbd5e1; border-radius: 12px; background: #f8fafc; color: #64748b;
+        padding: .9rem 1rem; display: flex; align-items: center; gap: .65rem; font-size: .82rem; font-weight: 700;
+    }
+    .tar-score-empty i { color: #0453cb; }
 
     /* ── Liste séances ────────────────────────────────────── */
     .tar-seances { max-height: 70vh; overflow-y: auto; }
@@ -129,7 +170,7 @@
     /* Travelling-light feedback sur marquage présent/absent/retard */
     .tar-rowhl { position: absolute; top: 0; left: -80%; width: 160%; height: 100%; opacity: 0; pointer-events: none; transform: translateX(-65%) skewX(-12deg); z-index: 5; background: linear-gradient(90deg, rgba(16,185,129,0) 0%, rgba(16,185,129,.55) 50%, rgba(16,185,129,0) 100%); }
     .tar-rowhl--absent { background: linear-gradient(90deg, rgba(220,38,38,0) 0%, rgba(220,38,38,.55) 50%, rgba(220,38,38,0) 100%); }
-    .tar-rowhl--late { background: linear-gradient(90deg, rgba(245,158,11,0) 0%, rgba(245,158,11,.55) 50%, rgba(245,158,11,0) 100%); }
+    .tar-rowhl--late { background: linear-gradient(90deg, rgba(217,119,6,0) 0%, rgba(217,119,6,.55) 50%, rgba(217,119,6,0) 100%); }
     .tar-rowhl.animate { animation: tar-rowhl-move 3.2s ease-out forwards; }
     @keyframes tar-rowhl-move { 0% { opacity: 0; transform: translateX(-65%) skewX(-12deg); } 18% { opacity: .92; } 55% { opacity: .72; } 100% { opacity: 0; transform: translateX(115%) skewX(-12deg); } }
     .tar-seance-row:last-child { border-bottom: none; }
@@ -154,8 +195,8 @@
     .tar-act { width: 26px; height: 26px; border-radius: 7px; border: 1px solid; background: #fff; cursor: pointer; font-size: .68rem; display: flex; align-items: center; justify-content: center; transition: all .15s; }
     .tar-act--ok { color: #059669; border-color: rgba(16,185,129,.4); }
     .tar-act--ok:hover { background: #10b981; color: #fff; }
-    .tar-act--late { color: #b45309; border-color: rgba(245,158,11,.4); }
-    .tar-act--late:hover { background: #f59e0b; color: #fff; }
+    .tar-act--late { color: #b45309; border-color: rgba(217,119,6,.4); }
+    .tar-act--late:hover { background: #d97706; color: #fff; }
     .tar-act--no { color: #dc2626; border-color: rgba(220,38,38,.4); }
     .tar-act--no:hover { background: #dc2626; color: #fff; }
     .tar-seance-view { display: flex; gap: .3rem; margin-top: .3rem; }
@@ -173,6 +214,7 @@
     @media (max-width: 768px) {
         .tar-hero { padding: 1.4rem 1.25rem; }
         .tar-filters-row { flex-direction: column; align-items: stretch; }
+        .tar-score-grid { grid-template-columns: 1fr; }
     }
 </style>
 @endpush
@@ -258,12 +300,21 @@
         </div>
     </form>
 
+    @can('performance.view_all')
+        <div id="tarPerformance">
+            @include('esbtp.teacher-attendance.partials._report_performance', [
+                'performanceScores' => $performanceScores,
+                'performanceSummary' => $performanceSummary,
+            ])
+        </div>
+    @endcan
+
     {{-- Contenu --}}
     <div class="tar-grid">
         {{-- Cartes enseignants (baromètre heures) --}}
         <div class="tar-panel">
             <div class="tar-panel-head">
-                <div class="tar-panel-ico"><i class="fas fa-gauge-high"></i></div>
+                <div class="tar-panel-ico"><i class="fas fa-tachometer-alt"></i></div>
                 <div>
                     <div class="tar-panel-title">Baromètre par enseignant</div>
                     <div class="tar-panel-sub">Heures réalisées vs planifiées, ventilées CM / TD / TP</div>
@@ -271,7 +322,10 @@
             </div>
             <div class="tar-panel-body">
                 <div class="tar-tcards" id="tarTeachers">
-                    @include('esbtp.teacher-attendance.partials._report_teachers', ['report' => $report])
+                    @include('esbtp.teacher-attendance.partials._report_teachers', [
+                        'report' => $report,
+                        'performanceScores' => $performanceScores,
+                    ])
                 </div>
             </div>
         </div>
@@ -279,7 +333,7 @@
         {{-- Liste séances (infinity scroll) --}}
         <div class="tar-panel">
             <div class="tar-panel-head">
-                <div class="tar-panel-ico"><i class="fas fa-list-check"></i></div>
+                <div class="tar-panel-ico"><i class="fas fa-tasks"></i></div>
                 <div>
                     <div class="tar-panel-title">Détail des séances</div>
                     <div class="tar-panel-sub"><span x-text="totalLabel">{{ $paginator->total() }} séance(s)</span> · durées précises</div>
@@ -288,7 +342,7 @@
             <div class="tar-panel-body" style="padding-top:.4rem;padding-bottom:.4rem;">
                 <div class="tar-seances" id="tarSeances">
                     @if($rows->isEmpty())
-                        <div class="tar-empty"><i class="fas fa-calendar-xmark"></i><p>Aucune séance sur cette période.</p></div>
+                        <div class="tar-empty"><i class="fas fa-calendar-times"></i><p>Aucune séance sur cette période.</p></div>
                     @else
                         @include('esbtp.teacher-attendance.partials._report_seances', ['rows' => $rows])
                     @endif
@@ -342,6 +396,9 @@ function reportPage() {
                 const data = await res.json();
                 document.getElementById('tarKpis').innerHTML = data.kpis_html;
                 document.getElementById('tarTeachers').innerHTML = data.teachers_html;
+                if (data.performance_html && document.getElementById('tarPerformance')) {
+                    document.getElementById('tarPerformance').innerHTML = data.performance_html;
+                }
                 // NE PAS toucher #tarSeances : la ligne animée reste intacte.
             } catch (e) { /* silencieux */ }
         },
@@ -382,8 +439,11 @@ function reportPage() {
                 const data = await res.json();
                 document.getElementById('tarKpis').innerHTML = data.kpis_html;
                 document.getElementById('tarTeachers').innerHTML = data.teachers_html;
+                if (data.performance_html && document.getElementById('tarPerformance')) {
+                    document.getElementById('tarPerformance').innerHTML = data.performance_html;
+                }
                 document.getElementById('tarSeances').innerHTML = data.seances_html
-                    || '<div class="tar-empty"><i class="fas fa-calendar-xmark"></i><p>Aucune séance.</p></div>';
+                    || '<div class="tar-empty"><i class="fas fa-calendar-times"></i><p>Aucune séance.</p></div>';
                 this.hasMore = data.has_more;
                 this.nextPage = data.next_page;
                 this.periodeLabel = data.periode.from + ' → ' + data.periode.to;
