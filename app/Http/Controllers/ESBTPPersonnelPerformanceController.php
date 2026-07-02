@@ -73,7 +73,19 @@ class ESBTPPersonnelPerformanceController extends Controller
             return back()->with('success', "Score recalcule pour {$user->name}: {$snapshot->total_score}/100.");
         }
 
-        return back()->with('info', 'Utilisez la commande php artisan personnel-scores:recalculate pour recalculer tous les scores.');
+        $count = 0;
+        User::query()
+            ->with(['roles', 'permissions', 'teacherProfile'])
+            ->where('is_active', true)
+            ->whereHas('roles', fn ($query) => $query->whereNotIn('name', ['etudiant', 'parent']))
+            ->chunkById(100, function ($users) use ($scoring, $validated, &$count) {
+                foreach ($users as $user) {
+                    $scoring->calculateAndStore($user, $validated['period'] ?? 'month');
+                    $count++;
+                }
+            });
+
+        return back()->with('success', "{$count} score(s) personnel recalcules.");
     }
 
     private function authorizeViewAll(): void

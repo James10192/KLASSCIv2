@@ -34,13 +34,22 @@
                 <h1 class="perf-title">Performance personnel</h1>
                 <p class="perf-sub">Scores automatiques bases sur les permissions effectives et les actions KLASSCI.</p>
             </div>
-            <form class="perf-filter" method="GET">
-                <select name="period" class="form-select" onchange="this.form.submit()">
-                    @foreach(config('personnel_scoring.periods') as $key => $label)
-                        <option value="{{ $key }}" @selected($period === $key)>{{ $label }}</option>
-                    @endforeach
-                </select>
-            </form>
+            <div class="perf-filter">
+                @can('performance.recalculate')
+                    <form method="POST" action="{{ route('esbtp.personnel.performance.recalculate') }}">
+                        @csrf
+                        <input type="hidden" name="period" value="{{ $period }}">
+                        <button type="submit" class="btn-acasi primary">Recalculer</button>
+                    </form>
+                @endcan
+                <form method="GET">
+                    <select name="period" class="form-select" onchange="this.form.submit()">
+                        @foreach(config('personnel_scoring.periods') as $key => $label)
+                            <option value="{{ $key }}" @selected($period === $key)>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                </form>
+            </div>
         </div>
 
         <div class="perf-kpis">
@@ -75,7 +84,7 @@
                     @empty
                         <tr>
                             <td colspan="6" style="text-align:center;color:#64748b;padding:24px;">
-                                Aucun snapshot disponible. Lancez <code>php artisan personnel-scores:recalculate</code>.
+                                Aucun snapshot disponible. Utilisez le bouton de recalcul pour initialiser les scores.
                             </td>
                         </tr>
                     @endforelse
