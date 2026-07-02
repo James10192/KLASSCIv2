@@ -349,6 +349,9 @@
                     </div>
                 </div>
                 <div class="pp-hero-actions">
+                    <a href="{{ route('esbtp.personnel.unified.index') }}" class="pp-btn pp-btn--glass">
+                        <i class="fas fa-users"></i> Personnel
+                    </a>
                     <div class="pp-period-field">
                         <x-au-select
                             name="period"
