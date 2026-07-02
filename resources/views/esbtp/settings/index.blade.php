@@ -432,6 +432,62 @@
         font-size: .82rem; color: #64748b; margin-top: 12px;
     }
     .bc-hint i { color: var(--primary); }
+
+    .mailpulse-panel {
+        font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    .mailpulse-brand-card {
+        display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+        padding: 18px 20px; border-radius: 14px;
+        background: #09090b; border: 1px solid #18181b; color: #fafafa;
+        margin-bottom: 20px;
+    }
+    .mailpulse-logo-mark {
+        position: relative; display: inline-flex; align-items: center; justify-content: center;
+        width: 46px; height: 46px; border-radius: 10px;
+        background: #09090b; border: 1px solid #27272a; flex-shrink: 0;
+    }
+    .mailpulse-logo-mark::after {
+        content: ""; position: absolute; inset: 7px; border-radius: 999px;
+        background: rgba(249, 115, 22, .22); filter: blur(12px);
+    }
+    .mailpulse-logo-mark svg { position: relative; z-index: 1; width: 28px; height: 28px; }
+    .mailpulse-brand-copy { min-width: 220px; }
+    .mailpulse-wordmark {
+        font-size: 1.35rem; font-weight: 750; color: #fafafa; line-height: 1;
+    }
+    .mailpulse-wordmark span { color: #f97316; }
+    .mailpulse-brand-subtitle { margin-top: 6px; color: #a1a1aa; font-size: .86rem; }
+    .mailpulse-status-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 6px 10px; border-radius: 999px;
+        background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa;
+        font-size: .78rem; font-weight: 700;
+    }
+    .mailpulse-status-badge.configured {
+        background: #ecfdf5; color: #047857; border-color: #a7f3d0;
+    }
+    .mailpulse-field-card {
+        padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff;
+    }
+    .mailpulse-code-input {
+        font-family: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: .84rem;
+    }
+    .mailpulse-info-grid {
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px;
+        margin-top: 16px;
+    }
+    .mailpulse-info-card {
+        padding: 14px; border-radius: 12px; background: #fafafa;
+        border: 1px solid #e5e7eb; color: #3f3f46; font-size: .82rem;
+    }
+    .mailpulse-info-card strong { color: #09090b; display: block; margin-bottom: 4px; }
+    .mailpulse-info-card i { color: #f97316; margin-right: 6px; }
+    .section-icon.mailpulse { background: #09090b; color: #f97316; }
+    @media (max-width: 992px) {
+        .mailpulse-info-grid { grid-template-columns: 1fr; }
+    }
 </style>
 @endpush
 
@@ -498,6 +554,11 @@
             <li class="nav-item" role="presentation">
                 <button class="nav-link" id="notifications-tab" data-bs-toggle="tab" data-bs-target="#notifications" type="button" role="tab">
                     <i class="fas fa-bell"></i> Notifications et Rappels
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="mailpulse-tab" data-bs-toggle="tab" data-bs-target="#mailpulse" type="button" role="tab">
+                    <i class="fas fa-envelope"></i> MailPulse
                 </button>
             </li>
             <li class="nav-item" role="presentation">
@@ -1907,6 +1968,202 @@
 
                 </div>
                 <!-- End Tab 3: Notifications et Rappels -->
+
+                <!-- Tab 6: MailPulse -->
+                <div class="tab-pane fade mailpulse-panel" id="mailpulse" role="tabpanel">
+                    @php
+                        $mailpulseEnabled = \App\Helpers\SettingsHelper::get('mailpulse_enabled', '0');
+                        $mailpulseApiKeyConfigured = \App\Helpers\SettingsHelper::get('mailpulse_api_key', '') !== '';
+                    @endphp
+
+                    <div class="mailpulse-brand-card">
+                        <div class="mailpulse-logo-mark" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M4 6l8 5 8-5" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </div>
+                        <div class="mailpulse-brand-copy">
+                            <div class="mailpulse-wordmark">Mail<span>Pulse</span></div>
+                            <div class="mailpulse-brand-subtitle">Email, WhatsApp et automatisations transactionnelles</div>
+                        </div>
+                        <span class="mailpulse-status-badge {{ $mailpulseApiKeyConfigured ? 'configured' : '' }}">
+                            <i class="fas {{ $mailpulseApiKeyConfigured ? 'fa-lock' : 'fa-key' }}"></i>
+                            {{ $mailpulseApiKeyConfigured ? 'Clé API configurée' : 'Clé API à configurer' }}
+                        </span>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="section-header">
+                            <div class="section-icon mailpulse">
+                                <i class="fas fa-plug"></i>
+                            </div>
+                            <div>
+                                <h3 class="section-title">Accès MailPulse</h3>
+                                <p class="section-description">Configuration serveur des accès MailPulse pour les envois email et WhatsApp de cette instance</p>
+                            </div>
+                        </div>
+
+                        <input type="hidden" name="setting_mailpulse_enabled" value="0">
+                        <div class="mailpulse-field-card mb-3">
+                            <label class="form-label-modern">
+                                <i class="fas fa-toggle-on text-primary"></i>
+                                Activer MailPulse pour cette instance
+                            </label>
+                            <label class="form-switch-modern">
+                                <input type="checkbox" name="setting_mailpulse_enabled" value="1"
+                                       {{ $mailpulseEnabled == '1' ? 'checked' : '' }}>
+                                <span class="slider"></span>
+                            </label>
+                            <small class="text-muted d-block mt-2">Les tests réels restent limités aux destinataires de test configurés ci-dessous.</small>
+                        </div>
+
+                        <div class="settings-grid">
+                            <div class="form-group">
+                                <label class="form-label-modern">
+                                    <i class="fas fa-link text-primary"></i>
+                                    URL de base MailPulse
+                                </label>
+                                <input type="url" class="form-control form-control-modern mailpulse-code-input"
+                                       name="setting_mailpulse_base_url"
+                                       value="{{ old('setting_mailpulse_base_url', \App\Helpers\SettingsHelper::get('mailpulse_base_url', 'https://mailpulse-two.vercel.app')) }}"
+                                       placeholder="https://mailpulse-two.vercel.app">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label-modern">
+                                    <i class="fas fa-key text-primary"></i>
+                                    Clé API MailPulse
+                                </label>
+                                <input type="password" class="form-control form-control-modern mailpulse-code-input"
+                                       name="setting_mailpulse_api_key"
+                                       value=""
+                                       autocomplete="new-password"
+                                       placeholder="mp_live_... ou mp_test_...">
+                                <small class="text-muted">Laissez vide pour conserver la clé actuelle.</small>
+                            </div>
+                        </div>
+
+                        <div class="settings-grid">
+                            <div class="form-group">
+                                <label class="form-label-modern">
+                                    <i class="fas fa-address-book text-primary"></i>
+                                    Endpoint contacts
+                                </label>
+                                <input type="text" class="form-control form-control-modern mailpulse-code-input"
+                                       name="setting_mailpulse_contacts_endpoint"
+                                       value="{{ old('setting_mailpulse_contacts_endpoint', \App\Helpers\SettingsHelper::get('mailpulse_contacts_endpoint', '/api/v1/contacts')) }}">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label-modern">
+                                    <i class="fas fa-paper-plane text-primary"></i>
+                                    Endpoint messages
+                                </label>
+                                <input type="text" class="form-control form-control-modern mailpulse-code-input"
+                                       name="setting_mailpulse_messages_endpoint"
+                                       value="{{ old('setting_mailpulse_messages_endpoint', \App\Helpers\SettingsHelper::get('mailpulse_messages_endpoint', '/api/v1/messages')) }}">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="settings-section">
+                        <div class="section-header">
+                            <div class="section-icon mailpulse">
+                                <i class="fas fa-sliders-h"></i>
+                            </div>
+                            <div>
+                                <h3 class="section-title">Paramètres d'envoi</h3>
+                                <p class="section-description">Expéditeur, langue et timeout utilisés par les notifications KLASSCI</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-grid-3">
+                            <div class="form-group">
+                                <label class="form-label-modern">
+                                    <i class="fas fa-at text-primary"></i>
+                                    Email expéditeur
+                                </label>
+                                <input type="email" class="form-control form-control-modern"
+                                       name="setting_mailpulse_sender_email"
+                                       value="{{ old('setting_mailpulse_sender_email', \App\Helpers\SettingsHelper::get('mailpulse_sender_email', '')) }}"
+                                       placeholder="notifications@etablissement.ci">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label-modern">
+                                    <i class="fas fa-signature text-primary"></i>
+                                    Nom expéditeur
+                                </label>
+                                <input type="text" class="form-control form-control-modern"
+                                       name="setting_mailpulse_sender_name"
+                                       value="{{ old('setting_mailpulse_sender_name', \App\Helpers\SettingsHelper::get('mailpulse_sender_name', 'KLASSCI')) }}">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label-modern">
+                                    <i class="fas fa-language text-primary"></i>
+                                    Langue par défaut
+                                </label>
+                                <input type="text" class="form-control form-control-modern mailpulse-code-input"
+                                       name="setting_mailpulse_default_language"
+                                       value="{{ old('setting_mailpulse_default_language', \App\Helpers\SettingsHelper::get('mailpulse_default_language', 'fr')) }}"
+                                       maxlength="8">
+                            </div>
+                        </div>
+
+                        <div class="settings-grid-3">
+                            <div class="form-group">
+                                <label class="form-label-modern">
+                                    <i class="fas fa-stopwatch text-primary"></i>
+                                    Timeout API, secondes
+                                </label>
+                                <input type="number" class="form-control form-control-modern"
+                                       name="setting_mailpulse_timeout"
+                                       value="{{ old('setting_mailpulse_timeout', \App\Helpers\SettingsHelper::get('mailpulse_timeout', '20')) }}"
+                                       min="5" max="120">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label-modern">
+                                    <i class="fas fa-envelope-open-text text-primary"></i>
+                                    Email de test
+                                </label>
+                                <input type="email" class="form-control form-control-modern"
+                                       name="setting_mailpulse_test_email"
+                                       value="{{ old('setting_mailpulse_test_email', \App\Helpers\SettingsHelper::get('mailpulse_test_email', '')) }}"
+                                       placeholder="test@example.com">
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label-modern">
+                                    <i class="fab fa-whatsapp text-primary"></i>
+                                    Téléphone de test
+                                </label>
+                                <input type="text" class="form-control form-control-modern mailpulse-code-input"
+                                       name="setting_mailpulse_test_phone"
+                                       value="{{ old('setting_mailpulse_test_phone', \App\Helpers\SettingsHelper::get('mailpulse_test_phone', '')) }}"
+                                       placeholder="+2250700000000">
+                            </div>
+                        </div>
+
+                        <div class="mailpulse-info-grid">
+                            <div class="mailpulse-info-card">
+                                <strong><i class="fas fa-address-card"></i>Contact parent test</strong>
+                                KLASSCI crée ou met à jour le contact MailPulse avant chaque notification simulée.
+                            </div>
+                            <div class="mailpulse-info-card">
+                                <strong><i class="fas fa-shield-alt"></i>Destinataires protégés</strong>
+                                Les tests utilisent uniquement l'email et le téléphone de test configurés ici.
+                            </div>
+                            <div class="mailpulse-info-card">
+                                <strong><i class="fab fa-whatsapp"></i>Limite WhatsApp</strong>
+                                Meta peut exiger un template approuvé hors fenêtre 24h. Baileys peut aussi se déconnecter.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- End Tab 6: MailPulse -->
 
                 <!-- ══════════════════════════════════════════════ -->
                 <!-- Tab 6: Système LMD — Premium Redesign -->

@@ -28,6 +28,7 @@ class ESBTPSettingsController extends Controller
     public function index()
     {
         $this->ensureAttendanceNoteSettings();
+        $this->ensureMailPulseSettings();
         $allSettings = Setting::orderBy('category')->orderBy('sort_order')->get();
         $settings = $allSettings->groupBy('category');
         $flatSettings = $allSettings; // Collection plate pour l'accès direct par clé
@@ -45,6 +46,7 @@ class ESBTPSettingsController extends Controller
         try {
             DB::beginTransaction();
             $this->ensureAttendanceNoteSettings();
+            $this->ensureMailPulseSettings();
 
             $pdfColorDefaults = [
                 'pdf_primary_color' => '#0453cb',
@@ -303,6 +305,10 @@ class ESBTPSettingsController extends Controller
                     $setting = Setting::where('key', $settingKey)->first();
 
                     if ($setting) {
+                        if ($settingKey === 'mailpulse_api_key' && ($value === null || $value === '')) {
+                            continue;
+                        }
+
                         // Lot 17b — Champs établissement nullable :
                         // si la valeur est vide ET le champ n'est pas marqué `is_required`,
                         // on skip la validation (sinon les règles legacy ['required', ...]
@@ -981,6 +987,40 @@ class ESBTPSettingsController extends Controller
                     'default_value' => $attrs['value'],
                     'validation_rules' => ['nullable', 'numeric', 'min:-20', 'max:20'],
                     'sort_order' => $attrs['sort_order'],
+                ]
+            );
+        }
+    }
+
+    private function ensureMailPulseSettings(): void
+    {
+        $mailPulseSettings = [
+            'mailpulse_enabled' => ['value' => '0', 'type' => 'boolean', 'description' => 'Activer les envois MailPulse pour ce tenant', 'rules' => ['nullable', 'in:0,1'], 'sort' => 300],
+            'mailpulse_base_url' => ['value' => 'https://mailpulse-two.vercel.app', 'type' => 'string', 'description' => 'URL de base MailPulse', 'rules' => ['nullable', 'url', 'max:255'], 'sort' => 301],
+            'mailpulse_api_key' => ['value' => '', 'type' => 'string', 'description' => 'Cle API MailPulse', 'rules' => ['nullable', 'string', 'max:500'], 'sort' => 302],
+            'mailpulse_contacts_endpoint' => ['value' => '/api/v1/contacts', 'type' => 'string', 'description' => 'Endpoint MailPulse contacts', 'rules' => ['nullable', 'string', 'max:120'], 'sort' => 303],
+            'mailpulse_messages_endpoint' => ['value' => '/api/v1/messages', 'type' => 'string', 'description' => 'Endpoint MailPulse messages', 'rules' => ['nullable', 'string', 'max:120'], 'sort' => 304],
+            'mailpulse_sender_email' => ['value' => '', 'type' => 'string', 'description' => 'Email expediteur MailPulse', 'rules' => ['nullable', 'email', 'max:255'], 'sort' => 305],
+            'mailpulse_sender_name' => ['value' => 'KLASSCI', 'type' => 'string', 'description' => 'Nom expediteur MailPulse', 'rules' => ['nullable', 'string', 'max:120'], 'sort' => 306],
+            'mailpulse_default_language' => ['value' => 'fr', 'type' => 'string', 'description' => 'Langue par defaut MailPulse', 'rules' => ['nullable', 'string', 'min:2', 'max:8'], 'sort' => 307],
+            'mailpulse_timeout' => ['value' => '20', 'type' => 'integer', 'description' => 'Timeout MailPulse en secondes', 'rules' => ['nullable', 'integer', 'min:5', 'max:120'], 'sort' => 308],
+            'mailpulse_test_email' => ['value' => '', 'type' => 'string', 'description' => 'Email de test MailPulse', 'rules' => ['nullable', 'email', 'max:255'], 'sort' => 309],
+            'mailpulse_test_phone' => ['value' => '', 'type' => 'string', 'description' => 'Telephone de test MailPulse', 'rules' => ['nullable', 'string', 'max:30'], 'sort' => 310],
+        ];
+
+        foreach ($mailPulseSettings as $key => $attrs) {
+            Setting::firstOrCreate(
+                ['key' => $key],
+                [
+                    'value' => $attrs['value'],
+                    'type' => $attrs['type'],
+                    'group' => 'mailpulse',
+                    'category' => 'mailpulse',
+                    'description' => $attrs['description'],
+                    'is_required' => false,
+                    'default_value' => $attrs['value'],
+                    'validation_rules' => $attrs['rules'],
+                    'sort_order' => $attrs['sort'],
                 ]
             );
         }

@@ -306,6 +306,22 @@ function Invoke-KlassciApiJson {
     Invoke-KlassciApi -Method $Method -Path $Path -Config $Config -Body $Body | ConvertTo-Json -Depth 10
 }
 
+function ConvertTo-KlassciBoolean {
+    param(
+        [string]$Value,
+        [string]$Name
+    )
+
+    if ($Value -match '^(?i:true|1|yes|y)$') {
+        return $true
+    }
+    if ($Value -match '^(?i:false|0|no|n)$') {
+        return $false
+    }
+
+    throw "$Name doit valoir true ou false."
+}
+
 function Get-BtsSemesterSnapshot {
     param(
         [hashtable]$Config,
@@ -433,6 +449,63 @@ switch ($Command) {
         } else {
             php artisan klassci:doctor
         }
+        break
+    }
+    "mailpulse:test" {
+        $targetTenant = $Tenant
+        $argsForCommand = @($ExtraArgs)
+        if ($Tenant -like "--*") {
+            $targetTenant = "presentation"
+            $argsForCommand = @($Tenant) + @($ExtraArgs)
+        }
+
+        $event = "payment_received"
+        $channel = "both"
+        $dryRun = $true
+
+        for ($i = 0; $i -lt $argsForCommand.Count; $i++) {
+            $arg = [string]$argsForCommand[$i]
+            if ($arg -like "--event=*") {
+                $event = $arg.Substring("--event=".Length)
+                continue
+            }
+            if ($arg -eq "--event") {
+                if ($i + 1 -ge $argsForCommand.Count) { throw "--event attend une valeur." }
+                $i++
+                $event = [string]$argsForCommand[$i]
+                continue
+            }
+            if ($arg -like "--channel=*") {
+                $channel = $arg.Substring("--channel=".Length)
+                continue
+            }
+            if ($arg -eq "--channel") {
+                if ($i + 1 -ge $argsForCommand.Count) { throw "--channel attend une valeur." }
+                $i++
+                $channel = [string]$argsForCommand[$i]
+                continue
+            }
+            if ($arg -like "--dry-run=*") {
+                $dryRun = ConvertTo-KlassciBoolean -Value $arg.Substring("--dry-run=".Length) -Name "--dry-run"
+                continue
+            }
+            if ($arg -eq "--dry-run") {
+                if ($i + 1 -ge $argsForCommand.Count) { throw "--dry-run attend une valeur." }
+                $i++
+                $dryRun = ConvertTo-KlassciBoolean -Value ([string]$argsForCommand[$i]) -Name "--dry-run"
+                continue
+            }
+
+            throw "Option inconnue pour mailpulse:test: $arg"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $targetTenant
+        $body = @{
+            event = $event
+            channel = $channel
+            dryRun = $dryRun
+        }
+        Invoke-KlassciApi -Method "POST" -Path "/mailpulse/test-notification" -Config $cfg -Body $body | ConvertTo-Json -Depth 8
         break
     }
     "pull" {
@@ -649,6 +722,7 @@ switch ($Command) {
     default {
         Write-Host "Usage:" -ForegroundColor Yellow
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
+        Write-Host "  .\klassci-cli.ps1 mailpulse:test [presentation] --event payment_received --channel both --dry-run false"
         Write-Host "  .\klassci-cli.ps1 pull [presentation]"
         Write-Host "  .\klassci-cli.ps1 migrate [presentation]"
         Write-Host "  .\klassci-cli.ps1 composer:install [presentation] [install|update|dump-autoload] [binaire-composer]"

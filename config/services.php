@@ -70,4 +70,19 @@ return [
         'secret' => env('GROUP_SSO_SHARED_SECRET'),
     ],
 
+    'mailpulse' => [
+        'enabled' => env('MAILPULSE_ENABLED', true),
+        'base_url' => env('MAILPULSE_BASE_URL', 'https://mailpulse-two.vercel.app'),
+        'api_key' => env('MAILPULSE_API_KEY'),
+        'timeout' => (int) env('MAILPULSE_TIMEOUT', 20),
+        'contacts_endpoint' => env('MAILPULSE_CONTACTS_ENDPOINT', '/api/v1/contacts'),
+        'messages_endpoint' => env('MAILPULSE_MESSAGES_ENDPOINT', '/api/v1/messages'),
+        'sender_email' => env('MAILPULSE_SENDER_EMAIL'),
+        'sender_name' => env('MAILPULSE_SENDER_NAME', 'KLASSCI'),
+        'default_language' => env('MAILPULSE_DEFAULT_LANGUAGE', 'fr'),
+        'test_api_secret' => env('TEST_API_SECRET'),
+        'test_notification_email' => env('TEST_NOTIFICATION_EMAIL'),
+        'test_notification_phone' => env('TEST_NOTIFICATION_PHONE'),
+    ],
+
 ];
