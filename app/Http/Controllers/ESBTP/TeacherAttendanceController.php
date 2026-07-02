@@ -397,7 +397,7 @@ class TeacherAttendanceController extends Controller
             'anneeEnCours' => $anneeEnCours,
             'from'         => $from,
             'to'           => $to,
-            'preset'       => $request->get('preset', 'month'),
+            'preset'       => $this->periodPresetFromRequest($request),
             'filtres'      => $filtres,
             'teachers'     => $teachers,
             'classes'      => $classes,
@@ -473,11 +473,17 @@ class TeacherAttendanceController extends Controller
             ];
         }
 
-        if ($request->get('preset') === 'year') {
+        $preset = $this->periodPresetFromRequest($request);
+
+        if ($preset === 'year') {
             if ($annee && $annee->date_debut && $annee->date_fin) {
                 return [Carbon::parse($annee->date_debut)->startOfDay(), Carbon::parse($annee->date_fin)->endOfDay()];
             }
             return [Carbon::now()->startOfYear(), Carbon::now()->endOfYear()];
+        }
+
+        if ($preset === 'quarter') {
+            return [Carbon::now()->startOfQuarter(), Carbon::now()->endOfQuarter()];
         }
 
         // Défaut : mois courant (période de paie naturelle).
@@ -630,7 +636,7 @@ class TeacherAttendanceController extends Controller
             'summary'      => $summary,
             'from'         => $from,
             'to'           => $to,
-            'preset'       => $request->get('preset', 'year'),
+            'preset'       => $this->periodPresetFromRequest($request, 'year'),
             'rows'         => $rows,
             'paginator'    => $paginator,
             'performanceScore' => $performanceScore,
@@ -704,9 +710,20 @@ class TeacherAttendanceController extends Controller
 
     private function scorePeriodFromRequest(Request $request): string
     {
-        $period = $request->get('period', $request->get('preset', 'month'));
+        $period = $this->periodPresetFromRequest($request);
 
         return in_array($period, ['month', 'quarter', 'year'], true) ? $period : 'month';
+    }
+
+    private function periodPresetFromRequest(Request $request, string $default = 'month'): string
+    {
+        if ($request->filled('from') && $request->filled('to')) {
+            return 'custom';
+        }
+
+        $period = $request->get('period', $request->get('preset', $default));
+
+        return in_array($period, ['month', 'quarter', 'year'], true) ? $period : $default;
     }
 
     private function canViewAllPerformance(): bool
