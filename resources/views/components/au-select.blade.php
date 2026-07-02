@@ -6,6 +6,7 @@
     'icon' => null,
     'searchable' => false,
     'placeholderIsFirstOption' => true,
+    'nativeClass' => null,
 ])
 
 @php
@@ -83,7 +84,7 @@
         </ul>
     </div>
 
-    <select {{ $nativeAttributes->class(['au-select-native']) }}
+    <select {{ $nativeAttributes->class(['au-select-native', $nativeClass]) }}
             x-ref="native"
             @if($name) name="{{ $name }}" @endif
             aria-hidden="true"

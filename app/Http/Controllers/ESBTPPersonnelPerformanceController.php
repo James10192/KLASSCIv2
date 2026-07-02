@@ -15,13 +15,7 @@ class ESBTPPersonnelPerformanceController extends Controller
 
         $period = $request->get('period', 'month');
         $scores = $scoring->scoreRows($period);
-
-        $summary = [
-            'average' => (int) round($scores->avg('total_score') ?? 0),
-            'count' => $scores->count(),
-            'watch' => $scores->whereIn('level', ['watch', 'critical'])->count(),
-            'excellent' => $scores->where('level', 'excellent')->count(),
-        ];
+        $summary = $this->summary($scores);
 
         $byRole = $scores
             ->groupBy('role_name')
@@ -43,17 +37,8 @@ class ESBTPPersonnelPerformanceController extends Controller
         $scores = $scoring->scoreRows($period);
 
         return response()->json([
-            'data' => $scores->map(fn (ESBTPPersonnelScoreSnapshot $score) => [
-                'id' => $score->id,
-                'user_id' => $score->user_id,
-                'name' => $score->user?->name,
-                'role' => $score->role_name,
-                'score' => $score->total_score,
-                'level' => $score->level,
-                'level_label' => config("personnel_scoring.levels.{$score->level}.label", $score->level),
-                'dimensions' => $score->applicable_dimensions_count,
-                'period' => $score->period_start?->format('d/m/Y').' - '.$score->period_end?->format('d/m/Y'),
-            ])->values(),
+            'summary' => $this->summary($scores),
+            'data' => $this->scoreRowsPayload($scores),
         ]);
     }
 
@@ -70,10 +55,27 @@ class ESBTPPersonnelPerformanceController extends Controller
             $user = User::with(['roles', 'permissions', 'teacherProfile'])->findOrFail($validated['user_id']);
             $snapshot = $scoring->calculateAndStore($user, $validated['period'] ?? 'month');
 
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => "Score recalcule pour {$user->name}: {$snapshot->total_score}/100.",
+                ]);
+            }
+
             return back()->with('success', "Score recalcule pour {$user->name}: {$snapshot->total_score}/100.");
         }
 
-        $count = $scoring->recalculateStaff($validated['period'] ?? 'month');
+        $period = $validated['period'] ?? 'month';
+        $count = $scoring->recalculateStaff($period);
+
+        if ($request->expectsJson()) {
+            $scores = $scoring->scoreRows($period);
+
+            return response()->json([
+                'message' => "{$count} score(s) personnel recalcules.",
+                'summary' => $this->summary($scores),
+                'data' => $this->scoreRowsPayload($scores),
+            ]);
+        }
 
         return back()->with('success', "{$count} score(s) personnel recalcules.");
     }
@@ -81,5 +83,30 @@ class ESBTPPersonnelPerformanceController extends Controller
     private function authorizeViewAll(): void
     {
         abort_unless(auth()->user()?->can('performance.view_all'), 403);
+    }
+
+    private function summary($scores): array
+    {
+        return [
+            'average' => (int) round($scores->avg('total_score') ?? 0),
+            'count' => $scores->count(),
+            'watch' => $scores->whereIn('level', ['watch', 'critical'])->count(),
+            'excellent' => $scores->where('level', 'excellent')->count(),
+        ];
+    }
+
+    private function scoreRowsPayload($scores)
+    {
+        return $scores->map(fn (ESBTPPersonnelScoreSnapshot $score) => [
+            'id' => $score->id,
+            'user_id' => $score->user_id,
+            'name' => $score->user?->name,
+            'role' => $score->role_name,
+            'score' => $score->total_score,
+            'level' => $score->level,
+            'level_label' => config("personnel_scoring.levels.{$score->level}.label", $score->level),
+            'dimensions' => $score->applicable_dimensions_count,
+            'period' => $score->period_start?->format('d/m/Y').' - '.$score->period_end?->format('d/m/Y'),
+        ])->values();
     }
 }

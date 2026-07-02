@@ -362,19 +362,19 @@
     color: #64748b;
 }
 .pu-filter-select {
+    min-width: 140px;
+    max-width: 220px;
+}
+.pu-filter-select .au-select-trigger {
+    min-height: 36px;
     padding: 0.45rem 0.65rem;
-    border: 1px solid #e2e8f0;
     border-radius: 8px;
     font-size: 0.82rem;
-    color: #1e293b;
-    background: #fff;
-    min-width: 140px;
-    transition: border-color 0.2s;
+    font-weight: 700;
 }
-.pu-filter-select:focus {
-    outline: none;
-    border-color: #0453cb;
-    box-shadow: 0 0 0 3px rgba(4,83,203,0.08);
+.pu-filters:focus-within {
+    position: relative;
+    z-index: 40;
 }
 
 /* ─── Tip box ─── */
@@ -1762,11 +1762,13 @@
 
                     <div class="pu-filters">
                         <label>Filtrer :</label>
-                        <select class="pu-filter-select filter-select" id="filter-coordinateurs-status">
-                            <option value="">Tous les statuts</option>
-                            <option value="active">Actifs</option>
-                            <option value="inactive">Inactifs</option>
-                        </select>
+                        <x-au-select
+                            id="filter-coordinateurs-status"
+                            class="pu-filter-select"
+                            native-class="filter-select"
+                            icon="fa-filter"
+                            placeholder="Tous les statuts"
+                            :options="['active' => 'Actifs', 'inactive' => 'Inactifs']" />
                     </div>
 
                     <div id="coordinateurs-list">
@@ -1857,11 +1859,13 @@
 
                     <div class="pu-filters">
                         <label>Filtrer :</label>
-                        <select class="pu-filter-select filter-select" id="filter-enseignants-status">
-                            <option value="">Tous les statuts</option>
-                            <option value="active">Actifs</option>
-                            <option value="inactive">Inactifs</option>
-                        </select>
+                        <x-au-select
+                            id="filter-enseignants-status"
+                            class="pu-filter-select"
+                            native-class="filter-select"
+                            icon="fa-filter"
+                            placeholder="Tous les statuts"
+                            :options="['active' => 'Actifs', 'inactive' => 'Inactifs']" />
                     </div>
 
                     <div class="pu-tip">
@@ -1956,11 +1960,13 @@
 
                     <div class="pu-filters">
                         <label>Filtrer :</label>
-                        <select class="pu-filter-select filter-select" id="filter-secretaires-status">
-                            <option value="">Tous les statuts</option>
-                            <option value="active">Actifs</option>
-                            <option value="inactive">Inactifs</option>
-                        </select>
+                        <x-au-select
+                            id="filter-secretaires-status"
+                            class="pu-filter-select"
+                            native-class="filter-select"
+                            icon="fa-filter"
+                            placeholder="Tous les statuts"
+                            :options="['active' => 'Actifs', 'inactive' => 'Inactifs']" />
                     </div>
 
                     <div id="secretaires-list">
@@ -2042,11 +2048,13 @@
 
                     <div class="pu-filters">
                         <label>Filtrer :</label>
-                        <select class="pu-filter-select filter-select" id="filter-comptables-status">
-                            <option value="">Tous les statuts</option>
-                            <option value="active">Actifs</option>
-                            <option value="inactive">Inactifs</option>
-                        </select>
+                        <x-au-select
+                            id="filter-comptables-status"
+                            class="pu-filter-select"
+                            native-class="filter-select"
+                            icon="fa-filter"
+                            placeholder="Tous les statuts"
+                            :options="['active' => 'Actifs', 'inactive' => 'Inactifs']" />
                     </div>
 
                     <div id="comptables-list">
@@ -2125,11 +2133,13 @@
 
                     <div class="pu-filters">
                         <label>Filtrer :</label>
-                        <select class="pu-filter-select filter-select" id="filter-caissiers-status">
-                            <option value="">Tous les statuts</option>
-                            <option value="active">Actifs</option>
-                            <option value="inactive">Inactifs</option>
-                        </select>
+                        <x-au-select
+                            id="filter-caissiers-status"
+                            class="pu-filter-select"
+                            native-class="filter-select"
+                            icon="fa-filter"
+                            placeholder="Tous les statuts"
+                            :options="['active' => 'Actifs', 'inactive' => 'Inactifs']" />
                     </div>
 
                     <div id="caissiers-list">
@@ -2207,11 +2217,13 @@
 
                         <div class="pu-filters">
                             <label>Filtrer :</label>
-                            <select class="pu-filter-select filter-select" data-filter-target="custom-{{ $payload['slug'] }}-list">
-                                <option value="">Tous les statuts</option>
-                                <option value="active">Actifs</option>
-                                <option value="inactive">Inactifs</option>
-                            </select>
+                            <x-au-select
+                                class="pu-filter-select"
+                                native-class="filter-select"
+                                data-filter-target="custom-{{ $payload['slug'] }}-list"
+                                icon="fa-filter"
+                                placeholder="Tous les statuts"
+                                :options="['active' => 'Actifs', 'inactive' => 'Inactifs']" />
                         </div>
 
                         <div id="custom-{{ $payload['slug'] }}-list">
@@ -2685,7 +2697,7 @@ function toggleCaissierStatus(caissierId) {
                 // Succès
                 getModal().hide();
                 if (form.id === 'cr-edit-standard-form') {
-                    window.location.reload();
+                    await refreshList();
                     return;
                 }
                 await refreshList();
