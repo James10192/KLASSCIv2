@@ -55,29 +55,21 @@ class ESBTPPersonnelPerformanceController extends Controller
             $user = User::with(['roles', 'permissions', 'teacherProfile'])->findOrFail($validated['user_id']);
             $snapshot = $scoring->calculateAndStore($user, $validated['period'] ?? 'month');
 
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'message' => "Score recalcule pour {$user->name}: {$snapshot->total_score}/100.",
-                ]);
-            }
-
-            return back()->with('success', "Score recalcule pour {$user->name}: {$snapshot->total_score}/100.");
+            return response()->json([
+                'message' => "Score recalcule pour {$user->name}: {$snapshot->total_score}/100.",
+            ]);
         }
 
         $period = $validated['period'] ?? 'month';
         $count = $scoring->recalculateStaff($period);
 
-        if ($request->expectsJson()) {
-            $scores = $scoring->scoreRows($period);
+        $scores = $scoring->scoreRows($period);
 
-            return response()->json([
-                'message' => "{$count} score(s) personnel recalcules.",
-                'summary' => $this->summary($scores),
-                'data' => $this->scoreRowsPayload($scores),
-            ]);
-        }
-
-        return back()->with('success', "{$count} score(s) personnel recalcules.");
+        return response()->json([
+            'message' => "{$count} score(s) personnel recalcules.",
+            'summary' => $this->summary($scores),
+            'data' => $this->scoreRowsPayload($scores),
+        ]);
     }
 
     private function authorizeViewAll(): void

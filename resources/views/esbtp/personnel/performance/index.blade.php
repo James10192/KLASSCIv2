@@ -307,10 +307,6 @@
                             <span x-text="recalculating ? 'Recalcul...' : 'Recalculer'"></span>
                         </button>
                     @endcan
-                    <button type="button" class="pp-btn pp-btn--glass" :disabled="loading" @click="refresh()">
-                        <i class="fas fa-rotate" :class="{ 'fa-spin': loading }"></i>
-                        Actualiser
-                    </button>
                 </div>
             </div>
 
