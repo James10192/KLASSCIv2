@@ -138,6 +138,46 @@
 .es-kpi-val { font-size: 1.1rem; font-weight: 700; line-height: 1; }
 .es-kpi-lbl { font-size: .7rem; opacity: .7; letter-spacing: .04em; text-transform: uppercase; margin-top: 2px; }
 
+/* Premium header alignment refresh */
+.es-hero::before { display: none; }
+.es-hero::after { height: 28px; background: linear-gradient(to top, var(--es-surface) 0%, rgba(244,247,251,0) 100%); }
+.es-hero-inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+    padding: 30px 32px 20px;
+}
+.es-hero-avatar-circle {
+    width: 82px;
+    height: 82px;
+    border-radius: 18px;
+    border-width: 1px;
+    box-shadow: 0 14px 30px rgba(15,23,42,.18);
+}
+.es-hero-status { bottom: -3px; right: -3px; border-color: #fff; }
+.es-hero-name { font-size: 1.55rem; letter-spacing: 0; max-width: 720px; }
+.es-hero-sub { margin-bottom: 12px; opacity: .84; }
+.es-hero-actions { align-self: start; margin-left: 0; padding-top: 4px; }
+.es-hero-btn { min-height: 40px; border-radius: 10px; }
+.es-kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    padding: 0 32px 26px;
+    border-top: 0;
+    margin-top: 0;
+}
+.es-kpi {
+    min-height: 70px;
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 14px;
+    background: rgba(255,255,255,.11);
+    backdrop-filter: blur(8px);
+}
+.es-kpi-icon { opacity: .82; }
+.es-kpi-lbl { opacity: .76; }
+
 /* -- Tab Bar ------------------------------------------------------- */
 .es-tabs-wrap {
     position: sticky; top: 0; z-index: 100;
@@ -407,7 +447,7 @@
 /* Progress bar */
 .es-progress { height: 10px; background: #f1f5f9; border-radius: 99px; overflow: hidden; margin-top: 4px; }
 .es-progress-fill { height: 100%; border-radius: 99px; transition: width .7s cubic-bezier(.4,0,.2,1); }
-.es-progress-fill.level-low  { background: linear-gradient(90deg, #fca5a5, #ef4444); }
+.es-progress-fill.level-low  { background: linear-gradient(90deg, #dc2626, #b91c1c); }
 .es-progress-fill.level-mid  { background: linear-gradient(90deg, #fcd34d, #d97706); }
 .es-progress-fill.level-good { background: linear-gradient(90deg, #6ee7b7, #10b981); }
 .es-progress-fill.level-done { background: linear-gradient(90deg, #93c5fd, #0453cb); }
@@ -1182,7 +1222,7 @@
                 <div class="es-card">
                     <div class="es-card-header">
                         <div class="es-card-title">
-                            <div class="es-card-title-icon" style="background: linear-gradient(135deg, #dc2626, #ef4444);"><i class="fas fa-exclamation-triangle"></i></div>
+                            <div class="es-card-title-icon" style="background: linear-gradient(135deg, #b91c1c, #dc2626);"><i class="fas fa-exclamation-triangle"></i></div>
                             Zone de danger
                         </div>
                     </div>

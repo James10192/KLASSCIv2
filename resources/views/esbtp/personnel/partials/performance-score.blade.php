@@ -519,7 +519,9 @@
                     @php
                         $dimensionScore = max(0, min(100, (int)($dimension['score'] ?? 0)));
                     @endphp
-                    <article class="ps-dimension-row">
+                    <article class="ps-dimension-row"
+                        data-score="{{ $dimensionScore }}"
+                        data-label="{{ \Illuminate\Support\Str::lower($dimension['label'] ?? $dimension['dimension'] ?? 'dimension') }}">
                         <div>
                             <div class="ps-dimension-title">{{ $dimension['label'] ?? $dimension['dimension'] ?? 'Dimension' }}</div>
                             <div class="ps-metrics">

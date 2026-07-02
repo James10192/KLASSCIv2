@@ -90,6 +90,83 @@
     }
     .pd-kpi-value { font-size: 1.25rem; font-weight: 800; color: #fff; line-height: 1.1; }
     .pd-kpi-label { font-size: .72rem; color: rgba(255,255,255,.68); margin-top: .2rem; text-transform: uppercase; font-weight: 700; }
+    .pd-filterbar {
+        background: #fff;
+        border: 1px solid #e2e8f0;
+        border-radius: 16px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        box-shadow: var(--shadow-sm);
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 1rem;
+        align-items: end;
+    }
+    .pd-filter-group { display: grid; gap: .4rem; min-width: 0; }
+    .pd-filter-label {
+        color: #64748b;
+        font-size: .7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: .04em;
+    }
+    .pd-segments { display: inline-flex; gap: .25rem; padding: .25rem; border-radius: 12px; background: #f1f5f9; width: fit-content; max-width: 100%; flex-wrap: wrap; }
+    .pd-segment {
+        border: 0;
+        min-height: 36px;
+        border-radius: 9px;
+        padding: .45rem .75rem;
+        background: transparent;
+        color: #475569;
+        font-size: .78rem;
+        font-weight: 800;
+        cursor: pointer;
+    }
+    .pd-segment:hover { color: #0453cb; background: rgba(4,83,203,.07); }
+    .pd-segment.active { background: #0453cb; color: #fff; box-shadow: 0 8px 18px rgba(4,83,203,.16); }
+    .pd-filter-actions { display: flex; flex-wrap: wrap; align-items: end; justify-content: flex-end; gap: .75rem; }
+    .pd-search {
+        position: relative;
+        min-width: 260px;
+    }
+    .pd-search i {
+        position: absolute;
+        left: .8rem;
+        top: 50%;
+        transform: translateY(-50%);
+        color: #94a3b8;
+        font-size: .8rem;
+    }
+    .pd-search input {
+        width: 100%;
+        min-height: 40px;
+        border: 1px solid #e2e8f0;
+        border-radius: 11px;
+        padding: .55rem .8rem .55rem 2rem;
+        color: #1e293b;
+        font-size: .84rem;
+        font-weight: 700;
+        background: #fff;
+    }
+    .pd-search input:focus {
+        outline: none;
+        border-color: #0453cb;
+        box-shadow: 0 0 0 3px rgba(4,83,203,.1);
+    }
+    .pd-filter-status {
+        display: inline-flex;
+        align-items: center;
+        min-height: 40px;
+        padding: .55rem .75rem;
+        border-radius: 11px;
+        background: #f8fafc;
+        border: 1px solid #e2e8f0;
+        color: #64748b;
+        font-size: .78rem;
+        font-weight: 800;
+        white-space: nowrap;
+    }
+    .pd-dim-hidden { display: none !important; }
     .pd-grid {
         display: grid;
         grid-template-columns: minmax(620px, 1fr) 340px;
@@ -139,12 +216,16 @@
         .pd-page { padding: 1rem; }
         .pd-hero { padding: 1.5rem; }
         .pd-grid { grid-template-columns: 1fr; }
+        .pd-filterbar { grid-template-columns: 1fr; }
+        .pd-filter-actions { justify-content: flex-start; }
     }
     @media (max-width: 576px) {
         .pd-page { padding: .75rem; }
         .pd-hero { padding: 1rem; border-radius: 14px; }
         .pd-btn { width: 100%; }
         .pd-kpi { min-width: 100%; }
+        .pd-search { min-width: 100%; width: 100%; }
+        .pd-filter-status { width: 100%; justify-content: center; }
     }
 </style>
 @endsection
@@ -162,7 +243,7 @@
     $excludedCount = $isSnapshot ? $scoreData->excluded_dimensions_count : ($scoreData['excluded_dimensions_count'] ?? $excludedDimensions->count());
 @endphp
 
-<div class="pd-page">
+<div class="pd-page" data-pd-performance-page data-base-url="{{ route('esbtp.personnel.performance.show', $user) }}">
     <div class="pd-wrap">
         <div class="pd-hero">
             <div class="pd-hero-top">
@@ -198,6 +279,38 @@
             </div>
         </div>
 
+        <div class="pd-filterbar" aria-label="Filtres performance">
+            <div class="pd-filter-group">
+                <span class="pd-filter-label">Periode</span>
+                <div class="pd-segments" role="group" aria-label="Changer la periode">
+                    @foreach(['month' => 'Mois', 'quarter' => 'Trimestre', 'year' => 'Annee'] as $key => $label)
+                        <button type="button" class="pd-segment {{ $period === $key ? 'active' : '' }}" data-pd-period="{{ $key }}">
+                            {{ $label }}
+                        </button>
+                    @endforeach
+                </div>
+            </div>
+            <div class="pd-filter-actions">
+                <div class="pd-filter-group">
+                    <span class="pd-filter-label">Dimensions</span>
+                    <div class="pd-segments" role="group" aria-label="Filtrer les dimensions">
+                        <button type="button" class="pd-segment active" data-pd-score-filter="all">Toutes</button>
+                        <button type="button" class="pd-segment" data-pd-score-filter="active">Actives</button>
+                        <button type="button" class="pd-segment" data-pd-score-filter="watch">A surveiller</button>
+                        <button type="button" class="pd-segment" data-pd-score-filter="zero">Zero</button>
+                    </div>
+                </div>
+                <div class="pd-filter-group">
+                    <span class="pd-filter-label">Recherche</span>
+                    <label class="pd-search">
+                        <i class="fas fa-search"></i>
+                        <input type="search" data-pd-search placeholder="Rechercher une dimension">
+                    </label>
+                </div>
+                <span class="pd-filter-status" data-pd-filter-status>{{ $breakdown->count() }} dimension(s)</span>
+            </div>
+        </div>
+
         <div class="pd-grid">
             <div>
                 @include('esbtp.personnel.partials.performance-score', ['performanceScore' => $scoreData, 'showDetailLink' => false])
@@ -214,7 +327,11 @@
 
                 <div class="pd-list">
                     @forelse($breakdown as $dimension)
-                        <div class="pd-list-item">
+                        @php
+                            $dimensionScore = max(0, min(100, (int)($dimension['score'] ?? 0)));
+                            $dimensionLabel = $dimension['label'] ?? $dimension['dimension'] ?? 'Dimension';
+                        @endphp
+                        <div class="pd-list-item" data-score="{{ $dimensionScore }}" data-label="{{ \Illuminate\Support\Str::lower($dimensionLabel) }}">
                             <div class="pd-list-title">{{ $dimension['label'] ?? $dimension['dimension'] ?? 'Dimension' }}</div>
                             <div class="pd-list-sub">Score: {{ (int)($dimension['score'] ?? 0) }}% - Poids: {{ (int)($dimension['weight'] ?? 0) }}</div>
                         </div>
@@ -247,3 +364,98 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const page = document.querySelector('[data-pd-performance-page]');
+    if (!page) return;
+
+    const state = { mode: 'all', search: '' };
+
+    function scoreMatches(score, mode) {
+        if (mode === 'active') return score > 0;
+        if (mode === 'watch') return score > 0 && score < 50;
+        if (mode === 'zero') return score === 0;
+        return true;
+    }
+
+    function applyDimensionFilters() {
+        const rows = Array.from(document.querySelectorAll('.ps-dimension-row, .pd-list-item[data-score]'));
+        let visible = 0;
+
+        rows.forEach(function (row) {
+            const score = parseInt(row.dataset.score || '0', 10);
+            const label = (row.dataset.label || '').toLowerCase();
+            const matches = scoreMatches(score, state.mode) && label.includes(state.search);
+            row.classList.toggle('pd-dim-hidden', !matches);
+            if (matches && row.classList.contains('ps-dimension-row')) visible += 1;
+        });
+
+        const status = document.querySelector('[data-pd-filter-status]');
+        if (status) status.textContent = visible + ' dimension(s)';
+    }
+
+    function bindFilters(root) {
+        root.querySelectorAll('[data-pd-score-filter]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                root.querySelectorAll('[data-pd-score-filter]').forEach((item) => item.classList.remove('active'));
+                button.classList.add('active');
+                state.mode = button.dataset.pdScoreFilter || 'all';
+                applyDimensionFilters();
+            });
+        });
+
+        const search = root.querySelector('[data-pd-search]');
+        if (search) {
+            search.addEventListener('input', function () {
+                state.search = search.value.trim().toLowerCase();
+                applyDimensionFilters();
+            });
+        }
+
+        root.querySelectorAll('[data-pd-period]').forEach(function (button) {
+            button.addEventListener('click', function () {
+                loadPeriod(button.dataset.pdPeriod, button);
+            });
+        });
+    }
+
+    async function loadPeriod(period, button) {
+        if (!period || button.classList.contains('active')) return;
+        const baseUrl = page.dataset.baseUrl;
+        const url = new URL(baseUrl, window.location.origin);
+        url.searchParams.set('period', period);
+
+        button.disabled = true;
+        try {
+            const response = await fetch(url.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'text/html' }
+            });
+            if (!response.ok) throw new Error('Erreur ' + response.status);
+            const html = await response.text();
+            const doc = new DOMParser().parseFromString(html, 'text/html');
+
+            ['.pd-hero', '.pd-filterbar', '.pd-grid'].forEach(function (selector) {
+                const current = document.querySelector(selector);
+                const next = doc.querySelector(selector);
+                if (current && next) current.replaceWith(next);
+            });
+
+            window.history.replaceState({}, '', url.toString());
+            state.mode = 'all';
+            state.search = '';
+            bindFilters(document);
+            applyDimensionFilters();
+        } catch (error) {
+            window.dispatchEvent(new CustomEvent('toast', { detail: { type: 'error', message: error.message } }));
+        } finally {
+            button.disabled = false;
+        }
+    }
+
+    bindFilters(document);
+    applyDimensionFilters();
+});
+</script>
+@endpush

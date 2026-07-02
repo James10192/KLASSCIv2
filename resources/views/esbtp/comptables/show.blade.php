@@ -139,6 +139,46 @@
 .cs-comptable-kpi-val { font-size: 1.1rem; font-weight: 700; line-height: 1; }
 .cs-comptable-kpi-lbl { font-size: .7rem; opacity: .7; letter-spacing: .04em; text-transform: uppercase; margin-top: 2px; }
 
+/* Premium header alignment refresh */
+.cs-comptable-hero::before { display: none; }
+.cs-comptable-hero::after { height: 28px; background: linear-gradient(to top, var(--cs-comptable-surface) 0%, rgba(244,247,251,0) 100%); }
+.cs-comptable-hero-inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+    padding: 30px 32px 20px;
+}
+.cs-comptable-hero-avatar-circle {
+    width: 82px;
+    height: 82px;
+    border-radius: 18px;
+    border-width: 1px;
+    box-shadow: 0 14px 30px rgba(15,23,42,.18);
+}
+.cs-comptable-hero-status { bottom: -3px; right: -3px; border-color: #fff; }
+.cs-comptable-hero-name { font-size: 1.55rem; letter-spacing: 0; max-width: 720px; }
+.cs-comptable-hero-sub { margin-bottom: 12px; opacity: .84; }
+.cs-comptable-hero-actions { align-self: start; margin-left: 0; padding-top: 4px; }
+.cs-comptable-hero-btn { min-height: 40px; border-radius: 10px; }
+.cs-comptable-kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    padding: 0 32px 26px;
+    border-top: 0;
+    margin-top: 0;
+}
+.cs-comptable-kpi {
+    min-height: 70px;
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 14px;
+    background: rgba(255,255,255,.11);
+    backdrop-filter: blur(8px);
+}
+.cs-comptable-kpi-icon { opacity: .82; }
+.cs-comptable-kpi-lbl { opacity: .76; }
+
 /* -- Tab Bar ------------------------------------------------------- */
 .cs-comptable-tabs-wrap {
     position: sticky; top: 0; z-index: 100;
@@ -709,7 +749,7 @@ select.cs-comptable-edit-input { text-align: left; min-width: 160px; cursor: poi
                 <div class="cs-comptable-card">
                     <div class="cs-comptable-card-header">
                         <div class="cs-comptable-card-title">
-                            <div class="cs-comptable-card-title-icon" style="background: linear-gradient(135deg, #dc2626, #ef4444);"><i class="fas fa-exclamation-triangle"></i></div>
+                            <div class="cs-comptable-card-title-icon" style="background: linear-gradient(135deg, #b91c1c, #dc2626);"><i class="fas fa-exclamation-triangle"></i></div>
                             Zone de danger
                         </div>
                     </div>

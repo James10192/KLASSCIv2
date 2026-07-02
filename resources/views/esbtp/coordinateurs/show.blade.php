@@ -138,6 +138,46 @@
 .cs-kpi-val { font-size: 1.1rem; font-weight: 700; line-height: 1; }
 .cs-kpi-lbl { font-size: .7rem; opacity: .7; letter-spacing: .04em; text-transform: uppercase; margin-top: 2px; }
 
+/* Premium header alignment refresh */
+.cs-hero::before { display: none; }
+.cs-hero::after { height: 28px; background: linear-gradient(to top, var(--cs-surface) 0%, rgba(244,247,251,0) 100%); }
+.cs-hero-inner {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 18px;
+    padding: 30px 32px 20px;
+}
+.cs-hero-avatar-circle {
+    width: 82px;
+    height: 82px;
+    border-radius: 18px;
+    border-width: 1px;
+    box-shadow: 0 14px 30px rgba(15,23,42,.18);
+}
+.cs-hero-status { bottom: -3px; right: -3px; border-color: #fff; }
+.cs-hero-name { font-size: 1.55rem; letter-spacing: 0; max-width: 720px; }
+.cs-hero-sub { margin-bottom: 12px; opacity: .84; }
+.cs-hero-actions { align-self: start; margin-left: 0; padding-top: 4px; }
+.cs-hero-btn { min-height: 40px; border-radius: 10px; }
+.cs-kpi-strip {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    padding: 0 32px 26px;
+    border-top: 0;
+    margin-top: 0;
+}
+.cs-kpi {
+    min-height: 70px;
+    border: 1px solid rgba(255,255,255,.16);
+    border-radius: 14px;
+    background: rgba(255,255,255,.11);
+    backdrop-filter: blur(8px);
+}
+.cs-kpi-icon { opacity: .82; }
+.cs-kpi-lbl { opacity: .76; }
+
 /* -- Tab Bar ------------------------------------------------------- */
 .cs-tabs-wrap {
     position: sticky; top: 0; z-index: 100;
@@ -740,7 +780,7 @@
                 <div class="cs-card">
                     <div class="cs-card-header">
                         <div class="cs-card-title">
-                            <div class="cs-card-title-icon" style="background: linear-gradient(135deg, #dc2626, #ef4444);"><i class="fas fa-exclamation-triangle"></i></div>
+                            <div class="cs-card-title-icon" style="background: linear-gradient(135deg, #b91c1c, #dc2626);"><i class="fas fa-exclamation-triangle"></i></div>
                             Zone de danger
                         </div>
                     </div>
