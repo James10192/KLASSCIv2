@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Services\Scoring\PersonnelScoringService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -116,7 +117,10 @@ class ESBTPCoordinateurController extends Controller
         // Statistiques du coordinateur
         $statistiques = $this->getCoordinateurStatistiques($coordinateur->id);
 
-        return view('esbtp.coordinateurs.show', compact('coordinateur', 'statistiques'));
+        $performanceScore = app(PersonnelScoringService::class)->latestFor($coordinateur)
+            ?: app(PersonnelScoringService::class)->calculate($coordinateur);
+
+        return view('esbtp.coordinateurs.show', compact('coordinateur', 'statistiques', 'performanceScore'));
     }
 
     /**

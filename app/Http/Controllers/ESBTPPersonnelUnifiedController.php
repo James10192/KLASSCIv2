@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\ESBTPPersonnelScoreSnapshot;
 use App\Models\ESBTPTeacher;
 use App\Models\User;
 use App\Services\PermissionRegistry;
@@ -180,6 +181,13 @@ class ESBTPPersonnelUnifiedController extends Controller
             }
         }
 
+        $performanceSnapshots = ESBTPPersonnelScoreSnapshot::query()
+            ->where('period_type', 'month')
+            ->latest('period_end')
+            ->get()
+            ->unique('user_id')
+            ->keyBy('user_id');
+
         return view('esbtp.personnel.unified-index', compact(
             'coordinateurs',
             'enseignants',
@@ -193,6 +201,7 @@ class ESBTPPersonnelUnifiedController extends Controller
             'visiblePersonnelTabs',
             'customRoles',
             'standardRoles',
+            'performanceSnapshots',
             'customRoleUsers'
         ));
     }

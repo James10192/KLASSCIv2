@@ -517,6 +517,22 @@
     background: rgba(4,83,203,0.04);
     text-decoration: none;
 }
+.pu-performance-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.32rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    background: #dbeafe;
+    color: #1d4ed8;
+    white-space: nowrap;
+}
+.pu-performance-badge.watch { background: #fef3c7; color: #92400e; }
+.pu-performance-badge.critical { background: #fee2e2; color: #991b1b; }
+.pu-performance-badge.excellent { background: #dcfce7; color: #166534; }
+.pu-performance-badge.empty { background: #f1f5f9; color: #64748b; }
 .pu-action-btn.pu-act-edit:hover {
     border-color: #f59e0b;
     color: #d97706;
@@ -1482,8 +1498,14 @@
                     </div>
                     <div class="pu-hero-subtitle">Administration unifiée : coordinateurs, enseignants, secrétaires et comptables</div>
                 </div>
-                @if($canAnyCreatePersonnel)
+                @if($canAnyCreatePersonnel || auth()->user()->can('performance.view_all'))
                 <div class="pu-hero-actions">
+                    @can('performance.view_all')
+                    <a href="{{ route('esbtp.personnel.performance.index') }}" class="pu-hero-btn">
+                        <i class="fas fa-chart-line"></i>Performance
+                    </a>
+                    @endcan
+                    @if($canAnyCreatePersonnel)
                     <div class="dropdown">
                         <button class="pu-hero-btn dropdown-toggle" type="button"
                                 data-bs-toggle="dropdown"
@@ -1521,6 +1543,7 @@
                             @endif
                         </ul>
                     </div>
+                    @endif
                 </div>
                 @endif
             </div>
@@ -1769,6 +1792,10 @@
                                 <span class="pu-status {{ $coordinateur->is_active ? 'pu-status-active' : 'pu-status-inactive' }}">
                                     {{ $coordinateur->is_active ? 'Actif' : 'Inactif' }}
                                 </span>
+                                @php($score = ($performanceSnapshots ?? collect())->get($coordinateur->id))
+                                <span class="pu-performance-badge {{ $score?->level ?? 'empty' }}">
+                                    <i class="fas fa-chart-line"></i>{{ $score ? $score->total_score . '%' : '---' }}
+                                </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.coordinateurs.show', $coordinateur) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
@@ -1873,6 +1900,10 @@
                                 <span class="pu-status {{ $teacher->status === 'active' ? 'pu-status-active' : 'pu-status-inactive' }}">
                                     {{ $teacher->status === 'active' ? 'Actif' : 'Inactif' }}
                                 </span>
+                                @php($score = ($performanceSnapshots ?? collect())->get($teacher->user_id))
+                                <span class="pu-performance-badge {{ $score?->level ?? 'empty' }}">
+                                    <i class="fas fa-chart-line"></i>{{ $score ? $score->total_score . '%' : '---' }}
+                                </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.enseignants.show', $teacher) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
@@ -1954,6 +1985,10 @@
                                 </div>
                                 <span class="pu-status {{ $secretaire->is_active ? 'pu-status-active' : 'pu-status-inactive' }}">
                                     {{ $secretaire->is_active ? 'Actif' : 'Inactif' }}
+                                </span>
+                                @php($score = ($performanceSnapshots ?? collect())->get($secretaire->id))
+                                <span class="pu-performance-badge {{ $score?->level ?? 'empty' }}">
+                                    <i class="fas fa-chart-line"></i>{{ $score ? $score->total_score . '%' : '---' }}
                                 </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.secretaires.show', $secretaire) }}" class="pu-action-btn" title="Voir">
@@ -2037,6 +2072,10 @@
                                 <span class="pu-status {{ $comptable->is_active ? 'pu-status-active' : 'pu-status-inactive' }}">
                                     {{ $comptable->is_active ? 'Actif' : 'Inactif' }}
                                 </span>
+                                @php($score = ($performanceSnapshots ?? collect())->get($comptable->id))
+                                <span class="pu-performance-badge {{ $score?->level ?? 'empty' }}">
+                                    <i class="fas fa-chart-line"></i>{{ $score ? $score->total_score . '%' : '---' }}
+                                </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.comptables.show', $comptable) }}" class="pu-action-btn" title="Voir">
                                         <i class="fas fa-eye"></i>
@@ -2112,6 +2151,10 @@
                                 </div>
                                 <span class="pu-status {{ $caissier->is_active ? 'pu-status-active' : 'pu-status-inactive' }}">
                                     {{ $caissier->is_active ? 'Actif' : 'Inactif' }}
+                                </span>
+                                @php($score = ($performanceSnapshots ?? collect())->get($caissier->id))
+                                <span class="pu-performance-badge {{ $score?->level ?? 'empty' }}">
+                                    <i class="fas fa-chart-line"></i>{{ $score ? $score->total_score . '%' : '---' }}
                                 </span>
                                 <div class="pu-actions">
                                     <a href="{{ route('esbtp.caissiers.show', $caissier) }}" class="pu-action-btn" title="Voir">

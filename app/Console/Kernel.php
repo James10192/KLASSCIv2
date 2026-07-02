@@ -232,5 +232,6 @@ class Kernel extends ConsoleKernel
         \App\Console\Commands\QueueMonitorCommand::class,
         \App\Console\Commands\SendInscriptionPaiementReminders::class,
         \App\Console\Commands\MarkTeacherAbsences::class,
+        \App\Console\Commands\RecalculatePersonnelScoresCommand::class,
     ];
 }

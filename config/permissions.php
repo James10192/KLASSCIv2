@@ -1343,6 +1343,28 @@ return [
             'aliases' => ['generate_reports'],
         ],
 
+        // ===== Performance personnel =====
+        'performance.view' => [
+            'label' => 'Voir les scores de performance accessibles',
+            'group' => 'Performance personnel',
+            'icon' => 'fa-chart-line',
+        ],
+        'performance.view_all' => [
+            'label' => 'Voir tous les scores de performance du personnel',
+            'group' => 'Performance personnel',
+            'icon' => 'fa-ranking-star',
+        ],
+        'performance.recalculate' => [
+            'label' => 'Recalculer les scores de performance',
+            'group' => 'Performance personnel',
+            'icon' => 'fa-arrows-rotate',
+        ],
+        'performance.configure' => [
+            'label' => 'Configurer les règles de scoring du personnel',
+            'group' => 'Performance personnel',
+            'icon' => 'fa-sliders',
+        ],
+
         // ===== Résultats =====
         'resultats.view' => [
             'label' => 'Voir les résultats académiques',
@@ -1609,6 +1631,7 @@ return [
             'messages.send', 'messages.receive',
             'annonces.view', 'annonces.create', 'annonces.edit',
             'reports.view',
+            'performance.view', 'performance.view_all', 'performance.recalculate',
             'resultats.view', 'resultats.export',
             'paiements.export',  // Lot 15
             'settings.pdf.manage',  // Phase 9 — customisation PDF tenant
@@ -1647,6 +1670,7 @@ return [
             'frais.view', 'frais.create', 'frais.edit', 'frais.configure',
             'students.view', 'inscriptions.view',
             'reports.view', 'reports.generate',
+            'performance.view',
             'exports.schedules.manage', 'exports.schedules.send_external',  // Phase 8 — exports programmés
             'messages.send', 'messages.receive', 'annonces.view',
             'module.comptabilite.access', 'module.communication.access',
@@ -1663,6 +1687,7 @@ return [
             'comptabilite.paiements.view', 'comptabilite.paiements.validate',
             'frais.view',
             'messages.send', 'messages.receive', 'annonces.view',
+            'performance.view',
             'module.caisse.access',
         ],
 
@@ -1705,6 +1730,7 @@ return [
             'messages.send', 'messages.receive',
             'annonces.view', 'annonces.create', 'annonces.edit',
             'reports.view', 'reports.generate',
+            'performance.view', 'performance.view_all', 'performance.recalculate',
             'resultats.view', 'resultats.edit',
             'users.manage',
             'identity.coordinate',
@@ -1728,6 +1754,7 @@ return [
             'session_reports.view_own',
             'schedules.view_own',
             'messages.send', 'messages.receive', 'annonces.view',
+            'performance.view',
             'identity.teach',
             'module.notes_evaluations.access', 'module.presences.access', 'module.communication.access',
             // TPE — workflow validation (dormant tant que tpe.validation.enabled = false)

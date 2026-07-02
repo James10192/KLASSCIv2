@@ -439,6 +439,9 @@
             <button class="cs-tab" data-tab="activity" type="button">
                 <i class="fas fa-history"></i> Activite
             </button>
+            <button class="cs-tab" data-tab="performance" type="button">
+                <i class="fas fa-chart-line"></i> Performance
+            </button>
             <button class="cs-tab" data-tab="account" type="button">
                 <i class="fas fa-user-cog"></i> Compte
             </button>
@@ -617,6 +620,10 @@
         </div>
 
         {{-- ---- TAB: Compte --------------------------------------- --}}
+        <div class="cs-panel" id="cs-tab-performance">
+            @include('esbtp.personnel.partials.performance-score', ['performanceScore' => $performanceScore ?? null])
+        </div>
+
         <div class="cs-panel" id="cs-tab-account">
             <div class="cs-grid-2">
                 <div class="cs-card">

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResetsPersonnelPassword;
 use App\Models\User;
+use App\Services\Scoring\PersonnelScoringService;
 use App\Services\UserService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -82,7 +83,10 @@ class ESBTPComptableController extends Controller
     public function show(User $user)
     {
         abort_unless($user->can('comptabilite.access'), 403);
-        return view('esbtp.comptables.show', compact('user'));
+        $performanceScore = app(PersonnelScoringService::class)->latestFor($user)
+            ?: app(PersonnelScoringService::class)->calculate($user);
+
+        return view('esbtp.comptables.show', compact('user', 'performanceScore'));
     }
 
     public function update(Request $request, User $user)

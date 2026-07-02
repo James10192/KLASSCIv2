@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\ResetsPersonnelPassword;
 use App\Models\User;
+use App\Services\Scoring\PersonnelScoringService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +36,10 @@ class ESBTPCaissierController extends Controller
         $this->ensureCanManage();
         $this->ensureIsCaissier($caissier);
 
-        return view('esbtp.caissiers.show', compact('caissier'));
+        $performanceScore = app(PersonnelScoringService::class)->latestFor($caissier)
+            ?: app(PersonnelScoringService::class)->calculate($caissier);
+
+        return view('esbtp.caissiers.show', compact('caissier', 'performanceScore'));
     }
 
     /**
