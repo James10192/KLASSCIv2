@@ -128,6 +128,41 @@
         font-weight: 700;
         box-shadow: var(--shadow-sm);
     }
+    .pp-filters {
+        margin-bottom: 1rem;
+        padding: 1rem;
+    }
+    .pp-filter-grid {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(160px, 1fr)) auto;
+        gap: .75rem;
+        align-items: end;
+    }
+    .pp-filter-field {
+        display: flex;
+        flex-direction: column;
+        gap: .35rem;
+        min-width: 0;
+    }
+    .pp-filter-field label {
+        color: #64748b;
+        font-size: .72rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+    .pp-filter-field .au-select,
+    .pp-filter-field .au-select-trigger { width: 100%; }
+    .pp-filter-actions {
+        display: flex;
+        gap: .5rem;
+        flex-wrap: wrap;
+    }
+    .pp-btn--outline {
+        background: #fff;
+        color: #0453cb;
+        border-color: rgba(4,83,203,.18);
+    }
+    .pp-btn--outline:hover { background: rgba(4,83,203,.06); color: #033a8e; }
     .pp-card {
         background: #fff;
         border: 1px solid #e2e8f0;
@@ -204,6 +239,24 @@
         font-size: .74rem;
     }
     .pp-score { font-size: 1rem; font-weight: 900; color: #0453cb; white-space: nowrap; }
+    .pp-row-action {
+        width: 34px;
+        height: 34px;
+        border-radius: 9px;
+        border: 1px solid #dbeafe;
+        color: #0453cb;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background: #fff;
+        transition: all .2s ease;
+        text-decoration: none;
+    }
+    .pp-row-action:hover {
+        background: rgba(4,83,203,.08);
+        color: #033a8e;
+        text-decoration: none;
+    }
     .pp-badge {
         display: inline-flex;
         align-items: center;
@@ -240,6 +293,8 @@
         .pp-hero { padding: 1.5rem; }
         .pp-hero-actions { width: 100%; }
         .pp-period-field { flex: 1; min-width: 180px; }
+        .pp-filter-grid { grid-template-columns: repeat(2, minmax(160px, 1fr)); }
+        .pp-filter-actions { grid-column: 1 / -1; }
     }
     @media (max-width: 768px) {
         .pp-hero-left { align-items: flex-start; }
@@ -251,6 +306,7 @@
         .pp-hero { padding: 1rem; border-radius: 14px; }
         .pp-hero-actions, .pp-btn, .pp-period-field { width: 100%; }
         .pp-kpi { min-width: 100%; }
+        .pp-filter-grid { grid-template-columns: 1fr; }
     }
 </style>
 @endsection
@@ -267,12 +323,14 @@
         'level_label' => config("personnel_scoring.levels.{$score->level}.label", $score->level),
         'dimensions' => $score->applicable_dimensions_count,
         'period' => $score->period_start?->format('d/m/Y').' - '.$score->period_end?->format('d/m/Y'),
+        'show_url' => route('esbtp.personnel.performance.show', $score->user_id),
     ])->values();
 @endphp
 
 <div class="pp-page"
      x-data="personnelPerformancePage({
         period: @js($period),
+        filters: @js($filters),
         summary: @js($summary),
         rows: @js($initialRows),
         dataUrl: @js(route('esbtp.personnel.performance.data')),
@@ -327,12 +385,72 @@
                     <div class="pp-kpi-icon"><i class="fas fa-triangle-exclamation"></i></div>
                     <div><div class="pp-kpi-value" x-text="summary.watch"></div><div class="pp-kpi-label">Points d'attention</div></div>
                 </div>
+                <div class="pp-kpi">
+                    <div class="pp-kpi-icon"><i class="fas fa-layer-group"></i></div>
+                    <div><div class="pp-kpi-value" x-text="summary.dimensions"></div><div class="pp-kpi-label">Dimensions moy.</div></div>
+                </div>
             </div>
         </div>
 
         <div class="pp-alert" x-show="message" x-cloak>
             <i class="fas fa-circle-check"></i>
             <span x-text="message"></span>
+        </div>
+
+        <div class="pp-card pp-filters">
+            <div class="pp-filter-grid">
+                <div class="pp-filter-field">
+                    <label>Role</label>
+                    <x-au-select
+                        name="role"
+                        :value="$filters['role'] ?? ''"
+                        icon="fa-user-tag"
+                        placeholder="Tous les roles"
+                        :searchable="count($filterOptions['roles']) > 8"
+                        :options="$filterOptions['roles']"
+                        x-model="filters.role"
+                        @change="applyFilters()" />
+                </div>
+                <div class="pp-filter-field">
+                    <label>Personnel</label>
+                    <x-au-select
+                        name="user_id"
+                        :value="$filters['user_id'] ?? ''"
+                        icon="fa-user"
+                        placeholder="Tous les personnels"
+                        :searchable="true"
+                        :options="$filterOptions['users']"
+                        x-model="filters.user_id"
+                        @change="applyFilters()" />
+                </div>
+                <div class="pp-filter-field">
+                    <label>Niveau</label>
+                    <x-au-select
+                        name="level"
+                        :value="$filters['level'] ?? ''"
+                        icon="fa-signal"
+                        placeholder="Tous les niveaux"
+                        :options="$filterOptions['levels']"
+                        x-model="filters.level"
+                        @change="applyFilters()" />
+                </div>
+                <div class="pp-filter-field">
+                    <label>Periode</label>
+                    <x-au-select
+                        name="period_filter"
+                        :value="$period"
+                        icon="fa-calendar-alt"
+                        :placeholderIsFirstOption="false"
+                        :options="config('personnel_scoring.periods')"
+                        x-model="period"
+                        @change="changePeriod($event.target.value)" />
+                </div>
+                <div class="pp-filter-actions">
+                    <button type="button" class="pp-btn pp-btn--outline" :disabled="loading" @click="resetFilters()">
+                        <i class="fas fa-eraser"></i> Effacer
+                    </button>
+                </div>
+            </div>
         </div>
 
         <div class="pp-card">
@@ -359,6 +477,7 @@
                             <th>Niveau</th>
                             <th>Dimensions</th>
                             <th>Periode</th>
+                            <th></th>
                         </tr>
                     </thead>
                     <tbody>
@@ -380,6 +499,11 @@
                                 </td>
                                 <td x-text="row.dimensions"></td>
                                 <td x-text="row.period"></td>
+                                <td>
+                                    <a class="pp-row-action" :href="row.show_url + '?period=' + encodeURIComponent(period)" title="Voir le detail">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                </td>
                             </tr>
                         </template>
                     </tbody>
@@ -405,6 +529,11 @@
 function personnelPerformancePage(config) {
     return {
         period: config.period,
+        filters: {
+            role: config.filters.role || '',
+            user_id: config.filters.user_id || '',
+            level: config.filters.level || '',
+        },
         summary: config.summary,
         rows: config.rows,
         loading: false,
@@ -421,17 +550,44 @@ function personnelPerformancePage(config) {
         },
         async changePeriod(period) {
             this.period = period;
-            const url = new URL(window.location.href);
-            url.searchParams.set('period', period);
-            window.history.pushState({}, '', url.toString());
+            this.syncUrl();
             await this.refresh();
+        },
+        async applyFilters() {
+            this.syncUrl();
+            await this.refresh();
+        },
+        async resetFilters() {
+            this.filters = { role: '', user_id: '', level: '' };
+            this.syncUrl();
+            await this.refresh();
+        },
+        syncUrl() {
+            const url = new URL(window.location.href);
+            url.searchParams.set('period', this.period);
+            ['role', 'user_id', 'level'].forEach((key) => {
+                if (this.filters[key]) {
+                    url.searchParams.set(key, this.filters[key]);
+                } else {
+                    url.searchParams.delete(key);
+                }
+            });
+            window.history.pushState({}, '', url.toString());
+        },
+        appendFilters(url) {
+            url.searchParams.set('period', this.period);
+            ['role', 'user_id', 'level'].forEach((key) => {
+                if (this.filters[key]) {
+                    url.searchParams.set(key, this.filters[key]);
+                }
+            });
+            return url;
         },
         async refresh() {
             this.loading = true;
             this.message = '';
             try {
-                const url = new URL(config.dataUrl, window.location.origin);
-                url.searchParams.set('period', this.period);
+                const url = this.appendFilters(new URL(config.dataUrl, window.location.origin));
                 const response = await fetch(url.toString(), {
                     headers: { 'Accept': 'application/json' },
                 });
@@ -461,7 +617,12 @@ function personnelPerformancePage(config) {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': config.csrf,
                     },
-                    body: JSON.stringify({ period: this.period }),
+                    body: JSON.stringify({
+                        period: this.period,
+                        role: this.filters.role || null,
+                        user_id: this.filters.user_id || null,
+                        level: this.filters.level || null,
+                    }),
                 });
                 if (!response.ok) {
                     throw new Error('Le recalcul a echoue.');

@@ -118,13 +118,27 @@ class PersonnelScoringService
             ->first();
     }
 
-    public function scoreRows(string $periodType = 'month'): Collection
+    public function scoreRows(string $periodType = 'month', array $filters = []): Collection
     {
         $periodType = $this->normalizePeriodType($periodType);
 
-        return ESBTPPersonnelScoreSnapshot::with('user')
+        $query = ESBTPPersonnelScoreSnapshot::with('user')
             ->where('period_type', $periodType)
-            ->latest('period_end')
+            ->latest('period_end');
+
+        if (! empty($filters['role'])) {
+            $query->where('role_name', $filters['role']);
+        }
+
+        if (! empty($filters['user_id'])) {
+            $query->where('user_id', (int) $filters['user_id']);
+        }
+
+        if (! empty($filters['level'])) {
+            $query->where('level', $filters['level']);
+        }
+
+        return $query
             ->orderByDesc('total_score')
             ->get()
             ->unique('user_id')

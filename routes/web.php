@@ -2463,6 +2463,7 @@ Route::middleware(['auth', 'permission:personnel.view', 'paywall'])->prefix('esb
         Route::post('/recalculate', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'recalculate'])
             ->middleware('permission:performance.recalculate')
             ->name('recalculate');
+        Route::get('/{user}', [\App\Http\Controllers\ESBTPPersonnelPerformanceController::class, 'show'])->name('show');
     });
 
     Route::get('/personnel/unified', [\App\Http\Controllers\ESBTPPersonnelUnifiedController::class, 'index'])->name('personnel.unified.index');
