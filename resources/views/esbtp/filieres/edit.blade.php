@@ -408,9 +408,10 @@
                     <i class="fas fa-lightbulb"></i>
                     <div>
                         <strong>À savoir :</strong>
-                        pour créer une spécialité, ne cochez pas « Cette filière est un tronc commun ».
-                        Sélectionnez uniquement son tronc commun parent dans « Rattacher à un tronc commun ».
-                        Le statut tronc commun est réservé à la filière mère qui porte l’orientation.
+                        une spécialité est reconnue par son rattachement à une filière mère.
+                        Pour créer une spécialité, laissez « Cette filière est un tronc commun » désactivé,
+                        puis choisissez la filière mère dans « Rattacher à un tronc commun ».
+                        Le statut tronc commun est réservé au parent qui porte l’orientation.
                     </div>
                 </div>
 
