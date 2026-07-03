@@ -470,6 +470,20 @@
     .mailpulse-field-card {
         padding: 16px; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff;
     }
+    .mailpulse-toggle {
+        display: flex; align-items: center; gap: 10px; min-height: 44px; color: #334155; font-weight: 600;
+    }
+    .mailpulse-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+    .mailpulse-toggle-slider {
+        width: 42px; height: 24px; border-radius: 999px; background: #cbd5e1; position: relative; flex: 0 0 auto;
+        transition: background .2s ease;
+    }
+    .mailpulse-toggle-slider::after {
+        content: ''; width: 18px; height: 18px; border-radius: 50%; background: #fff; position: absolute; top: 3px; left: 3px;
+        box-shadow: 0 1px 3px rgba(15,23,42,.24); transition: transform .2s ease;
+    }
+    .mailpulse-toggle input:checked + .mailpulse-toggle-slider { background: #0453cb; }
+    .mailpulse-toggle input:checked + .mailpulse-toggle-slider::after { transform: translateX(18px); }
     .mailpulse-code-input {
         font-family: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-size: .84rem;
@@ -2473,6 +2487,39 @@
 
                             <div class="form-group">
                                 <label class="form-label-modern">
+                                    <i class="fas fa-envelope-circle-check text-primary"></i>
+                                    Tests email
+                                </label>
+                                <label class="mailpulse-toggle">
+                                    <input type="checkbox"
+                                           name="setting_mailpulse_test_email_enabled"
+                                           value="1"
+                                           {{ old('setting_mailpulse_test_email_enabled', \App\Helpers\SettingsHelper::get('mailpulse_test_email_enabled', '1')) == '1' ? 'checked' : '' }}>
+                                    <span class="mailpulse-toggle-slider"></span>
+                                    <span>Activer les envois email de test</span>
+                                </label>
+                            </div>
+
+                            <div class="form-group">
+                                <label class="form-label-modern">
+                                    <i class="fab fa-whatsapp text-primary"></i>
+                                    Tests WhatsApp
+                                </label>
+                                <label class="mailpulse-toggle">
+                                    <input type="checkbox"
+                                           name="setting_mailpulse_test_whatsapp_enabled"
+                                           value="1"
+                                           {{ old('setting_mailpulse_test_whatsapp_enabled', \App\Helpers\SettingsHelper::get('mailpulse_test_whatsapp_enabled', '1')) == '1' ? 'checked' : '' }}>
+                                    <span class="mailpulse-toggle-slider"></span>
+                                    <span>Activer les envois WhatsApp de test</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="settings-grid-3">
+
+                            <div class="form-group">
+                                <label class="form-label-modern">
                                     <i class="fas fa-envelope-open-text text-primary"></i>
                                     Email de test
                                 </label>
@@ -2482,15 +2529,19 @@
                                        placeholder="test@example.com">
                             </div>
 
-                            <div class="form-group">
+                            <div class="form-group" style="grid-column: span 2;">
                                 <label class="form-label-modern">
                                     <i class="fab fa-whatsapp text-primary"></i>
-                                    Téléphone de test
+                                    T&eacute;l&eacute;phones WhatsApp de test
                                 </label>
-                                <input type="text" class="form-control form-control-modern mailpulse-code-input"
+                                <textarea class="form-control form-control-modern mailpulse-code-input"
+                                          name="setting_mailpulse_test_phones"
+                                          rows="3"
+                                          placeholder="0544210112&#10;+2250595459843">{{ old('setting_mailpulse_test_phones', \App\Helpers\SettingsHelper::get('mailpulse_test_phones', \App\Helpers\SettingsHelper::get('mailpulse_test_phone', ''))) }}</textarea>
+                                <input type="hidden"
                                        name="setting_mailpulse_test_phone"
-                                       value="{{ old('setting_mailpulse_test_phone', \App\Helpers\SettingsHelper::get('mailpulse_test_phone', '')) }}"
-                                       placeholder="+2250700000000">
+                                       value="{{ old('setting_mailpulse_test_phone', \App\Helpers\SettingsHelper::get('mailpulse_test_phone', '')) }}">
+                                <small class="text-muted">Un num&eacute;ro par ligne ou s&eacute;par&eacute; par virgule. Les tests restent limit&eacute;s &agrave; cette liste.</small>
                             </div>
                         </div>
 

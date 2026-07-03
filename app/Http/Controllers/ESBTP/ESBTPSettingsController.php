@@ -1010,6 +1010,9 @@ class ESBTPSettingsController extends Controller
             'mailpulse_timeout' => ['value' => '20', 'type' => 'integer', 'description' => 'Timeout MailPulse en secondes', 'rules' => ['nullable', 'integer', 'min:5', 'max:120'], 'sort' => 308],
             'mailpulse_test_email' => ['value' => '', 'type' => 'string', 'description' => 'Email de test MailPulse', 'rules' => ['nullable', 'email', 'max:255'], 'sort' => 309],
             'mailpulse_test_phone' => ['value' => '', 'type' => 'string', 'description' => 'Telephone de test MailPulse', 'rules' => ['nullable', 'string', 'max:30'], 'sort' => 310],
+            'mailpulse_test_phones' => ['value' => '', 'type' => 'string', 'description' => 'Telephones de test MailPulse', 'rules' => ['nullable', 'string', 'max:1000'], 'sort' => 311],
+            'mailpulse_test_email_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests email MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 312],
+            'mailpulse_test_whatsapp_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests WhatsApp MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 313],
         ];
 
         foreach ($mailPulseSettings as $key => $attrs) {

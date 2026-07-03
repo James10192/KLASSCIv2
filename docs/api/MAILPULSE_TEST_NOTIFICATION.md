@@ -16,15 +16,18 @@ MAILPULSE_SENDER_NAME=KLASSCI
 TEST_API_SECRET=
 TEST_NOTIFICATION_EMAIL=
 TEST_NOTIFICATION_PHONE=
+TEST_NOTIFICATION_PHONES=
 ```
 
-`TEST_NOTIFICATION_EMAIL` et `TEST_NOTIFICATION_PHONE` sont obligatoires pour tout test. Aucun parent ou étudiant réel ne doit être utilisé.
+`TEST_NOTIFICATION_EMAIL` est requis pour les tests email. `TEST_NOTIFICATION_PHONE` ou `TEST_NOTIFICATION_PHONES` est requis pour les tests WhatsApp. Aucun parent ou etudiant reel ne doit etre utilise.
 
-Ces valeurs peuvent aussi être gérées depuis `ESBTP > Paramètres > MailPulse`. La clé API n'est jamais affichée dans le formulaire. Laisser le champ vide conserve la clé existante.
+`TEST_NOTIFICATION_PHONES` accepte plusieurs numeros separes par ligne, virgule ou point-virgule. Dans les parametres, `mailpulse_test_phones` est prioritaire sur l'ancien champ `mailpulse_test_phone`.
 
-`TEST_API_SECRET` est réservé à un endpoint dev standalone. L'implémentation actuelle utilise l'option plus sûre : endpoint admin-only via Sanctum `cli:admin`.
+Ces valeurs peuvent aussi etre gerees depuis `ESBTP > Parametres > MailPulse`. La cle API n'est jamais affichee dans le formulaire. Laisser le champ vide conserve la cle existante. Les interrupteurs `Tests email` et `Tests WhatsApp` permettent d'activer seulement les canaux a utiliser.
 
-## Endpoint CLI admin-only
+`TEST_API_SECRET` est reserve a un endpoint dev standalone. L'implementation actuelle utilise l'option plus sure : endpoint admin-only via Sanctum `cli:admin`.
+
+## Endpoint CLI Admin-Only
 
 ```http
 POST /api/cli/mailpulse/test-notification
@@ -42,20 +45,20 @@ Body :
 }
 ```
 
-Événements supportés :
+Evenements supportes :
 
 - `payment_received`
 - `absence_reported`
 - `grade_published`
 - `fee_reminder`
 
-Canaux supportés :
+Canaux supportes :
 
 - `email`
 - `whatsapp`
 - `both`
 
-## Test email
+## Test Email
 
 Dry-run, sans appel MailPulse :
 
@@ -63,7 +66,7 @@ Dry-run, sans appel MailPulse :
 php artisan mailpulse:test --event=payment_received --channel=email --dry-run=true
 ```
 
-Envoi réel vers `TEST_NOTIFICATION_EMAIL` :
+Envoi reel vers `TEST_NOTIFICATION_EMAIL` :
 
 ```bash
 php artisan mailpulse:test --event=payment_received --channel=email --dry-run=false
@@ -77,7 +80,7 @@ Dry-run :
 php artisan mailpulse:test --event=absence_reported --channel=whatsapp --dry-run=true
 ```
 
-Envoi réel vers `TEST_NOTIFICATION_PHONE` :
+Envoi reel vers les numeros de test configures :
 
 ```bash
 php artisan mailpulse:test --event=absence_reported --channel=whatsapp --dry-run=false
@@ -91,11 +94,12 @@ klassci-cli mailpulse:test --event payment_received --channel both --dry-run fal
 
 ## Limitations WhatsApp
 
-- Meta exige des templates approuvés pour les messages hors fenêtre de conversation 24h.
+- Meta exige des templates approuves pour les messages hors fenetre de conversation 24h.
 - Si MailPulse retourne `TEMPLATE_REQUIRED`, il faut configurer le template WhatsApp dans Meta/MailPulse.
 - Si MailPulse retourne `CHANNEL_NOT_CONFIGURED`, connecter le canal WhatsApp ou email dans MailPulse.
-- Baileys peut se déconnecter. Dans ce cas, reconnecter la session côté MailPulse avant de relancer.
+- Baileys peut se deconnecter. Dans ce cas, reconnecter la session cote MailPulse avant de relancer.
 
 ## Historique
 
-- 2026-07-02 : ajout du test MailPulse CLI/admin-only pour notifications KLASSCI simulées.
+- 2026-07-03 : ajout des numeros WhatsApp de test multiples et des toggles de canaux de test.
+- 2026-07-02 : ajout du test MailPulse CLI/admin-only pour notifications KLASSCI simulees.

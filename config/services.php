@@ -83,6 +83,7 @@ return [
         'test_api_secret' => env('TEST_API_SECRET'),
         'test_notification_email' => env('TEST_NOTIFICATION_EMAIL'),
         'test_notification_phone' => env('TEST_NOTIFICATION_PHONE'),
+        'test_notification_phones' => env('TEST_NOTIFICATION_PHONES'),
     ],
 
 ];

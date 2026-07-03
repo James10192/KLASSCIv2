@@ -22,25 +22,42 @@ class MailPulseTestNotificationService
     {
         $this->validateInput($event, $channel);
 
+        $emailEnabled = $this->settingEnabled('mailpulse_test_email_enabled', true);
+        $whatsAppEnabled = $this->settingEnabled('mailpulse_test_whatsapp_enabled', true);
         $email = $this->client->getSetting('mailpulse_test_email', 'test_notification_email', '');
-        $phone = PhoneNormalizer::toE164($this->client->getSetting('mailpulse_test_phone', 'test_notification_phone', ''));
+        $phones = $this->testPhones();
+        $primaryPhone = $phones[0] ?? null;
+        $shouldEmail = $channel === 'email' || ($channel === 'both' && $emailEnabled);
+        $shouldWhatsApp = $channel === 'whatsapp' || ($channel === 'both' && $whatsAppEnabled);
 
-        if ($email === '') {
+        if ($channel === 'email' && ! $emailEnabled) {
+            throw ValidationException::withMessages([
+                'mailpulse_test_email_enabled' => 'Les tests email MailPulse sont desactives dans les parametres.',
+            ]);
+        }
+
+        if ($channel === 'whatsapp' && ! $whatsAppEnabled) {
+            throw ValidationException::withMessages([
+                'mailpulse_test_whatsapp_enabled' => 'Les tests WhatsApp MailPulse sont desactives dans les parametres.',
+            ]);
+        }
+
+        if ($shouldEmail && $email === '') {
             throw ValidationException::withMessages([
                 'TEST_NOTIFICATION_EMAIL' => 'TEST_NOTIFICATION_EMAIL est requis pour eviter tout envoi a de vrais parents.',
             ]);
         }
 
-        if (($channel === 'whatsapp' || $channel === 'both') && $phone === null) {
+        if ($shouldWhatsApp && $phones === []) {
             throw ValidationException::withMessages([
-                'TEST_NOTIFICATION_PHONE' => 'TEST_NOTIFICATION_PHONE est requis et doit etre un numero mobile ivoirien valide.',
+                'TEST_NOTIFICATION_PHONE' => 'Au moins un numero de test WhatsApp ivoirien valide est requis.',
             ]);
         }
 
         $scenario = $this->scenario($event);
         $contact = $dryRun
             ? MailPulseResult::dryRun()
-            : $this->client->createOrUpdateContact($this->contactPayload($email, $phone, $scenario));
+            : $this->client->createOrUpdateContact($this->contactPayload($email, $primaryPhone, $scenario));
         $contactId = $contact->id ?? 'dry-run-contact';
 
         $emailResult = MailPulseResult::skipped('skipped', 'Canal email non demande.');
@@ -55,26 +72,25 @@ class MailPulseTestNotificationService
                 'contactId' => null,
                 'contact' => $contact->toArray(),
                 'email' => array_merge(
-                    ['attempted' => $channel === 'email' || $channel === 'both'],
+                    ['attempted' => $shouldEmail],
                     MailPulseResult::skipped('skipped_contact_failed', 'Envoi ignore car l upsert contact MailPulse a echoue.')->toArray()
                 ),
                 'whatsapp' => array_merge(
-                    ['attempted' => $channel === 'whatsapp' || $channel === 'both'],
+                    ['attempted' => $shouldWhatsApp],
                     MailPulseResult::skipped('skipped_contact_failed', 'Envoi ignore car l upsert contact MailPulse a echoue.')->toArray()
                 ),
             ];
         }
 
-        if ($channel === 'email' || $channel === 'both') {
+        if ($shouldEmail) {
             $emailResult = $dryRun
                 ? MailPulseResult::dryRun()
                 : $this->client->sendEmailMessage($this->emailPayload($email, $contactId, $scenario));
         }
 
-        if ($channel === 'whatsapp' || $channel === 'both') {
-            $whatsAppResult = $dryRun
-                ? MailPulseResult::dryRun()
-                : $this->client->sendWhatsAppMessage($this->whatsAppPayload($phone, $contactId, $scenario));
+        $whatsAppRecipients = [];
+        if ($shouldWhatsApp) {
+            $whatsAppResult = $this->sendWhatsAppMessages($phones, $contactId, $scenario, $dryRun, $whatsAppRecipients);
         }
 
         return [
@@ -84,9 +100,61 @@ class MailPulseTestNotificationService
             'dryRun' => $dryRun,
             'contactId' => $contactId,
             'contact' => $contact->toArray(),
-            'email' => array_merge(['attempted' => $channel === 'email' || $channel === 'both'], $emailResult->toArray()),
-            'whatsapp' => array_merge(['attempted' => $channel === 'whatsapp' || $channel === 'both'], $whatsAppResult->toArray()),
+            'email' => array_merge(['attempted' => $shouldEmail], $emailResult->toArray()),
+            'whatsapp' => array_merge(
+                ['attempted' => $shouldWhatsApp],
+                $whatsAppResult->toArray(),
+                $whatsAppRecipients === [] ? [] : ['recipients' => $whatsAppRecipients]
+            ),
         ];
+    }
+
+    private function settingEnabled(string $settingKey, bool $default): bool
+    {
+        $value = $this->client->getSetting($settingKey, $settingKey, $default ? '1' : '0');
+
+        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+    }
+
+    private function testPhones(): array
+    {
+        $rawList = $this->client->getSetting('mailpulse_test_phones', 'test_notification_phones', '');
+        if ($rawList === '') {
+            $rawList = $this->client->getSetting('mailpulse_test_phone', 'test_notification_phone', '');
+        }
+
+        $items = preg_split('/[\r\n,;]+/', $rawList) ?: [];
+        $phones = [];
+
+        foreach ($items as $item) {
+            $phone = PhoneNormalizer::toE164($item);
+            if ($phone !== null) {
+                $phones[$phone] = $phone;
+            }
+        }
+
+        return array_values($phones);
+    }
+
+    private function sendWhatsAppMessages(array $phones, string $contactId, array $scenario, bool $dryRun, array &$recipients): MailPulseResult
+    {
+        $result = MailPulseResult::dryRun();
+
+        foreach ($phones as $phone) {
+            $current = $dryRun
+                ? MailPulseResult::dryRun()
+                : $this->client->sendWhatsAppMessage($this->whatsAppPayload($phone, $contactId, $scenario));
+
+            $recipients[] = array_merge(['phone' => $phone], $current->toArray());
+
+            if (! $current->ok) {
+                return $current;
+            }
+
+            $result = $current;
+        }
+
+        return $result;
     }
 
     private function validateInput(string $event, string $channel): void
