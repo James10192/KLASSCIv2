@@ -141,8 +141,8 @@ class MailPulseClient
 
     private function providerFailure(Response $response, array $body, string $requestId): MailPulseResult
     {
-        $code = strtoupper((string) ($body['code'] ?? $body['error'] ?? 'provider_error'));
-        $message = (string) ($body['message'] ?? 'MailPulse a retourne une erreur.');
+        $code = strtoupper($this->stringValue($body['code'] ?? $body['error'] ?? 'provider_error', 'provider_error'));
+        $message = $this->stringValue($body['message'] ?? $body['error'] ?? null, 'MailPulse a retourne une erreur.');
 
         if (str_contains($code, 'TEMPLATE_REQUIRED') || str_contains(strtoupper($message), 'TEMPLATE_REQUIRED')) {
             return $this->failure('template_required', $response->status(), $requestId, $message, 'Configurez un template WhatsApp approuve dans Meta/MailPulse pour les messages hors fenetre 24h.');
@@ -153,6 +153,19 @@ class MailPulseClient
         }
 
         return $this->failure('provider_error', $response->status(), $requestId, $message, 'Consultez les logs MailPulse avec le requestId retourne.');
+    }
+
+    private function stringValue(mixed $value, string $default): string
+    {
+        if ($value === null || $value === '') {
+            return $default;
+        }
+
+        if (is_scalar($value)) {
+            return (string) $value;
+        }
+
+        return json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: $default;
     }
 
     private function failure(string $status, ?int $httpStatus, string $requestId, string $message, string $action): MailPulseResult

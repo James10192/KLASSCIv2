@@ -54,4 +54,38 @@ class MailPulseClientTest extends TestCase
         $this->assertSame('missing_api_key', $result->status);
         Http::assertNothingSent();
     }
+
+    /** @test */
+    public function it_maps_array_provider_error_without_crashing(): void
+    {
+        config()->set('services.mailpulse.enabled', true);
+        config()->set('services.mailpulse.api_key', 'test-key');
+        config()->set('services.mailpulse.base_url', 'https://mailpulse.test');
+        config()->set('services.mailpulse.messages_endpoint', '/api/v1/messages');
+
+        Http::fake([
+            'mailpulse.test/api/v1/messages' => Http::response([
+                'error' => [
+                    'code' => 'TEMPLATE_REQUIRED',
+                    'message' => 'WhatsApp template required',
+                ],
+            ], 422),
+        ]);
+
+        $result = app(MailPulseClient::class)->sendWhatsAppMessage([
+            'channel' => 'whatsapp',
+            'recipient' => [
+                'type' => 'phone',
+                'value' => '+2250707123456',
+            ],
+            'content' => [
+                'type' => 'text',
+                'text' => 'Test',
+            ],
+        ]);
+
+        $this->assertFalse($result->ok);
+        $this->assertSame('template_required', $result->status);
+        $this->assertSame(422, $result->httpStatus);
+    }
 }
