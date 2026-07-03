@@ -80,6 +80,7 @@ return [
         'sender_email' => env('MAILPULSE_SENDER_EMAIL'),
         'sender_name' => env('MAILPULSE_SENDER_NAME', 'KLASSCI'),
         'default_language' => env('MAILPULSE_DEFAULT_LANGUAGE', 'fr'),
+        'real_workflows_enabled' => env('MAILPULSE_REAL_WORKFLOWS_ENABLED', false),
         'test_api_secret' => env('TEST_API_SECRET'),
         'test_notification_email' => env('TEST_NOTIFICATION_EMAIL'),
         'test_notification_phone' => env('TEST_NOTIFICATION_PHONE'),

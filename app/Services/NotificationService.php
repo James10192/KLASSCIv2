@@ -14,6 +14,7 @@ use App\Models\ESBTPPaiement;
 use App\Models\ESBTPFacture;
 use App\Models\ESBTPBonSortie;
 use App\Models\ParentNotificationLog;
+use App\Services\MailPulse\MailPulseWorkflowNotificationService;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -942,6 +943,7 @@ class NotificationService
             $link = route('esbtp.mes-notes.index');
 
             $this->createNotification($etudiant->user, $title, $message, 'success', $link, $createdBy);
+            $this->notifyMailPulse(fn (MailPulseWorkflowNotificationService $mailPulse) => $mailPulse->notifyGradePublished($note));
         } catch (\Exception $e) {
             Log::error('Erreur notification note étudiant', ['error' => $e->getMessage()]);
         }
@@ -2184,6 +2186,7 @@ class NotificationService
                 'days_pending' => $daysPending,
                 'reminder_count' => $reminderCount
             ]);
+            $this->notifyMailPulse(fn (MailPulseWorkflowNotificationService $mailPulse) => $mailPulse->notifyFeeReminder($paiement, $daysPending, $reminderCount));
 
         } catch (\Exception $e) {
             Log::error('Erreur envoi rappel paiement: ' . $e->getMessage());
@@ -2665,6 +2668,8 @@ class NotificationService
                 Mail::to($tuteur->email)->send(new \App\Mail\Parents\PaiementValideMail($data));
             }
 
+            $this->notifyMailPulse(fn (MailPulseWorkflowNotificationService $mailPulse) => $mailPulse->notifyPaymentReceived($paiement));
+
             $preferences->incrementNotificationCount();
 
         } catch (\Exception $e) {
@@ -2804,6 +2809,8 @@ class NotificationService
                     Mail::to($tuteur->email)->send(new \App\Mail\Parents\LowAttendanceMail($data));
                 }
             }
+
+            $this->notifyMailPulse(fn (MailPulseWorkflowNotificationService $mailPulse) => $mailPulse->notifyAbsenceReported($attendance));
 
             $preferences->incrementNotificationCount();
 
@@ -3042,6 +3049,17 @@ class NotificationService
 
         } catch (\Exception $e) {
             Log::error('Erreur notification réinscription parent: ' . $e->getMessage());
+        }
+    }
+
+    private function notifyMailPulse(callable $callback): void
+    {
+        try {
+            $callback(app(MailPulseWorkflowNotificationService::class));
+        } catch (\Throwable $e) {
+            Log::warning('MailPulse workflow notification skipped', [
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 }

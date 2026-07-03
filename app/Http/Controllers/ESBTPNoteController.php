@@ -431,6 +431,8 @@ class ESBTPNoteController extends Controller
                 $this->sendAbsenceNotificationForNote($note, $evaluation);
             }
 
+            app(\App\Services\NotificationService::class)->notifyStudentNoteAdded($note, Auth::user());
+
             // Débogage : Log des détails de la note créée
             \Log::info('Note créée', [
                 'id' => $note->id,

@@ -13,6 +13,7 @@ MAILPULSE_CONTACTS_ENDPOINT=/api/v1/contacts
 MAILPULSE_MESSAGES_ENDPOINT=/api/v1/messages
 MAILPULSE_SENDER_EMAIL=
 MAILPULSE_SENDER_NAME=KLASSCI
+MAILPULSE_REAL_WORKFLOWS_ENABLED=false
 TEST_API_SECRET=
 TEST_NOTIFICATION_EMAIL=
 TEST_NOTIFICATION_PHONE=
@@ -26,6 +27,27 @@ TEST_NOTIFICATION_PHONES=
 Ces valeurs peuvent aussi etre gerees depuis `ESBTP > Parametres > MailPulse`. La cle API n'est jamais affichee dans le formulaire. Laisser le champ vide conserve la cle existante. Chaque email et chaque numero WhatsApp dispose de son propre interrupteur actif/inactif.
 
 `TEST_API_SECRET` est reserve a un endpoint dev standalone. L'implementation actuelle utilise l'option plus sure : endpoint admin-only via Sanctum `cli:admin`.
+
+## Workflows KLASSCI reels
+
+Le moteur de test reste limite aux destinataires de test. Les workflows reels sont branches separement et restent desactives par defaut.
+
+Pour activer les envois MailPulse vers les contacts parents reels d'un tenant :
+
+```env
+MAILPULSE_REAL_WORKFLOWS_ENABLED=true
+```
+
+ou activer le setting tenant `mailpulse_real_workflows_enabled`.
+
+Workflows branches :
+
+- `payment_received` : notification parent lors d'un paiement recu.
+- `absence_reported` : notification parent lors d'une absence signalee.
+- `grade_published` : notification parent lorsqu'une note publiee est enregistree.
+- `fee_reminder` : notification parent lors d'un rappel de paiement.
+
+Les envois reels respectent les preferences parent existantes (`email`, `whatsapp`) et journalisent uniquement `event`, `channel`, `status`, `requestId`, `parent_id` et `student_id`. Les secrets et la cle API ne sont jamais logges.
 
 ## Endpoint CLI Admin-Only
 

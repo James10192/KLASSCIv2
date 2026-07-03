@@ -760,6 +760,8 @@ class TeacherDashboardController extends Controller
         $note->created_by = $user->id;
         $note->save();
 
+        app(\App\Services\NotificationService::class)->notifyStudentNoteAdded($note, $user);
+
         return response()->json([
             'success' => true,
             'message' => 'Note enregistrée avec succès.',

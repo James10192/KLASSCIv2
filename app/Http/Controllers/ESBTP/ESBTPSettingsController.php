@@ -1015,6 +1015,7 @@ class ESBTPSettingsController extends Controller
             'mailpulse_test_phone_recipients' => ['value' => '', 'type' => 'string', 'description' => 'Telephones de test MailPulse avec activation', 'rules' => ['nullable', 'string', 'max:5000'], 'sort' => 313],
             'mailpulse_test_email_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests email MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 314],
             'mailpulse_test_whatsapp_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests WhatsApp MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 315],
+            'mailpulse_real_workflows_enabled' => ['value' => '0', 'type' => 'boolean', 'description' => 'Activer MailPulse sur les workflows parents reels', 'rules' => ['nullable', 'in:0,1'], 'sort' => 316],
         ];
 
         foreach ($mailPulseSettings as $key => $attrs) {
