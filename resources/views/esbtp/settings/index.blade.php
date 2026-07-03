@@ -484,6 +484,34 @@
     }
     .mailpulse-toggle input:checked + .mailpulse-toggle-slider { background: #0453cb; }
     .mailpulse-toggle input:checked + .mailpulse-toggle-slider::after { transform: translateX(18px); }
+    .mailpulse-recipient-list {
+        display: grid; gap: 8px; margin-bottom: 10px;
+    }
+    .mailpulse-recipient-row {
+        display: grid; grid-template-columns: 42px minmax(0, 1fr) 38px; gap: 8px; align-items: center;
+    }
+    .mailpulse-mini-toggle {
+        width: 42px; height: 38px; display: inline-flex; align-items: center; justify-content: center; margin: 0;
+    }
+    .mailpulse-mini-toggle input { position: absolute; opacity: 0; pointer-events: none; }
+    .mailpulse-mini-toggle span {
+        width: 34px; height: 20px; border-radius: 999px; background: #cbd5e1; position: relative; transition: background .2s ease;
+    }
+    .mailpulse-mini-toggle span::after {
+        content: ''; width: 14px; height: 14px; border-radius: 50%; background: #fff; position: absolute; top: 3px; left: 3px;
+        box-shadow: 0 1px 3px rgba(15,23,42,.22); transition: transform .2s ease;
+    }
+    .mailpulse-mini-toggle input:checked + span { background: #0453cb; }
+    .mailpulse-mini-toggle input:checked + span::after { transform: translateX(14px); }
+    .mailpulse-icon-button,
+    .mailpulse-add-button {
+        border: 1px solid #dbe4f0; background: #fff; color: #0453cb; min-height: 38px; border-radius: 8px;
+        display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700;
+    }
+    .mailpulse-icon-button { width: 38px; color: #64748b; }
+    .mailpulse-add-button { padding: 0 12px; }
+    .mailpulse-icon-button:hover,
+    .mailpulse-add-button:hover { border-color: #0453cb; background: #f8fbff; }
     .mailpulse-code-input {
         font-family: "Space Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-size: .84rem;
@@ -2485,63 +2513,109 @@
                                        min="5" max="120">
                             </div>
 
-                            <div class="form-group">
-                                <label class="form-label-modern">
-                                    <i class="fas fa-envelope-circle-check text-primary"></i>
-                                    Tests email
-                                </label>
-                                <label class="mailpulse-toggle">
-                                    <input type="checkbox"
-                                           name="setting_mailpulse_test_email_enabled"
-                                           value="1"
-                                           {{ old('setting_mailpulse_test_email_enabled', \App\Helpers\SettingsHelper::get('mailpulse_test_email_enabled', '1')) == '1' ? 'checked' : '' }}>
-                                    <span class="mailpulse-toggle-slider"></span>
-                                    <span>Activer les envois email de test</span>
-                                </label>
-                            </div>
-
-                            <div class="form-group">
-                                <label class="form-label-modern">
-                                    <i class="fab fa-whatsapp text-primary"></i>
-                                    Tests WhatsApp
-                                </label>
-                                <label class="mailpulse-toggle">
-                                    <input type="checkbox"
-                                           name="setting_mailpulse_test_whatsapp_enabled"
-                                           value="1"
-                                           {{ old('setting_mailpulse_test_whatsapp_enabled', \App\Helpers\SettingsHelper::get('mailpulse_test_whatsapp_enabled', '1')) == '1' ? 'checked' : '' }}>
-                                    <span class="mailpulse-toggle-slider"></span>
-                                    <span>Activer les envois WhatsApp de test</span>
-                                </label>
-                            </div>
                         </div>
 
-                        <div class="settings-grid-3">
+                        @php
+                            $mailpulseDecodeRecipients = function ($value) {
+                                $decoded = json_decode((string) $value, true);
+                                return is_array($decoded) ? array_values(array_filter($decoded, 'is_array')) : [];
+                            };
+                            $mailpulseEmailRecipients = $mailpulseDecodeRecipients(old('setting_mailpulse_test_email_recipients', \App\Helpers\SettingsHelper::get('mailpulse_test_email_recipients', '')));
+                            if ($mailpulseEmailRecipients === []) {
+                                $legacyEmail = old('setting_mailpulse_test_email', \App\Helpers\SettingsHelper::get('mailpulse_test_email', ''));
+                                $mailpulseEmailRecipients = $legacyEmail !== '' ? [['value' => $legacyEmail, 'enabled' => true]] : [['value' => '', 'enabled' => true]];
+                            }
+                            $mailpulsePhoneRecipients = $mailpulseDecodeRecipients(old('setting_mailpulse_test_phone_recipients', \App\Helpers\SettingsHelper::get('mailpulse_test_phone_recipients', '')));
+                            if ($mailpulsePhoneRecipients === []) {
+                                $legacyPhones = old('setting_mailpulse_test_phones', \App\Helpers\SettingsHelper::get('mailpulse_test_phones', \App\Helpers\SettingsHelper::get('mailpulse_test_phone', '')));
+                                $items = preg_split('/[\r\n,;]+/', (string) $legacyPhones) ?: [];
+                                $mailpulsePhoneRecipients = [];
+                                foreach ($items as $item) {
+                                    $item = trim($item);
+                                    if ($item !== '') {
+                                        $mailpulsePhoneRecipients[] = ['value' => $item, 'enabled' => true];
+                                    }
+                                }
+                                if ($mailpulsePhoneRecipients === []) {
+                                    $mailpulsePhoneRecipients = [['value' => '', 'enabled' => true]];
+                                }
+                            }
+                        @endphp
 
+                        <div class="settings-grid-2">
                             <div class="form-group">
                                 <label class="form-label-modern">
                                     <i class="fas fa-envelope-open-text text-primary"></i>
-                                    Email de test
+                                    Emails de test
                                 </label>
-                                <input type="email" class="form-control form-control-modern"
+                                <input type="hidden"
+                                       data-mailpulse-recipient-json="email"
+                                       name="setting_mailpulse_test_email_recipients"
+                                       value="{{ old('setting_mailpulse_test_email_recipients', \App\Helpers\SettingsHelper::get('mailpulse_test_email_recipients', '')) }}">
+                                <input type="hidden"
                                        name="setting_mailpulse_test_email"
-                                       value="{{ old('setting_mailpulse_test_email', \App\Helpers\SettingsHelper::get('mailpulse_test_email', '')) }}"
-                                       placeholder="test@example.com">
+                                       value="{{ old('setting_mailpulse_test_email', \App\Helpers\SettingsHelper::get('mailpulse_test_email', '')) }}">
+                                <div class="mailpulse-recipient-list" data-mailpulse-recipient-list="email">
+                                    @foreach ($mailpulseEmailRecipients as $recipient)
+                                        <div class="mailpulse-recipient-row" data-mailpulse-recipient-row>
+                                            <label class="mailpulse-mini-toggle" title="Activer ce destinataire">
+                                                <input type="checkbox" data-mailpulse-recipient-enabled {{ ($recipient['enabled'] ?? true) ? 'checked' : '' }}>
+                                                <span></span>
+                                            </label>
+                                            <input type="email"
+                                                   class="form-control form-control-modern"
+                                                   data-mailpulse-recipient-value
+                                                   value="{{ $recipient['value'] ?? '' }}"
+                                                   placeholder="test@example.com">
+                                            <button type="button" class="mailpulse-icon-button" data-mailpulse-recipient-remove title="Retirer">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <button type="button" class="mailpulse-add-button" data-mailpulse-recipient-add="email">
+                                    <i class="fas fa-plus"></i>
+                                    Ajouter un email
+                                </button>
                             </div>
 
-                            <div class="form-group" style="grid-column: span 2;">
+                            <div class="form-group">
                                 <label class="form-label-modern">
                                     <i class="fab fa-whatsapp text-primary"></i>
                                     T&eacute;l&eacute;phones WhatsApp de test
                                 </label>
-                                <textarea class="form-control form-control-modern mailpulse-code-input"
-                                          name="setting_mailpulse_test_phones"
-                                          rows="3"
-                                          placeholder="0544210112&#10;+2250595459843">{{ old('setting_mailpulse_test_phones', \App\Helpers\SettingsHelper::get('mailpulse_test_phones', \App\Helpers\SettingsHelper::get('mailpulse_test_phone', ''))) }}</textarea>
+                                <input type="hidden"
+                                       data-mailpulse-recipient-json="phone"
+                                       name="setting_mailpulse_test_phone_recipients"
+                                       value="{{ old('setting_mailpulse_test_phone_recipients', \App\Helpers\SettingsHelper::get('mailpulse_test_phone_recipients', '')) }}">
+                                <input type="hidden"
+                                       name="setting_mailpulse_test_phones"
+                                       value="{{ old('setting_mailpulse_test_phones', \App\Helpers\SettingsHelper::get('mailpulse_test_phones', '')) }}">
                                 <input type="hidden"
                                        name="setting_mailpulse_test_phone"
                                        value="{{ old('setting_mailpulse_test_phone', \App\Helpers\SettingsHelper::get('mailpulse_test_phone', '')) }}">
-                                <small class="text-muted">Un num&eacute;ro par ligne ou s&eacute;par&eacute; par virgule. Les tests restent limit&eacute;s &agrave; cette liste.</small>
+                                <div class="mailpulse-recipient-list" data-mailpulse-recipient-list="phone">
+                                    @foreach ($mailpulsePhoneRecipients as $recipient)
+                                        <div class="mailpulse-recipient-row" data-mailpulse-recipient-row>
+                                            <label class="mailpulse-mini-toggle" title="Activer ce destinataire">
+                                                <input type="checkbox" data-mailpulse-recipient-enabled {{ ($recipient['enabled'] ?? true) ? 'checked' : '' }}>
+                                                <span></span>
+                                            </label>
+                                            <input type="tel"
+                                                   class="form-control form-control-modern mailpulse-code-input"
+                                                   data-mailpulse-recipient-value
+                                                   value="{{ $recipient['value'] ?? '' }}"
+                                                   placeholder="0544210112">
+                                            <button type="button" class="mailpulse-icon-button" data-mailpulse-recipient-remove title="Retirer">
+                                                <i class="fas fa-times"></i>
+                                            </button>
+                                        </div>
+                                    @endforeach
+                                </div>
+                                <button type="button" class="mailpulse-add-button" data-mailpulse-recipient-add="phone">
+                                    <i class="fas fa-plus"></i>
+                                    Ajouter un num&eacute;ro
+                                </button>
                             </div>
                         </div>
 
@@ -3423,6 +3497,94 @@ function testReminders() {
         `;
     });
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    const placeholders = {
+        email: 'test@example.com',
+        phone: '0544210112',
+    };
+
+    const createRow = (type, value = '', enabled = true) => {
+        const row = document.createElement('div');
+        row.className = 'mailpulse-recipient-row';
+        row.setAttribute('data-mailpulse-recipient-row', '');
+        row.innerHTML = `
+            <label class="mailpulse-mini-toggle" title="Activer ce destinataire">
+                <input type="checkbox" data-mailpulse-recipient-enabled ${enabled ? 'checked' : ''}>
+                <span></span>
+            </label>
+            <input type="${type === 'email' ? 'email' : 'tel'}"
+                   class="form-control form-control-modern ${type === 'phone' ? 'mailpulse-code-input' : ''}"
+                   data-mailpulse-recipient-value
+                   value=""
+                   placeholder="${placeholders[type]}">
+            <button type="button" class="mailpulse-icon-button" data-mailpulse-recipient-remove title="Retirer">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+        row.querySelector('[data-mailpulse-recipient-value]').value = value;
+        return row;
+    };
+
+    const syncRecipients = (type) => {
+        const list = document.querySelector(`[data-mailpulse-recipient-list="${type}"]`);
+        const hidden = document.querySelector(`[data-mailpulse-recipient-json="${type}"]`);
+        if (!list || !hidden) {
+            return;
+        }
+
+        const recipients = [...list.querySelectorAll('[data-mailpulse-recipient-row]')]
+            .map((row) => ({
+                value: row.querySelector('[data-mailpulse-recipient-value]')?.value.trim() || '',
+                enabled: !!row.querySelector('[data-mailpulse-recipient-enabled]')?.checked,
+            }))
+            .filter((recipient) => recipient.value !== '');
+
+        hidden.value = JSON.stringify(recipients);
+    };
+
+    const ensureOneRow = (type) => {
+        const list = document.querySelector(`[data-mailpulse-recipient-list="${type}"]`);
+        if (list && !list.querySelector('[data-mailpulse-recipient-row]')) {
+            list.appendChild(createRow(type));
+        }
+    };
+
+    document.querySelectorAll('[data-mailpulse-recipient-add]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const type = button.getAttribute('data-mailpulse-recipient-add');
+            const list = document.querySelector(`[data-mailpulse-recipient-list="${type}"]`);
+            if (list) {
+                list.appendChild(createRow(type));
+                syncRecipients(type);
+            }
+        });
+    });
+
+    document.querySelectorAll('[data-mailpulse-recipient-list]').forEach((list) => {
+        const type = list.getAttribute('data-mailpulse-recipient-list');
+        list.addEventListener('input', () => syncRecipients(type));
+        list.addEventListener('change', () => syncRecipients(type));
+        list.addEventListener('click', (event) => {
+            const remove = event.target.closest('[data-mailpulse-recipient-remove]');
+            if (!remove) {
+                return;
+            }
+
+            remove.closest('[data-mailpulse-recipient-row]')?.remove();
+            ensureOneRow(type);
+            syncRecipients(type);
+        });
+        syncRecipients(type);
+    });
+
+    document.querySelectorAll('form').forEach((form) => {
+        form.addEventListener('submit', () => {
+            syncRecipients('email');
+            syncRecipients('phone');
+        });
+    });
+});
 
 // ====================================================================
 // Phase 9 — Sections avancées PDF (mise en page, footer, watermark)

@@ -21,9 +21,9 @@ TEST_NOTIFICATION_PHONES=
 
 `TEST_NOTIFICATION_EMAIL` est requis pour les tests email. `TEST_NOTIFICATION_PHONE` ou `TEST_NOTIFICATION_PHONES` est requis pour les tests WhatsApp. Aucun parent ou etudiant reel ne doit etre utilise.
 
-`TEST_NOTIFICATION_PHONES` accepte plusieurs numeros separes par ligne, virgule ou point-virgule. Dans les parametres, `mailpulse_test_phones` est prioritaire sur l'ancien champ `mailpulse_test_phone`.
+`TEST_NOTIFICATION_PHONES` accepte plusieurs numeros separes par ligne, virgule ou point-virgule. Dans les parametres, `mailpulse_test_phone_recipients` est prioritaire sur `mailpulse_test_phones` et l'ancien champ `mailpulse_test_phone`.
 
-Ces valeurs peuvent aussi etre gerees depuis `ESBTP > Parametres > MailPulse`. La cle API n'est jamais affichee dans le formulaire. Laisser le champ vide conserve la cle existante. Les interrupteurs `Tests email` et `Tests WhatsApp` permettent d'activer seulement les canaux a utiliser.
+Ces valeurs peuvent aussi etre gerees depuis `ESBTP > Parametres > MailPulse`. La cle API n'est jamais affichee dans le formulaire. Laisser le champ vide conserve la cle existante. Chaque email et chaque numero WhatsApp dispose de son propre interrupteur actif/inactif.
 
 `TEST_API_SECRET` est reserve a un endpoint dev standalone. L'implementation actuelle utilise l'option plus sure : endpoint admin-only via Sanctum `cli:admin`.
 

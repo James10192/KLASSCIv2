@@ -1011,8 +1011,10 @@ class ESBTPSettingsController extends Controller
             'mailpulse_test_email' => ['value' => '', 'type' => 'string', 'description' => 'Email de test MailPulse', 'rules' => ['nullable', 'email', 'max:255'], 'sort' => 309],
             'mailpulse_test_phone' => ['value' => '', 'type' => 'string', 'description' => 'Telephone de test MailPulse', 'rules' => ['nullable', 'string', 'max:30'], 'sort' => 310],
             'mailpulse_test_phones' => ['value' => '', 'type' => 'string', 'description' => 'Telephones de test MailPulse', 'rules' => ['nullable', 'string', 'max:1000'], 'sort' => 311],
-            'mailpulse_test_email_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests email MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 312],
-            'mailpulse_test_whatsapp_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests WhatsApp MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 313],
+            'mailpulse_test_email_recipients' => ['value' => '', 'type' => 'string', 'description' => 'Emails de test MailPulse avec activation', 'rules' => ['nullable', 'string', 'max:5000'], 'sort' => 312],
+            'mailpulse_test_phone_recipients' => ['value' => '', 'type' => 'string', 'description' => 'Telephones de test MailPulse avec activation', 'rules' => ['nullable', 'string', 'max:5000'], 'sort' => 313],
+            'mailpulse_test_email_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests email MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 314],
+            'mailpulse_test_whatsapp_enabled' => ['value' => '1', 'type' => 'boolean', 'description' => 'Activer les tests WhatsApp MailPulse', 'rules' => ['nullable', 'in:0,1'], 'sort' => 315],
         ];
 
         foreach ($mailPulseSettings as $key => $attrs) {

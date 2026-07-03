@@ -22,29 +22,16 @@ class MailPulseTestNotificationService
     {
         $this->validateInput($event, $channel);
 
-        $emailEnabled = $this->settingEnabled('mailpulse_test_email_enabled', true);
-        $whatsAppEnabled = $this->settingEnabled('mailpulse_test_whatsapp_enabled', true);
-        $email = $this->client->getSetting('mailpulse_test_email', 'test_notification_email', '');
-        $phones = $this->testPhones();
+        $emails = $this->activeEmails();
+        $phones = $this->activePhones();
+        $primaryEmail = $emails[0] ?? '';
         $primaryPhone = $phones[0] ?? null;
-        $shouldEmail = $channel === 'email' || ($channel === 'both' && $emailEnabled);
-        $shouldWhatsApp = $channel === 'whatsapp' || ($channel === 'both' && $whatsAppEnabled);
+        $shouldEmail = $channel === 'email' || $channel === 'both';
+        $shouldWhatsApp = $channel === 'whatsapp' || $channel === 'both';
 
-        if ($channel === 'email' && ! $emailEnabled) {
+        if ($shouldEmail && $emails === []) {
             throw ValidationException::withMessages([
-                'mailpulse_test_email_enabled' => 'Les tests email MailPulse sont desactives dans les parametres.',
-            ]);
-        }
-
-        if ($channel === 'whatsapp' && ! $whatsAppEnabled) {
-            throw ValidationException::withMessages([
-                'mailpulse_test_whatsapp_enabled' => 'Les tests WhatsApp MailPulse sont desactives dans les parametres.',
-            ]);
-        }
-
-        if ($shouldEmail && $email === '') {
-            throw ValidationException::withMessages([
-                'TEST_NOTIFICATION_EMAIL' => 'TEST_NOTIFICATION_EMAIL est requis pour eviter tout envoi a de vrais parents.',
+                'TEST_NOTIFICATION_EMAIL' => 'Au moins un email de test actif est requis pour eviter tout envoi a de vrais parents.',
             ]);
         }
 
@@ -57,7 +44,7 @@ class MailPulseTestNotificationService
         $scenario = $this->scenario($event);
         $contact = $dryRun
             ? MailPulseResult::dryRun()
-            : $this->client->createOrUpdateContact($this->contactPayload($email, $primaryPhone, $scenario));
+            : $this->client->createOrUpdateContact($this->contactPayload($primaryEmail, $primaryPhone, $scenario));
         $contactId = $contact->id ?? 'dry-run-contact';
 
         $emailResult = MailPulseResult::skipped('skipped', 'Canal email non demande.');
@@ -82,10 +69,9 @@ class MailPulseTestNotificationService
             ];
         }
 
+        $emailRecipients = [];
         if ($shouldEmail) {
-            $emailResult = $dryRun
-                ? MailPulseResult::dryRun()
-                : $this->client->sendEmailMessage($this->emailPayload($email, $contactId, $scenario));
+            $emailResult = $this->sendEmailMessages($emails, $contactId, $scenario, $dryRun, $emailRecipients);
         }
 
         $whatsAppRecipients = [];
@@ -100,7 +86,11 @@ class MailPulseTestNotificationService
             'dryRun' => $dryRun,
             'contactId' => $contactId,
             'contact' => $contact->toArray(),
-            'email' => array_merge(['attempted' => $shouldEmail], $emailResult->toArray()),
+            'email' => array_merge(
+                ['attempted' => $shouldEmail],
+                $emailResult->toArray(),
+                $emailRecipients === [] ? [] : ['recipients' => $emailRecipients]
+            ),
             'whatsapp' => array_merge(
                 ['attempted' => $shouldWhatsApp],
                 $whatsAppResult->toArray(),
@@ -109,31 +99,91 @@ class MailPulseTestNotificationService
         ];
     }
 
-    private function settingEnabled(string $settingKey, bool $default): bool
+    private function activeEmails(): array
     {
-        $value = $this->client->getSetting($settingKey, $settingKey, $default ? '1' : '0');
+        $recipients = $this->parseRecipients(
+            $this->client->getSetting('mailpulse_test_email_recipients', 'mailpulse_test_email_recipients', '')
+        );
 
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
-    }
-
-    private function testPhones(): array
-    {
-        $rawList = $this->client->getSetting('mailpulse_test_phones', 'test_notification_phones', '');
-        if ($rawList === '') {
-            $rawList = $this->client->getSetting('mailpulse_test_phone', 'test_notification_phone', '');
+        if ($recipients === []) {
+            $legacyEmail = trim($this->client->getSetting('mailpulse_test_email', 'test_notification_email', ''));
+            if ($legacyEmail !== '') {
+                $recipients[] = ['value' => $legacyEmail, 'enabled' => true];
+            }
         }
 
-        $items = preg_split('/[\r\n,;]+/', $rawList) ?: [];
-        $phones = [];
+        $emails = [];
+        foreach ($recipients as $recipient) {
+            $email = trim((string) ($recipient['value'] ?? ''));
+            if (($recipient['enabled'] ?? true) && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $emails[strtolower($email)] = $email;
+            }
+        }
 
-        foreach ($items as $item) {
-            $phone = PhoneNormalizer::toE164($item);
-            if ($phone !== null) {
+        return array_values($emails);
+    }
+
+    private function activePhones(): array
+    {
+        $recipients = $this->parseRecipients(
+            $this->client->getSetting('mailpulse_test_phone_recipients', 'mailpulse_test_phone_recipients', '')
+        );
+
+        if ($recipients === []) {
+            $rawList = $this->client->getSetting('mailpulse_test_phones', 'test_notification_phones', '');
+            if ($rawList === '') {
+                $rawList = $this->client->getSetting('mailpulse_test_phone', 'test_notification_phone', '');
+            }
+
+            foreach (preg_split('/[\r\n,;]+/', $rawList) ?: [] as $item) {
+                $recipients[] = ['value' => $item, 'enabled' => true];
+            }
+        }
+
+        $phones = [];
+        foreach ($recipients as $recipient) {
+            $phone = PhoneNormalizer::toE164((string) ($recipient['value'] ?? ''));
+            if (($recipient['enabled'] ?? true) && $phone !== null) {
                 $phones[$phone] = $phone;
             }
         }
 
         return array_values($phones);
+    }
+
+    private function parseRecipients(string $json): array
+    {
+        if (trim($json) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($json, true);
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        return array_values(array_filter($decoded, fn ($item) => is_array($item)));
+    }
+
+    private function sendEmailMessages(array $emails, string $contactId, array $scenario, bool $dryRun, array &$recipients): MailPulseResult
+    {
+        $result = MailPulseResult::dryRun();
+
+        foreach ($emails as $email) {
+            $current = $dryRun
+                ? MailPulseResult::dryRun()
+                : $this->client->sendEmailMessage($this->emailPayload($email, $contactId, $scenario));
+
+            $recipients[] = array_merge(['email' => $email], $current->toArray());
+
+            if (! $current->ok) {
+                return $current;
+            }
+
+            $result = $current;
+        }
+
+        return $result;
     }
 
     private function sendWhatsAppMessages(array $phones, string $contactId, array $scenario, bool $dryRun, array &$recipients): MailPulseResult
