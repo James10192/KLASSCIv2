@@ -156,6 +156,29 @@
     }
     .fe-hint { font-size: .72rem; color: #64748b; line-height: 1.4; }
     .fe-error { font-size: .76rem; color: #dc2626; font-weight: 500; }
+    .fe-tip {
+        display: flex;
+        align-items: flex-start;
+        gap: .65rem;
+        margin-bottom: 1rem;
+        padding: .85rem 1rem;
+        background: #f8fafc;
+        border: 1px solid #cbd5e1;
+        border-left: 4px solid #0453cb;
+        border-radius: 10px;
+        color: #334155;
+        font-size: .8rem;
+        line-height: 1.45;
+    }
+    .fe-tip i {
+        color: #0453cb;
+        margin-top: .15rem;
+        flex-shrink: 0;
+    }
+    .fe-tip strong {
+        color: #1e293b;
+        font-weight: 700;
+    }
 
     /* Toggle switches premium */
     .fe-switch-row {
@@ -378,6 +401,16 @@
                     <div>
                         <h2 class="fe-section-title">Hiérarchie & tronc commun</h2>
                         <p class="fe-section-subtitle">Rattachement parent ou statut de tronc commun BTS.</p>
+                    </div>
+                </div>
+
+                <div class="fe-tip">
+                    <i class="fas fa-lightbulb"></i>
+                    <div>
+                        <strong>À savoir :</strong>
+                        pour créer une spécialité, ne cochez pas « Cette filière est un tronc commun ».
+                        Sélectionnez uniquement son tronc commun parent dans « Rattacher à un tronc commun ».
+                        Le statut tronc commun est réservé à la filière mère qui porte l’orientation.
                     </div>
                 </div>
 
