@@ -1279,6 +1279,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::prefix('admin/orientation-targets')->name('admin.orientation-targets.')->group(function () {
                 Route::get('/', [\App\Http\Controllers\Admin\BtsOrientationTargetController::class, 'index'])->name('index');
                 Route::post('/', [\App\Http\Controllers\Admin\BtsOrientationTargetController::class, 'store'])->name('store');
+                Route::post('/bulk-copy', [\App\Http\Controllers\Admin\BtsOrientationTargetController::class, 'bulkCopy'])->name('bulk-copy');
                 Route::patch('/{target}', [\App\Http\Controllers\Admin\BtsOrientationTargetController::class, 'update'])->name('update');
                 Route::delete('/{target}', [\App\Http\Controllers\Admin\BtsOrientationTargetController::class, 'destroy'])->name('destroy');
             });

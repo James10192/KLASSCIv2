@@ -55,6 +55,40 @@
 }
 .ot-card-body { padding: 1rem 1.25rem; }
 
+.ot-bulk-panel {
+    background:#fff; border:1px solid #dbeafe; border-radius:14px;
+    padding:1rem 1.25rem; margin-bottom:1rem;
+    box-shadow:0 1px 3px rgba(15,23,42,.04);
+}
+.ot-bulk-head { display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; margin-bottom:.9rem; }
+.ot-bulk-title { display:flex; align-items:center; gap:.6rem; font-size:.95rem; font-weight:700; color:#0f172a; }
+.ot-bulk-title i { width:32px; height:32px; border-radius:9px; display:inline-flex; align-items:center; justify-content:center; color:#0453cb; background:#eff6ff; }
+.ot-bulk-subtitle { color:#64748b; font-size:.78rem; margin-top:.2rem; }
+.ot-bulk-grid { display:grid; grid-template-columns:minmax(240px, 1.1fr) minmax(280px, 1.5fr) minmax(170px, .7fr); gap:.8rem; align-items:start; }
+.ot-bulk-field { display:flex; flex-direction:column; gap:.4rem; min-width:0; }
+.ot-bulk-label { font-size:.76rem; font-weight:700; color:#334155; display:flex; align-items:center; gap:.35rem; }
+.ot-bulk-destinations {
+    border:1px solid #e2e8f0; border-radius:10px; background:#f8fafc;
+    max-height:190px; overflow:auto; padding:.45rem;
+}
+.ot-bulk-destination {
+    display:flex; align-items:center; gap:.55rem; padding:.5rem .55rem;
+    border-radius:8px; cursor:pointer; font-size:.82rem; color:#1e293b;
+}
+.ot-bulk-destination:hover { background:#eff6ff; }
+.ot-bulk-destination input { width:16px; height:16px; accent-color:#0453cb; }
+.ot-bulk-destination--disabled { opacity:.45; cursor:not-allowed; }
+.ot-bulk-actions { display:flex; gap:.45rem; flex-wrap:wrap; align-items:center; }
+.ot-segment {
+    display:inline-flex; border:1px solid #dbeafe; border-radius:10px; overflow:hidden; background:#fff;
+}
+.ot-segment button {
+    border:0; background:#fff; color:#475569; padding:.5rem .7rem;
+    font-size:.76rem; font-weight:700; cursor:pointer;
+}
+.ot-segment button.active { background:#0453cb; color:#fff; }
+@media (max-width: 992px) { .ot-bulk-grid { grid-template-columns:1fr; } }
+
 .ot-target-row {
     display:flex; align-items:center; gap:.7rem;
     padding:.65rem .85rem;
@@ -127,6 +161,11 @@
 
 @section('content')
 <div x-data="orientationTargets()" x-init="init()">
+    @php
+        $bulkClassOptions = $sourceClasses->mapWithKeys(fn ($classe) => [
+            $classe->id => $classe->name . ' · ' . ($classe->niveauEtude?->name ?? 'Niveau non défini'),
+        ])->toArray();
+    @endphp
 
     {{-- HERO --}}
     <div class="ot-hero">
@@ -161,6 +200,73 @@
             </div>
         </div>
     @else
+        <div class="ot-bulk-panel">
+            <div class="ot-bulk-head">
+                <div>
+                    <div class="ot-bulk-title">
+                        <i class="fas fa-copy"></i>
+                        Copier les sorties d'une classe
+                    </div>
+                    <div class="ot-bulk-subtitle">
+                        Utilisez une classe déjà configurée comme modèle, puis appliquez ses spécialités à une ou plusieurs classes sans recharger la page.
+                    </div>
+                </div>
+                <div class="ot-bulk-actions">
+                    <button type="button" class="ot-btn ot-btn--ghost" @click="selectAllDestinations()">
+                        <i class="fas fa-check-double"></i> Tout sélectionner
+                    </button>
+                    <button type="button" class="ot-btn ot-btn--ghost" @click="clearDestinations()">
+                        <i class="fas fa-eraser"></i> Vider
+                    </button>
+                </div>
+            </div>
+
+            <div class="ot-bulk-grid">
+                <div class="ot-bulk-field">
+                    <label class="ot-bulk-label"><i class="fas fa-chalkboard"></i> Classe modèle</label>
+                    <x-au-select
+                        name="bulk_source_classe_id"
+                        placeholder="Choisir une classe à copier"
+                        icon="fa-copy"
+                        :searchable="count($bulkClassOptions) > 6"
+                        :options="$bulkClassOptions"
+                        @change="setBulkSource($event.target.value)" />
+                </div>
+
+                <div class="ot-bulk-field">
+                    <label class="ot-bulk-label"><i class="fas fa-layer-group"></i> Classes à mettre à jour</label>
+                    <div class="ot-bulk-destinations">
+                        @foreach($sourceClasses as $destinationClasse)
+                            <label class="ot-bulk-destination"
+                                   :class="{ 'ot-bulk-destination--disabled': String(bulk.sourceClasseId) === '{{ $destinationClasse->id }}' }">
+                                <input type="checkbox"
+                                       value="{{ $destinationClasse->id }}"
+                                       :disabled="String(bulk.sourceClasseId) === '{{ $destinationClasse->id }}'"
+                                       @change="toggleDestination('{{ $destinationClasse->id }}', $event.target.checked)">
+                                <span>{{ $destinationClasse->name }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
+
+                <div class="ot-bulk-field">
+                    <label class="ot-bulk-label"><i class="fas fa-sliders-h"></i> Mode</label>
+                    <div class="ot-segment" role="group" aria-label="Mode de copie">
+                        <button type="button" :class="{ active: bulk.mode === 'merge' }" @click="bulk.mode = 'merge'">Fusionner</button>
+                        <button type="button" :class="{ active: bulk.mode === 'replace' }" @click="bulk.mode = 'replace'">Remplacer</button>
+                    </div>
+                    <button type="button" class="ot-btn ot-btn--primary" style="justify-content:center; margin-top:.35rem;"
+                            :disabled="bulk.loading" @click="bulkCopyTargets()">
+                        <i class="fas" :class="bulk.loading ? 'fa-spinner fa-spin' : 'fa-bolt'"></i>
+                        <span x-text="bulk.loading ? 'Copie...' : 'Appliquer'"></span>
+                    </button>
+                    <div class="ot-bulk-subtitle">
+                        Fusionner garde les sorties existantes. Remplacer supprime d'abord les sorties des classes sélectionnées.
+                    </div>
+                </div>
+            </div>
+        </div>
+
         @foreach($sourceClasses as $sourceClasse)
             @php
                 $candidates = $candidatesByClasse[$sourceClasse->id] ?? collect();
@@ -169,7 +275,7 @@
                     $c->id => $c->name . ($c->filiere ? ' · ' . $c->filiere->name : ''),
                 ])->toArray();
             @endphp
-            <div class="ot-card">
+            <div class="ot-card" data-class-card="{{ $sourceClasse->id }}">
                 <div class="ot-card-header">
                     <div class="ot-card-icon"><i class="fas fa-chalkboard"></i></div>
                     <div style="flex:1; min-width:0;">
@@ -180,7 +286,7 @@
                             @if($sourceClasse->anneeUniversitaire) · {{ $sourceClasse->anneeUniversitaire->name }} @endif
                         </div>
                     </div>
-                    <span class="ot-card-meta">
+                    <span class="ot-card-meta" data-target-counter>
                         {{ $sourceClasse->orientationTargets->count() }} spécialité{{ $sourceClasse->orientationTargets->count() > 1 ? 's' : '' }}
                     </span>
                 </div>
@@ -215,7 +321,7 @@
                     </div>
 
                     @if($candidates->isNotEmpty())
-                        <form @submit.prevent="addTarget($el, {{ $sourceClasse->id }})" class="ot-add-form">
+                        <form @submit.prevent="addTarget($el, {{ $sourceClasse->id }})" class="ot-add-form" data-add-form="{{ $sourceClasse->id }}">
                             @csrf
                             <input type="hidden" name="source_classe_id" value="{{ $sourceClasse->id }}">
                             <x-au-select
@@ -288,7 +394,106 @@
 function orientationTargets() {
     return {
         toasts: [], toastId: 0,
+        bulk: {
+            sourceClasseId: '',
+            destinationClasseIds: [],
+            mode: 'merge',
+            loading: false,
+        },
         init() {},
+
+        setBulkSource(id) {
+            this.bulk.sourceClasseId = String(id || '');
+            this.bulk.destinationClasseIds = this.bulk.destinationClasseIds
+                .filter(item => item !== this.bulk.sourceClasseId);
+
+            document.querySelectorAll('.ot-bulk-destination input[type="checkbox"]').forEach(input => {
+                if (String(input.value) === this.bulk.sourceClasseId) {
+                    input.checked = false;
+                }
+            });
+        },
+
+        toggleDestination(id, checked) {
+            const value = String(id);
+            if (checked && !this.bulk.destinationClasseIds.includes(value)) {
+                this.bulk.destinationClasseIds.push(value);
+            }
+            if (!checked) {
+                this.bulk.destinationClasseIds = this.bulk.destinationClasseIds.filter(item => item !== value);
+            }
+        },
+
+        selectAllDestinations() {
+            if (!this.bulk.sourceClasseId) {
+                this.toast('error', 'Choisissez d’abord une classe modèle.');
+                return;
+            }
+
+            this.bulk.destinationClasseIds = Array.from(document.querySelectorAll('.ot-bulk-destination input[type="checkbox"]'))
+                .filter(input => !input.disabled)
+                .map(input => String(input.value));
+
+            document.querySelectorAll('.ot-bulk-destination input[type="checkbox"]').forEach(input => {
+                input.checked = this.bulk.destinationClasseIds.includes(String(input.value));
+            });
+        },
+
+        clearDestinations() {
+            this.bulk.destinationClasseIds = [];
+            document.querySelectorAll('.ot-bulk-destination input[type="checkbox"]').forEach(input => {
+                input.checked = false;
+            });
+        },
+
+        async bulkCopyTargets() {
+            if (!this.bulk.sourceClasseId) {
+                this.toast('error', 'Choisissez une classe modèle.');
+                return;
+            }
+
+            const destinationIds = this.bulk.destinationClasseIds
+                .filter(id => String(id) !== String(this.bulk.sourceClasseId));
+
+            if (destinationIds.length === 0) {
+                this.toast('error', 'Sélectionnez au moins une classe à mettre à jour.');
+                return;
+            }
+
+            this.bulk.loading = true;
+            try {
+                const res = await fetch('{{ route("esbtp.admin.orientation-targets.bulk-copy") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        Accept: 'application/json',
+                    },
+                    body: JSON.stringify({
+                        source_classe_id: this.bulk.sourceClasseId,
+                        destination_classe_ids: destinationIds,
+                        mode: this.bulk.mode,
+                    }),
+                });
+                const body = await res.json();
+                if (res.status === 422) {
+                    this.toast('error', body.message || Object.values(body.errors || {}).flat().join(' · '));
+                    return;
+                }
+                if (!res.ok) throw new Error('Erreur ' + res.status);
+
+                Object.entries(body.classes || {}).forEach(([classeId, targets]) => {
+                    this.replaceTargetRows(classeId, targets || []);
+                    this.syncSelectOptionsAfterBulk(classeId, targets || []);
+                });
+
+                this.toast('success', `${body.created} sortie(s) créée(s), ${body.updated} mise(s) à jour`);
+            } catch (e) {
+                this.toast('error', e.message);
+            } finally {
+                this.bulk.loading = false;
+            }
+        },
 
         async addTarget(formEl, sourceClasseId) {
             const fd = new FormData(formEl);
@@ -347,7 +552,14 @@ function orientationTargets() {
         },
 
         async deleteTarget(id, btnEl) {
-            if (! confirm('Supprimer définitivement cette sortie de tronc commun ?')) return;
+            if (btnEl && btnEl.dataset.confirm !== '1') {
+                btnEl.dataset.confirm = '1';
+                this.toast('error', 'Cliquez encore une fois pour confirmer la suppression.');
+                setTimeout(() => {
+                    btnEl.dataset.confirm = '0';
+                }, 3500);
+                return;
+            }
             try {
                 const res = await fetch(`/esbtp/admin/orientation-targets/${id}`, {
                     method: 'DELETE',
@@ -391,6 +603,23 @@ function orientationTargets() {
             }
         },
 
+        replaceTargetRows(sourceClasseId, targets) {
+            const container = document.querySelector(`[data-targets-for="${sourceClasseId}"]`);
+            if (!container) { return; }
+            container.innerHTML = '';
+
+            if (targets.length === 0) {
+                container.innerHTML = `
+                    <div data-empty-marker style="padding:1rem; text-align:center; color:#94a3b8; font-size:.85rem;">
+                        <i class="fas fa-arrow-down"></i> Aucune sortie configurée, ajoutez-en une ci-dessous.
+                    </div>`;
+            } else {
+                targets.forEach(target => this.appendTargetRow(sourceClasseId, target));
+            }
+
+            this.setCardCounter(sourceClasseId, targets.length);
+        },
+
         removeTargetRow(btnEl) {
             const row = btnEl?.closest?.('.ot-target-row');
             if (!row) return;
@@ -412,6 +641,14 @@ function orientationTargets() {
             }
         },
 
+        setCardCounter(sourceClasseId, count) {
+            const card = document.querySelector(`[data-class-card="${sourceClasseId}"]`);
+            const counter = card?.querySelector('[data-target-counter]');
+            if (counter) {
+                counter.textContent = count + ' spécialité' + (count > 1 ? 's' : '');
+            }
+        },
+
         removeOptionFromSelect(formEl, value) {
             // au-select expose le native select via la classe au-select-native
             const native = formEl.querySelector('select.au-select-native[name="target_classe_id"]');
@@ -430,6 +667,20 @@ function orientationTargets() {
             const notes = formEl.querySelector('input[name="notes"]');
             if (semestre) semestre.value = 2;
             if (notes) notes.value = '';
+        },
+
+        syncSelectOptionsAfterBulk(sourceClasseId, targets) {
+            const form = document.querySelector(`[data-add-form="${sourceClasseId}"]`);
+            if (!form) return;
+            const native = form.querySelector('select.au-select-native[name="target_classe_id"]');
+            if (!native) return;
+
+            targets.map(target => String(target.target_classe_id)).forEach(id => {
+                const opt = native.querySelector(`option[value="${id}"]`);
+                if (opt) opt.remove();
+            });
+            native.value = '';
+            native.dispatchEvent(new Event('change', { bubbles: true }));
         },
 
         escape(s) {

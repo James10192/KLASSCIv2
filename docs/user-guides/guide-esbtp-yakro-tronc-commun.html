@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>Guide ESBTP Yamoussoukro · Tronc commun et spécialités BTS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #0453cb;
+    --primary-2: #3b7ddb;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #dbeafe;
+    --soft: #eff6ff;
+    --paper: #ffffff;
+    --ok: #10b981;
+    --warn: #f59e0b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; font-family: Inter, Arial, sans-serif; color: var(--ink); background: #fff; }
+  @page { size: A4; margin: 0; }
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    max-height: 297mm;
+    padding: 17mm 18mm 34mm;
+    page-break-after: always;
+    position: relative;
+    overflow: hidden;
+    background: var(--paper);
+  }
+  .page:last-child { page-break-after: auto; }
+  .page::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 0;
+    height: 24mm;
+    background: linear-gradient(to top, #fff 0%, #fff 72%, rgba(255,255,255,0) 100%);
+    z-index: 10;
+    pointer-events: none;
+  }
+  .footer {
+    position: absolute;
+    left: 18mm; right: 18mm; bottom: 10mm;
+    display: flex; justify-content: space-between; align-items: center;
+    color: var(--muted); font-size: 7.5pt; letter-spacing: .08em;
+    text-transform: uppercase; z-index: 20;
+    border-top: 1px solid #e2e8f0; padding-top: 4mm;
+  }
+  .cover {
+    background: linear-gradient(135deg, #08327c 0%, var(--primary) 48%, var(--primary-2) 100%);
+    color: #fff;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .cover::after { display: none; }
+  .brand-row { display: flex; align-items: center; justify-content: space-between; gap: 18px; }
+  .brand { display: flex; align-items: center; gap: 12px; font-weight: 800; letter-spacing: .02em; }
+  .logo-pill {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: #fff; color: var(--primary);
+    border-radius: 14px; padding: 9px 14px;
+    box-shadow: 0 18px 40px rgba(15, 23, 42, .18);
+  }
+  .klassci-logo { width: 40px; height: 40px; object-fit: contain; display: block; }
+  .klassci-wordmark { font-size: 16pt; font-weight: 800; color: var(--primary); }
+  .editor-pill {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: rgba(255,255,255,.96);
+    border-radius: 14px; padding: 9px 12px;
+    color: #334155; font-size: 8pt; text-transform: uppercase; letter-spacing: .08em;
+  }
+  .adc-logo { height: 30px; width: auto; object-fit: contain; display: block; }
+  .editor-inline {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 12px; padding: 8px 10px; border-radius: 12px;
+    background: #f8fafc; border: 1px solid #e2e8f0; color: #475569;
+    font-size: 8.5pt; text-transform: uppercase; letter-spacing: .08em;
+  }
+  .editor-inline img { height: 22px; width: auto; display: block; }
+  .footer-logo {
+    display: inline-flex; align-items: center; gap: 7px;
+  }
+  .cover h1 { font-size: 42pt; line-height: 1.02; margin: 0 0 12px; max-width: 760px; }
+  .cover .subtitle { font-size: 15pt; line-height: 1.45; color: rgba(255,255,255,.86); max-width: 680px; }
+  .cover-meta {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 12px;
+    border-top: 1px solid rgba(255,255,255,.24); padding-top: 16px;
+    color: rgba(255,255,255,.86); font-size: 10pt;
+  }
+  .kicker { color: var(--primary); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; font-size: 8.5pt; margin-bottom: 8px; }
+  h2 { font-size: 28pt; line-height: 1.1; margin: 0 0 12px; color: var(--ink); }
+  h3 { font-size: 14pt; margin: 0 0 8px; color: var(--ink); }
+  p { font-size: 10.5pt; line-height: 1.55; color: #334155; margin: 0 0 10px; }
+  .lead { font-size: 12pt; color: #334155; max-width: 72ch; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+  .card {
+    border: 1px solid #dbeafe; background: #f8fbff; border-radius: 10px;
+    padding: 12px 13px;
+  }
+  .card strong { color: var(--primary); }
+  .steps { display: grid; gap: 10px; margin-top: 16px; }
+  .step {
+    display: grid; grid-template-columns: 32px 1fr; gap: 10px;
+    border: 1px solid #e2e8f0; border-radius: 10px; padding: 11px;
+    background: #fff;
+  }
+  .num {
+    width: 32px; height: 32px; border-radius: 9px; background: var(--primary);
+    color: #fff; display: flex; align-items: center; justify-content: center;
+    font-weight: 800; font-size: 10pt;
+  }
+  .note {
+    border-left: 4px solid var(--primary);
+    background: var(--soft);
+    padding: 10px 12px;
+    border-radius: 8px;
+    color: #1e3a8a;
+    font-size: 10pt;
+    line-height: 1.5;
+    margin: 12px 0;
+  }
+  .warn { border-left-color: var(--warn); background: #fffbeb; color: #92400e; }
+  .ok { border-left-color: var(--ok); background: #ecfdf5; color: #065f46; }
+  .shot {
+    border: 1px solid #dbeafe;
+    border-radius: 10px;
+    overflow: hidden;
+    background: #fff;
+    margin-top: 12px;
+  }
+  .shot img { width: 100%; display: block; }
+  .shot-compact img {
+    max-height: 125mm;
+    object-fit: contain;
+    background: #fff;
+  }
+  .caption { font-size: 8.5pt; color: var(--muted); padding: 7px 9px; background: #f8fafc; border-top: 1px solid #e2e8f0; }
+  .checklist { display: grid; gap: 8px; margin-top: 14px; }
+  .check {
+    display: flex; gap: 9px; align-items: flex-start;
+    padding: 9px 10px; border-radius: 8px; background: #f8fafc; border: 1px solid #e2e8f0;
+    font-size: 10pt; color: #334155; line-height: 1.45;
+  }
+  .tick {
+    width: 18px; height: 18px; border-radius: 50%; background: var(--ok);
+    color: #fff; display: inline-flex; align-items: center; justify-content: center;
+    flex-shrink: 0; font-size: 8pt; font-weight: 800;
+  }
+  .mini { font-size: 9pt; color: var(--muted); }
+  .table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 9.5pt; }
+  .table th, .table td { border: 1px solid #e2e8f0; padding: 8px; text-align: left; vertical-align: top; }
+  .table th { background: var(--soft); color: var(--primary); font-weight: 800; }
+</style>
+</head>
+<body>
+<section class="page cover">
+  <div class="brand-row">
+    <div class="brand logo-pill">
+      <img class="klassci-logo" src="file:///C:/Users/yabla/Downloads/DEV/KLASSCIv2/public/images/LOGO-KLASSCI-PNG.png" alt="Logo KLASSCI">
+      <div class="klassci-wordmark">KLASSCI</div>
+    </div>
+    <div class="editor-pill">
+      <span>Édité par</span>
+      <img class="adc-logo" src="file:///C:/Users/yabla/Downloads/DEV/adc-paie/.vercel/output/static/logo-adc.png" alt="African Digit Consulting">
+    </div>
+  </div>
+  <div>
+    <div style="font-size:10pt; letter-spacing:.16em; text-transform:uppercase; margin-bottom:14px; color:rgba(255,255,255,.75);">Guide opérationnel BTS</div>
+    <h1>Mettre un étudiant dans un tronc commun, puis l’orienter vers une spécialité</h1>
+    <div class="subtitle">Document préparé pour l’École Spéciale du Bâtiment et des Travaux Publics, Yamoussoukro.</div>
+  </div>
+  <div class="cover-meta">
+    <div><strong>Objet</strong><br>Configurer les filières, les sorties BTS et le choix de spécialité.</div>
+    <div><strong>Instance</strong><br>ESBTP Yamoussoukro · KLASSCI</div>
+  </div>
+</section>
+
+<section class="page">
+  <div class="kicker">Principe</div>
+  <h2>Le tronc commun est la filière mère.</h2>
+  <p class="lead">Dans KLASSCI, une spécialité BTS est reconnue par son rattachement à une filière mère. Le statut « tronc commun » doit donc rester réservé au parent qui porte l’orientation.</p>
+  <div class="grid">
+    <div class="card">
+      <h3>Filière parent</h3>
+      <p><strong>TRONC COMMUN</strong> doit être cochée comme tronc commun. C’est elle qui regroupe les classes de départ.</p>
+    </div>
+    <div class="card">
+      <h3>Filière spécialité</h3>
+      <p><strong>Génie Civil option Bâtiment</strong>, Urbanisme ou MGP ne doivent pas être cochées comme tronc commun. Elles doivent être rattachées au parent.</p>
+    </div>
+  </div>
+  <div class="note">
+    Règle à retenir : pour créer une spécialité, laissez « Cette filière est un tronc commun » désactivé, puis choisissez la filière mère dans « Rattacher à un tronc commun ».
+  </div>
+  <div class="shot">
+    <img src="file:///C:/Users/yabla/AppData/Local/Temp/codex-clipboard-d25bde48-20cf-494f-b775-fb7ee8cf0203.png" alt="Filière parent tronc commun">
+    <div class="caption">Exemple de filière mère : TRONC COMMUN, statut tronc commun activé, spécialités rattachées visibles.</div>
+  </div>
+  <div class="footer"><span>ESBTP Yamoussoukro · KLASSCI</span><span>01</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Étape 1</div>
+  <h2>Configurer les filières correctement.</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="num">1</div>
+      <div><h3>Créer ou ouvrir la filière parent</h3><p>Dans <strong>Filières & Classes · Filières</strong>, ouvrez la filière TRONC COMMUN. Activez « Cette filière est un tronc commun » et indiquez le nombre de semestres.</p></div>
+    </div>
+    <div class="step">
+      <div class="num">2</div>
+      <div><h3>Créer ou ouvrir une spécialité</h3><p>Pour une spécialité, désactivez « Cette filière est un tronc commun ». Dans « Rattacher à un tronc commun », choisissez TRONC COMMUN.</p></div>
+    </div>
+    <div class="step">
+      <div class="num">3</div>
+      <div><h3>Créer les classes</h3><p>Créez les classes de tronc commun et les classes de spécialité au niveau BTS concerné. Les sorties seront configurées classe par classe.</p></div>
+    </div>
+  </div>
+  <div class="shot">
+    <img src="file:///C:/Users/yabla/AppData/Local/Temp/codex-clipboard-58be05b3-7eb0-4d31-93a8-fae52fd7ff44.png" alt="Spécialité rattachée au tronc commun">
+    <div class="caption">Exemple de spécialité : le statut tronc commun est désactivé, la filière est rattachée au parent TRONC COMMUN.</div>
+  </div>
+  <div class="footer"><span>ESBTP Yamoussoukro · KLASSCI</span><span>02</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Étape 2</div>
+  <h2>Configurer les sorties BTS Tronc Commun.</h2>
+  <p class="lead">Une fois les filières et classes prêtes, allez dans <strong>Filières & Classes · Sorties BTS Tronc Commun</strong>. C’est ici que l’on dit vers quelles spécialités chaque classe de tronc commun peut orienter ses étudiants.</p>
+  <div class="shot shot-compact">
+    <img src="file:///C:/Users/yabla/AppData/Local/Temp/codex-clipboard-901eee43-ad54-4876-9aa7-0fdec039a06f.png" alt="Menu sorties BTS Tronc Commun">
+    <div class="caption">Menu latéral : accès à la configuration des sorties BTS Tronc Commun.</div>
+  </div>
+  <div class="checklist">
+    <div class="check"><span class="tick">✓</span><span>Choisir la classe de tronc commun à configurer.</span></div>
+    <div class="check"><span class="tick">✓</span><span>Ajouter une ou plusieurs classes de spécialité possibles.</span></div>
+    <div class="check"><span class="tick">✓</span><span>Définir le semestre d’activation, généralement S2 pour une orientation après le premier semestre.</span></div>
+    <div class="check"><span class="tick">✓</span><span>Activer ou désactiver une sortie avec l’interrupteur, sans supprimer l’historique de configuration.</span></div>
+  </div>
+  <div class="footer"><span>ESBTP Yamoussoukro · KLASSCI</span><span>03</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Étape 3</div>
+  <h2>Ajouter une spécialité à une classe.</h2>
+  <p class="lead">Dans la carte de la classe, utilisez le champ « Ajouter une spécialité possible ». KLASSCI propose les classes issues des filières rattachées au tronc commun parent.</p>
+  <div class="shot">
+    <img src="file:///C:/Users/yabla/AppData/Local/Temp/codex-clipboard-129f1dae-961a-448f-b710-da456cf69f7a.png" alt="Ajouter une spécialité possible">
+    <div class="caption">Le sélecteur liste les spécialités disponibles pour la classe de tronc commun.</div>
+  </div>
+  <div class="shot">
+    <img src="file:///C:/Users/yabla/AppData/Local/Temp/codex-clipboard-01230db3-f2c1-4530-ac94-6c29cd171c6b.png" alt="Spécialité ajoutée">
+    <div class="caption">Après ajout, la spécialité apparaît immédiatement dans la carte de la classe, sans rechargement.</div>
+  </div>
+  <div class="footer"><span>ESBTP Yamoussoukro · KLASSCI</span><span>04</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Nouveauté</div>
+  <h2>Copier une configuration vers plusieurs classes.</h2>
+  <p class="lead">Pour éviter de refaire la même configuration sur toutes les classes, la page intègre une action de copie rapide.</p>
+  <table class="table">
+    <tr><th>Action</th><th>Usage recommandé</th></tr>
+    <tr><td>Classe modèle</td><td>Choisir une classe déjà configurée correctement.</td></tr>
+    <tr><td>Classes à mettre à jour</td><td>Cocher une ou plusieurs classes de tronc commun qui doivent recevoir la même configuration.</td></tr>
+    <tr><td>Fusionner</td><td>Ajoute les sorties manquantes sans supprimer les sorties déjà présentes.</td></tr>
+    <tr><td>Remplacer</td><td>Supprime les sorties actuelles des classes choisies, puis applique celles de la classe modèle.</td></tr>
+  </table>
+  <div class="note ok">Cette action fonctionne sans rechargement de page. Les cartes mises à jour changent immédiatement dans l’interface.</div>
+  <div class="note warn">Avant de remplacer, vérifiez que la classe modèle est correcte. Le mode remplacement est utile pour uniformiser plusieurs classes, mais il écrase leur configuration actuelle.</div>
+  <div class="footer"><span>ESBTP Yamoussoukro · KLASSCI</span><span>05</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Étape 4</div>
+  <h2>Orienter l’étudiant vers sa spécialité.</h2>
+  <div class="steps">
+    <div class="step">
+      <div class="num">1</div>
+      <div><h3>Ouvrir la fiche étudiant</h3><p>Dans la fiche de l’étudiant en tronc commun, vérifiez que le parcours BTS Tronc Commun affiche les spécialités configurées.</p></div>
+    </div>
+    <div class="step">
+      <div class="num">2</div>
+      <div><h3>Cliquer sur « Choisir la spécialité »</h3><p>KLASSCI ouvre l’écran d’orientation. Les choix affichés dépendent des sorties configurées pour la classe actuelle de l’étudiant.</p></div>
+    </div>
+    <div class="step">
+      <div class="num">3</div>
+      <div><h3>Choisir la spécialité et la classe</h3><p>Sélectionnez d’abord la spécialité, puis la classe de destination. Confirmez ensuite la spécialisation.</p></div>
+    </div>
+  </div>
+  <div class="shot">
+    <img src="file:///C:/Users/yabla/AppData/Local/Temp/codex-clipboard-d3b23362-c3d1-4fb7-a75a-dc5aa62f4cbb.png" alt="Fiche étudiant">
+    <div class="caption">Fiche étudiant : le bouton « Choisir la spécialité » apparaît quand la classe TC possède des sorties configurées.</div>
+  </div>
+  <div class="footer"><span>ESBTP Yamoussoukro · KLASSCI</span><span>06</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Confirmation</div>
+  <h2>Choisir puis confirmer la spécialisation.</h2>
+  <div class="shot">
+    <img src="file:///C:/Users/yabla/AppData/Local/Temp/codex-clipboard-af63569c-f8a4-49bc-aae2-3d48537f049f.png" alt="Choisir la spécialité">
+    <div class="caption">Étape 1 : choisir la spécialité autorisée pour cette classe de tronc commun.</div>
+  </div>
+  <div class="shot">
+    <img src="file:///C:/Users/yabla/AppData/Local/Temp/codex-clipboard-d2436580-1d96-49ef-8085-539154b36234.png" alt="Confirmer la spécialisation">
+    <div class="caption">Étapes 2 et 3 : choisir la classe, puis confirmer la spécialisation.</div>
+  </div>
+  <div class="footer"><span>ESBTP Yamoussoukro · KLASSCI</span><span>07</span></div>
+</section>
+
+<section class="page">
+  <div class="kicker">Checklist</div>
+  <h2>Contrôle avant orientation.</h2>
+  <div class="checklist">
+    <div class="check"><span class="tick">✓</span><span>La filière TRONC COMMUN est cochée comme tronc commun.</span></div>
+    <div class="check"><span class="tick">✓</span><span>Chaque filière de spécialité est rattachée à TRONC COMMUN et n’est pas cochée comme tronc commun.</span></div>
+    <div class="check"><span class="tick">✓</span><span>Les classes de spécialité existent au même niveau d’étude que la classe de tronc commun.</span></div>
+    <div class="check"><span class="tick">✓</span><span>Les sorties BTS Tronc Commun sont configurées pour la classe actuelle de l’étudiant.</span></div>
+    <div class="check"><span class="tick">✓</span><span>Le bouton « Choisir la spécialité » est visible sur la fiche étudiant.</span></div>
+    <div class="check"><span class="tick">✓</span><span>Après confirmation, KLASSCI conserve l’historique du tronc commun et crée la phase de spécialisation.</span></div>
+  </div>
+  <div class="note">
+    En cas d’absence de choix dans l’écran d’orientation, revenir dans « Sorties BTS Tronc Commun » et vérifier que la classe actuelle de l’étudiant possède au moins une sortie active.
+  </div>
+  <div class="editor-inline">
+    <span>Document édité par</span>
+    <img src="file:///C:/Users/yabla/Downloads/DEV/adc-paie/.vercel/output/static/logo-adc.png" alt="African Digit Consulting">
+  </div>
+  <div class="footer"><span>ESBTP Yamoussoukro · KLASSCI</span><span>08</span></div>
+</section>
+</body>
+</html>

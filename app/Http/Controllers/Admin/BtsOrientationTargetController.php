@@ -9,6 +9,7 @@ use App\Models\ESBTPFiliere;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 /**
@@ -130,6 +131,84 @@ class BtsOrientationTargetController extends Controller
 
         return redirect()->route('esbtp.admin.orientation-targets.index')
             ->with('success', 'Cible d\'orientation ajoutée.');
+    }
+
+    public function bulkCopy(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'source_classe_id' => ['required', 'exists:esbtp_classes,id'],
+            'destination_classe_ids' => ['required', 'array', 'min:1'],
+            'destination_classe_ids.*' => ['integer', 'exists:esbtp_classes,id'],
+            'mode' => ['nullable', 'in:merge,replace'],
+        ]);
+
+        $source = ESBTPClasse::with('orientationTargets')->findOrFail((int) $data['source_classe_id']);
+        $sourceTargets = $source->orientationTargets->where('is_active', true)->values();
+
+        if ($sourceTargets->isEmpty()) {
+            return response()->json([
+                'message' => 'La classe source ne contient aucune sortie active à copier.',
+            ], 422);
+        }
+
+        $destinationIds = collect($data['destination_classe_ids'])
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->reject(fn ($id) => $id === (int) $source->id)
+            ->values();
+
+        if ($destinationIds->isEmpty()) {
+            return response()->json([
+                'message' => 'Sélectionnez au moins une classe de destination différente de la source.',
+            ], 422);
+        }
+
+        $mode = $data['mode'] ?? 'merge';
+        $created = 0;
+        $updated = 0;
+        $deleted = 0;
+
+        $targetsByClass = DB::transaction(function () use ($destinationIds, $sourceTargets, $mode, &$created, &$updated, &$deleted) {
+            if ($mode === 'replace') {
+                $deleted = ESBTPClasseOrientationTarget::whereIn('source_classe_id', $destinationIds)->delete();
+            }
+
+            foreach ($destinationIds as $destinationId) {
+                foreach ($sourceTargets as $sourceTarget) {
+                    $row = ESBTPClasseOrientationTarget::updateOrCreate(
+                        [
+                            'source_classe_id' => $destinationId,
+                            'target_classe_id' => $sourceTarget->target_classe_id,
+                        ],
+                        [
+                            'semestre_activation' => $sourceTarget->semestre_activation,
+                            'is_active' => true,
+                            'sort_order' => $sourceTarget->sort_order,
+                            'notes' => $sourceTarget->notes,
+                        ]
+                    );
+
+                    $row->wasRecentlyCreated ? $created++ : $updated++;
+                }
+            }
+
+            return ESBTPClasse::query()
+                ->whereIn('id', $destinationIds)
+                ->with('orientationTargets.targetClasse.filiere')
+                ->get()
+                ->mapWithKeys(fn (ESBTPClasse $classe) => [
+                    $classe->id => $classe->orientationTargets->values(),
+                ]);
+        });
+
+        return response()->json([
+            'success' => true,
+            'mode' => $mode,
+            'created' => $created,
+            'updated' => $updated,
+            'deleted' => $deleted,
+            'classes' => $targetsByClass,
+        ]);
     }
 
     public function update(Request $request, ESBTPClasseOrientationTarget $target): JsonResponse|RedirectResponse
