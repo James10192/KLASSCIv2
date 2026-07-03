@@ -190,6 +190,139 @@ class CLIBtsTroncCommunController extends BaseApiController
         ], 'BTS TC legacy audit generated');
     }
 
+    public function orientationTargetsAudit(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $sourceClasses = ESBTPClasse::query()
+            ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', true)->whereNull('parent_id'))
+            ->with([
+                'filiere',
+                'niveau',
+                'annee',
+                'orientationTargets.targetClasse.filiere',
+                'orientationTargets.targetClasse.niveau',
+            ])
+            ->where('is_active', true)
+            ->orderBy('annee_universitaire_id', 'desc')
+            ->orderBy('name')
+            ->get();
+
+        $tcFiliereIds = $sourceClasses->pluck('filiere_id')->unique()->filter()->values();
+        $fillesByTcFiliere = ESBTPFiliere::query()
+            ->where('is_active', true)
+            ->where('is_tronc_commun', false)
+            ->whereIn('parent_id', $tcFiliereIds)
+            ->get(['id', 'name', 'code', 'parent_id'])
+            ->groupBy('parent_id');
+
+        $classes = $sourceClasses
+            ->map(fn (ESBTPClasse $source) => $this->mapOrientationAuditClass($source, $fillesByTcFiliere))
+            ->values();
+
+        return $this->successResponse([
+            'status' => 'ok',
+            'source_model' => 'phase_based',
+            'totals' => [
+                'source_classes' => $classes->count(),
+                'with_active_targets' => $classes->where('active_targets_count', '>', 0)->count(),
+                'without_active_targets' => $classes->where('active_targets_count', 0)->count(),
+            ],
+            'classes' => $classes,
+            'warnings' => $this->detectOrientationTargetDrifts($classes),
+            'errors' => [],
+            'recommended_actions' => [],
+        ], 'BTS TC orientation targets audit generated');
+    }
+
+    private function mapOrientationAuditClass(ESBTPClasse $source, $fillesByTcFiliere): array
+    {
+        $activeTargets = $source->orientationTargets->where('is_active', true)->values();
+        $filles = ($fillesByTcFiliere->get($source->filiere_id) ?? collect())->values();
+        $candidates = $this->candidateTargetsForSource($source, $filles, $activeTargets->pluck('target_classe_id')->all());
+
+        return [
+            'id' => $source->id,
+            'name' => $source->name,
+            'code' => $source->code,
+            'filiere_id' => $source->filiere_id,
+            'filiere' => $source->filiere?->only(['id', 'name', 'code', 'parent_id', 'is_tronc_commun']),
+            'niveau_etude_id' => $source->niveau_etude_id,
+            'niveau' => $source->niveau?->name,
+            'annee_universitaire_id' => $source->annee_universitaire_id,
+            'annee' => $source->annee?->name,
+            'active_targets_count' => $activeTargets->count(),
+            'active_target_labels' => $this->targetLabelsForSource($activeTargets),
+            'child_filieres_count' => $filles->count(),
+            'child_filieres' => $filles->map->only(['id', 'name', 'code', 'parent_id'])->values(),
+            'available_candidates_count' => $candidates->count(),
+            'available_candidates' => $candidates,
+        ];
+    }
+
+    private function candidateTargetsForSource(ESBTPClasse $source, $filles, array $existingTargetIds)
+    {
+        $query = ESBTPClasse::query()
+            ->where('niveau_etude_id', $source->niveau_etude_id)
+            ->whereNotIn('id', $existingTargetIds)
+            ->where('is_active', true)
+            ->with('filiere:id,name,code,parent_id,is_tronc_commun');
+
+        if ($filles->isNotEmpty()) {
+            $query->whereIn('filiere_id', $filles->pluck('id'));
+        } else {
+            $query->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false));
+        }
+
+        return $query->orderBy('name')->get(['id', 'name', 'code', 'filiere_id'])
+            ->map(fn (ESBTPClasse $classe) => [
+                'id' => $classe->id,
+                'name' => $classe->name,
+                'code' => $classe->code,
+                'filiere_id' => $classe->filiere_id,
+                'filiere_name' => $classe->filiere?->name,
+            ])
+            ->values();
+    }
+
+    private function targetLabelsForSource($activeTargets)
+    {
+        return $activeTargets
+            ->map(fn (ESBTPClasseOrientationTarget $target) => [
+                'target_id' => $target->id,
+                'target_classe_id' => $target->target_classe_id,
+                'target_classe' => $target->targetClasse?->name,
+                'target_filiere_id' => $target->targetClasse?->filiere_id,
+                'target_filiere' => $target->targetClasse?->filiere?->name,
+                'semestre_activation' => $target->semestre_activation,
+                'sort_order' => $target->sort_order,
+            ])
+            ->values();
+    }
+
+    private function detectOrientationTargetDrifts($classes): array
+    {
+        return $classes
+            ->groupBy(fn ($item) => $item['filiere_id'].'|'.$item['niveau_etude_id'])
+            ->flatMap(function ($group) {
+                $targetSignatures = $group->mapWithKeys(fn ($item) => [
+                    $item['name'] => collect($item['active_target_labels'])->pluck('target_classe_id')->sort()->values()->join(','),
+                ]);
+
+                return $targetSignatures->unique()->count() <= 1
+                    ? []
+                    : [[
+                        'type' => 'inconsistent_targets_for_same_filiere_level',
+                        'message' => 'Des classes tronc commun de même filière et même niveau n’ont pas les mêmes sorties.',
+                        'classes' => $targetSignatures,
+                    ]];
+            })
+            ->values()
+            ->all();
+    }
+
     public function markFiliereTroncCommun(Request $request, int $id): JsonResponse
     {
         if (! $request->user()->tokenCan('cli:admin')) {

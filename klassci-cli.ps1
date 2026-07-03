@@ -646,6 +646,11 @@ switch ($Command) {
         Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
         break
     }
+    "bts-tc:orientation-targets-audit" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        Invoke-KlassciApi -Method "GET" -Path "/bts-tc/orientation-targets-audit" -Config $cfg | ConvertTo-Json -Depth 12
+        break
+    }
     "bts-tc:results-consistency" {
         if ($ExtraArgs.Count -lt 1) {
             throw "Usage: .\klassci-cli.ps1 bts-tc:results-consistency [presentation] <etudiant_id> [annee_universitaire_id] [periode]"
@@ -739,6 +744,7 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 bts-tc:student-journey [presentation] <etudiant_id> [annee_universitaire_id]"
         Write-Host "  .\klassci-cli.ps1 bts-tc:orientation-check [presentation] <classe_id>"
         Write-Host "  .\klassci-cli.ps1 bts-tc:legacy-audit [presentation] [annee_universitaire_id]"
+        Write-Host "  .\klassci-cli.ps1 bts-tc:orientation-targets-audit [presentation]"
         Write-Host "  .\klassci-cli.ps1 bts-tc:results-consistency [presentation] <etudiant_id> [annee_universitaire_id] [periode]"
         Write-Host "  .\klassci-cli.ps1 bts-tc:mark-filiere-tc [presentation] <filiere_id> [semestres_tronc_commun]"
         Write-Host "  .\klassci-cli.ps1 bts-tc:add-target [presentation] <source_classe_id> <target_classe_id> [semestre_activation] [sort_order]"
