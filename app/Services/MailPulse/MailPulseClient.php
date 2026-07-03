@@ -162,7 +162,7 @@ class MailPulseClient
 
     private function extractId(array $body): ?string
     {
-        $id = $body['id'] ?? $body['contactId'] ?? $body['messageId'] ?? $body['data']['id'] ?? $body['contact']['id'] ?? null;
+        $id = $body['id'] ?? $body['contactId'] ?? $body['messageId'] ?? $body['data']['id'] ?? $body['contact']['id'] ?? $body['message']['id'] ?? null;
         return $id === null ? null : (string) $id;
     }
 }

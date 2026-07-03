@@ -2377,10 +2377,15 @@
                                     <i class="fas fa-key text-primary"></i>
                                     Clé API MailPulse
                                 </label>
-                                <input type="password" class="form-control form-control-modern mailpulse-code-input"
+                                <input type="text" class="form-control form-control-modern mailpulse-code-input"
                                        name="setting_mailpulse_api_key"
                                        value=""
-                                       autocomplete="new-password"
+                                       autocomplete="off"
+                                       autocapitalize="off"
+                                       spellcheck="false"
+                                       inputmode="text"
+                                       pattern="^mp_(live|test)_[A-Za-z0-9]+$"
+                                       maxlength="255"
                                        placeholder="mp_live_... ou mp_test_...">
                                 <small class="text-muted">Laissez vide pour conserver la clé actuelle.</small>
                             </div>

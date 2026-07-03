@@ -305,6 +305,10 @@ class ESBTPSettingsController extends Controller
                     $setting = Setting::where('key', $settingKey)->first();
 
                     if ($setting) {
+                        if ($settingKey === 'mailpulse_api_key' && is_string($value)) {
+                            $value = trim($value);
+                        }
+
                         if ($settingKey === 'mailpulse_api_key' && ($value === null || $value === '')) {
                             continue;
                         }
