@@ -164,7 +164,6 @@ class ESBTPFiliereController extends Controller
             // ne JAMAIS filtrer par annee_universitaire_id sur esbtp_classes.
             $fillesFiliereIds = ESBTPFiliere::query()
                 ->where('is_active', true)
-                ->where('is_tronc_commun', false)
                 ->where('parent_id', $filiere->id)
                 ->pluck('id');
             $hasFillesConfigured = $fillesFiliereIds->isNotEmpty();
@@ -183,7 +182,9 @@ class ESBTPFiliereController extends Controller
                     $query->whereIn('filiere_id', $fillesFiliereIds);
                 } else {
                     // Fallback : toute filière non-TC du même niveau
-                    $query->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false));
+                    $query->whereHas('filiere', fn ($q) => $q
+                        ->where('is_tronc_commun', false)
+                        ->orWhereNotNull('parent_id'));
                 }
 
                 $candidatesByClasse[$source->id] = $query

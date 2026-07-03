@@ -63,7 +63,6 @@ class BtsOrientationTargetController extends Controller
         $tcFiliereIds = $sourceClasses->pluck('filiere_id')->unique()->filter()->values();
         $fillesByTcFiliere = ESBTPFiliere::query()
             ->where('is_active', true)
-            ->where('is_tronc_commun', false)
             ->whereIn('parent_id', $tcFiliereIds)
             ->get(['id', 'parent_id'])
             ->groupBy('parent_id')
@@ -85,7 +84,9 @@ class BtsOrientationTargetController extends Controller
             if ($fillesIds->isNotEmpty()) {
                 $query->whereIn('filiere_id', $fillesIds);
             } else {
-                $query->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false));
+                $query->whereHas('filiere', fn ($q) => $q
+                    ->where('is_tronc_commun', false)
+                    ->orWhereNotNull('parent_id'));
             }
 
             $candidatesByClasse[$source->id] = $query

@@ -40,7 +40,7 @@ class SeedOrientationTargets extends Command
         }
 
         $classesTc = ESBTPClasse::query()
-            ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', true))
+            ->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', true)->whereNull('parent_id'))
             ->with(['filiere', 'niveauEtude', 'anneeUniversitaire'])
             ->where('is_active', true)
             ->orderBy('annee_universitaire_id', 'desc')
@@ -73,10 +73,12 @@ class SeedOrientationTargets extends Command
                 // Filières spé candidates : enfants de la filière TC OU non-TC sans parent (fallback)
                 $filieresSpeIds = ESBTPFiliere::query()
                     ->where('is_active', true)
-                    ->where('is_tronc_commun', false)
                     ->where(function ($q) use ($filiereTc) {
                         $q->where('parent_id', $filiereTc->id)
-                          ->orWhereNull('parent_id');
+                          ->orWhere(function ($fallback) {
+                              $fallback->whereNull('parent_id')
+                                  ->where('is_tronc_commun', false);
+                          });
                     })
                     ->pluck('id');
 

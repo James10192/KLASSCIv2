@@ -645,7 +645,6 @@ class ESBTPClasseController extends Controller
                 // Filles déclarées sous la filière TC (parent_id = TC.id)
                 $fillesIds = ESBTPFiliere::query()
                     ->where('is_active', true)
-                    ->where('is_tronc_commun', false)
                     ->where('parent_id', $classe->filiere_id)
                     ->pluck('id');
                 $orientationHasFilles = $fillesIds->isNotEmpty();
@@ -660,7 +659,9 @@ class ESBTPClasseController extends Controller
                 if ($orientationHasFilles) {
                     $candidatesQuery->whereIn('filiere_id', $fillesIds);
                 } else {
-                    $candidatesQuery->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false));
+                    $candidatesQuery->whereHas('filiere', fn ($q) => $q
+                        ->where('is_tronc_commun', false)
+                        ->orWhereNotNull('parent_id'));
                 }
 
                 $orientationCandidates = $candidatesQuery

@@ -213,7 +213,6 @@ class CLIBtsTroncCommunController extends BaseApiController
         $tcFiliereIds = $sourceClasses->pluck('filiere_id')->unique()->filter()->values();
         $fillesByTcFiliere = ESBTPFiliere::query()
             ->where('is_active', true)
-            ->where('is_tronc_commun', false)
             ->whereIn('parent_id', $tcFiliereIds)
             ->get(['id', 'name', 'code', 'parent_id'])
             ->groupBy('parent_id');
@@ -273,7 +272,9 @@ class CLIBtsTroncCommunController extends BaseApiController
         if ($filles->isNotEmpty()) {
             $query->whereIn('filiere_id', $filles->pluck('id'));
         } else {
-            $query->whereHas('filiere', fn ($q) => $q->where('is_tronc_commun', false));
+            $query->whereHas('filiere', fn ($q) => $q
+                ->where('is_tronc_commun', false)
+                ->orWhereNotNull('parent_id'));
         }
 
         return $query->orderBy('name')->get(['id', 'name', 'code', 'filiere_id'])
