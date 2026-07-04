@@ -142,7 +142,7 @@ class MailPulseClient
     private function providerFailure(Response $response, array $body, string $requestId): MailPulseResult
     {
         $code = strtoupper($this->stringValue($body['code'] ?? $body['error'] ?? 'provider_error', 'provider_error'));
-        $message = $this->stringValue($body['message'] ?? $body['error'] ?? null, 'MailPulse a retourne une erreur.');
+        $message = $this->providerMessage($body);
 
         if (str_contains($code, 'TEMPLATE_REQUIRED') || str_contains(strtoupper($message), 'TEMPLATE_REQUIRED')) {
             return $this->failure('template_required', $response->status(), $requestId, $message, 'Configurez un template WhatsApp approuve dans Meta/MailPulse pour les messages hors fenetre 24h.');
@@ -152,7 +152,26 @@ class MailPulseClient
             return $this->failure('channel_not_configured', $response->status(), $requestId, $message, 'Connectez le canal WhatsApp ou email dans MailPulse avant de relancer.');
         }
 
+        if (str_contains(strtolower($message), 'domain is not verified')) {
+            return $this->failure('provider_error', $response->status(), $requestId, $message, 'Verifiez le domaine expediteur dans Resend/MailPulse, puis relancez le test email.');
+        }
+
         return $this->failure('provider_error', $response->status(), $requestId, $message, 'Consultez les logs MailPulse avec le requestId retourne.');
+    }
+
+    private function providerMessage(array $body): string
+    {
+        $message = $this->stringValue($body['message'] ?? $body['error'] ?? null, 'MailPulse a retourne une erreur.');
+        $decoded = json_decode($message, true);
+
+        if (is_array($decoded)) {
+            return $this->stringValue(
+                $decoded['error_message'] ?? $decoded['message'] ?? $decoded['error'] ?? null,
+                $message
+            );
+        }
+
+        return $message;
     }
 
     private function stringValue(mixed $value, string $default): string

@@ -433,6 +433,14 @@ class ESBTPSettingsController extends Controller
 
             if (!empty($errors)) {
                 DB::rollBack();
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'Certaines configurations contiennent des erreurs.',
+                        'errors' => $errors,
+                    ], 422);
+                }
+
                 return redirect()->back()
                     ->withErrors($errors)
                     ->withInput()
@@ -451,6 +459,14 @@ class ESBTPSettingsController extends Controller
                 'backup_id' => $backup->id
             ]);
 
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Paramètres MailPulse enregistrés.',
+                    'updated_count' => count($updatedSettings),
+                ]);
+            }
+
             return redirect()->route('esbtp.settings.index')
                 ->with('success', 'Paramètres mis à jour avec succès.')
                 ->with('updated_count', count($updatedSettings));
@@ -462,6 +478,13 @@ class ESBTPSettingsController extends Controller
                 'user_id' => auth()->id(),
                 'error' => $e->getMessage()
             ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la mise à jour des paramètres.',
+                ], 500);
+            }
 
             return redirect()->back()
                 ->with('error', 'Erreur lors de la mise à jour des paramètres.')
