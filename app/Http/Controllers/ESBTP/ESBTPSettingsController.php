@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\SettingsBackup;
 use App\Http\Middleware\CheckRequiredSettings;
+use App\Domain\Notifications\PhoneNormalizer;
 use App\Services\MailPulse\MailPulseTestNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -953,6 +954,234 @@ class ESBTPSettingsController extends Controller
         }
 
         return response()->json($result, $result['ok'] ? 200 : 502);
+    }
+
+    /**
+     * Enregistre uniquement les réglages MailPulse depuis l'onglet dédié.
+     */
+    public function saveMailPulseSettings(Request $request): JsonResponse
+    {
+        $this->ensureMailPulseSettings();
+
+        $validator = Validator::make($request->all(), [
+            'setting_mailpulse_enabled' => ['nullable', 'in:0,1'],
+            'setting_mailpulse_base_url' => ['nullable', 'url', 'max:255'],
+            'setting_mailpulse_api_key' => ['nullable', 'string', 'max:500'],
+            'setting_mailpulse_contacts_endpoint' => ['nullable', 'string', 'max:120'],
+            'setting_mailpulse_messages_endpoint' => ['nullable', 'string', 'max:120'],
+            'setting_mailpulse_sender_email' => ['nullable', 'email', 'max:255'],
+            'setting_mailpulse_sender_name' => ['nullable', 'string', 'max:120'],
+            'setting_mailpulse_default_language' => ['nullable', 'string', 'min:2', 'max:8'],
+            'setting_mailpulse_timeout' => ['nullable', 'integer', 'min:5', 'max:120'],
+            'setting_mailpulse_test_email' => ['nullable', 'email', 'max:255'],
+            'setting_mailpulse_test_phone' => ['nullable', 'string', 'max:30'],
+            'setting_mailpulse_test_phones' => ['nullable', 'string', 'max:1000'],
+            'setting_mailpulse_test_email_recipients' => ['nullable', 'string', 'max:5000'],
+            'setting_mailpulse_test_phone_recipients' => ['nullable', 'string', 'max:5000'],
+            'setting_mailpulse_test_email_enabled' => ['nullable', 'in:0,1'],
+            'setting_mailpulse_test_whatsapp_enabled' => ['nullable', 'in:0,1'],
+            'setting_mailpulse_real_workflows_enabled' => ['nullable', 'in:0,1'],
+        ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $emailError = $this->mailPulseRecipientValidationError(
+                $request->input('setting_mailpulse_test_email_recipients'),
+                'email'
+            );
+            if ($emailError !== null) {
+                $validator->errors()->add('setting_mailpulse_test_email_recipients', $emailError);
+            }
+
+            $phoneError = $this->mailPulseRecipientValidationError(
+                $request->input('setting_mailpulse_test_phone_recipients'),
+                'phone'
+            );
+            if ($phoneError !== null) {
+                $validator->errors()->add('setting_mailpulse_test_phone_recipients', $phoneError);
+            }
+        });
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Certaines configurations MailPulse contiennent des erreurs.',
+                'errors' => $validator->errors(),
+            ], 422);
+        }
+
+        $mailPulseKeys = [
+            'mailpulse_enabled',
+            'mailpulse_base_url',
+            'mailpulse_api_key',
+            'mailpulse_contacts_endpoint',
+            'mailpulse_messages_endpoint',
+            'mailpulse_sender_email',
+            'mailpulse_sender_name',
+            'mailpulse_default_language',
+            'mailpulse_timeout',
+            'mailpulse_test_email',
+            'mailpulse_test_phone',
+            'mailpulse_test_phones',
+            'mailpulse_test_email_recipients',
+            'mailpulse_test_phone_recipients',
+            'mailpulse_test_email_enabled',
+            'mailpulse_test_whatsapp_enabled',
+            'mailpulse_real_workflows_enabled',
+        ];
+
+        try {
+            DB::beginTransaction();
+
+            $updatedSettings = [];
+            foreach ($mailPulseKeys as $settingKey) {
+                $requestKey = 'setting_' . $settingKey;
+                if (! $request->has($requestKey)) {
+                    continue;
+                }
+
+                $value = $request->input($requestKey, '');
+                if (is_string($value)) {
+                    $value = trim($value);
+                }
+
+                if ($settingKey === 'mailpulse_api_key' && $value === '') {
+                    continue;
+                }
+
+                Setting::where('key', $settingKey)->update([
+                    'value' => (string) $value,
+                    'updated_by' => auth()->id(),
+                ]);
+                $updatedSettings[] = $settingKey;
+            }
+
+            $this->syncMailPulseLegacyRecipients($request, $updatedSettings);
+
+            Setting::clearCache();
+            CheckRequiredSettings::clearCache();
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Paramètres MailPulse enregistrés.',
+                'updated_count' => count(array_unique($updatedSettings)),
+            ]);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+
+            Log::error('Erreur sauvegarde MailPulse', [
+                'user_id' => auth()->id(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => "Erreur pendant l'enregistrement MailPulse.",
+            ], 500);
+        }
+    }
+
+    private function mailPulseRecipientValidationError(?string $json, string $type): ?string
+    {
+        if ($json === null || trim($json) === '') {
+            return null;
+        }
+
+        $decoded = json_decode($json, true);
+        if (! is_array($decoded)) {
+            return 'Le format des destinataires MailPulse est invalide.';
+        }
+
+        foreach ($decoded as $recipient) {
+            if (! is_array($recipient)) {
+                return 'Chaque destinataire MailPulse doit contenir une valeur et son statut.';
+            }
+
+            $value = trim((string) ($recipient['value'] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+
+            if ($type === 'email' && ! filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                return 'Un email de test MailPulse est invalide.';
+            }
+
+            if ($type === 'phone' && PhoneNormalizer::toE164($value) === null) {
+                return 'Un numéro WhatsApp de test est invalide. Utilisez un numéro ivoirien complet.';
+            }
+        }
+
+        return null;
+    }
+
+    private function syncMailPulseLegacyRecipients(Request $request, array &$updatedSettings): void
+    {
+        $emails = $this->mailPulseActiveRecipientValues(
+            $request->input('setting_mailpulse_test_email_recipients'),
+            'email'
+        );
+        if ($emails !== []) {
+            Setting::where('key', 'mailpulse_test_email')->update([
+                'value' => $emails[0],
+                'updated_by' => auth()->id(),
+            ]);
+            $updatedSettings[] = 'mailpulse_test_email';
+        }
+
+        $phones = $this->mailPulseActiveRecipientValues(
+            $request->input('setting_mailpulse_test_phone_recipients'),
+            'phone'
+        );
+        if ($phones !== []) {
+            Setting::where('key', 'mailpulse_test_phone')->update([
+                'value' => $phones[0],
+                'updated_by' => auth()->id(),
+            ]);
+            Setting::where('key', 'mailpulse_test_phones')->update([
+                'value' => implode("\n", $phones),
+                'updated_by' => auth()->id(),
+            ]);
+            $updatedSettings[] = 'mailpulse_test_phone';
+            $updatedSettings[] = 'mailpulse_test_phones';
+        }
+    }
+
+    private function mailPulseActiveRecipientValues(?string $json, string $type): array
+    {
+        if ($json === null || trim($json) === '') {
+            return [];
+        }
+
+        $decoded = json_decode($json, true);
+        if (! is_array($decoded)) {
+            return [];
+        }
+
+        $values = [];
+        foreach ($decoded as $recipient) {
+            if (! is_array($recipient) || ! ($recipient['enabled'] ?? true)) {
+                continue;
+            }
+
+            $value = trim((string) ($recipient['value'] ?? ''));
+            if ($value === '') {
+                continue;
+            }
+
+            if ($type === 'email' && filter_var($value, FILTER_VALIDATE_EMAIL)) {
+                $values[strtolower($value)] = $value;
+            }
+
+            if ($type === 'phone') {
+                $phone = PhoneNormalizer::toE164($value);
+                if ($phone !== null) {
+                    $values[$phone] = $phone;
+                }
+            }
+        }
+
+        return array_values($values);
     }
 
     /**

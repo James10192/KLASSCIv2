@@ -3693,6 +3693,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const saveButton = document.querySelector('[data-mailpulse-save-submit]');
     const saveStatus = document.querySelector('[data-mailpulse-save-status]');
     const settingsForm = document.querySelector('form[action="{{ route('esbtp.settings.update') }}"]');
+    const mailPulseSaveUrl = '{{ route('esbtp.settings.mailpulse.save') }}';
     const resultBox = document.querySelector('[data-mailpulse-test-result]');
     const eventSelect = document.querySelector('[data-mailpulse-test-event]');
     const channelSelect = document.querySelector('[data-mailpulse-test-channel]');
@@ -3715,14 +3716,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const message = payload.message || (ok ? 'Test MailPulse terminé.' : 'Le test MailPulse a échoué.');
         const channelLabel = (channel) => {
             if (!channel.attempted) {
-                return channel.status || 'Ignoré';
+                return channel.message || channel.status || 'Ignoré';
             }
 
             if (channel.ok === false) {
-                return `${channel.status || 'Erreur'} · ${channel.message || channel.action || 'Détail indisponible'}`;
+                return channel.message || channel.action || channel.status || 'Erreur';
             }
 
-            return channel.status || 'Envoyé';
+            return channel.message || channel.status || 'Envoyé';
         };
         const channelActions = [email, whatsapp]
             .filter((channel) => channel.attempted && channel.ok === false && channel.action)
@@ -3737,8 +3738,8 @@ document.addEventListener('DOMContentLoaded', () => {
             </div>
             <div class="mailpulse-test-kv">
                 <span><strong>Contact</strong>${escapeHtml(payload.contactId || payload.contact?.status || 'Non créé')}</span>
-                <span><strong>Email</strong>${escapeHtml(email.status || (email.attempted ? 'Tenté' : 'Ignoré'))}</span>
-                <span><strong>WhatsApp</strong>${escapeHtml(whatsapp.status || (whatsapp.attempted ? 'Tenté' : 'Ignoré'))}</span>
+                <span><strong>Email</strong>${escapeHtml(channelLabel(email))}</span>
+                <span><strong>WhatsApp</strong>${escapeHtml(channelLabel(whatsapp))}</span>
             </div>
             ${email.attempted && email.ok === false && email.message ? `<div class="mt-3"><strong>Détail email</strong><br>${escapeHtml(email.message)}</div>` : ''}
             ${whatsapp.attempted && whatsapp.ok === false && whatsapp.message ? `<div class="mt-3"><strong>Détail WhatsApp</strong><br>${escapeHtml(whatsapp.message)}</div>` : ''}
@@ -3755,7 +3756,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncRecipients('email');
         syncRecipients('phone');
 
-        const response = await fetch(settingsForm.action, {
+        const response = await fetch(mailPulseSaveUrl, {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
@@ -3785,32 +3786,16 @@ document.addEventListener('DOMContentLoaded', () => {
             saveButton.disabled = true;
             saveButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Enregistrement';
             saveStatus.className = 'mailpulse-save-status';
-            saveStatus.textContent = 'Enregistrement des paramÃ¨tres MailPulse...';
+            saveStatus.textContent = 'Enregistrement des paramètres MailPulse...';
 
             try {
-                const response = await fetch(settingsForm.action, {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
-                    },
-                    body: new FormData(settingsForm),
-                });
-                const payload = await response.json().catch(() => ({
-                    success: false,
-                    message: 'Réponse serveur illisible.',
-                }));
-
-                if (!response.ok || payload.success === false) {
-                    throw new Error(payload.message || 'Enregistrement impossible.');
-                }
+                const payload = await saveMailPulseBeforeTest();
 
                 saveStatus.className = 'mailpulse-save-status is-success';
                 saveStatus.textContent = payload.message || 'Paramètres MailPulse enregistrés.';
             } catch (error) {
                 saveStatus.className = 'mailpulse-save-status is-error';
-                saveStatus.textContent = error.message || 'Erreur pendant l enregistrement MailPulse.';
+                saveStatus.textContent = error.message || "Erreur pendant l'enregistrement MailPulse.";
             } finally {
                 saveButton.disabled = false;
                 saveButton.innerHTML = originalLabel;

@@ -60,12 +60,13 @@ class MailPulseTestNotificationService
                 'contact' => $contact->toArray(),
                 'email' => array_merge(
                     ['attempted' => $shouldEmail],
-                    MailPulseResult::skipped('skipped_contact_failed', 'Envoi ignoré car l’upsert contact MailPulse a échoué.')->toArray()
+                    MailPulseResult::skipped('skipped_contact_failed', 'Envoi ignoré car la mise à jour du contact MailPulse a échoué.')->toArray()
                 ),
                 'whatsapp' => array_merge(
                     ['attempted' => $shouldWhatsApp],
-                    MailPulseResult::skipped('skipped_contact_failed', 'Envoi ignoré car l’upsert contact MailPulse a échoué.')->toArray()
+                    MailPulseResult::skipped('skipped_contact_failed', 'Envoi ignoré car la mise à jour du contact MailPulse a échoué.')->toArray()
                 ),
+                'preview' => $this->previewPayload($scenario),
             ];
         }
 
@@ -96,6 +97,7 @@ class MailPulseTestNotificationService
                 $whatsAppResult->toArray(),
                 $whatsAppRecipients === [] ? [] : ['recipients' => $whatsAppRecipients]
             ),
+            'preview' => $this->previewPayload($scenario),
         ];
     }
 
@@ -212,7 +214,7 @@ class MailPulseTestNotificationService
         $errors = [];
 
         if (! in_array($event, self::EVENTS, true)) {
-            $errors['event'] = 'Evenement invalide. Valeurs: ' . implode(', ', self::EVENTS) . '.';
+            $errors['event'] = 'Événement invalide. Valeurs: ' . implode(', ', self::EVENTS) . '.';
         }
 
         if (! in_array($channel, self::CHANNELS, true)) {
@@ -231,28 +233,68 @@ class MailPulseTestNotificationService
             'student_name' => 'Awa Kouadio',
             'class_name' => 'Licence 2 Gestion',
             'school_name' => 'KLASSCI Demo',
+            'school_phone' => '+225 27 00 00 00 00',
+            'school_email' => 'scolarite@test.klassci.com',
+            'academic_year' => '2025-2026',
         ];
 
         return match ($event) {
             'payment_received' => $base + [
-                'subject' => 'Recu de paiement KLASSCI',
-                'summary' => 'Paiement recu pour Awa Kouadio.',
-                'body' => 'Bonjour Parent Test KLASSCI, nous confirmons la reception du paiement de 150 000 FCFA pour Awa Kouadio en Licence 2 Gestion. Reference: PAY-TEST-2026-001. Solde restant: 75 000 FCFA.',
+                'subject' => 'Paiement validé',
+                'summary' => 'Paiement validé pour Awa Kouadio.',
+                'intro' => "Le paiement de Awa Kouadio a été validé par l'administration.",
+                'body' => 'Bonjour Parent Test KLASSCI, le paiement de 150 000 FCFA pour Awa Kouadio a été validé. Référence: PAY-TEST-2026-001. Reçu: REC-TEST-2026-001. Reste à payer: 75 000 FCFA.',
+                'details' => [
+                    'Étudiant' => 'Awa Kouadio',
+                    'Classe' => 'Licence 2 Gestion',
+                    'Montant payé' => '150 000 FCFA',
+                    'Référence' => 'PAY-TEST-2026-001',
+                    'Numéro de reçu' => 'REC-TEST-2026-001',
+                    'Mode de paiement' => 'Espèces',
+                    'Reste à payer' => '75 000 FCFA',
+                ],
             ],
             'absence_reported' => $base + [
-                'subject' => 'Absence signalee',
-                'summary' => 'Absence signalee en Comptabilite generale.',
-                'body' => 'Bonjour Parent Test KLASSCI, une absence a ete signalee pour Awa Kouadio le 02/07/2026 au cours de Comptabilite generale. Total du mois: 2 absences.',
+                'subject' => 'Notification d absence',
+                'summary' => 'Absence signalée en Comptabilité générale.',
+                'intro' => 'Votre enfant Awa Kouadio a été marqué absent en cours.',
+                'body' => 'Bonjour Parent Test KLASSCI, une absence a été signalée pour Awa Kouadio le 02/07/2026 en Comptabilité générale, de 08:00 à 10:00. Total du mois: 2 absences.',
+                'details' => [
+                    'Étudiant' => 'Awa Kouadio',
+                    'Classe' => 'Licence 2 Gestion',
+                    'Date' => '02/07/2026',
+                    'Heure' => '08:00 - 10:00',
+                    'Matière' => 'Comptabilité générale',
+                    'Absences du mois' => '2',
+                ],
             ],
             'grade_published' => $base + [
-                'subject' => 'Note publiee',
+                'subject' => 'Nouvelle note disponible',
                 'summary' => 'Nouvelle note disponible.',
-                'body' => 'Bonjour Parent Test KLASSCI, une note de 15/20 en Droit des affaires vient d etre publiee pour Awa Kouadio. Evaluation: Controle continu S2.',
+                'intro' => 'Une nouvelle note a été publiée pour Awa Kouadio.',
+                'body' => 'Bonjour Parent Test KLASSCI, une note de 15/20 en Droit des affaires vient d être publiée pour Awa Kouadio. Évaluation: Contrôle continu S2.',
+                'details' => [
+                    'Étudiant' => 'Awa Kouadio',
+                    'Matière' => 'Droit des affaires',
+                    'Évaluation' => 'Contrôle continu S2',
+                    'Note obtenue' => '15/20',
+                    'Moyenne de classe' => '12,50/20',
+                ],
             ],
             'fee_reminder' => $base + [
-                'subject' => 'Rappel de frais impayes',
+                'subject' => 'Rappel de paiement',
                 'summary' => 'Rappel de frais restant dus.',
-                'body' => 'Bonjour Parent Test KLASSCI, un solde de 75 000 FCFA reste du pour Awa Kouadio. Echeance recommandee: 10/07/2026.',
+                'intro' => "Ce message vous rappelle qu'un montant reste dû pour les frais de scolarité de Awa Kouadio.",
+                'body' => 'Bonjour Parent Test KLASSCI, un solde de 75 000 FCFA reste dû pour Awa Kouadio en Licence 2 Gestion. Échéance recommandée: 10/07/2026.',
+                'details' => [
+                    'Étudiant' => 'Awa Kouadio',
+                    'Classe' => 'Licence 2 Gestion',
+                    'Année universitaire' => '2025-2026',
+                    'Montant total' => '225 000 FCFA',
+                    'Montant payé' => '150 000 FCFA',
+                    'Reste à payer' => '75 000 FCFA',
+                    'Échéance' => '10/07/2026',
+                ],
             ],
         };
     }
@@ -287,7 +329,7 @@ class MailPulseTestNotificationService
             ],
             'content' => [
                 'type' => 'text',
-                'text' => '[TEST KLASSCI] ' . $scenario['subject'] . "\n\n" . $scenario['body'],
+                'text' => $this->emailText($scenario),
             ],
             'metadata' => [
                 'source' => 'klassci',
@@ -309,7 +351,7 @@ class MailPulseTestNotificationService
             ],
             'content' => [
                 'type' => 'text',
-                'text' => '[TEST KLASSCI] ' . $scenario['body'],
+                'text' => $this->whatsAppText($scenario),
             ],
             'metadata' => [
                 'source' => 'klassci',
@@ -317,5 +359,46 @@ class MailPulseTestNotificationService
                 'event_summary' => $scenario['summary'],
             ],
         ];
+    }
+
+    private function previewPayload(array $scenario): array
+    {
+        return [
+            'subject' => '[TEST KLASSCI] ' . $scenario['subject'],
+            'email_text' => $this->emailText($scenario),
+            'whatsapp_text' => $this->whatsAppText($scenario),
+        ];
+    }
+
+    private function emailText(array $scenario): string
+    {
+        $lines = [
+            '[TEST KLASSCI] ' . $scenario['subject'],
+            '',
+            'Bonjour ' . $scenario['parent_name'] . ',',
+            '',
+            $scenario['intro'],
+            '',
+            'Détails',
+        ];
+
+        foreach (($scenario['details'] ?? []) as $label => $value) {
+            $lines[] = $label . ': ' . $value;
+        }
+
+        $lines[] = '';
+        $lines[] = 'Ce message est un test envoyé depuis KLASSCI vers un destinataire configuré dans MailPulse.';
+        $lines[] = 'Aucun parent réel ne reçoit ce test.';
+        $lines[] = '';
+        $lines[] = $scenario['school_name'];
+        $lines[] = $scenario['school_phone'];
+        $lines[] = $scenario['school_email'];
+
+        return implode("\n", $lines);
+    }
+
+    private function whatsAppText(array $scenario): string
+    {
+        return '[TEST KLASSCI] ' . $scenario['body'];
     }
 }
