@@ -39,7 +39,7 @@
             justify-content: center;
             background:
                 linear-gradient(135deg, rgba(4,53,130,0.88) 0%, rgba(4,83,203,0.82) 50%, rgba(4,53,130,0.9) 100%),
-                url('{{ asset('images/Images landingPage/Sans titre - 2-03.png') }}');
+                url('{{ asset('images/image-fond-klassci-universite.png') }}');
             background-size: cover;
             background-position: center;
             background-attachment: fixed;

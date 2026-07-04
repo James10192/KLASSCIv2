@@ -6,12 +6,15 @@ use App\Http\Controllers\Controller;
 use App\Models\Setting;
 use App\Models\SettingsBackup;
 use App\Http\Middleware\CheckRequiredSettings;
+use App\Services\MailPulse\MailPulseTestNotificationService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class ESBTPSettingsController extends Controller
@@ -899,6 +902,34 @@ class ESBTPSettingsController extends Controller
                 'message' => 'Erreur lors du test: ' . $e->getMessage()
             ], 500);
         }
+    }
+
+    /**
+     * Lance le test MailPulse depuis les settings, avec destinataires de test uniquement.
+     */
+    public function testMailPulseNotification(Request $request, MailPulseTestNotificationService $service): JsonResponse
+    {
+        $payload = $request->validate([
+            'event' => ['required', 'string', 'in:payment_received,absence_reported,grade_published,fee_reminder'],
+            'channel' => ['required', 'string', 'in:email,whatsapp,both'],
+            'dryRun' => ['sometimes', 'boolean'],
+        ]);
+
+        try {
+            $result = $service->send(
+                $payload['event'],
+                $payload['channel'],
+                (bool) ($payload['dryRun'] ?? true)
+            );
+        } catch (ValidationException $e) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Configuration de test MailPulse incomplète.',
+                'errors' => $e->errors(),
+            ], 422);
+        }
+
+        return response()->json($result, $result['ok'] ? 200 : 502);
     }
 
     /**

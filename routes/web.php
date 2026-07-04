@@ -1511,6 +1511,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/settings/import', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'import'])->name('esbtp.settings.import');
             Route::get('/settings/status', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.status');
             Route::post('/settings/validate', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.validate');
+            Route::post('/settings/mailpulse/test-notification', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'testMailPulseNotification'])
+                ->middleware('throttle:10,1')
+                ->name('esbtp.settings.mailpulse.test-notification');
         });
 
         // Phase 9 — Aperçu PDF avec settings non persistés (nouvelle tab)
@@ -2129,6 +2132,9 @@ Route::middleware(['auth', 'permission:system.manage'])->group(function () {
     Route::get('/esbtp/settings/status', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.status');
     Route::post('/esbtp/settings/validate', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.validate');
     Route::post('/esbtp/settings/test-reminders', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'testReminders'])->name('esbtp.settings.test-reminders');
+    Route::post('/esbtp/settings/mailpulse/test-notification', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'testMailPulseNotification'])
+        ->middleware('throttle:10,1')
+        ->name('esbtp.settings.mailpulse.test-notification');
 
     // ESBTP Logs Routes
     Route::get('/esbtp/logs', [ESBTPLogsController::class, 'index'])->name('esbtp.logs.index');

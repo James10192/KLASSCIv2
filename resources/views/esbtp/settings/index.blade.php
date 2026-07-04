@@ -526,9 +526,32 @@
     }
     .mailpulse-info-card strong { color: #09090b; display: block; margin-bottom: 4px; }
     .mailpulse-info-card i { color: #f97316; margin-right: 6px; }
+    .mailpulse-test-grid {
+        display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: end;
+    }
+    .mailpulse-test-result {
+        margin-top: 14px; border-radius: 12px; border: 1px solid #dbe4f0;
+        background: #f8fafc; padding: 14px; color: #334155; font-size: .86rem;
+    }
+    .mailpulse-test-result.is-success {
+        border-color: #a7f3d0; background: #ecfdf5; color: #065f46;
+    }
+    .mailpulse-test-result.is-error {
+        border-color: #fecaca; background: #fef2f2; color: #991b1b;
+    }
+    .mailpulse-test-kv {
+        display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin-top: 10px;
+    }
+    .mailpulse-test-kv span {
+        display: block; padding: 8px 10px; border-radius: 8px; background: rgba(255,255,255,.75);
+        border: 1px solid rgba(148,163,184,.24);
+    }
+    .mailpulse-test-kv strong { display: block; color: inherit; font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 2px; }
     .section-icon.mailpulse { background: #09090b; color: #f97316; }
     @media (max-width: 992px) {
         .mailpulse-info-grid { grid-template-columns: 1fr; }
+        .mailpulse-test-grid,
+        .mailpulse-test-kv { grid-template-columns: 1fr; }
     }
 
     .settings-page-premium {
@@ -2634,6 +2657,68 @@
                             </div>
                         </div>
                     </div>
+                    <div class="settings-section">
+                        <div class="section-header">
+                            <div class="section-icon mailpulse">
+                                <i class="fas fa-vial"></i>
+                            </div>
+                            <div>
+                                <h3 class="section-title">Test direct MailPulse</h3>
+                                <p class="section-description">Lancez le m&ecirc;me test que la commande CLI, sans quitter les param&egrave;tres.</p>
+                            </div>
+                        </div>
+
+                        <div class="mailpulse-field-card">
+                            <div class="mailpulse-test-grid">
+                                <div class="form-group mb-0">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-calendar-check text-primary"></i>
+                                        &Eacute;v&eacute;nement simul&eacute;
+                                    </label>
+                                    <select class="form-control form-control-modern" data-mailpulse-test-event>
+                                        <option value="payment_received">Paiement re&ccedil;u</option>
+                                        <option value="absence_reported">Absence signal&eacute;e</option>
+                                        <option value="grade_published">Note publi&eacute;e</option>
+                                        <option value="fee_reminder">Rappel de frais</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group mb-0">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-paper-plane text-primary"></i>
+                                        Canal
+                                    </label>
+                                    <select class="form-control form-control-modern" data-mailpulse-test-channel>
+                                        <option value="email">Email</option>
+                                        <option value="whatsapp">WhatsApp</option>
+                                        <option value="both">Email et WhatsApp</option>
+                                    </select>
+                                </div>
+
+                                <div class="form-group mb-0">
+                                    <label class="form-label-modern">
+                                        <i class="fas fa-shield-alt text-primary"></i>
+                                        Mode
+                                    </label>
+                                    <label class="mailpulse-toggle mb-0">
+                                        <input type="checkbox" data-mailpulse-test-dry-run checked>
+                                        <span class="mailpulse-toggle-slider"></span>
+                                        Simulation uniquement
+                                    </label>
+                                </div>
+
+                                <button type="button" class="btn btn-acasi primary" data-mailpulse-test-submit>
+                                    <i class="fas fa-play me-2"></i>
+                                    Lancer le test
+                                </button>
+                            </div>
+
+                            <small class="text-muted d-block mt-3">
+                                Les envois r&eacute;els restent limit&eacute;s aux emails et num&eacute;ros de test actifs configur&eacute;s ci-dessus.
+                            </small>
+                            <div class="mailpulse-test-result d-none" data-mailpulse-test-result></div>
+                        </div>
+                    </div>
                 </div>
                 <!-- End Tab 6: MailPulse -->
 
@@ -3584,6 +3669,84 @@ document.addEventListener('DOMContentLoaded', () => {
             syncRecipients('phone');
         });
     });
+
+    const testButton = document.querySelector('[data-mailpulse-test-submit]');
+    const resultBox = document.querySelector('[data-mailpulse-test-result]');
+    const eventSelect = document.querySelector('[data-mailpulse-test-event]');
+    const channelSelect = document.querySelector('[data-mailpulse-test-channel]');
+    const dryRunInput = document.querySelector('[data-mailpulse-test-dry-run]');
+
+    const escapeHtml = (value) => String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+
+    const renderMailPulseResult = (payload, ok) => {
+        if (!resultBox) {
+            return;
+        }
+
+        const email = payload.email || {};
+        const whatsapp = payload.whatsapp || {};
+        const message = payload.message || (ok ? 'Test MailPulse terminé.' : 'Le test MailPulse a échoué.');
+        resultBox.classList.remove('d-none', 'is-success', 'is-error');
+        resultBox.classList.add(ok ? 'is-success' : 'is-error');
+        resultBox.innerHTML = `
+            <div>
+                <strong><i class="fas ${ok ? 'fa-check-circle' : 'fa-triangle-exclamation'} me-2"></i>${escapeHtml(message)}</strong>
+            </div>
+            <div class="mailpulse-test-kv">
+                <span><strong>Contact</strong>${escapeHtml(payload.contactId || payload.contact?.status || 'Non créé')}</span>
+                <span><strong>Email</strong>${escapeHtml(email.status || (email.attempted ? 'Tenté' : 'Ignoré'))}</span>
+                <span><strong>WhatsApp</strong>${escapeHtml(whatsapp.status || (whatsapp.attempted ? 'Tenté' : 'Ignoré'))}</span>
+            </div>
+            ${payload.errors ? `<pre class="mt-3 mb-0">${escapeHtml(JSON.stringify(payload.errors, null, 2))}</pre>` : ''}
+        `;
+    };
+
+    if (testButton && resultBox && eventSelect && channelSelect && dryRunInput) {
+        testButton.addEventListener('click', async () => {
+            syncRecipients('email');
+            syncRecipients('phone');
+
+            const originalLabel = testButton.innerHTML;
+            testButton.disabled = true;
+            testButton.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Test en cours';
+            resultBox.classList.remove('d-none', 'is-success', 'is-error');
+            resultBox.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>Préparation du scénario de test MailPulse...';
+
+            try {
+                const response = await fetch('{{ route('esbtp.settings.mailpulse.test-notification') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+                    },
+                    body: JSON.stringify({
+                        event: eventSelect.value,
+                        channel: channelSelect.value,
+                        dryRun: dryRunInput.checked,
+                    }),
+                });
+                const payload = await response.json().catch(() => ({
+                    ok: false,
+                    message: 'Réponse MailPulse illisible.',
+                }));
+                renderMailPulseResult(payload, response.ok && payload.ok !== false);
+            } catch (error) {
+                renderMailPulseResult({
+                    ok: false,
+                    message: error.message || 'Erreur réseau pendant le test MailPulse.',
+                }, false);
+            } finally {
+                testButton.disabled = false;
+                testButton.innerHTML = originalLabel;
+            }
+        });
+    }
 });
 
 // ====================================================================
