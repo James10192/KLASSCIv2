@@ -3756,6 +3756,9 @@ document.addEventListener('DOMContentLoaded', () => {
         syncRecipients('email');
         syncRecipients('phone');
 
+        const formData = new FormData(settingsForm);
+        formData.delete('_method');
+
         const response = await fetch(mailPulseSaveUrl, {
             method: 'POST',
             headers: {
@@ -3763,7 +3766,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'X-Requested-With': 'XMLHttpRequest',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
             },
-            body: new FormData(settingsForm),
+            body: formData,
         });
         const payload = await response.json().catch(() => ({
             success: false,
