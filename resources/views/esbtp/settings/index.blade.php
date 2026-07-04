@@ -3747,6 +3747,35 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     };
 
+    const saveMailPulseBeforeTest = async () => {
+        if (!settingsForm) {
+            throw new Error('Formulaire MailPulse introuvable.');
+        }
+
+        syncRecipients('email');
+        syncRecipients('phone');
+
+        const response = await fetch(settingsForm.action, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '',
+            },
+            body: new FormData(settingsForm),
+        });
+        const payload = await response.json().catch(() => ({
+            success: false,
+            message: 'RÃ©ponse serveur illisible.',
+        }));
+
+        if (!response.ok || payload.success === false) {
+            throw new Error(payload.message || 'Enregistrement MailPulse impossible.');
+        }
+
+        return payload;
+    };
+
     if (saveButton && saveStatus && settingsForm) {
         saveButton.addEventListener('click', async () => {
             syncRecipients('email');
@@ -3801,6 +3830,10 @@ document.addEventListener('DOMContentLoaded', () => {
             resultBox.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>Préparation du scénario de test MailPulse...';
 
             try {
+                resultBox.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>Enregistrement des destinataires de test...';
+                await saveMailPulseBeforeTest();
+                resultBox.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>Envoi du test MailPulse...';
+
                 const response = await fetch('{{ route('esbtp.settings.mailpulse.test-notification') }}', {
                     method: 'POST',
                     headers: {
