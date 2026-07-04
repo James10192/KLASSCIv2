@@ -31,13 +31,13 @@ class MailPulseTestNotificationService
 
         if ($shouldEmail && $emails === []) {
             throw ValidationException::withMessages([
-                'TEST_NOTIFICATION_EMAIL' => 'Au moins un email de test actif est requis pour eviter tout envoi a de vrais parents.',
+                'TEST_NOTIFICATION_EMAIL' => 'Au moins un email de test actif est requis pour éviter tout envoi à de vrais parents.',
             ]);
         }
 
         if ($shouldWhatsApp && $phones === []) {
             throw ValidationException::withMessages([
-                'TEST_NOTIFICATION_PHONE' => 'Au moins un numero de test WhatsApp ivoirien valide est requis.',
+                'TEST_NOTIFICATION_PHONE' => 'Au moins un numéro de test WhatsApp ivoirien valide est requis.',
             ]);
         }
 
@@ -47,8 +47,8 @@ class MailPulseTestNotificationService
             : $this->client->createOrUpdateContact($this->contactPayload($primaryEmail, $primaryPhone, $scenario));
         $contactId = $contact->id ?? 'dry-run-contact';
 
-        $emailResult = MailPulseResult::skipped('skipped', 'Canal email non demande.');
-        $whatsAppResult = MailPulseResult::skipped('skipped', 'Canal WhatsApp non demande.');
+        $emailResult = MailPulseResult::skipped('skipped', 'Canal email non demandé.');
+        $whatsAppResult = MailPulseResult::skipped('skipped', 'Canal WhatsApp non demandé.');
 
         if (! $contact->ok) {
             return [
@@ -60,11 +60,11 @@ class MailPulseTestNotificationService
                 'contact' => $contact->toArray(),
                 'email' => array_merge(
                     ['attempted' => $shouldEmail],
-                    MailPulseResult::skipped('skipped_contact_failed', 'Envoi ignore car l upsert contact MailPulse a echoue.')->toArray()
+                    MailPulseResult::skipped('skipped_contact_failed', 'Envoi ignoré car l’upsert contact MailPulse a échoué.')->toArray()
                 ),
                 'whatsapp' => array_merge(
                     ['attempted' => $shouldWhatsApp],
-                    MailPulseResult::skipped('skipped_contact_failed', 'Envoi ignore car l upsert contact MailPulse a echoue.')->toArray()
+                    MailPulseResult::skipped('skipped_contact_failed', 'Envoi ignoré car l’upsert contact MailPulse a échoué.')->toArray()
                 ),
             ];
         }
