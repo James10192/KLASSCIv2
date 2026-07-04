@@ -3715,14 +3715,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const message = payload.message || (ok ? 'Test MailPulse terminé.' : 'Le test MailPulse a échoué.');
         const channelLabel = (channel) => {
             if (!channel.attempted) {
-                return channel.status || 'IgnorÃ©';
+                return channel.status || 'Ignoré';
             }
 
             if (channel.ok === false) {
-                return `${channel.status || 'Erreur'} · ${channel.message || channel.action || 'DÃ©tail indisponible'}`;
+                return `${channel.status || 'Erreur'} · ${channel.message || channel.action || 'Détail indisponible'}`;
             }
 
-            return channel.status || 'EnvoyÃ©';
+            return channel.status || 'Envoyé';
         };
         const channelActions = [email, whatsapp]
             .filter((channel) => channel.attempted && channel.ok === false && channel.action)
@@ -3740,8 +3740,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 <span><strong>Email</strong>${escapeHtml(email.status || (email.attempted ? 'Tenté' : 'Ignoré'))}</span>
                 <span><strong>WhatsApp</strong>${escapeHtml(whatsapp.status || (whatsapp.attempted ? 'Tenté' : 'Ignoré'))}</span>
             </div>
-            ${email.attempted && email.ok === false && email.message ? `<div class="mt-3"><strong>DÃ©tail email</strong><br>${escapeHtml(email.message)}</div>` : ''}
-            ${whatsapp.attempted && whatsapp.ok === false && whatsapp.message ? `<div class="mt-3"><strong>DÃ©tail WhatsApp</strong><br>${escapeHtml(whatsapp.message)}</div>` : ''}
+            ${email.attempted && email.ok === false && email.message ? `<div class="mt-3"><strong>Détail email</strong><br>${escapeHtml(email.message)}</div>` : ''}
+            ${whatsapp.attempted && whatsapp.ok === false && whatsapp.message ? `<div class="mt-3"><strong>Détail WhatsApp</strong><br>${escapeHtml(whatsapp.message)}</div>` : ''}
             ${channelActions.length ? `<div class="mt-3"><strong>Action recommand&eacute;e</strong><br>${escapeHtml(channelActions.join(' '))}</div>` : ''}
             ${payload.errors ? `<pre class="mt-3 mb-0">${escapeHtml(JSON.stringify(payload.errors, null, 2))}</pre>` : ''}
         `;
@@ -3766,7 +3766,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         const payload = await response.json().catch(() => ({
             success: false,
-            message: 'RÃ©ponse serveur illisible.',
+            message: 'Réponse serveur illisible.',
         }));
 
         if (!response.ok || payload.success === false) {
@@ -3799,7 +3799,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 const payload = await response.json().catch(() => ({
                     success: false,
-                    message: 'RÃ©ponse serveur illisible.',
+                    message: 'Réponse serveur illisible.',
                 }));
 
                 if (!response.ok || payload.success === false) {
@@ -3807,7 +3807,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 saveStatus.className = 'mailpulse-save-status is-success';
-                saveStatus.textContent = payload.message || 'ParamÃ¨tres MailPulse enregistrÃ©s.';
+                saveStatus.textContent = payload.message || 'Paramètres MailPulse enregistrés.';
             } catch (error) {
                 saveStatus.className = 'mailpulse-save-status is-error';
                 saveStatus.textContent = error.message || 'Erreur pendant l enregistrement MailPulse.';

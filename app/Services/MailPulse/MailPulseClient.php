@@ -66,7 +66,7 @@ class MailPulseClient
                 'error' => $e->getMessage(),
             ]);
 
-            return $this->failure('connection_failed', null, $requestId, 'MailPulse est injoignable.', 'Verifiez le reseau, MAILPULSE_BASE_URL et le statut Vercel.');
+            return $this->failure('connection_failed', null, $requestId, 'MailPulse est injoignable.', 'Vérifiez le réseau, MAILPULSE_BASE_URL et le statut Vercel.');
         }
 
         $result = $this->mapResponse($response, $requestId);
@@ -131,10 +131,10 @@ class MailPulseClient
         }
 
         return match ($response->status()) {
-            401, 403 => $this->failure('auth_failed', $response->status(), $requestHeader, 'Authentification MailPulse refusee.', 'Verifiez MAILPULSE_API_KEY et les droits API v1.'),
-            404 => $this->failure('endpoint_not_found', $response->status(), $requestHeader, 'Endpoint MailPulse introuvable.', 'Verifiez MAILPULSE_*_ENDPOINT dans .env.'),
-            405 => $this->failure('endpoint_not_supported', $response->status(), $requestHeader, 'Methode non acceptee par MailPulse.', 'Confirmez le vrai endpoint/methode MailPulse pour ce canal.'),
-            408, 429 => $this->failure('rate_limited', $response->status(), $requestHeader, 'MailPulse limite ou expire la requete.', 'Reessayez plus tard ou reduisez la frequence des tests.'),
+            401, 403 => $this->failure('auth_failed', $response->status(), $requestHeader, 'Authentification MailPulse refusée.', 'Vérifiez MAILPULSE_API_KEY et les droits API v1.'),
+            404 => $this->failure('endpoint_not_found', $response->status(), $requestHeader, 'Endpoint MailPulse introuvable.', 'Vérifiez MAILPULSE_*_ENDPOINT dans .env.'),
+            405 => $this->failure('endpoint_not_supported', $response->status(), $requestHeader, 'Méthode non acceptée par MailPulse.', 'Confirmez le vrai endpoint/méthode MailPulse pour ce canal.'),
+            408, 429 => $this->failure('rate_limited', $response->status(), $requestHeader, 'MailPulse limite ou expire la requête.', 'Réessayez plus tard ou réduisez la fréquence des tests.'),
             default => $this->providerFailure($response, is_array($body) ? $body : [], $requestHeader),
         };
     }
@@ -145,7 +145,7 @@ class MailPulseClient
         $message = $this->providerMessage($body);
 
         if (str_contains($code, 'TEMPLATE_REQUIRED') || str_contains(strtoupper($message), 'TEMPLATE_REQUIRED')) {
-            return $this->failure('template_required', $response->status(), $requestId, $message, 'Configurez un template WhatsApp approuve dans Meta/MailPulse pour les messages hors fenetre 24h.');
+            return $this->failure('template_required', $response->status(), $requestId, $message, 'Configurez un template WhatsApp approuvé dans Meta/MailPulse pour les messages hors fenêtre 24h.');
         }
 
         if (str_contains($code, 'CHANNEL_NOT_CONFIGURED') || str_contains(strtoupper($message), 'CANAL NON CONFIGURE')) {
@@ -153,15 +153,15 @@ class MailPulseClient
         }
 
         if (str_contains(strtolower($message), 'domain is not verified')) {
-            return $this->failure('provider_error', $response->status(), $requestId, $message, 'Verifiez le domaine expediteur dans Resend/MailPulse, puis relancez le test email.');
+            return $this->failure('provider_error', $response->status(), $requestId, $message, 'Vérifiez le domaine expéditeur dans Resend/MailPulse, puis relancez le test email.');
         }
 
-        return $this->failure('provider_error', $response->status(), $requestId, $message, 'Consultez les logs MailPulse avec le requestId retourne.');
+        return $this->failure('provider_error', $response->status(), $requestId, $message, 'Consultez les logs MailPulse avec le requestId retourné.');
     }
 
     private function providerMessage(array $body): string
     {
-        $message = $this->stringValue($body['message'] ?? $body['error'] ?? null, 'MailPulse a retourne une erreur.');
+        $message = $this->stringValue($body['message'] ?? $body['error'] ?? null, 'MailPulse a retourné une erreur.');
         $decoded = json_decode($message, true);
 
         if (is_array($decoded)) {
