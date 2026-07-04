@@ -2701,7 +2701,7 @@
                                         Mode
                                     </label>
                                     <label class="mailpulse-toggle mb-0">
-                                        <input type="checkbox" data-mailpulse-test-dry-run checked>
+                                        <input type="checkbox" data-mailpulse-test-dry-run>
                                         <span class="mailpulse-toggle-slider"></span>
                                         Simulation uniquement
                                     </label>
@@ -2714,7 +2714,7 @@
                             </div>
 
                             <small class="text-muted d-block mt-3">
-                                Les envois r&eacute;els restent limit&eacute;s aux emails et num&eacute;ros de test actifs configur&eacute;s ci-dessus.
+                                Par d&eacute;faut, le test envoie r&eacute;ellement aux emails et num&eacute;ros de test actifs configur&eacute;s ci-dessus. Activez la simulation pour ne rien envoyer.
                             </small>
                             <div class="mailpulse-test-result d-none" data-mailpulse-test-result></div>
                         </div>
