@@ -3693,6 +3693,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const testButton = document.querySelector('[data-mailpulse-test-submit]');
     const saveButton = document.querySelector('[data-mailpulse-save-submit]');
     const saveStatus = document.querySelector('[data-mailpulse-save-status]');
+    const mailPulsePanel = document.querySelector('#mailpulse');
     const settingsForm = document.querySelector('form[action="{{ route('esbtp.settings.update') }}"]');
     const mailPulseSaveUrl = '{{ route('esbtp.settings.mailpulse.save') }}';
     const resultBox = document.querySelector('[data-mailpulse-test-result]');
@@ -3749,16 +3750,53 @@ document.addEventListener('DOMContentLoaded', () => {
         `;
     };
 
+    const buildMailPulseFormData = () => {
+        const source = mailPulsePanel || settingsForm;
+
+        if (!source) {
+            return null;
+        }
+
+        const formData = new FormData();
+        source.querySelectorAll('[name^="setting_mailpulse_"]').forEach((field) => {
+            if (!field.name || field.disabled) {
+                return;
+            }
+
+            if (field.type === 'checkbox') {
+                if (field.checked) {
+                    formData.set(field.name, field.value || '1');
+                } else if (!formData.has(field.name)) {
+                    formData.set(field.name, '0');
+                }
+                return;
+            }
+
+            if (field.type === 'radio') {
+                if (field.checked) {
+                    formData.set(field.name, field.value || '');
+                }
+                return;
+            }
+
+            formData.set(field.name, field.value ?? '');
+        });
+
+        return formData;
+    };
+
     const saveMailPulseBeforeTest = async () => {
-        if (!settingsForm) {
+        if (!mailPulsePanel && !settingsForm) {
             throw new Error('Formulaire MailPulse introuvable.');
         }
 
         syncRecipients('email');
         syncRecipients('phone');
 
-        const formData = new FormData(settingsForm);
-        formData.delete('_method');
+        const formData = buildMailPulseFormData();
+        if (!formData) {
+            throw new Error('Formulaire MailPulse introuvable.');
+        }
 
         const response = await fetch(mailPulseSaveUrl, {
             method: 'POST',
@@ -3781,7 +3819,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return payload;
     };
 
-    if (saveButton && saveStatus && settingsForm) {
+    if (saveButton && saveStatus && (mailPulsePanel || settingsForm)) {
         saveButton.addEventListener('click', async () => {
             syncRecipients('email');
             syncRecipients('phone');
