@@ -3,6 +3,8 @@
 namespace App\Services\MailPulse;
 
 use App\Domain\Notifications\PhoneNormalizer;
+use App\Helpers\SettingsHelper;
+use Illuminate\Support\Facades\View;
 use Illuminate\Validation\ValidationException;
 
 class MailPulseTestNotificationService
@@ -229,6 +231,7 @@ class MailPulseTestNotificationService
     private function scenario(string $event): array
     {
         $base = [
+            'event' => $event,
             'parent_name' => 'Parent Test KLASSCI',
             'student_name' => 'Awa Kouadio',
             'class_name' => 'Licence 2 Gestion',
@@ -334,6 +337,8 @@ class MailPulseTestNotificationService
             'metadata' => [
                 'source' => 'klassci',
                 'contact_id' => $contactId,
+                'subject' => '[TEST KLASSCI] ' . $scenario['subject'],
+                'email_html' => $this->emailHtml($scenario),
                 'sender_email' => $this->client->getSetting('mailpulse_sender_email', 'sender_email', ''),
                 'sender_name' => $this->client->getSetting('mailpulse_sender_name', 'sender_name', 'KLASSCI'),
                 'event_summary' => $scenario['summary'],
@@ -366,7 +371,115 @@ class MailPulseTestNotificationService
         return [
             'subject' => '[TEST KLASSCI] ' . $scenario['subject'],
             'email_text' => $this->emailText($scenario),
+            'email_html' => $this->emailHtml($scenario),
             'whatsapp_text' => $this->whatsAppText($scenario),
+        ];
+    }
+
+    private function emailHtml(array $scenario): string
+    {
+        $view = match ($scenario['event']) {
+            'payment_received' => 'esbtp.emails.parents.paiement-valide',
+            'absence_reported' => 'esbtp.emails.parents.absence-notification',
+            'grade_published' => 'esbtp.emails.parents.note-published',
+            'fee_reminder' => 'esbtp.emails.parents.paiement-relance',
+        };
+
+        return View::make($view, $this->emailViewData($scenario))->render();
+    }
+
+    private function emailViewData(array $scenario): array
+    {
+        $school = $this->schoolIdentity();
+        $base = [
+            'parentName' => $scenario['parent_name'],
+            'studentName' => $scenario['student_name'],
+            'classe' => $scenario['class_name'],
+            'schoolName' => $school['name'],
+            'schoolAddress' => $school['address'],
+            'schoolPhone' => $school['phone'],
+            'schoolEmail' => $school['email'],
+            'schoolLogoPath' => $school['logo'],
+            'message' => new class {
+                public function embed(string $path): string
+                {
+                    return $path;
+                }
+            },
+        ];
+
+        return $base + match ($scenario['event']) {
+            'payment_received' => [
+                'montant' => 150000,
+                'reference' => 'PAY-TEST-2026-001',
+                'numeroRecu' => 'REC-TEST-2026-001',
+                'modePaiement' => 'Espèces',
+                'datePaiement' => '05/07/2026',
+                'dateValidation' => '05/07/2026',
+                'validePar' => 'Test KLASSCI',
+                'montantTotal' => 225000,
+                'montantPaye' => 150000,
+                'resteDu' => 75000,
+                'pourcentagePaye' => 67,
+                'recuUrl' => '#',
+            ],
+            'absence_reported' => [
+                'date' => '02/07/2026',
+                'heureDebut' => '08:00',
+                'heureFin' => '10:00',
+                'matiere' => 'Comptabilité générale',
+                'typeActivite' => 'Cours',
+                'commentaire' => 'Test MailPulse KLASSCI',
+                'periodeStats' => 'mois en cours',
+                'absencesJustifiees' => 0,
+                'absencesNonJustifiees' => 2,
+                'totalAbsences' => 4,
+                'tauxPresence' => 92,
+                'justificationUrl' => '#',
+            ],
+            'grade_published' => [
+                'matiere' => 'Droit des affaires',
+                'typeEvaluation' => 'Contrôle continu S2',
+                'dateEvaluation' => '02/07/2026',
+                'note' => 15,
+                'bareme' => 20,
+                'moyenneClasse' => 12.5,
+                'rang' => 3,
+                'effectifClasse' => 42,
+                'appreciation' => 'Bon résultat.',
+                'noteUrl' => '#',
+            ],
+            'fee_reminder' => [
+                'anneeUniversitaire' => $scenario['academic_year'],
+                'montantTotal' => 225000,
+                'montantPaye' => 150000,
+                'montantDu' => 75000,
+                'pourcentagePaye' => 67,
+                'echeance' => '10/07/2026',
+                'joursRestants' => 5,
+                'historiqueRelances' => 1,
+                'paiementUrl' => '#',
+                'modesPaiement' => ['Espèces', 'Mobile Money', 'Virement'],
+            ],
+        };
+    }
+
+    private function schoolIdentity(): array
+    {
+        $logo = (string) SettingsHelper::get('school_logo', '');
+        $logoUrl = '';
+        if ($logo !== '') {
+            $logoUrl = str_starts_with($logo, 'http')
+                ? $logo
+                : asset('storage/' . ltrim($logo, '/'));
+        }
+
+        return [
+            'name' => SettingsHelper::get('school_name', 'KLASSCI'),
+            'address' => SettingsHelper::get('school_address', ''),
+            'phone' => SettingsHelper::get('school_phone', ''),
+            'email' => SettingsHelper::get('school_email', ''),
+            'logo' => $logoUrl,
         ];
     }
 
