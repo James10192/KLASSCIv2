@@ -3699,10 +3699,27 @@ document.addEventListener('DOMContentLoaded', () => {
         syncRecipients(type);
     });
 
+    const protectEmptyMailPulseApiKeySubmit = () => {
+        const apiKeyInput = document.querySelector('[name="setting_mailpulse_api_key"]');
+        if (!apiKeyInput || apiKeyInput.disabled) {
+            return;
+        }
+
+        if (String(apiKeyInput.value ?? '').trim() !== '') {
+            return;
+        }
+
+        apiKeyInput.disabled = true;
+        window.requestAnimationFrame(() => {
+            apiKeyInput.disabled = false;
+        });
+    };
+
     document.querySelectorAll('form').forEach((form) => {
         form.addEventListener('submit', () => {
             syncRecipients('email');
             syncRecipients('phone');
+            protectEmptyMailPulseApiKeySubmit();
         });
     });
 
