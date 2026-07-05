@@ -861,7 +861,12 @@
         @php
             $settingsTotal = isset($flatSettings) ? $flatSettings->count() : 0;
             $settingsGroups = isset($settings) ? $settings->count() : 0;
-            $mailpulseReady = \App\Helpers\SettingsHelper::get('mailpulse_api_key', '') !== ''
+            $mailpulseApiKeyConfiguredForHero = \App\Models\Setting::where('key', 'mailpulse_api_key')
+                ->where('is_active', true)
+                ->whereNotNull('value')
+                ->where('value', '<>', '')
+                ->exists() || trim((string) config('services.mailpulse.api_key', '')) !== '';
+            $mailpulseReady = $mailpulseApiKeyConfiguredForHero
                 && \App\Helpers\SettingsHelper::get('mailpulse_test_email', '') !== '';
         @endphp
 
@@ -2388,7 +2393,11 @@
                 <div class="tab-pane fade mailpulse-panel" id="mailpulse" role="tabpanel">
                     @php
                         $mailpulseEnabled = \App\Helpers\SettingsHelper::get('mailpulse_enabled', '0');
-                        $mailpulseApiKeyConfigured = \App\Helpers\SettingsHelper::get('mailpulse_api_key', '') !== '';
+                        $mailpulseApiKeyConfigured = \App\Models\Setting::where('key', 'mailpulse_api_key')
+                            ->where('is_active', true)
+                            ->whereNotNull('value')
+                            ->where('value', '<>', '')
+                            ->exists() || trim((string) config('services.mailpulse.api_key', '')) !== '';
                     @endphp
 
                     <div class="mailpulse-brand-card">
@@ -3791,7 +3800,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const apiKeyInput = document.querySelector('[name="setting_mailpulse_api_key"]');
         if (apiKeyInput && !apiKeyInput.disabled) {
-            formData.set('setting_mailpulse_api_key', apiKeyInput.value ?? '');
+            const apiKeyValue = String(apiKeyInput.value ?? '').trim();
+            if (apiKeyValue !== '') {
+                formData.set('setting_mailpulse_api_key', apiKeyValue);
+            } else {
+                formData.delete('setting_mailpulse_api_key');
+            }
         }
 
         return formData;

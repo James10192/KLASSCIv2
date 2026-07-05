@@ -508,6 +508,62 @@ switch ($Command) {
         Invoke-KlassciApi -Method "POST" -Path "/mailpulse/test-notification" -Config $cfg -Body $body | ConvertTo-Json -Depth 8
         break
     }
+    "logs" {
+        $targetTenant = $Tenant
+        $argsForCommand = @($ExtraArgs)
+        if ($Tenant -like "--*") {
+            $targetTenant = "presentation"
+            $argsForCommand = @($Tenant) + @($ExtraArgs)
+        }
+
+        $lines = 50
+        $level = $null
+        $search = $null
+
+        for ($i = 0; $i -lt $argsForCommand.Count; $i++) {
+            $arg = [string]$argsForCommand[$i]
+            if ($arg -like "--lines=*") {
+                $lines = [int]$arg.Substring("--lines=".Length)
+                continue
+            }
+            if ($arg -eq "--lines") {
+                if ($i + 1 -ge $argsForCommand.Count) { throw "--lines attend une valeur." }
+                $i++
+                $lines = [int]$argsForCommand[$i]
+                continue
+            }
+            if ($arg -like "--level=*") {
+                $level = $arg.Substring("--level=".Length)
+                continue
+            }
+            if ($arg -eq "--level") {
+                if ($i + 1 -ge $argsForCommand.Count) { throw "--level attend une valeur." }
+                $i++
+                $level = [string]$argsForCommand[$i]
+                continue
+            }
+            if ($arg -like "--search=*") {
+                $search = $arg.Substring("--search=".Length)
+                continue
+            }
+            if ($arg -eq "--search") {
+                if ($i + 1 -ge $argsForCommand.Count) { throw "--search attend une valeur." }
+                $i++
+                $search = [string]$argsForCommand[$i]
+                continue
+            }
+
+            throw "Option inconnue pour logs: $arg"
+        }
+
+        $query = "?lines=$lines"
+        if ($level) { $query += "&level=$([uri]::EscapeDataString($level))" }
+        if ($search) { $query += "&search=$([uri]::EscapeDataString($search))" }
+
+        $cfg = Get-KlassciConfig -TenantCode $targetTenant
+        Invoke-KlassciApi -Method "GET" -Path "/logs$query" -Config $cfg | ConvertTo-Json -Depth 8
+        break
+    }
     "pull" {
         $cfg = Get-KlassciConfig -TenantCode $Tenant
         Invoke-KlassciApi -Method "POST" -Path "/pull" -Config $cfg | ConvertTo-Json -Depth 8
@@ -728,6 +784,7 @@ switch ($Command) {
         Write-Host "Usage:" -ForegroundColor Yellow
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
         Write-Host "  .\klassci-cli.ps1 mailpulse:test [presentation] --event payment_received --channel both --dry-run false"
+        Write-Host "  .\klassci-cli.ps1 logs [presentation] --lines 100 --search MailPulse"
         Write-Host "  .\klassci-cli.ps1 pull [presentation]"
         Write-Host "  .\klassci-cli.ps1 migrate [presentation]"
         Write-Host "  .\klassci-cli.ps1 composer:install [presentation] [install|update|dump-autoload] [binaire-composer]"
