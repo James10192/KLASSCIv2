@@ -3796,7 +3796,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const payload = await saveMailPulseBeforeTest();
 
                 saveStatus.className = 'mailpulse-save-status is-success';
-                saveStatus.textContent = payload.message || 'Paramètres MailPulse enregistrés.';
+                saveStatus.textContent = payload.message || (
+                    payload.api_key_configured
+                        ? 'Paramètres MailPulse enregistrés. Clé API active.'
+                        : "Paramètres MailPulse enregistrés, mais aucune clé API active n'est stockée."
+                );
             } catch (error) {
                 saveStatus.className = 'mailpulse-save-status is-error';
                 saveStatus.textContent = error.message || "Erreur pendant l'enregistrement MailPulse.";
@@ -3820,7 +3824,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
             try {
                 resultBox.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>Enregistrement des destinataires de test...';
-                await saveMailPulseBeforeTest();
+                const savePayload = await saveMailPulseBeforeTest();
+                if (!dryRunInput.checked && savePayload.api_key_configured === false) {
+                    throw new Error(savePayload.message || "La clé API MailPulse n'est pas enregistrée côté serveur.");
+                }
                 resultBox.innerHTML = '<i class="fas fa-circle-notch fa-spin me-2"></i>Envoi du test MailPulse...';
 
                 const response = await fetch('{{ route('esbtp.settings.mailpulse.test-notification') }}', {

@@ -1033,6 +1033,7 @@ class ESBTPSettingsController extends Controller
             DB::beginTransaction();
 
             $updatedSettings = [];
+            $apiKeyReceived = false;
             foreach ($mailPulseKeys as $settingKey) {
                 $requestKey = 'setting_' . $settingKey;
                 if (! $request->has($requestKey)) {
@@ -1046,6 +1047,10 @@ class ESBTPSettingsController extends Controller
 
                 if ($settingKey === 'mailpulse_api_key' && $value === '') {
                     continue;
+                }
+
+                if ($settingKey === 'mailpulse_api_key') {
+                    $apiKeyReceived = true;
                 }
 
                 Setting::updateOrCreate(
@@ -1070,10 +1075,19 @@ class ESBTPSettingsController extends Controller
 
             DB::commit();
 
+            Setting::clearCache();
+            $apiKeyState = $this->mailPulseApiKeyState();
+
             return response()->json([
                 'success' => true,
-                'message' => 'Paramètres MailPulse enregistrés.',
+                'message' => $apiKeyState['configured']
+                    ? 'Paramètres MailPulse enregistrés. Clé API active.'
+                    : "Paramètres MailPulse enregistrés, mais aucune clé API active n'est stockée.",
                 'updated_count' => count(array_unique($updatedSettings)),
+                'updated_keys' => array_values(array_unique($updatedSettings)),
+                'api_key_received' => $apiKeyReceived,
+                'api_key_configured' => $apiKeyState['configured'],
+                'api_key_source' => $apiKeyState['source'],
             ]);
         } catch (\Throwable $e) {
             DB::rollBack();
@@ -1088,6 +1102,33 @@ class ESBTPSettingsController extends Controller
                 'message' => "Erreur pendant l'enregistrement MailPulse.",
             ], 500);
         }
+    }
+
+    private function mailPulseApiKeyState(): array
+    {
+        $value = Setting::where('key', 'mailpulse_api_key')
+            ->where('is_active', true)
+            ->value('value');
+
+        if (is_string($value) && trim($value) !== '') {
+            return [
+                'configured' => true,
+                'source' => 'settings',
+            ];
+        }
+
+        $configValue = config('services.mailpulse.api_key', '');
+        if (is_string($configValue) && trim($configValue) !== '') {
+            return [
+                'configured' => true,
+                'source' => 'env',
+            ];
+        }
+
+        return [
+            'configured' => false,
+            'source' => 'none',
+        ];
     }
 
     private function mailPulseRecipientValidationError(?string $json, string $type): ?string

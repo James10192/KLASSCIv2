@@ -30,6 +30,9 @@ class MailPulseTestNotificationService
         $primaryPhone = $phones[0] ?? null;
         $shouldEmail = $channel === 'email' || $channel === 'both';
         $shouldWhatsApp = $channel === 'whatsapp' || $channel === 'both';
+        $config = [
+            'api_key' => $this->client->apiKeyDiagnostics(),
+        ];
 
         if ($shouldEmail && $emails === []) {
             throw ValidationException::withMessages([
@@ -60,6 +63,7 @@ class MailPulseTestNotificationService
                 'dryRun' => $dryRun,
                 'contactId' => null,
                 'contact' => $contact->toArray(),
+                'config' => $config,
                 'email' => array_merge(
                     ['attempted' => $shouldEmail],
                     MailPulseResult::skipped('skipped_contact_failed', 'Envoi ignoré car la mise à jour du contact MailPulse a échoué.')->toArray()
@@ -89,6 +93,7 @@ class MailPulseTestNotificationService
             'dryRun' => $dryRun,
             'contactId' => $contactId,
             'contact' => $contact->toArray(),
+            'config' => $config,
             'email' => array_merge(
                 ['attempted' => $shouldEmail],
                 $emailResult->toArray(),

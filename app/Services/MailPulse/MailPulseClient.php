@@ -86,6 +86,36 @@ class MailPulseClient
         return $this->setting($settingKey, $configKey, $default);
     }
 
+    public function apiKeyDiagnostics(): array
+    {
+        try {
+            $settingValue = Setting::where('key', 'mailpulse_api_key')
+                ->where('is_active', true)
+                ->value('value');
+            if (is_string($settingValue) && trim($settingValue) !== '') {
+                return [
+                    'configured' => true,
+                    'source' => 'settings',
+                ];
+            }
+        } catch (\Throwable $e) {
+            // Keep diagnostics non-blocking.
+        }
+
+        $configValue = config('services.mailpulse.api_key', '');
+        if (is_string($configValue) && trim($configValue) !== '') {
+            return [
+                'configured' => true,
+                'source' => 'env',
+            ];
+        }
+
+        return [
+            'configured' => false,
+            'source' => 'none',
+        ];
+    }
+
     private function enabled(): bool
     {
         $value = $this->setting('mailpulse_enabled', 'enabled', '1');
@@ -98,7 +128,7 @@ class MailPulseClient
         try {
             $value = Setting::get($settingKey, null);
             if ($value !== null && $value !== '') {
-                return (string) $value;
+                return is_string($value) ? trim($value) : (string) $value;
             }
         } catch (\Throwable $e) {
             // Settings DB may be unavailable during early bootstrap or tests.
@@ -106,7 +136,11 @@ class MailPulseClient
 
         $configValue = config('services.mailpulse.' . $configKey, $default);
 
-        return is_bool($configValue) ? ($configValue ? '1' : '0') : (string) $configValue;
+        if (is_bool($configValue)) {
+            return $configValue ? '1' : '0';
+        }
+
+        return is_string($configValue) ? trim($configValue) : (string) $configValue;
     }
 
     private function url(string $endpoint): string
