@@ -3782,6 +3782,11 @@ document.addEventListener('DOMContentLoaded', () => {
             formData.set(field.name, field.value ?? '');
         });
 
+        const apiKeyInput = document.querySelector('[name="setting_mailpulse_api_key"]');
+        if (apiKeyInput && !apiKeyInput.disabled) {
+            formData.set('setting_mailpulse_api_key', apiKeyInput.value ?? '');
+        }
+
         return formData;
     };
 
@@ -3814,6 +3819,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!response.ok || payload.success === false) {
             throw new Error(payload.message || 'Enregistrement MailPulse impossible.');
+        }
+
+        const submittedApiKey = String(formData.get('setting_mailpulse_api_key') || '').trim();
+        if (submittedApiKey !== '' && payload.api_key_received === false) {
+            throw new Error("La clé API saisie n'a pas été reçue par le serveur. Rechargez la page puis réessayez.");
         }
 
         return payload;

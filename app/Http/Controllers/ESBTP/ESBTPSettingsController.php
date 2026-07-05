@@ -1034,6 +1034,7 @@ class ESBTPSettingsController extends Controller
 
             $updatedSettings = [];
             $apiKeyReceived = false;
+            $apiKeyReceivedLength = 0;
             foreach ($mailPulseKeys as $settingKey) {
                 $requestKey = 'setting_' . $settingKey;
                 if (! $request->has($requestKey)) {
@@ -1051,6 +1052,7 @@ class ESBTPSettingsController extends Controller
 
                 if ($settingKey === 'mailpulse_api_key') {
                     $apiKeyReceived = true;
+                    $apiKeyReceivedLength = strlen((string) $value);
                 }
 
                 Setting::updateOrCreate(
@@ -1077,6 +1079,24 @@ class ESBTPSettingsController extends Controller
 
             Setting::clearCache();
             $apiKeyState = $this->mailPulseApiKeyState();
+            if ($apiKeyReceived && ! $apiKeyState['configured']) {
+                Log::error('MailPulse API key received but not persisted', [
+                    'user_id' => auth()->id(),
+                    'received_length' => $apiKeyReceivedLength,
+                    'updated_keys' => array_values(array_unique($updatedSettings)),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => "La clé API a été reçue, mais elle n'est pas persistée côté serveur. Relancez après cache clear, sinon vérifiez la table settings.",
+                    'updated_count' => count(array_unique($updatedSettings)),
+                    'updated_keys' => array_values(array_unique($updatedSettings)),
+                    'api_key_received' => true,
+                    'api_key_received_length' => $apiKeyReceivedLength,
+                    'api_key_configured' => false,
+                    'api_key_source' => $apiKeyState['source'],
+                ], 500);
+            }
 
             return response()->json([
                 'success' => true,
@@ -1086,6 +1106,7 @@ class ESBTPSettingsController extends Controller
                 'updated_count' => count(array_unique($updatedSettings)),
                 'updated_keys' => array_values(array_unique($updatedSettings)),
                 'api_key_received' => $apiKeyReceived,
+                'api_key_received_length' => $apiKeyReceivedLength,
                 'api_key_configured' => $apiKeyState['configured'],
                 'api_key_source' => $apiKeyState['source'],
             ]);
