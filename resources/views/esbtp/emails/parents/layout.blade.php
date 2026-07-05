@@ -1,3 +1,14 @@
+@php
+    $emailPrimaryColor = $emailPrimaryColor ?? \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb');
+    $emailHeaderBgColor = $emailHeaderBgColor ?? \App\Helpers\SettingsHelper::get('pdf_header_bg_color', $emailPrimaryColor);
+    $emailHeaderTextColor = $emailHeaderTextColor ?? \App\Helpers\SettingsHelper::get('pdf_header_text_color', '#ffffff');
+    $emailSecondaryColor = $emailSecondaryColor ?? \App\Helpers\SettingsHelper::get('pdf_secondary_color', '#64748b');
+    $safeEmailColor = fn ($value, $fallback) => preg_match('/^#[0-9A-Fa-f]{6}$/', (string) $value) ? (string) $value : $fallback;
+    $emailPrimaryColor = $safeEmailColor($emailPrimaryColor, '#0453cb');
+    $emailHeaderBgColor = $safeEmailColor($emailHeaderBgColor, $emailPrimaryColor);
+    $emailHeaderTextColor = $safeEmailColor($emailHeaderTextColor, '#ffffff');
+    $emailSecondaryColor = $safeEmailColor($emailSecondaryColor, '#64748b');
+@endphp
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -24,10 +35,10 @@
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
         }
 
-        /* Header bleu moderne inspiré du PDF */
+        /* Header moderne inspiré du PDF */
         .email-header {
-            background: #007bff;
-            color: #ffffff;
+            background: {{ $emailHeaderBgColor }};
+            color: {{ $emailHeaderTextColor }};
             padding: 30px 25px;
             text-align: center;
         }
@@ -82,7 +93,7 @@
 
         .message-intro {
             background: #ffffff;
-            border-left: 4px solid #007bff;
+            border-left: 4px solid {{ $emailPrimaryColor }};
             padding: 15px 18px;
             margin: 25px 0;
             border-radius: 6px;
@@ -91,7 +102,7 @@
 
         .message-intro p {
             margin: 0;
-            color: #0056b3;
+            color: {{ $emailPrimaryColor }};
             font-weight: 500;
         }
 
@@ -130,7 +141,7 @@
         .kpi-title {
             font-size: 11px;
             font-weight: 600;
-            color: #6c757d;
+            color: {{ $emailSecondaryColor }};
             text-transform: uppercase;
             letter-spacing: 0.5px;
             margin-bottom: 8px;
@@ -139,7 +150,7 @@
         .kpi-value {
             font-size: 26px;
             font-weight: 700;
-            color: #007bff;
+            color: {{ $emailPrimaryColor }};
             margin-bottom: 4px;
         }
 
@@ -172,8 +183,8 @@
         }
 
         .info-table th {
-            background: #007bff;
-            color: #ffffff;
+            background: {{ $emailPrimaryColor }};
+            color: {{ $emailHeaderTextColor }};
             font-weight: 600;
             font-size: 13px;
             text-transform: uppercase;
@@ -227,20 +238,20 @@
             display: inline-block;
             padding: 14px 35px;
             background: #ffffff;
-            color: #007bff;
+            color: {{ $emailPrimaryColor }};
             text-decoration: none;
             border-radius: 8px;
             font-weight: 600;
             font-size: 15px;
-            border: 2px solid #007bff;
+            border: 2px solid {{ $emailPrimaryColor }};
             transition: all 0.3s ease;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .button:hover {
-            background: #007bff;
-            color: #ffffff;
-            box-shadow: 0 6px 8px rgba(0, 123, 255, 0.3);
+            background: {{ $emailPrimaryColor }};
+            color: {{ $emailHeaderTextColor }};
+            box-shadow: 0 6px 8px rgba(4, 83, 203, 0.3);
         }
 
         /* Alert boxes */
@@ -286,7 +297,7 @@
         }
 
         .instruction-box h3 {
-            color: #007bff;
+            color: {{ $emailPrimaryColor }};
             margin-top: 0;
             margin-bottom: 15px;
             font-size: 16px;
@@ -308,15 +319,15 @@
             background: #f8f9fa;
             padding: 25px 30px;
             text-align: center;
-            color: #6c757d;
+            color: {{ $emailSecondaryColor }};
             font-size: 12px;
-            border-top: 3px solid #007bff;
+            border-top: 3px solid {{ $emailPrimaryColor }};
         }
 
         .footer-brand {
             font-size: 16px;
             font-weight: 700;
-            color: #007bff;
+            color: {{ $emailPrimaryColor }};
             margin-bottom: 10px;
         }
 
@@ -326,7 +337,7 @@
         }
 
         .footer-contact a {
-            color: #007bff;
+            color: {{ $emailPrimaryColor }};
             text-decoration: none;
         }
 
@@ -385,15 +396,9 @@
 </head>
 <body>
     <div class="email-container">
-        <!-- Header bleu moderne -->
         <div class="email-header">
-            <!-- DEBUG: schoolLogoPath = {{ $schoolLogoPath ?? 'NOT SET' }} -->
-            <!-- DEBUG: message exists = {{ isset($message) ? 'YES' : 'NO' }} -->
             @if(isset($schoolLogoPath) && $schoolLogoPath)
-                <!-- DEBUG: Attempting to embed logo -->
                 <img src="{{ $message->embed($schoolLogoPath) }}" alt="Logo {{ $schoolName ?? 'KLASSCI' }}" class="logo">
-            @else
-                <!-- DEBUG: Logo not embedded - schoolLogoPath not set -->
             @endif
             <h1 class="school-name">{{ $schoolName ?? 'KLASSCI' }}</h1>
             @if($schoolAddress ?? false)

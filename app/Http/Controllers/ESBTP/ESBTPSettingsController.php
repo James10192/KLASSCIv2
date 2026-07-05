@@ -1048,10 +1048,18 @@ class ESBTPSettingsController extends Controller
                     continue;
                 }
 
-                Setting::where('key', $settingKey)->update([
-                    'value' => (string) $value,
-                    'updated_by' => auth()->id(),
-                ]);
+                Setting::updateOrCreate(
+                    ['key' => $settingKey],
+                    [
+                        'value' => (string) $value,
+                        'type' => $this->mailPulseSettingType($settingKey),
+                        'group' => 'mailpulse',
+                        'category' => 'mailpulse',
+                        'description' => $this->mailPulseSettingDescription($settingKey),
+                        'is_active' => true,
+                        'updated_by' => auth()->id(),
+                    ]
+                );
                 $updatedSettings[] = $settingKey;
             }
 
@@ -1113,6 +1121,42 @@ class ESBTPSettingsController extends Controller
         }
 
         return null;
+    }
+
+    private function mailPulseSettingType(string $settingKey): string
+    {
+        return match ($settingKey) {
+            'mailpulse_enabled',
+            'mailpulse_test_email_enabled',
+            'mailpulse_test_whatsapp_enabled',
+            'mailpulse_real_workflows_enabled' => 'boolean',
+            'mailpulse_timeout' => 'integer',
+            default => 'string',
+        };
+    }
+
+    private function mailPulseSettingDescription(string $settingKey): string
+    {
+        return match ($settingKey) {
+            'mailpulse_enabled' => 'Activer les envois MailPulse pour ce tenant',
+            'mailpulse_base_url' => 'URL de base MailPulse',
+            'mailpulse_api_key' => 'Clé API MailPulse',
+            'mailpulse_contacts_endpoint' => 'Endpoint MailPulse contacts',
+            'mailpulse_messages_endpoint' => 'Endpoint MailPulse messages',
+            'mailpulse_sender_email' => 'Email expéditeur MailPulse',
+            'mailpulse_sender_name' => 'Nom expéditeur MailPulse',
+            'mailpulse_default_language' => 'Langue par défaut MailPulse',
+            'mailpulse_timeout' => 'Timeout MailPulse en secondes',
+            'mailpulse_test_email' => 'Email de test MailPulse',
+            'mailpulse_test_phone' => 'Téléphone de test MailPulse',
+            'mailpulse_test_phones' => 'Téléphones de test MailPulse',
+            'mailpulse_test_email_recipients' => 'Emails de test MailPulse avec activation',
+            'mailpulse_test_phone_recipients' => 'Téléphones de test MailPulse avec activation',
+            'mailpulse_test_email_enabled' => 'Activer les tests email MailPulse',
+            'mailpulse_test_whatsapp_enabled' => 'Activer les tests WhatsApp MailPulse',
+            'mailpulse_real_workflows_enabled' => 'Activer MailPulse sur les workflows parents réels',
+            default => $settingKey,
+        };
     }
 
     private function syncMailPulseLegacyRecipients(Request $request, array &$updatedSettings): void

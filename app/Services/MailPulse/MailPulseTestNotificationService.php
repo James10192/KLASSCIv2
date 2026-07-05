@@ -400,6 +400,10 @@ class MailPulseTestNotificationService
             'schoolPhone' => $school['phone'],
             'schoolEmail' => $school['email'],
             'schoolLogoPath' => $school['logo'],
+            'emailPrimaryColor' => SettingsHelper::get('pdf_primary_color', '#0453cb'),
+            'emailHeaderBgColor' => SettingsHelper::get('pdf_header_bg_color', SettingsHelper::get('pdf_primary_color', '#0453cb')),
+            'emailHeaderTextColor' => SettingsHelper::get('pdf_header_text_color', '#ffffff'),
+            'emailSecondaryColor' => SettingsHelper::get('pdf_secondary_color', '#64748b'),
             'message' => new class {
                 public function embed(string $path): string
                 {

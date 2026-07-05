@@ -14,7 +14,7 @@
         Le paiement de {{ $studentName }} a été validé par l'administration.
     </div>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Détails du paiement</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Détails du paiement</h3>
 
     <table class="info-table">
         <tr>
@@ -51,7 +51,7 @@
         </tr>
     </table>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Situation financière</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Situation financière</h3>
 
     <div class="kpi-section">
         <div class="kpi-row">

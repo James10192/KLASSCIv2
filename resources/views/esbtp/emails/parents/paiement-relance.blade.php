@@ -14,7 +14,7 @@
         Ce message vous rappelle qu'un montant reste dû pour les frais de scolarité de {{ $studentName }}.
     </div>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Situation financière</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Situation financière</h3>
 
     <table class="info-table">
         <tr>
@@ -73,7 +73,7 @@
     </p>
     @endif
 
-    <h3 style="color: #007bff; margin-top: 30px;">Effectuer un paiement</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Effectuer un paiement</h3>
 
     <p class="message">
         Vous pouvez effectuer votre paiement directement via la plateforme en ligne ou vous rendre à l'administration de l'établissement.
@@ -84,7 +84,7 @@
     </div>
 
     @if(isset($modesPaiement) && count($modesPaiement) > 0)
-    <h3 style="color: #007bff; margin-top: 30px;">Modes de paiement acceptés</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Modes de paiement acceptés</h3>
 
     <ul style="color: #6c757d;">
         @foreach($modesPaiement as $mode)

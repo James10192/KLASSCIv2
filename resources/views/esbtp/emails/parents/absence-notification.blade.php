@@ -14,7 +14,7 @@
         Votre enfant {{ $studentName }} a été marqué(e) absent(e) en cours.
     </div>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Détails de l'absence</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Détails de l'absence</h3>
 
     <table class="info-table">
         <tr>
@@ -49,7 +49,7 @@
         @endif
     </table>
 
-    <h3 style="color: #007bff; margin-top: 30px;">Statistiques des absences ({{ $periodeStats }})</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Statistiques des absences ({{ $periodeStats }})</h3>
 
     <div class="kpi-section">
         <div class="kpi-row">
@@ -95,7 +95,7 @@
     </div>
     @endif
 
-    <h3 style="color: #007bff; margin-top: 30px;">Justifier cette absence</h3>
+    <h3 style="color: {{ $emailPrimaryColor }}; margin-top: 30px;">Justifier cette absence</h3>
 
     <p class="message">
         Si cette absence est justifiée (maladie, raison familiale, etc.), vous pouvez soumettre un justificatif via la plateforme.

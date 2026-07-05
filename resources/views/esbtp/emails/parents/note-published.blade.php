@@ -54,7 +54,7 @@
     @endif
 
     @if(isset($appreciation) && $appreciation)
-    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid #007bff; margin: 20px 0;">
+    <div style="background: #f8f9fa; padding: 15px; border-radius: 5px; border-left: 4px solid {{ $emailPrimaryColor }}; margin: 20px 0;">
         <h4 style="margin-top: 0; color: #333;">Appréciation</h4>
         <p style="margin-bottom: 0; color: #6c757d;">{{ $appreciation }}</p>
     </div>
