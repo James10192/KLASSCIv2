@@ -2457,8 +2457,9 @@
                                        autocapitalize="off"
                                        spellcheck="false"
                                        inputmode="text"
-                                       pattern="^mp_(live|test)_[A-Za-z0-9]+$"
-                                       maxlength="255"
+                                       pattern="^mp_(live|test)_[A-Za-z0-9_-]+$"
+                                       maxlength="500"
+                                       title="La clé doit commencer par mp_live_ ou mp_test_. Les caractères autorisés sont lettres, chiffres, tiret et underscore."
                                        placeholder="mp_live_... ou mp_test_...">
                                 <small class="text-muted">Laissez vide pour conserver la clé actuelle.</small>
                             </div>
