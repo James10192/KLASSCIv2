@@ -934,7 +934,7 @@ class ESBTPSettingsController extends Controller
     public function testMailPulseNotification(Request $request, MailPulseTestNotificationService $service): JsonResponse
     {
         $payload = $request->validate([
-            'event' => ['required', 'string', 'in:payment_received,absence_reported,grade_published,fee_reminder'],
+            'event' => ['required', 'string', 'in:payment_received,payment_submitted,payment_rejected,absence_reported,grade_published,fee_reminder,registration_confirmed,re_registration_confirmed,bulletin_published,low_grades_alert,low_attendance_alert'],
             'channel' => ['required', 'string', 'in:email,whatsapp,both'],
             'dryRun' => ['sometimes', 'boolean'],
         ]);

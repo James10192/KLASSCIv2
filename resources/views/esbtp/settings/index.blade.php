@@ -2697,9 +2697,16 @@
                                     </label>
                                     <select class="form-control form-control-modern" data-mailpulse-test-event>
                                         <option value="payment_received">Paiement re&ccedil;u</option>
+                                        <option value="payment_submitted">Paiement en attente</option>
+                                        <option value="payment_rejected">Paiement rejet&eacute;</option>
                                         <option value="absence_reported">Absence signal&eacute;e</option>
                                         <option value="grade_published">Note publi&eacute;e</option>
                                         <option value="fee_reminder">Rappel de frais</option>
+                                        <option value="registration_confirmed">Inscription confirm&eacute;e</option>
+                                        <option value="re_registration_confirmed">R&eacute;inscription confirm&eacute;e</option>
+                                        <option value="bulletin_published">Bulletin disponible</option>
+                                        <option value="low_grades_alert">Alerte notes faibles</option>
+                                        <option value="low_attendance_alert">Alerte pr&eacute;sence faible</option>
                                     </select>
                                 </div>
 
