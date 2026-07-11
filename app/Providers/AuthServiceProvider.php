@@ -2,6 +2,9 @@
 
 namespace App\Providers;
 
+use App\Domain\AcademicPilotage\Models\AcademicActorAssignment;
+use App\Domain\AcademicPilotage\Models\GradeSheet;
+use App\Domain\AcademicPilotage\Models\GradeSheetDocument;
 use App\Models\ESBTPAttendance;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPInscription;
@@ -10,12 +13,15 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPSeanceCours;
 use App\Policies\AbsenceJustificationPolicy;
+use App\Policies\AcademicActorAssignmentPolicy;
 use App\Policies\ESBTPBulletinPolicy;
 use App\Policies\ESBTPInscriptionPolicy;
 use App\Policies\ESBTPMatierePolicy;
 use App\Policies\ESBTPNotePolicy;
 use App\Policies\ESBTPPaiementPolicy;
 use App\Policies\ESBTPSeanceCoursPolicy;
+use App\Policies\GradeSheetDocumentPolicy;
+use App\Policies\GradeSheetPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -33,6 +39,9 @@ class AuthServiceProvider extends ServiceProvider
         ESBTPNote::class => ESBTPNotePolicy::class,
         ESBTPInscription::class => ESBTPInscriptionPolicy::class,
         ESBTPBulletin::class => ESBTPBulletinPolicy::class,
+        GradeSheet::class => GradeSheetPolicy::class,
+        GradeSheetDocument::class => GradeSheetDocumentPolicy::class,
+        AcademicActorAssignment::class => AcademicActorAssignmentPolicy::class,
     ];
 
     /**
