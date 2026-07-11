@@ -593,6 +593,103 @@ return [
             'aliases' => ['view_own_exams'],
         ],
 
+        // ===== Pilotage académique =====
+        'academic_pilotage.view' => [
+            'label' => 'Voir le pilotage académique',
+            'group' => 'Pilotage académique',
+            'icon' => 'fa-chart-line',
+        ],
+        'academic_pilotage.view_all' => [
+            'label' => 'Voir le pilotage académique de toutes les filières',
+            'group' => 'Pilotage académique',
+            'icon' => 'fa-layer-group',
+        ],
+        'academic_pilotage.configure' => [
+            'label' => 'Configurer le pilotage académique',
+            'group' => 'Pilotage académique',
+            'icon' => 'fa-sliders-h',
+        ],
+        'academic_sheets.view' => [
+            'label' => 'Voir toutes les fiches académiques',
+            'group' => 'Fiches académiques',
+            'icon' => 'fa-clipboard-list',
+        ],
+        'academic_sheets.view_own' => [
+            'label' => 'Voir les fiches académiques de son périmètre',
+            'group' => 'Fiches académiques',
+            'icon' => 'fa-clipboard',
+        ],
+        'academic_sheets.create' => [
+            'label' => 'Créer une fiche académique',
+            'group' => 'Fiches académiques',
+            'icon' => 'fa-plus',
+        ],
+        'academic_sheets.submit' => [
+            'label' => 'Soumettre une fiche académique',
+            'group' => 'Fiches académiques',
+            'icon' => 'fa-paper-plane',
+        ],
+        'academic_sheets.receive' => [
+            'label' => 'Réceptionner une fiche académique',
+            'group' => 'Fiches académiques',
+            'icon' => 'fa-inbox',
+        ],
+        'academic_sheets.enter' => [
+            'label' => 'Saisir les notes d\'une fiche académique',
+            'group' => 'Fiches académiques',
+            'icon' => 'fa-keyboard',
+        ],
+        'academic_sheets.control' => [
+            'label' => 'Contrôler une fiche académique',
+            'group' => 'Fiches académiques',
+            'icon' => 'fa-clipboard-check',
+        ],
+        'academic_sheets.validate' => [
+            'label' => 'Valider une fiche académique',
+            'group' => 'Fiches académiques',
+            'icon' => 'fa-check-double',
+        ],
+        'academic_sheets.assign' => [
+            'label' => 'Affecter une fiche académique',
+            'group' => 'Fiches académiques',
+            'icon' => 'fa-user-check',
+        ],
+        'academic_alerts.view' => [
+            'label' => 'Voir les alertes académiques',
+            'group' => 'Alertes académiques',
+            'icon' => 'fa-bell',
+        ],
+        'academic_alerts.view_own' => [
+            'label' => 'Voir les alertes académiques de son périmètre',
+            'group' => 'Alertes académiques',
+            'icon' => 'fa-bell',
+        ],
+        'academic_alerts.acknowledge' => [
+            'label' => 'Prendre en charge une alerte académique',
+            'group' => 'Alertes académiques',
+            'icon' => 'fa-eye',
+        ],
+        'academic_alerts.resolve' => [
+            'label' => 'Résoudre une alerte académique',
+            'group' => 'Alertes académiques',
+            'icon' => 'fa-check-circle',
+        ],
+        'academic_health.view' => [
+            'label' => 'Voir les indicateurs de santé académique',
+            'group' => 'Santé académique',
+            'icon' => 'fa-heartbeat',
+        ],
+        'academic_health.view_own' => [
+            'label' => 'Voir la santé académique de son périmètre',
+            'group' => 'Santé académique',
+            'icon' => 'fa-heartbeat',
+        ],
+        'academic_health.recalculate' => [
+            'label' => 'Recalculer les indicateurs de santé académique',
+            'group' => 'Santé académique',
+            'icon' => 'fa-sync-alt',
+        ],
+
         // ===== Bulletins =====
         'bulletins.view' => [
             'label' => 'Voir les bulletins',
@@ -617,6 +714,11 @@ return [
             'group' => 'Bulletins',
             'icon' => 'fa-cogs',
             'aliases' => ['generate_bulletins', 'generate_bulletin'],
+        ],
+        'bulletins.generate_incomplete' => [
+            'label' => 'Générer un bulletin avec des notes incomplètes',
+            'group' => 'Bulletins',
+            'icon' => 'fa-exclamation-triangle',
         ],
         'bulletins.edit' => [
             'label' => 'Modifier un bulletin',
@@ -1416,6 +1518,11 @@ return [
             'group' => 'Modules',
             'icon' => 'fa-graduation-cap',
         ],
+        'module.academic_pilotage.access' => [
+            'label' => 'Module : Pilotage académique',
+            'group' => 'Modules',
+            'icon' => 'fa-chart-line',
+        ],
         'module.etudiants.access' => [
             'label' => 'Module : Étudiants & Inscriptions',
             'group' => 'Modules',
@@ -1638,6 +1745,14 @@ return [
             'exports.schedules.manage', 'exports.schedules.send_external',  // Phase 8 — exports programmés
             'users.manage',
             'identity.school_manager',
+            'module.academic_pilotage.access',
+            'academic_pilotage.view', 'academic_pilotage.view_all',
+            'academic_sheets.view', 'academic_sheets.create',
+            'academic_sheets.submit', 'academic_sheets.receive',
+            'academic_sheets.enter', 'academic_sheets.control', 'academic_sheets.validate',
+            'academic_sheets.assign',
+            'academic_alerts.view', 'academic_alerts.acknowledge', 'academic_alerts.resolve',
+            'academic_health.view', 'academic_health.recalculate',
             // Modules toggle
             'module.academique.access', 'module.etudiants.access', 'module.enseignants.access',
             'module.notes_evaluations.access', 'module.emploi_temps.access', 'module.presences.access',
@@ -1734,6 +1849,14 @@ return [
             'resultats.view', 'resultats.edit',
             'users.manage',
             'identity.coordinate',
+            'module.academic_pilotage.access',
+            'academic_pilotage.view', 'academic_pilotage.view_all',
+            'academic_sheets.view', 'academic_sheets.create',
+            'academic_sheets.submit', 'academic_sheets.receive',
+            'academic_sheets.enter', 'academic_sheets.control', 'academic_sheets.validate',
+            'academic_sheets.assign',
+            'academic_alerts.view', 'academic_alerts.acknowledge', 'academic_alerts.resolve',
+            'academic_health.view', 'academic_health.recalculate',
             'module.academique.access', 'module.etudiants.access', 'module.enseignants.access',
             'module.notes_evaluations.access', 'module.emploi_temps.access', 'module.presences.access',
             'module.lmd.access', 'module.communication.access',
@@ -1756,6 +1879,10 @@ return [
             'messages.send', 'messages.receive', 'annonces.view',
             'performance.view',
             'identity.teach',
+            'module.academic_pilotage.access', 'academic_pilotage.view',
+            'academic_sheets.view_own', 'academic_sheets.create',
+            'academic_sheets.submit', 'academic_sheets.enter',
+            'academic_alerts.view_own', 'academic_health.view_own',
             'module.notes_evaluations.access', 'module.presences.access', 'module.communication.access',
             // TPE — workflow validation (dormant tant que tpe.validation.enabled = false)
             'tpe.validate',
