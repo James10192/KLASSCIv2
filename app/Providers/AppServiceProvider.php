@@ -3,6 +3,7 @@
 namespace App\Providers;
 
 use App\Models\ESBTPNote;
+use App\Observers\ESBTPNoteAcademicPilotageObserver;
 use App\Observers\ESBTPNoteObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Schema;
@@ -58,6 +59,7 @@ class AppServiceProvider extends ServiceProvider
 
         // Observers
         ESBTPNote::observe(ESBTPNoteObserver::class);
+        ESBTPNote::observe(ESBTPNoteAcademicPilotageObserver::class);
 
         // Use Bootstrap for pagination
         Paginator::useBootstrap();

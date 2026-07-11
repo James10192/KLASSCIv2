@@ -36,6 +36,22 @@ enum GradeSheetStatus: string
         return in_array($this, [self::VALIDATED, self::REJECTED, self::CANCELLED], true);
     }
 
+    public function allowsEntrySynchronization(): bool
+    {
+        return in_array($this, [
+            self::EXPECTED,
+            self::SUBMITTED,
+            self::RECEIVED,
+            self::IN_ENTRY,
+            self::CORRECTION_REQUESTED,
+        ], true);
+    }
+
+    public function allowsDocumentUpload(): bool
+    {
+        return $this->allowsEntrySynchronization();
+    }
+
     /** @return array<int, string> */
     public static function values(): array
     {

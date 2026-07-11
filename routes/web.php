@@ -2958,3 +2958,5 @@ Route::middleware(['auth', 'permission:module.tpe.access'])->group(function () {
             ->name('esbtp.tpe-validation.reject');
     });
 });
+
+require __DIR__.'/academic-pilotage.php';
