@@ -14,6 +14,26 @@ use Tests\TestCase;
 
 class AcademicPilotageRoutesTest extends TestCase
 {
+    public function test_pilotage_workspace_routes_are_registered_with_permissions(): void
+    {
+        $routes = [
+            'esbtp.pilotage-academique.index' => 'permission:academic_pilotage.view',
+            'esbtp.pilotage-academique.data' => 'permission:academic_pilotage.view',
+            'esbtp.pilotage-academique.classes.show' => 'permission:academic_health.view',
+            'esbtp.pilotage-academique.etudiants.show' => 'permission:academic_health.view',
+        ];
+
+        foreach ($routes as $name => $permission) {
+            $route = Route::getRoutes()->getByName($name);
+
+            $this->assertNotNull($route, "Missing route {$name}");
+            $middleware = $route->gatherMiddleware();
+            $this->assertContains('auth', $middleware);
+            $this->assertContains('permission:module.academic_pilotage.access', $middleware);
+            $this->assertContains($permission, $middleware);
+        }
+    }
+
     public function test_grade_sheet_routes_are_protected_and_throttled(): void
     {
         $names = [
