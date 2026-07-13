@@ -4,6 +4,7 @@ namespace Tests\Unit\Domain\AcademicPilotage;
 
 use App\Domain\AcademicPilotage\Enums\AcademicAlertSeverity;
 use App\Domain\AcademicPilotage\Enums\AcademicAlertStatus;
+use App\Domain\AcademicPilotage\Enums\AcademicAlertType;
 use PHPUnit\Framework\TestCase;
 
 class AcademicAlertEnumsTest extends TestCase
@@ -54,6 +55,24 @@ class AcademicAlertEnumsTest extends TestCase
         foreach (AcademicAlertSeverity::cases() as $severity) {
             $this->assertSame($labels[$severity->value], $severity->label());
         }
+    }
+
+    public function test_alert_types_cover_academic_pilotage_detection_cases(): void
+    {
+        $this->assertSame([
+            'assessment_not_configured',
+            'assessment_not_created',
+            'missing_grade',
+            'grade_sheet_not_submitted',
+            'grade_sheet_not_entered',
+            'class_delayed',
+            'student_no_average',
+            'student_high_absence',
+            'bulletin_blocked',
+            'teacher_late',
+            'educator_overloaded',
+            'data_inconsistency',
+        ], AcademicAlertType::values());
     }
 
     public function test_labels_do_not_contain_encoding_artifacts(): void

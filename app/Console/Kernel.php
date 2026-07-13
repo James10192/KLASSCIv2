@@ -214,6 +214,13 @@ class Kernel extends ConsoleKernel
             ->onOneServer()
             ->name('academic-pilotage-refresh-snapshots')
             ->description('Rafraichit les snapshots academiques invalides');
+
+        $schedule->command('academic-pilotage:refresh-alerts --chunk-size=100')
+            ->everyFifteenMinutes()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->name('academic-pilotage-refresh-alerts')
+            ->description('Rafraichit les alertes academiques idempotentes');
     }
 
     /**

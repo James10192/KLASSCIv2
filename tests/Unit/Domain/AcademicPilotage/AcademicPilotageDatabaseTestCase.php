@@ -245,6 +245,48 @@ abstract class AcademicPilotageDatabaseTestCase extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('esbtp_academic_alerts', function (Blueprint $table): void {
+            $table->id();
+            $table->string('fingerprint', 64)->unique();
+            $table->string('type', 64);
+            $table->string('severity', 20)->default('warning');
+            $table->string('status', 24)->default('open');
+            $table->unsignedBigInteger('annee_universitaire_id')->nullable();
+            $table->string('semester', 20)->nullable();
+            $table->unsignedBigInteger('classe_id')->nullable();
+            $table->unsignedBigInteger('etudiant_id')->nullable();
+            $table->unsignedBigInteger('matiere_id')->nullable();
+            $table->unsignedBigInteger('teacher_id')->nullable();
+            $table->unsignedBigInteger('assignee_id')->nullable();
+            $table->string('entity_type', 120)->nullable();
+            $table->unsignedBigInteger('entity_id')->nullable();
+            $table->text('message');
+            $table->text('recommended_action')->nullable();
+            $table->json('metadata')->nullable();
+            $table->string('source_version', 24)->default('1');
+            $table->dateTime('detected_at');
+            $table->dateTime('last_seen_at');
+            $table->dateTime('acknowledged_at')->nullable();
+            $table->unsignedBigInteger('acknowledged_by')->nullable();
+            $table->dateTime('resolved_at')->nullable();
+            $table->unsignedBigInteger('resolved_by')->nullable();
+            $table->dateTime('dismissed_at')->nullable();
+            $table->unsignedBigInteger('dismissed_by')->nullable();
+            $table->timestamps();
+        });
+
+        Schema::create('esbtp_academic_alert_events', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('academic_alert_id');
+            $table->string('event_type', 40);
+            $table->string('from_status', 24)->nullable();
+            $table->string('to_status', 24)->nullable();
+            $table->unsignedBigInteger('actor_id')->nullable();
+            $table->text('reason')->nullable();
+            $table->json('metadata')->nullable();
+            $table->dateTime('occurred_at');
+        });
+
         Schema::create('permissions', function (Blueprint $table): void {
             $table->id();
             $table->string('name');

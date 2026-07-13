@@ -32,6 +32,10 @@ final class AcademicPilotageException extends RuntimeException
 
     public const INVALID_DOCUMENT_CONTENT = 'academic_pilotage.invalid_document_content';
 
+    public const INCOMPLETE_BULLETIN = 'academic_pilotage.incomplete_bulletin';
+
+    public const INCOMPLETE_BULLETIN_REASON_REQUIRED = 'academic_pilotage.incomplete_bulletin_reason_required';
+
     public function __construct(
         public readonly string $errorCode,
         string $message,
@@ -156,6 +160,24 @@ final class AcademicPilotageException extends RuntimeException
             self::INVALID_DOCUMENT_CONTENT,
             'Le contenu du document ne correspond pas à un format autorisé.',
             [],
+        );
+    }
+
+    public static function incompleteBulletin(array $preparation): self
+    {
+        return new self(
+            self::INCOMPLETE_BULLETIN,
+            'La génération du bulletin est bloquée par des données académiques incomplètes.',
+            ['preparation' => $preparation],
+        );
+    }
+
+    public static function incompleteBulletinReasonRequired(array $preparation): self
+    {
+        return new self(
+            self::INCOMPLETE_BULLETIN_REASON_REQUIRED,
+            'Un motif est obligatoire pour générer un bulletin incomplet.',
+            ['preparation' => $preparation],
         );
     }
 

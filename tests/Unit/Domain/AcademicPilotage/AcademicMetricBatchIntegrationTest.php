@@ -9,6 +9,7 @@ use App\Domain\AcademicPilotage\Services\AcademicMetricSnapshotCohortProvider;
 use App\Domain\AcademicPilotage\Services\AcademicMetricsProviderResolver;
 use App\Domain\AcademicPilotage\Services\AcademicOperationalMetricsService;
 use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
+use App\Domain\AcademicPilotage\Services\AcademicSystemNormalizer;
 use App\Domain\AcademicPilotage\Services\AttendanceMetricService;
 use App\Domain\AcademicPilotage\Services\ClassAcademicHealthService;
 use App\Domain\AcademicPilotage\Services\GradeCompletionMetricService;
@@ -134,6 +135,26 @@ class AcademicMetricBatchIntegrationTest extends AcademicPilotageDatabaseTestCas
         $this->classService()->evaluate(10, 20, 'BTS', 'S1');
     }
 
+    public function test_missing_class_is_not_treated_as_legacy_bts(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage("n'existe pas");
+
+        $this->classService()->evaluate(999, 20, 'BTS', 'S1');
+    }
+
+    public function test_legacy_class_without_system_is_treated_as_bts(): void
+    {
+        $this->insertClass(10, null);
+        $this->insertActiveStudent(101);
+        $this->insertSnapshot(101);
+
+        $result = $this->classService()->evaluate(10, 20, 'BTS', 'S1');
+
+        $this->assertSame(1, $result->studentCount);
+        $this->assertSame(80.0, $result->score);
+    }
+
     public function test_class_coverage_excludes_partial_results_without_a_score(): void
     {
         $this->insertClass(10, 'BTS');
@@ -158,12 +179,13 @@ class AcademicMetricBatchIntegrationTest extends AcademicPilotageDatabaseTestCas
             new AcademicOperationalMetricsService($this->periods),
             $this->periods,
             new AcademicMetricSnapshotCohortProvider($this->periods),
+            new AcademicSystemNormalizer,
         );
     }
 
     private function insertClass(
         int $classId,
-        string $system,
+        ?string $system,
         ?int $filiereId = null,
         ?int $niveauId = null,
     ): void {
@@ -224,7 +246,7 @@ class AcademicMetricBatchIntegrationTest extends AcademicPilotageDatabaseTestCas
     {
         Schema::create('esbtp_classes', function (Blueprint $table): void {
             $table->id();
-            $table->string('systeme_academique');
+            $table->string('systeme_academique')->nullable();
             $table->unsignedBigInteger('filiere_id')->nullable();
             $table->unsignedBigInteger('niveau_etude_id')->nullable();
         });
