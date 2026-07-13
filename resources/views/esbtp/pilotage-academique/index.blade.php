@@ -134,14 +134,14 @@
             <div class="cpa-hero-kpi">
                 <div class="cpa-hero-kpi-icon"><i class="fas fa-chart-simple"></i></div>
                 <div>
-                    <div class="cpa-hero-kpi-value" x-text="scoreValue(data.summary?.academic_score)"></div>
+                    <div class="cpa-hero-kpi-value" x-text="percent(data.summary?.academic_score)"></div>
                     <div class="cpa-hero-kpi-label">Santé académique</div>
                 </div>
             </div>
             <div class="cpa-hero-kpi">
                 <div class="cpa-hero-kpi-icon"><i class="fas fa-clipboard-check"></i></div>
                 <div>
-                    <div class="cpa-hero-kpi-value" x-text="scoreValue(data.summary?.operational_score)"></div>
+                    <div class="cpa-hero-kpi-value" x-text="percent(data.summary?.operational_score)"></div>
                     <div class="cpa-hero-kpi-label">Préparation opérationnelle</div>
                 </div>
             </div>
@@ -565,7 +565,6 @@ document.addEventListener('alpine:init', () => {
             ];
         },
         percent(value) { return value === null || value === undefined || Number.isNaN(Number(value)) ? '—' : `${Number(value).toFixed(0)}%`; },
-        scoreValue(value) { return value === null || value === undefined ? '—' : `${Number(value).toFixed(0)}%`; },
         scoreLabel(value, label) { return value === null || value === undefined ? `${label} indisponible` : `${label} ${Number(value).toFixed(0)}%`; },
         freshnessLabel() {
             const f = this.data.freshness || {};
