@@ -1606,6 +1606,18 @@
                             </a>
                     </div>
 
+                    @can('module.academic_pilotage.access')
+                    @can('academic_pilotage.view')
+                        <div class="menu-category">Pilotage</div>
+                        <div class="menu-item">
+                            <a href="{{ route('esbtp.pilotage-academique.index') }}" class="menu-link {{ Request::routeIs('esbtp.pilotage-academique.*') ? 'active' : '' }}">
+                                <div class="menu-icon"><i class="fas fa-chart-line"></i></div>
+                                <div class="menu-text">Pilotage académique</div>
+                            </a>
+                        </div>
+                    @endcan
+                    @endcan
+
                     <!-- Academic Management Section — gates per-link via les nouvelles permissions registry -->
                     @can('module.academique.access')
                     @if(auth()->user()->canAny(['filieres.view', 'classes.view', 'niveaux.view', 'annees.view']))
