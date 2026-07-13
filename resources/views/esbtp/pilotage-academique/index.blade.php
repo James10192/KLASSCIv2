@@ -5,6 +5,7 @@
 @php
     $anneeOptions = $annees->mapWithKeys(fn ($annee) => [$annee->id => $annee->name ?? (string) $annee->annee_debut])->all();
     $classeOptions = $classes->mapWithKeys(fn ($classe) => [$classe->id => trim(($classe->code ? $classe->code.' · ' : '').$classe->name)])->all();
+    $initialSummary = $initialSummary ?? [];
 @endphp
 
 @push('styles')
@@ -67,10 +68,11 @@
         :anneeSelectionnee="$selectedYear"
         :annees="$annees"
         :stats="[
-            ['label' => 'Score académique', 'value' => '—', 'icon' => 'fa-chart-line', 'type' => 'seances'],
-            ['label' => 'Alertes ouvertes', 'value' => '—', 'icon' => 'fa-triangle-exclamation', 'type' => 'classes'],
-            ['label' => 'Fiches à suivre', 'value' => '—', 'icon' => 'fa-clipboard-list', 'type' => 'heures'],
-            ['label' => 'Blocages bulletin', 'value' => '—', 'icon' => 'fa-file-circle-exclamation', 'type' => 'matieres'],
+            'total_seances' => $initialSummary['sheets_pending'] ?? 0,
+            'total_heures' => $initialSummary['operational_score'] ?? 0,
+            'total_classes' => $classes->count(),
+            'total_matieres' => $initialSummary['open_alerts'] ?? 0,
+            'total_enseignants' => $initialSummary['blocking_alerts'] ?? 0,
         ]"
     />
 
