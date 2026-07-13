@@ -761,11 +761,8 @@
 
     /* ══════════════════════════════════════════════
        Width containment — prevent horizontal overflow
-       (nextadmin-main/content are flex: 1 with default min-width: auto,
-        which lets intrinsically wide children overflow the viewport)
+       Keep intrinsically wide timetable children inside the shared layout.
        ══════════════════════════════════════════════ */
-    .nextadmin-main,
-    .nextadmin-content { min-width: 0; }
     .nextadmin-content > * { max-width: 100%; }
 
     /* ══════════════════════════════════════════════
