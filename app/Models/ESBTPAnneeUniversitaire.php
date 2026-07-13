@@ -90,8 +90,9 @@ class ESBTPAnneeUniversitaire extends Model
 
     public function getDisplayNameAttribute(): string
     {
-        if (filled($this->name)) {
-            return $this->name;
+        $name = trim((string) $this->name);
+        if ($name !== '' && $name !== '-') {
+            return $name;
         }
 
         $startYear = $this->normalizeYearPart($this->getRawOriginal('annee_debut'))
@@ -117,7 +118,7 @@ class ESBTPAnneeUniversitaire extends Model
         }
 
         $text = trim((string) $value);
-        if ($text === '') {
+        if ($text === '' || $text === '-') {
             return null;
         }
 

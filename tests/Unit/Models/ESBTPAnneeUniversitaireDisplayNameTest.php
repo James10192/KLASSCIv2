@@ -25,6 +25,17 @@ class ESBTPAnneeUniversitaireDisplayNameTest extends TestCase
         $this->assertSame('2025-2026', $year->display_name);
     }
 
+    public function test_display_name_ignores_dash_placeholder_name(): void
+    {
+        $year = new ESBTPAnneeUniversitaire([
+            'name' => '-',
+            'start_date' => Carbon::parse('2025-09-01'),
+            'end_date' => Carbon::parse('2026-07-31'),
+        ]);
+
+        $this->assertSame('2025-2026', $year->display_name);
+    }
+
     public function test_display_name_falls_back_to_legacy_year_columns(): void
     {
         $year = new ESBTPAnneeUniversitaire;
