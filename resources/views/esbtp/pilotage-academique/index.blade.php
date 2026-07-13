@@ -11,7 +11,14 @@
 @push('styles')
 <style>
 .cpa-shell { display: grid; gap: 1rem; }
-.cpa-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; align-items: end; }
+.cpa-filter-panel { overflow: visible; position: relative; z-index: 30; }
+.cpa-filter-panel:has(.au-select-trigger--open) { z-index: 1400; }
+.cpa-filter-panel .cpa-toolbar { overflow: visible; }
+.cpa-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; align-items: end; overflow: visible; }
+.cpa-filters .au-select,
+.cpa-filters .au-select-trigger { width: 100%; }
+.cpa-filters .au-select:has(.au-select-trigger--open) { z-index: 1300; }
+.cpa-filters .au-select-menu { left: 0; right: 0; min-width: 100%; z-index: 1301; }
 .cpa-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: .9rem; }
 .cpa-tabs { display: flex; gap: .35rem; overflow-x: auto; padding: .35rem; background: #fff; border: 1px solid #e8ecf1; border-radius: 14px; }
 .cpa-tab { border: 0; background: transparent; color: #64748b; border-radius: 10px; min-height: 44px; padding: .55rem .9rem; font-weight: 700; font-size: .82rem; display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap; }
@@ -46,6 +53,7 @@
 .cpa-muted { color: #64748b; font-size: .82rem; margin: 0; }
 .cpa-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
 .cpa-loading { opacity: .65; pointer-events: none; }
+.cpa-btn[disabled] { opacity: .65; cursor: not-allowed; }
 @media (max-width: 1100px) { .cpa-grid, .cpa-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cpa-split { grid-template-columns: 1fr; } }
 @media (max-width: 640px) { .cpa-grid, .cpa-filters { grid-template-columns: 1fr; } .cpa-row { grid-template-columns: 1fr; } }
 </style>
@@ -76,17 +84,17 @@
         ]"
     />
 
-    <section class="cpa-panel">
+    <section class="cpa-panel cpa-filter-panel">
         <div class="cpa-toolbar">
-            <form class="cpa-filters" @change.debounce.150ms="handleFilterChange()" @submit.prevent="applyFilters()">
+            <form class="cpa-filters" x-ref="filtersForm" @change.debounce.150ms="handleFilterChange()" @submit.prevent="applyFilters()">
                 <x-au-select name="year_id" :options="$anneeOptions" :value="$initialFilters['year_id']" placeholder="Année universitaire" icon="fa-calendar" searchable />
                 <x-au-select name="period" :options="$periods" :value="$initialFilters['period']" placeholder="Période" icon="fa-layer-group" />
                 <x-au-select name="system" :options="$systems" :value="$initialFilters['system']" placeholder="Système" icon="fa-graduation-cap" />
                 <x-au-select name="class_id" :options="$classeOptions" :value="$initialFilters['class_id']" placeholder="Toutes les classes" icon="fa-school" searchable />
             </form>
-            <button type="button" class="cpa-btn cpa-btn--primary" @click="load()">
-                <i class="fas fa-rotate"></i>
-                Synchroniser la vue
+            <button type="button" class="cpa-btn cpa-btn--primary" @click="applyFilters()" :disabled="loading">
+                <i class="fas" :class="loading ? 'fa-spinner fa-spin' : 'fa-rotate'"></i>
+                <span x-text="loading ? 'Synchronisation...' : 'Synchroniser la vue'"></span>
             </button>
         </div>
 
@@ -256,9 +264,18 @@ document.addEventListener('alpine:init', () => {
         data: { summary: {}, classes: [], alerts: [], sheets: [], students: [], freshness: {} },
         drawer: { class: null, student: null },
         filters: { ...config.initialFilters },
-        init() { this.load(); window.addEventListener('popstate', () => this.loadFromUrl()); },
+        init() {
+            const params = new URLSearchParams(location.search);
+            this.filters = { ...this.filters, ...Object.fromEntries(params.entries()) };
+            this.syncFilterControls();
+            this.load();
+            window.addEventListener('popstate', () => this.loadFromUrl());
+        },
         formFilters() {
-            const form = this.$root.querySelector('form');
+            const form = this.$refs.filtersForm || this.$root.querySelector('form.cpa-filters');
+            if (!form) {
+                return { ...this.filters };
+            }
             const values = Object.fromEntries(new FormData(form).entries());
             return { ...this.filters, ...values };
         },
@@ -267,9 +284,12 @@ document.addEventListener('alpine:init', () => {
             this.applyFilters();
         },
         applyFilters() {
+            if (this.loading) return;
+            this.closeFilterMenus();
             this.filters = this.formFilters();
             const params = new URLSearchParams(this.compactFilters(this.filters));
-            history.pushState({}, '', `${location.pathname}?${params.toString()}`);
+            const nextUrl = params.toString() ? `${location.pathname}?${params.toString()}` : location.pathname;
+            history.pushState({}, '', nextUrl);
             this.load();
         },
         loadFromUrl() {
@@ -284,12 +304,14 @@ document.addEventListener('alpine:init', () => {
                 const field = this.$root.querySelector(`[name="${name}"]`);
                 if (field && field.value !== String(value ?? '')) {
                     field.value = value ?? '';
-                    field.dispatchEvent(new Event('change'));
+                    field.dispatchEvent(new Event('change', { bubbles: true }));
+                    field.dispatchEvent(new Event('input', { bubbles: true }));
                 }
             });
             this.$nextTick(() => { this.suppressFilterChange = false; });
         },
         async load() {
+            this.filters = this.formFilters();
             this.loading = true;
             this.error = null;
             try {
@@ -319,7 +341,12 @@ document.addEventListener('alpine:init', () => {
             }
         },
         async fetchJson(url) {
-            const response = await fetch(url, { headers: { 'Accept': 'application/json' } });
+            const response = await fetch(url, {
+                headers: {
+                    'Accept': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
             const payload = await response.json().catch(() => ({}));
             if (!response.ok || !payload.ok) {
                 throw new Error(payload.message || 'Impossible de charger les données de pilotage.');
@@ -328,6 +355,11 @@ document.addEventListener('alpine:init', () => {
         },
         compactFilters(filters) {
             return Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== null && value !== undefined && value !== ''));
+        },
+        closeFilterMenus() {
+            this.$root.querySelectorAll('.cpa-filters .au-select-trigger--open').forEach((trigger) => {
+                trigger.click();
+            });
         },
         kpis() {
             const s = this.data.summary || {};
