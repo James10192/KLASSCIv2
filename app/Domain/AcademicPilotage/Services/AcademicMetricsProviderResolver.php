@@ -16,12 +16,13 @@ final class AcademicMetricsProviderResolver implements AcademicSystemMetricsProv
         private readonly BtsAcademicMetricsProvider $bts,
         private readonly LmdAcademicMetricsProvider $lmd,
         private readonly AcademicPeriodNormalizer $periods,
+        private readonly AcademicSystemNormalizer $systems,
     ) {}
 
     public function metricsFor(StudentMetricContext $context): AcademicMetricSet
     {
         $academicSystem = $this->authoritativeSystem($context->classId);
-        if (strtoupper($context->academicSystem) !== $academicSystem) {
+        if ($this->systems->normalize($context->academicSystem) !== $academicSystem) {
             throw new InvalidArgumentException(
                 'Le système académique demandé ne correspond pas à celui de la classe.',
             );
@@ -46,17 +47,14 @@ final class AcademicMetricsProviderResolver implements AcademicSystemMetricsProv
 
     private function authoritativeSystem(int $classId): string
     {
-        $system = DB::table('esbtp_classes')
+        $class = DB::table('esbtp_classes')
             ->where('id', $classId)
-            ->value('systeme_academique');
-        $system = strtoupper(trim((string) $system));
+            ->first(['id', 'systeme_academique']);
 
-        if (! in_array($system, ['BTS', 'LMD'], true)) {
-            throw new InvalidArgumentException(
-                "Le système académique de la classe n'est pas pris en charge.",
-            );
+        if ($class === null) {
+            throw new InvalidArgumentException("La classe demandée n'existe pas.");
         }
 
-        return $system;
+        return $this->systems->normalize($class->systeme_academique);
     }
 }

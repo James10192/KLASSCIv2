@@ -2,21 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
+use App\Domain\AcademicPilotage\Services\BulletinGenerationReadinessService;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
-use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPLMDBulletin;
 use App\Services\LMDBulletinService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ESBTPLMDBulletinController extends Controller
 {
     protected LMDBulletinService $service;
 
-    public function __construct(LMDBulletinService $service)
-    {
+    public function __construct(
+        LMDBulletinService $service,
+        private readonly BulletinGenerationReadinessService $bulletinReadiness,
+    ) {
         $this->middleware(['auth']);
         $this->middleware('permission:module.lmd.access');
         $this->service = $service;
@@ -45,8 +49,8 @@ class ESBTPLMDBulletinController extends Controller
             $search = $request->search;
             $query->whereHas('etudiant', function ($q) use ($search) {
                 $q->where('matricule', 'like', "%{$search}%")
-                  ->orWhere('nom', 'like', "%{$search}%")
-                  ->orWhere('prenoms', 'like', "%{$search}%");
+                    ->orWhere('nom', 'like', "%{$search}%")
+                    ->orWhere('prenoms', 'like', "%{$search}%");
             });
         }
 
@@ -90,10 +94,22 @@ class ESBTPLMDBulletinController extends Controller
         // Vérifier que le semestre correspond au niveau de la classe
         $classe = ESBTPClasse::findOrFail($request->classe_id);
         $semestresAutorises = $classe->getSemestresLMD();
-        if (!in_array((int) $request->semestre, $semestresAutorises)) {
+        if (! in_array((int) $request->semestre, $semestresAutorises)) {
             return redirect()->back()->with('error',
-                "Le semestre S{$request->semestre} ne correspond pas au niveau {$classe->niveau->name}. Semestres autorisés : S" . implode(', S', $semestresAutorises) . "."
+                "Le semestre S{$request->semestre} ne correspond pas au niveau {$classe->niveau->name}. Semestres autorisés : S".implode(', S', $semestresAutorises).'.'
             );
+        }
+
+        try {
+            $this->assertLmdBulletinReady(
+                (int) $request->etudiant_id,
+                (int) $request->classe_id,
+                (int) $request->annee_universitaire_id,
+                (int) $request->semestre,
+                $request
+            );
+        } catch (AcademicPilotageException $exception) {
+            return $this->academicPilotageFailure($request, $exception);
         }
 
         $bulletin = $this->service->genererBulletinLMD(
@@ -122,10 +138,34 @@ class ESBTPLMDBulletinController extends Controller
         // Vérifier que le semestre correspond au niveau de la classe
         $classe = ESBTPClasse::findOrFail($request->classe_id);
         $semestresAutorises = $classe->getSemestresLMD();
-        if (!in_array((int) $request->semestre, $semestresAutorises)) {
+        if (! in_array((int) $request->semestre, $semestresAutorises)) {
             return redirect()->back()->with('error',
-                "Le semestre S{$request->semestre} ne correspond pas au niveau {$classe->niveau->name}. Semestres autorisés : S" . implode(', S', $semestresAutorises) . "."
+                "Le semestre S{$request->semestre} ne correspond pas au niveau {$classe->niveau->name}. Semestres autorisés : S".implode(', S', $semestresAutorises).'.'
             );
+        }
+
+        $studentIds = DB::table('esbtp_inscriptions')
+            ->where('classe_id', $request->classe_id)
+            ->where('annee_universitaire_id', $request->annee_universitaire_id)
+            ->where('status', 'active')
+            ->pluck('etudiant_id');
+
+        foreach ($studentIds as $studentId) {
+            try {
+                $this->assertLmdBulletinReady(
+                    (int) $studentId,
+                    (int) $request->classe_id,
+                    (int) $request->annee_universitaire_id,
+                    (int) $request->semestre,
+                    $request
+                );
+            } catch (AcademicPilotageException $exception) {
+                return $this->academicPilotageFailure(
+                    $request,
+                    $exception,
+                    "Bulletin LMD bloqué pour l'étudiant {$studentId} : {$exception->getMessage()}",
+                );
+            }
         }
 
         $bulletins = $this->service->genererBulletinsClasse(
@@ -148,6 +188,38 @@ class ESBTPLMDBulletinController extends Controller
     /**
      * Apercu du bulletin (preview HTML).
      */
+    private function assertLmdBulletinReady(
+        int $studentId,
+        int $classId,
+        int $academicYearId,
+        int $semester,
+        Request $request,
+    ): void {
+        $this->bulletinReadiness->assertReady(
+            'LMD',
+            $studentId,
+            $classId,
+            $academicYearId,
+            'semestre'.$semester,
+            $request->user(),
+            $request->input('incomplete_reason'),
+        );
+    }
+
+    private function academicPilotageFailure(
+        Request $request,
+        AcademicPilotageException $exception,
+        ?string $message = null,
+    ) {
+        if ($request->expectsJson() || $request->ajax()) {
+            return $exception->render($request);
+        }
+
+        return redirect()->back()
+            ->withInput()
+            ->with('error', $message ?: $exception->getMessage());
+    }
+
     public function show(ESBTPLMDBulletin $bulletin)
     {
         $data = $this->service->preparerDonneesBulletin($bulletin);
@@ -235,7 +307,7 @@ class ESBTPLMDBulletinController extends Controller
     private function prepareLogoBase64(?string $logoPath): ?string
     {
         $paths = [
-            $logoPath ? storage_path('app/public/' . $logoPath) : null,
+            $logoPath ? storage_path('app/public/'.$logoPath) : null,
             public_path('images/esbtp_logo.png'),
             public_path('images/logo.png'),
         ];
@@ -244,9 +316,11 @@ class ESBTPLMDBulletinController extends Controller
             if (file_exists($path)) {
                 $mime = mime_content_type($path);
                 $data = base64_encode(file_get_contents($path));
+
                 return "data:{$mime};base64,{$data}";
             }
         }
+
         return null;
     }
 
@@ -256,7 +330,7 @@ class ESBTPLMDBulletinController extends Controller
     public function togglePublication(ESBTPLMDBulletin $bulletin)
     {
         $bulletin->update([
-            'is_published' => !$bulletin->is_published,
+            'is_published' => ! $bulletin->is_published,
         ]);
 
         $status = $bulletin->is_published ? 'publié' : 'dépublié';

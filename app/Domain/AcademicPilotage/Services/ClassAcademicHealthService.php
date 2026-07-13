@@ -16,6 +16,7 @@ final class ClassAcademicHealthService
         private readonly AcademicOperationalMetricsService $operations,
         private readonly AcademicPeriodNormalizer $periods,
         private readonly AcademicMetricSnapshotCohortProvider $cohorts,
+        private readonly AcademicSystemNormalizer $systems = new AcademicSystemNormalizer,
     ) {}
 
     public function evaluate(
@@ -84,23 +85,15 @@ final class ClassAcademicHealthService
 
     private function authoritativeSystem(int $classId, string $requested): string
     {
-        $system = strtoupper(trim((string) DB::table('esbtp_classes')
+        $class = DB::table('esbtp_classes')
             ->where('id', $classId)
-            ->value('systeme_academique')));
+            ->first(['id', 'systeme_academique']);
 
-        if (! in_array($system, ['BTS', 'LMD'], true)) {
-            throw new InvalidArgumentException(
-                "Le système académique de la classe n'est pas pris en charge.",
-            );
+        if ($class === null) {
+            throw new InvalidArgumentException("La classe demandée n'existe pas.");
         }
 
-        if (strtoupper(trim($requested)) !== $system) {
-            throw new InvalidArgumentException(
-                'Le système académique demandé ne correspond pas à celui de la classe.',
-            );
-        }
-
-        return $system;
+        return $this->systems->assertMatches($class->systeme_academique, $requested);
     }
 
     private function level(float $score): string

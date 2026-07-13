@@ -2,39 +2,38 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
+use App\Domain\AcademicPilotage\Services\BulletinGenerationReadinessService;
+use App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver;
 use App\Exceptions\CoefficientMissingException;
 use App\Helpers\SettingsHelper;
-use App\Models\Classe;
-use App\Models\ESBTPAbsence;
-use App\Models\ESBTPAnneeUniversitaire;
-use App\Models\ESBTPBulletin;
-use App\Models\ESBTPClasse;
-use App\Models\ESBTPConfigMatiere;
-use App\Models\ESBTPFiliere;
-use App\Models\ESBTPNiveauEtude;
-use App\Models\ESBTPEtudiant;
-use App\Models\ESBTPEvaluation;
-use App\Models\ESBTPMatiere;
-use App\Models\ESBTPMatiereCoefficient;
-use App\Models\ESBTPNote;
-use App\Models\ESBTPResultat;
-use App\Models\ESBTPResultatMatiere;
-use App\Services\ESBTP\BulletinConsistencyService;
-use App\Services\ESBTP\ESBTPAbsenceService;
-use Carbon\Carbon;
-use App\Http\Requests\Bulletin\BulkUpdateMoyennesRequest;
 use App\Http\Requests\Bulletin\GenerateClasseBulletinsRequest;
 use App\Http\Requests\Bulletin\StoreBulletinRequest;
 use App\Http\Requests\Bulletin\UpdateBulletinRequest;
-use App\Http\Requests\Bulletin\UpdateMoyennesRequest;
+use App\Models\Classe;
+use App\Models\ESBTPAnneeUniversitaire;
+use App\Models\ESBTPBulletin;
+use App\Models\ESBTPClasse;
+use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPNote;
+use App\Models\ESBTPResultat;
+use App\Models\ESBTPResultatMatiere;
+use App\Services\BulletinService;
+use App\Services\ESBTP\BulletinConsistencyService;
+use App\Services\ESBTP\ESBTPAbsenceService;
+use App\Services\NotificationService;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Validator;
 use PDF;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 
 class ESBTPBulletinController extends Controller
 {
@@ -48,19 +47,22 @@ class ESBTPBulletinController extends Controller
 
     protected $bulletinConsistencyService;
 
-    protected \App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver $subjectResolver;
+    protected BtsBulletinSubjectResolver $subjectResolver;
+
+    protected BulletinGenerationReadinessService $bulletinReadiness;
 
     public function __construct(
         ESBTPAbsenceService $absenceService,
-        \App\Services\BulletinService $bulletinService,
+        BulletinService $bulletinService,
         BulletinConsistencyService $bulletinConsistencyService,
-        \App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver $subjectResolver
-    )
-    {
+        BtsBulletinSubjectResolver $subjectResolver,
+        BulletinGenerationReadinessService $bulletinReadiness
+    ) {
         $this->absenceService = $absenceService;
         $this->bulletinService = $bulletinService;
         $this->bulletinConsistencyService = $bulletinConsistencyService;
         $this->subjectResolver = $subjectResolver;
+        $this->bulletinReadiness = $bulletinReadiness;
     }
 
     /**
@@ -72,12 +74,12 @@ class ESBTPBulletinController extends Controller
     /**
      * Affiche la liste des bulletins avec filtre par année et classe
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index(Request $request)
     {
         $classes = ESBTPClasse::where('is_active', true)
-            ->where(fn($q) => $q->whereNull('systeme_academique')->orWhere('systeme_academique', '!=', 'LMD'))
+            ->where(fn ($q) => $q->whereNull('systeme_academique')->orWhere('systeme_academique', '!=', 'LMD'))
             ->orderBy('name')->get();
         $anneesUniversitaires = ESBTPAnneeUniversitaire::orderBy('annee_debut', 'desc')->get();
 
@@ -115,7 +117,7 @@ class ESBTPBulletinController extends Controller
             $query->where('is_published', (int) $published);
         }
         if ($search !== '') {
-            $like = '%' . $search . '%';
+            $like = '%'.$search.'%';
             $query->whereHas('etudiant', function ($q) use ($like) {
                 $q->where('matricule', 'like', $like)
                     ->orWhere('nom', 'like', $like)
@@ -136,10 +138,10 @@ class ESBTPBulletinController extends Controller
         $coveredStudents = (clone $statsScope)->distinct('etudiant_id')->count('etudiant_id');
 
         $stats = [
-            'total'         => (int) ($bulletinCounts->total ?? 0),
-            'published'     => (int) ($bulletinCounts->published ?? 0),
-            'pending'       => (int) ($bulletinCounts->pending ?? 0),
-            'covered'       => $coveredStudents,
+            'total' => (int) ($bulletinCounts->total ?? 0),
+            'published' => (int) ($bulletinCounts->published ?? 0),
+            'pending' => (int) ($bulletinCounts->pending ?? 0),
+            'covered' => $coveredStudents,
             'legacy_annuel' => (int) ($bulletinCounts->legacy_annuel ?? 0),
         ];
         $stats['publish_pct'] = $stats['total'] > 0
@@ -149,12 +151,12 @@ class ESBTPBulletinController extends Controller
         // AJAX no-reload : si requête AJAX, renvoyer le partial table + stats en JSON.
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
-                'html'  => view('esbtp.bulletins.partials._table', compact(
+                'html' => view('esbtp.bulletins.partials._table', compact(
                     'bulletins', 'classe_id', 'periode_id', 'published', 'search'
                 ))->render(),
                 'stats' => $stats,
                 'count' => $bulletins->count(),
-                'ids'   => $bulletins->pluck('id')->all(),
+                'ids' => $bulletins->pluck('id')->all(),
             ]);
         }
 
@@ -175,7 +177,7 @@ class ESBTPBulletinController extends Controller
     /**
      * Affiche le formulaire de sélection d'étudiant pour créer un bulletin
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create()
     {
@@ -189,7 +191,7 @@ class ESBTPBulletinController extends Controller
     /**
      * Enregistre un nouveau bulletin
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function store(StoreBulletinRequest $request)
     {
@@ -303,6 +305,7 @@ class ESBTPBulletinController extends Controller
                         throw $e;
                     }
                     Log::warning('Coef introuvable matiere TC, skip', ['matiere_id' => $matiere->id, 'classe_id' => $classe->id]);
+
                     continue;
                 }
 
@@ -374,7 +377,7 @@ class ESBTPBulletinController extends Controller
     /**
      * Affiche un bulletin spécifique.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function show(ESBTPBulletin $bulletin)
     {
@@ -388,7 +391,7 @@ class ESBTPBulletinController extends Controller
     /**
      * Affiche le formulaire de modification d'un bulletin.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function edit(ESBTPBulletin $bulletin)
     {
@@ -400,7 +403,7 @@ class ESBTPBulletinController extends Controller
     /**
      * Met à jour un bulletin spécifique.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function update(UpdateBulletinRequest $request, ESBTPBulletin $bulletin)
     {
@@ -458,7 +461,7 @@ class ESBTPBulletinController extends Controller
     /**
      * Supprime un bulletin spécifique.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function destroy(ESBTPBulletin $bulletin)
     {
@@ -485,7 +488,7 @@ class ESBTPBulletinController extends Controller
         return response()->json([
             'success' => true,
             'message' => "$count bulletin(s) publié(s).",
-            'count'   => $count,
+            'count' => $count,
         ]);
     }
 
@@ -501,6 +504,13 @@ class ESBTPBulletinController extends Controller
 
         foreach ($bulletins as $bulletin) {
             try {
+                $this->assertBtsBulletinReady(
+                    (int) $bulletin->etudiant_id,
+                    (int) $bulletin->classe_id,
+                    (int) $bulletin->annee_universitaire_id,
+                    (string) $bulletin->periode,
+                    $request
+                );
                 $this->bulletinConsistencyService->regenerateOfficialBulletin(
                     (int) $bulletin->etudiant_id,
                     (int) $bulletin->classe_id,
@@ -515,9 +525,9 @@ class ESBTPBulletinController extends Controller
 
         return response()->json([
             'success' => true,
-            'message' => "$success bulletin(s) régénéré(s)" . (count($errors) ? ' — ' . count($errors) . ' erreur(s)' : '.'),
-            'count'   => $success,
-            'errors'  => $errors,
+            'message' => "$success bulletin(s) régénéré(s)".(count($errors) ? ' — '.count($errors).' erreur(s)' : '.'),
+            'count' => $success,
+            'errors' => $errors,
         ]);
     }
 
@@ -532,14 +542,14 @@ class ESBTPBulletinController extends Controller
         return response()->json([
             'success' => true,
             'message' => "$count bulletin(s) supprimé(s).",
-            'count'   => $count,
+            'count' => $count,
         ]);
     }
 
     private function validateBulkIds(Request $request): array
     {
         $validated = $request->validate([
-            'ids'   => 'required|array|min:1|max:500',
+            'ids' => 'required|array|min:1|max:500',
             'ids.*' => 'integer|exists:esbtp_bulletins,id',
         ]);
 
@@ -593,7 +603,7 @@ class ESBTPBulletinController extends Controller
      * Génère un PDF du bulletin. Si $inline est true, le PDF est streamé
      * inline (preview), sinon téléchargé en attachment (download).
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function genererPDF(ESBTPBulletin $bulletin, bool $inline = false)
     {
@@ -934,13 +944,13 @@ class ESBTPBulletinController extends Controller
 
             // Préparer la photo étudiant en base64 pour le PDF (conversion JPEG pour DomPDF)
             $data['photoEtudiantBase64'] = null;
-            if (!empty($data['etudiant']?->photo)) {
+            if (! empty($data['etudiant']?->photo)) {
                 $photo = $data['etudiant']->photo;
                 $photoCandidates = [
-                    storage_path('app/public/' . $photo),
-                    storage_path('app/public/photos/etudiants/' . basename($photo)),
-                    public_path('storage/' . $photo),
-                    public_path('storage/photos/etudiants/' . basename($photo)),
+                    storage_path('app/public/'.$photo),
+                    storage_path('app/public/photos/etudiants/'.basename($photo)),
+                    public_path('storage/'.$photo),
+                    public_path('storage/photos/etudiants/'.basename($photo)),
                 ];
                 foreach ($photoCandidates as $photoPath) {
                     if (file_exists($photoPath)) {
@@ -955,9 +965,9 @@ class ESBTPBulletinController extends Controller
                 $pdf = PDF::loadView($this->bulletinService->getBulletinTemplateView(), $data);
 
                 // Configuration PDF avec format A4 et options optimisées
-                $paperFormat = \App\Helpers\SettingsHelper::get('bulletin_paper_format', 'A4');
-                $orientation = \App\Helpers\SettingsHelper::get('bulletin_orientation', 'portrait');
-                $dpi = \App\Helpers\SettingsHelper::get('bulletin_dpi', '150');
+                $paperFormat = SettingsHelper::get('bulletin_paper_format', 'A4');
+                $orientation = SettingsHelper::get('bulletin_orientation', 'portrait');
+                $dpi = SettingsHelper::get('bulletin_dpi', '150');
 
                 $pdf->setPaper(strtolower($paperFormat), $orientation);
                 $pdf->setOptions([
@@ -1016,14 +1026,14 @@ class ESBTPBulletinController extends Controller
     /**
      * Calcule les absences justifiées et non justifiées pour un bulletin.
      *
-     * @param  \App\Models\ESBTPBulletin  $bulletin
+     * @param  ESBTPBulletin  $bulletin
      * @return array
      */
     // ///////////////////
     /**
      * Génère les bulletins pour une classe entière.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function genererClasseBulletins(GenerateClasseBulletinsRequest $request)
     {
@@ -1076,6 +1086,7 @@ class ESBTPBulletinController extends Controller
             }
 
             $bulletinsGeneres = 0;
+            $readinessErrors = [];
 
             foreach ($etudiants as $etudiant) {
                 Log::info('Traitement de l\'étudiant: '.$etudiant->id.' - '.$etudiant->nom.' '.$etudiant->prenoms);
@@ -1111,6 +1122,14 @@ class ESBTPBulletinController extends Controller
                 // Appeler la méthode store mais sans rediriger
                 try {
                     DB::beginTransaction();
+
+                    $this->assertBtsBulletinReady(
+                        (int) $etudiant->id,
+                        (int) $request->classe_id,
+                        (int) $request->annee_universitaire_id,
+                        (string) $request->periode,
+                        $request
+                    );
 
                     // Créer le bulletin
                     $bulletin = new ESBTPBulletin;
@@ -1173,6 +1192,7 @@ class ESBTPBulletinController extends Controller
                                             throw $e;
                                         }
                                         Log::warning('Coef introuvable matiere TC, skip', ['matiere_id' => $matiere->id, 'classe_id' => $classe->id]);
+
                                         continue;
                                     }
 
@@ -1248,6 +1268,7 @@ class ESBTPBulletinController extends Controller
                                 throw $e;
                             }
                             Log::warning('Coef introuvable matiere TC, skip', ['matiere_id' => $matiere->id, 'classe_id' => $classe->id]);
+
                             continue;
                         }
 
@@ -1281,6 +1302,22 @@ class ESBTPBulletinController extends Controller
                     DB::commit();
                     $bulletinsGeneres++;
                     Log::info('Bulletin généré avec succès pour l\'étudiant: '.$etudiant->id);
+                } catch (AcademicPilotageException $e) {
+                    DB::rollBack();
+                    $readinessErrors[] = sprintf(
+                        '%s %s : %s',
+                        $etudiant->nom,
+                        $etudiant->prenoms,
+                        $e->getMessage(),
+                    );
+                    Log::warning('Génération bulletin BTS bloquée par la préparation académique.', [
+                        'etudiant_id' => (int) $etudiant->id,
+                        'classe_id' => (int) $request->classe_id,
+                        'annee_universitaire_id' => (int) $request->annee_universitaire_id,
+                        'periode' => (string) $request->periode,
+                        'error' => $e->errorCode,
+                        'details' => $e->details,
+                    ]);
                 } catch (\Exception $e) {
                     DB::rollBack();
                     Log::error('Erreur lors de la génération du bulletin pour l\'étudiant: '.$etudiant->id.' - '.$e->getMessage());
@@ -1292,8 +1329,21 @@ class ESBTPBulletinController extends Controller
             if ($bulletinsGeneres > 0) {
                 Log::info('Bulletins générés avec succès: '.$bulletinsGeneres);
 
-                return redirect()->route('esbtp.bulletins.index')
+                $response = redirect()->route('esbtp.bulletins.index')
                     ->with('success', $bulletinsGeneres.' bulletins ont été générés avec succès');
+
+                if ($readinessErrors !== []) {
+                    $response->with('warning', $this->bulletinReadinessErrorSummary($readinessErrors));
+                }
+
+                return $response;
+            } elseif ($readinessErrors !== []) {
+                Log::info('Aucun bulletin généré à cause de blocages de préparation académique.', [
+                    'errors' => $readinessErrors,
+                ]);
+
+                return redirect()->route('esbtp.bulletins.index')
+                    ->with('error', $this->bulletinReadinessErrorSummary($readinessErrors));
             } else {
                 Log::info('Aucun bulletin généré');
 
@@ -1312,7 +1362,7 @@ class ESBTPBulletinController extends Controller
     /**
      * Affiche la page de sélection pour les bulletins
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function select()
     {
@@ -1329,17 +1379,11 @@ class ESBTPBulletinController extends Controller
         return view('esbtp.bulletins.select', compact('classes', 'anneesUniversitaires', 'anneeActuelle'));
     }
 
-
-
-
-
-
-
     /**
      * Signe un bulletin par un responsable
      *
      * @param  string  $role
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function signer(Request $request, ESBTPBulletin $bulletin, $role)
     {
@@ -1381,7 +1425,7 @@ class ESBTPBulletinController extends Controller
     /**
      * Bascule l'état de publication d'un bulletin
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function togglePublication(Request $request, ESBTPBulletin $bulletin)
     {
@@ -1393,7 +1437,7 @@ class ESBTPBulletinController extends Controller
             // Si le bulletin vient d'être publié, notifier les parents
             if (! $wasPublished && $bulletin->is_published) {
                 try {
-                    $notificationService = app(\App\Services\NotificationService::class);
+                    $notificationService = app(NotificationService::class);
                     $notificationService->notifyParentsBulletinPublished($bulletin);
 
                     // Vérifier si l'étudiant a des notes faibles et envoyer une alerte si nécessaire
@@ -1428,7 +1472,7 @@ class ESBTPBulletinController extends Controller
     /**
      * Affiche les bulletins en attente (non publiés ou non signés)
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function pending()
     {
@@ -1453,22 +1497,11 @@ class ESBTPBulletinController extends Controller
         return view('esbtp.bulletins.pending', compact('bulletins', 'totalPending', 'totalNonSigned'));
     }
 
-
-
-
-
-
-
-
-
-
-
-
     /**
      * Génère un PDF à partir des paramètres fournis (étudiant, classe, période, année universitaire)
      * sans nécessiter un bulletin existant.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
 
     /**
@@ -1561,7 +1594,7 @@ class ESBTPBulletinController extends Controller
             }
 
             // NOUVELLE LOGIQUE: Intégrer les moyennes manuelles (priorité Manuel l'emporte)
-            $resultats = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
+            $resultats = ESBTPResultat::where('etudiant_id', $etudiant->id)
                 ->where('classe_id', $classe->id)
                 ->where('annee_universitaire_id', $anneeUniversitaire->id)
                 ->with('matiere')
@@ -1589,13 +1622,13 @@ class ESBTPBulletinController extends Controller
             $logoBase64 = null;
             $config = $this->bulletinService->getPDFConfig();
             $schoolInfo = [
-                'name'    => $config['school_name'] ?? '',
+                'name' => $config['school_name'] ?? '',
                 'address' => $config['school_address'] ?? '',
-                'phone'   => $config['school_phone'] ?? '',
-                'email'   => $config['school_email'] ?? '',
-                'city'    => $config['school_city'] ?? '',
+                'phone' => $config['school_phone'] ?? '',
+                'email' => $config['school_email'] ?? '',
+                'city' => $config['school_city'] ?? '',
                 'country' => $config['school_country'] ?? '',
-                'logo'    => null,
+                'logo' => null,
             ];
             if (! empty($config['school_logo'])) {
                 $logoPath = $config['school_logo'];
@@ -1630,7 +1663,7 @@ class ESBTPBulletinController extends Controller
                 'totalEtudiants'
             ));
 
-        } catch (\Symfony\Component\HttpKernel\Exception\HttpExceptionInterface $e) {
+        } catch (HttpExceptionInterface $e) {
             // Laisser passer les réponses HTTP volontaires (ex: garde LMD abort_if(422)).
             // Sinon le catch générique ci-dessous les convertirait en redirect 302.
             throw $e;
@@ -1640,8 +1673,6 @@ class ESBTPBulletinController extends Controller
             return redirect()->back()->with('error', 'Erreur lors de la prévisualisation du bulletin.');
         }
     }
-
-
 
     /**
      * Aperçu PDF inline du bulletin via params (Content-Disposition: inline).
@@ -1702,13 +1733,13 @@ class ESBTPBulletinController extends Controller
 
             // Préparer la photo étudiant en base64 pour le PDF (conversion JPEG pour DomPDF)
             $donnees['photoEtudiantBase64'] = null;
-            if (!empty($donnees['etudiant']?->photo)) {
+            if (! empty($donnees['etudiant']?->photo)) {
                 $photo = $donnees['etudiant']->photo;
                 $photoCandidates = [
-                    storage_path('app/public/' . $photo),
-                    storage_path('app/public/photos/etudiants/' . basename($photo)),
-                    public_path('storage/' . $photo),
-                    public_path('storage/photos/etudiants/' . basename($photo)),
+                    storage_path('app/public/'.$photo),
+                    storage_path('app/public/photos/etudiants/'.basename($photo)),
+                    public_path('storage/'.$photo),
+                    public_path('storage/photos/etudiants/'.basename($photo)),
                 ];
                 foreach ($photoCandidates as $photoPath) {
                     if (file_exists($photoPath)) {
@@ -1764,14 +1795,6 @@ class ESBTPBulletinController extends Controller
         }
     }
 
-
-
-
-
-
-
-
-
     /**
      * Vérifie les pré-requis avant génération du bulletin (AJAX).
      * Retourne les warnings éventuels (ex: bulletin de l'autre semestre non généré).
@@ -1788,7 +1811,7 @@ class ESBTPBulletinController extends Controller
         $otherPeriode = $periode === 'semestre1' ? 'semestre2' : 'semestre1';
         $otherLabel = $otherPeriode === 'semestre1' ? 'Semestre 1' : 'Semestre 2';
 
-        $otherBulletinExists = \App\Models\ESBTPBulletin::where('etudiant_id', $etudiantId)
+        $otherBulletinExists = ESBTPBulletin::where('etudiant_id', $etudiantId)
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeId)
             ->where('periode', $otherPeriode)
@@ -1798,7 +1821,7 @@ class ESBTPBulletinController extends Controller
         // Avertir seulement quand on génère S2 sans bulletin S1 officiel
         // (En S1, c'est normal que S2 n'existe pas encore)
         if (! $otherBulletinExists && $periode === 'semestre2') {
-            $hasNotes = \App\Models\ESBTPNote::where('etudiant_id', $etudiantId)
+            $hasNotes = ESBTPNote::where('etudiant_id', $etudiantId)
                 ->whereHas('evaluation', function ($q) use ($otherPeriode, $anneeId) {
                     $q->where('annee_universitaire_id', $anneeId)
                         ->where('periode', $otherPeriode);
@@ -1879,6 +1902,13 @@ class ESBTPBulletinController extends Controller
         ]);
 
         try {
+            $this->assertBtsBulletinReady(
+                (int) $validated['etudiant_id'],
+                (int) $validated['classe_id'],
+                (int) $validated['annee_universitaire_id'],
+                (string) $validated['periode'],
+                $request
+            );
             $consistency = $this->bulletinConsistencyService->regenerateOfficialBulletin(
                 (int) $validated['etudiant_id'],
                 (int) $validated['classe_id'],
@@ -1900,6 +1930,8 @@ class ESBTPBulletinController extends Controller
                 'redirect_url' => $context['config_url'] ?? null,
                 'context' => $context,
             ], 422);
+        } catch (AcademicPilotageException $e) {
+            return $e->render($request);
         } catch (\Exception $e) {
             $redirectUrl = null;
             if (str_contains($e->getMessage(), 'Configuration bulletin manquante')) {
@@ -1920,8 +1952,43 @@ class ESBTPBulletinController extends Controller
     }
 
     /**
-     * @deprecated Route stub — use genererBulletin() instead.
-     * @return \Illuminate\Http\Response
+     * Vérifie qu'un bulletin BTS peut être généré ou régénéré.
+     */
+    private function assertBtsBulletinReady(
+        int $studentId,
+        int $classId,
+        int $academicYearId,
+        string $period,
+        Request $request,
+    ): void {
+        $this->bulletinReadiness->assertReady(
+            'BTS',
+            $studentId,
+            $classId,
+            $academicYearId,
+            $period,
+            $request->user(),
+            $request->input('incomplete_reason'),
+        );
+    }
+
+    private function bulletinReadinessErrorSummary(array $errors): string
+    {
+        $visible = array_slice($errors, 0, 3);
+        $remaining = count($errors) - count($visible);
+        $message = 'Génération bloquée par des données académiques incomplètes : '.implode(' | ', $visible);
+
+        if ($remaining > 0) {
+            $message .= " | {$remaining} autre(s) blocage(s).";
+        }
+
+        return $message;
+    }
+
+    /**
+     * @deprecated Route stub, use genererBulletin() instead.
+     *
+     * @return Response
      */
     public function generateBulletin(Request $request)
     {
@@ -2102,8 +2169,6 @@ class ESBTPBulletinController extends Controller
         }
     }
 
-
-
     /**
      * Calculer les moyennes automatiques depuis les évaluations pour un étudiant
      * Logique identique à previewMoyennes() mais pour un seul étudiant
@@ -2112,8 +2177,7 @@ class ESBTPBulletinController extends Controller
      * @param  int  $classeId
      * @param  string|null  $periode
      * @param  int  $anneeUniversitaireId
-     * @param  \Illuminate\Support\Collection  $matieres
-     * @return array
+     * @param  Collection  $matieres
      */
     private function buildCoefficientIssueContext(array $context, Request $request): array
     {
@@ -2125,7 +2189,7 @@ class ESBTPBulletinController extends Controller
 
         if ($classeId) {
             $context['classe_matieres_url'] = $context['classe_matieres_url']
-                ?? (\Illuminate\Support\Facades\Route::has('classes.matieres')
+                ?? (Route::has('classes.matieres')
                     ? route('classes.matieres', ['classe' => $classeId])
                     : route('esbtp.evaluations.index', ['open_coefficients' => 1]));
         }
@@ -2166,7 +2230,7 @@ class ESBTPBulletinController extends Controller
     {
         $currentUrl = match ($action) {
             'preview_pdf' => route('esbtp.bulletins.pdf-params-preview', $params),
-            'web_preview' => route('esbtp.resultats.etudiant.preview', ['etudiant' => $params['bulletin']]) . '?' . http_build_query([
+            'web_preview' => route('esbtp.resultats.etudiant.preview', ['etudiant' => $params['bulletin']]).'?'.http_build_query([
                 'classe_id' => $params['classe_id'],
                 'annee_universitaire_id' => $params['annee_universitaire_id'],
                 'periode' => $params['periode'],
