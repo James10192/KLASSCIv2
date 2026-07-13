@@ -5,12 +5,47 @@
 @php
     $anneeOptions = $annees->mapWithKeys(fn ($annee) => [$annee->id => $annee->name ?? (string) $annee->annee_debut])->all();
     $classeOptions = $classes->mapWithKeys(fn ($classe) => [$classe->id => trim(($classe->code ? $classe->code.' · ' : '').$classe->name)])->all();
-    $initialSummary = $initialSummary ?? [];
 @endphp
 
 @push('styles')
 <style>
 .cpa-shell { display: grid; gap: 1rem; }
+.cpa-hero {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(135deg, #0a3d8f 0%, #0453cb 42%, #3b7ddb 100%);
+    border-radius: 18px;
+    padding: 2rem 2.5rem 1.5rem;
+    color: #fff;
+}
+.cpa-hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+.cpa-hero-title { display: flex; align-items: center; gap: 1rem; min-width: 0; }
+.cpa-hero-icon {
+    width: 52px; height: 52px; border-radius: 14px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 1.35rem;
+    background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.16);
+}
+.cpa-hero h1 { margin: 0 0 .2rem; color: #fff; font-size: 1.45rem; font-weight: 800; letter-spacing: 0; }
+.cpa-hero p { margin: 0; color: rgba(255,255,255,.76); font-size: .88rem; }
+.cpa-hero-scope {
+    display: inline-flex; align-items: center; gap: .45rem; min-height: 36px;
+    padding: .45rem .75rem; border-radius: 10px; font-size: .78rem; font-weight: 800;
+    color: #fff; background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.18);
+}
+.cpa-hero-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; margin-top: 1.5rem; }
+.cpa-hero-kpi {
+    min-width: 0; min-height: 76px; padding: .85rem 1rem; border-radius: 12px;
+    display: flex; align-items: center; gap: .75rem;
+    background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.15);
+}
+.cpa-hero-kpi-icon {
+    width: 38px; height: 38px; border-radius: 9px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    color: #fff; background: rgba(255,255,255,.15);
+}
+.cpa-hero-kpi-value { color: #fff; font-size: 1.35rem; font-weight: 800; line-height: 1; }
+.cpa-hero-kpi-label { margin-top: .2rem; color: rgba(255,255,255,.68); font-size: .72rem; font-weight: 700; }
 .cpa-filter-panel { overflow: visible; position: relative; z-index: 30; }
 .cpa-filter-panel:has(.au-select-trigger--open) { z-index: 1400; }
 .cpa-filter-panel .cpa-toolbar { overflow: visible; }
@@ -62,9 +97,14 @@
 .cpa-error { border-color: #fecaca; background: #fef2f2; color: #991b1b; }
 .cpa-loading { opacity: .65; pointer-events: none; }
 .cpa-btn[disabled] { opacity: .65; cursor: not-allowed; }
-@media (max-width: 1100px) { .cpa-grid, .cpa-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cpa-split { grid-template-columns: 1fr; } }
+@media (max-width: 1100px) { .cpa-grid, .cpa-filters, .cpa-hero-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cpa-split { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .cpa-audit { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .cpa-grid, .cpa-filters, .cpa-audit { grid-template-columns: 1fr; } .cpa-row { grid-template-columns: 1fr; } }
+@media (max-width: 640px) {
+    .cpa-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 14px; }
+    .cpa-hero-title { align-items: flex-start; }
+    .cpa-hero-kpis, .cpa-grid, .cpa-filters, .cpa-audit { grid-template-columns: 1fr; }
+    .cpa-row { grid-template-columns: 1fr; }
+}
 </style>
 @endpush
 
@@ -79,20 +119,48 @@
      })"
      x-init="init()">
 
-    <x-planning-header
-        title="Centre de pilotage académique"
-        subtitle="Suivi réel des fiches, alertes, scores et blocages BTS/LMD"
-        activeTab="overview"
-        :anneeSelectionnee="$selectedYear"
-        :annees="$annees"
-        :stats="[
-            'total_seances' => $initialSummary['sheets_pending'] ?? 0,
-            'total_heures' => $initialSummary['operational_score'] ?? 0,
-            'total_classes' => $classes->count(),
-            'total_matieres' => $initialSummary['open_alerts'] ?? 0,
-            'total_enseignants' => $initialSummary['blocking_alerts'] ?? 0,
-        ]"
-    />
+    <header class="cpa-hero">
+        <div class="cpa-hero-top">
+            <div class="cpa-hero-title">
+                <div class="cpa-hero-icon"><i class="fas fa-chart-line"></i></div>
+                <div>
+                    <h1>Centre de pilotage académique</h1>
+                    <p>Suivi des fiches, alertes, scores et blocages académiques BTS et LMD</p>
+                </div>
+            </div>
+            <div class="cpa-hero-scope"><i class="fas fa-shield-halved"></i>Données académiques réelles</div>
+        </div>
+        <div class="cpa-hero-kpis">
+            <div class="cpa-hero-kpi">
+                <div class="cpa-hero-kpi-icon"><i class="fas fa-chart-simple"></i></div>
+                <div>
+                    <div class="cpa-hero-kpi-value" x-text="percent(data.summary?.academic_score)"></div>
+                    <div class="cpa-hero-kpi-label">Santé académique</div>
+                </div>
+            </div>
+            <div class="cpa-hero-kpi">
+                <div class="cpa-hero-kpi-icon"><i class="fas fa-clipboard-check"></i></div>
+                <div>
+                    <div class="cpa-hero-kpi-value" x-text="percent(data.summary?.operational_score)"></div>
+                    <div class="cpa-hero-kpi-label">Préparation opérationnelle</div>
+                </div>
+            </div>
+            <div class="cpa-hero-kpi">
+                <div class="cpa-hero-kpi-icon"><i class="fas fa-triangle-exclamation"></i></div>
+                <div>
+                    <div class="cpa-hero-kpi-value" x-text="data.summary?.open_alerts ?? 0"></div>
+                    <div class="cpa-hero-kpi-label">Alertes ouvertes</div>
+                </div>
+            </div>
+            <div class="cpa-hero-kpi">
+                <div class="cpa-hero-kpi-icon"><i class="fas fa-list-check"></i></div>
+                <div>
+                    <div class="cpa-hero-kpi-value" x-text="data.summary?.sheets_pending ?? 0"></div>
+                    <div class="cpa-hero-kpi-label">Fiches à suivre</div>
+                </div>
+            </div>
+        </div>
+    </header>
 
     <section class="cpa-panel cpa-filter-panel">
         <div class="cpa-toolbar">

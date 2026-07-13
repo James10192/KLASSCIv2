@@ -11,7 +11,9 @@
        KLASSCI palette: #0453cb primary, #10b981 success
        ══════════════════════════════════════════════ */
 
-    .pa-page { max-width: 1440px; margin: 0 auto; }
+    .pa-shell { width: 100%; max-width: 100%; min-width: 0; }
+    .pa-content { width: 100%; max-width: 100%; min-width: 0; padding: 1.5rem; box-sizing: border-box; }
+    .pa-page { width: 100%; max-width: 1440px; min-width: 0; margin: 0 auto; }
 
     /* ── Stats row ── */
     .pa-stats {
@@ -212,6 +214,7 @@
     @keyframes pa-fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
 
     @media (max-width: 768px) {
+        .pa-content { padding: 1rem; }
         .pa-stats { grid-template-columns: repeat(2, 1fr); }
         .pa-event { flex-wrap: wrap; }
         .pa-cal-month { min-width: 120px; font-size: .9rem; }
@@ -220,8 +223,8 @@
 @endpush
 
 @section('content')
-<div class="dashboard-acasi">
-    <div class="main-content">
+<div class="pa-shell">
+    <div class="pa-content">
         <x-planning-header
             title="Planning Annuel"
             subtitle="Calendrier académique et répartition annuelle des cours"
