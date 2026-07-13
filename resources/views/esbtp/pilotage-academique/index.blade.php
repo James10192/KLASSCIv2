@@ -18,7 +18,7 @@
 .cpa-filters .au-select,
 .cpa-filters .au-select-trigger { width: 100%; }
 .cpa-filters .au-select:has(.au-select-trigger--open) { z-index: 1300; }
-.cpa-filters .au-select-menu { left: 0; right: 0; min-width: 100%; z-index: 1301; }
+.cpa-filters .au-select-menu { left: 0; right: 0; min-width: 100%; max-height: min(320px, 26vh); z-index: 1301; }
 .cpa-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: .9rem; }
 .cpa-tabs { display: flex; gap: .35rem; overflow-x: auto; padding: .35rem; background: #fff; border: 1px solid #e8ecf1; border-radius: 14px; }
 .cpa-tab { border: 0; background: transparent; color: #64748b; border-radius: 10px; min-height: 44px; padding: .55rem .9rem; font-weight: 700; font-size: .82rem; display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap; }
@@ -261,12 +261,13 @@ document.addEventListener('alpine:init', () => {
         loading: false,
         error: null,
         suppressFilterChange: false,
+        filterKeys: ['year_id', 'period', 'system', 'class_id'],
         data: { summary: {}, classes: [], alerts: [], sheets: [], students: [], freshness: {} },
         drawer: { class: null, student: null },
         filters: { ...config.initialFilters },
         init() {
             const params = new URLSearchParams(location.search);
-            this.filters = { ...this.filters, ...Object.fromEntries(params.entries()) };
+            this.filters = { ...this.filters, ...this.pickFilters(Object.fromEntries(params.entries())) };
             this.syncFilterControls();
             this.load();
             window.addEventListener('popstate', () => this.loadFromUrl());
@@ -277,7 +278,7 @@ document.addEventListener('alpine:init', () => {
                 return { ...this.filters };
             }
             const values = Object.fromEntries(new FormData(form).entries());
-            return { ...this.filters, ...values };
+            return this.pickFilters({ ...this.filters, ...values });
         },
         handleFilterChange() {
             if (this.suppressFilterChange) return;
@@ -294,7 +295,7 @@ document.addEventListener('alpine:init', () => {
         },
         loadFromUrl() {
             const params = new URLSearchParams(location.search);
-            this.filters = { ...config.initialFilters, ...Object.fromEntries(params.entries()) };
+            this.filters = { ...config.initialFilters, ...this.pickFilters(Object.fromEntries(params.entries())) };
             this.syncFilterControls();
             this.load();
         },
@@ -355,6 +356,9 @@ document.addEventListener('alpine:init', () => {
         },
         compactFilters(filters) {
             return Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== null && value !== undefined && value !== ''));
+        },
+        pickFilters(filters) {
+            return Object.fromEntries(this.filterKeys.map((key) => [key, filters[key] ?? '']));
         },
         closeFilterMenus() {
             this.$root.querySelectorAll('.cpa-filters .au-select-trigger--open').forEach((trigger) => {
