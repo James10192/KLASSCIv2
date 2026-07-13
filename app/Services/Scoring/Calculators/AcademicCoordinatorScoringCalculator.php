@@ -4,6 +4,7 @@ namespace App\Services\Scoring\Calculators;
 
 use App\Models\User;
 use App\Services\Scoring\Concerns\ScoresDatabaseActivity;
+use App\Services\Scoring\PersonnelAcademicObligationMetricsService;
 use App\Services\Scoring\PersonnelScoreResult;
 use Carbon\CarbonInterface;
 
@@ -11,13 +12,41 @@ class AcademicCoordinatorScoringCalculator
 {
     use ScoresDatabaseActivity;
 
+    public function __construct(
+        private readonly PersonnelAcademicObligationMetricsService $obligationMetrics
+    ) {}
+
     public function calculate(string $dimension, array $definition, User $user, CarbonInterface $start, CarbonInterface $end): PersonnelScoreResult
     {
         return match ($dimension) {
             'academic_coordination' => $this->academic($dimension, $definition, $user, $start, $end),
             'attendance_supervision' => $this->attendanceSupervision($dimension, $definition, $user, $start, $end),
+            'academic_workflow' => $this->academicWorkflow($dimension, $definition, $user, $start, $end),
             default => new PersonnelScoreResult($dimension, $definition['label'], 0, $definition['weight'] ?? 0),
         };
+    }
+
+    private function academicWorkflow(string $dimension, array $definition, User $user, CarbonInterface $start, CarbonInterface $end): PersonnelScoreResult
+    {
+        $obligation = $this->obligationMetrics->delegatedEntryObligation($user->id, $start, $end);
+
+        return new PersonnelScoreResult(
+            dimension: $dimension,
+            label: $definition['label'],
+            score: $obligation['score'],
+            weight: $definition['weight'],
+            metrics: [
+                'fiches_saisies' => $obligation['numerator'],
+                'fiches_recues_assignees' => $obligation['denominator'],
+            ],
+            messages: $obligation['messages'],
+            state: $obligation['state'],
+            numerator: $obligation['numerator'],
+            denominator: $obligation['denominator'],
+            coverage: $obligation['coverage'],
+            confidence: $obligation['confidence'],
+            evidenceHash: $obligation['evidence_hash'],
+        );
     }
 
     private function academic(string $dimension, array $definition, User $user, CarbonInterface $start, CarbonInterface $end): PersonnelScoreResult

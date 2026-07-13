@@ -2,21 +2,26 @@
 
 namespace App\Console;
 
-use Illuminate\Console\Scheduling\Schedule;
-use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use App\Console\Commands\MarkTeacherAbsences;
+use App\Console\Commands\MarkUnattendedTeacherSessions;
+use App\Console\Commands\QueueMonitorCommand;
+use App\Console\Commands\RecalculatePersonnelScoresCommand;
+use App\Console\Commands\RunQueueWorker;
+use App\Console\Commands\SendInscriptionPaiementReminders;
 use App\Jobs\CalculerKPIsJob;
-use App\Jobs\SauvegardeDataJob;
-use App\Jobs\PlanifierRelancesJob;
 use App\Jobs\ComputeAnalyticsPredictionsJob;
 use App\Jobs\DetectAnalyticsAnomaliesJob;
 use App\Jobs\EvaluateAnalyticsAccuracyJob;
+use App\Jobs\PlanifierRelancesJob;
+use App\Jobs\SauvegardeDataJob;
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
 class Kernel extends ConsoleKernel
 {
     /**
      * Define the application's command schedule.
      *
-     * @param  \Illuminate\Console\Scheduling\Schedule  $schedule
      * @return void
      */
     protected function schedule(Schedule $schedule)
@@ -68,7 +73,7 @@ class Kernel extends ConsoleKernel
         $schedule->job(new SauvegardeDataJob('complet', [
             'inclure_fichiers' => true,
             'compression' => true,
-            'retention_jours' => 30
+            'retention_jours' => 30,
         ]))
             ->dailyAt('03:00')
             ->name('sauvegarde-quotidienne')
@@ -79,7 +84,7 @@ class Kernel extends ConsoleKernel
         $schedule->job(new SauvegardeDataJob('database', [
             'inclure_fichiers' => false,
             'compression' => true,
-            'retention_jours' => 7
+            'retention_jours' => 7,
         ]))
             ->everySixHours()
             ->name('sauvegarde-database')
@@ -91,7 +96,7 @@ class Kernel extends ConsoleKernel
             'segmentation' => 'auto',
             'niveau_max' => 3,
             'types_relance' => ['email'],
-            'intervalle_jours' => 7
+            'intervalle_jours' => 7,
         ]))
             ->dailyAt('08:00')
             ->name('planification-relances')
@@ -103,7 +108,7 @@ class Kernel extends ConsoleKernel
             'segmentation' => 'niveau_retard',
             'niveau_max' => 5,
             'types_relance' => ['email', 'sms'],
-            'seuil_urgence' => 60 // Plus de 60 jours de retard
+            'seuil_urgence' => 60, // Plus de 60 jours de retard
         ]))
             ->dailyAt('14:00')
             ->name('planification-relances-urgentes')
@@ -151,7 +156,7 @@ class Kernel extends ConsoleKernel
                 'queue_size' => \DB::table('jobs')->count(),
                 'failed_jobs' => \DB::table('failed_jobs')->count(),
                 'memory_usage' => memory_get_usage(true),
-                'disk_space' => disk_free_space(storage_path())
+                'disk_space' => disk_free_space(storage_path()),
             ]);
         })
             ->everyFifteenMinutes()
@@ -202,6 +207,13 @@ class Kernel extends ConsoleKernel
             ->name('analytics-accuracy-evaluation')
             ->description('Comparaison predicted vs actual du mois écoulé + update accuracy_score')
             ->onOneServer();
+
+        $schedule->command('academic-pilotage:refresh-snapshots --limit=100')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->name('academic-pilotage-refresh-snapshots')
+            ->description('Rafraichit les snapshots academiques invalides');
     }
 
     /**
@@ -227,11 +239,11 @@ class Kernel extends ConsoleKernel
         Commands\FixTimetablesCommand::class,
         Commands\SyncStudentEmailsCommand::class,
         Commands\CreateTestUsersCommand::class,
-        \App\Console\Commands\MarkUnattendedTeacherSessions::class,
-        \App\Console\Commands\RunQueueWorker::class,
-        \App\Console\Commands\QueueMonitorCommand::class,
-        \App\Console\Commands\SendInscriptionPaiementReminders::class,
-        \App\Console\Commands\MarkTeacherAbsences::class,
-        \App\Console\Commands\RecalculatePersonnelScoresCommand::class,
+        MarkUnattendedTeacherSessions::class,
+        RunQueueWorker::class,
+        QueueMonitorCommand::class,
+        SendInscriptionPaiementReminders::class,
+        MarkTeacherAbsences::class,
+        RecalculatePersonnelScoresCommand::class,
     ];
 }

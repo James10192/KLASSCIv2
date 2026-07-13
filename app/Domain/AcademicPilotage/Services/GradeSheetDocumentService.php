@@ -28,9 +28,10 @@ class GradeSheetDocumentService
     ): GradeSheetDocument {
         $this->contentValidator->assertValid($file);
         $storedPath = null;
+        $committed = false;
 
         try {
-            return DB::transaction(function () use (
+            $document = DB::transaction(function () use (
                 $sheet,
                 $file,
                 $uploader,
@@ -46,8 +47,11 @@ class GradeSheetDocumentService
 
                 return $document;
             });
+            $committed = true;
+
+            return $document;
         } catch (Throwable $exception) {
-            if (is_string($storedPath)) {
+            if (! $committed && is_string($storedPath)) {
                 $this->storage->delete($storedPath);
             }
 

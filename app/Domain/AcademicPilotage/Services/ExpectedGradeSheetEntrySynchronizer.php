@@ -17,6 +17,7 @@ class ExpectedGradeSheetEntrySynchronizer
 {
     public function __construct(
         private readonly GradeSheetEventRecorder $eventRecorder,
+        private readonly AcademicMetricSnapshotInvalidationService $invalidation,
     ) {}
 
     public function sync(
@@ -24,7 +25,7 @@ class ExpectedGradeSheetEntrySynchronizer
         int $expectedLockVersion,
         User $actor
     ): EntrySyncResult {
-        return DB::transaction(function () use ($sheet, $expectedLockVersion, $actor) {
+        $result = DB::transaction(function () use ($sheet, $expectedLockVersion, $actor) {
             $current = GradeSheet::query()->lockForUpdate()->findOrFail($sheet->id);
             $this->assertSynchronizable($current, $expectedLockVersion);
 
@@ -58,6 +59,9 @@ class ExpectedGradeSheetEntrySynchronizer
                 $newVersion
             );
         });
+        $this->invalidation->fromGradeSheet($sheet);
+
+        return $result;
     }
 
     private function cohortIds(GradeSheet $sheet): Collection

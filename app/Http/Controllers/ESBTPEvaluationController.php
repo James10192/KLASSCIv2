@@ -9,18 +9,23 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
+use App\Models\Setting;
 use App\Models\User;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 
 class ESBTPEvaluationController extends Controller
 {
     /**
      * Affiche la liste des évaluations.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function index(Request $request)
     {
@@ -269,7 +274,7 @@ class ESBTPEvaluationController extends Controller
     /**
      * Affiche le formulaire de création d'une évaluation.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function create(Request $request)
     {
@@ -321,7 +326,7 @@ class ESBTPEvaluationController extends Controller
     /**
      * Enregistre une nouvelle évaluation.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function store(Request $request)
     {
@@ -400,12 +405,12 @@ class ESBTPEvaluationController extends Controller
             }
             $calculatedDuration = $endAt->diffInMinutes($startAt);
 
-$evaluation = new ESBTPEvaluation;
+            $evaluation = new ESBTPEvaluation;
             $evaluation->titre = $request->titre;
             $evaluation->description = $request->description;
             $evaluation->type = $request->type;
             $evaluation->date_evaluation = $startAt;
-            
+
             // Récupérer le coefficient depuis le formulaire (priorité haute)
             $coefficient = $request->input('coefficient');
             if (empty($coefficient) || $coefficient <= 0) {
@@ -530,7 +535,7 @@ $evaluation = new ESBTPEvaluation;
     /**
      * Affiche les détails d'une évaluation spécifique.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function show(ESBTPEvaluation $evaluation)
     {
@@ -566,7 +571,7 @@ $evaluation = new ESBTPEvaluation;
     /**
      * Affiche le formulaire de modification d'une évaluation.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function edit(ESBTPEvaluation $evaluation)
     {
@@ -591,7 +596,7 @@ $evaluation = new ESBTPEvaluation;
     /**
      * Met à jour une évaluation spécifique.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function update(Request $request, ESBTPEvaluation $evaluation)
     {
@@ -624,7 +629,7 @@ $evaluation = new ESBTPEvaluation;
                 'coefficient.max' => 'Le coefficient ne peut pas dépasser 10.',
                 'duree_minutes.max' => 'La durée ne peut pas dépasser 480 minutes (8h).',
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             \Log::warning('ESBTPEvaluation@update validation failed', [
                 'errors' => $e->errors(),
                 'evaluation_id' => $evaluation->id,
@@ -640,7 +645,7 @@ $evaluation = new ESBTPEvaluation;
 
             // Si l'évaluation a déjà des notes et que l'utilisateur essaie de changer la classe ou la matière
             // sans la permission evaluations.edit_locked, bloquer.
-            if ($hasNotes && $isChangingScope && !$canBypassLock) {
+            if ($hasNotes && $isChangingScope && ! $canBypassLock) {
                 return redirect()->back()
                     ->with('error', 'Impossible de modifier la classe ou la matière car des notes sont déjà associées. Demandez la permission evaluations.edit_locked pour bypasser cette protection.')
                     ->withInput();
@@ -653,12 +658,12 @@ $evaluation = new ESBTPEvaluation;
             }
             $calculatedDuration = $endAt->diffInMinutes($startAt);
 
-$evaluation->titre = $request->titre;
+            $evaluation->titre = $request->titre;
             $evaluation->description = $request->description;
             $evaluation->type = $request->type;
             $evaluation->date_evaluation = $startAt;
             $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-            
+
             // Récupérer le coefficient depuis le formulaire (priorité haute)
             $coefficient = $request->input('coefficient');
             if (empty($coefficient) || $coefficient <= 0) {
@@ -743,7 +748,7 @@ $evaluation->titre = $request->titre;
      * Quick edit (titre + barème + coefficient seulement).
      * Utilisé par le modal de saisie de notes (PR #4 — édition rapide depuis l'en-tête de colonne).
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @return JsonResponse
      */
     public function quickUpdate(Request $request, ESBTPEvaluation $evaluation)
     {
@@ -797,7 +802,7 @@ $evaluation->titre = $request->titre;
     /**
      * Supprime une évaluation spécifique.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function destroy(Request $request, ESBTPEvaluation $evaluation)
     {
@@ -843,7 +848,7 @@ $evaluation->titre = $request->titre;
     /**
      * Affiche les examens de l'étudiant connecté.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function etudiant(Request $request)
     {
@@ -1213,15 +1218,15 @@ $evaluation->titre = $request->titre;
             ->keyBy('etudiant_id');
 
         $etablissement = [
-            'nom' => \App\Models\Setting::get('school_name', 'KLASSCI'),
-            'adresse' => \App\Models\Setting::get('school_address', ''),
-            'telephone' => \App\Models\Setting::get('school_phone', ''),
-            'email' => \App\Models\Setting::get('school_email', ''),
-            'logo' => \App\Models\Setting::get('school_logo', ''),
+            'nom' => Setting::get('school_name', 'KLASSCI'),
+            'adresse' => Setting::get('school_address', ''),
+            'telephone' => Setting::get('school_phone', ''),
+            'email' => Setting::get('school_email', ''),
+            'logo' => Setting::get('school_logo', ''),
         ];
 
         $isBlank = false;
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+        $pdf = Pdf::loadView(
             'esbtp.notes.saisie-rapide-pdf',
             compact('evaluation', 'etudiants', 'anneeCourante', 'etablissement', 'notesByEtudiant', 'isBlank')
         );
@@ -1317,7 +1322,7 @@ $evaluation->titre = $request->titre;
      * Charge les matières disponibles pour une classe via AJAX (combinaisons globales).
      * Pattern identique à attendances.create pour cohérence UX.
      *
-     * @return \Illuminate\Http\Response
+     * @return Response
      */
     public function loadMatieres(Request $request)
     {
@@ -1345,7 +1350,7 @@ $evaluation->titre = $request->titre;
             $matieres = ESBTPMatiere::where('is_active', true)
                 ->whereHas('liaisonsFilieresNiveaux', function ($q) use ($classe) {
                     $q->where('filiere_id', $classe->filiere_id)
-                      ->where('niveau_etude_id', $classe->niveau_etude_id);
+                        ->where('niveau_etude_id', $classe->niveau_etude_id);
                 })
                 ->orderBy('name')
                 ->get();
@@ -1435,7 +1440,7 @@ $evaluation->titre = $request->titre;
                 $matieres = ESBTPMatiere::where('is_active', true)
                     ->whereHas('liaisonsFilieresNiveaux', function ($query) use ($filiere, $niveau) {
                         $query->where('filiere_id', $filiere->id)
-                              ->where('niveau_etude_id', $niveau->id);
+                            ->where('niveau_etude_id', $niveau->id);
                     })
                     ->orderBy('name')
                     ->get();
@@ -1648,11 +1653,14 @@ $evaluation->titre = $request->titre;
         }
 
         // Real run
-        $created = 0; $updated = 0; $skipped = 0;
+        $created = 0;
+        $updated = 0;
+        $skipped = 0;
         foreach ($sources as $src) {
             $existing = $targets->get($src->matiere_id);
             if ($existing && $validated['mode'] === 'merge') {
                 $skipped++;
+
                 continue;
             }
             ESBTPMatiereCoefficient::updateOrCreate([
@@ -1666,7 +1674,11 @@ $evaluation->titre = $request->titre;
                 'updated_by' => Auth::id(),
                 'created_by' => Auth::id(),
             ]);
-            if ($existing) $updated++; else $created++;
+            if ($existing) {
+                $updated++;
+            } else {
+                $created++;
+            }
         }
 
         return response()->json([
@@ -1693,13 +1705,13 @@ $evaluation->titre = $request->titre;
 
         $filiereId = $validated['filiere_id'] ?? null;
         $niveauId = $validated['niveau_etude_id'] ?? null;
-        if (!empty($validated['classe_id'])) {
+        if (! empty($validated['classe_id'])) {
             $classe = ESBTPClasse::find($validated['classe_id']);
             $filiereId = $filiereId ?: $classe?->filiere_id;
             $niveauId = $niveauId ?: $classe?->niveau_etude_id;
         }
 
-        if (!$filiereId || !$niveauId) {
+        if (! $filiereId || ! $niveauId) {
             return response()->json([
                 'success' => false,
                 'message' => 'classe_id (ou filiere_id+niveau_etude_id) requis pour calculer la complétude.',
@@ -1707,7 +1719,7 @@ $evaluation->titre = $request->titre;
         }
 
         // Matières applicables = pivot esbtp_matiere_filiere_niveau (combinaison stricte)
-        $matieresQuery = \App\Models\ESBTPMatiere::query()
+        $matieresQuery = ESBTPMatiere::query()
             ->where('is_active', true)
             ->whereHas('filieres', fn ($q) => $q->where('esbtp_filieres.id', $filiereId))
             ->whereHas('niveaux', fn ($q) => $q->where('esbtp_niveau_etudes.id', $niveauId));
@@ -1721,7 +1733,7 @@ $evaluation->titre = $request->titre;
             ->where('periode', $validated['periode'])
             ->pluck('coefficient', 'matiere_id');
 
-        $missing = $allMatieres->filter(fn ($m) => !$configured->has($m->id))->values();
+        $missing = $allMatieres->filter(fn ($m) => ! $configured->has($m->id))->values();
 
         $status = $total === 0
             ? 'unknown'
@@ -1795,10 +1807,9 @@ $evaluation->titre = $request->titre;
      * Get evaluations for a specific class and subject (AJAX API)
      * Used in the new notes system for grid display
      *
-     * @param Request $request
-     * @param int $classId
-     * @param int $matiereId
-     * @return \Illuminate\Http\JsonResponse
+     * @param  int  $classId
+     * @param  int  $matiereId
+     * @return JsonResponse
      */
     public function byClassMatiere(Request $request, $classId, $matiereId)
     {
@@ -1811,7 +1822,7 @@ $evaluation->titre = $request->titre;
 
             // Validate class exists
             $classe = ESBTPClasse::find($classId);
-            if (!$classe) {
+            if (! $classe) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Classe non trouvée.',
@@ -1820,7 +1831,7 @@ $evaluation->titre = $request->titre;
 
             // Validate subject exists
             $matiere = ESBTPMatiere::find($matiereId);
-            if (!$matiere) {
+            if (! $matiere) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Matière non trouvée.',
@@ -1829,7 +1840,7 @@ $evaluation->titre = $request->titre;
 
             // Get current academic year
             $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-            if (!$anneeCourante) {
+            if (! $anneeCourante) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Aucune année universitaire active.',
@@ -1879,7 +1890,7 @@ $evaluation->titre = $request->titre;
             foreach ($evaluations as $eval) {
                 foreach ($eval['notes'] as $etudiantId => $noteData) {
                     $notesMap[$etudiantId][$eval['id']] = $noteData['note'];
-                    $notesMap[$etudiantId][$eval['id'] . '_absent'] = ($noteData['is_absent'] ?? false) ? true : false;
+                    $notesMap[$etudiantId][$eval['id'].'_absent'] = ($noteData['is_absent'] ?? false) ? true : false;
                 }
             }
 

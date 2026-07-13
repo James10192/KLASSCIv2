@@ -213,6 +213,38 @@ abstract class AcademicPilotageDatabaseTestCase extends TestCase
             $table->unique(['disk', 'path']);
         });
 
+        Schema::create('esbtp_academic_metric_snapshots', function (Blueprint $table): void {
+            $table->id();
+            $table->string('context_hash')->unique();
+            $table->string('scope_type');
+            $table->unsignedBigInteger('scope_id')->nullable();
+            $table->string('academic_system')->nullable();
+            $table->unsignedBigInteger('annee_universitaire_id')->nullable();
+            $table->string('semester')->nullable();
+            $table->unsignedBigInteger('classe_id')->nullable();
+            $table->unsignedBigInteger('etudiant_id')->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->decimal('academic_score', 5, 2)->nullable();
+            $table->decimal('operational_score', 5, 2)->nullable();
+            $table->unsignedTinyInteger('coverage_pct')->default(0);
+            $table->unsignedTinyInteger('confidence_pct')->default(0);
+            $table->string('level')->default('insufficient_data');
+            $table->json('metrics');
+            $table->json('factors')->nullable();
+            $table->json('reasons')->nullable();
+            $table->string('evidence_hash');
+            $table->string('engine_version')->default('1');
+            $table->boolean('is_dirty')->default(false);
+            $table->unsignedBigInteger('source_revision')->default(0);
+            $table->string('refresh_token', 64)->nullable();
+            $table->dateTime('refresh_started_at')->nullable();
+            $table->unsignedInteger('refresh_attempts')->default(0);
+            $table->string('last_refresh_error', 255)->nullable();
+            $table->dateTime('stale_at')->nullable();
+            $table->dateTime('calculated_at');
+            $table->timestamps();
+        });
+
         Schema::create('permissions', function (Blueprint $table): void {
             $table->id();
             $table->string('name');

@@ -7,6 +7,8 @@ use App\Domain\AcademicPilotage\Enums\GradeSheetStatus;
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
 use App\Domain\AcademicPilotage\Models\GradeSheetEntry;
 use App\Domain\AcademicPilotage\Models\GradeSheetEvent;
+use App\Domain\AcademicPilotage\Services\AcademicMetricSnapshotInvalidationService;
+use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Domain\AcademicPilotage\Services\ExpectedGradeSheetEntrySynchronizer;
 use App\Domain\AcademicPilotage\Services\GradeSheetEventRecorder;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +23,7 @@ class ExpectedGradeSheetEntrySynchronizerIntegrationTest extends AcademicPilotag
 
         $this->synchronizer = new ExpectedGradeSheetEntrySynchronizer(
             new GradeSheetEventRecorder,
+            new AcademicMetricSnapshotInvalidationService(new AcademicPeriodNormalizer),
         );
     }
 
