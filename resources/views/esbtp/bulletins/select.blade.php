@@ -218,6 +218,10 @@
 @endpush
 
 @section('content')
+@php
+    $anneeOptions = $anneesUniversitaires->mapWithKeys(fn ($annee) => [$annee->id => $annee->display_name])->toArray();
+@endphp
+
 <div class="container-fluid" x-data="busSelect()" x-init="init()">
 
     {{-- ══ HERO ═══════════════════════════════════════════ --}}
@@ -266,7 +270,7 @@
                 <div class="bus-field" :class="!form.classe_id ? 'bus-field--disabled' : ''">
                     <label class="bus-field-label"><span class="bus-field-step">2</span>Année universitaire</label>
                     <x-au-select
-                        :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => ($a->annee_debut.' - '.$a->annee_fin)])->toArray()"
+                        :options="$anneeOptions"
                         placeholder="Choisir l'année…"
                         icon="fa-calendar"
                         x-model="form.annee_universitaire_id" />
@@ -313,7 +317,7 @@
                 <div class="bus-field" :class="!form.classe_id ? 'bus-field--disabled' : ''">
                     <label class="bus-field-label"><span class="bus-field-step">2</span>Année universitaire</label>
                     <x-au-select
-                        :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => ($a->annee_debut.' - '.$a->annee_fin)])->toArray()"
+                        :options="$anneeOptions"
                         placeholder="Choisir l'année…"
                         icon="fa-calendar"
                         x-model="form.annee_universitaire_id" />
@@ -383,7 +387,7 @@
                         </span>
                     </label>
                     <x-au-select
-                        :options="$anneesUniversitaires->mapWithKeys(fn($a) => [$a->id => ($a->annee_debut.' - '.$a->annee_fin)])->toArray()"
+                        :options="$anneeOptions"
                         placeholder="Choisir l'année…"
                         icon="fa-calendar"
                         x-model="form.annee_universitaire_id" />

@@ -88,6 +88,46 @@ class ESBTPAnneeUniversitaire extends Model
         return $this->end_date;
     }
 
+    public function getDisplayNameAttribute(): string
+    {
+        if (filled($this->name)) {
+            return $this->name;
+        }
+
+        $startYear = $this->normalizeYearPart($this->getRawOriginal('annee_debut'))
+            ?? ($this->start_date ? $this->start_date->format('Y') : null);
+        $endYear = $this->normalizeYearPart($this->getRawOriginal('annee_fin'))
+            ?? ($this->end_date ? $this->end_date->format('Y') : null);
+
+        if ($startYear && $endYear) {
+            return "{$startYear}-{$endYear}";
+        }
+
+        if ($startYear) {
+            return (string) $startYear;
+        }
+
+        return 'Année #'.$this->id;
+    }
+
+    private function normalizeYearPart(mixed $value): ?string
+    {
+        if ($value instanceof \DateTimeInterface) {
+            return $value->format('Y');
+        }
+
+        $text = trim((string) $value);
+        if ($text === '') {
+            return null;
+        }
+
+        if (preg_match('/^\d{4}/', $text, $matches)) {
+            return $matches[0];
+        }
+
+        return $text;
+    }
+
     /**
      * Obtenir les inscriptions associées à cette année universitaire.
      *
