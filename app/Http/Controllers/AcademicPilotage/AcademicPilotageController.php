@@ -3,16 +3,21 @@
 namespace App\Http\Controllers\AcademicPilotage;
 
 use App\Domain\AcademicPilotage\Enums\AcademicAlertStatus;
+use App\Domain\AcademicPilotage\Enums\AcademicResponsibility;
 use App\Domain\AcademicPilotage\Enums\GradeSheetStatus;
 use App\Domain\AcademicPilotage\Models\AcademicAlert;
 use App\Domain\AcademicPilotage\Models\AcademicMetricSnapshot;
 use App\Domain\AcademicPilotage\Models\GradeSheet;
-use App\Domain\AcademicPilotage\Models\GradeSheetEntry;
+use App\Domain\AcademicPilotage\Presenters\GradeSheetSummaryPresenter;
+use App\Domain\AcademicPilotage\Services\AcademicActorActivityService;
 use App\Domain\AcademicPilotage\Services\AcademicPilotageManualSyncService;
+use App\Domain\AcademicPilotage\Services\AcademicActorScopeService;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
+use App\Models\ESBTPInscription;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,10 +26,16 @@ use Illuminate\View\View;
 
 class AcademicPilotageController extends Controller
 {
+    public function __construct(
+        private readonly GradeSheetSummaryPresenter $gradeSheetSummary,
+        private readonly AcademicActorScopeService $actorScope,
+        private readonly AcademicActorActivityService $actorActivity,
+    ) {}
+
     public function index(Request $request): View
     {
         $year = $this->selectedYear($request);
-        $classes = $this->classOptions($year?->id);
+        $classes = $this->classOptions($year?->id, $this->actorScope->dashboardClassIds($request->user(), $year?->id));
 
         return view('esbtp.pilotage-academique.index', [
             'annees' => $this->yearOptions(),
@@ -32,6 +43,19 @@ class AcademicPilotageController extends Controller
             'classes' => $classes,
             'periods' => $this->periodOptions(),
             'systems' => ['' => 'Tous les systèmes', 'BTS' => 'BTS', 'LMD' => 'LMD'],
+            'assignmentUsers' => $request->user()->can('academic_sheets.assign')
+                ? User::query()
+                    ->where('is_active', true)
+                    ->whereDoesntHave('roles', fn ($query) => $query->where('name', 'etudiant'))
+                    ->with('roles:id,name')
+                    ->orderBy('name')
+                    ->get(['id', 'name', 'email', 'username'])
+                : collect(),
+            'responsibilityOptions' => collect(AcademicResponsibility::cases())
+                ->mapWithKeys(fn (AcademicResponsibility $responsibility) => [
+                    $responsibility->value => $responsibility->label(),
+                ])
+                ->all(),
             'initialFilters' => [
                 'year_id' => $year?->id,
                 'period' => $request->input('period', 'semestre1'),
@@ -47,6 +71,12 @@ class AcademicPilotageController extends Controller
         $period = $this->period($request);
         $system = $this->system($request);
         $classId = $request->integer('class_id') ?: null;
+        $scope = $this->actorScope->dashboardScope($request->user(), $year?->id);
+        $classIds = $scope->global ? null : $scope->classIds;
+
+        if ($classId !== null && $classIds !== null && ! $classIds->contains($classId)) {
+            abort(403);
+        }
 
         return response()->json([
             'ok' => true,
@@ -56,12 +86,33 @@ class AcademicPilotageController extends Controller
                 'system' => $system,
                 'class_id' => $classId,
             ],
-            'summary' => $this->summary($year?->id, $period, $system, $classId),
-            'classes' => $this->classes($year?->id, $period, $system, $classId),
-            'alerts' => $this->alerts($year?->id, $period, $classId),
-            'sheets' => $this->sheets($year?->id, $period, $system, $classId),
-            'students' => $this->students($year?->id, $period, $system, $classId),
-            'freshness' => $this->freshness($year?->id, $period, $system, $classId),
+            'prerequisites' => [
+                'year_configured' => $year !== null,
+                'message' => $year === null
+                    ? 'Aucune année universitaire active. Activez une année avant de calculer le pilotage.'
+                    : null,
+            ],
+            'summary' => $this->summary($year?->id, $period, $system, $classId, $classIds),
+            'classes' => $this->classes($year?->id, $period, $system, $classId, 12, $classIds),
+            'alerts' => $this->alerts($year?->id, $period, $classId, 10, null, $classIds),
+            'sheets' => $this->sheets($year?->id, $period, $system, $classId, 10, $classIds, $request->user()),
+            'my_sheets' => $this->sheets($year?->id, $period, $system, $classId, 8, $classIds, $request->user(), true),
+            'students' => $this->students($year?->id, $period, $system, $classId, 10, $classIds),
+            'actor_activity' => $this->actorActivity->summarize(
+                $year?->id,
+                $period,
+                $system,
+                $classId,
+                $classIds,
+                (int) $request->user()->id,
+                $request->user()->name,
+            ),
+            'scope' => [
+                'global' => $scope->global,
+                'class_count' => $classIds?->count(),
+                'sources' => $scope->sources,
+            ],
+            'freshness' => $this->freshness($year?->id, $period, $system, $classId, $classIds),
         ]);
     }
 
@@ -87,6 +138,9 @@ class AcademicPilotageController extends Controller
             ], 422);
         }
 
+        $classIds = $this->actorScope->dashboardClassIds($request->user(), $year->id);
+        abort_if($classIds !== null && ! $classIds->contains($classId), 403);
+
         $result = $sync->synchronize((int) $year->id, $period, $system, $classId);
         $stats = $result['stats'];
 
@@ -110,7 +164,9 @@ class AcademicPilotageController extends Controller
     {
         $year = $this->selectedYear($request);
         $period = $this->period($request);
-        $snapshot = $this->snapshotQuery($year?->id, $period, null, (int) $classe->id)
+        $classIds = $this->actorScope->dashboardClassIds($request->user(), $year?->id);
+        abort_if($classIds !== null && ! $classIds->contains($classe->id), 403);
+        $snapshot = $this->scopeClasses($this->snapshotQuery($year?->id, $period, null, (int) $classe->id), $classIds)
             ->where('scope_type', 'class')
             ->latest('calculated_at')
             ->first();
@@ -119,9 +175,9 @@ class AcademicPilotageController extends Controller
             'ok' => true,
             'classe' => $this->classLabel($classe),
             'health' => $this->snapshotPayload($snapshot),
-            'alerts' => $this->alerts($year?->id, $period, (int) $classe->id, 8),
-            'sheets' => $this->sheets($year?->id, $period, null, (int) $classe->id, 8),
-            'students' => $this->students($year?->id, $period, null, (int) $classe->id, 8),
+            'alerts' => $this->alerts($year?->id, $period, (int) $classe->id, 8, null, $classIds),
+            'sheets' => $this->sheets($year?->id, $period, null, (int) $classe->id, 8, $classIds, $request->user()),
+            'students' => $this->students($year?->id, $period, null, (int) $classe->id, 8, $classIds),
         ]);
     }
 
@@ -129,7 +185,17 @@ class AcademicPilotageController extends Controller
     {
         $year = $this->selectedYear($request);
         $period = $this->period($request);
-        $snapshot = $this->snapshotQuery($year?->id, $period)
+        $classIds = $this->actorScope->dashboardClassIds($request->user(), $year?->id);
+        if ($classIds !== null) {
+            $studentInScope = $year !== null && ESBTPInscription::query()
+                ->where('etudiant_id', $etudiant->id)
+                ->where('annee_universitaire_id', $year->id)
+                ->where('status', 'active')
+                ->whereIn('classe_id', $classIds)
+                ->exists();
+            abort_unless($studentInScope, 404);
+        }
+        $snapshot = $this->scopeClasses($this->snapshotQuery($year?->id, $period), $classIds)
             ->where('scope_type', 'student')
             ->where('etudiant_id', $etudiant->id)
             ->latest('calculated_at')
@@ -143,15 +209,15 @@ class AcademicPilotageController extends Controller
                 'matricule' => $etudiant->matricule,
             ],
             'health' => $this->snapshotPayload($snapshot),
-            'alerts' => $this->alerts($year?->id, $period, null, 8, (int) $etudiant->id),
+            'alerts' => $this->alerts($year?->id, $period, null, 8, (int) $etudiant->id, $classIds),
         ]);
     }
 
-    private function summary(?int $yearId, string $period, ?string $system, ?int $classId): array
+    private function summary(?int $yearId, string $period, ?string $system, ?int $classId, ?Collection $classIds = null): array
     {
-        $snapshots = $this->snapshotQuery($yearId, $period, $system, $classId);
-        $alerts = $this->alertQuery($yearId, $period, $classId);
-        $sheets = $this->sheetQuery($yearId, $period, $system, $classId);
+        $snapshots = $this->scopeClasses($this->snapshotQuery($yearId, $period, $system, $classId), $classIds);
+        $alerts = $this->scopeClasses($this->alertQuery($yearId, $period, $classId), $classIds);
+        $sheets = $this->scopeClasses($this->sheetQuery($yearId, $period, $system, $classId), $classIds);
 
         $academicScore = (clone $snapshots)->where('scope_type', 'class')->avg('academic_score');
         $operationalScore = (clone $snapshots)->where('scope_type', 'class')->avg('operational_score');
@@ -173,9 +239,9 @@ class AcademicPilotageController extends Controller
         ];
     }
 
-    private function classes(?int $yearId, string $period, ?string $system, ?int $classId, int $limit = 12): array
+    private function classes(?int $yearId, string $period, ?string $system, ?int $classId, int $limit = 12, ?Collection $classIds = null): array
     {
-        return $this->snapshotQuery($yearId, $period, $system, $classId)
+        return $this->scopeClasses($this->snapshotQuery($yearId, $period, $system, $classId), $classIds)
             ->where('scope_type', 'class')
             ->with('classe:id,name,code,systeme_academique')
             ->latest('calculated_at')
@@ -197,9 +263,9 @@ class AcademicPilotageController extends Controller
             ->all();
     }
 
-    private function alerts(?int $yearId, string $period, ?int $classId = null, int $limit = 10, ?int $studentId = null): array
+    private function alerts(?int $yearId, string $period, ?int $classId = null, int $limit = 10, ?int $studentId = null, ?Collection $classIds = null): array
     {
-        return $this->alertQuery($yearId, $period, $classId)
+        return $this->scopeClasses($this->alertQuery($yearId, $period, $classId), $classIds)
             ->when($studentId, fn ($query) => $query->where('etudiant_id', $studentId))
             ->with(['classe:id,name,code', 'etudiant:id,nom,prenoms,matricule'])
             ->latest('last_seen_at')
@@ -222,9 +288,23 @@ class AcademicPilotageController extends Controller
             ->all();
     }
 
-    private function sheets(?int $yearId, string $period, ?string $system, ?int $classId, int $limit = 10): array
+    private function sheets(
+        ?int $yearId,
+        string $period,
+        ?string $system,
+        ?int $classId,
+        int $limit,
+        ?Collection $classIds,
+        User $actor,
+        bool $actorOnly = false,
+    ): array
     {
-        $sheets = $this->sheetQuery($yearId, $period, $system, $classId)
+        $query = $this->scopeClasses($this->sheetQuery($yearId, $period, $system, $classId), $classIds);
+        if ($actorOnly) {
+            $this->scopeActorSheets($query, $actor);
+        }
+
+        $sheets = $query
             ->with([
                 'assignedProcessor:id,name,email',
                 'classe:id,name,code',
@@ -246,76 +326,28 @@ class AcademicPilotageController extends Controller
             ->limit($limit)
             ->get();
 
-        $entryActors = $this->entryActorsBySheet($sheets->pluck('id'));
-
-        return $sheets
-            ->map(fn (GradeSheet $sheet): array => $this->sheetPayload($sheet, $entryActors->get($sheet->id, [])))
-            ->values()
-            ->all();
+        return $this->gradeSheetSummary->collection($sheets, $actor);
     }
 
-    private function sheetPayload(GradeSheet $sheet, array $entryActors): array
+    private function scopeActorSheets(Builder $query, User $actor): void
     {
-        $latestEvent = $sheet->latestEvent;
+        $teacherId = $actor->teacherProfile?->getKey();
+        $actorColumns = ['assigned_processor_id', 'submitted_by', 'received_by', 'entered_by', 'controlled_by', 'validated_by'];
 
-        return [
-            'id' => $sheet->id,
-            'code' => $sheet->code,
-            'status' => $sheet->status->value,
-            'status_label' => $sheet->status->label(),
-            'entry_mode' => $sheet->entry_mode->value,
-            'classe' => $sheet->classe ? $this->classLabel($sheet->classe) : null,
-            'matiere' => $sheet->matiere?->name ?? $sheet->matiere?->code,
-            'teacher' => $sheet->teacher?->name,
-            'assigned_processor' => $this->userLabel($sheet->assignedProcessor),
-            'submitted_by' => $this->userLabel($sheet->submittedBy),
-            'received_by' => $this->userLabel($sheet->receivedBy),
-            'entered_by' => $this->userLabel($sheet->enteredBy),
-            'controlled_by' => $this->userLabel($sheet->controlledBy),
-            'validated_by' => $this->userLabel($sheet->validatedBy),
-            'entry_actors' => $entryActors,
-            'expected_at' => optional($sheet->expected_at)->toDateString(),
-            'submitted_at' => optional($sheet->submitted_at)->toIso8601String(),
-            'received_at' => optional($sheet->received_at)->toIso8601String(),
-            'entered_at' => optional($sheet->entered_at)->toIso8601String(),
-            'controlled_at' => optional($sheet->controlled_at)->toIso8601String(),
-            'validated_at' => optional($sheet->validated_at)->toIso8601String(),
-            'updated_at' => optional($sheet->updated_at)->toIso8601String(),
-            'entries_count' => (int) $sheet->entries_count,
-            'entered_entries_count' => (int) $sheet->entered_entries_count,
-            'resolved_entries_count' => (int) $sheet->resolved_entries_count,
-            'latest_event' => $latestEvent ? [
-                'type' => $latestEvent->event_type,
-                'actor' => $this->userLabel($latestEvent->actor),
-                'occurred_at' => optional($latestEvent->occurred_at)->toIso8601String(),
-                'reason' => $latestEvent->reason,
-            ] : null,
-        ];
+        $query->where(function (Builder $scope) use ($actor, $actorColumns, $teacherId): void {
+            foreach ($actorColumns as $index => $column) {
+                $index === 0
+                    ? $scope->where($column, $actor->id)
+                    : $scope->orWhere($column, $actor->id);
+            }
+            $scope->when($teacherId, fn (Builder $builder) => $builder->orWhere('teacher_id', $teacherId));
+            $scope->orWhereHas('evaluation', fn (Builder $evaluation) => $evaluation->where('enseignant_id', $actor->id));
+        });
     }
 
-    private function entryActorsBySheet(Collection $sheetIds): Collection
+    private function students(?int $yearId, string $period, ?string $system, ?int $classId, int $limit = 10, ?Collection $classIds = null): array
     {
-        if ($sheetIds->isEmpty()) {
-            return collect();
-        }
-
-        return GradeSheetEntry::query()
-            ->whereIn('grade_sheet_id', $sheetIds)
-            ->whereNotNull('entered_by')
-            ->with('enteredBy:id,name,email')
-            ->get(['grade_sheet_id', 'entered_by'])
-            ->groupBy('grade_sheet_id')
-            ->map(fn (Collection $entries): array => $entries
-                ->map(fn (GradeSheetEntry $entry): ?string => $this->userLabel($entry->enteredBy))
-                ->filter()
-                ->unique()
-                ->values()
-                ->all());
-    }
-
-    private function students(?int $yearId, string $period, ?string $system, ?int $classId, int $limit = 10): array
-    {
-        return $this->snapshotQuery($yearId, $period, $system, $classId)
+        return $this->scopeClasses($this->snapshotQuery($yearId, $period, $system, $classId), $classIds)
             ->where('scope_type', 'student')
             ->with('etudiant:id,nom,prenoms,matricule')
             ->orderByRaw('academic_score is null asc')
@@ -338,7 +370,7 @@ class AcademicPilotageController extends Controller
     private function snapshotQuery(?int $yearId, string $period, ?string $system = null, ?int $classId = null): Builder
     {
         return AcademicMetricSnapshot::query()
-            ->when($yearId, fn ($query) => $query->where('annee_universitaire_id', $yearId))
+            ->where('annee_universitaire_id', $yearId)
             ->where('semester', $period)
             ->when($system, fn ($query) => $query->where('academic_system', $system))
             ->when($classId, fn ($query) => $query->where('classe_id', $classId));
@@ -347,7 +379,7 @@ class AcademicPilotageController extends Controller
     private function alertQuery(?int $yearId, string $period, ?int $classId = null): Builder
     {
         return AcademicAlert::query()
-            ->when($yearId, fn ($query) => $query->where('annee_universitaire_id', $yearId))
+            ->where('annee_universitaire_id', $yearId)
             ->where('semester', $period)
             ->when($classId, fn ($query) => $query->where('classe_id', $classId));
     }
@@ -355,19 +387,20 @@ class AcademicPilotageController extends Controller
     private function sheetQuery(?int $yearId, string $period, ?string $system = null, ?int $classId = null): Builder
     {
         return GradeSheet::query()
-            ->when($yearId, fn ($query) => $query->where('annee_universitaire_id', $yearId))
+            ->where('annee_universitaire_id', $yearId)
             ->where('semester', $period)
             ->when($system, fn ($query) => $query->where('academic_system', $system))
             ->when($classId, fn ($query) => $query->where('classe_id', $classId));
     }
 
-    private function freshness(?int $yearId, string $period, ?string $system, ?int $classId): array
+    private function freshness(?int $yearId, string $period, ?string $system, ?int $classId, ?Collection $classIds = null): array
     {
-        $latest = $this->snapshotQuery($yearId, $period, $system, $classId)->max('calculated_at');
+        $query = $this->scopeClasses($this->snapshotQuery($yearId, $period, $system, $classId), $classIds);
+        $latest = (clone $query)->max('calculated_at');
 
         return [
             'last_updated_at' => $latest,
-            'stale_count' => $this->snapshotQuery($yearId, $period, $system, $classId)->where('is_dirty', true)->count(),
+            'stale_count' => $query->where('is_dirty', true)->count(),
         ];
     }
 
@@ -389,15 +422,18 @@ class AcademicPilotageController extends Controller
         return ESBTPAnneeUniversitaire::query()
             ->orderByDesc('annee_debut')
             ->limit(8)
-            ->get(['id', 'name', 'annee_debut']);
+            ->get(['id', 'name', 'annee_debut', 'annee_fin', 'start_date', 'end_date']);
     }
 
-    private function classOptions(?int $yearId): Collection
+    private function classOptions(?int $yearId, ?Collection $classIds = null): Collection
     {
         return ESBTPClasse::query()
             ->without(['filiere', 'niveau', 'annee'])
             ->where('is_active', true)
-            ->when($yearId, fn ($query) => $query->where('annee_universitaire_id', $yearId))
+            ->when($yearId, fn ($query) => $query->whereHas('inscriptions', fn ($inscriptions) => $inscriptions
+                ->where('annee_universitaire_id', $yearId)
+                ->where('status', 'active')))
+            ->when($classIds !== null, fn ($query) => $query->whereIn('id', $classIds))
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
     }
@@ -456,12 +492,8 @@ class AcademicPilotageController extends Controller
         return trim(($classe->code ? "{$classe->code} · " : '').$classe->name);
     }
 
-    private function userLabel($user): ?string
+    private function scopeClasses(Builder $query, ?Collection $classIds): Builder
     {
-        if ($user === null) {
-            return null;
-        }
-
-        return trim((string) ($user->name ?: $user->email)) ?: null;
+        return $classIds === null ? $query : $query->whereIn('classe_id', $classIds);
     }
 }

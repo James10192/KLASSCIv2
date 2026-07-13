@@ -99,6 +99,7 @@ abstract class AcademicPilotageDatabaseTestCase extends TestCase
             $table->unsignedBigInteger('matiere_id')->nullable();
             $table->unsignedBigInteger('annee_universitaire_id');
             $table->unsignedBigInteger('teacher_id')->nullable();
+            $table->unsignedBigInteger('assigned_processor_id')->nullable();
             $table->string('academic_system')->nullable();
             $table->string('semester')->nullable();
             $table->string('evaluation_type')->nullable();
@@ -178,6 +179,25 @@ abstract class AcademicPilotageDatabaseTestCase extends TestCase
         Schema::create('esbtp_teachers', function (Blueprint $table): void {
             $table->id();
             $table->unsignedBigInteger('user_id')->nullable();
+        });
+
+        Schema::create('esbtp_evaluations', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('classe_id');
+            $table->unsignedBigInteger('annee_universitaire_id');
+            $table->unsignedBigInteger('enseignant_id')->nullable();
+        });
+
+        Schema::create('esbtp_emploi_temps', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('annee_universitaire_id');
+        });
+
+        Schema::create('esbtp_seance_cours', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('emploi_temps_id');
+            $table->unsignedBigInteger('classe_id');
+            $table->unsignedBigInteger('teacher_id')->nullable();
         });
 
         Schema::create('esbtp_academic_actor_assignments', function (Blueprint $table): void {

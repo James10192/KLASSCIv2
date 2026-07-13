@@ -105,6 +105,11 @@
                     <a href="{{ route('esbtp.evaluations.index') }}" class="ev-btn ev-btn--glass">
                         <i class="fas fa-arrow-left"></i> Retour
                     </a>
+                    @if(auth()->user()->can('module.academic_pilotage.access') && auth()->user()->can('academic_pilotage.view'))
+                        <a href="{{ route('esbtp.pilotage-academique.index', array_filter(['class_id' => $classe?->id, 'system' => $classe?->systeme_academique, 'period' => $evaluation->periode])) }}#sheets" class="ev-btn ev-btn--glass" title="Suivre les notes et fiches de cette classe">
+                            <i class="fas fa-chart-line"></i> Pilotage
+                        </a>
+                    @endif
                     @can('evaluations.edit')
                         @if($evaluation->isEditable() || auth()->user()->can('evaluations.edit_locked'))
                             <a href="{{ route('esbtp.evaluations.edit', $evaluation) }}" class="ev-btn ev-btn--white">

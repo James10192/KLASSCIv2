@@ -153,6 +153,43 @@ return [
         'default_for_roles' => ['superAdmin', 'coordinateur'],
     ],
 
+    // ===== Pilotage académique =====
+    'academic_pilotage.health' => [
+        'label' => 'Santé académique',
+        'description' => 'Score moyen des classes disposant de données suffisantes',
+        'icon' => 'fa-chart-line',
+        'color' => 'primary',
+        'permission' => 'academic_pilotage.view',
+        'partial' => 'dashboard.widgets.academic-pilotage-health',
+        'group' => 'Pilotage académique',
+        'size' => 'sm',
+        'default_for_roles' => ['superAdmin', 'coordinateur'],
+    ],
+
+    'academic_pilotage.pending_sheets' => [
+        'label' => 'Fiches à traiter',
+        'description' => 'Fiches non validées de l’année universitaire en cours',
+        'icon' => 'fa-clipboard-check',
+        'color' => 'primary',
+        'permission' => 'academic_pilotage.view',
+        'partial' => 'dashboard.widgets.academic-pilotage-pending-sheets',
+        'group' => 'Pilotage académique',
+        'size' => 'sm',
+        'default_for_roles' => ['superAdmin', 'coordinateur'],
+    ],
+
+    'academic_pilotage.open_alerts' => [
+        'label' => 'Alertes académiques',
+        'description' => 'Alertes ouvertes nécessitant une prise en charge',
+        'icon' => 'fa-triangle-exclamation',
+        'color' => 'warning',
+        'permission' => 'academic_pilotage.view',
+        'partial' => 'dashboard.widgets.academic-pilotage-open-alerts',
+        'group' => 'Pilotage académique',
+        'size' => 'sm',
+        'default_for_roles' => ['superAdmin', 'coordinateur'],
+    ],
+
     // ===== Présences =====
     'attendances.today_rate' => [
         'label' => 'Taux de présence du jour',

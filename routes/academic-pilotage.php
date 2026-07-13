@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AcademicPilotage\AcademicAssignmentController;
+use App\Http\Controllers\AcademicPilotage\AcademicAlertController;
 use App\Http\Controllers\AcademicPilotage\AcademicPilotageController;
 use App\Http\Controllers\AcademicPilotage\GradeSheetController;
 use App\Http\Controllers\AcademicPilotage\GradeSheetDocumentController;
@@ -58,6 +59,10 @@ Route::prefix('esbtp')->name('esbtp.')
             'permission:module.academic_pilotage.access',
         ])->group(function () {
             Route::prefix('academic-sheets')->name('academic-sheets.')->group(function () {
+                Route::get('/{sheet}', [GradeSheetController::class, 'show'])
+                    ->whereNumber('sheet')
+                    ->middleware('throttle:60,1')
+                    ->name('show');
                 Route::post('/', [GradeSheetController::class, 'store'])
                     ->middleware('throttle:30,1')
                     ->name('store');
@@ -79,8 +84,17 @@ Route::prefix('esbtp')->name('esbtp.')
                     ->name('documents.download');
             });
 
+            Route::post('/academic-alerts/{alert}/transition', [AcademicAlertController::class, 'transition'])
+                ->whereNumber('alert')
+                ->middleware('throttle:30,1')
+                ->name('academic-alerts.transition');
+
             Route::prefix('academic-assignments')->name('academic-assignments.')
+                ->middleware('permission:academic_sheets.assign')
                 ->group(function () {
+                    Route::get('/', [AcademicAssignmentController::class, 'index'])
+                        ->middleware('throttle:60,1')
+                        ->name('index');
                     Route::post('/', [AcademicAssignmentController::class, 'store'])
                         ->middleware('throttle:30,1')
                         ->name('store');

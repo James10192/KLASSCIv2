@@ -738,6 +738,11 @@
                     <a href="{{ route('teacher.dashboard') }}" class="tg-btn tg-btn--glass">
                         <i class="fa-solid fa-arrow-left"></i> Retour
                     </a>
+                    @if(auth()->user()->can('module.academic_pilotage.access') && auth()->user()->can('academic_pilotage.view'))
+                        <a href="{{ route('esbtp.pilotage-academique.index', array_filter(['year_id' => $anneeEnCours?->id])) }}#sheets" class="tg-btn tg-btn--glass" title="Suivre vos fiches et alertes de notes">
+                            <i class="fa-solid fa-chart-line"></i> Pilotage
+                        </a>
+                    @endif
                     <a href="{{ route('esbtp.evaluations.create') }}" class="tg-btn tg-btn--white">
                         <i class="fa-solid fa-circle-plus"></i> Nouvelle évaluation
                     </a>
