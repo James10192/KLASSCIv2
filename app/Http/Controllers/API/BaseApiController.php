@@ -113,7 +113,7 @@ class BaseApiController extends Controller
             ],
             'annee_universitaire_courante' => $annee ? [
                 'id' => $annee->id,
-                'nom' => $annee->nom ?? "{$annee->annee_debut}-{$annee->annee_fin}",
+                'nom' => $annee->display_name,
                 'annee_debut' => $annee->annee_debut,
                 'annee_fin' => $annee->annee_fin,
                 'is_current' => true
