@@ -63,6 +63,7 @@
 <div class="container-fluid cpa-shell"
      x-data="cpaDashboard({
         dataUrl: @js(route('esbtp.pilotage-academique.data')),
+        syncUrl: @js(route('esbtp.pilotage-academique.synchronize')),
         classUrl: @js(url('/esbtp/pilotage-academique/classes')),
         studentUrl: @js(url('/esbtp/pilotage-academique/etudiants')),
         initialFilters: @js($initialFilters),
@@ -92,11 +93,21 @@
                 <x-au-select name="system" :options="$systems" :value="$initialFilters['system']" placeholder="Système" icon="fa-graduation-cap" />
                 <x-au-select name="class_id" :options="$classeOptions" :value="$initialFilters['class_id']" placeholder="Toutes les classes" icon="fa-school" searchable />
             </form>
-            <button type="button" class="cpa-btn cpa-btn--primary" @click="applyFilters()" :disabled="loading">
-                <i class="fas" :class="loading ? 'fa-spinner fa-spin' : 'fa-rotate'"></i>
-                <span x-text="loading ? 'Synchronisation...' : 'Synchroniser la vue'"></span>
+            <button type="button" class="cpa-btn cpa-btn--primary" @click="synchronize()" :disabled="loading || syncing">
+                <i class="fas" :class="syncing ? 'fa-spinner fa-spin' : 'fa-rotate'"></i>
+                <span x-text="syncing ? 'Synchronisation...' : 'Synchroniser la vue'"></span>
             </button>
         </div>
+
+        <template x-if="syncResult">
+            <div class="cpa-state mt-3" :class="{ 'cpa-error': syncResult.ok === false }">
+                <i class="fas" :class="syncResult.ok === false ? 'fa-circle-exclamation' : 'fa-circle-check'"></i>
+                <div>
+                    <strong x-text="syncResult.message"></strong>
+                    <p class="cpa-muted mt-1" x-text="syncSummary()"></p>
+                </div>
+            </div>
+        </template>
 
         <div class="cpa-tabs" role="tablist">
             <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'direction' }" @click="tab = 'direction'"><i class="fas fa-gauge-high"></i>Direction</button>
@@ -259,7 +270,9 @@ document.addEventListener('alpine:init', () => {
     Alpine.data('cpaDashboard', (config) => ({
         tab: 'direction',
         loading: false,
+        syncing: false,
         error: null,
+        syncResult: null,
         suppressFilterChange: false,
         filterKeys: ['year_id', 'period', 'system', 'class_id'],
         data: { summary: {}, classes: [], alerts: [], sheets: [], students: [], freshness: {} },
@@ -287,11 +300,36 @@ document.addEventListener('alpine:init', () => {
         applyFilters() {
             if (this.loading) return;
             this.closeFilterMenus();
+            this.syncResult = null;
             this.filters = this.formFilters();
             const params = new URLSearchParams(this.compactFilters(this.filters));
             const nextUrl = params.toString() ? `${location.pathname}?${params.toString()}` : location.pathname;
             history.pushState({}, '', nextUrl);
             this.load();
+        },
+        async synchronize() {
+            if (this.syncing || this.loading) return;
+            this.closeFilterMenus();
+            this.filters = this.formFilters();
+            this.syncing = true;
+            this.error = null;
+            this.syncResult = null;
+
+            try {
+                const payload = await this.postJson(config.syncUrl, this.compactFilters(this.filters));
+                this.syncResult = payload;
+                if (payload.filters) {
+                    this.filters = { ...this.filters, ...payload.filters };
+                    this.syncFilterControls();
+                }
+                const params = new URLSearchParams(this.compactFilters(this.filters));
+                history.pushState({}, '', params.toString() ? `${location.pathname}?${params.toString()}` : location.pathname);
+                await this.load();
+            } catch (e) {
+                this.syncResult = { ok: false, message: e.message, sync: null };
+            } finally {
+                this.syncing = false;
+            }
         },
         loadFromUrl() {
             const params = new URLSearchParams(location.search);
@@ -354,6 +392,28 @@ document.addEventListener('alpine:init', () => {
             }
             return payload;
         },
+        async postJson(url, body) {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                },
+                body: JSON.stringify(body),
+            });
+            let payload;
+            try {
+                payload = await response.json();
+            } catch (e) {
+                throw new Error('La synchronisation a répondu dans un format inattendu.');
+            }
+            if (!response.ok) {
+                throw new Error(payload.message || 'Impossible de synchroniser le pilotage académique.');
+            }
+            return payload;
+        },
         compactFilters(filters) {
             return Object.fromEntries(Object.entries(filters).filter(([, value]) => value !== null && value !== undefined && value !== ''));
         },
@@ -364,6 +424,11 @@ document.addEventListener('alpine:init', () => {
             this.$root.querySelectorAll('.cpa-filters .au-select-trigger--open').forEach((trigger) => {
                 trigger.click();
             });
+        },
+        syncSummary() {
+            const sync = this.syncResult?.sync;
+            if (!sync) return '';
+            return `${sync.classes_processed || 0} classe(s), ${sync.students_processed || 0} étudiant(s), ${sync.class_snapshots || 0} snapshot(s) classe, ${sync.student_snapshots || 0} snapshot(s) étudiant, ${sync.alerts_seen || 0} alerte(s) vérifiée(s).`;
         },
         kpis() {
             const s = this.data.summary || {};

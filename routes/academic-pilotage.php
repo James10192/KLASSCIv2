@@ -28,6 +28,14 @@ Route::prefix('esbtp')->name('esbtp.')
                 'permission:academic_pilotage.view',
             ])
             ->name('pilotage-academique.data');
+        Route::post('/pilotage-academique/synchronize', [AcademicPilotageController::class, 'synchronize'])
+            ->middleware([
+                ForceJsonResponse::class,
+                'permission:module.academic_pilotage.access',
+                'permission:academic_health.recalculate',
+                'throttle:10,1',
+            ])
+            ->name('pilotage-academique.synchronize');
         Route::get('/pilotage-academique/classes/{classe}', [AcademicPilotageController::class, 'classHealth'])
             ->whereNumber('classe')
             ->middleware([

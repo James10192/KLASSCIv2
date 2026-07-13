@@ -7,6 +7,7 @@ use App\Domain\AcademicPilotage\Enums\GradeSheetStatus;
 use App\Domain\AcademicPilotage\Models\AcademicAlert;
 use App\Domain\AcademicPilotage\Models\AcademicMetricSnapshot;
 use App\Domain\AcademicPilotage\Models\GradeSheet;
+use App\Domain\AcademicPilotage\Services\AcademicPilotageManualSyncService;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -61,6 +62,47 @@ class AcademicPilotageController extends Controller
             'students' => $this->students($year?->id, $period, $system, $classId),
             'freshness' => $this->freshness($year?->id, $period, $system, $classId),
         ]);
+    }
+
+    public function synchronize(
+        Request $request,
+        AcademicPilotageManualSyncService $sync,
+    ): JsonResponse {
+        $year = $this->selectedYear($request);
+        if ($year === null) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Aucune année universitaire active n’est disponible pour synchroniser le pilotage.',
+            ], 422);
+        }
+
+        $period = $this->period($request);
+        $system = $this->system($request);
+        $classId = $request->integer('class_id') ?: null;
+        if ($classId === null) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Choisissez une classe avant de synchroniser. La synchronisation manuelle est ciblée pour éviter un recalcul global trop long.',
+            ], 422);
+        }
+
+        $result = $sync->synchronize((int) $year->id, $period, $system, $classId);
+        $stats = $result['stats'];
+
+        return response()->json([
+            'ok' => $stats['failed'] === 0,
+            'message' => $stats['failed'] === 0
+                ? $this->syncSuccessMessage($stats)
+                : 'Synchronisation terminée avec des erreurs sur certaines classes.',
+            'filters' => [
+                'year_id' => (int) $year->id,
+                'period' => $period,
+                'system' => $system,
+                'class_id' => $classId,
+            ],
+            'sync' => $stats,
+            'failures' => $result['failures'],
+        ], $stats['failed'] === 0 ? 200 : 207);
     }
 
     public function classHealth(Request $request, ESBTPClasse $classe): JsonResponse
@@ -329,6 +371,15 @@ class AcademicPilotageController extends Controller
             'calculated_at' => optional($snapshot->calculated_at)->toIso8601String(),
             'is_dirty' => $snapshot->is_dirty,
         ];
+    }
+
+    private function syncSuccessMessage(array $stats): string
+    {
+        if (($stats['classes_processed'] ?? 0) === 0) {
+            return 'Aucune classe active ne correspond aux filtres sélectionnés.';
+        }
+
+        return 'Synchronisation terminée. Les indicateurs affichés ont été recalculés.';
     }
 
     private function classLabel(ESBTPClasse $classe): string

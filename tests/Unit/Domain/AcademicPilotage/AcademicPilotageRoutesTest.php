@@ -5,6 +5,7 @@ namespace Tests\Unit\Domain\AcademicPilotage;
 use App\Domain\AcademicPilotage\Models\AcademicActorAssignment;
 use App\Domain\AcademicPilotage\Models\GradeSheet;
 use App\Domain\AcademicPilotage\Models\GradeSheetDocument;
+use App\Http\Middleware\ForceJsonResponse;
 use App\Policies\AcademicActorAssignmentPolicy;
 use App\Policies\GradeSheetDocumentPolicy;
 use App\Policies\GradeSheetPolicy;
@@ -19,6 +20,7 @@ class AcademicPilotageRoutesTest extends TestCase
         $routes = [
             'esbtp.pilotage-academique.index' => 'permission:academic_pilotage.view',
             'esbtp.pilotage-academique.data' => 'permission:academic_pilotage.view',
+            'esbtp.pilotage-academique.synchronize' => 'permission:academic_health.recalculate',
             'esbtp.pilotage-academique.classes.show' => 'permission:academic_health.view',
             'esbtp.pilotage-academique.etudiants.show' => 'permission:academic_health.view',
         ];
@@ -32,6 +34,22 @@ class AcademicPilotageRoutesTest extends TestCase
             $this->assertContains('permission:module.academic_pilotage.access', $middleware);
             $this->assertContains($permission, $middleware);
         }
+    }
+
+    public function test_pilotage_synchronize_route_is_post_json_and_throttled(): void
+    {
+        $route = Route::getRoutes()->getByName('esbtp.pilotage-academique.synchronize');
+
+        $this->assertNotNull($route);
+        $this->assertContains('POST', $route->methods());
+
+        $middleware = $route->gatherMiddleware();
+        $this->assertContains(ForceJsonResponse::class, $middleware);
+        $this->assertContains('permission:academic_health.recalculate', $middleware);
+        $this->assertNotEmpty(array_filter(
+            $middleware,
+            fn (string $item): bool => str_starts_with($item, 'throttle:'),
+        ));
     }
 
     public function test_grade_sheet_routes_are_protected_and_throttled(): void
