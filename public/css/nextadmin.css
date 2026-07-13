@@ -521,6 +521,7 @@ body {
 /* ============= Main Content ============= */
 .nextadmin-main {
     flex: 1;
+    min-width: 0;
     margin-left: var(--sidebar-width);
     transition: all var(--transition-normal);
     min-height: 100vh;
@@ -768,6 +769,7 @@ body {
 /* ============= Content ============= */
 .nextadmin-content {
     flex: 1;
+    min-width: 0;
     padding: var(--space-8);
     background: transparent;
     position: relative;
