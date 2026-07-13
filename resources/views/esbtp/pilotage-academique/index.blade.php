@@ -14,11 +14,15 @@
 .cpa-filter-panel { overflow: visible; position: relative; z-index: 30; }
 .cpa-filter-panel:has(.au-select-trigger--open) { z-index: 1400; }
 .cpa-filter-panel .cpa-toolbar { overflow: visible; }
-.cpa-filters { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; align-items: end; overflow: visible; }
+.cpa-filters { display: grid; grid-template-columns: minmax(170px, .9fr) minmax(150px, .75fr) minmax(140px, .7fr) minmax(280px, 1.65fr); gap: .75rem; align-items: end; overflow: visible; }
 .cpa-filters .au-select,
 .cpa-filters .au-select-trigger { width: 100%; }
 .cpa-filters .au-select:has(.au-select-trigger--open) { z-index: 1300; }
-.cpa-filters .au-select-menu { left: 0; right: 0; min-width: 100%; max-height: min(320px, 26vh); z-index: 1301; }
+.cpa-filters .au-select-menu { left: 0; right: auto; min-width: 100%; width: max(100%, 260px); max-height: min(380px, 46vh); z-index: 1301; }
+.cpa-filters .cpa-filter-year .au-select-menu { width: max(100%, 260px); }
+.cpa-filters .cpa-filter-class .au-select-menu { width: min(520px, calc(100vw - 48px)); }
+.cpa-filters .au-select-option { align-items: flex-start; gap: .65rem; }
+.cpa-filters .au-select-option-label { white-space: normal; line-height: 1.25; overflow: visible; text-overflow: clip; }
 .cpa-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: .9rem; }
 .cpa-tabs { display: flex; gap: .35rem; overflow-x: auto; padding: .35rem; background: #fff; border: 1px solid #e8ecf1; border-radius: 14px; }
 .cpa-tab { border: 0; background: transparent; color: #64748b; border-radius: 10px; min-height: 44px; padding: .55rem .9rem; font-weight: 700; font-size: .82rem; display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap; }
@@ -93,10 +97,10 @@
     <section class="cpa-panel cpa-filter-panel">
         <div class="cpa-toolbar">
             <form class="cpa-filters" x-ref="filtersForm" @change.debounce.150ms="handleFilterChange()" @submit.prevent="applyFilters()">
-                <x-au-select name="year_id" :options="$anneeOptions" :value="$initialFilters['year_id']" placeholder="Année universitaire" icon="fa-calendar" searchable />
+                <x-au-select name="year_id" class="cpa-filter-year" :options="$anneeOptions" :value="$initialFilters['year_id']" placeholder="Année universitaire" icon="fa-calendar" searchable />
                 <x-au-select name="period" :options="$periods" :value="$initialFilters['period']" placeholder="Période" icon="fa-layer-group" />
                 <x-au-select name="system" :options="$systems" :value="$initialFilters['system']" placeholder="Système" icon="fa-graduation-cap" />
-                <x-au-select name="class_id" :options="$classeOptions" :value="$initialFilters['class_id']" placeholder="Toutes les classes" icon="fa-school" searchable />
+                <x-au-select name="class_id" class="cpa-filter-class" :options="$classeOptions" :value="$initialFilters['class_id']" placeholder="Toutes les classes" icon="fa-school" searchable />
             </form>
             <button type="button" class="cpa-btn cpa-btn--primary" @click="synchronize()" :disabled="loading || syncing">
                 <i class="fas" :class="syncing ? 'fa-spinner fa-spin' : 'fa-rotate'"></i>
