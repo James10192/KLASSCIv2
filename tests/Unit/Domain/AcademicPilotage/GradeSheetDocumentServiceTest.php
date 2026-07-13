@@ -6,6 +6,8 @@ use App\Domain\AcademicPilotage\Enums\GradeSheetStatus;
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
 use App\Domain\AcademicPilotage\Models\GradeSheetDocument;
 use App\Domain\AcademicPilotage\Models\GradeSheetEvent;
+use App\Domain\AcademicPilotage\Services\AcademicMetricSnapshotInvalidationService;
+use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Domain\AcademicPilotage\Services\GradeSheetDocumentContentValidator;
 use App\Domain\AcademicPilotage\Services\GradeSheetDocumentDownloadService;
 use App\Domain\AcademicPilotage\Services\GradeSheetDocumentService;
@@ -40,6 +42,7 @@ class GradeSheetDocumentServiceTest extends AcademicPilotageDatabaseTestCase
             new GradeSheetEventRecorder,
             new GradeSheetDocumentContentValidator,
             $this->storage,
+            new AcademicMetricSnapshotInvalidationService(new AcademicPeriodNormalizer),
         );
         $this->downloads = new GradeSheetDocumentDownloadService($this->storage);
     }
@@ -93,6 +96,25 @@ class GradeSheetDocumentServiceTest extends AcademicPilotageDatabaseTestCase
         $this->assertSame([], Storage::disk('local')->allFiles(
             "academic-pilotage/grade-sheets/{$sheet->id}"
         ));
+    }
+
+    public function test_store_keeps_committed_upload_when_post_commit_invalidation_fails(): void
+    {
+        $file = UploadedFile::fake()->createWithContent('notes.pdf', '%PDF-1.4');
+        $sheet = $this->createGradeSheet(['semester' => 'semestre1']);
+        Schema::drop('esbtp_academic_metric_snapshots');
+        Log::shouldReceive('channel')->with('queries')->zeroOrMoreTimes()->andReturnSelf();
+        Log::shouldReceive('debug')->zeroOrMoreTimes();
+        Log::shouldReceive('error')->never();
+
+        $document = $this->service->store($sheet, $file, $this->actor(3), 1);
+
+        $this->assertDatabaseHas('esbtp_grade_sheet_documents', [
+            'id' => $document->id,
+            'path' => $document->path,
+        ]);
+        $this->assertSame(2, $sheet->fresh()->lock_version);
+        Storage::disk('local')->assertExists($document->path);
     }
 
     public function test_signed_download_url_expires_after_five_minutes_by_default(): void

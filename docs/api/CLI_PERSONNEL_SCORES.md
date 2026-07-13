@@ -4,7 +4,7 @@
 
 `GET /api/cli/personnel-scores`
 
-Inspecte les snapshots stockes dans `esbtp_personnel_score_snapshots` pour un tenant.
+Inspecte les snapshots stockés dans `esbtp_personnel_score_snapshots` pour un tenant.
 
 ## Authentification
 
@@ -90,6 +90,9 @@ GET /api/cli/personnel-scores?period=year&role=enseignant&limit=10
 }
 ```
 
+Les snapshots sous-jacents persistent aussi `coverage`, `confidence`, `engine_version` et `evidence_hash`. La réponse CLI reste inchangée pour préserver son contrat actuel.
+
 ## Historique
 
-- 2026-07-02: Creation de l'endpoint et de la commande `klassci-cli.ps1 personnel-scores`.
+- 2026-07-11: documentation des métadonnées académiques de couverture, confiance, version moteur et preuve. Les valeurs restent nulles pour les anciens snapshots.
+- 2026-07-02: création de l'endpoint et de la commande `klassci-cli.ps1 personnel-scores`.

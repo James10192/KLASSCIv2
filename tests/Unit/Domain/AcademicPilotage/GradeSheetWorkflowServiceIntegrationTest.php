@@ -8,11 +8,15 @@ use App\Domain\AcademicPilotage\Enums\GradeSheetEntryStatus;
 use App\Domain\AcademicPilotage\Enums\GradeSheetStatus;
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
 use App\Domain\AcademicPilotage\Models\GradeSheetEvent;
+use App\Domain\AcademicPilotage\Services\AcademicMetricSnapshotInvalidationService;
+use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Domain\AcademicPilotage\Services\GradeSheetEventRecorder;
 use App\Domain\AcademicPilotage\Services\GradeSheetStateMachine;
 use App\Domain\AcademicPilotage\Services\GradeSheetWorkflowService;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class GradeSheetWorkflowServiceIntegrationTest extends AcademicPilotageDatabaseTestCase
 {
@@ -25,6 +29,7 @@ class GradeSheetWorkflowServiceIntegrationTest extends AcademicPilotageDatabaseT
         $this->service = new GradeSheetWorkflowService(
             new GradeSheetStateMachine,
             new GradeSheetEventRecorder,
+            new AcademicMetricSnapshotInvalidationService(new AcademicPeriodNormalizer),
         );
     }
 
@@ -87,6 +92,26 @@ class GradeSheetWorkflowServiceIntegrationTest extends AcademicPilotageDatabaseT
             'lock_version' => 2,
         ], $event->metadata);
         $this->assertTrue($event->occurred_at->equalTo(now()));
+    }
+
+    public function test_transition_succeeds_when_post_commit_invalidation_fails(): void
+    {
+        $sheet = $this->createGradeSheet(['semester' => 'semestre1']);
+        Schema::drop('esbtp_academic_metric_snapshots');
+        Log::shouldReceive('channel')->with('queries')->zeroOrMoreTimes()->andReturnSelf();
+        Log::shouldReceive('debug')->zeroOrMoreTimes();
+        Log::shouldReceive('error')->never();
+
+        $transitioned = $this->service->transition(new GradeSheetTransitionCommand(
+            $sheet->id,
+            GradeSheetAction::START_ENTRY,
+            1,
+            42,
+        ));
+
+        $this->assertSame(GradeSheetStatus::IN_ENTRY, $transitioned->status);
+        $this->assertSame(2, $transitioned->lock_version);
+        $this->assertSame('start_entry', GradeSheetEvent::query()->sole()->event_type);
     }
 
     public function test_finish_entry_is_blocked_while_an_expected_entry_remains(): void

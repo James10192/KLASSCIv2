@@ -16,11 +16,12 @@ final class GradeSheetWorkflowService
     public function __construct(
         private readonly GradeSheetStateMachine $stateMachine,
         private readonly GradeSheetEventRecorder $eventRecorder,
+        private readonly AcademicMetricSnapshotInvalidationService $invalidation,
     ) {}
 
     public function transition(GradeSheetTransitionCommand $command): GradeSheet
     {
-        return DB::transaction(function () use ($command): GradeSheet {
+        $sheet = DB::transaction(function () use ($command): GradeSheet {
             $sheet = GradeSheet::query()->findOrFail($command->gradeSheetId);
             $this->assertCurrentVersion($sheet, $command->expectedLockVersion);
             $plan = $this->stateMachine->transition(
@@ -61,6 +62,9 @@ final class GradeSheetWorkflowService
 
             return $sheet->refresh();
         });
+        $this->invalidation->fromGradeSheet($sheet);
+
+        return $sheet;
     }
 
     private function assertCurrentVersion(GradeSheet $sheet, int $expectedVersion): void

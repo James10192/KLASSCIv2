@@ -7,6 +7,8 @@ use App\Domain\AcademicPilotage\Enums\GradeSheetStatus;
 use App\Domain\AcademicPilotage\Models\GradeSheet;
 use App\Domain\AcademicPilotage\Models\GradeSheetEntry;
 use App\Domain\AcademicPilotage\Models\GradeSheetEvent;
+use App\Domain\AcademicPilotage\Services\AcademicMetricSnapshotInvalidationService;
+use App\Domain\AcademicPilotage\Services\AcademicPeriodNormalizer;
 use App\Domain\AcademicPilotage\Services\ExpectedGradeSheetEntrySynchronizer;
 use App\Domain\AcademicPilotage\Services\GradeSheetEventRecorder;
 use App\Domain\AcademicPilotage\Services\GradeSheetFactory;
@@ -63,7 +65,10 @@ class GradeSheetFactoryIntegrationTest extends AcademicPilotageDatabaseTestCase
         $recorder = new GradeSheetEventRecorder;
         $service = new GradeSheetProvisioningService(
             new GradeSheetFactory($recorder),
-            new ExpectedGradeSheetEntrySynchronizer($recorder),
+            new ExpectedGradeSheetEntrySynchronizer(
+                $recorder,
+                new AcademicMetricSnapshotInvalidationService(new AcademicPeriodNormalizer),
+            ),
         );
 
         $first = $service->provision(

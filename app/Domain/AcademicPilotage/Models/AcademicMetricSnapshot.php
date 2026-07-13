@@ -34,6 +34,11 @@ class AcademicMetricSnapshot extends Model
         'evidence_hash',
         'engine_version',
         'is_dirty',
+        'source_revision',
+        'refresh_token',
+        'refresh_started_at',
+        'refresh_attempts',
+        'last_refresh_error',
         'stale_at',
         'calculated_at',
     ];
@@ -47,6 +52,9 @@ class AcademicMetricSnapshot extends Model
         'factors' => 'array',
         'reasons' => 'array',
         'is_dirty' => 'boolean',
+        'source_revision' => 'integer',
+        'refresh_started_at' => 'datetime',
+        'refresh_attempts' => 'integer',
         'stale_at' => 'datetime',
         'calculated_at' => 'datetime',
     ];

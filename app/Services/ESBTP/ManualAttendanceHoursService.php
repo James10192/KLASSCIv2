@@ -2,6 +2,7 @@
 
 namespace App\Services\ESBTP;
 
+use App\Domain\AcademicPilotage\Services\AcademicMetricSnapshotInvalidationService;
 use App\Models\ESBTPAttendanceManualHours;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +13,10 @@ class ManualAttendanceHoursService
 
     /** Valeur du paramètre `mode` attendue côté `loadManualTab` pour la saisie globale (sans matière). */
     public const MODE_GLOBAL = 'global';
+
+    public function __construct(
+        private readonly AcademicMetricSnapshotInvalidationService $invalidation,
+    ) {}
 
     public function getForEtudiant(int $etudiantId, int $anneeId, string $periode): Collection
     {
@@ -55,56 +60,85 @@ class ManualAttendanceHoursService
      */
     public function upsertBatch(array $entries, array $context, int $userId): int
     {
-        $count = 0;
-
-        DB::transaction(function () use ($entries, $context, $userId, &$count) {
+        $contexts = [];
+        $count = DB::transaction(function () use ($entries, $context, $userId, &$contexts): int {
+            $count = 0;
             foreach ($entries as $entry) {
-                $hasValue = ($entry['heures_presence'] ?? 0) > 0
-                    || ($entry['heures_absence_justifiees'] ?? 0) > 0
-                    || ($entry['heures_absence_non_justifiees'] ?? 0) > 0
-                    || !empty($entry['notes']);
-
-                $existing = $this->matchQuery(
-                    (int) $entry['etudiant_id'],
-                    $context['matiere_id'] ?? null,
-                    (int) $context['annee_universitaire_id'],
-                    (string) $context['periode']
-                )->first();
-
-                if (!$hasValue) {
-                    if ($existing) {
-                        $existing->update(['updated_by' => $userId]);
-                        $existing->delete();
-                        $count++;
-                    }
-                    continue;
-                }
-
-                $payload = [
-                    'etudiant_id' => $entry['etudiant_id'],
-                    'matiere_id' => $context['matiere_id'] ?? null,
-                    'classe_id' => $context['classe_id'],
-                    'annee_universitaire_id' => $context['annee_universitaire_id'],
-                    'periode' => $context['periode'],
-                    'heures_presence' => $entry['heures_presence'] ?? 0,
-                    'heures_absence_justifiees' => $entry['heures_absence_justifiees'] ?? 0,
-                    'heures_absence_non_justifiees' => $entry['heures_absence_non_justifiees'] ?? 0,
-                    'notes' => $entry['notes'] ?? null,
-                    'updated_by' => $userId,
-                ];
-
-                if ($existing) {
-                    $existing->update($payload);
-                } else {
-                    $payload['created_by'] = $userId;
-                    ESBTPAttendanceManualHours::create($payload);
-                }
-
-                $count++;
+                $count += (int) $this->upsertEntry($entry, $context, $userId, $contexts);
             }
+
+            return $count;
         });
 
+        if ($count > 0) {
+            $contexts[] = $context;
+            $this->invalidation->invalidateManyAfterCommit(
+                $this->uniqueInvalidationContexts($contexts),
+                'manual_attendance_hours_batch',
+            );
+        }
+
         return $count;
+    }
+
+    private function upsertEntry(array $entry, array $context, int $userId, array &$contexts): bool
+    {
+        $existing = $this->matchQuery(
+            (int) $entry['etudiant_id'],
+            $context['matiere_id'] ?? null,
+            (int) $context['annee_universitaire_id'],
+            (string) $context['periode']
+        )->first();
+
+        if (! $this->hasValue($entry)) {
+            if (! $existing) {
+                return false;
+            }
+
+            $original = $existing->getAttributes();
+            $existing->update(['updated_by' => $userId]);
+            $existing->delete();
+            $contexts[] = $original;
+
+            return true;
+        }
+
+        $original = $existing?->getAttributes();
+        $payload = $this->payload($entry, $context, $userId);
+        $existing
+            ? $existing->update($payload)
+            : ESBTPAttendanceManualHours::create($payload + ['created_by' => $userId]);
+
+        if ($original !== null) {
+            $contexts[] = $original;
+        }
+        $contexts[] = $payload;
+
+        return true;
+    }
+
+    private function hasValue(array $entry): bool
+    {
+        return ($entry['heures_presence'] ?? 0) > 0
+            || ($entry['heures_absence_justifiees'] ?? 0) > 0
+            || ($entry['heures_absence_non_justifiees'] ?? 0) > 0
+            || ! empty($entry['notes']);
+    }
+
+    private function payload(array $entry, array $context, int $userId): array
+    {
+        return [
+            'etudiant_id' => $entry['etudiant_id'],
+            'matiere_id' => $context['matiere_id'] ?? null,
+            'classe_id' => $context['classe_id'],
+            'annee_universitaire_id' => $context['annee_universitaire_id'],
+            'periode' => $context['periode'],
+            'heures_presence' => $entry['heures_presence'] ?? 0,
+            'heures_absence_justifiees' => $entry['heures_absence_justifiees'] ?? 0,
+            'heures_absence_non_justifiees' => $entry['heures_absence_non_justifiees'] ?? 0,
+            'notes' => $entry['notes'] ?? null,
+            'updated_by' => $userId,
+        ];
     }
 
     private function matchQuery(int $etudiantId, ?int $matiereId, int $anneeId, string $periode)
@@ -122,12 +156,44 @@ class ManualAttendanceHoursService
     public function delete(int $id, int $userId): bool
     {
         $row = ESBTPAttendanceManualHours::find($id);
-        if (!$row) {
+        if (! $row) {
             return false;
         }
         $row->update(['updated_by' => $userId]);
         $row->delete();
+        $this->invalidateContext($row->getAttributes(), 'manual_attendance_hours_delete');
+
         return true;
+    }
+
+    private function invalidateContext(array $context, string $source): void
+    {
+        $this->invalidation->invalidateManyAfterCommit(
+            $this->uniqueInvalidationContexts([$context]),
+            $source,
+        );
+    }
+
+    private function uniqueInvalidationContexts(array $contexts): array
+    {
+        $unique = [];
+        foreach ($contexts as $context) {
+            $normalized = [
+                'classId' => (int) $context['classe_id'],
+                'academicYearId' => (int) $context['annee_universitaire_id'],
+                'period' => (string) $context['periode'],
+            ];
+            $unique[implode(':', $normalized).':class'] = $normalized + ['studentId' => null];
+
+            $studentId = (int) ($context['etudiant_id'] ?? 0);
+            if ($studentId > 0) {
+                $unique[implode(':', $normalized).':student:'.$studentId] = $normalized + [
+                    'studentId' => $studentId,
+                ];
+            }
+        }
+
+        return array_values($unique);
     }
 
     public static function isValidPeriode(string $periode): bool

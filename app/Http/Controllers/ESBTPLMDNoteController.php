@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\AcademicPilotage\Services\AcademicMetricSnapshotInvalidationService;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
-use App\Models\ESBTPUniteEnseignement;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -24,18 +24,18 @@ class ESBTPLMDNoteController extends Controller
             ->where('is_active', true)
             ->with(['filiere', 'niveau'])
             ->withCount([
-                'inscriptions as etudiants_count' => fn($q) => $q
+                'inscriptions as etudiants_count' => fn ($q) => $q
                     ->where('status', 'active')
                     ->where('workflow_step', 'etudiant_cree')
-                    ->when($anneeId, fn($q2, $id) => $q2->where('annee_universitaire_id', $id)),
+                    ->when($anneeId, fn ($q2, $id) => $q2->where('annee_universitaire_id', $id)),
             ])
-            ->when($request->search, fn($q, $s) => $q->where('name', 'like', "%{$s}%"))
+            ->when($request->search, fn ($q, $s) => $q->where('name', 'like', "%{$s}%"))
             ->orderBy('name')
             ->get();
 
         // Nombre d'évaluations par classe (uniquement celles liées à des ECUEs LMD)
-        $evalCounts = ESBTPEvaluation::whereHas('classe', fn($q) => $q->where('systeme_academique', 'LMD'))
-            ->whereHas('matiere', fn($q) => $q->whereNotNull('unite_enseignement_id'))
+        $evalCounts = ESBTPEvaluation::whereHas('classe', fn ($q) => $q->where('systeme_academique', 'LMD'))
+            ->whereHas('matiere', fn ($q) => $q->whereNotNull('unite_enseignement_id'))
             ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
             ->select('classe_id')
             ->selectRaw('COUNT(*) as total')
@@ -56,23 +56,23 @@ class ESBTPLMDNoteController extends Controller
         $etudiants = $classe->inscriptions()
             ->where('status', 'active')
             ->where('workflow_step', 'etudiant_cree')
-            ->when($anneeCourante, fn($q) => $q->where('annee_universitaire_id', $anneeCourante->id))
+            ->when($anneeCourante, fn ($q) => $q->where('annee_universitaire_id', $anneeCourante->id))
             ->with('etudiant:id,nom,prenoms,matricule')
             ->get()
-            ->map(fn($i) => $i->etudiant)
+            ->map(fn ($i) => $i->etudiant)
             ->filter()
             ->sortBy('nom')
             ->values();
 
         // Évaluations de cette classe (uniquement celles liées à des ECUEs LMD)
         $evaluations = ESBTPEvaluation::where('classe_id', $classe->id)
-            ->whereHas('matiere', fn($q) => $q->whereNotNull('unite_enseignement_id'))
+            ->whereHas('matiere', fn ($q) => $q->whereNotNull('unite_enseignement_id'))
             ->where('status', '!=', ESBTPEvaluation::STATUS_CANCELLED)
             ->with(['matiere:id,name,code,unite_enseignement_id', 'matiere.uniteEnseignement:id,name,code'])
             ->withCount('notes')
             ->orderByDesc('date_evaluation')
             ->get()
-            ->map(fn($e) => [
+            ->map(fn ($e) => [
                 'id' => $e->id,
                 'titre' => $e->titre ?? $e->type_evaluation,
                 'type' => $e->type_evaluation,
@@ -93,13 +93,13 @@ class ESBTPLMDNoteController extends Controller
             $semestresAutorises = $classe->getSemestresLMD();
             $uesDisponibles = $classe->parcours->unitesEnseignement()
                 ->wherePivotIn('semestre', $semestresAutorises)
-                ->with(['matieres' => fn($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code')])
+                ->with(['matieres' => fn ($q) => $q->where('is_active', true)->orderBy('ordre_bulletin')->orderBy('code')])
                 ->get()
                 ->unique('id')
                 ->values();
 
             $matieres = $uesDisponibles
-                ->flatMap(fn($ue) => $ue->matieres->map(fn($m) => [
+                ->flatMap(fn ($ue) => $ue->matieres->map(fn ($m) => [
                     'id' => $m->id,
                     'name' => $m->name,
                     'code' => $m->code,
@@ -121,7 +121,7 @@ class ESBTPLMDNoteController extends Controller
             'etudiants' => $etudiants,
             'evaluations' => $evaluations,
             'matieres' => $matieres,
-            'ues' => $uesDisponibles->map(fn($ue) => [
+            'ues' => $uesDisponibles->map(fn ($ue) => [
                 'id' => $ue->id,
                 'name' => $ue->name,
                 'code' => $ue->code,
@@ -137,13 +137,13 @@ class ESBTPLMDNoteController extends Controller
     public function saisieRapide(ESBTPEvaluation $evaluation)
     {
         $evaluation->load([
-            'classe.inscriptions' => fn($q) => $q->where('status', 'active')->where('workflow_step', 'etudiant_cree'),
+            'classe.inscriptions' => fn ($q) => $q->where('status', 'active')->where('workflow_step', 'etudiant_cree'),
             'classe.inscriptions.etudiant',
             'matiere.uniteEnseignement',
         ]);
 
         $etudiants = $evaluation->classe->inscriptions
-            ->map(fn($i) => $i->etudiant)
+            ->map(fn ($i) => $i->etudiant)
             ->filter()
             ->sortBy('nom');
 
@@ -173,34 +173,63 @@ class ESBTPLMDNoteController extends Controller
 
         $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
 
-        DB::transaction(function () use ($request, $evaluation) {
+        $studentIds = DB::transaction(function () use ($request, $evaluation): array {
             $rows = collect($request->notes)
-                ->filter(fn($n) => ($n['note'] ?? null) !== null || !empty($n['is_absent']))
-                ->map(fn($n) => [
+                ->filter(fn ($n) => ($n['note'] ?? null) !== null || ! empty($n['is_absent']))
+                ->map(fn ($n) => [
                     'evaluation_id' => $evaluation->id,
-                    'etudiant_id'   => $n['etudiant_id'],
-                    'matiere_id'    => $evaluation->matiere_id,
-                    'classe_id'     => $evaluation->classe_id,
-                    'note'          => ($n['is_absent'] ?? false) ? 0 : ($n['note'] ?? 0),
-                    'is_absent'     => $n['is_absent'] ?? false,
-                    'semestre'      => $evaluation->periode,
-                    'commentaire'   => $n['commentaire'] ?? null,
-                    'created_by'    => auth()->id(),
-                    'updated_by'    => auth()->id(),
-                    'created_at'    => now(),
-                    'updated_at'    => now(),
+                    'etudiant_id' => $n['etudiant_id'],
+                    'matiere_id' => $evaluation->matiere_id,
+                    'classe_id' => $evaluation->classe_id,
+                    'note' => ($n['is_absent'] ?? false) ? 0 : ($n['note'] ?? 0),
+                    'is_absent' => $n['is_absent'] ?? false,
+                    'semestre' => $evaluation->periode,
+                    'commentaire' => $n['commentaire'] ?? null,
+                    'created_by' => auth()->id(),
+                    'updated_by' => auth()->id(),
+                    'created_at' => now(),
+                    'updated_at' => now(),
                 ])->values()->toArray();
 
-            if (!empty($rows)) {
+            if (! empty($rows)) {
                 ESBTPNote::upsert(
                     $rows,
                     ['evaluation_id', 'etudiant_id'],
                     ['note', 'is_absent', 'semestre', 'commentaire', 'updated_by', 'updated_at']
                 );
             }
+
+            return collect($rows)
+                ->pluck('etudiant_id')
+                ->map(fn ($studentId): int => (int) $studentId)
+                ->filter(fn (int $studentId): bool => $studentId > 0)
+                ->unique()
+                ->values()
+                ->all();
         });
 
+        $baseContext = [
+            'classId' => (int) $evaluation->classe_id,
+            'academicYearId' => (int) $evaluation->annee_universitaire_id,
+            'period' => (string) $evaluation->periode,
+        ];
+        app(AcademicMetricSnapshotInvalidationService::class)->invalidateManyAfterCommit(
+            $this->bulkNoteInvalidationContexts($baseContext, $studentIds),
+            'lmd_notes_bulk_upsert',
+        );
+
         return redirect()->route('esbtp.lmd.notes.index')
-            ->with('success', 'Notes enregistrées avec succès pour ' . count($request->notes) . ' étudiants.');
+            ->with('success', 'Notes enregistrées avec succès pour '.count($request->notes).' étudiants.');
+    }
+
+    private function bulkNoteInvalidationContexts(array $baseContext, array $studentIds): array
+    {
+        return array_merge(
+            [$baseContext + ['studentId' => null]],
+            array_map(
+                fn (int $studentId): array => $baseContext + ['studentId' => $studentId],
+                array_values(array_unique(array_filter($studentIds, fn (int $studentId): bool => $studentId > 0))),
+            ),
+        );
     }
 }
