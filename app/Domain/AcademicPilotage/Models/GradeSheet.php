@@ -13,6 +13,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use OwenIt\Auditing\Auditable;
 use OwenIt\Auditing\Contracts\Auditable as AuditableContract;
@@ -109,6 +110,36 @@ class GradeSheet extends Model implements AuditableContract
         return $this->belongsTo(User::class, 'assigned_processor_id');
     }
 
+    public function submittedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function receivedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
+    }
+
+    public function enteredBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'entered_by');
+    }
+
+    public function controlledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'controlled_by');
+    }
+
+    public function validatedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'validated_by');
+    }
+
+    public function cancelledBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'cancelled_by');
+    }
+
     public function entries(): HasMany
     {
         return $this->hasMany(GradeSheetEntry::class, 'grade_sheet_id');
@@ -117,6 +148,11 @@ class GradeSheet extends Model implements AuditableContract
     public function events(): HasMany
     {
         return $this->hasMany(GradeSheetEvent::class, 'grade_sheet_id');
+    }
+
+    public function latestEvent(): HasOne
+    {
+        return $this->hasOne(GradeSheetEvent::class, 'grade_sheet_id')->latestOfMany('occurred_at');
     }
 
     public function documents(): HasMany

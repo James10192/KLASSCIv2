@@ -38,6 +38,10 @@
 .cpa-row-main { min-width: 0; }
 .cpa-row-title { color: #0f172a; font-weight: 800; font-size: .9rem; overflow-wrap: anywhere; }
 .cpa-row-meta { display: flex; gap: .45rem; flex-wrap: wrap; margin-top: .3rem; color: #64748b; font-size: .76rem; }
+.cpa-audit { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; margin-top: .65rem; }
+.cpa-audit-item { border: 1px solid #e8ecf1; border-radius: 8px; padding: .45rem .55rem; background: #f8fafc; min-width: 0; }
+.cpa-audit-label { display: block; color: #64748b; font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
+.cpa-audit-value { display: block; color: #0f172a; font-size: .76rem; font-weight: 800; margin-top: .1rem; overflow-wrap: anywhere; }
 .cpa-badge { display: inline-flex; align-items: center; gap: .25rem; min-height: 24px; padding: .18rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 800; background: #eff6ff; color: #0453cb; }
 .cpa-badge--ok { background: #ecfdf5; color: #047857; }
 .cpa-badge--warn { background: #fff7ed; color: #c2410c; }
@@ -55,7 +59,8 @@
 .cpa-loading { opacity: .65; pointer-events: none; }
 .cpa-btn[disabled] { opacity: .65; cursor: not-allowed; }
 @media (max-width: 1100px) { .cpa-grid, .cpa-filters { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cpa-split { grid-template-columns: 1fr; } }
-@media (max-width: 640px) { .cpa-grid, .cpa-filters { grid-template-columns: 1fr; } .cpa-row { grid-template-columns: 1fr; } }
+@media (max-width: 900px) { .cpa-audit { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .cpa-grid, .cpa-filters, .cpa-audit { grid-template-columns: 1fr; } .cpa-row { grid-template-columns: 1fr; } }
 </style>
 @endpush
 
@@ -151,6 +156,32 @@
                                 <span x-text="sheet.classe || 'Classe non disponible'"></span>
                                 <span x-text="sheet.matiere || 'Matière non renseignée'"></span>
                                 <span x-text="sheet.teacher || 'Responsable non affecté'"></span>
+                            </div>
+                            <div class="cpa-audit">
+                                <div class="cpa-audit-item">
+                                    <span class="cpa-audit-label">Notes saisies</span>
+                                    <span class="cpa-audit-value" x-text="entryProgress(sheet)"></span>
+                                </div>
+                                <div class="cpa-audit-item">
+                                    <span class="cpa-audit-label">Notes par</span>
+                                    <span class="cpa-audit-value" x-text="entryActorsLabel(sheet)"></span>
+                                </div>
+                                <div class="cpa-audit-item">
+                                    <span class="cpa-audit-label">Contrôle par</span>
+                                    <span class="cpa-audit-value" x-text="actorLabel(sheet.controlled_by, null, 'Non contrôlé')"></span>
+                                </div>
+                                <div class="cpa-audit-item">
+                                    <span class="cpa-audit-label">Validation par</span>
+                                    <span class="cpa-audit-value" x-text="actorLabel(sheet.validated_by, null, 'Non validé')"></span>
+                                </div>
+                                <div class="cpa-audit-item">
+                                    <span class="cpa-audit-label">Réception par</span>
+                                    <span class="cpa-audit-value" x-text="actorLabel(sheet.received_by, sheet.submitted_by, 'Non reçu')"></span>
+                                </div>
+                                <div class="cpa-audit-item">
+                                    <span class="cpa-audit-label">Dernier audit</span>
+                                    <span class="cpa-audit-value" x-text="latestAuditLabel(sheet)"></span>
+                                </div>
                             </div>
                         </div>
                         <span class="cpa-badge" :class="badgeClass(sheet.status)" x-text="sheet.status_label"></span>
@@ -429,6 +460,28 @@ document.addEventListener('alpine:init', () => {
             const sync = this.syncResult?.sync;
             if (!sync) return '';
             return `${sync.classes_processed || 0} classe(s), ${sync.students_processed || 0} étudiant(s), ${sync.class_snapshots || 0} snapshot(s) classe, ${sync.student_snapshots || 0} snapshot(s) étudiant, ${sync.alerts_seen || 0} alerte(s) vérifiée(s).`;
+        },
+        actorLabel(primary, fallback, emptyLabel) {
+            return primary || fallback || emptyLabel;
+        },
+        entryProgress(sheet) {
+            const resolved = Number(sheet.resolved_entries_count || 0);
+            const total = Number(sheet.entries_count || 0);
+            if (!total) return 'Aucune note attendue';
+            return `${resolved}/${total}`;
+        },
+        entryActorsLabel(sheet) {
+            if (sheet.entry_actors?.length) {
+                return sheet.entry_actors.join(', ');
+            }
+            return this.actorLabel(sheet.entered_by, sheet.assigned_processor, 'Non renseigné');
+        },
+        latestAuditLabel(sheet) {
+            const event = sheet.latest_event;
+            if (!event) return 'Aucun événement';
+            const actor = event.actor || 'Système';
+            const date = event.occurred_at ? new Date(event.occurred_at).toLocaleString('fr-FR') : '';
+            return date ? `${actor}, ${date}` : actor;
         },
         kpis() {
             const s = this.data.summary || {};

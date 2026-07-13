@@ -7,6 +7,7 @@ use App\Domain\AcademicPilotage\Enums\GradeSheetStatus;
 use App\Domain\AcademicPilotage\Models\AcademicAlert;
 use App\Domain\AcademicPilotage\Models\AcademicMetricSnapshot;
 use App\Domain\AcademicPilotage\Models\GradeSheet;
+use App\Domain\AcademicPilotage\Models\GradeSheetEntry;
 use App\Domain\AcademicPilotage\Services\AcademicPilotageManualSyncService;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -223,25 +224,93 @@ class AcademicPilotageController extends Controller
 
     private function sheets(?int $yearId, string $period, ?string $system, ?int $classId, int $limit = 10): array
     {
-        return $this->sheetQuery($yearId, $period, $system, $classId)
-            ->with(['classe:id,name,code', 'matiere:id,name,code', 'teacher:id,name'])
+        $sheets = $this->sheetQuery($yearId, $period, $system, $classId)
+            ->with([
+                'assignedProcessor:id,name,email',
+                'classe:id,name,code',
+                'controlledBy:id,name,email',
+                'enteredBy:id,name,email',
+                'latestEvent.actor:id,name,email',
+                'matiere:id,name,code',
+                'receivedBy:id,name,email',
+                'submittedBy:id,name,email',
+                'teacher:id,name',
+                'validatedBy:id,name,email',
+            ])
+            ->withCount([
+                'entries',
+                'entries as entered_entries_count' => fn ($query) => $query->where('status', 'entered'),
+                'entries as resolved_entries_count' => fn ($query) => $query->whereIn('status', ['entered', 'absent', 'exempt', 'not_applicable']),
+            ])
             ->latest('updated_at')
             ->limit($limit)
-            ->get()
-            ->map(fn (GradeSheet $sheet): array => [
-                'id' => $sheet->id,
-                'code' => $sheet->code,
-                'status' => $sheet->status->value,
-                'status_label' => $sheet->status->label(),
-                'entry_mode' => $sheet->entry_mode->value,
-                'classe' => $sheet->classe ? $this->classLabel($sheet->classe) : null,
-                'matiere' => $sheet->matiere?->name ?? $sheet->matiere?->code,
-                'teacher' => $sheet->teacher?->name,
-                'expected_at' => optional($sheet->expected_at)->toDateString(),
-                'updated_at' => optional($sheet->updated_at)->toIso8601String(),
-            ])
+            ->get();
+
+        $entryActors = $this->entryActorsBySheet($sheets->pluck('id'));
+
+        return $sheets
+            ->map(fn (GradeSheet $sheet): array => $this->sheetPayload($sheet, $entryActors->get($sheet->id, [])))
             ->values()
             ->all();
+    }
+
+    private function sheetPayload(GradeSheet $sheet, array $entryActors): array
+    {
+        $latestEvent = $sheet->latestEvent;
+
+        return [
+            'id' => $sheet->id,
+            'code' => $sheet->code,
+            'status' => $sheet->status->value,
+            'status_label' => $sheet->status->label(),
+            'entry_mode' => $sheet->entry_mode->value,
+            'classe' => $sheet->classe ? $this->classLabel($sheet->classe) : null,
+            'matiere' => $sheet->matiere?->name ?? $sheet->matiere?->code,
+            'teacher' => $sheet->teacher?->name,
+            'assigned_processor' => $this->userLabel($sheet->assignedProcessor),
+            'submitted_by' => $this->userLabel($sheet->submittedBy),
+            'received_by' => $this->userLabel($sheet->receivedBy),
+            'entered_by' => $this->userLabel($sheet->enteredBy),
+            'controlled_by' => $this->userLabel($sheet->controlledBy),
+            'validated_by' => $this->userLabel($sheet->validatedBy),
+            'entry_actors' => $entryActors,
+            'expected_at' => optional($sheet->expected_at)->toDateString(),
+            'submitted_at' => optional($sheet->submitted_at)->toIso8601String(),
+            'received_at' => optional($sheet->received_at)->toIso8601String(),
+            'entered_at' => optional($sheet->entered_at)->toIso8601String(),
+            'controlled_at' => optional($sheet->controlled_at)->toIso8601String(),
+            'validated_at' => optional($sheet->validated_at)->toIso8601String(),
+            'updated_at' => optional($sheet->updated_at)->toIso8601String(),
+            'entries_count' => (int) $sheet->entries_count,
+            'entered_entries_count' => (int) $sheet->entered_entries_count,
+            'resolved_entries_count' => (int) $sheet->resolved_entries_count,
+            'latest_event' => $latestEvent ? [
+                'type' => $latestEvent->event_type,
+                'actor' => $this->userLabel($latestEvent->actor),
+                'occurred_at' => optional($latestEvent->occurred_at)->toIso8601String(),
+                'reason' => $latestEvent->reason,
+            ] : null,
+        ];
+    }
+
+    private function entryActorsBySheet(Collection $sheetIds): Collection
+    {
+        if ($sheetIds->isEmpty()) {
+            return collect();
+        }
+
+        return GradeSheetEntry::query()
+            ->whereIn('grade_sheet_id', $sheetIds)
+            ->whereNotNull('entered_by')
+            ->with('enteredBy:id,name,email')
+            ->get(['grade_sheet_id', 'entered_by'])
+            ->groupBy('grade_sheet_id')
+            ->map(fn (Collection $entries): array => $entries
+                ->map(fn (GradeSheetEntry $entry): ?string => $this->userLabel($entry->enteredBy))
+                ->filter()
+                ->unique()
+                ->values()
+                ->all());
     }
 
     private function students(?int $yearId, string $period, ?string $system, ?int $classId, int $limit = 10): array
@@ -385,5 +454,14 @@ class AcademicPilotageController extends Controller
     private function classLabel(ESBTPClasse $classe): string
     {
         return trim(($classe->code ? "{$classe->code} · " : '').$classe->name);
+    }
+
+    private function userLabel($user): ?string
+    {
+        if ($user === null) {
+            return null;
+        }
+
+        return trim((string) ($user->name ?: $user->email)) ?: null;
     }
 }
