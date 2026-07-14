@@ -38,7 +38,7 @@ final class AcademicOperationalMetricsService
             $query->where('academic_system', $academicSystem);
         }
         $sheets = $query->get([
-            'status', 'entry_mode', 'assigned_processor_id', 'submitted_at',
+            'id', 'status', 'entry_mode', 'assigned_processor_id', 'submitted_at',
             'received_at', 'entered_at', 'controlled_at', 'validated_at',
         ]);
 
