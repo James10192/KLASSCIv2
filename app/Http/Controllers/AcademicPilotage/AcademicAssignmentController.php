@@ -12,6 +12,32 @@ use Illuminate\Http\Request;
 
 class AcademicAssignmentController extends Controller
 {
+    public function index(Request $request): JsonResponse
+    {
+        $this->authorize('create', AcademicActorAssignment::class);
+        $filters = $request->validate([
+            'year_id' => ['nullable', 'integer'],
+            'class_id' => ['nullable', 'integer'],
+        ]);
+        $assignments = AcademicActorAssignment::query()
+            ->with([
+                'anneeUniversitaire',
+                'classe:id,name,code',
+                'user:id,name,email',
+            ])
+            ->where('is_active', true)
+            ->when($filters['year_id'] ?? null, fn ($query, $yearId) => $query->where('annee_universitaire_id', $yearId))
+            ->when($filters['class_id'] ?? null, fn ($query, $classId) => $query->where('classe_id', $classId))
+            ->latest('updated_at')
+            ->limit(100)
+            ->get();
+
+        return response()->json([
+            'ok' => true,
+            'assignments' => AcademicAssignmentResource::collection($assignments)->resolve($request),
+        ]);
+    }
+
     public function store(
         StoreAcademicAssignmentRequest $request,
         AcademicAssignmentService $service,

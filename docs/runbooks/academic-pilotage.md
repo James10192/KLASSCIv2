@@ -10,6 +10,33 @@ Les entrées étudiant restent séparées de la note réelle et utilisent `expec
 
 Une note existante peut donc marquer une entrée comme `entered` pendant un backfill, mais la fiche n'est jamais validée automatiquement.
 
+## Piloter une fiche depuis l'interface
+
+Ouvrir `/esbtp/pilotage-academique`, puis l'onglet **Notes et fiches**. Le bouton **Consulter** ouvre le détail sans recharger la page : étudiants attendus, notes déjà saisies, avancement, documents et historique complet.
+
+Les actions visibles dépendent à la fois du statut de la fiche, du mode papier ou direct, des permissions de l'utilisateur et de son périmètre. L'interface ne propose jamais une transition interdite.
+
+- Saisie directe : **Commencer la saisie**, **Terminer la saisie**, **Contrôler**, puis **Valider**.
+- Fiche papier : **Transmettre**, **Recevoir**, **Commencer la saisie**, **Terminer la saisie**, **Contrôler**, puis **Valider**.
+- Correction : **Demander une correction**, puis **Rouvrir**. Le motif est obligatoire et conservé dans l'historique.
+- Rejet, annulation et réouverture d'une fiche validée exigent également un motif audité.
+
+Un verrou de version empêche deux personnes de modifier silencieusement la même fiche. En cas de conflit, l'interface recharge uniquement le détail concerné et demande de confirmer l'action à partir de la version actuelle.
+
+## Périmètre et traçabilité des acteurs
+
+Le périmètre ne dépend pas d'une seule configuration préalable. KLASSCI reconnaît les classes d'un acteur à partir de plusieurs preuves réelles :
+
+- affectation explicite par classe et année universitaire ;
+- cours réellement assurés ;
+- évaluations créées ou attribuées ;
+- actions réalisées sur une fiche ;
+- notes réellement saisies.
+
+La Direction voit dans **Activité de saisie** le nombre de notes, matières, classes et fiches finalisées par acteur. L'onglet **Mon suivi** présente les mêmes indicateurs pour l'utilisateur connecté et explique les sources qui ont permis de reconnaître son périmètre.
+
+Des accès directs vers le centre sont disponibles depuis la fiche classe, l'évaluation, la saisie des notes et la préparation des bulletins. Ils conservent l'année, la période, le système et la classe dans l'URL, puis ouvrent directement l'onglet pertinent sans rechargement complet.
+
 ## Backfill initial
 
 Toujours lancer un dry-run avant l'exécution réelle :

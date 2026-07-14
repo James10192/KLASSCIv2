@@ -158,6 +158,14 @@
 .bus-submit:disabled { opacity: .55; cursor: wait; filter: grayscale(.3); }
 .bus-submit--info { background: linear-gradient(135deg, #0ea5e9, #3b7ddb); }
 .bus-submit--success { background: linear-gradient(135deg, #10b981, #0ea5e9); }
+.bus-pilotage-link {
+    display: inline-flex; align-items: center; justify-content: center; gap: .45rem;
+    width: 100%; min-height: 44px; margin-top: .7rem; padding: .55rem .85rem;
+    border: 1px solid #dbe5f2; border-radius: 8px; background: #fff;
+    color: #0453cb; font-size: .82rem; font-weight: 700; text-decoration: none;
+}
+.bus-pilotage-link:hover { background: #eff6ff; border-color: #bfdbfe; color: #0347b0; }
+.bus-pilotage-link.is-disabled { opacity: .5; pointer-events: none; }
 
 .bus-tag {
     display: inline-flex; align-items: center; gap: .25rem;
@@ -412,6 +420,11 @@
                     <i class="fas" :class="busy ? 'fa-spinner fa-spin' : 'fa-file-pdf'"></i>
                     <span x-text="busy ? 'Génération en cours…' : 'Générer les bulletins'"></span>
                 </button>
+                @if(auth()->user()->can('module.academic_pilotage.access') && auth()->user()->can('academic_pilotage.view'))
+                    <a :href="pilotageUrl()" class="bus-pilotage-link" :class="{ 'is-disabled': !canOpenPilotage() }" title="Consulter les alertes avant la génération">
+                        <i class="fas fa-chart-line"></i> Voir les alertes de pilotage
+                    </a>
+                @endif
             </form>
         </div>
     </div>
@@ -477,6 +490,20 @@ window.busCard = function (cfg) {
             if (this.kind === 'preview')  return !!this.form.etudiant_id && !!this.form.periode;
             if (this.kind === 'generate') return !!this.form.periode;
             return false;
+        },
+
+        canOpenPilotage() {
+            return !!(this.form.classe_id && this.form.annee_universitaire_id && this.form.periode);
+        },
+
+        pilotageUrl() {
+            if (!this.canOpenPilotage()) return '#';
+            const params = new URLSearchParams({
+                class_id: this.form.classe_id,
+                year_id: this.form.annee_universitaire_id,
+                period: this.form.periode,
+            });
+            return `{{ route('esbtp.pilotage-academique.index') }}?${params.toString()}#alerts`;
         },
 
         async fetchStudents() {

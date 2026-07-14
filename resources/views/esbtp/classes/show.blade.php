@@ -669,6 +669,11 @@
                     </div>
                 </div>
                 <div class="cs-hero-actions">
+                    @if(auth()->user()->can('module.academic_pilotage.access') && auth()->user()->can('academic_pilotage.view'))
+                        <a href="{{ route('esbtp.pilotage-academique.index', array_filter(['class_id' => $classe->id, 'system' => $classe->systeme_academique])) }}#classes" class="cs-btn--glass" title="Consulter la santé académique de cette classe">
+                            <i class="fas fa-chart-line"></i>Pilotage académique
+                        </a>
+                    @endif
                     @if(auth()->user()->hasAnyPermission(['admin.access', 'identity.school_manager', 'identity.coordinate']))
                         @if(($classe->systeme_academique ?? '') === 'LMD')
                             <a href="{{ route('esbtp.lmd.ue.index', array_filter(['parcours_id' => $classe->parcours_id, 'niveau_id' => $classe->niveau_etude_id, 'filiere_id' => $classe->filiere_id])) }}" class="cs-btn--glass" title="Gérer les Unités d'Enseignement et leurs ECUEs pour cette classe">
