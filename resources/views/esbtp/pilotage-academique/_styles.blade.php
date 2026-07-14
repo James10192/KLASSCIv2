@@ -1,6 +1,13 @@
 @push('styles')
 <style>
 .cpa-shell { display: grid; gap: 1rem; -webkit-font-smoothing: antialiased; }
+.cpa-shell > *,
+.cpa-toolbar,
+.cpa-tabs,
+.cpa-panel-head,
+.cpa-grid,
+.cpa-hero-top,
+.cpa-hero-kpis { min-width: 0; max-width: 100%; }
 .cpa-hero {
     position: relative;
     overflow: hidden;
