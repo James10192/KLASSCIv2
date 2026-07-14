@@ -332,6 +332,8 @@ if (typeof window.auUserPicker !== 'function') {
             toggle() {
                 this.open = !this.open;
                 if (this.open) {
+                    // Position before Alpine reveals the menu, then refine with its rendered size.
+                    this.positionMenu();
                     this.$nextTick(() => {
                         window.requestAnimationFrame(() => {
                             this.positionMenu();
@@ -350,7 +352,9 @@ if (typeof window.auUserPicker !== 'function') {
                 const margin = 12;
                 const gap = 6;
                 const triggerRect = trigger.getBoundingClientRect();
-                const menuWidth = Math.min(Math.max(380, triggerRect.width), window.innerWidth - (margin * 2));
+                const viewportWidth = window.innerWidth - (margin * 2);
+                const menuWidth = Math.min(Math.max(380, triggerRect.width), viewportWidth);
+                const minimumWidth = Math.min(triggerRect.width, viewportWidth);
                 const left = Math.max(margin, Math.min(triggerRect.left, window.innerWidth - menuWidth - margin));
                 const spaceBelow = window.innerHeight - triggerRect.bottom - margin - gap;
                 const spaceAbove = triggerRect.top - margin - gap;
@@ -358,8 +362,8 @@ if (typeof window.auUserPicker !== 'function') {
                 const availableHeight = Math.max(0, Math.min(500, openUp ? spaceAbove : spaceBelow));
 
                 this.menuStyle = openUp
-                    ? `position:fixed;left:${left}px;right:auto;top:auto;bottom:${window.innerHeight - triggerRect.top + gap}px;width:${menuWidth}px;max-width:none;max-height:${availableHeight}px;transform-origin:bottom center;`
-                    : `position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;max-width:none;max-height:${availableHeight}px;transform-origin:top center;`;
+                    ? `position:fixed;left:${left}px;right:auto;top:auto;bottom:${window.innerHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
+                    : `position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
             },
             get filteredGroups() {
                 const s = this.search.trim().toLowerCase();
