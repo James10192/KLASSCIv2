@@ -28,6 +28,7 @@ document.addEventListener('alpine:init', () => {
             const params = new URLSearchParams(location.search);
             this.filters = { ...this.filters, ...this.pickFilters(Object.fromEntries(params.entries())) };
             this.syncFilterControls();
+            if (this.tab === 'assignments') this.$nextTick(() => this.primeAssignmentClass());
             this.load();
             window.addEventListener('popstate', () => this.loadFromUrl());
         },
@@ -40,6 +41,7 @@ document.addEventListener('alpine:init', () => {
         setTab(tab) {
             this.tab = tab;
             history.replaceState({}, '', `${location.pathname}${location.search}#${tab}`);
+            if (tab === 'assignments') this.$nextTick(() => this.primeAssignmentClass());
         },
         formFilters() {
             const form = this.$refs.filtersForm || this.$root.querySelector('form.cpa-filters');
@@ -279,6 +281,13 @@ document.addEventListener('alpine:init', () => {
             } finally {
                 this.assignmentState.saving = false;
             }
+        },
+        primeAssignmentClass() {
+            const field = this.$refs.assignmentForm?.querySelector('[name="classe_id"]');
+            if (!field || field.value || !this.filters.class_id) return;
+            field.value = String(this.filters.class_id);
+            field.dispatchEvent(new Event('change', { bubbles: true }));
+            field.dispatchEvent(new Event('input', { bubbles: true }));
         },
         async deactivateAssignment(assignment) {
             if (this.assignmentState.saving) return;
