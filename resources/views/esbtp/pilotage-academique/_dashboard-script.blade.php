@@ -488,26 +488,60 @@ document.addEventListener('alpine:init', () => {
             const classe = coverage.classe?.name || 'Classe sélectionnée';
             return `${classe} · ${summary.students_expected || 0} étudiant(s) attendu(s) · ${summary.evaluations_total || 0} évaluation(s) suivie(s)`;
         },
+        noteCoverageCompletionPercent() {
+            const summary = this.data.note_coverage?.summary || {};
+            return `${this.noteCoverageRate(summary.treated_results || 0, summary.expected_results || 0)}%`;
+        },
+        noteCoverageRate(treated, expected) {
+            const denominator = Number(expected || 0);
+            if (denominator <= 0) return 0;
+            const value = Math.round((Number(treated || 0) / denominator) * 100);
+            return Math.min(100, Math.max(0, value));
+        },
+        noteCoverageSubjects() {
+            return [...(this.data.note_coverage?.subjects || [])].sort((a, b) => {
+                if ((b.missing_count || 0) !== (a.missing_count || 0)) {
+                    return (b.missing_count || 0) - (a.missing_count || 0);
+                }
+                return String(a.name || '').localeCompare(String(b.name || ''), 'fr');
+            });
+        },
+        noteCoveragePriorities() {
+            return this.noteCoverageSubjects()
+                .filter((subject) => (subject.missing_count || 0) > 0)
+                .slice(0, 5);
+        },
+        noteCoverageBlockingEvaluations(subject) {
+            return [...(subject?.evaluations || [])]
+                .filter((evaluation) => (evaluation.missing_count || 0) > 0)
+                .sort((a, b) => (b.missing_count || 0) - (a.missing_count || 0));
+        },
+        noteCoverageSubjectLabel(subject) {
+            if (!subject || (subject.expected_count || 0) === 0) return 'Aucune note attendue';
+            if ((subject.missing_count || 0) === 0) return 'Complet';
+            return `${subject.treated_count || 0}/${subject.expected_count || 0} traité(s), ${subject.missing_count || 0} manquant(s)`;
+        },
         noteCoverageKpis() {
             const summary = this.data.note_coverage?.summary || {};
+            const completion = this.noteCoverageRate(summary.treated_results || 0, summary.expected_results || 0);
             return [
                 {
-                    label: 'Matières',
+                    label: 'Matières couvertes',
                     value: `${summary.subjects_evaluated || 0}/${summary.subjects_total || 0}`,
-                    help: 'Matières avec évaluation et notes',
+                    help: 'Avec évaluation et note',
                 },
                 {
-                    label: 'Notes traitées',
+                    label: 'Résultats traités',
                     value: `${summary.treated_results || 0}/${summary.expected_results || 0}`,
-                    help: `${summary.numeric_notes || 0} note(s) numérique(s)`,
+                    help: `${completion}% de couverture`,
                 },
                 {
-                    label: 'Manquants',
+                    label: 'À compléter',
                     value: summary.missing_results || 0,
                     help: 'Résultats à compléter',
                 },
                 {
-                    label: 'Étudiants incomplets',
+                    label: 'Étudiants concernés',
                     value: summary.incomplete_students || 0,
                     help: `${summary.actors_count || 0} acteur(s) de saisie`,
                 },
