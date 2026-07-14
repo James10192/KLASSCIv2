@@ -125,7 +125,9 @@ class ESBTPTeacher extends Model implements Auditable
     // Accesseur pour obtenir le nom complet
     public function getFullNameAttribute()
     {
-        return $this->user ? $this->user->firstname . ' ' . $this->user->lastname : 'N/A';
+        return $this->user
+            ? trim(($this->user->first_name ?? '') . ' ' . ($this->user->last_name ?? '')) ?: ($this->user->name ?: 'N/A')
+            : 'N/A';
     }
 
     // Accesseur pour obtenir le nom (utilise name en fallback)
@@ -135,9 +137,9 @@ class ESBTPTeacher extends Model implements Auditable
             return 'N/A';
         }
         
-        // Si firstname et lastname existent, les utiliser
-        if ($this->user->firstname && $this->user->lastname) {
-            return $this->user->firstname . ' ' . $this->user->lastname;
+        // Utiliser les colonnes canoniques avant le nom complet legacy.
+        if ($this->user->first_name || $this->user->last_name) {
+            return trim(($this->user->first_name ?? '') . ' ' . ($this->user->last_name ?? ''));
         }
         
         // Sinon utiliser le champ name

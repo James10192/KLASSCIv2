@@ -314,7 +314,8 @@ class AcademicPilotageController extends Controller
                 'matiere:id,name,code',
                 'receivedBy:id,name,email',
                 'submittedBy:id,name,email',
-                'teacher:id,name',
+                'teacher:id,user_id',
+                'teacher.user:id,first_name,last_name,name',
                 'validatedBy:id,name,email',
             ])
             ->withCount([
