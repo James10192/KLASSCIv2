@@ -4375,6 +4375,8 @@
         if (!('serviceWorker' in navigator)) return;
 
         function showUpdateToast(worker) {
+            var workerUrl = worker && worker.scriptURL ? worker.scriptURL : '/sw.js';
+            if (sessionStorage.getItem('klassci:pwa-update-dismissed') === workerUrl) return;
             if (document.getElementById('pwa-update-toast')) return;
             var toast = document.createElement('div');
             toast.id = 'pwa-update-toast';
@@ -4391,14 +4393,25 @@
             ].join(';');
             toast.innerHTML =
                 '<span style="flex:1">Nouvelle version disponible</span>' +
-                '<button type="button" id="pwa-update-btn" style="min-height:36px;padding:0 .9rem;border:none;border-radius:8px;background:#fff;color:#0453cb;font-weight:600;font-size:.82rem;cursor:pointer;font-family:inherit">Actualiser</button>' +
-                '<button type="button" id="pwa-update-dismiss" aria-label="Fermer" style="min-height:36px;width:36px;border:none;border-radius:8px;background:rgba(255,255,255,.18);color:#fff;font-size:1rem;cursor:pointer;font-family:inherit">&times;</button>';
+                '<button type="button" id="pwa-update-btn" style="min-height:44px;padding:0 .9rem;border:none;border-radius:8px;background:#fff;color:#0453cb;font-weight:600;font-size:.82rem;cursor:pointer;font-family:inherit">Actualiser</button>' +
+                '<button type="button" id="pwa-update-dismiss" aria-label="Fermer" style="min-height:44px;width:44px;border:none;border-radius:8px;background:rgba(255,255,255,.18);color:#fff;font-size:1rem;cursor:pointer;font-family:inherit">&times;</button>';
             document.body.appendChild(toast);
 
             document.getElementById('pwa-update-btn').addEventListener('click', function () {
-                if (worker) worker.postMessage({ type: 'SKIP_WAITING' });
+                var button = this;
+                var returnUrl = window.location.href;
+
+                sessionStorage.setItem('klassci:pwa-return-url', returnUrl);
+                sessionStorage.removeItem('klassci:pwa-update-dismissed');
+                button.disabled = true;
+                button.textContent = 'Mise à jour…';
+
+                if (worker) {
+                    worker.postMessage({ type: 'SKIP_WAITING' });
+                }
             });
             document.getElementById('pwa-update-dismiss').addEventListener('click', function () {
+                sessionStorage.setItem('klassci:pwa-update-dismissed', workerUrl);
                 toast.remove();
             });
         }
@@ -4407,11 +4420,14 @@
         navigator.serviceWorker.addEventListener('controllerchange', function () {
             if (refreshing) return;
             refreshing = true;
-            window.location.reload();
+            var returnUrl = sessionStorage.getItem('klassci:pwa-return-url') || window.location.href;
+            sessionStorage.removeItem('klassci:pwa-return-url');
+            sessionStorage.removeItem('klassci:pwa-update-dismissed');
+            window.location.replace(returnUrl);
         });
 
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/sw.js').then(function (reg) {
+            navigator.serviceWorker.register('/sw.js?v=klassci-v2', { updateViaCache: 'none' }).then(function (reg) {
                 // SW déjà en attente au chargement (mise à jour prête)
                 if (reg.waiting && navigator.serviceWorker.controller) {
                     showUpdateToast(reg.waiting);
