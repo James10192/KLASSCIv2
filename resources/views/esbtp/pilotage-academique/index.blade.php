@@ -119,49 +119,71 @@
     </section>
     <section class="cpa-split" x-show="tab === 'sheets'">
         <div class="cpa-panel">
-            <div class="cpa-panel-head"><h2 class="cpa-panel-title"><i class="fas fa-clipboard-check"></i>Suivi des fiches</h2></div>
+            <div class="cpa-panel-head">
+                <div>
+                    <h2 class="cpa-panel-title"><i class="fas fa-clipboard-check"></i>Suivi des fiches de notes</h2>
+                    <p class="cpa-muted mt-1">Une fiche correspond &agrave; une &eacute;valuation, une mati&egrave;re et une classe. Elle suit la remise, la saisie, le contr&ocirc;le et la validation des r&eacute;sultats.</p>
+                </div>
+            </div>
             <div class="cpa-list" x-show="data.sheets?.length">
                 <template x-for="sheet in data.sheets" :key="sheet.id">
                     <article class="cpa-row cpa-sheet-card">
                         <div class="cpa-row-main">
-                            <div class="cpa-row-title" x-text="sheet.code"></div>
+                            <div class="cpa-sheet-title-line">
+                                <div>
+                                    <div class="cpa-row-title" x-text="sheetTitle(sheet)"></div>
+                                    <div class="cpa-sheet-reference"><span>R&eacute;f&eacute;rence fiche</span><code x-text="sheet.code"></code></div>
+                                </div>
+                                <div class="cpa-sheet-stage">
+                                    <span class="cpa-badge" :class="badgeClass(sheet.status)" x-text="sheet.status_label"></span>
+                                    <small x-text="statusProgressLabel(sheet)"></small>
+                                </div>
+                            </div>
                             <div class="cpa-row-meta">
                                 <span x-text="sheet.classe || 'Classe non disponible'"></span>
-                                <span x-text="sheet.matiere || 'Matière non renseignée'"></span>
-                                <span x-text="sheet.teacher || 'Responsable non affecté'"></span>
+                                <span x-text="entryModeLabel(sheet)"></span>
+                                <span x-text="sheet.teacher ? `Enseignant : ${sheet.teacher}` : 'Enseignant non affecté'"></span>
+                            </div>
+                            <div class="cpa-sheet-progress" role="progressbar" :aria-valuenow="entryProgressPercent(sheet)" aria-valuemin="0" aria-valuemax="100">
+                                <div class="cpa-sheet-progress-head">
+                                    <span>R&eacute;sultats renseign&eacute;s</span>
+                                    <strong x-text="entryProgress(sheet)"></strong>
+                                </div>
+                                <div class="cpa-progress-track"><div class="cpa-progress-bar" :style="`width: ${entryProgressPercent(sheet)}%`"></div></div>
+                                <small>Une entr&eacute;e est renseign&eacute;e lorsqu&rsquo;elle contient une note, une absence, une dispense ou un statut non applicable.</small>
                             </div>
                             <div class="cpa-audit">
                                 <div class="cpa-audit-item">
-                                    <span class="cpa-audit-label">Notes saisies</span>
-                                    <span class="cpa-audit-value" x-text="entryProgress(sheet)"></span>
-                                </div>
-                                <div class="cpa-audit-item">
-                                    <span class="cpa-audit-label">Notes par</span>
+                                    <span class="cpa-audit-icon"><i class="fas fa-keyboard"></i></span>
+                                    <span class="cpa-audit-label">Saisie effectu&eacute;e par</span>
                                     <span class="cpa-audit-value" x-text="entryActorsLabel(sheet)"></span>
                                 </div>
                                 <div class="cpa-audit-item">
-                                    <span class="cpa-audit-label">Contrôle par</span>
-                                    <span class="cpa-audit-value" x-text="actorLabel(sheet.controlled_by, null, 'Non contrôlé')"></span>
+                                    <span class="cpa-audit-icon"><i class="fas fa-inbox"></i></span>
+                                    <span class="cpa-audit-label">R&eacute;ception de la fiche</span>
+                                    <span class="cpa-audit-value" x-text="receptionLabel(sheet)"></span>
                                 </div>
                                 <div class="cpa-audit-item">
+                                    <span class="cpa-audit-icon"><i class="fas fa-magnifying-glass-check"></i></span>
+                                    <span class="cpa-audit-label">Contr&ocirc;le par</span>
+                                    <span class="cpa-audit-value" x-text="actorLabel(sheet.controlled_by, null, 'Pas encore contrôlée')"></span>
+                                </div>
+                                <div class="cpa-audit-item">
+                                    <span class="cpa-audit-icon"><i class="fas fa-circle-check"></i></span>
                                     <span class="cpa-audit-label">Validation par</span>
-                                    <span class="cpa-audit-value" x-text="actorLabel(sheet.validated_by, null, 'Non validé')"></span>
+                                    <span class="cpa-audit-value" x-text="actorLabel(sheet.validated_by, null, 'Pas encore validée')"></span>
                                 </div>
                                 <div class="cpa-audit-item">
-                                    <span class="cpa-audit-label">Réception par</span>
-                                    <span class="cpa-audit-value" x-text="actorLabel(sheet.received_by, sheet.submitted_by, 'Non reçu')"></span>
-                                </div>
-                                <div class="cpa-audit-item">
-                                    <span class="cpa-audit-label">Dernier audit</span>
+                                    <span class="cpa-audit-icon"><i class="fas fa-clock-rotate-left"></i></span>
+                                    <span class="cpa-audit-label">Derni&egrave;re action</span>
                                     <span class="cpa-audit-value" x-text="latestAuditLabel(sheet)"></span>
                                 </div>
                             </div>
                         </div>
                         <div class="cpa-row-actions">
-                            <span class="cpa-badge" :class="badgeClass(sheet.status)" x-text="sheet.status_label"></span>
                             <button type="button" class="cpa-btn cpa-btn--compact" @click="openSheet(sheet.id)" :disabled="sheetWorkspace.loading && sheetWorkspace.id === sheet.id">
                                 <i class="fas" :class="sheetWorkspace.loading && sheetWorkspace.id === sheet.id ? 'fa-spinner fa-spin' : 'fa-eye'"></i>
-                                <span>Consulter</span>
+                                <span>Voir le d&eacute;tail</span>
                             </button>
                             <template x-for="action in sheetActions(sheet)" :key="`${sheet.id}-${action.key}`">
                                 <button type="button" class="cpa-btn cpa-btn--compact" :class="actionButtonClass(action)" @click="requestSheetTransition(action, sheet)" :disabled="transitioning">
@@ -394,11 +416,12 @@
                         <template x-for="sheet in data.my_sheets" :key="`mine-${sheet.id}`">
                             <article class="cpa-row">
                                 <div class="cpa-row-main">
-                                    <div class="cpa-row-title" x-text="sheet.code"></div>
+                                    <div class="cpa-row-title" x-text="sheetTitle(sheet)"></div>
+                                    <div class="cpa-sheet-reference"><span>R&eacute;f&eacute;rence fiche</span><code x-text="sheet.code"></code></div>
                                     <div class="cpa-row-meta">
                                         <span x-text="sheet.classe || 'Classe non disponible'"></span>
-                                        <span x-text="sheet.matiere || 'Matière non disponible'"></span>
-                                        <span x-text="sheet.status_label"></span>
+                                        <span x-text="entryModeLabel(sheet)"></span>
+                                        <span x-text="`${sheet.status_label} · ${statusProgressLabel(sheet)}`"></span>
                                     </div>
                                 </div>
                                 <button type="button" class="cpa-btn cpa-btn--compact" @click="setTab('sheets'); openSheet(sheet.id)">

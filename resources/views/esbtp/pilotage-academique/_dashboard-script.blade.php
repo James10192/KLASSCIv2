@@ -426,24 +426,59 @@ document.addEventListener('alpine:init', () => {
         actorLabel(primary, fallback, emptyLabel) {
             return primary || fallback || emptyLabel;
         },
+        sheetTitle(sheet) {
+            return sheet?.matiere ? `Fiche de notes · ${sheet.matiere}` : 'Fiche de notes';
+        },
+        entryModeLabel(sheet) {
+            return sheet?.entry_mode === 'paper' ? 'Circuit : fiche papier' : 'Circuit : saisie directe';
+        },
+        receptionLabel(sheet) {
+            if (sheet?.entry_mode !== 'paper') return 'Non requise · saisie directe';
+            if (sheet.received_by) return `Reçue par ${sheet.received_by}`;
+            if (sheet.submitted_by) return `Remise par ${sheet.submitted_by} · réception en attente`;
+            return 'En attente de remise et de réception';
+        },
+        statusProgressLabel(sheet) {
+            const direct = ['expected', 'in_entry', 'entered', 'controlled', 'validated'];
+            const paper = ['expected', 'submitted', 'received', 'in_entry', 'entered', 'controlled', 'validated'];
+            const exceptional = ['rejected', 'correction_requested', 'cancelled'];
+            if (exceptional.includes(sheet?.status)) return 'Traitement interrompu ou à reprendre';
+            const workflow = sheet?.entry_mode === 'paper' ? paper : direct;
+            const index = workflow.indexOf(sheet?.status);
+            return index >= 0 ? `Étape ${index + 1} sur ${workflow.length}` : 'Étape non déterminée';
+        },
         entryProgress(sheet) {
             const resolved = Number(sheet.resolved_entries_count || 0);
             const total = Number(sheet.entries_count || 0);
-            if (!total) return 'Aucune note attendue';
+            if (!total) return 'Aucun résultat attendu';
             return `${resolved}/${total}`;
+        },
+        entryProgressPercent(sheet) {
+            const resolved = Number(sheet?.resolved_entries_count || 0);
+            const total = Number(sheet?.entries_count || 0);
+            return total > 0 ? Math.round(Math.min(100, (resolved / total) * 100)) : 0;
         },
         entryActorsLabel(sheet) {
             if (sheet.entry_actors?.length) {
                 return sheet.entry_actors.join(', ');
             }
-            return this.actorLabel(sheet.entered_by, sheet.assigned_processor, 'Non renseigné');
+            if (sheet.entered_by) return sheet.entered_by;
+            if (sheet.assigned_processor) return `À saisir par ${sheet.assigned_processor}`;
+            return 'Personne non identifiée';
         },
         latestAuditLabel(sheet) {
             const event = sheet.latest_event;
-            if (!event) return 'Aucun événement';
+            if (!event) return 'Aucune action enregistrée';
+            const eventLabels = {
+                created: 'Fiche créée', start_entry: 'Saisie démarrée', submit: 'Fiche remise',
+                receive: 'Fiche reçue', finish_entry: 'Saisie terminée', control: 'Fiche contrôlée',
+                validate: 'Fiche validée', reject: 'Fiche rejetée', request_correction: 'Correction demandée',
+                reopen: 'Fiche rouverte', cancel: 'Fiche annulée',
+            };
+            const action = eventLabels[event.type] || 'Fiche mise à jour';
             const actor = event.actor || 'Système';
             const date = event.occurred_at ? new Date(event.occurred_at).toLocaleString('fr-FR') : '';
-            return date ? `${actor}, ${date}` : actor;
+            return [action, actor, date].filter(Boolean).join(' · ');
         },
         kpis() {
             const s = this.data.summary || {};

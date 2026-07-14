@@ -78,6 +78,7 @@
 .cpa-row-meta { display: flex; gap: .45rem; flex-wrap: wrap; margin-top: .3rem; color: #64748b; font-size: .76rem; }
 .cpa-audit { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .45rem; margin-top: .65rem; }
 .cpa-audit-item { border: 1px solid #e8ecf1; border-radius: 8px; padding: .45rem .55rem; background: #f8fafc; min-width: 0; }
+.cpa-audit-icon { width: 28px; height: 28px; margin-bottom: .35rem; border-radius: 7px; display: inline-flex; align-items: center; justify-content: center; color: #0453cb; background: #eff6ff; }
 .cpa-audit-label { display: block; color: #64748b; font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
 .cpa-audit-value { display: block; color: #0f172a; font-size: .76rem; font-weight: 800; margin-top: .1rem; overflow-wrap: anywhere; }
 .cpa-badge { display: inline-flex; align-items: center; gap: .25rem; min-height: 24px; padding: .18rem .5rem; border-radius: 999px; font-size: .72rem; font-weight: 800; background: #eff6ff; color: #0453cb; }
@@ -103,6 +104,16 @@
 .cpa-btn--danger:hover { color: #991b1b; border-color: #fca5a5; background: #fef2f2; }
 .cpa-sheet-drawer { display: grid; align-content: start; gap: 1rem; }
 .cpa-sheet-card { grid-template-columns: 1fr; align-items: start; gap: .85rem; padding: 1rem; }
+.cpa-sheet-title-line { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.cpa-sheet-title-line .cpa-row-title { font-size: 1rem; text-wrap: balance; }
+.cpa-sheet-reference { display: flex; align-items: center; gap: .4rem; margin-top: .3rem; color: #64748b; font-size: .7rem; }
+.cpa-sheet-reference code { color: #475569; font-size: .68rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cpa-sheet-stage { display: grid; justify-items: end; gap: .25rem; flex-shrink: 0; }
+.cpa-sheet-stage small { color: #64748b; font-size: .7rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.cpa-sheet-progress { margin-top: .8rem; padding: .7rem .8rem; border-radius: 10px; background: #f8fafc; box-shadow: inset 0 0 0 1px #e8ecf1; }
+.cpa-sheet-progress-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .45rem; color: #334155; font-size: .75rem; font-weight: 800; }
+.cpa-sheet-progress-head strong { color: #0453cb; font-variant-numeric: tabular-nums; }
+.cpa-sheet-progress small { display: block; margin-top: .4rem; color: #64748b; font-size: .68rem; line-height: 1.35; text-wrap: pretty; }
 .cpa-sheet-card .cpa-row-meta span { display: inline-flex; align-items: center; min-width: 0; }
 .cpa-sheet-card .cpa-row-meta span + span::before { content: ''; width: 4px; height: 4px; margin-right: .45rem; border-radius: 50%; background: #cbd5e1; flex-shrink: 0; }
 .cpa-sheet-card .cpa-audit { grid-template-columns: repeat(3, minmax(150px, 1fr)); gap: .55rem; }
@@ -166,6 +177,8 @@
     .cpa-hero-kpis, .cpa-grid, .cpa-filters, .cpa-audit, .cpa-assignment-form { grid-template-columns: 1fr; }
     .cpa-row { grid-template-columns: 1fr; }
     .cpa-sheet-card .cpa-audit { grid-template-columns: 1fr; }
+    .cpa-sheet-title-line { align-items: stretch; flex-direction: column; }
+    .cpa-sheet-stage { justify-items: start; }
     .cpa-sheet-card .cpa-row-actions { align-items: stretch; }
     .cpa-sheet-card .cpa-row-actions .cpa-btn { flex: 1 1 auto; justify-content: center; }
     .cpa-assignment-composer { padding: .85rem; }
