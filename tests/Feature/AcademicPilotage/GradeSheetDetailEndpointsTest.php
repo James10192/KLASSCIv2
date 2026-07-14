@@ -72,6 +72,7 @@ class GradeSheetDetailEndpointsTest extends AcademicPilotageDatabaseTestCase
             ->assertJsonPath('progress.completion_pct', 100)
             ->assertJsonPath('entries.0.student.matricule', 'ETU-001')
             ->assertJsonPath('entries.0.note_evidence.note', '14.5')
+            ->assertJsonPath('entries.0.note_evidence.commentaire', 'Bon travail')
             ->assertJsonPath('documents.0.original_name', 'fiche.pdf')
             ->assertJsonPath('events.0.type', 'created')
             ->assertJsonFragment([
@@ -151,7 +152,6 @@ class GradeSheetDetailEndpointsTest extends AcademicPilotageDatabaseTestCase
 
         Schema::table('esbtp_notes', function (Blueprint $table): void {
             $table->decimal('note', 5, 2)->nullable();
-            $table->text('observation')->nullable();
             $table->text('commentaire')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();
         });
@@ -182,6 +182,7 @@ class GradeSheetDetailEndpointsTest extends AcademicPilotageDatabaseTestCase
             'etudiant_id' => 101,
             'note' => 14.5,
             'is_absent' => false,
+            'commentaire' => 'Bon travail',
             'created_by' => 50,
             'updated_by' => 50,
             'created_at' => $now,

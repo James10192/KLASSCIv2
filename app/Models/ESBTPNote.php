@@ -27,7 +27,6 @@ class ESBTPNote extends Model implements Auditable
         'valeur',
         'is_absent',
         'commentaire',
-        'observation',
         'type_evaluation',
     ];
 
@@ -78,7 +77,6 @@ class ESBTPNote extends Model implements Auditable
         'note',
         'type_evaluation',
         'valeur',
-        'observation',
         'created_by',
         'updated_by',
         'is_absent',
