@@ -22,6 +22,7 @@ return [
     'observers_enabled' => env('ACADEMIC_PILOTAGE_OBSERVERS_ENABLED', true),
     'refresh' => [
         'max_dirty_batch' => 250,
+        'max_classes_per_manual_sync' => 10,
         'claim_ttl_minutes' => 10,
     ],
     'lmd' => [

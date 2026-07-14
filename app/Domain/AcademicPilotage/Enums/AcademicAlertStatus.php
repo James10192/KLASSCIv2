@@ -31,6 +31,39 @@ enum AcademicAlertStatus: string
         return ! $this->isOpen();
     }
 
+    public function canManuallyTransitionTo(self $target): bool
+    {
+        return in_array($target, $this->allowedManualTransitions(), true);
+    }
+
+    /** @return array<int, self> */
+    public function allowedManualTransitions(): array
+    {
+        return match ($this) {
+            self::OPEN => [self::ACKNOWLEDGED, self::DISMISSED],
+            self::ACKNOWLEDGED => [self::IN_PROGRESS, self::RESOLVED, self::DISMISSED],
+            self::IN_PROGRESS => [self::RESOLVED, self::DISMISSED],
+            self::RESOLVED, self::DISMISSED => [],
+        };
+    }
+
+    /** @return array<int, string> */
+    public static function manualTargetValues(): array
+    {
+        return [
+            self::ACKNOWLEDGED->value,
+            self::IN_PROGRESS->value,
+            self::RESOLVED->value,
+            self::DISMISSED->value,
+        ];
+    }
+
+    /** @return array<int, string> */
+    public static function activeValues(): array
+    {
+        return [self::OPEN->value, self::ACKNOWLEDGED->value, self::IN_PROGRESS->value];
+    }
+
     /** @return array<int, string> */
     public static function values(): array
     {

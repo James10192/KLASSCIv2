@@ -20,6 +20,7 @@ final class BtsAcademicMetricsProvider implements AcademicSystemMetricsProvider
         private readonly AcademicPeriodNormalizer $periods,
         private readonly GradeCompletionMetricService $completion,
         private readonly AttendanceMetricService $attendance,
+        private readonly OpenAlertMetricService $openAlerts,
     ) {}
 
     public function metricsFor(StudentMetricContext $context): AcademicMetricSet
@@ -46,11 +47,7 @@ final class BtsAcademicMetricsProvider implements AcademicSystemMetricsProvider
             $this->completion->forStudent($resolved),
             $this->attendance->forStudent($resolved),
             $this->progressionMetric($resolved, $snapshot),
-            AcademicMetricValue::unavailable(
-                'open_alerts',
-                "Le moteur d'alertes académiques n'a pas encore produit de preuve.",
-                ['engine_ready' => false],
-            ),
+            $this->openAlerts->forStudent($resolved),
         ]);
     }
 

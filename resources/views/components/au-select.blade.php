@@ -41,6 +41,7 @@
     <div class="au-select-menu"
          :id="$id('{{ $componentId }}')"
          x-show="open"
+         :style="menuStyle"
          x-cloak
          x-transition:enter="au-select-menu--entering"
          x-transition:enter-start="au-select-menu--enter-start"
@@ -106,12 +107,14 @@
 .au-select-native { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; clip: rect(0 0 0 0); }
 .au-select-trigger {
     width: 100%; display: inline-flex; align-items: center; gap: .5rem;
+    min-height: 44px;
     padding: .55rem .85rem;
     background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
     font-size: .85rem; color: #1e293b; cursor: pointer;
-    transition: border-color .15s, box-shadow .15s;
+    transition: border-color .15s, box-shadow .15s, transform .15s;
     text-align: left; line-height: 1.2;
 }
+.au-select-trigger:active { transform: scale(.96); }
 .au-select-trigger:hover { border-color: #cbd5e1; }
 .au-select-trigger:focus-visible { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
 .au-select-trigger--open { border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.10); }
@@ -190,11 +193,16 @@ if (typeof window.auSelect !== 'function') {
             search: '',
             _value: '',
             optionsVersion: 0,
+            menuStyle: '',
             _optionsObserver: null,
+            _repositionMenu: null,
             init() {
                 this._value = this.$refs.native.value;
 
                 this.observeNativeOptions();
+                this._repositionMenu = () => this.open && this.positionMenu();
+                window.addEventListener('resize', this._repositionMenu, { passive: true });
+                window.addEventListener('scroll', this._repositionMenu, { passive: true, capture: true });
 
                 this.$refs.native.addEventListener('change', () => {
                     if (this._value !== this.$refs.native.value) {
@@ -209,11 +217,11 @@ if (typeof window.auSelect !== 'function') {
                     }
                 });
 
-                this.$el.addEventListener('alpine:destroy', () => {
-                    if (this._optionsObserver) {
-                        this._optionsObserver.disconnect();
-                    }
-                }, { once: true });
+            },
+            destroy() {
+                this._optionsObserver?.disconnect();
+                window.removeEventListener('resize', this._repositionMenu);
+                window.removeEventListener('scroll', this._repositionMenu, { capture: true });
             },
             observeNativeOptions() {
                 if (!this.$refs.native || typeof MutationObserver === 'undefined') {
@@ -248,8 +256,32 @@ if (typeof window.auSelect !== 'function') {
             toggle() {
                 this.open = !this.open;
                 if (this.open) {
-                    this.$nextTick(() => this.$refs.searchInput?.focus());
+                    this.$nextTick(() => {
+                        this.positionMenu();
+                        this.$refs.searchInput?.focus();
+                    });
+                } else {
+                    this.menuStyle = '';
                 }
+            },
+            positionMenu() {
+                const trigger = this.$el.querySelector('.au-select-trigger');
+                const menu = this.$el.querySelector('.au-select-menu');
+                if (!trigger || !menu) return;
+
+                const margin = 12;
+                const gap = 6;
+                const triggerRect = trigger.getBoundingClientRect();
+                const menuWidth = Math.min(menu.offsetWidth || triggerRect.width, window.innerWidth - (margin * 2));
+                const left = Math.max(margin, Math.min(triggerRect.left, window.innerWidth - menuWidth - margin));
+                const spaceBelow = window.innerHeight - triggerRect.bottom - margin - gap;
+                const spaceAbove = triggerRect.top - margin - gap;
+                const openUp = spaceBelow < 180 && spaceAbove > spaceBelow;
+                const availableHeight = Math.max(0, Math.min(380, openUp ? spaceAbove : spaceBelow));
+
+                this.menuStyle = openUp
+                    ? `position:fixed;left:${left}px;right:auto;top:auto;bottom:${window.innerHeight - triggerRect.top + gap}px;width:${menuWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
+                    : `position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
             },
             get currentValue() { return this._value; },
             get rawOptions() {

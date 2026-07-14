@@ -6,6 +6,7 @@ namespace App\Domain\AcademicPilotage\Services;
 
 use App\Domain\AcademicPilotage\DTO\StudentMetricContext;
 use App\Domain\AcademicPilotage\Models\AcademicMetricSnapshot;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Schema;
@@ -22,13 +23,36 @@ final class AcademicMetricSnapshotRefreshService
 
     public function refreshDirty(int $limit = 100): array
     {
+        $result = $this->refreshDirtyForScope(null, null, null, $limit);
+
+        return array_intersect_key($result, array_flip([
+            'scanned', 'refreshed', 'stale_retries', 'failed',
+        ]));
+    }
+
+    public function refreshDirtyForScope(
+        ?int $academicYearId,
+        ?string $period,
+        ?string $academicSystem,
+        int $limit = 100,
+    ): array
+    {
         if (! Schema::hasTable('esbtp_academic_metric_snapshots')) {
-            return ['scanned' => 0, 'refreshed' => 0, 'stale_retries' => 0, 'failed' => 0];
+            return [
+                'scanned' => 0, 'refreshed' => 0, 'stale_retries' => 0,
+                'failed' => 0, 'remaining' => 0, 'has_more' => false,
+            ];
         }
 
         $limit = max(1, min($limit, (int) config('academic_pilotage.refresh.max_dirty_batch', 250)));
         $token = Str::random(40);
-        $rows = $this->claimDirtySnapshots($limit, $token);
+        $rows = $this->claimDirtySnapshots(
+            $limit,
+            $token,
+            $academicYearId,
+            $period,
+            $academicSystem,
+        );
         $refreshed = 0;
         $staleRetries = 0;
         $failed = 0;
@@ -55,19 +79,38 @@ final class AcademicMetricSnapshotRefreshService
             }
         }
 
+        $remaining = $this->dirtyScopeQuery(
+            AcademicMetricSnapshot::query(),
+            $academicYearId,
+            $period,
+            $academicSystem,
+        )->count();
+
         return [
             'scanned' => $rows->count(),
             'refreshed' => $refreshed,
             'stale_retries' => $staleRetries,
             'failed' => $failed,
+            'remaining' => $remaining,
+            'has_more' => $remaining > 0,
         ];
     }
 
-    private function claimDirtySnapshots(int $limit, string $token)
+    private function claimDirtySnapshots(
+        int $limit,
+        string $token,
+        ?int $academicYearId,
+        ?string $period,
+        ?string $academicSystem,
+    )
     {
         if (! $this->claimColumnsAvailable()) {
-            return AcademicMetricSnapshot::query()
-                ->where('is_dirty', true)
+            return $this->dirtyScopeQuery(
+                AcademicMetricSnapshot::query(),
+                $academicYearId,
+                $period,
+                $academicSystem,
+            )
                 ->orderByRaw('stale_at is null')
                 ->orderBy('stale_at')
                 ->orderBy('id')
@@ -76,8 +119,12 @@ final class AcademicMetricSnapshotRefreshService
         }
 
         $ttl = now()->subMinutes((int) config('academic_pilotage.refresh.claim_ttl_minutes', 10));
-        $candidates = AcademicMetricSnapshot::query()
-            ->where('is_dirty', true)
+        $candidates = $this->dirtyScopeQuery(
+            AcademicMetricSnapshot::query(),
+            $academicYearId,
+            $period,
+            $academicSystem,
+        )
             ->where(function ($query) use ($ttl): void {
                 $query->whereNull('refresh_token')
                     ->orWhere('refresh_started_at', '<', $ttl);
@@ -109,6 +156,26 @@ final class AcademicMetricSnapshotRefreshService
             ->where('refresh_token', $token)
             ->orderBy('id')
             ->get();
+    }
+
+    private function dirtyScopeQuery(
+        Builder $query,
+        ?int $academicYearId,
+        ?string $period,
+        ?string $academicSystem,
+    ): Builder
+    {
+        return $query
+            ->where('is_dirty', true)
+            ->when($academicYearId, fn (Builder $builder) => $builder->where(
+                'annee_universitaire_id',
+                $academicYearId,
+            ))
+            ->when($period, fn (Builder $builder) => $builder->where('semester', $period))
+            ->when($academicSystem, fn (Builder $builder) => $builder->where(
+                'academic_system',
+                strtoupper($academicSystem),
+            ));
     }
 
     private function refresh(AcademicMetricSnapshot $snapshot): bool

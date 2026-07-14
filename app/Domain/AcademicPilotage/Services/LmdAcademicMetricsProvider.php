@@ -21,6 +21,7 @@ final class LmdAcademicMetricsProvider implements AcademicSystemMetricsProvider
         private readonly GradeCompletionMetricService $completion,
         private readonly AttendanceMetricService $attendance,
         private readonly MatiereTreeBuilder $matieres,
+        private readonly OpenAlertMetricService $openAlerts,
     ) {}
 
     public function metricsFor(StudentMetricContext $context): AcademicMetricSet
@@ -55,11 +56,7 @@ final class LmdAcademicMetricsProvider implements AcademicSystemMetricsProvider
             $this->completion->forStudent($canonical),
             $this->attendance->forStudent($canonical),
             $this->progressionMetric($canonical, $bulletin, $semester),
-            AcademicMetricValue::unavailable(
-                'open_alerts',
-                "Le moteur d'alertes académiques n'a pas encore produit de preuve.",
-                ['engine_ready' => false],
-            ),
+            $this->openAlerts->forStudent($canonical),
         ]);
     }
 

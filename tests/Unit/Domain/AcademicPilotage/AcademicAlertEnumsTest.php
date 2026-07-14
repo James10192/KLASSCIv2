@@ -41,6 +41,34 @@ class AcademicAlertEnumsTest extends TestCase
         }
     }
 
+    public function test_alert_status_exposes_the_manual_transition_graph(): void
+    {
+        $allowedTargets = [
+            AcademicAlertStatus::OPEN->value => ['acknowledged', 'dismissed'],
+            AcademicAlertStatus::ACKNOWLEDGED->value => ['in_progress', 'resolved', 'dismissed'],
+            AcademicAlertStatus::IN_PROGRESS->value => ['resolved', 'dismissed'],
+            AcademicAlertStatus::RESOLVED->value => [],
+            AcademicAlertStatus::DISMISSED->value => [],
+        ];
+
+        foreach (AcademicAlertStatus::cases() as $status) {
+            $this->assertSame(
+                $allowedTargets[$status->value],
+                array_map(
+                    fn (AcademicAlertStatus $target): string => $target->value,
+                    $status->allowedManualTransitions(),
+                ),
+            );
+        }
+
+        $this->assertSame([
+            'acknowledged',
+            'in_progress',
+            'resolved',
+            'dismissed',
+        ], AcademicAlertStatus::manualTargetValues());
+    }
+
     public function test_alert_severity_exposes_exact_values_and_labels(): void
     {
         $labels = [

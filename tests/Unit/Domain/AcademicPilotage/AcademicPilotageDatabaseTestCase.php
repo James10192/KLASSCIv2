@@ -171,6 +171,8 @@ abstract class AcademicPilotageDatabaseTestCase extends TestCase
             $table->unsignedBigInteger('etudiant_id');
             $table->boolean('is_absent')->default(false);
             $table->unsignedBigInteger('created_by')->nullable();
+            $table->unsignedBigInteger('updated_by')->nullable();
+            $table->unsignedBigInteger('matiere_id')->nullable();
             $table->dateTime('archived_at')->nullable();
             $table->timestamps();
             $table->softDeletes();
@@ -186,6 +188,8 @@ abstract class AcademicPilotageDatabaseTestCase extends TestCase
             $table->unsignedBigInteger('classe_id');
             $table->unsignedBigInteger('annee_universitaire_id');
             $table->unsignedBigInteger('enseignant_id')->nullable();
+            $table->unsignedBigInteger('matiere_id')->nullable();
+            $table->string('periode')->nullable();
         });
 
         Schema::create('esbtp_emploi_temps', function (Blueprint $table): void {

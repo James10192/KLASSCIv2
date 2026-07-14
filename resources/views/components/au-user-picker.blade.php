@@ -8,13 +8,13 @@
 
 @php
     $rolePriority = [
-        'superAdmin'       => ['label' => 'Super Administrateur', 'color' => '#7c3aed', 'icon' => 'fa-crown'],
+        'superAdmin'       => ['label' => 'Super Administrateur', 'color' => '#0a3d8f', 'icon' => 'fa-crown'],
         'serviceTechnique' => ['label' => 'Service Technique',    'color' => '#0ea5e9', 'icon' => 'fa-shield-alt'],
         'secretaire'       => ['label' => 'Secrétaire',           'color' => '#0453cb', 'icon' => 'fa-clipboard-list'],
         'coordinateur'     => ['label' => 'Coordinateur',         'color' => '#1d4ed8', 'icon' => 'fa-user-tie'],
         'comptable'        => ['label' => 'Comptable',            'color' => '#059669', 'icon' => 'fa-calculator'],
         'caissier'         => ['label' => 'Caissier',             'color' => '#10b981', 'icon' => 'fa-cash-register'],
-        'enseignant'       => ['label' => 'Enseignant',           'color' => '#f59e0b', 'icon' => 'fa-chalkboard-teacher'],
+        'enseignant'       => ['label' => 'Enseignant',           'color' => '#475569', 'icon' => 'fa-chalkboard-teacher'],
         'etudiant'         => ['label' => 'Étudiant',             'color' => '#94a3b8', 'icon' => 'fa-user-graduate'],
     ];
 
@@ -104,7 +104,7 @@
         <i class="fas fa-chevron-down au-up-caret" :class="{ 'au-up-caret--open': open }"></i>
     </button>
 
-    <div class="au-up-menu" x-show="open" x-cloak
+    <div class="au-up-menu" x-show="open" x-cloak :style="menuStyle"
          x-transition:enter="au-up-menu--entering"
          x-transition:enter-start="au-up-menu--enter-start"
          x-transition:enter-end="au-up-menu--enter-end">
@@ -183,11 +183,13 @@
 .au-up { position: relative; flex: 1; min-width: 0; display: flex; }
 .au-up-trigger {
     width: 100%; display: flex; align-items: center; gap: .65rem;
+    min-height: 44px;
     padding: .5rem .8rem;
     background: #fff; border: 1px solid #e2e8f0; border-radius: 10px;
-    cursor: pointer; transition: border-color .15s, box-shadow .15s;
+    cursor: pointer; transition: border-color .15s, box-shadow .15s, transform .15s;
     text-align: left; line-height: 1.2;
 }
+.au-up-trigger:active { transform: scale(.96); }
 .au-up-trigger:hover { border-color: #cbd5e1; }
 .au-up-trigger--open { border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.1); }
 .au-up-trigger-empty { display: flex; align-items: center; gap: .5rem; flex: 1; color: #64748b; font-size: .85rem; min-width: 0; }
@@ -311,16 +313,51 @@ if (typeof window.auUserPicker !== 'function') {
             groups: [],
             currentValue: '',
             submitOnChange: false,
+            menuStyle: '',
+            _repositionMenu: null,
             init() {
                 try { this.groups = JSON.parse(this.$el.dataset.groups || '[]'); }
                 catch (e) { this.groups = []; }
                 this.currentValue = this.$el.dataset.current || '';
                 this.submitOnChange = this.$el.dataset.submitOnChange === '1';
                 this.$nextTick(() => { if (this.$refs.native) this.$refs.native.value = this.currentValue; });
+                this._repositionMenu = () => this.open && this.positionMenu();
+                window.addEventListener('resize', this._repositionMenu, { passive: true });
+                window.addEventListener('scroll', this._repositionMenu, { passive: true, capture: true });
+            },
+            destroy() {
+                window.removeEventListener('resize', this._repositionMenu);
+                window.removeEventListener('scroll', this._repositionMenu, { capture: true });
             },
             toggle() {
                 this.open = !this.open;
-                if (this.open) this.$nextTick(() => this.$refs.searchInput?.focus());
+                if (this.open) {
+                    this.$nextTick(() => {
+                        this.positionMenu();
+                        this.$refs.searchInput?.focus();
+                    });
+                } else {
+                    this.menuStyle = '';
+                }
+            },
+            positionMenu() {
+                const trigger = this.$el.querySelector('.au-up-trigger');
+                const menu = this.$el.querySelector('.au-up-menu');
+                if (!trigger || !menu) return;
+
+                const margin = 12;
+                const gap = 6;
+                const triggerRect = trigger.getBoundingClientRect();
+                const menuWidth = Math.min(Math.max(380, triggerRect.width), window.innerWidth - (margin * 2));
+                const left = Math.max(margin, Math.min(triggerRect.left, window.innerWidth - menuWidth - margin));
+                const spaceBelow = window.innerHeight - triggerRect.bottom - margin - gap;
+                const spaceAbove = triggerRect.top - margin - gap;
+                const openUp = spaceBelow < 220 && spaceAbove > spaceBelow;
+                const availableHeight = Math.max(0, Math.min(500, openUp ? spaceAbove : spaceBelow));
+
+                this.menuStyle = openUp
+                    ? `position:fixed;left:${left}px;right:auto;top:auto;bottom:${window.innerHeight - triggerRect.top + gap}px;width:${menuWidth}px;max-width:none;max-height:${availableHeight}px;transform-origin:bottom center;`
+                    : `position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;max-width:none;max-height:${availableHeight}px;transform-origin:top center;`;
             },
             get filteredGroups() {
                 const s = this.search.trim().toLowerCase();
@@ -348,7 +385,7 @@ if (typeof window.auUserPicker !== 'function') {
             },
             select(u, group) {
                 this.currentValue = u ? String(u.id) : '';
-                this.open = false; this.search = '';
+                this.open = false; this.search = ''; this.menuStyle = '';
                 this.$nextTick(() => {
                     if (this.$refs.native) {
                         this.$refs.native.value = this.currentValue;

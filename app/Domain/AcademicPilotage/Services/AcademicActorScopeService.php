@@ -121,7 +121,9 @@ class AcademicActorScopeService
             ->pluck('classe_id'));
         $this->mergeEvidence($classIds, $sources, 'grade_entry_activity', DB::table('esbtp_notes')
             ->join('esbtp_evaluations', 'esbtp_notes.evaluation_id', '=', 'esbtp_evaluations.id')
-            ->where('esbtp_notes.created_by', $user->getKey())
+            ->where(fn ($query) => $query
+                ->where('esbtp_notes.created_by', $user->getKey())
+                ->orWhere('esbtp_notes.updated_by', $user->getKey()))
             ->where('esbtp_evaluations.annee_universitaire_id', $academicYearId)
             ->pluck('esbtp_evaluations.classe_id'));
 

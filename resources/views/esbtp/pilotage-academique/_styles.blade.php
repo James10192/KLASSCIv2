@@ -1,6 +1,6 @@
 @push('styles')
 <style>
-.cpa-shell { display: grid; gap: 1rem; }
+.cpa-shell { display: grid; gap: 1rem; -webkit-font-smoothing: antialiased; }
 .cpa-hero {
     position: relative;
     overflow: hidden;
@@ -17,8 +17,8 @@
     color: #fff; font-size: 1.35rem;
     background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.16);
 }
-.cpa-hero h1 { margin: 0 0 .2rem; color: #fff; font-size: 1.45rem; font-weight: 800; letter-spacing: 0; }
-.cpa-hero p { margin: 0; color: rgba(255,255,255,.76); font-size: .88rem; }
+.cpa-hero h1 { margin: 0 0 .2rem; color: #fff; font-size: 1.45rem; font-weight: 800; letter-spacing: 0; text-wrap: balance; }
+.cpa-hero p { margin: 0; color: rgba(255,255,255,.76); font-size: .88rem; text-wrap: pretty; }
 .cpa-hero-scope {
     display: inline-flex; align-items: center; gap: .45rem; min-height: 36px;
     padding: .45rem .75rem; border-radius: 10px; font-size: .78rem; font-weight: 800;
@@ -35,7 +35,7 @@
     display: inline-flex; align-items: center; justify-content: center;
     color: #fff; background: rgba(255,255,255,.15);
 }
-.cpa-hero-kpi-value { color: #fff; font-size: 1.35rem; font-weight: 800; line-height: 1; }
+.cpa-hero-kpi-value { color: #fff; font-size: 1.35rem; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
 .cpa-hero-kpi-label { margin-top: .2rem; color: rgba(255,255,255,.68); font-size: .72rem; font-weight: 700; }
 .cpa-filter-panel { overflow: visible; position: relative; z-index: 30; }
 .cpa-filter-panel:has(.au-select-trigger--open) { z-index: 1400; }
@@ -54,13 +54,13 @@
 .cpa-tab { border: 0; background: transparent; color: #64748b; border-radius: 10px; min-height: 44px; padding: .55rem .9rem; font-weight: 700; font-size: .82rem; display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap; }
 .cpa-tab:hover { background: #f1f5f9; color: #0453cb; }
 .cpa-tab.is-active { background: #0453cb; color: #fff; box-shadow: 0 8px 20px rgba(4,83,203,.16); }
-.cpa-panel { background: #fff; border: 1px solid #e8ecf1; border-radius: 16px; padding: 1rem; box-shadow: 0 12px 28px rgba(15,23,42,.05); }
+.cpa-panel { background: #fff; border: 1px solid #e8ecf1; border-radius: 8px; padding: 1rem; box-shadow: 0 12px 28px rgba(15,23,42,.05); }
 .cpa-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-bottom: .85rem; }
 .cpa-panel-title { margin: 0; color: #0f172a; font-size: 1rem; font-weight: 800; display: flex; align-items: center; gap: .55rem; }
 .cpa-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .75rem; }
 .cpa-kpi { border: 1px solid #e8ecf1; border-radius: 10px; padding: .85rem; background: #f8fafc; min-height: 92px; }
 .cpa-kpi-label { color: #64748b; font-size: .72rem; text-transform: uppercase; font-weight: 800; letter-spacing: 0; }
-.cpa-kpi-value { color: #0f172a; font-size: 1.55rem; line-height: 1.1; font-weight: 900; margin-top: .25rem; }
+.cpa-kpi-value { color: #0f172a; font-size: 1.55rem; line-height: 1.1; font-weight: 900; margin-top: .25rem; font-variant-numeric: tabular-nums; }
 .cpa-kpi small { color: #64748b; font-weight: 600; }
 .cpa-list { display: grid; gap: .6rem; }
 .cpa-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .75rem; align-items: center; border: 1px solid #e8ecf1; border-radius: 10px; padding: .8rem; background: #fff; }
@@ -76,8 +76,9 @@
 .cpa-badge--ok { background: #ecfdf5; color: #047857; }
 .cpa-badge--warn { background: #fff7ed; color: #c2410c; }
 .cpa-badge--danger { background: #fef2f2; color: #b91c1c; }
-.cpa-btn { border: 1px solid #dbe5f2; background: #fff; color: #0453cb; border-radius: 10px; min-height: 44px; padding: .55rem .85rem; font-weight: 800; display: inline-flex; align-items: center; gap: .45rem; }
+.cpa-btn { border: 1px solid #dbe5f2; background: #fff; color: #0453cb; border-radius: 8px; min-height: 44px; padding: .55rem .85rem; font-weight: 800; display: inline-flex; align-items: center; gap: .45rem; transition: background-color .15s, border-color .15s, color .15s, transform .15s; }
 .cpa-btn:hover { background: #eff6ff; border-color: #bfdbfe; }
+.cpa-btn:active:not(:disabled), .cpa-icon-btn:active:not(:disabled), .cpa-tab:active { transform: scale(.96); }
 .cpa-btn--primary { background: #0453cb; color: #fff; border-color: #0453cb; }
 .cpa-btn--primary:hover { background: #0347b0; color: #fff; }
 .cpa-state { border: 1px dashed #cbd5e1; border-radius: 12px; padding: 1.2rem; color: #64748b; text-align: center; background: #f8fafc; }

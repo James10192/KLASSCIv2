@@ -3,14 +3,13 @@
 namespace Tests\Unit\Domain\AcademicPilotage;
 
 use App\Domain\AcademicPilotage\Services\AcademicActorScopeService;
-use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class AcademicActorDashboardScopeTest extends AcademicPilotageDatabaseTestCase
 {
     public function test_it_combines_explicit_and_observed_academic_activity(): void
     {
-        $user = $this->scopedUser(60);
+        $user = $this->actor(60);
         DB::table('esbtp_academic_actor_assignments')->insert([
             'user_id' => 60, 'classe_id' => 10, 'annee_universitaire_id' => 20,
             'responsibility' => 'grade_entry', 'is_active' => true,
@@ -20,7 +19,7 @@ class AcademicActorDashboardScopeTest extends AcademicPilotageDatabaseTestCase
             'id' => 30, 'classe_id' => 12, 'annee_universitaire_id' => 20, 'enseignant_id' => 60,
         ]);
         DB::table('esbtp_notes')->insert([
-            'evaluation_id' => 30, 'etudiant_id' => 90, 'created_by' => 60,
+            'evaluation_id' => 30, 'etudiant_id' => 90, 'created_by' => null, 'updated_by' => 60,
             'is_absent' => false, 'created_at' => now(), 'updated_at' => now(),
         ]);
 
@@ -36,7 +35,7 @@ class AcademicActorDashboardScopeTest extends AcademicPilotageDatabaseTestCase
 
     public function test_it_recognizes_a_class_from_a_course_session(): void
     {
-        $user = $this->scopedUser(60);
+        $user = $this->actor(60);
         DB::table('esbtp_teachers')->insert(['id' => 70, 'user_id' => 60]);
         DB::table('esbtp_emploi_temps')->insert(['id' => 80, 'annee_universitaire_id' => 20]);
         DB::table('esbtp_seance_cours')->insert([
@@ -47,15 +46,5 @@ class AcademicActorDashboardScopeTest extends AcademicPilotageDatabaseTestCase
 
         $this->assertSame([13], $scope->classIds->all());
         $this->assertContains('teaching_activity', $scope->sources);
-    }
-
-    private function scopedUser(int $id): User
-    {
-        $user = $this->getMockBuilder(User::class)->onlyMethods(['can'])->getMock();
-        $user->method('can')->willReturn(false);
-        $user->setRawAttributes(['id' => $id], true);
-        $user->exists = true;
-
-        return $user;
     }
 }

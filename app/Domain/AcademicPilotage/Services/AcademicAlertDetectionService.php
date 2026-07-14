@@ -33,7 +33,19 @@ final class AcademicAlertDetectionService
             ...$this->studentCandidates($result, $academicYearId, $academicSystem, $period),
         ];
 
-        return array_map(fn (AcademicAlertCandidate $candidate): AcademicAlert => $this->alerts->upsert($candidate), $candidates);
+        $alerts = array_map(
+            fn (AcademicAlertCandidate $candidate): AcademicAlert => $this->alerts->upsert($candidate),
+            $candidates,
+        );
+        $this->alerts->resolveMissingForScope(
+            $classId,
+            $academicYearId,
+            $period,
+            $this->managedTypeValues(),
+            array_map(fn (AcademicAlert $alert): string => $alert->fingerprint, $alerts),
+        );
+
+        return $alerts;
     }
 
     /** @return list<AcademicAlertCandidate> */
@@ -202,5 +214,20 @@ final class AcademicAlertDetectionService
     private function normalizePeriodForAlerts(string $period): string
     {
         return $this->periods->normalize($period);
+    }
+
+    private function managedTypeValues(): array
+    {
+        return array_map(
+            fn (AcademicAlertType $type): string => $type->value,
+            [
+                AcademicAlertType::ASSESSMENT_NOT_CONFIGURED,
+                AcademicAlertType::CLASS_DELAYED,
+                AcademicAlertType::DATA_INCONSISTENCY,
+                AcademicAlertType::MISSING_GRADE,
+                AcademicAlertType::STUDENT_NO_AVERAGE,
+                AcademicAlertType::STUDENT_HIGH_ABSENCE,
+            ],
+        );
     }
 }

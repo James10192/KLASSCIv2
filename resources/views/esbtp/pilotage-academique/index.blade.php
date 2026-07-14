@@ -85,7 +85,7 @@
         </template>
         <div class="cpa-tabs" role="tablist">
             <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'direction' }" @click="setTab('direction')"><i class="fas fa-gauge-high"></i>Direction</button>
-            <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'activity' }" @click="setTab('activity')"><i class="fas fa-keyboard"></i>Activité</button>
+            <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'activity' }" @click="setTab('activity')"><i class="fas fa-users-gear"></i>Acteurs</button>
             <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'sheets' }" @click="setTab('sheets')"><i class="fas fa-clipboard-check"></i>Notes et fiches</button>
             <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'alerts' }" @click="setTab('alerts')"><i class="fas fa-triangle-exclamation"></i>Alertes</button>
             <button type="button" class="cpa-tab" :class="{ 'is-active': tab === 'classes' }" @click="setTab('classes')"><i class="fas fa-school"></i>Santé classe</button>
@@ -241,8 +241,8 @@
     <section class="cpa-panel" x-show="tab === 'activity'">
         <div class="cpa-panel-head">
             <div>
-                <h2 class="cpa-panel-title"><i class="fas fa-keyboard"></i>Activité de saisie</h2>
-                <p class="cpa-muted">Preuves issues des fiches et des notes réellement enregistrées dans le périmètre sélectionné.</p>
+                <h2 class="cpa-panel-title"><i class="fas fa-users-gear"></i>Acteurs des notes</h2>
+                <p class="cpa-muted">Saisies et corrections réellement enregistrées, regroupées par personne, matière et classe.</p>
             </div>
         </div>
         <div class="cpa-list" x-show="data.actor_activity?.actors?.length">
@@ -252,6 +252,7 @@
                         <div class="cpa-row-title" x-text="actor.name"></div>
                         <div class="cpa-row-meta">
                             <span x-text="`${actor.notes_entered} note(s) saisie(s)`"></span>
+                            <span x-show="actor.notes_updated" x-text="`${actor.notes_updated} note(s) corrigée(s)`"></span>
                             <span x-text="`${actor.subjects_count} matière(s)`"></span>
                             <span x-text="`${actor.classes_count} classe(s)`"></span>
                             <span x-text="`${actor.sheets_completed} fiche(s) finalisée(s)`"></span>
@@ -262,7 +263,7 @@
             </template>
         </div>
         <div class="cpa-state" x-show="!data.actor_activity?.actors?.length">
-            <i class="fas fa-keyboard"></i>Aucune activité de saisie tracée sur ce périmètre.
+            <i class="fas fa-users-gear"></i>Aucun acteur de saisie tracé sur ce périmètre.
         </div>
     </section>
     <section class="cpa-panel" x-show="tab === 'alerts'">
@@ -280,10 +281,12 @@
                     </div>
                     <span class="cpa-badge" :class="severityClass(alert.severity)" x-text="alert.severity_label"></span>
                     @can('academic_alerts.acknowledge')
-                    <button type="button" class="cpa-btn" @click="transitionAlert(alert, 'acknowledged')" x-show="alert.status === 'open'"><i class="fas fa-check"></i>Prendre en charge</button>
+                    <button type="button" class="cpa-btn" @click="openAlertTransition(alert, 'acknowledged', 'Prendre en charge')" x-show="alert.status === 'open'"><i class="fas fa-check"></i>Prendre en charge</button>
+                    <button type="button" class="cpa-btn" @click="openAlertTransition(alert, 'in_progress', 'Commencer le traitement')" x-show="alert.status === 'acknowledged'"><i class="fas fa-play"></i>Commencer</button>
                     @endcan
                     @can('academic_alerts.resolve')
-                    <button type="button" class="cpa-btn cpa-btn--primary" @click="transitionAlert(alert, 'resolved')" x-show="['open', 'acknowledged', 'in_progress'].includes(alert.status)"><i class="fas fa-check-double"></i>Résoudre</button>
+                    <button type="button" class="cpa-btn cpa-btn--primary" @click="openAlertTransition(alert, 'resolved', 'Résoudre')" x-show="['acknowledged', 'in_progress'].includes(alert.status)"><i class="fas fa-check-double"></i>Résoudre</button>
+                    <button type="button" class="cpa-btn" @click="openAlertTransition(alert, 'dismissed', 'Classer sans suite')" x-show="['open', 'acknowledged', 'in_progress'].includes(alert.status)"><i class="fas fa-box-archive"></i>Classer</button>
                     @endcan
                 </article>
             </template>
@@ -376,6 +379,7 @@
             <div>
                 <div class="cpa-grid">
                     <div class="cpa-kpi"><div class="cpa-kpi-label">Notes saisies</div><div class="cpa-kpi-value" x-text="data.actor_activity.current_actor.notes_entered"></div><small>Entrées tracées</small></div>
+                    <div class="cpa-kpi"><div class="cpa-kpi-label">Notes corrigées</div><div class="cpa-kpi-value" x-text="data.actor_activity.current_actor.notes_updated"></div><small>Modifications tracées</small></div>
                     <div class="cpa-kpi"><div class="cpa-kpi-label">Matières</div><div class="cpa-kpi-value" x-text="data.actor_activity.current_actor.subjects_count"></div><small>Matières distinctes</small></div>
                     <div class="cpa-kpi"><div class="cpa-kpi-label">Classes</div><div class="cpa-kpi-value" x-text="data.actor_activity.current_actor.classes_count"></div><small>Classes concernées</small></div>
                     <div class="cpa-kpi"><div class="cpa-kpi-label">Fiches finalisées</div><div class="cpa-kpi-value" x-text="data.actor_activity.current_actor.sheets_completed"></div><small>Fiches marquées saisies</small></div>
@@ -475,6 +479,29 @@
                 <button type="button" class="cpa-btn cpa-btn--primary" @click="confirmSheetTransition()" :disabled="transitioning || (transitionModal.action?.reason_required && !transitionModal.reason.trim())">
                     <i class="fas" :class="transitioning ? 'fa-spinner fa-spin' : 'fa-check'"></i>
                     <span x-text="transitioning ? 'Mise &agrave; jour...' : 'Confirmer'"></span>
+                </button>
+            </div>
+        </section>
+    </div>
+    <div class="cpa-modal-backdrop" x-cloak x-show="alertTransitionModal.open" x-transition.opacity @keydown.escape.window="closeAlertTransition()" @click.self="closeAlertTransition()" role="presentation">
+        <section class="cpa-modal" role="dialog" aria-modal="true" aria-labelledby="alert-transition-title">
+            <div class="cpa-modal-head">
+                <div>
+                    <h3 id="alert-transition-title" class="cpa-panel-title" x-text="alertTransitionModal.label || 'Mettre à jour l’alerte'"></h3>
+                    <p class="cpa-muted mt-2" x-text="alertTransitionModal.alert?.message"></p>
+                </div>
+                <button type="button" class="cpa-icon-btn" @click="closeAlertTransition()" :disabled="alertTransitioning" aria-label="Fermer"><i class="fas fa-xmark"></i></button>
+            </div>
+            <template x-if="alertTransitionModal.error">
+                <div class="cpa-state cpa-error mt-3"><i class="fas fa-circle-exclamation"></i><span x-text="alertTransitionModal.error"></span></div>
+            </template>
+            <label class="cpa-field-label" for="alert-transition-reason">Motif obligatoire</label>
+            <textarea id="alert-transition-reason" class="cpa-textarea" x-model="alertTransitionModal.reason" required placeholder="Précisez la décision ou l’action réalisée pour conserver une piste d’audit claire."></textarea>
+            <div class="cpa-modal-actions">
+                <button type="button" class="cpa-btn" @click="closeAlertTransition()" :disabled="alertTransitioning">Annuler</button>
+                <button type="button" class="cpa-btn cpa-btn--primary" @click="confirmAlertTransition()" :disabled="alertTransitioning || !alertTransitionModal.reason.trim()">
+                    <i class="fas" :class="alertTransitioning ? 'fa-spinner fa-spin' : 'fa-check'"></i>
+                    <span x-text="alertTransitioning ? 'Mise à jour...' : 'Confirmer'"></span>
                 </button>
             </div>
         </section>
