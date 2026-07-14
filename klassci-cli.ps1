@@ -564,6 +564,76 @@ switch ($Command) {
         Invoke-KlassciApi -Method "GET" -Path "/logs$query" -Config $cfg | ConvertTo-Json -Depth 8
         break
     }
+    "academic-pilotage:diagnose" {
+        $targetTenant = $Tenant
+        $argsForCommand = @($ExtraArgs)
+        if ($Tenant -like "--*") {
+            $targetTenant = "presentation"
+            $argsForCommand = @($Tenant) + @($ExtraArgs)
+        }
+        $query = @{}
+        foreach ($arg in $argsForCommand) {
+            if ($arg -match '^--(year-id|class-id|period)=(.+)$') {
+                $query[$matches[1].Replace('-', '_')] = $matches[2]
+                continue
+            }
+            throw "Option inconnue pour academic-pilotage:diagnose: $arg"
+        }
+        $cfg = Get-KlassciConfig -TenantCode $targetTenant
+        $path = "/academic-pilotage/diagnose$(New-KlassciQueryString -Query $query)"
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
+        break
+    }
+    "academic-pilotage:backfill" {
+        $targetTenant = $Tenant
+        $argsForCommand = @($ExtraArgs)
+        if ($Tenant -like "--*") {
+            $targetTenant = "presentation"
+            $argsForCommand = @($Tenant) + @($ExtraArgs)
+        }
+        $body = @{ dry_run = $true; confirm = $false; limit = 500 }
+        foreach ($arg in $argsForCommand) {
+            if ($arg -match '^--dry-run=(.+)$') {
+                $body.dry_run = ConvertTo-KlassciBoolean -Value $matches[1] -Name "--dry-run"
+                continue
+            }
+            if ($arg -match '^--confirm=(.+)$') {
+                $body.confirm = ConvertTo-KlassciBoolean -Value $matches[1] -Name "--confirm"
+                continue
+            }
+            if ($arg -match '^--limit=(\d+)$') {
+                $body.limit = [int]$matches[1]
+                continue
+            }
+            if ($arg -match '^--(year-id|class-id|period)=(.+)$') {
+                $body[$matches[1].Replace('-', '_')] = $matches[2]
+                continue
+            }
+            throw "Option inconnue pour academic-pilotage:backfill: $arg"
+        }
+        $cfg = Get-KlassciConfig -TenantCode $targetTenant
+        Invoke-KlassciApi -Method "POST" -Path "/academic-pilotage/backfill" -Config $cfg -Body $body | ConvertTo-Json -Depth 10
+        break
+    }
+    "academic-pilotage:refresh" {
+        $targetTenant = $Tenant
+        $argsForCommand = @($ExtraArgs)
+        if ($Tenant -like "--*") {
+            $targetTenant = "presentation"
+            $argsForCommand = @($Tenant) + @($ExtraArgs)
+        }
+        $limit = 100
+        foreach ($arg in $argsForCommand) {
+            if ($arg -match '^--limit=(\d+)$') {
+                $limit = [int]$matches[1]
+                continue
+            }
+            throw "Option inconnue pour academic-pilotage:refresh: $arg"
+        }
+        $cfg = Get-KlassciConfig -TenantCode $targetTenant
+        Invoke-KlassciApi -Method "POST" -Path "/academic-pilotage/refresh" -Config $cfg -Body @{ limit = $limit } | ConvertTo-Json -Depth 10
+        break
+    }
     "pull" {
         $cfg = Get-KlassciConfig -TenantCode $Tenant
         Invoke-KlassciApi -Method "POST" -Path "/pull" -Config $cfg | ConvertTo-Json -Depth 8
@@ -789,6 +859,9 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 migrate [presentation]"
         Write-Host "  .\klassci-cli.ps1 composer:install [presentation] [install|update|dump-autoload] [binaire-composer]"
         Write-Host "  .\klassci-cli.ps1 cache:clear [presentation]"
+        Write-Host "  .\klassci-cli.ps1 academic-pilotage:diagnose [presentation] [--year-id=1] [--class-id=101]"
+        Write-Host "  .\klassci-cli.ps1 academic-pilotage:backfill [presentation] [--dry-run=true] [--confirm=false]"
+        Write-Host "  .\klassci-cli.ps1 academic-pilotage:refresh [presentation] [--limit=100]"
         Write-Host "  .\klassci-cli.ps1 classes [presentation]"
         Write-Host "  .\klassci-cli.ps1 classes:raw [presentation]"
         Write-Host "  .\klassci-cli.ps1 lmd:tree [presentation]"

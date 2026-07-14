@@ -95,6 +95,7 @@ curl -H "Authorization: Bearer {token}" http://domain/api/...
 | [LMS_AUTH.md](LMS_AUTH.md) | Authentification + découverte multi-tenant (login, check-user, tenant-info) | ✅ Complet | 21/03/2026 |
 | [LMS_REGISTRY.md](LMS_REGISTRY.md) | Registre des tenants (admin master → liste tenants actifs) | ✅ Complet | 21/03/2026 |
 | [LMS_LOGIN_UNIFIE.md](LMS_LOGIN_UNIFIE.md) | Guide d'intégration login unifié multi-établissements (pour équipe LMS) | ✅ Complet | 21/03/2026 |
+| [ACADEMIC_PILOTAGE_CLI.md](ACADEMIC_PILOTAGE_CLI.md) | Diagnostic, backfill protégé et recalcul du pilotage académique | ✅ Complet | 14/07/2026 |
 
 ## 🚀 APIs à Documenter
 
