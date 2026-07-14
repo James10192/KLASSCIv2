@@ -29,5 +29,6 @@ class AcademicPilotageGradeSheetUiTest extends TestCase
         $this->assertStringContainsString('À saisir par', $script);
         $this->assertStringContainsString('statusProgressLabel(sheet)', $script);
         $this->assertStringContainsString('entryProgressPercent(sheet)', $script);
+        $this->assertStringContainsString("entries_synced: 'Liste des étudiants synchronisée'", $script);
     }
 }

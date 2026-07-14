@@ -473,7 +473,8 @@ document.addEventListener('alpine:init', () => {
                 created: 'Fiche créée', start_entry: 'Saisie démarrée', submit: 'Fiche remise',
                 receive: 'Fiche reçue', finish_entry: 'Saisie terminée', control: 'Fiche contrôlée',
                 validate: 'Fiche validée', reject: 'Fiche rejetée', request_correction: 'Correction demandée',
-                reopen: 'Fiche rouverte', cancel: 'Fiche annulée',
+                reopen: 'Fiche rouverte', cancel: 'Fiche annulée', entries_synced: 'Liste des étudiants synchronisée',
+                document_uploaded: 'Document ajouté',
             };
             const action = eventLabels[event.type] || 'Fiche mise à jour';
             const actor = event.actor || 'Système';
