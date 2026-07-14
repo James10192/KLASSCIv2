@@ -183,7 +183,6 @@ class GradeSheetResource extends JsonResource
             'etudiant_id' => $note->etudiant_id,
             'note' => $note->note,
             'is_absent' => (bool) $note->is_absent,
-            'observation' => $note->observation,
             'commentaire' => $note->commentaire,
             'created_by' => $this->user($note->createdBy),
             'updated_by' => $this->user($note->updatedBy),

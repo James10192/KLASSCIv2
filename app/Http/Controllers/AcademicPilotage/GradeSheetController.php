@@ -123,7 +123,7 @@ class GradeSheetController extends Controller
             'entries' => fn ($query) => $query->orderBy('id'),
             'entries.enteredBy:id,name,email',
             'entries.etudiant:id,nom,prenoms,matricule',
-            'entries.note:id,evaluation_id,etudiant_id,note,is_absent,observation,commentaire,created_by,updated_by,created_at,updated_at',
+            'entries.note:id,evaluation_id,etudiant_id,note,is_absent,commentaire,created_by,updated_by,created_at,updated_at',
             'entries.note.createdBy:id,name,email',
             'entries.note.updatedBy:id,name,email',
             'entries.validatedBy:id,name,email',
