@@ -277,7 +277,9 @@ if (typeof window.auSelect !== 'function') {
                 const gap = 6;
                 const triggerRect = trigger.getBoundingClientRect();
                 const viewportWidth = window.innerWidth - (margin * 2);
-                const menuWidth = Math.min(menu.offsetWidth || triggerRect.width, viewportWidth);
+                const cssWidth = Number.parseFloat(window.getComputedStyle(menu).width);
+                const preferredWidth = menu.offsetWidth || (Number.isFinite(cssWidth) ? cssWidth : triggerRect.width);
+                const menuWidth = Math.min(preferredWidth, viewportWidth);
                 const minimumWidth = Math.min(triggerRect.width, viewportWidth);
                 const left = Math.max(margin, Math.min(triggerRect.left, window.innerWidth - menuWidth - margin));
                 const spaceBelow = window.innerHeight - triggerRect.bottom - margin - gap;
