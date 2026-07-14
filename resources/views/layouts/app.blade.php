@@ -4423,11 +4423,18 @@
             var returnUrl = sessionStorage.getItem('klassci:pwa-return-url') || window.location.href;
             sessionStorage.removeItem('klassci:pwa-return-url');
             sessionStorage.removeItem('klassci:pwa-update-dismissed');
-            window.location.replace(returnUrl);
+            var toast = document.getElementById('pwa-update-toast');
+            if (toast) toast.remove();
+
+            if (returnUrl === window.location.href) {
+                window.location.reload();
+            } else {
+                window.location.replace(returnUrl);
+            }
         });
 
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/sw.js?v=klassci-v2', { updateViaCache: 'none' }).then(function (reg) {
+            navigator.serviceWorker.register('/sw.js?v=klassci-v3', { updateViaCache: 'none' }).then(function (reg) {
                 // SW déjà en attente au chargement (mise à jour prête)
                 if (reg.waiting && navigator.serviceWorker.controller) {
                     showUpdateToast(reg.waiting);
