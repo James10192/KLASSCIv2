@@ -57,7 +57,8 @@
 .cpa-filters .au-select-option { align-items: flex-start; gap: .65rem; }
 .cpa-filters .au-select-option-label { white-space: normal; line-height: 1.25; overflow: visible; text-overflow: clip; }
 .cpa-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: .9rem; }
-.cpa-tabs { display: flex; gap: .35rem; overflow-x: auto; padding: .35rem; background: #fff; border: 1px solid #e8ecf1; border-radius: 14px; }
+.cpa-tabs { display: flex; gap: .35rem; overflow-x: auto; padding: .35rem; background: #fff; border: 1px solid #e8ecf1; border-radius: 14px; scrollbar-width: none; }
+.cpa-tabs::-webkit-scrollbar { display: none; }
 .cpa-tab { border: 0; background: transparent; color: #64748b; border-radius: 10px; min-height: 44px; padding: .55rem .9rem; font-weight: 700; font-size: .82rem; display: inline-flex; align-items: center; gap: .45rem; white-space: nowrap; }
 .cpa-tab:hover { background: #f1f5f9; color: #0453cb; }
 .cpa-tab.is-active { background: #0453cb; color: #fff; box-shadow: 0 8px 20px rgba(4,83,203,.16); }
@@ -145,6 +146,10 @@
 .cpa-assignment-form { display: grid; }
 .cpa-field { min-width: 0; }
 .cpa-field .cpa-field-label { margin-top: 0; }
+.cpa-field .au-select,
+.cpa-field .au-select-trigger,
+.cpa-field .au-up,
+.cpa-field .au-up-trigger { width: 100%; }
 .cpa-assignment-class .au-select-menu { width: min(520px, calc(100vw - 24px)); }
 .cpa-assignment-class .au-select-option { align-items: flex-start; gap: .65rem; }
 .cpa-assignment-class .au-select-option-label { white-space: normal; line-height: 1.3; overflow: visible; text-overflow: clip; }
