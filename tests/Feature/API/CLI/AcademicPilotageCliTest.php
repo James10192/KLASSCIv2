@@ -54,7 +54,7 @@ class AcademicPilotageCliTest extends TestCase
     }
 
     /** @test */
-    public function diagnose_requires_cli_read_ability(): void
+    public function diagnose_requires_cli_admin_ability(): void
     {
         $response = app(CLIAcademicPilotageController::class)->diagnose(
             $this->requestWithAbilities([], []),

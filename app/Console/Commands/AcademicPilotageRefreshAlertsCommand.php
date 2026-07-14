@@ -79,7 +79,7 @@ class AcademicPilotageRefreshAlertsCommand extends Command
                     ));
                 } catch (Throwable $exception) {
                     $failed++;
-                    Log::warning('Academic alert refresh failed for one class.', [
+                    Log::error('Academic alert refresh failed for one class.', [
                         'class_id' => (int) $class->id,
                         'academic_year_id' => $yearId,
                         'academic_system' => (string) $class->systeme_academique,

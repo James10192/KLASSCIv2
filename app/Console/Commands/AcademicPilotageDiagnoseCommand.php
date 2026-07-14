@@ -94,6 +94,27 @@ class AcademicPilotageDiagnoseCommand extends Command
             'dirty' => (clone $query)->where('is_dirty', true)->count(),
             'insufficient_data' => (clone $query)->where('level', 'insufficient_data')->count(),
             'average_coverage_pct' => round((float) (clone $query)->avg('coverage_pct'), 2),
+            'failed_samples' => (clone $query)
+                ->whereNotNull('last_refresh_error')
+                ->latest('updated_at')
+                ->limit(10)
+                ->get([
+                    'id',
+                    'scope_type',
+                    'scope_id',
+                    'refresh_attempts',
+                    'last_refresh_error',
+                    'updated_at',
+                ])
+                ->map(static fn (AcademicMetricSnapshot $snapshot) => [
+                    'id' => (int) $snapshot->id,
+                    'scope_type' => (string) $snapshot->scope_type,
+                    'scope_id' => (int) $snapshot->scope_id,
+                    'refresh_attempts' => (int) $snapshot->refresh_attempts,
+                    'error_fingerprint' => substr(hash('sha256', (string) $snapshot->last_refresh_error), 0, 16),
+                    'updated_at' => $snapshot->updated_at?->toIso8601String(),
+                ])
+                ->all(),
         ];
     }
 }
