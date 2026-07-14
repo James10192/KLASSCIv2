@@ -257,8 +257,10 @@ if (typeof window.auSelect !== 'function') {
                 this.open = !this.open;
                 if (this.open) {
                     this.$nextTick(() => {
-                        this.positionMenu();
-                        this.$refs.searchInput?.focus();
+                        window.requestAnimationFrame(() => {
+                            this.positionMenu();
+                            this.$refs.searchInput?.focus();
+                        });
                     });
                 } else {
                     this.menuStyle = '';
