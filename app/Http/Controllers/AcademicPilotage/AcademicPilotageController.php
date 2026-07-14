@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\AcademicPilotage;
 
-use App\Domain\AcademicPilotage\Enums\AcademicAlertStatus;
 use App\Domain\AcademicPilotage\Enums\AcademicResponsibility;
 use App\Domain\AcademicPilotage\Enums\GradeSheetStatus;
 use App\Domain\AcademicPilotage\Models\AcademicAlert;
@@ -11,6 +10,7 @@ use App\Domain\AcademicPilotage\Models\GradeSheet;
 use App\Domain\AcademicPilotage\Presenters\GradeSheetSummaryPresenter;
 use App\Domain\AcademicPilotage\Services\AcademicActorActivityService;
 use App\Domain\AcademicPilotage\Services\AcademicPilotageManualSyncService;
+use App\Domain\AcademicPilotage\Services\AcademicPilotageSummaryService;
 use App\Domain\AcademicPilotage\Services\AcademicActorScopeService;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -30,6 +30,7 @@ class AcademicPilotageController extends Controller
         private readonly GradeSheetSummaryPresenter $gradeSheetSummary,
         private readonly AcademicActorScopeService $actorScope,
         private readonly AcademicActorActivityService $actorActivity,
+        private readonly AcademicPilotageSummaryService $summary,
     ) {}
 
     public function index(Request $request): View
@@ -92,7 +93,7 @@ class AcademicPilotageController extends Controller
                     ? 'Aucune année universitaire active. Activez une année avant de calculer le pilotage.'
                     : null,
             ],
-            'summary' => $this->summary($year?->id, $period, $system, $classId, $classIds),
+            'summary' => $this->summary->summarize($year?->id, $period, $system, $classId, $classIds),
             'classes' => $this->classes($year?->id, $period, $system, $classId, 12, $classIds),
             'alerts' => $this->alerts($year?->id, $period, $classId, 10, null, $classIds),
             'sheets' => $this->sheets($year?->id, $period, $system, $classId, 10, $classIds, $request->user()),
@@ -131,14 +132,14 @@ class AcademicPilotageController extends Controller
         $period = $this->period($request);
         $system = $this->system($request);
         $classId = $request->integer('class_id') ?: null;
-        if ($classId === null) {
+        $classIds = $this->actorScope->dashboardClassIds($request->user(), $year->id);
+        if ($classId === null && $classIds !== null) {
             return response()->json([
                 'ok' => false,
-                'message' => 'Choisissez une classe avant de synchroniser. La synchronisation manuelle est ciblée pour éviter un recalcul global trop long.',
+                'message' => 'Choisissez une classe de votre périmètre avant de synchroniser ses indicateurs.',
             ], 422);
         }
 
-        $classIds = $this->actorScope->dashboardClassIds($request->user(), $year->id);
         abort_if($classIds !== null && ! $classIds->contains($classId), 403);
 
         $result = $sync->synchronize((int) $year->id, $period, $system, $classId);
@@ -211,32 +212,6 @@ class AcademicPilotageController extends Controller
             'health' => $this->snapshotPayload($snapshot),
             'alerts' => $this->alerts($year?->id, $period, null, 8, (int) $etudiant->id, $classIds),
         ]);
-    }
-
-    private function summary(?int $yearId, string $period, ?string $system, ?int $classId, ?Collection $classIds = null): array
-    {
-        $snapshots = $this->scopeClasses($this->snapshotQuery($yearId, $period, $system, $classId), $classIds);
-        $alerts = $this->scopeClasses($this->alertQuery($yearId, $period, $classId), $classIds);
-        $sheets = $this->scopeClasses($this->sheetQuery($yearId, $period, $system, $classId), $classIds);
-
-        $academicScore = (clone $snapshots)->where('scope_type', 'class')->avg('academic_score');
-        $operationalScore = (clone $snapshots)->where('scope_type', 'class')->avg('operational_score');
-
-        return [
-            'academic_score' => $academicScore === null ? null : round((float) $academicScore, 2),
-            'operational_score' => $operationalScore === null ? null : round((float) $operationalScore, 2),
-            'open_alerts' => (clone $alerts)->whereIn('status', [
-                AcademicAlertStatus::OPEN->value,
-                AcademicAlertStatus::ACKNOWLEDGED->value,
-                AcademicAlertStatus::IN_PROGRESS->value,
-            ])->count(),
-            'blocking_alerts' => (clone $alerts)->where('severity', 'blocking')->count(),
-            'sheets_pending' => (clone $sheets)->whereNotIn('status', [
-                GradeSheetStatus::VALIDATED->value,
-                GradeSheetStatus::CANCELLED->value,
-            ])->count(),
-            'bulletin_blockers' => (clone $alerts)->where('type', 'bulletin_blocked')->count(),
-        ];
     }
 
     private function classes(?int $yearId, string $period, ?string $system, ?int $classId, int $limit = 12, ?Collection $classIds = null): array
@@ -481,6 +456,16 @@ class AcademicPilotageController extends Controller
 
     private function syncSuccessMessage(array $stats): string
     {
+        if (($stats['global_refresh'] ?? false) === true) {
+            if (($stats['has_more'] ?? false) === true) {
+                return 'Un premier lot a été recalculé. D’autres indicateurs obsolètes restent à traiter.';
+            }
+
+            return ($stats['snapshots_refreshed'] ?? 0) > 0
+                ? 'Synchronisation terminée. Les indicateurs obsolètes ont été recalculés.'
+                : 'La vue est déjà à jour. Aucun indicateur obsolète n’a été trouvé.';
+        }
+
         if (($stats['classes_processed'] ?? 0) === 0) {
             return 'Aucune classe active ne correspond aux filtres sélectionnés.';
         }

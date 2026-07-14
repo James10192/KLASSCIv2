@@ -18,8 +18,10 @@ document.addEventListener('alpine:init', () => {
         drawer: { class: null, student: null },
         sheetWorkspace: { id: null, loading: false, error: null, success: null, data: null },
         transitionModal: { open: false, sheet: null, action: null, reason: '', error: null },
+        alertTransitionModal: { open: false, alert: null, status: null, label: '', reason: '', error: null },
         assignmentState: { items: [], loading: false, saving: false, error: null, success: null },
         transitioning: false,
+        alertTransitioning: false,
         filters: { ...config.initialFilters },
         init() {
             this.selectTabFromUrl();
@@ -216,16 +218,30 @@ document.addEventListener('alpine:init', () => {
                 this.transitioning = false;
             }
         },
-        async transitionAlert(alert, status) {
-            const reason = status === 'resolved'
-                ? 'Alerte résolue depuis le centre de pilotage.'
-                : 'Alerte prise en charge depuis le centre de pilotage.';
+        openAlertTransition(alert, status, label) {
+            this.alertTransitionModal = { open: true, alert, status, label, reason: '', error: null };
+        },
+        closeAlertTransition() {
+            if (this.alertTransitioning) return;
+            this.alertTransitionModal = { open: false, alert: null, status: null, label: '', reason: '', error: null };
+        },
+        async confirmAlertTransition() {
+            const { alert, status, reason } = this.alertTransitionModal;
+            if (!alert || !status || !reason.trim() || this.alertTransitioning) return;
+            this.alertTransitioning = true;
+            this.alertTransitionModal.error = null;
             try {
-                await this.postJson(`${config.alertTransitionUrl}/${alert.id}/transition`, { status, reason });
+                await this.postJson(`${config.alertTransitionUrl}/${alert.id}/transition`, { status, reason: reason.trim() });
+                this.closeAlertTransitionAfterSuccess();
                 await this.load();
             } catch (e) {
-                this.error = e.message;
+                this.alertTransitionModal.error = e.message;
+            } finally {
+                this.alertTransitioning = false;
             }
+        },
+        closeAlertTransitionAfterSuccess() {
+            this.alertTransitionModal = { open: false, alert: null, status: null, label: '', reason: '', error: null };
         },
         async loadAssignments() {
             this.assignmentState.loading = true;
@@ -393,6 +409,9 @@ document.addEventListener('alpine:init', () => {
         syncSummary() {
             const sync = this.syncResult?.sync;
             if (!sync) return '';
+            if (sync.global_refresh) {
+                return `${sync.snapshots_refreshed || 0} indicateur(s) recalculé(s) sur ${sync.snapshots_scanned || 0} vérifié(s), ${sync.snapshots_remaining || 0} restant(s), ${sync.stale_retries || 0} reprise(s) différée(s).`;
+            }
             return `${sync.classes_processed || 0} classe(s), ${sync.students_processed || 0} étudiant(s), ${sync.class_snapshots || 0} snapshot(s) classe, ${sync.student_snapshots || 0} snapshot(s) étudiant, ${sync.alerts_seen || 0} alerte(s) vérifiée(s).`;
         },
         actorLabel(primary, fallback, emptyLabel) {

@@ -20,12 +20,7 @@ class AcademicAlertController extends Controller
         AcademicActorScopeService $scope,
     ): JsonResponse {
         $data = $request->validate([
-            'status' => ['required', Rule::in([
-                AcademicAlertStatus::ACKNOWLEDGED->value,
-                AcademicAlertStatus::IN_PROGRESS->value,
-                AcademicAlertStatus::RESOLVED->value,
-                AcademicAlertStatus::DISMISSED->value,
-            ])],
+            'status' => ['required', Rule::in(AcademicAlertStatus::manualTargetValues())],
             'reason' => ['required', 'string', 'max:1000'],
         ]);
 

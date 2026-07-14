@@ -33,7 +33,17 @@ Le périmètre ne dépend pas d'une seule configuration préalable. KLASSCI reco
 - actions réalisées sur une fiche ;
 - notes réellement saisies.
 
-La Direction voit dans **Activité de saisie** le nombre de notes, matières, classes et fiches finalisées par acteur. L'onglet **Mon suivi** présente les mêmes indicateurs pour l'utilisateur connecté et explique les sources qui ont permis de reconnaître son périmètre.
+La Direction voit dans **Acteurs** le nombre de notes saisies, les corrections, les matières, les classes et les fiches finalisées par personne. La source canonique de l'attribution est `esbtp_notes.created_by` pour la saisie et `esbtp_notes.updated_by` pour la correction. Les fiches complètent cette preuve avec les étapes de remise, réception, contrôle et validation. L'onglet **Mon suivi** présente les mêmes indicateurs pour l'utilisateur connecté et explique les sources qui ont permis de reconnaître son périmètre.
+
+## Cycle des alertes
+
+Une alerte ouverte doit être prise en charge avant de passer en traitement. Les transitions manuelles autorisées sont :
+
+- `open -> acknowledged` ou `open -> dismissed` ;
+- `acknowledged -> in_progress`, `acknowledged -> resolved` ou `acknowledged -> dismissed` ;
+- `in_progress -> resolved` ou `in_progress -> dismissed`.
+
+Une alerte résolue ou classée ne peut pas être rouverte manuellement. Le moteur la rouvre automatiquement si la même anomalie est détectée à nouveau. Chaque changement exige un motif saisi dans la modale et conservé dans l'historique.
 
 Des accès directs vers le centre sont disponibles depuis la fiche classe, l'évaluation, la saisie des notes et la préparation des bulletins. Ils conservent l'année, la période, le système et la classe dans l'URL, puis ouvrent directement l'onglet pertinent sans rechargement complet.
 
@@ -76,6 +86,8 @@ Cette commande orchestre :
 - `academic-pilotage:refresh-alerts`, pour recalculer les alertes idempotentes.
 
 Les tâches planifiées exécutent déjà ces rafraîchissements toutes les quinze minutes avec `withoutOverlapping()` et `onOneServer()`.
+
+Dans l'interface, **Synchroniser la vue** effectue un recalcul complet lorsque la classe est sélectionnée. Sans classe, un utilisateur disposant du périmètre global rafraîchit uniquement le lot borné de snapshots obsolètes, afin de ne pas bloquer les tenants volumineux. Un utilisateur à périmètre restreint doit sélectionner l'une de ses classes.
 
 Pour un rafraîchissement ciblé des alertes uniquement :
 

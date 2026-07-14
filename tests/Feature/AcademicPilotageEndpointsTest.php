@@ -2,9 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Domain\AcademicPilotage\DTO\AcademicAlertCandidate;
+use App\Domain\AcademicPilotage\Enums\AcademicAlertSeverity;
+use App\Domain\AcademicPilotage\Enums\AcademicAlertType;
 use App\Domain\AcademicPilotage\Enums\GradeSheetStatus;
 use App\Domain\AcademicPilotage\Models\GradeSheetDocument;
 use App\Domain\AcademicPilotage\Models\GradeSheetEvent;
+use App\Domain\AcademicPilotage\Services\AcademicAlertEngineService;
 use App\Domain\AcademicPilotage\Services\GradeSheetDocumentDownloadService;
 use App\Http\Middleware\CheckInstalled;
 use App\Http\Middleware\ContractExpiryMiddleware;
@@ -75,6 +79,36 @@ class AcademicPilotageEndpointsTest extends AcademicPilotageDatabaseTestCase
             ->assertJsonPath('ok', false)
             ->assertJsonPath('error', 'academic_pilotage.stale_grade_sheet')
             ->assertJsonPath('details.actual_lock_version', 2);
+    }
+
+    public function test_alert_transition_rejects_an_invalid_state_change_with_a_stable_json_error(): void
+    {
+        $this->allowAllAbilities();
+        $alert = app(AcademicAlertEngineService::class)->upsert(new AcademicAlertCandidate(
+            type: AcademicAlertType::MISSING_GRADE,
+            severity: AcademicAlertSeverity::BLOCKING,
+            academicYearId: 20,
+            semester: 'semestre1',
+            classId: 10,
+            studentId: 101,
+            subjectId: null,
+            teacherId: null,
+            message: 'Une note attendue est manquante.',
+            recommendedAction: 'Completez la fiche.',
+            metadata: ['missing_entries' => 1],
+        ));
+
+        $response = $this->post(route('esbtp.academic-alerts.transition', $alert), [
+            'status' => 'in_progress',
+            'reason' => 'Tentative de traitement prematuree',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('error', 'academic_pilotage.invalid_transition')
+            ->assertJsonPath('details.from', 'open')
+            ->assertJsonPath('details.to', 'in_progress')
+            ->assertJsonPath('details.allowed_transitions', ['acknowledged', 'dismissed']);
     }
 
     public function test_document_upload_is_audited_and_bumps_version(): void

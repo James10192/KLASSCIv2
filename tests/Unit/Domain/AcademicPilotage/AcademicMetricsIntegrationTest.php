@@ -19,6 +19,7 @@ use App\Domain\AcademicPilotage\Services\BtsAcademicMetricsProvider;
 use App\Domain\AcademicPilotage\Services\ClassAcademicHealthService;
 use App\Domain\AcademicPilotage\Services\GradeCompletionMetricService;
 use App\Domain\AcademicPilotage\Services\LmdAcademicMetricsProvider;
+use App\Domain\AcademicPilotage\Services\OpenAlertMetricService;
 use App\Domain\AcademicPilotage\Services\StudentAcademicHealthService;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Models\ESBTPEvaluation;
@@ -69,6 +70,7 @@ class AcademicMetricsIntegrationTest extends AcademicPilotageDatabaseTestCase
             $this->periods,
             new GradeCompletionMetricService($this->periods),
             new AttendanceMetricService($this->periods),
+            new OpenAlertMetricService,
         );
 
         $metrics = $provider->metricsFor(new StudentMetricContext(101, 10, 20, 'BTS', 'S2'));
@@ -77,6 +79,7 @@ class AcademicMetricsIntegrationTest extends AcademicPilotageDatabaseTestCase
         $this->assertSame(2.0, $metrics->get('academic_performance')->evidence['attendance_adjustment']);
         $this->assertSame(70.0, $metrics->get('progression')->value);
         $this->assertSame(100.0, $metrics->get('assessment_completion')->value);
+        $this->assertSame(100.0, $metrics->get('open_alerts')->value);
     }
 
     public function test_lmd_reads_persisted_results_and_uses_thirty_expected_credits(): void
@@ -91,6 +94,7 @@ class AcademicMetricsIntegrationTest extends AcademicPilotageDatabaseTestCase
             new GradeCompletionMetricService($this->periods),
             new AttendanceMetricService($this->periods),
             $matieres,
+            new OpenAlertMetricService,
         );
         $before = DB::table('esbtp_lmd_bulletins')->count();
 
@@ -101,6 +105,7 @@ class AcademicMetricsIntegrationTest extends AcademicPilotageDatabaseTestCase
         $this->assertSame(50, $performance->effectiveCoveragePct());
         $this->assertSame(30.0, $performance->denominator);
         $this->assertSame($before, DB::table('esbtp_lmd_bulletins')->count());
+        $this->assertSame(100.0, $metrics->get('open_alerts')->value);
     }
 
     public function test_class_level_stays_insufficient_when_full_cohort_coverage_is_low(): void
@@ -245,6 +250,44 @@ class AcademicMetricsIntegrationTest extends AcademicPilotageDatabaseTestCase
         $this->assertNull($fresh->refresh_started_at);
         $this->assertSame(1, (int) $fresh->refresh_attempts);
         $this->assertSame('80.00', (string) $fresh->academic_score);
+    }
+
+    public function test_scoped_refresh_only_claims_snapshots_from_the_requested_view(): void
+    {
+        DB::table('esbtp_classes')->insert([
+            ['id' => 10, 'name' => 'BTS 1', 'systeme_academique' => 'BTS'],
+            ['id' => 11, 'name' => 'BTS 2', 'systeme_academique' => 'BTS'],
+        ]);
+        $store = new AcademicMetricSnapshotService($this->periods);
+        $health = new StudentAcademicHealthService($this->flatHealthProvider(75));
+        $selected = $store->storeStudent(
+            new StudentMetricContext(101, 10, 20, 'BTS', 'S1'),
+            $health->evaluate(new StudentMetricContext(101, 10, 20, 'BTS', 'S1')),
+        );
+        $outside = $store->storeStudent(
+            new StudentMetricContext(102, 11, 21, 'BTS', 'S2'),
+            $health->evaluate(new StudentMetricContext(102, 11, 21, 'BTS', 'S2')),
+        );
+        (new AcademicMetricSnapshotInvalidationService($this->periods))->invalidate(10, 20, 'S1', 101);
+        (new AcademicMetricSnapshotInvalidationService($this->periods))->invalidate(11, 21, 'S2', 102);
+
+        $refresh = new AcademicMetricSnapshotRefreshService(
+            new StudentAcademicHealthService($this->flatHealthProvider(80)),
+            new ClassAcademicHealthService(
+                new AcademicOperationalMetricsService($this->periods),
+                $this->periods,
+                new AcademicMetricSnapshotCohortProvider($this->periods),
+            ),
+            $store,
+        );
+        $result = $refresh->refreshDirtyForScope(20, 'semestre1', 'BTS', 10);
+
+        $this->assertSame(1, $result['scanned']);
+        $this->assertSame(1, $result['refreshed']);
+        $this->assertSame(0, $result['remaining']);
+        $this->assertFalse($result['has_more']);
+        $this->assertFalse($selected->fresh()->is_dirty);
+        $this->assertTrue($outside->fresh()->is_dirty);
     }
 
     public function test_refresh_dirty_releases_claim_when_revision_changes_during_rebuild(): void

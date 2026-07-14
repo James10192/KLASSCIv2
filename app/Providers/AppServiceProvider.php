@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Domain\AcademicPilotage\Contracts\AcademicSystemMetricsProvider;
 use App\Domain\AcademicPilotage\Services\AcademicMetricsProviderResolver;
+use App\Domain\AcademicPilotage\Services\OpenAlertMetricService;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAttendance;
 use App\Models\ESBTPEvaluation;
@@ -44,6 +45,7 @@ class AppServiceProvider extends ServiceProvider
         // Une seule instance par requête pour qu'AnomalyDetector et le contrôleur
         // analytics partagent le même cache de buckets attendu/encaissé.
         $this->app->scoped(RecouvrementGapService::class);
+        $this->app->scoped(OpenAlertMetricService::class);
         $this->app->bind(AcademicSystemMetricsProvider::class, AcademicMetricsProviderResolver::class);
 
         // TPE — Strategy de validation pilotée par Setting tenant.
