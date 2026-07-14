@@ -203,6 +203,8 @@ if (typeof window.auSelect !== 'function') {
                 this._repositionMenu = () => this.open && this.positionMenu();
                 window.addEventListener('resize', this._repositionMenu, { passive: true });
                 window.addEventListener('scroll', this._repositionMenu, { passive: true, capture: true });
+                window.visualViewport?.addEventListener('resize', this._repositionMenu, { passive: true });
+                window.visualViewport?.addEventListener('scroll', this._repositionMenu, { passive: true });
 
                 this.$refs.native.addEventListener('change', () => {
                     if (this._value !== this.$refs.native.value) {
@@ -222,6 +224,8 @@ if (typeof window.auSelect !== 'function') {
                 this._optionsObserver?.disconnect();
                 window.removeEventListener('resize', this._repositionMenu);
                 window.removeEventListener('scroll', this._repositionMenu, { capture: true });
+                window.visualViewport?.removeEventListener('resize', this._repositionMenu);
+                window.visualViewport?.removeEventListener('scroll', this._repositionMenu);
             },
             observeNativeOptions() {
                 if (!this.$refs.native || typeof MutationObserver === 'undefined') {
@@ -276,19 +280,21 @@ if (typeof window.auSelect !== 'function') {
                 const margin = 12;
                 const gap = 6;
                 const triggerRect = trigger.getBoundingClientRect();
-                const viewportWidth = window.innerWidth - (margin * 2);
+                const visibleWidth = window.visualViewport?.width || window.innerWidth;
+                const visibleHeight = window.visualViewport?.height || window.innerHeight;
+                const viewportWidth = visibleWidth - (margin * 2);
                 const cssWidth = Number.parseFloat(window.getComputedStyle(menu).width);
                 const preferredWidth = menu.offsetWidth || (Number.isFinite(cssWidth) ? cssWidth : triggerRect.width);
                 const menuWidth = Math.min(preferredWidth, viewportWidth);
                 const minimumWidth = Math.min(triggerRect.width, viewportWidth);
-                const left = Math.max(margin, Math.min(triggerRect.left, window.innerWidth - menuWidth - margin));
-                const spaceBelow = window.innerHeight - triggerRect.bottom - margin - gap;
+                const left = Math.max(margin, Math.min(triggerRect.left, visibleWidth - menuWidth - margin));
+                const spaceBelow = visibleHeight - triggerRect.bottom - margin - gap;
                 const spaceAbove = triggerRect.top - margin - gap;
                 const openUp = spaceBelow < 180 && spaceAbove > spaceBelow;
                 const availableHeight = Math.max(0, Math.min(380, openUp ? spaceAbove : spaceBelow));
 
                 this.menuStyle = openUp
-                    ? `position:fixed;left:${left}px;right:auto;top:auto;bottom:${window.innerHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
+                    ? `position:fixed;left:${left}px;right:auto;top:auto;bottom:${visibleHeight - triggerRect.top + gap}px;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:bottom center;`
                     : `position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
             },
             get currentValue() { return this._value; },
