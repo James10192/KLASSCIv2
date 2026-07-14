@@ -125,6 +125,8 @@ class GradeSheetDetailEndpointsTest extends AcademicPilotageDatabaseTestCase
         Schema::create('users', function (Blueprint $table): void {
             $table->id();
             $table->string('name');
+            $table->string('first_name')->nullable();
+            $table->string('last_name')->nullable();
             $table->string('email');
         });
         Schema::create('esbtp_classes', function (Blueprint $table): void {
@@ -147,9 +149,6 @@ class GradeSheetDetailEndpointsTest extends AcademicPilotageDatabaseTestCase
             $table->softDeletes();
         });
 
-        Schema::table('esbtp_teachers', function (Blueprint $table): void {
-            $table->string('name')->nullable();
-        });
         Schema::table('esbtp_notes', function (Blueprint $table): void {
             $table->decimal('note', 5, 2)->nullable();
             $table->text('observation')->nullable();
@@ -164,11 +163,13 @@ class GradeSheetDetailEndpointsTest extends AcademicPilotageDatabaseTestCase
         DB::table('users')->insert([
             'id' => 50,
             'name' => 'Marie Kouame',
+            'first_name' => 'Marie',
+            'last_name' => 'Kouame',
             'email' => 'marie@example.test',
         ]);
         DB::table('esbtp_classes')->insert(['id' => 10, 'name' => 'L1 A', 'code' => 'L1-A']);
         DB::table('esbtp_matieres')->insert(['id' => 30, 'name' => 'Mathematiques', 'code' => 'MATH']);
-        DB::table('esbtp_teachers')->insert(['id' => 5, 'user_id' => 50, 'name' => 'Marie Kouame']);
+        DB::table('esbtp_teachers')->insert(['id' => 5, 'user_id' => 50]);
         DB::table('esbtp_etudiants')->insert([
             'id' => 101,
             'nom' => 'Yao',

@@ -44,7 +44,7 @@ final class AcademicMetricSnapshotRefreshService
             } catch (Throwable $exception) {
                 $failed++;
                 $this->markFailed($snapshot, $token, $exception);
-                Log::warning('Academic metric snapshot refresh failed.', [
+                Log::error('Academic metric snapshot refresh failed.', [
                     'snapshot_id' => $snapshot->id,
                     'scope_type' => $snapshot->scope_type,
                     'scope_id' => $snapshot->scope_id,

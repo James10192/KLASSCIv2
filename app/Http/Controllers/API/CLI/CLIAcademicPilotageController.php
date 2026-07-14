@@ -14,8 +14,8 @@ class CLIAcademicPilotageController extends BaseApiController
 {
     public function diagnose(Request $request): JsonResponse
     {
-        if (! $request->user()->tokenCan('cli:read')) {
-            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
         $validated = $request->validate($this->scopeRules());
