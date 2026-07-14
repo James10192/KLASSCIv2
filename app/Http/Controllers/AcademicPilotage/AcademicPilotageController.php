@@ -12,6 +12,7 @@ use App\Domain\AcademicPilotage\Services\AcademicActorActivityService;
 use App\Domain\AcademicPilotage\Services\AcademicPilotageManualSyncService;
 use App\Domain\AcademicPilotage\Services\AcademicPilotageSummaryService;
 use App\Domain\AcademicPilotage\Services\AcademicActorScopeService;
+use App\Domain\AcademicPilotage\Services\AcademicNoteCoverageService;
 use App\Http\Controllers\Controller;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
@@ -31,6 +32,7 @@ class AcademicPilotageController extends Controller
         private readonly AcademicActorScopeService $actorScope,
         private readonly AcademicActorActivityService $actorActivity,
         private readonly AcademicPilotageSummaryService $summary,
+        private readonly AcademicNoteCoverageService $noteCoverage,
     ) {}
 
     public function index(Request $request): View
@@ -97,6 +99,7 @@ class AcademicPilotageController extends Controller
             'classes' => $this->classes($year?->id, $period, $system, $classId, 12, $classIds),
             'alerts' => $this->alerts($year?->id, $period, $classId, 10, null, $classIds),
             'sheets' => $this->sheets($year?->id, $period, $system, $classId, 10, $classIds, $request->user()),
+            'note_coverage' => $this->noteCoverage->summarize($year?->id, $period, $system, $classId, $classIds),
             'my_sheets' => $this->sheets($year?->id, $period, $system, $classId, 8, $classIds, $request->user(), true),
             'students' => $this->students($year?->id, $period, $system, $classId, 10, $classIds),
             'actor_activity' => $this->actorActivity->summarize(
@@ -178,6 +181,7 @@ class AcademicPilotageController extends Controller
             'health' => $this->snapshotPayload($snapshot),
             'alerts' => $this->alerts($year?->id, $period, (int) $classe->id, 8, null, $classIds),
             'sheets' => $this->sheets($year?->id, $period, null, (int) $classe->id, 8, $classIds, $request->user()),
+            'note_coverage' => $this->noteCoverage->summarize($year?->id, $period, null, (int) $classe->id, $classIds),
             'students' => $this->students($year?->id, $period, null, (int) $classe->id, 8, $classIds),
         ]);
     }

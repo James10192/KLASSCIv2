@@ -14,6 +14,7 @@ document.addEventListener('alpine:init', () => {
             actor_activity: { actors: [], current_actor: null },
             scope: { global: false, class_count: 0, sources: [] },
             prerequisites: { year_configured: true, message: null }, freshness: {},
+            note_coverage: { message: null, summary: {}, subjects: [], incomplete_students: [] },
         },
         drawer: { class: null, student: null },
         sheetWorkspace: { id: null, loading: false, error: null, success: null, data: null },
@@ -480,6 +481,77 @@ document.addEventListener('alpine:init', () => {
             const actor = event.actor || 'Système';
             const date = event.occurred_at ? new Date(event.occurred_at).toLocaleString('fr-FR') : '';
             return [action, actor, date].filter(Boolean).join(' · ');
+        },
+        noteCoverageClassLabel() {
+            const coverage = this.data.note_coverage || {};
+            const summary = coverage.summary || {};
+            const classe = coverage.classe?.name || 'Classe sélectionnée';
+            return `${classe} · ${summary.students_expected || 0} étudiant(s) attendu(s) · ${summary.evaluations_total || 0} évaluation(s) suivie(s)`;
+        },
+        noteCoverageKpis() {
+            const summary = this.data.note_coverage?.summary || {};
+            return [
+                {
+                    label: 'Matières',
+                    value: `${summary.subjects_evaluated || 0}/${summary.subjects_total || 0}`,
+                    help: 'Matières avec évaluation et notes',
+                },
+                {
+                    label: 'Notes traitées',
+                    value: `${summary.treated_results || 0}/${summary.expected_results || 0}`,
+                    help: `${summary.numeric_notes || 0} note(s) numérique(s)`,
+                },
+                {
+                    label: 'Manquants',
+                    value: summary.missing_results || 0,
+                    help: 'Résultats à compléter',
+                },
+                {
+                    label: 'Étudiants incomplets',
+                    value: summary.incomplete_students || 0,
+                    help: `${summary.actors_count || 0} acteur(s) de saisie`,
+                },
+            ];
+        },
+        noteCoverageStatusClass() {
+            const summary = this.data.note_coverage?.summary || {};
+            if ((summary.missing_results || 0) > 0) return 'cpa-badge--danger';
+            if ((summary.expected_results || 0) === 0) return 'cpa-badge--warn';
+            return 'cpa-badge--ok';
+        },
+        noteCoverageStatusLabel() {
+            const summary = this.data.note_coverage?.summary || {};
+            if ((summary.expected_results || 0) === 0) return 'Aucune note attendue';
+            if ((summary.missing_results || 0) > 0) return 'Notes incomplètes';
+            return 'Couverture complète';
+        },
+        actorListLabel(actors) {
+            if (!actors || !actors.length) return 'Aucun acteur';
+            const label = actors.slice(0, 2).map((actor) => `${actor.name} (${actor.role})`).join(', ');
+            return label + (actors.length > 2 ? ` +${actors.length - 2}` : '');
+        },
+        studentResultLabel(row) {
+            if (!row) return 'Manquant';
+            const labels = {
+                numeric: row.note !== null && row.note !== undefined ? `Note : ${row.note}` : 'Note saisie',
+                absent: 'Absent',
+                exempt: 'Dispensé',
+                not_applicable: 'Non applicable',
+                missing: 'Manquant',
+            };
+            return labels[row.status] || 'Manquant';
+        },
+        studentActorLabel(row) {
+            if (!row) return '';
+            const parts = [];
+            if (row.created_by) parts.push(`Saisie : ${row.created_by}`);
+            if (row.updated_by) parts.push(`Correction : ${row.updated_by}`);
+            return parts.join(' · ');
+        },
+        studentMissingLabel(student) {
+            const subjects = (student.missing_subjects || []).slice(0, 2).map((subject) => subject.name).join(', ');
+            const suffix = (student.missing_subjects || []).length > 2 ? ` +${student.missing_subjects.length - 2}` : '';
+            return `${student.name} · ${student.missing_subjects_count} matière(s), ${student.missing_evaluations_count} évaluation(s) · ${subjects}${suffix}`;
         },
         kpis() {
             const s = this.data.summary || {};

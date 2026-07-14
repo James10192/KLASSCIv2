@@ -31,4 +31,18 @@ class AcademicPilotageGradeSheetUiTest extends TestCase
         $this->assertStringContainsString('entryProgressPercent(sheet)', $script);
         $this->assertStringContainsString("entries_synced: 'Liste des étudiants synchronisée'", $script);
     }
+
+    public function test_notes_and_sheets_tab_exposes_class_note_coverage_detail(): void
+    {
+        $view = file_get_contents(__DIR__.'/../../resources/views/esbtp/pilotage-academique/index.blade.php');
+        $script = file_get_contents(__DIR__.'/../../resources/views/esbtp/pilotage-academique/_dashboard-script.blade.php');
+
+        $this->assertStringContainsString('Couverture des notes de la classe', $view);
+        $this->assertStringContainsString('data.note_coverage.subjects', $view);
+        $this->assertStringContainsString('&Eacute;tudiants incomplets', $view);
+        $this->assertStringContainsString('studentResultLabel(row)', $view);
+        $this->assertStringContainsString('noteCoverageKpis()', $script);
+        $this->assertStringContainsString('studentMissingLabel(student)', $script);
+        $this->assertStringContainsString('Notes incomplètes', $script);
+    }
 }

@@ -132,6 +132,49 @@
 .cpa-progress-bar { height: 100%; border-radius: inherit; background: #0453cb; transition: width .2s ease; }
 .cpa-document-link { color: #0453cb; font-weight: 800; text-decoration: none; }
 .cpa-document-link:hover { color: #0347b0; text-decoration: underline; }
+.cpa-note-coverage { display: grid; gap: .8rem; margin-bottom: 1rem; }
+.cpa-note-coverage-empty { min-height: 96px; }
+.cpa-note-coverage-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .75rem; flex-wrap: wrap; }
+.cpa-coverage-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: .65rem; }
+.cpa-coverage-kpi { min-height: 86px; border: 1px solid #e8ecf1; border-radius: 8px; padding: .7rem .8rem; background: #f8fafc; }
+.cpa-coverage-kpi span { display: block; color: #64748b; font-size: .68rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0; }
+.cpa-coverage-kpi strong { display: block; margin-top: .18rem; color: #0f172a; font-size: 1.2rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.cpa-coverage-kpi small { display: block; margin-top: .1rem; color: #64748b; font-size: .72rem; font-weight: 700; }
+.cpa-note-subjects { display: grid; gap: .55rem; }
+.cpa-note-subject,
+.cpa-note-evaluation { border: 1px solid #e2e8f0; border-radius: 8px; background: #fff; overflow: hidden; }
+.cpa-note-subject > summary,
+.cpa-note-evaluation > summary {
+    list-style: none; cursor: pointer; min-height: 52px; padding: .7rem .8rem;
+    display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+}
+.cpa-note-subject > summary::-webkit-details-marker,
+.cpa-note-evaluation > summary::-webkit-details-marker { display: none; }
+.cpa-note-subject-main { display: grid; min-width: 0; }
+.cpa-note-subject-main strong,
+.cpa-note-evaluation summary strong { color: #0f172a; font-size: .84rem; font-weight: 900; overflow-wrap: anywhere; }
+.cpa-note-subject-main span,
+.cpa-note-evaluation summary > div:first-child span { color: #64748b; font-size: .72rem; font-weight: 700; }
+.cpa-note-orphan { display: inline-flex; margin-left: .35rem; border-radius: 999px; padding: .12rem .38rem; background: #fff7ed; color: #c2410c !important; font-size: .66rem !important; font-weight: 900 !important; }
+.cpa-note-subject-stats { display: flex; align-items: center; justify-content: flex-end; gap: .4rem; flex-wrap: wrap; min-width: 0; }
+.cpa-note-subject-stats span { border-radius: 999px; padding: .18rem .45rem; color: #475569; background: #f1f5f9; font-size: .7rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+.cpa-note-subject-stats .is-danger { color: #b91c1c; background: #fef2f2; }
+.cpa-note-subject-body,
+.cpa-note-evaluation-body { border-top: 1px solid #eef2f7; padding: .75rem; background: #fbfdff; }
+.cpa-note-evaluations { display: grid; gap: .5rem; }
+.cpa-note-missing { margin-bottom: .65rem; }
+.cpa-note-missing-title,
+.cpa-note-incomplete h4 { margin: 0 0 .4rem; color: #334155; font-size: .72rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0; }
+.cpa-note-chip-list { display: flex; gap: .35rem; flex-wrap: wrap; }
+.cpa-note-chip { display: inline-flex; align-items: center; min-height: 28px; max-width: 100%; border-radius: 999px; padding: .2rem .5rem; background: #eff6ff; color: #0453cb; font-size: .72rem; font-weight: 800; overflow-wrap: anywhere; }
+.cpa-note-chip--warn { background: #fff7ed; color: #c2410c; }
+.cpa-note-students { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .45rem; }
+.cpa-note-student-row { min-height: 48px; border: 1px solid #e8ecf1; border-radius: 8px; padding: .5rem .6rem; background: #fff; display: grid; gap: .1rem; }
+.cpa-note-student-row.is-missing { border-color: #fecaca; background: #fff7f7; }
+.cpa-note-student-row span { color: #0f172a; font-size: .76rem; font-weight: 800; overflow-wrap: anywhere; }
+.cpa-note-student-row strong { color: #0453cb; font-size: .72rem; font-weight: 900; }
+.cpa-note-student-row small { color: #64748b; font-size: .68rem; overflow-wrap: anywhere; }
+.cpa-note-incomplete { border: 1px solid #fed7aa; border-radius: 8px; padding: .75rem; background: #fff7ed; }
 .cpa-modal-backdrop { position: fixed; inset: 0; z-index: 1600; display: grid; place-items: center; padding: 1rem; background: rgba(15,23,42,.5); }
 .cpa-modal { width: min(100%, 520px); max-height: calc(100vh - 2rem); overflow: auto; border: 1px solid #dbe5f2; border-radius: 8px; padding: 1.25rem; background: #fff; box-shadow: 0 24px 50px rgba(15,23,42,.24); }
 .cpa-modal-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
@@ -169,13 +212,15 @@
 .cpa-assignment-empty { min-height: 112px; display: grid; place-content: center; }
 .cpa-assignment-panel .cpa-row { box-shadow: 0 4px 14px rgba(15,23,42,.04); }
 [x-cloak] { display: none !important; }
-@media (max-width: 1100px) { .cpa-grid, .cpa-filters, .cpa-hero-kpis, .cpa-assignment-form { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cpa-split { grid-template-columns: 1fr; } .cpa-assignment-submit { width: 100%; } }
+@media (max-width: 1100px) { .cpa-grid, .cpa-filters, .cpa-hero-kpis, .cpa-assignment-form, .cpa-coverage-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } .cpa-split { grid-template-columns: 1fr; } .cpa-assignment-submit { width: 100%; } }
 @media (max-width: 900px) { .cpa-audit { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 640px) {
     .cpa-hero { padding: 1.5rem 1.25rem 1.25rem; border-radius: 14px; }
     .cpa-hero-title { align-items: flex-start; }
-    .cpa-hero-kpis, .cpa-grid, .cpa-filters, .cpa-audit, .cpa-assignment-form { grid-template-columns: 1fr; }
+    .cpa-hero-kpis, .cpa-grid, .cpa-filters, .cpa-audit, .cpa-assignment-form, .cpa-coverage-kpis, .cpa-note-students { grid-template-columns: 1fr; }
     .cpa-row { grid-template-columns: 1fr; }
+    .cpa-note-subject > summary, .cpa-note-evaluation > summary { align-items: stretch; flex-direction: column; }
+    .cpa-note-subject-stats { justify-content: flex-start; }
     .cpa-sheet-card .cpa-audit { grid-template-columns: 1fr; }
     .cpa-sheet-title-line { align-items: stretch; flex-direction: column; }
     .cpa-sheet-stage { justify-items: start; }

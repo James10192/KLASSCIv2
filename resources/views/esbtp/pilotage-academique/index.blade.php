@@ -125,6 +125,103 @@
                     <p class="cpa-muted mt-1">Une fiche correspond &agrave; une &eacute;valuation, une mati&egrave;re et une classe. Elle suit la remise, la saisie, le contr&ocirc;le et la validation des r&eacute;sultats.</p>
                 </div>
             </div>
+            <section class="cpa-note-coverage">
+                <template x-if="data.note_coverage?.message">
+                    <div class="cpa-state cpa-note-coverage-empty">
+                        <i class="fas fa-chart-simple"></i>
+                        <span x-text="data.note_coverage.message"></span>
+                    </div>
+                </template>
+                <template x-if="!data.note_coverage?.message">
+                    <div>
+                        <div class="cpa-note-coverage-head">
+                            <div>
+                                <h3 class="cpa-panel-title"><i class="fas fa-table-list"></i>Couverture des notes de la classe</h3>
+                                <p class="cpa-muted mt-1" x-text="noteCoverageClassLabel()"></p>
+                            </div>
+                            <span class="cpa-badge" :class="noteCoverageStatusClass()" x-text="noteCoverageStatusLabel()"></span>
+                        </div>
+                        <div class="cpa-coverage-kpis">
+                            <template x-for="item in noteCoverageKpis()" :key="item.label">
+                                <div class="cpa-coverage-kpi">
+                                    <span x-text="item.label"></span>
+                                    <strong x-text="item.value"></strong>
+                                    <small x-text="item.help"></small>
+                                </div>
+                            </template>
+                        </div>
+                        <div class="cpa-note-subjects" x-show="data.note_coverage?.subjects?.length">
+                            <template x-for="subject in data.note_coverage.subjects" :key="`subject-${subject.id || subject.name}`">
+                                <details class="cpa-note-subject" :open="subject.missing_count > 0">
+                                    <summary>
+                                        <div class="cpa-note-subject-main">
+                                            <strong x-text="subject.name"></strong>
+                                            <span>
+                                                <span x-text="subject.code || 'Sans code'"></span>
+                                                <span class="cpa-note-orphan" x-show="subject.is_orphan">Hors référentiel</span>
+                                            </span>
+                                        </div>
+                                        <div class="cpa-note-subject-stats">
+                                            <span x-text="`${subject.evaluations_count} évaluation(s)`"></span>
+                                            <span x-text="`${subject.treated_count}/${subject.expected_count} traité(s)`"></span>
+                                            <span :class="{ 'is-danger': subject.missing_count > 0 }" x-text="`${subject.missing_count} manquant(s)`"></span>
+                                        </div>
+                                    </summary>
+                                    <div class="cpa-note-subject-body">
+                                        <div class="cpa-state" x-show="!subject.evaluations?.length">
+                                            <i class="fas fa-clipboard-question"></i>Aucune &eacute;valuation non annul&eacute;e pour cette mati&egrave;re.
+                                        </div>
+                                        <div class="cpa-note-evaluations" x-show="subject.evaluations?.length">
+                                            <template x-for="evaluation in subject.evaluations" :key="`evaluation-${evaluation.id}`">
+                                                <details class="cpa-note-evaluation" :open="evaluation.missing_count > 0">
+                                                    <summary>
+                                                        <div>
+                                                            <strong x-text="evaluation.title"></strong>
+                                                            <span x-text="evaluation.type || evaluation.date || 'Évaluation'"></span>
+                                                        </div>
+                                                        <div class="cpa-note-subject-stats">
+                                                            <span x-text="`${evaluation.treated_count}/${evaluation.expected_count}`"></span>
+                                                            <span :class="{ 'is-danger': evaluation.missing_count > 0 }" x-text="`${evaluation.missing_count} manquant(s)`"></span>
+                                                            <span x-text="actorListLabel(evaluation.actors)"></span>
+                                                        </div>
+                                                    </summary>
+                                                    <div class="cpa-note-evaluation-body">
+                                                        <div class="cpa-note-missing" x-show="evaluation.missing_students?.length">
+                                                            <div class="cpa-note-missing-title">&Eacute;tudiants sans r&eacute;sultat trait&eacute;</div>
+                                                            <div class="cpa-note-chip-list">
+                                                                <template x-for="student in evaluation.missing_students" :key="`missing-${evaluation.id}-${student.id}`">
+                                                                    <span class="cpa-note-chip" x-text="student.name"></span>
+                                                                </template>
+                                                            </div>
+                                                        </div>
+                                                        <div class="cpa-note-students">
+                                                            <template x-for="row in evaluation.students" :key="`student-${evaluation.id}-${row.student.id}`">
+                                                                <div class="cpa-note-student-row" :class="{ 'is-missing': row.status === 'missing' }">
+                                                                    <span x-text="row.student.name"></span>
+                                                                    <strong x-text="studentResultLabel(row)"></strong>
+                                                                    <small x-text="studentActorLabel(row)"></small>
+                                                                </div>
+                                                            </template>
+                                                        </div>
+                                                    </div>
+                                                </details>
+                                            </template>
+                                        </div>
+                                    </div>
+                                </details>
+                            </template>
+                        </div>
+                        <div class="cpa-note-incomplete" x-show="data.note_coverage?.incomplete_students?.length">
+                            <h4>&Eacute;tudiants incomplets</h4>
+                            <div class="cpa-note-chip-list">
+                                <template x-for="student in data.note_coverage.incomplete_students" :key="`student-incomplete-${student.id}`">
+                                    <span class="cpa-note-chip cpa-note-chip--warn" x-text="studentMissingLabel(student)"></span>
+                                </template>
+                            </div>
+                        </div>
+                    </div>
+                </template>
+            </section>
             <div class="cpa-list" x-show="data.sheets?.length">
                 <template x-for="sheet in data.sheets" :key="sheet.id">
                     <article class="cpa-row cpa-sheet-card">
