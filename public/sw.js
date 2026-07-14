@@ -1,19 +1,16 @@
 /* KLASSCI — Service Worker PWA
- * Strategie Workbox (CDN) : app-shell network-first + offline fallback,
- * SWR assets, cache images/fonts, cache donnees etudiant (lecture seule),
- * stubs web push (completes en phase 6).
+ * Strategie Workbox (CDN) : navigations network-only + fallback hors ligne,
+ * SWR assets, cache images/fonts et notifications web push.
  */
 
-const VERSION = "klassci-v1";
+const VERSION = "klassci-v2";
 
 // Caches nommes versionnes pour invalidation propre a l'activation.
 const CACHE_NAMES = {
     precache: "klassci-precache-" + VERSION,
-    pages: "klassci-pages-" + VERSION,
     assets: "klassci-assets-" + VERSION,
     images: "klassci-images-" + VERSION,
     fonts: "klassci-fonts-" + VERSION,
-    studentData: "klassci-student-data-" + VERSION,
 };
 
 // App-shell minimal a precacher.
@@ -45,62 +42,12 @@ if (self.workbox) {
         PRECACHE_URLS.map((url) => ({ url: url, revision: VERSION }))
     );
 
-    // ---------------------------------------------------------------------
-    // Navigations (documents HTML) : NetworkFirst + fallback offline.html
-    // ---------------------------------------------------------------------
-    const navigationStrategy = new strategies.NetworkFirst({
-        cacheName: CACHE_NAMES.pages,
-        networkTimeoutSeconds: 4,
-        plugins: [
-            new cacheableResponse.CacheableResponsePlugin({
-                statuses: [0, 200],
-            }),
-            new expiration.ExpirationPlugin({
-                maxEntries: 40,
-                maxAgeSeconds: 24 * 60 * 60, // 1 jour
-            }),
-        ],
-    });
-
-    const navigationDenylist = [
-        /\/api\//,
-        /\/login/,
-        /\/logout/,
-        /\/sw\.js$/,
-    ];
-
+    // Les documents authentifies sont toujours servis par le reseau. Un
+    // redirect de session cache sous /mes-notes ou une page d'administration
+    // obsolete pourrait sinon restaurer le dashboard pour une autre URL.
     routing.registerRoute(
-        ({ request, url }) => {
-            if (request.destination !== "document") return false;
-            return !navigationDenylist.some((re) => re.test(url.pathname));
-        },
-        navigationStrategy
-    );
-
-    // ---------------------------------------------------------------------
-    // Donnees etudiant (lecture seule) : NetworkFirst, ~7 jours
-    // /mes-notes, /mon-bulletin, /mon-emploi-temps, /esbtp/esbtp/mes-absences
-    // ---------------------------------------------------------------------
-    routing.registerRoute(
-        ({ url, request }) =>
-            request.destination === "document" &&
-            (url.pathname.startsWith("/mes-notes") ||
-                url.pathname.startsWith("/mon-bulletin") ||
-                url.pathname.startsWith("/mon-emploi-temps") ||
-                url.pathname.includes("/mes-absences")),
-        new strategies.NetworkFirst({
-            cacheName: CACHE_NAMES.studentData,
-            networkTimeoutSeconds: 4,
-            plugins: [
-                new cacheableResponse.CacheableResponsePlugin({
-                    statuses: [0, 200],
-                }),
-                new expiration.ExpirationPlugin({
-                    maxEntries: 30,
-                    maxAgeSeconds: 7 * 24 * 60 * 60, // 7 jours
-                }),
-            ],
-        })
+        ({ request }) => request.mode === "navigate",
+        new strategies.NetworkOnly()
     );
 
     // ---------------------------------------------------------------------
