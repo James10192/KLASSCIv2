@@ -1,103 +1,128 @@
 @extends('install.layout')
 
-@section('title', 'Bienvenue')
+@section('title', 'Préparation')
+@section('hero_title', 'Préparer le tenant UIC')
+@section('hero_copy', 'L’écran vérifie les prérequis réels du serveur avant de lancer la configuration Laravel.')
 
 @section('content')
-    <div class="text-center mb-8">
-        <i class="fas fa-school text-5xl text-blue-500 mb-4"></i>
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">Bienvenue dans l'assistant d'installation de KLASSCI</h2>
-        <p class="text-gray-600">Nous allons vous guider à travers quelques étapes simples pour configurer votre application.</p>
-    </div>
-    
-    <div class="mb-8">
-        <h3 class="text-lg font-semibold text-gray-800 mb-4">Prérequis</h3>
-        
-        <div class="space-y-4">
-            <div class="flex items-start p-4 bg-gray-50 rounded-lg" id="php-version">
-                <div class="flex-shrink-0 mt-1">
-                    <i class="fas fa-spinner fa-spin text-yellow-500"></i>
-                </div>
-                <div class="ml-3">
-                    <h4 class="font-medium text-gray-800">Version PHP</h4>
-                    <p class="text-sm text-gray-600">Vérification de la version PHP (7.4 ou supérieur requis)</p>
-                </div>
+<div id="app" class="grid-2">
+    <section class="card card-pad">
+        <h2 class="section-title">Prérequis serveur</h2>
+        <p class="section-copy">Ces contrôles évitent de lancer une installation sur un dossier incomplet ou un runtime PHP incompatible.</p>
+
+        <div v-if="loading" class="notice">
+            <i class="fas fa-spinner fa-spin"></i>
+            <div>
+                <strong>Vérification en cours</strong>
+                <div class="muted">Lecture du runtime, des extensions et des droits d’écriture.</div>
             </div>
-            
-            <div class="flex items-start p-4 bg-gray-50 rounded-lg" id="php-extensions">
-                <div class="flex-shrink-0 mt-1">
-                    <i class="fas fa-spinner fa-spin text-yellow-500"></i>
-                </div>
-                <div class="ml-3">
-                    <h4 class="font-medium text-gray-800">Extensions PHP</h4>
-                    <p class="text-sm text-gray-600">Vérification des extensions PHP requises</p>
-                </div>
-            </div>
-            
-            <div class="flex items-start p-4 bg-gray-50 rounded-lg" id="directory-permissions">
-                <div class="flex-shrink-0 mt-1">
-                    <i class="fas fa-spinner fa-spin text-yellow-500"></i>
-                </div>
-                <div class="ml-3">
-                    <h4 class="font-medium text-gray-800">Permissions des répertoires</h4>
-                    <p class="text-sm text-gray-600">Vérification des permissions d'écriture</p>
+        </div>
+
+        <div v-if="error" class="notice error">
+            <i class="fas fa-triangle-exclamation"></i>
+            <div>@{{ error }}</div>
+        </div>
+
+        <div class="check-list" v-if="checks.length">
+            <div v-for="check in checks" :key="check.key" class="check-item" :class="check.ok ? 'ok' : 'fail'">
+                <span class="check-icon">
+                    <i :class="check.ok ? 'fas fa-check' : 'fas fa-xmark'"></i>
+                </span>
+                <div>
+                    <strong>@{{ check.label }}</strong>
+                    <p class="hint" v-if="Array.isArray(check.detail)">
+                        @{{ check.detail.length ? check.detail.join(', ') : 'Tout est prêt.' }}
+                    </p>
+                    <p class="hint" v-else>@{{ check.detail }}</p>
                 </div>
             </div>
         </div>
-    </div>
-    
-    <div class="flex justify-end">
-        <button id="next-button" class="btn-primary" disabled>
-            <span>Continuer</span>
-            <i class="fas fa-arrow-right ml-2"></i>
-        </button>
-    </div>
+
+        <div class="btn-row">
+            <button type="button" class="btn btn-secondary" @click="loadRequirements" :disabled="loading">
+                <i class="fas fa-rotate"></i>
+                Revérifier
+            </button>
+            <a class="btn btn-primary" :class="{ 'is-disabled': !ready }" href="{{ route('install.database') }}" @click="guardNext">
+                Continuer
+                <i class="fas fa-arrow-right"></i>
+            </a>
+        </div>
+    </section>
+
+    <aside class="card card-pad">
+        <h2 class="section-title">À faire avant cette page</h2>
+        <p class="section-copy">Ces actions restent côté cPanel tant qu’aucun token WHM ou cPanel UAPI n’est configuré.</p>
+        <div class="check-list">
+            <div class="check-item ok">
+                <span class="check-icon"><i class="fas fa-folder-tree"></i></span>
+                <div>
+                    <strong>Dossier serveur</strong>
+                    <p class="hint">Cloner la branche <strong>uic</strong> dans <code>public_html/uic</code>.</p>
+                </div>
+            </div>
+            <div class="check-item ok">
+                <span class="check-icon"><i class="fas fa-globe"></i></span>
+                <div>
+                    <strong>Sous-domaine</strong>
+                    <p class="hint">Pointer <strong>uic.klassci.com</strong> vers <code>public_html/uic/public</code>.</p>
+                </div>
+            </div>
+            <div class="check-item ok">
+                <span class="check-icon"><i class="fas fa-database"></i></span>
+                <div>
+                    <strong>Base MySQL</strong>
+                    <p class="hint">Créer la base et l’utilisateur, puis donner tous les privilèges.</p>
+                </div>
+            </div>
+            <div class="check-item ok">
+                <span class="check-icon"><i class="fas fa-box"></i></span>
+                <div>
+                    <strong>Dépendances</strong>
+                    <p class="hint">Exécuter <code>composer install --no-dev --optimize-autoloader</code> sur le dossier tenant.</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
 @endsection
 
 @section('scripts')
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            const phpVersionElement = document.getElementById('php-version');
-            const phpExtensionsElement = document.getElementById('php-extensions');
-            const directoryPermissionsElement = document.getElementById('directory-permissions');
-            const nextButton = document.getElementById('next-button');
-            
-            let phpVersionPassed = false;
-            let phpExtensionsPassed = false;
-            let directoryPermissionsPassed = false;
-            
-            // Check PHP version
-            setTimeout(() => {
-                // This is just a simulation since we can't actually check PHP version on the client side
-                // In a real app, this would be pre-rendered by the server
-                phpVersionPassed = true;
-                phpVersionElement.querySelector('i').className = 'fas fa-check-circle text-green-500';
-                checkAllRequirements();
-            }, 1000);
-            
-            // Check PHP extensions
-            setTimeout(() => {
-                // This is just a simulation
-                phpExtensionsPassed = true;
-                phpExtensionsElement.querySelector('i').className = 'fas fa-check-circle text-green-500';
-                checkAllRequirements();
-            }, 1500);
-            
-            // Check directory permissions
-            setTimeout(() => {
-                // This is just a simulation
-                directoryPermissionsPassed = true;
-                directoryPermissionsElement.querySelector('i').className = 'fas fa-check-circle text-green-500';
-                checkAllRequirements();
-            }, 2000);
-            
-            function checkAllRequirements() {
-                if (phpVersionPassed && phpExtensionsPassed && directoryPermissionsPassed) {
-                    nextButton.disabled = false;
-                    nextButton.addEventListener('click', function() {
-                        window.location.href = "{{ route('install.database') }}";
-                    });
-                }
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        loading: true,
+        ready: false,
+        error: '',
+        checks: []
+    },
+    mounted() {
+        this.loadRequirements();
+    },
+    methods: {
+        loadRequirements() {
+            this.loading = true;
+            this.error = '';
+            axios.get('{{ route("install.requirements") }}')
+                .then(({ data }) => {
+                    this.checks = data.data?.checks || [];
+                    this.ready = data.ok === true;
+                })
+                .catch((error) => {
+                    this.ready = false;
+                    this.error = window.klassciInstall.message(error, 'Impossible de vérifier les prérequis.');
+                })
+                .finally(() => {
+                    this.loading = false;
+                });
+        },
+        guardNext(event) {
+            if (!this.ready) {
+                event.preventDefault();
             }
-        });
-    </script>
-@endsection 
+        }
+    }
+});
+</script>
+@endsection
