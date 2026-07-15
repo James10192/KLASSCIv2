@@ -19,6 +19,8 @@ use App\Models\Setting;
 
 class InstallController extends Controller
 {
+    private const REQUIRED_PHP_VERSION = '8.3.0';
+
     /**
      * Display the installation welcome page
      */
@@ -71,6 +73,77 @@ class InstallController extends Controller
     }
 
     /**
+     * Retourne les prérequis réels du serveur avant installation.
+     */
+    public function requirements()
+    {
+        $requiredExtensions = ['bcmath', 'ctype', 'fileinfo', 'json', 'mbstring', 'openssl', 'pdo', 'pdo_mysql', 'tokenizer', 'xml'];
+        $extensions = collect($requiredExtensions)->map(fn ($extension) => [
+            'name' => $extension,
+            'ok' => extension_loaded($extension),
+        ])->values();
+
+        $paths = collect([
+            'storage' => storage_path(),
+            'bootstrap/cache' => base_path('bootstrap/cache'),
+            '.env' => base_path('.env'),
+        ])->map(fn ($path, $label) => [
+            'name' => $label,
+            'path' => $path,
+            'ok' => file_exists($path) && is_writable($path),
+        ])->values();
+
+        $checks = [
+            [
+                'key' => 'php',
+                'label' => 'Version PHP',
+                'ok' => version_compare(PHP_VERSION, self::REQUIRED_PHP_VERSION, '>='),
+                'detail' => 'PHP ' . PHP_VERSION . ' détecté, PHP ' . self::REQUIRED_PHP_VERSION . ' minimum requis.',
+            ],
+            [
+                'key' => 'extensions',
+                'label' => 'Extensions PHP',
+                'ok' => $extensions->every(fn ($item) => $item['ok']),
+                'detail' => $extensions->where('ok', false)->pluck('name')->values()->all(),
+            ],
+            [
+                'key' => 'writable_paths',
+                'label' => 'Dossiers inscriptibles',
+                'ok' => $paths->every(fn ($item) => $item['ok']),
+                'detail' => $paths->where('ok', false)->pluck('name')->values()->all(),
+            ],
+            [
+                'key' => 'vendor',
+                'label' => 'Dépendances Composer',
+                'ok' => file_exists(base_path('vendor/autoload.php')),
+                'detail' => file_exists(base_path('vendor/autoload.php')) ? 'vendor/autoload.php présent.' : 'Exécutez composer install sur le serveur avant de continuer.',
+            ],
+            [
+                'key' => 'document_root',
+                'label' => 'Document root',
+                'ok' => str_ends_with(str_replace('\\', '/', (string) public_path()), '/public'),
+                'detail' => public_path(),
+            ],
+        ];
+
+        $allOk = collect($checks)->every(fn ($check) => (bool) $check['ok']);
+
+        return $this->installJson($allOk, $allOk ? 'install.requirements.ready' : 'install.requirements.blocked', [
+            'checks' => $checks,
+            'tenant' => [
+                'code' => config('app.tenant_code'),
+                'url' => config('app.url'),
+                'name' => config('app.name'),
+            ],
+            'cpanel_prerequisites' => [
+                'subdomain' => 'uic.klassci.com',
+                'document_root' => 'public_html/uic/public',
+                'database' => 'À créer dans cPanel ou via UAPI avant la connexion DB.',
+            ],
+        ], $allOk ? 'Prérequis serveur validés.' : 'Certains prérequis serveur bloquent l’installation.');
+    }
+
+    /**
      * Process the database configuration
      */
     public function setupDatabase(Request $request)
@@ -82,6 +155,9 @@ class InstallController extends Controller
             'database' => 'required',
             'username' => 'required',
             'password' => 'nullable',
+            'app_name' => 'nullable|string|max:120',
+            'app_url' => 'nullable|url|max:255',
+            'tenant_code' => 'nullable|regex:/^[a-z0-9-]+$/|max:80',
         ]);
 
         try {
@@ -102,6 +178,9 @@ class InstallController extends Controller
             if ($connection['status'] === 'success') {
                 // Update the .env file with database credentials
                 $this->updateEnvironmentFile([
+                    'APP_NAME' => $request->input('app_name', config('app.name')),
+                    'APP_URL' => $request->input('app_url', config('app.url')),
+                    'TENANT_CODE' => $request->input('tenant_code', config('app.tenant_code')),
                     'DB_HOST' => $request->host,
                     'DB_PORT' => $request->port,
                     'DB_DATABASE' => $request->database,
@@ -129,19 +208,13 @@ class InstallController extends Controller
                 \Log::info('Database connection successful');
                 \Log::info('Session db_configured set to: ' . (session('db_configured') ? 'true' : 'false'));
 
-                return response()->json([
-                    'status' => 'success',
-                    'message' => 'Database connection successful',
+                return $this->installJson(true, 'install.database.connected', [
                     'database_exists' => $connection['database_exists'],
                     'tables_exist' => $connection['tables_exist'] ?? false,
-                    'redirect' => route('install.migration')
-                ]);
+                ], 'Connexion à la base de données validée.', route('install.migration'));
             }
 
-            return response()->json([
-                'status' => 'error',
-                'message' => $connection['message']
-            ], 422);
+            return $this->installJson(false, 'install.database.connection_failed', [], $connection['message'], null, 422);
         } catch (Exception $e) {
             // Log détaillé uniquement en local — pas exposer le contenu d'erreur DB
             // au client en prod (peut révéler version MySQL, structure, etc.).
@@ -218,199 +291,92 @@ class InstallController extends Controller
     public function runMigration(Request $request)
     {
         try {
-            // Augmenter le temps d'exécution maximal pour éviter les timeouts
-            ini_set('max_execution_time', 300); // 5 minutes
-            set_time_limit(300); // Alternative pour certains environnements
-            
-            $databaseExists = session('database_exists', false);
-            $databaseCreated = session('database_created', false);
-            $forceMigrate = $request->has('forceMigrate') ? (bool)$request->forceMigrate : false;
-            $runSeeders = $request->has('runSeeders') ? (bool)$request->runSeeders : true; // Option pour exécuter les seeders
-            $runESBTPSeeders = $request->has('runESBTPSeeders') ? (bool)$request->runESBTPSeeders : true; // Option pour les seeders ESBTP
-            
-            // Nettoyer les erreurs précédentes
+            ini_set('max_execution_time', 600);
+            set_time_limit(600);
+
             session()->forget(['migration_errors', 'db_connection_error']);
-            
-            \Log::info("Migration lancée avec options - Force: {$forceMigrate}, Seeders: {$runSeeders}, ESBTP Seeders: {$runESBTPSeeders}");
-            
-            // Vérifier si on a une connexion à la base de données
-            $dbConfigured = InstallationHelper::isDatabaseConfigured();
-            if (!$dbConfigured) {
-                $errorMsg = 'La base de données n\'est pas correctement configurée. Veuillez revenir à l\'étape précédente.';
-                \Log::error("Erreur de migration: Base de données non configurée");
-                session(['migration_errors' => $errorMsg]);
-                return response()->json([
-                    'status' => 'error',
-                    'message' => $errorMsg
-                ]);
+
+            if (!InstallationHelper::isDatabaseConfigured()) {
+                return $this->installJson(
+                    false,
+                    'install.migration.database_not_configured',
+                    [],
+                    'La base de données n’est pas configurée. Revenez à l’étape précédente.',
+                    route('install.database'),
+                    422
+                );
             }
-            
-            // Si la base de données n'existe pas, on la crée automatiquement
-            if (!$databaseExists && !$databaseCreated) {
-                \Log::info("Tentative de création de la base de données...");
-                
+
+            $terminal = [];
+            $databaseCreated = false;
+            $databaseExists = session('database_exists', false);
+
+            if (!$databaseExists) {
+                $terminal[] = 'Base absente, tentative de création avec les droits MySQL fournis.';
                 $dbConfig = config('database.connections.mysql');
-                $created = $this->createDatabase($dbConfig['host'], $dbConfig['port'], $dbConfig['username'], $dbConfig['password'], $dbConfig['database']);
-                
-                if (!$created) {
-                    $errorMsg = session('db_connection_error') ?? 'Impossible de créer automatiquement la base de données. Veuillez la créer manuellement.';
-                    \Log::error("Échec de la création de la base de données: {$errorMsg}");
-                    session(['migration_errors' => $errorMsg]);
-                    return response()->json([
-                        'status' => 'error',
-                        'message' => $errorMsg
-                    ]);
-                }
-                
-                \Log::info("Base de données créée avec succès");
-                $databaseCreated = true;
-                session(['database_created' => true]);
-            }
-            
-            // Si la base vient d'être créée ou si force_migrate est vrai, exécuter les migrations
-            if ($databaseCreated || $forceMigrate) {
-                // Clear cache avant la migration
-                \Artisan::call('config:clear');
-                \Artisan::call('cache:clear');
-                
-                // Si force_migrate est vrai et que la base n'a pas été créée dans cette session, faire un wipe
-                if ($forceMigrate && !$databaseCreated) {
-                    \Log::info("Option force_migrate activée. Suppression de toutes les tables...");
-                    \Artisan::call('db:wipe');
-                }
-                
-                // Exécuter les migrations
-                $migrationSuccess = true;
-                $migrationWarnings = [];
-                
-                try {
-                    \Log::info("Exécution des migrations...");
-                    \Artisan::call('migrate', ['--force' => true]);
-                    $migrationOutput = \Artisan::output();
-                    
-                    // Vérifier s'il y a des avertissements liés à la table manquante esbtp_unites_enseignement
-                    if (strpos($migrationOutput, 'esbtp_unites_enseignement') !== false && 
-                        strpos($migrationOutput, 'does not exist') !== false) {
-                        $warning = "Table esbtp_unites_enseignement manquante détectée. Cette table a été supprimée des spécifications et n'affecte pas le fonctionnement de l'application.";
-                        \Log::warning($warning);
-                        $migrationWarnings[] = $warning;
-                    }
-                } catch (\Exception $e) {
-                    // Si l'erreur concerne la table esbtp_unites_enseignement, c'est un avertissement, pas une erreur critique
-                    if (strpos($e->getMessage(), 'esbtp_unites_enseignement') !== false) {
-                        $warning = "Avertissement concernant esbtp_unites_enseignement: " . $e->getMessage();
-                        \Log::warning($warning);
-                        $migrationWarnings[] = $warning;
-                    } else {
-                        // Pour les autres erreurs, c'est critique
-                        $errorMsg = 'Erreur lors des migrations: ' . $e->getMessage();
-                        \Log::error($errorMsg);
-                        session(['migration_errors' => $errorMsg]);
-                        $migrationSuccess = false;
-                        
-                        return response()->json([
-                            'status' => 'error',
-                            'message' => $errorMsg,
-                            'migration_errors' => $errorMsg
-                        ]);
-                    }
-                }
-                
-                // Exécuter les seeders si l'option est activée et que les migrations ont réussi
-                if ($runSeeders && $migrationSuccess) {
-                    \Log::info("Exécution des seeders principaux...");
-                    try {
-                        \Artisan::call('db:seed', [
-                            '--class' => 'RoleSeeder',
-                            '--force' => true
-                        ]);
-                    } catch (\Exception $e) {
-                        $errorMsg = "Erreur lors de l'exécution du seeder RoleSeeder: " . $e->getMessage();
-                        \Log::error($errorMsg);
-                        $migrationWarnings[] = $errorMsg;
-                    }
-                    
-                    // Exécuter les seeders ESBTP si l'option est activée
-                    if ($runESBTPSeeders) {
-                        \Log::info("Exécution des seeders ESBTP...");
-                        
-                        // Exécuter chaque seeder ESBTP individuellement pour une meilleure gestion des erreurs
-                        $esbtpSeeders = [
-                            'ESBTPRoleSeeder',
-                            'ESBTPAnneeUniversitaireSeeder',
-                            'ESBTPNiveauEtudeSeeder',
-                            'ESBTPFiliereSeeder',
-                            'ESBTPMatiereSeeder'
-                        ];
-                        
-                        $seederErrors = [];
-                        foreach ($esbtpSeeders as $seeder) {
-                            try {
-                                \Log::info("Exécution du seeder {$seeder}");
-                                // Vérifier si la classe du seeder existe
-                                $seederClass = "\\Database\\Seeders\\{$seeder}";
-                                if (class_exists($seederClass)) {
-                                    \Artisan::call('db:seed', [
-                                        '--class' => $seeder,
-                                        '--force' => true
-                                    ]);
-                                    \Log::info("Seeder {$seeder} exécuté avec succès.");
-                                } else {
-                                    $errorMsg = "Erreur : la classe {$seeder} n'existe pas.";
-                                    \Log::error($errorMsg);
-                                    $seederErrors[] = $errorMsg;
-                                }
-                            } catch (\Exception $e) {
-                                $errorMsg = "Erreur dans {$seeder}: " . $e->getMessage();
-                                \Log::error($errorMsg);
-                                $seederErrors[] = $errorMsg;
-                            }
-                        }
-                        
-                        if (!empty($seederErrors)) {
-                            $migrationWarnings = array_merge($migrationWarnings, $seederErrors);
-                        }
-                        
-                        // Vérifier que les données ESBTP ont été correctement créées
-                        $esbtpDataCheck = InstallationHelper::checkESBTPData();
-                        session(['esbtp_data_check' => $esbtpDataCheck]);
-                        
-                        if (!$esbtpDataCheck['success']) {
-                            $missingDataWarning = "⚠️ Attention : Certaines données ESBTP n'ont pas pu être créées : " . implode(', ', $esbtpDataCheck['missing_data']);
-                            \Log::warning($missingDataWarning);
-                            $migrationWarnings[] = $missingDataWarning;
-                        } else {
-                            \Log::info("📊 Les données ESBTP ont été initialisées avec succès.");
-                        }
-                    }
-                }
-                
-                // Si nous avons des avertissements, les enregistrer en session
-                if (!empty($migrationWarnings)) {
-                    session(['migration_errors' => implode(' | ', $migrationWarnings)]);
+                $databaseCreated = $this->createDatabase(
+                    $dbConfig['host'],
+                    $dbConfig['port'],
+                    $dbConfig['username'],
+                    $dbConfig['password'],
+                    $dbConfig['database']
+                );
+
+                if (!$databaseCreated) {
+                    return $this->installJson(
+                        false,
+                        'install.migration.database_create_failed',
+                        ['terminal' => $terminal],
+                        session('db_connection_error') ?? 'Impossible de créer la base. Créez-la dans cPanel, puis relancez.',
+                        null,
+                        422
+                    );
                 }
             }
-            
-            return response()->json([
-                'status' => 'success',
-                'message' => 'Migrations exécutées avec succès' . ($databaseCreated ? ' et base de données créée automatiquement' : ''),
+
+            Artisan::call('config:clear');
+            Artisan::call('cache:clear');
+            $terminal[] = trim(Artisan::output()) ?: 'Caches Laravel vidés.';
+
+            Artisan::call('migrate', ['--force' => true]);
+            $terminal[] = trim(Artisan::output()) ?: 'Migrations vérifiées.';
+
+            $setupResult = $this->runSetupScript();
+            $terminal = array_merge($terminal, $setupResult['output']);
+
+            if (!$setupResult['ok']) {
+                session(['migration_errors' => $setupResult['message']]);
+
+                return $this->installJson(
+                    false,
+                    'install.setup.failed',
+                    ['terminal' => $terminal, 'exit_code' => $setupResult['exit_code']],
+                    $setupResult['message'],
+                    null,
+                    422
+                );
+            }
+
+            $esbtpDataCheck = InstallationHelper::checkESBTPData();
+            session(['esbtp_data_check' => $esbtpDataCheck]);
+
+            return $this->installJson(true, 'install.migration.completed', [
                 'database_created' => $databaseCreated,
-                'esbtp_seeded' => $runESBTPSeeders,
-                'esbtp_data_check' => session('esbtp_data_check', ['success' => true]),
-                'migration_errors' => session('migration_errors', null),
-                'redirect' => route('install.admin')
-            ]);
-            
+                'esbtp_data_check' => $esbtpDataCheck,
+                'terminal' => $terminal,
+            ], 'Migrations, permissions, paramètres et seeders terminés.', route('install.admin'));
         } catch (\Exception $e) {
-            $errorMsg = 'Une erreur est survenue: ' . $e->getMessage();
             \Log::error("Erreur critique lors de l'exécution des migrations: " . $e->getMessage());
-            session(['migration_errors' => $errorMsg]);
-            
-            return response()->json([
-                'status' => 'error',
-                'message' => 'Une erreur est survenue lors de l\'exécution des migrations: ' . $e->getMessage(),
-                'migration_errors' => session('migration_errors', null)
-            ]);
+            session(['migration_errors' => $e->getMessage()]);
+
+            return $this->installJson(
+                false,
+                'install.migration.exception',
+                ['terminal' => [$e->getMessage()]],
+                'Une erreur est survenue pendant l’installation Laravel.',
+                null,
+                500
+            );
         }
     }
 
@@ -535,12 +501,10 @@ class InstallController extends Controller
                 // Continue execution - role assignment is not critical for installation
             }
             
-            // Stockage des informations de l'admin dans la session
             $request->session()->put('admin_created', true);
-            // Enregistrer les informations d'identification pour faciliter la connexion
+            $request->session()->put('admin_name', $validated['name']);
             $request->session()->put('admin_username', $validated['username']);
             $request->session()->put('admin_email', $validated['email']);
-            $request->session()->put('admin_password', $validated['password']);
             
             // Journalisation
             \Log::info("Admin user created successfully: {$validated['username']}");
@@ -553,10 +517,7 @@ class InstallController extends Controller
                     'redirect' => route('install.complete')
                 ]);
             }
-            
-            // Force installation step completion
-            InstallationEnvironment::completeStep('admin');
-            
+
             return redirect()->route('install.complete')->with('success', 'Administrateur créé avec succès');
         } catch (\Exception $e) {
             \Log::error("Error creating admin: " . $e->getMessage());
@@ -641,6 +602,53 @@ class InstallController extends Controller
         } catch (Exception $e) {
             return false;
         }
+    }
+
+    private function installJson(bool $ok, string $code, array $data = [], string $message = '', ?string $nextUrl = null, int $status = 200)
+    {
+        return response()->json([
+            'ok' => $ok,
+            'success' => $ok,
+            'status' => $ok ? 'success' : 'error',
+            'code' => $code,
+            'message' => $message,
+            'data' => $data,
+            'next_url' => $nextUrl,
+            'redirect' => $nextUrl,
+        ], $status);
+    }
+
+    private function runSetupScript(): array
+    {
+        $script = base_path('setup.php');
+
+        if (!File::exists($script)) {
+            return [
+                'ok' => false,
+                'message' => 'Le fichier setup.php est introuvable à la racine du projet.',
+                'exit_code' => 127,
+                'output' => ['setup.php introuvable.'],
+            ];
+        }
+
+        $command = '"' . PHP_BINARY . '" "' . $script . '" --force 2>&1';
+        $output = [];
+        $exitCode = 0;
+        exec($command, $output, $exitCode);
+
+        $cleanOutput = array_values(array_filter(array_map(
+            fn ($line) => trim(preg_replace('/\x1b\[[0-9;]*m/', '', (string) $line)),
+            $output
+        )));
+
+        return [
+            'ok' => $exitCode === 0,
+            'message' => $exitCode === 0
+                ? 'Initialisation setup.php terminée.'
+                : 'setup.php a échoué. Consultez la sortie terminal et corrigez le point bloquant.',
+            'exit_code' => $exitCode,
+            'output' => $cleanOutput,
+        ];
     }
 
     /**
@@ -951,7 +959,7 @@ class InstallController extends Controller
             foreach ($data as $key => $value) {
                 // If the key exists, replace it
                 if (strpos($content, $key . '=') !== false) {
-                    $content = preg_replace('/' . $key . '=(.*)/', $key . '=' . $value, $content);
+                    $content = preg_replace('/^' . preg_quote($key, '/') . '=.*/m', $key . '=' . $this->formatEnvValue($value), $content);
                 } else {
                     // Otherwise, add it
                     $content .= "\n" . $key . '=' . $value;

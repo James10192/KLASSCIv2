@@ -1,136 +1,151 @@
 @extends('install.layout')
 
-@section('title', 'Configuration de la base de données')
+@section('title', 'Base de données')
+@section('hero_title', 'Connecter la base UIC')
+@section('hero_copy', 'Renseignez les accès MySQL créés dans cPanel. La clé APP, l’URL et le tenant sont enregistrés dans le fichier .env.')
 
 @section('content')
-    <div class="mb-6">
-        <h2 class="text-2xl font-bold text-gray-800 mb-2">Configuration de la base de données</h2>
-        <p class="text-gray-600">Veuillez saisir les informations de connexion à votre base de données.</p>
-    </div>
-    
-    @if(session('error'))
-    <div class="alert alert-error mb-6">
-        <div class="flex items-center">
-            <i class="fas fa-exclamation-circle mr-2"></i>
-            <span>{{ session('error') }}</span>
-        </div>
-    </div>
-    @endif
-    
-    <div id="app">
-        <form @submit.prevent="testConnection" class="space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div class="space-y-2">
-                    <label for="host" class="form-label">Hôte</label>
-                    <input type="text" id="host" v-model="formData.host" class="form-input" placeholder="localhost" required>
-                    <p class="text-xs text-gray-500">Généralement "localhost" ou "127.0.0.1"</p>
+<div id="app" class="grid-2">
+    <section class="card card-pad">
+        <h2 class="section-title">Connexion MySQL</h2>
+        <p class="section-copy">KLASSCI teste la connexion avant d’écrire la configuration. Le mot de passe n’est pas stocké en session.</p>
+
+        <form @submit.prevent="submit">
+            <div class="grid-fields" style="margin-top: 18px;">
+                <div class="field">
+                    <label for="app_name">Nom établissement</label>
+                    <input id="app_name" class="input" v-model="form.app_name" required>
                 </div>
-                
-                <div class="space-y-2">
-                    <label for="port" class="form-label">Port</label>
-                    <input type="text" id="port" v-model="formData.port" class="form-input" placeholder="3306" required>
-                    <p class="text-xs text-gray-500">Généralement "3306" pour MySQL</p>
+                <div class="field">
+                    <label for="tenant_code">Code tenant</label>
+                    <input id="tenant_code" class="input" v-model="form.tenant_code" required>
                 </div>
-                
-                <div class="space-y-2">
-                    <label for="database" class="form-label">Nom de la base de données</label>
-                    <input type="text" id="database" v-model="formData.database" class="form-input" placeholder="smart_school" required>
-                    <p class="text-xs text-gray-500">La base de données sera créée si elle n'existe pas</p>
+                <div class="field" style="grid-column: 1 / -1;">
+                    <label for="app_url">URL publique</label>
+                    <input id="app_url" class="input" type="url" v-model="form.app_url" required>
                 </div>
-                
-                <div class="space-y-2">
-                    <label for="username" class="form-label">Nom d'utilisateur</label>
-                    <input type="text" id="username" v-model="formData.username" class="form-input" placeholder="root" required>
-                    <p class="text-xs text-gray-500">Généralement "root" pour les installations locales</p>
+                <div class="field">
+                    <label for="host">Hôte</label>
+                    <input id="host" class="input" v-model="form.host" required>
+                    <p class="hint">Souvent <code>localhost</code> chez cPanel.</p>
                 </div>
-                
-                <div class="space-y-2">
-                    <label for="password" class="form-label">Mot de passe</label>
-                    <input type="password" id="password" v-model="formData.password" class="form-input" placeholder="Laissez vide si aucun mot de passe">
-                    <p class="text-xs text-gray-500">Laissez vide si aucun mot de passe n'est défini</p>
+                <div class="field">
+                    <label for="port">Port</label>
+                    <input id="port" class="input" v-model="form.port" required>
+                </div>
+                <div class="field">
+                    <label for="database">Base</label>
+                    <input id="database" class="input" v-model="form.database" required>
+                </div>
+                <div class="field">
+                    <label for="username">Utilisateur</label>
+                    <input id="username" class="input" v-model="form.username" required>
+                </div>
+                <div class="field" style="grid-column: 1 / -1;">
+                    <label for="password">Mot de passe</label>
+                    <input id="password" class="input" type="password" v-model="form.password" autocomplete="new-password">
                 </div>
             </div>
-            
-            <div v-if="error" class="alert alert-error">
-                <div class="flex items-center">
-                    <i class="fas fa-exclamation-circle mr-2"></i>
-                    <span>@{{ error }}</span>
+
+            <div v-if="error" class="notice error">
+                <i class="fas fa-triangle-exclamation"></i>
+                <div>@{{ error }}</div>
+            </div>
+            <div v-if="success" class="notice success">
+                <i class="fas fa-check"></i>
+                <div>
+                    <strong>@{{ success }}</strong>
+                    <p class="hint" v-if="nextUrl">Passez à l’étape suivante quand vous êtes prêt.</p>
                 </div>
             </div>
-            
-            <div v-if="success" class="alert alert-success">
-                <div class="flex items-center">
-                    <i class="fas fa-check-circle mr-2"></i>
-                    <span>@{{ success }}</span>
-                </div>
-            </div>
-            
-            <div class="flex justify-between">
-                <a href="{{ route('install.index') }}" class="btn-secondary">
-                    <i class="fas fa-arrow-left mr-2"></i>
-                    <span>Retour</span>
+
+            <div class="btn-row">
+                <a href="{{ route('install.index') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i>
+                    Retour
                 </a>
-                
-                <button type="submit" class="btn-primary" :disabled="loading">
-                    <span v-if="!loading">Tester la connexion</span>
-                    <span v-else class="flex items-center">
-                        <i class="fas fa-circle-notch fa-spin mr-2"></i>
-                        <span>Test en cours...</span>
-                    </span>
-                </button>
+                <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                    <button type="submit" class="btn btn-primary" :disabled="loading">
+                        <i :class="loading ? 'fas fa-spinner fa-spin' : 'fas fa-plug'"></i>
+                        Tester et enregistrer
+                    </button>
+                    <a v-if="nextUrl" :href="nextUrl" class="btn btn-success">
+                        Initialiser
+                        <i class="fas fa-arrow-right"></i>
+                    </a>
+                </div>
             </div>
         </form>
-    </div>
+    </section>
+
+    <aside class="card card-pad">
+        <h2 class="section-title">Ce que fait cette étape</h2>
+        <div class="check-list">
+            <div class="check-item ok">
+                <span class="check-icon"><i class="fas fa-shield-halved"></i></span>
+                <div>
+                    <strong>Validation serveur</strong>
+                    <p class="hint">Test PDO réel avec les identifiants fournis.</p>
+                </div>
+            </div>
+            <div class="check-item ok">
+                <span class="check-icon"><i class="fas fa-file-lines"></i></span>
+                <div>
+                    <strong>Écriture .env</strong>
+                    <p class="hint">APP_NAME, APP_URL, TENANT_CODE et DB_* sont persistés avec format sécurisé.</p>
+                </div>
+            </div>
+            <div class="check-item ok">
+                <span class="check-icon"><i class="fas fa-broom"></i></span>
+                <div>
+                    <strong>Cache config</strong>
+                    <p class="hint">Le cache Laravel est vidé pour relire la nouvelle configuration.</p>
+                </div>
+            </div>
+        </div>
+    </aside>
+</div>
 @endsection
 
 @section('scripts')
-    <script>
-        new Vue({
-            el: '#app',
-            data: {
-                formData: {
-                    host: 'localhost',
-                    port: '3306',
-                    database: 'smart_school',
-                    username: 'root',
-                    password: ''
-                },
-                loading: false,
-                error: null,
-                success: null,
-                databaseExists: false,
-                tablesExist: false
-            },
-            methods: {
-                testConnection() {
-                    this.loading = true;
-                    this.error = null;
-                    this.success = null;
-                    
-                    axios.post('{{ route("install.setup-database") }}', this.formData)
-                        .then(response => {
-                            this.loading = false;
-                            if (response.data.status === 'success') {
-                                this.success = response.data.message;
-                                this.databaseExists = response.data.database_exists;
-                                this.tablesExist = response.data.tables_exist;
-                                
-                                // Redirect after a short delay
-                                setTimeout(() => {
-                                    window.location.href = response.data.redirect || '{{ route("install.migration") }}';
-                                }, 1500);
-                            }
-                        })
-                        .catch(error => {
-                            this.loading = false;
-                            if (error.response && error.response.data) {
-                                this.error = error.response.data.message || 'Une erreur est survenue lors du test de connexion.';
-                            } else {
-                                this.error = 'Une erreur est survenue lors du test de connexion.';
-                            }
-                        });
-                }
-            }
-        });
-    </script>
-@endsection 
+<script>
+new Vue({
+    el: '#app',
+    data: {
+        loading: false,
+        error: '',
+        success: '',
+        nextUrl: '',
+        form: {
+            app_name: 'Université internationale de Cocody',
+            app_url: 'https://uic.klassci.com',
+            tenant_code: 'uic',
+            host: 'localhost',
+            port: '3306',
+            database: '',
+            username: '',
+            password: ''
+        }
+    },
+    methods: {
+        submit() {
+            this.loading = true;
+            this.error = '';
+            this.success = '';
+            this.nextUrl = '';
+            axios.post('{{ route("install.setup-database") }}', this.form)
+                .then(({ data }) => {
+                    this.success = data.message || 'Connexion validée.';
+                    this.nextUrl = data.next_url || data.redirect || '';
+                })
+                .catch((error) => {
+                    this.error = window.klassciInstall.message(error, 'Connexion impossible.');
+                })
+                .finally(() => {
+                    this.loading = false;
+                });
+        }
+    }
+});
+</script>
+@endsection

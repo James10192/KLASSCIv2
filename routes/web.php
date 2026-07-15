@@ -117,6 +117,7 @@ Route::redirect('/esbtp/inscription/create', '/esbtp/inscriptions/create')
 // (DB OK + superAdmin présent + APP_INSTALLED=true). Sinon 404. Voir BlockInstallIfReady.
 Route::prefix('install')->middleware('install.lock')->group(function () {
     Route::get('/', [InstallController::class, 'index'])->name('install.index');
+    Route::get('/requirements', [InstallController::class, 'requirements'])->name('install.requirements');
     Route::get('/database', [InstallController::class, 'database'])->name('install.database');
     Route::post('/database', [InstallController::class, 'setupDatabase'])->name('install.setup-database');
     Route::get('/migration', [InstallController::class, 'migration'])->name('install.migration');
