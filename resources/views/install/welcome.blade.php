@@ -1,8 +1,8 @@
 @extends('install.layout')
 
 @section('title', 'Préparation')
-@section('hero_title', 'Préparer le tenant UIC')
-@section('hero_copy', 'L’écran vérifie les prérequis réels du serveur avant de lancer la configuration Laravel.')
+@section('hero_title', 'Préparer le tenant')
+@section('hero_copy', 'Vérifiez le runtime, le dossier public et les dépendances avant de connecter la base de données.')
 
 @section('content')
 <div id="app" class="grid-2">
@@ -58,14 +58,14 @@
                 <span class="check-icon"><i class="fas fa-folder-tree"></i></span>
                 <div>
                     <strong>Dossier serveur</strong>
-                    <p class="hint">Cloner la branche <strong>uic</strong> dans <code>public_html/uic</code>.</p>
+                    <p class="hint">Cloner la branche du tenant dans <code>@{{ documentRoot.replace('/public', '') }}</code>.</p>
                 </div>
             </div>
             <div class="check-item ok">
                 <span class="check-icon"><i class="fas fa-globe"></i></span>
                 <div>
                     <strong>Sous-domaine</strong>
-                    <p class="hint">Pointer <strong>uic.klassci.com</strong> vers <code>public_html/uic/public</code>.</p>
+                    <p class="hint">Pointer <strong>@{{ host }}</strong> vers <code>@{{ documentRoot }}</code>.</p>
                 </div>
             </div>
             <div class="check-item ok">
@@ -95,7 +95,9 @@ new Vue({
         loading: true,
         ready: false,
         error: '',
-        checks: []
+        checks: [],
+        host: window.klassciInstall.defaults.host,
+        documentRoot: window.klassciInstall.defaults.documentRoot
     },
     mounted() {
         this.loadRequirements();
