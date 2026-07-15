@@ -1,7 +1,7 @@
 @extends('install.layout')
 
 @section('title', 'Base de données')
-@section('hero_title', 'Connecter la base UIC')
+@section('hero_title', 'Connecter la base du tenant')
 @section('hero_copy', 'Renseignez les accès MySQL créés dans cPanel. La clé APP, l’URL et le tenant sont enregistrés dans le fichier .env.')
 
 @section('content')
@@ -117,9 +117,9 @@ new Vue({
         success: '',
         nextUrl: '',
         form: {
-            app_name: 'Université internationale de Cocody',
-            app_url: 'https://uic.klassci.com',
-            tenant_code: 'uic',
+            app_name: window.klassciInstall.defaults.appName,
+            app_url: window.klassciInstall.defaults.appUrl,
+            tenant_code: window.klassciInstall.defaults.tenantCode,
             host: 'localhost',
             port: '3306',
             database: '',

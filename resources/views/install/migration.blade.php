@@ -2,7 +2,7 @@
 
 @section('title', 'Initialisation')
 @section('hero_title', 'Initialiser Laravel')
-@section('hero_copy', 'Cette étape exécute les migrations, les permissions, les paramètres et les seeders nécessaires au tenant UIC.')
+@section('hero_copy', 'Cette étape exécute les migrations, les permissions, les paramètres et les seeders nécessaires au tenant.')
 
 @section('content')
 <div id="app" class="grid-2">

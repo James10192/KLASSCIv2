@@ -77,6 +77,11 @@ class InstallController extends Controller
      */
     public function requirements()
     {
+        $host = request()->getHost();
+        $tenantCode = $this->tenantCodeFromHost($host);
+        $tenantName = $this->tenantNameFromRequest($tenantCode);
+        $tenantUrl = request()->getSchemeAndHttpHost();
+        $tenantDocumentRoot = 'public_html/' . $tenantCode . '/public';
         $requiredExtensions = ['bcmath', 'ctype', 'fileinfo', 'json', 'mbstring', 'openssl', 'pdo', 'pdo_mysql', 'tokenizer', 'xml'];
         $extensions = collect($requiredExtensions)->map(fn ($extension) => [
             'name' => $extension,
@@ -131,13 +136,13 @@ class InstallController extends Controller
         return $this->installJson($allOk, $allOk ? 'install.requirements.ready' : 'install.requirements.blocked', [
             'checks' => $checks,
             'tenant' => [
-                'code' => config('app.tenant_code'),
-                'url' => config('app.url'),
-                'name' => config('app.name'),
+                'code' => config('app.tenant_code') ?: $tenantCode,
+                'url' => config('app.url') ?: $tenantUrl,
+                'name' => $tenantName,
             ],
             'cpanel_prerequisites' => [
-                'subdomain' => 'uic.klassci.com',
-                'document_root' => 'public_html/uic/public',
+                'subdomain' => $host,
+                'document_root' => $tenantDocumentRoot,
                 'database' => 'À créer dans cPanel ou via UAPI avant la connexion DB.',
             ],
         ], $allOk ? 'Prérequis serveur validés.' : 'Certains prérequis serveur bloquent l’installation.');
@@ -216,7 +221,7 @@ class InstallController extends Controller
 
             return $this->installJson(false, 'install.database.connection_failed', [], $connection['message'], null, 422);
         } catch (Exception $e) {
-            // Log détaillé uniquement en local — pas exposer le contenu d'erreur DB
+            // Log détaillé uniquement en local, ne pas exposer le contenu d'erreur DB
             // au client en prod (peut révéler version MySQL, structure, etc.).
             \Log::error('Database connection failed', [
                 'error' => app()->environment('local') ? $e->getMessage() : 'redacted',
@@ -224,7 +229,7 @@ class InstallController extends Controller
 
             return response()->json([
                 'status' => 'error',
-                // Pas de $e->getMessage() en prod — détail de l'erreur DB seulement en local.
+                // Pas de $e->getMessage() en prod, détail de l'erreur DB seulement en local.
                 'message' => app()->environment('local')
                     ? 'Database connection failed: ' . $e->getMessage()
                     : 'Database connection failed. Verify the credentials and host reachability.',
@@ -616,6 +621,27 @@ class InstallController extends Controller
             'next_url' => $nextUrl,
             'redirect' => $nextUrl,
         ], $status);
+    }
+
+    private function tenantCodeFromHost(string $host): string
+    {
+        $firstSegment = explode('.', $host)[0] ?? 'tenant';
+        $tenantCode = strtolower((string) preg_replace('/[^a-z0-9-]+/', '-', $firstSegment));
+        $tenantCode = trim($tenantCode, '-');
+
+        return $tenantCode !== '' ? $tenantCode : 'tenant';
+    }
+
+    private function tenantNameFromRequest(string $tenantCode): string
+    {
+        $configuredName = config('app.name');
+        $genericNames = ['laravel', 'klassci'];
+
+        if ($configuredName && !in_array(strtolower($configuredName), $genericNames, true)) {
+            return $configuredName;
+        }
+
+        return strtoupper($tenantCode) . ' KLASSCI';
     }
 
     private function runSetupScript(): array
@@ -1041,4 +1067,4 @@ class InstallController extends Controller
             return false;
         }
     }
-} 
+}
