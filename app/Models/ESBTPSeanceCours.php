@@ -2,7 +2,7 @@
 
 namespace App\Models;
 
-use App\Enums\TypeSeance;
+use App\Casts\TypeSeanceCast;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -61,7 +61,7 @@ class ESBTPSeanceCours extends Model
         'is_recurring' => 'boolean',
         'recurrence_days' => 'array',
         'is_active' => 'boolean',
-        'type_seance' => TypeSeance::class,
+        'type_seance' => TypeSeanceCast::class,
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',

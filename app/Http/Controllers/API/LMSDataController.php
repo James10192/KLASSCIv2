@@ -429,11 +429,10 @@ class LMSDataController extends BaseApiController
 
         // Base query pour l'emploi du temps
         $query = \App\Models\ESBTPSeanceCours::with([
-            'matiere',
-            'classe',
-            'salle',
-            'enseignant'
-        ])->whereBetween('date_cours', [$dateDebut, $dateFin])
+            'matiere:id,name,nom,code,couleur',
+            'classe:id,name,libelle,code',
+            'teacher.user:id,name,first_name,email'
+        ])->whereBetween('date_seance', [$dateDebut, $dateFin])
           ->whereHas('emploiTemps', function ($q) use ($annee) {
               $q->where('annee_universitaire_id', $annee->id)
                 ->where('esbtp_emploi_temps.is_active', true);
@@ -443,7 +442,13 @@ class LMSDataController extends BaseApiController
         $user = auth()->user();
 
         if ($user->can('identity.teach')) {
-            $query->where('enseignant_id', $user->id);
+            $teacher = $user->teacherProfile ?? \App\Models\ESBTPTeacher::where('user_id', $user->id)->first();
+
+            if ($teacher) {
+                $query->where('teacher_id', $teacher->id);
+            } else {
+                $query->whereRaw('1 = 0');
+            }
         } elseif ($user->can('identity.student')) {
             $etudiant = $user->etudiant;
             if ($etudiant) {
@@ -460,41 +465,54 @@ class LMSDataController extends BaseApiController
             }
         }
 
-        $seances = $query->orderBy('date_cours')
+        $seances = $query->orderBy('date_seance')
                          ->orderBy('heure_debut')
                          ->get();
 
         $data = $seances->map(function ($seance) {
+            $matiere = $seance->matiere;
+            $classe = $seance->classe;
+            $teacher = $seance->teacher;
+            $teacherUser = $teacher?->user;
+            $matiereNom = $matiere?->name ?? $matiere?->nom ?? 'Matière non définie';
+            $classeNom = $classe?->name ?? $classe?->libelle ?? $classe?->nom ?? 'Classe non définie';
+            $dateSeance = $seance->date_seance instanceof \DateTimeInterface
+                ? $seance->date_seance->format('Y-m-d')
+                : $seance->date_seance;
+            $rawTypeSeance = $seance->getRawOriginal('type_seance');
+
             return [
                 'id' => $seance->id,
-                'titre' => $seance->titre ?: $seance->matiere->nom,
+                'titre' => $seance->description ?: $matiereNom,
                 'matiere' => [
-                    'id' => $seance->matiere->id,
-                    'nom' => $seance->matiere->nom,
-                    'code' => $seance->matiere->code,
-                    'couleur' => $seance->matiere->couleur
+                    'id' => $matiere?->id,
+                    'nom' => $matiereNom,
+                    'code' => $matiere?->code,
+                    'couleur' => $matiere?->couleur ?? $seance->color
                 ],
                 'classe' => [
-                    'id' => $seance->classe->id,
-                    'nom' => $seance->classe->nom
+                    'id' => $classe?->id,
+                    'nom' => $classeNom
                 ],
-                'enseignant' => $seance->enseignant ? [
-                    'id' => $seance->enseignant->id,
-                    'nom' => $seance->enseignant->name
+                'enseignant' => $teacher ? [
+                    'id' => $teacherUser?->id ?? $teacher->id,
+                    'teacher_id' => $teacher->id,
+                    'nom' => $teacherUser?->name ?? $teacher->name ?? 'Enseignant'
                 ] : null,
                 'programmation' => [
-                    'date_cours' => $seance->date_cours,
+                    'date_cours' => $dateSeance,
+                    'date_seance' => $dateSeance,
                     'heure_debut' => $seance->heure_debut,
                     'heure_fin' => $seance->heure_fin,
                     'duree_minutes' => $seance->duree_minutes
                 ],
                 'salle' => $seance->salle ? [
-                    'id' => $seance->salle->id,
-                    'nom' => $seance->salle->nom,
-                    'capacite' => $seance->salle->capacite
+                    'id' => null,
+                    'nom' => $seance->salle,
+                    'capacite' => null
                 ] : null,
-                'type_cours' => $seance->type_cours,
-                'statut' => $seance->statut,
+                'type_cours' => $seance->type ?? $rawTypeSeance ?? 'course',
+                'statut' => $seance->is_active ? 'active' : 'inactive',
                 'lms_integration' => [
                     'can_start_visio' => auth()->user()->can('identity.teach'),
                     'visio_url' => null, // À remplir par le LMS

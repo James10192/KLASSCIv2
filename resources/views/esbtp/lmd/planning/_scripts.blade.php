@@ -147,11 +147,19 @@ window.lpvRow = function () {
             this.loaded = true;
         },
 
+        _finish(store = {}) {
+            window._lpvStore = store || {};
+            window.dispatchEvent(new CustomEvent('lpv:ready', { detail: window._lpvStore }));
+        },
+
         async _bulkFetch() {
             try {
                 const root = document.querySelector('[data-lpe-context]');
                 const ctx  = root ? JSON.parse(root.dataset.lpeContext || '{}') : {};
-                if (!ctx.filiere_id || !ctx.niveau_id || !ctx.semestre) return;
+                if (!ctx.filiere_id || !ctx.niveau_id || !ctx.semestre) {
+                    this._finish({});
+                    return;
+                }
 
                 const params = new URLSearchParams({
                     filiere_id: ctx.filiere_id,
@@ -162,12 +170,15 @@ window.lpvRow = function () {
                 const resp = await fetch(@json(route('esbtp.lmd.planning.volumes')) + '?' + params, {
                     headers: { 'X-Requested-With': 'XMLHttpRequest' },
                 });
-                if (!resp.ok) return;
+                if (!resp.ok) {
+                    this._finish({});
+                    return;
+                }
                 const json = await resp.json();
-                window._lpvStore = json.budgets || {};
-                window.dispatchEvent(new CustomEvent('lpv:ready', { detail: window._lpvStore }));
+                this._finish(json.budgets || {});
             } catch (e) {
                 console.error('lpvRow bulk fetch failed:', e);
+                this._finish({});
             }
         },
 
