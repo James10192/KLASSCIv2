@@ -5,7 +5,7 @@
 @section('hero_copy', 'Cette étape exécute les migrations, les permissions, les paramètres et les seeders nécessaires au tenant.')
 
 @section('content')
-<div id="app" class="grid-2">
+<div id="app" class="grid-2" v-cloak>
     <section class="card card-pad">
         <h2 class="section-title">Migrations et setup</h2>
         <p class="section-copy">Le processus est idempotent : il ne supprime pas les tables et n’utilise pas de remise à zéro destructrice.</p>

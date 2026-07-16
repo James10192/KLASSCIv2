@@ -5,7 +5,7 @@
 @section('hero_copy', 'Créez le premier compte de gestion. Le mot de passe est envoyé une seule fois et n’est jamais réaffiché.')
 
 @section('content')
-<div id="adminForm" class="grid-2">
+<div id="adminForm" class="grid-2" v-cloak>
     <section class="card card-pad">
         <h2 class="section-title">Premier accès de gestion</h2>
         <p class="section-copy">Ce compte reçoit les droits superAdmin et devient le point d’entrée pour configurer l’établissement.</p>

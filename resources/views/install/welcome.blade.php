@@ -5,7 +5,7 @@
 @section('hero_copy', 'Vérifiez le runtime, le dossier public et les dépendances avant de connecter la base de données.')
 
 @section('content')
-<div id="app" class="grid-2">
+<div id="app" class="grid-2" v-cloak>
     <section class="card card-pad">
         <h2 class="section-title">Prérequis serveur</h2>
         <p class="section-copy">Ces contrôles évitent de lancer une installation sur un dossier incomplet ou un runtime PHP incompatible.</p>

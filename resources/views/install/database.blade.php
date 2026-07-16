@@ -5,7 +5,7 @@
 @section('hero_copy', 'Renseignez les accès MySQL créés dans cPanel. La clé APP, l’URL et le tenant sont enregistrés dans le fichier .env.')
 
 @section('content')
-<div id="app" class="grid-2">
+<div id="app" class="grid-2" v-cloak>
     <section class="card card-pad">
         <h2 class="section-title">Connexion MySQL</h2>
         <p class="section-copy">KLASSCI teste la connexion avant d’écrire la configuration. Le mot de passe n’est pas stocké en session.</p>
