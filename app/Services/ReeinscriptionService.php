@@ -131,7 +131,12 @@ class ReeinscriptionService
             ->first();
 
         if (!$anneePrecedente) {
-            throw new \Exception("Aucune année universitaire précédente trouvée pour l'analyse de réinscription");
+            \Log::info("Analyse de réinscription ignorée: aucune année universitaire précédente trouvée", [
+                'annee_courante' => $anneeUniversitaireCourante->name,
+                'pour_reinscription_vers' => $anneeAcademique
+            ]);
+
+            return $this->emptyDecisionResult();
         }
 
         \Log::info("Analyse de réinscription", [
@@ -297,6 +302,16 @@ class ReeinscriptionService
                 'errors' => 0
             ];
         }
+    }
+
+    private function emptyDecisionResult(): array
+    {
+        return [
+            'passages' => [],
+            'rattrapages' => [],
+            'redoublements' => [],
+            'errors' => []
+        ];
     }
 
     public function proposerNouvellesClasses($etudiantId, $decision)

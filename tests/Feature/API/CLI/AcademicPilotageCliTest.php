@@ -79,10 +79,15 @@ class AcademicPilotageCliTest extends TestCase
         $user->id = 1;
         $request = Request::create('/', 'POST', $payload);
         $request->setUserResolver(fn () => new class($user, $abilities) extends User {
-            public function __construct(User $user, private array $abilities)
+            private array $abilities = [];
+
+            public function __construct(?User $user = null, array $abilities = [])
             {
                 parent::__construct();
-                $this->setRawAttributes($user->getAttributes());
+                $this->abilities = $abilities;
+                if ($user) {
+                    $this->setRawAttributes($user->getAttributes());
+                }
             }
 
             public function tokenCan(string $ability): bool

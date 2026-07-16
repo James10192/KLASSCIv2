@@ -40,9 +40,11 @@
                 @php
                     $icon = $stIcon[$m['statut']] ?? 'fa-circle';
                     $stLabel = $statutLabels[$m['statut']] ?? $m['statut'];
-                    $tip = $m['label'].' '.$m['annee'].' — '.($m['estimation'] ? 'Estimé ' : 'Net ').$fmt($m['net']).' FCFA — '.$stLabel;
+                    $isEstimation = (bool) ($m['estimation'] ?? false);
+                    $hasBulletin = (bool) ($m['has_bulletin'] ?? false);
+                    $tip = $m['label'].' '.$m['annee'].' — '.($isEstimation ? 'Estimé ' : 'Net ').$fmt($m['net']).' FCFA — '.$stLabel;
                 @endphp
-                @if($m['has_bulletin'])
+                @if($hasBulletin)
                     <a href="{{ route('esbtp.comptabilite.salaires.show', $m['bulletin_id']) }}"
                        class="pay-mchip pay-mchip--{{ $m['statut'] }}" title="{{ $tip }} · voir le bulletin">
                         <span class="pay-mchip-top"><span class="pay-mchip-m">{{ $m['short'] }}</span><i class="fas {{ $icon }}"></i></span>

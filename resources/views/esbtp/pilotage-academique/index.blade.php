@@ -136,7 +136,7 @@
                     <div class="cpa-note-cockpit">
                         <div class="cpa-note-command">
                             <div class="cpa-note-command-copy">
-                                <span class="cpa-eyebrow"><i class="fas fa-table-list"></i> Couverture des notes</span>
+                                <span class="cpa-eyebrow"><i class="fas fa-table-list"></i> Couverture des notes de la classe</span>
                                 <h3 x-text="noteCoverageStatusLabel()"></h3>
                                 <p x-text="noteCoverageClassLabel()"></p>
                             </div>
@@ -231,7 +231,7 @@
                                     </div>
                                 </div>
 
-                                <div class="cpa-note-subjects" x-show="data.note_coverage?.subjects?.length">
+                                <div class="cpa-note-subjects" x-show="data.note_coverage && data.note_coverage.subjects?.length">
                                     <template x-for="subject in noteCoverageSubjects()" :key="`subject-${subject.id || subject.name}`">
                                         <details class="cpa-note-subject">
                                             <summary>
@@ -296,7 +296,7 @@
 
                                 <details class="cpa-note-incomplete" x-show="data.note_coverage?.incomplete_students?.length">
                                     <summary>
-                                        <span>Étudiants incomplets</span>
+                                        <span>&Eacute;tudiants incomplets</span>
                                         <strong x-text="`${data.note_coverage.incomplete_students.length} étudiant(s)`"></strong>
                                     </summary>
                                     <div class="cpa-note-chip-list">

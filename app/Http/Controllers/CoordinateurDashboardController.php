@@ -462,7 +462,7 @@ class CoordinateurDashboardController extends Controller
     {
         try {
             $classesWithHighAbsence = DB::table('esbtp_attendances')
-                ->select('classe_id', DB::raw('COUNT(*) as total'), DB::raw('SUM(CASE WHEN status = "absent" THEN 1 ELSE 0 END) as absents'))
+                ->select('classe_id', DB::raw('COUNT(*) as total'), DB::raw('SUM(CASE WHEN statut = "absent" THEN 1 ELSE 0 END) as absents'))
                 ->whereDate('date', $date)
                 ->groupBy('classe_id')
                 ->havingRaw('(absents / total) > 0.3') // Plus de 30% d'absences
@@ -516,7 +516,7 @@ class CoordinateurDashboardController extends Controller
 
             foreach ($recentRollCalls as $seanceId => $attendances) {
                 $firstAttendance = $attendances->first();
-                $present = $attendances->where('status', 'present')->count();
+                $present = $attendances->where('statut', 'present')->count();
                 $total = $attendances->count();
                 
                 $activities[] = [
