@@ -6,25 +6,25 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title') - Installation KLASSCI</title>
     <link rel="shortcut icon" href="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" type="image/x-icon">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
         :root {
             --primary: #0453cb;
-            --primary-ink: #06357d;
-            --primary-soft: #eaf2ff;
-            --ink: #0f172a;
+            --primary-dark: #073b8c;
+            --primary-soft: #edf4ff;
+            --ink: #10213d;
             --muted: #64748b;
-            --quiet: #f6f9fe;
-            --line: #d8e2f1;
+            --canvas: #f3f6fb;
             --surface: #ffffff;
+            --line: #dce4ef;
             --success: #0f9f6e;
             --danger: #d92d20;
             --warning: #b45309;
-            --shadow-ring: 0 0 0 1px rgba(0, 0, 0, .06), 0 12px 28px rgba(15, 23, 42, .07);
-            --shadow-lift: 0 0 0 1px rgba(0, 0, 0, .06), 0 24px 60px rgba(15, 23, 42, .13);
+            --shadow-sm: 0 0 0 1px rgba(15, 23, 42, .06), 0 2px 8px rgba(15, 23, 42, .05);
+            --shadow-lg: 0 0 0 1px rgba(15, 23, 42, .05), 0 22px 60px rgba(30, 64, 175, .10);
         }
 
         * { box-sizing: border-box; }
@@ -37,149 +37,168 @@
         body {
             margin: 0;
             min-height: 100vh;
-            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             color: var(--ink);
-            background:
-                linear-gradient(90deg, rgba(4, 83, 203, .055) 1px, transparent 1px),
-                linear-gradient(180deg, rgba(4, 83, 203, .055) 1px, transparent 1px),
-                linear-gradient(180deg, #f9fbff 0%, #edf4ff 100%);
-            background-size: 44px 44px, 44px 44px, auto;
+            background: var(--canvas);
+            font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
         }
 
         a { color: inherit; text-decoration: none; }
         button, input { font: inherit; }
         code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
+        [v-cloak] { display: none !important; }
 
         .install-shell {
-            width: min(1240px, calc(100% - 28px));
-            margin: 20px auto;
+            width: min(1180px, calc(100% - 32px));
+            margin: 28px auto 48px;
         }
 
         .install-topbar {
-            min-height: 56px;
+            min-height: 52px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 16px;
-            margin-bottom: 14px;
+            gap: 24px;
+            margin-bottom: 18px;
         }
 
         .brand {
+            min-width: 0;
             display: flex;
             align-items: center;
             gap: 12px;
-            min-width: 0;
         }
 
         .brand-logo {
-            width: 48px;
-            height: 48px;
-            border-radius: 16px;
-            padding: 8px;
+            width: 44px;
+            height: 44px;
+            flex: 0 0 auto;
+            padding: 7px;
+            border-radius: 12px;
             background: #fff;
-            box-shadow: var(--shadow-ring);
+            box-shadow: var(--shadow-sm);
             outline: 1px solid rgba(0, 0, 0, .1);
             outline-offset: -1px;
         }
 
         .brand-title {
             margin: 0;
-            font-size: 1rem;
-            font-weight: 900;
-            letter-spacing: 0;
+            font-size: .95rem;
+            font-weight: 800;
         }
 
         .brand-subtitle {
             margin: 3px 0 0;
             color: var(--muted);
-            font-size: .86rem;
+            font-size: .8rem;
             text-wrap: pretty;
         }
 
-        .site-link {
+        .install-console {
+            overflow: hidden;
+            border-radius: 20px;
+            background: var(--surface);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .install-hero {
+            position: relative;
+            padding: 28px 32px 24px;
+            color: #fff;
+            background: var(--primary);
+        }
+
+        .install-hero::after {
+            content: "";
+            position: absolute;
+            inset: 0 0 0 auto;
+            width: 38%;
+            pointer-events: none;
+            opacity: .16;
+            background-image: linear-gradient(90deg, transparent 0 31px, rgba(255, 255, 255, .42) 32px);
+            background-size: 32px 100%;
+            mask-image: linear-gradient(90deg, transparent, #000);
+        }
+
+        .hero-main {
+            position: relative;
+            z-index: 1;
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) auto;
+            gap: 32px;
+            align-items: end;
+        }
+
+        .hero-kicker {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 0 0 10px;
+            color: rgba(255, 255, 255, .76);
+            font-size: .74rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+
+        .hero-kicker strong {
+            max-width: 440px;
+            overflow: hidden;
+            color: #fff;
+            text-overflow: ellipsis;
             white-space: nowrap;
         }
 
-        .install-console {
-            display: grid;
-            grid-template-columns: 292px minmax(0, 1fr);
-            min-height: calc(100vh - 104px);
-            overflow: hidden;
-            border-radius: 28px;
-            background: rgba(255, 255, 255, .86);
-            box-shadow: var(--shadow-lift);
-        }
-
-        .install-rail {
-            position: relative;
-            padding: 22px;
-            color: #fff;
-            background:
-                linear-gradient(180deg, rgba(4, 83, 203, .98), rgba(6, 53, 125, .98));
-        }
-
-        .rail-kicker {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            min-height: 32px;
-            padding: 0 10px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, .13);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
-            font-size: .76rem;
+        .hero-title {
+            margin: 0;
+            max-width: 680px;
+            font-size: clamp(1.65rem, 3vw, 2.45rem);
+            line-height: 1.08;
             font-weight: 800;
-        }
-
-        .rail-title {
-            margin: 18px 0 8px;
-            font-size: 1.55rem;
-            line-height: 1.05;
-            font-weight: 900;
-            letter-spacing: 0;
             text-wrap: balance;
         }
 
-        .rail-copy {
-            margin: 0;
+        .hero-copy {
+            max-width: 620px;
+            margin: 10px 0 0;
             color: rgba(255, 255, 255, .78);
             font-size: .9rem;
             line-height: 1.55;
             text-wrap: pretty;
         }
 
-        .rail-progress {
-            margin-top: 22px;
-            padding: 14px;
-            border-radius: 18px;
-            background: rgba(255, 255, 255, .11);
+        .hero-progress {
+            min-width: 190px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: rgba(0, 0, 0, .12);
             box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16);
         }
 
-        .rail-progress span {
+        .hero-progress-label {
             display: flex;
+            align-items: baseline;
             justify-content: space-between;
-            gap: 12px;
-            color: rgba(255, 255, 255, .74);
-            font-size: .76rem;
-            font-weight: 800;
+            gap: 16px;
+            color: rgba(255, 255, 255, .72);
+            font-size: .72rem;
+            font-weight: 700;
             text-transform: uppercase;
         }
 
-        .rail-progress strong {
+        .hero-progress-label strong {
             color: #fff;
+            font-size: .9rem;
             font-variant-numeric: tabular-nums;
         }
 
-        .rail-meter {
-            height: 8px;
-            margin-top: 10px;
+        .hero-meter {
+            height: 5px;
+            margin-top: 11px;
             overflow: hidden;
             border-radius: 999px;
-            background: rgba(255, 255, 255, .18);
+            background: rgba(255, 255, 255, .22);
         }
 
-        .rail-meter > i {
+        .hero-meter > i {
             display: block;
             width: var(--install-progress);
             height: 100%;
@@ -187,383 +206,157 @@
             background: #fff;
         }
 
-        .stepper {
-            display: grid;
-            gap: 8px;
-            margin-top: 18px;
-        }
-
-        .step {
-            min-height: 48px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 9px 10px;
-            border-radius: 15px;
-            color: rgba(255, 255, 255, .72);
-            font-size: .82rem;
-            font-weight: 800;
-        }
-
-        .step-icon {
-            width: 30px;
-            height: 30px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            flex: 0 0 auto;
-            border-radius: 11px;
-            background: rgba(255, 255, 255, .11);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14);
-        }
-
-        .step.is-active {
-            color: var(--primary-ink);
-            background: #fff;
-            box-shadow: 0 12px 24px rgba(0, 0, 0, .16);
-        }
-
-        .step.is-active .step-icon {
-            color: #fff;
-            background: var(--primary);
-            box-shadow: none;
-        }
-
-        .step.is-complete {
-            color: #fff;
-        }
-
-        .rail-note {
-            margin-top: 18px;
-            padding: 14px;
-            border-radius: 18px;
-            background: rgba(255, 255, 255, .09);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .13);
-        }
-
-        .rail-note strong {
-            display: block;
-            font-size: .86rem;
-        }
-
-        .rail-note p {
-            margin: 6px 0 0;
-            color: rgba(255, 255, 255, .73);
-            font-size: .8rem;
-            line-height: 1.5;
-            text-wrap: pretty;
-        }
-
-        .install-stage {
-            min-width: 0;
-            padding: 24px;
-        }
-
-        .stage-header {
-            display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-            gap: 18px;
-            align-items: stretch;
-            margin-bottom: 18px;
-        }
-
-        .stage-title {
-            padding: 22px;
-            border-radius: 22px;
-            background: #fff;
-            box-shadow: var(--shadow-ring);
-        }
-
-        .stage-title span {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            min-height: 30px;
-            padding: 0 10px;
-            border-radius: 999px;
-            color: var(--primary);
-            background: var(--primary-soft);
-            font-size: .76rem;
-            font-weight: 900;
-        }
-
-        .stage-title h1 {
-            margin: 14px 0 8px;
-            max-width: 760px;
-            font-size: clamp(1.7rem, 3.3vw, 3.25rem);
-            line-height: 1.02;
-            font-weight: 900;
-            letter-spacing: 0;
-            text-wrap: balance;
-        }
-
-        .stage-title p {
-            margin: 0;
-            max-width: 760px;
-            color: var(--muted);
-            line-height: 1.55;
-            text-wrap: pretty;
-        }
-
         .server-passport {
+            position: relative;
+            z-index: 1;
             display: grid;
-            gap: 10px;
-            padding: 16px;
-            border-radius: 22px;
-            background: var(--primary-ink);
-            color: #fff;
-            box-shadow: var(--shadow-ring);
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0;
+            margin-top: 24px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 255, 255, .18);
         }
 
         .passport-item {
-            padding: 12px;
-            border-radius: 15px;
-            background: rgba(255, 255, 255, .09);
-            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .11);
-        }
-
-        .passport-item span {
-            display: block;
-            color: rgba(255, 255, 255, .66);
-            font-size: .72rem;
-            font-weight: 900;
-            text-transform: uppercase;
-        }
-
-        .passport-item strong,
-        .passport-item code {
-            display: block;
-            margin-top: 7px;
-            color: #fff;
-            font-size: .9rem;
-            font-weight: 800;
-            white-space: normal;
-            overflow-wrap: anywhere;
-        }
-
-        .install-content {
             min-width: 0;
+            padding: 0 18px;
+            border-left: 1px solid rgba(255, 255, 255, .16);
         }
 
-        .card {
-            background: var(--surface);
-            border-radius: 20px;
-            box-shadow: var(--shadow-ring);
-        }
+        .passport-item:first-child { padding-left: 0; border-left: 0; }
+        .passport-item span { display: block; color: rgba(255, 255, 255, .62); font-size: .7rem; font-weight: 700; text-transform: uppercase; }
+        .passport-item strong, .passport-item code { display: block; margin-top: 6px; overflow-wrap: anywhere; color: #fff; font-size: .8rem; font-weight: 600; }
 
-        .card-pad { padding: 22px; }
-
-        .section-title {
-            margin: 0;
-            font-size: 1.12rem;
-            font-weight: 900;
-            letter-spacing: 0;
-            text-wrap: balance;
-        }
-
-        .section-copy {
-            margin: 7px 0 0;
-            color: var(--muted);
-            font-size: .92rem;
-            line-height: 1.55;
-            text-wrap: pretty;
-        }
-
-        .grid-2 {
+        .stepper {
+            position: relative;
             display: grid;
-            grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr);
-            gap: 18px;
-        }
-
-        .grid-fields {
-            display: grid;
-            grid-template-columns: repeat(2, minmax(0, 1fr));
-            gap: 16px;
-        }
-
-        .field label {
-            display: block;
-            margin-bottom: 7px;
-            color: #18335f;
-            font-size: .76rem;
-            font-weight: 900;
-            text-transform: uppercase;
-        }
-
-        .input {
-            width: 100%;
-            min-height: 46px;
-            padding: 0 14px;
-            border: 1px solid var(--line);
-            border-radius: 13px;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            padding: 0 24px;
+            border-bottom: 1px solid var(--line);
             background: #fff;
-            color: var(--ink);
-            outline: none;
-            transition-property: border-color, box-shadow, background-color;
-            transition-duration: .18s;
-            transition-timing-function: ease;
         }
 
-        .input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(4, 83, 203, .12);
-        }
-
-        .hint {
-            margin: 6px 0 0;
-            color: var(--muted);
-            font-size: .78rem;
-            line-height: 1.45;
-            text-wrap: pretty;
-        }
-
-        .btn-row {
+        .step {
+            position: relative;
+            min-height: 70px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            margin-top: 20px;
-        }
-
-        .btn {
-            min-height: 44px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            padding: 0 16px;
-            border-radius: 13px;
-            border: 1px solid transparent;
-            cursor: pointer;
-            font-weight: 900;
-            transition-property: transform, box-shadow, background-color, border-color, color;
-            transition-duration: .16s;
-            transition-timing-function: ease;
-        }
-
-        .btn:hover { transform: translateY(-1px); }
-        .btn:active { transform: scale(.96); }
-        .btn:disabled { cursor: not-allowed; opacity: .58; transform: none; }
-        .btn.is-disabled { cursor: not-allowed; opacity: .58; transform: none; pointer-events: auto; }
-        .btn-primary { background: var(--primary); color: #fff; box-shadow: 0 12px 22px rgba(4, 83, 203, .22); }
-        .btn-secondary { background: #fff; color: var(--primary); border-color: var(--line); }
-        .btn-success { background: var(--success); color: #fff; }
-
-        .notice {
-            display: flex;
-            gap: 12px;
-            padding: 14px;
-            border-radius: 16px;
-            background: var(--quiet);
-            box-shadow: 0 0 0 1px rgba(0, 0, 0, .06);
-            color: #18335f;
-            margin-top: 14px;
-        }
-
-        .notice.success { box-shadow: 0 0 0 1px rgba(15,159,110,.25); background: #ecfdf5; color: #07533d; }
-        .notice.error { box-shadow: 0 0 0 1px rgba(217,45,32,.25); background: #fff1f0; color: #8a1f16; }
-        .notice.warning { box-shadow: 0 0 0 1px rgba(180,83,9,.25); background: #fff7ed; color: #7c3a04; }
-
-        .check-list {
-            display: grid;
             gap: 10px;
-            margin-top: 16px;
+            padding: 12px 10px;
+            color: #8995a8;
+            font-size: .78rem;
+            font-weight: 700;
         }
 
-        .check-item {
-            display: flex;
-            align-items: flex-start;
-            gap: 12px;
-            padding: 14px;
-            border-radius: 16px;
-            background: #fff;
-            box-shadow:
-                0 0 0 1px rgba(0, 0, 0, .06),
-                0 1px 2px rgba(15, 23, 42, .04);
+        .step::after {
+            content: "";
+            position: absolute;
+            right: 10px;
+            bottom: -1px;
+            left: 10px;
+            height: 2px;
+            background: transparent;
         }
 
-        .check-icon {
+        .step-icon {
             width: 32px;
             height: 32px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 12px;
-            background: var(--primary-soft);
-            color: var(--primary);
             flex: 0 0 auto;
+            border-radius: 10px;
+            color: #7f8ca1;
+            background: #eef2f7;
         }
 
-        .check-item.ok .check-icon { background: #dcfce7; color: var(--success); }
-        .check-item.fail .check-icon { background: #fee2e2; color: var(--danger); }
+        .step.is-active { color: var(--ink); }
+        .step.is-active::after { background: var(--primary); }
+        .step.is-active .step-icon { color: #fff; background: var(--primary); box-shadow: 0 7px 16px rgba(4, 83, 203, .24); }
+        .step.is-complete { color: #4b5c75; }
+        .step.is-complete .step-icon { color: var(--primary); background: var(--primary-soft); }
 
-        .terminal {
-            min-height: 260px;
-            max-height: 420px;
-            overflow: auto;
-            padding: 16px;
-            border-radius: 16px;
-            background: #07111f;
-            color: #dbeafe;
-            font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-            font-size: .82rem;
-            line-height: 1.55;
-            white-space: pre-wrap;
-        }
+        .install-stage { padding: 34px 40px 40px; }
+        .stage-header { max-width: 760px; margin-bottom: 28px; }
+        .stage-number { display: flex; align-items: center; gap: 8px; margin-bottom: 9px; color: var(--primary); font-size: .74rem; font-weight: 800; text-transform: uppercase; }
+        .stage-title h1 { margin: 0; font-size: clamp(1.45rem, 2.6vw, 2rem); line-height: 1.15; font-weight: 800; text-wrap: balance; }
+        .stage-title p { margin: 9px 0 0; color: var(--muted); font-size: .9rem; line-height: 1.6; text-wrap: pretty; }
+        .install-content { min-width: 0; }
 
+        .grid-2 { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(260px, .75fr); gap: 32px; align-items: start; }
+        .card { min-width: 0; background: #fff; }
+        .card-pad { padding: 0; }
+        .grid-2 > aside.card { padding: 20px; border-radius: 14px; background: #f7f9fc; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .06); }
+        .section-title { margin: 0; font-size: 1.02rem; font-weight: 800; text-wrap: balance; }
+        .section-copy { margin: 7px 0 0; color: var(--muted); font-size: .86rem; line-height: 1.55; text-wrap: pretty; }
+
+        .grid-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+        .field label { display: block; margin-bottom: 7px; color: #31445f; font-size: .72rem; font-weight: 800; text-transform: uppercase; }
+        .input { width: 100%; min-height: 46px; padding: 0 13px; border: 1px solid #cfd9e7; border-radius: 9px; outline: none; color: var(--ink); background: #fff; transition-property: border-color, box-shadow, background-color; transition-duration: 160ms; transition-timing-function: ease-out; }
+        .input:hover { border-color: #aebdd1; }
+        .input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(4, 83, 203, .12); }
+        .hint { margin: 6px 0 0; color: var(--muted); font-size: .76rem; line-height: 1.45; text-wrap: pretty; }
+
+        .btn-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--line); }
+        .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 16px 0 18px; border: 0; border-radius: 9px; cursor: pointer; font-size: .82rem; font-weight: 800; transition-property: scale, box-shadow, background-color, color; transition-duration: 150ms; transition-timing-function: ease-out; }
+        .btn:hover { box-shadow: 0 7px 18px rgba(15, 23, 42, .10); }
+        .btn:active { scale: .96; }
+        .btn:focus-visible { outline: 3px solid rgba(4, 83, 203, .24); outline-offset: 2px; }
+        .btn:disabled, .btn.is-disabled { cursor: not-allowed; opacity: .52; box-shadow: none; scale: 1; }
+        .btn.is-disabled { pointer-events: auto; }
+        .btn-primary { color: #fff; background: var(--primary); box-shadow: 0 8px 20px rgba(4, 83, 203, .20); }
+        .btn-primary:hover { background: #0349b5; }
+        .btn-secondary { color: #29405f; background: #fff; box-shadow: var(--shadow-sm); }
+        .btn-success { color: #fff; background: var(--success); }
+        .site-link { white-space: nowrap; }
+
+        .notice { display: flex; align-items: flex-start; gap: 11px; margin-top: 16px; padding: 13px 14px; border-radius: 10px; color: #29405f; background: #f6f8fb; box-shadow: inset 0 0 0 1px rgba(15, 23, 42, .07); }
+        .notice > i { width: 18px; margin-top: 2px; text-align: center; }
+        .notice.success { color: #07533d; background: #ecfdf5; box-shadow: inset 0 0 0 1px rgba(15, 159, 110, .24); }
+        .notice.error { color: #8a1f16; background: #fff1f0; box-shadow: inset 0 0 0 1px rgba(217, 45, 32, .22); }
+        .notice.warning { color: #7c3a04; background: #fff7ed; box-shadow: inset 0 0 0 1px rgba(180, 83, 9, .22); }
+
+        .check-list { display: grid; gap: 0; margin-top: 14px; }
+        .check-item { display: flex; align-items: flex-start; gap: 11px; padding: 13px 0; border-bottom: 1px solid var(--line); }
+        .check-item:last-child { border-bottom: 0; }
+        .check-icon { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; border-radius: 9px; color: var(--primary); background: var(--primary-soft); }
+        .check-item.ok .check-icon { color: var(--success); background: #e7f8f2; }
+        .check-item.fail .check-icon { color: var(--danger); background: #fff0ef; }
+
+        .terminal { min-height: 260px; max-height: 420px; overflow: auto; padding: 16px; border-radius: 10px; color: #dbeafe; background: #07111f; font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; font-size: .8rem; line-height: 1.6; white-space: pre-wrap; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
         .terminal-line { margin: 0; }
         .muted { color: var(--muted); }
 
-        @media (max-width: 980px) {
-            .install-console,
-            .stage-header,
-            .grid-2,
-            .grid-fields {
-                grid-template-columns: 1fr;
-            }
+        .install-footer { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 17px 32px; border-top: 1px solid var(--line); color: var(--muted); background: #fbfcfe; font-size: .74rem; }
+        .install-footer strong { color: #40516a; }
 
-            .install-console {
-                min-height: auto;
-            }
-
-            .install-rail {
-                padding: 18px;
-            }
-
-            .stepper {
-                grid-template-columns: repeat(2, minmax(0, 1fr));
-            }
+        @media (max-width: 900px) {
+            .hero-main, .grid-2 { grid-template-columns: 1fr; }
+            .hero-progress { min-width: 0; }
+            .stepper { overflow-x: auto; grid-template-columns: repeat(5, minmax(150px, 1fr)); }
         }
 
         @media (max-width: 640px) {
-            .install-shell {
-                width: min(100% - 16px, 1240px);
-                margin-top: 8px;
-            }
+            .install-shell { width: min(100% - 16px, 1180px); margin: 8px auto 24px; }
+            .install-topbar { align-items: stretch; flex-direction: column; margin: 0 8px 14px; }
+            .site-link { width: 100%; }
+            .install-console { border-radius: 14px; }
+            .install-hero { padding: 24px 20px 20px; }
+            .hero-main { gap: 22px; }
+            .server-passport { grid-template-columns: 1fr; gap: 12px; }
+            .passport-item, .passport-item:first-child { padding: 0; border: 0; }
+            .stepper { padding: 0 10px; }
+            .install-stage { padding: 28px 20px 30px; }
+            .stage-header { margin-bottom: 24px; }
+            .grid-fields { grid-template-columns: 1fr; }
+            .btn-row { align-items: stretch; flex-direction: column; }
+            .btn-row > div { width: 100%; }
+            .btn { width: 100%; }
+            .install-footer { align-items: flex-start; flex-direction: column; padding: 16px 20px; }
+        }
 
-            .install-topbar,
-            .btn-row {
-                align-items: stretch;
-                flex-direction: column;
-            }
-
-            .site-link,
-            .btn {
-                width: 100%;
-            }
-
-            .install-stage {
-                padding: 14px;
-            }
-
-            .stage-title,
-            .card-pad {
-                padding: 18px;
-            }
-
-            .stepper {
-                grid-template-columns: 1fr;
-            }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
         }
     </style>
 </head>
@@ -571,10 +364,10 @@
     @php
         $steps = [
             'install.index' => ['label' => 'Préparer', 'icon' => 'fa-clipboard-check'],
-            'install.database' => ['label' => 'Base', 'icon' => 'fa-database'],
+            'install.database' => ['label' => 'Base de données', 'icon' => 'fa-database'],
             'install.migration' => ['label' => 'Initialiser', 'icon' => 'fa-terminal'],
-            'install.admin' => ['label' => 'Admin', 'icon' => 'fa-user-shield'],
-            'install.complete' => ['label' => 'Terminer', 'icon' => 'fa-lock'],
+            'install.admin' => ['label' => 'Administrateur', 'icon' => 'fa-user-shield'],
+            'install.complete' => ['label' => 'Finaliser', 'icon' => 'fa-lock'],
         ];
         $stepKeys = array_keys($steps);
         $currentRoute = collect($stepKeys)->first(fn ($route) => request()->routeIs($route)) ?? 'install.index';
@@ -595,81 +388,72 @@
     <main class="install-shell">
         <div class="install-topbar">
             <div class="brand">
-                <img class="brand-logo" src="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" alt="KLASSCI">
+                <img class="brand-logo" src="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" alt="Logo KLASSCI">
                 <div>
                     <p class="brand-title">KLASSCI</p>
-                    <p class="brand-subtitle">Mise en service d’un espace établissement</p>
+                    <p class="brand-subtitle">Assistant de mise en service établissement</p>
                 </div>
             </div>
             <a class="btn btn-secondary site-link" href="https://klassci.com" target="_blank" rel="noreferrer">
+                Découvrir KLASSCI
                 <i class="fas fa-arrow-up-right-from-square"></i>
-                Site KLASSCI
             </a>
         </div>
 
         <section class="install-console">
-            <aside class="install-rail">
-                <span class="rail-kicker"><i class="fas fa-building-columns"></i> {{ $tenantName }}</span>
-                <h1 class="rail-title">Dossier de mise en service</h1>
-                <p class="rail-copy">Suivez les contrôles dans l’ordre. Chaque étape écrit ou vérifie un élément nécessaire au tenant.</p>
-
-                <div class="rail-progress" style="--install-progress: {{ $progress }}%;">
-                    <span>
-                        <em>Avancement</em>
-                        <strong>{{ $currentIndex + 1 }}/{{ count($steps) }}</strong>
-                    </span>
-                    <div class="rail-meter"><i></i></div>
-                </div>
-
-                <nav class="stepper" aria-label="Étapes d’installation">
-                    @foreach($steps as $route => $step)
-                        @php
-                            $index = array_search($route, $stepKeys, true);
-                            $isActive = request()->routeIs($route);
-                            $isComplete = $index !== false && $index < $currentIndex;
-                        @endphp
-                        <div class="step {{ $isActive ? 'is-active' : '' }} {{ $isComplete ? 'is-complete' : '' }}">
-                            <span class="step-icon">
-                                <i class="fas {{ $isComplete ? 'fa-check' : $step['icon'] }}"></i>
-                            </span>
-                            {{ $step['label'] }}
+            <header class="install-hero">
+                <div class="hero-main">
+                    <div>
+                        <p class="hero-kicker"><i class="fas fa-building-columns"></i> Espace à configurer <strong>{{ $tenantName }}</strong></p>
+                        <h1 class="hero-title">Dossier de mise en service</h1>
+                        <p class="hero-copy">Un parcours guidé pour vérifier le serveur, connecter les données et ouvrir le premier accès de l’établissement.</p>
+                    </div>
+                    <div class="hero-progress" style="--install-progress: {{ $progress }}%;">
+                        <div class="hero-progress-label">
+                            <span>Progression</span>
+                            <strong>{{ $currentIndex + 1 }} / {{ count($steps) }}</strong>
                         </div>
-                    @endforeach
-                </nav>
-
-                <div class="rail-note">
-                    <strong>Installation sans rechargement inutile</strong>
-                    <p>Les contrôles et mutations utilisent des réponses JSON lisibles, avec messages d’erreur actionnables.</p>
+                        <div class="hero-meter"><i></i></div>
+                    </div>
                 </div>
-            </aside>
+
+                <aside class="server-passport" aria-label="Contexte du serveur">
+                    <div class="passport-item"><span>Domaine détecté</span><strong>{{ $host }}</strong></div>
+                    <div class="passport-item"><span>Dossier public attendu</span><code>{{ $tenantDocumentRoot }}</code></div>
+                    <div class="passport-item"><span>URL publique</span><code>{{ $tenantUrl }}</code></div>
+                </aside>
+            </header>
+
+            <nav class="stepper" aria-label="Étapes d’installation">
+                @foreach($steps as $route => $step)
+                    @php
+                        $index = array_search($route, $stepKeys, true);
+                        $isActive = request()->routeIs($route);
+                        $isComplete = $index !== false && $index < $currentIndex;
+                    @endphp
+                    <div class="step {{ $isActive ? 'is-active' : '' }} {{ $isComplete ? 'is-complete' : '' }}" aria-current="{{ $isActive ? 'step' : 'false' }}">
+                        <span class="step-icon"><i class="fas {{ $isComplete ? 'fa-check' : $step['icon'] }}"></i></span>
+                        <span>{{ $step['label'] }}</span>
+                    </div>
+                @endforeach
+            </nav>
 
             <section class="install-stage">
                 <header class="stage-header">
+                    <div class="stage-number"><i class="fas {{ $steps[$currentRoute]['icon'] }}"></i> Étape {{ $currentIndex + 1 }} sur {{ count($steps) }}</div>
                     <div class="stage-title">
-                        <span><i class="fas {{ $steps[$currentRoute]['icon'] }}"></i> Étape {{ $currentIndex + 1 }}</span>
-                        <h1>@yield('hero_title', 'Installation tenant')</h1>
-                        <p>@yield('hero_copy', 'Configurez le tenant Laravel après la création du sous-domaine, du dossier cPanel et de la base MySQL.')</p>
+                        <h1>@yield('hero_title', 'Installation du tenant')</h1>
+                        <p>@yield('hero_copy', 'Configurez cet espace après la création du sous-domaine, du dossier cPanel et de la base MySQL.')</p>
                     </div>
-                    <aside class="server-passport" aria-label="Contexte serveur">
-                        <div class="passport-item">
-                            <span>Domaine détecté</span>
-                            <strong>{{ $host }}</strong>
-                        </div>
-                        <div class="passport-item">
-                            <span>Dossier public attendu</span>
-                            <code>{{ $tenantDocumentRoot }}</code>
-                        </div>
-                        <div class="passport-item">
-                            <span>URL publique</span>
-                            <code>{{ $tenantUrl }}</code>
-                        </div>
-                    </aside>
                 </header>
 
-                <div class="install-content">
-                    @yield('content')
-                </div>
+                <div class="install-content">@yield('content')</div>
             </section>
+
+            <footer class="install-footer">
+                <span><strong>Installation sécurisée</strong> · Les secrets ne sont jamais affichés dans les réponses.</span>
+                <span>Les opérations techniques retournent un état JSON vérifiable.</span>
+            </footer>
         </section>
     </main>
 

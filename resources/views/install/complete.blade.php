@@ -1,7 +1,7 @@
 @extends('install.layout')
 
 @section('title', 'Finalisation')
-@section('hero_title', 'UIC est prêt')
+@section('hero_title', 'L’espace est prêt')
 @section('hero_copy', 'Validez la fin de l’installation pour verrouiller l’assistant et ouvrir la connexion KLASSCI.')
 
 @section('content')
@@ -66,7 +66,7 @@
             </div>
             <div class="check-item">
                 <span class="check-icon"><i class="fas fa-calendar-days"></i></span>
-                <div><strong>Année universitaire</strong><p class="hint">Créez ou activez l’année de travail de l’UIC.</p></div>
+                <div><strong>Année universitaire</strong><p class="hint">Créez ou activez l’année de travail de l’établissement.</p></div>
             </div>
             <div class="check-item">
                 <span class="check-icon"><i class="fas fa-layer-group"></i></span>
