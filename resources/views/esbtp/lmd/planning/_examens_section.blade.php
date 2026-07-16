@@ -15,13 +15,99 @@
 
 @php
     use App\Enums\TypeSeance;
+    use Carbon\Carbon;
+    use Carbon\CarbonInterface;
 
     $examensRows = $examensRows ?? collect();
     $now = now();
 
+    $normalizeTypeSeance = static function ($value): ?TypeSeance {
+        if ($value instanceof TypeSeance) {
+            return $value;
+        }
+
+        if ($value instanceof \BackedEnum) {
+            $value = $value->value;
+        }
+
+        if (is_string($value) || is_int($value)) {
+            return TypeSeance::tryFrom((string) $value);
+        }
+
+        return null;
+    };
+
+    $formatTypeSeance = static function ($value, ?TypeSeance $typeSeance): string {
+        if ($typeSeance) {
+            return $typeSeance->label();
+        }
+
+        if ($value instanceof \BackedEnum) {
+            return (string) $value->value;
+        }
+
+        if (is_scalar($value)) {
+            return (string) $value;
+        }
+
+        return 'Type inconnu';
+    };
+
+    $parseDate = static function ($value): ?Carbon {
+        if (!$value) {
+            return null;
+        }
+
+        try {
+            return $value instanceof CarbonInterface ? $value->copy() : Carbon::parse($value);
+        } catch (\Throwable) {
+            return null;
+        }
+    };
+
+    $formatDate = static function ($value) use ($parseDate): string {
+        return $parseDate($value)?->format('d/m/Y') ?? '—';
+    };
+
+    $formatTime = static function ($value): string {
+        if (!$value) {
+            return '—';
+        }
+
+        try {
+            $time = $value instanceof CarbonInterface ? $value : Carbon::parse((string) $value);
+            return $time->format('H:i');
+        } catch (\Throwable) {
+            return is_scalar($value) ? (string) $value : '—';
+        }
+    };
+
+    $parseExamEnd = static function ($exam) use ($parseDate): ?Carbon {
+        $date = $parseDate(data_get($exam, 'date_seance'));
+        if (!$date) {
+            return null;
+        }
+
+        $timeValue = data_get($exam, 'heure_fin');
+        if (!$timeValue) {
+            return $date->endOfDay();
+        }
+
+        try {
+            $time = $timeValue instanceof CarbonInterface ? $timeValue : Carbon::parse((string) $timeValue);
+            return $date->setTime($time->hour, $time->minute, $time->second);
+        } catch (\Throwable) {
+            return $date->endOfDay();
+        }
+    };
+
+    $isExamPast = static function ($exam) use ($parseExamEnd, $now): bool {
+        return ($parseExamEnd($exam)?->lt($now)) ?? false;
+    };
+
     // KPIs hero
     $totalExamens = $examensRows->count();
-    $examensPasses = $examensRows->filter(fn ($s) => $s->date_seance && $s->date_seance < $now)->count();
+    $examensPasses = $examensRows->filter($isExamPast)->count();
     $examensAvenir = $totalExamens - $examensPasses;
     $surveillantsAssignes = $examensRows->pluck('teacher_id')->filter()->unique()->count();
 @endphp
@@ -106,15 +192,17 @@
                 <tbody>
                     @foreach($examensRows as $exam)
                         @php
-                            $typeSeance = TypeSeance::tryFrom($exam->type_seance);
+                            $rawTypeSeance = data_get($exam, 'type_seance');
+                            $typeSeance = $normalizeTypeSeance($rawTypeSeance);
+                            $typeSeanceLabel = $formatTypeSeance($rawTypeSeance, $typeSeance);
                             $badgeStyle = $typeSeance?->badgeInlineStyle() ?? '';
                             $badgeIcon = $typeSeance?->badgeIcon() ?? 'fa-file';
-                            $isPasse = $exam->date_seance && $exam->date_seance < $now;
+                            $isPasse = $isExamPast($exam);
                         @endphp
                         <tr>
                             <td>
-                                <strong>{{ $exam->date_seance ? \Carbon\Carbon::parse($exam->date_seance)->format('d/m/Y') : '—' }}</strong>
-                                <small class="text-muted">{{ $exam->heure_debut ?? '—' }} → {{ $exam->heure_fin ?? '—' }}</small>
+                                <strong>{{ $formatDate(data_get($exam, 'date_seance')) }}</strong>
+                                <small class="text-muted">{{ $formatTime(data_get($exam, 'heure_debut')) }} → {{ $formatTime(data_get($exam, 'heure_fin')) }}</small>
                             </td>
                             <td>
                                 @if($exam->matiere)
@@ -139,7 +227,7 @@
                             <td>
                                 <span class="lpx-badge" style="{{ $badgeStyle }}">
                                     <i class="fas {{ $badgeIcon }}"></i>
-                                    {{ $typeSeance?->label() ?? $exam->type_seance }}
+                                    {{ $typeSeanceLabel }}
                                 </span>
                             </td>
                             <td>

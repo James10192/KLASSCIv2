@@ -7,16 +7,19 @@ use PHPUnit\Framework\TestCase;
 
 class TypeSeanceTest extends TestCase
 {
-    public function test_values_returns_all_seven_strings(): void
+    public function test_values_returns_all_type_seance_strings(): void
     {
         $values = TypeSeance::values();
-        $this->assertCount(7, $values);
+        $this->assertCount(10, $values);
         $this->assertContains('CM', $values);
         $this->assertContains('TD', $values);
         $this->assertContains('TP', $values);
         $this->assertContains('PROJET', $values);
         $this->assertContains('TPE', $values);
         $this->assertContains('EXAMEN', $values);
+        $this->assertContains('PARTIEL', $values);
+        $this->assertContains('RATTRAPAGE', $values);
+        $this->assertContains('SOUTENANCE', $values);
         $this->assertContains('AUTRE', $values);
     }
 
@@ -46,6 +49,9 @@ class TypeSeanceTest extends TestCase
         $this->assertSame(TypeSeance::TD,  TypeSeance::fromLegacy('TD'));
         $this->assertSame(TypeSeance::TP,  TypeSeance::fromLegacy('TP'));
         $this->assertSame(TypeSeance::TPE, TypeSeance::fromLegacy('TPE'));
+        $this->assertSame(TypeSeance::PARTIEL, TypeSeance::fromLegacy('PARTIEL'));
+        $this->assertSame(TypeSeance::RATTRAPAGE, TypeSeance::fromLegacy('RATTRAPAGE'));
+        $this->assertSame(TypeSeance::SOUTENANCE, TypeSeance::fromLegacy('SOUTENANCE'));
     }
 
     public function test_from_legacy_maps_unknown_to_autre(): void
@@ -65,6 +71,9 @@ class TypeSeanceTest extends TestCase
         $this->assertFalse(TypeSeance::PROJET->isVolumeTracked());
         $this->assertFalse(TypeSeance::TPE->isVolumeTracked());
         $this->assertFalse(TypeSeance::EXAMEN->isVolumeTracked());
+        $this->assertFalse(TypeSeance::PARTIEL->isVolumeTracked());
+        $this->assertFalse(TypeSeance::RATTRAPAGE->isVolumeTracked());
+        $this->assertFalse(TypeSeance::SOUTENANCE->isVolumeTracked());
         $this->assertFalse(TypeSeance::AUTRE->isVolumeTracked());
     }
 
