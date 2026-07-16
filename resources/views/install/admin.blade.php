@@ -7,8 +7,8 @@
 @section('content')
 <div id="adminForm" class="grid-2">
     <section class="card card-pad">
-        <h2 class="section-title">Compte administrateur</h2>
-        <p class="section-copy">Utilisez une adresse nominative et un mot de passe conservé hors de KLASSCI.</p>
+        <h2 class="section-title">Premier accès de gestion</h2>
+        <p class="section-copy">Ce compte reçoit les droits superAdmin et devient le point d’entrée pour configurer l’établissement.</p>
 
         <form @submit.prevent="createAdmin">
             <div class="grid-fields" style="margin-top:18px;">
@@ -37,7 +37,7 @@
 
             <div v-if="error" class="notice error">
                 <i class="fas fa-triangle-exclamation"></i>
-                <div v-html="error"></div>
+                <div>@{{ error }}</div>
             </div>
             <div v-if="success" class="notice success">
                 <i class="fas fa-check"></i>
@@ -67,19 +67,20 @@
     </section>
 
     <aside class="card card-pad">
-        <h2 class="section-title">Sécurité</h2>
+        <h2 class="section-title">Ce que KLASSCI va faire</h2>
+        <p class="section-copy">L’installation reste ouverte tant que cette étape n’est pas finalisée.</p>
         <div class="check-list">
             <div class="check-item ok">
                 <span class="check-icon"><i class="fas fa-key"></i></span>
-                <div><strong>Mot de passe non affiché</strong><p class="hint">KLASSCI ne le remet pas dans la page de fin.</p></div>
+                <div><strong>Protéger le mot de passe</strong><p class="hint">Le mot de passe est chiffré et jamais réaffiché après l’enregistrement.</p></div>
             </div>
             <div class="check-item ok">
                 <span class="check-icon"><i class="fas fa-user-shield"></i></span>
-                <div><strong>Rôle superAdmin</strong><p class="hint">Le rôle est attribué au premier compte créé.</p></div>
+                <div><strong>Attribuer le rôle superAdmin</strong><p class="hint">Le premier utilisateur peut ensuite créer les autres comptes de l’équipe.</p></div>
             </div>
             <div class="check-item ok">
                 <span class="check-icon"><i class="fas fa-lock"></i></span>
-                <div><strong>Verrouillage final</strong><p class="hint">La finalisation active le verrou install.lock.</p></div>
+                <div><strong>Verrouiller l’assistant</strong><p class="hint">Après finalisation, l’accès `/install` est fermé et redirige vers la connexion.</p></div>
             </div>
         </div>
     </aside>

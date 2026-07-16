@@ -6,70 +6,78 @@
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>@yield('title') - Installation KLASSCI</title>
     <link rel="shortcut icon" href="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" type="image/x-icon">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
         :root {
             --primary: #0453cb;
-            --primary-2: #2f7fe7;
+            --primary-ink: #06357d;
+            --primary-soft: #eaf2ff;
             --ink: #0f172a;
             --muted: #64748b;
+            --quiet: #f6f9fe;
             --line: #d8e2f1;
             --surface: #ffffff;
-            --soft: #f4f8ff;
             --success: #0f9f6e;
             --danger: #d92d20;
             --warning: #b45309;
-            --radius: 16px;
+            --shadow-ring: 0 0 0 1px rgba(0, 0, 0, .06), 0 12px 28px rgba(15, 23, 42, .07);
+            --shadow-lift: 0 0 0 1px rgba(0, 0, 0, .06), 0 24px 60px rgba(15, 23, 42, .13);
         }
 
         * { box-sizing: border-box; }
+
+        html {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
 
         body {
             margin: 0;
             min-height: 100vh;
             font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
             color: var(--ink);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
             background:
-                radial-gradient(circle at top left, rgba(4, 83, 203, .12), transparent 32rem),
-                linear-gradient(180deg, #f7fbff 0%, #edf4ff 100%);
+                linear-gradient(90deg, rgba(4, 83, 203, .055) 1px, transparent 1px),
+                linear-gradient(180deg, rgba(4, 83, 203, .055) 1px, transparent 1px),
+                linear-gradient(180deg, #f9fbff 0%, #edf4ff 100%);
+            background-size: 44px 44px, 44px 44px, auto;
         }
 
         a { color: inherit; text-decoration: none; }
         button, input { font: inherit; }
+        code { font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace; }
 
         .install-shell {
-            width: min(1180px, calc(100% - 28px));
-            margin: 24px auto;
+            width: min(1240px, calc(100% - 28px));
+            margin: 20px auto;
         }
 
         .install-topbar {
+            min-height: 56px;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 16px;
-            margin-bottom: 18px;
+            margin-bottom: 14px;
         }
 
         .brand {
             display: flex;
             align-items: center;
             gap: 12px;
+            min-width: 0;
         }
 
         .brand-logo {
             width: 48px;
             height: 48px;
-            border-radius: 14px;
-            background: var(--surface);
-            box-shadow:
-                0 0 0 1px rgba(0, 0, 0, .06),
-                0 14px 30px rgba(15, 23, 42, .12);
+            border-radius: 16px;
             padding: 8px;
+            background: #fff;
+            box-shadow: var(--shadow-ring);
             outline: 1px solid rgba(0, 0, 0, .1);
             outline-offset: -1px;
         }
@@ -77,144 +85,270 @@
         .brand-title {
             margin: 0;
             font-size: 1rem;
-            font-weight: 800;
+            font-weight: 900;
             letter-spacing: 0;
         }
 
         .brand-subtitle {
             margin: 3px 0 0;
             color: var(--muted);
-            font-size: .875rem;
+            font-size: .86rem;
+            text-wrap: pretty;
         }
 
-        .install-frame {
-            background: rgba(255, 255, 255, 0.82);
-            border-radius: 24px;
-            box-shadow:
-                0 0 0 1px rgba(0, 0, 0, .06),
-                0 24px 70px rgba(15, 23, 42, .12);
-            overflow: hidden;
+        .site-link {
+            white-space: nowrap;
         }
 
-        .install-hero {
+        .install-console {
             display: grid;
-            grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
-            gap: 18px;
-            align-items: center;
-            padding: 24px;
-            background:
-                linear-gradient(135deg, rgba(4, 83, 203, .98), rgba(47, 127, 231, .96));
+            grid-template-columns: 292px minmax(0, 1fr);
+            min-height: calc(100vh - 104px);
+            overflow: hidden;
+            border-radius: 28px;
+            background: rgba(255, 255, 255, .86);
+            box-shadow: var(--shadow-lift);
+        }
+
+        .install-rail {
+            position: relative;
+            padding: 22px;
             color: #fff;
+            background:
+                linear-gradient(180deg, rgba(4, 83, 203, .98), rgba(6, 53, 125, .98));
         }
 
-        .hero-main {
-            min-width: 0;
-        }
-
-        .hero-kicker {
+        .rail-kicker {
             display: inline-flex;
             align-items: center;
             gap: 8px;
             min-height: 32px;
-            padding: 0 12px;
-            border: 1px solid rgba(255,255,255,.28);
+            padding: 0 10px;
             border-radius: 999px;
-            background: rgba(255,255,255,.12);
-            font-size: .82rem;
-            font-weight: 700;
-            max-width: 100%;
+            background: rgba(255, 255, 255, .13);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .18);
+            font-size: .76rem;
+            font-weight: 800;
         }
 
-        .install-hero h1 {
-            margin: 14px 0 8px;
-            font-size: clamp(1.8rem, 4vw, 3.2rem);
-            line-height: 1.04;
+        .rail-title {
+            margin: 18px 0 8px;
+            font-size: 1.55rem;
+            line-height: 1.05;
+            font-weight: 900;
             letter-spacing: 0;
             text-wrap: balance;
         }
 
-        .install-hero p {
+        .rail-copy {
             margin: 0;
-            max-width: 720px;
-            color: rgba(255,255,255,.88);
+            color: rgba(255, 255, 255, .78);
+            font-size: .9rem;
+            line-height: 1.55;
             text-wrap: pretty;
         }
 
-        .hero-domain {
-            display: grid;
-            gap: 12px;
-            padding: 16px;
+        .rail-progress {
+            margin-top: 22px;
+            padding: 14px;
             border-radius: 18px;
-            background: rgba(255,255,255,.12);
-            box-shadow:
-                inset 0 0 0 1px rgba(255,255,255,.22),
-                0 18px 40px rgba(0,0,0,.1);
-            font-variant-numeric: tabular-nums;
+            background: rgba(255, 255, 255, .11);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16);
         }
 
-        .hero-domain-item span {
-            display: block;
-            color: rgba(255,255,255,.72);
-            font-size: .78rem;
-            font-weight: 700;
+        .rail-progress span {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            color: rgba(255, 255, 255, .74);
+            font-size: .76rem;
+            font-weight: 800;
             text-transform: uppercase;
         }
 
-        .hero-domain-item strong {
-            display: block;
-            margin-top: 8px;
-            font-size: 1rem;
-            overflow-wrap: anywhere;
+        .rail-progress strong {
+            color: #fff;
+            font-variant-numeric: tabular-nums;
         }
 
-        .hero-domain-item code {
+        .rail-meter {
+            height: 8px;
+            margin-top: 10px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, .18);
+        }
+
+        .rail-meter > i {
             display: block;
-            margin-top: 8px;
-            font-size: .9rem;
+            width: var(--install-progress);
+            height: 100%;
+            border-radius: inherit;
+            background: #fff;
+        }
+
+        .stepper {
+            display: grid;
+            gap: 8px;
+            margin-top: 18px;
+        }
+
+        .step {
+            min-height: 48px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 9px 10px;
+            border-radius: 15px;
+            color: rgba(255, 255, 255, .72);
+            font-size: .82rem;
+            font-weight: 800;
+        }
+
+        .step-icon {
+            width: 30px;
+            height: 30px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex: 0 0 auto;
+            border-radius: 11px;
+            background: rgba(255, 255, 255, .11);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14);
+        }
+
+        .step.is-active {
+            color: var(--primary-ink);
+            background: #fff;
+            box-shadow: 0 12px 24px rgba(0, 0, 0, .16);
+        }
+
+        .step.is-active .step-icon {
             color: #fff;
+            background: var(--primary);
+            box-shadow: none;
+        }
+
+        .step.is-complete {
+            color: #fff;
+        }
+
+        .rail-note {
+            margin-top: 18px;
+            padding: 14px;
+            border-radius: 18px;
+            background: rgba(255, 255, 255, .09);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .13);
+        }
+
+        .rail-note strong {
+            display: block;
+            font-size: .86rem;
+        }
+
+        .rail-note p {
+            margin: 6px 0 0;
+            color: rgba(255, 255, 255, .73);
+            font-size: .8rem;
+            line-height: 1.5;
+            text-wrap: pretty;
+        }
+
+        .install-stage {
+            min-width: 0;
+            padding: 24px;
+        }
+
+        .stage-header {
+            display: grid;
+            grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+            gap: 18px;
+            align-items: stretch;
+            margin-bottom: 18px;
+        }
+
+        .stage-title {
+            padding: 22px;
+            border-radius: 22px;
+            background: #fff;
+            box-shadow: var(--shadow-ring);
+        }
+
+        .stage-title span {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 30px;
+            padding: 0 10px;
+            border-radius: 999px;
+            color: var(--primary);
+            background: var(--primary-soft);
+            font-size: .76rem;
+            font-weight: 900;
+        }
+
+        .stage-title h1 {
+            margin: 14px 0 8px;
+            max-width: 760px;
+            font-size: clamp(1.7rem, 3.3vw, 3.25rem);
+            line-height: 1.02;
+            font-weight: 900;
+            letter-spacing: 0;
+            text-wrap: balance;
+        }
+
+        .stage-title p {
+            margin: 0;
+            max-width: 760px;
+            color: var(--muted);
+            line-height: 1.55;
+            text-wrap: pretty;
+        }
+
+        .server-passport {
+            display: grid;
+            gap: 10px;
+            padding: 16px;
+            border-radius: 22px;
+            background: var(--primary-ink);
+            color: #fff;
+            box-shadow: var(--shadow-ring);
+        }
+
+        .passport-item {
+            padding: 12px;
+            border-radius: 15px;
+            background: rgba(255, 255, 255, .09);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .11);
+        }
+
+        .passport-item span {
+            display: block;
+            color: rgba(255, 255, 255, .66);
+            font-size: .72rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .passport-item strong,
+        .passport-item code {
+            display: block;
+            margin-top: 7px;
+            color: #fff;
+            font-size: .9rem;
+            font-weight: 800;
             white-space: normal;
             overflow-wrap: anywhere;
         }
 
-        .install-body { padding: 24px; }
-
-        .stepper {
-            display: grid;
-            grid-template-columns: repeat(5, minmax(0, 1fr));
-            gap: 8px;
-            margin-bottom: 20px;
-        }
-
-        .step {
-            min-height: 44px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
-            border-radius: 14px;
-            color: var(--muted);
-            background: var(--soft);
-            box-shadow:
-                0 0 0 1px rgba(0, 0, 0, .06),
-                0 1px 2px rgba(15, 23, 42, .04);
-            font-size: .82rem;
-            font-weight: 700;
-        }
-
-        .step.is-active {
-            color: #fff;
-            background: var(--primary);
-            box-shadow:
-                0 0 0 1px rgba(4, 83, 203, .35),
-                0 10px 18px rgba(4, 83, 203, .18);
+        .install-content {
+            min-width: 0;
         }
 
         .card {
             background: var(--surface);
-            border-radius: var(--radius);
-            box-shadow:
-                0 0 0 1px rgba(0, 0, 0, .06),
-                0 14px 32px rgba(15, 23, 42, .06);
+            border-radius: 20px;
+            box-shadow: var(--shadow-ring);
         }
 
         .card-pad { padding: 22px; }
@@ -222,21 +356,22 @@
         .section-title {
             margin: 0;
             font-size: 1.12rem;
-            font-weight: 800;
+            font-weight: 900;
             letter-spacing: 0;
             text-wrap: balance;
         }
 
         .section-copy {
-            margin: 6px 0 0;
+            margin: 7px 0 0;
             color: var(--muted);
             font-size: .92rem;
+            line-height: 1.55;
             text-wrap: pretty;
         }
 
         .grid-2 {
             display: grid;
-            grid-template-columns: minmax(0, 1.35fr) minmax(300px, .65fr);
+            grid-template-columns: minmax(0, 1.25fr) minmax(280px, .75fr);
             gap: 18px;
         }
 
@@ -249,22 +384,24 @@
         .field label {
             display: block;
             margin-bottom: 7px;
-            font-size: .78rem;
-            font-weight: 800;
             color: #18335f;
+            font-size: .76rem;
+            font-weight: 900;
             text-transform: uppercase;
         }
 
         .input {
             width: 100%;
-            min-height: 44px;
-            padding: 0 13px;
+            min-height: 46px;
+            padding: 0 14px;
             border: 1px solid var(--line);
-            border-radius: 12px;
+            border-radius: 13px;
             background: #fff;
             color: var(--ink);
             outline: none;
-            transition: border-color .18s ease, box-shadow .18s ease, background-color .18s ease;
+            transition-property: border-color, box-shadow, background-color;
+            transition-duration: .18s;
+            transition-timing-function: ease;
         }
 
         .input:focus {
@@ -276,6 +413,8 @@
             margin: 6px 0 0;
             color: var(--muted);
             font-size: .78rem;
+            line-height: 1.45;
+            text-wrap: pretty;
         }
 
         .btn-row {
@@ -293,12 +432,12 @@
             justify-content: center;
             gap: 8px;
             padding: 0 16px;
-            border-radius: 12px;
+            border-radius: 13px;
             border: 1px solid transparent;
             cursor: pointer;
-            font-weight: 800;
-            transition-property: transform, box-shadow, background-color, border-color;
-            transition-duration: .18s;
+            font-weight: 900;
+            transition-property: transform, box-shadow, background-color, border-color, color;
+            transition-duration: .16s;
             transition-timing-function: ease;
         }
 
@@ -314,8 +453,8 @@
             display: flex;
             gap: 12px;
             padding: 14px;
-            border-radius: 14px;
-            background: var(--soft);
+            border-radius: 16px;
+            background: var(--quiet);
             box-shadow: 0 0 0 1px rgba(0, 0, 0, .06);
             color: #18335f;
             margin-top: 14px;
@@ -336,7 +475,7 @@
             align-items: flex-start;
             gap: 12px;
             padding: 14px;
-            border-radius: 14px;
+            border-radius: 16px;
             background: #fff;
             box-shadow:
                 0 0 0 1px rgba(0, 0, 0, .06),
@@ -344,13 +483,13 @@
         }
 
         .check-icon {
-            width: 30px;
-            height: 30px;
+            width: 32px;
+            height: 32px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            border-radius: 10px;
-            background: #eaf2ff;
+            border-radius: 12px;
+            background: var(--primary-soft);
             color: var(--primary);
             flex: 0 0 auto;
         }
@@ -363,7 +502,7 @@
             max-height: 420px;
             overflow: auto;
             padding: 16px;
-            border-radius: 14px;
+            border-radius: 16px;
             background: #07111f;
             color: #dbeafe;
             font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
@@ -375,60 +514,73 @@
         .terminal-line { margin: 0; }
         .muted { color: var(--muted); }
 
-        .setup-strip {
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: 10px;
-            margin-bottom: 18px;
+        @media (max-width: 980px) {
+            .install-console,
+            .stage-header,
+            .grid-2,
+            .grid-fields {
+                grid-template-columns: 1fr;
+            }
+
+            .install-console {
+                min-height: auto;
+            }
+
+            .install-rail {
+                padding: 18px;
+            }
+
+            .stepper {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
         }
 
-        .setup-fact {
-            min-height: 72px;
-            padding: 14px;
-            border-radius: 16px;
-            background: #fff;
-            box-shadow:
-                0 0 0 1px rgba(0, 0, 0, .06),
-                0 10px 22px rgba(15, 23, 42, .05);
-        }
+        @media (max-width: 640px) {
+            .install-shell {
+                width: min(100% - 16px, 1240px);
+                margin-top: 8px;
+            }
 
-        .setup-fact span {
-            display: block;
-            color: var(--muted);
-            font-size: .72rem;
-            font-weight: 800;
-            text-transform: uppercase;
-        }
+            .install-topbar,
+            .btn-row {
+                align-items: stretch;
+                flex-direction: column;
+            }
 
-        .setup-fact strong,
-        .setup-fact code {
-            display: block;
-            margin-top: 8px;
-            color: var(--ink);
-            font-size: .92rem;
-            font-weight: 800;
-            white-space: normal;
-            overflow-wrap: anywhere;
-        }
+            .site-link,
+            .btn {
+                width: 100%;
+            }
 
-        @media (max-width: 860px) {
-            .install-hero, .grid-2, .grid-fields { grid-template-columns: 1fr; }
-            .stepper { grid-template-columns: 1fr; }
-            .setup-strip { grid-template-columns: 1fr; }
-            .install-shell { width: min(100% - 18px, 1180px); margin-top: 10px; }
-            .install-body, .install-hero { padding: 18px; }
+            .install-stage {
+                padding: 14px;
+            }
+
+            .stage-title,
+            .card-pad {
+                padding: 18px;
+            }
+
+            .stepper {
+                grid-template-columns: 1fr;
+            }
         }
     </style>
 </head>
 <body>
     @php
         $steps = [
-            'install.index' => 'Préparer',
-            'install.database' => 'Base',
-            'install.migration' => 'Initialiser',
-            'install.admin' => 'Admin',
-            'install.complete' => 'Terminer',
+            'install.index' => ['label' => 'Préparer', 'icon' => 'fa-clipboard-check'],
+            'install.database' => ['label' => 'Base', 'icon' => 'fa-database'],
+            'install.migration' => ['label' => 'Initialiser', 'icon' => 'fa-terminal'],
+            'install.admin' => ['label' => 'Admin', 'icon' => 'fa-user-shield'],
+            'install.complete' => ['label' => 'Terminer', 'icon' => 'fa-lock'],
         ];
+        $stepKeys = array_keys($steps);
+        $currentRoute = collect($stepKeys)->first(fn ($route) => request()->routeIs($route)) ?? 'install.index';
+        $currentIndex = array_search($currentRoute, $stepKeys, true);
+        $currentIndex = $currentIndex === false ? 0 : $currentIndex;
+        $progress = (($currentIndex + 1) / count($steps)) * 100;
         $host = request()->getHost();
         $tenantCode = strtolower(preg_replace('/[^a-z0-9-]+/', '-', explode('.', $host)[0] ?? 'tenant'));
         $tenantCode = trim($tenantCode, '-') ?: 'tenant';
@@ -439,67 +591,85 @@
         $tenantUrl = request()->getSchemeAndHttpHost();
         $tenantDocumentRoot = 'public_html/' . $tenantCode . '/public';
     @endphp
+
     <main class="install-shell">
         <div class="install-topbar">
             <div class="brand">
                 <img class="brand-logo" src="{{ asset('images/LOGO-KLASSCI-PNG.png') }}" alt="KLASSCI">
                 <div>
                     <p class="brand-title">KLASSCI</p>
-                    <p class="brand-subtitle">Assistant d’installation tenant</p>
+                    <p class="brand-subtitle">Mise en service d’un espace établissement</p>
                 </div>
             </div>
-            <a class="btn btn-secondary" href="https://klassci.com" target="_blank" rel="noreferrer">
+            <a class="btn btn-secondary site-link" href="https://klassci.com" target="_blank" rel="noreferrer">
                 <i class="fas fa-arrow-up-right-from-square"></i>
                 Site KLASSCI
             </a>
         </div>
 
-        <section class="install-frame">
-            <header class="install-hero">
-                <div class="hero-main">
-                    <span class="hero-kicker"><i class="fas fa-building-columns"></i> {{ $tenantName }}</span>
-                    <h1>@yield('hero_title', 'Installation tenant')</h1>
-                    <p>@yield('hero_copy', 'Configurez le tenant Laravel après la création du sous-domaine, du dossier cPanel et de la base MySQL.')</p>
-                </div>
-                <div class="hero-domain">
-                    <div class="hero-domain-item">
-                        <span>Domaine détecté</span>
-                        <strong>{{ $host }}</strong>
-                    </div>
-                    <div class="hero-domain-item">
-                        <span>Dossier public attendu</span>
-                        <code>{{ $tenantDocumentRoot }}</code>
-                    </div>
-                </div>
-            </header>
+        <section class="install-console">
+            <aside class="install-rail">
+                <span class="rail-kicker"><i class="fas fa-building-columns"></i> {{ $tenantName }}</span>
+                <h1 class="rail-title">Dossier de mise en service</h1>
+                <p class="rail-copy">Suivez les contrôles dans l’ordre. Chaque étape écrit ou vérifie un élément nécessaire au tenant.</p>
 
-            <div class="install-body">
-                <div class="setup-strip">
-                    <div class="setup-fact">
-                        <span>Tenant</span>
-                        <strong>{{ $tenantCode }}</strong>
-                    </div>
-                    <div class="setup-fact">
-                        <span>URL publique</span>
-                        <code>{{ $tenantUrl }}</code>
-                    </div>
-                    <div class="setup-fact">
-                        <span>Mode</span>
-                        <strong>Installation contrôlée</strong>
-                    </div>
+                <div class="rail-progress" style="--install-progress: {{ $progress }}%;">
+                    <span>
+                        <em>Avancement</em>
+                        <strong>{{ $currentIndex + 1 }}/{{ count($steps) }}</strong>
+                    </span>
+                    <div class="rail-meter"><i></i></div>
                 </div>
 
                 <nav class="stepper" aria-label="Étapes d’installation">
-                    @foreach($steps as $route => $label)
-                        <div class="step {{ request()->routeIs($route) ? 'is-active' : '' }}">
-                            <i class="fas fa-circle-dot"></i>
-                            {{ $label }}
+                    @foreach($steps as $route => $step)
+                        @php
+                            $index = array_search($route, $stepKeys, true);
+                            $isActive = request()->routeIs($route);
+                            $isComplete = $index !== false && $index < $currentIndex;
+                        @endphp
+                        <div class="step {{ $isActive ? 'is-active' : '' }} {{ $isComplete ? 'is-complete' : '' }}">
+                            <span class="step-icon">
+                                <i class="fas {{ $isComplete ? 'fa-check' : $step['icon'] }}"></i>
+                            </span>
+                            {{ $step['label'] }}
                         </div>
                     @endforeach
                 </nav>
 
-                @yield('content')
-            </div>
+                <div class="rail-note">
+                    <strong>Installation sans rechargement inutile</strong>
+                    <p>Les contrôles et mutations utilisent des réponses JSON lisibles, avec messages d’erreur actionnables.</p>
+                </div>
+            </aside>
+
+            <section class="install-stage">
+                <header class="stage-header">
+                    <div class="stage-title">
+                        <span><i class="fas {{ $steps[$currentRoute]['icon'] }}"></i> Étape {{ $currentIndex + 1 }}</span>
+                        <h1>@yield('hero_title', 'Installation tenant')</h1>
+                        <p>@yield('hero_copy', 'Configurez le tenant Laravel après la création du sous-domaine, du dossier cPanel et de la base MySQL.')</p>
+                    </div>
+                    <aside class="server-passport" aria-label="Contexte serveur">
+                        <div class="passport-item">
+                            <span>Domaine détecté</span>
+                            <strong>{{ $host }}</strong>
+                        </div>
+                        <div class="passport-item">
+                            <span>Dossier public attendu</span>
+                            <code>{{ $tenantDocumentRoot }}</code>
+                        </div>
+                        <div class="passport-item">
+                            <span>URL publique</span>
+                            <code>{{ $tenantUrl }}</code>
+                        </div>
+                    </aside>
+                </header>
+
+                <div class="install-content">
+                    @yield('content')
+                </div>
+            </section>
         </section>
     </main>
 
