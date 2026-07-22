@@ -29,9 +29,7 @@
     @include('esbtp.lmd.jurys.partials.modal-overrides')
 </div>
 
-@include('esbtp.lmd.jurys.partials.jury-data')
-
 @push('scripts')
-    @include('esbtp.lmd.jurys.partials.jury-scripts')
+    @include('esbtp.lmd.jurys.partials.jury-data')
 @endpush
 @endsection
