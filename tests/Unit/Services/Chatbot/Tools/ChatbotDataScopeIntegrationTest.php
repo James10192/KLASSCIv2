@@ -3,6 +3,7 @@
 namespace Tests\Unit\Services\Chatbot\Tools;
 
 use App\Services\Chatbot\Tools\SearchNotesTool;
+use App\Services\Chatbot\Tools\SearchBulletinsTool;
 use App\Services\Chatbot\Tools\SearchPaymentsTool;
 use App\Services\Chatbot\Tools\SearchStudentsTool;
 use Illuminate\Database\Schema\Blueprint;
@@ -114,6 +115,30 @@ class ChatbotDataScopeIntegrationTest extends TestCase
         $this->assertSame(['Pivot Note', 'Principal Note'], collect($result['results'])->pluck('etudiant')->sort()->values()->all());
     }
 
+    public function test_student_bulletin_scope_returns_only_own_published_bulletins(): void
+    {
+        config()->set('chatbot.tools.search_bulletins.enabled', true);
+        $this->seedAcademicContext();
+        $this->seedStudent(1, 'Bulletin', 'Visible', 50);
+        $this->seedStudent(2, 'Bulletin', 'Tiers', 99);
+        $this->seedInscription(1, 1, 1);
+        $this->seedInscription(2, 2, 1);
+        DB::table('esbtp_bulletins')->insert([
+            ['id' => 1, 'etudiant_id' => 1, 'classe_id' => 1, 'annee_universitaire_id' => 1, 'periode' => 'semestre1', 'moyenne_generale' => 14, 'rang' => 1, 'effectif_classe' => 2, 'is_published' => true, 'created_at' => '2026-07-01', 'updated_at' => '2026-07-01'],
+            ['id' => 2, 'etudiant_id' => 2, 'classe_id' => 1, 'annee_universitaire_id' => 1, 'periode' => 'semestre1', 'moyenne_generale' => 13, 'rang' => 2, 'effectif_classe' => 2, 'is_published' => true, 'created_at' => '2026-07-02', 'updated_at' => '2026-07-02'],
+            ['id' => 3, 'etudiant_id' => 1, 'classe_id' => 1, 'annee_universitaire_id' => 1, 'periode' => 'semestre2', 'moyenne_generale' => 15, 'rang' => 1, 'effectif_classe' => 2, 'is_published' => false, 'created_at' => '2026-07-03', 'updated_at' => '2026-07-03'],
+        ]);
+
+        $tool = new SearchBulletinsTool();
+        $ownResult = $tool->execute(['published_only' => false], new ChatbotScopeUser(50, ['bulletins.view_own']));
+        $globalResult = $tool->execute([], new ChatbotScopeUser(50, ['bulletins.view']));
+
+        $this->assertSame(1, $ownResult['total']);
+        $this->assertSame('Bulletin Visible', $ownResult['results'][0]['nom']);
+        $this->assertNull($ownResult['deep_link']);
+        $this->assertSame(3, $globalResult['total']);
+    }
+
     private function seedAcademicContext(): void
     {
         DB::table('esbtp_annee_universitaires')->insert(['id' => 1, 'name' => '2025-2026', 'is_current' => true, 'is_active' => true]);
@@ -151,9 +176,9 @@ class ChatbotDataScopeIntegrationTest extends TestCase
         ]);
     }
 
-    private function seedStudent(int $id, string $nom, string $prenoms): void
+    private function seedStudent(int $id, string $nom, string $prenoms, ?int $userId = null): void
     {
-        DB::table('esbtp_etudiants')->insert(['id' => $id, 'matricule' => "ETU-{$id}", 'nom' => $nom, 'prenoms' => $prenoms]);
+        DB::table('esbtp_etudiants')->insert(['id' => $id, 'user_id' => $userId, 'matricule' => "ETU-{$id}", 'nom' => $nom, 'prenoms' => $prenoms]);
     }
 
     private function seedInscription(int $id, int $studentId, int $classId): void
@@ -289,6 +314,23 @@ class ChatbotDataScopeIntegrationTest extends TestCase
             $table->string('mode_paiement')->nullable();
             $table->unsignedInteger('tranche')->nullable();
             $table->softDeletes();
+        });
+        Schema::create('esbtp_bulletins', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('etudiant_id');
+            $table->unsignedBigInteger('classe_id');
+            $table->unsignedBigInteger('annee_universitaire_id');
+            $table->string('periode')->nullable();
+            $table->decimal('moyenne_generale', 5, 2)->nullable();
+            $table->unsignedInteger('rang')->nullable();
+            $table->unsignedInteger('effectif_classe')->nullable();
+            $table->boolean('signature_responsable')->default(false);
+            $table->boolean('signature_directeur')->default(false);
+            $table->boolean('signature_parent')->default(false);
+            $table->boolean('is_published')->default(false);
+            $table->timestamps();
+            $table->softDeletes();
+            $table->softDeletes('archived_at');
         });
     }
 }

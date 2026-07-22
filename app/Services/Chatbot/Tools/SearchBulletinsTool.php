@@ -50,6 +50,17 @@ class SearchBulletinsTool extends ChatbotTool
     {
         $query = ESBTPBulletin::query()
             ->with(['etudiant', 'classe.filiere', 'anneeUniversitaire']);
+        $ownOnly = $this->shouldRestrictToOwnPublishedBulletins($user);
+
+        if ($ownOnly) {
+            $query->where('is_published', true);
+
+            if ($user) {
+                $query->whereHas('etudiant', fn ($students) => $students->where('user_id', $user->id));
+            } else {
+                $query->whereRaw('1 = 0');
+            }
+        }
 
         if (!empty($args['student_name'])) {
             $query->whereHas('etudiant', function ($q) use ($args) {
@@ -68,7 +79,7 @@ class SearchBulletinsTool extends ChatbotTool
             }
         }
 
-        if (!empty($args['published_only'])) {
+        if (!empty($args['published_only']) && ! $ownOnly) {
             $query->where('is_published', true);
         }
 
@@ -116,7 +127,20 @@ class SearchBulletinsTool extends ChatbotTool
             'count' => count($results),
             'total' => $total,
             'display_type' => 'cards',
-            'deep_link' => Route::has('esbtp.bulletins.index') ? route('esbtp.bulletins.index') : null,
+            'deep_link' => $ownOnly ? null : (Route::has('esbtp.bulletins.index') ? route('esbtp.bulletins.index') : null),
         ];
+    }
+
+    private function shouldRestrictToOwnPublishedBulletins($user): bool
+    {
+        if (! $user || ! method_exists($user, 'can')) {
+            return true;
+        }
+
+        if ($user->can('bulletins.view')) {
+            return false;
+        }
+
+        return true;
     }
 }

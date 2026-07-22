@@ -136,6 +136,24 @@ class RattrapageSchedulingServiceScopeTest extends TestCase
         $this->service->inscrireEtudiantsEligibles($rattrapage, [101]);
     }
 
+    public function test_identifier_eligibles_refuses_published_session_before_mutation(): void
+    {
+        $parent = $this->normalSession(['status' => 'published']);
+        $bulletin = $this->bulletin(101, 10, 20, 30, 1);
+        $this->activeEnrollment(101, 10, 20);
+        $resultat = $this->resultat($bulletin, 101, 501, 8.0);
+
+        $this->expectException(LogicException::class);
+
+        try {
+            $this->service->identifierEtudiantsEligibles($parent);
+        } finally {
+            $fresh = $resultat->fresh();
+            $this->assertNull($fresh->note_session_normale);
+            $this->assertFalse($fresh->rattrapage_eligible);
+        }
+    }
+
     public function test_session_scope_is_required(): void
     {
         $session = $this->normalSession(['parcours_id' => null]);

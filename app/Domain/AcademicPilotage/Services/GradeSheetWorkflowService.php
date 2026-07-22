@@ -96,7 +96,7 @@ final class GradeSheetWorkflowService
             return;
         }
 
-        $entries = GradeSheetEntry::query()->where('grade_sheet_id', $sheet->id);
+        $entries = GradeSheetEntry::query()->where('grade_sheet_id', $sheet->id)->lockForUpdate();
         $expectedCount = (clone $entries)->count();
         $unresolvedCount = (clone $entries)
             ->where('status', GradeSheetEntryStatus::EXPECTED->value)
