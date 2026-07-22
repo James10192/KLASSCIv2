@@ -28,3 +28,5 @@
         ];
     })->values();
 @endphp
+
+@include('esbtp.lmd.jurys.partials.jury-scripts')
