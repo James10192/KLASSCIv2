@@ -401,18 +401,8 @@ PROMPT;
     {
         $definitions = [];
         foreach ($this->tools as $tool) {
-            if ($requiredPerms = $tool->requiredPermissions()) {
-                $hasAll = collect($requiredPerms)->every(fn ($p) => $user->can($p));
-                if (!$hasAll) {
-                    continue;
-                }
-            }
-
-            if ($allowedRoles = $tool->allowedRoles()) {
-                $hasRole = $user->roles->pluck('name')->intersect($allowedRoles)->isNotEmpty();
-                if (!$hasRole) {
-                    continue;
-                }
+            if (! $tool->isAvailableFor($user)) {
+                continue;
             }
 
             $definitions[] = $tool->toToolDefinition();
@@ -544,7 +534,7 @@ PROMPT;
     protected function executeToolSafely(ChatbotTool $tool, array $args, $user): array
     {
         try {
-            return $tool->execute($args, $user);
+            return $tool->executeAuthorized($args, $user);
         } catch (\Throwable $e) {
             Log::error('ClaudeAgent: tool execution failed', [
                 'tool' => $tool->name(),

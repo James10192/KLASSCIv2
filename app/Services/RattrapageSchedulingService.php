@@ -9,6 +9,8 @@ use App\Models\ESBTPExamenPlanifie;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPLMDResultatECUE;
 use App\Models\ESBTPLMDSession;
+use App\Models\ESBTPLMDBulletin;
+use App\Models\ESBTPLMDJury;
 use App\Models\ESBTPMatiere;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
@@ -81,15 +83,12 @@ class RattrapageSchedulingService
         $eligibles = collect();
 
         DB::transaction(function () use ($sessionNormale, $seuil, &$eligibles) {
-            $bulletins = $sessionNormale->parcours?->bulletins ?? collect();
+            $bulletins = $this->bulletinsForSession($sessionNormale);
             $bulletinIds = $bulletins->pluck('id');
 
-            $query = ESBTPLMDResultatECUE::query();
-            if ($bulletinIds->isNotEmpty()) {
-                $query->whereIn('bulletin_id', $bulletinIds);
-            }
-
-            $resultats = $query->get();
+            $resultats = $bulletinIds->isEmpty()
+                ? collect()
+                : ESBTPLMDResultatECUE::query()->whereIn('bulletin_id', $bulletinIds)->get();
 
             foreach ($resultats as $r) {
                 if ($r->note_session_normale === null && $r->moyenne !== null) {
@@ -129,21 +128,26 @@ class RattrapageSchedulingService
         $created = collect();
         $base = $datePremier ?? ($sessionRattrapage->date_debut?->copy() ?? now()->addWeeks(2));
 
-        $byScope = $eligibles->groupBy(fn ($r) => $this->scopeKey($r));
+        $bulletins = $this->bulletinsForSession($parent)->keyBy('id');
+        $byScope = $eligibles
+            ->filter(fn (ESBTPLMDResultatECUE $resultat): bool => $bulletins->has($resultat->bulletin_id))
+            ->groupBy(fn (ESBTPLMDResultatECUE $resultat): string => sprintf('%d::%d', $bulletins->get($resultat->bulletin_id)->classe_id, $resultat->matiere_id));
 
         $offset = 0;
-        DB::transaction(function () use ($byScope, $sessionRattrapage, $base, &$created, &$offset) {
+        DB::transaction(function () use ($byScope, $bulletins, $sessionRattrapage, $base, &$created, &$offset) {
             foreach ($byScope as $key => $items) {
                 $first = $items->first();
                 $matiereId = $first->matiere_id;
+                $classeId = $bulletins->get($first->bulletin_id)->classe_id;
                 $etudiantIds = $items->pluck('etudiant_id')->unique();
-                $classeIds = ESBTPInscription::whereIn('etudiant_id', $etudiantIds)
+                $hasEligibleStudent = ESBTPInscription::whereIn('etudiant_id', $etudiantIds)
+                    ->where('classe_id', $classeId)
+                    ->where('annee_universitaire_id', $sessionRattrapage->annee_universitaire_id)
                     ->where('status', 'active')
                     ->where('workflow_step', 'etudiant_cree')
-                    ->pluck('classe_id')
-                    ->unique();
+                    ->exists();
 
-                foreach ($classeIds as $classeId) {
+                if ($hasEligibleStudent) {
                     $existing = ESBTPExamenPlanifie::where([
                         'classe_id' => $classeId,
                         'matiere_id' => $matiereId,
@@ -200,15 +204,19 @@ class RattrapageSchedulingService
             return 0;
         }
 
-        $bulletinIds = $parent->parcours?->bulletins?->pluck('id') ?? collect();
+        $bulletins = $this->bulletinsForSession($parent);
+        $bulletinIds = $bulletins->pluck('id');
         if ($bulletinIds->isEmpty()) {
             return 0;
         }
+
+        $this->assertResultsMutable($sessionRattrapage, $parent, $bulletins);
 
         $resultats = ESBTPLMDResultatECUE::query()
             ->whereIn('bulletin_id', $bulletinIds)
             ->where('etudiant_id', $etudiantId)
             ->where('rattrapage_eligible', true)
+            ->where('rattrapage_inscrit', true)
             ->get();
 
         $updated = 0;
@@ -219,10 +227,11 @@ class RattrapageSchedulingService
             $normale = $r->note_session_normale;
             $finale = $replace
                 ? (float) $r->note_rattrapage
-                : max((float) ($normale ?? 0), (float) $r->note_rattrapage);
+                : ($normale === null
+                    ? (float) $r->note_rattrapage
+                    : max((float) $normale, (float) $r->note_rattrapage));
 
             $r->note_finale = $finale;
-            $r->moyenne = $finale;
             $r->save();
             $updated++;
         }
@@ -241,10 +250,13 @@ class RattrapageSchedulingService
             return 0;
         }
 
-        $bulletinIds = $parent->parcours?->bulletins?->pluck('id') ?? collect();
+        $bulletins = $this->bulletinsForSession($parent);
+        $bulletinIds = $bulletins->pluck('id');
         if ($bulletinIds->isEmpty()) {
             return 0;
         }
+
+        $this->assertResultsMutable($sessionRattrapage, $parent, $bulletins);
 
         $query = ESBTPLMDResultatECUE::query()
             ->whereIn('bulletin_id', $bulletinIds)
@@ -257,9 +269,42 @@ class RattrapageSchedulingService
         return $query->update(['rattrapage_inscrit' => true]);
     }
 
-    private function scopeKey(ESBTPLMDResultatECUE $r): string
+    private function bulletinsForSession(ESBTPLMDSession $session): Collection
     {
-        return sprintf('%d::%d', $r->etudiant_id, $r->matiere_id);
+        if (! $session->annee_universitaire_id || ! $session->parcours_id || ! $session->semestre) {
+            throw new \DomainException('Le perimetre annee, parcours et semestre de la session est obligatoire.');
+        }
+
+        return ESBTPLMDBulletin::query()
+            ->where('annee_universitaire_id', $session->annee_universitaire_id)
+            ->where('parcours_id', $session->parcours_id)
+            ->where('semestre', $session->semestre)
+            ->whereExists(function ($query): void {
+                $query->selectRaw('1')
+                    ->from('esbtp_inscriptions')
+                    ->whereColumn('esbtp_inscriptions.etudiant_id', 'esbtp_lmd_bulletins.etudiant_id')
+                    ->whereColumn('esbtp_inscriptions.classe_id', 'esbtp_lmd_bulletins.classe_id')
+                    ->whereColumn('esbtp_inscriptions.annee_universitaire_id', 'esbtp_lmd_bulletins.annee_universitaire_id')
+                    ->where('esbtp_inscriptions.status', 'active')
+                    ->where('esbtp_inscriptions.workflow_step', 'etudiant_cree');
+            })
+            ->get();
+    }
+
+    private function assertResultsMutable(ESBTPLMDSession $sessionRattrapage, ESBTPLMDSession $sessionNormale, Collection $bulletins): void
+    {
+        if (in_array($sessionRattrapage->status, ['published', 'publie'], true)
+            || in_array($sessionNormale->status, ['published', 'publie'], true)
+            || $bulletins->contains(fn (ESBTPLMDBulletin $bulletin): bool => (bool) $bulletin->is_published)
+            || ESBTPLMDJury::query()
+                ->where('annee_universitaire_id', $sessionNormale->annee_universitaire_id)
+                ->where('parcours_id', $sessionNormale->parcours_id)
+                ->where('semestre', $sessionNormale->semestre)
+                ->whereIn('classe_id', $bulletins->pluck('classe_id')->unique())
+                ->where('status', 'publie')
+                ->exists()) {
+            throw new \LogicException('Les resultats de rattrapage sont verrouilles apres publication.');
+        }
     }
 
     private function buildTitre(int $matiereId, ?int $semestre): string

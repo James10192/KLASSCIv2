@@ -48,4 +48,9 @@ class ESBTPLMDJuryMembre extends Model implements Auditable
     {
         return $this->signature_at !== null;
     }
+
+    public function canBeSignedBy(int $userId): bool
+    {
+        return $this->present && (int) $this->user_id === $userId;
+    }
 }

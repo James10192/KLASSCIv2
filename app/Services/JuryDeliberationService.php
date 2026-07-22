@@ -2,6 +2,11 @@
 
 namespace App\Services;
 
+use App\Domain\AcademicPilotage\Models\GradeSheet;
+use App\Domain\OfficialDocuments\Services\JuryPvIssuanceGuard;
+use App\Domain\OfficialDocuments\Services\OfficialDocumentIntegrityService;
+use App\Domain\OfficialDocuments\Services\OfficialDocumentService;
+use App\Domain\OfficialDocuments\Services\PvNumberSequenceService;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPLMDBulletin;
@@ -10,33 +15,38 @@ use App\Models\ESBTPLMDJuryDecision;
 use App\Models\ESBTPLMDJuryMembre;
 use App\Models\ESBTPLMDResultatECUE;
 use App\Models\User;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Services\LMD\LmdDecisionProjectionService;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Storage;
 
 /**
- * Jury de délibération UEMOA — workflow complet.
+ * Jury de deliberation UEMOA, workflow complet.
  *
- * Composition (président, assesseurs, secrétaire) + quorum settings tenant.
- * Calcul auto décisions selon moyenne + crédits + compensation + seuil.
+ * Composition (president, assesseurs, secretaire) + quorum settings tenant.
+ * Calcul automatique de decisions selon moyenne + credits + compensation + seuil.
  * Override jury individuel avec motif obligatoire (DB constraint NOT NULL).
- * PV PDF avec numérotation séquentielle thread-safe (DB lockForUpdate).
- * Archivage légal 5 ans (setting lmd_pv_retention_years).
+ * PV PDF avec numerotation sequentielle thread-safe (DB lockForUpdate).
+ * Archivage legal 5 ans (setting lmd_pv_retention_years).
  */
 class JuryDeliberationService
 {
+    public function __construct(
+        private readonly OfficialDocumentService $officialDocuments,
+        private readonly OfficialDocumentIntegrityService $integrity,
+        private readonly JuryPvIssuanceGuard $issuanceGuard,
+        private readonly PvNumberSequenceService $pvSequences,
+        private readonly LmdDecisionProjectionService $projection,
+    ) {}
+
     /**
-     * Calcule la décision automatique pour un étudiant donné.
+     * Calcule la decision automatique pour un etudiant donnee.
      *
      * @return array{decision_auto:string, mention:?string, moyenne:?float, credits_obtenus:int, credits_attendus:int, raisons:array}
      */
     public function calculerDecisionAuto(ESBTPEtudiant $etudiant, ESBTPLMDJury $jury): array
     {
         $bulletin = $this->resolveBulletin($etudiant, $jury);
-        $compensationEnabled = (bool) SettingsHelper::get('lmd_compensation_enabled', true);
-        $intraUeCompensation = (bool) SettingsHelper::get('lmd_intra_ue_compensation', true);
         $seuilValidation = (float) SettingsHelper::get('lmd_seuil_validation_ecue', 10);
         $noteEliminatoire = (float) SettingsHelper::get('lmd_note_eliminatoire', 0);
 
@@ -51,41 +61,48 @@ class JuryDeliberationService
         $moyenne = $bulletin?->moyenne_generale !== null
             ? (float) $bulletin->moyenne_generale
             : null;
-        $creditsObtenus = (int) ($bulletin?->credits_obtenus ?? 0);
-        $creditsAttendus = (int) ($bulletin?->credits_attendus ?? 30);
+
+        $creditsDisponibles = $bulletin !== null
+            && $bulletin->credits_capitalises !== null
+            && $bulletin->credits_totaux !== null;
+        $creditsObtenus = $creditsDisponibles ? (int) $bulletin->credits_capitalises : null;
+        $creditsAttendus = $creditsDisponibles ? (int) $bulletin->credits_totaux : null;
 
         $raisons = [];
         $decision = 'ajourne';
 
-        // ECUE éliminatoires
+        // ECUE eliminatoires
         $hasEliminatoire = false;
         if ($bulletin && $noteEliminatoire > 0) {
             $resultats = ESBTPLMDResultatECUE::where('bulletin_id', $bulletin->id)->get();
             foreach ($resultats as $r) {
                 if ($r->moyenne !== null && (float) $r->moyenne < $noteEliminatoire) {
                     $hasEliminatoire = true;
-                    $raisons[] = sprintf('ECUE %d note %s < éliminatoire %s', $r->matiere_id, $r->moyenne, $noteEliminatoire);
+                    $raisons[] = sprintf('ECUE %d note %s < eliminatoire %s', $r->matiere_id, $r->moyenne, $noteEliminatoire);
                     break;
                 }
             }
         }
 
-        // Décision principale
+        // Decision principale
         if ($moyenne === null) {
             $decision = 'defere';
-            $raisons[] = 'Moyenne non calculée';
+            $raisons[] = 'Moyenne non calculee';
+        } elseif (!$creditsDisponibles) {
+            $decision = 'defere';
+            $raisons[] = 'Credits manquants sur bulletin';
         } elseif ($hasEliminatoire) {
             $decision = 'ajourne';
-            $raisons[] = 'Note éliminatoire détectée';
+            $raisons[] = 'Note eliminatoire detectee';
         } elseif ($moyenne >= $seuilValidation && $creditsObtenus >= $creditsAttendus) {
             $decision = 'admis';
-            $raisons[] = sprintf('Moyenne %.2f ≥ %.2f, crédits %d/%d', $moyenne, $seuilValidation, $creditsObtenus, $creditsAttendus);
+            $raisons[] = sprintf('Moyenne %.2f >= %.2f, credits %d/%d', $moyenne, $seuilValidation, $creditsObtenus, $creditsAttendus);
         } elseif ($moyenne >= $seuilValidation && $creditsObtenus < $creditsAttendus) {
             $decision = 'admis_sous_condition';
-            $raisons[] = sprintf('Moyenne %.2f OK mais crédits %d/%d insuffisants', $moyenne, $creditsObtenus, $creditsAttendus);
+            $raisons[] = sprintf('Moyenne %.2f OK mais credits %d/%d insuffisants', $moyenne, $creditsObtenus, $creditsAttendus);
         } else {
             $decision = 'admission_rattrapage';
-            $raisons[] = sprintf('Moyenne %.2f < %.2f, éligible 2e session', $moyenne, $seuilValidation);
+            $raisons[] = sprintf('Moyenne %.2f < %.2f, eligible 2e session', $moyenne, $seuilValidation);
         }
 
         // Mention
@@ -116,197 +133,140 @@ class JuryDeliberationService
     }
 
     /**
-     * Applique en bulk les décisions auto pour tous les étudiants concernés par ce jury.
-     * Idempotent : ne re-crée pas une décision déjà présente sauf si override=false.
+     * Applique en bulk les decisions auto pour tous les etudiants concernes par ce jury.
+     * Idempotent : ne recree pas une decision deja presente sauf si override=false.
      */
     public function appliquerDecisionsAuto(ESBTPLMDJury $jury): int
     {
-        abort_if($jury->isLocked(), 422, 'PV déjà généré — décisions verrouillées');
+        return DB::transaction(function () use ($jury): int {
+            $lockedJury = $this->lockMutableJury($jury->id, true);
+            $students = $this->getEtudiantsForJury($lockedJury)->sortBy('id')->values();
+            $existing = ESBTPLMDJuryDecision::query()
+                ->where('jury_id', $lockedJury->id)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get()
+                ->keyBy('etudiant_id');
+            $count = 0;
 
-        $etudiants = $this->getEtudiantsForJury($jury);
-        $count = 0;
-
-        DB::transaction(function () use ($jury, $etudiants, &$count) {
-            foreach ($etudiants as $etudiant) {
-                $existing = ESBTPLMDJuryDecision::where([
-                    'jury_id' => $jury->id,
-                    'etudiant_id' => $etudiant->id,
-                ])->first();
-
-                if ($existing && $existing->override_par_jury) {
-                    continue; // Préserve les overrides manuels
+            foreach ($students as $student) {
+                $decision = $existing->get($student->id);
+                if ($decision?->locked) {
+                    throw new \LogicException('Une decision verrouillee ne peut pas etre modifiee.');
                 }
-
-                $calc = $this->calculerDecisionAuto($etudiant, $jury);
-
-                if ($existing) {
-                    $existing->update([
-                        'decision_auto' => $calc['decision_auto'],
-                        'decision' => $calc['decision_auto'],
-                        'mention' => $calc['mention'],
-                        'bulletin_id' => $calc['bulletin_id'],
-                        'moyenne_generale' => $calc['moyenne'],
-                        'credits_obtenus' => $calc['credits_obtenus'],
-                        'credits_attendus' => $calc['credits_attendus'],
-                        'updated_by' => optional(auth()->user())->id,
-                    ]);
+                if ($decision?->override_par_jury) {
+                    continue;
+                }
+                $calculation = $this->calculerDecisionAuto($student, $lockedJury);
+                $attributes = [
+                    'decision_auto' => $calculation['decision_auto'],
+                    'decision' => $calculation['decision_auto'],
+                    'mention' => $calculation['mention'],
+                    'moyenne_generale' => $calculation['moyenne'],
+                    'credits_obtenus' => $calculation['credits_obtenus'],
+                    'credits_attendus' => $calculation['credits_attendus'],
+                    'override_par_jury' => false,
+                    'updated_by' => auth()->id(),
+                ];
+                if ($decision) {
+                    $decision->forceFill($attributes)->save();
                 } else {
-                    ESBTPLMDJuryDecision::create([
-                        'jury_id' => $jury->id,
-                        'etudiant_id' => $etudiant->id,
-                        'bulletin_id' => $calc['bulletin_id'],
-                        'decision_auto' => $calc['decision_auto'],
-                        'decision' => $calc['decision_auto'],
-                        'mention' => $calc['mention'],
-                        'moyenne_generale' => $calc['moyenne'],
-                        'credits_obtenus' => $calc['credits_obtenus'],
-                        'credits_attendus' => $calc['credits_attendus'],
-                        'override_par_jury' => false,
-                        'created_by' => optional(auth()->user())->id,
-                    ]);
-                    $count++;
+                    $attributes['jury_id'] = $lockedJury->id;
+                    $attributes['etudiant_id'] = $student->id;
+                    $attributes['created_by'] = auth()->id();
+                    ESBTPLMDJuryDecision::query()->create($attributes);
                 }
+                $count++;
             }
+            return $count;
         });
-
-        return $count;
     }
 
     /**
-     * Override jury individuel d'une décision (motif obligatoire).
-     */
-    public function overrideDecision(
+     * Override jury individuel d'une decision (motif obligatoire).
+     */    public function overrideDecision(
         ESBTPLMDJury $jury,
         ESBTPEtudiant $etudiant,
         string $nouvelleDecision,
         string $motif,
         ?string $voteResultat = null
     ): ESBTPLMDJuryDecision {
-        abort_if($jury->isLocked(), 422, 'PV déjà généré — override interdit');
-        abort_unless(in_array($nouvelleDecision, ESBTPLMDJuryDecision::DECISIONS, true), 422, 'Décision invalide');
+        abort_unless(in_array($nouvelleDecision, ESBTPLMDJuryDecision::DECISIONS, true), 422, 'Decision invalide');
         abort_if(trim($motif) === '', 422, 'Motif override obligatoire');
 
-        $decision = ESBTPLMDJuryDecision::firstOrNew([
-            'jury_id' => $jury->id,
-            'etudiant_id' => $etudiant->id,
-        ]);
-
-        if (! $decision->exists) {
-            $calc = $this->calculerDecisionAuto($etudiant, $jury);
-            $decision->decision_auto = $calc['decision_auto'];
-            $decision->bulletin_id = $calc['bulletin_id'];
-            $decision->moyenne_generale = $calc['moyenne'];
-            $decision->credits_obtenus = $calc['credits_obtenus'];
-            $decision->credits_attendus = $calc['credits_attendus'];
-        }
-
-        $decision->decision = $nouvelleDecision;
-        $decision->override_par_jury = ($decision->decision_auto !== $nouvelleDecision);
-        $decision->motif_override = $decision->override_par_jury ? $motif : null;
-        $decision->vote_resultat = $voteResultat;
-        $decision->updated_by = optional(auth()->user())->id;
-        $decision->save();
-
-        return $decision;
-    }
-
-    /**
-     * Réserve un numéro PV séquentiel thread-safe.
-     * Format : PV-{ANNEE}-{TENANT}-{SEQ4}
-     */
-    public function reserverNumeroPv(int $anneeUniversitaireId): string
-    {
-        return DB::transaction(function () use ($anneeUniversitaireId) {
-            $last = ESBTPLMDJury::query()
-                ->where('annee_universitaire_id', $anneeUniversitaireId)
-                ->whereNotNull('pv_numero')
+        return DB::transaction(function () use ($jury, $etudiant, $nouvelleDecision, $motif, $voteResultat): ESBTPLMDJuryDecision {
+            $lockedJury = $this->lockMutableJury($jury->id, true);
+            $decision = ESBTPLMDJuryDecision::query()
+                ->where('jury_id', $lockedJury->id)
+                ->where('etudiant_id', $etudiant->id)
                 ->lockForUpdate()
-                ->orderByDesc('id')
-                ->value('pv_numero');
-
-            $seq = 1;
-            if ($last && preg_match('/-(\d{4})$/', $last, $m)) {
-                $seq = ((int) $m[1]) + 1;
+                ->first();
+            if ($decision?->locked) {
+                throw new \LogicException('Une decision verrouillee ne peut pas etre modifiee.');
             }
-
-            $tenant = strtoupper((string) (config('app.tenant_code') ?? env('TENANT_CODE', 'PRES')));
-            $annee = \App\Models\ESBTPAnneeUniversitaire::find($anneeUniversitaireId);
-            $anneeStr = preg_replace('/[^A-Za-z0-9]/', '', $annee?->libelle ?? (string) $anneeUniversitaireId);
-
-            return sprintf('PV-%s-%s-%04d', $anneeStr, $tenant, $seq);
+            if (! $decision) {
+                $calculation = $this->calculerDecisionAuto($etudiant, $lockedJury);
+                $decision = new ESBTPLMDJuryDecision([
+                    'jury_id' => $lockedJury->id,
+                    'etudiant_id' => $etudiant->id,
+                    'decision_auto' => $calculation['decision_auto'],
+                    'moyenne_generale' => $calculation['moyenne'],
+                    'credits_obtenus' => $calculation['credits_obtenus'],
+                    'credits_attendus' => $calculation['credits_attendus'],
+                    'created_by' => auth()->id(),
+                ]);
+            }
+            $decision->forceFill([
+                'decision' => $nouvelleDecision,
+                'override_par_jury' => true,
+                'motif_override' => trim($motif),
+                'vote_resultat' => $voteResultat,
+                'updated_by' => auth()->id(),
+            ])->save();
+            return $decision;
         });
     }
 
     /**
-     * Génère le PV PDF, le stocke en storage/pv/{tenant}/{annee}/{numero}.pdf,
-     * persiste le path + numéro + datetime + auteur.
+     * Reserve un numero PV sequentiel thread-safe.
+     * Format : PV-{ANNEE}-{TENANT}-{SEQ4}
+     */
+    public function reserverNumeroPv(int $anneeUniversitaireId): string
+    {
+        return $this->pvSequences->next($anneeUniversitaireId);
+    }
+
+    /**
+     * Genere le PV PDF, le stocke en storage/pv/{tenant}/{annee}/{numero}.pdf,
+     * persiste le path + numero + datetime + auteur.
      */
     public function genererPvDeliberation(ESBTPLMDJury $jury): string
     {
-        if ($jury->pv_path) {
-            return $jury->pv_path;
-        }
-
-        $jury->loadMissing(['anneeUniversitaire', 'parcours', 'classe', 'membres.user', 'decisions.etudiant']);
-
-        $numero = $jury->pv_numero ?? $this->reserverNumeroPv($jury->annee_universitaire_id);
-
-        $stats = $this->buildStatistiques($jury);
-
-        $pdf = Pdf::loadView('pdf.lmd-jury-pv', [
-            'jury' => $jury,
-            'numero' => $numero,
-            'stats' => $stats,
-            'generated_at' => now(),
-        ])->setPaper('a4', 'portrait');
-
-        $tenant = strtolower((string) (config('app.tenant_code') ?? env('TENANT_CODE', 'pres')));
-        $anneeStr = preg_replace('/[^A-Za-z0-9]/', '', $jury->anneeUniversitaire?->libelle ?? (string) $jury->annee_universitaire_id);
-        $relPath = sprintf('pv/%s/%s/%s.pdf', $tenant, $anneeStr, $numero);
-
-        Storage::disk('local')->put($relPath, $pdf->output());
-
-        $jury->forceFill([
-            'pv_numero' => $numero,
-            'pv_path' => $relPath,
-            'pv_genere_at' => now(),
-            'pv_genere_par' => optional(auth()->user())->id,
-        ])->save();
-
-        // Lock toutes les décisions associées
-        $jury->decisions()->update([
-            'locked' => true,
-            'locked_at' => now(),
-        ]);
-
-        Log::info('[JuryDeliberationService] PV généré', [
-            'jury_id' => $jury->id,
-            'numero' => $numero,
-            'path' => $relPath,
-            'decisions_count' => $jury->decisions->count(),
-        ]);
-
-        return $relPath;
+        $actor = auth()->user();
+        if (! $actor instanceof User) throw new \LogicException('Un acteur authentifie est requis.');
+        $document = $this->officialDocuments->issueJuryPv($jury, $actor);
+        Log::info('[JuryDeliberationService] PV officiel emis', ['jury_id' => $jury->id, 'reference' => $document->reference]);
+        return $document->path;
     }
 
     /**
-     * Publie le jury : verrouille décisions + change statut + horodate.
+     * Publie le jury : verrouille decisions + change statut + horodate.
      */
     public function publierDecisions(ESBTPLMDJury $jury): void
     {
-        abort_if(! $jury->pv_genere_at, 422, 'Générer le PV avant publication');
-
-        $jury->update([
-            'status' => 'publie',
-            'publie_at' => now(),
-            'publie_par' => optional(auth()->user())->id,
-        ]);
-
-        Log::info('[JuryDeliberationService] Jury publié', ['jury_id' => $jury->id]);
+        DB::transaction(function () use ($jury): void {
+            $locked = ESBTPLMDJury::query()->lockForUpdate()->findOrFail($jury->id);
+            $document = $this->officialDocuments->existingJuryPv($locked);
+            if (! $document) throw new \LogicException('Le PV officiel est requis avant publication.');
+            $this->integrity->assertValidAndIntact($document, true, auth()->id());
+            $this->projection->publish($locked, auth()->id());
+            $locked->forceFill(['status' => 'publie', 'publie_at' => now(), 'publie_par' => auth()->id(), 'updated_by' => auth()->id()])->save();
+        });
+        Log::info('[JuryDeliberationService] Jury publie', ['jury_id' => $jury->id]);
     }
 
     /**
-     * Vérifie le quorum selon settings tenant.
+     * Verifie le quorum selon settings tenant.
      *
      * @return array{ok:bool, present:int, min:int, has_president:bool, has_secretaire:bool, reasons:array}
      */
@@ -326,14 +286,14 @@ class JuryDeliberationService
 
         if ($present < $min) {
             $ok = false;
-            $reasons[] = sprintf('%d membres présents < quorum %d', $present, $min);
+            $reasons[] = sprintf('%d membres presents < quorum %d', $present, $min);
         }
         if (! $hasPresident) {
             $ok = false;
-            $reasons[] = 'Président absent';
+            $reasons[] = 'President absent';
         }
         if (! $hasSecretaire) {
-            $reasons[] = 'Secrétaire absent (recommandé)';
+            $reasons[] = 'Secretaire absent (recommande)';
         }
         if ($assesseurs < $minAssesseurs) {
             $reasons[] = sprintf('%d assesseur(s) < min %d', $assesseurs, $minAssesseurs);
@@ -352,22 +312,100 @@ class JuryDeliberationService
     }
 
     /**
+     * Verifie que le jury dispose de feuilles de notes applicables a son scope.
+     *
+     * @return array{ok:bool, grade_sheets_count:int, reasons:array}
+     */
+    public function verifierReadiness(ESBTPLMDJury $jury): array
+    {
+        return $this->issuanceGuard->readiness($jury);
+    }
+
+    /**
      * Enregistre la signature digital d'un membre (canvas base64 ou checkbox).
      */
     public function enregistrerSignature(
         ESBTPLMDJuryMembre $membre,
         string $signatureData,
+        int $userId,
         ?string $ip = null,
         ?string $userAgent = null
     ): ESBTPLMDJuryMembre {
-        $membre->update([
-            'signature_data' => $signatureData,
-            'signature_at' => now(),
-            'signature_ip' => $ip,
-            'signature_user_agent' => $userAgent,
-        ]);
+        return DB::transaction(function () use ($membre, $signatureData, $userId, $ip, $userAgent): ESBTPLMDJuryMembre {
+            $jury = $this->lockMutableJury($membre->jury_id);
+            $locked = ESBTPLMDJuryMembre::query()
+                ->where('jury_id', $jury->id)
+                ->lockForUpdate()
+                ->findOrFail($membre->id);
+            if (! $locked->canBeSignedBy($userId)) {
+                throw new \LogicException('Cette signature ne peut pas etre enregistree par cet utilisateur.');
+            }
+            if ($locked->hasSigned() || $locked->signature_data !== null) {
+                throw new \LogicException('Une signature existante ne peut pas etre remplacee.');
+            }
+            $locked->forceFill([
+                'signature_data' => $signatureData,
+                'signature_at' => now(),
+                'signature_ip' => $ip,
+                'signature_user_agent' => $userAgent,
+            ])->save();
+            return $locked;
+        });
+    }
 
-        return $membre;
+    public function addOrUpdateMembre(ESBTPLMDJury $jury, array $attributes): ESBTPLMDJuryMembre
+    {
+        return DB::transaction(function () use ($jury, $attributes): ESBTPLMDJuryMembre {
+            $lockedJury = $this->lockMutableJury($jury->id);
+            $member = ESBTPLMDJuryMembre::query()
+                ->where('jury_id', $lockedJury->id)
+                ->where('user_id', $attributes['user_id'])
+                ->lockForUpdate()
+                ->first();
+            if (! $member) {
+                return ESBTPLMDJuryMembre::query()->create([
+                    'jury_id' => $lockedJury->id,
+                    'user_id' => $attributes['user_id'],
+                    'role' => $attributes['role'],
+                    'present' => $attributes['present'] ?? true,
+                ]);
+            }
+            if ($member->hasSigned()) {
+                throw new \LogicException('Un membre ayant signe ne peut plus etre modifie.');
+            }
+            $member->forceFill([
+                'role' => $attributes['role'],
+                'present' => $attributes['present'] ?? $member->present,
+            ])->save();
+            return $member;
+        });
+    }
+
+    public function removeMembre(ESBTPLMDJury $jury, ESBTPLMDJuryMembre $membre): void
+    {
+        DB::transaction(function () use ($jury, $membre): void {
+            $lockedJury = $this->lockMutableJury($jury->id);
+            $locked = ESBTPLMDJuryMembre::query()
+                ->where('jury_id', $lockedJury->id)
+                ->lockForUpdate()
+                ->findOrFail($membre->id);
+            if ($locked->hasSigned()) {
+                throw new \LogicException('Un membre ayant signe ne peut pas etre supprime.');
+            }
+            $locked->delete();
+        });
+    }
+
+    private function lockMutableJury(int $juryId, bool $startDeliberation = false): ESBTPLMDJury
+    {
+        $jury = ESBTPLMDJury::query()->lockForUpdate()->findOrFail($juryId);
+        if ($jury->pv_genere_at !== null || in_array($jury->status, ['clos', 'publie', 'archive'], true)) {
+            throw new \LogicException('Le PV est deja emis, le jury est verrouille.');
+        }
+        if ($startDeliberation && $jury->status === 'preparation') {
+            $jury->forceFill(['status' => 'en_cours', 'updated_by' => auth()->id()])->save();
+        }
+        return $jury;
     }
 
     /**
@@ -399,35 +437,25 @@ class JuryDeliberationService
 
     private function resolveBulletin(ESBTPEtudiant $etudiant, ESBTPLMDJury $jury): ?ESBTPLMDBulletin
     {
-        $query = ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
-            ->where('annee_universitaire_id', $jury->annee_universitaire_id);
-
-        if ($jury->classe_id) {
-            $query->where('classe_id', $jury->classe_id);
-        }
-        if ($jury->semestre) {
-            $query->where('semestre', $jury->semestre);
-        }
-
-        return $query->orderByDesc('id')->first();
+        return ESBTPLMDBulletin::query()
+            ->forJury($jury)
+            ->where('etudiant_id', $etudiant->id)
+            ->orderByDesc('id')
+            ->first();
     }
 
     /**
-     * Liste les étudiants concernés par ce jury via bulletins LMD du scope.
+     * Liste les etudiants concernes par ce jury via bulletins LMD du scope.
      *
      * @return Collection<int, ESBTPEtudiant>
      */
     private function getEtudiantsForJury(ESBTPLMDJury $jury): Collection
     {
-        $bulletinQuery = ESBTPLMDBulletin::where('annee_universitaire_id', $jury->annee_universitaire_id);
-        if ($jury->classe_id) {
-            $bulletinQuery->where('classe_id', $jury->classe_id);
-        }
-        if ($jury->semestre) {
-            $bulletinQuery->where('semestre', $jury->semestre);
-        }
-
-        $etudiantIds = $bulletinQuery->pluck('etudiant_id')->unique()->values();
+        $etudiantIds = ESBTPLMDBulletin::query()
+            ->forJury($jury)
+            ->pluck('etudiant_id')
+            ->unique()
+            ->values();
         if ($etudiantIds->isEmpty()) {
             return collect();
         }

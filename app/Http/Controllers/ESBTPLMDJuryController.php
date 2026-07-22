@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Domain\OfficialDocuments\Services\OfficialDocumentDownloadService;
+use App\Domain\OfficialDocuments\Services\LegacyJuryPvReconciliationService;
+use App\Domain\OfficialDocuments\Services\OfficialDocumentService;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
@@ -14,11 +17,17 @@ use App\Services\JuryDeliberationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class ESBTPLMDJuryController extends Controller
 {
-    public function __construct(private readonly JuryDeliberationService $delib)
+    public function __construct(
+        private readonly JuryDeliberationService $delib,
+        private readonly OfficialDocumentService $officialDocuments,
+        private readonly OfficialDocumentDownloadService $officialDownloads,
+        private readonly LegacyJuryPvReconciliationService $legacyReconciliation,
+    )
     {
         $this->middleware('auth');
     }
@@ -63,11 +72,13 @@ class ESBTPLMDJuryController extends Controller
         ]);
 
         $quorum = $this->delib->verifierQuorum($jury);
+        $readiness = $this->delib->verifierReadiness($jury);
         $stats = $this->delib->buildStatistiques($jury);
 
         $enseignants = User::orderBy('name')->get(['id', 'name', 'email']);
+        $officialDocument = $this->officialDocuments->existingJuryPv($jury);
 
-        return view('esbtp.lmd.jurys.show', compact('jury', 'quorum', 'stats', 'enseignants'));
+        return view('esbtp.lmd.jurys.show', compact('jury', 'quorum', 'readiness', 'stats', 'enseignants', 'officialDocument'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -97,7 +108,7 @@ class ESBTPLMDJuryController extends Controller
     public function destroy(ESBTPLMDJury $jury): RedirectResponse
     {
         abort_unless(auth()->user()?->can('lmd.jury.preside'), 403);
-        abort_if($jury->isLocked(), 422, 'PV déjà généré — suppression interdite');
+        abort_if($jury->isLocked(), 422, 'PV déjà généré , suppression interdite');
 
         $jury->delete();
 
@@ -110,32 +121,13 @@ class ESBTPLMDJuryController extends Controller
     public function addMembre(Request $request, ESBTPLMDJury $jury): JsonResponse
     {
         abort_unless(auth()->user()?->can('lmd.jury.preside'), 403);
-        abort_if($jury->isLocked(), 422, 'PV déjà généré');
-
         $data = $request->validate([
             'user_id' => ['required', 'exists:users,id'],
             'role' => ['required', 'in:president,assesseur,secretaire,consultatif'],
             'present' => ['nullable', 'boolean'],
         ]);
 
-        $existing = ESBTPLMDJuryMembre::where('jury_id', $jury->id)
-            ->where('user_id', $data['user_id'])
-            ->first();
-
-        if ($existing) {
-            $existing->update([
-                'role' => $data['role'],
-                'present' => $data['present'] ?? $existing->present,
-            ]);
-            $membre = $existing;
-        } else {
-            $membre = ESBTPLMDJuryMembre::create([
-                'jury_id' => $jury->id,
-                'user_id' => $data['user_id'],
-                'role' => $data['role'],
-                'present' => $data['present'] ?? true,
-            ]);
-        }
+        $membre = $this->delib->addOrUpdateMembre($jury, $data);
 
         return response()->json([
             'success' => true,
@@ -146,22 +138,23 @@ class ESBTPLMDJuryController extends Controller
                 'role' => $membre->role,
                 'present' => $membre->present,
                 'has_signed' => $membre->hasSigned(),
+                'can_sign' => $membre->canBeSignedBy((int) auth()->id()) && ! $membre->hasSigned() && ! $jury->isLocked(),
             ],
             'quorum' => $this->delib->verifierQuorum($jury->fresh('membres')),
+            'readiness' => $this->delib->verifierReadiness($jury->fresh()),
         ]);
     }
 
     public function removeMembre(ESBTPLMDJury $jury, ESBTPLMDJuryMembre $membre): JsonResponse
     {
         abort_unless(auth()->user()?->can('lmd.jury.preside'), 403);
-        abort_if($jury->isLocked(), 422, 'PV déjà généré');
         abort_if($membre->jury_id !== $jury->id, 404);
-
-        $membre->delete();
+        $this->delib->removeMembre($jury, $membre);
 
         return response()->json([
             'success' => true,
             'quorum' => $this->delib->verifierQuorum($jury->fresh('membres')),
+            'readiness' => $this->delib->verifierReadiness($jury->fresh()),
         ]);
     }
 
@@ -172,15 +165,15 @@ class ESBTPLMDJuryController extends Controller
         try {
             $created = $this->delib->appliquerDecisionsAuto($jury);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            Log::warning('Échec du calcul automatique des décisions du jury.', ['jury_id' => $jury->id, 'exception' => $e]);
+            return response()->json(['success' => false, 'message' => 'Les décisions n ont pas pu être calculées.'], 422);
         }
-
-        $jury->fresh()->update(['status' => 'en_cours', 'updated_by' => auth()->id()]);
 
         return response()->json([
             'success' => true,
             'created_count' => $created,
             'stats' => $this->delib->buildStatistiques($jury->fresh('decisions')),
+            'readiness' => $this->delib->verifierReadiness($jury->fresh()),
         ]);
     }
 
@@ -199,7 +192,8 @@ class ESBTPLMDJuryController extends Controller
                 $jury, $etudiant, $data['decision'], $data['motif'], $data['vote_resultat'] ?? null
             );
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            Log::warning('Échec de la décision manuelle du jury.', ['jury_id' => $jury->id, 'exception' => $e]);
+            return response()->json(['success' => false, 'message' => 'La décision n a pas pu être enregistrée.'], 422);
         }
 
         return response()->json([
@@ -216,6 +210,7 @@ class ESBTPLMDJuryController extends Controller
                 'moyenne_generale' => $decision->moyenne_generale,
             ],
             'stats' => $this->delib->buildStatistiques($jury->fresh('decisions')),
+            'readiness' => $this->delib->verifierReadiness($jury->fresh()),
         ]);
     }
 
@@ -223,26 +218,31 @@ class ESBTPLMDJuryController extends Controller
     {
         abort_unless(auth()->user()?->can('lmd.jury.deliberate'), 403);
         abort_if($membre->jury_id !== $jury->id, 404);
-        abort_if($jury->isLocked(), 422, 'PV déjà généré — signature interdite');
-
         $data = $request->validate([
             'signature_data' => ['required', 'string', 'max:200000'],
         ]);
+        try {
+            $this->decodePngSignature($data['signature_data']);
+        } catch (\InvalidArgumentException $exception) {
+            abort(422, 'La signature PNG fournie est invalide.');
+        }
 
-        $this->delib->enregistrerSignature(
-            $membre,
-            $data['signature_data'],
-            $request->ip(),
-            substr((string) $request->userAgent(), 0, 500)
-        );
+        try {
+            $this->delib->enregistrerSignature($membre, $data['signature_data'], (int) auth()->id(), $request->ip(), substr((string) $request->userAgent(), 0, 500));
+        } catch (\Throwable $exception) {
+            Log::notice('Signature de jury refusée.', ['jury_id' => $jury->id, 'member_id' => $membre->id, 'exception' => $exception]);
+            return response()->json(['success' => false, 'message' => 'La signature est déjà enregistrée ou le jury est verrouillé.'], 422);
+        }
 
         return response()->json([
             'success' => true,
             'membre' => [
                 'id' => $membre->id,
                 'has_signed' => true,
+                'can_sign' => false,
                 'signature_at' => $membre->fresh()->signature_at?->toIso8601String(),
             ],
+            'readiness' => $this->delib->verifierReadiness($jury->fresh()),
         ]);
     }
 
@@ -253,6 +253,7 @@ class ESBTPLMDJuryController extends Controller
         return response()->json([
             'stats' => $this->delib->buildStatistiques($jury->fresh('decisions')),
             'quorum' => $this->delib->verifierQuorum($jury->fresh('membres')),
+            'readiness' => $this->delib->verifierReadiness($jury->fresh()),
         ]);
     }
 
@@ -260,26 +261,30 @@ class ESBTPLMDJuryController extends Controller
     {
         abort_unless(auth()->user()?->can('lmd.jury.publish'), 403);
 
-        $quorum = $this->delib->verifierQuorum($jury);
-        if (! $quorum['ok']) {
+        $readiness = $this->delib->verifierReadiness($jury);
+        if (! $readiness['ok']) {
             return response()->json([
                 'success' => false,
-                'message' => 'Quorum non atteint : ' . implode(', ', $quorum['reasons']),
+                'message' => 'Jury non prêt : '.implode(', ', $readiness['reasons']),
+                'readiness' => $readiness,
             ], 422);
         }
 
         try {
             $path = $this->delib->genererPvDeliberation($jury);
-            $jury->fresh()->update(['status' => 'clos', 'clos_at' => now(), 'updated_by' => auth()->id()]);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
+            Log::error('Échec de l émission du PV officiel.', ['jury_id' => $jury->id, 'exception' => $e]);
+            return response()->json(['success' => false, 'message' => 'Le PV officiel n a pas pu être émis. Vérifiez les prérequis du jury.'], 422);
         }
 
+        $document = $this->officialDocuments->existingJuryPv($jury);
         return response()->json([
             'success' => true,
             'pv' => [
                 'numero' => $jury->fresh()->pv_numero,
-                'path' => $path,
+                'reference' => $document?->reference,
+                'version' => $document?->version,
+                'status' => $document?->status,
                 'genere_at' => $jury->fresh()->pv_genere_at?->toIso8601String(),
                 'download_url' => route('esbtp.lmd.jurys.pv-download', $jury),
             ],
@@ -293,7 +298,8 @@ class ESBTPLMDJuryController extends Controller
         try {
             $this->delib->publierDecisions($jury);
         } catch (\Throwable $e) {
-            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+            Log::error('Échec de la publication du jury.', ['jury_id' => $jury->id, 'exception' => $e]);
+            return response()->json(['success' => false, 'message' => 'Le jury n a pas pu être publié.'], 422);
         }
 
         return response()->json([
@@ -306,32 +312,57 @@ class ESBTPLMDJuryController extends Controller
         ]);
     }
 
-    public function pvDownload(ESBTPLMDJury $jury): \Symfony\Component\HttpFoundation\Response
+    public function pvDownload(ESBTPLMDJury $jury): RedirectResponse
     {
         abort_unless(auth()->user()?->can('lmd.jury.view'), 403);
-        abort_unless($jury->pv_path, 404, 'PV non encore généré');
-
-        $disk = \Illuminate\Support\Facades\Storage::disk('local');
-        abort_unless($disk->exists($jury->pv_path), 404);
-
-        return response($disk->get($jury->pv_path), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'attachment; filename="' . basename($jury->pv_path) . '"',
-        ]);
+        $document = $this->officialDocuments->existingJuryPv($jury);
+        abort_unless($document, 404, 'Aucun document officiel disponible.');
+        return redirect()->away($this->officialDownloads->signedUrl($document));
     }
 
-    public function pvPreview(ESBTPLMDJury $jury): \Symfony\Component\HttpFoundation\Response
+    public function pvPreview(ESBTPLMDJury $jury): RedirectResponse
     {
         abort_unless(auth()->user()?->can('lmd.jury.view'), 403);
-        abort_unless($jury->pv_path, 404, 'PV non encore généré');
+        $document = $this->officialDocuments->existingJuryPv($jury);
+        abort_unless($document, 404, 'Aucun document officiel disponible.');
+        return redirect()->away($this->officialDownloads->signedUrl($document, true));
+    }
 
-        $disk = \Illuminate\Support\Facades\Storage::disk('local');
-        abort_unless($disk->exists($jury->pv_path), 404);
+    public function reconcileLegacyPv(Request $request, ESBTPLMDJury $jury): JsonResponse|RedirectResponse
+    {
+        abort_unless(auth()->user()?->can('lmd.jury.documents.reconcile'), 403);
+        try {
+            $document = $this->legacyReconciliation->reconcile($jury, auth()->user());
+        } catch (\Throwable $exception) {
+            Log::error('Échec de la réconciliation du PV historique.', ['jury_id' => $jury->id, 'exception' => $exception]);
+            if ($request->expectsJson()) return response()->json(['success' => false, 'message' => 'Le PV historique n a pas pu être réconcilié.'], 422);
+            return back()->with('error', 'Le PV historique n a pas pu être réconcilié.');
+        }
+        if (! $request->expectsJson()) return back()->with('success', 'Le PV historique est maintenant inscrit dans le registre officiel.');
+        return response()->json(['success' => true, 'document' => ['reference' => $document->reference, 'version' => $document->version, 'status' => $document->status]]);
+    }
 
-        return response($disk->get($jury->pv_path), 200, [
-            'Content-Type' => 'application/pdf',
-            'Content-Disposition' => 'inline; filename="' . basename($jury->pv_path) . '"',
-        ]);
+    private function decodePngSignature(string $signatureData): string
+    {
+        if (! preg_match('/^data:image\/png;base64,([A-Za-z0-9+\/]+={0,2})$/D', $signatureData, $matches)) {
+            throw new \InvalidArgumentException('La signature doit être une image PNG encodée en data URL.');
+        }
+
+        $binary = base64_decode($matches[1], true);
+        if ($binary === false || $binary === '' || strlen($binary) > 150000) {
+            throw new \InvalidArgumentException('La signature PNG est invalide ou dépasse la taille autorisée.');
+        }
+
+        if (! str_starts_with($binary, "\x89PNG\r\n\x1a\n")) {
+            throw new \InvalidArgumentException('La signature doit contenir une image PNG réelle.');
+        }
+
+        $image = @getimagesizefromstring($binary);
+        if ($image === false || ($image['mime'] ?? null) !== 'image/png' || $image[0] > 4096 || $image[1] > 4096) {
+            throw new \InvalidArgumentException('La signature doit contenir une image PNG valide de taille raisonnable.');
+        }
+
+        return $binary;
     }
 
     private function resolveAnnee(Request $request): ESBTPAnneeUniversitaire

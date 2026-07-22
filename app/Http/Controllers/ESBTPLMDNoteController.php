@@ -3,15 +3,19 @@
 namespace App\Http\Controllers;
 
 use App\Domain\AcademicPilotage\Services\AcademicMetricSnapshotInvalidationService;
+use App\Domain\AcademicPilotage\Services\GradeSheetNoteMutationGuard;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEvaluation;
+use App\Models\ESBTPInscription;
 use App\Models\ESBTPNote;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class ESBTPLMDNoteController extends Controller
 {
+    public function __construct(private readonly GradeSheetNoteMutationGuard $noteMutationGuard) {}
+
     /**
      * Liste des classes LMD avec leurs UEs/ECUEs pour la saisie de notes.
      */
@@ -172,10 +176,40 @@ class ESBTPLMDNoteController extends Controller
         ]);
 
         $evaluation = ESBTPEvaluation::findOrFail($request->evaluation_id);
+        $evaluation->loadMissing('classe');
+        abort_unless($evaluation->classe?->systeme_academique === 'LMD', 422, 'La saisie groupée est réservée aux classes LMD.');
 
         $studentIds = DB::transaction(function () use ($request, $evaluation): array {
-            $rows = collect($request->notes)
-                ->filter(fn ($n) => ($n['note'] ?? null) !== null || ! empty($n['is_absent']))
+            $notes = collect($request->notes)
+                ->filter(fn ($note) => ($note['note'] ?? null) !== null || ! empty($note['is_absent']))
+                ->values();
+            $studentIds = $notes->pluck('etudiant_id')->map(fn ($studentId): int => (int) $studentId);
+
+            abort_if($studentIds->count() !== $studentIds->unique()->count(), 422, 'Un étudiant ne peut figurer qu’une fois dans une saisie groupée.');
+
+            $this->noteMutationGuard->assertEvaluationMutable((int) $evaluation->id, true);
+
+            $activeStudentIds = ESBTPInscription::query()
+                ->where('classe_id', $evaluation->classe_id)
+                ->where('annee_universitaire_id', $evaluation->annee_universitaire_id)
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
+                ->whereIn('etudiant_id', $studentIds)
+                ->lockForUpdate()
+                ->pluck('etudiant_id')
+                ->map(fn ($studentId): int => (int) $studentId);
+            abort_if($studentIds->diff($activeStudentIds)->isNotEmpty(), 422, 'Tous les étudiants doivent avoir une inscription active dans la classe et l’année de l’évaluation.');
+
+            $existingStudentIds = ESBTPNote::query()
+                ->where('evaluation_id', $evaluation->id)
+                ->whereIn('etudiant_id', $studentIds)
+                ->lockForUpdate()
+                ->pluck('etudiant_id')
+                ->map(fn ($studentId): int => (int) $studentId);
+            abort_unless($studentIds->diff($existingStudentIds)->isEmpty() || auth()->user()?->can('notes.create'), 403);
+            abort_unless($existingStudentIds->isEmpty() || auth()->user()?->can('notes.edit'), 403);
+
+            $rows = $notes
                 ->map(fn ($n) => [
                     'evaluation_id' => $evaluation->id,
                     'etudiant_id' => $n['etudiant_id'],

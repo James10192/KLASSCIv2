@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Http\Controllers;
 
+use App\Domain\AcademicPilotage\Services\GradeSheetNoteMutationGuard;
 use App\Http\Controllers\ESBTPLMDNoteController;
 use ReflectionMethod;
 use Tests\TestCase;
@@ -15,7 +16,7 @@ class ESBTPLMDNoteControllerTest extends TestCase
         $method = new ReflectionMethod(ESBTPLMDNoteController::class, 'bulkNoteInvalidationContexts');
         $method->setAccessible(true);
 
-        $contexts = $method->invoke(new ESBTPLMDNoteController, [
+        $contexts = $method->invoke(new ESBTPLMDNoteController(new GradeSheetNoteMutationGuard), [
             'classId' => 10,
             'academicYearId' => 20,
             'period' => 'semestre3',

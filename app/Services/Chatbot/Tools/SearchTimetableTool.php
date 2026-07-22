@@ -37,6 +37,10 @@ class SearchTimetableTool extends ChatbotTool
 
     public function execute(array $args, $user): array
     {
+        if (! $this->isAvailableFor($user)) {
+            return $this->unavailableResponse();
+        }
+
         $search = $args['classe'];
 
         $baseQuery = ESBTPEmploiTemps::query()

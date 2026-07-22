@@ -60,10 +60,28 @@ class SearchPaymentsTool extends ChatbotTool
 
     public function execute(array $args, $user): array
     {
+        if (! $this->isAvailableFor($user)) {
+            return $this->unavailableResponse();
+        }
+
+        $canViewAll = $user->can('paiements.view');
+        if (! $canViewAll && ! $user->can('paiements.view_own')) {
+            return $this->unavailableResponse();
+        }
+
+        $ownPaymentScope = fn ($query) => $query->where('created_by', $user->id);
+        $visibleInscriptionIds = $canViewAll
+            ? null
+            : ESBTPPaiement::query()->where('created_by', $user->id)->select('inscription_id');
+        $visibleStudentIds = $canViewAll
+            ? null
+            : ESBTPPaiement::query()->where('created_by', $user->id)->select('etudiant_id');
+
         // Si student_name fourni sans inscription_id et sans all_inscriptions
         if (!empty($args['student_name']) && empty($args['inscription_id']) && empty($args['all_inscriptions'])) {
             $inscriptions = \App\Models\ESBTPInscription::query()
                 ->with(['classe.filiere', 'etudiant', 'anneeUniversitaire'])
+                ->when(! $canViewAll, fn ($q) => $q->whereIn('id', $visibleInscriptionIds))
                 ->whereHas('etudiant', function ($q) use ($args) {
                     $this->applyFuzzyNameSearch($q, $args['student_name']);
                 })
@@ -116,6 +134,9 @@ class SearchPaymentsTool extends ChatbotTool
         }
 
         $query = ESBTPPaiement::query()->with(['etudiant', 'inscription.classe.filiere', 'inscription.anneeUniversitaire', 'fraisCategory']);
+        if (! $canViewAll) {
+            $ownPaymentScope($query);
+        }
 
         // Filtre par inscription_id spécifique
         if (!empty($args['inscription_id'])) {
@@ -130,6 +151,7 @@ class SearchPaymentsTool extends ChatbotTool
         if (!empty($args['student_name']) && empty($args['inscription_id'])) {
             // Trouver le meilleur match étudiant (filtrer les faux positifs SOUNDEX)
             $matchedStudents = \App\Models\ESBTPEtudiant::query()
+                ->when(! $canViewAll, fn ($q) => $q->whereIn('id', $visibleStudentIds))
                 ->where(function ($q) use ($args) {
                     $this->applyFuzzyNameSearch($q, $args['student_name']);
                 })->get();
@@ -174,6 +196,7 @@ class SearchPaymentsTool extends ChatbotTool
         if (!empty($args['all_inscriptions']) && !empty($bestId)) {
             $allInscriptions = \App\Models\ESBTPInscription::with(['classe.filiere', 'anneeUniversitaire'])
                 ->where('etudiant_id', $bestId)
+                ->when(! $canViewAll, fn ($q) => $q->whereIn('id', $visibleInscriptionIds))
                 ->orderByDesc('date_inscription')
                 ->get();
             foreach ($allInscriptions as $insc) {

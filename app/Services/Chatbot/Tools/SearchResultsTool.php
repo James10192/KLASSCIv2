@@ -44,6 +44,10 @@ class SearchResultsTool extends ChatbotTool
 
     public function execute(array $args, $user): array
     {
+        if (! $this->isAvailableFor($user)) {
+            return $this->unavailableResponse();
+        }
+
         $query = ESBTPBulletin::query()
             ->with(['etudiant', 'classe.filiere', 'anneeUniversitaire']);
 

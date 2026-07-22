@@ -31,24 +31,32 @@ final class GradeCompletionMetricService
             return [];
         }
 
-        $sheetIds = $this->sheetIds($contexts[0]);
-        if ($sheetIds->isEmpty()) {
-            return $this->unavailableMetrics($contexts);
-        }
-
-        $studentIds = array_map(fn (StudentMetricContext $context): int => $context->studentId, $contexts);
-        $entries = GradeSheetEntry::query()
-            ->whereIn('grade_sheet_id', $sheetIds)
-            ->whereIn('etudiant_id', $studentIds)
-            ->get(['grade_sheet_id', 'etudiant_id', 'status'])
-            ->groupBy('etudiant_id');
-
         $metrics = [];
-        foreach ($studentIds as $studentId) {
-            $metrics[$studentId] = $this->metric($sheetIds, $entries->get($studentId, collect()));
+        foreach (collect($contexts)->groupBy($this->contextScopeKey(...)) as $group) {
+            $context = $group->first();
+            $sheetIds = $this->sheetIds($context);
+            if ($sheetIds->isEmpty()) {
+                $metrics += $this->unavailableMetrics($group->all());
+                continue;
+            }
+
+            $studentIds = $group->pluck('studentId')->all();
+            $entries = GradeSheetEntry::query()
+                ->whereIn('grade_sheet_id', $sheetIds)
+                ->whereIn('etudiant_id', $studentIds)
+                ->get(['grade_sheet_id', 'etudiant_id', 'status'])
+                ->groupBy('etudiant_id');
+            foreach ($studentIds as $studentId) {
+                $metrics[$studentId] = $this->metric($sheetIds, $entries->get($studentId, collect()));
+            }
         }
 
         return $metrics;
+    }
+
+    private function contextScopeKey(StudentMetricContext $context): string
+    {
+        return implode(':', [$context->classId, $context->academicYearId, $context->academicSystem, $context->period]);
     }
 
     private function sheetIds(StudentMetricContext $context): Collection
@@ -58,7 +66,8 @@ final class GradeCompletionMetricService
             ->where('annee_universitaire_id', $context->academicYearId)
             ->where('academic_system', $context->academicSystem)
             ->whereIn('semester', $this->periods->databaseVariants($context->period))
-            ->where('status', '!=', GradeSheetStatus::CANCELLED->value)
+            ->where('status', GradeSheetStatus::VALIDATED->value)
+            ->where('source', 'evaluation')
             ->orderBy('id')
             ->pluck('id');
     }
@@ -69,7 +78,7 @@ final class GradeCompletionMetricService
         foreach ($contexts as $context) {
             $metrics[$context->studentId] = AcademicMetricValue::unavailable(
                 'assessment_completion',
-                "Cadre d'évaluation non configuré pour cette période.",
+                'Cadre d\'evaluation non configure pour cette periode.',
                 ['configured_sheets' => 0],
             );
         }
@@ -79,6 +88,21 @@ final class GradeCompletionMetricService
 
     private function metric(Collection $sheetIds, Collection $entries): AcademicMetricValue
     {
+        if ($entries->isEmpty()) {
+            return AcademicMetricValue::unavailable(
+                'assessment_completion',
+                'Aucune entree de note pour ce contexte, calcul non encore lance.',
+                [
+                    'configured_sheets' => $sheetIds->count(),
+                    'applicable_entries' => $sheetIds->count(),
+                    'resolved_entries' => 0,
+                    'missing_entries' => $sheetIds->count(),
+                    'evidence_hash' => hash('sha256', json_encode($sheetIds->all(), JSON_THROW_ON_ERROR)),
+                ],
+                true,
+            );
+        }
+
         $states = $sheetIds->mapWithKeys(fn ($sheetId): array => [(int) $sheetId => 'missing']);
         foreach ($entries as $entry) {
             $states[(int) $entry->grade_sheet_id] = $entry->status->value;

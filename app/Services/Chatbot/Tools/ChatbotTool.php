@@ -37,25 +37,70 @@ abstract class ChatbotTool
     abstract public function execute(array $args, $user): array;
 
     /**
-     * Permissions requises pour utiliser cet outil (Spatie).
-     * Retourne null si pas de vérification nécessaire.
+     * Permissions canoniques requises. Un outil absent de la configuration est refusé.
      *
-     * @return string[]|null
+     * @return string[]
      */
-    public function requiredPermissions(): ?array
+    public function requiredPermissions(): array
     {
-        return null;
+        return $this->toolConfig()['all_permissions'] ?? [];
     }
 
     /**
-     * Rôles autorisés à utiliser cet outil.
-     * Retourne null si tous les rôles ont accès.
+     * Vérifie l'autorisation à l'exposition comme à l'exécution.
      *
-     * @return string[]|null
+     * Les outils sont explicitement opt-in: une configuration manquante, désactivée ou
+     * sans permission canonique ne peut jamais ouvrir un accès implicite.
      */
-    public function allowedRoles(): ?array
+    public function isAvailableFor($user): bool
     {
-        return null;
+        $config = $this->toolConfig();
+
+        if (($config['enabled'] ?? false) !== true || ! $user) {
+            return false;
+        }
+
+        $allPermissions = $config['all_permissions'] ?? [];
+        $anyPermissions = $config['any_permissions'] ?? [];
+        $allowedRoles = $config['allowed_roles'] ?? [];
+
+        if ($allPermissions === [] && $anyPermissions === []) {
+            return false;
+        }
+
+        if ($allowedRoles !== []) {
+            if (! method_exists($user, 'hasRole') || ! $user->hasRole($allowedRoles)) {
+                return false;
+            }
+        }
+
+        return collect($allPermissions)->every(fn (string $permission) => $user->can($permission))
+            && ($anyPermissions === [] || collect($anyPermissions)->contains(fn (string $permission) => $user->can($permission)));
+    }
+
+    /**
+     * Point d'exécution obligatoire pour les agents. Ne révèle pas la cause du refus.
+     */
+    public function executeAuthorized(array $args, $user): array
+    {
+        if (! $this->isAvailableFor($user)) {
+            return $this->unavailableResponse();
+        }
+
+        return $this->execute($args, $user);
+    }
+
+    protected function unavailableResponse(): array
+    {
+        return [
+            'error' => 'Outil indisponible.',
+        ];
+    }
+
+    /** @return array<string, mixed> */
+    protected function toolConfig(): array
+    {
+        return config('chatbot.tools.' . $this->name(), []);
     }
 
     /**

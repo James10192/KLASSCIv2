@@ -78,6 +78,11 @@ class ESBTPLMDJury extends Model implements Auditable
         return $this->hasMany(ESBTPLMDJuryDecision::class, 'jury_id');
     }
 
+    public function officialDocuments(): \Illuminate\Database\Eloquent\Relations\MorphMany
+    {
+        return $this->morphMany(\App\Domain\OfficialDocuments\Models\OfficialDocument::class, 'source', 'source_type', 'source_id');
+    }
+
     public function scopeNotLocked(Builder $query): Builder
     {
         return $query->whereNull('pv_genere_at');

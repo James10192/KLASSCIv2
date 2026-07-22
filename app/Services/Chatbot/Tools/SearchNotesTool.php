@@ -3,7 +3,7 @@
 namespace App\Services\Chatbot\Tools;
 
 use App\Models\ESBTPNote;
-use Illuminate\Support\Facades\DB;
+use App\Models\ESBTPAnneeUniversitaire;
 use Illuminate\Support\Facades\Route;
 
 class SearchNotesTool extends ChatbotTool
@@ -49,7 +49,51 @@ class SearchNotesTool extends ChatbotTool
 
     public function execute(array $args, $user): array
     {
+        if (! $this->isAvailableFor($user)) {
+            return $this->unavailableResponse();
+        }
+
         $query = ESBTPNote::query()->with(['evaluation', 'etudiant', 'matiere', 'classe']);
+
+        if ($user->can('identity.student')) {
+            $query->whereHas('etudiant', fn ($q) => $q->where('user_id', $user->id));
+        } elseif ($user->can('identity.teach')) {
+            $activeAcademicYearId = ESBTPAnneeUniversitaire::query()
+                ->where('is_current', true)
+                ->value('id');
+
+            if (! $activeAcademicYearId) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $query->whereExists(function ($assignments) use ($user, $activeAcademicYearId) {
+                    $assignments->selectRaw('1')
+                        ->from('esbtp_evaluations as evaluations')
+                        ->join('esbtp_classes as classes', 'classes.id', '=', 'evaluations.classe_id')
+                        ->join('esbtp_planifications_academiques as planifications', function ($join) {
+                            $join->on('planifications.filiere_id', '=', 'classes.filiere_id')
+                                ->on('planifications.niveau_etude_id', '=', 'classes.niveau_etude_id')
+                                ->on('planifications.matiere_id', '=', 'evaluations.matiere_id');
+                        })
+                        ->whereColumn('evaluations.id', 'esbtp_notes.evaluation_id')
+                        ->whereColumn('evaluations.classe_id', 'esbtp_notes.classe_id')
+                        ->whereColumn('evaluations.matiere_id', 'esbtp_notes.matiere_id')
+                        ->where('evaluations.annee_universitaire_id', $activeAcademicYearId)
+                        ->where('planifications.annee_universitaire_id', $activeAcademicYearId)
+                        ->where('planifications.is_active', true)
+                        ->where(function ($teacherScope) use ($user) {
+                            $teacherScope->whereExists(function ($teacherAssignments) use ($user) {
+                                $teacherAssignments->selectRaw('1')
+                                    ->from('esbtp_planification_teachers as planification_teachers')
+                                    ->join('esbtp_teachers as teachers', 'teachers.id', '=', 'planification_teachers.teacher_id')
+                                    ->whereColumn('planification_teachers.planification_id', 'planifications.id')
+                                    ->where('teachers.user_id', $user->id);
+                            })->orWhere('planifications.enseignant_principal_id', $user->id);
+                        });
+                });
+            }
+        } elseif (! $user->can('notes.view')) {
+            return $this->unavailableResponse();
+        }
 
         if (!empty($args['student_name'])) {
             $tool = $this;

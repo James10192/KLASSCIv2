@@ -43,4 +43,19 @@ class GradeSheetNoteMutationGuardTest extends AcademicPilotageDatabaseTestCase
 
         $this->assertTrue(true);
     }
+
+    public function test_bulk_guard_locks_a_validated_evaluation(): void
+    {
+        $sheet = $this->createGradeSheet([
+            'evaluation_id' => 88,
+            'status' => GradeSheetStatus::VALIDATED->value,
+        ]);
+
+        try {
+            (new GradeSheetNoteMutationGuard)->assertEvaluationMutable(88, true);
+            $this->fail('A bulk mutation must not bypass a validated grade sheet.');
+        } catch (AcademicPilotageException $exception) {
+            $this->assertSame(['grade_sheet_id' => $sheet->id], $exception->details);
+        }
+    }
 }

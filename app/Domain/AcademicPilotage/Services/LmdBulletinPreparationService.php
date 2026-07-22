@@ -29,15 +29,13 @@ final class LmdBulletinPreparationService implements BulletinPreparationService
         $completion = $result->metrics->get('assessment_completion');
         $issues = [];
 
-        if (! $performance?->isAvailable()) {
+        if (! $completion?->isAvailable()) {
             $issues[] = $this->issue(
-                'lmd_result_unavailable',
-                'Le résultat LMD de cette période n’est pas disponible.',
+                'grade_sheet_status_unavailable',
+                'Le statut des feuilles de notes ne peut pas être vérifié.',
                 'blocking',
             );
-        }
-
-        if ($completion?->isAvailable() && ($completion->denominator ?? 0) > ($completion->numerator ?? 0)) {
+        } elseif (($completion->denominator ?? 0) > ($completion->numerator ?? 0)) {
             $issues[] = $this->issue(
                 'missing_grade_entries',
                 'Des entrées de fiche restent attendues pour cet étudiant.',
@@ -60,6 +58,7 @@ final class LmdBulletinPreparationService implements BulletinPreparationService
                 'health_score' => $result->score,
                 'coverage_pct' => $result->coveragePct,
                 'confidence_pct' => $result->confidencePct,
+                'performance_is_post_generation' => true,
                 'performance' => $performance?->toArray(),
                 'completion' => $completion?->toArray(),
             ],

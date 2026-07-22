@@ -2,11 +2,7 @@
     /** @var array $widget */
     // ESBTPPaiement utilise les colonnes `status` ET `statut` (alias) — filtre les deux
     $count = \App\Models\ESBTPPaiement::query()
-        ->where(function ($q) {
-            $q->where('status', 'en_attente')
-              ->orWhere('statut', 'en_attente')
-              ->orWhere('status', 'pending');
-        })
+        ->whereIn('status', ['en_attente', 'pending'])
         ->count();
 @endphp
 

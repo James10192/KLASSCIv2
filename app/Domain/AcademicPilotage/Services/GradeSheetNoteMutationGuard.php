@@ -15,13 +15,22 @@ final class GradeSheetNoteMutationGuard
             return;
         }
 
-        $gradeSheetId = GradeSheet::query()
-            ->where('evaluation_id', $note->evaluation_id)
-            ->where('status', GradeSheetStatus::VALIDATED->value)
-            ->value('id');
+        $this->assertEvaluationMutable((int) $note->evaluation_id);
+    }
 
-        if ($gradeSheetId !== null) {
-            throw AcademicPilotageException::validatedNoteLocked((int) $gradeSheetId);
+    public function assertEvaluationMutable(int $evaluationId, bool $lockForUpdate = false): void
+    {
+        $query = GradeSheet::query()
+            ->where('evaluation_id', $evaluationId);
+
+        if ($lockForUpdate) {
+            $query->lockForUpdate();
+        }
+
+        $sheet = $query->first();
+
+        if ($sheet?->status === GradeSheetStatus::VALIDATED) {
+            throw AcademicPilotageException::validatedNoteLocked((int) $sheet->id);
         }
     }
 }
