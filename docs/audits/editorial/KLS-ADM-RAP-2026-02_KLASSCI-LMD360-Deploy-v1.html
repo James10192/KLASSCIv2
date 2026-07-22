@@ -1,0 +1,191 @@
+﻿<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>KLS-ADM-RAP-2026-02 · KLASSCI LMD 360 · Déploiement presentation</title>
+<style>
+@page { size: A4; margin: 0; }
+:root { --blue:#0453cb; --blue2:#5e91de; --ink:#0f172a; --muted:#64748b; --line:#dbe5f5; --paper:#ffffff; --soft:#f6f9ff; --ok:#10b981; --warn:#d97706; --bad:#dc2626; }
+* { box-sizing: border-box; }
+body { margin:0; color:var(--ink); font-family: "Segoe UI", Calibri, sans-serif; font-size:10.5pt; line-height:1.5; background:white; }
+.page { width:210mm; min-height:297mm; max-height:297mm; padding:16mm 18mm 30mm; page-break-after:always; position:relative; overflow:hidden; background:var(--paper); }
+.page:last-child { page-break-after:auto; }
+.page::after { content:""; position:absolute; left:0; right:0; bottom:0; height:22mm; background:linear-gradient(to top, #fff 0%, #fff 75%, rgba(255,255,255,0)); z-index:5; }
+.footer { position:absolute; z-index:10; left:18mm; right:18mm; bottom:9mm; display:flex; justify-content:space-between; color:var(--muted); font-size:7.5pt; letter-spacing:.08em; text-transform:uppercase; border-top:1px solid var(--line); padding-top:3mm; }
+.cover { background:linear-gradient(140deg, #071831 0%, #0d326b 48%, var(--blue) 100%); color:white; padding:0; }
+.cover::after { display:none; }
+.cover-inner { height:297mm; padding:24mm; display:flex; flex-direction:column; justify-content:space-between; }
+.badge { display:inline-block; border:1px solid rgba(255,255,255,.35); padding:6px 10px; border-radius:999px; font-size:8pt; letter-spacing:.12em; text-transform:uppercase; }
+h1 { font-size:38pt; line-height:1.02; margin:18mm 0 7mm; max-width:150mm; }
+h2 { font-size:23pt; line-height:1.1; margin:0 0 9mm; color:var(--blue); }
+h3 { font-size:13pt; margin:7mm 0 3mm; color:var(--ink); }
+p { margin:0 0 4mm; }
+.meta { display:grid; grid-template-columns:1fr 1fr; gap:6mm; margin-top:8mm; }
+.meta div, .card { border:1px solid var(--line); border-radius:14px; padding:5mm; background:var(--soft); }
+.cover .meta div { border-color:rgba(255,255,255,.24); background:rgba(255,255,255,.08); }
+.kpi { display:grid; grid-template-columns:repeat(4,1fr); gap:4mm; margin:6mm 0 8mm; }
+.kpi .card { padding:4mm; }
+.kpi strong { display:block; font-size:20pt; color:var(--blue); line-height:1; }
+.small { color:var(--muted); font-size:9pt; }
+table { width:100%; border-collapse:collapse; margin:4mm 0 7mm; font-size:9.3pt; }
+th { text-align:left; background:#eef5ff; color:#14325d; font-size:8pt; text-transform:uppercase; letter-spacing:.08em; }
+th, td { border:1px solid var(--line); padding:7px 8px; vertical-align:top; }
+.status-ok { color:var(--ok); font-weight:700; }
+.status-warn { color:var(--warn); font-weight:700; }
+.status-bad { color:var(--bad); font-weight:700; }
+ul { margin:0 0 5mm 5mm; padding:0; }
+li { margin-bottom:2mm; }
+.code { font-family: Consolas, monospace; background:#eef5ff; padding:1px 4px; border-radius:4px; }
+.timeline { border-left:3px solid var(--blue); padding-left:5mm; }
+.timeline .item { margin-bottom:5mm; }
+.shot-grid { display:grid; grid-template-columns:1fr 1fr; gap:4mm; }
+.shot { border:1px solid var(--line); border-radius:12px; padding:3mm; background:#fff; break-inside:avoid; }
+.shot img { width:100%; height:42mm; object-fit:cover; object-position:top left; border:1px solid #e5edf8; border-radius:8px; display:block; margin-bottom:2mm; }
+.note { background:#fff7ed; border:1px solid #fed7aa; padding:4mm; border-radius:12px; }
+</style>
+</head>
+<body>
+<section class="page cover">
+  <div class="cover-inner">
+    <div><span class="badge">Document confidentiel · Rapport interne produit</span></div>
+    <div>
+      <div class="badge">RÉF. KLS-ADM-RAP-2026-02</div>
+      <h1>KLASSCI LMD 360, déploiement `presentation` et vérification post-déploiement</h1>
+      <p>Rapport d’exécution après audit Phase 0, correctifs production, merge, déploiement et smoke authentifié.</p>
+    </div>
+    <div class="meta">
+      <div><strong>Instance cible</strong><br>presentation.klassci.com<br><span class="small">Branche GitHub `presentation`</span></div>
+      <div><strong>Date d’exécution</strong><br>22 juillet 2026<br><span class="small">Fuseau de travail Africa/Abidjan</span></div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <h2>1. Résultat exécutif</h2>
+  <div class="kpi">
+    <div class="card"><strong>5/5</strong><span class="small">pages smoke final en HTTP 200</span></div>
+    <div class="card"><strong>5</strong><span class="small">PRs mergeées vers `presentation`</span></div>
+    <div class="card"><strong>4</strong><span class="small">migrations LMD appliquées</span></div>
+    <div class="card"><strong>0</strong><span class="small">migration restante au final</span></div>
+  </div>
+  <p>Le chantier LMD 360 a été déployé sur l’instance `presentation` jusqu’au commit serveur final <span class="code">c5590e3b592b9e53cea512cc15226fcb25bfea55</span>.</p>
+  <p>Le smoke final authentifié confirme que les pages critiques ne retournent plus de 500 et ne présentent plus de signature d’exception visible.</p>
+  <table>
+    <tr><th>Élément</th><th>Statut</th><th>Preuve</th></tr>
+    <tr><td>PR #508, parcours vertical LMD 360 initial</td><td class="status-ok">Merge et déploiement OK</td><td>Merge commit <span class="code">f449ec2e</span></td></tr>
+    <tr><td>PR #509, blockers Sol et hotfix post-déploiement</td><td class="status-ok">Merge et déploiement OK</td><td>Merge commit <span class="code">7ae2cb49</span></td></tr>
+    <tr><td>PR #510, compilation payload PV</td><td class="status-ok">Merge et déploiement OK</td><td>Merge commit <span class="code">96551cae</span></td></tr>
+    <tr><td>PR #511, scope Blade data/scripts</td><td class="status-ok">Merge et déploiement OK</td><td>Merge commit <span class="code">1f1044ff</span></td></tr>
+    <tr><td>PR #512, route réconciliation PV</td><td class="status-ok">Merge et déploiement OK</td><td>Merge commit <span class="code">c5590e3b</span></td></tr>
+  </table>
+  <h3>Décision</h3>
+  <p>Déploiement `presentation` validé pour les pages contrôlées. Les anomalies détectées pendant le smoke ont été corrigées immédiatement et redéployées par PRs séparées.</p>
+  <div class="footer"><span>KLS-ADM-RAP-2026-02</span><span>02</span></div>
+</section>
+
+<section class="page">
+  <h2>2. Changements livrés</h2>
+  <h3>Parcours vertical production-grade</h3>
+  <ul>
+    <li>PV de jury officiel immuable avec registre, événements, séquence PV et intégrité.</li>
+    <li>Réconciliation des PV legacy sans recréer les fonctions LMD existantes.</li>
+    <li>Ergonomie jury LMD intégrée aux pages existantes, readiness, quorum, membres, décisions, signatures, publication.</li>
+    <li>Révisions de feuilles de notes avec snapshots déterministes et preuves verrouillées.</li>
+    <li>Projection des décisions jury vers les bulletins via `bulletin_id` résolu.</li>
+    <li>Confinement chatbot sur les bulletins publiés de l’étudiant connecté pour `bulletins.view_own`.</li>
+    <li>Rattrapage protégé contre mutations après publication de session, bulletin ou jury.</li>
+    <li>Widgets dashboard corrigés selon les colonnes réelles `status` et `statut`.</li>
+  </ul>
+  <h3>Correctifs post-déploiement</h3>
+  <table>
+    <tr><th>Défaut observé</th><th>Correction livrée</th><th>Validation</th></tr>
+    <tr><td>500 `/dashboard/widgets`, colonne paiement `statut` inexistante</td><td>Widgets paiements alignés sur `status`, widget attendance conservé sur `statut`</td><td>HTTP 200 final</td></tr>
+    <tr><td>500 `/esbtp/lmd/jurys/1`, readiness PV jetait une exception</td><td>`JuryPvIssuanceGuard::readiness()` retourne une raison métier au lieu de casser la page</td><td>HTTP 200 final</td></tr>
+    <tr><td>Blade `@json` avec tableau imbriqué non compilable</td><td>Payload officiel pré-calculé et injecté avec `Js::from`</td><td>`php artisan view:cache` OK</td></tr>
+    <tr><td>Variables `$membresData` et `$decisionsData` hors scope</td><td>`jury-data` inclut `jury-scripts` dans le même scope Blade</td><td>HTTP 200 final</td></tr>
+    <tr><td>Route `pv.reconcilier` inexistante</td><td>Référence corrigée vers `pv-reconcile`</td><td>HTTP 200 final</td></tr>
+  </table>
+  <div class="footer"><span>KLS-ADM-RAP-2026-02</span><span>03</span></div>
+</section>
+
+<section class="page">
+  <h2>3. Qualité, checks et tests</h2>
+  <table>
+    <tr><th>Contrôle</th><th>Résultat</th><th>Détail</th></tr>
+    <tr><td>Chatbot scope</td><td class="status-ok">OK</td><td>5 tests, 13 assertions</td></tr>
+    <tr><td>Rattrapage scope</td><td class="status-ok">OK</td><td>6 tests, 15 assertions</td></tr>
+    <tr><td>Jury `bulletin_id` persistence</td><td class="status-ok">OK</td><td>2 tests, 4 assertions</td></tr>
+    <tr><td>GradeSheet revisions</td><td class="status-ok">OK</td><td>4 tests, 14 assertions</td></tr>
+    <tr><td>Official documents + HTTP</td><td class="status-ok">OK</td><td>23 tests, 90 assertions, 1 skip connu MySQL DSN</td></tr>
+    <tr><td>Blade local</td><td class="status-ok">OK</td><td>`php artisan view:cache` réussi après chaque hotfix Blade</td></tr>
+    <tr><td>GitHub PR checks</td><td class="status-ok">OK</td><td>Laravel Lint & Validation, Composer Security Audit, Laravel Security Checks, npm Security Audit verts sur #508 à #512</td></tr>
+  </table>
+  <h3>Revue Sol</h3>
+  <p>La revue qualité Sol avait bloqué PR #509 sur quatre points: fuite potentielle chatbot bulletins, décisions jury sans `bulletin_id`, capture GradeSheet non atomique, mutation rattrapage après publication. Les quatre points ont été corrigés et testés avant merge.</p>
+  <h3>Limites connues</h3>
+  <ul>
+    <li>Le test de concurrence MySQL reste skippé localement car `KLASSCI_TEST_MYSQL_DSN` n’est pas configuré.</li>
+    <li>Les logs contiennent des erreurs historiques hors chantier, notamment `date_cours` sur planning enseignant, antérieures au 22 juillet 2026.</li>
+    <li>Les alertes Dependabot existantes sur la branche par défaut restent hors périmètre de ce déploiement.</li>
+  </ul>
+  <div class="footer"><span>KLS-ADM-RAP-2026-02</span><span>04</span></div>
+</section>
+
+<section class="page">
+  <h2>4. Déploiement `presentation`</h2>
+  <div class="timeline">
+    <div class="item"><strong>PR #508</strong><br>Merge du parcours initial LMD 360. Pull serveur `presentation`, migrations appliquées, permissions synchronisées, caches vidés.</div>
+    <div class="item"><strong>PR #509</strong><br>Correction des blockers Sol et hotfix widgets/readiness. Pull serveur, aucune migration supplémentaire, caches vidés.</div>
+    <div class="item"><strong>PR #510</strong><br>Correction de compilation Blade du payload document officiel. Pull serveur, caches vidés.</div>
+    <div class="item"><strong>PR #511</strong><br>Correction de scope entre `jury-data` et `jury-scripts`. Pull serveur, caches vidés.</div>
+    <div class="item"><strong>PR #512</strong><br>Correction du nom de route réconciliation PV. Pull serveur final, aucune migration restante, caches et OPcache remis à zéro.</div>
+  </div>
+  <h3>Migrations appliquées pendant le déploiement initial</h3>
+  <ul>
+    <li><span class="code">2026_07_22_011929_create_esbtp_official_documents_table</span></li>
+    <li><span class="code">2026_07_22_011957_create_esbtp_official_document_events_table</span></li>
+    <li><span class="code">2026_07_22_015819_create_esbtp_pv_sequences_table</span></li>
+    <li><span class="code">2026_07_22_051713_create_esbtp_grade_sheet_revisions_table</span></li>
+  </ul>
+  <h3>Permissions</h3>
+  <p>Synchronisation CLI réussie après PR #508: <span class="code">permissions_synced: 425</span>, <span class="code">roles_synced: 8</span>.</p>
+  <div class="footer"><span>KLS-ADM-RAP-2026-02</span><span>05</span></div>
+</section>
+
+<section class="page">
+  <h2>5. Smoke authentifié final</h2>
+  <table>
+    <tr><th>Page</th><th>Status</th><th>Titre</th><th>Screenshot</th></tr>
+    <tr><td><span class="code">/dashboard</span></td><td class="status-ok">200</td><td>Tableau de bord Super Admin</td><td>lmd360-postdeploy-final-dashboard.png</td></tr>
+    <tr><td><span class="code">/dashboard/widgets</span></td><td class="status-ok">200</td><td>Tableau de bord</td><td>lmd360-postdeploy-final-widgets.png</td></tr>
+    <tr><td><span class="code">/esbtp/lmd/jurys</span></td><td class="status-ok">200</td><td>Jurys de délibération LMD</td><td>lmd360-postdeploy-final-jurys.png</td></tr>
+    <tr><td><span class="code">/esbtp/lmd/jurys/1</span></td><td class="status-ok">200</td><td>Jury, Licence marketing et communication</td><td>lmd360-postdeploy-final-jury-1.png</td></tr>
+    <tr><td><span class="code">/esbtp/lmd/resultats</span></td><td class="status-ok">200</td><td>Résultats LMD, KLASSCI</td><td>lmd360-postdeploy-final-resultats.png</td></tr>
+  </table>
+  <p>Critère appliqué: statut HTTP 200 et absence des signatures `Internal Server Error`, `SQLSTATE`, `Exception`, `Whoops`, `ParseError`, `Undefined variable`, `RouteNotFound` dans le titre ou le corps.</p>
+  <div class="shot-grid">
+    <div class="shot"><img src="file:///C:/Users/yabla/.dev-browser/tmp/lmd360-postdeploy-final-jury-1.png"><strong>Détail jury LMD</strong><br><span class="small">Ancien point bloquant, maintenant 200.</span></div>
+    <div class="shot"><img src="file:///C:/Users/yabla/.dev-browser/tmp/lmd360-postdeploy-final-widgets.png"><strong>Widgets dashboard</strong><br><span class="small">Ancien point bloquant, maintenant 200.</span></div>
+  </div>
+  <div class="footer"><span>KLS-ADM-RAP-2026-02</span><span>06</span></div>
+</section>
+
+<section class="page">
+  <h2>6. Verdict et suite</h2>
+  <div class="card">
+    <h3>Verdict</h3>
+    <p><strong>Déploiement validé sur `presentation` pour le périmètre LMD 360 contrôlé.</strong></p>
+    <p>Les fonctions LMD existantes ont été réconciliées et renforcées sans recréation parallèle. Les défauts découverts en production ont été traités par preuves, PRs, checks, déploiement et smoke final.</p>
+  </div>
+  <h3>À planifier ensuite, hors blocage déploiement</h3>
+  <ul>
+    <li>Configurer `KLASSCI_TEST_MYSQL_DSN` pour activer le test de concurrence MySQL en local ou CI dédiée.</li>
+    <li>Ouvrir un ticket séparé pour les erreurs historiques `date_cours` du module planning enseignant si elles restent reproductibles.</li>
+    <li>Élargir le smoke E2E à l’action réelle de réconciliation PV avec un PV legacy contrôlé, pour couvrir le bouton au-delà du rendu de page.</li>
+    <li>Traiter les vulnérabilités Dependabot existantes dans un chantier sécurité séparé, non mélangé au LMD 360.</li>
+  </ul>
+  <div class="note"><strong>Position de livraison.</strong> `presentation` est à jour, PRs mergeées, checks verts, caches vidés, smoke final vert, logs sans nouvelle exception après le dernier déploiement dans la fenêtre consultée.</div>
+  <div class="footer"><span>KLS-ADM-RAP-2026-02</span><span>07</span></div>
+</section>
+</body>
+</html>
