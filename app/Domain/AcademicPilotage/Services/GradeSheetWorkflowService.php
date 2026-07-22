@@ -13,16 +13,21 @@ use Illuminate\Support\Facades\DB;
 
 final class GradeSheetWorkflowService
 {
+    private GradeSheetRevisionService $revisions;
+
     public function __construct(
         private readonly GradeSheetStateMachine $stateMachine,
         private readonly GradeSheetEventRecorder $eventRecorder,
         private readonly AcademicMetricSnapshotInvalidationService $invalidation,
-    ) {}
+        ?GradeSheetRevisionService $revisions = null,
+    ) {
+        $this->revisions = $revisions ?? new GradeSheetRevisionService;
+    }
 
     public function transition(GradeSheetTransitionCommand $command): GradeSheet
     {
         $sheet = DB::transaction(function () use ($command): GradeSheet {
-            $sheet = GradeSheet::query()->findOrFail($command->gradeSheetId);
+            $sheet = GradeSheet::query()->lockForUpdate()->findOrFail($command->gradeSheetId);
             $this->assertCurrentVersion($sheet, $command->expectedLockVersion);
             $plan = $this->stateMachine->transition(
                 $sheet->status,
@@ -59,6 +64,10 @@ final class GradeSheetWorkflowService
                 $command->reason,
                 [...$command->metadata, 'lock_version' => $newVersion],
             );
+
+            if ($this->stateMachine->createsRevision($plan)) {
+                $this->revisions->captureValidatedRevision($sheet->refresh(), $command->actorId, $command->reason);
+            }
 
             return $sheet->refresh();
         });

@@ -2,6 +2,7 @@
 
 namespace App\Services\Chatbot\Tools;
 
+use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPEtudiant;
 use Illuminate\Support\Facades\Route;
 
@@ -56,7 +57,55 @@ class SearchStudentsTool extends ChatbotTool
 
     public function execute(array $args, $user): array
     {
+        if (! $this->isAvailableFor($user)) {
+            return $this->unavailableResponse();
+        }
+
         $query = ESBTPEtudiant::query()->with(['inscriptions' => fn($q) => $q->orderByDesc('date_inscription'), 'inscriptions.classe.filiere']);
+
+        if ($user->can('identity.student')) {
+            $query->where('user_id', $user->id);
+        } elseif ($user->can('identity.teach')) {
+            $activeAcademicYearId = ESBTPAnneeUniversitaire::query()
+                ->where('is_current', true)
+                ->value('id');
+
+            if (! $activeAcademicYearId) {
+                $query->whereRaw('1 = 0');
+            } else {
+                $scopeAssignedClasses = function ($classes) use ($user, $activeAcademicYearId) {
+                    $classes->whereExists(function ($assignments) use ($user, $activeAcademicYearId) {
+                        $assignments->selectRaw('1')
+                            ->from('esbtp_planifications_academiques as planifications')
+                            ->whereColumn('planifications.filiere_id', 'esbtp_classes.filiere_id')
+                            ->whereColumn('planifications.niveau_etude_id', 'esbtp_classes.niveau_etude_id')
+                            ->where('planifications.annee_universitaire_id', $activeAcademicYearId)
+                            ->where('planifications.is_active', true)
+                            ->whereNotNull('planifications.matiere_id')
+                            ->where(function ($teacherScope) use ($user) {
+                                $teacherScope->whereExists(function ($teacherAssignments) use ($user) {
+                                    $teacherAssignments->selectRaw('1')
+                                        ->from('esbtp_planification_teachers as planification_teachers')
+                                        ->join('esbtp_teachers as teachers', 'teachers.id', '=', 'planification_teachers.teacher_id')
+                                        ->whereColumn('planification_teachers.planification_id', 'planifications.id')
+                                        ->where('teachers.user_id', $user->id);
+                                })->orWhere('planifications.enseignant_principal_id', $user->id);
+                            });
+                    });
+                };
+
+                $scopeAssignedInscriptions = function ($inscriptions) use ($activeAcademicYearId, $scopeAssignedClasses) {
+                    $inscriptions->where('annee_universitaire_id', $activeAcademicYearId)
+                        ->where('status', 'active')
+                        ->whereHas('classe', $scopeAssignedClasses);
+                };
+
+                $query->whereHas('inscriptions', $scopeAssignedInscriptions)
+                    ->with(['inscriptions' => fn ($q) => $scopeAssignedInscriptions($q->orderByDesc('date_inscription')), 'inscriptions.classe.filiere']);
+            }
+        } elseif (! $user->can('students.view')) {
+            return $this->unavailableResponse();
+        }
 
         if (!empty($args['name'])) {
             $this->applyFuzzyNameSearch($query, $args['name']);

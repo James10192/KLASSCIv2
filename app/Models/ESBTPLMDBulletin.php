@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Traits\HasAuditTrail;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -70,6 +71,15 @@ class ESBTPLMDBulletin extends Model
     public function deliberation()
     {
         return $this->hasOne(ESBTPLMDDeliberation::class, 'bulletin_id');
+    }
+
+    public function scopeForJury(Builder $query, ESBTPLMDJury $jury): Builder
+    {
+        return $query
+            ->where('annee_universitaire_id', $jury->annee_universitaire_id)
+            ->when($jury->parcours_id, fn (Builder $builder, int $parcoursId) => $builder->where('parcours_id', $parcoursId))
+            ->when($jury->classe_id, fn (Builder $builder, int $classeId) => $builder->where('classe_id', $classeId))
+            ->when($jury->semestre, fn (Builder $builder, int $semestre) => $builder->where('semestre', $semestre));
     }
 
     // --- Accessors ---

@@ -159,4 +159,14 @@ class GradeSheet extends Model implements AuditableContract
     {
         return $this->hasMany(GradeSheetDocument::class, 'grade_sheet_id');
     }
+
+    public function revisions(): HasMany
+    {
+        return $this->hasMany(GradeSheetRevision::class, 'grade_sheet_id');
+    }
+
+    public function currentValidatedRevision(): HasOne
+    {
+        return $this->hasOne(GradeSheetRevision::class, 'grade_sheet_id')->latestOfMany('revision_number');
+    }
 }

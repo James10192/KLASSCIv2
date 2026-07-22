@@ -1,132 +1,135 @@
-# API Jury de délibération LMD UEMOA
+# API Jury de délibération LMD
 
-Workflow complet : composition → délibération → PV PDF officiel → archivage légal 5 ans.
+Workflow officiel: composition, décisions, signatures, émission du PV, publication et archivage.
 
-## Préfixe routes
+## Sécurité et permissions
 
-`/esbtp/lmd/jurys/*` — middleware `auth + admin.access + module.lmd.access + paywall + lmd.jury.*`
+Toutes les routes `/esbtp/lmd/jurys/*` utilisent `auth`, `admin.access`, `module.lmd.access` et `paywall`.
 
-## Permissions
-
-| Permission | Action |
+| Permission | Usage |
 |---|---|
-| `lmd.jury.view` | Lecture (index, show, KPIs, PV preview/download) |
-| `lmd.jury.preside` | Créer + supprimer jury + ajouter/retirer membres |
-| `lmd.jury.deliberate` | Override décision (motif obligatoire) + signer + appliquer auto |
-| `lmd.jury.publish` | Générer PV + publier décisions |
+| `lmd.jury.view` | Consulter le jury et télécharger un PV accessible |
+| `lmd.jury.preside` | Créer le jury et gérer sa composition |
+| `lmd.jury.deliberate` | Calculer, modifier et signer les décisions |
+| `lmd.jury.publish` | Émettre le PV et publier les décisions |
+| `lmd.jury.documents.reconcile` | Réconcilier un PV historique existant |
 
-## Endpoints
+## Conditions d émission du PV
 
-### GET `esbtp.lmd.jurys.index`
-Vue premium : hero KPIs (total, préparation, en_cours, publiés) + table jurys + modal create.
+L émission verrouille transactionnellement le jury, les membres, les décisions, la cohorte, les identités et les feuilles de notes. Elle est refusée lorsque:
 
-### GET `esbtp.lmd.jurys.show`
-**Salle de délibération** : 4 tabs Alpine (Composition / Délibération / Statistiques / PV).
-Pré-calcul `quorum` + `stats`. Membres + décisions chargés en relations.
+- le quorum ou le nombre minimal d assesseurs n est pas atteint;
+- un membre présent n a pas signé lorsque la signature est obligatoire;
+- une signature existante serait remplacée;
+- un étudiant de la cohorte ne possède pas exactement une décision complète et un bulletin cohérent;
+- aucune feuille de notes LMD ne couvre le périmètre;
+- une feuille du périmètre n est pas au statut `validated`.
 
-### POST `esbtp.lmd.jurys.store`
-**Body** : `{ annee_universitaire_id, session_id?, parcours_id?, classe_id?, semestre?, libelle, date_jury?, observations? }`.
-Status initial : `preparation`.
+Le PDF est rendu depuis le snapshot canonique construit sous verrou. Les collections sont triées. Le snapshot conserve le périmètre, les libellés, les membres, les signatures, les étudiants, les matricules, les décisions, les votes, les observations, les statistiques, les feuilles et le profil de règles LMD.
 
-### POST `esbtp.lmd.jurys.membres.store`
-**Body** : `{ user_id, role: "president"|"assesseur"|"secretaire"|"consultatif", present? }`.
-**Response** : `{ success, membre, quorum }`.
-Idempotent (update existing si déjà présent).
+## Registre documentaire
+
+Chaque document possède une série logique, une version positive, une référence unique, un SHA-256, les versions des règles, du template et du renderer, ainsi qu un journal append-only.
+
+États:
+
+- `valid`: document officiel accessible et vérifiable;
+- `revoked`: document révoqué, conservé mais inaccessible;
+- `superseded`: document remplacé par une nouvelle version, conservé mais inaccessible;
+- `legacy`: PV historique réconcilié, accessible en authentifié, sans snapshot historique inventé et sans vérification publique.
+
+Une seule version `valid` est autorisée par série. Une nouvelle émission après révocation prend la version suivante et référence explicitement le document précédent avec `supersedes_document_id`.
+
+## Endpoints jury
 
 ### POST `esbtp.lmd.jurys.membres.signer`
-Enregistre signature canvas HTML5 base64 ou JSON checkbox (preuve légale).
-**Body** : `{ signature_data: string (max 200000) }`.
-Capture IP + User-Agent automatiquement.
 
-### POST `esbtp.lmd.jurys.decisions.auto`
-**Permission** : `lmd.jury.deliberate`. **Throttle** : 10/min.
-Applique en bulk les décisions auto pour tous les étudiants concernés.
-Idempotent : préserve les overrides existants (`override_par_jury=true`).
-Status jury → `en_cours`.
+Body: `{ "signature_data": "data:image/png;base64,..." }`.
 
-### PATCH `esbtp.lmd.jurys.decisions.override`
-**Body** : `{ decision: "admis"|"admission_rattrapage"|"ajourne"|"exclu"|"admis_sous_condition"|"defere", motif: string (min 5), vote_resultat?: "unanime"|"majorite"|"partage_voix_president" }`.
-
-Guards :
-- jury pas locked (PV pas généré)
-- décision valide (in enum)
-- motif non vide
-
-### GET `esbtp.lmd.jurys.kpis`
-**Response** : `{ stats, quorum }` — pour refresh live de la hero.
+Le serveur capture dans cet ordre l utilisateur authentifié, l IP et le User-Agent. La ligne membre est verrouillée. Une signature existante ne peut jamais être remplacée.
 
 ### POST `esbtp.lmd.jurys.pv.generer`
-**Permission** : `lmd.jury.publish`. **Throttle** : 10/min.
 
-Pipeline :
-1. Vérifie quorum (422 si KO)
-2. Réserve numéro PV thread-safe (DB lockForUpdate)
-3. Génère PDF via DomPDF template `pdf/lmd-jury-pv.blade.php`
-4. Stocke `storage/pv/{tenant}/{annee}/{numero}.pdf`
-5. **Lock toutes les décisions** (`locked=true` + `locked_at`)
-6. Audit log
-7. Status jury → `clos`
+Permission: `lmd.jury.publish`. Limite: 10 requêtes par minute.
 
-**Response** : `{ success, pv: { numero, path, genere_at, download_url } }`.
+Réponse:
 
-### GET `esbtp.lmd.jurys.pv-preview` / `pv-download`
-Stream PDF depuis storage (inline ou attachment).
-404 si pas encore généré.
+```json
+{
+  "success": true,
+  "pv": {
+    "numero": "PV-20252026-PRESENTATION-0001",
+    "reference": "DOC-PV-...",
+    "version": 1,
+    "status": "valid",
+    "genere_at": "2026-07-22T10:00:00+00:00",
+    "download_url": "/esbtp/lmd/jurys/1/pv/download"
+  }
+}
+```
+
+Le chemin de stockage privé n est jamais exposé.
+
+### GET `esbtp.lmd.jurys.pv-preview`
+
+### GET `esbtp.lmd.jurys.pv-download`
+
+Permission: `lmd.jury.view`. Ces endpoints redirigent vers une URL signée et liée par HMAC, valide cinq minutes. L intégrité et le statut sont contrôlés avant la création de l URL puis avant le stream. Une ancienne URL ne fonctionne plus après révocation ou remplacement.
+
+### POST `esbtp.lmd.jurys.pv-reconcile`
+
+Permission: `lmd.jury.documents.reconcile`. Limite: 5 requêtes par minute.
+
+Cette action valide le fichier PDF historique existant, calcule son SHA-256 et l inscrit avec le statut `legacy`. Elle ne régénère pas le fichier et ne fabrique ni règles ni snapshot historiques.
 
 ### POST `esbtp.lmd.jurys.publier`
-Guard : `pv_genere_at` doit exister.
-Status → `publie`, horodatage.
 
-## Format numéro PV
+Permission: `lmd.jury.publish`.
 
-`PV-{ANNEE_LIBELLE}-{TENANT_CODE}-{SEQ_4DIGITS}`
-Exemple : `PV-20252026-PRESENTATION-0042`
+Le document archivé est contrôlé par `assertValidAndIntact`. Les décisions sont ensuite projetées vers les bulletins avec `LmdDecisionProjectionService`, puis le jury passe à `publie` dans la même transaction.
 
-## Décisions canoniques UEMOA
+## Endpoint public de vérification
 
-| Décision | Sens |
-|---|---|
-| `admis` | Moyenne ≥ seuil + tous crédits validés |
-| `admission_rattrapage` | Éligible 2e session sur ECUE non validés |
-| `ajourne` | 2e session échouée → repasse année |
-| `exclu` | Exclusion académique (motif obligatoire) |
-| `admis_sous_condition` | Crédits manquants mais jury accepte (motif obligatoire) |
-| `defere` | Cas exceptionnels (médical, force majeure) |
+### POST `/verifier-document-officiel`
 
-## Mentions UEMOA (seuils configurables)
+Body:
 
-| Mention | Seuil |
-|---|---|
-| Passable | ≥ `lmd_mention_p_threshold` (default 10) |
-| Assez Bien | ≥ `lmd_mention_ab_threshold` (default 12) |
-| Bien | ≥ `lmd_mention_b_threshold` (default 14) |
-| Très Bien | ≥ `lmd_mention_tb_threshold` (default 16) |
-| Excellent | ≥ 18 (hardcoded — rare) |
+```json
+{
+  "reference": "DOC-PV-...",
+  "code": "CODE_FORT_IMPRIME_SUR_LE_PV"
+}
+```
 
-## Quorum
+Deux limites indépendantes sont appliquées: une par IP et une par référence, toutes IP confondues. Le code brut n est jamais stocké ni journalisé.
 
-- `lmd_jury_quorum_min` (default 2) — membres présents minimum
-- `lmd_jury_quorum_assesseurs_min` (default 1) — assesseurs présents min
-- Président obligatoire (sinon quorum KO)
-- Secrétaire recommandé (warning seulement)
+Une référence inconnue, un code incorrect, un document altéré, révoqué, remplacé ou legacy renvoient la même réponse:
 
-## Archivage légal
+```json
+{ "valid": false }
+```
 
-- Setting `lmd_pv_retention_years` (default 5)
-- Soft delete uniquement (`SoftDeletes` trait)
-- Audit log immutable via `OwenIt\Auditing\Auditable` whitelist
-- Stockage `storage/app/pv/{tenant}/{annee}/{numero}.pdf`
+Une vérification réussie ne renvoie que `valid`, `reference`, `document_type` et `issued_at`. Aucune note, identité étudiante, empreinte, chemin ou snapshot n est exposé.
 
-## Signature digital
+## Numérotation
 
-Deux modes selon implémentation client :
-- **Canvas HTML5** : `data:image/png;base64,iVBORw0KGgo...` (rendu dans PV PDF)
-- **Checkbox** : JSON `{checked, ip, ts}` (mention "Signé électroniquement" dans PV PDF)
+Format: `PV-{ANNEE}-{TENANT}-{SEQ4}`.
 
-Métadonnées capturées : `signature_at` + `signature_ip` + `signature_user_agent`.
+La table `esbtp_pv_sequences` porte une séquence distincte par tenant et année universitaire. L initialisation tient compte des numéros déjà présents. L incrément utilise un verrou de ligne et trois tentatives transactionnelles.
 
-## Modèles
+## Journal append-only
 
-- `App\Models\ESBTPLMDJury` — Auditable, scope `notLocked`, helpers `isLocked()` `isPublished()`
-- `App\Models\ESBTPLMDJuryMembre` — Auditable, helper `hasSigned()`
-- `App\Models\ESBTPLMDJuryDecision` — Auditable, scope `notLocked`, helper `isLocked()`
+Événements principaux: `issued`, `downloaded`, `verified`, `revoked`, `superseded`, `reconciled`, `integrity_failed`.
+
+## Historique
+
+### 2026-07-22
+
+- Ajout du registre documentaire officiel versionné.
+- Ajout du snapshot canonique et du rendu PV depuis ce snapshot.
+- Ajout des contrôles transactionnels d émission.
+- Ajout des URLs signées avec HMAC et du contrôle centralisé d intégrité.
+- Ajout de la vérification publique non énumérante.
+- Ajout de la réconciliation explicite des PV historiques.
+- Ajout de la publication atomique vers les bulletins LMD.
+- Breaking change: un PV révoqué ou remplacé devient inaccessible, y compris avec une ancienne URL signée.

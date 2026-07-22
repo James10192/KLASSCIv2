@@ -282,20 +282,8 @@ PROMPT;
     {
         $declarations = [];
         foreach ($this->tools as $tool) {
-            // Vérifier les permissions
-            if ($requiredPerms = $tool->requiredPermissions()) {
-                $hasAll = collect($requiredPerms)->every(fn ($p) => $user->can($p));
-                if (!$hasAll) {
-                    continue;
-                }
-            }
-
-            // Vérifier les rôles
-            if ($allowedRoles = $tool->allowedRoles()) {
-                $hasRole = $user->roles->pluck('name')->intersect($allowedRoles)->isNotEmpty();
-                if (!$hasRole) {
-                    continue;
-                }
+            if (! $tool->isAvailableFor($user)) {
+                continue;
             }
 
             $declarations[] = $tool->toGeminiDeclaration();
@@ -360,7 +348,7 @@ PROMPT;
     protected function executeToolSafely(ChatbotTool $tool, array $args, $user): array
     {
         try {
-            return $tool->execute($args, $user);
+            return $tool->executeAuthorized($args, $user);
         } catch (\Throwable $e) {
             Log::error('GeminiAgent: tool execution failed', [
                 'tool' => $tool->name(),

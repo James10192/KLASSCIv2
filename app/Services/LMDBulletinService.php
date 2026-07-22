@@ -14,11 +14,14 @@ use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPUniteEnseignement;
 use App\Helpers\SettingsHelper;
+use App\Services\LMD\LmdAcademicRuleProfile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class LMDBulletinService
 {
+    public function __construct(private readonly LmdAcademicRuleProfile $rules) {}
+
     /** Cache des settings LMD pour eviter des requetes repetees. */
     protected array $settings = [];
 
@@ -38,7 +41,7 @@ class LMDBulletinService
 
     protected function getValidationThreshold(): float
     {
-        return (float) $this->getSetting('lmd_validation_threshold', 10);
+        return $this->rules->validationThreshold();
     }
 
     /**
@@ -429,7 +432,7 @@ class LMDBulletinService
     public function appliquerCompensation(array $resultatsUEs, ?float $moyenneGenerale): int
     {
         $threshold = $this->getValidationThreshold();
-        $compensationEnabled = $this->getSetting('lmd_compensation_inter_ue', '1') == '1';
+        $compensationEnabled = $this->rules->interUeCompensationEnabled();
         $creditsCapitalises = 0;
         $apcIds = [];
 
@@ -570,15 +573,16 @@ class LMDBulletinService
     {
         if ($moyenne === null) return null;
 
-        $tb = (float) $this->getSetting('lmd_mention_tb_threshold', 16);
-        $b  = (float) $this->getSetting('lmd_mention_b_threshold', 14);
-        $ab = (float) $this->getSetting('lmd_mention_ab_threshold', 12);
-        $p  = (float) $this->getSetting('lmd_mention_p_threshold', 10);
+        $mention = $this->rules->mentionFor($moyenne);
+        if ($mention !== null) {
+            return match ($mention) {
+                'excellent', 'tres_bien' => 'TB',
+                'bien' => 'B',
+                'assez_bien' => 'AB',
+                'passable' => 'P',
+            };
+        }
 
-        if ($moyenne >= $tb) return 'TB';
-        if ($moyenne >= $b)  return 'B';
-        if ($moyenne >= $ab) return 'AB';
-        if ($moyenne >= $p)  return 'P';
         if ($moyenne >= 8)   return 'INS';
         return 'F';
     }

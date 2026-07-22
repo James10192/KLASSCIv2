@@ -1329,6 +1329,11 @@ return [
             'group' => 'LMD',
             'icon' => 'fa-file-signature',
         ],
+        'lmd.jury.documents.reconcile' => [
+            'label' => 'Réconcilier un PV historique dans le registre officiel',
+            'group' => 'LMD',
+            'icon' => 'fa-file-shield',
+        ],
 
         // ===== Réconciliation des doublons UE/ECUE LMD =====
         'lmd.reconciliation.manage' => [
@@ -1834,6 +1839,7 @@ return [
             'lmd.examens.view', 'lmd.examens.manage', 'lmd.examens.notes_lock',
             'lmd.rattrapage.view', 'lmd.rattrapage.manage',
             'lmd.jury.view', 'lmd.jury.preside', 'lmd.jury.deliberate', 'lmd.jury.publish',
+            'lmd.jury.documents.reconcile',
             'timetables.view', 'timetables.view_all', 'timetables.create', 'timetables.edit', 'timetables.delete',
             'schedules.view', 'schedules.create', 'schedules.edit',
             'personnel.view', 'personnel.manage',

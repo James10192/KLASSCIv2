@@ -35,6 +35,11 @@ final class GradeSheetStateMachine
         );
     }
 
+    public function createsRevision(GradeSheetTransitionPlan $plan): bool
+    {
+        return $plan->to === GradeSheetStatus::VALIDATED;
+    }
+
     private function ensureReasonIsPresent(GradeSheetAction $action, ?string $reason): void
     {
         if ($action->requiresReason() && ($reason === null || trim($reason) === '')) {
