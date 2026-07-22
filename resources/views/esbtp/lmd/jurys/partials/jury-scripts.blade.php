@@ -31,7 +31,7 @@ function jurySalle(juryId) {
         signatureMember: null,
         signatureDrawing: false,
         signatureDrawn: false,
-        reconcileEndpoint: '{{ route('esbtp.lmd.jurys.pv.reconcilier', $jury) }}',
+        reconcileEndpoint: '{{ route('esbtp.lmd.jurys.pv-reconcile', $jury) }}',
         reconciliationState: 'idle',
         reconciliationMessage: '',
         officialDocument: {!! \Illuminate\Support\Js::from($officialDocumentPayload) !!},
