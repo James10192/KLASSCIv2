@@ -8,11 +8,10 @@
     $aliases = config('payment_modes.aliases', []);
 
     // Agrégation : nombre + montant total par mode pour le mois en cours
-    // Filtre validés (compatible status / statut, validé / valide)
+    // Filtre validés via la colonne canonique ESBTPPaiement::status.
     $rows = \App\Models\ESBTPPaiement::query()
         ->where(function ($q) {
-            $q->whereIn('status', ['validé', 'valide'])
-              ->orWhereIn('statut', ['validé', 'valide']);
+            $q->whereIn('status', ['validé', 'valide']);
         })
         ->where(function ($q) use ($startMonth) {
             $q->where('date_paiement', '>=', $startMonth)

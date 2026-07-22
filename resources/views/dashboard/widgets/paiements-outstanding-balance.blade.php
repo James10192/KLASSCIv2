@@ -10,8 +10,7 @@
     }
     $totalDu = (float) $duQuery->sum(\DB::raw('COALESCE(montant_scolarite, 0) + COALESCE(frais_inscription, 0)'));
     $totalPaye = (float) $payeQuery->where(function ($q) {
-        $q->whereIn('status', ['validé', 'valide'])
-          ->orWhereIn('statut', ['validé', 'valide']);
+        $q->whereIn('status', ['validé', 'valide']);
     })->sum('montant');
 
     $balance = max(0.0, $totalDu - $totalPaye);

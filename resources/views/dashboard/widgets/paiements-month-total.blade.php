@@ -3,8 +3,7 @@
     $startMonth = \Carbon\Carbon::now()->startOfMonth();
     $total = \App\Models\ESBTPPaiement::query()
         ->where(function ($q) {
-            $q->whereIn('status', ['validé', 'valide'])
-              ->orWhereIn('statut', ['validé', 'valide']);
+            $q->whereIn('status', ['validé', 'valide']);
         })
         ->where(function ($q) use ($startMonth) {
             $q->where('date_paiement', '>=', $startMonth)

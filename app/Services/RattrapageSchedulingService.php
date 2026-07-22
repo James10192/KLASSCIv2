@@ -84,6 +84,7 @@ class RattrapageSchedulingService
 
         DB::transaction(function () use ($sessionNormale, $seuil, &$eligibles) {
             $bulletins = $this->bulletinsForSession($sessionNormale);
+            $this->assertResultsMutable($sessionNormale, $sessionNormale, $bulletins);
             $bulletinIds = $bulletins->pluck('id');
 
             $resultats = $bulletinIds->isEmpty()

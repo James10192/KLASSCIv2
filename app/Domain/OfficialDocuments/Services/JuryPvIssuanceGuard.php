@@ -53,6 +53,8 @@ class JuryPvIssuanceGuard
             return ['ok' => true, 'grade_sheets_count' => $state['sheets']->count(), 'reasons' => []];
         } catch (JuryPvNotIssuableException $exception) {
             return ['ok' => false, 'grade_sheets_count' => 0, 'reasons' => $exception->reasons];
+        } catch (\LogicException $exception) {
+            return ['ok' => false, 'grade_sheets_count' => 0, 'reasons' => [$exception->getMessage()]];
         }
     }
 

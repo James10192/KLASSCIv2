@@ -159,6 +159,7 @@ class JuryDeliberationService
                 }
                 $calculation = $this->calculerDecisionAuto($student, $lockedJury);
                 $attributes = [
+                    'bulletin_id' => $this->requireBulletinId($calculation),
                     'decision_auto' => $calculation['decision_auto'],
                     'decision' => $calculation['decision_auto'],
                     'mention' => $calculation['mention'],
@@ -209,14 +210,19 @@ class JuryDeliberationService
                 $decision = new ESBTPLMDJuryDecision([
                     'jury_id' => $lockedJury->id,
                     'etudiant_id' => $etudiant->id,
+                    'bulletin_id' => $this->requireBulletinId($calculation),
                     'decision_auto' => $calculation['decision_auto'],
                     'moyenne_generale' => $calculation['moyenne'],
                     'credits_obtenus' => $calculation['credits_obtenus'],
                     'credits_attendus' => $calculation['credits_attendus'],
                     'created_by' => auth()->id(),
                 ]);
+            } else {
+                $calculation = $this->calculerDecisionAuto($etudiant, $lockedJury);
+                $decision->bulletin_id = $this->requireBulletinId($calculation);
             }
             $decision->forceFill([
+                'bulletin_id' => $decision->bulletin_id,
                 'decision' => $nouvelleDecision,
                 'override_par_jury' => true,
                 'motif_override' => trim($motif),
@@ -442,6 +448,16 @@ class JuryDeliberationService
             ->where('etudiant_id', $etudiant->id)
             ->orderByDesc('id')
             ->first();
+    }
+
+    private function requireBulletinId(array $calculation): int
+    {
+        $bulletinId = $calculation['bulletin_id'] ?? null;
+        if ($bulletinId === null) {
+            throw new \LogicException('Une decision de jury exige un bulletin du perimetre.');
+        }
+
+        return (int) $bulletinId;
     }
 
     /**
