@@ -1,4 +1,18 @@
-﻿<script>
+﻿@php
+    $officialDocumentPayload = $officialDocument ? [
+        'reference' => $officialDocument->reference,
+        'version' => (int) $officialDocument->version,
+        'status' => $officialDocument->status,
+        'checksum_sha256' => $officialDocument->checksum_sha256,
+        'issued_at' => $officialDocument->issued_at?->toIso8601String(),
+        'pv_numero' => $officialDocument->pv_numero,
+        'actions' => [
+            'canDownload' => true,
+            'canPreview' => true,
+        ],
+    ] : null;
+@endphp
+<script>
 function jurySalle(juryId) {
     return {
         tab: 'composition',
@@ -20,7 +34,7 @@ function jurySalle(juryId) {
         reconcileEndpoint: '{{ route('esbtp.lmd.jurys.pv.reconcilier', $jury) }}',
         reconciliationState: 'idle',
         reconciliationMessage: '',
-        officialDocument: @json($officialDocument ? ['reference' => $officialDocument->reference, 'version' => (int) $officialDocument->version, 'status' => $officialDocument->status, 'checksum_sha256' => $officialDocument->checksum_sha256, 'issued_at' => $officialDocument->issued_at?->toIso8601String(), 'pv_numero' => $officialDocument->pv_numero, 'actions' => ['canDownload' => true, 'canPreview' => true]] : null),
+        officialDocument: {!! \Illuminate\Support\Js::from($officialDocumentPayload) !!},
         juryPvPathExists: @json((bool) $jury->pv_path),
         form: { etudiantId: null, etudiant_name: '', decision_auto: '', decision: '', motif: '', vote_resultat: '' },
 
@@ -355,6 +369,7 @@ function jurySalle(juryId) {
     };
 }
 </script>
+
 
 
 
