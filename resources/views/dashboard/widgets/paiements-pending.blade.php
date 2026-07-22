@@ -1,6 +1,6 @@
 @php
     /** @var array $widget */
-    // ESBTPPaiement utilise les colonnes `status` ET `statut` (alias) — filtre les deux
+    // ESBTPPaiement utilise `status` comme colonne canonique sur presentation.
     $count = \App\Models\ESBTPPaiement::query()
         ->whereIn('status', ['en_attente', 'pending'])
         ->count();
