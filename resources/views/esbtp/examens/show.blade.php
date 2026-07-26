@@ -270,6 +270,25 @@
 }
 .exs-empty i { font-size: 1.8rem; color: #cbd5e1; display: block; margin-bottom: .6rem; }
 
+.exs-confirm-overlay {
+    position: fixed; inset: 0; z-index: 1050;
+    display: flex; align-items: center; justify-content: center;
+    padding: 1rem; background: rgba(15,23,42,.52);
+}
+.exs-confirm-panel {
+    width: min(100%, 30rem); overflow: hidden;
+    background: #fff; border: 1px solid #e2e8f0; border-radius: 1rem;
+    box-shadow: 0 24px 64px rgba(15,23,42,.28);
+}
+.exs-confirm-head { padding: 1.15rem 1.25rem; border-bottom: 1px solid #e2e8f0; }
+.exs-confirm-title { margin: 0; font-size: 1.05rem; font-weight: 800; color: #0f172a; }
+.exs-confirm-body { padding: 1.15rem 1.25rem; color: #334155; line-height: 1.55; }
+.exs-confirm-body ul { padding-left: 1.15rem; margin: .8rem 0 0; }
+.exs-confirm-actions {
+    display: flex; justify-content: flex-end; gap: .75rem;
+    padding: 1rem 1.25rem 1.25rem; background: #f8fafc;
+}
+
 /* ════════════════════ SURVEILLANTS ════════════════════ */
 .exs-surv-list { display: flex; flex-direction: column; gap: .4rem; padding: 0 1.25rem; margin-bottom: 1rem; }
 .exs-surv-card {
@@ -789,7 +808,7 @@
 
         @can('lmd.examens.notes_lock')
             @if(! $examen->notes_locked && $examen->status === 'completed')
-                <button type="button" class="exs-btn exs-btn--warning" @click="lockNotes()" :disabled="locking">
+                <button type="button" class="exs-btn exs-btn--warning" @click="showLockConfirm = true" :disabled="locking">
                     <i class="fas" :class="locking ? 'fa-spinner fa-spin' : 'fa-lock'"></i>
                     <span x-text="locking ? 'Verrouillage…' : 'Verrouiller les notes'"></span>
                 </button>
@@ -797,8 +816,8 @@
         @endcan
         @can('lmd.examens.manage')
             @if(! $examen->notes_locked)
-                <form method="POST" action="{{ route('esbtp.examens.destroy', $examen) }}" style="display:inline;"
-                      onsubmit="return confirm('Supprimer définitivement cet examen ? Cette action est tracée dans l\'audit.');">
+                <form x-ref="deleteExamForm" method="POST" action="{{ route('esbtp.examens.destroy', $examen) }}" style="display:inline;"
+                      @submit.prevent="showDeleteConfirm = true">
                     @csrf @method('DELETE')
                     <button type="submit" class="exs-btn exs-btn--danger">
                         <i class="fas fa-trash"></i> Supprimer
@@ -807,6 +826,56 @@
             @endif
         @endcan
     </div>
+
+    <template x-if="showLockConfirm">
+        <div class="exs-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="lock-notes-title"
+             @keydown.escape.window="showLockConfirm = false">
+            <div class="exs-confirm-panel" @click.outside="showLockConfirm = false">
+                <div class="exs-confirm-head">
+                    <h2 id="lock-notes-title" class="exs-confirm-title">Verrouiller les notes</h2>
+                </div>
+                <div class="exs-confirm-body">
+                    Cette action est irréversible pour garantir l’intégrité UEMOA.
+                    <ul>
+                        <li>Les notes ne pourront plus être modifiées.</li>
+                        <li>L’examen sera marqué comme verrouillé.</li>
+                        <li>Un événement d’audit sera créé.</li>
+                    </ul>
+                </div>
+                <div class="exs-confirm-actions">
+                    <button type="button" class="exs-btn exs-btn--secondary" @click="showLockConfirm = false">
+                        Annuler
+                    </button>
+                    <button type="button" class="exs-btn exs-btn--warning"
+                            @click="showLockConfirm = false; lockNotes()" :disabled="locking">
+                        Confirmer le verrouillage
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template x-if="showDeleteConfirm">
+        <div class="exs-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="delete-exam-title"
+             @keydown.escape.window="showDeleteConfirm = false">
+            <div class="exs-confirm-panel" @click.outside="showDeleteConfirm = false">
+                <div class="exs-confirm-head">
+                    <h2 id="delete-exam-title" class="exs-confirm-title">Supprimer cet examen</h2>
+                </div>
+                <div class="exs-confirm-body">
+                    La suppression est définitive et sera tracée dans l’audit.
+                </div>
+                <div class="exs-confirm-actions">
+                    <button type="button" class="exs-btn exs-btn--secondary" @click="showDeleteConfirm = false">
+                        Annuler
+                    </button>
+                    <button type="button" class="exs-btn exs-btn--danger" @click="$refs.deleteExamForm.submit()">
+                        Supprimer définitivement
+                    </button>
+                </div>
+            </div>
+        </div>
+    </template>
 
     {{-- ═══════════════════════════════ TOASTS ═══════════════════════════════ --}}
     <div class="exs-toasts">
@@ -827,6 +896,8 @@ function examenShow() {
         surveillants: @json($survData),
         locking: false,
         assigning: false,
+        showLockConfirm: false,
+        showDeleteConfirm: false,
         toasts: [],
         toastId: 0,
 
@@ -874,7 +945,6 @@ function examenShow() {
         },
 
         async lockNotes() {
-            if (!confirm('⚠️ Verrouiller les notes ?\n\nCette action est IRRÉVERSIBLE (anti-tampering UEMOA) :\n• Les notes ne pourront plus être modifiées\n• L\'examen sera marqué notes_locked = true\n• Un événement audit sera créé')) return;
             this.locking = true;
             try {
                 const res = await fetch('{{ route('esbtp.examens.lock-notes', $examen) }}', {
