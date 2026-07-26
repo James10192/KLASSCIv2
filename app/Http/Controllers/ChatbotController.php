@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Services\Chatbot\ChatbotService;
 use App\Services\Chatbot\ChatbotSetupGuideService;
+use App\Models\ChatbotActionLog;
 use App\Models\ChatbotConversation;
 use App\Models\ChatbotUserPreference;
 use App\Models\ChatbotMessage;
@@ -304,77 +305,61 @@ class ChatbotController extends Controller
             ], 404);
         }
 
-        try {
-            DB::beginTransaction();
+        $payload = [
+            'conversation_id' => $conversation->session_id,
+            'name' => $request->name,
+            'code' => strtoupper($request->code),
+            'description' => $request->description,
+            'default_amount' => (float) $request->default_amount,
+            'payment_deadline_days' => (int) $request->payment_deadline_days,
+            'icon' => $request->icon,
+            'color' => $request->color,
+        ];
+        $idempotencyKey = $request->header('Idempotency-Key')
+            ?: 'chatbot:frais-category:' . sha1($conversation->id . '|' . $payload['code'] . '|' . $payload['default_amount']);
 
-            $category = ESBTPFraisCategory::create([
-                'name' => $request->name,
-                'code' => strtoupper($request->code),
-                'description' => $request->description,
-                'is_mandatory' => true,
-                'is_active' => true,
-                'category_type' => 'academic',
-                'sort_order' => (ESBTPFraisCategory::max('sort_order') ?? 0) + 1,
-                'default_amount' => $request->default_amount,
-                'payment_deadline_days' => $request->payment_deadline_days,
-                'icon' => $request->icon,
-                'color' => $request->color,
-            ]);
-
-            ESBTPFraisOption::create([
-                'configuration_id' => null,
-                'name' => 'Standard',
-                'description' => 'Option standard pour ' . $category->name,
-                'additional_amount' => 0,
-                'is_default' => true,
-                'is_active' => true,
-                'available_from' => now(),
-                'sort_order' => 1,
-            ]);
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la création de la catégorie.',
-            ], 500);
-        }
-
-        $missingPreview = $this->setupGuide->buildMissingStepsPreview(
-            $request->user(),
-            'financier',
-            ['frais_mandatory_configs'],
-            1
+        $action = ChatbotActionLog::firstOrCreate(
+            ['idempotency_key' => $idempotencyKey],
+            [
+                'conversation_id' => $conversation->id,
+                'user_id' => $request->user()->id,
+                'action_type' => 'create',
+                'model_type' => ESBTPFraisCategory::class,
+                'action_data' => [
+                    'intent' => 'create_mandatory_frais_category',
+                    'payload' => $payload,
+                    'summary' => 'Créer la catégorie obligatoire ' . $payload['name'] . ' (' . $payload['code'] . ')',
+                ],
+                'status' => 'proposed',
+                'expires_at' => now()->addHours(24),
+            ]
         );
 
-        if (!$missingPreview) {
-            $missingPreview = null;
-        }
-
-        $displayData = $missingPreview ?: null;
-        if ($displayData) {
-            $displayData['follow_up_actions'] = [
-                [
-                    'label' => 'Configurer par classe ici',
-                    'action' => 'open_form',
-                    'value' => 'frais_config:' . $category->id,
-                ]
-            ];
-        }
+        $displayData = [
+            'action_id' => $action->id,
+            'status' => $action->status,
+            'summary' => $action->action_data['summary'] ?? null,
+            'expires_at' => optional($action->expires_at)->toIso8601String(),
+            'payload' => $payload,
+            'approval' => [
+                'approve_url' => route('chatbot.actions.approve', $action),
+                'reject_url' => route('chatbot.actions.reject', $action),
+                'method' => 'POST',
+            ],
+        ];
 
         $assistantMessage = ChatbotMessage::create([
             'conversation_id' => $conversation->id,
             'role' => 'assistant',
-            'content' => "Catégorie obligatoire créée. Veux-tu que je configure les montants par classe maintenant ?",
-            'display_type' => $displayData ? 'checklist' : 'text',
+            'content' => "Action prête à approuver : création de la catégorie obligatoire {$payload['name']}.",
+            'display_type' => 'approval_request',
             'display_data' => $displayData,
         ]);
 
         $context = $conversation->context ?? [];
-        $context['pending_action'] = 'frais_config_form';
-        $context['pending_action_payload'] = ['category_id' => $category->id];
-        $context['last_display'] = $displayData ? 'checklist' : 'text';
+        $context['pending_action'] = 'approve_chatbot_action';
+        $context['pending_action_payload'] = ['action_id' => $action->id];
+        $context['last_display'] = 'approval_request';
         $conversation->update([
             'last_activity_at' => now(),
             'context' => $context,
@@ -382,11 +367,13 @@ class ChatbotController extends Controller
 
         return response()->json([
             'success' => true,
+            'approval_required' => true,
+            'action_id' => $action->id,
             'message' => $assistantMessage->content,
             'display_type' => $assistantMessage->display_type,
             'display_data' => $assistantMessage->display_data,
             'conversation_id' => $conversation->session_id,
-        ]);
+        ], 202);
     }
 
     public function getFraisConfigForm(Request $request)
@@ -407,6 +394,82 @@ class ChatbotController extends Controller
             'message' => "Configure les montants pour les frais.",
             'display_type' => 'form',
             'display_data' => $formData,
+        ]);
+    }
+
+    public function approveAction(Request $request, ChatbotActionLog $action)
+    {
+        if ($action->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Action introuvable.',
+            ], 404);
+        }
+
+        if (!$request->user()->can('frais.create')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Vous n\'avez pas l\'autorisation d\'approuver cette action.',
+            ], 403);
+        }
+
+        if ($action->status === 'executed') {
+            return response()->json($this->buildExecutedActionResponse($action));
+        }
+
+        if ($action->status !== 'proposed') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette action ne peut plus être approuvée.',
+                'status' => $action->status,
+            ], 409);
+        }
+
+        if ($action->expires_at && $action->expires_at->isPast()) {
+            $action->update(['status' => 'expired']);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette proposition a expiré.',
+                'status' => 'expired',
+            ], 409);
+        }
+
+        $action->update([
+            'status' => 'approved',
+            'approved_by' => $request->user()->id,
+            'approved_at' => now(),
+        ]);
+
+        return response()->json($this->executeApprovedAction($action->fresh(), $request));
+    }
+
+    public function rejectAction(Request $request, ChatbotActionLog $action)
+    {
+        if ($action->user_id !== $request->user()->id) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Action introuvable.',
+            ], 404);
+        }
+
+        if (!in_array($action->status, ['proposed', 'approved'], true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cette action ne peut plus être rejetée.',
+                'status' => $action->status,
+            ], 409);
+        }
+
+        $action->update([
+            'status' => 'rejected',
+            'rejected_at' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Action rejetée. Aucune donnée métier n\'a été modifiée.',
+            'status' => 'rejected',
         ]);
     }
 
@@ -614,6 +677,139 @@ class ChatbotController extends Controller
             'display_data' => $assistantMessage->display_data,
             'conversation_id' => $conversation->session_id,
         ]);
+    }
+
+    protected function executeApprovedAction(ChatbotActionLog $action, Request $request): array
+    {
+        $data = $action->action_data ?? [];
+
+        if (($data['intent'] ?? null) !== 'create_mandatory_frais_category') {
+            $action->update([
+                'status' => 'failed',
+                'error_message' => 'Type d\'action IA non supporté.',
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Type d\'action IA non supporté.',
+                'status' => 'failed',
+            ];
+        }
+
+        if ($action->status === 'executed') {
+            return $this->buildExecutedActionResponse($action);
+        }
+
+        $payload = $data['payload'] ?? [];
+        $conversation = $action->conversation;
+
+        try {
+            DB::beginTransaction();
+
+            $category = ESBTPFraisCategory::where('code', $payload['code'])->first();
+            if (!$category) {
+                $category = ESBTPFraisCategory::create([
+                    'name' => $payload['name'],
+                    'code' => $payload['code'],
+                    'description' => $payload['description'] ?? null,
+                    'is_mandatory' => true,
+                    'is_active' => true,
+                    'category_type' => 'academic',
+                    'sort_order' => (ESBTPFraisCategory::max('sort_order') ?? 0) + 1,
+                    'default_amount' => $payload['default_amount'],
+                    'payment_deadline_days' => $payload['payment_deadline_days'],
+                    'icon' => $payload['icon'] ?? null,
+                    'color' => $payload['color'] ?? null,
+                ]);
+
+                ESBTPFraisOption::create([
+                    'configuration_id' => null,
+                    'name' => 'Standard',
+                    'description' => 'Option standard pour ' . $category->name,
+                    'additional_amount' => 0,
+                    'is_default' => true,
+                    'is_active' => true,
+                    'available_from' => now(),
+                    'sort_order' => 1,
+                ]);
+            }
+
+            $action->update([
+                'status' => 'executed',
+                'model_id' => $category->id,
+                'error_message' => null,
+            ]);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            $action->update([
+                'status' => 'failed',
+                'error_message' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Erreur lors de l\'exécution de l\'action approuvée.',
+                'status' => 'failed',
+            ];
+        }
+
+        $missingPreview = $this->setupGuide->buildMissingStepsPreview(
+            $request->user(),
+            'financier',
+            ['frais_mandatory_configs'],
+            1
+        );
+
+        $displayData = $missingPreview ?: null;
+        if ($displayData) {
+            $displayData['follow_up_actions'] = [
+                [
+                    'label' => 'Configurer par classe ici',
+                    'action' => 'open_form',
+                    'value' => 'frais_config:' . $category->id,
+                ]
+            ];
+        }
+
+        ChatbotMessage::create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'content' => "Catégorie obligatoire créée après approbation. Veux-tu que je configure les montants par classe maintenant ?",
+            'display_type' => $displayData ? 'checklist' : 'text',
+            'display_data' => $displayData,
+        ]);
+
+        $context = $conversation->context ?? [];
+        $context['pending_action'] = 'frais_config_form';
+        $context['pending_action_payload'] = ['category_id' => $category->id];
+        $context['last_display'] = $displayData ? 'checklist' : 'text';
+        $conversation->update([
+            'last_activity_at' => now(),
+            'context' => $context,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => 'Action approuvée et exécutée.',
+            'status' => 'executed',
+            'model_id' => $category->id,
+            'display_type' => $displayData ? 'checklist' : 'text',
+            'display_data' => $displayData,
+            'conversation_id' => $conversation->session_id,
+        ];
+    }
+
+    protected function buildExecutedActionResponse(ChatbotActionLog $action): array
+    {
+        return [
+            'success' => true,
+            'message' => 'Action déjà exécutée.',
+            'status' => 'executed',
+            'model_id' => $action->model_id,
+            'conversation_id' => $action->conversation?->session_id,
+        ];
     }
 
     protected function resolveConversation(?string $conversationId): ?ChatbotConversation

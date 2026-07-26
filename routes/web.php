@@ -2637,6 +2637,8 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('chatbot')->name('chatbot.'
     Route::get('/preferences', [App\Http\Controllers\ChatbotController::class, 'getPreferences'])->name('preferences');
     Route::put('/preferences', [App\Http\Controllers\ChatbotController::class, 'updatePreferences'])->name('preferences.update');
     Route::post('/preferences/memory', [App\Http\Controllers\ChatbotController::class, 'saveMemory'])->name('preferences.memory');
+    Route::post('/actions/{action}/approve', [App\Http\Controllers\ChatbotController::class, 'approveAction'])->name('actions.approve');
+    Route::post('/actions/{action}/reject', [App\Http\Controllers\ChatbotController::class, 'rejectAction'])->name('actions.reject');
     Route::get('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'getMandatoryFraisCategoryForm'])->name('forms.frais-category');
     Route::post('/forms/frais-category', [App\Http\Controllers\ChatbotController::class, 'storeMandatoryFraisCategory'])->name('forms.frais-category.store');
     Route::get('/forms/frais-config', [App\Http\Controllers\ChatbotController::class, 'getFraisConfigForm'])->name('forms.frais-config');
