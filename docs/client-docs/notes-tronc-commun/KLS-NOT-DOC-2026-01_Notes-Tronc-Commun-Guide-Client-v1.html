@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>KLASSCI, guide client des notes de tronc commun</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Source+Serif+4:opsz,wght@8..60,500;8..60,700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --blue: #0453cb;
+    --blue-700: #043f9b;
+    --blue-50: #eef5ff;
+    --orange: #ff8a00;
+    --ink: #0d1726;
+    --muted: #5f6f86;
+    --line: #dce5f2;
+    --soft: #f6f9fd;
+    --white: #ffffff;
+    --sans: "Inter", Arial, sans-serif;
+    --serif: "Source Serif 4", Georgia, serif;
+  }
+
+  @page { size: A4; margin: 0; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 10.5pt;
+    line-height: 1.5;
+    background: #e9eef6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    width: 210mm;
+    height: 297mm;
+    padding: 18mm 18mm 32mm;
+    background: var(--white);
+    position: relative;
+    overflow: hidden;
+    page-break-after: always;
+  }
+  .page:last-child { page-break-after: auto; }
+  .page:not(.cover)::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 25mm;
+    background: linear-gradient(to top, #fff 0%, #fff 72%, rgba(255,255,255,0) 100%);
+    z-index: 10;
+    pointer-events: none;
+  }
+  .footer {
+    position: absolute;
+    left: 18mm;
+    right: 18mm;
+    bottom: 10mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #7b8aa0;
+    font-size: 7.2pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+    z-index: 20;
+  }
+  .footer::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: -7mm;
+    height: 1px;
+    background: var(--line);
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 900;
+    color: var(--blue);
+  }
+  .brand img {
+    width: 118px;
+    height: auto;
+    display: block;
+  }
+  .cover {
+    padding: 0;
+    background:
+      linear-gradient(135deg, rgba(4,83,203,.95), rgba(4,63,155,.92)),
+      radial-gradient(circle at 78% 18%, rgba(255,255,255,.22), rgba(255,255,255,0) 28%);
+    color: var(--white);
+  }
+  .cover-inner {
+    height: 100%;
+    padding: 22mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .cover .brand img {
+    width: 152px;
+    padding: 8px 12px;
+    border-radius: 8px;
+    background: #fff;
+  }
+  .cover-kicker {
+    margin-top: 22mm;
+    color: rgba(255,255,255,.78);
+    font-size: 9pt;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .18em;
+  }
+  h1, h2, h3 {
+    margin: 0;
+    font-family: var(--serif);
+    line-height: 1.04;
+  }
+  h1 {
+    max-width: 15ch;
+    font-size: 50pt;
+    font-weight: 700;
+    margin-top: 8mm;
+    letter-spacing: 0;
+  }
+  .cover-subtitle {
+    width: 136mm;
+    margin-top: 9mm;
+    color: rgba(255,255,255,.9);
+    font-size: 14pt;
+    line-height: 1.45;
+  }
+  .cover-meta {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 9mm;
+    color: rgba(255,255,255,.9);
+  }
+  .cover-meta strong {
+    display: block;
+    margin-bottom: 2mm;
+    color: #fff;
+    font-size: 8pt;
+    text-transform: uppercase;
+    letter-spacing: .14em;
+  }
+  .section-label {
+    color: var(--blue);
+    font-size: 8pt;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .18em;
+    margin-bottom: 8mm;
+  }
+  h2 {
+    max-width: 15ch;
+    font-size: 34pt;
+    color: var(--ink);
+  }
+  h2 .accent, h3 .accent { color: var(--blue); }
+  .lead {
+    margin: 8mm 0 9mm;
+    max-width: 128mm;
+    color: var(--muted);
+    font-size: 13pt;
+    line-height: 1.5;
+  }
+  .grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 7mm;
+  }
+  .grid-3 {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 5mm;
+  }
+  .panel {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: var(--white);
+    padding: 6mm;
+  }
+  .panel.soft { background: var(--soft); }
+  .panel.blue {
+    background: var(--blue);
+    color: var(--white);
+    border-color: var(--blue);
+  }
+  .panel.blue p, .panel.blue li { color: rgba(255,255,255,.9); }
+  .panel h3 {
+    margin-bottom: 3mm;
+    font-size: 18pt;
+  }
+  p { margin: 0 0 4mm; color: var(--muted); }
+  ul, ol {
+    margin: 0;
+    padding-left: 5mm;
+    color: var(--muted);
+  }
+  li { margin-bottom: 2.5mm; }
+  .metric {
+    display: flex;
+    gap: 4mm;
+    align-items: flex-start;
+  }
+  .num {
+    flex: 0 0 10mm;
+    width: 10mm;
+    height: 10mm;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: var(--blue);
+    color: #fff;
+    font-weight: 900;
+  }
+  .callout {
+    margin-top: 7mm;
+    padding: 5mm 6mm;
+    border-left: 4px solid var(--orange);
+    background: #fff8ef;
+    color: #664017;
+    border-radius: 0 8px 8px 0;
+  }
+  .callout strong { color: #1d2b3d; }
+  .timeline {
+    margin-top: 8mm;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .phase {
+    padding: 6mm;
+    min-height: 42mm;
+    background: var(--white);
+    border-right: 1px solid var(--line);
+  }
+  .phase:last-child { border-right: 0; }
+  .phase.active {
+    background: var(--blue-50);
+    box-shadow: inset 0 4px 0 var(--blue);
+  }
+  .phase small {
+    display: block;
+    margin-bottom: 3mm;
+    color: var(--blue);
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+  }
+  .shot {
+    margin-top: 6mm;
+    border: 1px solid #cad8ea;
+    border-radius: 10px;
+    background: #fff;
+    overflow: hidden;
+    box-shadow: 0 16px 35px rgba(10, 35, 70, .12);
+  }
+  .shot img {
+    width: 100%;
+    display: block;
+  }
+  .shot-caption {
+    padding: 3.5mm 5mm;
+    border-top: 1px solid var(--line);
+    color: var(--muted);
+    font-size: 8.5pt;
+  }
+  .screen-large img { max-height: 138mm; object-fit: contain; }
+  .screen-medium img { max-height: 120mm; object-fit: contain; }
+  .screen-short img { max-height: 96mm; object-fit: contain; }
+  .rule-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 7mm;
+    font-size: 9.4pt;
+  }
+  .rule-table th {
+    background: var(--blue);
+    color: #fff;
+    padding: 3.5mm;
+    text-align: left;
+  }
+  .rule-table td {
+    border: 1px solid var(--line);
+    padding: 3.5mm;
+    color: var(--muted);
+    vertical-align: top;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 2mm;
+    padding: 1.8mm 3mm;
+    border-radius: 999px;
+    background: var(--blue-50);
+    color: var(--blue);
+    font-size: 8pt;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+  }
+  .checklist {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5mm;
+    margin-top: 7mm;
+  }
+  .check {
+    display: grid;
+    grid-template-columns: 8mm 1fr;
+    gap: 3mm;
+    align-items: start;
+    padding: 4mm;
+    background: var(--soft);
+    border-radius: 8px;
+    border: 1px solid var(--line);
+  }
+  .check .mark {
+    width: 8mm;
+    height: 8mm;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: var(--blue);
+    color: #fff;
+    font-weight: 900;
+  }
+  .mini-logo {
+    position: absolute;
+    top: 12mm;
+    right: 18mm;
+    width: 88px;
+  }
+</style>
+</head>
+<body>
+
+<section class="page cover">
+  <div class="cover-inner">
+    <div class="brand"><img src="assets/klassci-logo.png" alt="KLASSCI"></div>
+    <div>
+      <div class="cover-kicker">Guide client · Module notes</div>
+      <h1>Notes de tronc commun</h1>
+      <p class="cover-subtitle">Comprendre et utiliser la saisie des notes de tronc commun pour les étudiants déjà orientés en spécialité.</p>
+    </div>
+    <div class="cover-meta">
+      <div><strong>Référence</strong>KLS-NOT-DOC-2026-01</div>
+      <div><strong>Date</strong>26 juillet 2026</div>
+      <div><strong>Statut</strong>Documentation client</div>
+    </div>
+  </div>
+</section>
+
+<section class="page">
+  <img class="mini-logo" src="assets/klassci-logo.png" alt="KLASSCI">
+  <div class="section-label">01 · Objectif</div>
+  <h2>Le cas métier couvert.</h2>
+  <p class="lead">Dans certaines écoles, les étudiants commencent en tronc commun, puis passent en spécialité. Il arrive ensuite qu’une note du semestre de tronc commun doive être saisie en retard.</p>
+  <div class="grid-3">
+    <div class="panel soft">
+      <h3><span class="accent">1.</span> Retrouver</h3>
+      <p>KLASSCI retrouve les étudiants selon leur historique académique, pas seulement selon leur classe actuelle.</p>
+    </div>
+    <div class="panel soft">
+      <h3><span class="accent">2.</span> Saisir</h3>
+      <p>La note peut être ajoutée dans la classe de tronc commun, sur le semestre où l’étudiant y était bien inscrit.</p>
+    </div>
+    <div class="panel soft">
+      <h3><span class="accent">3.</span> Verrouiller</h3>
+      <p>La sauvegarde automatique garde un brouillon. La validation finale déclenche le verrouillage selon les droits.</p>
+    </div>
+  </div>
+  <div class="callout"><strong>À retenir :</strong> un étudiant déjà en spécialité peut apparaître dans sa classe de tronc commun pour le semestre concerné, sans être ajouté aux semestres où il n’appartenait plus à cette classe.</div>
+  <div class="footer"><span>KLASSCI · Guide notes tronc commun</span><span>02</span></div>
+</section>
+
+<section class="page">
+  <img class="mini-logo" src="assets/klassci-logo.png" alt="KLASSCI">
+  <div class="section-label">02 · Principe</div>
+  <h2>KLASSCI lit le parcours de l’étudiant.</h2>
+  <p class="lead">Le module Notes ne se limite pas à l’inscription active du jour. Il vérifie la période d’appartenance de l’étudiant à une classe pour afficher la bonne cohorte au bon semestre.</p>
+  <div class="timeline">
+    <div class="phase active">
+      <small>Semestre 1</small>
+      <h3>Tronc commun</h3>
+      <p>L’étudiant suit les enseignements communs. Ses notes S1 doivent rester attachées à cette classe.</p>
+    </div>
+    <div class="phase">
+      <small>Semestre 2</small>
+      <h3>Spécialité</h3>
+      <p>L’étudiant poursuit dans sa classe de spécialité. Les notes S2 se saisissent dans cette classe.</p>
+    </div>
+    <div class="phase">
+      <small>Plus tard</small>
+      <h3>Note en retard</h3>
+      <p>Pour corriger ou compléter le S1, on revient dans la classe de tronc commun et on sélectionne le semestre 1.</p>
+    </div>
+  </div>
+  <table class="rule-table">
+    <tr><th>Situation</th><th>Comportement attendu</th></tr>
+    <tr><td>L’étudiant était en tronc commun au semestre sélectionné.</td><td>Il apparaît dans la grille de notes de la classe TC avec l’indication « Tronc commun ».</td></tr>
+    <tr><td>L’étudiant n’était plus dans cette classe au semestre sélectionné.</td><td>Il n’est pas ajouté artificiellement à la grille de cette classe.</td></tr>
+    <tr><td>La note est enregistrée automatiquement.</td><td>Elle reste modifiable tant que le formulaire n’a pas été validé définitivement, selon les droits de l’utilisateur.</td></tr>
+  </table>
+  <div class="footer"><span>KLASSCI · Guide notes tronc commun</span><span>03</span></div>
+</section>
+
+<section class="page">
+  <img class="mini-logo" src="assets/klassci-logo.png" alt="KLASSCI">
+  <div class="section-label">03 · Étape 1</div>
+  <h2>Ouvrir la classe de tronc commun.</h2>
+  <p class="lead">Depuis le menu Notes, choisissez la classe de tronc commun concernée. La classe reste le point d’entrée naturel pour saisir les notes historiques du semestre commun.</p>
+  <div class="shot screen-large">
+    <img src="assets/01-notes-index.png" alt="Page Notes KLASSCI avec la classe de tronc commun">
+    <div class="shot-caption">Exemple : la classe « 1BTS IG A » est sélectionnée depuis la page de gestion des notes.</div>
+  </div>
+  <div class="footer"><span>KLASSCI · Guide notes tronc commun</span><span>04</span></div>
+</section>
+
+<section class="page">
+  <img class="mini-logo" src="assets/klassci-logo.png" alt="KLASSCI">
+  <div class="section-label">04 · Étape 2</div>
+  <h2>Choisir la matière et le semestre.</h2>
+  <p class="lead">Dans le modal de gestion des notes, sélectionnez la matière, puis le semestre de tronc commun. Pour une note du premier semestre, le choix attendu est « Semestre 1 ».</p>
+  <div class="grid-2">
+    <div class="panel blue">
+      <h3>Bon réflexe</h3>
+      <ol>
+        <li>Sélectionner la matière de tronc commun.</li>
+        <li>Sélectionner le semestre où la classe était suivie.</li>
+        <li>Attendre le chargement de la grille.</li>
+      </ol>
+    </div>
+    <div class="panel soft">
+      <h3>Ce que KLASSCI fait</h3>
+      <p>Le système croise la classe, la matière, le semestre et l’historique de l’inscription pour afficher la bonne liste d’étudiants.</p>
+    </div>
+  </div>
+  <div class="shot screen-short">
+    <img src="assets/02-modal-gestion-notes.png" alt="Modal de gestion des notes KLASSCI">
+    <div class="shot-caption">Le modal permet de filtrer la matière et le semestre avant la saisie.</div>
+  </div>
+  <div class="footer"><span>KLASSCI · Guide notes tronc commun</span><span>05</span></div>
+</section>
+
+<section class="page">
+  <img class="mini-logo" src="assets/klassci-logo.png" alt="KLASSCI">
+  <div class="section-label">05 · Étape 3</div>
+  <h2>Saisir les notes du semestre 1.</h2>
+  <p class="lead">La grille affiche les étudiants de la cohorte du semestre sélectionné. Les étudiants concernés par l’historique de tronc commun sont identifiés clairement dans la ligne de saisie.</p>
+  <div class="shot screen-large">
+    <img src="assets/03-grille-semestre-1.png" alt="Grille de saisie des notes du semestre 1">
+    <div class="shot-caption">La grille du semestre 1 affiche aussi les étudiants déjà orientés en spécialité lorsqu’ils appartenaient à la classe TC sur ce semestre.</div>
+  </div>
+  <div class="footer"><span>KLASSCI · Guide notes tronc commun</span><span>06</span></div>
+</section>
+
+<section class="page">
+  <img class="mini-logo" src="assets/klassci-logo.png" alt="KLASSCI">
+  <div class="section-label">06 · Sauvegarde</div>
+  <h2>Brouillon automatique, validation finale.</h2>
+  <p class="lead">La saisie dans la grille est sauvegardée automatiquement pour éviter les pertes. Cette sauvegarde ne doit pas être confondue avec la validation finale du formulaire.</p>
+  <div class="grid-2">
+    <div class="panel soft">
+      <div class="metric">
+        <div class="num">1</div>
+        <div>
+          <h3>Sauvegarde automatique</h3>
+          <p>Après modification d’une note, KLASSCI enregistre un brouillon. L’utilisateur peut revenir corriger tant qu’il n’a pas finalisé.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel soft">
+      <div class="metric">
+        <div class="num">2</div>
+        <div>
+          <h3>Validation finale</h3>
+          <p>Quand l’utilisateur valide le formulaire, la note devient soumise. Les règles de modification s’appliquent selon ses permissions.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+  <table class="rule-table">
+    <tr><th>Action</th><th>Effet dans KLASSCI</th><th>Modification possible ensuite</th></tr>
+    <tr><td>Saisie d’une note</td><td>Enregistrement automatique en brouillon</td><td>Oui, tant que le formulaire n’est pas validé définitivement</td></tr>
+    <tr><td>Validation finale</td><td>Soumission officielle de la note</td><td>Selon les droits de modification de notes</td></tr>
+    <tr><td>Utilisateur sans droit de modification après soumission</td><td>La note est protégée après validation</td><td>Non, sauf profil autorisé</td></tr>
+  </table>
+  <div class="callout"><strong>Objectif :</strong> éviter qu’une simple sauvegarde automatique bloque l’utilisateur trop tôt, tout en conservant un verrouillage réel après validation.</div>
+  <div class="footer"><span>KLASSCI · Guide notes tronc commun</span><span>07</span></div>
+</section>
+
+<section class="page">
+  <img class="mini-logo" src="assets/klassci-logo.png" alt="KLASSCI">
+  <div class="section-label">07 · Contrôle semestre</div>
+  <h2>Le filtrage reste strict.</h2>
+  <p class="lead">Le fait de retrouver un étudiant dans son ancien tronc commun ne veut pas dire qu’il sera visible partout. KLASSCI l’affiche uniquement sur les semestres compatibles avec son parcours.</p>
+  <div class="shot screen-medium">
+    <img src="assets/04-semestre-2-filtrage.png" alt="Filtrage du semestre 2 dans la classe de tronc commun">
+    <div class="shot-caption">Exemple : sur un semestre qui ne correspond plus à l’appartenance TC, l’étudiant n’est pas injecté dans la grille.</div>
+  </div>
+  <div class="footer"><span>KLASSCI · Guide notes tronc commun</span><span>08</span></div>
+</section>
+
+<section class="page">
+  <img class="mini-logo" src="assets/klassci-logo.png" alt="KLASSCI">
+  <div class="section-label">08 · Procédure</div>
+  <h2>Traiter une note de tronc commun en retard.</h2>
+  <p class="lead">Cette procédure couvre le cas fréquent d’une note reçue après l’orientation de l’étudiant en spécialité.</p>
+  <div class="checklist">
+    <div class="check"><div class="mark">1</div><div><strong>Identifier la classe TC</strong><br>Retrouver la classe de tronc commun suivie au semestre concerné.</div></div>
+    <div class="check"><div class="mark">2</div><div><strong>Ouvrir Notes</strong><br>Accéder à la page Notes, puis ouvrir la classe de tronc commun.</div></div>
+    <div class="check"><div class="mark">3</div><div><strong>Choisir la matière</strong><br>Sélectionner la matière concernée par la note en retard.</div></div>
+    <div class="check"><div class="mark">4</div><div><strong>Choisir le semestre</strong><br>Sélectionner le semestre où l’étudiant était bien dans cette classe.</div></div>
+    <div class="check"><div class="mark">5</div><div><strong>Saisir la note</strong><br>Entrer la note dans la grille, puis laisser la sauvegarde automatique se faire.</div></div>
+    <div class="check"><div class="mark">6</div><div><strong>Valider</strong><br>Relire la grille, puis soumettre définitivement quand les notes sont complètes.</div></div>
+  </div>
+  <div class="footer"><span>KLASSCI · Guide notes tronc commun</span><span>09</span></div>
+</section>
+
+<section class="page">
+  <img class="mini-logo" src="assets/klassci-logo.png" alt="KLASSCI">
+  <div class="section-label">09 · Questions fréquentes</div>
+  <h2>Points de vigilance.</h2>
+  <div class="grid-2" style="margin-top: 8mm;">
+    <div class="panel">
+      <h3>Pourquoi l’étudiant apparaît-il encore en TC ?</h3>
+      <p>Parce que le semestre sélectionné correspond à sa période réelle en tronc commun.</p>
+    </div>
+    <div class="panel">
+      <h3>Pourquoi ne le voit-on pas au semestre suivant ?</h3>
+      <p>Parce que son parcours indique qu’il était déjà orienté en spécialité sur ce semestre.</p>
+    </div>
+    <div class="panel">
+      <h3>La sauvegarde automatique valide-t-elle la note ?</h3>
+      <p>Non. Elle protège la saisie en brouillon. La validation finale reste une action volontaire.</p>
+    </div>
+    <div class="panel">
+      <h3>Qui peut modifier après validation ?</h3>
+      <p>Uniquement les profils disposant du droit de modification des notes déjà soumises.</p>
+    </div>
+  </div>
+  <div class="callout"><strong>Bonne pratique :</strong> utiliser la validation finale seulement lorsque toutes les notes de la matière et du semestre ont été relues.</div>
+  <div class="footer"><span>KLASSCI · Guide notes tronc commun</span><span>10</span></div>
+</section>
+
+<section class="page">
+  <img class="mini-logo" src="assets/klassci-logo.png" alt="KLASSCI">
+  <div class="section-label">10 · Synthèse client</div>
+  <h2>Ce que la fonctionnalité garantit.</h2>
+  <p class="lead">Le module Notes de KLASSCI permet aux écoles de gérer les notes de tronc commun en retard sans perdre la cohérence du parcours académique.</p>
+  <div class="grid-2">
+    <div class="panel soft">
+      <h3><span class="badge">Garantie 1</span></h3>
+      <p>Les notes restent attachées à la bonne classe, à la bonne matière et au bon semestre.</p>
+    </div>
+    <div class="panel soft">
+      <h3><span class="badge">Garantie 2</span></h3>
+      <p>Les étudiants passés en spécialité peuvent être retrouvés dans leur ancien tronc commun lorsque le semestre le justifie.</p>
+    </div>
+    <div class="panel soft">
+      <h3><span class="badge">Garantie 3</span></h3>
+      <p>La sauvegarde automatique protège le travail sans verrouiller prématurément la saisie.</p>
+    </div>
+    <div class="panel soft">
+      <h3><span class="badge">Garantie 4</span></h3>
+      <p>La validation finale applique les droits de modification et sécurise les notes soumises.</p>
+    </div>
+  </div>
+  <div class="callout"><strong>Conclusion :</strong> KLASSCI couvre le cas des notes de tronc commun en retard tout en respectant l’historique réel de chaque étudiant.</div>
+  <div class="footer"><span>KLASSCI · Guide notes tronc commun</span><span>11</span></div>
+</section>
+
+</body>
+</html>
