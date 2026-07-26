@@ -164,6 +164,30 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
         );
     }
 
+    public function test_pv_rectification_enforces_configurable_sod_without_bypass(): void
+    {
+        config(['sod.rules.lmd.jury.rectify_pv.enabled' => true, 'sod.rules.lmd.jury.rectify_pv.setting' => null]);
+        $jury = $this->seedIssuableJury();
+        $issuer = $this->authorizedUser(2, false);
+        $checker = $this->authorizedUser(1, true);
+        app(\App\Domain\OfficialDocuments\Services\OfficialDocumentService::class)
+            ->issueJuryPv($jury, $issuer);
+        $jury->fresh()->forceFill(['status' => 'publie'])->save();
+
+        $this->actingAs($issuer)
+            ->postJson(route('esbtp.lmd.jurys.pv-rectify', $jury), [
+                'motif' => 'Erreur materielle validee par le jury.',
+            ])
+            ->assertForbidden()
+            ->assertJsonPath('success', false);
+
+        $this->actingAs($checker)
+            ->postJson(route('esbtp.lmd.jurys.pv-rectify', $jury), [
+                'motif' => 'Erreur materielle validee par le jury.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true);
+    }
     public function test_registered_routes_keep_canonical_permissions(): void
     {
         $reconcile = Route::getRoutes()->getByName('esbtp.lmd.jurys.pv-reconcile');
@@ -187,18 +211,20 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
         $this->assertNotContains('auth', $publicVerify->gatherMiddleware());
     }
 
-    private function authorizedUser(): \App\Models\User
+    private function authorizedUser(int $id = 1, bool $withSodBypass = true): \App\Models\User
     {
-        $user = \App\Models\User::query()->findOrFail(1);
+        $user = \App\Models\User::query()->findOrFail($id);
         foreach (['admin.access', 'module.lmd.access', 'lmd.jury.view', 'lmd.jury.publish'] as $name) {
             $permission = Permission::findOrCreate($name, 'web');
             $user->givePermissionTo($permission);
+        }
+        if ($withSodBypass) {
+            $user->givePermissionTo(Permission::findOrCreate('sod.bypass', 'web'));
         }
         app(PermissionRegistrar::class)->forgetCachedPermissions();
 
         return $user;
     }
-
     private function buildSignedStreamUrl(OfficialDocument $document, array $query): string
     {
         return URL::temporarySignedRoute('esbtp.lmd.jurys.official-documents.stream', now()->addMinutes(5), [

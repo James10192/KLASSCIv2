@@ -126,7 +126,12 @@ return [
             'icon' => 'fa-server',
             'aliases' => ['manage_system'],
         ],
-        'settings.view' => [
+        'sod.bypass' => [
+            'label' => 'Contourner la separation des devoirs',
+            'description' => 'Autorise un acteur habilite a executer une action meme lorsqu une regle maker-checker est active. A reserver aux super administrateurs et procedures de secours.',
+            'group' => 'Administration',
+            'icon' => 'fa-user-shield',
+        ],        'settings.view' => [
             'label' => 'Voir les paramètres',
             'group' => 'Administration',
             'icon' => 'fa-sliders-h',

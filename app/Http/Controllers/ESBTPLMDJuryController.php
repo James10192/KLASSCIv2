@@ -14,6 +14,7 @@ use App\Models\ESBTPLMDParcours;
 use App\Models\ESBTPLMDSession;
 use App\Models\User;
 use App\Services\JuryDeliberationService;
+use App\Services\Security\SeparationOfDutiesService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -27,6 +28,7 @@ class ESBTPLMDJuryController extends Controller
         private readonly OfficialDocumentService $officialDocuments,
         private readonly OfficialDocumentDownloadService $officialDownloads,
         private readonly LegacyJuryPvReconciliationService $legacyReconciliation,
+        private readonly SeparationOfDutiesService $sod,
     )
     {
         $this->middleware('auth');
@@ -265,16 +267,20 @@ class ESBTPLMDJuryController extends Controller
         if (! $readiness['ok']) {
             return response()->json([
                 'success' => false,
-                'message' => 'Jury non prêt : '.implode(', ', $readiness['reasons']),
+                'message' => 'Jury non pret : '.implode(', ', $readiness['reasons']),
                 'readiness' => $readiness,
             ], 422);
+        }
+
+        if ($jury->publie_par && $message = $this->sod->violation('lmd.jury.generate_pv_after_publication', $jury->publie_par, auth()->user())) {
+            return response()->json(['success' => false, 'message' => $message], 403);
         }
 
         try {
             $path = $this->delib->genererPvDeliberation($jury);
         } catch (\Throwable $e) {
-            Log::error('Échec de l émission du PV officiel.', ['jury_id' => $jury->id, 'exception' => $e]);
-            return response()->json(['success' => false, 'message' => 'Le PV officiel n a pas pu être émis. Vérifiez les prérequis du jury.'], 422);
+            Log::error('Echec de l emission du PV officiel.', ['jury_id' => $jury->id, 'exception' => $e]);
+            return response()->json(['success' => false, 'message' => 'Le PV officiel n a pas pu etre emis. Verifiez les prerequis du jury.'], 422);
         }
 
         $document = $this->officialDocuments->existingJuryPv($jury);
@@ -290,7 +296,6 @@ class ESBTPLMDJuryController extends Controller
             ],
         ]);
     }
-
     public function rectifierPv(Request $request, ESBTPLMDJury $jury): JsonResponse
     {
         abort_unless(auth()->user()?->can('lmd.jury.publish'), 403);
@@ -299,26 +304,31 @@ class ESBTPLMDJuryController extends Controller
             'motif' => ['required', 'string', 'min:12', 'max:1000'],
         ]);
 
-        if (! $this->officialDocuments->existingJuryPv($jury)) {
+        $previousDocument = $this->officialDocuments->existingJuryPv($jury);
+        if (! $previousDocument) {
             return response()->json([
                 'success' => false,
-                'message' => 'Aucun PV officiel existant ne peut Ãªtre rectifiÃ©.',
+                'message' => 'Aucun PV officiel existant ne peut etre rectifie.',
             ], 422);
+        }
+
+        if ($message = $this->sod->violation('lmd.jury.rectify_pv', $previousDocument->issued_by, auth()->user())) {
+            return response()->json(['success' => false, 'message' => $message], 403);
         }
 
         try {
             $document = $this->officialDocuments->issueJuryPv($jury, auth()->user(), $data['motif']);
         } catch (\Throwable $e) {
-            Log::error('Ã‰chec de la rectification du PV officiel.', ['jury_id' => $jury->id, 'exception' => $e]);
+            Log::error('Echec de la rectification du PV officiel.', ['jury_id' => $jury->id, 'exception' => $e]);
             return response()->json([
                 'success' => false,
-                'message' => 'Le PV rectificatif n a pas pu Ãªtre Ã©mis. VÃ©rifiez le motif et les prÃ©requis du jury.',
+                'message' => 'Le PV rectificatif n a pas pu etre emis. Verifiez le motif et les prerequis du jury.',
             ], 422);
         }
 
         return response()->json([
             'success' => true,
-            'message' => 'PV rectificatif Ã©mis. La version prÃ©cÃ©dente est conservÃ©e comme remplacÃ©e.',
+            'message' => 'PV rectificatif emis. La version precedente est conservee comme remplacee.',
             'document' => [
                 'reference' => $document->reference,
                 'version' => (int) $document->version,
@@ -330,16 +340,19 @@ class ESBTPLMDJuryController extends Controller
             ],
         ]);
     }
-
     public function publier(ESBTPLMDJury $jury): JsonResponse
     {
         abort_unless(auth()->user()?->can('lmd.jury.publish'), 403);
+        $document = $this->officialDocuments->existingJuryPv($jury);
+        if ($message = $this->sod->violation('lmd.jury.publish', $document?->issued_by ?? $jury->pv_genere_par, auth()->user())) {
+            return response()->json(['success' => false, 'message' => $message], 403);
+        }
 
         try {
             $this->delib->publierDecisions($jury);
         } catch (\Throwable $e) {
-            Log::error('Échec de la publication du jury.', ['jury_id' => $jury->id, 'exception' => $e]);
-            return response()->json(['success' => false, 'message' => 'Le jury n a pas pu être publié.'], 422);
+            Log::error('Echec de la publication du jury.', ['jury_id' => $jury->id, 'exception' => $e]);
+            return response()->json(['success' => false, 'message' => 'Le jury n a pas pu etre publie.'], 422);
         }
 
         return response()->json([
@@ -351,7 +364,6 @@ class ESBTPLMDJuryController extends Controller
             ],
         ]);
     }
-
     public function pvDownload(ESBTPLMDJury $jury): RedirectResponse
     {
         abort_unless(auth()->user()?->can('lmd.jury.view'), 403);
