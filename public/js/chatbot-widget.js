@@ -1008,6 +1008,55 @@
         return container;
     }
 
+    function buildApprovalRequestFromData(data) {
+        var container = document.createElement('div');
+        container.className = 'chatbot-form chatbot-approval-request';
+
+        var title = document.createElement('h4');
+        title.className = 'chatbot-form-title';
+        title.textContent = 'Approbation requise';
+        container.appendChild(title);
+
+        var summary = document.createElement('p');
+        summary.className = 'chatbot-form-description';
+        summary.textContent = data.summary || 'Une action métier attend votre validation.';
+        container.appendChild(summary);
+
+        if (data.payload) {
+            var details = document.createElement('div');
+            details.className = 'chatbot-form-success';
+            details.innerHTML = '<div class="chatbot-form-success-icon"><i class="fas fa-shield-halved"></i></div>' +
+                '<div class="chatbot-form-success-body">' +
+                '<div class="chatbot-form-success-title">' + escapeHtml(data.payload.name || 'Action proposée') + '</div>' +
+                '<div class="chatbot-form-success-text">Code : ' + escapeHtml(data.payload.code || '') +
+                ' · Montant : ' + escapeHtml(String(data.payload.default_amount || 0)) + '</div>' +
+                '</div>';
+            container.appendChild(details);
+        }
+
+        var actions = document.createElement('div');
+        actions.className = 'chatbot-follow-up';
+
+        var approve = document.createElement('button');
+        approve.type = 'button';
+        approve.className = 'chatbot-follow-up-chip';
+        approve.textContent = 'Approuver et exécuter';
+        approve.dataset.action = 'approve_chatbot_action';
+        approve.dataset.url = data.approval && data.approval.approve_url ? data.approval.approve_url : '';
+        actions.appendChild(approve);
+
+        var reject = document.createElement('button');
+        reject.type = 'button';
+        reject.className = 'chatbot-follow-up-chip';
+        reject.textContent = 'Rejeter';
+        reject.dataset.action = 'reject_chatbot_action';
+        reject.dataset.url = data.approval && data.approval.reject_url ? data.approval.reject_url : '';
+        actions.appendChild(reject);
+
+        container.appendChild(actions);
+        return container;
+    }
+
     function buildFollowUpChips(followUp) {
         if (!Array.isArray(followUp) || followUp.length === 0) {
             return null;
@@ -1288,8 +1337,19 @@
             this.messagesContainer.addEventListener('click', function (event) {
                 var target = event.target.closest('.chatbot-follow-up-chip');
                 if (target && target.dataset && target.dataset.action) {
+                    if (target.dataset.action === 'approve_chatbot_action' || target.dataset.action === 'reject_chatbot_action') {
+                        return;
+                    }
                     event.preventDefault();
                     self.handleActionChipClick(target);
+                }
+            });
+
+            this.messagesContainer.addEventListener('click', function (event) {
+                var approvalButton = event.target.closest('[data-action="approve_chatbot_action"], [data-action="reject_chatbot_action"]');
+                if (approvalButton) {
+                    event.preventDefault();
+                    self.handleApprovalAction(approvalButton);
                 }
             });
         }
@@ -1593,6 +1653,75 @@
                     chip.disabled = false;
                 });
         }
+    };
+
+    ChatbotWidget.prototype.handleApprovalAction = function (button) {
+        var self = this;
+        var url = button.dataset.url || '';
+        var action = button.dataset.action || '';
+        var panel = button.closest('.chatbot-approval-request');
+
+        if (!url) {
+            this.showToast('Action indisponible.');
+            return;
+        }
+
+        var buttons = panel ? panel.querySelectorAll('[data-action="approve_chatbot_action"], [data-action="reject_chatbot_action"]') : [button];
+        Array.prototype.slice.call(buttons).forEach(function (btn) {
+            btn.disabled = true;
+        });
+        button.textContent = action === 'approve_chatbot_action' ? 'Approbation...' : 'Rejet...';
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': this.config.csrfToken || ''
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({})
+        })
+            .then(function (response) {
+                return response.json().then(function (payload) {
+                    if (!response.ok || !payload.success) {
+                        throw new Error(payload.message || 'Action impossible.');
+                    }
+                    return payload;
+                });
+            })
+            .then(function (payload) {
+                if (panel) {
+                    panel.innerHTML = '<div class="chatbot-form-success">' +
+                        '<div class="chatbot-form-success-icon"><i class="fas fa-check"></i></div>' +
+                        '<div class="chatbot-form-success-body">' +
+                        '<div class="chatbot-form-success-title">' + escapeHtml(payload.status === 'rejected' ? 'Action rejetée' : 'Action exécutée') + '</div>' +
+                        '<div class="chatbot-form-success-text">' + escapeHtml(payload.message || '') + '</div>' +
+                        '</div></div>';
+                }
+
+                if (payload.conversation_id) {
+                    self.state.currentConversationId = payload.conversation_id;
+                }
+
+                if (payload.display_type || payload.display_data) {
+                    self.appendAssistantMessage({
+                        content: payload.message,
+                        display_type: payload.display_type,
+                        display_data: payload.display_data,
+                        created_at: new Date().toISOString()
+                    });
+                }
+
+                self.fetchConversations();
+            })
+            .catch(function (error) {
+                self.showToast(error.message || 'Action impossible.');
+                Array.prototype.slice.call(buttons).forEach(function (btn) {
+                    btn.disabled = false;
+                });
+                button.textContent = action === 'approve_chatbot_action' ? 'Approuver et exécuter' : 'Rejeter';
+            });
     };
 
     ChatbotWidget.prototype.fetchConversations = function () {
@@ -2226,6 +2355,9 @@
         } else if (message.display_type === 'form' && displayData.fields) {
             messageContent.classList.add('has-form');
             messageContent.appendChild(buildFormFromData(displayData, this));
+        } else if (message.display_type === 'approval_request') {
+            messageContent.classList.add('has-form');
+            messageContent.appendChild(buildApprovalRequestFromData(displayData));
         } else if (message.display_type === 'table' && displayData.template_html) {
             messageContent.classList.add('has-table');
             var htmlTable = renderTemplate(displayData.template_html, displayData);

@@ -69,4 +69,16 @@ class ChatbotGovernanceTest extends TestCase
         $this->assertStringContainsString("'status' => 'executed'", $content);
         $this->assertStringContainsString('DB::beginTransaction();', $content);
     }
+
+    public function test_chatbot_widget_renders_and_executes_approval_requests(): void
+    {
+        $content = file_get_contents(public_path('js/chatbot-widget.js'));
+
+        $this->assertStringContainsString('buildApprovalRequestFromData', $content);
+        $this->assertStringContainsString("message.display_type === 'approval_request'", $content);
+        $this->assertStringContainsString('approve_chatbot_action', $content);
+        $this->assertStringContainsString('reject_chatbot_action', $content);
+        $this->assertStringContainsString('handleApprovalAction', $content);
+        $this->assertStringContainsString("method: 'POST'", $content);
+    }
 }
