@@ -132,9 +132,21 @@ function jurySalle(juryId) {
             }
         },
 
+        requestAutoDecisions() {
+            this.review = {
+                kind: 'auto',
+                title: 'Revue des décisions automatiques',
+                message: 'Cette action calcule les décisions du jury à partir des règles LMD et des données académiques disponibles. Vérifiez les pré-requis et confirmez avant application.',
+                actionLabel: 'Appliquer les décisions',
+                member: null,
+                motif: '',
+            };
+            this.reviewOpen = true;
+        },
+
         async appliquerAuto() {
             try {
-                const data = await this.post('{{ route('esbtp.lmd.jurys.decisions.auto', $jury) }}');
+                const data = await this.post('{{ route('esbtp.lmd.jurys.decisions.auto', $jury) }}', { confirmed: true });
                 this.stats = data.stats;
                 this.readiness = data.readiness;
                 this.toast('success', `${data.created_count} décisions créées.`);
@@ -280,6 +292,9 @@ function jurySalle(juryId) {
             this.reviewOpen = false;
             if (review.kind === 'remove') {
                 await this.removeMembre(review.member);
+            }
+            if (review.kind === 'auto') {
+                await this.appliquerAuto();
             }
             if (review.kind === 'pv') {
                 await this.genererPv();

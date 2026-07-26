@@ -164,6 +164,14 @@ class ESBTPLMDJuryController extends Controller
     {
         abort_unless(auth()->user()?->can('lmd.jury.deliberate'), 403);
 
+        if (! request()->boolean('confirmed')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'La revue des décisions automatiques est obligatoire avant application.',
+                'readiness' => $this->delib->verifierReadiness($jury->fresh()),
+            ], 422);
+        }
+
         try {
             $created = $this->delib->appliquerDecisionsAuto($jury);
         } catch (\Throwable $e) {

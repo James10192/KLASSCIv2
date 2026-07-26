@@ -1,7 +1,7 @@
 ﻿<div class="juy-actions-bar">
     @can('lmd.jury.deliberate')
     @if(!$jury->isLocked())
-    <button type="button" class="juy-btn juy-btn--primary h-11" @click="appliquerAuto()" :disabled="busy">
+    <button type="button" class="juy-btn juy-btn--primary h-11" @click="requestAutoDecisions()" :disabled="busy">
         <i class="fas fa-bolt"></i> <span x-text="busy ? 'Calcul…' : 'Appliquer décisions auto'"></span>
     </button>
     @endif

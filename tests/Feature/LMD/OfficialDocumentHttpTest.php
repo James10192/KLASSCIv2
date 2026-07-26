@@ -133,6 +133,18 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
         $this->get($url)->assertForbidden();
     }
 
+    public function test_auto_jury_decisions_require_explicit_review_confirmation(): void
+    {
+        $jury = $this->seedIssuableJury();
+        $user = $this->authorizedUser();
+
+        $this->actingAs($user)
+            ->postJson(route('esbtp.lmd.jurys.decisions.auto', $jury))
+            ->assertStatus(422)
+            ->assertJsonPath('success', false)
+            ->assertJsonPath('message', 'La revue des décisions automatiques est obligatoire avant application.');
+    }
+
     public function test_pv_rectification_route_supersedes_existing_document_with_required_reason(): void
     {
         $jury = $this->seedIssuableJury();
@@ -261,7 +273,7 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
     private function authorizedUser(int $id = 1, bool $withSodBypass = true): \App\Models\User
     {
         $user = \App\Models\User::query()->findOrFail($id);
-        foreach (['admin.access', 'module.lmd.access', 'lmd.jury.view', 'lmd.jury.publish', 'lmd.jury.documents.reconcile'] as $name) {
+        foreach (['admin.access', 'module.lmd.access', 'lmd.jury.view', 'lmd.jury.publish', 'lmd.jury.deliberate', 'lmd.jury.documents.reconcile'] as $name) {
             $permission = Permission::findOrCreate($name, 'web');
             $user->givePermissionTo($permission);
         }
