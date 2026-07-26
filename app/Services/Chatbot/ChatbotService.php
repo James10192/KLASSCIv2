@@ -113,19 +113,7 @@ class ChatbotService
             ]);
 
             // 8. Audit log
-            if (!empty($agentResponse['tool_calls'])) {
-                $lastCall = end($agentResponse['tool_calls']);
-                ChatbotActionLog::create([
-                    'conversation_id' => $conversation->id,
-                    'user_id' => $user->id,
-                    'action_type' => 'retrieve',
-                    'model_type' => $lastCall['tool'] ?? 'unknown',
-                    'action_data' => [
-                        'tool_calls' => $agentResponse['tool_calls'],
-                    ],
-                    'status' => 'success',
-                ]);
-            }
+            $this->auditToolCalls($conversation, $user->id, $agentResponse['tool_calls'] ?? []);
 
             // 9. Mettre à jour la conversation (merge, pas overwrite)
             $conversation->update([
@@ -216,10 +204,13 @@ class ChatbotService
                 ],
             ]);
 
+            $this->auditToolCalls($conversation, $user->id, $agentResponse['tool_calls'] ?? []);
+
             $conversation->update([
                 'last_activity_at' => now(),
                 'context' => array_filter(array_merge($conversation->context ?? [], [
                     'last_display' => $agentResponse['display_type'],
+                    'last_tool_calls' => $agentResponse['tool_calls'] ?? [],
                 ])),
             ]);
 
@@ -421,6 +412,27 @@ class ChatbotService
     }
 
     // ─── Helpers privés ────────────────────────────────────
+
+    protected function auditToolCalls(ChatbotConversation $conversation, int $userId, array $toolCalls): void
+    {
+        if (empty($toolCalls)) {
+            return;
+        }
+
+        $lastCall = $toolCalls[array_key_last($toolCalls)] ?? [];
+
+        ChatbotActionLog::create([
+            'conversation_id' => $conversation->id,
+            'user_id' => $userId,
+            'action_type' => 'retrieve',
+            'model_type' => $lastCall['tool'] ?? 'unknown',
+            'action_data' => [
+                'tool_calls' => $toolCalls,
+                'channel' => request()->expectsJson() ? 'json' : 'stream',
+            ],
+            'status' => 'success',
+        ]);
+    }
 
     protected function getOrCreateConversation(int $userId, ?string $sessionId): ChatbotConversation
     {

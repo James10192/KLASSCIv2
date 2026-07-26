@@ -2627,7 +2627,7 @@ Route::prefix('external-grading')->name('external-grading.')->group(function () 
 });
 
 // Routes Chatbot IA - Accessible Ã  tous les utilisateurs authentifiÃ©s
-Route::middleware(['auth'])->prefix('chatbot')->name('chatbot.')->group(function () {
+Route::middleware(['auth', 'throttle:60,1'])->prefix('chatbot')->name('chatbot.')->group(function () {
     Route::post('/message', [App\Http\Controllers\ChatbotController::class, 'sendMessage'])->name('message');
     Route::post('/message/stream', [App\Http\Controllers\ChatbotController::class, 'sendMessageStream'])->name('message.stream');
     Route::get('/conversations', [App\Http\Controllers\ChatbotController::class, 'listConversations'])->name('conversations');
