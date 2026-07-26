@@ -359,6 +359,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         // LMD bulk import (Domaine + Mention + Parcours + Filière + UEs + ECUEs + Planifications)
         Route::post('/lmd/import', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'import'])->name('lmd.import');
 
+        // LMD 360 E2E harness (presentation only, prepares data; business actions remain on web routes)
+        Route::post('/lmd/jury-e2e/prepare', [App\Http\Controllers\API\CLI\CLILMDJuryE2EController::class, 'prepare'])->name('lmd.jury-e2e.prepare');
+        Route::get('/lmd/jury-e2e/{jury}/status', [App\Http\Controllers\API\CLI\CLILMDJuryE2EController::class, 'status'])->name('lmd.jury-e2e.status');
+
         // LMD cleanup — soft-delete UE/ECUE/planifs d'un parcours pour ré-import propre
         // (dry_run par défaut SAFE, garde-fou évaluations). Idempotent.
         Route::post('/lmd/cleanup', [App\Http\Controllers\API\CLI\CLILMDSetupController::class, 'cleanup'])->name('lmd.cleanup');
