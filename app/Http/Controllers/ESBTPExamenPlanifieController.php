@@ -706,6 +706,60 @@ class ESBTPExamenPlanifieController extends Controller
         return $pdf->download($filename);
     }
 
+    public function surveillancePv(ESBTPExamenPlanifie $examen): \Symfony\Component\HttpFoundation\Response
+    {
+        abort_unless(auth()->user()?->can('lmd.examens.view'), 403);
+
+        $examen->load([
+            'anneeUniversitaire',
+            'classe',
+            'classes',
+            'matiere',
+            'uniteEnseignement',
+            'surveillants.user',
+            'createdBy',
+        ]);
+
+        $classIds = $examen->classes->pluck('id')
+            ->push($examen->classe_id)
+            ->filter()
+            ->unique()
+            ->values();
+
+        $students = $classIds->isEmpty()
+            ? collect()
+            : ESBTPEtudiant::query()
+                ->select([
+                    'esbtp_etudiants.id',
+                    'esbtp_etudiants.matricule',
+                    'esbtp_etudiants.nom',
+                    'esbtp_etudiants.prenoms',
+                    'esbtp_inscriptions.classe_id',
+                    'esbtp_classes.name as classe_name',
+                ])
+                ->join('esbtp_inscriptions', 'esbtp_inscriptions.etudiant_id', '=', 'esbtp_etudiants.id')
+                ->leftJoin('esbtp_classes', 'esbtp_classes.id', '=', 'esbtp_inscriptions.classe_id')
+                ->whereIn('esbtp_inscriptions.classe_id', $classIds)
+                ->where('esbtp_inscriptions.annee_universitaire_id', $examen->annee_universitaire_id)
+                ->whereNotIn('esbtp_inscriptions.status', ['annulee', 'annulé', 'cancelled', 'abandon'])
+                ->orderBy('esbtp_classes.name')
+                ->orderBy('esbtp_etudiants.nom')
+                ->orderBy('esbtp_etudiants.prenoms')
+                ->get();
+
+        $pdf = Pdf::loadView('esbtp.examens.pdf.surveillance-pv', [
+            'examen' => $examen,
+            'students' => $students,
+            'generated_at' => now(),
+        ])->setPaper('a4', 'portrait');
+
+        $filename = sprintf('pv-surveillance-%s.pdf', $examen->numero_convocation ?: 'examen-'.$examen->id);
+
+        return response($pdf->output(), 200, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="' . $filename . '"',
+        ]);
+    }
     private function buildConvocationsPdf(Request $request): array
     {
         $annee = $this->resolveAnnee($request);

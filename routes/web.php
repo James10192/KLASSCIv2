@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Http\Controllers\AdminProfileController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
@@ -2881,6 +2881,9 @@ Route::prefix('esbtp/examens')->name('esbtp.examens.')
         Route::get('/convocations/download', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'convocationsDownload'])
             ->middleware(['permission:lmd.examens.view', 'throttle:10,1'])
             ->name('convocations.download');
+        Route::get('/{examen}/surveillance-pv', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'surveillancePv'])
+            ->middleware(['permission:lmd.examens.view', 'throttle:30,1'])
+            ->name('surveillance-pv');
 
         // Bulk generate + actions custom
         Route::post('/bulk-generate', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'bulkGenerate'])

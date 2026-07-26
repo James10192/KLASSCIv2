@@ -423,6 +423,10 @@
                    target="_blank" class="exs-btn exs-btn--white">
                     <i class="fas fa-file-pdf"></i> Convocations PDF
                 </a>
+                <a href="{{ route('esbtp.examens.surveillance-pv', $examen) }}"
+                   target="_blank" class="exs-btn exs-btn--glass">
+                    <i class="fas fa-clipboard-check"></i> PV surveillance
+                </a>
                 <a href="{{ route('esbtp.examens.index') }}" class="exs-btn exs-btn--glass">
                     <i class="fas fa-arrow-left"></i>
                 </a>

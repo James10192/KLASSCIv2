@@ -47,6 +47,15 @@ class ExamensPlanifiesRedesignTest extends TestCase
         $this->assertContains('GET', $route->methods());
     }
 
+    public function test_surveillance_pv_route_exists_with_view_permission(): void
+    {
+        $route = \Route::getRoutes()->getByName('esbtp.examens.surveillance-pv');
+        $this->assertNotNull($route);
+        $this->assertContains('GET', $route->methods());
+        $mw = $route->gatherMiddleware();
+        $this->assertTrue(collect($mw)->contains(fn ($m) => str_contains((string) $m, 'lmd.examens.view')));
+        $this->assertTrue(collect($mw)->contains(fn ($m) => str_contains((string) $m, 'throttle')));
+    }
     public function test_options_route_requires_auth(): void
     {
         $response = $this->get('/esbtp/examens/options');
@@ -126,11 +135,26 @@ class ExamensPlanifiesRedesignTest extends TestCase
         $this->assertFileDoesNotExist($path);
     }
 
-    public function test_controller_uses_name_not_libelle_for_annee(): void
+    public function test_show_view_links_surveillance_pv(): void
+    {
+        $content = file_get_contents(resource_path('views/esbtp/examens/show.blade.php'));
+        $this->assertStringContainsString('esbtp.examens.surveillance-pv', $content);
+        $this->assertStringContainsString('PV surveillance', $content);
+    }
+
+    public function test_surveillance_pv_template_contains_examops_sections(): void
+    {
+        $content = file_get_contents(resource_path('views/esbtp/examens/pdf/surveillance-pv.blade.php'));
+        $this->assertStringContainsString('PV de surveillance', $content);
+        $this->assertStringContainsString('Équipe de surveillance', $content);
+        $this->assertStringContainsString('Étudiants attendus', $content);
+        $this->assertStringContainsString('Incidents', $content);
+    }
+    public function test_controller_uses_name_for_annee_select(): void
     {
         $path = app_path('Http/Controllers/ESBTPExamenPlanifieController.php');
         $content = file_get_contents($path);
-        $this->assertStringNotContainsString("'libelle'", $content, 'libelle (mauvaise colonne) ne doit plus être utilisé');
-        $this->assertStringContainsString("'name'", $content);
+        $this->assertStringContainsString("get(['id', 'name', 'is_current'])", $content);
+        $this->assertStringNotContainsString("get(['id', 'libelle', 'is_current'])", $content);
     }
 }
