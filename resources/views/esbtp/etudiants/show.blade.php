@@ -2855,8 +2855,17 @@
     </div>
 
     {{-- Toutes les inscriptions de l'étudiant --}}
-    @if($lmdCreditWallet && auth()->user()->can('lmd.credit_wallet.view'))
+    @if(($isLMD ?? false) && auth()->user()->can('lmd.credit_wallet.view'))
         @php
+            $lmdCreditWallet = $lmdCreditWallet ?? [
+                'capitalises' => $lmdCredits['capitalises'] ?? null,
+                'totaux' => $lmdCredits['totaux'] ?? null,
+                'progression_pct' => $lmdCredits['progression_pct'] ?? null,
+                'source_label' => 'Bulletins LMD publiés',
+                'last_publication_at' => null,
+                'entries' => collect(),
+                'has_unpublished_items' => false,
+            ];
             $walletCap = $lmdCreditWallet['capitalises'];
             $walletTot = $lmdCreditWallet['totaux'];
             $walletPct = $lmdCreditWallet['progression_pct'];
