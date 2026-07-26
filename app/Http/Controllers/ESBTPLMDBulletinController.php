@@ -8,6 +8,7 @@ use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPLMDBulletin;
+use App\Services\LMD\LmdCreditWalletService;
 use App\Services\LMDBulletinService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -20,6 +21,7 @@ class ESBTPLMDBulletinController extends Controller
     public function __construct(
         LMDBulletinService $service,
         private readonly BulletinGenerationReadinessService $bulletinReadiness,
+        private readonly LmdCreditWalletService $creditWallet,
     ) {
         $this->middleware(['auth']);
         $this->middleware('permission:module.lmd.access');
@@ -332,6 +334,7 @@ class ESBTPLMDBulletinController extends Controller
         $bulletin->update([
             'is_published' => ! $bulletin->is_published,
         ]);
+        $this->creditWallet->syncBulletin($bulletin->fresh());
 
         $status = $bulletin->is_published ? 'publié' : 'dépublié';
 
