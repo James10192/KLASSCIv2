@@ -262,6 +262,13 @@ return [
             'icon' => 'fa-user-shield',
         ],
 
+        'lmd.credit_wallet.view' => [
+            'label' => 'Voir le portefeuille de crédits LMD',
+            'description' => 'Consulter les crédits capitalisés issus des bulletins LMD publiés',
+            'group' => 'LMD',
+            'icon' => 'fa-award',
+        ],
+
         // ===== Inscriptions =====
         'inscriptions.view' => [
             'label' => 'Voir les inscriptions',
@@ -1838,6 +1845,7 @@ return [
             'lmd.planning.view', 'lmd.planning.edit',
             'lmd.examens.view', 'lmd.examens.manage', 'lmd.examens.notes_lock',
             'lmd.rattrapage.view', 'lmd.rattrapage.manage',
+            'lmd.credit_wallet.view',
             'lmd.jury.view', 'lmd.jury.preside', 'lmd.jury.deliberate', 'lmd.jury.publish',
             'lmd.jury.documents.reconcile',
             'timetables.view', 'timetables.view_all', 'timetables.create', 'timetables.edit', 'timetables.delete',
@@ -1889,6 +1897,7 @@ return [
             'academic_sheets.view_own', 'academic_sheets.create',
             'academic_sheets.submit', 'academic_sheets.enter',
             'academic_alerts.view_own', 'academic_health.view_own',
+            'lmd.credit_wallet.view',
             'module.notes_evaluations.access', 'module.presences.access', 'module.communication.access',
             // TPE — workflow validation (dormant tant que tpe.validation.enabled = false)
             'tpe.validate',
@@ -1898,6 +1907,7 @@ return [
             'dashboard.view',
             'notes.view_own',
             'bulletins.view_own',
+            'lmd.credit_wallet.view',
             'attendances.view_own',
             'attendances.justify_own',
             'schedules.view_own', 'timetables.view_own',

@@ -26,6 +26,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use App\Services\InscriptionWorkflowService;
 use App\Services\ClasseManagementService;
 use App\Services\FuzzyNameMatcher;
+use App\Services\LMD\LmdCreditWalletService;
 
 class ESBTPEtudiantController extends Controller
 {
@@ -33,6 +34,7 @@ class ESBTPEtudiantController extends Controller
     protected $inscriptionWorkflowService;
     protected $classeManagementService;
     protected $btsUiPresenter;
+    protected $lmdCreditWalletService;
 
     /**
      * Constructeur avec injection du service d'inscription
@@ -41,12 +43,14 @@ class ESBTPEtudiantController extends Controller
         ESBTPInscriptionService $inscriptionService,
         InscriptionWorkflowService $inscriptionWorkflowService,
         ClasseManagementService $classeManagementService,
-        BtsUiPresenter $btsUiPresenter
+        BtsUiPresenter $btsUiPresenter,
+        LmdCreditWalletService $lmdCreditWalletService
     ) {
         $this->inscriptionService = $inscriptionService;
         $this->inscriptionWorkflowService = $inscriptionWorkflowService;
         $this->classeManagementService = $classeManagementService;
         $this->btsUiPresenter = $btsUiPresenter;
+        $this->lmdCreditWalletService = $lmdCreditWalletService;
         $this->middleware('auth');
         $this->middleware('permission:students.view', ['only' => ['index', 'show']]);
         $this->middleware('permission:students.create', ['only' => ['create', 'store']]);
@@ -482,8 +486,11 @@ class ESBTPEtudiantController extends Controller
         // ── Détection LMD et chargement des données spécifiques ──
         $isLMD = false;
         $bulletinLMD = null;
+        $bulletinsLMD = collect();
+        $lmdMoyenneAnnuelle = null;
         $parcours = null;
         $lmdCredits = null;
+        $lmdCreditWallet = null;
 
         $classeCourante = $statistiques['inscription_active']?->classe
             ?? $statistiques['derniere_inscription']?->classe;
@@ -491,31 +498,29 @@ class ESBTPEtudiantController extends Controller
         if ($classeCourante && $classeCourante->isLMD()) {
             $isLMD = true;
             $parcours = $classeCourante->parcours?->load('mention.domaine');
-
-            // Charger le dernier bulletin LMD publié pour cet étudiant dans cette classe
-            $bulletinLMD = \App\Models\ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
-                ->where('classe_id', $classeCourante->id)
-                ->with(['resultatsUEs.uniteEnseignement', 'resultatsECUEs.matiere', 'deliberation'])
-                ->orderByDesc('semestre')
-                ->first();
-
-            // Crédits capitalisés : somme de tous les bulletins publiés de cet étudiant
-            $allBulletinsLMD = \App\Models\ESBTPLMDBulletin::where('etudiant_id', $etudiant->id)
-                ->where('classe_id', $classeCourante->id)
-                ->get();
-
+            $semestresLMD = $classeCourante->getSemestresLMD();
+            $lmdCreditWallet = $this->lmdCreditWalletService->forStudent($etudiant, $classeCourante->id, $semestresLMD);
+            $bulletinsLMD = $lmdCreditWallet['bulletins_for_current_context'];
+            $bulletinLMD = $bulletinsLMD->last();
             $lmdCredits = [
-                'capitalises' => $allBulletinsLMD->sum('credits_capitalises'),
-                'totaux' => $allBulletinsLMD->sum('credits_totaux') ?: 30,
-                'semestres' => $classeCourante->getSemestresLMD(),
+                'capitalises' => $lmdCreditWallet['capitalises'],
+                'totaux' => $lmdCreditWallet['totaux'],
+                'semestres' => $lmdCreditWallet['semestres'],
+                'progression_pct' => $lmdCreditWallet['progression_pct'],
             ];
+
+            $weighted = $bulletinsLMD->filter(fn ($bulletin) => $bulletin->moyenne_generale !== null && ($bulletin->credits_totaux ?? 0) > 0);
+            $weightTotal = $weighted->sum('credits_totaux');
+            $lmdMoyenneAnnuelle = $weightTotal > 0
+                ? round($weighted->sum(fn ($bulletin) => ((float) $bulletin->moyenne_generale) * ((int) $bulletin->credits_totaux)) / $weightTotal, 2)
+                : null;
         }
 
         $btsJourney = $this->btsUiPresenter->forStudent($etudiant);
 
         return view('esbtp.etudiants.show', compact(
             'etudiant', 'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
-            'isLMD', 'bulletinLMD', 'parcours', 'lmdCredits', 'btsJourney'
+            'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits', 'lmdCreditWallet', 'btsJourney'
         ));
     }
 

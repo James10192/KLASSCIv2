@@ -2134,6 +2134,7 @@
     $lmdMoyenneAnnuelle = $lmdMoyenneAnnuelle ?? null;
     $parcours = $parcours ?? null;
     $lmdCredits = $lmdCredits ?? null;
+    $lmdCreditWallet = $lmdCreditWallet ?? null;
 @endphp
 <div class="fiche-hero">
     <div class="hero-inner">
@@ -2854,6 +2855,90 @@
     </div>
 
     {{-- Toutes les inscriptions de l'étudiant --}}
+    @if($lmdCreditWallet && auth()->user()->can('lmd.credit_wallet.view'))
+        @php
+            $walletCap = $lmdCreditWallet['capitalises'];
+            $walletTot = $lmdCreditWallet['totaux'];
+            $walletPct = $lmdCreditWallet['progression_pct'];
+            $walletEntries = $lmdCreditWallet['entries'];
+        @endphp
+        <div class="s-card" style="border-left:4px solid #0453cb;">
+            <div class="s-card-header">
+                <div class="s-card-title">
+                    <div class="s-card-title-icon"><i class="fas fa-award"></i></div>
+                    Portefeuille de crédits LMD
+                </div>
+                <span style="display:inline-flex;align-items:center;gap:.35rem;border:1px solid #bfdbfe;background:#eff6ff;color:#1d4ed8;padding:.25rem .55rem;border-radius:6px;font-size:.72rem;font-weight:700;">
+                    <i class="fas fa-certificate"></i>{{ $lmdCreditWallet['source_label'] }}
+                </span>
+            </div>
+            <div class="info-grid" style="margin-bottom:14px;">
+                <div class="info-row">
+                    <span class="info-lbl">Crédits officiels</span>
+                    <span class="info-val mono" style="font-weight:700;color:#0453cb;">
+                        {{ $walletCap !== null && $walletTot !== null ? $walletCap.' / '.$walletTot : 'En attente de publication' }} CECT
+                    </span>
+                </div>
+                <div class="info-row">
+                    <span class="info-lbl">Progression</span>
+                    <span class="info-val">{{ $walletPct !== null ? $walletPct.' %' : 'Non calculable' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-lbl">Dernière source</span>
+                    <span class="info-val">{{ $lmdCreditWallet['last_publication_at'] ?? 'Aucun bulletin publié' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-lbl">Statut</span>
+                    <span class="info-val">
+                        @if($lmdCreditWallet['has_unpublished_items'])
+                            <span style="color:#b45309;font-weight:700;">Des résultats existent encore en brouillon</span>
+                        @elseif($walletEntries->isNotEmpty())
+                            <span style="color:#047857;font-weight:700;">À jour sur les bulletins publiés</span>
+                        @else
+                            <span class="empty">Aucun crédit officiel publié</span>
+                        @endif
+                    </span>
+                </div>
+            </div>
+
+            @if($walletEntries->isEmpty())
+                <div style="padding:1rem;border:1px dashed #cbd5e1;border-radius:10px;color:#64748b;background:#f8fafc;">
+                    Les crédits apparaîtront ici après publication du bulletin ou du procès-verbal concerné. Les brouillons ne sont pas capitalisés.
+                </div>
+            @else
+                <div style="overflow-x:auto;">
+                    <table class="table-modern" style="width:100%;font-size:.84rem;">
+                        <thead>
+                            <tr>
+                                <th style="text-align:left;">Source</th>
+                                <th style="text-align:center;">Semestre</th>
+                                <th style="text-align:center;">Crédits</th>
+                                <th style="text-align:center;">Moyenne</th>
+                                <th style="text-align:left;">Décision</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($walletEntries as $entry)
+                                <tr>
+                                    <td style="font-weight:600;">
+                                        {{ $entry['annee'] }}
+                                        @if($entry['classe'])
+                                            <div style="font-size:.72rem;color:#64748b;font-weight:500;">{{ $entry['classe'] }}</div>
+                                        @endif
+                                    </td>
+                                    <td style="text-align:center;">S{{ $entry['semestre'] ?? '-' }}</td>
+                                    <td style="text-align:center;font-weight:700;color:#0453cb;">{{ $entry['credits'] ?? '-' }} / {{ $entry['credits_attendus'] ?? '-' }}</td>
+                                    <td style="text-align:center;">{{ $entry['moyenne'] !== null ? number_format($entry['moyenne'], 2) : '-' }}</td>
+                                    <td>{{ $entry['decision'] ? ucfirst(str_replace('_', ' ', $entry['decision'])) : 'Décision non renseignée' }}</td>
+                                </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            @endif
+        </div>
+    @endif
+
     @php
         $toutesInscs = $etudiant->inscriptions->sortByDesc(fn($i) => optional($i->anneeUniversitaire)->start_date ?? $i->created_at);
     @endphp
