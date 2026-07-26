@@ -285,8 +285,8 @@
                 {{-- Auto-save info --}}
                 <div class="nm-autosave-info">
                     <i class="fas fa-info-circle"></i>
-                    Les notes sont automatiquement enregistrées à chaque modification —
-                    raccourcis&nbsp;: <kbd>Tab</kbd>/<kbd>Shift+Tab</kbd>, <kbd>Enter</kbd>/<kbd>Shift+Enter</kbd>, <kbd>Ctrl+S</kbd>, <kbd>Esc</kbd>.
+                    Les modifications sont sauvegardées en brouillon à chaque saisie.
+                    <span class="fw-semibold">Cliquez sur « Valider les notes » pour verrouiller la saisie finale.</span>
                 </div>
             </div>
             <div class="modal-footer nm-modal-footer">
@@ -304,7 +304,7 @@
                     <i class="fas fa-times me-1"></i>Fermer
                 </button>
                 <button type="button" class="btn btn-success" id="saveAllNotesBtn" style="display: none;">
-                    <i class="fas fa-save me-1"></i>Enregistrer tout
+                    <i class="fas fa-check-circle me-1"></i>Valider les notes
                 </button>
             </div>
         </div>
@@ -330,7 +330,7 @@
 
             <div class="nm-autopublish">
                 <i class="fas fa-check-circle"></i>
-                <span><strong>Publication automatique</strong> — L'évaluation sera publiée immédiatement.</span>
+                <span><strong>Publication automatique</strong> · L'évaluation sera publiée immédiatement.</span>
             </div>
 
             <div class="modal-body">
@@ -606,13 +606,28 @@ let currentMatiereName = '';
 let currentPeriodeFilter = 'all';
 let evaluationsData = {};
 let notesData = {};
+let noteMetaData = {};
 let currentEvaluations = [];
 let cachedStudents = null;
 let cachedStudentsClassId = null;
+let cachedStudentsRequestKey = null;
 let currentLoadRequest = null;
 let evalParamsCache = {};
+const nmCanEditSubmittedNotes = @json(auth()->user()?->can('notes.edit') ?? false);
 const blankPdfUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf", ["classe" => ":classId"]) }}';
 const blankPdfPreviewUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf-preview", ["classe" => ":classId"]) }}';
+
+function nmEscapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, function(char) {
+        return {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        }[char];
+    });
+}
 
 // Initialisation
 $(document).ready(function() {
@@ -767,6 +782,7 @@ function selectClass(classId, className) {
     if (currentClassId !== classId) {
         cachedStudents = null;
         cachedStudentsClassId = null;
+        cachedStudentsRequestKey = null;
     }
     currentClassId = classId;
     currentClassname = className;
@@ -847,6 +863,7 @@ function loadEvaluationsAndNotes() {
         success: function(response) {
             evaluationsData = response.evaluations || {};
             notesData = response.notes || {};
+            noteMetaData = response.notes_meta || {};
             buildNotesGrid();
         },
         error: function(xhr) {
@@ -904,6 +921,8 @@ function buildNotesGrid() {
     });
 
     currentEvaluations = sortedEvaluations;
+    const requestedSemesters = [...new Set(sortedEvaluations.map(e => e._period === 'semestre2' ? 2 : 1))];
+    const studentsRequestKey = `${currentClassId}:${requestedSemesters.join(',') || 'all'}`;
 
     // Cache bareme/coeff for average calculations
     evalParamsCache = {};
@@ -914,8 +933,8 @@ function buildNotesGrid() {
         };
     });
 
-    // Use cached students if same class, otherwise fetch
-    if (cachedStudents && cachedStudentsClassId === currentClassId) {
+    // Use cached students if same class and same displayed semesters, otherwise fetch
+    if (cachedStudents && cachedStudentsClassId === currentClassId && cachedStudentsRequestKey === studentsRequestKey) {
         renderNotesGrid(cachedStudents, sortedEvaluations);
         return;
     }
@@ -923,6 +942,9 @@ function buildNotesGrid() {
     $.ajax({
         url: '{{ route("esbtp.notes.classes.students", ["classe" => ":classId"]) }}'.replace(':classId', currentClassId),
         method: 'GET',
+        data: {
+            semesters: requestedSemesters
+        },
         dataType: 'json',
         success: function(response) {
             if (!response.success) {
@@ -936,6 +958,7 @@ function buildNotesGrid() {
                 return nameA.localeCompare(nameB, 'fr');
             });
             cachedStudentsClassId = currentClassId;
+            cachedStudentsRequestKey = studentsRequestKey;
             renderNotesGrid(cachedStudents, sortedEvaluations);
         },
         error: function(xhr) {
@@ -1005,14 +1028,23 @@ function renderNotesGrid(students, sortedEvaluations) {
 
     students.forEach(student => {
         const initials = ((student.nom || '')[0] || '') + ((student.prenoms || '')[0] || '');
+        const fullName = `${student.nom || ''} ${student.prenoms || ''}`.trim();
+        const escapedFullName = nmEscapeHtml(fullName);
+        const escapedMatricule = nmEscapeHtml(student.matricule || '');
+        const eligibleSemesters = (student.eligible_semesters || [1, 2]).map(Number);
+        const phaseLabel = student.phase_label || '';
+        const phaseBadge = phaseLabel && phaseLabel !== 'Classe actuelle'
+            ? `<span class="badge bg-light text-primary border mt-1">${nmEscapeHtml(phaseLabel)}</span>`
+            : '';
         const row = $(`
             <tr data-student-id="${student.id}">
                 <td class="fw-medium notes-student-col">
                     <div class="nm-student-name">
-                        <div class="nm-student-avatar">${initials.toUpperCase()}</div>
+                        <div class="nm-student-avatar">${nmEscapeHtml(initials.toUpperCase())}</div>
                         <div class="nm-student-info">
-                            <div class="nm-student-fullname" title="${student.nom} ${student.prenoms}">${student.nom} ${student.prenoms}</div>
-                            <div class="nm-student-matricule">${student.matricule || ''}</div>
+                            <div class="nm-student-fullname" title="${escapedFullName}">${escapedFullName}</div>
+                            <div class="nm-student-matricule">${escapedMatricule}</div>
+                            ${phaseBadge}
                         </div>
                     </div>
                 </td>
@@ -1020,19 +1052,29 @@ function renderNotesGrid(students, sortedEvaluations) {
         `);
 
         sortedEvaluations.forEach(evaluation => {
-            const note = notesData[student.id]?.[evaluation.id] || '';
+            const note = notesData[student.id]?.[evaluation.id] ?? '';
+            const escapedNote = nmEscapeHtml(note);
             const isAbsent = notesData[student.id]?.[evaluation.id + '_absent'] || false;
+            const semesterNumber = evaluation._period === 'semestre2' ? 2 : 1;
+            const isEligibleForEvaluation = eligibleSemesters.includes(semesterNumber);
+            const noteMeta = noteMetaData[student.id]?.[evaluation.id] || {};
+            const isLocked = !!noteMeta.is_locked || !isEligibleForEvaluation;
+            const lockedClass = isLocked ? ' nm-note-locked' : '';
+            const disabledReason = !isEligibleForEvaluation
+                ? "L'étudiant n'était pas dans cette classe pour ce semestre."
+                : "Note déjà validée.";
 
             const noteCell = `
                 <td class="text-center nm-note-cell">
                     <div class="nm-note-wrap d-flex align-items-center gap-1">
                         <input type="number"
-                               class="form-control nm-note-input note-input"
-                               value="${note}"
+                               class="form-control nm-note-input note-input${lockedClass}"
+                               value="${escapedNote}"
                                data-student-id="${student.id}"
                                data-eval-id="${evaluation.id}"
                                step="0.01" inputmode="decimal" lang="fr" min="0" max="${evaluation.bareme || 20}"
-                               ${isAbsent ? 'disabled' : ''}
+                               ${isAbsent || isLocked ? 'disabled' : ''}
+                               ${isLocked ? `title="${disabledReason}"` : ''}
                                onchange="saveNote(${student.id}, ${evaluation.id}, this.value)">
                         <div class="nm-absence-check">
                             <input class="form-check-input absence-checkbox"
@@ -1041,6 +1083,7 @@ function renderNotesGrid(students, sortedEvaluations) {
                                    data-student-id="${student.id}"
                                    data-eval-id="${evaluation.id}"
                                    ${isAbsent ? 'checked' : ''}
+                                   ${isLocked ? 'disabled' : ''}
                                    onchange="toggleAbsence(${student.id}, ${evaluation.id}, this.checked)">
                             <label class="form-check-label small" for="absent-${student.id}-${evaluation.id}" title="Absent">
                                 <i class="fas fa-user-slash"></i>
@@ -1169,8 +1212,13 @@ function saveNote(studentId, evaluationId, noteValue) {
             //    de dispatcher nm:note-saved : sinon le toast lit l'ancienne
             //    valeur de .average-cell (la lecture est synchrone à l'event).
             if (!notesData[studentId]) notesData[studentId] = {};
+            if (!noteMetaData[studentId]) noteMetaData[studentId] = {};
             notesData[studentId][evaluationId] = isAbsent ? 0 : noteValue;
             notesData[studentId][evaluationId + '_absent'] = isAbsent;
+            noteMetaData[studentId][evaluationId] = {
+                submission_status: response.submission_status || 'draft',
+                is_locked: !!response.is_locked
+            };
 
             calculateStudentAverage(studentId);
             calculateClassAverages();
@@ -1248,6 +1296,9 @@ $(document).on('hidden.bs.modal', '#classSelectionModal', function () {
 
 function toggleAbsence(studentId, evaluationId, isAbsent) {
     const input = $(`input.note-input[data-student-id="${studentId}"][data-eval-id="${evaluationId}"]`);
+    if (input.hasClass('nm-note-locked')) {
+        return;
+    }
 
     if (isAbsent) {
         input.val('0').prop('disabled', true);
@@ -1273,8 +1324,13 @@ function toggleAbsence(studentId, evaluationId, isAbsent) {
             success: function(response) {
                 if (response.success) {
                     if (!notesData[studentId]) notesData[studentId] = {};
+                    if (!noteMetaData[studentId]) noteMetaData[studentId] = {};
                     notesData[studentId][evaluationId] = 0;
                     notesData[studentId][evaluationId + '_absent'] = false;
+                    noteMetaData[studentId][evaluationId] = {
+                        submission_status: response.submission_status || 'draft',
+                        is_locked: !!response.is_locked
+                    };
                     calculateStudentAverage(studentId);
                     calculateClassAverages();
                     triggerRowHighlight(studentId);
@@ -1439,6 +1495,7 @@ $('#saveAllNotesBtn').on('click', function() {
 
     // Collect only inputs with actual values (dirty notes)
     const inputs = $('.note-input').filter(function() {
+        if ($(this).hasClass('nm-note-locked')) return false;
         const val = $(this).val();
         return val !== '' && val !== null && val !== undefined;
     });
@@ -1475,19 +1532,35 @@ $('#saveAllNotesBtn').on('click', function() {
         },
         data: {
             _token: '{{ csrf_token() }}',
+            submit_final: 1,
             notes: notesPayload
         },
         success: function(response) {
-            if (response.success) {
-                btn.html(`<i class="fas fa-check me-1"></i> ${response.saved} note(s) enregistrée(s)`).prop('disabled', false);
-            } else {
+            if (!response.success) {
                 btn.html(`<i class="fas fa-exclamation-triangle me-1"></i> ${response.errors} erreur(s)`).prop('disabled', false);
+                setTimeout(() => { btn.html(originalText); }, 2500);
+                return;
             }
+
+            btn.html(`<i class="fas fa-check me-1"></i> ${response.saved} note(s) validée(s)`).prop('disabled', false);
+
             // Highlight rows and recalculate averages
             notesPayload.forEach(function(entry) {
                 triggerRowHighlight(entry.etudiant_id);
                 if (!notesData[entry.etudiant_id]) notesData[entry.etudiant_id] = {};
+                if (!noteMetaData[entry.etudiant_id]) noteMetaData[entry.etudiant_id] = {};
                 notesData[entry.etudiant_id][entry.evaluation_id] = entry.is_absent === 'on' ? 0 : entry.note;
+                noteMetaData[entry.etudiant_id][entry.evaluation_id] = {
+                    submission_status: response.submission_status || 'submitted',
+                    is_locked: !nmCanEditSubmittedNotes && (response.submission_status || 'submitted') === 'submitted'
+                };
+                if (noteMetaData[entry.etudiant_id][entry.evaluation_id].is_locked) {
+                    $(`.note-input[data-student-id="${entry.etudiant_id}"][data-eval-id="${entry.evaluation_id}"]`)
+                        .addClass('nm-note-locked')
+                        .prop('disabled', true)
+                        .attr('title', 'Note déjà validée.');
+                    $(`#absent-${entry.etudiant_id}-${entry.evaluation_id}`).prop('disabled', true);
+                }
                 calculateStudentAverage(entry.etudiant_id);
             });
             calculateClassAverages();

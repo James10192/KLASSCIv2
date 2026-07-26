@@ -33,6 +33,7 @@ class StoreBulkNotesRequest extends FormRequest
         return [
             'classe_id' => ['nullable', 'integer', 'exists:esbtp_classes,id'],
             'matiere_id' => ['nullable', 'integer', 'exists:esbtp_matieres,id'],
+            'submit_final' => ['nullable', 'boolean'],
             'notes' => ['required', 'array', 'min:1', 'max:'.self::MAX_NOTES_PER_BATCH],
             'notes.*.evaluation_id' => ['required', 'integer', 'exists:esbtp_evaluations,id'],
             'notes.*.etudiant_id' => ['required', 'integer', 'exists:esbtp_etudiants,id'],
@@ -67,6 +68,16 @@ class StoreBulkNotesRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
+        if ($this->has('submit_final')) {
+            $this->merge([
+                'submit_final' => filter_var(
+                    $this->input('submit_final'),
+                    FILTER_VALIDATE_BOOLEAN,
+                    FILTER_NULL_ON_FAILURE
+                ) ?? false,
+            ]);
+        }
+
         $notes = $this->input('notes');
         if (! is_array($notes)) {
             return;

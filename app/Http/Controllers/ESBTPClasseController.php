@@ -23,6 +23,7 @@ use App\Models\ESBTPTeacher;
 use App\Models\Setting;
 use App\Services\ClassPlanningService;
 use App\Services\ClassStudentService;
+use App\Services\Notes\NoteStudentCohortService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -39,6 +40,7 @@ class ESBTPClasseController extends Controller
     public function __construct(
         private readonly ClassPlanningService $planningService,
         private readonly ClassStudentService $studentService,
+        private readonly NoteStudentCohortService $noteStudentCohortService,
     ) {
     }
     /**
@@ -1435,16 +1437,18 @@ class ESBTPClasseController extends Controller
                 );
             }
 
-            // Get active students for this class in current academic year
-            $etudiants = $classe
-                ->inscriptions()
-                ->with(["etudiant"])
-                ->where("status", "active")
-                ->where("workflow_step", "etudiant_cree")
-                ->where("annee_universitaire_id", $anneeCourante->id)
-                ->get()
-                ->map(function ($inscription) {
-                    $etudiant = $inscription->etudiant;
+            $semesters = $request->input('semesters', []);
+            if (! is_array($semesters)) {
+                $semesters = [$semesters];
+            }
+
+            if ($request->filled('periode')) {
+                $semesters[] = $request->input('periode');
+            }
+
+            $etudiants = $this->noteStudentCohortService
+                ->studentsForClass($classe, $anneeCourante, $semesters)
+                ->map(function ($etudiant) {
                     return [
                         "id" => $etudiant->id,
                         "nom" => $etudiant->nom,
@@ -1453,11 +1457,11 @@ class ESBTPClasseController extends Controller
                         "nom_complet" =>
                             $etudiant->nom . " " . $etudiant->prenoms,
                         "photo_url" => $etudiant->photo_url,
-                        "inscription_id" => $inscription->id,
+                        "inscription_id" => $etudiant->getAttribute('notes_inscription_id'),
+                        "eligible_semesters" => $etudiant->getAttribute('notes_eligible_semesters') ?? [1, 2],
+                        "cohort_source" => $etudiant->getAttribute('notes_cohort_source') ?? 'direct',
+                        "phase_label" => $etudiant->getAttribute('notes_phase_label') ?? 'Classe actuelle',
                     ];
-                })
-                ->sortBy(function ($student) {
-                    return mb_strtolower($student['nom'] . ' ' . $student['prenoms']);
                 })
                 ->values();
 

@@ -17,6 +17,7 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPSeanceCours;
 use App\Models\User;
 use App\Services\NoteCalculationService;
+use App\Services\Notes\NoteStudentCohortService;
 use App\Services\NotesImportService;
 use App\Services\NotificationService;
 use Carbon\Carbon;
@@ -29,12 +30,46 @@ use Maatwebsite\Excel\Facades\Excel;
 class ESBTPNoteController extends Controller
 {
     protected $notificationService;
+    protected NoteStudentCohortService $noteStudentCohortService;
 
-    public function __construct(NotificationService $notificationService)
+    public function __construct(
+        NotificationService $notificationService,
+        NoteStudentCohortService $noteStudentCohortService
+    )
     {
         $this->middleware(['auth']);
         $this->middleware('permission:module.notes_evaluations.access');
         $this->notificationService = $notificationService;
+        $this->noteStudentCohortService = $noteStudentCohortService;
+    }
+
+    private function canManageEvaluationNotes(?User $user, ESBTPEvaluation $evaluation): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($user->can('notes.edit')) {
+            return true;
+        }
+
+        if (! $user->can('notes.manage_own')) {
+            return $user->can('notes.create');
+        }
+
+        if (! $user->can('identity.teach')) {
+            return true;
+        }
+
+        return (int) $evaluation->enseignant_id === (int) $user->id
+            || (int) $evaluation->created_by === (int) $user->id;
+    }
+
+    private function studentBelongsToEvaluationCohort(int $studentId, ESBTPEvaluation $evaluation): bool
+    {
+        return $this->noteStudentCohortService
+            ->allowedStudentIdsForEvaluation($evaluation)
+            ->contains($studentId);
     }
 
     /**
@@ -569,11 +604,25 @@ class ESBTPNoteController extends Controller
                 ], 422);
             }
 
+            if (! $this->canManageEvaluationNotes(Auth::user(), $evaluation)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Vous n'êtes pas autorisé à saisir les notes pour cette évaluation.",
+                ], 403);
+            }
+
+            if (! $this->studentBelongsToEvaluationCohort((int) $request->input('etudiant_id'), $evaluation)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "Cet étudiant n'appartient pas à la cohorte de cette évaluation.",
+                ], 422);
+            }
+
             $existingNote = ESBTPNote::where('etudiant_id', $request->input('etudiant_id'))
                 ->where('evaluation_id', $request->input('evaluation_id'))
                 ->first();
 
-            if ($existingNote && ! Auth::user()->can('notes.edit')) {
+            if ($existingNote && $existingNote->isSubmitted() && ! Auth::user()->can('notes.edit')) {
                 return response()->json([
                     'success' => false,
                     'message' => "Vous n'avez pas la permission de modifier les notes déjà enregistrées.",
@@ -590,7 +639,7 @@ class ESBTPNoteController extends Controller
                     'note'          => $request->input('note'),
                     'is_absent'     => $request->boolean('is_absent'),
                     'commentaire'   => $request->input('commentaire'),
-                ]);
+                ], false);
             });
 
             // La notification est envoyée APRÈS commit pour éviter qu'un échec
@@ -601,10 +650,12 @@ class ESBTPNoteController extends Controller
 
             return response()->json([
                 'success'   => true,
-                'message'   => 'Note enregistrée avec succès.',
+                'message'   => 'Note enregistrée en brouillon.',
                 'note_id'   => $result['note']->id,
                 'is_absent' => (bool) $result['note']->is_absent,
                 'note'      => $result['note']->note,
+                'submission_status' => $result['note']->submission_status,
+                'is_locked' => $result['note']->isSubmitted() && ! Auth::user()->can('notes.edit'),
             ]);
 
         } catch (\Exception $e) {
@@ -634,11 +685,13 @@ class ESBTPNoteController extends Controller
         $errors = 0;
         $saved  = 0;
         $notes = $request->input('notes', []);
+        $submitFinal = $request->boolean('submit_final');
 
         DB::beginTransaction();
         try {
             $evalIds = collect($notes)->pluck('evaluation_id')->unique();
             $evaluations = ESBTPEvaluation::whereIn('id', $evalIds)->get()->keyBy('id');
+            $allowedStudentIdsByEval = [];
 
             // Requête tuple-based IN avec cast int pour éviter injection SQL
             $pairs = collect($notes)
@@ -659,6 +712,23 @@ class ESBTPNoteController extends Controller
                     continue;
                 }
 
+                if (! $this->canManageEvaluationNotes(Auth::user(), $evaluation)) {
+                    $errors++;
+                    continue;
+                }
+
+                $evalKey = (int) $evaluation->id;
+                if (! array_key_exists($evalKey, $allowedStudentIdsByEval)) {
+                    $allowedStudentIdsByEval[$evalKey] = $this->noteStudentCohortService
+                        ->allowedStudentIdsForEvaluation($evaluation)
+                        ->all();
+                }
+
+                if (! in_array((int) $entry['etudiant_id'], $allowedStudentIdsByEval[$evalKey], true)) {
+                    $errors++;
+                    continue;
+                }
+
                 // Garde-fou cohérence note ≤ barème (défense en profondeur,
                 // déjà couvert pour les saisies unitaires par NoteRespectsBareme).
                 $rawNote = $entry['note'] ?? null;
@@ -674,12 +744,12 @@ class ESBTPNoteController extends Controller
                 $key  = $entry['etudiant_id'] . '_' . $entry['evaluation_id'];
                 $note = $existingNotes->get($key);
 
-                if ($note && ! $canEdit) {
+                if ($note && $note->isSubmitted() && ! $canEdit) {
                     $errors++;
                     continue;
                 }
 
-                $result = $this->processNoteEntry($evaluation, $note, $entry);
+                $result = $this->processNoteEntry($evaluation, $note, $entry, $submitFinal);
 
                 if ($result['is_new_absent']) {
                     $pendingNotifications[] = [$result['note'], $evaluation];
@@ -699,8 +769,11 @@ class ESBTPNoteController extends Controller
                 'saved'   => $saved,
                 'errors'  => $errors,
                 'total'   => count($notes),
+                'submission_status' => $submitFinal ? ESBTPNote::SUBMISSION_SUBMITTED : ESBTPNote::SUBMISSION_DRAFT,
                 'message' => $errors === 0
-                    ? "{$saved} note(s) enregistrée(s) avec succès."
+                    ? ($submitFinal
+                        ? "{$saved} note(s) validée(s) avec succès."
+                        : "{$saved} note(s) enregistrée(s) en brouillon.")
                     : "{$saved} enregistrée(s), {$errors} erreur(s).",
             ]);
         } catch (\Exception $e) {
@@ -724,7 +797,12 @@ class ESBTPNoteController extends Controller
      * (StoreNoteRequest / StoreBulkNotesRequest). On garde un fallback
      * defensif pour les call-sites legacy (ex: enregistrerSaisieRapide).
      */
-    private function processNoteEntry(ESBTPEvaluation $evaluation, ?ESBTPNote $existingNote, array $entry): array
+    private function processNoteEntry(
+        ESBTPEvaluation $evaluation,
+        ?ESBTPNote $existingNote,
+        array $entry,
+        bool $submitFinal = false
+    ): array
     {
         $isAbsent = filter_var(
             $entry['is_absent'] ?? false,
@@ -754,6 +832,21 @@ class ESBTPNoteController extends Controller
         if (isset($entry['commentaire'])) {
             $existingNote->commentaire = $entry['commentaire'];
         }
+
+        if ($submitFinal) {
+            $existingNote->submission_status = ESBTPNote::SUBMISSION_SUBMITTED;
+            $existingNote->submitted_at = $existingNote->submitted_at ?: now();
+            $existingNote->submitted_by = $existingNote->submitted_by ?: Auth::id();
+        } elseif ($isNew) {
+            $existingNote->submission_status = ESBTPNote::SUBMISSION_DRAFT;
+            $existingNote->submitted_at = null;
+            $existingNote->submitted_by = null;
+        } elseif (! $existingNote->isSubmitted()) {
+            $existingNote->submission_status = ESBTPNote::SUBMISSION_DRAFT;
+            $existingNote->submitted_at = null;
+            $existingNote->submitted_by = null;
+        }
+
         $existingNote->save();
 
         return ['note' => $existingNote, 'is_new_absent' => $isAbsent && $isNew];
@@ -810,19 +903,11 @@ class ESBTPNoteController extends Controller
 
         // Récupérer uniquement les étudiants avec inscriptions actives sur l'année courante
         // ET workflow_step = etudiant_cree (exclut les pré-inscriptions / prospects).
-        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
-            $query->where('classe_id', $evaluation->classe_id)
-                ->where('status', 'active')
-                ->where('workflow_step', 'etudiant_cree');
-            if ($anneeCourante) {
-                $query->where('annee_universitaire_id', $anneeCourante->id);
-            }
-        })
-            ->with(['notes' => function ($query) use ($evaluation) {
+        $etudiants = $this->noteStudentCohortService
+            ->studentsForEvaluation($evaluation)
+            ->load(['notes' => function ($query) use ($evaluation) {
                 $query->where('evaluation_id', $evaluation->id);
-            }])
-            ->orderBy('nom')
-            ->get();
+            }]);
 
         // Récupérer uniquement les notes des étudiants de l'année courante pour cette évaluation
         $etudiantsIds = $etudiants->pluck('id');
@@ -860,17 +945,9 @@ class ESBTPNoteController extends Controller
 
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        $etudiants = ESBTPEtudiant::with('accessibilityProfile')
-            ->whereHas('inscriptions', function ($query) use ($evaluation, $anneeCourante) {
-                $query->where('classe_id', $evaluation->classe_id)
-                    ->where('status', 'active')
-                    ->where('workflow_step', 'etudiant_cree');
-                if ($anneeCourante) {
-                    $query->where('annee_universitaire_id', $anneeCourante->id);
-                }
-            })
-            ->orderBy('nom')
-            ->get();
+        $etudiants = $this->noteStudentCohortService
+            ->studentsForEvaluation($evaluation)
+            ->load('accessibilityProfile');
 
         $etablissement = [
             'nom' => \App\Models\Setting::get('school_name', 'KLASSCI'),
@@ -919,17 +996,11 @@ class ESBTPNoteController extends Controller
 
         $anneeCourante = ESBTPAnneeUniversitaire::where('is_current', true)->first();
 
-        $etudiants = ESBTPEtudiant::with('accessibilityProfile')
-            ->whereHas('inscriptions', function ($query) use ($classe, $anneeCourante) {
-                $query->where('classe_id', $classe->id)
-                    ->where('status', 'active')
-                    ->where('workflow_step', 'etudiant_cree');
-                if ($anneeCourante) {
-                    $query->where('annee_universitaire_id', $anneeCourante->id);
-                }
-            })
-            ->orderBy('nom')
-            ->get();
+        $etudiants = $anneeCourante
+            ? $this->noteStudentCohortService
+                ->studentsForClass($classe, $anneeCourante)
+                ->load('accessibilityProfile')
+            : collect();
 
         $etablissement = [
             'nom' => \App\Models\Setting::get('school_name', 'KLASSCI'),
@@ -1003,7 +1074,9 @@ class ESBTPNoteController extends Controller
 
         // Vérifier si l'utilisateur a le droit de modifier les notes existantes
         if (! $user->can('notes.edit')) {
-            $existingNotesCount = ESBTPNote::where('evaluation_id', $evaluation->id)->count();
+            $existingNotesCount = ESBTPNote::where('evaluation_id', $evaluation->id)
+                ->where('submission_status', ESBTPNote::SUBMISSION_SUBMITTED)
+                ->count();
 
             if ($existingNotesCount > 0) {
                 return redirect()->back()
@@ -1011,6 +1084,10 @@ class ESBTPNoteController extends Controller
                     ->withInput();
             }
         }
+
+        $allowedStudentIds = $this->noteStudentCohortService
+            ->allowedStudentIdsForEvaluation($evaluation)
+            ->all();
 
         DB::beginTransaction();
         try {
@@ -1025,6 +1102,9 @@ class ESBTPNoteController extends Controller
                 }
 
                 $etudiantId = $noteData['etudiant_id'];
+                if (! in_array((int) $etudiantId, $allowedStudentIds, true)) {
+                    throw new \InvalidArgumentException("Cet étudiant n'appartient pas à la cohorte de cette évaluation.");
+                }
 
                 // Vérifier si l'étudiant a déjà une note pour cette évaluation
                 $note = ESBTPNote::where('evaluation_id', $evaluation->id)
@@ -1055,6 +1135,9 @@ class ESBTPNoteController extends Controller
                     if (! $note->type_evaluation) {
                         $note->type_evaluation = $evaluation->type;
                     }
+                    $note->submission_status = ESBTPNote::SUBMISSION_SUBMITTED;
+                    $note->submitted_at = $note->submitted_at ?: now();
+                    $note->submitted_by = $note->submitted_by ?: Auth::id();
 
                     $note->save();
 
@@ -1076,6 +1159,9 @@ class ESBTPNoteController extends Controller
                     $note->is_absent = $isAbsent;
                     $note->commentaire = $noteData['commentaire'] ?? null;
                     $note->created_by = Auth::id();
+                    $note->submission_status = ESBTPNote::SUBMISSION_SUBMITTED;
+                    $note->submitted_at = now();
+                    $note->submitted_by = Auth::id();
                     $note->save();
 
                     // Envoyer une notification d'absence si l'étudiant est marqué absent

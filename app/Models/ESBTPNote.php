@@ -12,6 +12,9 @@ class ESBTPNote extends Model implements Auditable
 {
     use HasFactory, SoftDeletes, \OwenIt\Auditing\Auditable;
 
+    public const SUBMISSION_DRAFT = 'draft';
+    public const SUBMISSION_SUBMITTED = 'submitted';
+
     /**
      * Colonnes auditées (whitelist — éviter explosion volume).
      *
@@ -28,6 +31,9 @@ class ESBTPNote extends Model implements Auditable
         'is_absent',
         'commentaire',
         'type_evaluation',
+        'submission_status',
+        'submitted_at',
+        'submitted_by',
     ];
 
     /**
@@ -80,7 +86,10 @@ class ESBTPNote extends Model implements Auditable
         'created_by',
         'updated_by',
         'is_absent',
-        'commentaire'
+        'commentaire',
+        'submission_status',
+        'submitted_at',
+        'submitted_by',
     ];
 
     /**
@@ -93,6 +102,7 @@ class ESBTPNote extends Model implements Auditable
         'created_at' => 'datetime',
         'updated_at' => 'datetime',
         'deleted_at' => 'datetime',
+        'submitted_at' => 'datetime',
     ];
 
     /**
@@ -133,6 +143,16 @@ class ESBTPNote extends Model implements Auditable
     public function updatedBy()
     {
         return $this->belongsTo(User::class, 'updated_by');
+    }
+
+    public function submittedBy()
+    {
+        return $this->belongsTo(User::class, 'submitted_by');
+    }
+
+    public function isSubmitted(): bool
+    {
+        return ($this->submission_status ?? self::SUBMISSION_SUBMITTED) === self::SUBMISSION_SUBMITTED;
     }
 
     /**

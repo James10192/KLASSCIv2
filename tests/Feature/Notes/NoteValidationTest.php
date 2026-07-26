@@ -46,6 +46,7 @@ class NoteValidationTest extends TestCase
         $rules = (new StoreBulkNotesRequest)->rules();
         $rules['classe_id'] = ['nullable', 'integer'];
         $rules['matiere_id'] = ['nullable', 'integer'];
+        $rules['submit_final'] = ['nullable', 'boolean'];
         $rules['notes.*.evaluation_id'] = ['required', 'integer'];
         $rules['notes.*.etudiant_id'] = ['required', 'integer'];
 
@@ -174,10 +175,22 @@ class NoteValidationTest extends TestCase
     }
 
     /**
-     * Test 9 — Les routes critiques sont throttlées.
-     *
-     * Vérifie que les routes notes.save-ajax (30/min) / save-ajax-bulk (10/min) /
-     * store-batch (10/min) sont bien enregistrées avec leur middleware throttle.
+     * Test 9 - La validation bulk accepte la validation finale explicite.
+     */
+    public function test_it_accepts_final_submit_flag_on_bulk_payload(): void
+    {
+        $validator = Validator::make([
+            'submit_final' => true,
+            'notes' => [
+                ['evaluation_id' => 1, 'etudiant_id' => 1, 'note' => 12.5, 'is_absent' => false],
+            ],
+        ], $this->storeBulkRulesWithoutDb());
+
+        $this->assertFalse($validator->fails(), 'Payload should pass: '.$validator->errors()->first());
+    }
+
+    /**
+     * Test 10 - Les routes critiques sont throttlees.
      */
     public function test_it_registers_throttle_middleware_on_critical_routes(): void
     {

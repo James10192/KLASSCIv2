@@ -1871,6 +1871,7 @@ class ESBTPEvaluationController extends Controller
                                 'note' => $note->note,
                                 'is_absent' => $note->is_absent ?? false,
                                 'observation' => $note->observation,
+                                'submission_status' => $note->submission_status ?? ESBTPNote::SUBMISSION_SUBMITTED,
                             ];
                         })->keyBy('etudiant_id'),
                     ];
@@ -1887,10 +1888,17 @@ class ESBTPEvaluationController extends Controller
             // Construire notesData au format attendu par le frontend :
             // { studentId: { evaluationId: noteValue, evaluationId_absent: true/false } }
             $notesMap = [];
+            $notesMetaMap = [];
+            $canEditNotes = Auth::user()?->can('notes.edit') ?? false;
             foreach ($evaluations as $eval) {
                 foreach ($eval['notes'] as $etudiantId => $noteData) {
                     $notesMap[$etudiantId][$eval['id']] = $noteData['note'];
                     $notesMap[$etudiantId][$eval['id'].'_absent'] = ($noteData['is_absent'] ?? false) ? true : false;
+                    $status = $noteData['submission_status'] ?? ESBTPNote::SUBMISSION_SUBMITTED;
+                    $notesMetaMap[$etudiantId][$eval['id']] = [
+                        'submission_status' => $status,
+                        'is_locked' => $status === ESBTPNote::SUBMISSION_SUBMITTED && ! $canEditNotes,
+                    ];
                 }
             }
 
@@ -1909,6 +1917,8 @@ class ESBTPEvaluationController extends Controller
                 ],
                 'evaluations' => $evaluations,
                 'notes' => $notesMap,
+                'notes_meta' => $notesMetaMap,
+                'can_edit_submitted_notes' => $canEditNotes,
                 'evaluation_count' => $evaluations->count(),
             ]);
 
