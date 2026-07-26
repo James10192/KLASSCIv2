@@ -66,6 +66,10 @@ class ChatbotGovernanceTest extends TestCase
         $this->assertStringContainsString('public function approveAction', $content);
         $this->assertStringContainsString('public function rejectAction', $content);
         $this->assertStringContainsString('protected function executeApprovedAction', $content);
+        $this->assertStringContainsString('configure_mandatory_frais', $content);
+        $this->assertStringContainsString('protected function executeFraisConfigAction', $content);
+        $this->assertStringContainsString('protected function requiredPermissionForAction', $content);
+        $this->assertStringContainsString("'configure_mandatory_frais' => 'frais.configure'", $content);
         $this->assertStringContainsString("'status' => 'executed'", $content);
         $this->assertStringContainsString('DB::beginTransaction();', $content);
     }

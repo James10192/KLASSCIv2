@@ -406,7 +406,8 @@ class ChatbotController extends Controller
             ], 404);
         }
 
-        if (!$request->user()->can('frais.create')) {
+        $permission = $this->requiredPermissionForAction($action);
+        if (!$permission || !$request->user()->can($permission)) {
             return response()->json([
                 'success' => false,
                 'message' => 'Vous n\'avez pas l\'autorisation d\'approuver cette action.',
@@ -606,65 +607,71 @@ class ChatbotController extends Controller
             ], 404);
         }
 
-        try {
-            DB::beginTransaction();
+        $payload = [
+            'conversation_id' => $conversation->session_id,
+            'category_id' => (int) $request->category_id,
+            'filiere_id' => (int) $request->filiere_id,
+            'niveau_id' => (int) $request->niveau_id,
+            'amount_affecte' => (float) $request->amount_affecte,
+            'amount_reaffecte' => (float) $request->amount_reaffecte,
+            'amount_non_affecte' => (float) $request->amount_non_affecte,
+            'deadline_days' => (int) $request->deadline_days,
+            'installments_allowed' => (bool) $request->installments_allowed,
+            'max_installments' => (int) ($request->max_installments ?? 1),
+            'early_payment_discount' => (float) ($request->early_payment_discount ?? 0),
+        ];
+        $mainAmount = $payload['amount_affecte'] > 0
+            ? $payload['amount_affecte']
+            : ($payload['amount_reaffecte'] > 0 ? $payload['amount_reaffecte'] : $payload['amount_non_affecte']);
+        $idempotencyKey = $request->header('Idempotency-Key')
+            ?: 'chatbot:frais-config:' . sha1($conversation->id . '|' . $payload['category_id'] . '|' . $payload['filiere_id'] . '|' . $payload['niveau_id'] . '|' . $mainAmount);
 
-            $mainAmount = $request->amount_affecte > 0
-                ? $request->amount_affecte
-                : ($request->amount_reaffecte > 0 ? $request->amount_reaffecte : $request->amount_non_affecte);
-
-            ESBTPFraisConfiguration::updateOrCreate(
-                [
-                    'frais_category_id' => $request->category_id,
-                    'filiere_id' => $request->filiere_id,
-                    'niveau_id' => $request->niveau_id,
-                    'annee_universitaire_id' => null,
+        $action = ChatbotActionLog::firstOrCreate(
+            ['idempotency_key' => $idempotencyKey],
+            [
+                'conversation_id' => $conversation->id,
+                'user_id' => $request->user()->id,
+                'action_type' => 'update',
+                'model_type' => ESBTPFraisConfiguration::class,
+                'action_data' => [
+                    'intent' => 'configure_mandatory_frais',
+                    'payload' => $payload,
+                    'summary' => 'Configurer le montant de frais pour la filière et le niveau sélectionnés',
                 ],
-                [
-                    'amount' => $mainAmount,
-                    'amount_affecte' => $request->amount_affecte,
-                    'amount_reaffecte' => $request->amount_reaffecte,
-                    'amount_non_affecte' => $request->amount_non_affecte,
-                    'payment_deadline_days' => $request->deadline_days,
-                    'installments_allowed' => (bool) $request->installments_allowed,
-                    'max_installments' => $request->max_installments ?? 1,
-                    'early_payment_discount' => $request->early_payment_discount ?? 0,
-                    'is_active' => true,
-                    'effective_date' => now(),
-                    'created_by' => $request->user()->id,
-                ]
-            );
-
-            DB::commit();
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return response()->json([
-                'success' => false,
-                'message' => 'Erreur lors de la configuration des frais.',
-            ], 500);
-        }
-
-        $stepContext = $this->setupGuide->getStepContext($request->user(), 'financier', 'inscriptions');
-        $missingPreview = $this->setupGuide->buildMissingStepsPreview(
-            $request->user(),
-            'financier',
-            $stepContext['missing_prerequisite_ids'] ?? [],
-            2
+                'status' => 'proposed',
+                'expires_at' => now()->addHours(24),
+            ]
         );
 
-        $displayData = $missingPreview ?: null;
+        $displayData = [
+            'action_id' => $action->id,
+            'status' => $action->status,
+            'summary' => $action->action_data['summary'] ?? null,
+            'expires_at' => optional($action->expires_at)->toIso8601String(),
+            'payload' => [
+                'name' => 'Configuration des frais',
+                'code' => 'FRAIS-CONFIG',
+                'default_amount' => $mainAmount,
+            ],
+            'approval' => [
+                'approve_url' => route('chatbot.actions.approve', $action),
+                'reject_url' => route('chatbot.actions.reject', $action),
+                'method' => 'POST',
+            ],
+        ];
+
         $assistantMessage = ChatbotMessage::create([
             'conversation_id' => $conversation->id,
             'role' => 'assistant',
-            'content' => 'Configuration enregistrée. On peut passer à l\'inscription. Tu veux que je te guide pour la première inscription ?',
-            'display_type' => $displayData ? 'checklist' : 'text',
+            'content' => 'Action prête à approuver : configuration des montants de frais.',
+            'display_type' => 'approval_request',
             'display_data' => $displayData,
         ]);
 
         $context = $conversation->context ?? [];
-        $context['pending_action'] = null;
-        $context['pending_action_payload'] = null;
-        $context['last_display'] = $displayData ? 'checklist' : 'text';
+        $context['pending_action'] = 'approve_chatbot_action';
+        $context['pending_action_payload'] = ['action_id' => $action->id];
+        $context['last_display'] = 'approval_request';
         $conversation->update([
             'last_activity_at' => now(),
             'context' => $context,
@@ -672,18 +679,21 @@ class ChatbotController extends Controller
 
         return response()->json([
             'success' => true,
+            'approval_required' => true,
+            'action_id' => $action->id,
             'message' => $assistantMessage->content,
             'display_type' => $assistantMessage->display_type,
             'display_data' => $assistantMessage->display_data,
             'conversation_id' => $conversation->session_id,
-        ]);
+        ], 202);
     }
 
     protected function executeApprovedAction(ChatbotActionLog $action, Request $request): array
     {
         $data = $action->action_data ?? [];
 
-        if (($data['intent'] ?? null) !== 'create_mandatory_frais_category') {
+        $intent = $data['intent'] ?? null;
+        if (!in_array($intent, ['create_mandatory_frais_category', 'configure_mandatory_frais'], true)) {
             $action->update([
                 'status' => 'failed',
                 'error_message' => 'Type d\'action IA non supporté.',
@@ -698,6 +708,10 @@ class ChatbotController extends Controller
 
         if ($action->status === 'executed') {
             return $this->buildExecutedActionResponse($action);
+        }
+
+        if ($intent === 'configure_mandatory_frais') {
+            return $this->executeFraisConfigAction($action, $request);
         }
 
         $payload = $data['payload'] ?? [];
@@ -799,6 +813,108 @@ class ChatbotController extends Controller
             'display_data' => $displayData,
             'conversation_id' => $conversation->session_id,
         ];
+    }
+
+    protected function executeFraisConfigAction(ChatbotActionLog $action, Request $request): array
+    {
+        $payload = $action->action_data['payload'] ?? [];
+        $conversation = $action->conversation;
+
+        try {
+            DB::beginTransaction();
+
+            $mainAmount = ($payload['amount_affecte'] ?? 0) > 0
+                ? $payload['amount_affecte']
+                : (($payload['amount_reaffecte'] ?? 0) > 0 ? $payload['amount_reaffecte'] : ($payload['amount_non_affecte'] ?? 0));
+
+            $configuration = ESBTPFraisConfiguration::updateOrCreate(
+                [
+                    'frais_category_id' => $payload['category_id'],
+                    'filiere_id' => $payload['filiere_id'],
+                    'niveau_id' => $payload['niveau_id'],
+                    'annee_universitaire_id' => null,
+                ],
+                [
+                    'amount' => $mainAmount,
+                    'amount_affecte' => $payload['amount_affecte'],
+                    'amount_reaffecte' => $payload['amount_reaffecte'],
+                    'amount_non_affecte' => $payload['amount_non_affecte'],
+                    'payment_deadline_days' => $payload['deadline_days'],
+                    'installments_allowed' => (bool) ($payload['installments_allowed'] ?? false),
+                    'max_installments' => $payload['max_installments'] ?? 1,
+                    'early_payment_discount' => $payload['early_payment_discount'] ?? 0,
+                    'is_active' => true,
+                    'effective_date' => now(),
+                    'created_by' => $request->user()->id,
+                ]
+            );
+
+            $action->update([
+                'status' => 'executed',
+                'model_id' => $configuration->id,
+                'error_message' => null,
+            ]);
+
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            $action->update([
+                'status' => 'failed',
+                'error_message' => $e->getMessage(),
+            ]);
+
+            return [
+                'success' => false,
+                'message' => 'Erreur lors de l\'exécution de la configuration approuvée.',
+                'status' => 'failed',
+            ];
+        }
+
+        $stepContext = $this->setupGuide->getStepContext($request->user(), 'financier', 'inscriptions');
+        $missingPreview = $this->setupGuide->buildMissingStepsPreview(
+            $request->user(),
+            'financier',
+            $stepContext['missing_prerequisite_ids'] ?? [],
+            2
+        );
+
+        $displayData = $missingPreview ?: null;
+
+        ChatbotMessage::create([
+            'conversation_id' => $conversation->id,
+            'role' => 'assistant',
+            'content' => 'Configuration enregistrée après approbation. On peut passer à l\'inscription.',
+            'display_type' => $displayData ? 'checklist' : 'text',
+            'display_data' => $displayData,
+        ]);
+
+        $context = $conversation->context ?? [];
+        $context['pending_action'] = null;
+        $context['pending_action_payload'] = null;
+        $context['last_display'] = $displayData ? 'checklist' : 'text';
+        $conversation->update([
+            'last_activity_at' => now(),
+            'context' => $context,
+        ]);
+
+        return [
+            'success' => true,
+            'message' => 'Configuration approuvée et exécutée.',
+            'status' => 'executed',
+            'model_id' => $configuration->id,
+            'display_type' => $displayData ? 'checklist' : 'text',
+            'display_data' => $displayData,
+            'conversation_id' => $conversation->session_id,
+        ];
+    }
+
+    protected function requiredPermissionForAction(ChatbotActionLog $action): ?string
+    {
+        return match ($action->action_data['intent'] ?? null) {
+            'create_mandatory_frais_category' => 'frais.create',
+            'configure_mandatory_frais' => 'frais.configure',
+            default => null,
+        };
     }
 
     protected function buildExecutedActionResponse(ChatbotActionLog $action): array
