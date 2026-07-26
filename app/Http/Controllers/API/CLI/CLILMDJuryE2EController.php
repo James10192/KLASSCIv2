@@ -35,6 +35,7 @@ class CLILMDJuryE2EController extends BaseApiController
             'semestre' => ['nullable', 'integer', 'between:1,10'],
             'students_limit' => ['nullable', 'integer', 'between:1,12'],
             'force_new' => ['nullable', 'boolean'],
+            'apply_decisions' => ['nullable', 'boolean'],
         ]);
 
         try {
@@ -53,7 +54,9 @@ class CLILMDJuryE2EController extends BaseApiController
                 $this->ensureBulletins($students, $classe, $annee, $semestre, $actorId);
                 $jury = $this->ensureJury($classe, $annee, $semestre, $actorId, (bool) ($data['force_new'] ?? false));
                 $this->ensureSignedMembers($jury, $actorId);
-                $created = $deliberation->appliquerDecisionsAuto($jury->fresh());
+                $created = (bool) ($data['apply_decisions'] ?? false)
+                    ? $deliberation->appliquerDecisionsAuto($jury->fresh())
+                    : 0;
                 $readiness = $deliberation->verifierReadiness($jury->fresh());
 
                 return [
