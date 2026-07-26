@@ -188,6 +188,53 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
             ->assertOk()
             ->assertJsonPath('success', true);
     }
+
+    public function test_full_jury_publication_rectification_and_reconciliation_http_flow(): void
+    {
+        $jury = $this->seedIssuableJury();
+        $user = $this->authorizedUser();
+
+        $this->actingAs($user)
+            ->postJson(route('esbtp.lmd.jurys.pv.generer', $jury))
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('pv.version', 1)
+            ->assertJsonPath('pv.status', OfficialDocument::STATUS_VALID);
+
+        $first = OfficialDocument::query()->where('source_id', $jury->id)->where('version', 1)->firstOrFail();
+
+        $this->actingAs($user)
+            ->postJson(route('esbtp.lmd.jurys.publier', $jury))
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('jury.status', 'publie');
+
+        $this->assertSame(2, \Illuminate\Support\Facades\DB::table('esbtp_lmd_bulletins')->where('is_published', true)->count());
+        $this->assertSame(2, \Illuminate\Support\Facades\DB::table('esbtp_lmd_jury_decisions')->where('locked', true)->count());
+
+        $this->actingAs($user)
+            ->postJson(route('esbtp.lmd.jurys.pv-rectify', $jury), [
+                'motif' => 'Erreur matérielle validée après publication.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('document.version', 2)
+            ->assertJsonPath('document.supersedes_document_id', $first->id);
+
+        $second = OfficialDocument::query()->where('source_id', $jury->id)->where('version', 2)->firstOrFail();
+
+        $this->actingAs($user)
+            ->postJson(route('esbtp.lmd.jurys.pv-reconcile', $jury))
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('document.reference', $second->reference)
+            ->assertJsonPath('document.status', OfficialDocument::STATUS_VALID);
+
+        $this->assertSame(2, OfficialDocument::query()->where('source_id', $jury->id)->count());
+        $this->assertSame(OfficialDocument::STATUS_SUPERSEDED, $first->fresh()->status);
+        $this->assertSame(OfficialDocument::STATUS_VALID, $second->fresh()->status);
+    }
+
     public function test_registered_routes_keep_canonical_permissions(): void
     {
         $reconcile = Route::getRoutes()->getByName('esbtp.lmd.jurys.pv-reconcile');
@@ -214,7 +261,7 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
     private function authorizedUser(int $id = 1, bool $withSodBypass = true): \App\Models\User
     {
         $user = \App\Models\User::query()->findOrFail($id);
-        foreach (['admin.access', 'module.lmd.access', 'lmd.jury.view', 'lmd.jury.publish'] as $name) {
+        foreach (['admin.access', 'module.lmd.access', 'lmd.jury.view', 'lmd.jury.publish', 'lmd.jury.documents.reconcile'] as $name) {
             $permission = Permission::findOrCreate($name, 'web');
             $user->givePermissionTo($permission);
         }
