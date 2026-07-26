@@ -50,7 +50,7 @@ class OfficialDocumentService
                 }
 
                 $this->assertReplacementReason($current, $supersessionReason);
-                $state = $this->guard->assertIssuable($jury->id);
+                $state = $this->guard->assertIssuable($jury->id, $supersessionReason !== null);
                 $lockedJury = $state['jury'];
                 $number = $this->ensurePvNumber($lockedJury);
                 $identity = $this->newIdentity($number, $this->nextVersion($series));

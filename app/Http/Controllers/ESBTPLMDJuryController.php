@@ -291,6 +291,46 @@ class ESBTPLMDJuryController extends Controller
         ]);
     }
 
+    public function rectifierPv(Request $request, ESBTPLMDJury $jury): JsonResponse
+    {
+        abort_unless(auth()->user()?->can('lmd.jury.publish'), 403);
+
+        $data = $request->validate([
+            'motif' => ['required', 'string', 'min:12', 'max:1000'],
+        ]);
+
+        if (! $this->officialDocuments->existingJuryPv($jury)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Aucun PV officiel existant ne peut Ãªtre rectifiÃ©.',
+            ], 422);
+        }
+
+        try {
+            $document = $this->officialDocuments->issueJuryPv($jury, auth()->user(), $data['motif']);
+        } catch (\Throwable $e) {
+            Log::error('Ã‰chec de la rectification du PV officiel.', ['jury_id' => $jury->id, 'exception' => $e]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Le PV rectificatif n a pas pu Ãªtre Ã©mis. VÃ©rifiez le motif et les prÃ©requis du jury.',
+            ], 422);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => 'PV rectificatif Ã©mis. La version prÃ©cÃ©dente est conservÃ©e comme remplacÃ©e.',
+            'document' => [
+                'reference' => $document->reference,
+                'version' => (int) $document->version,
+                'status' => $document->status,
+                'checksum_sha256' => $document->checksum_sha256,
+                'issued_at' => $document->issued_at?->toIso8601String(),
+                'pv_numero' => $jury->fresh()->pv_numero,
+                'supersedes_document_id' => $document->supersedes_document_id,
+            ],
+        ]);
+    }
+
     public function publier(ESBTPLMDJury $jury): JsonResponse
     {
         abort_unless(auth()->user()?->can('lmd.jury.publish'), 403);

@@ -2792,6 +2792,9 @@ Route::prefix('esbtp/lmd/jurys')->name('esbtp.lmd.jurys.')
         Route::post('/{jury}/pv/reconcilier', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'reconcileLegacyPv'])
             ->middleware(['permission:lmd.jury.documents.reconcile', 'throttle:5,1'])
             ->name('pv-reconcile');
+        Route::post('/{jury}/pv/rectifier', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'rectifierPv'])
+            ->middleware(['permission:lmd.jury.publish', 'throttle:5,1'])
+            ->name('pv-rectify');
         Route::post('/{jury}/publier', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'publier'])
             ->middleware(['permission:lmd.jury.publish', 'throttle:10,1'])
             ->name('publier');

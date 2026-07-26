@@ -133,12 +133,46 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
         $this->get($url)->assertForbidden();
     }
 
+    public function test_pv_rectification_route_supersedes_existing_document_with_required_reason(): void
+    {
+        $jury = $this->seedIssuableJury();
+        $user = $this->authorizedUser();
+        $first = app(\App\Domain\OfficialDocuments\Services\OfficialDocumentService::class)
+            ->issueJuryPv($jury, $user);
+        $jury->fresh()->forceFill(['status' => 'publie'])->save();
+
+        $this->actingAs($user)
+            ->postJson(route('esbtp.lmd.jurys.pv-rectify', $jury), ['motif' => 'court'])
+            ->assertStatus(422);
+
+        $this->actingAs($user)
+            ->postJson(route('esbtp.lmd.jurys.pv-rectify', $jury), [
+                'motif' => 'Erreur matérielle validée par le jury.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('success', true)
+            ->assertJsonPath('document.version', 2)
+            ->assertJsonPath('document.status', OfficialDocument::STATUS_VALID)
+            ->assertJsonPath('document.supersedes_document_id', $first->id)
+            ->assertJsonMissingPath('document.path')
+            ->assertJsonMissingPath('document.snapshot');
+
+        $this->assertSame(OfficialDocument::STATUS_SUPERSEDED, $first->fresh()->status);
+        $this->assertSame(
+            'Erreur matérielle validée par le jury.',
+            $first->fresh()->lifecycle_metadata['supersession_reason'],
+        );
+    }
+
     public function test_registered_routes_keep_canonical_permissions(): void
     {
         $reconcile = Route::getRoutes()->getByName('esbtp.lmd.jurys.pv-reconcile');
+        $rectify = Route::getRoutes()->getByName('esbtp.lmd.jurys.pv-rectify');
         $stream = Route::getRoutes()->getByName('esbtp.lmd.jurys.official-documents.stream');
         $this->assertContains('permission:admin.access', $reconcile->gatherMiddleware());
         $this->assertContains('permission:lmd.jury.documents.reconcile', $reconcile->gatherMiddleware());
+        $this->assertContains('permission:lmd.jury.publish', $rectify->gatherMiddleware());
+        $this->assertContains('throttle:5,1', $rectify->gatherMiddleware());
         $this->assertContains('auth', $stream->gatherMiddleware());
         $this->assertContains('permission:admin.access', $stream->gatherMiddleware());
         $this->assertContains('permission:module.lmd.access', $stream->gatherMiddleware());
@@ -156,7 +190,7 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
     private function authorizedUser(): \App\Models\User
     {
         $user = \App\Models\User::query()->findOrFail(1);
-        foreach (['admin.access', 'module.lmd.access', 'lmd.jury.view'] as $name) {
+        foreach (['admin.access', 'module.lmd.access', 'lmd.jury.view', 'lmd.jury.publish'] as $name) {
             $permission = Permission::findOrCreate($name, 'web');
             $user->givePermissionTo($permission);
         }

@@ -265,7 +265,7 @@ class OfficialDocumentServiceTest extends OfficialDocumentDatabaseTestCase
         self::assertInstanceOf(OfficialDocumentStorage::class, app(OfficialDocumentStorage::class));
     }
 
-    public function test_first_issue_requires_active_deliberation_and_published_replacement_is_forbidden(): void
+    public function test_first_issue_requires_active_deliberation_and_published_or_archived_jury_accepts_rectification(): void
     {
         $jury = $this->seedIssuableJury();
         DB::table('esbtp_lmd_jurys')->where('id', $jury->id)->update(['status' => 'preparation']);
@@ -286,15 +286,18 @@ class OfficialDocumentServiceTest extends OfficialDocumentDatabaseTestCase
         self::assertSame($first->id, $second->supersedes_document_id);
         self::assertSame('clos', $jury->fresh()->status);
 
+        $previous = $second;
+        $expectedVersion = 3;
         foreach (['publie', 'archive'] as $status) {
             DB::table('esbtp_lmd_jurys')->where('id', $jury->id)->update(['status' => $status]);
-            $this->assertLogicException(
-                fn () => $this->documents()->issueJuryPv($jury->fresh(), $this->actor(), 'Nouvelle version'),
-                'Une rectification atomique est requise pour ce jury publié ou archivé.',
-            );
+            $replacement = $this->documents()->issueJuryPv($jury->fresh(), $this->actor(), 'Rectification '.$status);
+            self::assertSame($expectedVersion, $replacement->version);
+            self::assertSame($previous->id, $replacement->supersedes_document_id);
+            self::assertSame(OfficialDocument::STATUS_SUPERSEDED, $previous->fresh()->status);
+            $previous = $replacement;
+            $expectedVersion++;
         }
     }
-
     public function test_snapshot_tamper_is_rejected_and_recorded(): void
     {
         $document = $this->documents()->issueJuryPv($this->seedIssuableJury(), $this->actor());

@@ -26,12 +26,13 @@ function jurySalle(juryId) {
         busy: false,
         overrideOpen: false,
         reviewOpen: false,
-        review: { kind: '', title: '', message: '', actionLabel: '', member: null },
+        review: { kind: '', title: '', message: '', actionLabel: '', member: null, motif: '' },
         signatureOpen: false,
         signatureMember: null,
         signatureDrawing: false,
         signatureDrawn: false,
         reconcileEndpoint: '{{ route('esbtp.lmd.jurys.pv-reconcile', $jury) }}',
+        rectificationEndpoint: '{{ route('esbtp.lmd.jurys.pv-rectify', $jury) }}',
         reconciliationState: 'idle',
         reconciliationMessage: '',
         officialDocument: {!! \Illuminate\Support\Js::from($officialDocumentPayload) !!},
@@ -113,7 +114,8 @@ function jurySalle(juryId) {
                 title: 'Retirer ce membre',
                 message: `Retirer ${m.user_name} de la composition du jury ? Le quorum sera recalculé.`,
                 actionLabel: 'Retirer',
-                member: m
+                member: m,
+                motif: ''
             };
             this.reviewOpen = true;
         },
@@ -194,7 +196,8 @@ function jurySalle(juryId) {
                 title: 'Générer le procès-verbal',
                 message: 'Les décisions seront verrouillées. Vérifiez la cohorte, les décisions et toutes les signatures avant de continuer.',
                 actionLabel: 'Générer et verrouiller',
-                member: null
+                member: null,
+                motif: ''
             };
             this.reviewOpen = true;
         },
@@ -215,9 +218,47 @@ function jurySalle(juryId) {
                 title: 'Publier les décisions',
                 message: 'Les décisions officielles seront projetées vers les bulletins et visibles par les étudiants.',
                 actionLabel: 'Publier officiellement',
-                member: null
+                member: null,
+                motif: ''
             };
             this.reviewOpen = true;
+        },
+
+        requestRectification() {
+            this.review = {
+                kind: 'rectify',
+                title: 'Émettre un PV rectificatif',
+                message: 'Une nouvelle version officielle sera générée. La version actuelle restera archivée avec le statut remplacé.',
+                actionLabel: 'Émettre le rectificatif',
+                member: null,
+                motif: ''
+            };
+            this.reviewOpen = true;
+        },
+
+        async rectifierPv(motif) {
+            try {
+                const data = await this.post(this.rectificationEndpoint, { motif });
+                const document = data.document;
+                this.officialDocument = {
+                    ...(this.officialDocument || {}),
+                    reference: document.reference,
+                    version: document.version,
+                    status: document.status,
+                    checksum_sha256: document.checksum_sha256,
+                    issued_at: document.issued_at,
+                    pv_numero: document.pv_numero || this.officialDocument?.pv_numero,
+                    actions: {
+                        canDownload: true,
+                        canPreview: true,
+                        ...(document.actions || {}),
+                    },
+                };
+                this.juryPvPathExists = true;
+                this.toast('success', data.message || 'PV rectificatif émis.');
+            } catch (e) {
+                this.toast('error', e.message);
+            }
         },
 
         async publier() {
@@ -245,6 +286,9 @@ function jurySalle(juryId) {
             }
             if (review.kind === 'publish') {
                 await this.publier();
+            }
+            if (review.kind === 'rectify') {
+                await this.rectifierPv(review.motif);
             }
         },
 

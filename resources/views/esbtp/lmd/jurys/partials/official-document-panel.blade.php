@@ -19,6 +19,11 @@
                 <a href="{{ route('esbtp.lmd.jurys.pv-download', $jury) }}" x-show="officialDocument?.actions?.canDownload !== false" class="juy-btn juy-btn--primary h-11">
                     <i class="fas fa-download"></i> Télécharger le PDF archivé
                 </a>
+                @can('lmd.jury.publish')
+                <button type="button" class="juy-btn juy-btn--secondary h-11" @click="requestRectification()" :disabled="busy">
+                    <i class="fas fa-file-circle-exclamation"></i> Émettre un PV rectificatif
+                </button>
+                @endcan
             </div>
         </div>
     </template>

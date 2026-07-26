@@ -82,6 +82,37 @@ Si la requête ne demande pas JSON, le même contrat est rendu dans la page publ
 
 Le code saisi n’est jamais réaffiché après soumission.
 
+## POST `/esbtp/lmd/jurys/{jury}/pv/rectifier`
+
+Émet une nouvelle version officielle du PV d’un jury LMD ayant déjà un document officiel.
+
+Authentification: requise.
+
+Permission: `lmd.jury.publish`.
+
+Limite: `throttle:5,1`.
+
+Body:
+
+```json
+{
+  "motif": "Erreur matérielle validée par le jury."
+}
+```
+
+Contraintes:
+
+| Point | Règle |
+| --- | --- |
+| Motif | Obligatoire, 12 à 1000 caractères |
+| Ancien document | Conservé et marqué `superseded` |
+| Nouveau document | Version suivante, statut `valid` |
+| Données retournées | Référence, version, statut, empreinte, date d’émission, lien de remplacement |
+| Données non retournées | Chemin privé, snapshot, code de vérification |
+
+La rectification réutilise `OfficialDocumentService::issueJuryPv()` avec motif de remplacement. Elle ne recrée pas un registre documentaire parallèle.
+
 ## Historique
 
+- 2026-07-26: ajout du endpoint authentifié de PV rectificatif `POST /esbtp/lmd/jurys/{jury}/pv/rectifier`.
 - 2026-07-26: ajout de la page CEV publique `GET /verifier-document-officiel` et du rendu HTML sécurisé du `POST /verifier-document-officiel`.

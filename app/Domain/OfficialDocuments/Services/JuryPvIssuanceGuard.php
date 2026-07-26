@@ -16,10 +16,10 @@ use Illuminate\Support\Facades\DB;
 
 class JuryPvIssuanceGuard
 {
-    public function assertIssuable(int $juryId): array
+    public function assertIssuable(int $juryId, bool $rectification = false): array
     {
         $jury = ESBTPLMDJury::query()->lockForUpdate()->findOrFail($juryId);
-        $this->assertJuryStatus($jury);
+        $this->assertJuryStatus($jury, $rectification);
         $this->lockScopeLabels($jury);
 
         $members = $jury->membres()->orderBy('id')->lockForUpdate()->get();
@@ -58,7 +58,7 @@ class JuryPvIssuanceGuard
         }
     }
 
-    private function assertJuryStatus(ESBTPLMDJury $jury): void
+    private function assertJuryStatus(ESBTPLMDJury $jury, bool $rectification): void
     {
         $hasPriorDocument = OfficialDocument::query()
             ->where('document_type', OfficialDocument::TYPE_LMD_JURY_PV)
@@ -70,7 +70,7 @@ class JuryPvIssuanceGuard
             throw new \LogicException('La première émission du PV exige un jury en cours.');
         }
 
-        if ($hasPriorDocument && in_array($jury->status, ['publie', 'archive'], true)) {
+        if ($hasPriorDocument && in_array($jury->status, ['publie', 'archive'], true) && ! $rectification) {
             throw new \LogicException('Une rectification atomique est requise pour ce jury publié ou archivé.');
         }
     }
