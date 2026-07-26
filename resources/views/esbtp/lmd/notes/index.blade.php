@@ -319,6 +319,9 @@
     .ln-note-input:focus { border-color: #0453cb; box-shadow: 0 0 0 2px rgba(4,83,203,.1); outline: none; }
     .ln-note-input:disabled { background: #f1f5f9; color: #94a3b8; }
     .ln-note-input.ln-saved { border-color: #10b981; background: #f0fdf4; }
+    .ln-note-input.ln-pending { border-color: #b45309; background: #fffbeb; }
+    .ln-note-input.ln-syncing { border-color: #0453cb; background: #eff6ff; }
+    .ln-note-input.ln-error { border-color: #dc2626; background: #fef2f2; }
 
     .ln-abs-wrap { display: flex; align-items: center; }
     .ln-abs-check { display: none; }
@@ -366,6 +369,13 @@
     .ln-autosave-info {
         padding: .6rem 1.5rem; background: #f0fdf4; border-top: 1px solid #bbf7d0;
         font-size: .78rem; color: #059669; display: flex; align-items: center; gap: .4rem;
+    }
+    .ln-autosave-info.ln-autosave-info--pending { background: #fffbeb; border-color: #fde68a; color: #92400e; }
+    .ln-autosave-info.ln-autosave-info--syncing { background: #eff6ff; border-color: #bfdbfe; color: #1d4ed8; }
+    .ln-autosave-info.ln-autosave-info--error { background: #fef2f2; border-color: #fecaca; color: #b91c1c; }
+    .ln-offline-badge {
+        margin-left: auto; padding: .15rem .45rem; border-radius: 999px;
+        background: rgba(15,23,42,.08); color: inherit; font-weight: 700;
     }
 
     /* Modal footer */
@@ -663,7 +673,8 @@
                 {{-- Auto-save info --}}
                 <div class="ln-autosave-info" id="autosaveInfo" style="display:none;">
                     <i class="fas fa-check-circle"></i>
-                    Les notes sont automatiquement enregistrées à chaque modification.
+                    <span id="autosaveStatusText">Les notes sont automatiquement enregistrées à chaque modification.</span>
+                    <span class="ln-offline-badge" id="offlineQueueCount" style="display:none;"></span>
                 </div>
             </div>
 
@@ -816,6 +827,9 @@ let notesData = {};
 let evalParamsCache = {};
 let classeSemestres = []; // Dynamic semesters from class level
 const canEditExistingNotes = @json(auth()->user()->can('notes.edit'));
+const lmdNotesQueueKey = 'klassci:lmd-notes:offline-queue:v1';
+let offlineNoteQueue = loadOfflineNoteQueue();
+let isReplayingOfflineQueue = false;
 
 document.addEventListener('DOMContentLoaded', function() {
     notesModal = new bootstrap.Modal(document.getElementById('modalNotes'));
@@ -825,6 +839,13 @@ document.addEventListener('DOMContentLoaded', function() {
     ['evalDebut', 'evalFin'].forEach(id => {
         document.getElementById(id).addEventListener('change', updateEvalDuree);
     });
+
+    window.addEventListener('online', replayOfflineNoteQueue);
+    window.addEventListener('offline', updateOfflineQueueIndicator);
+    updateOfflineQueueIndicator();
+    if (navigator.onLine && offlineNoteQueue.length > 0) {
+        replayOfflineNoteQueue();
+    }
 });
 
 // ══ Open modal for a class ══
@@ -1153,6 +1174,8 @@ function buildNotesGrid() {
     // Calculate
     students.forEach(stu => calculateStudentAverage(stu.id));
     calculateClassAverages();
+    markQueuedNoteInputs();
+    updateOfflineQueueIndicator();
 }
 
 // ══ Save a single note (AJAX) ══
@@ -1160,31 +1183,41 @@ function saveNote(studentId, evaluationId, noteValue) {
     const absCheckbox = document.querySelector(`.ln-abs-check[data-student-id="${studentId}"][data-eval-id="${evaluationId}"]`);
     const isAbsent = absCheckbox?.checked || false;
     const input = document.querySelector(`.ln-note-input[data-student-id="${studentId}"][data-eval-id="${evaluationId}"]`);
+    const payload = buildNotePayload(studentId, evaluationId, noteValue, isAbsent);
 
-    fetch('{{ route("esbtp.notes.save-ajax") }}', {
+    applyNoteLocally(payload);
+    calculateStudentAverage(studentId);
+    calculateClassAverages();
+
+    if (!navigator.onLine) {
+        queueOfflineNote(payload, input);
+        return;
+    }
+
+    input?.classList.add('ln-syncing');
+    sendNoteMutation(payload).then(data => {
+        if (!data.success) throw new Error(data.message || 'Erreur de sauvegarde');
+        markNoteSaved(input);
+        removeOfflineNote(noteMutationKey(payload));
+    }).catch(err => {
+        console.error('Save error:', err);
+        queueOfflineNote(payload, input, err.message);
+    }).finally(() => {
+        input?.classList.remove('ln-syncing');
+        updateOfflineQueueIndicator();
+    });
+}
+
+function sendNoteMutation(payload) {
+    return fetch('{{ route("esbtp.notes.save-ajax") }}', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-CSRF-TOKEN': '{{ csrf_token() }}',
             'Accept': 'application/json',
         },
-        body: JSON.stringify({
-            etudiant_id: studentId,
-            evaluation_id: evaluationId,
-            note: isAbsent ? 0 : (noteValue || 0),
-            is_absent: isAbsent ? 'on' : '',
-        })
-    }).then(r => r.json()).then(data => {
-        if (data.success && input) {
-            input.classList.add('ln-saved');
-            setTimeout(() => input.classList.remove('ln-saved'), 1200);
-        }
-        if (!notesData[studentId]) notesData[studentId] = {};
-        notesData[studentId][evaluationId] = isAbsent ? 0 : parseFloat(noteValue || 0);
-        notesData[studentId][evaluationId + '_absent'] = isAbsent;
-        calculateStudentAverage(studentId);
-        calculateClassAverages();
-    }).catch(err => console.error('Save error:', err));
+        body: JSON.stringify(payload)
+    }).then(r => r.json());
 }
 
 // ══ Save all notes at once ══
@@ -1209,6 +1242,13 @@ function saveAllNotes() {
     if (notes.length === 0) return;
 
     const btn = document.getElementById('saveAllNotesBtn');
+
+    if (!navigator.onLine) {
+        notes.forEach(note => queueOfflineNote(note, findNoteInput(note)));
+        updateOfflineQueueIndicator();
+        return;
+    }
+
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
 
@@ -1232,6 +1272,7 @@ function saveAllNotes() {
         }
     }).catch(err => {
         console.error('Bulk save error:', err);
+        notes.forEach(note => queueOfflineNote(note, findNoteInput(note), err.message));
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-save"></i> Enregistrer tout';
     });
@@ -1245,6 +1286,130 @@ function toggleAbsence(studentId, evaluationId, isAbsent) {
         if (isAbsent) input.value = '';
     }
     saveNote(studentId, evaluationId, isAbsent ? 0 : (input?.value || 0));
+}
+
+function buildNotePayload(studentId, evaluationId, noteValue, isAbsent) {
+    return {
+        etudiant_id: parseInt(studentId),
+        evaluation_id: parseInt(evaluationId),
+        note: isAbsent ? 0 : (noteValue || 0),
+        is_absent: isAbsent ? 'on' : '',
+    };
+}
+
+function applyNoteLocally(payload) {
+    const studentId = payload.etudiant_id;
+    const evaluationId = payload.evaluation_id;
+    if (!notesData[studentId]) notesData[studentId] = {};
+    notesData[studentId][evaluationId] = payload.is_absent ? 0 : parseFloat(payload.note || 0);
+    notesData[studentId][evaluationId + '_absent'] = Boolean(payload.is_absent);
+}
+
+function noteMutationKey(payload) {
+    return `${payload.etudiant_id}:${payload.evaluation_id}`;
+}
+
+function findNoteInput(payload) {
+    return document.querySelector(`.ln-note-input[data-student-id="${payload.etudiant_id}"][data-eval-id="${payload.evaluation_id}"]`);
+}
+
+function loadOfflineNoteQueue() {
+    try {
+        const stored = JSON.parse(localStorage.getItem(lmdNotesQueueKey) || '[]');
+        return Array.isArray(stored) ? stored : [];
+    } catch (err) {
+        return [];
+    }
+}
+
+function persistOfflineNoteQueue() {
+    localStorage.setItem(lmdNotesQueueKey, JSON.stringify(offlineNoteQueue));
+}
+
+function queueOfflineNote(payload, input = null, error = null) {
+    const key = noteMutationKey(payload);
+    offlineNoteQueue = offlineNoteQueue.filter(item => item.key !== key);
+    offlineNoteQueue.push({ key, payload, error, queued_at: new Date().toISOString() });
+    persistOfflineNoteQueue();
+    input?.classList.remove('ln-saved', 'ln-syncing');
+    input?.classList.add(error ? 'ln-error' : 'ln-pending');
+    updateOfflineQueueIndicator();
+}
+
+function removeOfflineNote(key) {
+    offlineNoteQueue = offlineNoteQueue.filter(item => item.key !== key);
+    persistOfflineNoteQueue();
+}
+
+function markNoteSaved(input) {
+    if (!input) return;
+    input.classList.remove('ln-pending', 'ln-syncing', 'ln-error');
+    input.classList.add('ln-saved');
+    setTimeout(() => input.classList.remove('ln-saved'), 1200);
+}
+
+function markQueuedNoteInputs() {
+    offlineNoteQueue.forEach(item => {
+        const input = findNoteInput(item.payload);
+        if (!input) return;
+        input.classList.remove('ln-saved', 'ln-syncing');
+        input.classList.add(item.error ? 'ln-error' : 'ln-pending');
+    });
+}
+
+async function replayOfflineNoteQueue() {
+    if (isReplayingOfflineQueue || !navigator.onLine || offlineNoteQueue.length === 0) return;
+    isReplayingOfflineQueue = true;
+    updateOfflineQueueIndicator('syncing');
+
+    for (const item of [...offlineNoteQueue]) {
+        const input = findNoteInput(item.payload);
+        input?.classList.remove('ln-pending', 'ln-error');
+        input?.classList.add('ln-syncing');
+
+        try {
+            const data = await sendNoteMutation(item.payload);
+            if (!data.success) throw new Error(data.message || 'Erreur de synchronisation');
+            removeOfflineNote(item.key);
+            markNoteSaved(input);
+        } catch (err) {
+            queueOfflineNote(item.payload, input, err.message);
+            break;
+        } finally {
+            input?.classList.remove('ln-syncing');
+        }
+    }
+
+    isReplayingOfflineQueue = false;
+    updateOfflineQueueIndicator();
+}
+
+function updateOfflineQueueIndicator(mode = null) {
+    const info = document.getElementById('autosaveInfo');
+    const text = document.getElementById('autosaveStatusText');
+    const count = document.getElementById('offlineQueueCount');
+    if (!info || !text || !count) return;
+
+    info.classList.remove('ln-autosave-info--pending', 'ln-autosave-info--syncing', 'ln-autosave-info--error');
+    count.style.display = offlineNoteQueue.length > 0 ? 'inline-flex' : 'none';
+    count.textContent = offlineNoteQueue.length + ' en attente';
+
+    if (mode === 'syncing' || isReplayingOfflineQueue) {
+        info.classList.add('ln-autosave-info--syncing');
+        text.textContent = 'Synchronisation des notes en attente...';
+        return;
+    }
+
+    if (!navigator.onLine || offlineNoteQueue.length > 0) {
+        const hasError = offlineNoteQueue.some(item => item.error);
+        info.classList.add(hasError ? 'ln-autosave-info--error' : 'ln-autosave-info--pending');
+        text.textContent = hasError
+            ? 'Certaines notes restent à synchroniser. Elles sont conservées sur cet appareil.'
+            : 'Mode réseau dégradé. Les notes sont conservées localement puis synchronisées à la reconnexion.';
+        return;
+    }
+
+    text.textContent = 'Les notes sont automatiquement enregistrées à chaque modification.';
 }
 
 // ══ Calculate student average + appreciation ══
