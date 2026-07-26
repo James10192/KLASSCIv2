@@ -48,6 +48,30 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
             ->assertJsonMissingPath('snapshot')->assertJsonMissingPath('checksum_sha256');
     }
 
+    public function test_public_verification_page_uses_same_contract_without_leaking_code_or_snapshot(): void
+    {
+        $this->seedIssuableJury();
+        $code = str_repeat('V', 48);
+        $document = $this->knownDocument($code);
+
+        $this->get('/verifier-document-officiel')
+            ->assertOk()
+            ->assertSee('Vérifier un document officiel')
+            ->assertSee('Référence officielle')
+            ->assertSee('Code de vérification');
+
+        $this->post('/verifier-document-officiel', [
+            'reference' => $document->reference,
+            'code' => $code,
+        ])
+            ->assertOk()
+            ->assertSee('Document officiel valide')
+            ->assertSee($document->reference)
+            ->assertDontSee($code)
+            ->assertDontSee($document->path)
+            ->assertDontSee('snapshot_sha256');
+    }
+
     public function test_reference_throttle_is_global_across_different_ips(): void
     {
         $this->seedIssuableJury();
@@ -122,6 +146,11 @@ class OfficialDocumentHttpTest extends OfficialDocumentDatabaseTestCase
         $this->assertContains('permission:lmd.jury.view', $stream->gatherMiddleware());
         $this->assertContains('signed', $stream->gatherMiddleware());
         $this->assertContains('throttle:30,1', $stream->gatherMiddleware());
+
+        $publicForm = Route::getRoutes()->getByName('official-documents.verify.form');
+        $publicVerify = Route::getRoutes()->getByName('official-documents.verify');
+        $this->assertContains('throttle:30,1', $publicForm->gatherMiddleware());
+        $this->assertNotContains('auth', $publicVerify->gatherMiddleware());
     }
 
     private function authorizedUser(): \App\Models\User

@@ -2809,6 +2809,10 @@ Route::get('/esbtp/lmd/jurys/official-documents/{document}/stream', [\App\Domain
     ])
     ->name('esbtp.lmd.jurys.official-documents.stream');
 
+Route::get('/verifier-document-officiel', [\App\Domain\OfficialDocuments\Http\OfficialDocumentController::class, 'showVerifyForm'])
+    ->middleware('throttle:30,1')
+    ->name('official-documents.verify.form');
+
 Route::post('/verifier-document-officiel', [\App\Domain\OfficialDocuments\Http\OfficialDocumentController::class, 'verify'])
     ->withoutMiddleware([\Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class])
     ->name('official-documents.verify');
