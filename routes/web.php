@@ -2284,6 +2284,7 @@ Route::middleware(['auth', 'permission:admin.access'])->group(function () {
         ->middleware('permission:bulletins.edit')
         ->name('esbtp.bulletins.regenerate');
     Route::get('/esbtp/bulletins/preview', [ESBTPBulletinController::class, 'previewBulletin'])->name('esbtp.bulletins.preview');
+    Route::get('/esbtp/bulletins/generer-classe/preflight', [ESBTPBulletinController::class, 'preflightClasseBulletins'])->name('esbtp.bulletins.generer-classe.preflight');
     Route::post('/esbtp/bulletins/generer-classe', [ESBTPBulletinController::class, 'genererClasseBulletins'])->name('esbtp.bulletins.generer-classe');
 
     // Routes spÃ©ciales moyennes

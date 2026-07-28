@@ -3,10 +3,12 @@
     'value' => '',
     'options' => [],
     'placeholder' => 'Sélectionner…',
+    'label' => null,
     'icon' => null,
     'searchable' => false,
     'placeholderIsFirstOption' => true,
     'nativeClass' => null,
+    'disabled' => false,
 ])
 
 @php
@@ -27,11 +29,19 @@
 <div class="{{ $wrapperClass }}" x-data="auSelect()" x-id="['{{ $componentId }}']" @click.outside="open = false" @keydown.escape="open = false">
     <button type="button"
             class="au-select-trigger"
-            :class="{ 'au-select-trigger--open': open, 'au-select-trigger--has-value': currentValue !== '' }"
+            :class="{ 'au-select-trigger--open': open, 'au-select-trigger--has-value': currentValue !== '', 'au-select-trigger--disabled': isDisabled }"
             @click="toggle()"
+            @keydown.arrow-down.prevent="openAndFocusNext()"
+            @keydown.arrow-up.prevent="openAndFocusPrevious()"
+            @keydown.enter.prevent="open ? selectFocused() : openAndFocusNext()"
+            @keydown.space.prevent="open ? selectFocused() : toggle()"
+            @if($disabled) disabled @endif
+            {{ $attributes->whereStartsWith('x-bind:disabled') }}
+            aria-label="{{ $label ?: $placeholder }}"
             :aria-expanded="open.toString()"
             :aria-controls="$id('{{ $componentId }}')"
-            aria-haspopup="listbox">
+            aria-haspopup="listbox"
+            role="combobox">
         @if($icon)<i class="fas {{ $icon }} au-select-icon"></i>@endif
         <span class="au-select-value" x-text="selectedLabel || {{ \Illuminate\Support\Js::from($placeholder) }}"
               :class="{ 'au-select-value--placeholder': !selectedLabel }"></span>
@@ -46,7 +56,8 @@
          x-transition:enter="au-select-menu--entering"
          x-transition:enter-start="au-select-menu--enter-start"
          x-transition:enter-end="au-select-menu--enter-end"
-         role="listbox">
+         role="listbox"
+         :aria-label="{{ \Illuminate\Support\Js::from($label ?: $placeholder) }}">
         @if($searchable)
         <div class="au-select-search">
             <i class="fas fa-search"></i>
@@ -55,7 +66,9 @@
                    x-ref="searchInput"
                    @click.stop
                    @keydown.escape.stop="open = false"
-                   @keydown.enter.prevent="selectFirstFiltered()"
+                   @keydown.arrow-down.prevent="focusNextOption()"
+                   @keydown.arrow-up.prevent="focusPreviousOption()"
+                   @keydown.enter.prevent="selectFocused()"
                    placeholder="Rechercher…">
             <button type="button"
                     class="au-select-search-clear"
@@ -70,7 +83,8 @@
         <ul class="au-select-options">
             <template x-for="(opt, idx) in filteredOptions" :key="opt.value + ':' + idx">
                 <li class="au-select-option"
-                    :class="{ 'au-select-option--active': opt.value === currentValue, 'au-select-option--placeholder': opt.placeholder }"
+                    :class="{ 'au-select-option--active': opt.value === currentValue, 'au-select-option--focused': idx === focusedIndex, 'au-select-option--placeholder': opt.placeholder }"
+                    @mouseenter="focusedIndex = idx"
                     @click="select(opt)"
                     role="option"
                     :aria-selected="(opt.value === currentValue).toString()">
@@ -88,6 +102,7 @@
     <select {{ $nativeAttributes->class(['au-select-native', $nativeClass]) }}
             x-ref="native"
             @if($name) name="{{ $name }}" @endif
+            @if($disabled) disabled @endif
             aria-hidden="true"
             tabindex="-1">
         @if($placeholderIsFirstOption)
@@ -118,6 +133,7 @@
 .au-select-trigger:hover { border-color: #cbd5e1; }
 .au-select-trigger:focus-visible { outline: none; border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.12); }
 .au-select-trigger--open { border-color: #0453cb; box-shadow: 0 0 0 3px rgba(4,83,203,.10); }
+.au-select-trigger--disabled, .au-select-trigger:disabled { cursor: not-allowed; opacity: .55; background: #f8fafc; }
 .au-select-icon { color: #64748b; font-size: .85rem; flex-shrink: 0; }
 .au-select-value { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
 .au-select-value--placeholder { color: #94a3b8; font-weight: 400; }
@@ -165,6 +181,7 @@
     border-left: 3px solid transparent;
 }
 .au-select-option:hover { background: #f8fafc; border-left-color: #cbd5e1; }
+.au-select-option--focused { background: #f8fafc; border-left-color: #94a3b8; }
 .au-select-option--active { background: #eff6ff; color: #0453cb; font-weight: 600; border-left-color: #0453cb; }
 .au-select-option--active:hover { background: #dbeafe; }
 .au-select-option--placeholder { color: #94a3b8; font-style: italic; }
@@ -192,6 +209,7 @@ if (typeof window.auSelect !== 'function') {
             open: false,
             search: '',
             _value: '',
+            focusedIndex: -1,
             optionsVersion: 0,
             menuStyle: '',
             _optionsObserver: null,
@@ -217,6 +235,9 @@ if (typeof window.auSelect !== 'function') {
                         this.$refs.native.dispatchEvent(new Event('change', { bubbles: true }));
                         this.$refs.native.dispatchEvent(new Event('input', { bubbles: true }));
                     }
+                });
+                this.$watch('search', () => {
+                    this.focusFirstSelectable();
                 });
 
             },
@@ -258,8 +279,12 @@ if (typeof window.auSelect !== 'function') {
                 });
             },
             toggle() {
+                if (this.isDisabled) {
+                    return;
+                }
                 this.open = !this.open;
                 if (this.open) {
+                    this.focusInitialOption();
                     // Position before Alpine reveals the menu, then refine with its rendered size.
                     this.positionMenu();
                     this.$nextTick(() => {
@@ -270,7 +295,22 @@ if (typeof window.auSelect !== 'function') {
                     });
                 } else {
                     this.menuStyle = '';
+                    this.focusedIndex = -1;
                 }
+            },
+            openAndFocusNext() {
+                if (!this.open) {
+                    this.toggle();
+                    return;
+                }
+                this.focusNextOption();
+            },
+            openAndFocusPrevious() {
+                if (!this.open) {
+                    this.toggle();
+                    return;
+                }
+                this.focusPreviousOption();
             },
             positionMenu() {
                 const trigger = this.$el.querySelector('.au-select-trigger');
@@ -298,6 +338,7 @@ if (typeof window.auSelect !== 'function') {
                     : `position:fixed;left:${left}px;right:auto;top:${triggerRect.bottom + gap}px;bottom:auto;width:${menuWidth}px;min-width:${minimumWidth}px;max-width:${viewportWidth}px;max-height:${availableHeight}px;transform-origin:top center;`;
             },
             get currentValue() { return this._value; },
+            get isDisabled() { return !!this.$refs.native?.disabled; },
             get rawOptions() {
                 this.optionsVersion;
 
@@ -317,10 +358,55 @@ if (typeof window.auSelect !== 'function') {
                 const opt = this.rawOptions.find(o => o.value === this._value);
                 return opt && !opt.placeholder ? opt.label : '';
             },
+            focusInitialOption() {
+                const currentIndex = this.filteredOptions.findIndex(o => o.value === this._value);
+                this.focusedIndex = currentIndex >= 0 ? currentIndex : this.firstSelectableIndex();
+            },
+            focusFirstSelectable() {
+                this.focusedIndex = this.firstSelectableIndex();
+            },
+            firstSelectableIndex() {
+                const idx = this.filteredOptions.findIndex(o => !o.placeholder);
+                return idx >= 0 ? idx : -1;
+            },
+            focusNextOption() {
+                const options = this.filteredOptions;
+                if (!options.length) return;
+                let idx = this.focusedIndex;
+                for (let i = 0; i < options.length; i++) {
+                    idx = (idx + 1 + options.length) % options.length;
+                    if (!options[idx].placeholder) {
+                        this.focusedIndex = idx;
+                        return;
+                    }
+                }
+            },
+            focusPreviousOption() {
+                const options = this.filteredOptions;
+                if (!options.length) return;
+                let idx = this.focusedIndex < 0 ? options.length : this.focusedIndex;
+                for (let i = 0; i < options.length; i++) {
+                    idx = (idx - 1 + options.length) % options.length;
+                    if (!options[idx].placeholder) {
+                        this.focusedIndex = idx;
+                        return;
+                    }
+                }
+            },
             select(opt) {
+                if (opt.placeholder) {
+                    return;
+                }
                 this._value = opt.value;
                 this.open = false;
                 this.search = '';
+                this.focusedIndex = -1;
+            },
+            selectFocused() {
+                const opt = this.filteredOptions[this.focusedIndex];
+                if (opt) {
+                    this.select(opt);
+                }
             },
             selectFirstFiltered() {
                 const first = this.filteredOptions.find(o => !o.placeholder);

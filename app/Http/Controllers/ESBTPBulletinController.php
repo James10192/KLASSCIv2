@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
+use App\Domain\AcademicPilotage\Services\BtsBulkBulletinGenerationService;
 use App\Domain\AcademicPilotage\Services\BulletinGenerationReadinessService;
 use App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver;
+use App\Exceptions\BulletinConfigurationException;
 use App\Exceptions\CoefficientMissingException;
 use App\Helpers\SettingsHelper;
 use App\Http\Requests\Bulletin\GenerateClasseBulletinsRequest;
@@ -51,18 +53,22 @@ class ESBTPBulletinController extends Controller
 
     protected BulletinGenerationReadinessService $bulletinReadiness;
 
+    protected BtsBulkBulletinGenerationService $bulkBulletinGeneration;
+
     public function __construct(
         ESBTPAbsenceService $absenceService,
         BulletinService $bulletinService,
         BulletinConsistencyService $bulletinConsistencyService,
         BtsBulletinSubjectResolver $subjectResolver,
-        BulletinGenerationReadinessService $bulletinReadiness
+        BulletinGenerationReadinessService $bulletinReadiness,
+        BtsBulkBulletinGenerationService $bulkBulletinGeneration
     ) {
         $this->absenceService = $absenceService;
         $this->bulletinService = $bulletinService;
         $this->bulletinConsistencyService = $bulletinConsistencyService;
         $this->subjectResolver = $subjectResolver;
         $this->bulletinReadiness = $bulletinReadiness;
+        $this->bulkBulletinGeneration = $bulkBulletinGeneration;
     }
 
     /**
@@ -1031,334 +1037,87 @@ class ESBTPBulletinController extends Controller
      */
     // ///////////////////
     /**
-     * Génère les bulletins pour une classe entière.
+     * Genere les bulletins pour une classe entiere via le contrat bulk BTS.
      *
      * @return Response
      */
     public function genererClasseBulletins(GenerateClasseBulletinsRequest $request)
     {
+        $classe = ESBTPClasse::findOrFail($request->integer('classe_id'));
 
-        try {
-            Log::info('Début de la génération des bulletins', $request->all());
-            $classe = ESBTPClasse::findOrFail($request->classe_id);
+        abort_if(
+            ($classe->systeme_academique ?? '') === 'LMD',
+            422,
+            'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour generer des bulletins LMD en masse.'
+        );
 
-            // PR7 chantier emploi-temps-lmd-unification : GUARD bulletin BTS vs LMD (bulk generation).
-            // Rule .claude/rules/lmd-bts-bulletin-separation.md
-            abort_if(
-                ($classe->systeme_academique ?? '') === 'LMD',
-                422,
-                'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour générer des bulletins LMD en masse.'
-            );
+        $result = $this->bulkBulletinGeneration->generate(
+            $classe,
+            $request->integer('annee_universitaire_id'),
+            (string) $request->input('periode'),
+            $request->user(),
+            $request->boolean('recalculer'),
+            $request->input('incomplete_reason')
+        );
 
-            $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($request->annee_universitaire_id);
-
-            // Récupérer tous les étudiants inscrits dans cette classe pour cette année
-            try {
-                Log::info('Récupération des étudiants inscrits');
-
-                // Utiliser une requête directe à la place de la relation 'inscriptions'
-                $etudiantIds = DB::table('esbtp_inscriptions')
-                    ->where('classe_id', $request->classe_id)
-                    ->where('annee_universitaire_id', $request->annee_universitaire_id)
-                    ->where('status', 'active')
-                    ->pluck('etudiant_id');
-
-                $etudiants = ESBTPEtudiant::whereIn('id', $etudiantIds)->get();
-
-                // Si aucun étudiant n'est trouvé par cette méthode, essayer de récupérer tous les étudiants de la classe
-                if ($etudiants->isEmpty()) {
-                    Log::info('Aucun étudiant trouvé via les inscriptions, recherche alternative');
-                    $etudiants = ESBTPEtudiant::where('classe_id', $request->classe_id)->get();
-                }
-
-                Log::info('Nombre d\'étudiants trouvés: '.$etudiants->count());
-
-                if ($etudiants->isEmpty()) {
-                    Log::warning('Aucun étudiant trouvé pour la classe '.$classe->name);
-
-                    return redirect()->route('esbtp.bulletins.index')
-                        ->with('warning', 'Aucun étudiant trouvé pour la classe sélectionnée.');
-                }
-            } catch (\Exception $e) {
-                Log::error('Erreur lors de la récupération des étudiants: '.$e->getMessage());
-                Log::error('SQL: '.$e->getTraceAsString());
-                throw $e;
-            }
-
-            $bulletinsGeneres = 0;
-            $readinessErrors = [];
-
-            foreach ($etudiants as $etudiant) {
-                Log::info('Traitement de l\'étudiant: '.$etudiant->id.' - '.$etudiant->nom.' '.$etudiant->prenoms);
-                // Vérifier si un bulletin existe déjà pour cet étudiant
-                try {
-                    $bulletinExistant = ESBTPBulletin::where('etudiant_id', $etudiant->id)
-                        ->where('classe_id', $request->classe_id)
-                        ->where('annee_universitaire_id', $request->annee_universitaire_id)
-                        ->where('periode', $request->periode)
-                        ->exists();
-
-                    if ($bulletinExistant) {
-                        Log::info('Bulletin existant pour l\'étudiant: '.$etudiant->id);
-
-                        continue; // Passer à l'étudiant suivant
-                    }
-                } catch (\Exception $e) {
-                    Log::error('Erreur lors de la vérification du bulletin existant: '.$e->getMessage());
-                    Log::error('SQL: '.$e->getTraceAsString());
-                    throw $e;
-                }
-
-                // Créer une requête simulée pour réutiliser la méthode store
-                $bulletinRequest = new Request([
-                    'etudiant_id' => $etudiant->id,
-                    'classe_id' => $request->classe_id,
-                    'annee_universitaire_id' => $request->annee_universitaire_id,
-                    'periode' => $request->periode,
-                    'appreciation_generale' => null,
-                    'decision_conseil' => null,
-                ]);
-
-                // Appeler la méthode store mais sans rediriger
-                try {
-                    DB::beginTransaction();
-
-                    $this->assertBtsBulletinReady(
-                        (int) $etudiant->id,
-                        (int) $request->classe_id,
-                        (int) $request->annee_universitaire_id,
-                        (string) $request->periode,
-                        $request
-                    );
-
-                    // Créer le bulletin
-                    $bulletin = new ESBTPBulletin;
-                    $bulletin->etudiant_id = $etudiant->id;
-                    $bulletin->classe_id = $request->classe_id;
-                    $bulletin->annee_universitaire_id = $request->annee_universitaire_id;
-                    $bulletin->periode = $request->periode;
-                    $bulletin->appreciation_generale = null;
-                    $bulletin->decision_conseil = null;
-                    $bulletin->user_id = Auth::id();
-                    $bulletin->save();
-                    Log::info('Bulletin créé: '.$bulletin->id);
-
-                    // Récupérer toutes les matières de la classe
-                    $matieres = $classe->matieres;
-                    Log::info('Nombre de matières trouvées: '.$matieres->count());
-
-                    // Pour chaque matière, calculer la moyenne et créer un résultat
-                    foreach ($matieres as $matiere) {
-                        Log::info('Traitement de la matière: '.$matiere->id.' - '.($matiere->nom ?? $matiere->name ?? 'Nom inconnu'));
-
-                        // Vérifier si la matière est valide
-                        if (! $matiere || ! $matiere->id) {
-                            Log::warning('Matière invalide trouvée');
-
-                            continue;
-                        }
-
-                        // Récupérer toutes les évaluations de cette matière pour cette classe
-                        try {
-                            $evaluations = $matiere->evaluations()
-                                ->where('classe_id', $classe->id)
-                                ->where('periode', $request->periode)
-                                ->get();
-
-                            Log::info('Nombre d\'évaluations trouvées: '.$evaluations->count(), [
-                                'matiere_id' => $matiere->id,
-                                'classe_id' => $classe->id,
-                                'periode' => $request->periode,
-                            ]);
-
-                            if (! $evaluations || $evaluations->isEmpty()) {
-                                Log::info('Pas d\'évaluations pour la matière et la période: '.$matiere->id, [
-                                    'periode' => $request->periode,
-                                ]);
-
-                                // Créer un résultat vide pour cette matière
-                                try {
-                                    // Récupérer le coefficient de la matière pour cette classe
-                                    try {
-                                        $coefficient = $this->bulletinService->getCoefficientForCombination(
-                                            $matiere->id,
-                                            $classe->id,
-                                            $request->annee_universitaire_id,
-                                            $request->periode,
-                                            $etudiant->id
-                                        );
-                                    } catch (\RuntimeException $e) {
-                                        if (! str_contains($e->getMessage(), 'Coefficient manquant')) {
-                                            throw $e;
-                                        }
-                                        Log::warning('Coef introuvable matiere TC, skip', ['matiere_id' => $matiere->id, 'classe_id' => $classe->id]);
-
-                                        continue;
-                                    }
-
-                                    $resultat = new ESBTPResultatMatiere;
-                                    $resultat->bulletin_id = $bulletin->id;
-                                    $resultat->matiere_id = $matiere->id;
-                                    $resultat->moyenne = null; // Pas de moyenne car pas d'évaluations
-                                    $resultat->coefficient = $coefficient;
-                                    $resultat->commentaire = null;
-                                    $resultat->save();
-                                    Log::info('Résultat vide créé pour la matière: '.$matiere->id);
-                                } catch (\Exception $e) {
-                                    Log::error('Erreur lors de la création du résultat vide: '.$e->getMessage());
-                                }
-
-                                continue; // Passer à la matière suivante s'il n'y a pas d'évaluations
-                            }
-                        } catch (\Exception $e) {
-                            Log::error('Erreur lors de la récupération des évaluations: '.$e->getMessage());
-                            Log::error('SQL: '.$e->getTraceAsString());
-
-                            continue; // Passer à la matière suivante en cas d'erreur
-                        }
-
-                        // Récupérer les notes de l'étudiant pour ces évaluations
-                        try {
-                            $notes = ESBTPNote::where('etudiant_id', $etudiant->id)
-                                ->where('classe_id', $request->classe_id)
-                                ->whereHas('evaluation', function ($query) use ($request) {
-                                    $query->where('annee_universitaire_id', $request->annee_universitaire_id);
-                                    if ($request->periode != 'annuel') {
-                                        $query->where('periode', $request->periode);
-                                    }
-                                })
-                                ->get();
-
-                            Log::info('Nombre de notes trouvées: '.$notes->count());
-
-                            if (! $notes || $notes->isEmpty()) {
-                                Log::info('Pas de notes pour l\'étudiant: '.$etudiant->id.' dans la matière: '.$matiere->id);
-
-                                continue; // Passer à la matière suivante s'il n'y a pas de notes
-                            }
-                        } catch (\Exception $e) {
-                            Log::error('Erreur lors de la récupération des notes: '.$e->getMessage());
-                            Log::error('SQL: '.$e->getTraceAsString());
-                            throw $e;
-                        }
-
-                        // Calculer la moyenne
-                        $sommeNotes = 0;
-                        $sommeCoefficients = 0;
-
-                        foreach ($notes as $note) {
-                            $evaluation = $notes->where('evaluation_id', $note->evaluation_id)->first();
-                            $sommeNotes += ($note->valeur / $evaluation->bareme) * 20 * $evaluation->coefficient;
-                            $sommeCoefficients += $evaluation->coefficient;
-                        }
-
-                        $moyenne = $sommeCoefficients > 0 ? $sommeNotes / $sommeCoefficients : null;
-
-                        // Récupérer le coefficient de la matière pour cette classe
-                        try {
-                            $coefficient = $this->bulletinService->getCoefficientForCombination(
-                                $matiere->id,
-                                $classe->id,
-                                $request->annee_universitaire_id,
-                                $request->periode,
-                                $etudiant->id
-                            );
-                        } catch (\RuntimeException $e) {
-                            if (! str_contains($e->getMessage(), 'Coefficient manquant')) {
-                                throw $e;
-                            }
-                            Log::warning('Coef introuvable matiere TC, skip', ['matiere_id' => $matiere->id, 'classe_id' => $classe->id]);
-
-                            continue;
-                        }
-
-                        // Créer le résultat pour cette matière
-                        try {
-                            $resultat = new ESBTPResultatMatiere;
-                            $resultat->bulletin_id = $bulletin->id;
-                            $resultat->matiere_id = $matiere->id;
-                            $resultat->moyenne = $moyenne;
-                            $resultat->coefficient = $coefficient;
-                            $resultat->commentaire = null;
-                            $resultat->save();
-                            Log::info('Résultat créé pour la matière: '.$matiere->id.' avec moyenne: '.$moyenne);
-                        } catch (\Exception $e) {
-                            Log::error('Erreur lors de la création du résultat: '.$e->getMessage());
-                            Log::error('SQL: '.$e->getTraceAsString());
-                            throw $e;
-                        }
-                    }
-
-                    // Calculer et mettre à jour la moyenne générale du bulletin
-                    try {
-                        Log::info('Calcul de la moyenne générale pour le bulletin: '.$bulletin->id);
-                        $this->bulletinService->calculerMoyenneGenerale($bulletin);
-                    } catch (\Exception $e) {
-                        Log::error('Erreur lors du calcul de la moyenne générale: '.$e->getMessage());
-                        Log::error('SQL: '.$e->getTraceAsString());
-                        throw $e;
-                    }
-
-                    DB::commit();
-                    $bulletinsGeneres++;
-                    Log::info('Bulletin généré avec succès pour l\'étudiant: '.$etudiant->id);
-                } catch (AcademicPilotageException $e) {
-                    DB::rollBack();
-                    $readinessErrors[] = sprintf(
-                        '%s %s : %s',
-                        $etudiant->nom,
-                        $etudiant->prenoms,
-                        $e->getMessage(),
-                    );
-                    Log::warning('Génération bulletin BTS bloquée par la préparation académique.', [
-                        'etudiant_id' => (int) $etudiant->id,
-                        'classe_id' => (int) $request->classe_id,
-                        'annee_universitaire_id' => (int) $request->annee_universitaire_id,
-                        'periode' => (string) $request->periode,
-                        'error' => $e->errorCode,
-                        'details' => $e->details,
-                    ]);
-                } catch (\Exception $e) {
-                    DB::rollBack();
-                    Log::error('Erreur lors de la génération du bulletin pour l\'étudiant: '.$etudiant->id.' - '.$e->getMessage());
-                    Log::error('SQL: '.$e->getTraceAsString());
-                    // Continuer avec l'étudiant suivant
-                }
-            }
-
-            if ($bulletinsGeneres > 0) {
-                Log::info('Bulletins générés avec succès: '.$bulletinsGeneres);
-
-                $response = redirect()->route('esbtp.bulletins.index')
-                    ->with('success', $bulletinsGeneres.' bulletins ont été générés avec succès');
-
-                if ($readinessErrors !== []) {
-                    $response->with('warning', $this->bulletinReadinessErrorSummary($readinessErrors));
-                }
-
-                return $response;
-            } elseif ($readinessErrors !== []) {
-                Log::info('Aucun bulletin généré à cause de blocages de préparation académique.', [
-                    'errors' => $readinessErrors,
-                ]);
-
-                return redirect()->route('esbtp.bulletins.index')
-                    ->with('error', $this->bulletinReadinessErrorSummary($readinessErrors));
-            } else {
-                Log::info('Aucun bulletin généré');
-
-                return redirect()->route('esbtp.bulletins.index')
-                    ->with('info', 'Aucun nouveau bulletin n\'a été généré. Tous les bulletins existent déjà ou il n\'y a pas de données suffisantes.');
-            }
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la génération des bulletins: '.$e->getMessage());
-            Log::error('SQL: '.$e->getTraceAsString());
-
-            return redirect()->route('esbtp.bulletins.index')
-                ->with('error', 'Une erreur est survenue lors de la génération des bulletins: '.$e->getMessage());
+        if ($request->expectsJson()) {
+            return response()->json($result->toArray(), $result->statusCode());
         }
+
+        $redirect = redirect()->route('esbtp.bulletins.index', [
+            'classe_id' => $classe->id,
+            'annee_universitaire_id' => $request->integer('annee_universitaire_id'),
+            'periode_id' => $this->bulletinService->normalizePeriode((string) $request->input('periode')),
+        ]);
+
+        if ($result->hasWrites() && $result->hasFailures()) {
+            return $redirect
+                ->with('warning', $result->message())
+                ->with('bulk_bulletin_generation', $result->toArray());
+        }
+
+        if ($result->hasWrites()) {
+            return $redirect
+                ->with('success', $result->message())
+                ->with('bulk_bulletin_generation', $result->toArray());
+        }
+
+        if ($result->hasFailures()) {
+            return back()
+                ->with('error', $result->message())
+                ->with('bulk_bulletin_generation', $result->toArray())
+                ->withInput();
+        }
+
+        return $redirect
+            ->with('info', $result->message())
+            ->with('bulk_bulletin_generation', $result->toArray());
     }
 
+    public function preflightClasseBulletins(GenerateClasseBulletinsRequest $request)
+    {
+        $classe = ESBTPClasse::findOrFail($request->integer('classe_id'));
+
+        abort_if(
+            ($classe->systeme_academique ?? '') === 'LMD',
+            422,
+            'Cette classe est LMD. Utilisez /esbtp/lmd/bulletins pour les bulletins LMD.'
+        );
+
+        $preflight = $this->bulkBulletinGeneration->preflight(
+            $classe,
+            $request->integer('annee_universitaire_id'),
+            (string) $request->input('periode'),
+            $request->user(),
+            $request->boolean('recalculer')
+        );
+
+        return response()->json([
+            'ok' => $preflight['ok'],
+            'preflight' => $preflight,
+            'message' => $preflight['message'],
+        ], $preflight['ok'] ? 200 : 422);
+    }
     /**
      * Affiche la page de sélection pour les bulletins
      *
@@ -1719,12 +1478,19 @@ class ESBTPBulletinController extends Controller
             }
 
             // Utiliser le BulletinService unifié pour générer les données
-            $donnees = $this->bulletinService->genererDonneesBulletin(
-                $etudiant_id,
-                $classe_id,
-                $annee_universitaire_id,
-                $periode
-            );
+            $donnees = $inline
+                ? $this->bulletinService->genererDonneesBulletinPreview(
+                    $etudiant_id,
+                    $classe_id,
+                    $annee_universitaire_id,
+                    $periode
+                )
+                : $this->bulletinService->genererDonneesBulletin(
+                    $etudiant_id,
+                    $classe_id,
+                    $annee_universitaire_id,
+                    $periode
+                );
 
             // Ajouter le logo pour le PDF
             $config = $this->bulletinService->getPDFConfig();
@@ -1775,10 +1541,32 @@ class ESBTPBulletinController extends Controller
             $context = $this->buildCoefficientIssueContext($e->getContext(), $request);
             $message = $this->formatCoefficientIssueMessage($context);
 
+            if ($inline || $request->expectsJson()) {
+                return $this->blockedBulletinPreviewResponse($request, $message, $context['config_url'] ?? null, $context);
+            }
+
             return redirect()->back()
                 ->with('error', $message)
                 ->with('coefficient_missing_context', $context);
+        } catch (BulletinConfigurationException $e) {
+            $context = $e->getContext();
+
+            return $this->blockedBulletinPreviewResponse(
+                $request,
+                $e->getMessage(),
+                $context['configuration_url'] ?? null,
+                $context
+            );
         } catch (\Exception $e) {
+            if (str_contains($e->getMessage(), 'Coefficient manquant')) {
+                return $this->blockedBulletinPreviewResponse(
+                    $request,
+                    $e->getMessage(),
+                    route('esbtp.evaluations.index', ['open_coefficients' => 1]),
+                    ['reason' => 'coefficients_missing']
+                );
+            }
+
             // Gestion des erreurs de configuration
             if (str_contains($e->getMessage(), 'Configuration bulletin manquante')) {
                 $configMatieresUrl = route('esbtp.bulletins.config-matieres', [
@@ -1788,7 +1576,7 @@ class ESBTPBulletinController extends Controller
                     'bulletin' => $request->etudiant_id ?? $request->bulletin,
                 ]);
 
-                return redirect($configMatieresUrl)->with('error', $e->getMessage());
+                return $this->blockedBulletinPreviewResponse($request, $e->getMessage(), $configMatieresUrl);
             }
 
             return back()->with('error', 'Erreur lors de la génération du PDF : '.$e->getMessage());
@@ -1799,6 +1587,28 @@ class ESBTPBulletinController extends Controller
      * Vérifie les pré-requis avant génération du bulletin (AJAX).
      * Retourne les warnings éventuels (ex: bulletin de l'autre semestre non généré).
      */
+    private function blockedBulletinPreviewResponse(
+        Request $request,
+        string $message,
+        ?string $configurationUrl = null,
+        array $context = [],
+        int $status = 422
+    ) {
+        $payload = [
+            'ok' => false,
+            'message' => $message,
+            'configuration_url' => $configurationUrl,
+            'context' => $context,
+            'back_url' => route('esbtp.bulletins.select'),
+        ];
+
+        if ($request->expectsJson()) {
+            return response()->json($payload, $status);
+        }
+
+        return response()->view('esbtp.bulletins.preview-blocked', $payload, $status);
+    }
+
     public function checkBulletinPrerequisites(Request $request)
     {
         $classeId = $request->classe_id;

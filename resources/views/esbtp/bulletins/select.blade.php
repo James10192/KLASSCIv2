@@ -14,7 +14,7 @@
     --bus-surface: #f8fafc;
     --bus-border: #e2e8f0;
     --bus-success: #10b981;
-    --bus-warning: #f59e0b;
+    --bus-warning: #0f766e;
     --bus-danger: #dc2626;
 }
 
@@ -187,6 +187,73 @@
 }
 .bus-status i { font-size: .65rem; }
 
+.bus-inline-panel {
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+    padding: .75rem;
+    border: 1px solid #dbe5f2;
+    border-radius: 8px;
+    background: #f8fafc;
+    color: var(--bus-text);
+}
+.bus-inline-panel--danger {
+    border-color: rgba(220, 38, 38, .28);
+    background: rgba(220, 38, 38, .04);
+}
+.bus-inline-panel--ok {
+    border-color: rgba(16, 185, 129, .28);
+    background: rgba(16, 185, 129, .05);
+}
+.bus-inline-panel__title {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    font-size: .78rem;
+    font-weight: 800;
+    color: var(--bus-text);
+}
+.bus-inline-panel__body,
+.bus-inline-panel__list {
+    margin: 0;
+    color: var(--bus-muted);
+    font-size: .76rem;
+    line-height: 1.45;
+}
+.bus-inline-panel__list {
+    padding-left: 1rem;
+}
+.bus-inline-panel__link {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    width: fit-content;
+    color: #0453cb;
+    font-size: .76rem;
+    font-weight: 800;
+    text-decoration: none;
+}
+.bus-inline-panel__link:hover { color: #033a8e; text-decoration: underline; }
+.bus-textarea {
+    width: 100%;
+    min-height: 86px;
+    padding: .65rem .75rem;
+    border: 1px solid #dbe5f2;
+    border-radius: 8px;
+    color: var(--bus-text);
+    font-size: .82rem;
+    resize: vertical;
+}
+.bus-textarea:focus {
+    outline: none;
+    border-color: #0453cb;
+    box-shadow: 0 0 0 3px rgba(4, 83, 203, .1);
+}
+.bus-submit--blocked {
+    background: #64748b;
+    box-shadow: none;
+}
+
 /* Toast container */
 .bus-toast-stack {
     position: fixed;
@@ -270,6 +337,7 @@
                     <label class="bus-field-label"><span class="bus-field-step">1</span>Classe</label>
                     <x-au-select
                         :options="$classes->mapWithKeys(fn($c) => [$c->id => $c->name])->toArray()"
+                        label="Classe a consulter"
                         placeholder="Choisir la classe…"
                         icon="fa-school"
                         :searchable="$classes->count() > 8"
@@ -279,6 +347,8 @@
                     <label class="bus-field-label"><span class="bus-field-step">2</span>Année universitaire</label>
                     <x-au-select
                         :options="$anneeOptions"
+                        label="Annee universitaire a consulter"
+                        x-bind:disabled="!form.classe_id"
                         placeholder="Choisir l'année…"
                         icon="fa-calendar"
                         x-model="form.annee_universitaire_id" />
@@ -287,6 +357,8 @@
                     <label class="bus-field-label"><span class="bus-field-step">3</span>Période</label>
                     <x-au-select
                         :options="['1' => 'Semestre 1', '2' => 'Semestre 2']"
+                        label="Periode a consulter"
+                        x-bind:disabled="!form.classe_id || !form.annee_universitaire_id"
                         placeholder="Choisir la période…"
                         icon="fa-layer-group"
                         x-model="form.semestre" />
@@ -317,6 +389,7 @@
                     <label class="bus-field-label"><span class="bus-field-step">1</span>Classe</label>
                     <x-au-select
                         :options="$classes->mapWithKeys(fn($c) => [$c->id => $c->name])->toArray()"
+                        label="Classe de l'apercu"
                         placeholder="Choisir la classe…"
                         icon="fa-school"
                         :searchable="$classes->count() > 8"
@@ -326,6 +399,8 @@
                     <label class="bus-field-label"><span class="bus-field-step">2</span>Année universitaire</label>
                     <x-au-select
                         :options="$anneeOptions"
+                        label="Annee universitaire de l'apercu"
+                        x-bind:disabled="!form.classe_id"
                         placeholder="Choisir l'année…"
                         icon="fa-calendar"
                         x-model="form.annee_universitaire_id" />
@@ -339,6 +414,8 @@
                     </label>
                     <x-au-select
                         x-model="form.etudiant_id"
+                        label="Etudiant de l'apercu"
+                        x-bind:disabled="!form.classe_id || !form.annee_universitaire_id || loadingStudents"
                         :searchable="true"
                         placeholder="Choisir l'étudiant…"
                         icon="fa-user-graduate"
@@ -352,9 +429,24 @@
                     <label class="bus-field-label"><span class="bus-field-step">4</span>Période</label>
                     <x-au-select
                         x-model="form.periode"
+                        label="Periode de l'apercu"
+                        x-bind:disabled="!form.etudiant_id"
                         placeholder="Choisir la période…"
                         icon="fa-layer-group"
                         :options="['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2 (contient l\'annuel)']" />
+                </div>
+                <div class="bus-inline-panel bus-inline-panel--danger" x-show="previewIssue" x-cloak>
+                    <div class="bus-inline-panel__title">
+                        <i class="fas fa-circle-exclamation"></i>
+                        <span>Apercu bloque</span>
+                    </div>
+                    <p class="bus-inline-panel__body" x-text="previewIssue?.message"></p>
+                    <template x-if="previewIssue?.configuration_url">
+                        <a class="bus-inline-panel__link" :href="previewIssue.configuration_url">
+                            <i class="fas fa-sliders"></i>
+                            Ouvrir la configuration requise
+                        </a>
+                    </template>
                 </div>
                 <button type="submit" class="bus-submit bus-submit--info" :disabled="busy || !canSubmit()">
                     <i class="fas" :class="busy ? 'fa-spinner fa-spin' : 'fa-eye'"></i>
@@ -382,6 +474,7 @@
                     <label class="bus-field-label"><span class="bus-field-step">1</span>Classe</label>
                     <x-au-select
                         :options="$classes->mapWithKeys(fn($c) => [$c->id => $c->name])->toArray()"
+                        label="Classe a generer"
                         placeholder="Choisir la classe…"
                         icon="fa-school"
                         :searchable="$classes->count() > 8"
@@ -396,6 +489,8 @@
                     </label>
                     <x-au-select
                         :options="$anneeOptions"
+                        label="Annee universitaire a generer"
+                        x-bind:disabled="!form.classe_id"
                         placeholder="Choisir l'année…"
                         icon="fa-calendar"
                         x-model="form.annee_universitaire_id" />
@@ -408,6 +503,8 @@
                     <label class="bus-field-label"><span class="bus-field-step">3</span>Période</label>
                     <x-au-select
                         :options="['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2']"
+                        label="Periode a generer"
+                        x-bind:disabled="!form.classe_id || !form.annee_universitaire_id"
                         placeholder="Choisir la période…"
                         icon="fa-layer-group"
                         x-model="form.periode" />
@@ -416,7 +513,62 @@
                     <input type="checkbox" id="bus-recalc" x-model="form.recalculer" :value="1">
                     <label for="bus-recalc">Recalculer si déjà existants</label>
                 </div>
-                <button type="submit" class="bus-submit bus-submit--success" :disabled="busy || !canSubmit()">
+                <div class="bus-inline-panel" x-show="preflightBusy" x-cloak>
+                    <div class="bus-inline-panel__title">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <span>Pre-controle en cours</span>
+                    </div>
+                    <p class="bus-inline-panel__body">Verification des inscriptions actives, coefficients et donnees academiques.</p>
+                </div>
+                <div class="bus-inline-panel"
+                     :class="preflight?.ok ? 'bus-inline-panel--ok' : 'bus-inline-panel--danger'"
+                     x-show="preflight && !preflightBusy"
+                     x-cloak>
+                    <div class="bus-inline-panel__title">
+                        <i class="fas" :class="preflight?.ok ? 'fa-circle-check' : 'fa-circle-exclamation'"></i>
+                        <span>Pre-controle generation</span>
+                    </div>
+                    <p class="bus-inline-panel__body" x-text="preflight?.message"></p>
+                    <template x-if="preflight?.missing_coefficients?.length">
+                        <ul class="bus-inline-panel__list">
+                            <template x-for="item in preflight.missing_coefficients" :key="item.matiere_id">
+                                <li>
+                                    <span x-text="item.matiere"></span>
+                                    <span x-text="' - ' + item.students_count + ' etudiant' + (item.students_count > 1 ? 's' : '')"></span>
+                                </li>
+                            </template>
+                        </ul>
+                    </template>
+                    <template x-if="preflight?.blocking_errors?.length && !preflight?.missing_coefficients?.length">
+                        <p class="bus-inline-panel__body" x-text="preflight.blocking_errors.length + ' blocage(s) detecte(s).'"></p>
+                    </template>
+                    <template x-if="preflight?.configuration_url">
+                        <a class="bus-inline-panel__link" :href="preflight.configuration_url">
+                            <i class="fas fa-sliders"></i>
+                            Configurer les matieres du bulletin
+                        </a>
+                    </template>
+                    <div class="bus-field" x-show="preflight?.requires_incomplete_reason" x-cloak>
+                        <label class="bus-field-label" for="bus-incomplete-reason">Motif bulletin incomplet</label>
+                        <textarea id="bus-incomplete-reason"
+                                  class="bus-textarea"
+                                  x-model="form.incomplete_reason"
+                                  maxlength="1000"
+                                  placeholder="Expliquez pourquoi la generation incomplete est autorisee."></textarea>
+                    </div>
+                </div>
+                <div class="bus-inline-panel"
+                     :class="lastGeneration?.ok ? 'bus-inline-panel--ok' : 'bus-inline-panel--danger'"
+                     x-show="lastGeneration"
+                     x-cloak>
+                    <div class="bus-inline-panel__title">
+                        <i class="fas" :class="lastGeneration?.ok ? 'fa-circle-check' : 'fa-circle-exclamation'"></i>
+                        <span>Resultat generation</span>
+                    </div>
+                    <p class="bus-inline-panel__body" x-text="lastGeneration?.message"></p>
+                    <p class="bus-inline-panel__body" x-text="generationSummary()"></p>
+                </div>
+                <button type="submit" class="bus-submit bus-submit--success" :class="{ 'bus-submit--blocked': isGenerationBlocked() }" :disabled="busy || !canSubmit()">
                     <i class="fas" :class="busy ? 'fa-spinner fa-spin' : 'fa-file-pdf'"></i>
                     <span x-text="busy ? 'Génération en cours…' : 'Générer les bulletins'"></span>
                 </button>
@@ -469,6 +621,13 @@ window.busCard = function (cfg) {
         busy: false,
         loadingStudents: false,
         students: [],
+        studentsAbort: null,
+        studentsRequestSeq: 0,
+        preflight: null,
+        preflightBusy: false,
+        preflightAbort: null,
+        previewIssue: null,
+        lastGeneration: null,
         // Année universitaire courante pré-sélectionnée (le user peut changer ensuite).
         form: {
             classe_id: '',
@@ -477,19 +636,70 @@ window.busCard = function (cfg) {
             semestre: '',
             periode: '',
             recalculer: false,
+            incomplete_reason: '',
         },
 
         init() {
-            this.$watch('form.classe_id', () => { this.form.etudiant_id = ''; this.fetchStudents(); });
-            this.$watch('form.annee_universitaire_id', () => { this.form.etudiant_id = ''; this.fetchStudents(); });
+            this.$watch('form.classe_id', () => {
+                this.form.etudiant_id = '';
+                this.previewIssue = null;
+                this.lastGeneration = null;
+                this.fetchStudents();
+                this.queuePreflight();
+            });
+            this.$watch('form.annee_universitaire_id', () => {
+                this.form.etudiant_id = '';
+                this.previewIssue = null;
+                this.lastGeneration = null;
+                this.fetchStudents();
+                this.queuePreflight();
+            });
+            this.$watch('form.periode', () => {
+                this.previewIssue = null;
+                this.lastGeneration = null;
+                this.queuePreflight();
+            });
+            this.$watch('form.recalculer', () => {
+                this.lastGeneration = null;
+                this.queuePreflight();
+            });
+            this.$watch('form.etudiant_id', () => { this.previewIssue = null; });
         },
 
         canSubmit() {
             if (!this.form.classe_id || !this.form.annee_universitaire_id) return false;
             if (this.kind === 'consult')  return !!this.form.semestre;
             if (this.kind === 'preview')  return !!this.form.etudiant_id && !!this.form.periode;
-            if (this.kind === 'generate') return !!this.form.periode;
+            if (this.kind === 'generate') return !!this.form.periode && !this.preflightBusy && !this.isGenerationBlocked();
             return false;
+        },
+
+        hasIncompleteReason() {
+            return (this.form.incomplete_reason || '').trim().length >= 8;
+        },
+
+        isGenerationBlocked() {
+            if (this.kind !== 'generate' || !this.preflight || this.preflight.ok) return false;
+
+            const hardBlockCodes = ['missing_subject_configuration', 'bulletin_locked', 'coefficients_missing'];
+            const blocks = this.preflight.blocking_errors || [];
+
+            if ((this.preflight.missing_coefficients || []).length > 0) return true;
+            if (blocks.some(block => hardBlockCodes.includes(block.code))) return true;
+
+            if (this.preflight.requires_incomplete_reason) {
+                return !this.hasIncompleteReason();
+            }
+
+            return true;
+        },
+
+        generationSummary() {
+            if (!this.lastGeneration) return '';
+
+            const skipped = this.lastGeneration.skipped?.length || 0;
+            const blocked = (this.lastGeneration.blocking_errors?.length || 0) + (this.lastGeneration.errors?.length || 0);
+            return `${this.lastGeneration.created || 0} cree(s), ${this.lastGeneration.regenerated || 0} recalcule(s), ${skipped} ignore(s), ${blocked} blocage(s).`;
         },
 
         canOpenPilotage() {
@@ -506,37 +716,157 @@ window.busCard = function (cfg) {
             return `{{ route('esbtp.pilotage-academique.index') }}?${params.toString()}#alerts`;
         },
 
-        async fetchStudents() {
-            if (!this.form.classe_id || !this.form.annee_universitaire_id) {
-                this.students = [];
+        bulletinParams(action = null) {
+            const params = new URLSearchParams();
+            params.set('etudiant_id', this.form.etudiant_id);
+            params.set('classe_id', this.form.classe_id);
+            params.set('annee_universitaire_id', this.form.annee_universitaire_id);
+            params.set('periode', this.form.periode);
+            if (action) params.set('action', action);
+            return params;
+        },
+
+        configMatieresUrl() {
+            const params = new URLSearchParams({
+                classe_id: this.form.classe_id,
+                annee_universitaire_id: this.form.annee_universitaire_id,
+                periode: this.form.periode || 'semestre1',
+            });
+            if (this.form.etudiant_id) params.set('bulletin', this.form.etudiant_id);
+            return `{{ route('esbtp.bulletins.config-matieres') }}?${params.toString()}`;
+        },
+
+        async resolvePreviewUrl() {
+            const params = this.bulletinParams('preview_pdf');
+            const res = await fetch(`{{ route('esbtp.bulletins.check-consistency') }}?${params.toString()}`, {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            });
+            const data = await this.parseJsonResponse(res);
+            if (!res.ok || !data.ok) {
+                throw new Error(data.message || `Erreur HTTP ${res.status}`);
+            }
+
+            const consistency = data.consistency || {};
+            const configuration = consistency.configuration || {};
+            const usesCurrent = data.resolved_url === data.current_url || !consistency.official_bulletin_exists;
+
+            if (usesCurrent && configuration.ready === false) {
+                return {
+                    blocked: true,
+                    message: 'La configuration du bulletin est incomplete. Completez les matieres et coefficients requis avant d ouvrir le PDF live.',
+                    configuration_url: this.configMatieresUrl(),
+                };
+            }
+
+            return {
+                blocked: false,
+                url: data.resolved_url || `{{ route('esbtp.bulletins.pdf-params-preview') }}?${this.bulletinParams().toString()}`,
+            };
+        },
+
+        queuePreflight() {
+            if (this.kind !== 'generate') return;
+
+            this.preflightAbort?.abort();
+            this.preflight = null;
+
+            if (!this.form.classe_id || !this.form.annee_universitaire_id || !this.form.periode) {
+                this.preflightBusy = false;
                 return;
             }
-            // Seules les cards qui ont besoin de la liste d'étudiants la chargent
-            if (this.kind !== 'preview' && this.kind !== 'generate') return;
+
+            this.fetchPreflight();
+        },
+
+        async fetchPreflight() {
+            if (this.kind !== 'generate' || !this.form.classe_id || !this.form.annee_universitaire_id || !this.form.periode) {
+                return null;
+            }
+
+            this.preflightAbort?.abort();
+            const controller = new AbortController();
+            this.preflightAbort = controller;
+            this.preflightBusy = true;
+
+            try {
+                const params = new URLSearchParams({
+                    classe_id: this.form.classe_id,
+                    annee_universitaire_id: this.form.annee_universitaire_id,
+                    periode: this.form.periode,
+                    recalculer: this.form.recalculer ? '1' : '0',
+                });
+                const res = await fetch(`{{ route('esbtp.bulletins.generer-classe.preflight') }}?${params.toString()}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    signal: controller.signal,
+                });
+                const data = await this.parseJsonResponse(res);
+
+                if (!res.ok && !data.preflight) {
+                    throw new Error(data.message || `Erreur HTTP ${res.status}`);
+                }
+
+                this.preflight = data.preflight || null;
+                return this.preflight;
+            } catch (err) {
+                if (err.name === 'AbortError') return null;
+                this.preflight = null;
+                this.notify('error', err.message || 'Erreur de pre-controle.');
+                return null;
+            } finally {
+                if (this.preflightAbort === controller) {
+                    this.preflightBusy = false;
+                    this.preflightAbort = null;
+                }
+            }
+        },
+
+        async fetchStudents() {
+            if (!this.form.classe_id || !this.form.annee_universitaire_id) {
+                this.studentsAbort?.abort();
+                this.students = [];
+                this.injectStudentsIntoSelect();
+                return;
+            }
+            // Seule la card apercu a besoin d'injecter une liste d'etudiants.
+            if (this.kind !== 'preview') return;
+            this.studentsAbort?.abort();
+            const requestSeq = ++this.studentsRequestSeq;
+            const controller = new AbortController();
+            this.studentsAbort = controller;
             this.loadingStudents = true;
             try {
                 const baseUrl = `{{ route('esbtp.classes.etudiants', ['classe' => '__ID__']) }}`.replace('__ID__', this.form.classe_id);
                 const url = baseUrl + '?annee_universitaire_id=' + encodeURIComponent(this.form.annee_universitaire_id);
-                const res = await fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' } });
-                const data = await res.json();
+                const res = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                    signal: controller.signal,
+                });
+                const data = await this.parseJsonResponse(res);
+                if (requestSeq !== this.studentsRequestSeq) return;
+                if (!res.ok) throw new Error(data.message || `Erreur HTTP ${res.status}`);
                 this.students = (data.etudiants || []).map(e => ({
                     value: e.id,
                     label: `${e.nom || ''} ${e.prenoms || e.prenom || ''}`.trim() + ` (${e.matricule || ''})`,
                 }));
                 if (this.kind === 'preview') this.injectStudentsIntoSelect();
             } catch (err) {
+                if (err.name === 'AbortError') return;
                 this.notify('error', 'Erreur lors du chargement des étudiants : ' + err.message);
                 this.students = [];
+                this.injectStudentsIntoSelect();
             } finally {
-                this.loadingStudents = false;
+                if (requestSeq === this.studentsRequestSeq) {
+                    this.loadingStudents = false;
+                    this.studentsAbort = null;
+                }
             }
         },
 
         injectStudentsIntoSelect() {
+            if (this.kind !== 'preview') return;
             // Le composant au-select est rendu côté serveur avec un native <select> caché.
             // Pour preview card, on injecte les options étudiants dynamiquement.
             const card = this.$root || this.$el;
-            const nativeSel = card.querySelector('select[name=""], select.au-select-native');
             // Trouve le native du 3e au-select (étudiant)
             const wrappers = card.querySelectorAll('.au-select');
             if (wrappers.length < 3) return;
@@ -574,20 +904,33 @@ window.busCard = function (cfg) {
                     // Utilise pdf-params-preview qui choisit auto entre snapshot officiel
                     // et live (via BulletinConsistencyService). Plus fiable que
                     // l'ancien previewBulletin qui pouvait erreur en l'absence de bulletin.
-                    const params = new URLSearchParams();
-                    params.set('etudiant_id', this.form.etudiant_id);
-                    params.set('classe_id', this.form.classe_id);
-                    params.set('annee_universitaire_id', this.form.annee_universitaire_id);
-                    params.set('periode', this.form.periode);
-                    window.open(`{{ route('esbtp.bulletins.pdf-params-preview') }}?` + params.toString(), '_blank');
+                    this.previewIssue = null;
+                    const preview = await this.resolvePreviewUrl();
+                    if (preview.blocked) {
+                        this.previewIssue = preview;
+                        this.notify('error', preview.message);
+                        return;
+                    }
+                    window.open(preview.url, '_blank');
                     return;
                 }
                 if (this.kind === 'generate') {
+                    const preflight = await this.fetchPreflight();
+                    if (!preflight) {
+                        this.notify('error', 'Pre-controle indisponible. La generation est annulee.');
+                        return;
+                    }
+                    if (!preflight.ok && this.isGenerationBlocked()) {
+                        this.notify('error', preflight.message || 'Des prerequis bloquent la generation.');
+                        return;
+                    }
+
                     const fd = new FormData();
                     fd.append('classe_id', this.form.classe_id);
                     fd.append('annee_universitaire_id', this.form.annee_universitaire_id);
                     fd.append('periode', this.form.periode);
                     if (this.form.recalculer) fd.append('recalculer', '1');
+                    if (this.form.incomplete_reason) fd.append('incomplete_reason', this.form.incomplete_reason.trim());
                     const res = await fetch(`{{ route('esbtp.bulletins.generer-classe') }}`, {
                         method: 'POST',
                         headers: {
@@ -597,25 +940,50 @@ window.busCard = function (cfg) {
                         },
                         body: fd,
                     });
-                    if (res.status === 422) {
-                        const data = await res.json();
-                        const msg = Object.values(data.errors || {}).flat().join(' • ') || data.message || 'Validation refusée';
+                    const data = await this.parseJsonResponse(res);
+                    this.lastGeneration = data;
+
+                    if (res.redirected) {
+                        this.notify('error', 'Le serveur a redirige la requete au lieu de retourner le resultat JSON.');
+                        return;
+                    }
+
+                    if (!res.ok) {
+                        const msg = Object.values(data.errors || {}).flat().join(' - ') || data.message || `Erreur HTTP ${res.status}`;
                         this.notify('error', msg);
                         return;
                     }
-                    if (!res.ok && !res.redirected) {
-                        throw new Error(`Erreur HTTP ${res.status}`);
+
+                    const writes = (data.created || 0) + (data.regenerated || 0);
+                    const failures = (data.blocking_errors?.length || 0) + (data.errors?.length || 0);
+
+                    if (writes > 0) {
+                        this.notify(failures > 0 ? 'info' : 'success', data.message || 'Generation terminee.');
+                        setTimeout(() => {
+                            window.location.href = `{{ route('esbtp.bulletins.index') }}?classe_id=${this.form.classe_id}&annee_universitaire_id=${this.form.annee_universitaire_id}&periode_id=${this.form.periode}`;
+                        }, 1200);
+                        return;
                     }
-                    this.notify('success', `Bulletins générés pour la classe. Redirection…`);
-                    setTimeout(() => {
-                        window.location.href = `{{ route('esbtp.bulletins.index') }}?classe_id=${this.form.classe_id}&annee_universitaire_id=${this.form.annee_universitaire_id}&periode_id=${this.form.periode}`;
-                    }, 1100);
+
+                    this.notify(failures > 0 ? 'error' : 'info', data.message || 'Aucun bulletin genere.');
+                    return;
                 }
             } catch (err) {
                 this.notify('error', err.message || 'Erreur inattendue.');
             } finally {
                 if (this.kind === 'generate') this.busy = false;
                 else setTimeout(() => { this.busy = false; }, 400);
+            }
+        },
+
+        async parseJsonResponse(res) {
+            const text = await res.text();
+            if (!text) return {};
+
+            try {
+                return JSON.parse(text);
+            } catch (err) {
+                return { message: res.redirected ? 'Le serveur a redirige la requete au lieu de retourner du JSON.' : text };
             }
         },
 

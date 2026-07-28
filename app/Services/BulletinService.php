@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\BulletinConfigurationException;
 use App\Exceptions\CoefficientMissingException;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -229,6 +230,16 @@ class BulletinService
      */
     public function genererDonneesBulletin($etudiantId, $classeId, $anneeUniversitaireId, $periode = 'semestre1')
     {
+        return $this->buildDonneesBulletin($etudiantId, $classeId, $anneeUniversitaireId, $periode, true);
+    }
+
+    public function genererDonneesBulletinPreview($etudiantId, $classeId, $anneeUniversitaireId, $periode = 'semestre1')
+    {
+        return $this->buildDonneesBulletin($etudiantId, $classeId, $anneeUniversitaireId, $periode, false);
+    }
+
+    private function buildDonneesBulletin($etudiantId, $classeId, $anneeUniversitaireId, $periode = 'semestre1', bool $persistOfficial = true)
+    {
         // Récupérer les entités de base
         $etudiant = ESBTPEtudiant::findOrFail($etudiantId);
         $classe = ESBTPClasse::with(['filiere', 'niveauEtude'])->findOrFail($classeId);
@@ -249,16 +260,22 @@ class BulletinService
             ->first();
 
         // VÉRIFICATION OBLIGATOIRE : S'assurer que la configuration existe
-        if (! $bulletin || ! $bulletin->config_matieres || ! $bulletin->professeurs) {
-            throw new \Exception('Configuration bulletin manquante. Veuillez d\'abord configurer les matières et les professeurs.');
+        [$configMatieres, $professeursConfigures] = $this->resolveConfiguredBulletinContext(
+            $bulletin,
+            (int) $classeId,
+            (int) $anneeUniversitaireId,
+            (string) $periode
+        );
+
+        if ($persistOfficial && ! $bulletin) {
+            throw new BulletinConfigurationException(
+                'Aucun bulletin officiel existant a mettre a jour.',
+                $this->bulletinConfigurationContext((int) $classeId, (int) $anneeUniversitaireId, (string) $periode)
+            );
         }
 
-        // Vérifier que la configuration n'est pas vide
-        $configMatieres = $this->decodeJsonToArray($bulletin->config_matieres);
-        $professeursConfigures = $this->decodeJsonToArray($bulletin->professeurs);
-
-        if (empty($configMatieres['generales']) && empty($configMatieres['techniques'])) {
-            throw new \Exception('Aucune matière configurée dans le bulletin.');
+        if ($persistOfficial && $bulletin) {
+            $this->syncConfiguredBulletinContext($bulletin, $configMatieres, $professeursConfigures);
         }
 
         // Récupérer les notes avec évaluations pour la période spécifiée
@@ -296,7 +313,13 @@ class BulletinService
                         'matiere' => $matiere,
                         'notes' => [],
                         'moyenne' => 0,
-                        'coefficient' => $this->getCoefficientForCombination($matiereId, $classe->id, $anneeUniversitaireId),
+                        'coefficient' => $this->getCoefficientForCombination(
+                            $matiereId,
+                            $classe->id,
+                            $anneeUniversitaireId,
+                            (string) $periode,
+                            (int) $etudiantId
+                        ),
                         'rang' => '-',
                         'appreciation' => '',
                         'type_formation' => $typeFormation,
@@ -355,7 +378,13 @@ class BulletinService
                         'matiere' => $resultatManuel->matiere,
                         'notes' => [],
                         'moyenne' => $resultatManuel->moyenne,
-                        'coefficient' => $this->getCoefficientForCombination($matiereId, $classe->id, $anneeUniversitaireId),
+                        'coefficient' => $this->getCoefficientForCombination(
+                            $matiereId,
+                            $classe->id,
+                            $anneeUniversitaireId,
+                            (string) $periode,
+                            (int) $etudiantId
+                        ),
                         'rang' => '-',
                         'appreciation' => $resultatManuel->appreciation ?: $this->getAppreciation($resultatManuel->moyenne),
                         'type_formation' => $typeFormation,
@@ -369,19 +398,27 @@ class BulletinService
                     // Écraser avec les moyennes manuelles (elles l'emportent toujours)
                     $resultatsParMatiere[$matiereId]->moyenne = $resultatManuel->moyenne;
                     $resultatsParMatiere[$matiereId]->appreciation = $resultatManuel->appreciation ?: $this->getAppreciation($resultatManuel->moyenne);
-                    $resultatsParMatiere[$matiereId]->coefficient = $this->getCoefficientForCombination($matiereId, $classe->id, $anneeUniversitaireId);
+                    $resultatsParMatiere[$matiereId]->coefficient = $this->getCoefficientForCombination(
+                        $matiereId,
+                        $classe->id,
+                        $anneeUniversitaireId,
+                        (string) $periode,
+                        (int) $etudiantId
+                    );
                 }
             }
         }
 
         $periodeNormalized = $this->normalizePeriode($periode);
-        $this->persistResultats(
-            $resultatsParMatiere,
-            $etudiantId,
-            $classeId,
-            $anneeUniversitaireId,
-            $periodeNormalized
-        );
+        if ($persistOfficial) {
+            $this->persistResultats(
+                $resultatsParMatiere,
+                $etudiantId,
+                $classeId,
+                $anneeUniversitaireId,
+                $periodeNormalized
+            );
+        }
 
         // Séparer par type d'enseignement
         $resultatsGeneraux = collect($resultatsParMatiere)->filter(function ($resultat) {
@@ -415,18 +452,22 @@ class BulletinService
         // Effectif de la classe aligné sur classes.show: inscriptions validées uniquement.
         $effectif = $this->getValidatedClassStudentCount($classe->id, $anneeUniversitaire->id);
 
-        // Persister la moyenne BRUTE (sans assiduité) dans le bulletin.
-        // L'assiduité est stockée séparément dans note_assiduite.
-        // getBulletinAverageForPeriode() additionne les deux.
-        $bulletin->moyenne_generale = $moyenneGlobale;
-        $bulletin->note_assiduite = $noteAssiduite;
-        $bulletin->effectif_classe = $effectif;
-        $bulletin->save();
+        $rang = $bulletin?->rang ?? 1;
 
-        // Calculer le vrai rang (basé sur tous les bulletins de la classe/période)
-        $this->calculerRang($bulletin);
-        $bulletin->refresh();
-        $rang = $bulletin->rang ?? 1;
+        if ($persistOfficial && $bulletin) {
+            // Persister la moyenne BRUTE (sans assiduite) dans le bulletin.
+            // L'assiduite est stockee separement dans note_assiduite.
+            // getBulletinAverageForPeriode() additionne les deux.
+            $bulletin->moyenne_generale = $moyenneGlobale;
+            $bulletin->note_assiduite = $noteAssiduite;
+            $bulletin->effectif_classe = $effectif;
+            $bulletin->save();
+
+            // Calculer le vrai rang (base sur tous les bulletins de la classe/periode).
+            $this->calculerRang($bulletin);
+            $bulletin->refresh();
+            $rang = $bulletin->rang ?? 1;
+        }
 
         // Calculer les vraies statistiques de classe
         $statsClasse = $this->calculerStatistiquesClasse($classe->id, $anneeUniversitaire->id, $periode);
@@ -572,6 +613,118 @@ class BulletinService
             'isSpecialisation' => $classeTroncCommun !== null,
             'inscriptionWorkflowAlert' => $inscriptionWorkflowAlert,
         ];
+    }
+
+    /**
+     * Resolve class/period bulletin configuration without forcing a bulletin row
+     * to exist. Preview reads class configuration only; official generation syncs
+     * that configuration on the persisted bulletin before calculations.
+     *
+     * @return array{0: array{generales: list<int>, techniques: list<int>}, 1: array<int|string, mixed>}
+     */
+    private function resolveConfiguredBulletinContext(
+        ?ESBTPBulletin $bulletin,
+        int $classeId,
+        int $anneeUniversitaireId,
+        string $periode
+    ): array {
+        $configMatieres = $this->decodeJsonToArray($bulletin?->config_matieres);
+
+        if (empty($configMatieres['generales']) && empty($configMatieres['techniques'])) {
+            $configMatieres = $this->configMatieresPayloadForBulletin($classeId, $anneeUniversitaireId, $periode);
+        }
+
+        if (empty($configMatieres['generales']) && empty($configMatieres['techniques'])) {
+            throw new BulletinConfigurationException(
+                'Configuration bulletin manquante : configurez les matieres du bulletin avant de generer le PDF.',
+                $this->bulletinConfigurationContext($classeId, $anneeUniversitaireId, $periode)
+            );
+        }
+
+        $professeurs = $this->decodeJsonToArray($bulletin?->professeurs ?? null);
+        if ($professeurs === []) {
+            $professeurs = $this->professeursPayloadForBulletin($classeId, $anneeUniversitaireId, $periode);
+        }
+
+        return [$configMatieres, $professeurs];
+    }
+
+    private function syncConfiguredBulletinContext(ESBTPBulletin $bulletin, array $configMatieres, array $professeurs): void
+    {
+        $currentConfig = $this->decodeJsonToArray($bulletin->config_matieres);
+        if (empty($currentConfig['generales']) && empty($currentConfig['techniques'])) {
+            $bulletin->config_matieres = $configMatieres;
+        }
+
+        if (trim((string) $bulletin->professeurs) === '') {
+            $bulletin->professeurs = json_encode($professeurs);
+        }
+    }
+
+    private function bulletinConfigurationContext(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $periode = $this->normalizePeriode($periode);
+
+        return [
+            'classe_id' => $classeId,
+            'annee_universitaire_id' => $anneeUniversitaireId,
+            'periode' => $periode,
+            'configuration_url' => route('esbtp.bulletins.config-matieres', [
+                'classe_id' => $classeId,
+                'periode' => $periode,
+                'annee_universitaire_id' => $anneeUniversitaireId,
+            ]),
+        ];
+    }
+
+    private function configMatieresPayloadForBulletin(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $payload = ['generales' => [], 'techniques' => []];
+
+        $rows = ESBTPConfigMatiere::query()
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', $this->configPeriodsForBulletin($periode))
+            ->get(['matiere_id', 'config']);
+
+        foreach ($rows as $row) {
+            $config = is_array($row->config) ? $row->config : $this->decodeJsonToArray($row->config);
+            $type = $config['type'] ?? null;
+
+            if (in_array($type, ['general', 'generale'], true)) {
+                $payload['generales'][] = (int) $row->matiere_id;
+            }
+
+            if (in_array($type, ['technique', 'technologique_professionnelle'], true)) {
+                $payload['techniques'][] = (int) $row->matiere_id;
+            }
+        }
+
+        $payload['generales'] = array_values(array_unique($payload['generales']));
+        $payload['techniques'] = array_values(array_unique($payload['techniques']));
+
+        return $payload;
+    }
+
+    private function professeursPayloadForBulletin(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $template = ESBTPBulletin::where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', $this->configPeriodsForBulletin($periode))
+            ->whereNotNull('professeurs')
+            ->where('professeurs', '!=', '')
+            ->where('professeurs', '!=', '{}')
+            ->latest('updated_at')
+            ->value('professeurs');
+
+        return $this->decodeJsonToArray($template);
+    }
+
+    private function configPeriodsForBulletin(string $periode): array
+    {
+        $periode = $this->normalizePeriode($periode);
+
+        return $periode === 'annuel' ? ['semestre1', 'semestre2'] : [$periode];
     }
 
     /**
@@ -916,13 +1069,25 @@ class BulletinService
             ->get();
 
         if ($resultats->isEmpty()) {
-            return $this->calculerMoyenneDepuisNotes($etudiantId, $classe, $anneeUniversitaireId, $periodeOptions);
+            return $this->calculerMoyenneDepuisNotes(
+                $etudiantId,
+                $classe,
+                $anneeUniversitaireId,
+                $periodeOptions,
+                $this->normalizePeriode((string) $periode)
+            );
         }
 
         foreach ($resultats as $resultat) {
             if ($resultat->matiere) {
                 try {
-                    $coefficient = $this->getCoefficientForCombination($resultat->matiere_id, $classe->id, $anneeUniversitaireId);
+                    $coefficient = $this->getCoefficientForCombination(
+                        $resultat->matiere_id,
+                        $classe->id,
+                        $anneeUniversitaireId,
+                        $this->normalizePeriode((string) ($resultat->periode ?: $periode)),
+                        (int) $etudiantId
+                    );
                 } catch (\RuntimeException $e) {
                     $coefficient = 1;
                 }
@@ -941,7 +1106,7 @@ class BulletinService
         return $this->calculerMoyennePonderee(collect($resultatsParMatiere));
     }
 
-    private function calculerMoyenneDepuisNotes(int $etudiantId, ESBTPClasse $classe, int $anneeUniversitaireId, array $periodeOptions): float
+    private function calculerMoyenneDepuisNotes(int $etudiantId, ESBTPClasse $classe, int $anneeUniversitaireId, array $periodeOptions, string $periode = 'semestre1'): float
     {
         $notes = ESBTPNote::where('etudiant_id', $etudiantId)
             ->with(['evaluation', 'evaluation.matiere'])
@@ -1003,7 +1168,13 @@ class BulletinService
             $moyenneMatiere = $matiereData['total_points'] / $matiereData['total_coefficients'];
 
             try {
-                $coefficient = $this->getCoefficientForCombination($matiereId, $classe->id, $anneeUniversitaireId);
+                $coefficient = $this->getCoefficientForCombination(
+                    $matiereId,
+                    $classe->id,
+                    $anneeUniversitaireId,
+                    $this->normalizePeriode($periode),
+                    $etudiantId
+                );
             } catch (\RuntimeException $e) {
                 $coefficient = 1;
             }
@@ -1489,7 +1660,13 @@ class BulletinService
 
         foreach ($notesByMatiere as $matiereId => $matiereData) {
             if ($matiereData['moyenne'] > 0) {
-                $coeff = $this->getCoefficientForCombination($matiereId, $classeId ?? 0, $anneeUniversitaireId ?? 0);
+                $coeff = $this->getCoefficientForCombination(
+                    $matiereId,
+                    $classeId ?? 0,
+                    $anneeUniversitaireId ?? 0,
+                    $periodePourBDD,
+                    $etudiantId
+                );
                 $sommePoints += $matiereData['moyenne'] * $coeff;
                 $sommeCoefs += $coeff;
             }

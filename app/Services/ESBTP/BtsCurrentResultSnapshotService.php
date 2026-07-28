@@ -145,7 +145,13 @@ class BtsCurrentResultSnapshotService
 
             if ($coefficient === null) {
                 try {
-                    $coefficient = $this->bulletinService->getCoefficientForCombination($matiereId, $classeId, $anneeUniversitaireId);
+                    $coefficient = $this->bulletinService->getCoefficientForCombination(
+                        $matiereId,
+                        $classeId,
+                        $anneeUniversitaireId,
+                        $periode,
+                        $etudiantId
+                    );
                 } catch (\RuntimeException) {
                     $missingConfiguration[] = "coefficient:matiere:{$matiereId}";
                 }
