@@ -496,7 +496,7 @@
                         x-model="form.annee_universitaire_id" />
                     <p class="bus-status" x-show="form.classe_id && form.annee_universitaire_id && !loadingStudents">
                         <i class="fas fa-users"></i>
-                        <span x-text="students.length + ' étudiant' + (students.length > 1 ? 's' : '') + ' seront concernés'"></span>
+                        <span x-text="generationStudentsLabel()"></span>
                     </p>
                 </div>
                 <div class="bus-field" :class="(!form.classe_id || !form.annee_universitaire_id) ? 'bus-field--disabled' : ''">
@@ -700,6 +700,25 @@ window.busCard = function (cfg) {
             const skipped = this.lastGeneration.skipped?.length || 0;
             const blocked = (this.lastGeneration.blocking_errors?.length || 0) + (this.lastGeneration.errors?.length || 0);
             return `${this.lastGeneration.created || 0} cree(s), ${this.lastGeneration.regenerated || 0} recalcule(s), ${skipped} ignore(s), ${blocked} blocage(s).`;
+        },
+
+        generationStudentsLabel() {
+            if (!this.form.classe_id || !this.form.annee_universitaire_id) {
+                return 'Selectionnez une classe et une annee';
+            }
+
+            if (this.preflight?.students_count !== undefined) {
+                const count = this.preflight.students_count || 0;
+                const plural = count > 1 ? 's' : '';
+                const verb = count > 1 ? 'seront' : 'sera';
+                return `${count} etudiant${plural} ${verb} concerne${plural}`;
+            }
+
+            if (this.preflightBusy) {
+                return 'Verification des etudiants concernes...';
+            }
+
+            return 'Pre-controle requis';
         },
 
         canOpenPilotage() {

@@ -46,6 +46,8 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringContainsString('Le serveur a redirige la requete au lieu de retourner le resultat JSON.', $view);
         $this->assertStringContainsString('this.lastGeneration = data', $view);
         $this->assertStringContainsString('Aucun bulletin genere.', $view);
+        $this->assertStringContainsString('generationStudentsLabel()', $view);
+        $this->assertStringContainsString('this.preflight?.students_count', $view);
         $this->assertStringNotContainsString('Bulletins générés pour la classe. Redirection…', $view);
     }
 
