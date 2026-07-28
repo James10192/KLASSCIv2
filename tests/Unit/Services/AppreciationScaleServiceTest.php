@@ -36,6 +36,18 @@ class AppreciationScaleServiceTest extends TestCase
         self::assertSame('Excellent', $service->labelFor(18, 'bts'));
     }
 
+    public function testToneForConfiguredBtsLabels(): void
+    {
+        $service = new AppreciationScaleService;
+
+        self::assertSame('danger', $service->toneFor('nul-ou-mal'));
+        self::assertSame('danger', $service->toneFor('mediocre'));
+        self::assertSame('warning', $service->toneFor('insuffisant'));
+        self::assertSame('primary', $service->toneFor('passable'));
+        self::assertSame('success', $service->toneFor('excellent'));
+        self::assertSame('neutral', $service->toneFor('default'));
+    }
+
     public function testRejectsOverlappingRanges(): void
     {
         $this->expectException(\InvalidArgumentException::class);

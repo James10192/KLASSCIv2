@@ -8,8 +8,8 @@
         $pdfHeaderText = $pdfSettings['header_text_color'] ?? '#ffffff';
         $pdfPrimary    = $pdfSettings['primary_color']     ?? $pdfHeaderBg;
         $pdfText       = $pdfSettings['text_color']        ?? '#1f2937';
-        $appreciationScale = app(\App\Services\AppreciationScaleService::class);
-        $anneeLabel = $anneeUniversitaire?->display_name ?? '';
+        $anneeAffichee = ($bulletin ?? null)?->anneeUniversitaire ?? ($anneeUniversitaire ?? null);
+        $anneeLabel = $anneeAffichee?->display_name ?? '';
     @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -310,6 +310,22 @@
             background: #f8fafb;
             font-size: 13px;
         }
+        .appreciation-badge {
+            display: inline-block;
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-weight: 700;
+            white-space: nowrap;
+            border: 1px solid #d1d5db;
+            background: #f8fafc;
+            color: #475569;
+        }
+        .appreciation-badge--success { background: #ecfdf5; color: #047857; border-color: #a7f3d0; }
+        .appreciation-badge--primary { background: #eff6ff; color: #0453cb; border-color: #bfdbfe; }
+        .appreciation-badge--warning { background: #fffbeb; color: #b45309; border-color: #fde68a; }
+        .appreciation-badge--danger { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
+        .appreciation-badge--neutral { background: #f8fafc; color: #475569; border-color: #d1d5db; }
         .absences-table { width: 100%; margin-bottom: 4px; font-size: 12.5px; }
         .absences-table td { padding: 3px 5px; }
 
@@ -628,7 +644,14 @@
                                 @if($showRankPerSubject)<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
                                 @if($showAbsencesParMatiere)<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
                                 @if($showTeachers)<td>{{ $professeurs[$resultat->matiere_id] ?? 'M.' }}</td>@endif
-                                @if($showAppreciations)<td>{{ $appreciationScale->labelFor($resultat->moyenne === null ? null : (float) $resultat->moyenne, 'bts', '-') }}</td>@endif
+                                @if($showAppreciations)
+                                    <td class="center">
+                                        @include('esbtp.bulletins.partials.appreciation', [
+                                            'moyenne' => $resultat->moyenne,
+                                            'badgeClass' => 'appreciation-badge',
+                                        ])
+                                    </td>
+                                @endif
                             </tr>
                         @endforeach
                     @else
@@ -656,7 +679,14 @@
                             @if($showRankPerSubject)<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
                             @if($showAbsencesParMatiere)<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
                             @if($showTeachers)<td>{{ $professeurs[$resultat->matiere_id] ?? 'M.' }}</td>@endif
-                            @if($showAppreciations)<td>{{ $appreciationScale->labelFor($resultat->moyenne === null ? null : (float) $resultat->moyenne, 'bts', '-') }}</td>@endif
+                            @if($showAppreciations)
+                                <td class="center">
+                                    @include('esbtp.bulletins.partials.appreciation', [
+                                        'moyenne' => $resultat->moyenne,
+                                        'badgeClass' => 'appreciation-badge',
+                                    ])
+                                </td>
+                            @endif
                         </tr>
                     @endforeach
                 @else

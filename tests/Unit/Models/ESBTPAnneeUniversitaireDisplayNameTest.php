@@ -3,7 +3,6 @@
 namespace Tests\Unit\Models;
 
 use App\Models\ESBTPAnneeUniversitaire;
-use Carbon\Carbon;
 use PHPUnit\Framework\TestCase;
 
 class ESBTPAnneeUniversitaireDisplayNameTest extends TestCase
@@ -17,21 +16,36 @@ class ESBTPAnneeUniversitaireDisplayNameTest extends TestCase
 
     public function test_display_name_falls_back_to_dates(): void
     {
-        $year = new ESBTPAnneeUniversitaire([
-            'start_date' => Carbon::parse('2025-09-01'),
-            'end_date' => Carbon::parse('2026-07-31'),
-        ]);
+        $year = new ESBTPAnneeUniversitaire;
+        $year->setRawAttributes([
+            'start_date' => '2025-09-01',
+            'end_date' => '2026-07-31',
+        ], true);
 
         $this->assertSame('2025-2026', $year->display_name);
     }
 
     public function test_display_name_ignores_dash_placeholder_name(): void
     {
-        $year = new ESBTPAnneeUniversitaire([
+        $year = new ESBTPAnneeUniversitaire;
+        $year->setRawAttributes([
             'name' => '-',
-            'start_date' => Carbon::parse('2025-09-01'),
-            'end_date' => Carbon::parse('2026-07-31'),
-        ]);
+            'start_date' => '2025-09-01',
+            'end_date' => '2026-07-31',
+        ], true);
+
+        $this->assertSame('2025-2026', $year->display_name);
+    }
+
+    public function test_display_name_falls_back_to_libelle_before_dates(): void
+    {
+        $year = new ESBTPAnneeUniversitaire;
+        $year->setRawAttributes([
+            'name' => '-',
+            'libelle' => '2025-2026',
+            'start_date' => '2024-09-01',
+            'end_date' => '2025-07-31',
+        ], true);
 
         $this->assertSame('2025-2026', $year->display_name);
     }
@@ -60,9 +74,10 @@ class ESBTPAnneeUniversitaireDisplayNameTest extends TestCase
 
     public function test_display_name_handles_partial_dates(): void
     {
-        $year = new ESBTPAnneeUniversitaire([
-            'start_date' => Carbon::parse('2022-09-01'),
-        ]);
+        $year = new ESBTPAnneeUniversitaire;
+        $year->setRawAttributes([
+            'start_date' => '2022-09-01',
+        ], true);
 
         $this->assertSame('2022', $year->display_name);
     }

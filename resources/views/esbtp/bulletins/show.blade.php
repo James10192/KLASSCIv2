@@ -4,14 +4,7 @@
 
 @php
     $bshAppreciations = app(\App\Services\AppreciationScaleService::class);
-    $bshToneFor = static function (?string $slug): string {
-        return match ($slug) {
-            'excellent', 'tres-bien' => 'success',
-            'bien', 'assez-bien', 'passable' => 'primary',
-            'insuffisant' => 'warning',
-            default => 'danger',
-        };
-    };
+    $bshToneFor = static fn (?string $slug): string => $bshAppreciations->toneFor($slug);
     $bshMoyenne = $bulletin->moyenne_generale;
     $bshResultat = null;
     if ($bshMoyenne !== null) {
@@ -92,6 +85,7 @@
     .bsh-chip--success { background: rgba(52,211,153,.2); color: #d1fae5; border: 1px solid rgba(52,211,153,.4); }
     .bsh-chip--danger  { background: rgba(248,113,113,.2); color: #fee2e2; border: 1px solid rgba(248,113,113,.4); }
     .bsh-chip--warning { background: rgba(251,191,36,.2); color: #fef3c7; border: 1px solid rgba(251,191,36,.4); }
+    .bsh-chip--primary { background: rgba(255,255,255,.16); color: #fff; border: 1px solid rgba(255,255,255,.3); }
     .bsh-chip--neutral { background: rgba(255,255,255,.14); color: #fff; border: 1px solid rgba(255,255,255,.2); }
 
     /* Buttons */
@@ -258,7 +252,7 @@
                 <div class="bsh-kpi-label">Mention</div>
                 <div class="bsh-kpi-value">
                     @if($bshResultat)
-                        <span class="bsh-kpi-chip bsh-chip--{{ $bshResultat[1] === 'primary' ? 'neutral' : $bshResultat[1] }}">{{ $bshResultat[0] }}</span>
+                        <span class="bsh-kpi-chip bsh-chip--{{ $bshResultat[1] }}">{{ $bshResultat[0] }}</span>
                     @else
                         <span class="bsh-kpi-chip bsh-chip--neutral">Non évalué</span>
                     @endif
@@ -349,11 +343,11 @@
                                     </span>
                                 </td>
                                 <td class="text-c">
-                                    @php
-                                        $mentionClass = $bshAppreciations->classificationFor($resultat->moyenne === null ? null : (float) $resultat->moyenne, 'bts', '—');
-                                        $mention = [$mentionClass['label'], $bshToneFor($mentionClass['slug'])];
-                                    @endphp
-                                    <span class="bsh-badge bsh-badge--{{ $mention[1] }}">{{ $mention[0] }}</span>
+                                    @include('esbtp.bulletins.partials.appreciation', [
+                                        'moyenne' => $resultat->moyenne,
+                                        'emptyLabel' => '—',
+                                        'badgeClass' => 'bsh-badge',
+                                    ])
                                 </td>
                                 <td>{{ $resultat->commentaire ?? '—' }}</td>
                             </tr>

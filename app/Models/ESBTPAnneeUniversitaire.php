@@ -95,10 +95,15 @@ class ESBTPAnneeUniversitaire extends Model
             return $name;
         }
 
+        $libelle = trim((string) ($this->attributes['libelle'] ?? null));
+        if ($libelle !== '' && $libelle !== '-') {
+            return $libelle;
+        }
+
         $startYear = $this->normalizeYearPart($this->getRawOriginal('annee_debut'))
-            ?? ($this->start_date ? $this->start_date->format('Y') : null);
+            ?? $this->normalizeYearPart($this->attributes['start_date'] ?? null);
         $endYear = $this->normalizeYearPart($this->getRawOriginal('annee_fin'))
-            ?? ($this->end_date ? $this->end_date->format('Y') : null);
+            ?? $this->normalizeYearPart($this->attributes['end_date'] ?? null);
 
         if ($startYear && $endYear) {
             return "{$startYear}-{$endYear}";

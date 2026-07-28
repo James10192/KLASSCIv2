@@ -53,6 +53,17 @@ final class AppreciationScaleService
         return $this->classificationFor($score, $system, $emptyLabel)['label'];
     }
 
+    public function toneFor(?string $slug): string
+    {
+        return match ($slug) {
+            'excellent', 'tres-bien', 'bien' => 'success',
+            'assez-bien', 'passable' => 'primary',
+            'insuffisant' => 'warning',
+            'mediocre', 'nul-ou-mal', 'nul-mal', 'mal', 'nul' => 'danger',
+            default => 'neutral',
+        };
+    }
+
     /** @return array{label: string, slug: string, min: float|null, max: float|null} */
     public function classificationFor(?float $score, string $system = 'bts', string $emptyLabel = 'N/A'): array
     {

@@ -989,7 +989,7 @@ class ESBTPBulletinController extends Controller
                             ($bulletin->etudiant ? $bulletin->etudiant->matricule : 'unknown').'_'.
                             ($bulletin->classe ? $bulletin->classe->code : 'unknown').'_'.
                             $bulletin->periode.'_'.
-                            ($bulletin->anneeUniversitaire ? $bulletin->anneeUniversitaire->libelle : 'unknown').'.pdf';
+                            ($bulletin->anneeUniversitaire ? $bulletin->anneeUniversitaire->display_name : 'unknown').'.pdf';
 
                 Log::info('PDF généré avec succès pour le bulletin #'.$bulletin->id);
 
@@ -1533,7 +1533,7 @@ class ESBTPBulletinController extends Controller
                         ($donnees['etudiant']->matricule ?? 'unknown').'_'.
                         ($donnees['classe']->code ?? 'unknown').'_'.
                         $periode.'_'.
-                        ($donnees['anneeUniversitaire']->libelle ?? 'unknown').'.pdf';
+                        ($donnees['anneeUniversitaire']->display_name ?? 'unknown').'.pdf';
 
             return $inline ? $pdf->stream($filename) : $pdf->download($filename);
 
