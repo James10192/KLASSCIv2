@@ -188,6 +188,8 @@
 
         // État initial
         applyModeFromNiveau();
+        filterClasses();
+        updatePlacesInfo($('#classe_id').val());
 
         // Avertissement si le statut est modifié à "terminée"
         $('#status').change(function() {
