@@ -42,12 +42,14 @@ class LMDBulletinLiveResultsWiringTest extends TestCase
     public function test_lmd_select_filters_students_by_academic_year_and_preflights_generation(): void
     {
         $select = file_get_contents($this->root.'/resources/views/esbtp/lmd/bulletins/select.blade.php');
+        $preflightModal = file_get_contents($this->root.'/resources/views/esbtp/lmd/bulletins/partials/preflight-modal.blade.php');
         $classe = file_get_contents($this->root.'/resources/views/esbtp/lmd/resultats/classe.blade.php');
         $routes = file_get_contents($this->root.'/routes/web.php');
 
         $this->assertStringContainsString("params.set('annee_universitaire_id', this.anneeId)", $select);
         $this->assertStringContainsString('data-lmd-preflight', $select);
         $this->assertStringContainsString('data-lmd-preflight', $classe);
+        $this->assertStringContainsString('entry.student_name', $preflightModal);
         $this->assertStringContainsString("name('bulletins.preflight')", $routes);
     }
 

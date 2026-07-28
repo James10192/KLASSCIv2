@@ -88,7 +88,13 @@ class LiveResultsPreflightFlowTest extends TestCase
             'blocked_count' => 2,
         ]);
         $response->assertJsonPath('blocking_errors.0.issues.0.code', 'missing_grade_entries');
-        $this->assertStringContainsString('Complétez les fiches de notes', $response->json('message'));
+        $response->assertJsonPath('blocking_errors.0.student_name', 'Kouassi Awa');
+        $response->assertJsonPath('blocking_errors.0.student_matricule', 'LMD100');
+        $this->assertStringContainsString('Ouvrez Notes LMD', $response->json('message'));
+        $this->assertStringContainsString(
+            'Certaines notes attendues manquent',
+            $response->json('blocking_errors.0.issues.0.message')
+        );
     }
 
     private function useMysqlSandboxDatabase(): void

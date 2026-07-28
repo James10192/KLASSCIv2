@@ -7,6 +7,7 @@ use App\Domain\AcademicPilotage\Services\BulletinGenerationReadinessService;
 use App\Helpers\SettingsHelper;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPLMDBulletin;
 use App\Services\LMD\LmdCreditWalletService;
 use App\Services\LMDBulletinService;
@@ -258,6 +259,8 @@ class ESBTPLMDBulletinController extends Controller
                 (int) $validated['classe_id'],
                 (int) $validated['annee_universitaire_id']
             )) {
+                $student = ESBTPEtudiant::select('id', 'matricule', 'nom', 'prenoms')->find($etudiantId);
+
                 return response()->json([
                     'ok' => false,
                     'ready' => false,
@@ -268,6 +271,8 @@ class ESBTPLMDBulletinController extends Controller
                     'message' => 'Cet étudiant ne possède pas une inscription active valide pour cette classe et cette année universitaire.',
                     'blocking_errors' => [[
                         'student_id' => $etudiantId,
+                        'student_name' => $this->studentDisplayName($student, $etudiantId),
+                        'student_matricule' => $student?->matricule,
                         'message' => 'Inscription active introuvable pour cette cohorte.',
                         'issues' => [[
                             'code' => 'missing_active_registration',
@@ -282,6 +287,10 @@ class ESBTPLMDBulletinController extends Controller
         }
 
         $hasOverride = $request->user()?->can('bulletins.generate_incomplete') ?? false;
+        $students = ESBTPEtudiant::select('id', 'matricule', 'nom', 'prenoms')
+            ->whereIn('id', $studentIds)
+            ->get()
+            ->keyBy('id');
         $blocking = [];
         $ready = 0;
 
@@ -299,8 +308,12 @@ class ESBTPLMDBulletinController extends Controller
                 continue;
             }
 
+            $student = $students->get((int) $studentId);
+
             $blocking[] = [
                 'student_id' => (int) $studentId,
+                'student_name' => $this->studentDisplayName($student, (int) $studentId),
+                'student_matricule' => $student?->matricule,
                 'message' => 'Dossier académique incomplet pour cet étudiant.',
                 'requires_incomplete_reason' => $hasOverride,
                 'issues' => $inspection->blockingIssues,
@@ -372,10 +385,10 @@ class ESBTPLMDBulletinController extends Controller
         }
 
         if ($hasOverride) {
-            return count($blocking)." dossier(s) incomplet(s). Vous pouvez générer avec un motif explicite.";
+            return count($blocking)." dossier(s) incomplet(s) ou non vérifié(s). Vérifiez les fiches dans Notes LMD. Si vous assumez un bulletin provisoire, renseignez un motif explicite pour continuer.";
         }
 
-        return count($blocking)." dossier(s) incomplet(s). Complétez les fiches de notes avant génération.";
+        return count($blocking)." dossier(s) incomplet(s) ou non vérifié(s). Ouvrez Notes LMD pour synchroniser, compléter et valider les fiches de notes avant génération.";
     }
 
     private function isStudentInGenerationCohort(int $studentId, int $classId, int $academicYearId): bool
@@ -383,6 +396,17 @@ class ESBTPLMDBulletinController extends Controller
         return $this->service
             ->studentIdsForGenerationCohort($classId, $academicYearId)
             ->contains($studentId);
+    }
+
+    private function studentDisplayName(?ESBTPEtudiant $student, int $fallbackId): string
+    {
+        if (! $student) {
+            return "Étudiant #{$fallbackId}";
+        }
+
+        $name = trim((string) $student->nom_complet);
+
+        return $name !== '' ? $name : "Étudiant #{$fallbackId}";
     }
 
     public function show(ESBTPLMDBulletin $bulletin)

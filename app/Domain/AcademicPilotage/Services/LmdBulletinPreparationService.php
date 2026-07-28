@@ -32,13 +32,13 @@ final class LmdBulletinPreparationService implements BulletinPreparationService
         if (! $completion?->isAvailable()) {
             $issues[] = $this->issue(
                 'grade_sheet_status_unavailable',
-                'Le statut des feuilles de notes ne peut pas être vérifié.',
+                'Impossible de confirmer les fiches de notes LMD pour ce semestre. Ouvrez Notes LMD, synchronisez ou créez les fiches, puis validez-les avant de générer le bulletin.',
                 'blocking',
             );
         } elseif (($completion->denominator ?? 0) > ($completion->numerator ?? 0)) {
             $issues[] = $this->issue(
                 'missing_grade_entries',
-                'Des entrées de fiche restent attendues pour cet étudiant.',
+                'Certaines notes attendues manquent ou ne sont pas validées dans les fiches LMD. Complétez les notes de cet étudiant, validez les fiches, puis relancez le contrôle.',
                 'blocking',
             );
         }

@@ -96,7 +96,8 @@ if (!window.lmdPreflightModalLoaded) {
             (payload.blocking_errors || []).slice(0, 12).forEach((entry) => {
                 const li = document.createElement('li');
                 const issues = (entry.issues || []).map((issue) => issue.message).join(' ');
-                li.textContent = `Étudiant ${entry.student_id ?? '-'} : ${issues || entry.message || 'Blocage détecté'}`;
+                const studentLabel = entry.student_name || (entry.student_id ? `Étudiant #${entry.student_id}` : 'Étudiant');
+                li.textContent = `${studentLabel} : ${issues || entry.message || 'Blocage détecté'}`;
                 listNode.appendChild(li);
             });
 
