@@ -2714,6 +2714,7 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
     // --- Bulletins LMD ---
     Route::get('bulletins', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'index'])->name('bulletins.index');
     Route::get('bulletins/select', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'select'])->name('bulletins.select');
+    Route::post('bulletins/preflight', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'preflight'])->name('bulletins.preflight');
     Route::post('bulletins/generer', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'generer'])->name('bulletins.generer');
     Route::post('bulletins/generer-classe', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'genererClasse'])->name('bulletins.generer-classe');
     Route::get('bulletins/{bulletin}', [\App\Http\Controllers\ESBTPLMDBulletinController::class, 'show'])->name('bulletins.show');

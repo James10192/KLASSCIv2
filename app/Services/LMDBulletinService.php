@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\ESBTPClasse;
-use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPLMDBulletin;
 use App\Models\ESBTPLMDDeliberation;
@@ -15,6 +14,7 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPUniteEnseignement;
 use App\Helpers\SettingsHelper;
 use App\Services\LMD\LmdAcademicRuleProfile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -48,7 +48,7 @@ class LMDBulletinService
      * Get all possible periode label variants for a given semestre number.
      * Evaluations may store periode as '3', 'semestre3', 'S3', 'Semestre 3', etc.
      */
-    protected function getPeriodeVariants(int $semestre): array
+    public function getPeriodeVariants(int $semestre): array
     {
         return [
             (string) $semestre,
@@ -169,29 +169,39 @@ class LMDBulletinService
         });
     }
 
+    public function studentIdsForGenerationCohort(int $classeId, int $anneeUniversitaireId): Collection
+    {
+        return DB::table('esbtp_inscriptions')
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->orderBy('etudiant_id')
+            ->pluck('etudiant_id')
+            ->map(fn ($id): int => (int) $id);
+    }
+
     /**
      * Generer les bulletins pour toute une classe.
      */
     public function genererBulletinsClasse(int $classeId, int $anneeUniversitaireId, int $semestre): array
     {
-        $classe = ESBTPClasse::with('inscriptions.etudiant')->findOrFail($classeId);
+        ESBTPClasse::findOrFail($classeId);
 
         $bulletins = [];
         $errors = [];
-        foreach ($classe->inscriptions as $inscription) {
-            if ($inscription->status !== 'active') continue;
-
+        foreach ($this->studentIdsForGenerationCohort($classeId, $anneeUniversitaireId) as $studentId) {
             try {
                 $bulletins[] = $this->genererBulletinLMD(
-                    $inscription->etudiant_id,
+                    $studentId,
                     $classeId,
                     $anneeUniversitaireId,
                     $semestre,
                     skipRanksAndStats: true // Calculer une seule fois apres la boucle
                 );
             } catch (\Exception $e) {
-                Log::error("LMD Bulletin generation failed for etudiant {$inscription->etudiant_id}: {$e->getMessage()}");
-                $errors[] = $inscription->etudiant_id;
+                Log::error("LMD Bulletin generation failed for etudiant {$studentId}: {$e->getMessage()}");
+                $errors[] = $studentId;
             }
         }
 
@@ -207,7 +217,7 @@ class LMDBulletinService
     /**
      * Recuperer les UEs pour un semestre donne.
      */
-    protected function getUEsForSemestre(ESBTPClasse $classe, int $semestre): \Illuminate\Support\Collection
+    public function getUEsForSemestre(ESBTPClasse $classe, int $semestre): \Illuminate\Support\Collection
     {
         // Eager-load ECUEs via pivot (prioritaire) ET matieres HasMany (fallback)
         $eagerLoad = [

@@ -480,11 +480,10 @@
             foreach ($classes as $c) {
                 $totalEtudiants += $c->total_etudiants ?? 0;
             }
-            foreach ($bulletinCounts ?? [] as $bc) {
-                $totalBulletins += $bc['total'] ?? 0;
-                if (($bc['total'] ?? 0) > 0) {
-                    $taux = ($bc['total_valides'] ?? 0) / ($bc['total'] ?? 1) * 100;
-                    $tauxSum += $taux;
+            foreach ($classStats ?? [] as $stats) {
+                $totalBulletins += $stats['total_bulletins'] ?? 0;
+                if (($stats['effectif'] ?? 0) > 0 && ($stats['taux_validation'] ?? null) !== null) {
+                    $tauxSum += $stats['taux_validation'];
                     $tauxCount++;
                 }
             }
@@ -590,13 +589,17 @@
             <div class="lr-cards">
                 @foreach($classes as $classe)
                     @php
-                        $bc = $bulletinCounts[$classe->id] ?? null;
-                        $bcTotal = $bc['total'] ?? 0;
-                        $bcMoy = $bc['moy_classe'] ?? 0;
-                        $bcValides = $bc['total_valides'] ?? 0;
-                        $taux = ($bcTotal > 0) ? ($bcValides / $bcTotal) * 100 : 0;
+                        $stats = $classStats[$classe->id] ?? [];
+                        $bcTotal = $stats['total_bulletins'] ?? 0;
+                        $bcMoy = $stats['moyenne_classe'] ?? 0;
+                        $taux = $stats['taux_validation'] ?? 0;
                         $tauxColor = $taux >= 70 ? 'green' : ($taux >= 50 ? 'orange' : 'red');
                         $nbEtudiants = $classe->total_etudiants ?? 0;
+                        $detailUrl = route('esbtp.lmd.resultats.classe', [
+                            'classe' => $classe,
+                            'annee_universitaire_id' => $anneeId,
+                            'semestre' => $stats['semestre'] ?? 1,
+                        ]);
                     @endphp
                     <div class="lr-card">
                         <div class="lr-card-head">
@@ -620,7 +623,7 @@
                                 <span class="lr-metric-value">{{ $bcTotal }}</span>
                             </div>
                             <div class="lr-metric">
-                                <span class="lr-metric-label">Moy. classe</span>
+                                <span class="lr-metric-label">Moy. live</span>
                                 <span class="lr-metric-value" style="color: {{ $bcMoy >= 10 ? '#059669' : ($bcMoy > 0 ? '#dc2626' : '#94a3b8') }};">
                                     {{ $bcMoy > 0 ? number_format($bcMoy, 2) : '—' }}
                                 </span>
@@ -631,7 +634,7 @@
                             <div class="lr-bar-label">
                                 <span class="lr-bar-label-text">Taux de validation</span>
                                 <span class="lr-bar-label-value lr-bar-label-value--{{ $tauxColor }}">
-                                    {{ $bcTotal > 0 ? number_format($taux, 1) . '%' : '—' }}
+                                    {{ $nbEtudiants > 0 ? number_format($taux, 1) . '%' : '—' }}
                                 </span>
                             </div>
                             <div class="lr-bar-track">
@@ -640,12 +643,10 @@
                         </div>
 
                         <div class="lr-card-foot">
-                            @if($bcTotal > 0)
-                                <a href="{{ route('esbtp.lmd.resultats.classe', $classe) }}" class="lr-card-btn lr-card-btn--outline">
-                                    <i class="fas fa-chart-bar"></i>Résultats
-                                </a>
-                            @endif
-                            <a href="{{ route('esbtp.lmd.resultats.classe', $classe) }}" class="lr-card-btn lr-card-btn--primary">
+                            <a href="{{ $detailUrl }}" class="lr-card-btn lr-card-btn--outline">
+                                <i class="fas fa-chart-bar"></i>Live
+                            </a>
+                            <a href="{{ $detailUrl }}" class="lr-card-btn lr-card-btn--primary">
                                 <i class="fas fa-eye"></i>Voir détails
                             </a>
                         </div>

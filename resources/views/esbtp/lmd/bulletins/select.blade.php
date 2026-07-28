@@ -472,7 +472,7 @@
                         </div>
                         <div class="bs-field">
                             <label class="bs-label">Année universitaire <span class="bs-req">*</span></label>
-                            <select class="bs-select" x-model="anneeId" required>
+                            <select class="bs-select" x-model="anneeId" @change="onAnneeChange()" required>
                                 <option value="">— Sélectionner —</option>
                                 @foreach($annees as $annee)
                                     <option value="{{ $annee->id }}" {{ ($annee->is_current ?? false) ? 'selected' : '' }}>
@@ -585,25 +585,29 @@
 
                     <div>
                         {{-- Form classe --}}
-                        <form x-show="mode === 'classe'" action="{{ route('esbtp.lmd.bulletins.generer-classe') }}" method="POST" style="display:inline;">
+                        <form id="bs-generate-classe-form" x-show="mode === 'classe'" action="{{ route('esbtp.lmd.bulletins.generer-classe') }}" method="POST" style="display:inline;">
                             @csrf
                             <input type="hidden" name="classe_id" :value="classeId">
                             <input type="hidden" name="annee_universitaire_id" :value="anneeId">
                             <input type="hidden" name="semestre" :value="semestre">
-                            <button type="submit" class="bs-btn bs-btn--primary"
+                            <input type="hidden" name="incomplete_reason" data-lmd-reason-field>
+                            <button type="button" class="bs-btn bs-btn--primary"
+                                    data-lmd-preflight data-mode="classe" data-form-id="bs-generate-classe-form"
                                     :disabled="!classeId || !anneeId || !semestre">
                                 <i class="fas fa-file-export"></i>Générer les bulletins
                             </button>
                         </form>
 
                         {{-- Form etudiant --}}
-                        <form x-show="mode === 'etudiant'" action="{{ route('esbtp.lmd.bulletins.generer') }}" method="POST" style="display:inline;">
+                        <form id="bs-generate-etudiant-form" x-show="mode === 'etudiant'" action="{{ route('esbtp.lmd.bulletins.generer') }}" method="POST" style="display:inline;">
                             @csrf
                             <input type="hidden" name="classe_id" :value="classeId">
                             <input type="hidden" name="annee_universitaire_id" :value="anneeId">
                             <input type="hidden" name="semestre" :value="semestre">
                             <input type="hidden" name="etudiant_id" :value="etudiantId">
-                            <button type="submit" class="bs-btn bs-btn--primary"
+                            <input type="hidden" name="incomplete_reason" data-lmd-reason-field>
+                            <button type="button" class="bs-btn bs-btn--primary"
+                                    data-lmd-preflight data-mode="etudiant" data-form-id="bs-generate-etudiant-form"
                                     :disabled="!classeId || !anneeId || !semestre || !etudiantId">
                                 <i class="fas fa-user-check"></i>Générer le bulletin
                             </button>
@@ -615,6 +619,7 @@
         </div>
     </div>
 </div>
+@include('esbtp.lmd.bulletins.partials.preflight-modal')
 @endsection
 
 @push('scripts')
@@ -640,6 +645,14 @@ function lmdBulletinSelect() {
             this.fetchSemestres();
         },
 
+        onAnneeChange() {
+            this.etudiants = [];
+            this.etudiantId = '';
+            if (this.classeId) {
+                this.fetchEtudiants();
+            }
+        },
+
         async fetchSemestres() {
             try {
                 const resp = await fetch(`/esbtp/classes/${this.classeId}/semestres-lmd`);
@@ -658,7 +671,9 @@ function lmdBulletinSelect() {
         async fetchEtudiants() {
             this.loading = true;
             try {
-                const resp = await fetch(`/esbtp/classes/${this.classeId}/etudiants`);
+                const params = new URLSearchParams();
+                if (this.anneeId) params.set('annee_universitaire_id', this.anneeId);
+                const resp = await fetch(`/esbtp/classes/${this.classeId}/etudiants?${params.toString()}`);
                 const data = await resp.json();
                 this.etudiants = data.etudiants || [];
                 this.populateStudentSelect();

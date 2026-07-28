@@ -12,7 +12,6 @@ use App\Services\LMD\LmdCreditWalletService;
 use App\Services\LMDBulletinService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class ESBTPLMDBulletinController extends Controller
 {
@@ -91,6 +90,7 @@ class ESBTPLMDBulletinController extends Controller
             'classe_id' => 'required|exists:esbtp_classes,id',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'semestre' => 'required|integer|min:1|max:10',
+            'incomplete_reason' => 'nullable|string|max:1000',
         ]);
 
         // Vérifier que le semestre correspond au niveau de la classe
@@ -100,6 +100,16 @@ class ESBTPLMDBulletinController extends Controller
             return redirect()->back()->with('error',
                 "Le semestre S{$request->semestre} ne correspond pas au niveau {$classe->niveau->name}. Semestres autorisés : S".implode(', S', $semestresAutorises).'.'
             );
+        }
+
+        if (! $this->isStudentInGenerationCohort(
+            (int) $request->etudiant_id,
+            (int) $request->classe_id,
+            (int) $request->annee_universitaire_id
+        )) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Cet étudiant ne possède pas une inscription active valide pour cette classe et cette année universitaire.');
         }
 
         try {
@@ -135,6 +145,7 @@ class ESBTPLMDBulletinController extends Controller
             'classe_id' => 'required|exists:esbtp_classes,id',
             'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
             'semestre' => 'required|integer|min:1|max:10',
+            'incomplete_reason' => 'nullable|string|max:1000',
         ]);
 
         // Vérifier que le semestre correspond au niveau de la classe
@@ -146,11 +157,16 @@ class ESBTPLMDBulletinController extends Controller
             );
         }
 
-        $studentIds = DB::table('esbtp_inscriptions')
-            ->where('classe_id', $request->classe_id)
-            ->where('annee_universitaire_id', $request->annee_universitaire_id)
-            ->where('status', 'active')
-            ->pluck('etudiant_id');
+        $studentIds = $this->service->studentIdsForGenerationCohort(
+            (int) $request->classe_id,
+            (int) $request->annee_universitaire_id
+        );
+
+        if ($studentIds->isEmpty()) {
+            return redirect()->back()
+                ->withInput()
+                ->with('error', 'Aucun étudiant actif trouvé pour cette classe et cette année universitaire.');
+        }
 
         foreach ($studentIds as $studentId) {
             try {
@@ -177,6 +193,17 @@ class ESBTPLMDBulletinController extends Controller
         );
 
         $count = count($bulletins);
+        $expectedCount = $studentIds->count();
+
+        if ($count < $expectedCount) {
+            return redirect()
+                ->route('esbtp.lmd.bulletins.index', [
+                    'classe_id' => $request->classe_id,
+                    'annee_universitaire_id' => $request->annee_universitaire_id,
+                    'semestre' => $request->semestre,
+                ])
+                ->with('error', "{$count}/{$expectedCount} bulletin(s) LMD généré(s). Certains étudiants ont été bloqués pendant la génération.");
+        }
 
         return redirect()
             ->route('esbtp.lmd.bulletins.index', [
@@ -185,6 +212,118 @@ class ESBTPLMDBulletinController extends Controller
                 'semestre' => $request->semestre,
             ])
             ->with('success', "{$count} bulletin(s) LMD généré(s) avec succès.");
+    }
+
+    public function preflight(Request $request)
+    {
+        $validated = $request->validate([
+            'mode' => 'required|in:classe,etudiant',
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'semestre' => 'required|integer|min:1|max:10',
+            'etudiant_id' => 'nullable|required_if:mode,etudiant|exists:esbtp_etudiants,id',
+        ]);
+
+        $classe = ESBTPClasse::findOrFail($validated['classe_id']);
+        $semestre = (int) $validated['semestre'];
+        $semestresAutorises = $classe->getSemestresLMD();
+        if (! in_array($semestre, $semestresAutorises, true)) {
+            $niveauName = $classe->niveau?->name ?? 'selectionne';
+
+            return response()->json([
+                'ok' => false,
+                'ready' => false,
+                'can_generate' => false,
+                'message' => "Le semestre S{$semestre} ne correspond pas au niveau {$niveauName}.",
+                'blocking_errors' => [[
+                    'student_id' => null,
+                    'message' => 'Semestre non autorisé pour cette classe.',
+                    'issues' => [[
+                        'code' => 'invalid_semester',
+                        'message' => 'Semestre non autorisé pour cette classe.',
+                        'severity' => 'blocking',
+                    ]],
+                ]],
+            ], 422);
+        }
+
+        $studentIds = $validated['mode'] === 'classe'
+            ? $this->service->studentIdsForGenerationCohort((int) $validated['classe_id'], (int) $validated['annee_universitaire_id'])
+            : collect();
+
+        if ($validated['mode'] === 'etudiant') {
+            $etudiantId = (int) $validated['etudiant_id'];
+            if (! $this->isStudentInGenerationCohort(
+                $etudiantId,
+                (int) $validated['classe_id'],
+                (int) $validated['annee_universitaire_id']
+            )) {
+                return response()->json([
+                    'ok' => false,
+                    'ready' => false,
+                    'can_generate' => false,
+                    'students_count' => 1,
+                    'ready_count' => 0,
+                    'blocked_count' => 1,
+                    'message' => 'Cet étudiant ne possède pas une inscription active valide pour cette classe et cette année universitaire.',
+                    'blocking_errors' => [[
+                        'student_id' => $etudiantId,
+                        'message' => 'Inscription active introuvable pour cette cohorte.',
+                        'issues' => [[
+                            'code' => 'missing_active_registration',
+                            'message' => 'Inscription active introuvable pour cette cohorte.',
+                            'severity' => 'blocking',
+                        ]],
+                    ]],
+                ], 422);
+            }
+
+            $studentIds = collect([$etudiantId]);
+        }
+
+        $hasOverride = $request->user()?->can('bulletins.generate_incomplete') ?? false;
+        $blocking = [];
+        $ready = 0;
+
+        foreach ($studentIds as $studentId) {
+            $inspection = $this->bulletinReadiness->inspect(
+                'LMD',
+                (int) $studentId,
+                (int) $validated['classe_id'],
+                (int) $validated['annee_universitaire_id'],
+                'semestre'.$semestre
+            );
+
+            if ($inspection->ready) {
+                $ready++;
+                continue;
+            }
+
+            $blocking[] = [
+                'student_id' => (int) $studentId,
+                'message' => 'Dossier académique incomplet pour cet étudiant.',
+                'requires_incomplete_reason' => $hasOverride,
+                'issues' => $inspection->blockingIssues,
+                'warnings' => $inspection->warnings,
+                'coverage_pct' => $inspection->coveragePct,
+                'evidence' => $inspection->evidence,
+            ];
+        }
+
+        $total = $studentIds->count();
+        $canGenerate = $total > 0 && ($blocking === [] || $hasOverride);
+
+        return response()->json([
+            'ok' => true,
+            'ready' => $total > 0 && $blocking === [],
+            'can_generate' => $canGenerate,
+            'requires_incomplete_reason' => $blocking !== [] && $hasOverride,
+            'students_count' => $total,
+            'ready_count' => $ready,
+            'blocked_count' => count($blocking),
+            'blocking_errors' => $blocking,
+            'message' => $this->preflightMessage($total, $ready, $blocking, $hasOverride),
+        ]);
     }
 
     /**
@@ -220,6 +359,30 @@ class ESBTPLMDBulletinController extends Controller
         return redirect()->back()
             ->withInput()
             ->with('error', $message ?: $exception->getMessage());
+    }
+
+    private function preflightMessage(int $total, int $ready, array $blocking, bool $hasOverride): string
+    {
+        if ($total === 0) {
+            return 'Aucun étudiant actif trouvé pour cette classe et cette année universitaire.';
+        }
+
+        if ($blocking === []) {
+            return "{$ready}/{$total} dossier(s) prêt(s). La génération peut démarrer.";
+        }
+
+        if ($hasOverride) {
+            return count($blocking)." dossier(s) incomplet(s). Vous pouvez générer avec un motif explicite.";
+        }
+
+        return count($blocking)." dossier(s) incomplet(s). Complétez les fiches de notes avant génération.";
+    }
+
+    private function isStudentInGenerationCohort(int $studentId, int $classId, int $academicYearId): bool
+    {
+        return $this->service
+            ->studentIdsForGenerationCohort($classId, $academicYearId)
+            ->contains($studentId);
     }
 
     public function show(ESBTPLMDBulletin $bulletin)
