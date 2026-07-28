@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Services\FuzzyNameMatcher;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
+use App\Services\EtudiantAcademicJourneyPresenter;
 use App\Services\EtudiantDossierService;
 use App\Exports\EtudiantsExport;
 use App\Helpers\SettingsHelper;
@@ -29,7 +30,8 @@ class ESBTPStudentController extends Controller
 {
     public function __construct(
         private BtsUiPresenter $btsUiPresenter,
-        private BtsCurrentResultSnapshotService $btsCurrentResultSnapshotService
+        private BtsCurrentResultSnapshotService $btsCurrentResultSnapshotService,
+        private EtudiantAcademicJourneyPresenter $academicJourneyPresenter
     )
     {
         $this->middleware('auth');
@@ -616,6 +618,7 @@ class ESBTPStudentController extends Controller
         }
 
         $btsJourney = $this->resolveBtsJourney($etudiant);
+        $academicJourney = $this->academicJourneyPresenter->present($etudiant);
         $btsAnnualSnapshot = null;
 
         // FIX flag assiduité : on calcule le snapshot annuel pour TOUT étudiant BTS
@@ -643,7 +646,7 @@ class ESBTPStudentController extends Controller
             'etudiant', 'dossier', 'anneeCourante',
             'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits',
             'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
-            'tpeAttendu', 'tpeParSemestre', 'btsJourney', 'btsAnnualSnapshot', 'inscriptionRepairClasses'
+            'tpeAttendu', 'tpeParSemestre', 'btsJourney', 'academicJourney', 'btsAnnualSnapshot', 'inscriptionRepairClasses'
         ));
     }
 

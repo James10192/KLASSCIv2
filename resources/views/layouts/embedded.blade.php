@@ -244,6 +244,10 @@
             border-radius: 5px;
             padding: 3px 8px;
         }
+
+        [x-cloak] {
+            display: none !important;
+        }
     </style>
     {{-- PR4 chantier emploi-temps-lmd-unification : fallback @yield('styles') pour retrocompat
          double — vues qui utilisent encore @section('styles') au lieu de @push('styles') sont
@@ -259,6 +263,8 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/focus@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     @stack('scripts')
 </body>
 </html>

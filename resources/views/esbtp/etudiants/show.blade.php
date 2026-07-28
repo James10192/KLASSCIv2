@@ -297,6 +297,139 @@
 .info-val.mono { font-family: 'Courier New', monospace; font-size: .88rem; letter-spacing: .03em; }
 .info-val.empty { color: var(--k-muted); font-weight: 400; font-style: italic; }
 
+/* Academic journey diagram */
+.student-journey-card { overflow: hidden; }
+.student-journey-header { align-items: flex-start; }
+.student-journey-summary {
+    display: flex; align-items: center; justify-content: flex-end;
+    gap: 8px; flex-wrap: wrap;
+}
+.student-journey-summary-pill {
+    display: inline-flex; align-items: center; min-height: 26px;
+    padding: 4px 10px; border-radius: 7px;
+    border: 1px solid #dbeafe; background: #eff6ff; color: #0453cb;
+    font-size: .72rem; font-weight: 700;
+}
+.student-journey-summary-pill.lmd,
+.student-journey-summary-pill.bridge {
+    border-color: #bbf7d0; background: #ecfdf5; color: #047857;
+}
+.student-journey-summary-pill.warning {
+    border-color: #fed7aa; background: #fff7ed; color: #c2410c;
+}
+.student-journey-alert {
+    display: flex; align-items: flex-start; gap: 10px;
+    margin-bottom: 16px; padding: 12px 14px;
+    border: 1px solid #fed7aa; border-radius: 10px;
+    background: #fff7ed; color: #9a3412;
+    font-size: .82rem; line-height: 1.45;
+}
+.student-journey-alert i { margin-top: 2px; }
+.student-journey-timeline {
+    position: relative; display: flex; flex-direction: column; gap: 0;
+}
+.student-journey-timeline::before {
+    content: ''; position: absolute; top: 16px; bottom: 16px; left: 20px;
+    width: 2px; background: #dbeafe;
+}
+.student-journey-item {
+    position: relative; display: grid; grid-template-columns: 42px minmax(0, 1fr);
+    gap: 12px; padding: 0 0 18px;
+}
+.student-journey-item:last-child { padding-bottom: 0; }
+.student-journey-node {
+    position: relative; z-index: 1;
+    width: 42px; height: 42px; border-radius: 11px;
+    border: 2px solid #dbeafe; background: #fff; color: #0453cb;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 12px rgba(4,83,203,.10);
+}
+.student-journey-item.lmd .student-journey-node {
+    border-color: #bbf7d0; color: #047857;
+    box-shadow: 0 4px 12px rgba(16,185,129,.12);
+}
+.student-journey-item.current .student-journey-node {
+    background: #0453cb; border-color: #0453cb; color: #fff;
+}
+.student-journey-body {
+    min-width: 0; padding: 14px 16px;
+    border: 1px solid var(--k-border); border-radius: 12px; background: #fff;
+}
+.student-journey-topline,
+.student-journey-footer {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.student-journey-year {
+    font-size: .9rem; font-weight: 800; color: var(--k-text);
+}
+.student-journey-system,
+.student-journey-transition,
+.student-journey-footer span {
+    display: inline-flex; align-items: center; gap: 5px;
+    min-height: 24px; padding: 3px 8px; border-radius: 7px;
+    font-size: .7rem; font-weight: 700; line-height: 1.2;
+}
+.student-journey-system {
+    background: #eff6ff; color: #0453cb; border: 1px solid #dbeafe;
+}
+.student-journey-system.lmd {
+    background: #ecfdf5; color: #047857; border-color: #bbf7d0;
+}
+.student-journey-transition {
+    background: #f8fafc; color: #475569; border: 1px solid #e2e8f0;
+}
+.student-journey-transition.bridge_bts_lmd,
+.student-journey-transition.bridge_lmd_bts {
+    background: #ecfdf5; color: #047857; border-color: #bbf7d0;
+}
+.student-journey-transition.duplicate_same_year,
+.student-journey-transition.gap,
+.student-journey-transition.same_level {
+    background: #fff7ed; color: #c2410c; border-color: #fed7aa;
+}
+.student-journey-main {
+    display: grid; grid-template-columns: minmax(0, 1fr) auto;
+    gap: 16px; align-items: start; margin-top: 10px;
+}
+.student-journey-main h4 {
+    margin: 0; font-size: .98rem; line-height: 1.35;
+    color: var(--k-text); font-weight: 800;
+}
+.student-journey-main p {
+    margin: 3px 0 0; color: var(--k-muted); font-size: .8rem; line-height: 1.45;
+}
+.student-journey-main .student-journey-lmd-path {
+    color: #047857; font-weight: 600;
+}
+.student-journey-metrics {
+    display: grid; grid-template-columns: repeat(3, minmax(92px, auto)); gap: 8px;
+}
+.student-journey-metrics span {
+    display: flex; flex-direction: column; gap: 2px; min-width: 92px;
+    padding: 8px 10px; border: 1px solid #e2e8f0;
+    border-radius: 10px; background: #f8fafc; color: var(--k-muted);
+    font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+}
+.student-journey-metrics strong {
+    color: var(--k-text); font-size: .84rem; letter-spacing: 0; text-transform: none;
+}
+.student-journey-footer { margin-top: 12px; }
+.student-journey-footer span {
+    background: #f8fafc; color: #475569; border: 1px solid #e2e8f0;
+}
+.student-journey-footer span.reserve {
+    background: #fff7ed; color: #c2410c; border-color: #fed7aa;
+}
+.student-journey-card-compact .student-journey-item { padding-bottom: 10px; }
+.student-journey-card-compact .student-journey-body { padding: 12px 14px; }
+.student-journey-card-compact .student-journey-footer { display: none; }
+@media (max-width: 760px) {
+    .student-journey-main { grid-template-columns: 1fr; }
+    .student-journey-metrics { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+    .student-journey-header { align-items: stretch; }
+    .student-journey-summary { justify-content: flex-start; }
+}
+
 /* ── Semestre cards (legacy, kept for other tabs) ────────────────── */
 .semestre-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
 .sem-card {
@@ -2949,6 +3082,11 @@
         </div>
     @endif
 
+    @include('esbtp.etudiants.partials.academic-journey-diagram', [
+        'academicJourney' => $academicJourney ?? null,
+        'compact' => true,
+    ])
+
     @php
         $toutesInscs = $etudiant->inscriptions->sortByDesc(fn($i) => optional($i->anneeUniversitaire)->start_date ?? $i->created_at);
     @endphp
@@ -3410,6 +3548,11 @@
 @endphp
 
 @if($acadInscs->count())
+
+    @include('esbtp.etudiants.partials.academic-journey-diagram', [
+        'academicJourney' => $academicJourney ?? null,
+        'compact' => false,
+    ])
 
     {{-- ══ BLOC TPE — Travail Personnel Etudiant attendu (lecture seule UEMOA) ══ --}}
     @if(($isLMD ?? false) && ($tpeAttendu ?? 0) > 0)
