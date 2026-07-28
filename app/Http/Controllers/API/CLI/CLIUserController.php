@@ -163,8 +163,8 @@ class CLIUserController extends BaseApiController
             return $this->errorResponse('Cannot delete the last superAdmin account', [], 422);
         }
 
-        // Block deletion of serviceTechnique
-        if ($user->can('module.technical_support.access')) {
+        // Block deletion of dedicated technical support accounts without trapping every privileged admin.
+        if ($user->hasRole('serviceTechnique')) {
             return $this->errorResponse('Cannot delete serviceTechnique accounts', [], 422);
         }
 
