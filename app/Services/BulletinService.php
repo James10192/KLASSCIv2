@@ -264,13 +264,14 @@ class BulletinService
             $bulletin,
             (int) $classeId,
             (int) $anneeUniversitaireId,
-            (string) $periode
+            (string) $periode,
+            (int) $etudiantId
         );
 
         if ($persistOfficial && ! $bulletin) {
             throw new BulletinConfigurationException(
                 'Aucun bulletin officiel existant a mettre a jour.',
-                $this->bulletinConfigurationContext((int) $classeId, (int) $anneeUniversitaireId, (string) $periode)
+                $this->bulletinConfigurationContext((int) $classeId, (int) $anneeUniversitaireId, (string) $periode, (int) $etudiantId)
             );
         }
 
@@ -626,7 +627,8 @@ class BulletinService
         ?ESBTPBulletin $bulletin,
         int $classeId,
         int $anneeUniversitaireId,
-        string $periode
+        string $periode,
+        ?int $etudiantId = null
     ): array {
         $configMatieres = $this->decodeJsonToArray($bulletin?->config_matieres);
 
@@ -637,7 +639,7 @@ class BulletinService
         if (empty($configMatieres['generales']) && empty($configMatieres['techniques'])) {
             throw new BulletinConfigurationException(
                 'Configuration bulletin manquante : configurez les matieres du bulletin avant de generer le PDF.',
-                $this->bulletinConfigurationContext($classeId, $anneeUniversitaireId, $periode)
+                $this->bulletinConfigurationContext($classeId, $anneeUniversitaireId, $periode, $etudiantId)
             );
         }
 
@@ -661,19 +663,25 @@ class BulletinService
         }
     }
 
-    private function bulletinConfigurationContext(int $classeId, int $anneeUniversitaireId, string $periode): array
+    private function bulletinConfigurationContext(int $classeId, int $anneeUniversitaireId, string $periode, ?int $etudiantId = null): array
     {
         $periode = $this->normalizePeriode($periode);
+        $params = [
+            'classe_id' => $classeId,
+            'periode' => $periode,
+            'annee_universitaire_id' => $anneeUniversitaireId,
+        ];
+
+        if ($etudiantId) {
+            $params['bulletin'] = $etudiantId;
+            $params['etudiant_id'] = $etudiantId;
+        }
 
         return [
             'classe_id' => $classeId,
             'annee_universitaire_id' => $anneeUniversitaireId,
             'periode' => $periode,
-            'configuration_url' => route('esbtp.bulletins.config-matieres', [
-                'classe_id' => $classeId,
-                'periode' => $periode,
-                'annee_universitaire_id' => $anneeUniversitaireId,
-            ]),
+            'configuration_url' => route('esbtp.bulletins.config-matieres', $params),
         ];
     }
 
@@ -708,6 +716,16 @@ class BulletinService
 
     private function professeursPayloadForBulletin(int $classeId, int $anneeUniversitaireId, string $periode): array
     {
+        foreach ($this->configPeriodsForBulletin($periode) as $targetPeriode) {
+            $raw = SettingsHelper::get($this->professeursTemplateKey($classeId, $anneeUniversitaireId, $targetPeriode), null);
+            $template = is_string($raw) ? $this->decodeJsonToArray($raw) : (array) $raw;
+            $template = array_filter($template, fn ($value) => trim((string) $value) !== '');
+
+            if ($template !== []) {
+                return $template;
+            }
+        }
+
         $template = ESBTPBulletin::where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
             ->whereIn('periode', $this->configPeriodsForBulletin($periode))
@@ -718,6 +736,11 @@ class BulletinService
             ->value('professeurs');
 
         return $this->decodeJsonToArray($template);
+    }
+
+    private function professeursTemplateKey(int $classeId, int $anneeUniversitaireId, string $periode): string
+    {
+        return "bulletin_professeurs_template.{$classeId}.{$anneeUniversitaireId}.{$periode}";
     }
 
     private function configPeriodsForBulletin(string $periode): array

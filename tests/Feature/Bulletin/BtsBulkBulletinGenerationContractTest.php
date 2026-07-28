@@ -39,7 +39,7 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
 
     public function test_select_page_does_not_treat_redirect_or_failure_as_success(): void
     {
-        $view = file_get_contents(resource_path('views/esbtp/bulletins/select.blade.php'));
+        $view = $this->selectPageSource();
 
         $this->assertStringContainsString("route('esbtp.bulletins.generer-classe.preflight')", $view);
         $this->assertStringContainsString('parseJsonResponse', $view);
@@ -53,7 +53,7 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
 
     public function test_preview_and_select_accessibility_contracts_are_visible(): void
     {
-        $selectView = file_get_contents(resource_path('views/esbtp/bulletins/select.blade.php'));
+        $selectView = $this->selectPageSource();
         $blockedView = file_get_contents(resource_path('views/esbtp/bulletins/preview-blocked.blade.php'));
         $component = file_get_contents(resource_path('views/components/au-select.blade.php'));
 
@@ -64,5 +64,12 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringContainsString('@keydown.arrow-down.prevent="openAndFocusNext()"', $component);
         $this->assertStringContainsString('@keydown.enter.prevent="open ? selectFocused() : openAndFocusNext()"', $component);
         $this->assertStringContainsString('role="combobox"', $component);
+    }
+
+    private function selectPageSource(): string
+    {
+        return file_get_contents(resource_path('views/esbtp/bulletins/select.blade.php'))
+            ."\n"
+            .file_get_contents(resource_path('views/esbtp/bulletins/partials/select-scripts.blade.php'));
     }
 }

@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Exceptions\CoefficientMissingException;
-use App\Helpers\SettingsHelper;
 use App\Models\Classe;
 use App\Models\ESBTPAbsence;
 use App\Models\ESBTPAnneeUniversitaire;
@@ -15,9 +14,9 @@ use App\Models\ESBTPNiveauEtude;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
-use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Services\BulletinInlineConfigurationService;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use Carbon\Carbon;
 use App\Http\Requests\Bulletin\BulkUpdateMoyennesRequest;
@@ -26,7 +25,6 @@ use App\Http\Requests\Bulletin\StoreBulletinRequest;
 use App\Http\Requests\Bulletin\UpdateBulletinRequest;
 use App\Http\Requests\Bulletin\UpdateMoyennesRequest;
 use Illuminate\Http\Request;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -38,11 +36,13 @@ class ESBTPBulletinConfigController extends Controller
 {
     private $absenceService;
     private $bulletinService;
+    private BulletinInlineConfigurationService $inlineConfigurationService;
 
-    public function __construct(\App\Services\ESBTP\ESBTPAbsenceService $absenceService, \App\Services\BulletinService $bulletinService)
+    public function __construct(\App\Services\ESBTP\ESBTPAbsenceService $absenceService, \App\Services\BulletinService $bulletinService, BulletinInlineConfigurationService $inlineConfigurationService)
     {
         $this->absenceService = $absenceService;
         $this->bulletinService = $bulletinService;
+        $this->inlineConfigurationService = $inlineConfigurationService;
     }
 
     /**
@@ -298,6 +298,52 @@ class ESBTPBulletinConfigController extends Controller
             'periode' => $validated['periode'],
             'effective_read_periode' => $readPeriode,
             'matiere_types' => $byMatiere, // { matiere_id: 'general'|'technique' }
+        ]);
+    }
+
+    public function inlineConfigMatieresData(Request $request)
+    {
+        if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'periode' => 'required|in:semestre1,semestre2,annuel',
+        ]);
+
+        return response()->json($this->inlineConfigurationService->data(
+            (int) $validated['classe_id'],
+            (int) $validated['annee_universitaire_id'],
+            (string) $validated['periode']
+        ));
+    }
+
+    public function saveInlineConfigMatieres(Request $request)
+    {
+        if (! Auth::check() || ! Auth::user()->can('bulletins.configure')) {
+            abort(403);
+        }
+
+        $validated = $request->validate([
+            'classe_id' => 'required|exists:esbtp_classes,id',
+            'annee_universitaire_id' => 'required|exists:esbtp_annee_universitaires,id',
+            'periode' => 'required|in:semestre1,semestre2,annuel',
+            'matiere_type' => 'required|array',
+            'matiere_type.*' => 'required|in:general,technique,none',
+            'coefficients' => 'nullable|array',
+            'coefficients.*' => 'nullable|numeric|min:0.1',
+            'professeurs' => 'nullable|array',
+            'professeurs.*' => 'nullable|string|max:255',
+        ]);
+
+        $stats = $this->inlineConfigurationService->save($validated, (int) Auth::id());
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Configuration des matieres enregistree.',
+            'stats' => $stats,
         ]);
     }
 
@@ -638,6 +684,11 @@ class ESBTPBulletinConfigController extends Controller
             'periode' => $periode,
             'annee_universitaire_id' => $annee_universitaire_id,
         ])->first();
+        $professeursTemplate = $this->inlineConfigurationService->loadProfesseursTemplate(
+            (int) $classe_id,
+            (int) $annee_universitaire_id,
+            $periode
+        );
 
         // Récupérer les matières basées sur la combinaison filière + niveau de la classe
         $classeFiliereId = $classe->filiere_id;
@@ -721,6 +772,9 @@ class ESBTPBulletinConfigController extends Controller
                     $professeurs = json_decode($bulletin->professeurs, true);
                     $professeurNom = $professeurs[$config->matiere_id] ?? '';
                 }
+                if ($professeurNom === '') {
+                    $professeurNom = $professeursTemplate[$config->matiere_id] ?? '';
+                }
 
                 // Récupérer le nom de la matière avec vérification
                 $matiereName = 'Matière non identifiée';
@@ -757,7 +811,7 @@ class ESBTPBulletinConfigController extends Controller
                 : ['generales' => [], 'techniques' => []];
             $professeursExisting = $bulletin && $bulletin->professeurs
                 ? (json_decode($bulletin->professeurs, true) ?: [])
-                : [];
+                : $professeursTemplate;
 
             foreach ($notesMatieres as $matiere) {
                 if (in_array($matiere->id, $matieresIds, true)) {
@@ -833,6 +887,15 @@ class ESBTPBulletinConfigController extends Controller
 
         // Récupérer les enseignants depuis planning général pour chaque matière
         // basé sur la combinaison filière + niveau de la classe
+        if ($professeurs === [] && $professeursTemplate !== []) {
+            $professeurs = $professeursTemplate;
+            \Log::info('Professeurs from bulletin template', [
+                'classe_id' => $classe_id,
+                'periode' => $periode,
+                'professeurs' => $professeurs,
+            ]);
+        }
+
         $enseignantsParMatiere = [];
         foreach ($matieres as $matiere) {
             // Récupérer la planification pour cette matière + combinaison classe
@@ -965,6 +1028,16 @@ class ESBTPBulletinConfigController extends Controller
             $professeurs = [];
             if ($request->has('professeurs') && is_array($request->input('professeurs'))) {
                 $professeurs = $request->input('professeurs');
+            }
+            $professeurs = $this->inlineConfigurationService->normalizeProfesseurs($professeurs, array_keys($professeurs));
+
+            foreach ($this->inlineConfigurationService->periodsFor($this->bulletinService->normalizePeriode($periode)) as $targetPeriode) {
+                $this->inlineConfigurationService->saveProfesseursTemplate(
+                    (int) $classe_id,
+                    (int) $annee_universitaire_id,
+                    $targetPeriode,
+                    $professeurs
+                );
             }
 
             // Récupérer le bulletin existant ou en créer un nouveau

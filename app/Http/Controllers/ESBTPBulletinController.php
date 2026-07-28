@@ -1606,6 +1606,10 @@ class ESBTPBulletinController extends Controller
             return response()->json($payload, $status);
         }
 
+        if ($configurationUrl) {
+            return redirect()->to($configurationUrl)->with('error', $message);
+        }
+
         return response()->view('esbtp.bulletins.preview-blocked', $payload, $status);
     }
 
@@ -1993,8 +1997,22 @@ class ESBTPBulletinController extends Controller
     {
         $classeId = $context['classe']['id'] ?? $request->input('classe_id');
         $matiereId = $context['matiere']['id'] ?? null;
+        $etudiantId = $request->input('etudiant_id') ?? $request->input('bulletin');
+        $anneeId = $request->input('annee_universitaire_id');
+        $periode = $this->bulletinService->normalizePeriode((string) $request->input('periode', 'semestre1'));
+
+        $resultatsConfigUrl = null;
+        if ($etudiantId && $classeId && $anneeId) {
+            $resultatsConfigUrl = route('esbtp.resultats.etudiant', ['etudiant' => $etudiantId]).'?'.http_build_query([
+                'classe_id' => $classeId,
+                'periode' => $periode,
+                'annee_universitaire_id' => $anneeId,
+                'open_coeff_modal' => 1,
+            ]);
+        }
 
         $context['config_url'] = $context['config_url']
+            ?? $resultatsConfigUrl
             ?? route('esbtp.evaluations.index', ['open_coefficients' => 1]);
 
         if ($classeId) {

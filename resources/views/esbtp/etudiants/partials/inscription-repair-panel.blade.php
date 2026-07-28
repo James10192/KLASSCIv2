@@ -2,9 +2,14 @@
     $canViewInscriptionRepair = auth()->user()->can('students.view') || auth()->user()->can('inscriptions.view');
     $canRunInscriptionRepair = auth()->user()->can('inscriptions.manage') || (auth()->user()->can('inscriptions.edit') && auth()->user()->can('inscriptions.delete'));
     $repairClasses = $inscriptionRepairClasses ?? collect();
+    $duplicateInscriptionYears = $etudiant->inscriptions
+        ->filter(fn ($inscription) => ! empty($inscription->annee_universitaire_id))
+        ->groupBy('annee_universitaire_id')
+        ->filter(fn ($inscriptions) => $inscriptions->count() > 1);
+    $hasDuplicateInscriptionYear = $duplicateInscriptionYears->isNotEmpty();
 @endphp
 
-@if($canViewInscriptionRepair)
+@if($canViewInscriptionRepair && $hasDuplicateInscriptionYear)
 <div
     class="insc-repair-panel"
     id="inscriptionRepairPanel"

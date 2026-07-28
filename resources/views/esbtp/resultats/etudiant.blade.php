@@ -243,7 +243,7 @@
                     'status' => $bcStatus,
                 ];
             @endphp
-            <div class="srb-banner srb-banner--{{ $bcStatusModifier }} sr-animate sr-animate-delay-1">
+            <div class="srb-banner sr-bulletin-banner srb-banner--{{ $bcStatusModifier }} sr-animate sr-animate-delay-1">
                 <div class="srb-banner-main">
                     <div class="srb-banner-avatar">
                         <i class="fas fa-{{ $bcIcon }}"></i>
@@ -701,15 +701,29 @@
         })
         .then(function(res) { return res.json(); })
         .then(function(data) {
+            var targetParams = new URL(targetUrl, window.location.origin).searchParams;
+            var consistency = data.consistency || {};
+            var configuration = consistency.configuration || {};
+
+            if (configuration.ready === false) {
+                var resultUrl = new URL(window.location.href);
+                resultUrl.searchParams.set('open_coeff_modal', '1');
+                resultUrl.searchParams.set('classe_id', targetParams.get('classe_id') || '');
+                resultUrl.searchParams.set('annee_universitaire_id', targetParams.get('annee_universitaire_id') || '');
+                resultUrl.searchParams.set('periode', targetParams.get('periode') || 'semestre1');
+                window.location.href = resultUrl.toString();
+                return;
+            }
+
             if (data.consistency && data.consistency.official_bulletin_exists && data.consistency.has_divergence) {
                 srBulletinModalState.currentUrl = data.current_url || targetUrl;
                 srBulletinModalState.officialUrl = data.official_url || null;
                 srBulletinModalState.action = action;
                 srBulletinModalState.payload = {
                     etudiant_id: document.getElementById('etudiant-resultats-content').dataset.etudiantId,
-                    classe_id: new URL(targetUrl, window.location.origin).searchParams.get('classe_id'),
-                    annee_universitaire_id: new URL(targetUrl, window.location.origin).searchParams.get('annee_universitaire_id'),
-                    periode: new URL(targetUrl, window.location.origin).searchParams.get('periode')
+                    classe_id: targetParams.get('classe_id'),
+                    annee_universitaire_id: targetParams.get('annee_universitaire_id'),
+                    periode: targetParams.get('periode')
                 };
                 srShowConsistencyModal(data);
                 return;

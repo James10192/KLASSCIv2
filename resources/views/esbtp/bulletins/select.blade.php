@@ -234,6 +234,12 @@
     text-decoration: none;
 }
 .bus-inline-panel__link:hover { color: #033a8e; text-decoration: underline; }
+.bus-inline-panel__button {
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+}
 .bus-textarea {
     width: 100%;
     min-height: 86px;
@@ -285,9 +291,174 @@
     color: var(--bus-muted); padding: 0; margin-left: auto;
 }
 
+.bus-config-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 100000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    background: rgba(15, 23, 42, .58);
+}
+.bus-config-modal {
+    width: min(980px, 100%);
+    max-height: min(86vh, 760px);
+    display: flex;
+    flex-direction: column;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, .28);
+    overflow: hidden;
+}
+.bus-config-modal__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.2rem;
+    background: linear-gradient(135deg, #0453cb, #3b7ddb);
+    color: #fff;
+}
+.bus-config-modal__title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 800;
+    color: #fff;
+}
+.bus-config-modal__subtitle {
+    margin: .2rem 0 0;
+    color: rgba(255, 255, 255, .76);
+    font-size: .78rem;
+}
+.bus-config-modal__close {
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(255, 255, 255, .25);
+    border-radius: 8px;
+    color: #fff;
+    background: rgba(255, 255, 255, .12);
+    cursor: pointer;
+}
+.bus-config-modal__body {
+    padding: 1rem 1.2rem;
+    overflow: auto;
+}
+.bus-config-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: .65rem;
+    margin-bottom: 1rem;
+}
+.bus-config-summary__item {
+    border: 1px solid var(--bus-border);
+    border-radius: 8px;
+    background: #f8fafc;
+    padding: .7rem .8rem;
+}
+.bus-config-summary__label {
+    display: block;
+    color: var(--bus-muted);
+    font-size: .68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+.bus-config-summary__value {
+    display: block;
+    margin-top: .18rem;
+    color: var(--bus-text);
+    font-size: .95rem;
+    font-weight: 800;
+}
+.bus-config-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: .82rem;
+}
+.bus-config-table th,
+.bus-config-table td {
+    padding: .65rem;
+    border-bottom: 1px solid var(--bus-border);
+    vertical-align: middle;
+}
+.bus-config-table th {
+    color: var(--bus-muted);
+    font-size: .68rem;
+    text-transform: uppercase;
+    text-align: left;
+    background: #f8fafc;
+}
+.bus-config-table input,
+.bus-config-table select {
+    width: 100%;
+    min-height: 36px;
+    border: 1px solid #dbe5f2;
+    border-radius: 8px;
+    padding: .35rem .5rem;
+    font-size: .8rem;
+}
+.bus-config-source {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: .15rem .45rem;
+    color: #0453cb;
+    background: rgba(4, 83, 203, .09);
+    font-size: .68rem;
+    font-weight: 800;
+}
+.bus-config-empty,
+.bus-config-error {
+    border: 1px solid var(--bus-border);
+    border-radius: 8px;
+    padding: .9rem;
+    color: var(--bus-muted);
+    background: #f8fafc;
+    font-size: .85rem;
+}
+.bus-config-error {
+    border-color: rgba(220, 38, 38, .28);
+    color: #991b1b;
+    background: rgba(220, 38, 38, .04);
+}
+.bus-config-modal__footer {
+    display: flex;
+    justify-content: flex-end;
+    gap: .6rem;
+    padding: .9rem 1.2rem;
+    border-top: 1px solid var(--bus-border);
+    background: #fff;
+}
+.bus-config-action {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .4rem;
+    min-height: 40px;
+    padding: .5rem .85rem;
+    border-radius: 8px;
+    border: 1px solid #dbe5f2;
+    background: #fff;
+    color: #0453cb;
+    font-size: .82rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+.bus-config-action--primary {
+    color: #fff;
+    border-color: #0453cb;
+    background: #0453cb;
+}
+.bus-config-action:disabled {
+    opacity: .55;
+    cursor: wait;
+}
+
 @media (max-width: 768px) {
     .bus-hero { padding: 1.5rem 1.25rem 1.25rem; }
     .bus-hero h1 { font-size: 1.2rem; }
+    .bus-config-table th:nth-child(2),
+    .bus-config-table td:nth-child(2) { display: none; }
 }
 </style>
 @endpush
@@ -438,14 +609,14 @@
                 <div class="bus-inline-panel bus-inline-panel--danger" x-show="previewIssue" x-cloak>
                     <div class="bus-inline-panel__title">
                         <i class="fas fa-circle-exclamation"></i>
-                        <span>Apercu bloque</span>
+                        <span>Configuration a completer</span>
                     </div>
                     <p class="bus-inline-panel__body" x-text="previewIssue?.message"></p>
-                    <template x-if="previewIssue?.configuration_url">
-                        <a class="bus-inline-panel__link" :href="previewIssue.configuration_url">
+                    <template x-if="previewIssue">
+                        <button type="button" class="bus-inline-panel__link bus-inline-panel__button" @click="openInlineConfig(previewIssue)">
                             <i class="fas fa-sliders"></i>
-                            Ouvrir la configuration requise
-                        </a>
+                            Completer ici la configuration requise
+                        </button>
                     </template>
                 </div>
                 <button type="submit" class="bus-submit bus-submit--info" :disabled="busy || !canSubmit()">
@@ -539,14 +710,24 @@
                             </template>
                         </ul>
                     </template>
-                    <template x-if="preflight?.blocking_errors?.length && !preflight?.missing_coefficients?.length">
+                    <template x-if="preflight?.missing_professeurs?.length">
+                        <ul class="bus-inline-panel__list">
+                            <template x-for="item in preflight.missing_professeurs" :key="'prof-' + item.matiere_id">
+                                <li>
+                                    <span x-text="item.matiere"></span>
+                                    <span> - professeur manquant</span>
+                                </li>
+                            </template>
+                        </ul>
+                    </template>
+                    <template x-if="preflight?.blocking_errors?.length && !preflight?.missing_coefficients?.length && !preflight?.missing_professeurs?.length">
                         <p class="bus-inline-panel__body" x-text="preflight.blocking_errors.length + ' blocage(s) detecte(s).'"></p>
                     </template>
-                    <template x-if="preflight?.configuration_url">
-                        <a class="bus-inline-panel__link" :href="preflight.configuration_url">
+                    <template x-if="preflight && !preflight.ok">
+                        <button type="button" class="bus-inline-panel__link bus-inline-panel__button" @click="openInlineConfig(preflight)">
                             <i class="fas fa-sliders"></i>
-                            Configurer les matieres du bulletin
-                        </a>
+                            Completer matieres, coefficients et professeurs
+                        </button>
                     </template>
                     <div class="bus-field" x-show="preflight?.requires_incomplete_reason" x-cloak>
                         <label class="bus-field-label" for="bus-incomplete-reason">Motif bulletin incomplet</label>
@@ -581,6 +762,114 @@
         </div>
     </div>
 
+    <div class="bus-config-backdrop"
+         x-show="configModal.open"
+         x-transition.opacity
+         x-cloak
+         role="dialog"
+         aria-modal="true"
+         aria-labelledby="busConfigTitle"
+         @keydown.escape.window="closeConfigModal()">
+        <div class="bus-config-modal" @click.outside="closeConfigModal()">
+            <div class="bus-config-modal__head">
+                <div>
+                    <h2 class="bus-config-modal__title" id="busConfigTitle">Configuration requise du bulletin</h2>
+                    <p class="bus-config-modal__subtitle" x-text="configModal.subtitle"></p>
+                </div>
+                <button type="button" class="bus-config-modal__close" @click="closeConfigModal()" aria-label="Fermer">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+            <div class="bus-config-modal__body">
+                <div class="bus-config-empty" x-show="configModal.loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    Chargement de la configuration...
+                </div>
+                <div class="bus-config-error" x-show="configModal.error" x-text="configModal.error"></div>
+
+                <template x-if="!configModal.loading && !configModal.error">
+                    <div>
+                        <div class="bus-config-summary">
+                            <div class="bus-config-summary__item">
+                                <span class="bus-config-summary__label">Types matieres</span>
+                                <span class="bus-config-summary__value" x-text="configModal.matieres.filter(m => m.selected_type && m.selected_type !== 'none').length + ' / ' + configModal.matieres.length"></span>
+                            </div>
+                            <div class="bus-config-summary__item">
+                                <span class="bus-config-summary__label">Coefficients</span>
+                                <span class="bus-config-summary__value" x-text="configModal.matieres.filter(m => m.coefficient !== null && String(m.coefficient).trim() !== '').length + ' / ' + configModal.matieres.length"></span>
+                            </div>
+                            <div class="bus-config-summary__item">
+                                <span class="bus-config-summary__label">Professeurs</span>
+                                <span class="bus-config-summary__value" x-text="configModal.matieres.filter(m => String(m.professeur || '').trim() !== '').length + ' / ' + configModal.matieres.length"></span>
+                            </div>
+                        </div>
+
+                        <div class="bus-config-empty" x-show="!configModal.matieres.length">
+                            Aucune matiere a configurer pour cette classe et cette periode.
+                        </div>
+
+                        <div style="overflow:auto;" x-show="configModal.matieres.length">
+                            <table class="bus-config-table">
+                                <thead>
+                                    <tr>
+                                        <th>Matiere</th>
+                                        <th>Source</th>
+                                        <th>Type</th>
+                                        <th>Coeff.</th>
+                                        <th>Professeur</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="matiere in configModal.matieres" :key="matiere.id">
+                                        <tr>
+                                            <td>
+                                                <strong x-text="matiere.name"></strong>
+                                                <div style="color:var(--bus-muted); font-size:.72rem;" x-show="matiere.code" x-text="matiere.code"></div>
+                                            </td>
+                                            <td><span class="bus-config-source" x-text="matiere.source === 'evaluations' ? 'notes' : 'classe'"></span></td>
+                                            <td>
+                                                <select x-model="matiere.selected_type" :aria-label="'Type de ' + matiere.name">
+                                                    <option value="general">Generale</option>
+                                                    <option value="technique">Technique</option>
+                                                    <option value="none">Ignorer</option>
+                                                </select>
+                                            </td>
+                                            <td>
+                                                <input type="number"
+                                                       min="0.1"
+                                                       step="0.1"
+                                                       x-model="matiere.coefficient"
+                                                       :aria-label="'Coefficient de ' + matiere.name"
+                                                       placeholder="Coeff.">
+                                            </td>
+                                            <td>
+                                                <input type="text"
+                                                       maxlength="255"
+                                                       x-model="matiere.professeur"
+                                                       :aria-label="'Professeur de ' + matiere.name"
+                                                       placeholder="Nom du professeur">
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </template>
+            </div>
+            <div class="bus-config-modal__footer">
+                <button type="button" class="bus-config-action" @click="closeConfigModal()" :disabled="configModal.saving">Annuler</button>
+                <button type="button"
+                        class="bus-config-action bus-config-action--primary"
+                        @click="saveConfigModal()"
+                        :disabled="configModal.loading || configModal.saving || configModal.error || !configModal.matieres.length">
+                    <i class="fas" :class="configModal.saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'"></i>
+                    <span x-text="configModal.saving ? 'Enregistrement...' : 'Enregistrer la configuration'"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     {{-- Toast stack --}}
     <div class="bus-toast-stack" aria-live="polite">
         <template x-for="t in toasts" :key="t.id">
@@ -593,425 +882,5 @@
     </div>
 </div>
 
-@push('scripts')
-<script>
-function busSelect() {
-    return {
-        toasts: [],
-        toastSeq: 0,
-        init() {
-            window.addEventListener('toast', (ev) => this.pushToast(ev.detail));
-        },
-        pushToast(detail) {
-            const id = ++this.toastSeq;
-            this.toasts.push({ id, type: detail.type || 'info', message: detail.message || '' });
-            setTimeout(() => this.removeToast(id), 5000);
-        },
-        removeToast(id) {
-            const idx = this.toasts.findIndex(t => t.id === id);
-            if (idx !== -1) this.toasts.splice(idx, 1);
-        },
-    };
-}
-
-if (typeof window.busCard !== 'function') {
-window.busCard = function (cfg) {
-    return {
-        kind: cfg.kind,
-        busy: false,
-        loadingStudents: false,
-        students: [],
-        studentsAbort: null,
-        studentsRequestSeq: 0,
-        preflight: null,
-        preflightBusy: false,
-        preflightAbort: null,
-        previewIssue: null,
-        lastGeneration: null,
-        // Année universitaire courante pré-sélectionnée (le user peut changer ensuite).
-        form: {
-            classe_id: '',
-            annee_universitaire_id: @json($anneeActuelle?->id ? (string) $anneeActuelle->id : ''),
-            etudiant_id: '',
-            semestre: '',
-            periode: '',
-            recalculer: false,
-            incomplete_reason: '',
-        },
-
-        init() {
-            this.$watch('form.classe_id', () => {
-                this.form.etudiant_id = '';
-                this.previewIssue = null;
-                this.lastGeneration = null;
-                this.fetchStudents();
-                this.queuePreflight();
-            });
-            this.$watch('form.annee_universitaire_id', () => {
-                this.form.etudiant_id = '';
-                this.previewIssue = null;
-                this.lastGeneration = null;
-                this.fetchStudents();
-                this.queuePreflight();
-            });
-            this.$watch('form.periode', () => {
-                this.previewIssue = null;
-                this.lastGeneration = null;
-                this.queuePreflight();
-            });
-            this.$watch('form.recalculer', () => {
-                this.lastGeneration = null;
-                this.queuePreflight();
-            });
-            this.$watch('form.etudiant_id', () => { this.previewIssue = null; });
-        },
-
-        canSubmit() {
-            if (!this.form.classe_id || !this.form.annee_universitaire_id) return false;
-            if (this.kind === 'consult')  return !!this.form.semestre;
-            if (this.kind === 'preview')  return !!this.form.etudiant_id && !!this.form.periode;
-            if (this.kind === 'generate') return !!this.form.periode && !this.preflightBusy && !this.isGenerationBlocked();
-            return false;
-        },
-
-        hasIncompleteReason() {
-            return (this.form.incomplete_reason || '').trim().length >= 8;
-        },
-
-        isGenerationBlocked() {
-            if (this.kind !== 'generate' || !this.preflight || this.preflight.ok) return false;
-
-            const hardBlockCodes = ['missing_subject_configuration', 'bulletin_locked', 'coefficients_missing'];
-            const blocks = this.preflight.blocking_errors || [];
-
-            if ((this.preflight.missing_coefficients || []).length > 0) return true;
-            if (blocks.some(block => hardBlockCodes.includes(block.code))) return true;
-
-            if (this.preflight.requires_incomplete_reason) {
-                return !this.hasIncompleteReason();
-            }
-
-            return true;
-        },
-
-        generationSummary() {
-            if (!this.lastGeneration) return '';
-
-            const skipped = this.lastGeneration.skipped?.length || 0;
-            const blocked = (this.lastGeneration.blocking_errors?.length || 0) + (this.lastGeneration.errors?.length || 0);
-            return `${this.lastGeneration.created || 0} cree(s), ${this.lastGeneration.regenerated || 0} recalcule(s), ${skipped} ignore(s), ${blocked} blocage(s).`;
-        },
-
-        generationStudentsLabel() {
-            if (!this.form.classe_id || !this.form.annee_universitaire_id) {
-                return 'Selectionnez une classe et une annee';
-            }
-
-            if (this.preflight?.students_count !== undefined) {
-                const count = this.preflight.students_count || 0;
-                const plural = count > 1 ? 's' : '';
-                const verb = count > 1 ? 'seront' : 'sera';
-                return `${count} etudiant${plural} ${verb} concerne${plural}`;
-            }
-
-            if (this.preflightBusy) {
-                return 'Verification des etudiants concernes...';
-            }
-
-            return 'Pre-controle requis';
-        },
-
-        canOpenPilotage() {
-            return !!(this.form.classe_id && this.form.annee_universitaire_id && this.form.periode);
-        },
-
-        pilotageUrl() {
-            if (!this.canOpenPilotage()) return '#';
-            const params = new URLSearchParams({
-                class_id: this.form.classe_id,
-                year_id: this.form.annee_universitaire_id,
-                period: this.form.periode,
-            });
-            return `{{ route('esbtp.pilotage-academique.index') }}?${params.toString()}#alerts`;
-        },
-
-        bulletinParams(action = null) {
-            const params = new URLSearchParams();
-            params.set('etudiant_id', this.form.etudiant_id);
-            params.set('classe_id', this.form.classe_id);
-            params.set('annee_universitaire_id', this.form.annee_universitaire_id);
-            params.set('periode', this.form.periode);
-            if (action) params.set('action', action);
-            return params;
-        },
-
-        configMatieresUrl() {
-            const params = new URLSearchParams({
-                classe_id: this.form.classe_id,
-                annee_universitaire_id: this.form.annee_universitaire_id,
-                periode: this.form.periode || 'semestre1',
-            });
-            if (this.form.etudiant_id) params.set('bulletin', this.form.etudiant_id);
-            return `{{ route('esbtp.bulletins.config-matieres') }}?${params.toString()}`;
-        },
-
-        async resolvePreviewUrl() {
-            const params = this.bulletinParams('preview_pdf');
-            const res = await fetch(`{{ route('esbtp.bulletins.check-consistency') }}?${params.toString()}`, {
-                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-            });
-            const data = await this.parseJsonResponse(res);
-            if (!res.ok || !data.ok) {
-                throw new Error(data.message || `Erreur HTTP ${res.status}`);
-            }
-
-            const consistency = data.consistency || {};
-            const configuration = consistency.configuration || {};
-            const usesCurrent = data.resolved_url === data.current_url || !consistency.official_bulletin_exists;
-
-            if (usesCurrent && configuration.ready === false) {
-                return {
-                    blocked: true,
-                    message: 'La configuration du bulletin est incomplete. Completez les matieres et coefficients requis avant d ouvrir le PDF live.',
-                    configuration_url: this.configMatieresUrl(),
-                };
-            }
-
-            return {
-                blocked: false,
-                url: data.resolved_url || `{{ route('esbtp.bulletins.pdf-params-preview') }}?${this.bulletinParams().toString()}`,
-            };
-        },
-
-        queuePreflight() {
-            if (this.kind !== 'generate') return;
-
-            this.preflightAbort?.abort();
-            this.preflight = null;
-
-            if (!this.form.classe_id || !this.form.annee_universitaire_id || !this.form.periode) {
-                this.preflightBusy = false;
-                return;
-            }
-
-            this.fetchPreflight();
-        },
-
-        async fetchPreflight() {
-            if (this.kind !== 'generate' || !this.form.classe_id || !this.form.annee_universitaire_id || !this.form.periode) {
-                return null;
-            }
-
-            this.preflightAbort?.abort();
-            const controller = new AbortController();
-            this.preflightAbort = controller;
-            this.preflightBusy = true;
-
-            try {
-                const params = new URLSearchParams({
-                    classe_id: this.form.classe_id,
-                    annee_universitaire_id: this.form.annee_universitaire_id,
-                    periode: this.form.periode,
-                    recalculer: this.form.recalculer ? '1' : '0',
-                });
-                const res = await fetch(`{{ route('esbtp.bulletins.generer-classe.preflight') }}?${params.toString()}`, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                    signal: controller.signal,
-                });
-                const data = await this.parseJsonResponse(res);
-
-                if (!res.ok && !data.preflight) {
-                    throw new Error(data.message || `Erreur HTTP ${res.status}`);
-                }
-
-                this.preflight = data.preflight || null;
-                return this.preflight;
-            } catch (err) {
-                if (err.name === 'AbortError') return null;
-                this.preflight = null;
-                this.notify('error', err.message || 'Erreur de pre-controle.');
-                return null;
-            } finally {
-                if (this.preflightAbort === controller) {
-                    this.preflightBusy = false;
-                    this.preflightAbort = null;
-                }
-            }
-        },
-
-        async fetchStudents() {
-            if (!this.form.classe_id || !this.form.annee_universitaire_id) {
-                this.studentsAbort?.abort();
-                this.students = [];
-                this.injectStudentsIntoSelect();
-                return;
-            }
-            // Seule la card apercu a besoin d'injecter une liste d'etudiants.
-            if (this.kind !== 'preview') return;
-            this.studentsAbort?.abort();
-            const requestSeq = ++this.studentsRequestSeq;
-            const controller = new AbortController();
-            this.studentsAbort = controller;
-            this.loadingStudents = true;
-            try {
-                const baseUrl = `{{ route('esbtp.classes.etudiants', ['classe' => '__ID__']) }}`.replace('__ID__', this.form.classe_id);
-                const url = baseUrl + '?annee_universitaire_id=' + encodeURIComponent(this.form.annee_universitaire_id);
-                const res = await fetch(url, {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                    signal: controller.signal,
-                });
-                const data = await this.parseJsonResponse(res);
-                if (requestSeq !== this.studentsRequestSeq) return;
-                if (!res.ok) throw new Error(data.message || `Erreur HTTP ${res.status}`);
-                this.students = (data.etudiants || []).map(e => ({
-                    value: e.id,
-                    label: `${e.nom || ''} ${e.prenoms || e.prenom || ''}`.trim() + ` (${e.matricule || ''})`,
-                }));
-                if (this.kind === 'preview') this.injectStudentsIntoSelect();
-            } catch (err) {
-                if (err.name === 'AbortError') return;
-                this.notify('error', 'Erreur lors du chargement des étudiants : ' + err.message);
-                this.students = [];
-                this.injectStudentsIntoSelect();
-            } finally {
-                if (requestSeq === this.studentsRequestSeq) {
-                    this.loadingStudents = false;
-                    this.studentsAbort = null;
-                }
-            }
-        },
-
-        injectStudentsIntoSelect() {
-            if (this.kind !== 'preview') return;
-            // Le composant au-select est rendu côté serveur avec un native <select> caché.
-            // Pour preview card, on injecte les options étudiants dynamiquement.
-            const card = this.$root || this.$el;
-            // Trouve le native du 3e au-select (étudiant)
-            const wrappers = card.querySelectorAll('.au-select');
-            if (wrappers.length < 3) return;
-            const studentWrapper = wrappers[2];
-            const native = studentWrapper.querySelector('select.au-select-native');
-            if (!native) return;
-            const currentValue = this.form.etudiant_id;
-            let html = '<option value="">' + (this.students.length ? 'Sélectionner…' : 'Aucun étudiant') + '</option>';
-            this.students.forEach(s => {
-                const sel = String(s.value) === String(currentValue) ? ' selected' : '';
-                html += `<option value="${s.value}"${sel}>${s.label}</option>`;
-            });
-            native.innerHTML = html;
-            // Force resync : le composant Alpine au-select écoute change sur le native
-            native.value = currentValue || '';
-            native.dispatchEvent(new Event('change', { bubbles: true }));
-        },
-
-        async submit() {
-            if (!this.canSubmit()) {
-                this.notify('error', 'Veuillez remplir tous les champs requis.');
-                return;
-            }
-            this.busy = true;
-            try {
-                if (this.kind === 'consult') {
-                    const params = new URLSearchParams();
-                    params.set('classe_id', this.form.classe_id);
-                    params.set('annee_universitaire_id', this.form.annee_universitaire_id);
-                    params.set('semestre', this.form.semestre);
-                    window.location.href = `{{ route('esbtp.resultats.index') }}?` + params.toString();
-                    return;
-                }
-                if (this.kind === 'preview') {
-                    // Utilise pdf-params-preview qui choisit auto entre snapshot officiel
-                    // et live (via BulletinConsistencyService). Plus fiable que
-                    // l'ancien previewBulletin qui pouvait erreur en l'absence de bulletin.
-                    this.previewIssue = null;
-                    const preview = await this.resolvePreviewUrl();
-                    if (preview.blocked) {
-                        this.previewIssue = preview;
-                        this.notify('error', preview.message);
-                        return;
-                    }
-                    window.open(preview.url, '_blank');
-                    return;
-                }
-                if (this.kind === 'generate') {
-                    const preflight = await this.fetchPreflight();
-                    if (!preflight) {
-                        this.notify('error', 'Pre-controle indisponible. La generation est annulee.');
-                        return;
-                    }
-                    if (!preflight.ok && this.isGenerationBlocked()) {
-                        this.notify('error', preflight.message || 'Des prerequis bloquent la generation.');
-                        return;
-                    }
-
-                    const fd = new FormData();
-                    fd.append('classe_id', this.form.classe_id);
-                    fd.append('annee_universitaire_id', this.form.annee_universitaire_id);
-                    fd.append('periode', this.form.periode);
-                    if (this.form.recalculer) fd.append('recalculer', '1');
-                    if (this.form.incomplete_reason) fd.append('incomplete_reason', this.form.incomplete_reason.trim());
-                    const res = await fetch(`{{ route('esbtp.bulletins.generer-classe') }}`, {
-                        method: 'POST',
-                        headers: {
-                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                            'X-Requested-With': 'XMLHttpRequest',
-                            'Accept': 'application/json',
-                        },
-                        body: fd,
-                    });
-                    const data = await this.parseJsonResponse(res);
-                    this.lastGeneration = data;
-
-                    if (res.redirected) {
-                        this.notify('error', 'Le serveur a redirige la requete au lieu de retourner le resultat JSON.');
-                        return;
-                    }
-
-                    if (!res.ok) {
-                        const msg = Object.values(data.errors || {}).flat().join(' - ') || data.message || `Erreur HTTP ${res.status}`;
-                        this.notify('error', msg);
-                        return;
-                    }
-
-                    const writes = (data.created || 0) + (data.regenerated || 0);
-                    const failures = (data.blocking_errors?.length || 0) + (data.errors?.length || 0);
-
-                    if (writes > 0) {
-                        this.notify(failures > 0 ? 'info' : 'success', data.message || 'Generation terminee.');
-                        setTimeout(() => {
-                            window.location.href = `{{ route('esbtp.bulletins.index') }}?classe_id=${this.form.classe_id}&annee_universitaire_id=${this.form.annee_universitaire_id}&periode_id=${this.form.periode}`;
-                        }, 1200);
-                        return;
-                    }
-
-                    this.notify(failures > 0 ? 'error' : 'info', data.message || 'Aucun bulletin genere.');
-                    return;
-                }
-            } catch (err) {
-                this.notify('error', err.message || 'Erreur inattendue.');
-            } finally {
-                if (this.kind === 'generate') this.busy = false;
-                else setTimeout(() => { this.busy = false; }, 400);
-            }
-        },
-
-        async parseJsonResponse(res) {
-            const text = await res.text();
-            if (!text) return {};
-
-            try {
-                return JSON.parse(text);
-            } catch (err) {
-                return { message: res.redirected ? 'Le serveur a redirige la requete au lieu de retourner du JSON.' : text };
-            }
-        },
-
-        notify(type, message) {
-            window.dispatchEvent(new CustomEvent('toast', { detail: { type, message } }));
-        },
-    };
-};
-}
-</script>
-@endpush
+@include('esbtp.bulletins.partials.select-scripts')
 @endsection

@@ -8,6 +8,7 @@ use App\Domain\AcademicPilotage\DTO\BulkBulletinGenerationResult;
 use App\Domain\AcademicPilotage\DTO\BulletinPreparationResult;
 use App\Domain\AcademicPilotage\Exceptions\AcademicPilotageException;
 use App\Exceptions\BulletinConfigurationException;
+use App\Helpers\SettingsHelper;
 use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPConfigMatiere;
@@ -40,6 +41,16 @@ final class BtsBulkBulletinGenerationService
         $missingCoefficientBuckets = [];
         $configurationUrl = $this->configurationUrl($classe->id, $academicYearId, $period);
         $hasSubjectConfiguration = $this->hasSubjectConfiguration($classe->id, $academicYearId, $period);
+        $missingProfesseurs = $this->missingProfesseurRows($classe->id, $academicYearId, $period);
+
+        if ($missingProfesseurs !== []) {
+            $blockingErrors[] = [
+                'code' => 'professeurs_missing',
+                'message' => 'Les professeurs du bulletin sont a completer.',
+                'missing_professeurs' => $missingProfesseurs,
+                'configuration_url' => $configurationUrl,
+            ];
+        }
 
         foreach ($students as $student) {
             $existing = $this->findBulletin((int) $student->id, $classe->id, $academicYearId, $period);
@@ -113,6 +124,7 @@ final class BtsBulkBulletinGenerationService
             'skipped' => $skipped,
             'blocking_errors' => $blockingErrors,
             'missing_coefficients' => array_values($missingCoefficientBuckets),
+            'missing_professeurs' => $missingProfesseurs,
             'configuration_url' => $configurationUrl,
             'message' => $this->preflightMessage($students->count(), $blockingErrors, $skipped, $canOverrideIncomplete),
         ];
@@ -128,6 +140,22 @@ final class BtsBulkBulletinGenerationService
     ): BulkBulletinGenerationResult {
         $period = $this->bulletinService->normalizePeriode($period);
         $preflight = $this->preflight($classe, $academicYearId, $period, $actor, $recalculate);
+        $classConfigurationBlocks = collect($preflight['blocking_errors'] ?? [])
+            ->whereIn('code', ['professeurs_missing'])
+            ->values()
+            ->all();
+
+        if ($classConfigurationBlocks !== []) {
+            return new BulkBulletinGenerationResult(
+                created: 0,
+                regenerated: 0,
+                skipped: $preflight['skipped'] ?? [],
+                blockingErrors: $classConfigurationBlocks,
+                errors: [],
+                preflight: $preflight,
+            );
+        }
+
         $students = $this->activeStudentsForClass($classe->id, $academicYearId);
         $created = 0;
         $regenerated = 0;
@@ -368,6 +396,16 @@ final class BtsBulkBulletinGenerationService
 
     private function professeursTemplate(int $classeId, int $academicYearId, string $period): array
     {
+        foreach ($this->configPeriods($period) as $targetPeriod) {
+            $raw = SettingsHelper::get($this->professeursTemplateKey($classeId, $academicYearId, $targetPeriod), null);
+            $template = is_string($raw) ? $this->decodeJsonToArray($raw) : (array) $raw;
+            $template = array_filter($template, fn ($value) => trim((string) $value) !== '');
+
+            if ($template !== []) {
+                return $template;
+            }
+        }
+
         $template = ESBTPBulletin::where('classe_id', $classeId)
             ->where('annee_universitaire_id', $academicYearId)
             ->whereIn('periode', $this->periodAliases($period))
@@ -378,6 +416,46 @@ final class BtsBulkBulletinGenerationService
             ->value('professeurs');
 
         return $this->decodeJsonToArray($template);
+    }
+
+    private function professeursTemplateKey(int $classeId, int $academicYearId, string $period): string
+    {
+        return "bulletin_professeurs_template.{$classeId}.{$academicYearId}.{$period}";
+    }
+
+    private function missingProfesseurRows(int $classeId, int $academicYearId, string $period): array
+    {
+        $subjectIds = ESBTPConfigMatiere::query()
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $academicYearId)
+            ->whereIn('periode', $this->configPeriods($period))
+            ->get(['matiere_id'])
+            ->pluck('matiere_id')
+            ->map(fn ($id) => (int) $id)
+            ->unique()
+            ->values();
+
+        if ($subjectIds->isEmpty()) {
+            return [];
+        }
+
+        $professeurs = $this->professeursTemplate($classeId, $academicYearId, $period);
+        $missingIds = $subjectIds
+            ->filter(fn (int $id) => trim((string) ($professeurs[$id] ?? $professeurs[(string) $id] ?? '')) === '')
+            ->values();
+
+        if ($missingIds->isEmpty()) {
+            return [];
+        }
+
+        $names = ESBTPMatiere::whereIn('id', $missingIds)->pluck('name', 'id');
+
+        return $missingIds
+            ->map(fn (int $id) => [
+                'matiere_id' => $id,
+                'matiere' => $names[$id] ?? "Matiere #{$id}",
+            ])
+            ->all();
     }
 
     private function missingCoefficientRows(BulletinPreparationResult $preparation): array
@@ -431,6 +509,11 @@ final class BtsBulkBulletinGenerationService
             return 'Pre-controle valide : la generation peut etre lancee.';
         }
 
+        $hardConfigurationCodes = ['missing_subject_configuration', 'coefficients_missing', 'professeurs_missing', 'bulletin_locked'];
+        if (collect($blockingErrors)->contains(fn ($block) => in_array($block['code'] ?? null, $hardConfigurationCodes, true))) {
+            return 'Pre-controle bloque : completez les matieres, coefficients et professeurs requis avant de generer.';
+        }
+
         if ($canOverrideIncomplete) {
             return 'Pre-controle bloque : completez la configuration ou renseignez un motif pour generer un bulletin incomplet.';
         }
@@ -440,11 +523,27 @@ final class BtsBulkBulletinGenerationService
 
     private function configurationUrl(int $classeId, int $academicYearId, string $period): string
     {
-        return route('esbtp.bulletins.config-matieres', [
+        $params = [
             'classe_id' => $classeId,
             'periode' => $period,
             'annee_universitaire_id' => $academicYearId,
-        ]);
+        ];
+
+        $sampleStudentId = ESBTPInscription::query()
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $academicYearId)
+            ->where('status', 'active')
+            ->where('workflow_step', 'etudiant_cree')
+            ->orderBy('date_inscription')
+            ->orderBy('id')
+            ->value('etudiant_id');
+
+        if ($sampleStudentId) {
+            $params['bulletin'] = (int) $sampleStudentId;
+            $params['etudiant_id'] = (int) $sampleStudentId;
+        }
+
+        return route('esbtp.bulletins.config-matieres', $params);
     }
 
     private function studentPayload(object $student): array
