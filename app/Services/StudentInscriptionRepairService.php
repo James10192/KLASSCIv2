@@ -273,7 +273,7 @@ class StudentInscriptionRepairService
             ];
         }
 
-        $ranked = $this->rankProfiles($profiles);
+        $ranked = $this->rankProfiles($profiles, $targetClasse);
 
         $keep = $ranked->first();
         $archive = $ranked->slice(1)->pluck('id')->values()->all();
@@ -373,10 +373,30 @@ class StudentInscriptionRepairService
         return str_contains($normalized, $needle);
     }
 
-    private function rankProfiles(array $profiles)
+    private function rankProfiles(array $profiles, ?ESBTPClasse $targetClasse = null)
     {
         return collect($profiles)
-            ->sort(fn (array $a, array $b) => $this->compareScore($a['score'] ?? [], $b['score'] ?? []))
+            ->map(function (array $profile) use ($targetClasse) {
+                $score = $profile['score'] ?? [];
+
+                if ($targetClasse) {
+                    $score['target_classe_priority'] = (int) ($profile['classe_id'] ?? 0) === (int) $targetClasse->id ? 2 : 0;
+                    $score['target_structure_priority'] = (int) ($profile['filiere_id'] ?? 0) === (int) $targetClasse->filiere_id
+                        && (int) ($profile['niveau_id'] ?? 0) === (int) $targetClasse->niveau_etude_id
+                        ? 1
+                        : 0;
+                }
+
+                $profile['_decision_score'] = $score;
+
+                return $profile;
+            })
+            ->sort(fn (array $a, array $b) => $this->compareScore($a['_decision_score'] ?? [], $b['_decision_score'] ?? []))
+            ->map(function (array $profile) {
+                unset($profile['_decision_score']);
+
+                return $profile;
+            })
             ->values();
     }
 
@@ -387,6 +407,8 @@ class StudentInscriptionRepairService
             'total',
             'valid_count',
             'count',
+            'target_classe_priority',
+            'target_structure_priority',
             'status_priority',
             'workflow_priority',
             'niveau_year',
