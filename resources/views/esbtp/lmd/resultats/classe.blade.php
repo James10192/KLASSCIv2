@@ -394,7 +394,14 @@
                                 $creditsPct = $creditsTotal > 0 ? round(($creditsObtenus / $creditsTotal) * 100) : 0;
                                 $creditsFill = $creditsPct >= 80 ? 'rc-credits-fill--high' : ($creditsPct >= 50 ? 'rc-credits-fill--mid' : 'rc-credits-fill--low');
 
-                                $mentionClass = $moy >= 14 ? 'rc-badge--success' : ($moy >= 12 ? 'rc-badge--info' : ($moy >= 10 ? 'rc-badge--warning' : 'rc-badge--danger'));
+                                $mentionSlug = app(\App\Services\AppreciationScaleService::class)
+                                    ->classificationFor($moy === null ? null : (float) $moy, 'lmd', '')['slug'];
+                                $mentionClass = match ($mentionSlug) {
+                                    'excellent', 'tres-bien' => 'rc-badge--success',
+                                    'bien', 'assez-bien' => 'rc-badge--info',
+                                    'passable' => 'rc-badge--warning',
+                                    default => 'rc-badge--danger',
+                                };
                                 $decisionClass = str_contains(strtolower($bulletin->decision ?? ''), 'valid') ? 'rc-badge--success' : 'rc-badge--danger';
                                 $rang = $bulletin->rang ?? null;
                             @endphp

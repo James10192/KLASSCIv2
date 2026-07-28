@@ -21,6 +21,7 @@ use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Support\InscriptionWorkflowAlertPresenter;
+use App\Services\AppreciationScaleService;
 use App\Services\ESBTP\BtsCurrentResultSnapshotService;
 use App\Services\ESBTP\BulletinConsistencyService;
 use App\Services\ESBTP\ESBTPAbsenceService;
@@ -2543,7 +2544,11 @@ class ESBTPResultatController extends Controller
                         $anneeUniversitaireId
                     ),
                     'rang' => $resultat->rang,
-                    'appreciation' => $resultat->appreciation,
+                    'appreciation' => $resultat->appreciation ?: app(AppreciationScaleService::class)->labelFor(
+                        $resultat->moyenne === null ? null : (float) $resultat->moyenne,
+                        'bts',
+                        ''
+                    ),
                 ];
             }
 
@@ -2596,7 +2601,11 @@ class ESBTPResultatController extends Controller
                             $anneeUniversitaireId
                         ),
                         'rang' => null,
-                        'appreciation' => null,
+                        'appreciation' => app(AppreciationScaleService::class)->labelFor(
+                            $matiereData['moyenne'] === null ? null : (float) $matiereData['moyenne'],
+                            'bts',
+                            ''
+                        ),
                     ];
                 }
             }
@@ -2667,7 +2676,9 @@ class ESBTPResultatController extends Controller
                         'moyenne' => $moyenneCalculee, // null si pas d'évaluations
                         'coefficient' => $coefficientCalcule,
                         'rang' => null,
-                        'appreciation' => null,
+                        'appreciation' => $moyenneCalculee === null
+                            ? null
+                            : app(AppreciationScaleService::class)->labelFor((float) $moyenneCalculee, 'bts', ''),
                         'source' => $moyenneCalculee !== null ? 'calculee' : 'manuelle',
                     ];
                 } else {
@@ -2704,7 +2715,13 @@ class ESBTPResultatController extends Controller
                         'moyenne' => $subject['moyenne'] ?? null,
                         'coefficient' => $subject['coefficient'] ?? null,
                         'rang' => $resultatsData[$matiereId]['rang'] ?? null,
-                        'appreciation' => $resultatsData[$matiereId]['appreciation'] ?? ($subject['manual_resultat']['appreciation'] ?? null),
+                        'appreciation' => $resultatsData[$matiereId]['appreciation']
+                            ?? ($subject['manual_resultat']['appreciation'] ?? null)
+                            ?? app(AppreciationScaleService::class)->labelFor(
+                                ($subject['moyenne'] ?? null) === null ? null : (float) $subject['moyenne'],
+                                'bts',
+                                ''
+                            ),
                         'source' => $subject['source'] ?? 'calculee',
                     ];
                 }
@@ -2794,7 +2811,10 @@ class ESBTPResultatController extends Controller
                         \Log::warning("Coefficient manquant pour matière {$matiereId}, utilisation du défaut: 1");
                     }
                 }
-                $appreciation = $resultatData['appreciation'] ?? null;
+                $appreciation = trim((string) ($resultatData['appreciation'] ?? ''));
+                if ($appreciation === '') {
+                    $appreciation = app(AppreciationScaleService::class)->labelFor((float) $moyenne, 'bts');
+                }
                 $resultatId = $resultatData['id'] ?? null;
 
                 // Si un ID de résultat est fourni, mettre à jour le résultat existant
@@ -2831,7 +2851,10 @@ class ESBTPResultatController extends Controller
                 $matiereType = $nouvelleMatiereData['matiere_type'];
                 $moyenne = $nouvelleMatiereData['moyenne'];
                 $coefficient = null;
-                $appreciation = $nouvelleMatiereData['appreciation'] ?? null;
+                $appreciation = trim((string) ($nouvelleMatiereData['appreciation'] ?? ''));
+                if ($appreciation === '') {
+                    $appreciation = app(AppreciationScaleService::class)->labelFor((float) $moyenne, 'bts');
+                }
 
                 if ($matiereType === 'existante') {
                     // Utiliser une matière existante

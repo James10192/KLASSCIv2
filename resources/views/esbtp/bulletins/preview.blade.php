@@ -274,7 +274,7 @@
                         </div>
                     </div>
                     <div class="academic-year text-center">
-                        ANNÉE UNIVERSITAIRE {{ $anneeUniversitaire->annee_debut }}-{{ $anneeUniversitaire->annee_fin }}
+                        ANNÉE UNIVERSITAIRE {{ $anneeUniversitaire?->display_name ?? '' }}
                     </div>
                 </header>
 

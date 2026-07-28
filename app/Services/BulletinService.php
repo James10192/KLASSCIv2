@@ -2488,25 +2488,11 @@ class BulletinService
 
     public function getAppreciation($moyenne)
     {
-        $useCustomAppreciations = SettingsHelper::get('bulletin_conduite_enabled', '0') === '1';
-
-        if ($useCustomAppreciations) {
-            if ($moyenne >= 18) return 'Excellent';
-            if ($moyenne >= 16) return 'Très Bien';
-            if ($moyenne >= 14) return 'Bien';
-            if ($moyenne >= 12) return 'Assez-bien';
-            if ($moyenne >= 9.99) return 'Passable';
-            if ($moyenne >= 7) return 'Insuffisant';
-            if ($moyenne >= 1) return 'Médiocre';
-            return 'Nul';
-        }
-
-        if ($moyenne >= 16) return 'Excellent';
-        if ($moyenne >= 14) return 'Très Bien';
-        if ($moyenne >= 12) return 'Bien';
-        if ($moyenne >= 10) return 'Assez Bien';
-        if ($moyenne >= 8) return 'Passable';
-        return 'Insuffisant';
+        return app(AppreciationScaleService::class)->labelFor(
+            $moyenne === null ? null : (float) $moyenne,
+            'bts',
+            'Insuffisant'
+        );
     }
 
     /**

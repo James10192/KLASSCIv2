@@ -614,6 +614,7 @@ let cachedStudentsRequestKey = null;
 let currentLoadRequest = null;
 let evalParamsCache = {};
 const nmCanEditSubmittedNotes = @json(auth()->user()?->can('notes.edit') ?? false);
+const nmAppreciationScale = @json(app(\App\Services\AppreciationScaleService::class)->frontendScale('bts'));
 const blankPdfUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf", ["classe" => ":classId"]) }}';
 const blankPdfPreviewUrlTemplate = '{{ route("esbtp.notes.saisie-rapide-blank.pdf-preview", ["classe" => ":classId"]) }}';
 
@@ -627,6 +628,27 @@ function nmEscapeHtml(value) {
             "'": '&#039;'
         }[char];
     });
+}
+
+function nmClassifyAppreciation(avg) {
+    const score = Number(avg);
+    if (!Number.isFinite(score)) {
+        return { text: '--', cls: 'default' };
+    }
+
+    const scale = Array.isArray(nmAppreciationScale) ? [...nmAppreciationScale].sort((a, b) => a.min - b.min) : [];
+    let fallback = scale[0] || { label: '--', class: 'default' };
+
+    for (const range of scale) {
+        if (score >= Number(range.min)) {
+            fallback = range;
+        }
+        if (score >= Number(range.min) && score <= Number(range.max)) {
+            return { text: range.label, cls: range.class || range.slug || 'default' };
+        }
+    }
+
+    return { text: fallback.label || '--', cls: fallback.class || fallback.slug || 'default' };
 }
 
 // Initialisation
@@ -1395,28 +1417,7 @@ function calculateStudentAverage(studentId) {
         const moyenne = totalPoints / totalCoefficients;
         averageCell.text(moyenne.toFixed(2));
 
-        let appreciation = '';
-        let levelClass = '';
-
-        if (moyenne >= 16) {
-            appreciation = 'Excellent';
-            levelClass = 'excellent';
-        } else if (moyenne >= 14) {
-            appreciation = 'Très bien';
-            levelClass = 'tres-bien';
-        } else if (moyenne >= 12) {
-            appreciation = 'Bien';
-            levelClass = 'bien';
-        } else if (moyenne >= 10) {
-            appreciation = 'Assez bien';
-            levelClass = 'assez-bien';
-        } else if (moyenne >= 8) {
-            appreciation = 'Passable';
-            levelClass = 'passable';
-        } else {
-            appreciation = 'Insuffisant';
-            levelClass = 'insuffisant';
-        }
+        const { text: appreciation, cls: levelClass } = nmClassifyAppreciation(moyenne);
 
         appreciationBadge.text(appreciation).removeClass().addClass(`nm-appreciation ${levelClass}`);
     } else {

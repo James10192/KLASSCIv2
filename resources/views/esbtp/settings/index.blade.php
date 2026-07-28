@@ -433,6 +433,60 @@
     }
     .bc-hint i { color: var(--primary); }
 
+    .app-scale-editor {
+        border: 1px solid #dbe4f0;
+        border-radius: 8px;
+        background: #ffffff;
+        padding: 16px;
+        margin-top: 14px;
+    }
+    .app-scale-head {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 12px;
+    }
+    .app-scale-title {
+        margin: 0;
+        color: #1e293b;
+        font-size: .98rem;
+        font-weight: 700;
+    }
+    .app-scale-desc {
+        margin: 3px 0 0;
+        color: #64748b;
+        font-size: .82rem;
+        line-height: 1.4;
+    }
+    .app-scale-table-wrap {
+        overflow-x: auto;
+    }
+    .app-scale-table {
+        width: 100%;
+        min-width: 620px;
+        border-collapse: collapse;
+    }
+    .app-scale-table th {
+        color: #475569;
+        font-size: .76rem;
+        font-weight: 700;
+        padding: 8px;
+        text-transform: uppercase;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .app-scale-table td {
+        padding: 8px;
+        border-bottom: 1px solid #eef2f7;
+        vertical-align: middle;
+    }
+    .app-scale-table tbody tr:last-child td {
+        border-bottom: 0;
+    }
+    .app-scale-table input[type="number"] {
+        max-width: 120px;
+    }
+
     .mailpulse-panel {
         font-family: "Plus Jakarta Sans", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
@@ -2010,12 +2064,14 @@
                         <li><strong>0/20</strong> -- Blame</li>
                         <li><strong>05/20 a 10/20</strong> -- Avertissement</li>
                     </ul>
-                    <strong><i class="fas fa-book"></i> Appreciations des notes :</strong>
-                    <ul>
-                        <li>00/20 = Nul -- 01-06 = Mediocre -- 07-09.98 = Insuffisant -- 9.99-11.99 = Passable</li>
-                        <li>12-13.99 = Assez-bien -- 14-15.99 = Bien -- 16-17.99 = Tres Bien -- 18-20 = Excellent</li>
-                    </ul>
                 </div>
+
+                @include('esbtp.settings.partials.appreciation-scale-editor', [
+                    'system' => 'bts',
+                    'scale' => old('appreciation_scale_bts', $appreciationScales['bts'] ?? []),
+                    'title' => 'Barème des appréciations BTS',
+                    'description' => 'Libellés affichés sur les notes, résultats, bulletins et aperçus PDF BTS.',
+                ])
             </div>
 
             <!-- Section 6b: Assiduite / Saisie manuelle d'heures -->
@@ -3067,6 +3123,13 @@
                     </div>
 
                     {{-- Section 5: Délibération --}}
+                    @include('esbtp.settings.partials.appreciation-scale-editor', [
+                        'system' => 'lmd',
+                        'scale' => old('appreciation_scale_lmd', $appreciationScales['lmd'] ?? []),
+                        'title' => 'Barème des appréciations LMD',
+                        'description' => 'Libellés complets utilisés dans les notes LMD, résultats LMD, bulletins LMD et dossier étudiant.',
+                    ])
+
                     <div class="ls-section ls-section--deliberation">
                         <div class="ls-head">
                             <div class="ls-icon ls-icon--deliberation"><i class="fas fa-gavel"></i></div>

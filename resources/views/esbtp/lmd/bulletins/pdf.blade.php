@@ -92,6 +92,13 @@
     $primary = $pdfCfg['primary_color']     ?? '#0453cb';
     $etab    = $etablissement ?? [];
     $bCfg    = $bulletinCfg ?? [];
+    $appreciationScale = app(\App\Services\AppreciationScaleService::class);
+    $anneeLabel = $annee?->display_name ?? $annee?->name ?? '';
+    $formatScaleNumber = static fn (float $value): string => rtrim(rtrim(number_format($value, 2, ',', ''), '0'), ',');
+    $lmdAppreciationLegend = collect($appreciationScale->scale('lmd'))
+        ->sortByDesc('min')
+        ->map(fn (array $range) => $formatScaleNumber($range['min']) . '-' . $formatScaleNumber($range['max']) . ' : ' . $range['label'])
+        ->implode(' ; ');
 @endphp
 
 {{-- ═══════════════════════════════════════════════════════
@@ -155,8 +162,8 @@
                 <table width="100%" border="0" cellspacing="0" cellpadding="0">
                     <tr>
                         <td width="40%" style="font-size: 8px; color: {{ $hdrText }};">
-                            <span style="opacity: 0.75;">Année scolaire :</span>
-                            <strong>{{ $annee->name ?? '' }}</strong>
+                            <span style="opacity: 0.75;">Année universitaire :</span>
+                            <strong>{{ $anneeLabel }}</strong>
                         </td>
                         <td width="30%" style="font-size: 8px; color: {{ $hdrText }}; text-align: center;">
                             <span style="opacity: 0.75;">Niveau :</span>
@@ -395,6 +402,9 @@
     <strong>P:</strong> Passable –
     <strong>INS:</strong> Insuffisant –
     <strong>F:</strong> Faible
+    @if($lmdAppreciationLegend)
+        <br><strong>Barème des appréciations :</strong> {{ $lmdAppreciationLegend }}
+    @endif
 </div>
 
 {{-- ═══════════════════════════════════════════════════════

@@ -678,7 +678,10 @@
                         @forelse($bulletins as $b)
                             @php
                                 $moy = $b->moyenne_generale ?? 0;
-                                $moyClass = $moy >= 14 ? 'lb-moy--excellent' : ($moy >= 10 ? 'lb-moy--good' : 'lb-moy--fail');
+                                $moySlug = app(\App\Services\AppreciationScaleService::class)->classificationFor((float) $moy, 'lmd', '')['slug'];
+                                $moyClass = in_array($moySlug, ['excellent', 'tres-bien', 'bien'], true)
+                                    ? 'lb-moy--excellent'
+                                    : ($moySlug === 'passable' || $moySlug === 'assez-bien' ? 'lb-moy--good' : 'lb-moy--fail');
                                 $mention = $b->mention_generale;
                                 $credCap = $b->credits_capitalises ?? 0;
                                 $credTot = $b->credits_totaux ?? 0;

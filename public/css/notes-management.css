@@ -1130,6 +1130,11 @@
     background: rgba(239,68,68,0.08);
     color: #dc2626;
 }
+.nm-appreciation.mediocre,
+.nm-appreciation.nul-ou-mal {
+    background: rgba(127,29,29,0.1);
+    color: #7f1d1d;
+}
 .nm-appreciation.default {
     background: #f1f5f9;
     color: #94a3b8;

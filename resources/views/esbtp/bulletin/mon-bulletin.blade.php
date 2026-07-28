@@ -4,6 +4,17 @@
 
 @section('page-title', 'Mon Bulletin')
 
+@php
+    $studentAppreciations = app(\App\Services\AppreciationScaleService::class);
+    $studentBadgeClass = static function (?string $slug): string {
+        return match ($slug) {
+            'excellent', 'tres-bien', 'bien' => 'badge-success',
+            'assez-bien', 'passable' => 'badge-info',
+            default => 'badge-danger',
+        };
+    };
+@endphp
+
 @section('content')
 <div class="container-fluid">
     <!-- Filtres -->
@@ -15,7 +26,7 @@
                     <select name="annee_universitaire_id" id="annee_universitaire_id" class="form-control">
                         @foreach($anneesUniversitaires as $annee)
                             <option value="{{ $annee->id }}" {{ $anneeId == $annee->id ? 'selected' : '' }}>
-                                {{ $annee->annee_debut }}-{{ $annee->annee_fin }}
+                                {{ $annee->display_name }}
                             </option>
                         @endforeach
                     </select>
@@ -70,7 +81,7 @@
                                 <td>
                                     @foreach($anneesUniversitaires as $annee)
                                         @if($annee->id == $anneeId)
-                                            {{ $annee->annee_debut }}-{{ $annee->annee_fin }}
+                                            {{ $annee->display_name }}
                                         @endif
                                     @endforeach
                                 </td>
@@ -154,17 +165,8 @@
                                         <td class="text-center">{{ number_format($detail->moyenne_classe, 2) }}</td>
                                         <td class="text-center">{{ $detail->rang }}/{{ $detail->effectif }}</td>
                                         <td class="text-center">
-                                            @if($detail->moyenne >= 16)
-                                                <span class="badge badge-success">Très Bien</span>
-                                            @elseif($detail->moyenne >= 14)
-                                                <span class="badge badge-success">Bien</span>
-                                            @elseif($detail->moyenne >= 12)
-                                                <span class="badge badge-info">Assez Bien</span>
-                                            @elseif($detail->moyenne >= 10)
-                                                <span class="badge badge-info">Passable</span>
-                                            @else
-                                                <span class="badge badge-danger">Insuffisant</span>
-                                            @endif
+                                            @php($detailAppreciation = $studentAppreciations->classificationFor($detail->moyenne === null ? null : (float) $detail->moyenne, 'bts'))
+                                            <span class="badge {{ $studentBadgeClass($detailAppreciation['slug']) }}">{{ $detailAppreciation['label'] }}</span>
                                         </td>
                                         <td class="text-center">
                                             @if($detail->moyenne >= 10)
@@ -212,14 +214,9 @@
             <div class="alert {{ $moyenneGenerale >= 10 ? 'alert-success' : 'alert-danger' }}">
                 <h5>{{ $decisionConseil ?? ($moyenneGenerale >= 10 ? 'ADMIS' : 'AJOURNÉ') }}</h5>
                 <p>
-                    @if($moyenneGenerale >= 16)
-                        Félicitations ! Vous avez obtenu une mention Très Bien.
-                    @elseif($moyenneGenerale >= 14)
-                        Félicitations ! Vous avez obtenu une mention Bien.
-                    @elseif($moyenneGenerale >= 12)
-                        Félicitations ! Vous avez obtenu une mention Assez Bien.
-                    @elseif($moyenneGenerale >= 10)
-                        Vous avez validé cette période avec une mention Passable.
+                    @if($moyenneGenerale >= 10)
+                        @php($generalAppreciation = $studentAppreciations->classificationFor((float) $moyenneGenerale, 'bts'))
+                        Vous avez validé cette période avec l'appréciation {{ $generalAppreciation['label'] }}.
                     @else
                         Vous n'avez pas validé cette période. Veuillez consulter la scolarité pour plus d'informations.
                     @endif

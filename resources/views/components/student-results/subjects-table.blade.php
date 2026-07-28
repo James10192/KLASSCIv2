@@ -81,17 +81,8 @@
                                 </div>
                             </td>
                             <td class="text-center">
-                                @if($matiereData['moyenne'] >= 16)
-                                    <span class="sr-appreciation sr-appreciation--excellent">Excellent</span>
-                                @elseif($matiereData['moyenne'] >= 14)
-                                    <span class="sr-appreciation sr-appreciation--tres-bien">Très bien</span>
-                                @elseif($matiereData['moyenne'] >= 12)
-                                    <span class="sr-appreciation sr-appreciation--bien">Bien</span>
-                                @elseif($matiereData['moyenne'] >= 10)
-                                    <span class="sr-appreciation sr-appreciation--passable">Passable</span>
-                                @else
-                                    <span class="sr-appreciation sr-appreciation--insuffisant">Insuffisant</span>
-                                @endif
+                                @php($appreciation = app(\App\Services\AppreciationScaleService::class)->classificationFor((float) $matiereData['moyenne'], 'bts'))
+                                <span class="sr-appreciation sr-appreciation--{{ $appreciation['slug'] }}">{{ $appreciation['label'] }}</span>
                             </td>
                         </tr>
                     @endforeach

@@ -3,13 +3,20 @@
 @section('title', 'Bulletin de ' . $bulletin->etudiant->nom . ' ' . $bulletin->etudiant->prenom . ' - KLASSCI')
 
 @php
+    $bshAppreciations = app(\App\Services\AppreciationScaleService::class);
+    $bshToneFor = static function (?string $slug): string {
+        return match ($slug) {
+            'excellent', 'tres-bien' => 'success',
+            'bien', 'assez-bien', 'passable' => 'primary',
+            'insuffisant' => 'warning',
+            default => 'danger',
+        };
+    };
     $bshMoyenne = $bulletin->moyenne_generale;
     $bshResultat = null;
     if ($bshMoyenne !== null) {
-        if ($bshMoyenne >= 12) { $bshResultat = ['Très bien', 'success']; }
-        elseif ($bshMoyenne >= 10) { $bshResultat = ['Passable', 'primary']; }
-        elseif ($bshMoyenne >= 8) { $bshResultat = ['Insuffisant', 'warning']; }
-        else { $bshResultat = ['Faible', 'danger']; }
+        $bshClass = $bshAppreciations->classificationFor((float) $bshMoyenne, 'bts');
+        $bshResultat = [$bshClass['label'], $bshToneFor($bshClass['slug'])];
     }
     $bshPeriodeLabel = match($bulletin->periode) {
         'semestre1' => 'Premier semestre',
@@ -17,17 +24,7 @@
         'annuel' => 'Annuel',
         default => $bulletin->periode,
     };
-    $bshAnnee = '—';
-    if ($bulletin->anneeUniversitaire) {
-        $bshAu = $bulletin->anneeUniversitaire;
-        if (! empty($bshAu->annee_debut) && ! empty($bshAu->annee_fin)) {
-            $bshAnnee = $bshAu->annee_debut . '-' . $bshAu->annee_fin;
-        } elseif (! empty($bshAu->name)) {
-            $bshAnnee = $bshAu->name;
-        } elseif (! empty($bshAu->libelle)) {
-            $bshAnnee = $bshAu->libelle;
-        }
-    }
+    $bshAnnee = $bulletin->anneeUniversitaire?->display_name ?? '—';
     $bshRoles = [
         'directeur' => 'Directeur',
         'responsable' => 'Responsable pédagogique',
@@ -300,7 +297,7 @@
             </div>
             <div class="bsh-card-body">
                 <div class="bsh-info-row"><span class="bsh-info-label">Période</span><span class="bsh-info-value">{{ $bshPeriodeLabel }}</span></div>
-                <div class="bsh-info-row"><span class="bsh-info-label">Année scolaire</span><span class="bsh-info-value">{{ $bshAnnee }}</span></div>
+                <div class="bsh-info-row"><span class="bsh-info-label">Année universitaire</span><span class="bsh-info-value">{{ $bshAnnee }}</span></div>
                 <div class="bsh-info-row"><span class="bsh-info-label">Date de génération</span><span class="bsh-info-value">{{ date('d/m/Y H:i', strtotime($bulletin->created_at)) }}</span></div>
                 <div class="bsh-info-row">
                     <span class="bsh-info-label">Statut de publication</span>
@@ -353,13 +350,8 @@
                                 </td>
                                 <td class="text-c">
                                     @php
-                                        $m = $resultat->moyenne;
-                                        if ($m >= 16) { $mention = ['Excellent', 'success']; }
-                                        elseif ($m >= 14) { $mention = ['Très bien', 'primary']; }
-                                        elseif ($m >= 12) { $mention = ['Bien', 'primary']; }
-                                        elseif ($m >= 10) { $mention = ['Passable', 'neutral']; }
-                                        elseif ($m >= 8) { $mention = ['Insuffisant', 'warning']; }
-                                        else { $mention = ['Faible', 'danger']; }
+                                        $mentionClass = $bshAppreciations->classificationFor($resultat->moyenne === null ? null : (float) $resultat->moyenne, 'bts', '—');
+                                        $mention = [$mentionClass['label'], $bshToneFor($mentionClass['slug'])];
                                     @endphp
                                     <span class="bsh-badge bsh-badge--{{ $mention[1] }}">{{ $mention[0] }}</span>
                                 </td>

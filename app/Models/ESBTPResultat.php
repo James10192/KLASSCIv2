@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AppreciationScaleService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -215,19 +216,7 @@ class ESBTPResultat extends Model implements Auditable
      */
     public function getMentionAttribute()
     {
-        $moyenne = $this->moyenne;
-
-        if ($moyenne >= 16) {
-            return 'Très Bien';
-        } elseif ($moyenne >= 14) {
-            return 'Bien';
-        } elseif ($moyenne >= 12) {
-            return 'Assez Bien';
-        } elseif ($moyenne >= 10) {
-            return 'Passable';
-        } else {
-            return 'Insuffisant';
-        }
+        return app(AppreciationScaleService::class)->labelFor($this->moyenne === null ? null : (float) $this->moyenne, 'bts');
     }
 
     /**
@@ -237,18 +226,6 @@ class ESBTPResultat extends Model implements Auditable
      */
     public function determinerAppreciation()
     {
-        $moyenne = $this->moyenne;
-
-        if ($moyenne >= 16) {
-            return 'Excellent';
-        } elseif ($moyenne >= 14) {
-            return 'Très Bien';
-        } elseif ($moyenne >= 12) {
-            return 'Bien';
-        } elseif ($moyenne >= 10) {
-            return 'Passable';
-        } else {
-            return 'Insuffisant';
-        }
+        return app(AppreciationScaleService::class)->labelFor($this->moyenne === null ? null : (float) $this->moyenne, 'bts');
     }
 }

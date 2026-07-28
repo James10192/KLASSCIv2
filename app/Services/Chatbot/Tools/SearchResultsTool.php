@@ -3,6 +3,7 @@
 namespace App\Services\Chatbot\Tools;
 
 use App\Models\ESBTPBulletin;
+use App\Services\AppreciationScaleService;
 use Illuminate\Support\Facades\Route;
 
 class SearchResultsTool extends ChatbotTool
@@ -109,12 +110,6 @@ class SearchResultsTool extends ChatbotTool
 
     private function getMention(float $moyenne): string
     {
-        return match (true) {
-            $moyenne >= 16 => 'Très Bien',
-            $moyenne >= 14 => 'Bien',
-            $moyenne >= 12 => 'Assez Bien',
-            $moyenne >= 10 => 'Passable',
-            default => 'Insuffisant',
-        };
+        return app(AppreciationScaleService::class)->labelFor($moyenne, 'bts', 'Insuffisant');
     }
 }

@@ -1523,6 +1523,11 @@
     color: white;
 }
 
+.sr-appreciation--assez-bien {
+    background: #0f766e;
+    color: white;
+}
+
 .sr-appreciation--passable {
     background: var(--sr-warning);
     color: white;
@@ -1530,6 +1535,12 @@
 
 .sr-appreciation--insuffisant {
     background: var(--sr-danger);
+    color: white;
+}
+
+.sr-appreciation--mediocre,
+.sr-appreciation--nul-ou-mal {
+    background: #7f1d1d;
     color: white;
 }
 

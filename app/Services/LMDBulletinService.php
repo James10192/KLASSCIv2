@@ -573,18 +573,17 @@ class LMDBulletinService
     {
         if ($moyenne === null) return null;
 
-        $mention = $this->rules->mentionFor($moyenne);
-        if ($mention !== null) {
-            return match ($mention) {
-                'excellent', 'tres_bien' => 'TB',
-                'bien' => 'B',
-                'assez_bien' => 'AB',
-                'passable' => 'P',
-            };
-        }
+        $classification = app(AppreciationScaleService::class)->classificationFor($moyenne, 'lmd', '');
+        $slug = $classification['slug'];
 
-        if ($moyenne >= 8)   return 'INS';
-        return 'F';
+        return match (true) {
+            in_array($slug, ['excellent', 'tres-bien'], true) => 'TB',
+            $slug === 'bien' => 'B',
+            $slug === 'assez-bien' => 'AB',
+            $slug === 'passable' => 'P',
+            $slug === 'insuffisant' => 'INS',
+            default => 'F',
+        };
     }
 
     /**

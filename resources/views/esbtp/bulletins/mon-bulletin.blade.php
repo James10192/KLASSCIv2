@@ -433,11 +433,7 @@
     /* ---- Fix année courante ---- */
     $anneeLabel = null;
     if ($anneeCourante) {
-        if ($anneeCourante->annee_debut && $anneeCourante->annee_fin) {
-            $anneeLabel = $anneeCourante->annee_debut . '-' . $anneeCourante->annee_fin;
-        } elseif ($anneeCourante->name) {
-            $anneeLabel = $anneeCourante->name;
-        }
+        $anneeLabel = $anneeCourante->display_name;
     }
     $anneeLabel = $anneeLabel ?? date('Y') . '-' . (date('Y') + 1);
 @endphp
@@ -518,37 +514,18 @@
                 @foreach($bulletins as $bulletin)
                 @php
                     /* -- Mention → classes CSS -- */
-                    $mention = $bulletin->mention ?? null;
-                    $mentionLower = Str::lower($mention ?? '');
-                    if (Str::contains($mentionLower, 'excellent')) {
-                        $stripeClass  = 'stripe-excellent';
-                        $mentionClass = 'mention-excellent';
-                        $mentionIcon  = 'fas fa-trophy';
-                    } elseif (Str::contains($mentionLower, 'très bien') || Str::contains($mentionLower, 'tres bien')) {
-                        $stripeClass  = 'stripe-tres-bien';
-                        $mentionClass = 'mention-tres-bien';
-                        $mentionIcon  = 'fas fa-star';
-                    } elseif (Str::contains($mentionLower, 'bien')) {
-                        $stripeClass  = 'stripe-bien';
-                        $mentionClass = 'mention-bien';
-                        $mentionIcon  = 'fas fa-thumbs-up';
-                    } elseif (Str::contains($mentionLower, 'assez bien')) {
-                        $stripeClass  = 'stripe-assez-bien';
-                        $mentionClass = 'mention-assez-bien';
-                        $mentionIcon  = 'fas fa-check-circle';
-                    } elseif (Str::contains($mentionLower, 'passable')) {
-                        $stripeClass  = 'stripe-passable';
-                        $mentionClass = 'mention-passable';
-                        $mentionIcon  = 'fas fa-minus-circle';
-                    } elseif ($mention) {
-                        $stripeClass  = 'stripe-echec';
-                        $mentionClass = 'mention-echec';
-                        $mentionIcon  = 'fas fa-times-circle';
-                    } else {
-                        $stripeClass  = 'stripe-default';
-                        $mentionClass = '';
-                        $mentionIcon  = '';
-                    }
+                    $moyenneBulletin = $bulletin->moyenne_generale === null ? null : (float) $bulletin->moyenne_generale;
+                    $mentionData = app(\App\Services\AppreciationScaleService::class)->classificationFor($moyenneBulletin, 'bts', '');
+                    $mention = $bulletin->mention ?: ($mentionData['label'] ?: null);
+                    [$stripeClass, $mentionClass, $mentionIcon] = match ($mentionData['slug']) {
+                        'excellent' => ['stripe-excellent', 'mention-excellent', 'fas fa-trophy'],
+                        'tres-bien' => ['stripe-tres-bien', 'mention-tres-bien', 'fas fa-star'],
+                        'bien' => ['stripe-bien', 'mention-bien', 'fas fa-thumbs-up'],
+                        'assez-bien' => ['stripe-assez-bien', 'mention-assez-bien', 'fas fa-check-circle'],
+                        'passable' => ['stripe-passable', 'mention-passable', 'fas fa-minus-circle'],
+                        'default' => ['stripe-default', '', ''],
+                        default => ['stripe-echec', 'mention-echec', 'fas fa-times-circle'],
+                    };
 
                     /* -- Libellé période -- */
                     $periodeLabel = match($bulletin->periode ?? '') {
@@ -567,11 +544,7 @@
                     /* -- Année du bulletin -- */
                     $bAnnee = null;
                     if ($bulletin->anneeUniversitaire) {
-                        if ($bulletin->anneeUniversitaire->annee_debut && $bulletin->anneeUniversitaire->annee_fin) {
-                            $bAnnee = $bulletin->anneeUniversitaire->annee_debut . '-' . $bulletin->anneeUniversitaire->annee_fin;
-                        } elseif ($bulletin->anneeUniversitaire->name) {
-                            $bAnnee = $bulletin->anneeUniversitaire->name;
-                        }
+                        $bAnnee = $bulletin->anneeUniversitaire->display_name;
                     }
                     $bAnnee = $bAnnee ?? 'Année non définie';
 

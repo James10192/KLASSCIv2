@@ -40,20 +40,8 @@
                 <label class="sr-filter-label">Année universitaire</label>
                 <select class="sr-filter-select sr-auto-filter" name="annee_universitaire_id">
                     @foreach($anneesUniversitaires ?? [] as $annee)
-                        @php
-                            $anneeLabel = $annee->name;
-                            if (! $anneeLabel && $annee->start_date && $annee->end_date) {
-                                $anneeLabel = $annee->start_date->format('Y').'-'.$annee->end_date->format('Y');
-                            }
-                            if (! $anneeLabel && isset($annee->annee_debut, $annee->annee_fin)) {
-                                $anneeLabel = $annee->annee_debut.'-'.$annee->annee_fin;
-                            }
-                            if (! $anneeLabel) {
-                                $anneeLabel = 'Annee '.$annee->id;
-                            }
-                        @endphp
                         <option value="{{ $annee->id }}" {{ isset($annee_id) && $annee_id == $annee->id ? 'selected' : '' }}>
-                            {{ $anneeLabel }}
+                            {{ $annee->display_name }}
                         </option>
                     @endforeach
                 </select>

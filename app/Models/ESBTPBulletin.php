@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AppreciationScaleService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -232,21 +233,9 @@ class ESBTPBulletin extends Model implements Auditable
      */
     public function calculerMention(): void
     {
-        if ($this->moyenne_generale === null) {
-            $this->mention = null;
-        } elseif ($this->moyenne_generale >= 16) {
-            $this->mention = 'Excellent';
-        } elseif ($this->moyenne_generale >= 14) {
-            $this->mention = 'Très Bien';
-        } elseif ($this->moyenne_generale >= 12) {
-            $this->mention = 'Bien';
-        } elseif ($this->moyenne_generale >= 10) {
-            $this->mention = 'Assez Bien';
-        } elseif ($this->moyenne_generale >= 8) {
-            $this->mention = 'Passable';
-        } else {
-            $this->mention = 'Insuffisant';
-        }
+        $this->mention = $this->moyenne_generale === null
+            ? null
+            : app(AppreciationScaleService::class)->labelFor((float) $this->moyenne_generale, 'bts');
 
         $this->save();
     }

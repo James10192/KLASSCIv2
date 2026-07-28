@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Traits\HasAuditTrail;
+use App\Services\AppreciationScaleService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -87,12 +88,13 @@ class ESBTPLMDBulletin extends Model
     public function getMentionGeneraleAttribute(): ?string
     {
         if ($this->moyenne_generale === null) return null;
-        $m = (float) $this->moyenne_generale;
-        if ($m >= 16) return 'Très Bien';
-        if ($m >= 14) return 'Bien';
-        if ($m >= 12) return 'Assez Bien';
-        if ($m >= 10) return 'Passable';
-        return 'Insuffisant';
+
+        return app(AppreciationScaleService::class)->labelFor((float) $this->moyenne_generale, 'lmd');
+    }
+
+    public function getMentionAttribute(): ?string
+    {
+        return $this->mention_generale;
     }
 
     public function getTauxCapitalisationAttribute(): float

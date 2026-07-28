@@ -8,6 +8,8 @@
         $pdfHeaderText = $pdfSettings['header_text_color'] ?? '#ffffff';
         $pdfPrimary    = $pdfSettings['primary_color']     ?? $pdfHeaderBg;
         $pdfText       = $pdfSettings['text_color']        ?? '#1f2937';
+        $appreciationScale = app(\App\Services\AppreciationScaleService::class);
+        $anneeLabel = $anneeUniversitaire?->display_name ?? '';
     @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -489,7 +491,7 @@
                         <div class="year">{{ $settings['bulletin_cycle_text'] ?? 'Brevet de Technicien Supérieur' }}</div>
                         <div class="year">{{ $settings['bulletin_cycle_abbreviation'] ?? 'BTS' }}</div>
                         @endif
-                        <div class="year" style="font-weight: 700;">Année Scolaire : {{ $anneeUniversitaire->annee_debut }}-{{ $anneeUniversitaire->annee_fin }}</div>
+                        <div class="year" style="font-weight: 700;">Année universitaire : {{ $anneeLabel }}</div>
                     </td>
                 </tr>
             </table>
@@ -626,7 +628,7 @@
                                 @if($showRankPerSubject)<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
                                 @if($showAbsencesParMatiere)<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
                                 @if($showTeachers)<td>{{ $professeurs[$resultat->matiere_id] ?? 'M.' }}</td>@endif
-                                @if($showAppreciations)<td>{{ $resultat->appreciation ?? '-' }}</td>@endif
+                                @if($showAppreciations)<td>{{ $appreciationScale->labelFor($resultat->moyenne === null ? null : (float) $resultat->moyenne, 'bts', '-') }}</td>@endif
                             </tr>
                         @endforeach
                     @else
@@ -654,7 +656,7 @@
                             @if($showRankPerSubject)<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
                             @if($showAbsencesParMatiere)<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
                             @if($showTeachers)<td>{{ $professeurs[$resultat->matiere_id] ?? 'M.' }}</td>@endif
-                            @if($showAppreciations)<td>{{ $resultat->appreciation ?? '-' }}</td>@endif
+                            @if($showAppreciations)<td>{{ $appreciationScale->labelFor($resultat->moyenne === null ? null : (float) $resultat->moyenne, 'bts', '-') }}</td>@endif
                         </tr>
                     @endforeach
                 @else

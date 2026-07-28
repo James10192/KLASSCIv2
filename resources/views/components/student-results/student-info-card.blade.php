@@ -54,16 +54,7 @@
                 <div class="sr-detail-label">Année</div>
                 <div class="sr-detail-value">
                     @if(isset($anneeUniversitaire) && $anneeUniversitaire)
-                        @php
-                            $anneeDisplay = $anneeUniversitaire->name;
-                            if (! $anneeDisplay && $anneeUniversitaire->annee_debut && $anneeUniversitaire->annee_fin) {
-                                $anneeDisplay = $anneeUniversitaire->annee_debut . '-' . $anneeUniversitaire->annee_fin;
-                            }
-                            if (! $anneeDisplay && $anneeUniversitaire->start_date && $anneeUniversitaire->end_date) {
-                                $anneeDisplay = $anneeUniversitaire->start_date->format('Y') . '-' . $anneeUniversitaire->end_date->format('Y');
-                            }
-                        @endphp
-                        {{ $anneeDisplay ?: 'N/A' }}
+                        {{ $anneeUniversitaire->display_name ?: 'N/A' }}
                     @else
                         N/A
                     @endif

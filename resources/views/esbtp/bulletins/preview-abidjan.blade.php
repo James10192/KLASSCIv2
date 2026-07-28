@@ -249,7 +249,7 @@
                                 </div>
                                 <div class="bulletin-title">BULLETIN DE NOTES</div>
                                 <div class="bulletin-period">Edition du {{ date('d/m/Y') }}</div>
-                                <div class="academic-year">ANNEE UNIVERSITAIRE {{ $anneeAffichee->annee_debut }}-{{ $anneeAffichee->annee_fin }}</div>
+                                <div class="academic-year">ANNEE UNIVERSITAIRE {{ $anneeAffichee?->display_name ?? '' }}</div>
                             </td>
                         </tr>
                     </table>

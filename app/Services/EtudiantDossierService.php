@@ -160,11 +160,8 @@ class EtudiantDossierService
     private function getMention(?float $moyenne): string
     {
         if ($moyenne === null) return 'N/A';
-        if ($moyenne >= 16)   return 'Tres Bien';
-        if ($moyenne >= 14)   return 'Bien';
-        if ($moyenne >= 12)   return 'Assez Bien';
-        if ($moyenne >= 10)   return 'Passable';
-        return 'Insuffisant';
+
+        return app(AppreciationScaleService::class)->labelFor($moyenne, 'bts', 'N/A');
     }
 
     /** Convertit 'semestre1' en 1, 'semestre2' en 2. */

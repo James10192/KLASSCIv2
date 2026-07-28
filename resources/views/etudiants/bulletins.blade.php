@@ -295,7 +295,7 @@
                             <div>
                                 <div class="bulletin-title">
                                     <i class="fas fa-calendar-alt text-primary me-2"></i>
-                                    {{ $bulletin->anneeUniversitaire->annee_debut ?? '' }}-{{ $bulletin->anneeUniversitaire->annee_fin ?? '' }}
+                                    {{ $bulletin->anneeUniversitaire?->display_name ?? '' }}
                                 </div>
                                 <div class="bulletin-subtitle">
                                     @if($bulletin->periode == 'semestre1')
@@ -311,15 +311,23 @@
                                 </div>
                             </div>
                             <div>
-                                @if($bulletin->mention)
-                                    @php
-                                        $mentionClass = 'mention-echec';
-                                        if($bulletin->mention == 'Très Bien' || $bulletin->mention == 'Excellent') $mentionClass = 'mention-excellent';
-                                        elseif($bulletin->mention == 'Bien') $mentionClass = 'mention-bien';
-                                        elseif($bulletin->mention == 'Assez Bien') $mentionClass = 'mention-assez-bien';
-                                        elseif($bulletin->mention == 'Passable') $mentionClass = 'mention-passable';
-                                    @endphp
-                                    <span class="mention-badge {{ $mentionClass }}">{{ $bulletin->mention }}</span>
+                                @php
+                                    $mentionData = app(\App\Services\AppreciationScaleService::class)->classificationFor(
+                                        $bulletin->moyenne_generale === null ? null : (float) $bulletin->moyenne_generale,
+                                        'bts',
+                                        ''
+                                    );
+                                    $mentionLabel = $bulletin->mention ?: ($mentionData['label'] ?: null);
+                                    $mentionClass = match ($mentionData['slug']) {
+                                        'excellent', 'tres-bien' => 'mention-excellent',
+                                        'bien' => 'mention-bien',
+                                        'assez-bien' => 'mention-assez-bien',
+                                        'passable' => 'mention-passable',
+                                        default => 'mention-echec',
+                                    };
+                                @endphp
+                                @if($mentionLabel)
+                                    <span class="mention-badge {{ $mentionClass }}">{{ $mentionLabel }}</span>
                                 @else
                                     <span class="badge bg-secondary">Non définie</span>
                                 @endif

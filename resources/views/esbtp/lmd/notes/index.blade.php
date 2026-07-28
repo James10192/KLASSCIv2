@@ -350,6 +350,8 @@
     .ln-appr--assez-bien { background: #f1f5f9; color: #475569; }
     .ln-appr--passable { background: #fef3c7; color: #92400e; }
     .ln-appr--insuffisant { background: rgba(239,68,68,.08); color: #991b1b; }
+    .ln-appr--mediocre,
+    .ln-appr--nul-ou-mal { background: rgba(127,29,29,.08); color: #7f1d1d; }
     .ln-appr--default { color: #cbd5e1; }
 
     /* Class averages row */
@@ -827,6 +829,7 @@ let notesData = {};
 let evalParamsCache = {};
 let classeSemestres = []; // Dynamic semesters from class level
 const canEditExistingNotes = @json(auth()->user()->can('notes.edit'));
+const lmdAppreciationScale = @json(app(\App\Services\AppreciationScaleService::class)->frontendScale('lmd'));
 const lmdNotesQueueKey = 'klassci:lmd-notes:offline-queue:v1';
 let offlineNoteQueue = loadOfflineNoteQueue();
 let isReplayingOfflineQueue = false;
@@ -1625,12 +1628,24 @@ function parseSemestre(p) {
 }
 
 function getAppreciation(avg) {
-    if (avg >= 16) return { text: 'Excellent', cls: 'ln-appr--excellent' };
-    if (avg >= 14) return { text: 'Très bien', cls: 'ln-appr--tres-bien' };
-    if (avg >= 12) return { text: 'Bien', cls: 'ln-appr--bien' };
-    if (avg >= 10) return { text: 'Assez bien', cls: 'ln-appr--assez-bien' };
-    if (avg >= 8)  return { text: 'Passable', cls: 'ln-appr--passable' };
-    return { text: 'Insuffisant', cls: 'ln-appr--insuffisant' };
+    const score = Number(avg);
+    if (!Number.isFinite(score)) {
+        return { text: '--', cls: 'ln-appr--default' };
+    }
+
+    const scale = Array.isArray(lmdAppreciationScale) ? [...lmdAppreciationScale].sort((a, b) => a.min - b.min) : [];
+    let fallback = scale[0] || { label: '--', slug: 'default' };
+
+    for (const range of scale) {
+        if (score >= Number(range.min)) {
+            fallback = range;
+        }
+        if (score >= Number(range.min) && score <= Number(range.max)) {
+            return { text: range.label, cls: `ln-appr--${range.class || range.slug || 'default'}` };
+        }
+    }
+
+    return { text: fallback.label || '--', cls: `ln-appr--${fallback.class || fallback.slug || 'default'}` };
 }
 
 function escHtml(str) {

@@ -244,30 +244,11 @@ class NoteCalculationService
     }
 
     /**
-     * Mention CAMES standard à partir d'une moyenne sur 20.
-     *
-     * Seuils :
-     *  - >= 16     : "Très Bien"
-     *  - >= 14     : "Bien"
-     *  - >= 12     : "Assez Bien"
-     *  - >= 10     : "Passable"
-     *  - sinon     : "Insuffisant"
+     * Mention tenant-configurable à partir d'une moyenne sur 20.
      */
     public function getMention(float $moyenne): string
     {
-        if ($moyenne >= 16) {
-            return 'Très Bien';
-        }
-        if ($moyenne >= 14) {
-            return 'Bien';
-        }
-        if ($moyenne >= 12) {
-            return 'Assez Bien';
-        }
-        if ($moyenne >= 10) {
-            return 'Passable';
-        }
-        return 'Insuffisant';
+        return app(AppreciationScaleService::class)->labelFor($moyenne, 'bts', 'Insuffisant');
     }
 
     /**

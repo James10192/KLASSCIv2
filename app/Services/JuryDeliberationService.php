@@ -50,14 +50,6 @@ class JuryDeliberationService
         $seuilValidation = (float) SettingsHelper::get('lmd_seuil_validation_ecue', 10);
         $noteEliminatoire = (float) SettingsHelper::get('lmd_note_eliminatoire', 0);
 
-        $thresholds = [
-            'passable' => (float) SettingsHelper::get('lmd_mention_p_threshold', 10),
-            'assez_bien' => (float) SettingsHelper::get('lmd_mention_ab_threshold', 12),
-            'bien' => (float) SettingsHelper::get('lmd_mention_b_threshold', 14),
-            'tres_bien' => (float) SettingsHelper::get('lmd_mention_tb_threshold', 16),
-            'excellent' => 18.0,
-        ];
-
         $moyenne = $bulletin?->moyenne_generale !== null
             ? (float) $bulletin->moyenne_generale
             : null;
@@ -108,17 +100,8 @@ class JuryDeliberationService
         // Mention
         $mention = null;
         if ($decision === 'admis' && $moyenne !== null) {
-            if ($moyenne >= $thresholds['excellent']) {
-                $mention = 'excellent';
-            } elseif ($moyenne >= $thresholds['tres_bien']) {
-                $mention = 'tres_bien';
-            } elseif ($moyenne >= $thresholds['bien']) {
-                $mention = 'bien';
-            } elseif ($moyenne >= $thresholds['assez_bien']) {
-                $mention = 'assez_bien';
-            } elseif ($moyenne >= $thresholds['passable']) {
-                $mention = 'passable';
-            }
+            $classification = app(AppreciationScaleService::class)->classificationFor($moyenne, 'lmd', '');
+            $mention = $this->canonicalMentionFromSlug($classification['slug']);
         }
 
         return [
@@ -130,6 +113,18 @@ class JuryDeliberationService
             'raisons' => $raisons,
             'bulletin_id' => $bulletin?->id,
         ];
+    }
+
+    private function canonicalMentionFromSlug(string $slug): ?string
+    {
+        return match (true) {
+            $slug === 'excellent' => 'excellent',
+            $slug === 'tres-bien' => 'tres_bien',
+            $slug === 'bien' => 'bien',
+            $slug === 'assez-bien' => 'assez_bien',
+            $slug === 'passable' => 'passable',
+            default => null,
+        };
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AppreciationScaleService;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -81,17 +82,7 @@ class ESBTPBulletinDetail extends Model
      */
     public function getMentionAttribute()
     {
-        if ($this->moyenne >= 16) {
-            return 'Très Bien';
-        } elseif ($this->moyenne >= 14) {
-            return 'Bien';
-        } elseif ($this->moyenne >= 12) {
-            return 'Assez Bien';
-        } elseif ($this->moyenne >= 10) {
-            return 'Passable';
-        } else {
-            return 'Insuffisant';
-        }
+        return app(AppreciationScaleService::class)->labelFor($this->moyenne === null ? null : (float) $this->moyenne, 'bts');
     }
 
     /**

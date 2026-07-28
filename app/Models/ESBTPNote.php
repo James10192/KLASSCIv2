@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\AppreciationScaleService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -222,17 +223,7 @@ class ESBTPNote extends Model implements Auditable
             return 'Absent';
         }
 
-        if ($note >= 16) {
-            return 'Très Bien';
-        } elseif ($note >= 14) {
-            return 'Bien';
-        } elseif ($note >= 12) {
-            return 'Assez Bien';
-        } elseif ($note >= 10) {
-            return 'Passable';
-        } else {
-            return 'Insuffisant';
-        }
+        return app(AppreciationScaleService::class)->labelFor($note === null ? null : (float) $note, 'bts');
     }
 
     /**

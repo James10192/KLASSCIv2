@@ -3158,6 +3158,17 @@
     $acadResultatsRef = \App\Models\ESBTPResultat::where('etudiant_id', $etudiant->id)
         ->where('annee_universitaire_id', optional($acadRef?->anneeUniversitaire)->id)
         ->with(['matiere'])->get();
+    $acadAppreciations = app(\App\Services\AppreciationScaleService::class);
+    $acadClassify = static fn (?float $moyenne): array => $acadAppreciations->classificationFor($moyenne, 'bts', '');
+    $acadLabelFor = static fn (?float $moyenne): ?string => $moyenne === null ? null : $acadClassify($moyenne)['label'];
+    $acadCssForSlug = static function (?string $slug): string {
+        return match ($slug) {
+            'excellent', 'tres-bien' => 'excellent',
+            'bien' => 'bien',
+            'assez-bien' => 'assez',
+            default => 'passable',
+        };
+    };
 
     /* KPIs hero — depuis bulletins si dispo, sinon depuis résultats bruts */
     $acadLastBul = $acadBuls->last();
@@ -3196,13 +3207,7 @@
                 }
             }
             if (!$acadMention && $acadMg !== null) {
-                $acadMention = match(true) {
-                    $acadMg >= 16 => 'Excellent',
-                    $acadMg >= 14 => 'Très Bien',
-                    $acadMg >= 12 => 'Bien',
-                    $acadMg >= 10 => 'Assez Bien',
-                    default       => 'Passable',
-                };
+                $acadMention = $acadLabelFor((float) $acadMg);
             }
         }
     } else {
@@ -3240,14 +3245,7 @@
             }
 
             /* Mention calculée depuis la moyenne */
-            $acadMention = match(true) {
-                $acadMg === null => null,
-                $acadMg >= 16   => 'Excellent',
-                $acadMg >= 14   => 'Très Bien',
-                $acadMg >= 12   => 'Bien',
-                $acadMg >= 10   => 'Assez Bien',
-                default         => 'Passable',
-            };
+            $acadMention = $acadMg === null ? null : $acadLabelFor((float) $acadMg);
         } else {
             $acadMg = null; $acadMention = null;
         }
@@ -3329,13 +3327,7 @@
             if (($_acadSnapshot['effective_total'] ?? null) !== null) {
                 $acadMg = round((float) $_acadSnapshot['effective_total'], 2);
                 if ($acadMg !== null) {
-                    $acadMention = match(true) {
-                        $acadMg >= 16 => 'Excellent',
-                        $acadMg >= 14 => 'Très Bien',
-                        $acadMg >= 12 => 'Bien',
-                        $acadMg >= 10 => 'Assez Bien',
-                        default       => 'Passable',
-                    };
+                    $acadMention = $acadLabelFor((float) $acadMg);
                 }
             }
         } catch (\Throwable $e) {
@@ -3364,13 +3356,8 @@
     }
 
     /* Mention CSS class */
-    $acadMentionCls = match(true) {
-        !$acadMention => 'passable',
-        str_contains(strtolower($acadMention), 'excellent') || str_contains(strtolower($acadMention), 'très bien') => 'excellent',
-        str_contains(strtolower($acadMention), 'bien') && !str_contains(strtolower($acadMention), 'assez') => 'bien',
-        str_contains(strtolower($acadMention), 'assez') => 'assez',
-        default => 'passable',
-    };
+    $acadMentionSlug = $acadMg === null ? null : $acadClassify((float) $acadMg)['slug'];
+    $acadMentionCls = $acadCssForSlug($acadMentionSlug);
 
     $acadAllNotes = $acadResultatsRef->whereNotNull('moyenne');
 
@@ -3752,7 +3739,7 @@
                 </div>
                 <div class="acad-kpi-sub">
                     @if($acadMg !== null)
-                        {{ $acadMg >= 14 ? 'Excellent' : ($acadMg >= 12 ? 'Bien' : ($acadMg >= 10 ? 'Passable' : 'Insuffisant')) }}
+                        {{ $acadLabelFor((float) $acadMg) }}
                     @else
                         Aucune moyenne
                     @endif
@@ -3921,14 +3908,9 @@
                     @php
                         $semMention = $bul->mention;
                         if (!$semMention && $mg !== null) {
-                            $semMention = $mg >= 16 ? 'Excellent' : ($mg >= 14 ? 'Très Bien' : ($mg >= 12 ? 'Bien' : ($mg >= 10 ? 'Assez Bien' : 'Passable')));
+                            $semMention = $acadLabelFor((float) $mg);
                         }
-                        $mc2 = !$semMention ? 'passable' : match(true) {
-                            str_contains(strtolower($semMention), 'excellent') || str_contains(strtolower($semMention), 'très bien') => 'excellent',
-                            str_contains(strtolower($semMention), 'bien') && !str_contains(strtolower($semMention), 'assez') => 'bien',
-                            str_contains(strtolower($semMention), 'assez') => 'assez',
-                            default => 'passable',
-                        };
+                        $mc2 = $mg === null ? 'passable' : $acadCssForSlug($acadClassify((float) $mg)['slug']);
                     @endphp
                     @if($semMention)
                         <span class="acad-mention-badge {{ $mc2 }}" style="font-size:.65rem;">{{ $semMention }}</span>
@@ -4341,10 +4323,8 @@
                 ->where('annee_universitaire_id', optional($autreInsc->anneeUniversitaire)->id)
                 ->orderBy('periode')->get();
         }
-        $autreMention = $autreIsLMD
-            ? ($autreBulsLMD->last()?->mention_generale ?? null)
-            : ($autreBuls->last()?->mention ?? null);
-        $autreAnneeLabel = optional($autreInsc->anneeUniversitaire)->name ?? 'Année N/A';
+        $autreMention = null;
+        $autreAnneeLabel = optional($autreInsc->anneeUniversitaire)->display_name ?? 'Année N/A';
         $autreClasseLabel = optional($autreInsc->classe)->name ?? '';
         $autreArchKey = 'acad-arch-' . $autreInsc->id;
 
@@ -4401,6 +4381,10 @@
             $autreMg = null;
         }
 
+        $autreMention = $autreMg === null
+            ? null
+            : app(\App\Services\AppreciationScaleService::class)->labelFor((float) $autreMg, $autreIsLMD ? 'lmd' : 'bts', '');
+
         $autreMgColor = $autreMg === null ? 'var(--k-muted)' : ($autreMg >= 12 ? 'var(--k-success)' : ($autreMg >= 10 ? '#d97706' : 'var(--k-danger)'));
 
         /* Résultats groupés par période pour affichage dans le body */
@@ -4425,12 +4409,10 @@
                 @endif
                 @if($autreMention)
                     @php
-                        $amCls = match(true) {
-                            str_contains(strtolower($autreMention), 'excellent') || str_contains(strtolower($autreMention), 'très bien') => 'excellent',
-                            str_contains(strtolower($autreMention), 'bien') && !str_contains(strtolower($autreMention), 'assez') => 'bien',
-                            str_contains(strtolower($autreMention), 'assez') => 'assez',
-                            default => 'passable',
-                        };
+                        $amSystem = $autreIsLMD ? 'lmd' : 'bts';
+                        $amCls = $autreMg === null
+                            ? 'passable'
+                            : $acadCssForSlug(app(\App\Services\AppreciationScaleService::class)->classificationFor((float) $autreMg, $amSystem, '')['slug']);
                     @endphp
                     <span class="acad-mention-badge {{ $amCls }}" style="font-size:.65rem;">{{ $autreMention }}</span>
                 @endif

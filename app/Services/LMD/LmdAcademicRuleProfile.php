@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\LMD;
 
 use App\Helpers\SettingsHelper;
+use App\Services\AppreciationScaleService;
 use Closure;
 
 final class LmdAcademicRuleProfile
@@ -50,14 +51,16 @@ final class LmdAcademicRuleProfile
             return null;
         }
 
-        $thresholds = $this->mentionThresholds();
-        foreach (['excellent', 'tres_bien', 'bien', 'assez_bien', 'passable'] as $mention) {
-            if ($average >= $thresholds[$mention]) {
-                return $mention;
-            }
-        }
+        $classification = (new AppreciationScaleService($this->resolver))->classificationFor($average, 'lmd', '');
 
-        return null;
+        return match ($classification['slug']) {
+            'excellent' => 'excellent',
+            'tres-bien' => 'tres_bien',
+            'bien' => 'bien',
+            'assez-bien' => 'assez_bien',
+            'passable' => 'passable',
+            default => null,
+        };
     }
 
     public function expectedCreditsPerSemester(): int

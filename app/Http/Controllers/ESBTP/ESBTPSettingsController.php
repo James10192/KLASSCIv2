@@ -7,6 +7,7 @@ use App\Models\Setting;
 use App\Models\SettingsBackup;
 use App\Http\Middleware\CheckRequiredSettings;
 use App\Domain\Notifications\PhoneNormalizer;
+use App\Services\AppreciationScaleSettingsService;
 use App\Services\MailPulse\MailPulseTestNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -32,14 +33,17 @@ class ESBTPSettingsController extends Controller
     public function index()
     {
         $this->ensureAttendanceNoteSettings();
+        $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
+        $appreciationScaleSettings->ensureDefaults();
         $this->ensureMailPulseSettings();
         $allSettings = Setting::orderBy('category')->orderBy('sort_order')->get();
         $settings = $allSettings->groupBy('category');
         $flatSettings = $allSettings; // Collection plate pour l'accès direct par clé
         $missingSettings = CheckRequiredSettings::getAllMissingSettings();
         $backupStats = SettingsBackup::getStats();
+        $appreciationScales = $appreciationScaleSettings->scales();
 
-        return view('esbtp.settings.index', compact('settings', 'flatSettings', 'missingSettings', 'backupStats'));
+        return view('esbtp.settings.index', compact('settings', 'flatSettings', 'missingSettings', 'backupStats', 'appreciationScales'));
     }
 
     /**
@@ -50,6 +54,8 @@ class ESBTPSettingsController extends Controller
         try {
             DB::beginTransaction();
             $this->ensureAttendanceNoteSettings();
+            $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
+            $appreciationScaleSettings->ensureDefaults();
             $this->ensureMailPulseSettings();
 
             $pdfColorDefaults = [
@@ -147,6 +153,8 @@ class ESBTPSettingsController extends Controller
 
             $updatedSettings = [];
             $errors = [];
+
+            $appreciationScaleSettings->processForm($request, $updatedSettings, $errors);
 
             // D'abord, traiter toutes les checkboxes (défaut à '0' si décochées)
             // Ensure certificat column settings exist (create with default=1 if first save)
@@ -303,6 +311,10 @@ class ESBTPSettingsController extends Controller
                     
                     // Skip les checkboxes déjà traitées
                     if (in_array($settingKey, $allCheckboxSettings->pluck('key')->toArray())) {
+                        continue;
+                    }
+
+                    if ($appreciationScaleSettings->shouldSkipGenericSetting($request, $settingKey)) {
                         continue;
                     }
                     
