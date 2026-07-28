@@ -347,6 +347,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
             ->name('academic-pilotage.refresh');
         Route::get('/matieres/{matiere}/coefficient', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'matiereCoefficientLookup'])->name('matieres.coefficient');
         Route::get('/etudiants/{id}/inscriptions-diag', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'etudiantInscriptionsDiag'])->name('etudiants.inscriptions-diag');
+        Route::get('/etudiants/{id}/inscriptions-repair-diagnostic', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'etudiantInscriptionRepairDiagnostic'])->name('etudiants.inscriptions-repair-diagnostic');
+        Route::post('/etudiants/{id}/inscriptions-repair', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'repairEtudiantInscriptions'])->name('etudiants.inscriptions-repair');
         Route::get('/reinscription/eligible-diag', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'reinscriptionEligibleDiag'])->name('reinscription.eligible-diag');
         Route::get('/reinscription/batches', [App\Http\Controllers\API\CLI\CLIMaintenanceController::class, 'reinscriptionBatches'])->name('reinscription.batches');
 

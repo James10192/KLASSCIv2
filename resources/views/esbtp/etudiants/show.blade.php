@@ -1252,6 +1252,168 @@
 /* inscriptions grid */
 .insc-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 16px; }
 @media (max-width: 768px) { .insc-grid { grid-template-columns: 1fr; } }
+.insc-repair-panel {
+    margin-bottom: 16px;
+    padding: 14px;
+    border: 1px solid #bfdbfe;
+    border-radius: 8px;
+    background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+    box-shadow: 0 8px 20px rgba(4,83,203,.07);
+}
+.insc-repair-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+.insc-repair-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--k-text);
+    font-size: .95rem;
+    font-weight: 800;
+}
+.insc-repair-title i {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(4,83,203,.1);
+    color: var(--k-blue);
+}
+.insc-repair-sub {
+    margin-top: 3px;
+    color: var(--k-muted);
+    font-size: .76rem;
+    line-height: 1.35;
+}
+.insc-repair-toolbar {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) auto auto;
+    gap: 10px;
+    align-items: end;
+}
+.insc-repair-field label {
+    display: block;
+    margin-bottom: 4px;
+    color: var(--k-muted);
+    font-size: .72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+.insc-repair-select {
+    width: 100%;
+    min-height: 38px;
+    border: 1px solid var(--k-border);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--k-text);
+    font-size: .84rem;
+    padding: 8px 10px;
+}
+.insc-repair-select:focus {
+    outline: 2px solid rgba(4,83,203,.18);
+    border-color: var(--k-blue);
+}
+.insc-repair-btn {
+    min-height: 38px;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    padding: 0 12px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    font-size: .8rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+}
+.insc-repair-btn:hover:not(:disabled) { transform: translateY(-1px); }
+.insc-repair-btn:disabled { opacity: .55; cursor: not-allowed; }
+.insc-repair-btn.secondary {
+    background: #fff;
+    border-color: #bfdbfe;
+    color: var(--k-blue);
+}
+.insc-repair-btn.primary {
+    background: linear-gradient(135deg, var(--k-blue), var(--k-blue-2));
+    color: #fff;
+    box-shadow: 0 6px 16px rgba(4,83,203,.18);
+}
+.insc-repair-status {
+    margin-top: 12px;
+    border-radius: 8px;
+    padding: 10px 12px;
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: .8rem;
+    line-height: 1.4;
+    color: #1e40af;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+}
+.insc-repair-status.ok {
+    color: #047857;
+    background: #ecfdf5;
+    border-color: #a7f3d0;
+}
+.insc-repair-status.warn {
+    color: #92400e;
+    background: #fffbeb;
+    border-color: #fde68a;
+}
+.insc-repair-status.error {
+    color: #b91c1c;
+    background: #fef2f2;
+    border-color: #fecaca;
+}
+.insc-repair-result {
+    margin-top: 12px;
+    overflow-x: auto;
+}
+.insc-repair-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: .78rem;
+}
+.insc-repair-table th,
+.insc-repair-table td {
+    padding: 8px 9px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+}
+.insc-repair-table th {
+    text-align: left;
+    color: #475569;
+    background: #f8fafc;
+    font-size: .7rem;
+    text-transform: uppercase;
+}
+.insc-repair-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    border-radius: 999px;
+    padding: 3px 8px;
+    font-size: .7rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+.insc-repair-badge.keep { background: #ecfdf5; color: #047857; }
+.insc-repair-badge.archive { background: #fef2f2; color: #b91c1c; }
+.insc-repair-badge.neutral { background: #eef2ff; color: #3730a3; }
+@media (max-width: 768px) {
+    .insc-repair-head { flex-direction: column; }
+    .insc-repair-toolbar { grid-template-columns: 1fr; }
+    .insc-repair-btn { width: 100%; }
+}
 /* presence constat */
 .presence-constat {
     margin-top: 14px; padding: 10px 14px; border-radius: 8px;
@@ -2950,6 +3112,9 @@
 
     @php
         $toutesInscs = $etudiant->inscriptions->sortByDesc(fn($i) => optional($i->anneeUniversitaire)->start_date ?? $i->created_at);
+        $canViewInscriptionRepair = auth()->user()->can('students.view') || auth()->user()->can('inscriptions.view');
+        $canRunInscriptionRepair = auth()->user()->can('inscriptions.manage') || (auth()->user()->can('inscriptions.edit') && auth()->user()->can('inscriptions.delete'));
+        $repairClasses = $inscriptionRepairClasses ?? collect();
     @endphp
     <div class="s-card">
         <div class="s-card-header">
@@ -2958,6 +3123,63 @@
                 Inscriptions
             </div>
         </div>
+        @if($canViewInscriptionRepair)
+        <div
+            class="insc-repair-panel"
+            id="inscriptionRepairPanel"
+            data-diagnose-url="{{ route('esbtp.etudiants.inscriptions.repair-diagnostic', $etudiant) }}"
+            data-repair-url="{{ route('esbtp.etudiants.inscriptions.repair', $etudiant) }}"
+            data-year-id="{{ $anneeCourante?->id }}"
+            data-can-repair="{{ $canRunInscriptionRepair ? '1' : '0' }}"
+        >
+            <div class="insc-repair-head">
+                <div>
+                    <div class="insc-repair-title">
+                        <i class="fas fa-code-branch"></i>
+                        Correction des inscriptions en double
+                    </div>
+                    <div class="insc-repair-sub">
+                        Diagnostic de l'annee courante, conservation de l'inscription la plus payee, alignement classe, filiere, niveau et statut.
+                    </div>
+                </div>
+                @unless($canRunInscriptionRepair)
+                    <span class="insc-repair-badge neutral"><i class="fas fa-lock"></i> Lecture seule</span>
+                @endunless
+            </div>
+            <div class="insc-repair-toolbar">
+                <div class="insc-repair-field">
+                    <label for="inscriptionRepairTargetClasse">Classe cible</label>
+                    <select class="insc-repair-select" id="inscriptionRepairTargetClasse" @disabled($repairClasses->isEmpty())>
+                        <option value="">{{ $repairClasses->isEmpty() ? 'Aucune classe active disponible' : 'Choisir une classe' }}</option>
+                        @foreach($repairClasses as $classe)
+                            <option value="{{ $classe->id }}">
+                                {{ $classe->name }}
+                                @if($classe->filiere)
+                                    - {{ $classe->filiere->name }}
+                                @endif
+                                @if($classe->niveauEtude)
+                                    / {{ $classe->niveauEtude->name }}
+                                @endif
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <button type="button" class="insc-repair-btn secondary" id="inscriptionRepairDryRunBtn" @disabled($repairClasses->isEmpty())>
+                    <i class="fas fa-search"></i>
+                    Simuler
+                </button>
+                <button type="button" class="insc-repair-btn primary" id="inscriptionRepairApplyBtn" @disabled(!$canRunInscriptionRepair || $repairClasses->isEmpty())>
+                    <i class="fas fa-tools"></i>
+                    Reparer
+                </button>
+            </div>
+            <div class="insc-repair-status" id="inscriptionRepairStatus">
+                <i class="fas fa-spinner fa-spin"></i>
+                <span>Chargement du diagnostic...</span>
+            </div>
+            <div class="insc-repair-result" id="inscriptionRepairResult"></div>
+        </div>
+        @endif
         <div class="insc-grid">
         @forelse($toutesInscs as $insc)
         @php
@@ -2967,7 +3189,7 @@
             $wfStep = $insc->workflow_step ?? null;
             $affStatus = $insc->affectation_status ?? 'non_affecté';
         @endphp
-        <div class="insc-card">
+        <div class="insc-card" data-inscription-card="{{ $insc->id }}">
             <div class="insc-card-accent {{ $inscAccent }}"></div>
             <div class="insc-card-inner">
                 <div class="insc-header">
@@ -6188,6 +6410,203 @@ function uploadEtudiantPhoto(input) {
 
     input.value = '';
 }
+</script>
+<script>
+(function () {
+    const panel = document.getElementById('inscriptionRepairPanel');
+    if (!panel) return;
+
+    const targetSelect = document.getElementById('inscriptionRepairTargetClasse');
+    const dryRunBtn = document.getElementById('inscriptionRepairDryRunBtn');
+    const applyBtn = document.getElementById('inscriptionRepairApplyBtn');
+    const statusEl = document.getElementById('inscriptionRepairStatus');
+    const resultEl = document.getElementById('inscriptionRepairResult');
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+    const canRepair = panel.dataset.canRepair === '1';
+    let diagnosticAbort = null;
+    let lastDiagnostic = null;
+    let busy = false;
+
+    function esc(value) {
+        return String(value ?? '').replace(/[&<>"']/g, function (char) {
+            return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' })[char];
+        });
+    }
+
+    function money(value) {
+        return Number(value || 0).toLocaleString('fr-FR') + ' FCFA';
+    }
+
+    function status(type, icon, message) {
+        statusEl.className = 'insc-repair-status ' + (type || '');
+        statusEl.innerHTML = '<i class="' + icon + '"></i><span>' + esc(message) + '</span>';
+    }
+
+    function syncButtons() {
+        const hasTarget = !!targetSelect?.value;
+        if (dryRunBtn) dryRunBtn.disabled = busy || !hasTarget;
+        if (applyBtn) applyBtn.disabled = busy || !hasTarget || !canRepair;
+    }
+
+    function diagnosticUrl() {
+        const params = new URLSearchParams();
+        if (panel.dataset.yearId) params.set('annee_universitaire_id', panel.dataset.yearId);
+        if (targetSelect?.value) params.set('target_classe_id', targetSelect.value);
+        return panel.dataset.diagnoseUrl + '?' + params.toString();
+    }
+
+    function renderDiagnostic(diagnostic) {
+        lastDiagnostic = diagnostic;
+        const inscriptions = diagnostic.inscriptions || [];
+        const decision = diagnostic.decision || {};
+        const archiveIds = (decision.archive_inscription_ids || []).map(Number);
+        const keepId = Number(decision.keep_inscription_id || 0);
+        const target = diagnostic.target_classe;
+        const summary = diagnostic.summary || {};
+
+        if (!targetSelect.value && diagnostic.suggested_target_classe_id) {
+            const suggested = String(diagnostic.suggested_target_classe_id);
+            if (targetSelect.querySelector('option[value="' + suggested + '"]')) {
+                targetSelect.value = suggested;
+                syncButtons();
+            }
+        }
+
+        if (!diagnostic.annee) {
+            status('error', 'fas fa-exclamation-triangle', "Aucune annee universitaire courante n'est configuree.");
+        } else if (!target) {
+            status('warn', 'fas fa-arrow-up-right-dots', summary.message || 'Choisissez une classe cible pour simuler la correction.');
+        } else if (summary.can_repair) {
+            status('warn', 'fas fa-triangle-exclamation', summary.message || 'Une correction est disponible.');
+        } else {
+            status('ok', 'fas fa-check-circle', summary.message || 'Aucun doublon a corriger pour cette selection.');
+        }
+
+        if (!inscriptions.length) {
+            resultEl.innerHTML = '<div style="padding:12px;color:#64748b;font-size:.8rem;border:1px dashed #cbd5e1;border-radius:8px;">Aucune inscription trouvee pour cette annee.</div>';
+            return;
+        }
+
+        const rows = inscriptions.map(function (inscription) {
+            const action = Number(inscription.id) === keepId
+                ? '<span class="insc-repair-badge keep"><i class="fas fa-check"></i> Conserver</span>'
+                : (archiveIds.includes(Number(inscription.id))
+                    ? '<span class="insc-repair-badge archive"><i class="fas fa-box-archive"></i> Archiver</span>'
+                    : '<span class="insc-repair-badge neutral"><i class="fas fa-circle-info"></i> Reference</span>');
+            const payments = inscription.payments || {};
+            return '<tr>' +
+                '<td><strong>#' + esc(inscription.id) + '</strong><div style="color:#64748b;">' + esc(inscription.date_inscription || inscription.created_at || '') + '</div></td>' +
+                '<td><strong>' + esc(inscription.classe || '-') + '</strong><div style="color:#64748b;">' + esc(inscription.filiere || '-') + ' / ' + esc(inscription.niveau || '-') + '</div></td>' +
+                '<td>' + esc(inscription.status || '-') + '<div style="color:#64748b;">' + esc(inscription.workflow_step || '-') + '</div></td>' +
+                '<td><strong>' + money(payments.valid_total) + '</strong><div style="color:#64748b;">Total: ' + money(payments.total) + '</div></td>' +
+                '<td>' + action + '</td>' +
+            '</tr>';
+        }).join('');
+
+        resultEl.innerHTML = '<table class="insc-repair-table">' +
+            '<thead><tr><th>Inscription</th><th>Classe</th><th>Statut</th><th>Paiements</th><th>Action proposee</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody></table>';
+    }
+
+    function loadDiagnostic(allowSuggestion) {
+        if (diagnosticAbort) diagnosticAbort.abort();
+        diagnosticAbort = new AbortController();
+        status('', 'fas fa-spinner fa-spin', 'Chargement du diagnostic...');
+
+        return fetch(diagnosticUrl(), {
+            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+            signal: diagnosticAbort.signal,
+        })
+            .then(function (response) { return response.json().then(data => ({ response, data })); })
+            .then(function (payload) {
+                if (!payload.response.ok || !payload.data.success) {
+                    throw new Error(payload.data.message || 'Diagnostic indisponible.');
+                }
+                const diagnostic = payload.data.data;
+                if (allowSuggestion && !targetSelect.value && diagnostic?.suggested_target_classe_id) {
+                    const suggested = String(diagnostic.suggested_target_classe_id);
+                    if (targetSelect.querySelector('option[value="' + suggested + '"]')) {
+                        targetSelect.value = suggested;
+                        syncButtons();
+                        return loadDiagnostic(false);
+                    }
+                }
+                renderDiagnostic(diagnostic);
+                syncButtons();
+            })
+            .catch(function (error) {
+                if (error.name === 'AbortError') return;
+                status('error', 'fas fa-exclamation-triangle', error.message || 'Erreur de diagnostic.');
+                resultEl.innerHTML = '';
+                syncButtons();
+            });
+    }
+
+    function runRepair(dryRun) {
+        if (!targetSelect.value) {
+            status('warn', 'fas fa-arrow-up-right-dots', 'Choisissez une classe cible avant de continuer.');
+            return;
+        }
+        if (!dryRun && !canRepair) {
+            status('error', 'fas fa-lock', 'Permissions insuffisantes pour appliquer la correction.');
+            return;
+        }
+        if (!dryRun && !window.confirm("Appliquer la correction d'inscription pour cet etudiant ?")) {
+            return;
+        }
+
+        busy = true;
+        syncButtons();
+        status('', 'fas fa-spinner fa-spin', dryRun ? 'Simulation en cours...' : 'Correction en cours...');
+
+        const body = {
+            target_classe_id: Number(targetSelect.value),
+            dry_run: !!dryRun,
+        };
+        if (panel.dataset.yearId) body.annee_universitaire_id = Number(panel.dataset.yearId);
+
+        fetch(panel.dataset.repairUrl, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: JSON.stringify(body),
+        })
+            .then(function (response) { return response.json().then(data => ({ response, data })); })
+            .then(function (payload) {
+                if (!payload.response.ok || !payload.data.success) {
+                    throw new Error(payload.data.message || 'Correction impossible.');
+                }
+                if (payload.data.diagnostic) renderDiagnostic(payload.data.diagnostic);
+                if (!dryRun) {
+                    (payload.data.archived_inscription_ids || []).forEach(function (id) {
+                        const card = document.querySelector('[data-inscription-card="' + id + '"]');
+                        if (!card) return;
+                        card.style.opacity = '.35';
+                        card.style.transform = 'scale(.98)';
+                        card.style.transition = 'opacity .2s ease, transform .2s ease';
+                    });
+                }
+                status('ok', dryRun ? 'fas fa-vial-circle-check' : 'fas fa-check-circle', payload.data.message || (dryRun ? 'Simulation terminee.' : 'Correction appliquee.'));
+            })
+            .catch(function (error) {
+                status('error', 'fas fa-exclamation-triangle', error.message || 'Erreur reseau.');
+            })
+            .finally(function () {
+                busy = false;
+                syncButtons();
+            });
+    }
+
+    targetSelect?.addEventListener('change', function () { loadDiagnostic(false); });
+    dryRunBtn?.addEventListener('click', function () { runRepair(true); });
+    applyBtn?.addEventListener('click', function () { runRepair(false); });
+    syncButtons();
+    loadDiagnostic(true);
+})();
 </script>
 <script>
 (function () {

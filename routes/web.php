@@ -48,6 +48,7 @@ use App\Http\Controllers\ESBTPSeanceCoursController;
 use App\Http\Controllers\ESBTPSecretaireController;
 use App\Http\Controllers\ESBTPSpecialtyController;
 use App\Http\Controllers\ESBTPStudentController;
+use App\Http\Controllers\ESBTPStudentInscriptionRepairController;
 use App\Http\Controllers\InstallController;
 use App\Http\Controllers\NavbarController;
 use App\Http\Controllers\SearchController;
@@ -1179,6 +1180,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/etudiants/{etudiant}/reset-password', [ESBTPEtudiantController::class, 'resetPassword'])
                 ->name('etudiants.reset-password')
                 ->middleware(['permission:students.edit']);
+
+            Route::get('/etudiants/{etudiant}/inscriptions/repair-diagnostic', [ESBTPStudentInscriptionRepairController::class, 'diagnose'])
+                ->name('etudiants.inscriptions.repair-diagnostic')
+                ->middleware(['permission:students.view|inscriptions.view']);
+
+            Route::post('/etudiants/{etudiant}/inscriptions/repair', [ESBTPStudentInscriptionRepairController::class, 'repair'])
+                ->name('etudiants.inscriptions.repair')
+                ->middleware(['permission:inscriptions.manage|inscriptions.edit|inscriptions.delete']);
 
             // Route pour rechercher des parents existants
             Route::get('/parents/search', [ESBTPEtudiantController::class, 'searchParents'])

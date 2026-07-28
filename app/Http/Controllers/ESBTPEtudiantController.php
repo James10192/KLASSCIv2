@@ -516,11 +516,21 @@ class ESBTPEtudiantController extends Controller
                 : null;
         }
 
+        $inscriptionRepairClasses = ESBTPClasse::with(['filiere', 'niveauEtude'])
+            ->where('is_active', true)
+            ->where(function ($query) {
+                $query->whereNull('systeme_academique')
+                    ->orWhere('systeme_academique', '!=', 'LMD');
+            })
+            ->orderBy('name')
+            ->get(['id', 'name', 'filiere_id', 'niveau_etude_id', 'systeme_academique', 'places_totales', 'places_occupees']);
+
         $btsJourney = $this->btsUiPresenter->forStudent($etudiant);
 
         return view('esbtp.etudiants.show', compact(
             'etudiant', 'statistiques', 'reliquatsEntrants', 'reliquatsSortants', 'categoriesfrais',
-            'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits', 'lmdCreditWallet', 'btsJourney'
+            'isLMD', 'bulletinLMD', 'bulletinsLMD', 'lmdMoyenneAnnuelle', 'parcours', 'lmdCredits', 'lmdCreditWallet', 'btsJourney',
+            'inscriptionRepairClasses'
         ));
     }
 

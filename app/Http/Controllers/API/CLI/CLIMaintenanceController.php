@@ -13,6 +13,7 @@ use Illuminate\Support\Str;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use App\Http\Controllers\API\CLI\CLIPermissionController;
+use App\Services\StudentInscriptionRepairService;
 
 class CLIMaintenanceController extends BaseApiController
 {
@@ -237,6 +238,68 @@ class CLIMaintenanceController extends BaseApiController
                 'deleted_at' => $i->deleted_at,
             ])->toArray(),
         ]);
+    }
+
+    /**
+     * GET /api/cli/etudiants/{id}/inscriptions-repair-diagnostic
+     * Diagnostic complet avant correction de doublons d'inscriptions.
+     */
+    public function etudiantInscriptionRepairDiagnostic(
+        Request $request,
+        int $id,
+        StudentInscriptionRepairService $service
+    ): JsonResponse {
+        if (!$request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
+            'target_classe_id' => ['nullable', 'integer', 'exists:esbtp_classes,id'],
+        ]);
+
+        $etudiant = \App\Models\ESBTPEtudiant::find($id);
+        if (!$etudiant) {
+            return $this->errorResponse("Etudiant {$id} not found", [], 404);
+        }
+
+        return $this->successResponse(
+            $service->diagnose(
+                $etudiant,
+                isset($validated['annee_universitaire_id']) ? (int) $validated['annee_universitaire_id'] : null,
+                isset($validated['target_classe_id']) ? (int) $validated['target_classe_id'] : null,
+            ),
+            'Diagnostic inscription repair'
+        );
+    }
+
+    /**
+     * POST /api/cli/etudiants/{id}/inscriptions-repair
+     * Corrige un doublon d'inscriptions sur une annee universitaire.
+     */
+    public function repairEtudiantInscriptions(
+        Request $request,
+        int $id,
+        StudentInscriptionRepairService $service
+    ): JsonResponse {
+        if (!$request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $validated = $request->validate([
+            'annee_universitaire_id' => ['nullable', 'integer', 'exists:esbtp_annee_universitaires,id'],
+            'target_classe_id' => ['required', 'integer', 'exists:esbtp_classes,id'],
+            'dry_run' => ['sometimes', 'boolean'],
+        ]);
+
+        $etudiant = \App\Models\ESBTPEtudiant::find($id);
+        if (!$etudiant) {
+            return $this->errorResponse("Etudiant {$id} not found", [], 404);
+        }
+
+        $result = $service->repair($etudiant, $validated, $request->user()?->id);
+
+        return response()->json($result, $result['success'] ? 200 : 422);
     }
 
     /**
