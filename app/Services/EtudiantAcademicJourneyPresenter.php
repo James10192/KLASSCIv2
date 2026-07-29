@@ -51,6 +51,12 @@ class EtudiantAcademicJourneyPresenter
         );
     }
 
+    /**
+     * @param Collection<int, ESBTPInscription> $inscriptions
+     * @param Collection<int, ESBTPBulletin>|null $btsBulletins
+     * @param Collection<int, ESBTPLMDBulletin>|null $lmdBulletins
+     * @param Collection<int, ESBTPResultat>|null $resultats
+     */
     public function presentFromCollections(Collection $inscriptions, ?Collection $btsBulletins = null, ?Collection $lmdBulletins = null, ?Collection $resultats = null): array
     {
         $inscriptions = $this->sortInscriptions($inscriptions);
@@ -148,8 +154,7 @@ class EtudiantAcademicJourneyPresenter
             ->whereIn('classe_id', $classeIds)
             ->whereIn('annee_universitaire_id', $anneeIds)
             ->where('periode', '!=', 'annuel')
-            ->get()
-            ->groupBy(fn (ESBTPBulletin $bulletin) => $this->academicKey($bulletin->classe_id, $bulletin->annee_universitaire_id));
+            ->get();
     }
 
     private function lmdBulletins(ESBTPEtudiant $etudiant, Collection $classeIds, Collection $anneeIds): Collection
@@ -163,8 +168,7 @@ class EtudiantAcademicJourneyPresenter
             ->whereIn('classe_id', $classeIds)
             ->whereIn('annee_universitaire_id', $anneeIds)
             ->orderBy('semestre')
-            ->get()
-            ->groupBy(fn (ESBTPLMDBulletin $bulletin) => $this->academicKey($bulletin->classe_id, $bulletin->annee_universitaire_id));
+            ->get();
     }
 
     private function resultats(ESBTPEtudiant $etudiant, Collection $classeIds, Collection $anneeIds): Collection
@@ -178,8 +182,7 @@ class EtudiantAcademicJourneyPresenter
             ->whereIn('classe_id', $classeIds)
             ->whereIn('annee_universitaire_id', $anneeIds)
             ->whereNotNull('moyenne')
-            ->get()
-            ->groupBy(fn (ESBTPResultat $resultat) => $this->academicKey($resultat->classe_id, $resultat->annee_universitaire_id));
+            ->get();
     }
 
     private function btsMetrics(Collection $bulletins, Collection $resultats): array
