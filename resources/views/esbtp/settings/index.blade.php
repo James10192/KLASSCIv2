@@ -493,22 +493,18 @@
     .mailpulse-brand-card {
         display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
         padding: 18px 20px; border-radius: 14px;
-        background: #09090b; border: 1px solid #18181b; color: #fafafa;
+        background: #fff; border: 1px solid #e5e7eb; color: #09090b;
         margin-bottom: 20px;
     }
     .mailpulse-logo-mark {
         position: relative; display: inline-flex; align-items: center; justify-content: center;
-        width: 46px; height: 46px; border-radius: 10px;
-        background: #09090b; border: 1px solid #27272a; flex-shrink: 0;
+        width: 52px; height: 52px; border-radius: 8px;
+        background: #fff; border: 1px solid #d4d4d8; flex-shrink: 0;
     }
-    .mailpulse-logo-mark::after {
-        content: ""; position: absolute; inset: 7px; border-radius: 999px;
-        background: rgba(249, 115, 22, .22); filter: blur(12px);
-    }
-    .mailpulse-logo-mark svg { position: relative; z-index: 1; width: 28px; height: 28px; }
+    .mailpulse-logo-mark svg { width: 36px; height: 36px; }
     .mailpulse-brand-copy { min-width: 220px; }
     .mailpulse-wordmark {
-        font-size: 1.35rem; font-weight: 750; color: #fafafa; line-height: 1;
+        font-size: 1.35rem; font-weight: 750; color: #09090b; line-height: 1;
     }
     .mailpulse-wordmark span { color: #f97316; }
     .mailpulse-brand-subtitle { margin-top: 6px; color: #a1a1aa; font-size: .86rem; }
@@ -2458,15 +2454,19 @@
 
                     <div class="mailpulse-brand-card">
                         <div class="mailpulse-logo-mark" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M4 6l8 5 8-5" stroke="#f97316" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+                                <rect x="5" y="10" width="38" height="28" rx="3" stroke="#09090b" stroke-width="2.5"/>
+                                <path d="m7 13 17 13 17-13" stroke="#09090b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M8 29h7l3.5-6 5 12 5-8h11" stroke="#f97316" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
                         </div>
                         <div class="mailpulse-brand-copy">
                             <div class="mailpulse-wordmark">Mail<span>Pulse</span></div>
                             <div class="mailpulse-brand-subtitle">Email, WhatsApp et automatisations transactionnelles</div>
                         </div>
+                        <a class="btn btn-sm btn-dark ms-sm-auto" href="{{ route('esbtp.parent-chatbot-onboarding.index') }}">
+                            <i class="fas fa-users me-1" aria-hidden="true"></i>Activation des parents
+                        </a>
                         <span class="mailpulse-status-badge {{ $mailpulseApiKeyConfigured ? 'configured' : '' }}">
                             <i class="fas {{ $mailpulseApiKeyConfigured ? 'fa-lock' : 'fa-key' }}"></i>
                             {{ $mailpulseApiKeyConfigured ? 'Clé API configurée' : 'Clé API à configurer' }}

@@ -10,6 +10,7 @@ use App\Models\ESBTPBulletin;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPParent;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPSeanceCours;
 use App\Policies\AbsenceJustificationPolicy;
@@ -18,6 +19,7 @@ use App\Policies\ESBTPBulletinPolicy;
 use App\Policies\ESBTPInscriptionPolicy;
 use App\Policies\ESBTPMatierePolicy;
 use App\Policies\ESBTPNotePolicy;
+use App\Policies\ESBTPParentPolicy;
 use App\Policies\ESBTPPaiementPolicy;
 use App\Policies\ESBTPSeanceCoursPolicy;
 use App\Policies\GradeSheetDocumentPolicy;
@@ -37,6 +39,7 @@ class AuthServiceProvider extends ServiceProvider
         ESBTPMatiere::class => ESBTPMatierePolicy::class,
         ESBTPPaiement::class => ESBTPPaiementPolicy::class,
         ESBTPNote::class => ESBTPNotePolicy::class,
+        ESBTPParent::class => ESBTPParentPolicy::class,
         ESBTPInscription::class => ESBTPInscriptionPolicy::class,
         ESBTPBulletin::class => ESBTPBulletinPolicy::class,
         GradeSheet::class => GradeSheetPolicy::class,

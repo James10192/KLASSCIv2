@@ -4,16 +4,23 @@ namespace App\Services\MailPulse;
 
 use App\Domain\Notifications\PhoneNormalizer;
 use App\Models\ESBTPAttendance;
+use App\Models\ESBTPBulletin;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPParent;
 use App\Models\ESBTPNote;
-use App\Models\Setting;
+use App\Services\ParentChatbot\ParentChatbotPublicationPolicy;
 use Illuminate\Support\Facades\Log;
 
 class MailPulseWorkflowNotificationService
 {
-    public function __construct(private MailPulseClient $client) {}
+
+    public function __construct(
+        private MailPulseClient $client,
+        private MailPulseParentNotificationLog $notificationLogs,
+        private MailPulseWorkflowPolicy $workflowPolicy,
+        private ParentChatbotPublicationPolicy $publicationPolicy,
+    ) {}
 
     public function notifyPaymentReceived(ESBTPPaiement $paiement): void
     {
@@ -40,9 +47,7 @@ class MailPulseWorkflowNotificationService
                 'metadata' => [
                     'paiement_id' => $paiement->id,
                     'inscription_id' => $paiement->inscription_id,
-                    'amount' => $paiement->montant,
-                    'receipt_number' => $paiement->numero_recu,
-                    'fee_category' => $paiement->fraisCategory?->name,
+                    'fee_category_id' => $paiement->frais_category_id,
                 ],
             ]
         );
@@ -74,8 +79,7 @@ class MailPulseWorkflowNotificationService
                 'metadata' => [
                     'attendance_id' => $attendance->id,
                     'student_id' => $etudiant->id,
-                    'date' => $date,
-                    'matiere' => $matiere,
+                    'matiere_id' => $attendance->matiere_id,
                 ],
             ]
         );
@@ -85,7 +89,7 @@ class MailPulseWorkflowNotificationService
     {
         $note->loadMissing(['etudiant.parents', 'evaluation', 'matiere']);
         $etudiant = $note->etudiant;
-        if (! $etudiant || $note->is_absent) {
+        if (! $etudiant || $note->is_absent || ! $this->publicationPolicy->gradeIsPublished($note)) {
             return;
         }
 
@@ -109,7 +113,7 @@ class MailPulseWorkflowNotificationService
                     'note_id' => $note->id,
                     'evaluation_id' => $note->evaluation_id,
                     'student_id' => $etudiant->id,
-                    'matiere' => $matiere,
+                    'matiere_id' => $note->matiere_id ?? $note->evaluation?->matiere_id,
                 ],
             ]
         );
@@ -138,9 +142,48 @@ class MailPulseWorkflowNotificationService
                 ),
                 'metadata' => [
                     'paiement_id' => $paiement->id,
-                    'days_pending' => $daysPending,
-                    'reminder_count' => $reminderCount,
-                    'amount' => $paiement->montant,
+                    'inscription_id' => $paiement->inscription_id,
+                    'fee_category_id' => $paiement->frais_category_id,
+                ],
+            ]
+        );
+    }
+
+    public function notifyBulletinPublished(ESBTPBulletin $bulletin): void
+    {
+        $bulletin->loadMissing(['etudiant.parents', 'classe', 'anneeUniversitaire']);
+
+        $etudiant = $bulletin->etudiant;
+        if (! $etudiant || ! $this->publicationPolicy->reportCardIsPublished($bulletin)) {
+            return;
+        }
+
+        $className = $bulletin->classe?->nom ?? $bulletin->classe?->name ?? 'Classe non renseignee';
+        $average = $bulletin->moyenne_generale === null
+            ? 'non renseignee'
+            : $this->formatNumber((float) $bulletin->moyenne_generale) . '/20';
+        $rank = $bulletin->rang && $bulletin->effectif_classe
+            ? $bulletin->rang . '/' . $bulletin->effectif_classe
+            : 'non renseigne';
+
+        $this->notifyTutor(
+            'bulletin_published',
+            $etudiant,
+            [
+                'subject' => 'Bulletin disponible',
+                'summary' => 'Bulletin publie.',
+                'body' => sprintf(
+                    'Bonjour {parent}, le bulletin de %s pour %s (%s) est disponible. Moyenne generale : %s. Rang : %s. Consultez le detail officiel depuis votre compte KLASSCI.',
+                    $this->studentName($etudiant),
+                    $bulletin->periode ?: 'la periode en cours',
+                    $className,
+                    $average,
+                    $rank,
+                ),
+                'metadata' => [
+                    'bulletin_id' => $bulletin->id,
+                    'classe_id' => $bulletin->classe_id,
+                    'annee_universitaire_id' => $bulletin->annee_universitaire_id,
                 ],
             ]
         );
@@ -148,7 +191,7 @@ class MailPulseWorkflowNotificationService
 
     private function notifyTutor(string $event, ESBTPEtudiant $etudiant, array $message): void
     {
-        if (! $this->realWorkflowsEnabled()) {
+        if (! $this->workflowPolicy->realWorkflowsEnabled()) {
             return;
         }
 
@@ -158,11 +201,18 @@ class MailPulseWorkflowNotificationService
         }
 
         $preferences = $tuteur->getOrCreateNotificationPreferences();
-        if (! $preferences->isNotificationEnabled($this->preferenceType($event))) {
+        if (! $preferences->isNotificationEnabled($this->workflowPolicy->preferenceType($event))) {
             return;
         }
 
-        $channels = $preferences->preferred_channels ?? ['email'];
+        $channels = array_values(array_filter(
+            $preferences->preferred_channels ?? ['email'],
+            fn (string $channel): bool => $this->workflowPolicy->parentAllows($tuteur, $event, $channel)
+        ));
+        if ($channels === []) {
+            return;
+        }
+
         $contact = $this->upsertContact($tuteur, $etudiant);
         if (! $contact->ok) {
             $this->logResult($event, 'contact', $contact, $tuteur, $etudiant);
@@ -171,16 +221,58 @@ class MailPulseWorkflowNotificationService
 
         $contactId = $contact->id ?? ('klassci-parent-' . $tuteur->id);
         if (in_array('email', $channels, true) && $tuteur->email) {
-            $result = $this->client->sendEmailMessage($this->emailPayload($tuteur, $etudiant, $contactId, $event, $message));
-            $this->logResult($event, 'email', $result, $tuteur, $etudiant);
+            $this->dispatchMessage(
+                $event,
+                'email',
+                $this->emailPayload($tuteur, $etudiant, $contactId, $event, $message),
+                $tuteur,
+                $etudiant,
+                $message
+            );
         }
 
-        if (in_array('whatsapp', $channels, true) && $tuteur->telephone) {
-            $phone = PhoneNormalizer::toE164((string) $tuteur->telephone);
-            if ($phone) {
-                $result = $this->client->sendWhatsAppMessage($this->whatsAppPayload($phone, $etudiant, $contactId, $event, $message, $tuteur));
-                $this->logResult($event, 'whatsapp', $result, $tuteur, $etudiant);
+        $phone = PhoneNormalizer::toE164((string) $tuteur->telephone);
+        if (! $phone) {
+            return;
+        }
+
+        $whatsAppEnabled = in_array('whatsapp', $channels, true);
+        $smsEnabled = in_array('sms', $channels, true);
+
+        if ($whatsAppEnabled) {
+            $whatsAppResult = $this->dispatchMessage(
+                $event,
+                'whatsapp',
+                $this->whatsAppPayload($phone, $etudiant, $contactId, $event, $message, $tuteur),
+                $tuteur,
+                $etudiant,
+                $message
+            );
+
+            // SMS is an opt-in fallback for a parent whose WhatsApp channel is not active.
+            if ($smsEnabled && $this->shouldFallBackToSms($whatsAppResult)) {
+                $this->dispatchMessage(
+                    $event,
+                    'sms',
+                    $this->smsPayload($phone, $etudiant, $contactId, $event, $message, $tuteur, true),
+                    $tuteur,
+                    $etudiant,
+                    $message
+                );
             }
+
+            return;
+        }
+
+        if ($smsEnabled) {
+            $this->dispatchMessage(
+                $event,
+                'sms',
+                $this->smsPayload($phone, $etudiant, $contactId, $event, $message, $tuteur),
+                $tuteur,
+                $etudiant,
+                $message
+            );
         }
     }
 
@@ -193,11 +285,9 @@ class MailPulseWorkflowNotificationService
             'last_name' => $tuteur->nom,
             'external_id' => 'klassci-parent-' . $tuteur->id,
             'language' => $this->client->getSetting('mailpulse_default_language', 'default_language', 'fr'),
-            'subscribed' => true,
             'metadata' => [
                 'parent_id' => $tuteur->id,
                 'student_id' => $etudiant->id,
-                'student_name' => $this->studentName($etudiant),
                 'source' => 'klassci-real-workflow',
             ],
         ], fn ($value) => $value !== null && $value !== ''));
@@ -229,6 +319,32 @@ class MailPulseWorkflowNotificationService
         ];
     }
 
+    private function smsPayload(
+        string $phone,
+        ESBTPEtudiant $etudiant,
+        string $contactId,
+        string $event,
+        array $message,
+        ESBTPParent $tuteur,
+        bool $isFallback = false
+    ): array
+    {
+        $metadata = $this->metadata($event, $etudiant, $contactId, $message);
+        if ($isFallback) {
+            $metadata['fallback_from'] = 'whatsapp';
+        }
+
+        return [
+            'channel' => 'sms',
+            'recipient' => ['type' => 'phone', 'value' => $phone],
+            'content' => [
+                'type' => 'text',
+                'text' => $this->personalize($message['body'], $tuteur),
+            ],
+            'metadata' => $metadata,
+        ];
+    }
+
     private function metadata(string $event, ESBTPEtudiant $etudiant, string $contactId, array $message): array
     {
         return array_filter([
@@ -236,43 +352,7 @@ class MailPulseWorkflowNotificationService
             'workflow_event' => $event,
             'contact_id' => $contactId,
             'student_id' => $etudiant->id,
-            'student_name' => $this->studentName($etudiant),
-            'class_name' => $etudiant->classe?->name,
-            'sender_name' => $this->client->getSetting('mailpulse_sender_name', 'sender_name', 'KLASSCI'),
-            'event_summary' => $message['summary'],
         ] + ($message['metadata'] ?? []), fn ($value) => $value !== null && $value !== '');
-    }
-
-    private function preferenceType(string $event): string
-    {
-        return match ($event) {
-            'payment_received', 'fee_reminder' => 'paiements',
-            'absence_reported' => 'absences',
-            'grade_published' => 'notes',
-            default => 'annonces',
-        };
-    }
-
-    private function realWorkflowsEnabled(): bool
-    {
-        $value = $this->setting('mailpulse_real_workflows_enabled', 'real_workflows_enabled', '0');
-
-        return filter_var($value, FILTER_VALIDATE_BOOLEAN);
-    }
-
-    private function setting(string $settingKey, string $configKey, string $default = ''): string
-    {
-        try {
-            $value = Setting::get($settingKey, null);
-            if ($value !== null && $value !== '') {
-                return (string) $value;
-            }
-        } catch (\Throwable) {
-        }
-
-        $configValue = config('services.mailpulse.' . $configKey, $default);
-
-        return is_bool($configValue) ? ($configValue ? '1' : '0') : (string) $configValue;
     }
 
     private function personalize(string $body, ESBTPParent $tuteur): string
@@ -293,6 +373,79 @@ class MailPulseWorkflowNotificationService
     private function formatNumber(float $value): string
     {
         return rtrim(rtrim(number_format($value, 2, ',', ' '), '0'), ',');
+    }
+
+    private function dispatchMessage(
+        string $event,
+        string $channel,
+        array $payload,
+        ESBTPParent $tuteur,
+        ESBTPEtudiant $etudiant,
+        array $message
+    ): MailPulseResult {
+        $requestId = $this->notificationLogs->requestId($event, $channel, $tuteur, $etudiant, $message);
+        [$notificationLog, $alreadyRecorded, $persisted] = $this->notificationLogs->start(
+            $requestId,
+            $event,
+            $channel,
+            $payload,
+            $tuteur,
+            $etudiant,
+            $message
+        );
+
+        if (! $persisted) {
+            return MailPulseResult::skipped('outbox_unavailable', 'The notification was not sent because its outbox record could not be stored.');
+        }
+
+        if ($alreadyRecorded) {
+            return MailPulseResult::skipped('already_recorded', 'Cette notification est déjà suivie par l’outbox MailPulse.');
+        }
+
+        $gate = $this->workflowPolicy->dispatchIfAllowed(
+            $tuteur,
+            (int) $etudiant->id,
+            $event,
+            $channel,
+            $payload,
+            fn (): MailPulseResult => match ($channel) {
+                'email' => $this->client->sendEmailMessage($payload, $requestId),
+                'whatsapp' => $this->client->sendWhatsAppMessage($payload, $requestId),
+                'sms' => $this->client->sendSmsMessage($payload, $requestId),
+            },
+        );
+        $result = ! $gate['allowed'] || ! $gate['publication_eligible']
+            ? MailPulseResult::skipped(
+                $gate['publication_eligible'] ? 'messaging_consent_stopped' : 'academic_content_unpublished',
+                'The notification is no longer authorized at dispatch time.',
+            )
+            : $gate['result'];
+
+        $this->notificationLogs->finish($notificationLog, $result, $requestId);
+        $this->logResult($event, $channel, $result, $tuteur, $etudiant);
+
+        if ($result->isDispatchAccepted()) {
+            $this->incrementNotificationCount($tuteur);
+        }
+
+        return $result;
+    }
+
+    private function shouldFallBackToSms(MailPulseResult $result): bool
+    {
+        return $result->dispatchState === 'failed' && $result->smsFallbackEligible;
+    }
+
+    private function incrementNotificationCount(ESBTPParent $tuteur): void
+    {
+        try {
+            $tuteur->getOrCreateNotificationPreferences()->incrementNotificationCount();
+        } catch (\Throwable $e) {
+            Log::warning('MailPulse notification count could not be updated', [
+                'parent_id' => $tuteur->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     private function logResult(string $event, string $channel, MailPulseResult $result, ESBTPParent $tuteur, ESBTPEtudiant $etudiant): void

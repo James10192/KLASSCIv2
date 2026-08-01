@@ -424,10 +424,8 @@ class MailPulseTestNotificationService
             'preferred_channel' => $phone ? 'whatsapp' : 'email',
             'subscribed' => true,
             'metadata' => [
-                'student_name' => $scenario['student_name'],
-                'class_name' => $scenario['class_name'],
-                'school_name' => $scenario['school_name'],
                 'source' => 'klassci-test-notification',
+                'environment' => 'test',
             ],
         ], fn ($value) => $value !== null && $value !== '');
     }
@@ -447,11 +445,8 @@ class MailPulseTestNotificationService
             'metadata' => [
                 'source' => 'klassci',
                 'contact_id' => $contactId,
-                'subject' => '[TEST KLASSCI] ' . $scenario['subject'],
-                'email_html' => $this->emailHtml($scenario),
-                'sender_email' => $this->client->getSetting('mailpulse_sender_email', 'sender_email', ''),
-                'sender_name' => $this->client->getSetting('mailpulse_sender_name', 'sender_name', 'KLASSCI'),
-                'event_summary' => $scenario['summary'],
+                'workflow_event' => $scenario['event'],
+                'environment' => 'test',
             ],
         ];
     }
@@ -471,7 +466,8 @@ class MailPulseTestNotificationService
             'metadata' => [
                 'source' => 'klassci',
                 'contact_id' => $contactId,
-                'event_summary' => $scenario['summary'],
+                'workflow_event' => $scenario['event'],
+                'environment' => 'test',
             ],
         ];
     }

@@ -126,6 +126,11 @@ return [
             'icon' => 'fa-server',
             'aliases' => ['manage_system'],
         ],
+        'parent_chatbot.manage' => [
+            'label' => 'Gérer le chatbot parent',
+            'group' => 'Communication',
+            'icon' => 'fa-comments',
+        ],
         'sod.bypass' => [
             'label' => 'Contourner la separation des devoirs',
             'description' => 'Autorise un acteur habilite a executer une action meme lorsqu une regle maker-checker est active. A reserver aux super administrateurs et procedures de secours.',
@@ -1722,7 +1727,7 @@ return [
         'serviceTechnique' => ['*'],
 
         'secretaire' => [
-            'dashboard.view', 'admin.access',
+            'dashboard.view', 'admin.access', 'parent_chatbot.manage',
             'students.view', 'students.create', 'students.edit', 'students.delete',
             'students.accessibility.view', 'students.accessibility.edit', 'students.accessibility.export',
             'inscriptions.view', 'inscriptions.create', 'inscriptions.edit', 'inscriptions.validate',

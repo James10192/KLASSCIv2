@@ -141,6 +141,11 @@ class PermissionSyncService
      */
     private function applyPermissionDependencies(array $permissions, ?string $roleName = null): array
     {
+        if (in_array($roleName, ['superAdmin', 'secretaire', 'serviceTechnique'], true)
+            && ! in_array('parent_chatbot.manage', $permissions, true)) {
+            $permissions[] = 'parent_chatbot.manage';
+        }
+
         if (in_array('personnel.manage', $permissions, true) && ! in_array('personnel.view', $permissions, true)) {
             $permissions[] = 'personnel.view';
         }

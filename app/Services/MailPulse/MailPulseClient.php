@@ -20,27 +20,42 @@ class MailPulseClient
         );
     }
 
-    public function sendEmailMessage(array $message): MailPulseResult
+    public function sendEmailMessage(array $message, ?string $requestId = null): MailPulseResult
     {
         return $this->post(
             $this->setting('mailpulse_messages_endpoint', 'messages_endpoint', '/api/v1/messages'),
             $message,
-            'email_send'
+            'email_send',
+            $requestId
         );
     }
 
-    public function sendWhatsAppMessage(array $message): MailPulseResult
+    public function sendWhatsAppMessage(array $message, ?string $requestId = null): MailPulseResult
     {
         return $this->post(
             $this->setting('mailpulse_messages_endpoint', 'messages_endpoint', '/api/v1/messages'),
             $message,
-            'whatsapp_send'
+            'whatsapp_send',
+            $requestId
         );
     }
 
-    private function post(string $endpoint, array $payload, string $operation): MailPulseResult
+    /**
+     * Submit an SMS intent to MailPulse. KLASSCI never calls an SMS provider directly.
+     */
+    public function sendSmsMessage(array $message, ?string $requestId = null): MailPulseResult
     {
-        $requestId = 'klassci-' . (string) Str::uuid();
+        return $this->post(
+            $this->setting('mailpulse_messages_endpoint', 'messages_endpoint', '/api/v1/messages'),
+            $message,
+            'sms_send',
+            $requestId
+        );
+    }
+
+    private function post(string $endpoint, array $payload, string $operation, ?string $requestId = null): MailPulseResult
+    {
+        $requestId ??= 'klassci-' . (string) Str::uuid();
 
         if (! $this->enabled()) {
             return $this->failure('disabled', null, $requestId, 'MailPulse est desactive par MAILPULSE_ENABLED=false.', 'Activez MAILPULSE_ENABLED pour lancer un test reel.');
@@ -56,7 +71,12 @@ class MailPulseClient
                 ->acceptJson()
                 ->asJson()
                 ->timeout((int) $this->setting('mailpulse_timeout', 'timeout', '20'))
-                ->withHeaders(['X-KLASSCI-Request-Id' => $requestId])
+                ->withHeaders([
+                    // MailPulse deduplicates message submissions with this standard header.
+                    'Idempotency-Key' => $requestId,
+                    // Keep the original correlation header for existing MailPulse observability.
+                    'X-KLASSCI-Request-Id' => $requestId,
+                ])
                 ->post($this->url($endpoint), $payload);
         } catch (ConnectionException $e) {
             Log::warning('MailPulse request failed', [
@@ -69,7 +89,7 @@ class MailPulseClient
             return $this->failure('connection_failed', null, $requestId, 'MailPulse est injoignable.', 'Vérifiez le réseau, MAILPULSE_BASE_URL et le statut Vercel.');
         }
 
-        $result = $this->mapResponse($response, $requestId);
+        $result = $this->mapResponse($response, $requestId, $operation);
 
         Log::info('MailPulse request completed', [
             'operation' => $operation,
@@ -149,10 +169,27 @@ class MailPulseClient
         return $baseUrl . '/' . ltrim($endpoint, '/');
     }
 
-    private function mapResponse(Response $response, string $requestId): MailPulseResult
+    private function mapResponse(Response $response, string $requestId, string $operation): MailPulseResult
     {
         $body = $response->json();
         $requestHeader = $response->header('x-request-id') ?: $response->header('x-vercel-id') ?: $requestId;
+
+        if (in_array($operation, ['email_send', 'whatsapp_send', 'sms_send'], true)) {
+            $dispatchResult = $this->mapMessageDispatchResponse($response, is_array($body) ? $body : [], $requestHeader);
+            if ($dispatchResult !== null) {
+                return $dispatchResult;
+            }
+
+            if ($response->successful()) {
+                return $this->failure(
+                    'invalid_dispatch_contract',
+                    $response->status(),
+                    $requestHeader,
+                    'MailPulse a accepté la requête sans état de dispatch exploitable.',
+                    'Vérifiez la version du contrat MailPulse avant de considérer le message comme envoyé.'
+                );
+            }
+        }
 
         if ($response->successful()) {
             return new MailPulseResult(
@@ -168,9 +205,80 @@ class MailPulseClient
             401, 403 => $this->failure('auth_failed', $response->status(), $requestHeader, 'Authentification MailPulse refusée.', 'Vérifiez MAILPULSE_API_KEY et les droits API v1.'),
             404 => $this->failure('endpoint_not_found', $response->status(), $requestHeader, 'Endpoint MailPulse introuvable.', 'Vérifiez MAILPULSE_*_ENDPOINT dans .env.'),
             405 => $this->failure('endpoint_not_supported', $response->status(), $requestHeader, 'Méthode non acceptée par MailPulse.', 'Confirmez le vrai endpoint/méthode MailPulse pour ce canal.'),
-            408, 429 => $this->failure('rate_limited', $response->status(), $requestHeader, 'MailPulse limite ou expire la requête.', 'Réessayez plus tard ou réduisez la fréquence des tests.'),
+            408 => $this->failure('request_timeout', $response->status(), $requestHeader, 'MailPulse a expiré la requête.', 'Réessayez plus tard.'),
+            429 => $this->failure('rate_limited', $response->status(), $requestHeader, 'MailPulse limite la requête.', 'Réessayez plus tard.'),
+            500, 501, 502, 503, 504 => $this->failure('provider_unavailable', $response->status(), $requestHeader, 'MailPulse est temporairement indisponible.', 'Réessayez plus tard.'),
             default => $this->providerFailure($response, is_array($body) ? $body : [], $requestHeader),
         };
+    }
+
+    private function mapMessageDispatchResponse(Response $response, array $body, string $requestId): ?MailPulseResult
+    {
+        $dispatch = $body['dispatch'] ?? null;
+        if (! is_array($dispatch)) {
+            return null;
+        }
+
+        $state = $dispatch['state'] ?? null;
+        $smsFallbackEligible = $dispatch['sms_fallback_eligible'] ?? null;
+        $message = $body['message'] ?? null;
+        $messageStatus = is_array($message) && is_string($message['status'] ?? null) ? $message['status'] : null;
+
+        if (! is_string($state) || ! is_bool($smsFallbackEligible) || ! in_array($state, ['accepted', 'pending', 'pending_reconciliation', 'failed'], true)) {
+            return $this->failure(
+                'invalid_dispatch_contract',
+                $response->status(),
+                $requestId,
+                'MailPulse a retourné un état de dispatch invalide.',
+                'Vérifiez la réponse MailPulse avant de considérer le message comme envoyé.'
+            );
+        }
+
+        $id = $this->extractId($body);
+        if ($state === 'failed') {
+            $code = $this->stringValue($body['code'] ?? (is_array($message) ? $message['error_code'] ?? null : null), 'provider_error');
+            $status = $this->dispatchFailureStatus($code, $messageStatus);
+
+            return new MailPulseResult(
+                false,
+                $status,
+                $response->status(),
+                $requestId,
+                $id,
+                $code,
+                $this->providerMessage($body),
+                'Consultez l’état durable retourné par MailPulse avant toute relance.',
+                $state,
+                $smsFallbackEligible,
+            );
+        }
+
+        return new MailPulseResult(
+            true,
+            $messageStatus ?? $state,
+            $response->status(),
+            $requestId,
+            $id,
+            null,
+            null,
+            null,
+            $state,
+            false,
+        );
+    }
+
+    private function dispatchFailureStatus(string $code, ?string $messageStatus): string
+    {
+        $normalizedCode = strtoupper($code);
+        if ($messageStatus === 'template_required' || str_contains($normalizedCode, 'TEMPLATE_REQUIRED')) {
+            return 'template_required';
+        }
+
+        if (str_contains($normalizedCode, 'RECIPIENT_NOT_ACTIVATED')) {
+            return 'whatsapp_not_activated';
+        }
+
+        return 'provider_error';
     }
 
     private function providerFailure(Response $response, array $body, string $requestId): MailPulseResult
@@ -180,6 +288,16 @@ class MailPulseClient
 
         if (str_contains($code, 'TEMPLATE_REQUIRED') || str_contains(strtoupper($message), 'TEMPLATE_REQUIRED')) {
             return $this->failure('template_required', $response->status(), $requestId, $message, 'Configurez un template WhatsApp approuvé dans Meta/MailPulse pour les messages hors fenêtre 24h.');
+        }
+
+        if (
+            str_contains($code, 'WHATSAPP_NOT_ACTIVATED')
+            || str_contains($code, 'RECIPIENT_NOT_ACTIVATED')
+            || str_contains($code, 'WHATSAPP_WINDOW_CLOSED')
+            || str_contains(strtolower($message), 'whatsapp is not activated')
+            || str_contains(strtolower($message), 'recipient is not activated')
+        ) {
+            return $this->failure('whatsapp_not_activated', $response->status(), $requestId, $message, "Le parent WhatsApp n'est pas actif. Utilisez le fallback SMS MailPulse si ce canal est autorisé.");
         }
 
         if (str_contains($code, 'CHANNEL_NOT_CONFIGURED') || str_contains(strtoupper($message), 'CANAL NON CONFIGURE')) {

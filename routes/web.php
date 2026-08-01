@@ -1528,6 +1528,20 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::post('/settings/mailpulse/test-notification', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'testMailPulseNotification'])
                 ->middleware('throttle:10,1')
                 ->name('esbtp.settings.mailpulse.test-notification');
+            Route::prefix('/parent-chatbot-onboarding')->name('esbtp.parent-chatbot-onboarding.')->middleware('permission:parent_chatbot.manage')->group(function () {
+                Route::get('/', [App\Http\Controllers\ESBTP\ParentChatbotOnboardingController::class, 'index'])
+                    ->middleware('throttle:60,1')
+                    ->name('index');
+                Route::post('/', [App\Http\Controllers\ESBTP\ParentChatbotOnboardingController::class, 'start'])
+                    ->middleware('throttle:2,1')
+                    ->name('start');
+                Route::post('/{batch}/cancel', [App\Http\Controllers\ESBTP\ParentChatbotOnboardingController::class, 'cancel'])
+                    ->middleware('throttle:5,1')
+                    ->name('cancel');
+            });
+            Route::post('/parents/{parent}/parent-chatbot-link-code', [App\Http\Controllers\ESBTP\ParentChatbotLinkCodeController::class, 'store'])
+                ->middleware(['permission:parent_chatbot.manage', 'throttle:5,1'])
+                ->name('esbtp.parents.parent-chatbot-link-code');
         });
 
         // Phase 9 â€” AperÃ§u PDF avec settings non persistÃ©s (nouvelle tab)

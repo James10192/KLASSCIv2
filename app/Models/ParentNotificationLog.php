@@ -22,11 +22,18 @@ class ParentNotificationLog extends Model
         'notification_type',
         'channel',
         'status',
+        'request_id',
         'recipient',
         'message_preview',
         'external_id',
         'cost_fcfa',
         'metadata',
+        'retry_payload',
+        'attempt_count',
+        'next_attempt_at',
+        'retry_expires_at',
+        'dispatch_lease_token',
+        'dispatch_lease_expires_at',
         'sent_at',
         'delivered_at',
         'read_at',
@@ -41,6 +48,9 @@ class ParentNotificationLog extends Model
         'delivered_at' => 'datetime',
         'read_at' => 'datetime',
         'failed_at' => 'datetime',
+        'next_attempt_at' => 'datetime',
+        'retry_expires_at' => 'datetime',
+        'dispatch_lease_expires_at' => 'datetime',
     ];
 
     /**
