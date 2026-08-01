@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
+use App\Models\User;
 use App\Services\PermissionRegistry;
 use App\Services\PermissionSyncService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -111,18 +113,19 @@ class CLIPermissionController extends BaseApiController
         }
 
         $roles = Role::query()
-            ->withCount(['users', 'permissions'])
+            ->withCount('permissions')
             ->orderBy('name')
             ->get();
+        $userCounts = $this->userCountsByRole($roles->pluck('id')->all());
 
-        $items = $roles->map(function (Role $role) {
+        $items = $roles->map(function (Role $role) use ($userCounts) {
             $meta = $this->registry->roleMeta($role->name);
             return [
                 'id' => $role->id,
                 'name' => $role->name,
                 'label' => $meta['label'] ?? $role->name,
                 'is_custom' => (bool) ($role->is_custom ?? false),
-                'users_count' => $role->users_count,
+                'users_count' => $userCounts[$role->id] ?? 0,
                 'permissions_count' => $role->permissions_count,
                 'group' => $meta['group'] ?? null,
             ];
@@ -187,7 +190,6 @@ class CLIPermissionController extends BaseApiController
         }
 
         $roleModel = Role::where('name', $role)
-            ->withCount('users')
             ->with('permissions:id,name')
             ->first();
         if (!$roleModel) {
@@ -226,7 +228,7 @@ class CLIPermissionController extends BaseApiController
                 'name' => $roleModel->name,
                 'label' => $this->registry->roleMeta($role)['label'] ?? $role,
                 'is_custom' => (bool) ($roleModel->is_custom ?? false),
-                'users_count' => $roleModel->users_count,
+                'users_count' => $this->userCountsByRole([$roleModel->id])[$roleModel->id] ?? 0,
             ],
             'assigned_count' => count($assigned),
             'permissions' => $assignedDetails,
@@ -235,6 +237,34 @@ class CLIPermissionController extends BaseApiController
                 'extra' => $extraVsDefaults,
             ],
         ], "Role {$role} details");
+    }
+
+    /**
+     * Count assigned users without relying on Spatie's Role::users() relation.
+     * Roles using an API guard without an auth provider must remain auditable.
+     *
+     * @param array<int, int|string> $roleIds
+     * @return array<int|string, int>
+     */
+    private function userCountsByRole(array $roleIds): array
+    {
+        if ($roleIds === []) {
+            return [];
+        }
+
+        $configuredModel = config('auth.providers.users.model');
+        $userModel = is_string($configuredModel) && class_exists($configuredModel)
+            ? $configuredModel
+            : User::class;
+
+        return DB::table(config('permission.table_names.model_has_roles', 'model_has_roles'))
+            ->where('model_type', $userModel)
+            ->whereIn('role_id', $roleIds)
+            ->selectRaw('role_id, COUNT(DISTINCT model_id) AS aggregate')
+            ->groupBy('role_id')
+            ->pluck('aggregate', 'role_id')
+            ->map(fn ($count) => (int) $count)
+            ->all();
     }
 
     /**
