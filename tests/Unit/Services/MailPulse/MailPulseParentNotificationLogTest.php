@@ -21,6 +21,8 @@ class MailPulseParentNotificationLogTest extends TestCase
     {
         parent::setUp();
 
+        config()->set('app.tenant_code', 'tenant-a');
+
         config()->set('database.default', 'sqlite');
         config()->set('database.connections.sqlite', [
             'driver' => 'sqlite', 'database' => ':memory:', 'prefix' => '', 'foreign_key_constraints' => false,
@@ -129,7 +131,32 @@ class MailPulseParentNotificationLogTest extends TestCase
         $second = $service->requestId('payment_received', 'sms', $parent, $student, ['metadata' => ['paiement_id' => 21, 'receipt_number' => 'REC-001']]);
 
         $this->assertSame($first, $second);
-        $this->assertMatchesRegularExpression('/^klassci-sms-[a-f0-9]{48}$/', $first);
+        $this->assertMatchesRegularExpression('/^klassci-tenant-a-sms-[a-f0-9]{48}$/', $first);
+
+        config()->set('app.tenant_code', 'tenant-b');
+        $otherTenant = $service->requestId('payment_received', 'sms', $parent, $student, ['metadata' => ['paiement_id' => 21, 'receipt_number' => 'REC-001']]);
+
+        $this->assertNotSame($first, $otherTenant);
+        $this->assertStringStartsWith('klassci-tenant-b-', $otherTenant);
+    }
+
+    /** @test */
+    public function it_distinguishes_fee_reminder_occurrences(): void
+    {
+        $parent = new ESBTPParent();
+        $parent->id = 15;
+        $student = new ESBTPEtudiant();
+        $student->id = 42;
+        $service = app(MailPulseParentNotificationLog::class);
+
+        $first = $service->requestId('fee_reminder', 'sms', $parent, $student, [
+            'metadata' => ['paiement_id' => 21, 'reminder_count' => 1],
+        ]);
+        $second = $service->requestId('fee_reminder', 'sms', $parent, $student, [
+            'metadata' => ['paiement_id' => 21, 'reminder_count' => 2],
+        ]);
+
+        $this->assertNotSame($first, $second);
     }
 
     /** @test */

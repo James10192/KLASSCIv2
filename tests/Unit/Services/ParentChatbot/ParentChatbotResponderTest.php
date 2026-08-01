@@ -5,6 +5,7 @@ namespace Tests\Unit\Services\ParentChatbot;
 use App\Enums\ParentChatbotIntent;
 use App\Models\ESBTPParent;
 use App\Models\ParentChatbotLink;
+use App\Models\ParentChatbotLinkCode;
 use App\Models\ParentChatbotInboundEvent;
 use App\Services\ParentChatbot\ParentChatbotDispatcher;
 use App\Services\ParentChatbot\ParentChatbotDispatchOutcome;
@@ -89,6 +90,14 @@ class ParentChatbotResponderTest extends TestCase
             $table->timestamp('last_inbound_at')->nullable();
             $table->timestamp('stopped_at')->nullable();
             $table->timestamp('revoked_at')->nullable();
+            $table->timestamps();
+        });
+        Schema::create('parent_chatbot_link_codes', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('parent_id');
+            $table->char('code_hash', 64)->unique();
+            $table->timestamp('expires_at');
+            $table->timestamp('consumed_at')->nullable();
             $table->timestamps();
         });
         Schema::create('parent_chatbot_inbound_events', function (Blueprint $table): void {
@@ -239,6 +248,145 @@ class ParentChatbotResponderTest extends TestCase
         );
 
         $this->assertSame(['app', 'email', 'whatsapp', 'sms'], $parent->fresh()->getOrCreateNotificationPreferences()->preferred_channels);
+    }
+
+    public function test_stop_stops_every_authorized_link_for_an_ambiguous_phone_number(): void
+    {
+        [, , $phone] = $this->parentWithActiveLink();
+        $secondParent = ESBTPParent::create(['nom' => 'KONE', 'prenoms' => 'Mariam', 'telephone' => $phone]);
+        $secondStudentId = DB::table('esbtp_etudiants')->insertGetId([
+            'nom' => 'KONE',
+            'prenoms' => 'Moussa',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('esbtp_etudiant_parent')->insert([
+            'parent_id' => $secondParent->id,
+            'etudiant_id' => $secondStudentId,
+            'is_tuteur' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        $phones = new ParentChatbotPhoneNormalizer;
+        ParentChatbotLink::create([
+            'parent_id' => $secondParent->id,
+            'phone_hash' => $phones->hash($phone),
+            'selected_student_id' => $secondStudentId,
+            'status' => ParentChatbotLink::STATUS_ACTIVE,
+        ]);
+
+        $dispatcher = Mockery::mock(ParentChatbotDispatcher::class);
+        $dispatcher->shouldReceive('dispatch')
+            ->once()
+            ->with($phone, Mockery::type('string'), ParentChatbotIntent::Stop, 'evt-stop-ambiguous', 'klassci-parent-inbound-evt-stop-ambiguous')
+            ->andReturn(ParentChatbotDispatchOutcome::accepted('out-stop-ambiguous'));
+
+        $this->assertSame(
+            ParentChatbotIntent::Stopped->value,
+            $this->respond($dispatcher, $phone, 'STOP', 'evt-stop-ambiguous'),
+        );
+        $this->assertSame(2, ParentChatbotLink::query()
+            ->where('status', ParentChatbotLink::STATUS_STOPPED)
+            ->count());
+    }
+
+    public function test_lier_records_the_exact_response_before_its_link_effect_is_committed(): void
+    {
+        $phone = '+2250707123456';
+        $parent = ESBTPParent::create(['nom' => 'DIALLO', 'prenoms' => 'Awa', 'telephone' => $phone]);
+        $studentId = DB::table('esbtp_etudiants')->insertGetId([
+            'nom' => 'DIALLO',
+            'prenoms' => 'Habib',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('esbtp_etudiant_parent')->insert([
+            'parent_id' => $parent->id,
+            'etudiant_id' => $studentId,
+            'is_tuteur' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $phones = new ParentChatbotPhoneNormalizer;
+        $code = (new ParentChatbotLinkService($phones))->issueCode($parent);
+        $event = ParentChatbotInboundEvent::create([
+            'source_event_id' => 'evt-lier-replay',
+            'payload_hash' => hash('sha256', 'evt-lier-replay'),
+            'received_at' => now(),
+            'processing_token' => 'lier-token',
+            'processing_started_at' => now(),
+            'processing_expires_at' => now()->addMinute(),
+        ]);
+        $dispatcher = Mockery::mock(ParentChatbotDispatcher::class);
+        $response = $this->responder($dispatcher)->prepareInboundResponse(
+            $event,
+            'lier-token',
+            $phone,
+            'LIER '.$code,
+        );
+
+        $this->assertSame('linked', $response['outcome']);
+        $this->assertTrue($event->fresh()->hasRecordedResponse());
+        $this->assertNotNull(ParentChatbotLinkCode::sole()->consumed_at);
+        $this->assertSame(1, ParentChatbotLink::query()->count());
+
+        $event->release('lier-token');
+        $replayed = ParentChatbotInboundEvent::claim('evt-lier-replay', hash('sha256', 'evt-lier-replay'))->event;
+
+        $this->assertSame(
+            $response,
+            $this->responder($dispatcher)->prepareInboundResponse($replayed, (string) $replayed->processing_token, $phone, 'LIER '.$code),
+        );
+    }
+
+    public function test_lier_rolls_back_the_link_and_code_consumption_when_response_recording_crashes(): void
+    {
+        $phone = '+2250707123456';
+        $parent = ESBTPParent::create(['nom' => 'DIALLO', 'prenoms' => 'Awa', 'telephone' => $phone]);
+        $studentId = DB::table('esbtp_etudiants')->insertGetId([
+            'nom' => 'DIALLO',
+            'prenoms' => 'Habib',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('esbtp_etudiant_parent')->insert([
+            'parent_id' => $parent->id,
+            'etudiant_id' => $studentId,
+            'is_tuteur' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $phones = new ParentChatbotPhoneNormalizer;
+        $links = new ParentChatbotLinkService($phones);
+        $code = $links->issueCode($parent);
+        $event = ParentChatbotInboundEvent::create([
+            'source_event_id' => 'evt-lier-crash',
+            'payload_hash' => hash('sha256', 'evt-lier-crash'),
+            'received_at' => now(),
+            'processing_token' => 'lier-crash-token',
+            'processing_started_at' => now(),
+            'processing_expires_at' => now()->addMinute(),
+        ]);
+
+        try {
+            $links->linkAndRecordInboundResponse(
+                $event,
+                'lier-crash-token',
+                $phone,
+                $code,
+                'klassci-parent-inbound-evt-lier-crash',
+                fn (): array => throw new RuntimeException('Simulated crash before response persistence.'),
+            );
+            $this->fail('The simulated crash must abort LIER.');
+        } catch (RuntimeException $exception) {
+            $this->assertSame('Simulated crash before response persistence.', $exception->getMessage());
+        }
+
+        $this->assertNull(ParentChatbotLinkCode::sole()->consumed_at);
+        $this->assertSame(0, ParentChatbotLink::query()->count());
+        $this->assertFalse($event->fresh()->hasRecordedResponse());
     }
 
     public function test_bulletin_reply_uses_published_summary_without_signed_link(): void

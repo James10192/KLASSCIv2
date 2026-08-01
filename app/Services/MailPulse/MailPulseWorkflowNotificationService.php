@@ -24,6 +24,10 @@ class MailPulseWorkflowNotificationService
 
     public function notifyPaymentReceived(ESBTPPaiement $paiement): void
     {
+        if ($paiement->status !== 'validé' || $paiement->date_validation === null) {
+            return;
+        }
+
         $paiement->loadMissing(['inscription.classe', 'etudiant.parents', 'fraisCategory']);
 
         $etudiant = $paiement->etudiant;
@@ -48,6 +52,7 @@ class MailPulseWorkflowNotificationService
                     'paiement_id' => $paiement->id,
                     'inscription_id' => $paiement->inscription_id,
                     'fee_category_id' => $paiement->frais_category_id,
+                    'validation_occurrence' => $this->paymentValidationOccurrence($paiement),
                 ],
             ]
         );
@@ -77,7 +82,7 @@ class MailPulseWorkflowNotificationService
                     $matiere
                 ),
                 'metadata' => [
-                    'attendance_id' => $attendance->id,
+                    'attendance_occurrence' => $this->attendanceOccurrence($attendance),
                     'student_id' => $etudiant->id,
                     'matiere_id' => $attendance->matiere_id,
                 ],
@@ -144,6 +149,7 @@ class MailPulseWorkflowNotificationService
                     'paiement_id' => $paiement->id,
                     'inscription_id' => $paiement->inscription_id,
                     'fee_category_id' => $paiement->frais_category_id,
+                    'reminder_count' => $reminderCount,
                 ],
             ]
         );
@@ -219,7 +225,7 @@ class MailPulseWorkflowNotificationService
             return;
         }
 
-        $contactId = $contact->id ?? ('klassci-parent-' . $tuteur->id);
+        $contactId = $contact->id ?? MailPulseTenantContext::scopedIdentifier('parent-' . $tuteur->id);
         if (in_array('email', $channels, true) && $tuteur->email) {
             $this->dispatchMessage(
                 $event,
@@ -283,12 +289,13 @@ class MailPulseWorkflowNotificationService
             'phone' => PhoneNormalizer::toE164((string) $tuteur->telephone),
             'first_name' => $tuteur->prenoms ?: $tuteur->nom,
             'last_name' => $tuteur->nom,
-            'external_id' => 'klassci-parent-' . $tuteur->id,
+            'external_id' => MailPulseTenantContext::scopedIdentifier('parent-' . $tuteur->id),
             'language' => $this->client->getSetting('mailpulse_default_language', 'default_language', 'fr'),
             'metadata' => [
                 'parent_id' => $tuteur->id,
                 'student_id' => $etudiant->id,
                 'source' => 'klassci-real-workflow',
+                'tenant_code' => MailPulseTenantContext::code(),
             ],
         ], fn ($value) => $value !== null && $value !== ''));
     }
@@ -349,6 +356,7 @@ class MailPulseWorkflowNotificationService
     {
         return array_filter([
             'source' => 'klassci',
+            'tenant_code' => MailPulseTenantContext::code(),
             'workflow_event' => $event,
             'contact_id' => $contactId,
             'student_id' => $etudiant->id,
@@ -373,6 +381,33 @@ class MailPulseWorkflowNotificationService
     private function formatNumber(float $value): string
     {
         return rtrim(rtrim(number_format($value, 2, ',', ' '), '0'), ',');
+    }
+
+    private function paymentValidationOccurrence(ESBTPPaiement $paiement): string
+    {
+        return implode(':', [
+            (string) $paiement->getKey(),
+            $paiement->date_validation->copy()->utc()->format('Y-m-d\TH:i:s.u\Z'),
+            (string) ($paiement->validateur_id ?? 'system'),
+        ]);
+    }
+
+    private function attendanceOccurrence(ESBTPAttendance $attendance): string
+    {
+        if ($attendance->exists && $attendance->getKey() !== null) {
+            return 'attendance:'.$attendance->getKey();
+        }
+
+        $date = $attendance->date?->format('Y-m-d') ?? 'unknown-date';
+
+        return implode(':', [
+            'session',
+            (string) ($attendance->getAttribute('seance_cours_id') ?? 'unknown'),
+            (string) $attendance->etudiant_id,
+            $date,
+            (string) ($attendance->heure_debut ?? 'unknown-start'),
+            (string) ($attendance->heure_fin ?? 'unknown-end'),
+        ]);
     }
 
     private function dispatchMessage(

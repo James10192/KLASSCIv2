@@ -52,7 +52,7 @@ class PermissionSyncServiceParentChatbotDependencyTest extends TestCase
         parent::tearDown();
     }
 
-    public function test_it_heals_parent_chatbot_management_for_existing_privileged_roles(): void
+    public function test_it_preserves_parent_chatbot_management_as_an_independently_assignable_permission(): void
     {
         $baseline = Permission::create(['name' => 'dashboard.view', 'guard_name' => 'web']);
         foreach (['superAdmin', 'secretaire', 'serviceTechnique'] as $name) {
@@ -63,10 +63,12 @@ class PermissionSyncServiceParentChatbotDependencyTest extends TestCase
         app(PermissionSyncService::class)->run();
 
         foreach (['superAdmin', 'secretaire', 'serviceTechnique'] as $name) {
-            $this->assertTrue(
+            $this->assertFalse(
                 Role::findByName($name, 'web')->hasPermissionTo('parent_chatbot.manage'),
-                $name . ' must receive the parent chatbot management dependency.',
+                $name . ' must not receive an independently assignable permission through dependency healing.',
             );
         }
+
+        $this->assertNotNull(Permission::findByName('parent_chatbot.manage', 'web'));
     }
 }

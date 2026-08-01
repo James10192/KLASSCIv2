@@ -2591,6 +2591,10 @@ class NotificationService
     public function notifyParentsPaiementValide($paiement)
     {
         try {
+            if ($paiement->status !== 'validé' || $paiement->date_validation === null) {
+                return;
+            }
+
             $inscription = $paiement->inscription;
             if (!$inscription) return;
 

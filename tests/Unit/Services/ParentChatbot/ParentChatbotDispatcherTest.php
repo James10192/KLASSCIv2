@@ -11,6 +11,13 @@ use Tests\TestCase;
 
 class ParentChatbotDispatcherTest extends TestCase
 {
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        config()->set('app.tenant_code', 'tenant-a');
+    }
+
     public function test_it_uses_the_dedicated_mailpulse_dispatch_endpoint(): void
     {
         config()->set('services.mailpulse.base_url', 'https://mailpulse.test');
@@ -62,9 +69,10 @@ class ParentChatbotDispatcherTest extends TestCase
             'request-link-1',
         );
 
-        Http::assertSent(fn (Request $request) => $request->header('Idempotency-Key')[0] === 'request-link-1'
-            && $request->header('X-KLASSCI-Request-Id')[0] === 'request-link-1'
+        Http::assertSent(fn (Request $request) => $request->header('Idempotency-Key')[0] === 'klassci-tenant-a-request-link-1'
+            && $request->header('X-KLASSCI-Request-Id')[0] === 'klassci-tenant-a-request-link-1'
             && json_decode($request->body(), true)['metadata']['event_id'] === 'event-link-1'
+            && json_decode($request->body(), true)['metadata']['tenant_code'] === 'tenant-a'
             && json_decode($request->body(), true)['content']['type'] === 'template'
             && json_decode($request->body(), true)['content']['template_name'] === 'klassci_parent_link_code'
             && json_decode($request->body(), true)['content']['parameters'] === ['ABCDEF1234567890']);

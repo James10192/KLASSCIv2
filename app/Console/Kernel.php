@@ -148,6 +148,13 @@ class Kernel extends ConsoleKernel
             ->name('mailpulse-process-parent-chatbot-onboarding')
             ->description('Traite les activations massives du chatbot parent MailPulse');
 
+        $schedule->command('mailpulse:prune-parent-chatbot-inbound-responses --limit=1000')
+            ->dailyAt('03:30')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->name('mailpulse-prune-parent-chatbot-inbound-responses')
+            ->description('Supprime les reponses chiffrees expirees du chatbot parent MailPulse');
+
         // Calcul des KPIs temps réel (toutes les heures)
         $schedule->job(new CalculerKPIsJob('horaire'))
             ->hourly()

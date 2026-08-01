@@ -3,6 +3,7 @@
 namespace App\Services\ParentChatbot;
 
 use App\Enums\ParentChatbotIntent;
+use App\Services\MailPulse\MailPulseTenantContext;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -71,7 +72,9 @@ class ParentChatbotDispatcher
         $baseUrl = rtrim((string) config('services.mailpulse.base_url'), '/');
         $endpoint = (string) config('services.mailpulse.parent_chatbot_dispatch_endpoint');
         $serviceSecret = (string) config('services.mailpulse.parent_chatbot_service_secret');
-        $requestId ??= 'klassci-parent-chatbot-'.(string) Str::uuid();
+        $requestId = MailPulseTenantContext::scopedIdentifier(
+            $requestId ?? 'parent-chatbot-'.(string) Str::uuid()
+        );
 
         if ($baseUrl === '' || $endpoint === '' || strlen($serviceSecret) < 32) {
             Log::warning('Parent chatbot dispatch is not configured', ['event_id' => $eventId, 'intent' => $intent->value]);
@@ -83,7 +86,12 @@ class ParentChatbotDispatcher
             'channel' => 'whatsapp',
             'recipient' => ['type' => 'phone', 'value' => $phone],
             'content' => $content,
-            'metadata' => ['source' => 'klassci_parent_chatbot', 'intent' => $intent->value, 'event_id' => $eventId],
+            'metadata' => [
+                'source' => 'klassci_parent_chatbot',
+                'tenant_code' => MailPulseTenantContext::code(),
+                'intent' => $intent->value,
+                'event_id' => $eventId,
+            ],
         ];
         $body = json_encode($payload, JSON_THROW_ON_ERROR);
         $timestamp = (string) time();

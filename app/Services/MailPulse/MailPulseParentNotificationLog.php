@@ -22,6 +22,7 @@ class MailPulseParentNotificationLog
     public function requestId(string $event, string $channel, ESBTPParent $parent, ESBTPEtudiant $student, array $message): string
     {
         $identity = [
+            'tenant_code' => MailPulseTenantContext::code(),
             'event' => $event,
             'channel' => $channel,
             'parent_id' => $parent->id,
@@ -30,7 +31,9 @@ class MailPulseParentNotificationLog
         ];
         $encoded = json_encode($identity, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
-        return 'klassci-' . $channel . '-' . substr(hash('sha256', $encoded ?: serialize($identity)), 0, 48);
+        return MailPulseTenantContext::scopedIdentifier(
+            $channel . '-' . substr(hash('sha256', $encoded ?: serialize($identity)), 0, 48)
+        );
     }
 
     /** @return array{0: ?ParentNotificationLog, 1: bool, 2: bool} */
@@ -181,6 +184,7 @@ class MailPulseParentNotificationLog
             'message_preview' => 'workflow:' . $event,
             'metadata' => [
                 'provider' => 'mailpulse',
+                'tenant_code' => MailPulseTenantContext::code(),
                 'request_id' => $requestId,
                 'workflow_event' => $event,
             ],

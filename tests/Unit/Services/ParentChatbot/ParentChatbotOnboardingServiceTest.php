@@ -25,6 +25,8 @@ class ParentChatbotOnboardingServiceTest extends TestCase
     {
         parent::setUp();
 
+        config()->set('app.tenant_code', 'tenant-a');
+
         config()->set('database.default', 'sqlite');
         config()->set('database.connections.sqlite', [
             'driver' => 'sqlite',
@@ -71,7 +73,7 @@ class ParentChatbotOnboardingServiceTest extends TestCase
         $this->assertSame(ParentChatbotOnboardingBatch::STATUS_PROCESSING, $batch->status);
         $this->assertSame(2, $batch->total_count);
         $this->assertSame([$eligible->id, $revoked->id], $parentIds);
-        $this->assertSame("klassci-parent-onboarding-{$batch->id}-{$eligible->id}", $batch->items()->where('parent_id', $eligible->id)->value('request_id'));
+        $this->assertSame("klassci-tenant-a-parent-onboarding-{$batch->id}-{$eligible->id}", $batch->items()->where('parent_id', $eligible->id)->value('request_id'));
     }
 
     public function test_it_rejects_a_second_start_while_a_batch_is_processing(): void
@@ -234,6 +236,24 @@ class ParentChatbotOnboardingServiceTest extends TestCase
         $this->assertSame(ParentChatbotOnboardingItem::STATUS_ACCEPTED, $item->status);
         $this->assertSame($issuance->id, $item->issuance_id);
         $this->assertNull($item->error_code);
+    }
+
+    public function test_unexpected_activation_error_without_an_issuance_releases_the_item_for_retry(): void
+    {
+        $parent = $this->parentWithPupil('0700000001');
+        $delivery = Mockery::mock(ParentChatbotLinkCodeDeliveryService::class);
+        $delivery->shouldReceive('issueAndDeliver')->once()->andThrow(new RuntimeException('Temporary database failure'));
+        $service = $this->service($delivery);
+        $batch = $service->start(12);
+
+        $service->process(1);
+        $item = $batch->items()->where('parent_id', $parent->id)->sole();
+
+        $this->assertSame(ParentChatbotOnboardingItem::STATUS_PENDING, $item->status);
+        $this->assertSame('activation_retry_pending', $item->error_code);
+        $this->assertNull($item->lease_token);
+        $this->assertNull($item->lease_expires_at);
+        $this->assertSame(1, $item->attempt_count);
     }
 
     private function service(?ParentChatbotLinkCodeDeliveryService $delivery = null): ParentChatbotOnboardingService

@@ -319,6 +319,37 @@ class ParentChatbotInboundControllerTest extends TestCase
         ])->assertStatus(202)->assertJson(['accepted' => true]);
     }
 
+    public function test_it_prunes_only_processed_responses_outside_the_retention_horizon(): void
+    {
+        $expired = ParentChatbotInboundEvent::create([
+            'source_event_id' => 'evt-expired-response',
+            'payload_hash' => hash('sha256', 'evt-expired-response'),
+            'received_at' => now()->subDays(8),
+            'processed_at' => now()->subDays(8),
+        ]);
+        $pending = ParentChatbotInboundEvent::create([
+            'source_event_id' => 'evt-pending-response',
+            'payload_hash' => hash('sha256', 'evt-pending-response'),
+            'received_at' => now()->subDays(8),
+        ]);
+        $response = Crypt::encryptString(json_encode([
+            'phone' => '+2250102030405',
+            'intent' => 'unlinked',
+            'outcome' => 'unlinked',
+            'reply' => 'Lien requis.',
+            'idempotency_key' => 'klassci-parent-inbound-prune',
+            'should_dispatch' => true,
+        ], JSON_THROW_ON_ERROR));
+        DB::table('parent_chatbot_inbound_events')->whereIn('id', [$expired->id, $pending->id])->update([
+            'response_ciphertext' => $response,
+            'response_recorded_at' => now()->subDays(8),
+        ]);
+
+        $this->assertSame(1, ParentChatbotInboundEvent::pruneRecordedResponsesBefore(now()->subDays(7), 10));
+        $this->assertNull($expired->fresh()->response_ciphertext);
+        $this->assertNotNull($pending->fresh()->response_ciphertext);
+    }
+
     private function signedInboundRequest(array $payload)
     {
         $content = json_encode($payload, JSON_THROW_ON_ERROR);

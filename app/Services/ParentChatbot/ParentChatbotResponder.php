@@ -24,7 +24,7 @@ class ParentChatbotResponder
         return preg_match('/^LIER\s+([A-F0-9]{16})$/', $this->command($message)) === 1;
     }
 
-    /** @return array{phone: string, intent: string, outcome: string, reply: string, should_dispatch: bool, disclosure: ?array, authorization_claim: ?array} */
+    /** @return array{phone: string, intent: string, outcome: string, reply: string, idempotency_key?: string, should_dispatch: bool, disclosure: ?array, authorization_claim: ?array} */
     public function prepareInboundResponse(
         ParentChatbotInboundEvent $event,
         string $token,
@@ -40,20 +40,29 @@ class ParentChatbotResponder
         }
 
         preg_match('/^LIER\s+([A-F0-9]{16})$/', $this->command($message), $matches);
-        $response = $this->lierResponse($this->links->link($phone, $matches[1]));
-        $normalizedPhone = $this->phones->normalize($phone);
 
-        return [
-            'phone' => $normalizedPhone ?? $phone,
-            'intent' => $response['intent'],
-            'outcome' => $response['outcome'],
-            'reply' => $response['reply'],
-            'should_dispatch' => $normalizedPhone !== null,
-            'disclosure' => null,
-            'authorization_claim' => $response['outcome'] === 'linked'
-                ? $this->links->dispatchAuthorizationClaim($response['link'])
-                : null,
-        ];
+        return $this->links->linkAndRecordInboundResponse(
+            $event,
+            $token,
+            $phone,
+            $matches[1],
+            'klassci-parent-inbound-'.$event->source_event_id,
+            function (array $result, ?string $normalizedPhone) use ($phone): array {
+                $response = $this->lierResponse($result);
+
+                return [
+                    'phone' => $normalizedPhone ?? $phone,
+                    'intent' => $response['intent'],
+                    'outcome' => $response['outcome'],
+                    'reply' => $response['reply'],
+                    'should_dispatch' => $normalizedPhone !== null,
+                    'disclosure' => null,
+                    'authorization_claim' => $response['outcome'] === 'linked'
+                        ? $this->links->dispatchAuthorizationClaim($response['link'])
+                        : null,
+                ];
+            },
+        );
     }
 
     public function dispatchRecordedResponse(ParentChatbotInboundEvent $event, string $token): string
@@ -128,6 +137,14 @@ class ParentChatbotResponder
             return $this->prepared($normalizedPhone, ParentChatbotIntent::Unlinked, 'unlinked', 'Pour lier ce numero, envoyez LIER suivi du code transmis par votre ecole.');
         }
 
+        if ($command === 'STOP') {
+            if (! $this->links->stopAllForPhone($normalizedPhone)) {
+                return $this->prepared($normalizedPhone, ParentChatbotIntent::Revoked, ParentChatbotIntent::Revoked->value, 'Ce lien a ete revoque. Contactez d\'abord l\'administration de votre ecole.');
+            }
+
+            return $this->prepared($normalizedPhone, ParentChatbotIntent::Stop, ParentChatbotIntent::Stopped->value, 'Les messages KLASSCI sont arretes pour ce numero. Envoyez START pour les reprendre.');
+        }
+
         if ($links->count() !== 1) {
             return $this->prepared($normalizedPhone, ParentChatbotIntent::SchoolAdminFirst, 'ambiguous_link', 'Ce numero correspond a plusieurs dossiers. Contactez d\'abord l\'administration de votre ecole.');
         }
@@ -135,14 +152,6 @@ class ParentChatbotResponder
         $link = $links->sole();
         if (! $this->links->isAuthorized($link, $normalizedPhone)) {
             return $this->prepared($normalizedPhone, ParentChatbotIntent::Revoked, ParentChatbotIntent::Revoked->value, 'Ce lien n\'est plus autorise. Contactez d\'abord l\'administration de votre ecole.');
-        }
-
-        if ($command === 'STOP') {
-            if (! $this->links->stop($link)) {
-                return $this->prepared($normalizedPhone, ParentChatbotIntent::Revoked, ParentChatbotIntent::Revoked->value, 'Ce lien a ete revoque. Contactez d\'abord l\'administration de votre ecole.');
-            }
-
-            return $this->prepared($normalizedPhone, ParentChatbotIntent::Stop, ParentChatbotIntent::Stopped->value, 'Les messages KLASSCI sont arretes pour ce numero. Envoyez START pour les reprendre.');
         }
 
         if ($command === 'START') {

@@ -1683,6 +1683,7 @@ class ESBTPAttendanceController extends Controller
             $absence->type_activite = 'cours';
             $absence->heure_debut = $seanceCours->heure_debut;
             $absence->heure_fin = $seanceCours->heure_fin;
+            $absence->setAttribute('seance_cours_id', $seanceCours->id);
 
             // Utiliser le service de notifications
             $this->notificationService->notifyNewAbsence($absence, $etudiant);

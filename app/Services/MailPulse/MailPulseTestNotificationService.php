@@ -419,12 +419,13 @@ class MailPulseTestNotificationService
             'phone' => $phone,
             'first_name' => 'Parent',
             'last_name' => 'Test KLASSCI',
-            'external_id' => 'klassci-test-parent',
+            'external_id' => MailPulseTenantContext::scopedIdentifier('test-parent'),
             'language' => $this->client->getSetting('mailpulse_default_language', 'default_language', 'fr'),
             'preferred_channel' => $phone ? 'whatsapp' : 'email',
             'subscribed' => true,
             'metadata' => [
                 'source' => 'klassci-test-notification',
+                'tenant_code' => MailPulseTenantContext::code(),
                 'environment' => 'test',
             ],
         ], fn ($value) => $value !== null && $value !== '');

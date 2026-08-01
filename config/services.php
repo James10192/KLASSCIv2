@@ -84,6 +84,7 @@ return [
         'parent_chatbot_phone_hash_key' => env('MAILPULSE_PARENT_CHATBOT_PHONE_HASH_KEY'),
         'parent_chatbot_signature_ttl' => (int) env('MAILPULSE_PARENT_CHATBOT_SIGNATURE_TTL', 300),
         'parent_chatbot_link_code_ttl' => (int) env('MAILPULSE_PARENT_CHATBOT_LINK_CODE_TTL', 15),
+        'parent_chatbot_inbound_response_retention_hours' => (int) env('MAILPULSE_PARENT_CHATBOT_INBOUND_RESPONSE_RETENTION_HOURS', 168),
         'parent_chatbot_link_template_name' => env('MAILPULSE_PARENT_CHATBOT_LINK_TEMPLATE_NAME'),
         'parent_chatbot_link_template_language' => env('MAILPULSE_PARENT_CHATBOT_LINK_TEMPLATE_LANGUAGE', 'fr'),
         'sender_email' => env('MAILPULSE_SENDER_EMAIL'),

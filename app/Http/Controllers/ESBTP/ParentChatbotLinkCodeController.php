@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\ESBTPParent;
 use App\Models\ParentChatbotLinkCodeIssuance;
 use App\Services\ParentChatbot\ParentChatbotLinkCodeDeliveryService;
+use App\Services\MailPulse\MailPulseTenantContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -24,7 +25,7 @@ class ParentChatbotLinkCodeController extends Controller
             $issuance = $delivery->issueAndDeliver(
                 $parent,
                 $request->user()?->id,
-                'klassci-parent-link-'.(string) Str::uuid(),
+                MailPulseTenantContext::scopedIdentifier('parent-link-'.(string) Str::uuid()),
             );
         } catch (\InvalidArgumentException $exception) {
             return back()->with('error', $exception->getMessage());
@@ -44,6 +45,7 @@ class ParentChatbotLinkCodeController extends Controller
         return match ($issuance->status) {
             ParentChatbotLinkCodeIssuance::STATUS_ACCEPTED => back()->with('success', 'Le code de liaison a été envoyé au tuteur.'),
             ParentChatbotLinkCodeIssuance::STATUS_PENDING => back()->with('success', 'La transmission du code de liaison est déjà en cours.'),
+            ParentChatbotLinkCodeIssuance::STATUS_PENDING_RECONCILIATION => back()->with('success', 'La transmission du code de liaison est en cours de confirmation.'),
             default => back()->with('error', 'Le code n’a pas pu être transmis.'),
         };
     }

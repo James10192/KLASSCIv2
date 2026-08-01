@@ -7,6 +7,7 @@ use App\Models\ESBTPParent;
 use App\Models\ParentChatbotLink;
 use App\Models\ParentChatbotLinkCodeIssuance;
 use App\Services\MailPulse\MailPulseWorkflowPolicy;
+use App\Services\MailPulse\MailPulseTenantContext;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Crypt;
@@ -31,7 +32,7 @@ class ParentChatbotLinkCodeDeliveryService
         ?int $actorId = null,
         ?string $requestId = null,
     ): ParentChatbotLinkCodeIssuance {
-        $requestId ??= 'klassci-parent-link-'.(string) Str::uuid();
+        $requestId ??= MailPulseTenantContext::scopedIdentifier('parent-link-'.(string) Str::uuid());
         $plan = $this->prepareIssuance($parent, $actorId, $requestId);
 
         if ($plan['block'] !== null) {

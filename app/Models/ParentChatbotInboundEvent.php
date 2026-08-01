@@ -232,6 +232,27 @@ class ParentChatbotInboundEvent extends Model
             ]) === 1;
     }
 
+    public static function pruneRecordedResponsesBefore(\DateTimeInterface $before, int $limit): int
+    {
+        if ($limit < 1) {
+            return 0;
+        }
+
+        return static::query()
+            ->whereNotNull('response_ciphertext')
+            ->whereNotNull('response_recorded_at')
+            ->whereNotNull('processed_at')
+            ->where('response_recorded_at', '<=', $before)
+            ->where('processed_at', '<=', $before)
+            ->orderBy('id')
+            ->limit($limit)
+            ->update([
+                'response_ciphertext' => null,
+                'response_recorded_at' => null,
+                'updated_at' => now(),
+            ]);
+    }
+
     private static function findOrCreate(string $sourceEventId, string $payloadHash): self
     {
         try {

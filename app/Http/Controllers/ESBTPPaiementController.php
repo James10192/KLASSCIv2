@@ -449,14 +449,6 @@ class ESBTPPaiementController extends Controller
                 }
             }
 
-            // Notifier les parents de la création du paiement
-            try {
-                $notificationService = app(\App\Services\NotificationService::class);
-                $notificationService->notifyParentsPaiementValide($paiement);
-            } catch (\Exception $e) {
-                Log::error('Erreur envoi notification paiement aux parents: ' . $e->getMessage());
-            }
-
             // Workflow event : notifie holders de paiements.validate (issue #298)
             \App\Support\WorkflowFlash::dispatch(
                 'paiement.created',

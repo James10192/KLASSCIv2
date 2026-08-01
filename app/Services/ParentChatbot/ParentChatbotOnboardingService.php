@@ -8,6 +8,7 @@ use App\Models\ParentChatbotLinkCodeIssuance;
 use App\Models\ParentChatbotOnboardingBatch;
 use App\Models\ParentChatbotOnboardingItem;
 use App\Services\MailPulse\MailPulseWorkflowPolicy;
+use App\Services\MailPulse\MailPulseTenantContext;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Collection;
@@ -226,6 +227,12 @@ class ParentChatbotOnboardingService
             $issuance = $this->delivery->issueAndDeliver($parent, $item->batch->actor_id, $item->request_id);
         } catch (\Throwable) {
             $issuance = ParentChatbotLinkCodeIssuance::query()->where('request_id', $item->request_id)->first();
+
+            if ($issuance === null) {
+                $this->releaseClaimForRetry($item);
+
+                return;
+            }
         }
 
         [$status, $errorCode] = $this->itemOutcome($issuance);
@@ -428,7 +435,34 @@ class ParentChatbotOnboardingService
 
     private function requestId(int $batchId, int $parentId): string
     {
-        return "klassci-parent-onboarding-{$batchId}-{$parentId}";
+        return MailPulseTenantContext::scopedIdentifier("parent-onboarding-{$batchId}-{$parentId}");
+    }
+
+    private function releaseClaimForRetry(ParentChatbotOnboardingItem $item): void
+    {
+        DB::transaction(function () use ($item): void {
+            $batch = ParentChatbotOnboardingBatch::query()->whereKey($item->batch_id)->lockForUpdate()->first();
+            $claimed = ParentChatbotOnboardingItem::query()
+                ->whereKey($item->id)
+                ->where('lease_token', $item->lease_token)
+                ->where('status', self::SUBMITTED_STATUS)
+                ->lockForUpdate()
+                ->first();
+
+            if ($batch === null || $claimed === null) {
+                return;
+            }
+
+            $cancelled = ! $batch->isProcessing();
+            $claimed->update([
+                'status' => $cancelled
+                    ? ParentChatbotOnboardingItem::STATUS_SKIPPED
+                    : ParentChatbotOnboardingItem::STATUS_PENDING,
+                'error_code' => $cancelled ? 'batch_cancelled' : 'activation_retry_pending',
+                'lease_token' => null,
+                'lease_expires_at' => null,
+            ]);
+        }, 3);
     }
 
     private function assertStartIsConfigured(): void

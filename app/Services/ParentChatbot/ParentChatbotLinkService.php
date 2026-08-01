@@ -3,6 +3,7 @@
 namespace App\Services\ParentChatbot;
 
 use App\Models\ESBTPParent;
+use App\Models\ParentChatbotInboundEvent;
 use App\Models\ParentChatbotLink;
 use App\Models\ParentChatbotLinkCode;
 use Closure;
@@ -59,6 +60,61 @@ class ParentChatbotLinkService
         }
 
         return DB::transaction(fn (): array => $this->linkWithinTransaction($normalizedPhone, $code));
+    }
+
+    /**
+     * Performs LIER and stores its replayable inbound response in the same
+     * transaction. A failed response write must never leave a consumed code.
+     *
+     * @param Closure(array{link: ?ParentChatbotLink, reason: string}, ?string): array{phone: string, intent: string, outcome: string, reply: string, should_dispatch: bool, disclosure: ?array, authorization_claim: ?array} $responseForResult
+     * @return array{phone: string, intent: string, outcome: string, reply: string, idempotency_key: string, should_dispatch: bool, disclosure: ?array, authorization_claim: ?array}
+     */
+    public function linkAndRecordInboundResponse(
+        ParentChatbotInboundEvent $event,
+        string $token,
+        string $phone,
+        string $code,
+        string $idempotencyKey,
+        Closure $responseForResult,
+    ): array {
+        return DB::transaction(function () use ($event, $token, $phone, $code, $idempotencyKey, $responseForResult): array {
+            $lockedEvent = ParentChatbotInboundEvent::query()
+                ->whereKey($event->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if ($lockedEvent->hasRecordedResponse()) {
+                return $lockedEvent->recordedResponse();
+            }
+
+            if ($lockedEvent->processed_at !== null
+                || ! is_string($lockedEvent->processing_token)
+                || ! hash_equals($lockedEvent->processing_token, $token)) {
+                throw new RuntimeException('The parent chatbot inbound event lease is no longer held.');
+            }
+
+            $normalizedPhone = $this->phones->normalize($phone);
+            $result = $normalizedPhone === null
+                ? ['link' => null, 'reason' => 'invalid_phone']
+                : $this->linkWithinTransaction($normalizedPhone, $code);
+            $response = $responseForResult($result, $normalizedPhone);
+
+            if (! $lockedEvent->recordResponse(
+                $token,
+                $response['phone'],
+                $response['intent'],
+                $response['outcome'],
+                $response['reply'],
+                $idempotencyKey,
+                $response['should_dispatch'],
+                $response['disclosure'] ?? null,
+                $response['authorization_claim'] ?? null,
+            )) {
+                throw new RuntimeException('The parent chatbot LIER response could not be persisted.');
+            }
+
+            return $lockedEvent->fresh()->recordedResponse();
+        }, 3);
     }
 
     /** @return array{link: ?ParentChatbotLink, reason: string} */
@@ -127,6 +183,54 @@ class ParentChatbotLinkService
 
             return true;
         });
+    }
+
+    public function stopAllForPhone(string $normalizedPhone): bool
+    {
+        $phoneHash = $this->phones->hash($normalizedPhone);
+
+        return DB::transaction(function () use ($phoneHash): bool {
+            $links = ParentChatbotLink::query()
+                ->where('phone_hash', $phoneHash)
+                ->lockForUpdate()
+                ->get();
+            $stopped = false;
+
+            foreach ($links as $link) {
+                if ($link->status === ParentChatbotLink::STATUS_REVOKED) {
+                    continue;
+                }
+
+                $parent = ESBTPParent::query()
+                    ->whereKey($link->parent_id)
+                    ->lockForUpdate()
+                    ->first();
+                $registeredPhone = $parent ? $this->registeredPhone($parent) : null;
+                $authorized = $parent !== null
+                    && $registeredPhone !== null
+                    && hash_equals($phoneHash, $this->phones->hash($registeredPhone))
+                    && $parent->pupilles()->lockForUpdate()->exists();
+
+                if (! $authorized) {
+                    $link->update([
+                        'status' => ParentChatbotLink::STATUS_REVOKED,
+                        'revoked_at' => now(),
+                        'selected_student_id' => null,
+                    ]);
+
+                    continue;
+                }
+
+                $link->update([
+                    'status' => ParentChatbotLink::STATUS_STOPPED,
+                    'stopped_at' => now(),
+                    'last_inbound_at' => now(),
+                ]);
+                $stopped = true;
+            }
+
+            return $stopped;
+        }, 3);
     }
 
     public function start(ParentChatbotLink $link): bool
