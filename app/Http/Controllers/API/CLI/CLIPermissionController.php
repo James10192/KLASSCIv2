@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 
 /**
  * CLI Permission Supervision API.
@@ -123,6 +124,7 @@ class CLIPermissionController extends BaseApiController
             return [
                 'id' => $role->id,
                 'name' => $role->name,
+                'guard_name' => $role->guard_name,
                 'label' => $meta['label'] ?? $role->name,
                 'is_custom' => (bool) ($role->is_custom ?? false),
                 'users_count' => $userCounts[$role->id] ?? 0,
@@ -189,9 +191,21 @@ class CLIPermissionController extends BaseApiController
             return $this->errorResponse('Token missing cli:read ability', [], 403);
         }
 
-        $roleModel = Role::where('name', $role)
+        $guard = $request->query('guard');
+        $roleQuery = Role::where('name', $role)
             ->with('permissions:id,name')
-            ->first();
+            ->when($guard, fn ($query) => $query->where('guard_name', $guard));
+        $matchingRoles = $roleQuery->get();
+
+        if (!$guard && $matchingRoles->count() > 1) {
+            return $this->errorResponse(
+                "Several roles named '{$role}' exist; specify the guard query parameter",
+                ['guards' => $matchingRoles->pluck('guard_name')->values()->all()],
+                409
+            );
+        }
+
+        $roleModel = $matchingRoles->first();
         if (!$roleModel) {
             return $this->errorResponse("Role '{$role}' not found", [], 404);
         }
@@ -226,6 +240,7 @@ class CLIPermissionController extends BaseApiController
         return $this->successResponse([
             'role' => [
                 'name' => $roleModel->name,
+                'guard_name' => $roleModel->guard_name,
                 'label' => $this->registry->roleMeta($role)['label'] ?? $role,
                 'is_custom' => (bool) ($roleModel->is_custom ?? false),
                 'users_count' => $this->userCountsByRole([$roleModel->id])[$roleModel->id] ?? 0,
@@ -256,12 +271,21 @@ class CLIPermissionController extends BaseApiController
         $userModel = is_string($configuredModel) && class_exists($configuredModel)
             ? $configuredModel
             : User::class;
+        $model = new $userModel();
+        $pivotTable = config('permission.table_names.model_has_roles', 'model_has_roles');
+        $morphKey = config('permission.column_names.model_morph_key', 'model_id');
+        $rolePivotKey = PermissionRegistrar::$pivotRole ?: 'role_id';
+        $qualifiedModelKey = $model->qualifyColumn($model->getKeyName());
 
-        return DB::table(config('permission.table_names.model_has_roles', 'model_has_roles'))
-            ->where('model_type', $userModel)
-            ->whereIn('role_id', $roleIds)
-            ->selectRaw('role_id, COUNT(DISTINCT model_id) AS aggregate')
-            ->groupBy('role_id')
+        return $model->newQuery()
+            ->join($pivotTable, "{$pivotTable}.{$morphKey}", '=', $qualifiedModelKey)
+            ->where("{$pivotTable}.model_type", $model->getMorphClass())
+            ->whereIn("{$pivotTable}.{$rolePivotKey}", $roleIds)
+            ->selectRaw(
+                "{$pivotTable}.{$rolePivotKey} AS role_id, "
+                . "COUNT(DISTINCT {$qualifiedModelKey}) AS aggregate"
+            )
+            ->groupBy("{$pivotTable}.{$rolePivotKey}")
             ->pluck('aggregate', 'role_id')
             ->map(fn ($count) => (int) $count)
             ->all();

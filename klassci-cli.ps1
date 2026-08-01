@@ -798,12 +798,16 @@ switch ($Command) {
     }
     "roles:show" {
         if ($ExtraArgs.Count -lt 1) {
-            throw "Usage: .\klassci-cli.ps1 roles:show [presentation] <role>"
+            throw "Usage: .\klassci-cli.ps1 roles:show <tenant> <role> [guard]"
         }
 
         $cfg = Get-KlassciConfig -TenantCode $Tenant
         $role = [uri]::EscapeDataString($ExtraArgs[0])
-        Invoke-KlassciApi -Method "GET" -Path "/roles/$role" -Config $cfg | ConvertTo-Json -Depth 12
+        $query = ""
+        if ($ExtraArgs.Count -ge 2) {
+            $query = "?guard=$([uri]::EscapeDataString($ExtraArgs[1]))"
+        }
+        Invoke-KlassciApi -Method "GET" -Path "/roles/$role$query" -Config $cfg | ConvertTo-Json -Depth 12
         break
     }
     "bts-tc:specialisation-integrity" {
@@ -914,10 +918,10 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
         Write-Host "  .\klassci-cli.ps1 mailpulse:test [presentation] --event payment_received --channel both --dry-run false"
         Write-Host "  .\klassci-cli.ps1 logs [presentation] --lines 100 --search MailPulse"
-        Write-Host "  .\klassci-cli.ps1 permissions:list [presentation] [groupe]"
+        Write-Host "  .\klassci-cli.ps1 permissions:list <tenant> [groupe]"
         Write-Host "  .\klassci-cli.ps1 permissions:audit [presentation]"
         Write-Host "  .\klassci-cli.ps1 roles:list [presentation]"
-        Write-Host "  .\klassci-cli.ps1 roles:show [presentation] <role>"
+        Write-Host "  .\klassci-cli.ps1 roles:show <tenant> <role> [guard]"
         Write-Host "  .\klassci-cli.ps1 pull [presentation]"
         Write-Host "  .\klassci-cli.ps1 migrate [presentation]"
         Write-Host "  .\klassci-cli.ps1 composer:install [presentation] [install|update|dump-autoload] [binaire-composer]"
