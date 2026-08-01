@@ -358,6 +358,19 @@
                     </button>
                 @endcan
             </div>
+        @elseif($hasActiveSpe && $sourceModel === 'phase_based' && $btsInscription !== null)
+            <div class="bj-actions">
+                @can('inscriptions.specialisation.manage')
+                    <div class="bj-info">
+                        <i class="fas fa-shield-halved"></i>
+                        <span>Une correction clôture l'affectation actuelle et conserve l'historique du parcours.</span>
+                    </div>
+                    <a href="{{ route('esbtp.inscriptions.specialisation', $btsInscription) }}" class="bj-btn bj-btn--primary">
+                        <i class="fas fa-pen-to-square"></i>
+                        Corriger la spécialisation
+                    </a>
+                @endcan
+            </div>
         @endif
     </section>
 @endif

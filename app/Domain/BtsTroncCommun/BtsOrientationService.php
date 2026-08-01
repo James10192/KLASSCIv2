@@ -3,6 +3,7 @@
 namespace App\Domain\BtsTroncCommun;
 
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPClasseOrientationTarget;
 use App\Models\ESBTPInscription;
 use App\Models\ESBTPInscriptionPhase;
 use Illuminate\Support\Facades\Auth;
@@ -40,70 +41,86 @@ class BtsOrientationService
 
     public function orient(ESBTPInscription $inscription, int $targetClasseId): ESBTPInscription
     {
-        $inscription->loadMissing([
-            'filiere',
-            'classe.orientationTargets.targetClasse.filiere',
-            'phases.classe.filiere',
-        ]);
+        return DB::transaction(function () use ($inscription, $targetClasseId) {
+            $lockedInscription = $this->lockInscriptionWithPhases($inscription->id);
+            $lockedInscription->load(['filiere', 'classe.orientationTargets.targetClasse.filiere']);
 
-        if (! $this->policySupport->canOrient($inscription)) {
-            throw new InvalidArgumentException("Cette inscription ne peut pas être orientée.");
-        }
+            if ($this->activeSpecialisation($lockedInscription)) {
+                throw new InvalidArgumentException('Cette inscription possède déjà une spécialisation active. Utilisez le workflow de correction de spécialisation.');
+            }
 
-        $targetClasse = ESBTPClasse::with(['filiere'])->findOrFail($targetClasseId);
-        $target = $this->policySupport->validateTarget($inscription, $targetClasse);
+            if (! $this->policySupport->canOrient($lockedInscription)) {
+                throw new InvalidArgumentException('Cette inscription ne peut pas être orientée.');
+            }
 
-        if (! $target) {
-            throw new InvalidArgumentException("La classe cible n'est pas autorisée pour cette classe tronc commun.");
-        }
+            $targetClasse = $this->lockClasse($targetClasseId);
+            $target = $this->policySupport->validateTarget($lockedInscription, $targetClasse);
 
-        return DB::transaction(function () use ($inscription, $targetClasse, $target) {
-            $activePhase = $this->ensureInitialPhase($inscription);
+            if (! $target) {
+                throw new InvalidArgumentException("La classe cible n'est pas autorisée pour cette classe tronc commun.");
+            }
 
+            $activePhase = $this->ensureInitialPhase($lockedInscription);
             $activePhase->update([
                 'is_active' => false,
                 'date_cloture' => now(),
                 'updated_by' => Auth::id(),
             ]);
 
-            $inscription->phases()->create([
-                'type_phase' => ESBTPInscriptionPhase::TYPE_SPECIALISATION,
-                'classe_id' => $targetClasse->id,
-                'filiere_id' => $targetClasse->filiere_id,
-                'semestre_debut' => (int) $target->semestre_activation,
-                'semestre_fin' => null,
-                'is_active' => true,
-                'orientation_target_id' => $target->id,
-                'date_activation' => now(),
-                'created_by' => Auth::id(),
-                'updated_by' => Auth::id(),
-            ]);
+            $this->createSpecialisationPhase($lockedInscription, $targetClasse, $target, now());
+            $this->updatePrimaryPointer($lockedInscription, $targetClasse);
 
-            $inscription->update([
-                'classe_id' => $targetClasse->id,
-                'filiere_id' => $targetClasse->filiere_id,
-                'updated_by' => Auth::id(),
-            ]);
+            return $this->freshInscription($lockedInscription);
+        });
+    }
 
-            return $inscription->fresh(['phases.classe.filiere', 'classe.filiere', 'filiere']);
+    public function correctOrientation(ESBTPInscription $inscription, int $targetClasseId, string $reason): ESBTPInscription
+    {
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new InvalidArgumentException('Le motif de correction de la spécialisation est obligatoire.');
+        }
+
+        return DB::transaction(function () use ($inscription, $targetClasseId, $reason) {
+            $lockedInscription = $this->lockInscriptionWithPhases($inscription->id);
+            $sourceClasse = $this->originalTroncCommunClasse($lockedInscription);
+            $activePhases = $lockedInscription->phases->where('is_active', true);
+            $activeSpecialisation = $this->requireActiveSpecialisation($activePhases);
+            $targetClasse = $this->lockClasse($targetClasseId);
+
+            $target = $this->validateCorrectionTarget(
+                $lockedInscription,
+                $sourceClasse,
+                $activeSpecialisation,
+                $targetClasse
+            );
+
+            $now = now();
+            $this->closeActivePhases($activePhases, $now);
+            $this->createSpecialisationPhase($lockedInscription, $targetClasse, $target, $now, $reason);
+            $this->updatePrimaryPointer($lockedInscription, $targetClasse);
+
+            return $this->freshInscription($lockedInscription);
         });
     }
 
     public function syncAfterClassChange(ESBTPInscription $inscription, ESBTPClasse $newClasse): ESBTPInscription
     {
-        $inscription->loadMissing(['filiere', 'phases']);
         $newClasse->loadMissing(['filiere']);
 
         return DB::transaction(function () use ($inscription, $newClasse) {
-            $inscription->refresh()->load(['phases', 'filiere']);
+            $inscription = $this->lockInscriptionWithPhases($inscription->id);
+            $inscription->load(['filiere']);
 
-            $activeSpecialisation = $inscription->phases
-                ->first(fn ($phase) => $phase->type_phase === ESBTPInscriptionPhase::TYPE_SPECIALISATION && $phase->is_active);
+            $activeSpecialisation = $this->activeSpecialisation($inscription);
+            if ($activeSpecialisation) {
+                if ((int) $activeSpecialisation->classe_id !== (int) $newClasse->id) {
+                    throw new InvalidArgumentException(
+                        "Cette inscription a deja une specialisation active. Utilisez l'action de specialisation pour modifier ce parcours."
+                    );
+                }
 
-            if ($activeSpecialisation && (int) $activeSpecialisation->classe_id !== (int) $newClasse->id) {
-                throw new InvalidArgumentException(
-                    "Cette inscription a deja une specialisation active. Utilisez l'action de specialisation pour modifier ce parcours."
-                );
+                return $this->freshInscription($inscription);
             }
 
             if (! $newClasse->filiere?->isTroncCommun()) {
@@ -114,7 +131,7 @@ class BtsOrientationService
                     ])
                     ->delete();
 
-                return $inscription->fresh(['phases.classe.filiere', 'classe.filiere', 'filiere']);
+                return $this->freshInscription($inscription);
             }
 
             $inscription->phases()
@@ -147,23 +164,11 @@ class BtsOrientationService
                 ]);
             }
 
-            return $inscription->fresh(['phases.classe.filiere', 'classe.filiere', 'filiere']);
+            return $this->freshInscription($inscription);
         });
     }
 
     /**
-     * Synchronise une seule inscription si elle est incohérente.
-     *
-     * Cas traités :
-     *  - Phase TC active mais filière de classe non-TC → suppression des phases (la classe a été changée hors workflow officiel)
-     *  - Filière TC active mais aucune phase → création de la phase TC initiale
-     *  - Phase TC active avec classe_id différent de inscription->classe_id → resync de la phase TC
-     *
-     * Skip explicitement :
-     *  - Inscriptions en mode legacy_dual_inscription (inscription_origine_id)
-     *  - Inscriptions sans classe (rien à synchroniser)
-     *  - Inscriptions avec phase 'specialisation' active correspondant à la classe actuelle (déjà cohérent)
-     *
      * @return array{status:string, before:string, after:string, message:string}
      */
     public function syncSingleInscription(ESBTPInscription $inscription): array
@@ -171,59 +176,37 @@ class BtsOrientationService
         $inscription->loadMissing(['filiere', 'phases.classe.filiere', 'classe.filiere']);
 
         if ($inscription->inscription_origine_id !== null) {
-            return [
-                'status' => 'skipped',
-                'before' => $this->snapshotPhases($inscription),
-                'after' => $this->snapshotPhases($inscription),
-                'message' => 'Inscription en mode legacy dual — sync non applicable.',
-            ];
+            return $this->syncResult('skipped', $inscription, 'Inscription en mode legacy dual, sync non applicable.');
+        }
+
+        $activePhase = $inscription->phases->first(fn ($phase) => (bool) $phase->is_active);
+        if (! $inscription->classe && $activePhase) {
+            return $this->syncResult(
+                'error',
+                $inscription,
+                'Phase '.$activePhase->type_phase.' active détectée sans classe principale. Correction manuelle requise pour préserver la filière.'
+            );
         }
 
         if (! $inscription->classe) {
-            return [
-                'status' => 'skipped',
-                'before' => $this->snapshotPhases($inscription),
-                'after' => $this->snapshotPhases($inscription),
-                'message' => 'Inscription sans classe — rien à synchroniser.',
-            ];
+            return $this->syncResult('skipped', $inscription, 'Inscription sans classe, rien à synchroniser.');
         }
 
         $before = $this->snapshotPhases($inscription);
-        $activeSpe = $inscription->phases->first(fn ($p) => $p->type_phase === ESBTPInscriptionPhase::TYPE_SPECIALISATION && $p->is_active);
-        $activeTc = $inscription->phases->first(fn ($p) => $p->type_phase === ESBTPInscriptionPhase::TYPE_TRONC_COMMUN && $p->is_active);
+        $activeSpe = $this->activeSpecialisation($inscription);
+        $activeTc = $inscription->phases->first(
+            fn ($phase) => $phase->type_phase === ESBTPInscriptionPhase::TYPE_TRONC_COMMUN && $phase->is_active
+        );
         $classeIsTc = (bool) $inscription->classe?->filiere?->isTroncCommun();
 
-        // Cas 1 : déjà cohérent — spé active dont la classe matche l'inscription
         if ($activeSpe && (int) $activeSpe->classe_id === (int) $inscription->classe_id && ! $classeIsTc) {
-            return [
-                'status' => 'ok',
-                'before' => $before,
-                'after' => $before,
-                'message' => 'Déjà cohérent (spécialisation active alignée avec la classe).',
-            ];
+            return ['status' => 'ok', 'before' => $before, 'after' => $before, 'message' => 'Déjà cohérent (spécialisation active alignée avec la classe).'];
         }
 
-        // Cas 2 : phase TC active + classe non-TC → désynchronisation détectée, on supprime les phases
         if ($activeTc && ! $classeIsTc) {
-            try {
-                $this->syncAfterClassChange($inscription, $inscription->classe);
-                return [
-                    'status' => 'fixed',
-                    'before' => $before,
-                    'after' => $this->snapshotPhases($inscription->fresh(['phases.classe.filiere'])),
-                    'message' => 'Phase TC obsolète supprimée (étudiant a une classe non-TC : '.$inscription->classe->name.').',
-                ];
-            } catch (InvalidArgumentException $e) {
-                return [
-                    'status' => 'error',
-                    'before' => $before,
-                    'after' => $before,
-                    'message' => $e->getMessage(),
-                ];
-            }
+            return $this->syncTcPhase($inscription, $before, 'Phase TC obsolète supprimée (étudiant a une classe non-TC : '.$inscription->classe->name.').');
         }
 
-        // Cas 3 : filière TC mais aucune phase → créer la phase TC initiale
         if ($classeIsTc && $inscription->phases->isEmpty()) {
             $this->ensureInitialPhase($inscription);
             return [
@@ -234,38 +217,14 @@ class BtsOrientationService
             ];
         }
 
-        // Cas 4 : phase TC active mais classe_id différent (admin a changé la classe TC)
         if ($activeTc && $classeIsTc && (int) $activeTc->classe_id !== (int) $inscription->classe_id) {
-            try {
-                $this->syncAfterClassChange($inscription, $inscription->classe);
-                return [
-                    'status' => 'fixed',
-                    'before' => $before,
-                    'after' => $this->snapshotPhases($inscription->fresh(['phases.classe.filiere'])),
-                    'message' => 'Phase TC resynchronisée avec la classe actuelle.',
-                ];
-            } catch (InvalidArgumentException $e) {
-                return [
-                    'status' => 'error',
-                    'before' => $before,
-                    'after' => $before,
-                    'message' => $e->getMessage(),
-                ];
-            }
+            return $this->syncTcPhase($inscription, $before, 'Phase TC resynchronisée avec la classe actuelle.');
         }
 
-        return [
-            'status' => 'ok',
-            'before' => $before,
-            'after' => $before,
-            'message' => 'Cohérent ou pas BTS (rien à faire).',
-        ];
+        return ['status' => 'ok', 'before' => $before, 'after' => $before, 'message' => 'Cohérent ou pas BTS (rien à faire).'];
     }
 
     /**
-     * Synchronise en masse toutes les inscriptions BTS du tenant.
-     * Parcourt par chunks pour limiter la mémoire.
-     *
      * @return array{total:int, fixed:int, skipped:int, ok:int, errors:int, details:array}
      */
     public function bulkSyncAll(?int $anneeUniversitaireId = null): array
@@ -274,13 +233,9 @@ class BtsOrientationService
 
         $query = ESBTPInscription::query()
             ->whereNull('inscription_origine_id')
-            ->whereHas('classe.filiere', function ($q) {
-                // BTS only : exclure LMD via systeme_academique de la classe
-                $q->whereRaw('1 = 1'); // pas de filtre strict — sync les inscriptions BTS et celles qui ont des phases
-            })
-            ->where(function ($q) {
-                $q->whereHas('phases')                                  // a au moins une phase (potentiellement désynchronisée)
-                  ->orWhereHas('filiere', fn ($f) => $f->where('is_tronc_commun', true)); // ou est en filière TC (besoin de phase)
+            ->where(function ($query) {
+                $query->whereHas('phases')
+                    ->orWhereHas('filiere', fn ($filiere) => $filiere->where('is_tronc_commun', true));
             });
 
         if ($anneeUniversitaireId) {
@@ -309,17 +264,183 @@ class BtsOrientationService
         return $stats;
     }
 
-    /**
-     * Snapshot lisible des phases pour le log/audit (avant/après sync).
-     */
+    private function lockInscriptionWithPhases(int $inscriptionId): ESBTPInscription
+    {
+        $inscription = ESBTPInscription::query()->lockForUpdate()->findOrFail($inscriptionId);
+        $inscription->setRelation('phases', ESBTPInscriptionPhase::query()
+            ->where('inscription_id', $inscription->id)
+            ->orderBy('semestre_debut')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get());
+
+        return $inscription;
+    }
+
+    private function lockClasse(int $classeId): ESBTPClasse
+    {
+        return ESBTPClasse::query()->with('filiere')->lockForUpdate()->findOrFail($classeId);
+    }
+
+    private function activeSpecialisation(ESBTPInscription $inscription): ?ESBTPInscriptionPhase
+    {
+        return $inscription->phases->first(
+            fn ($phase) => $phase->type_phase === ESBTPInscriptionPhase::TYPE_SPECIALISATION && $phase->is_active
+        );
+    }
+
+    private function originalTroncCommunClasse(ESBTPInscription $inscription): ESBTPClasse
+    {
+        $sourcePhase = $inscription->phases
+            ->where('type_phase', ESBTPInscriptionPhase::TYPE_TRONC_COMMUN)
+            ->sortBy('id')
+            ->first();
+
+        if (! $sourcePhase) {
+            throw new InvalidArgumentException('La phase tronc commun d’origine est introuvable pour cette correction.');
+        }
+
+        $sourceClasse = ESBTPClasse::query()
+            ->with(['filiere', 'orientationTargets.targetClasse.filiere'])
+            ->lockForUpdate()
+            ->find($sourcePhase->classe_id);
+
+        if (! $sourceClasse || ! $sourceClasse->filiere?->isTroncCommun()) {
+            throw new InvalidArgumentException('La classe source tronc commun est invalide pour cette correction.');
+        }
+
+        return $sourceClasse;
+    }
+
+    private function requireActiveSpecialisation($activePhases): ESBTPInscriptionPhase
+    {
+        $activeSpecialisation = $activePhases->first(
+            fn ($phase) => $phase->type_phase === ESBTPInscriptionPhase::TYPE_SPECIALISATION
+        );
+
+        if (! $activeSpecialisation) {
+            throw new InvalidArgumentException('Aucune spécialisation active ne peut être corrigée.');
+        }
+
+        return $activeSpecialisation;
+    }
+
+    private function validateCorrectionTarget(
+        ESBTPInscription $inscription,
+        ESBTPClasse $sourceClasse,
+        ESBTPInscriptionPhase $activeSpecialisation,
+        ESBTPClasse $targetClasse
+    ): ESBTPClasseOrientationTarget {
+        if ((int) $activeSpecialisation->classe_id === (int) $targetClasse->id) {
+            throw new InvalidArgumentException('La classe cible correspond déjà à la spécialisation active.');
+        }
+
+        $target = $this->policySupport->validateTarget(
+            $this->sourceContext($inscription, $sourceClasse),
+            $targetClasse
+        );
+
+        if (! $target) {
+            throw new InvalidArgumentException('La classe cible n’est pas autorisée depuis la classe tronc commun d’origine.');
+        }
+
+        return $target;
+    }
+
+    private function sourceContext(ESBTPInscription $inscription, ESBTPClasse $sourceClasse): ESBTPInscription
+    {
+        $context = clone $inscription;
+        $context->setAttribute('classe_id', $sourceClasse->id);
+        $context->setAttribute('filiere_id', $sourceClasse->filiere_id);
+        $context->setRelation('classe', $sourceClasse);
+        $context->setRelation('filiere', $sourceClasse->filiere);
+
+        return $context;
+    }
+
+    private function closeActivePhases($activePhases, $now): void
+    {
+        foreach ($activePhases as $activePhase) {
+            $activePhase->update([
+                'is_active' => false,
+                'date_cloture' => $now,
+                'updated_by' => Auth::id(),
+            ]);
+        }
+    }
+
+    private function createSpecialisationPhase(
+        ESBTPInscription $inscription,
+        ESBTPClasse $targetClasse,
+        ESBTPClasseOrientationTarget $target,
+        $activatedAt,
+        ?string $correctionReason = null
+    ): ESBTPInscriptionPhase {
+        $attributes = [
+            'type_phase' => ESBTPInscriptionPhase::TYPE_SPECIALISATION,
+            'classe_id' => $targetClasse->id,
+            'filiere_id' => $targetClasse->filiere_id,
+            'semestre_debut' => (int) $target->semestre_activation,
+            'semestre_fin' => null,
+            'is_active' => true,
+            'orientation_target_id' => $target->id,
+            'date_activation' => $activatedAt,
+            'created_by' => Auth::id(),
+            'updated_by' => Auth::id(),
+        ];
+
+        if ($correctionReason !== null) {
+            $attributes['correction_reason'] = $correctionReason;
+        }
+
+        return $inscription->phases()->create($attributes);
+    }
+
+    private function updatePrimaryPointer(ESBTPInscription $inscription, ESBTPClasse $classe): void
+    {
+        $inscription->update([
+            'classe_id' => $classe->id,
+            'filiere_id' => $classe->filiere_id,
+            'updated_by' => Auth::id(),
+        ]);
+    }
+
+    private function freshInscription(ESBTPInscription $inscription): ESBTPInscription
+    {
+        return $inscription->fresh(['phases.classe.filiere', 'classe.filiere', 'filiere']);
+    }
+
+    private function syncTcPhase(ESBTPInscription $inscription, string $before, string $message): array
+    {
+        try {
+            $this->syncAfterClassChange($inscription, $inscription->classe);
+            return [
+                'status' => 'fixed',
+                'before' => $before,
+                'after' => $this->snapshotPhases($inscription->fresh(['phases.classe.filiere'])),
+                'message' => $message,
+            ];
+        } catch (InvalidArgumentException $exception) {
+            return ['status' => 'error', 'before' => $before, 'after' => $before, 'message' => $exception->getMessage()];
+        }
+    }
+
+    private function syncResult(string $status, ESBTPInscription $inscription, string $message): array
+    {
+        $snapshot = $this->snapshotPhases($inscription);
+
+        return ['status' => $status, 'before' => $snapshot, 'after' => $snapshot, 'message' => $message];
+    }
+
     private function snapshotPhases(ESBTPInscription $inscription): string
     {
         $phases = $inscription->relationLoaded('phases') ? $inscription->phases : $inscription->phases()->get();
         if ($phases->isEmpty()) {
             return '(aucune phase)';
         }
+
         return $phases
-            ->map(fn ($p) => $p->type_phase.':'.($p->classe?->name ?? '#'.$p->classe_id).($p->is_active ? '*' : ''))
+            ->map(fn ($phase) => $phase->type_phase.':'.($phase->classe?->name ?? '#'.$phase->classe_id).($phase->is_active ? '*' : ''))
             ->join(' | ');
     }
 }

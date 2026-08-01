@@ -100,6 +100,88 @@ class BtsOrientationServiceTest extends TestCase
         $service->syncAfterClassChange($specialised, $otherClasse);
     }
 
+    /** @test */
+    public function it_corrects_an_active_specialisation_from_its_original_tc_phase(): void
+    {
+        $service = app(BtsOrientationService::class);
+        [$inscription, $firstTargetClasse] = $this->makeOrientationFixture();
+        $firstOrientation = $service->orient(
+            $inscription->fresh(['filiere', 'classe.orientationTargets', 'phases']),
+            $firstTargetClasse->id
+        );
+
+        $secondFiliere = ESBTPFiliere::factory()->create([
+            'parent_id' => $inscription->filiere_id,
+            'is_tronc_commun' => false,
+        ]);
+        $secondTargetClasse = ESBTPClasse::factory()->create([
+            'filiere_id' => $secondFiliere->id,
+            'niveau_etude_id' => $inscription->niveau_id,
+            'annee_universitaire_id' => $inscription->annee_universitaire_id,
+        ]);
+        $sourceClasseId = $inscription->classe_id;
+        ESBTPClasseOrientationTarget::create([
+            'source_classe_id' => $sourceClasseId,
+            'target_classe_id' => $secondTargetClasse->id,
+            'semestre_activation' => 2,
+            'is_active' => true,
+        ]);
+
+        $corrected = $service->correctOrientation(
+            $firstOrientation,
+            $secondTargetClasse->id,
+            'Correction de la spécialité après validation administrative.'
+        );
+
+        $activePhases = $corrected->phases->where('is_active', true);
+
+        $this->assertSame($secondTargetClasse->id, $corrected->classe_id);
+        $this->assertSame($secondFiliere->id, $corrected->filiere_id);
+        $this->assertCount(3, $corrected->phases);
+        $this->assertCount(1, $activePhases);
+        $this->assertSame($secondTargetClasse->id, $activePhases->first()->classe_id);
+        $this->assertSame(
+            'Correction de la spécialité après validation administrative.',
+            $activePhases->first()->correction_reason
+        );
+        $this->assertFalse((bool) $corrected->phases->firstWhere('classe_id', $firstTargetClasse->id)->is_active);
+    }
+
+    /** @test */
+    public function it_rejects_a_noop_specialisation_correction(): void
+    {
+        $service = app(BtsOrientationService::class);
+        [$inscription, $targetClasse] = $this->makeOrientationFixture();
+        $oriented = $service->orient(
+            $inscription->fresh(['filiere', 'classe.orientationTargets', 'phases']),
+            $targetClasse->id
+        );
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('déjà à la spécialisation active');
+
+        $service->correctOrientation($oriented, $targetClasse->id, 'Motif de correction.');
+    }
+
+    /** @test */
+    public function it_reports_an_active_phase_without_a_primary_class_pointer(): void
+    {
+        $service = app(BtsOrientationService::class);
+        [$inscription, $targetClasse] = $this->makeOrientationFixture();
+        $oriented = $service->orient(
+            $inscription->fresh(['filiere', 'classe.orientationTargets', 'phases']),
+            $targetClasse->id
+        );
+
+        $oriented->update(['classe_id' => null]);
+
+        $result = $service->syncSingleInscription($oriented->fresh(['filiere', 'classe.filiere', 'phases.classe.filiere']));
+
+        $this->assertSame('error', $result['status']);
+        $this->assertStringContainsString('sans classe principale', $result['message']);
+        $this->assertNull($oriented->fresh()->classe_id);
+    }
+
     private function makeOrientationFixture(): array
     {
         $annee = ESBTPAnneeUniversitaire::factory()->create();

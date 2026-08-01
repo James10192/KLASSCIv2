@@ -2,6 +2,7 @@
 
 namespace App\Services\ESBTP;
 
+use App\Enums\JustificationStatus;
 use App\Models\ESBTPAttendance;
 use App\Support\Attendance\ManualHoursSnapshot;
 use Carbon\Carbon;
@@ -65,7 +66,7 @@ class ESBTPAbsenceService
 
             $heureDebut = Carbon::parse($absence->heure_debut);
             $heureFin = Carbon::parse($absence->heure_fin);
-            $duree = $heureDebut->diffInHours($heureFin);
+            $duree = $this->durationInHours($heureDebut, $heureFin);
 
             $detail = [
                 'date' => $absence->date,
@@ -74,7 +75,7 @@ class ESBTPAbsenceService
                 'source' => 'sessions',
             ];
 
-            if ($absence->statut === 'absent_excuse' || $absence->justified_at) {
+            if ($this->isApprovedOrExcused($absence)) {
                 $absencesJustifiees += $duree;
                 $detailJustifiees[] = $detail;
             } elseif ($absence->statut === 'absent') {
@@ -173,7 +174,7 @@ class ESBTPAbsenceService
 
         $sessionsQuery = ESBTPAttendance::where('etudiant_id', $etudiantId)
             ->whereNotNull('matiere_id')
-            ->whereIn('statut', ['absent', 'absent_excuse'])
+            ->whereIn('statut', ['absent', 'excuse', 'absent_excuse'])
             ->whereBetween('date', [$dateDebut, $dateFin]);
 
         if (!empty($manualMatiereIds)) {
@@ -192,7 +193,7 @@ class ESBTPAbsenceService
             }
             $heureDebut = Carbon::parse($absence->heure_debut);
             $heureFin = Carbon::parse($absence->heure_fin);
-            $duree = max(1, $heureDebut->diffInHours($heureFin));
+            $duree = $this->durationInHours($heureDebut, $heureFin);
 
             if (!isset($parMatiere[$matiereId])) {
                 $parMatiere[$matiereId] = [
@@ -207,7 +208,7 @@ class ESBTPAbsenceService
             $parMatiere[$matiereId]['total_heures'] += $duree;
             $totalHeures += $duree;
 
-            if ($absence->statut === 'absent_excuse' || $absence->justified_at) {
+            if ($this->isApprovedOrExcused($absence)) {
                 $parMatiere[$matiereId]['justifiees'] += $duree;
             } else {
                 $parMatiere[$matiereId]['non_justifiees'] += $duree;
@@ -243,6 +244,17 @@ class ESBTPAbsenceService
                 'notes' => $snapshot->global->notes,
             ] : null,
         ];
+    }
+
+    private function isApprovedOrExcused(ESBTPAttendance $absence): bool
+    {
+        return $absence->justification_status === JustificationStatus::APPROVED
+            || in_array($absence->statut, ['excuse', 'absent_excuse'], true);
+    }
+
+    private function durationInHours(Carbon $start, Carbon $end): float
+    {
+        return round($start->diffInMinutes($end) / 60, 2);
     }
 
     /**

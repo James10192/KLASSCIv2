@@ -1800,60 +1800,60 @@
                     <div class="bc-input-row">
                         <div class="bc-icon"><i class="fas fa-user-check"></i></div>
                         <div class="bc-body">
-                            <div class="bc-label">0 absence non justifiee</div>
+                            <div class="bc-label">0 heure d’absence</div>
                             <input type="number" class="form-control form-control-modern" name="setting_attendance_note_zero_unjustified"
                                    value="{{ \App\Helpers\SettingsHelper::get('attendance_note_zero_unjustified', '0.13') }}"
                                    step="0.01" min="-20" max="20" placeholder="0.13">
-                            <small class="text-muted">Bonus applique si aucune absence non justifiee n'est enregistree.</small>
+                            <small class="text-muted">Bonus appliqué seulement si aucune heure d’absence n’est enregistrée.</small>
                         </div>
                     </div>
                     <div class="bc-input-row">
                         <div class="bc-icon"><i class="fas fa-user-clock"></i></div>
                         <div class="bc-body">
-                            <div class="bc-label">1 absence non justifiee</div>
+                            <div class="bc-label">Jusqu’à 1 heure non justifiée</div>
                             <input type="number" class="form-control form-control-modern" name="setting_attendance_note_one_unjustified"
                                    value="{{ \App\Helpers\SettingsHelper::get('attendance_note_one_unjustified', '0.00') }}"
                                    step="0.01" min="-20" max="20" placeholder="0.00">
-                            <small class="text-muted">Valeur appliquee quand exactement une absence non justifiee est relevee.</small>
+                            <small class="text-muted">Valeur appliquée lorsqu’il y a au plus 1 heure d’absence non justifiée.</small>
                         </div>
                     </div>
                     <div class="bc-input-row">
                         <div class="bc-icon"><i class="fas fa-user-times"></i></div>
                         <div class="bc-body">
-                            <div class="bc-label">2 absences non justifiees</div>
+                            <div class="bc-label">2 à moins de 3 heures non justifiées</div>
                             <input type="number" class="form-control form-control-modern" name="setting_attendance_note_two_unjustified"
                                    value="{{ \App\Helpers\SettingsHelper::get('attendance_note_two_unjustified', \App\Helpers\SettingsHelper::get('attendance_note_two_or_more_unjustified', '-0.13')) }}"
                                    step="0.01" min="-20" max="20" placeholder="-0.13">
-                            <small class="text-muted">Malus applique pour exactement 2 absences non justifiees.</small>
+                            <small class="text-muted">Malus appliqué de 2 heures incluses à moins de 3 heures.</small>
                         </div>
                     </div>
                     <div class="bc-input-row">
                         <div class="bc-icon"><i class="fas fa-exclamation-triangle"></i></div>
                         <div class="bc-body">
-                            <div class="bc-label">3 a 4 absences non justifiees</div>
+                            <div class="bc-label">3 à moins de 5 heures non justifiées</div>
                             <input type="number" class="form-control form-control-modern" name="setting_attendance_note_three_to_four_unjustified"
                                    value="{{ \App\Helpers\SettingsHelper::get('attendance_note_three_to_four_unjustified', '-0.39') }}"
                                    step="0.01" min="-20" max="20" placeholder="-0.39">
-                            <small class="text-muted">Malus applique pour 3 ou 4 absences non justifiees.</small>
+                            <small class="text-muted">Malus appliqué de 3 heures incluses à moins de 5 heures.</small>
                         </div>
                     </div>
                     <div class="bc-input-row">
                         <div class="bc-icon"><i class="fas fa-skull-crossbones"></i></div>
                         <div class="bc-body">
-                            <div class="bc-label">5 absences non justifiees ou plus</div>
+                            <div class="bc-label">5 heures non justifiées ou plus</div>
                             <input type="number" class="form-control form-control-modern" name="setting_attendance_note_five_or_more_unjustified"
                                    value="{{ \App\Helpers\SettingsHelper::get('attendance_note_five_or_more_unjustified', '-0.50') }}"
                                    step="0.01" min="-20" max="20" placeholder="-0.50">
-                            <small class="text-muted">Malus maximum applique a partir de 5 absences non justifiees.</small>
+                            <small class="text-muted">Malus maximum appliqué à partir de 5 heures d’absence non justifiées.</small>
                         </div>
                     </div>
                     <div class="bc-input-row">
                         <div class="bc-icon"><i class="fas fa-info-circle"></i></div>
                         <div class="bc-body">
-                            <div class="bc-label">Regle globale d'assiduite (5 paliers)</div>
+                            <div class="bc-label">Règle globale d’assiduité horaire (5 paliers)</div>
                             <div class="bc-desc">
-                                Le toggle <strong>Note d'assiduite</strong> reste le commutateur unique :
-                                actif, il applique ce bareme 5 paliers au calcul et a l'affichage ; inactif, la note vaut 0 partout et reste masquee.
+                                Le toggle <strong>Note d’assiduité</strong> reste le commutateur unique :
+                                actif, il applique ce barème à 5 paliers au calcul et à l’affichage ; inactif, la note vaut 0 partout et reste masquée.
                             </div>
                         </div>
                     </div>
