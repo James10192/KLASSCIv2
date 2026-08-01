@@ -1371,12 +1371,12 @@ class ESBTPSettingsController extends Controller
         // Barème 5 paliers (étendu 03/06/2026). Le palier legacy "two_or_more" reste
         // créé pour rétrocompat des appels code qui le lisent encore.
         $attendanceDefaults = [
-            'attendance_note_zero_unjustified' => ['value' => '0.13', 'description' => 'Barème assiduité pour 0 absence non justifiée', 'sort_order' => 121],
-            'attendance_note_one_unjustified' => ['value' => '0.00', 'description' => 'Barème assiduité pour 1 absence non justifiée', 'sort_order' => 122],
-            'attendance_note_two_unjustified' => ['value' => '-0.13', 'description' => 'Barème assiduité pour 2 absences non justifiées', 'sort_order' => 123],
-            'attendance_note_three_to_four_unjustified' => ['value' => '-0.39', 'description' => 'Barème assiduité pour 3 à 4 absences non justifiées', 'sort_order' => 124],
-            'attendance_note_five_or_more_unjustified' => ['value' => '-0.50', 'description' => 'Barème assiduité pour 5 absences non justifiées ou plus', 'sort_order' => 125],
-            'attendance_note_two_or_more_unjustified' => ['value' => '-0.13', 'description' => 'Barème assiduité legacy (2 absences ou plus, conservé pour rétrocompat)', 'sort_order' => 126],
+            'attendance_note_zero_unjustified' => ['value' => '0.13', 'description' => 'Barème assiduité pour 0 heure d’absence', 'sort_order' => 121],
+            'attendance_note_one_unjustified' => ['value' => '0.00', 'description' => 'Barème assiduité pour jusqu’à 1 heure d’absence non justifiée', 'sort_order' => 122],
+            'attendance_note_two_unjustified' => ['value' => '-0.13', 'description' => 'Barème assiduité pour 2 à moins de 3 heures d’absence non justifiée', 'sort_order' => 123],
+            'attendance_note_three_to_four_unjustified' => ['value' => '-0.39', 'description' => 'Barème assiduité pour 3 à moins de 5 heures d’absence non justifiée', 'sort_order' => 124],
+            'attendance_note_five_or_more_unjustified' => ['value' => '-0.50', 'description' => 'Barème assiduité à partir de 5 heures d’absence non justifiée', 'sort_order' => 125],
+            'attendance_note_two_or_more_unjustified' => ['value' => '-0.13', 'description' => 'Barème assiduité legacy (2 heures ou plus, conservé pour rétrocompatibilité)', 'sort_order' => 126],
         ];
 
         foreach ($attendanceDefaults as $key => $attrs) {

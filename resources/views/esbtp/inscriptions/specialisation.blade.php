@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Spécialisation — ' . $inscription->etudiant->nom_complet)
+@section('title', ($isCorrection ? 'Correction de spécialisation - ' : 'Spécialisation - ') . $inscription->etudiant->nom_complet)
 
 @push('styles')
 <style>
@@ -283,11 +283,20 @@
     box-shadow:0 8px 24px rgba(15,23,42,.12); font-size:.85rem; }
 .spc-toast--success { border-left:4px solid #10b981; color:#065f46; }
 .spc-toast--error { border-left:4px solid #dc2626; color:#991b1b; }
+.spc-reason {
+    width:100%; min-height:96px; padding:.75rem .85rem; resize:vertical;
+    border:1px solid #cbd5e1; border-radius:8px; color:#0f172a; background:#fff;
+}
+.spc-reason:focus { outline:2px solid rgba(4,83,203,.18); border-color:#0453cb; }
 </style>
 @endpush
 
 @section('content')
-<div x-data="specialisation()" x-init="init()">
+<div x-data="specialisation(
+        {{ $isCorrection ? 'true' : 'false' }},
+        {{ $currentSpecialisation?->filiere_id ?? 'null' }},
+        {{ $currentSpecialisation?->classe_id ?? 'null' }}
+    )" x-init="init()">
 
     {{-- HERO --}}
     <div class="spc-hero">
@@ -295,7 +304,7 @@
             <div class="spc-hero-left">
                 <div class="spc-hero-icon"><i class="fas fa-graduation-cap"></i></div>
                 <div>
-                    <h1>Orientation vers spécialité</h1>
+                    <h1>{{ $isCorrection ? 'Corriger la spécialisation' : 'Orientation vers une spécialité' }}</h1>
                     <p>
                         Étudiant <strong>{{ $inscription->etudiant->nom_complet }}</strong>
                         <code>{{ $inscription->etudiant->matricule }}</code>
@@ -327,7 +336,7 @@
                 <div class="spc-card-icon"><i class="fas fa-user-graduate"></i></div>
                 <div>
                     <div class="spc-card-title">Inscription actuelle</div>
-                    <div class="spc-card-subtitle">État avant orientation</div>
+                    <div class="spc-card-subtitle">{{ $isCorrection ? 'Parcours académique de référence' : 'État avant orientation' }}</div>
                 </div>
             </div>
             <div class="spc-card-body">
@@ -343,12 +352,12 @@
                     <div class="spc-recap-item">
                         <i class="fas fa-stream"></i>
                         <span class="spc-recap-label">Filière TC</span>
-                        <span class="spc-recap-value">{{ $inscription->filiere->name ?? '—' }}</span>
+                        <span class="spc-recap-value">{{ $sourceFiliere->name ?? '—' }}</span>
                     </div>
                     <div class="spc-recap-item">
                         <i class="fas fa-chalkboard"></i>
                         <span class="spc-recap-label">Classe</span>
-                        <span class="spc-recap-value">{{ $inscription->classe->name ?? '—' }}</span>
+                        <span class="spc-recap-value">{{ $sourceClasse->name ?? '—' }}</span>
                     </div>
                     <div class="spc-recap-item">
                         <i class="fas fa-layer-group"></i>
@@ -361,6 +370,17 @@
                         <span class="spc-recap-value">{{ $inscription->anneeUniversitaire->name ?? '—' }}</span>
                     </div>
                 </div>
+
+                @if($isCorrection && $currentSpecialisation)
+                    <div class="spc-info-banner" style="margin-top:1rem;">
+                        <i class="fas fa-pen-to-square"></i>
+                        <div>
+                            <strong>Affectation actuelle :</strong>
+                            {{ $currentSpecialisation->classe?->name ?? 'Classe inconnue' }}.
+                            La correction conservera cette affectation dans l'historique.
+                        </div>
+                    </div>
+                @endif
 
                 @if($totalPaye > 0)
                     <div class="spc-paid-block">
@@ -520,8 +540,8 @@
                             <i class="fas fa-check-double"></i>
                         </div>
                         <div>
-                            <div class="spc-card-title">Confirmer l'orientation</div>
-                            <div class="spc-card-subtitle">Action irréversible — un audit sera créé</div>
+                            <div class="spc-card-title">{{ $isCorrection ? 'Justifier et confirmer la correction' : "Confirmer l'orientation" }}</div>
+                            <div class="spc-card-subtitle">Un historique d'audit sera conservé</div>
                         </div>
                         <span class="spc-card-step">Étape 3</span>
                     </div>
@@ -529,12 +549,34 @@
                         <div class="spc-info-banner">
                             <i class="fas fa-info-circle"></i>
                             <div>
-                                <strong>Workflow UEMOA :</strong> L'inscription actuelle sera conservée (frais payés préservés) et une <em>phase de spécialisation active</em> sera créée. L'historique du tronc commun reste consultable.
+                                <strong>Workflow UEMOA :</strong>
+                                @if($isCorrection)
+                                    l'ancienne spécialisation sera clôturée, la nouvelle deviendra active et l'inscription principale sera resynchronisée.
+                                @else
+                                    l'inscription actuelle sera conservée, une phase de spécialisation active sera créée et l'historique du tronc commun restera consultable.
+                                @endif
                             </div>
                         </div>
+
+                        @if($isCorrection)
+                            <label for="correction_reason" class="form-label fw-semibold" style="margin-top:1rem;">
+                                Motif de la correction <span class="text-danger">*</span>
+                            </label>
+                            <textarea
+                                id="correction_reason"
+                                name="correction_reason"
+                                class="spc-reason"
+                                x-model.trim="correctionReason"
+                                minlength="10"
+                                maxlength="500"
+                                required
+                                placeholder="Expliquez la raison de cette correction"
+                            ></textarea>
+                            <div class="form-text">10 à 500 caractères. Ce motif sera conservé dans l'audit.</div>
+                        @endif
                         <button type="submit" class="spc-btn spc-btn--primary spc-btn--cta-big" :disabled="saving" style="margin-top:1rem;">
                             <i class="fas" :class="saving ? 'fa-spinner fa-spin' : 'fa-check-circle'"></i>
-                            <span x-text="saving ? 'Orientation en cours…' : 'Confirmer la spécialisation'"></span>
+                            <span x-text="saving ? 'Enregistrement en cours…' : (isCorrection ? 'Confirmer la correction' : 'Confirmer la spécialisation')"></span>
                         </button>
                     </div>
                 </div>
@@ -554,17 +596,27 @@
 
 @push('scripts')
 <script>
-function specialisation() {
+function specialisation(isCorrection, initialFiliereId, initialClasseId) {
     return {
-        filiereId: null,
-        classeId: null,
+        isCorrection,
+        filiereId: initialFiliereId,
+        classeId: initialClasseId,
+        initialClasseId,
+        correctionReason: '',
         classes: [],
         emptyContext: null,
         loadingClasses: false,
         saving: false,
         toasts: [], toastId: 0,
 
-        init() {},
+        async init() {
+            if (this.filiereId) {
+                await this.loadClasses(this.filiereId);
+                if (this.classes.some(cls => cls.id === this.initialClasseId)) {
+                    this.classeId = this.initialClasseId;
+                }
+            }
+        },
 
         async selectFiliere(id) {
             this.filiereId = id;
@@ -611,15 +663,19 @@ function specialisation() {
                 this.toast('error', 'Sélectionnez une spécialité ET une classe.');
                 return;
             }
+            if (this.isCorrection && this.correctionReason.length < 10) {
+                this.toast('error', 'Saisissez un motif de correction d’au moins 10 caractères.');
+                return;
+            }
             this.saving = true;
             try {
-                const fd = new FormData(formEl);
                 const payload = {
                     filiere_id: this.filiereId,
                     classe_id: this.classeId,
+                    correction_reason: this.isCorrection ? this.correctionReason : null,
                 };
                 const res = await fetch('{{ route("esbtp.inscriptions.specialisation.store", $inscription) }}', {
-                    method: 'POST',
+                    method: this.isCorrection ? 'PATCH' : 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,

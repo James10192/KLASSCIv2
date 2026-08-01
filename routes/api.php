@@ -260,6 +260,12 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         ->name('bts-tc.legacy-audit');
     Route::get('/bts-tc/orientation-targets-audit', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'orientationTargetsAudit'])
         ->name('bts-tc.orientation-targets-audit');
+    Route::get('/bts-tc/inscriptions/{id}/specialisation-integrity', [App\Http\Controllers\API\CLI\CLIBtsSpecialisationIntegrityController::class, 'diagnose'])
+        ->whereNumber('id')
+        ->name('bts-tc.inscriptions.specialisation-integrity');
+    Route::post('/bts-tc/inscriptions/{id}/specialisation-integrity/repair', [App\Http\Controllers\API\CLI\CLIBtsSpecialisationIntegrityController::class, 'repair'])
+        ->whereNumber('id')
+        ->name('bts-tc.inscriptions.specialisation-integrity.repair');
     Route::post('/bts-tc/filieres/{id}/mark-tronc-commun', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'markFiliereTroncCommun'])
         ->name('bts-tc.filieres.mark-tronc-commun');
     Route::post('/bts-tc/classes/{id}/targets', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'addOrientationTarget'])

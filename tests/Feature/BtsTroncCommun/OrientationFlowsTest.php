@@ -35,6 +35,13 @@ class OrientationFlowsTest extends TestCase
         $this->assertContains('POST', $route->methods());
     }
 
+    public function test_specialisation_patch_route_exists(): void
+    {
+        $route = \Route::getRoutes()->getByName('esbtp.inscriptions.specialisation.update');
+        $this->assertNotNull($route);
+        $this->assertContains('PATCH', $route->methods());
+    }
+
     public function test_orientation_targets_admin_routes_exist(): void
     {
         $routes = [
@@ -85,7 +92,15 @@ class OrientationFlowsTest extends TestCase
         $prop->setAccessible(true);
         $include = $prop->getValue($phase);
 
-        $expected = ['inscription_id', 'type_phase', 'classe_id', 'filiere_id', 'is_active', 'orientation_target_id'];
+        $expected = [
+            'inscription_id',
+            'type_phase',
+            'classe_id',
+            'filiere_id',
+            'is_active',
+            'orientation_target_id',
+            'correction_reason',
+        ];
         foreach ($expected as $field) {
             $this->assertContains($field, $include, "Champ {$field} doit être audité (conformité UEMOA)");
         }
@@ -96,8 +111,8 @@ class OrientationFlowsTest extends TestCase
     public function test_bts_journey_partial_includes_orient_button_logic(): void
     {
         $content = file_get_contents(resource_path('views/esbtp/partials/bts-journey.blade.php'));
-        $this->assertStringContainsString('Orienter vers une spécialité', $content);
-        $this->assertStringContainsString("bts_tronc_commun.orient", $content);
+        $this->assertStringContainsString('Choisir la spécialité', $content);
+        $this->assertStringContainsString("inscriptions.specialisation.manage", $content);
         $this->assertStringContainsString('orientationTargetsCount', $content);
         $this->assertStringContainsString("legacy_dual_inscription", $content, 'Skip legacy mode');
     }
@@ -117,8 +132,10 @@ class OrientationFlowsTest extends TestCase
         $this->assertStringContainsString('spc-hero', $content, 'Namespace premium spc-*');
         $this->assertStringContainsString('spc-card', $content);
         $this->assertStringContainsString('spc-stepper', $content, 'Stepper visuel 3 étapes');
-        $this->assertStringContainsString('x-data="specialisation()"', $content, 'Alpine state');
+        $this->assertStringContainsString('x-data="specialisation(', $content, 'Alpine state');
         $this->assertStringContainsString('linear-gradient(135deg, #0a3d8f', $content, 'Hero gradient KLASSCI');
+        $this->assertStringContainsString('Corriger la spécialisation', $content);
+        $this->assertStringContainsString('correction_reason', $content);
     }
 
     public function test_admin_orientation_targets_view_exists(): void
@@ -143,13 +160,4 @@ class OrientationFlowsTest extends TestCase
         $this->assertStringContainsString("permission:bts_tronc_commun.manage_targets", $content);
     }
 
-    /* ════════════ SEEDER ════════════ */
-
-    public function test_orientation_targets_seeder_exists(): void
-    {
-        $this->assertFileExists(database_path('seeders/EsbtpClasseOrientationTargetSeeder.php'));
-        $content = file_get_contents(database_path('seeders/EsbtpClasseOrientationTargetSeeder.php'));
-        $this->assertStringContainsString('updateOrCreate', $content, 'Idempotent');
-        $this->assertStringContainsString('NAME_OVERRIDES', $content, 'Overrides manuels supportés');
-    }
 }

@@ -7,6 +7,7 @@ use App\Models\ESBTPBulletin;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPInscription;
+use App\Models\ESBTPInscriptionPhase;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use Illuminate\Support\Facades\Auth;
@@ -95,6 +96,7 @@ class ClassStudentService
     public function addStudents(ESBTPClasse $classe, array $etudiantIds): array
     {
         $anneeCourante = $this->getAnneeCourante();
+        $classe->loadMissing('filiere');
         $added = 0;
         $errors = [];
 
@@ -105,6 +107,7 @@ class ClassStudentService
                 $inscription = ESBTPInscription::where('etudiant_id', $etudiantId)
                     ->where('annee_universitaire_id', $anneeCourante->id)
                     ->where('status', 'active')
+                    ->lockForUpdate()
                     ->first();
 
                 if (!$inscription) {
@@ -114,6 +117,14 @@ class ClassStudentService
 
                 if ($inscription->classe_id == $classe->id) {
                     $errors[] = "Etudiant ID {$etudiantId}: Deja dans cette classe.";
+                    continue;
+                }
+
+                $activeSpecialisation = $this->activeSpecialisation($inscription);
+
+                if ($activeSpecialisation
+                    && (int) $activeSpecialisation->classe_id !== (int) $classe->id) {
+                    $errors[] = "Etudiant ID {$etudiantId}: Une spécialisation active ne peut pas être modifiée par affectation de classe. Utilisez le workflow de correction de spécialisation.";
                     continue;
                 }
 
@@ -146,11 +157,17 @@ class ClassStudentService
                     ]);
                 }
 
-                $inscription->update([
+                $attributes = [
                     'classe_id' => $classe->id,
                     'affectation_status' => $inscription->classe_id ? 'réaffecté' : ESBTPInscription::DEFAULT_AFFECTATION_STATUS,
                     'updated_by' => Auth::id(),
-                ]);
+                ];
+
+                if ($classe->filiere_id !== null) {
+                    $attributes['filiere_id'] = $classe->filiere_id;
+                }
+
+                $inscription->update($attributes);
 
                 $added++;
             }
@@ -187,8 +204,16 @@ class ClassStudentService
         $errors = [];
 
         $destinationClasse = $destinationClasseId
-            ? ESBTPClasse::find($destinationClasseId)
+            ? ESBTPClasse::with('filiere')->find($destinationClasseId)
             : null;
+
+        if ($destinationClasseId && ! $destinationClasse) {
+            return [
+                'removed' => 0,
+                'errors' => ['La classe de destination est introuvable.'],
+                'action_message' => 'Aucun étudiant retiré.',
+            ];
+        }
 
         DB::beginTransaction();
 
@@ -198,10 +223,16 @@ class ClassStudentService
                     ->where('annee_universitaire_id', $anneeCourante->id)
                     ->where('status', 'active')
                     ->where('classe_id', $classe->id)
+                    ->lockForUpdate()
                     ->first();
 
                 if (!$inscription) {
                     $errors[] = "Etudiant ID {$etudiantId}: Pas d'inscription active dans cette classe.";
+                    continue;
+                }
+
+                if ($this->activeSpecialisation($inscription)) {
+                    $errors[] = "Etudiant ID {$etudiantId}: Cette inscription possède une spécialisation active. Utilisez le workflow de correction de spécialisation, le retrait ou le transfert direct est bloqué.";
                     continue;
                 }
 
@@ -228,11 +259,17 @@ class ClassStudentService
                 ]);
 
                 if ($destinationClasseId) {
-                    $inscription->update([
+                    $attributes = [
                         'classe_id' => $destinationClasseId,
                         'affectation_status' => 'réaffecté',
                         'updated_by' => Auth::id(),
-                    ]);
+                    ];
+
+                    if ($destinationClasse->filiere_id !== null) {
+                        $attributes['filiere_id'] = $destinationClasse->filiere_id;
+                    }
+
+                    $inscription->update($attributes);
                 } else {
                     $inscription->update([
                         'classe_id' => null,
@@ -324,5 +361,15 @@ class ClassStudentService
             throw new \RuntimeException('Aucune annee universitaire active.');
         }
         return $annee;
+    }
+
+    private function activeSpecialisation(ESBTPInscription $inscription): ?ESBTPInscriptionPhase
+    {
+        return ESBTPInscriptionPhase::query()
+            ->where('inscription_id', $inscription->id)
+            ->where('type_phase', ESBTPInscriptionPhase::TYPE_SPECIALISATION)
+            ->where('is_active', true)
+            ->lockForUpdate()
+            ->first();
     }
 }

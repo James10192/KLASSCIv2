@@ -1195,14 +1195,18 @@ body:has(#affectationClasseModal.show) .modal-backdrop {
                     @endcan
                     @can('inscriptions.specialisation.manage')
                         @php
+                            $hasActiveSpecialisation = $inscription->phases->contains(
+                                fn ($phase) => $phase->type_phase === \App\Models\ESBTPInscriptionPhase::TYPE_SPECIALISATION
+                                    && $phase->is_active
+                            );
                             $canChooseSpecialisation = \App\Helpers\SettingsHelper::get('tronc_commun_enabled', false)
                                 && $inscription->filiere?->isTroncCommun()
-                                && ! $inscription->phases->contains(fn ($phase) => $phase->type_phase === \App\Models\ESBTPInscriptionPhase::TYPE_SPECIALISATION && $phase->is_active);
+                                && ! $hasActiveSpecialisation;
                         @endphp
-                        @if($canChooseSpecialisation)
+                        @if($canChooseSpecialisation || $hasActiveSpecialisation)
                             <a href="{{ route('esbtp.inscriptions.specialisation', $inscription) }}" class="is-hero-btn success-btn">
-                                <i class="fas fa-code-branch"></i>
-                                <span class="d-none d-lg-inline">Choisir la specialisation</span>
+                                <i class="fas {{ $hasActiveSpecialisation ? 'fa-pen-to-square' : 'fa-code-branch' }}"></i>
+                                <span class="d-none d-lg-inline">{{ $hasActiveSpecialisation ? 'Corriger la spécialisation' : 'Choisir la spécialisation' }}</span>
                             </a>
                         @endif
                     @endcan

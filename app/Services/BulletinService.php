@@ -105,19 +105,21 @@ class BulletinService
         }
 
         $bareme = $this->getAttendanceNoteSettings();
-        $absencesNonJustifiees = (float) $absencesNonJustifiees;
+        $heuresJustifiees = max(0.0, (float) $absencesJustifiees);
+        $heuresNonJustifiees = max(0.0, (float) $absencesNonJustifiees);
 
-        // Barème 5 paliers (Marcel 03/06/2026)
-        if ($absencesNonJustifiees <= 0.0) {
+        // The bonus applies only when there are no absence hours at all.
+        if (($heuresJustifiees + $heuresNonJustifiees) === 0.0) {
             return $bareme['zero_unjustified'];
         }
-        if ($absencesNonJustifiees < 2.0) {
+        // Fractions below 2 hours do not reach the next malus threshold.
+        if ($heuresNonJustifiees < 2.0) {
             return $bareme['one_unjustified'];
         }
-        if ($absencesNonJustifiees < 3.0) {
+        if ($heuresNonJustifiees < 3.0) {
             return $bareme['two_unjustified'];
         }
-        if ($absencesNonJustifiees < 5.0) {
+        if ($heuresNonJustifiees < 5.0) {
             return $bareme['three_to_four_unjustified'];
         }
 
@@ -975,20 +977,7 @@ class BulletinService
      */
     public function calculerNoteAssiduite($absencesJustifiees, $absencesNonJustifiees)
     {
-        // Logique exacte du contrôleur : bonus/malus selon les absences non justifiées
-        switch (true) {
-            case $absencesNonJustifiees == 0:
-                return 0.13; // Bonus pour aucune absence non justifiée
-            case $absencesNonJustifiees == 1:
-                return 0;
-            case $absencesNonJustifiees == 2:
-                return -0.13;
-            case $absencesNonJustifiees == 3:
-            case $absencesNonJustifiees == 4:
-                return -0.39;
-            default: // 5 ou plus
-                return -0.5;
-        }
+        return $this->resolveAttendanceNote($absencesJustifiees, $absencesNonJustifiees);
     }
 
     /**

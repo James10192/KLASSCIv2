@@ -26,6 +26,7 @@ class ESBTPInscriptionPhase extends Model implements Auditable
         'orientation_target_id',
         'date_activation',
         'date_cloture',
+        'correction_reason',
         'created_by',
         'updated_by',
     ];
@@ -51,6 +52,7 @@ class ESBTPInscriptionPhase extends Model implements Auditable
         'orientation_target_id',
         'date_activation',
         'date_cloture',
+        'correction_reason',
     ];
 
     protected $auditEvents = [

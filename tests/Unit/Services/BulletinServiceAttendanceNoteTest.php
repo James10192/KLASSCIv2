@@ -62,10 +62,24 @@ class BulletinServiceAttendanceNoteTest extends TestCase
             'is_active' => true,
         ]);
 
+        foreach ([
+            'attendance_note_two_unjustified' => '-0.20',
+            'attendance_note_three_to_four_unjustified' => '-0.60',
+            'attendance_note_five_or_more_unjustified' => '-0.80',
+        ] as $key => $value) {
+            Setting::updateOrCreate(['key' => $key], [
+                'value' => $value,
+                'type' => 'float',
+                'group' => 'bulletin',
+                'category' => 'bulletin',
+                'is_active' => true,
+            ]);
+        }
+
         Setting::clearCache();
     }
 
-    public function test_resolve_attendance_note_uses_configured_scale(): void
+    public function test_resolve_attendance_note_uses_configured_hour_scale(): void
     {
         $this->seedAttendanceSettings('1');
         $service = $this->makeService();
@@ -73,7 +87,28 @@ class BulletinServiceAttendanceNoteTest extends TestCase
         $this->assertSame(0.25, $service->resolveAttendanceNote(0, 0));
         $this->assertSame(0.05, $service->resolveAttendanceNote(0, 1));
         $this->assertSame(0.05, $service->resolveAttendanceNote(0, 1.5));
-        $this->assertSame(-0.4, $service->resolveAttendanceNote(0, 2));
+        $this->assertSame(-0.2, $service->resolveAttendanceNote(0, 2));
+        $this->assertSame(-0.2, $service->resolveAttendanceNote(0, 2.5));
+        $this->assertSame(-0.6, $service->resolveAttendanceNote(0, 3));
+        $this->assertSame(-0.6, $service->resolveAttendanceNote(0, 4.5));
+        $this->assertSame(-0.8, $service->resolveAttendanceNote(0, 5));
+    }
+
+    public function test_resolve_attendance_note_awards_bonus_only_when_total_hours_are_zero(): void
+    {
+        $this->seedAttendanceSettings('1');
+        $service = $this->makeService();
+
+        $this->assertSame(0.05, $service->resolveAttendanceNote(0.5, 0));
+        $this->assertSame(0.05, $service->resolveAttendanceNote(2, 1));
+    }
+
+    public function test_legacy_attendance_calculator_delegates_to_configured_hour_scale(): void
+    {
+        $this->seedAttendanceSettings('1');
+        $service = $this->makeService();
+
+        $this->assertSame(-0.2, $service->calculerNoteAssiduite(0, 2.5));
     }
 
     public function test_resolve_attendance_note_returns_zero_when_toggle_is_disabled(): void
@@ -129,6 +164,6 @@ class BulletinServiceAttendanceNoteTest extends TestCase
 
         $service = $this->makeService($absenceService);
 
-        $this->assertSame(-0.4, $service->calculateEffectiveAttendanceNoteForStudent(10, 20, $annee->id, 'annuel'));
+        $this->assertSame(-0.2, $service->calculateEffectiveAttendanceNoteForStudent(10, 20, $annee->id, 'annuel'));
     }
 }

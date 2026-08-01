@@ -1284,6 +1284,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
             Route::get('/inscriptions/{inscription}/specialisation', [\App\Http\Controllers\ESBTP\ESBTPSpecialisationController::class, 'show'])->name('inscriptions.specialisation');
             Route::get('/inscriptions/{inscription}/specialisation/classes', [\App\Http\Controllers\ESBTP\ESBTPSpecialisationController::class, 'getClasses'])->name('inscriptions.specialisation.classes');
             Route::post('/inscriptions/{inscription}/specialisation', [\App\Http\Controllers\ESBTP\ESBTPSpecialisationController::class, 'store'])->name('inscriptions.specialisation.store');
+            Route::patch('/inscriptions/{inscription}/specialisation', [\App\Http\Controllers\ESBTP\ESBTPSpecialisationController::class, 'update'])->name('inscriptions.specialisation.update');
 
             // Admin BTS Tronc Commun â€” Configuration des sorties (target classes)
             Route::prefix('admin/orientation-targets')->name('admin.orientation-targets.')->group(function () {
