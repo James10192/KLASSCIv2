@@ -777,6 +777,39 @@ switch ($Command) {
         Invoke-KlassciApi -Method "GET" -Path "/bts-tc/orientation-targets-audit" -Config $cfg | ConvertTo-Json -Depth 12
         break
     }
+    "permissions:list" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $query = ""
+        if ($ExtraArgs.Count -ge 1) {
+            $query = "?group=$([uri]::EscapeDataString($ExtraArgs[0]))"
+        }
+        Invoke-KlassciApi -Method "GET" -Path "/permissions$query" -Config $cfg | ConvertTo-Json -Depth 10
+        break
+    }
+    "permissions:audit" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        Invoke-KlassciApi -Method "GET" -Path "/permissions/audit" -Config $cfg | ConvertTo-Json -Depth 12
+        break
+    }
+    "roles:list" {
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        Invoke-KlassciApi -Method "GET" -Path "/roles" -Config $cfg | ConvertTo-Json -Depth 10
+        break
+    }
+    "roles:show" {
+        if ($ExtraArgs.Count -lt 1) {
+            throw "Usage: .\klassci-cli.ps1 roles:show <tenant> <role> [guard]"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $role = [uri]::EscapeDataString($ExtraArgs[0])
+        $query = ""
+        if ($ExtraArgs.Count -ge 2) {
+            $query = "?guard=$([uri]::EscapeDataString($ExtraArgs[1]))"
+        }
+        Invoke-KlassciApi -Method "GET" -Path "/roles/$role$query" -Config $cfg | ConvertTo-Json -Depth 12
+        break
+    }
     "bts-tc:specialisation-integrity" {
         if ($ExtraArgs.Count -lt 1) {
             throw "Usage: .\klassci-cli.ps1 bts-tc:specialisation-integrity [presentation] <inscription_id>"
@@ -885,6 +918,10 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
         Write-Host "  .\klassci-cli.ps1 mailpulse:test [presentation] --event payment_received --channel both --dry-run false"
         Write-Host "  .\klassci-cli.ps1 logs [presentation] --lines 100 --search MailPulse"
+        Write-Host "  .\klassci-cli.ps1 permissions:list <tenant> [groupe]"
+        Write-Host "  .\klassci-cli.ps1 permissions:audit [presentation]"
+        Write-Host "  .\klassci-cli.ps1 roles:list [presentation]"
+        Write-Host "  .\klassci-cli.ps1 roles:show <tenant> <role> [guard]"
         Write-Host "  .\klassci-cli.ps1 pull [presentation]"
         Write-Host "  .\klassci-cli.ps1 migrate [presentation]"
         Write-Host "  .\klassci-cli.ps1 composer:install [presentation] [install|update|dump-autoload] [binaire-composer]"
