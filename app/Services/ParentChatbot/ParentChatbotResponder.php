@@ -294,7 +294,7 @@ class ParentChatbotResponder
     private function publishedGradesReply(ESBTPEtudiant $student): array
     {
         $notes = $this->publicationPolicy->publishedGradesForStudent($student->id)
-            ->with(['evaluation:id,titre,bareme', 'matiere:id,name,nom'])
+            ->with(['evaluation:id,titre,bareme', 'matiere:id,name'])
             ->latest('id')
             ->limit(5)
             ->get();
@@ -304,7 +304,7 @@ class ParentChatbotResponder
         }
 
         $lines = $notes->map(function (ESBTPNote $note): string {
-            $label = $note->matiere->nom ?? $note->matiere->name ?? $note->evaluation->titre ?? 'Evaluation';
+            $label = $note->matiere->name ?? $note->evaluation->titre ?? 'Evaluation';
             return $label . ' : ' . number_format((float) $note->note_vingt, 2, ',', ' ') . '/20';
         })->implode("\n");
 
