@@ -20,11 +20,11 @@ TEST_NOTIFICATION_PHONE=
 TEST_NOTIFICATION_PHONES=
 ```
 
-`TEST_NOTIFICATION_EMAIL` est requis pour les tests email. `TEST_NOTIFICATION_PHONE` ou `TEST_NOTIFICATION_PHONES` est requis pour les tests WhatsApp. Aucun parent ou etudiant reel ne doit etre utilise.
+`TEST_NOTIFICATION_EMAIL` est requis pour les tests email. `TEST_NOTIFICATION_PHONE` ou `TEST_NOTIFICATION_PHONES` est requis pour les tests WhatsApp et SMS. Aucun parent ou etudiant reel ne doit etre utilise.
 
 `TEST_NOTIFICATION_PHONES` accepte plusieurs numeros separes par ligne, virgule ou point-virgule. Dans les parametres, `mailpulse_test_phone_recipients` est prioritaire sur `mailpulse_test_phones` et l'ancien champ `mailpulse_test_phone`.
 
-Ces valeurs peuvent aussi etre gerees depuis `ESBTP > Parametres > MailPulse`. La cle API n'est jamais affichee dans le formulaire. Laisser le champ vide conserve la cle existante. Chaque email et chaque numero WhatsApp dispose de son propre interrupteur actif/inactif.
+Ces valeurs peuvent aussi etre gerees depuis `ESBTP > Parametres > MailPulse`. La cle API n'est jamais affichee dans le formulaire. Laisser le champ vide conserve la cle existante. Chaque email et chaque numero WhatsApp/SMS dispose de son propre interrupteur actif/inactif. Le canal `both` reste limite a email + WhatsApp pour conserver le comportement historique.
 
 `TEST_API_SECRET` est reserve a un endpoint dev standalone. L'implementation actuelle utilise l'option plus sure : endpoint admin-only via Sanctum `cli:admin`.
 
@@ -78,6 +78,7 @@ Canaux supportes :
 
 - `email`
 - `whatsapp`
+- `sms`
 - `both`
 
 ## Test Email
@@ -113,6 +114,22 @@ Via le wrapper `klassci-cli` :
 ```bash
 klassci-cli mailpulse:test --event payment_received --channel both --dry-run false
 ```
+
+## Test SMS
+
+Dry-run :
+
+```bash
+php artisan mailpulse:test --event=grade_published --channel=sms --dry-run=true
+```
+
+Envoi reel vers les numeros de test configures :
+
+```bash
+php artisan mailpulse:test --event=grade_published --channel=sms --dry-run=false
+```
+
+Le canal SMS cree un contact MailPulse avec `preferred_channel=sms`, puis soumet une intention SMS a `/api/v1/messages`. MailPulse livre ensuite le SMS via son worker Orange, pas depuis KLASSCI.
 
 ## Limitations WhatsApp
 

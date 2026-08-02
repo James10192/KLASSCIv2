@@ -63,7 +63,7 @@ class MailPulseTestNotificationService
         $scenario = $this->scenario($event);
         $contact = $dryRun
             ? MailPulseResult::dryRun()
-            : $this->client->createOrUpdateContact($this->contactPayload($primaryEmail, $primaryPhone, $scenario));
+            : $this->client->createOrUpdateContact($this->contactPayload($primaryEmail, $primaryPhone, $channel, $scenario));
         $contactId = $contact->id ?? 'dry-run-contact';
 
         $emailResult = MailPulseResult::skipped('skipped', 'Canal email non demandé.');
@@ -103,12 +103,12 @@ class MailPulseTestNotificationService
 
         $whatsAppRecipients = [];
         if ($shouldWhatsApp) {
-            $whatsAppResult = $this->sendWhatsAppMessages($phones, $contactId, $scenario, $dryRun, $whatsAppRecipients);
+            $whatsAppResult = $this->sendPhoneMessages($phones, 'whatsapp', $contactId, $scenario, $dryRun, $whatsAppRecipients);
         }
 
         $smsRecipients = [];
         if ($shouldSms) {
-            $smsResult = $this->sendSmsMessages($phones, $contactId, $scenario, $dryRun, $smsRecipients);
+            $smsResult = $this->sendPhoneMessages($phones, 'sms', $contactId, $scenario, $dryRun, $smsRecipients);
         }
 
         return [
@@ -225,35 +225,16 @@ class MailPulseTestNotificationService
         return $result;
     }
 
-    private function sendWhatsAppMessages(array $phones, string $contactId, array $scenario, bool $dryRun, array &$recipients): MailPulseResult
+    private function sendPhoneMessages(array $phones, string $channel, string $contactId, array $scenario, bool $dryRun, array &$recipients): MailPulseResult
     {
         $result = MailPulseResult::dryRun();
 
         foreach ($phones as $phone) {
-            $current = $dryRun
-                ? MailPulseResult::dryRun()
-                : $this->client->sendWhatsAppMessage($this->whatsAppPayload($phone, $contactId, $scenario));
-
-            $recipients[] = array_merge(['phone' => $phone], $current->toArray());
-
-            if (! $current->ok) {
-                return $current;
-            }
-
-            $result = $current;
-        }
-
-        return $result;
-    }
-
-    private function sendSmsMessages(array $phones, string $contactId, array $scenario, bool $dryRun, array &$recipients): MailPulseResult
-    {
-        $result = MailPulseResult::dryRun();
-
-        foreach ($phones as $phone) {
-            $current = $dryRun
-                ? MailPulseResult::dryRun()
-                : $this->client->sendSmsMessage($this->smsPayload($phone, $contactId, $scenario));
+            $payload = $this->phonePayload($channel, $phone, $contactId, $scenario);
+            $current = $dryRun ? MailPulseResult::dryRun() : match ($channel) {
+                'sms' => $this->client->sendSmsMessage($payload),
+                default => $this->client->sendWhatsAppMessage($payload),
+            };
 
             $recipients[] = array_merge(['phone' => $phone], $current->toArray());
 
@@ -456,7 +437,7 @@ class MailPulseTestNotificationService
         };
     }
 
-    private function contactPayload(string $email, ?string $phone, array $scenario): array
+    private function contactPayload(string $email, ?string $phone, string $channel, array $scenario): array
     {
         return array_filter([
             'email' => $email,
@@ -465,7 +446,7 @@ class MailPulseTestNotificationService
             'last_name' => 'Test KLASSCI',
             'external_id' => MailPulseTenantContext::scopedIdentifier('test-parent'),
             'language' => $this->client->getSetting('mailpulse_default_language', 'default_language', 'fr'),
-            'preferred_channel' => $phone ? 'whatsapp' : 'email',
+            'preferred_channel' => $this->preferredChannel($channel, $phone),
             'subscribed' => true,
             'metadata' => [
                 'source' => 'klassci-test-notification',
@@ -473,6 +454,15 @@ class MailPulseTestNotificationService
                 'environment' => 'test',
             ],
         ], fn ($value) => $value !== null && $value !== '');
+    }
+
+    private function preferredChannel(string $channel, ?string $phone): string
+    {
+        if ($channel === 'sms') {
+            return 'sms';
+        }
+
+        return $phone && in_array($channel, ['whatsapp', 'both'], true) ? 'whatsapp' : 'email';
     }
 
     private function emailPayload(string $email, string $contactId, array $scenario): array
@@ -496,38 +486,17 @@ class MailPulseTestNotificationService
         ];
     }
 
-    private function whatsAppPayload(string $phone, string $contactId, array $scenario): array
+    private function phonePayload(string $channel, string $phone, string $contactId, array $scenario): array
     {
         return [
-            'channel' => 'whatsapp',
+            'channel' => $channel,
             'recipient' => [
                 'type' => 'phone',
                 'value' => $phone,
             ],
             'content' => [
                 'type' => 'text',
-                'text' => $this->whatsAppText($scenario),
-            ],
-            'metadata' => [
-                'source' => 'klassci',
-                'contact_id' => $contactId,
-                'workflow_event' => $scenario['event'],
-                'environment' => 'test',
-            ],
-        ];
-    }
-
-    private function smsPayload(string $phone, string $contactId, array $scenario): array
-    {
-        return [
-            'channel' => 'sms',
-            'recipient' => [
-                'type' => 'phone',
-                'value' => $phone,
-            ],
-            'content' => [
-                'type' => 'text',
-                'text' => $this->smsText($scenario),
+                'text' => $this->shortText($scenario),
             ],
             'metadata' => [
                 'source' => 'klassci',
@@ -544,8 +513,8 @@ class MailPulseTestNotificationService
             'subject' => '[TEST KLASSCI] ' . $scenario['subject'],
             'email_text' => $this->emailText($scenario),
             'email_html' => $this->emailHtml($scenario),
-            'whatsapp_text' => $this->whatsAppText($scenario),
-            'sms_text' => $this->smsText($scenario),
+            'whatsapp_text' => $this->shortText($scenario),
+            'sms_text' => $this->shortText($scenario),
         ];
     }
 
@@ -770,12 +739,7 @@ class MailPulseTestNotificationService
         return implode("\n", $lines);
     }
 
-    private function whatsAppText(array $scenario): string
-    {
-        return '[TEST KLASSCI] ' . $scenario['body'];
-    }
-
-    private function smsText(array $scenario): string
+    private function shortText(array $scenario): string
     {
         return '[TEST KLASSCI] ' . $scenario['body'];
     }

@@ -10,7 +10,7 @@ class MailPulseTestCommand extends Command
 {
     protected $signature = 'mailpulse:test
         {--event=payment_received : payment_received, absence_reported, grade_published, fee_reminder}
-        {--channel=both : email, whatsapp, both}
+        {--channel=both : email, whatsapp, sms, both}
         {--dry-run=true : true pour simuler sans appel MailPulse, false pour envoyer aux destinataires de test}';
 
     protected $description = 'Simule une notification KLASSCI via MailPulse vers TEST_NOTIFICATION_EMAIL/PHONE uniquement';
