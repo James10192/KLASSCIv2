@@ -1542,6 +1542,25 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         Route::get('/parents/search', [ESBTPEtudiantController::class, 'searchParents'])->name('esbtp.parents.search');
     });
 
+    Route::prefix('esbtp')
+        ->middleware(['auth', 'paywall', 'permission:parent_chatbot.manage'])
+        ->group(function () {
+            Route::prefix('/parent-chatbot-onboarding')->name('esbtp.parent-chatbot-onboarding.')->group(function () {
+                Route::get('/', [App\Http\Controllers\ESBTP\ParentChatbotOnboardingController::class, 'index'])
+                    ->middleware('throttle:60,1')
+                    ->name('index');
+                Route::post('/', [App\Http\Controllers\ESBTP\ParentChatbotOnboardingController::class, 'start'])
+                    ->middleware('throttle:2,1')
+                    ->name('start');
+                Route::post('/{batch}/cancel', [App\Http\Controllers\ESBTP\ParentChatbotOnboardingController::class, 'cancel'])
+                    ->middleware('throttle:5,1')
+                    ->name('cancel');
+            });
+            Route::post('/parents/{parent}/parent-chatbot-link-code', [App\Http\Controllers\ESBTP\ParentChatbotLinkCodeController::class, 'store'])
+                ->middleware('throttle:5,1')
+                ->name('esbtp.parents.parent-chatbot-link-code');
+        });
+
     // Configuration des matricules - accÃ¨s direct sans sidebar
     Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'role:serviceTechnique'])->group(function () {
         Route::get('/matricule-config', [ESBTPMatriculeConfigController::class, 'index'])->name('matricule-config.index');

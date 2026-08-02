@@ -127,6 +127,34 @@ class Kernel extends ConsoleKernel
             ->description('Envoi automatique des rappels pour inscriptions et paiements en attente')
             ->onOneServer();
 
+        $schedule->command('mailpulse:reconcile-parent-notifications --limit=50')
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->name('mailpulse-reconcile-parent-notifications')
+            ->description('Rejoue les notifications parents MailPulse en attente de reconciliation');
+
+        $schedule->command('mailpulse:reconcile-parent-link-codes --limit=50')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->name('mailpulse-reconcile-parent-link-codes')
+            ->description('Rejoue les codes de liaison parents MailPulse en attente de reconciliation');
+
+        $schedule->command('mailpulse:process-parent-chatbot-onboarding --limit=25')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->name('mailpulse-process-parent-chatbot-onboarding')
+            ->description('Traite les activations massives du chatbot parent MailPulse');
+
+        $schedule->command('mailpulse:prune-parent-chatbot-inbound-responses --limit=1000')
+            ->dailyAt('03:30')
+            ->withoutOverlapping()
+            ->onOneServer()
+            ->name('mailpulse-prune-parent-chatbot-inbound-responses')
+            ->description('Supprime les reponses chiffrees expirees du chatbot parent MailPulse');
+
         // Calcul des KPIs temps réel (toutes les heures)
         $schedule->job(new CalculerKPIsJob('horaire'))
             ->hourly()

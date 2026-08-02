@@ -13,6 +13,8 @@ final class MailPulseResult
         public readonly ?string $errorCode = null,
         public readonly ?string $message = null,
         public readonly ?string $action = null,
+        public readonly ?string $dispatchState = null,
+        public readonly bool $smsFallbackEligible = false,
     ) {}
 
     public static function dryRun(?string $requestId = null): self
@@ -36,6 +38,13 @@ final class MailPulseResult
             'errorCode' => $this->errorCode,
             'message' => $this->message,
             'action' => $this->action,
+            'dispatchState' => $this->dispatchState,
+            'smsFallbackEligible' => $this->smsFallbackEligible,
         ], fn ($value) => $value !== null);
+    }
+
+    public function isDispatchAccepted(): bool
+    {
+        return $this->dispatchState === null ? $this->ok : $this->dispatchState === 'accepted';
     }
 }

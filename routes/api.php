@@ -20,6 +20,15 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();
 });
 
+// MailPulse is the transport only. KLASSCI validates and answers parent requests itself.
+Route::post('/v1/integrations/mailpulse/parent-chatbot/inbound', App\Http\Controllers\API\ParentChatbotInboundController::class)
+    ->middleware('throttle:30,1')
+    ->name('api.mailpulse.parent-chatbot.inbound');
+
+Route::get('/v1/parent-chatbot/report-cards/{bulletin}', App\Http\Controllers\ParentChatbotReportCardController::class)
+    ->middleware('signed')
+    ->name('parent-chatbot.report-card');
+
 // Routes API pour ESBTP
 Route::get('/classes/{classe}/matieres', [ESBTPClasseController::class, 'getMatieresForApi'])
     ->name('api.classes.matieres');

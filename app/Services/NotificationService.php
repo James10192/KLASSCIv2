@@ -15,6 +15,7 @@ use App\Models\ESBTPFacture;
 use App\Models\ESBTPBonSortie;
 use App\Models\ParentNotificationLog;
 use App\Services\MailPulse\MailPulseWorkflowNotificationService;
+use App\Services\ParentChatbot\ParentChatbotPublicationPolicy;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
@@ -931,7 +932,7 @@ class NotificationService
     {
         try {
             // Vérifier si la note est publiée
-            if (!$note->evaluation || !$note->evaluation->is_published) {
+            if (! app(ParentChatbotPublicationPolicy::class)->gradeIsPublished($note)) {
                 return; // Ne pas notifier si l'évaluation n'est pas publiée
             }
 
@@ -2376,7 +2377,6 @@ class NotificationService
                 'paiement_valide' => \App\Mail\Parents\PaiementValideMail::class,
                 'paiement_rejete' => \App\Mail\Parents\PaiementRejeteMail::class,
                 'absence' => \App\Mail\Parents\AbsenceNotificationMail::class,
-                'bulletin_publie' => \App\Mail\Parents\BulletinPublishedMail::class,
                 'notes_faibles' => \App\Mail\Parents\LowGradesMail::class,
                 default => null,
             };
@@ -2421,7 +2421,6 @@ class NotificationService
                 'paiement_valide' => $this->whatsappService->sendPaiementValideNotification($tuteur->telephone, $data),
                 'paiement_rejete' => $this->whatsappService->sendPaiementRejeteNotification($tuteur->telephone, $data),
                 'absence' => $this->whatsappService->sendAbsenceNotification($tuteur->telephone, $data),
-                'bulletin_publie' => $this->whatsappService->sendBulletinPublishedNotification($tuteur->telephone, $data),
                 'notes_faibles' => $this->whatsappService->sendLowGradesNotification($tuteur->telephone, $data),
                 default => false,
             };
@@ -2466,7 +2465,6 @@ class NotificationService
                 'paiement_valide' => $this->smsService->sendPaiementValideNotification($tuteur->telephone, $data),
                 'paiement_rejete' => $this->smsService->sendPaiementRejeteNotification($tuteur->telephone, $data),
                 'absence' => $this->smsService->sendAbsenceNotification($tuteur->telephone, $data),
-                'bulletin_publie' => $this->smsService->sendBulletinPublishedNotification($tuteur->telephone, $data),
                 'notes_faibles' => $this->smsService->sendLowGradesNotification($tuteur->telephone, $data),
                 default => false,
             };
@@ -2593,6 +2591,10 @@ class NotificationService
     public function notifyParentsPaiementValide($paiement)
     {
         try {
+            if ($paiement->status !== 'validé' || $paiement->date_validation === null) {
+                return;
+            }
+
             $inscription = $paiement->inscription;
             if (!$inscription) return;
 
@@ -2825,44 +2827,13 @@ class NotificationService
     public function notifyParentsBulletinPublished($bulletin)
     {
         try {
+            if (! $bulletin instanceof \App\Models\ESBTPBulletin
+                || ! app(ParentChatbotPublicationPolicy::class)->reportCardIsPublished($bulletin)) {
+                return;
+            }
+
             $etudiant = $bulletin->etudiant;
-            if (!$etudiant) return;
-
-            $tuteur = $etudiant->tuteur;
-            if (!$etudiant->user || !$tuteur) return;
-
-            $preferences = $tuteur->getOrCreateNotificationPreferences();
-            if (!$preferences->isNotificationEnabled('bulletins')) return;
-
-            $mention = $bulletin->mention ?? 'N/A';
-            $mentionColor = $this->getMentionColor($mention);
-            $schoolSettings = $this->getSchoolSettings();
-
-
-            $data = [
-                'parentName' => $tuteur->nom . ' ' . $tuteur->prenoms,
-                'studentName' => $etudiant->nom . ' ' . $etudiant->prenoms,
-                'classe' => $bulletin->classe->nom ?? 'N/A',
-                'periode' => $bulletin->periode,
-                'anneeUniversitaire' => $bulletin->anneeUniversitaire->annee ?? 'N/A',
-                'moyenneGenerale' => $bulletin->moyenne_generale ?? 0,
-                'rang' => $bulletin->rang ?? 'N/A',
-                'effectifClasse' => $bulletin->classe->nombre_etudiants ?? 'N/A',
-                'totalAbsences' => $bulletin->total_absences ?? 0,
-                'noteAssiduite' => $bulletin->note_assiduite,
-                'mention' => $mention,
-                'mentionColor' => $mentionColor,
-                'appreciationGenerale' => $bulletin->appreciation_generale,
-                'decision' => $bulletin->decision,
-                'requiresSignature' => true,
-                'bulletinUrl' => route('esbtp.mon-bulletin.index'),
-
-                'schoolName' => $schoolSettings['school_name'],
-                'schoolAddress' => $schoolSettings['school_address'],
-                'schoolPhone' => $schoolSettings['school_phone'],
-                'schoolEmail' => $schoolSettings['school_email'],
-                'schoolLogoPath' => $schoolSettings['schoolLogoPath'],
-            ];
+            if (! $etudiant) return;
 
             // Notification in-app
             Notification::create([
@@ -2873,12 +2844,8 @@ class NotificationService
                 'is_read' => false,
             ]);
 
-            // Email
-            if ($preferences->hasChannel('email') && $tuteur->email) {
-                Mail::to($tuteur->email)->send(new \App\Mail\Parents\BulletinPublishedMail($data));
-            }
-
-            $preferences->incrementNotificationCount();
+            // Les canaux externes passent exclusivement par l'outbox MailPulse.
+            $this->notifyMailPulse(fn (MailPulseWorkflowNotificationService $mailPulse) => $mailPulse->notifyBulletinPublished($bulletin));
 
         } catch (\Exception $e) {
             Log::error('Erreur notification bulletin publié parent: ' . $e->getMessage());
