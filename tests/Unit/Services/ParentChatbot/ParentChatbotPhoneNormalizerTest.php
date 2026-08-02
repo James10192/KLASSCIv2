@@ -40,4 +40,18 @@ class ParentChatbotPhoneNormalizerTest extends TestCase
             $normalizer->hash('+2250707123456')
         );
     }
+
+    public function test_it_derives_phone_hash_key_from_service_secret_when_dedicated_key_is_absent(): void
+    {
+        config()->set('services.mailpulse.parent_chatbot_phone_hash_key', '');
+        config()->set('services.mailpulse.parent_chatbot_service_secret', str_repeat('s', 32));
+
+        $normalizer = app(ParentChatbotPhoneNormalizer::class);
+        $derivedKey = hash_hmac('sha256', 'parent_chatbot_phone_hash_key', str_repeat('s', 32));
+
+        $this->assertSame(
+            hash_hmac('sha256', '+2250707123456', $derivedKey),
+            $normalizer->hash('+2250707123456')
+        );
+    }
 }

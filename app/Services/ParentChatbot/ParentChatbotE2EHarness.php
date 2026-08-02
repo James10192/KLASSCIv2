@@ -109,8 +109,9 @@ class ParentChatbotE2EHarness
         }
 
         $normalizedPhone = $this->authorizedTestPhone($phone);
-        $secret = (string) config('services.mailpulse.parent_chatbot_webhook_secret', '');
-        if (strlen($secret) < 32) {
+        try {
+            $secret = ParentChatbotSecurityConfig::webhookSecret();
+        } catch (\LogicException) {
             throw ValidationException::withMessages([
                 'webhook_secret' => 'MAILPULSE_PARENT_CHATBOT_WEBHOOK_SECRET doit etre configure.',
             ]);

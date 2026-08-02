@@ -408,11 +408,10 @@ class ParentChatbotLinkService
 
     private function codeHash(string $code): string
     {
-        $pepper = (string) config('services.mailpulse.parent_chatbot_code_pepper', '');
-        if (strlen($pepper) < 32) {
-            throw new RuntimeException('MAILPULSE_PARENT_CHATBOT_CODE_PEPPER must be at least 32 characters.');
+        try {
+            return hash_hmac('sha256', $code, ParentChatbotSecurityConfig::codePepper());
+        } catch (\LogicException $exception) {
+            throw new RuntimeException('MAILPULSE_PARENT_CHATBOT_CODE_PEPPER must be at least 32 characters.', previous: $exception);
         }
-
-        return hash_hmac('sha256', $code, $pepper);
     }
 }

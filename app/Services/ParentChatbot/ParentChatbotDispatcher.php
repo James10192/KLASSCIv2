@@ -71,12 +71,19 @@ class ParentChatbotDispatcher
     ): ParentChatbotDispatchOutcome {
         $baseUrl = rtrim((string) config('services.mailpulse.base_url'), '/');
         $endpoint = (string) config('services.mailpulse.parent_chatbot_dispatch_endpoint');
-        $serviceSecret = (string) config('services.mailpulse.parent_chatbot_service_secret');
         $requestId = MailPulseTenantContext::scopedIdentifier(
             $requestId ?? 'parent-chatbot-'.(string) Str::uuid()
         );
 
-        if ($baseUrl === '' || $endpoint === '' || strlen($serviceSecret) < 32) {
+        try {
+            $serviceSecret = ParentChatbotSecurityConfig::serviceSecret();
+        } catch (\LogicException) {
+            Log::warning('Parent chatbot dispatch is not configured', ['event_id' => $eventId, 'intent' => $intent->value]);
+
+            return ParentChatbotDispatchOutcome::failed();
+        }
+
+        if ($baseUrl === '' || $endpoint === '') {
             Log::warning('Parent chatbot dispatch is not configured', ['event_id' => $eventId, 'intent' => $intent->value]);
 
             return ParentChatbotDispatchOutcome::failed();
