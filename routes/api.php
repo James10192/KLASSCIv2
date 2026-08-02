@@ -305,6 +305,15 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::post('/mailpulse/test-notification', [App\Http\Controllers\API\CLI\CLIMailPulseController::class, 'testNotification'])
         ->middleware('throttle:10,1')
         ->name('mailpulse.test-notification');
+    Route::post('/mailpulse/parent-chatbot/e2e/prepare', [App\Http\Controllers\API\CLI\CLIMailPulseController::class, 'prepareParentChatbotFixture'])
+        ->middleware('throttle:10,1')
+        ->name('mailpulse.parent-chatbot.e2e.prepare');
+    Route::post('/mailpulse/parent-chatbot/e2e/inbound', [App\Http\Controllers\API\CLI\CLIMailPulseController::class, 'triggerParentChatbotInbound'])
+        ->middleware('throttle:20,1')
+        ->name('mailpulse.parent-chatbot.e2e.inbound');
+    Route::post('/mailpulse/parent-chatbot/e2e/cleanup', [App\Http\Controllers\API\CLI\CLIMailPulseController::class, 'cleanupParentChatbotFixture'])
+        ->middleware('throttle:10,1')
+        ->name('mailpulse.parent-chatbot.e2e.cleanup');
 
     // Write endpoints
     Route::post('/inscriptions/{id}/validate', [App\Http\Controllers\API\CLI\CLIStudentController::class, 'validateInscription'])->name('inscriptions.validate');

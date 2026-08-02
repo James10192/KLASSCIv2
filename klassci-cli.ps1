@@ -508,6 +508,117 @@ switch ($Command) {
         Invoke-KlassciApi -Method "POST" -Path "/mailpulse/test-notification" -Config $cfg -Body $body | ConvertTo-Json -Depth 8
         break
     }
+    "mailpulse:parent-chatbot:e2e-prepare" {
+        $targetTenant = $Tenant
+        $argsForCommand = @($ExtraArgs)
+        if ($Tenant -like "--*") {
+            $targetTenant = "presentation"
+            $argsForCommand = @($Tenant) + @($ExtraArgs)
+        }
+
+        $label = $null
+        $phone = $null
+        $studentId = $null
+
+        foreach ($arg in $argsForCommand) {
+            if ($arg -match '^--label=(.+)$') {
+                $label = $matches[1]
+                continue
+            }
+            if ($arg -match '^--phone=(.+)$') {
+                $phone = $matches[1]
+                continue
+            }
+            if ($arg -match '^--student-id=(\d+)$') {
+                $studentId = [int]$matches[1]
+                continue
+            }
+            throw "Option inconnue pour mailpulse:parent-chatbot:e2e-prepare: $arg"
+        }
+
+        if (-not $label -or -not $phone -or -not $studentId) {
+            throw "Usage: .\klassci-cli.ps1 mailpulse:parent-chatbot:e2e-prepare [presentation] --label=codex-e2e-... --phone=+225... --student-id=123"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $targetTenant
+        Invoke-KlassciApi -Method "POST" -Path "/mailpulse/parent-chatbot/e2e/prepare" -Config $cfg -Body @{
+            label = $label
+            phone = $phone
+            student_id = $studentId
+        } | ConvertTo-Json -Depth 8
+        break
+    }
+    "mailpulse:parent-chatbot:e2e-inbound" {
+        $targetTenant = $Tenant
+        $argsForCommand = @($ExtraArgs)
+        if ($Tenant -like "--*") {
+            $targetTenant = "presentation"
+            $argsForCommand = @($Tenant) + @($ExtraArgs)
+        }
+
+        $label = $null
+        $eventId = $null
+        $phone = $null
+        $message = $null
+
+        foreach ($arg in $argsForCommand) {
+            if ($arg -match '^--label=(.+)$') {
+                $label = $matches[1]
+                continue
+            }
+            if ($arg -match '^--event-id=(.+)$') {
+                $eventId = $matches[1]
+                continue
+            }
+            if ($arg -match '^--phone=(.+)$') {
+                $phone = $matches[1]
+                continue
+            }
+            if ($arg -match '^--message=(.+)$') {
+                $message = $matches[1]
+                continue
+            }
+            throw "Option inconnue pour mailpulse:parent-chatbot:e2e-inbound: $arg"
+        }
+
+        if (-not $label -or -not $eventId -or -not $phone -or -not $message) {
+            throw "Usage: .\klassci-cli.ps1 mailpulse:parent-chatbot:e2e-inbound [presentation] --label=codex-e2e-... --event-id=codex-e2e-...-notes --phone=+225... --message=NOTES"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $targetTenant
+        Invoke-KlassciApi -Method "POST" -Path "/mailpulse/parent-chatbot/e2e/inbound" -Config $cfg -Body @{
+            label = $label
+            event_id = $eventId
+            phone = $phone
+            message = $message
+        } | ConvertTo-Json -Depth 8
+        break
+    }
+    "mailpulse:parent-chatbot:e2e-cleanup" {
+        $targetTenant = $Tenant
+        $argsForCommand = @($ExtraArgs)
+        if ($Tenant -like "--*") {
+            $targetTenant = "presentation"
+            $argsForCommand = @($Tenant) + @($ExtraArgs)
+        }
+
+        $label = $null
+        foreach ($arg in $argsForCommand) {
+            if ($arg -match '^--label=(.+)$') {
+                $label = $matches[1]
+                continue
+            }
+            throw "Option inconnue pour mailpulse:parent-chatbot:e2e-cleanup: $arg"
+        }
+
+        if (-not $label) {
+            throw "Usage: .\klassci-cli.ps1 mailpulse:parent-chatbot:e2e-cleanup [presentation] --label=codex-e2e-..."
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $targetTenant
+        Invoke-KlassciApi -Method "POST" -Path "/mailpulse/parent-chatbot/e2e/cleanup" -Config $cfg -Body @{ label = $label } | ConvertTo-Json -Depth 8
+        break
+    }
     "logs" {
         $targetTenant = $Tenant
         $argsForCommand = @($ExtraArgs)
@@ -917,6 +1028,9 @@ switch ($Command) {
         Write-Host "Usage:" -ForegroundColor Yellow
         Write-Host "  .\klassci-cli.ps1 doctor [--Json]"
         Write-Host "  .\klassci-cli.ps1 mailpulse:test [presentation] --event payment_received --channel both --dry-run false"
+        Write-Host "  .\klassci-cli.ps1 mailpulse:parent-chatbot:e2e-prepare [presentation] --label=codex-e2e-... --phone=+225... --student-id=123"
+        Write-Host "  .\klassci-cli.ps1 mailpulse:parent-chatbot:e2e-inbound [presentation] --label=codex-e2e-... --event-id=codex-e2e-...-notes --phone=+225... --message=NOTES"
+        Write-Host "  .\klassci-cli.ps1 mailpulse:parent-chatbot:e2e-cleanup [presentation] --label=codex-e2e-..."
         Write-Host "  .\klassci-cli.ps1 logs [presentation] --lines 100 --search MailPulse"
         Write-Host "  .\klassci-cli.ps1 permissions:list <tenant> [groupe]"
         Write-Host "  .\klassci-cli.ps1 permissions:audit [presentation]"
