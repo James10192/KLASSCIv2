@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\ResetsPersonnelPassword;
 use App\Models\User;
 use App\Services\Scoring\PersonnelScoringService;
 use App\Services\UserService;
+use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -92,6 +93,7 @@ class ESBTPComptableController extends Controller
     public function update(Request $request, User $user)
     {
         abort_unless($user->can('comptabilite.access'), 403);
+        $this->authorize('update', $user);
 
         $validated = $request->validate([
             'name'       => 'required|string|max:255',
@@ -115,19 +117,26 @@ class ESBTPComptableController extends Controller
             ->with('success', 'Informations mises à jour.');
     }
 
-    public function toggleStatus(User $user)
+    public function toggleStatus(User $user, SuperAdminLifecycleGuard $lifecycle)
     {
         abort_unless($user->can('comptabilite.access'), 403);
 
-        $user->update(['is_active' => !$user->is_active]);
+        try {
+            $isActive = $lifecycle->toggleUser(
+                $user->id,
+                authorize: fn (User $target) => $this->authorize('update', $target),
+            );
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
-        $label = $user->is_active ? 'activé' : 'désactivé';
+        $label = $isActive ? 'activé' : 'désactivé';
 
         if (request()->expectsJson()) {
             return response()->json([
                 'success' => true,
                 'message' => "Comptable {$label}.",
-                'is_active' => $user->is_active,
+                'is_active' => $isActive,
             ]);
         }
 
@@ -180,7 +189,7 @@ class ESBTPComptableController extends Controller
         }
     }
 
-    public function destroy(User $user)
+    public function destroy(User $user, SuperAdminLifecycleGuard $lifecycle)
     {
         abort_unless($user->can('comptabilite.access'), 403);
 
@@ -189,20 +198,21 @@ class ESBTPComptableController extends Controller
         }
 
         try {
-            DB::beginTransaction();
-
-            $user->update([
-                'is_active' => false,
-                'email' => $user->email . '_deleted_' . time(),
-            ]);
-            $user->removeRole('comptable');
-
-            DB::commit();
+            $lifecycle->deactivateUser(
+                $user->id,
+                function (User $target): void {
+                    $target->update([
+                        'is_active' => false,
+                        'email' => $target->email . '_deleted_' . time(),
+                    ]);
+                    $target->removeRole('comptable');
+                },
+                authorize: fn (User $target) => $this->authorize('delete', $target),
+            );
 
             return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Comptable désactivé avec succès');
         } catch (\Exception $e) {
-            DB::rollBack();
             return redirect()->back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
         }
     }
@@ -214,6 +224,8 @@ class ESBTPComptableController extends Controller
      */
     public function resetPassword(User $user)
     {
+        $this->authorize('update', $user);
+
         if (! $user->hasRole('comptable')) {
             abort(404, 'Comptable non trouvé.');
         }

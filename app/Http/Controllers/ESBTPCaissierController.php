@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\ResetsPersonnelPassword;
 use App\Models\User;
 use App\Services\Scoring\PersonnelScoringService;
+use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -56,7 +57,7 @@ class ESBTPCaissierController extends Controller
     /**
      * Met à jour un caissier.
      */
-    public function update(Request $request, User $caissier)
+    public function update(Request $request, User $caissier, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->ensureCanManage();
         $this->ensureIsCaissier($caissier);
@@ -69,23 +70,27 @@ class ESBTPCaissierController extends Controller
         ]);
 
         try {
-            $caissier->fill([
+            $attributes = [
                 'name'  => $validated['name'],
                 'email' => $validated['email'] ?? null,
                 'phone' => $validated['phone'] ?? null,
-            ]);
+            ];
 
             if (array_key_exists('is_active', $validated)) {
-                $caissier->is_active = (bool) $validated['is_active'];
+                $attributes['is_active'] = (bool) $validated['is_active'];
             }
 
-            $caissier->save();
+            $updatedCaissier = $lifecycle->updateUser(
+                $caissier->id,
+                $attributes,
+                authorize: fn (User $user) => $this->authorize('update', $user),
+            );
 
             if ($request->expectsJson() || $request->ajax()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Informations mises à jour.',
-                    'user'    => $caissier->fresh(),
+                    'user'    => $updatedCaissier,
                 ]);
             }
 
@@ -107,7 +112,7 @@ class ESBTPCaissierController extends Controller
     /**
      * Désactive un caissier (soft delete : retire le rôle + désactive le compte).
      */
-    public function destroy(User $caissier)
+    public function destroy(User $caissier, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->ensureCanManage();
         $this->ensureIsCaissier($caissier);
@@ -117,20 +122,21 @@ class ESBTPCaissierController extends Controller
         }
 
         try {
-            DB::beginTransaction();
-
-            $caissier->update([
-                'is_active' => false,
-                'email'     => $caissier->email ? $caissier->email . '_deleted_' . time() : null,
-            ]);
-            $caissier->removeRole('caissier');
-
-            DB::commit();
+            $lifecycle->deactivateUser(
+                $caissier->id,
+                function (User $user): void {
+                    $user->update([
+                        'is_active' => false,
+                        'email' => $user->email ? $user->email . '_deleted_' . time() : null,
+                    ]);
+                    $user->removeRole('caissier');
+                },
+                authorize: fn (User $user) => $this->authorize('delete', $user),
+            );
 
             return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Caissier désactivé avec succès.');
         } catch (\Exception $e) {
-            DB::rollBack();
             return redirect()->back()->with('error', 'Erreur lors de la suppression : ' . $e->getMessage());
         }
     }
@@ -138,22 +144,27 @@ class ESBTPCaissierController extends Controller
     /**
      * Bascule l'état actif/inactif du caissier.
      */
-    public function toggleStatus(User $caissier)
+    public function toggleStatus(User $caissier, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->ensureCanManage();
         $this->ensureIsCaissier($caissier);
 
-        $caissier->update([
-            'is_active' => ! $caissier->is_active,
-        ]);
+        try {
+            $isActive = $lifecycle->toggleUser(
+                $caissier->id,
+                authorize: fn (User $user) => $this->authorize('update', $user),
+            );
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
-        $label = $caissier->is_active ? 'activé' : 'désactivé';
+        $label = $isActive ? 'activé' : 'désactivé';
 
         if (request()->expectsJson() || request()->ajax()) {
             return response()->json([
                 'success'   => true,
                 'message'   => "Caissier {$label}.",
-                'is_active' => $caissier->is_active,
+                'is_active' => $isActive,
             ]);
         }
 
@@ -168,6 +179,7 @@ class ESBTPCaissierController extends Controller
     {
         $this->ensureCanManage();
         $this->ensureIsCaissier($caissier);
+        $this->authorize('update', $caissier);
 
         return $this->resetPersonnelPassword($caissier, 'caissier');
     }

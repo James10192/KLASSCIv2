@@ -2,8 +2,14 @@
 
 namespace App\Http\Controllers\API\CLI;
 
+use App\Exceptions\LastActiveSuperAdminException;
+use App\Exceptions\UserDeletionRejectedException;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\User;
+use App\Services\CLI\UserDeletionService;
+use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Hash;
@@ -115,20 +121,35 @@ class CLIUserController extends BaseApiController
     /**
      * POST /api/cli/user/{id}/reset-password-expiry — Mark password as just changed
      */
-    public function userResetPasswordExpiry(Request $request, $id): JsonResponse
+    public function userResetPasswordExpiry(
+        Request $request,
+        $id,
+        SuperAdminLifecycleGuard $lifecycle,
+    ): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:admin')) {
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
-        $user = User::find($id);
-        if (!$user) {
+        $caller = $request->user();
+        try {
+            $user = $lifecycle->updateUser(
+                (int) $id,
+                [
+                    'password_changed_at' => now(),
+                    'must_change_password' => false,
+                ],
+                authorize: function (User $target) use ($caller): void {
+                    if ($target->hasAnyRole(['superAdmin', 'serviceTechnique']) && !$caller->hasRole('superAdmin')) {
+                        throw new AuthorizationException('Only a superAdmin can update privileged password state');
+                    }
+                },
+            );
+        } catch (AuthorizationException $e) {
+            return $this->errorResponse($e->getMessage(), [], 403);
+        } catch (ModelNotFoundException) {
             return $this->errorResponse("User #{$id} not found", [], 404);
         }
-
-        $user->password_changed_at = now();
-        $user->must_change_password = false;
-        $user->save();
 
         return $this->successResponse([
             'user_id' => $user->id,
@@ -142,58 +163,26 @@ class CLIUserController extends BaseApiController
     /**
      * POST /api/cli/user/{id}/delete — Soft-delete a user
      */
-    public function userDelete(Request $request, $id): JsonResponse
+    public function userDelete(Request $request, $id, UserDeletionService $deletion): JsonResponse
     {
         if (!$request->user()->tokenCan('cli:admin')) {
             return $this->errorResponse('Token missing cli:admin ability', [], 403);
         }
 
-        $user = User::find($id);
-        if (!$user) {
-            return $this->errorResponse("User #{$id} not found", [], 404);
-        }
-
-        // Block self-deletion
-        if ($user->id === $request->user()->id) {
-            return $this->errorResponse('Cannot delete your own account', [], 422);
-        }
-
-        // Block deletion of last superAdmin
-        if ($user->can('admin.access') && User::role('superAdmin')->count() <= 1) {
-            return $this->errorResponse('Cannot delete the last superAdmin account', [], 422);
-        }
-
-        // Block deletion of dedicated technical support accounts without trapping every privileged admin.
-        if ($user->hasRole('serviceTechnique')) {
-            return $this->errorResponse('Cannot delete serviceTechnique accounts', [], 422);
-        }
-
         try {
-            $deletedData = [
-                'user_id' => $user->id,
-                'name' => $user->name,
-                'username' => $user->username,
-                'email' => $user->email,
-                'role' => $user->getRoleNames()->first() ?? '-',
-                'related_data' => [
-                    'inscriptions' => $user->etudiant ? $user->etudiant->inscriptions()->count() : 0,
-                    'tokens' => $user->tokens()->count(),
-                ],
-            ];
+            $result = $deletion->delete((int) $id, $request->user());
 
-            // Revoke all Sanctum tokens
-            $user->tokens()->delete();
-
-            // Deactivate
-            $user->is_active = false;
-            $user->save();
-
-            // Soft-delete
-            $user->delete();
-
-            Log::info('CLI: user deleted', ['user_id' => $user->id, 'name' => $user->name, 'by' => $request->user()->id]);
-
-            return $this->successResponse($deletedData, "User '{$user->name}' (#{$user->id}) has been deleted");
+            return $result['status'] === 200
+                ? $this->successResponse($result['data'], $result['message'])
+                : $this->errorResponse($result['message'], [], $result['status']);
+        } catch (LastActiveSuperAdminException $e) {
+            return $this->errorResponse($e->getMessage(), [], 422);
+        } catch (UserDeletionRejectedException $e) {
+            return $this->errorResponse($e->getMessage(), [], 422);
+        } catch (AuthorizationException $e) {
+            return $this->errorResponse($e->getMessage(), [], 403);
+        } catch (ModelNotFoundException) {
+            return $this->errorResponse("User #{$id} not found", [], 404);
         } catch (\Exception $e) {
             Log::error('CLI: user deletion failed', ['error' => $e->getMessage(), 'trace' => $e->getTraceAsString()]);
             return $this->errorResponse('Operation failed. Check server logs for details.', [], 500);

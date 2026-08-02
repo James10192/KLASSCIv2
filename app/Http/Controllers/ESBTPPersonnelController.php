@@ -2,7 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\LastActiveSuperAdminException;
 use App\Models\User;
+use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -170,7 +174,7 @@ class ESBTPPersonnelController extends Controller
     /**
      * Update the specified personnel in storage.
      */
-    public function update(Request $request, User $personnel)
+    public function update(Request $request, User $personnel, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->authorize('users.manage');
         
@@ -188,8 +192,6 @@ class ESBTPPersonnelController extends Controller
         ]);
 
         try {
-            DB::beginTransaction();
-
             $updateData = [
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -207,18 +209,24 @@ class ESBTPPersonnelController extends Controller
                 $updateData['password'] = Hash::make($validated['password']);
             }
 
-            $personnel->update($updateData);
-
-            DB::commit();
+            $updatedPersonnel = $lifecycle->updateUser(
+                $personnel->id,
+                $updateData,
+                authorize: fn (User $user) => $this->authorize('update', $user),
+            );
 
             return response()->json([
                 'success' => true,
                 'message' => 'Personnel mis à jour avec succès.',
-                'data' => $personnel
+                'data' => $updatedPersonnel
             ]);
-
+        } catch (LastActiveSuperAdminException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (AuthorizationException) {
+            return response()->json(['success' => false, 'message' => 'Action non autorisée sur ce personnel.'], 403);
+        } catch (ModelNotFoundException) {
+            return response()->json(['success' => false, 'message' => 'Personnel introuvable.'], 404);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la mise à jour : ' . $e->getMessage()
@@ -229,7 +237,7 @@ class ESBTPPersonnelController extends Controller
     /**
      * Remove the specified personnel from storage.
      */
-    public function destroy(User $personnel)
+    public function destroy(User $personnel, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->authorize('users.manage');
         
@@ -242,23 +250,29 @@ class ESBTPPersonnelController extends Controller
         }
 
         try {
-            DB::beginTransaction();
-
-            // Marquer comme inactif au lieu de supprimer complètement
-            $personnel->update([
-                'is_active' => false,
-                'email' => $personnel->email . '_deleted_' . time(),
-            ]);
-
-            DB::commit();
+            $lifecycle->deactivateUser(
+                $personnel->id,
+                function (User $user): void {
+                    $user->update([
+                        'is_active' => false,
+                        'email' => $user->email . '_deleted_' . time(),
+                    ]);
+                },
+                authorize: fn (User $user) => $this->authorize('delete', $user),
+            );
 
             return response()->json([
                 'success' => true,
                 'message' => 'Personnel supprimé avec succès.'
             ]);
 
+        } catch (LastActiveSuperAdminException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (AuthorizationException) {
+            return response()->json(['success' => false, 'message' => 'Action non autorisée sur ce personnel.'], 403);
+        } catch (ModelNotFoundException) {
+            return response()->json(['success' => false, 'message' => 'Personnel introuvable.'], 404);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la suppression : ' . $e->getMessage()
@@ -269,20 +283,29 @@ class ESBTPPersonnelController extends Controller
     /**
      * Toggle active status of personnel
      */
-    public function toggleStatus(User $personnel)
+    public function toggleStatus(User $personnel, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->authorize('users.manage');
         
-        $personnel->update([
-            'is_active' => !$personnel->is_active
-        ]);
+        try {
+            $isActive = $lifecycle->toggleUser(
+                $personnel->id,
+                authorize: fn (User $user) => $this->authorize('update', $user),
+            );
+        } catch (LastActiveSuperAdminException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (AuthorizationException) {
+            return response()->json(['success' => false, 'message' => 'Action non autorisée sur ce personnel.'], 403);
+        } catch (ModelNotFoundException) {
+            return response()->json(['success' => false, 'message' => 'Personnel introuvable.'], 404);
+        }
 
-        $status = $personnel->is_active ? 'activé' : 'désactivé';
+        $status = $isActive ? 'activé' : 'désactivé';
         
         return response()->json([
             'success' => true,
             'message' => "Personnel {$status} avec succès.",
-            'is_active' => $personnel->is_active
+            'is_active' => $isActive
         ]);
     }
 
@@ -339,7 +362,7 @@ class ESBTPPersonnelController extends Controller
     /**
      * Bulk actions on personnel
      */
-    public function bulkAction(Request $request)
+    public function bulkAction(Request $request, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->authorize('users.manage');
         
@@ -361,28 +384,28 @@ class ESBTPPersonnelController extends Controller
         }
         
         try {
-            DB::beginTransaction();
-            
-            $users = User::whereIn('id', $ids)->get();
-            
-            foreach ($users as $user) {
-                switch ($action) {
-                    case 'activate':
+            $mutation = function ($users) use ($action): void {
+                foreach ($users as $user) {
+                    if ($action === 'activate') {
                         $user->update(['is_active' => true]);
-                        break;
-                    case 'deactivate':
+                    } elseif ($action === 'deactivate') {
                         $user->update(['is_active' => false]);
-                        break;
-                    case 'delete':
+                    } else {
                         $user->update([
                             'is_active' => false,
                             'email' => $user->email . '_deleted_' . time(),
                         ]);
-                        break;
+                    }
                 }
+            };
+
+            $ability = $action === 'delete' ? 'delete' : 'update';
+            $authorize = fn (User $user) => $this->authorize($ability, $user);
+            if ($action === 'activate') {
+                $lifecycle->activateUsers($ids, $mutation, $authorize);
+            } else {
+                $lifecycle->deactivateUsers($ids, $mutation, $authorize);
             }
-            
-            DB::commit();
             
             $actionLabel = [
                 'activate' => 'activés',
@@ -395,8 +418,13 @@ class ESBTPPersonnelController extends Controller
                 'message' => count($ids) . ' utilisateur(s) ' . $actionLabel[$action] . ' avec succès.'
             ]);
             
+        } catch (LastActiveSuperAdminException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (AuthorizationException) {
+            return response()->json(['success' => false, 'message' => 'Action non autorisée sur ce personnel.'], 403);
+        } catch (ModelNotFoundException) {
+            return response()->json(['success' => false, 'message' => 'Un utilisateur est introuvable.'], 404);
         } catch (\Exception $e) {
-            DB::rollBack();
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de l\'action groupée : ' . $e->getMessage()

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use App\Services\UserService;
+use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use Illuminate\Support\Facades\Validator;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Auth;
@@ -124,6 +125,7 @@ class ESBTPSecretaireController extends Controller
     public function update(Request $request, $id)
     {
         $secretaire = User::role('secretaire')->findOrFail($id);
+        $this->authorize('update', $secretaire);
 
         // Capturer les données validées pour éviter la vulnérabilité mass assignment
         $validator = Validator::make($request->all(), [
@@ -162,7 +164,7 @@ class ESBTPSecretaireController extends Controller
     /**
      * Supprime un secrétaire
      */
-    public function destroy($id)
+    public function destroy($id, SuperAdminLifecycleGuard $lifecycle)
     {
         $secretaire = User::role('secretaire')->findOrFail($id);
 
@@ -171,20 +173,21 @@ class ESBTPSecretaireController extends Controller
         }
 
         try {
-            DB::beginTransaction();
-
-            $secretaire->update([
-                'is_active' => false,
-                'email' => $secretaire->email . '_deleted_' . time(),
-            ]);
-            $secretaire->removeRole('secretaire');
-
-            DB::commit();
+            $lifecycle->deactivateUser(
+                $secretaire->id,
+                function (User $user): void {
+                    $user->update([
+                        'is_active' => false,
+                        'email' => $user->email . '_deleted_' . time(),
+                    ]);
+                    $user->removeRole('secretaire');
+                },
+                authorize: fn (User $user) => $this->authorize('delete', $user),
+            );
 
             return redirect()->route('esbtp.personnel.unified.index')
                 ->with('success', 'Secrétaire désactivé avec succès');
         } catch (\Exception $e) {
-            DB::rollBack();
             return redirect()->back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
         }
     }
@@ -192,14 +195,17 @@ class ESBTPSecretaireController extends Controller
     /**
      * Toggle secretaire status (active/inactive).
      */
-    public function toggleStatus(Request $request, $id)
+    public function toggleStatus(Request $request, $id, SuperAdminLifecycleGuard $lifecycle)
     {
         $secretaire = User::role('secretaire')->findOrFail($id);
-        $newStatus = $secretaire->is_active ? 0 : 1;
-
-        $secretaire->update([
-            'is_active' => $newStatus,
-        ]);
+        try {
+            $newStatus = $lifecycle->toggleUser(
+                $secretaire->id,
+                authorize: fn (User $user) => $this->authorize('update', $user),
+            );
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
         // Si c'est une requête AJAX, retourner du JSON
         if ($request->wantsJson() || $request->ajax()) {
@@ -219,6 +225,7 @@ class ESBTPSecretaireController extends Controller
     public function resetPassword(User $secretaire)
     {
         $this->authorize('users.manage');
+        $this->authorize('update', $secretaire);
 
         if (!$secretaire->hasRole('secretaire')) {
             abort(404, 'Secrétaire non trouvé.');

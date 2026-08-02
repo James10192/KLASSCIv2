@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\LastActiveSuperAdminException;
 use App\Models\ESBTPPersonnelScoreSnapshot;
 use App\Models\ESBTPTeacher;
 use App\Models\User;
 use App\Services\PermissionRegistry;
 use App\Services\UserService;
+use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -508,7 +512,7 @@ class ESBTPPersonnelUnifiedController extends Controller
     /**
      * Update the specified personnel in storage.
      */
-    public function update(Request $request, $type, $id)
+    public function update(Request $request, $type, $id, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->ensureCanManagePersonnelType($type, 'edit');
 
@@ -536,8 +540,6 @@ class ESBTPPersonnelUnifiedController extends Controller
         $validated = $request->validate($rules);
 
         try {
-            DB::beginTransaction();
-
             $updateData = [
                 'name' => $validated['name'],
                 'email' => $validated['email'],
@@ -557,26 +559,31 @@ class ESBTPPersonnelUnifiedController extends Controller
                 $updateData['password'] = Hash::make($validated['password']);
             }
 
-            $user->update($updateData);
-
-            if ($teacher) {
-                $teacher->update([
+            $updatedUser = $lifecycle->updateUser(
+                $user->id,
+                $updateData,
+                function (User $lockedUser) use ($teacher, $validated): void {
+                    $teacher?->update([
                     'specialization' => $validated['specialization'] ?? null,
                     'qualification' => $validated['qualification'] ?? null,
-                    'status' => $validated['is_active'] ? 'active' : 'inactive',
-                ]);
-            }
-
-            DB::commit();
+                        'status' => $lockedUser->is_active ? 'active' : 'inactive',
+                    ]);
+                },
+                authorize: fn (User $lockedUser) => $this->authorize('update', $lockedUser),
+            );
 
             return response()->json([
                 'success' => true,
                 'message' => 'Personnel mis à jour avec succès.',
-                'data' => $user,
+                'data' => $updatedUser,
             ]);
+        } catch (LastActiveSuperAdminException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (AuthorizationException) {
+            return response()->json(['success' => false, 'message' => 'Action non autorisée sur ce personnel.'], 403);
+        } catch (ModelNotFoundException) {
+            return response()->json(['success' => false, 'message' => 'Personnel introuvable.'], 404);
         } catch (\Exception $e) {
-            DB::rollBack();
-
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la mise à jour : '.$e->getMessage(),
@@ -587,7 +594,7 @@ class ESBTPPersonnelUnifiedController extends Controller
     /**
      * Remove the specified personnel from storage.
      */
-    public function destroy($type, $id)
+    public function destroy($type, $id, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->ensureCanManagePersonnelType($type, 'delete');
 
@@ -601,27 +608,26 @@ class ESBTPPersonnelUnifiedController extends Controller
         }
 
         try {
-            DB::beginTransaction();
+            $lifecycle->deactivateUser($user->id, function (User $lockedUser) use ($teacher): void {
+                $lockedUser->update([
+                    'is_active' => false,
+                    'email' => $lockedUser->email.'_deleted_'.time(),
+                ]);
 
-            // Marquer comme inactif au lieu de supprimer complètement.
-            $user->update([
-                'is_active' => false,
-                'email' => $user->email.'_deleted_'.time(),
-            ]);
-
-            if ($teacher) {
-                $teacher->update(['status' => 'inactive']);
-            }
-
-            DB::commit();
+                $teacher?->update(['status' => 'inactive']);
+            }, authorize: fn (User $lockedUser) => $this->authorize('delete', $lockedUser));
 
             return response()->json([
                 'success' => true,
                 'message' => 'Personnel supprimé avec succès.',
             ]);
+        } catch (LastActiveSuperAdminException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (AuthorizationException) {
+            return response()->json(['success' => false, 'message' => 'Action non autorisée sur ce personnel.'], 403);
+        } catch (ModelNotFoundException) {
+            return response()->json(['success' => false, 'message' => 'Personnel introuvable.'], 404);
         } catch (\Exception $e) {
-            DB::rollBack();
-
             return response()->json([
                 'success' => false,
                 'message' => 'Erreur lors de la suppression : '.$e->getMessage(),
@@ -632,24 +638,34 @@ class ESBTPPersonnelUnifiedController extends Controller
     /**
      * Toggle active status of personnel.
      */
-    public function toggleStatus($type, $id)
+    public function toggleStatus($type, $id, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->ensureCanManagePersonnelType($type, 'edit');
 
         [$user, $teacher] = $this->resolvePersonnel($type, $id);
 
-        $user->update(['is_active' => ! $user->is_active]);
-
-        if ($teacher) {
-            $teacher->update(['status' => $user->is_active ? 'active' : 'inactive']);
+        try {
+            $isActive = $lifecycle->toggleUser(
+                $user->id,
+                function (User $lockedUser) use ($teacher): void {
+                    $teacher?->update(['status' => $lockedUser->is_active ? 'active' : 'inactive']);
+                },
+                authorize: fn (User $lockedUser) => $this->authorize('update', $lockedUser),
+            );
+        } catch (LastActiveSuperAdminException $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 422);
+        } catch (AuthorizationException) {
+            return response()->json(['success' => false, 'message' => 'Action non autorisée sur ce personnel.'], 403);
+        } catch (ModelNotFoundException) {
+            return response()->json(['success' => false, 'message' => 'Personnel introuvable.'], 404);
         }
 
-        $status = $user->is_active ? 'activé' : 'désactivé';
+        $status = $isActive ? 'activé' : 'désactivé';
 
         return response()->json([
             'success' => true,
             'message' => "Personnel {$status} avec succès.",
-            'is_active' => $user->is_active,
+            'is_active' => $isActive,
         ]);
     }
 
