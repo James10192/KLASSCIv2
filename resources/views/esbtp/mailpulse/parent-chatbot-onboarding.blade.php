@@ -4,12 +4,12 @@
 
 @push('styles')
 <style>
-    .mailpulse-onboarding { --mp-black: #111; --mp-orange: #f97316; --mp-line: #dedede; --mp-muted: #6b7280; background: #f6f6f5; min-height: calc(100vh - 80px); }
+    .mailpulse-onboarding { --mailpulse-signal: #ff5a1f; --mp-black: #111; --mp-orange: var(--mailpulse-signal); --mp-line: #dedede; --mp-muted: #6b7280; background: #f6f6f5; min-height: calc(100vh - 80px); }
     .mailpulse-onboarding__shell { max-width: 1080px; }
     .mailpulse-onboarding__brand { background: var(--mp-black); border-radius: 8px; color: #fff; padding: 24px; }
-    .mailpulse-onboarding__mark { align-items: center; background: #fff; border-radius: 8px; display: inline-flex; height: 48px; justify-content: center; width: 48px; }
-    .mailpulse-onboarding__mark svg { height: 36px; width: 36px; }
-    .mailpulse-onboarding__eyebrow { color: #fdba74; font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+    .mailpulse-onboarding__mark { align-items: center; display: inline-flex; height: 48px; justify-content: center; width: 48px; }
+    .mailpulse-onboarding__mark img { height: 42px; object-fit: contain; width: 42px; }
+    .mailpulse-onboarding__eyebrow { color: var(--mailpulse-signal); font-size: .75rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
     .mailpulse-onboarding__title { font-size: clamp(1.55rem, 3vw, 2.15rem); font-weight: 800; margin: 0; }
     .mailpulse-onboarding__copy { color: #d4d4d8; margin: 6px 0 0; max-width: 650px; }
     .mailpulse-onboarding__panel { background: #fff; border: 1px solid var(--mp-line); border-radius: 8px; }
@@ -35,7 +35,7 @@
 @section('content')
 <main class="mailpulse-onboarding py-3 py-md-4"><div class="container-fluid mailpulse-onboarding__shell">
     <section class="mailpulse-onboarding__brand mb-4" aria-labelledby="mailpulse-onboarding-title"><div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
-        <div class="mailpulse-onboarding__mark" aria-hidden="true"><svg viewBox="0 0 36 36" fill="none"><path d="M5.5 9.5A3.5 3.5 0 0 1 9 6h18a3.5 3.5 0 0 1 3.5 3.5v17A3.5 3.5 0 0 1 27 30H9a3.5 3.5 0 0 1-3.5-3.5v-17Z" stroke="#111" stroke-width="2.4" stroke-linejoin="round"/><path d="m7 10 9.08 7.56a3 3 0 0 0 3.84 0L29 10" stroke="#111" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 23h4l2.1-4.2 3.4 7.2 2.45-4.5H27" stroke="#f97316" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <div class="mailpulse-onboarding__mark" aria-hidden="true"><img src="{{ asset('images/mailpulse/mailpulse-mark-dark.png') }}" alt=""></div>
         <div><div class="mailpulse-onboarding__eyebrow">MailPulse</div><h1 class="mailpulse-onboarding__title" id="mailpulse-onboarding-title">Activation des parents</h1><p class="mailpulse-onboarding__copy">Envoyez les codes de liaison aux tuteurs éligibles et suivez le traitement en temps réel.</p></div>
     </div></section>
 

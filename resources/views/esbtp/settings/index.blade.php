@@ -498,15 +498,14 @@
     }
     .mailpulse-logo-mark {
         position: relative; display: inline-flex; align-items: center; justify-content: center;
-        width: 52px; height: 52px; border-radius: 8px;
-        background: #fff; border: 1px solid #d4d4d8; flex-shrink: 0;
+        width: 52px; height: 36px; flex-shrink: 0;
     }
-    .mailpulse-logo-mark svg { width: 36px; height: 36px; }
+    .mailpulse-logo-mark img { width: 48px; height: auto; object-fit: contain; }
     .mailpulse-brand-copy { min-width: 220px; }
     .mailpulse-wordmark {
         font-size: 1.35rem; font-weight: 750; color: #09090b; line-height: 1;
     }
-    .mailpulse-wordmark span { color: #f97316; }
+    .mailpulse-wordmark span { color: var(--mailpulse-signal); }
     .mailpulse-brand-subtitle { margin-top: 6px; color: #a1a1aa; font-size: .86rem; }
     .mailpulse-status-badge {
         display: inline-flex; align-items: center; gap: 6px;
@@ -575,7 +574,7 @@
         border: 1px solid #e5e7eb; color: #3f3f46; font-size: .82rem;
     }
     .mailpulse-info-card strong { color: #09090b; display: block; margin-bottom: 4px; }
-    .mailpulse-info-card i { color: #f97316; margin-right: 6px; }
+    .mailpulse-info-card i { color: var(--mailpulse-signal); margin-right: 6px; }
     .mailpulse-test-grid {
         display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; align-items: end;
     }
@@ -605,7 +604,7 @@
     .mailpulse-save-status { font-size: .84rem; color: #64748b; }
     .mailpulse-save-status.is-success { color: #047857; }
     .mailpulse-save-status.is-error { color: #b91c1c; }
-    .section-icon.mailpulse { background: #09090b; color: #f97316; }
+    .section-icon.mailpulse { background: #09090b; color: var(--mailpulse-signal); }
     @media (max-width: 992px) {
         .mailpulse-info-grid { grid-template-columns: 1fr; }
         .mailpulse-test-grid,
@@ -613,6 +612,7 @@
     }
 
     .settings-page-premium {
+        --mailpulse-signal: #ff5a1f;
         --sp-ink: #0f172a;
         --sp-muted: #64748b;
         --sp-line: #e2e8f0;
@@ -814,7 +814,7 @@
     }
     .settings-page-premium .section-icon.mailpulse {
         background: #09090b !important;
-        color: #f97316;
+        color: var(--mailpulse-signal);
         box-shadow: 0 10px 24px rgba(9,9,11,.18);
     }
     .settings-page-premium .section-title {
@@ -2454,11 +2454,7 @@
 
                     <div class="mailpulse-brand-card">
                         <div class="mailpulse-logo-mark" aria-hidden="true">
-                            <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
-                                <rect x="5" y="10" width="38" height="28" rx="3" stroke="#09090b" stroke-width="2.5"/>
-                                <path d="m7 13 17 13 17-13" stroke="#09090b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
-                                <path d="M8 29h7l3.5-6 5 12 5-8h11" stroke="#f97316" stroke-width="2.75" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
+                            <img src="{{ asset('images/mailpulse/mailpulse-mark-light.png') }}" alt="">
                         </div>
                         <div class="mailpulse-brand-copy">
                             <div class="mailpulse-wordmark">Mail<span>Pulse</span></div>
