@@ -37,8 +37,9 @@ class UserManagementService
             return $actor->hasAnyRole(['superAdmin', 'serviceTechnique']);
         }
 
-        // Au moins un des rôles cibles doit être dans la liste manageable
-        return ! empty(array_intersect($targetRoles, $manageableRoles));
+        // Chaque rôle de la cible doit être gérable. Un rôle secondaire ne doit
+        // jamais permettre de contourner la protection d'un rôle privilégié.
+        return empty(array_diff($targetRoles, $manageableRoles));
     }
 
     /**

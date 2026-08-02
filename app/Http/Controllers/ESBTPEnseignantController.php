@@ -18,6 +18,7 @@ use App\Models\ESBTPTeacherAvailability;
 use App\Services\Scoring\PersonnelScoringService;
 use App\Services\TeacherPlanningService;
 use App\Services\UserService;
+use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -435,6 +436,7 @@ class ESBTPEnseignantController extends Controller
      */
     public function update(UpdateEnseignantRequest $request, ESBTPTeacher $enseignant)
     {
+        $this->authorize('update', $enseignant->user);
         $regime = $request->input('regime') ?: TeacherRegime::Vacataire->value;
 
         DB::beginTransaction();
@@ -549,36 +551,35 @@ class ESBTPEnseignantController extends Controller
     /**
      * Remove the specified teacher from storage.
      */
-    public function destroy(ESBTPTeacher $teacher)
+    public function destroy(ESBTPTeacher $teacher, SuperAdminLifecycleGuard $lifecycle)
     {
         if ($teacher->user_id === auth()->id()) {
             return redirect()->back()->with('error', 'Vous ne pouvez pas supprimer votre propre compte.');
         }
 
         try {
-            DB::beginTransaction();
-
-            // Marquer l'enseignant comme inactif (soft deactivation)
-            $teacher->update(['status' => TeacherStatus::Inactive->value]);
-
-            // Désactiver le compte utilisateur associé
             if ($teacher->user) {
-                $teacher->user->update([
-                    'is_active' => false,
-                    'email' => $teacher->user->email . '_deleted_' . time(),
-                ]);
-                $teacher->user->removeRole('enseignant');
-                $teacher->user->removeRole('teacher');
+                $lifecycle->deactivateUser(
+                    $teacher->user->id,
+                    function (User $user) use ($teacher): void {
+                        $teacher->update(['status' => TeacherStatus::Inactive->value]);
+                        $user->update([
+                            'is_active' => false,
+                            'email' => $user->email . '_deleted_' . time(),
+                        ]);
+                        $user->removeRole('enseignant');
+                        $user->removeRole('teacher');
+                    },
+                    authorize: fn (User $user) => $this->authorize('delete', $user),
+                );
+            } else {
+                $teacher->update(['status' => TeacherStatus::Inactive->value]);
             }
-
-            DB::commit();
 
             return redirect()
                 ->route("esbtp.personnel.unified.index")
                 ->with("success", "Enseignant désactivé avec succès");
         } catch (\Exception $e) {
-            DB::rollback();
-
             return redirect()
                 ->back()
                 ->with(
@@ -609,16 +610,29 @@ class ESBTPEnseignantController extends Controller
     /**
      * Toggle teacher status.
      */
-    public function toggleStatus(Request $request, ESBTPTeacher $teacher)
+    public function toggleStatus(
+        Request $request,
+        ESBTPTeacher $teacher,
+        SuperAdminLifecycleGuard $lifecycle,
+    )
     {
-        $newStatus = $teacher->status === TeacherStatus::Active->value
-            ? TeacherStatus::Inactive->value
-            : TeacherStatus::Active->value;
-
-        $teacher->update([
-            "status" => $newStatus,
-            "updated_by" => auth()->id(),
-        ]);
+        try {
+            $isActive = $lifecycle->toggleUser(
+                $teacher->user_id,
+                function (User $user) use ($teacher): void {
+                    $teacher->update([
+                        'status' => $user->is_active
+                            ? TeacherStatus::Active->value
+                            : TeacherStatus::Inactive->value,
+                        'updated_by' => auth()->id(),
+                    ]);
+                },
+                authorize: fn (User $user) => $this->authorize('update', $user),
+            );
+            $newStatus = $isActive ? TeacherStatus::Active->value : TeacherStatus::Inactive->value;
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', $e->getMessage());
+        }
 
         // Si c'est une requête AJAX, retourner du JSON
         if ($request->wantsJson() || $request->ajax()) {
@@ -915,6 +929,8 @@ class ESBTPEnseignantController extends Controller
                     ->back()
                     ->with("error", "Compte utilisateur introuvable.");
             }
+
+            $this->authorize('update', $user);
 
             // Mot de passe par défaut
             $defaultPassword = "Bonjour@2025";

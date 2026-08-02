@@ -65,6 +65,22 @@ class UserManagementServiceTest extends TestCase
         $this->assertFalse($this->service->canManage($secretaire, $superAdmin));
     }
 
+    public function test_manageable_secondary_role_does_not_bypass_protected_role(): void
+    {
+        $secretaire = $this->userWithRoles(['secretaire'], 1);
+        $mixedTarget = $this->userWithRoles(['superAdmin', 'enseignant'], 2);
+
+        $this->assertFalse($this->service->canManage($secretaire, $mixedTarget));
+    }
+
+    public function test_actor_must_manage_every_target_role(): void
+    {
+        $support = $this->userWithRoles(['serviceTechnique'], 1);
+        $mixedTarget = $this->userWithRoles(['superAdmin', 'enseignant'], 2);
+
+        $this->assertTrue($this->service->canManage($support, $mixedTarget));
+    }
+
     public function test_secretaire_cannot_manage_comptable(): void
     {
         $secretaire = $this->userWithRoles(['secretaire'], 1);

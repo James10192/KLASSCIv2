@@ -13,6 +13,7 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPParent;
 use App\Models\ESBTPPaiement;
 use App\Models\ESBTPSeanceCours;
+use App\Models\User;
 use App\Policies\AbsenceJustificationPolicy;
 use App\Policies\AcademicActorAssignmentPolicy;
 use App\Policies\ESBTPBulletinPolicy;
@@ -24,6 +25,7 @@ use App\Policies\ESBTPPaiementPolicy;
 use App\Policies\ESBTPSeanceCoursPolicy;
 use App\Policies\GradeSheetDocumentPolicy;
 use App\Policies\GradeSheetPolicy;
+use App\Policies\UserManagementPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 
@@ -45,6 +47,7 @@ class AuthServiceProvider extends ServiceProvider
         GradeSheet::class => GradeSheetPolicy::class,
         GradeSheetDocument::class => GradeSheetDocumentPolicy::class,
         AcademicActorAssignment::class => AcademicActorAssignmentPolicy::class,
+        User::class => UserManagementPolicy::class,
     ];
 
     /**

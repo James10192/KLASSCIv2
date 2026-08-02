@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Services\Scoring\PersonnelScoringService;
 use App\Services\UserService;
+use App\Services\UserLifecycle\SuperAdminLifecycleGuard;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Auth;
@@ -141,7 +142,7 @@ class ESBTPCoordinateurController extends Controller
     /**
      * Update the specified coordinator in storage.
      */
-    public function update(Request $request, User $coordinateur)
+    public function update(Request $request, User $coordinateur, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->authorize('coordinateurs.edit');
         
@@ -162,8 +163,6 @@ class ESBTPCoordinateurController extends Controller
         ]);
 
         try {
-            DB::beginTransaction();
-
             $updateData = [
                 'name' => $validated['name'],
                 'email' => $validated['email'] ?? null,
@@ -179,15 +178,16 @@ class ESBTPCoordinateurController extends Controller
                 $updateData['password'] = Hash::make($validated['password']);
             }
 
-            $coordinateur->update($updateData);
-
-            DB::commit();
+            $lifecycle->updateUser(
+                $coordinateur->id,
+                $updateData,
+                authorize: fn (User $user) => $this->authorize('update', $user),
+            );
 
             return redirect()->route('esbtp.personnel.unified.index')
                            ->with('success', 'Coordinateur mis à jour avec succès.');
 
         } catch (\Exception $e) {
-            DB::rollBack();
             return back()->with('error', 'Erreur lors de la mise à jour: ' . $e->getMessage())
                         ->withInput();
         }
@@ -196,7 +196,7 @@ class ESBTPCoordinateurController extends Controller
     /**
      * Remove the specified coordinator from storage.
      */
-    public function destroy(User $coordinateur)
+    public function destroy(User $coordinateur, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->authorize('users.manage');
         
@@ -211,24 +211,22 @@ class ESBTPCoordinateurController extends Controller
         }
 
         try {
-            DB::beginTransaction();
-
-            // Retirer le rôle coordinateur
-            $coordinateur->removeRole('coordinateur');
-            
-            // Marquer comme inactif au lieu de supprimer complètement
-            $coordinateur->update([
-                'is_active' => false,
-                'email' => $coordinateur->email . '_deleted_' . time(),
-            ]);
-
-            DB::commit();
+            $lifecycle->deactivateUser(
+                $coordinateur->id,
+                function (User $user): void {
+                    $user->removeRole('coordinateur');
+                    $user->update([
+                        'is_active' => false,
+                        'email' => $user->email . '_deleted_' . time(),
+                    ]);
+                },
+                authorize: fn (User $user) => $this->authorize('delete', $user),
+            );
 
             return redirect()->route('esbtp.personnel.unified.index')
                            ->with('success', 'Coordinateur supprimé avec succès.');
 
         } catch (\Exception $e) {
-            DB::rollBack();
             return back()->with('error', 'Erreur lors de la suppression: ' . $e->getMessage());
         }
     }
@@ -256,6 +254,7 @@ class ESBTPCoordinateurController extends Controller
     public function resetPassword(User $coordinateur)
     {
         $this->authorize('users.manage');
+        $this->authorize('update', $coordinateur);
 
         // Vérifier que l'utilisateur est bien un coordinateur
         if (!$coordinateur->hasRole('coordinateur')) {
@@ -316,7 +315,7 @@ class ESBTPCoordinateurController extends Controller
     /**
      * Toggle active status of coordinator
      */
-    public function toggleStatus(User $coordinateur)
+    public function toggleStatus(User $coordinateur, SuperAdminLifecycleGuard $lifecycle)
     {
         $this->authorize('users.manage');
 
@@ -324,11 +323,16 @@ class ESBTPCoordinateurController extends Controller
             abort(404, 'Coordinateur non trouvé.');
         }
 
-        $coordinateur->update([
-            'is_active' => !$coordinateur->is_active
-        ]);
+        try {
+            $isActive = $lifecycle->toggleUser(
+                $coordinateur->id,
+                authorize: fn (User $user) => $this->authorize('update', $user),
+            );
+        } catch (\Exception $e) {
+            return back()->with('error', $e->getMessage());
+        }
 
-        $status = $coordinateur->is_active ? 'activé' : 'désactivé';
+        $status = $isActive ? 'activé' : 'désactivé';
 
         return back()->with('success', "Coordinateur {$status} avec succès.");
     }
