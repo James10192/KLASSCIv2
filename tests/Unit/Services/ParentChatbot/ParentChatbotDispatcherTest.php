@@ -18,45 +18,35 @@ class ParentChatbotDispatcherTest extends TestCase
         config()->set('app.tenant_code', 'tenant-a');
     }
 
-    public function test_it_uses_the_dedicated_mailpulse_dispatch_endpoint(): void
+    public function test_it_submits_text_replies_through_the_standard_mailpulse_messages_api(): void
     {
-        config()->set('services.mailpulse.base_url', 'https://mailpulse.test');
-        config()->set('services.mailpulse.parent_chatbot_service_secret', str_repeat('s', 32));
-        config()->set('services.mailpulse.parent_chatbot_dispatch_endpoint', '/api/v1/parent-chatbot/dispatch');
-        config()->set('services.mailpulse.timeout', 20);
-        Http::fake(['mailpulse.test/api/v1/parent-chatbot/dispatch' => Http::response([
-            'command_id' => 'out-1',
-            'dispatch_state' => 'accepted',
-            'reconciliation_required' => false,
+        $this->configureDispatcher();
+        Http::fake(['mailpulse.test/api/v1/messages' => Http::response([
+            'dispatch' => ['state' => 'accepted', 'sms_fallback_eligible' => false],
+            'message' => ['id' => 'msg-1', 'status' => 'sent'],
         ], 202)]);
 
         $outcome = app(ParentChatbotDispatcher::class)->dispatch('+2250707123456', 'Sensitive data', ParentChatbotIntent::PublishedGrades, 'evt-1');
 
         $this->assertTrue($outcome->isAccepted());
-        $this->assertSame('out-1', $outcome->commandId);
+        $this->assertSame('msg-1', $outcome->commandId);
         $this->assertFalse($outcome->reconciliationRequired);
-        Http::assertSent(fn (Request $request) => $request->url() === 'https://mailpulse.test/api/v1/parent-chatbot/dispatch'
-            && ! $request->hasHeader('Authorization')
-            && $request->hasHeader('X-KLASSCI-Service-Timestamp')
+        Http::assertSent(fn (Request $request) => $request->url() === 'https://mailpulse.test/api/v1/messages'
+            && $request->hasHeader('Authorization', 'Bearer mp_test_'.str_repeat('a', 32))
             && $request->hasHeader('Idempotency-Key')
-            && hash_equals(
-                hash_hmac('sha256', implode('', (array) $request->header('X-KLASSCI-Service-Timestamp')).'.'.$request->body(), str_repeat('s', 32)),
-                implode('', (array) $request->header('X-KLASSCI-Service-Signature'))
-            )
-            && json_decode($request->body(), true)['channel'] === 'whatsapp'
-            && json_decode($request->body(), true)['metadata']['source'] === 'klassci_parent_chatbot'
-            && json_decode($request->body(), true)['metadata']['intent'] === 'published_grades');
+            && $request['channel'] === 'whatsapp'
+            && $request['content']['type'] === 'text'
+            && $request['content']['text'] === 'Sensitive data'
+            && $request['metadata']['source'] === 'klassci_parent_chatbot'
+            && $request['metadata']['intent'] === 'published_grades');
     }
 
     public function test_it_uses_a_supplied_request_id_for_mailpulse_idempotency(): void
     {
-        config()->set('services.mailpulse.base_url', 'https://mailpulse.test');
-        config()->set('services.mailpulse.parent_chatbot_service_secret', str_repeat('s', 32));
-        config()->set('services.mailpulse.parent_chatbot_dispatch_endpoint', '/api/v1/parent-chatbot/dispatch');
-        Http::fake(['mailpulse.test/api/v1/parent-chatbot/dispatch' => Http::response([
-            'command_id' => 'out-2',
-            'dispatch_state' => 'accepted',
-            'reconciliation_required' => false,
+        $this->configureDispatcher();
+        Http::fake(['mailpulse.test/api/v1/messages' => Http::response([
+            'dispatch' => ['state' => 'accepted', 'sms_fallback_eligible' => false],
+            'message' => ['id' => 'msg-2', 'status' => 'sent'],
         ], 202)]);
 
         app(ParentChatbotDispatcher::class)->dispatchTemplate(
@@ -71,22 +61,20 @@ class ParentChatbotDispatcherTest extends TestCase
 
         Http::assertSent(fn (Request $request) => $request->header('Idempotency-Key')[0] === 'klassci-tenant-a-request-link-1'
             && $request->header('X-KLASSCI-Request-Id')[0] === 'klassci-tenant-a-request-link-1'
-            && json_decode($request->body(), true)['metadata']['event_id'] === 'event-link-1'
-            && json_decode($request->body(), true)['metadata']['tenant_code'] === 'tenant-a'
-            && json_decode($request->body(), true)['content']['type'] === 'template'
-            && json_decode($request->body(), true)['content']['template_name'] === 'klassci_parent_link_code'
-            && json_decode($request->body(), true)['content']['parameters'] === ['ABCDEF1234567890']);
+            && $request['metadata']['event_id'] === 'event-link-1'
+            && $request['metadata']['tenant_code'] === 'tenant-a'
+            && $request['content']['type'] === 'template'
+            && $request['content']['template_key'] === 'klassci_parent_link_code'
+            && $request['content']['locale'] === 'fr'
+            && $request['content']['variables'] === ['1' => 'ABCDEF1234567890']);
     }
 
-    public function test_it_preserves_a_submission_unknown_as_pending_reconciliation(): void
+    public function test_it_preserves_pending_dispatch_as_pending_reconciliation(): void
     {
-        config()->set('services.mailpulse.base_url', 'https://mailpulse.test');
-        config()->set('services.mailpulse.parent_chatbot_service_secret', str_repeat('s', 32));
-        config()->set('services.mailpulse.parent_chatbot_dispatch_endpoint', '/api/v1/parent-chatbot/dispatch');
-        Http::fake(['mailpulse.test/api/v1/parent-chatbot/dispatch' => Http::response([
-            'command_id' => 'out-unknown',
-            'dispatch_state' => 'pending_reconciliation',
-            'reconciliation_required' => true,
+        $this->configureDispatcher();
+        Http::fake(['mailpulse.test/api/v1/messages' => Http::response([
+            'dispatch' => ['state' => 'pending_reconciliation', 'sms_fallback_eligible' => false],
+            'message' => ['id' => 'msg-unknown', 'status' => 'queued'],
         ], 202)]);
 
         $outcome = app(ParentChatbotDispatcher::class)->dispatch(
@@ -97,7 +85,7 @@ class ParentChatbotDispatcherTest extends TestCase
         );
 
         $this->assertTrue($outcome->isPendingReconciliation());
-        $this->assertSame('out-unknown', $outcome->commandId);
+        $this->assertSame('msg-unknown', $outcome->commandId);
         $this->assertTrue($outcome->reconciliationRequired);
     }
 
@@ -116,7 +104,7 @@ class ParentChatbotDispatcherTest extends TestCase
         );
 
         $this->assertTrue($outcome->isPendingReconciliation());
-        $this->assertNull($outcome->commandId);
+        $this->assertNotNull($outcome->commandId);
         $this->assertTrue($outcome->reconciliationRequired);
     }
 
@@ -126,7 +114,7 @@ class ParentChatbotDispatcherTest extends TestCase
     public function test_it_marks_ambiguous_http_responses_as_submission_unknown(int $status): void
     {
         $this->configureDispatcher();
-        Http::fake(['mailpulse.test/api/v1/parent-chatbot/dispatch' => Http::response([], $status)]);
+        Http::fake(['mailpulse.test/api/v1/messages' => Http::response([], $status)]);
 
         $outcome = app(ParentChatbotDispatcher::class)->dispatch(
             '+2250707123456',
@@ -136,7 +124,7 @@ class ParentChatbotDispatcherTest extends TestCase
         );
 
         $this->assertTrue($outcome->isPendingReconciliation());
-        $this->assertNull($outcome->commandId);
+        $this->assertNotNull($outcome->commandId);
         $this->assertTrue($outcome->reconciliationRequired);
     }
 
@@ -148,7 +136,7 @@ class ParentChatbotDispatcherTest extends TestCase
     public function test_it_keeps_definitive_client_errors_as_failed(): void
     {
         $this->configureDispatcher();
-        Http::fake(['mailpulse.test/api/v1/parent-chatbot/dispatch' => Http::response([], 400)]);
+        Http::fake(['mailpulse.test/api/v1/messages' => Http::response([], 400)]);
 
         $outcome = app(ParentChatbotDispatcher::class)->dispatch(
             '+2250707123456',
@@ -164,9 +152,10 @@ class ParentChatbotDispatcherTest extends TestCase
 
     private function configureDispatcher(): void
     {
+        config()->set('services.mailpulse.enabled', true);
+        config()->set('services.mailpulse.api_key', 'mp_test_'.str_repeat('a', 32));
         config()->set('services.mailpulse.base_url', 'https://mailpulse.test');
-        config()->set('services.mailpulse.parent_chatbot_service_secret', str_repeat('s', 32));
-        config()->set('services.mailpulse.parent_chatbot_dispatch_endpoint', '/api/v1/parent-chatbot/dispatch');
+        config()->set('services.mailpulse.messages_endpoint', '/api/v1/messages');
         config()->set('services.mailpulse.timeout', 20);
     }
 }

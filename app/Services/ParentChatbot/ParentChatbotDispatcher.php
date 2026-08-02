@@ -3,14 +3,16 @@
 namespace App\Services\ParentChatbot;
 
 use App\Enums\ParentChatbotIntent;
+use App\Services\MailPulse\MailPulseClient;
+use App\Services\MailPulse\MailPulseResult;
 use App\Services\MailPulse\MailPulseTenantContext;
-use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class ParentChatbotDispatcher
 {
+    public function __construct(private readonly MailPulseClient $mailPulseClient) {}
+
     public function dispatch(
         string $phone,
         string $message,
@@ -49,9 +51,9 @@ class ParentChatbotDispatcher
             $phone,
             [
                 'type' => 'template',
-                'template_name' => $templateName,
-                'language_code' => $languageCode,
-                'parameters' => array_values($parameters),
+                'template_key' => $templateName,
+                'locale' => $languageCode,
+                'variables' => $this->templateVariables($parameters),
             ],
             $intent,
             $eventId,
@@ -69,25 +71,9 @@ class ParentChatbotDispatcher
         string $eventId,
         ?string $requestId = null,
     ): ParentChatbotDispatchOutcome {
-        $baseUrl = rtrim((string) config('services.mailpulse.base_url'), '/');
-        $endpoint = (string) config('services.mailpulse.parent_chatbot_dispatch_endpoint');
         $requestId = MailPulseTenantContext::scopedIdentifier(
             $requestId ?? 'parent-chatbot-'.(string) Str::uuid()
         );
-
-        try {
-            $serviceSecret = ParentChatbotSecurityConfig::serviceSecret();
-        } catch (\LogicException) {
-            Log::warning('Parent chatbot dispatch is not configured', ['event_id' => $eventId, 'intent' => $intent->value]);
-
-            return ParentChatbotDispatchOutcome::failed();
-        }
-
-        if ($baseUrl === '' || $endpoint === '') {
-            Log::warning('Parent chatbot dispatch is not configured', ['event_id' => $eventId, 'intent' => $intent->value]);
-
-            return ParentChatbotDispatchOutcome::failed();
-        }
 
         $payload = [
             'channel' => 'whatsapp',
@@ -100,65 +86,56 @@ class ParentChatbotDispatcher
                 'event_id' => $eventId,
             ],
         ];
-        $body = json_encode($payload, JSON_THROW_ON_ERROR);
-        $timestamp = (string) time();
-        $signature = hash_hmac('sha256', $timestamp.'.'.$body, $serviceSecret);
-
-        try {
-            $response = Http::acceptJson()
-                ->timeout((int) config('services.mailpulse.timeout', 20))
-                ->withHeaders([
-                    'Content-Type' => 'application/json',
-                    'Idempotency-Key' => $requestId,
-                    'X-KLASSCI-Request-Id' => $requestId,
-                    'X-KLASSCI-Service-Timestamp' => $timestamp,
-                    'X-KLASSCI-Service-Signature' => $signature,
-                ])
-                ->withBody($body, 'application/json')
-                ->post($baseUrl.'/'.ltrim($endpoint, '/'));
-        } catch (ConnectionException $e) {
-            Log::warning('Parent chatbot dispatch connection failed', ['event_id' => $eventId, 'intent' => $intent->value]);
-
-            return ParentChatbotDispatchOutcome::pendingReconciliation();
-        }
+        $result = $this->mailPulseClient->sendWhatsAppMessage($payload, $requestId);
 
         Log::info('Parent chatbot dispatch completed', [
             'event_id' => $eventId,
             'intent' => $intent->value,
             'request_id' => $requestId,
-            'http_status' => $response->status(),
+            'http_status' => $result->httpStatus,
+            'status' => $result->status,
+            'dispatch_state' => $result->dispatchState,
         ]);
 
-        if ($this->hasAmbiguousSubmissionStatus($response->status())) {
-            return ParentChatbotDispatchOutcome::pendingReconciliation();
+        if ($this->isAccepted($result)) {
+            return ParentChatbotDispatchOutcome::accepted($result->id ?? $requestId);
         }
 
-        $body = $response->json();
-        if (! $response->successful() || ! is_array($body)) {
-            return ParentChatbotDispatchOutcome::failed();
-        }
-
-        $commandId = $body['command_id'] ?? null;
-        $state = $body['dispatch_state'] ?? null;
-        $reconciliationRequired = $body['reconciliation_required'] ?? null;
-
-        if (! is_string($commandId) || $commandId === '' || ! is_string($state) || ! is_bool($reconciliationRequired)) {
-            return ParentChatbotDispatchOutcome::failed();
-        }
-
-        if ($state === ParentChatbotDispatchOutcome::STATE_ACCEPTED && $reconciliationRequired === false) {
-            return ParentChatbotDispatchOutcome::accepted($commandId);
-        }
-
-        if ($state === ParentChatbotDispatchOutcome::STATE_PENDING_RECONCILIATION && $reconciliationRequired === true) {
-            return ParentChatbotDispatchOutcome::pendingReconciliation($commandId);
+        if ($this->requiresReconciliation($result)) {
+            return ParentChatbotDispatchOutcome::pendingReconciliation($result->id ?? $requestId);
         }
 
         return ParentChatbotDispatchOutcome::failed();
     }
 
-    private function hasAmbiguousSubmissionStatus(int $status): bool
+    private function isAccepted(MailPulseResult $result): bool
     {
-        return $status === 408 || $status === 429 || $status >= 500;
+        return $result->ok && ($result->dispatchState === null || $result->dispatchState === ParentChatbotDispatchOutcome::STATE_ACCEPTED);
+    }
+
+    private function requiresReconciliation(MailPulseResult $result): bool
+    {
+        if ($result->ok && in_array($result->dispatchState, ['pending', ParentChatbotDispatchOutcome::STATE_PENDING_RECONCILIATION], true)) {
+            return true;
+        }
+
+        return $result->status === 'connection_failed'
+            || $result->httpStatus === 408
+            || $result->httpStatus === 429
+            || ($result->httpStatus !== null && $result->httpStatus >= 500);
+    }
+
+    /**
+     * @param array<int, string> $parameters
+     * @return array<string, string>
+     */
+    private function templateVariables(array $parameters): array
+    {
+        $variables = [];
+        foreach (array_values($parameters) as $index => $parameter) {
+            $variables[(string) ($index + 1)] = $parameter;
+        }
+
+        return $variables;
     }
 }

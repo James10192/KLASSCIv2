@@ -2,6 +2,8 @@
 
 namespace App\Services\ParentChatbot;
 
+use App\Models\Setting;
+
 final class ParentChatbotSecurityConfig
 {
     public static function serviceSecret(): string
@@ -14,7 +16,7 @@ final class ParentChatbotSecurityConfig
         return self::required(
             'parent_chatbot_code_pepper',
             'MAILPULSE_PARENT_CHATBOT_CODE_PEPPER',
-            ['parent_chatbot_service_secret'],
+            ['parent_chatbot_service_secret', 'api_key'],
         );
     }
 
@@ -23,7 +25,7 @@ final class ParentChatbotSecurityConfig
         return self::required(
             'parent_chatbot_phone_hash_key',
             'MAILPULSE_PARENT_CHATBOT_PHONE_HASH_KEY',
-            ['parent_chatbot_service_secret'],
+            ['parent_chatbot_service_secret', 'api_key'],
         );
     }
 
@@ -32,7 +34,7 @@ final class ParentChatbotSecurityConfig
         return self::required(
             'parent_chatbot_webhook_secret',
             'MAILPULSE_PARENT_CHATBOT_WEBHOOK_SECRET',
-            ['parent_chatbot_service_secret'],
+            ['parent_chatbot_service_secret', 'api_key'],
         );
     }
 
@@ -67,6 +69,30 @@ final class ParentChatbotSecurityConfig
 
     private static function value(string $key): string
     {
+        if ($key === 'api_key') {
+            return self::mailPulseApiKey();
+        }
+
         return (string) config("services.mailpulse.{$key}", '');
+    }
+
+    private static function mailPulseApiKey(): string
+    {
+        if ((string) config('app.tenant_code', '') !== 'presentation') {
+            return '';
+        }
+
+        try {
+            $settingValue = Setting::where('key', 'mailpulse_api_key')
+                ->where('is_active', true)
+                ->value('value');
+            if (is_string($settingValue) && trim($settingValue) !== '') {
+                return trim($settingValue);
+            }
+        } catch (\Throwable) {
+            // Keep early bootstrap and unit tests independent from the settings table.
+        }
+
+        return (string) config('services.mailpulse.api_key', '');
     }
 }
