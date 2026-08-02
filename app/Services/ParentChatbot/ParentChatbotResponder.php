@@ -137,12 +137,12 @@ class ParentChatbotResponder
             return $this->prepared($normalizedPhone, ParentChatbotIntent::Unlinked, 'unlinked', 'Pour lier ce numero, envoyez LIER suivi du code transmis par votre ecole.');
         }
 
-        if ($command === 'STOP') {
+        if ($this->isStopCommand($command)) {
             if (! $this->links->stopAllForPhone($normalizedPhone)) {
                 return $this->prepared($normalizedPhone, ParentChatbotIntent::Revoked, ParentChatbotIntent::Revoked->value, 'Ce lien a ete revoque. Contactez d\'abord l\'administration de votre ecole.');
             }
 
-            return $this->prepared($normalizedPhone, ParentChatbotIntent::Stop, ParentChatbotIntent::Stopped->value, 'Les messages KLASSCI sont arretes pour ce numero. Envoyez START pour les reprendre.');
+            return $this->prepared($normalizedPhone, ParentChatbotIntent::Stop, ParentChatbotIntent::Stopped->value, 'Les messages KLASSCI sont arretes pour ce numero. Envoyez OUI pour les reprendre.');
         }
 
         if ($links->count() !== 1) {
@@ -154,7 +154,7 @@ class ParentChatbotResponder
             return $this->prepared($normalizedPhone, ParentChatbotIntent::Revoked, ParentChatbotIntent::Revoked->value, 'Ce lien n\'est plus autorise. Contactez d\'abord l\'administration de votre ecole.');
         }
 
-        if ($command === 'START') {
+        if ($this->isStartCommand($command)) {
             $started = $this->links->start($link);
 
             return $this->prepared(
@@ -170,7 +170,7 @@ class ParentChatbotResponder
         }
 
         if (! $link->isActive()) {
-            return $this->prepared($normalizedPhone, ParentChatbotIntent::Stopped, ParentChatbotIntent::Stopped->value, 'Les messages sont arretes. Envoyez START pour les reprendre.');
+            return $this->prepared($normalizedPhone, ParentChatbotIntent::Stopped, ParentChatbotIntent::Stopped->value, 'Les messages sont arretes. Envoyez OUI pour les reprendre.');
         }
 
         $link->update(['last_inbound_at' => now()]);
@@ -231,7 +231,7 @@ class ParentChatbotResponder
     private function replyFor(ParentChatbotLink $link, string $command): array
     {
         if ($command === 'AIDE') {
-            return [ParentChatbotIntent::Help, 'Commandes disponibles : NOTES, ABSENCES, ASSIDUITE, BULLETIN, ENFANT <numéro>, ENFANTS <page>, STOP et START.', null];
+            return [ParentChatbotIntent::Help, 'Commandes disponibles : NOTES, ABSENCES, ASSIDUITE, BULLETIN, ENFANT <numéro>, ENFANTS <page>, OUI et NON.', null];
         }
 
         if (preg_match('/^ENFANT\s+(\d+)$/', $command, $matches)) {
@@ -385,6 +385,16 @@ class ParentChatbotResponder
     {
         $message = preg_replace('/\s+/', ' ', trim($message));
         return strtoupper((string) $message);
+    }
+
+    private function isStopCommand(string $command): bool
+    {
+        return in_array($command, ['NON', 'STOP'], true);
+    }
+
+    private function isStartCommand(string $command): bool
+    {
+        return in_array($command, ['OUI', 'START'], true);
     }
 
     private function formatNumber(float $value): string

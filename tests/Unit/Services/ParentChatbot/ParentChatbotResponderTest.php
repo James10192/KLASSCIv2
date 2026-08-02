@@ -188,7 +188,7 @@ class ParentChatbotResponderTest extends TestCase
         $this->assertSame(['app', 'email', 'whatsapp', 'sms'], $parent->fresh()->getOrCreateNotificationPreferences()->preferred_channels);
     }
 
-    public function test_start_does_not_restore_a_channel_removed_after_stop(): void
+    public function test_oui_does_not_restore_a_channel_removed_after_stop(): void
     {
         [$parent, $studentId, $phone] = $this->parentWithActiveLink();
         $parent->getOrCreateNotificationPreferences()->update([
@@ -207,13 +207,29 @@ class ParentChatbotResponderTest extends TestCase
         $dispatcher = Mockery::mock(ParentChatbotDispatcher::class);
         $dispatcher->shouldReceive('dispatch')
             ->once()
-            ->with($phone, Mockery::type('string'), ParentChatbotIntent::Start, 'evt-start', 'klassci-parent-inbound-evt-start')
+            ->with($phone, Mockery::type('string'), ParentChatbotIntent::Start, 'evt-oui', 'klassci-parent-inbound-evt-oui')
             ->andReturn(ParentChatbotDispatchOutcome::accepted('out-start'));
 
-        $outcome = $this->respond($dispatcher, $phone, 'START', 'evt-start');
+        $outcome = $this->respond($dispatcher, $phone, 'OUI', 'evt-oui');
 
         $this->assertSame(ParentChatbotIntent::Start->value, $outcome);
         $this->assertSame(['app', 'email', 'sms'], $parent->fresh()->getOrCreateNotificationPreferences()->preferred_channels);
+    }
+
+    public function test_non_suppresses_messaging_like_stop(): void
+    {
+        [$parent, $studentId, $phone] = $this->parentWithActiveLink();
+
+        $dispatcher = Mockery::mock(ParentChatbotDispatcher::class);
+        $dispatcher->shouldReceive('dispatch')
+            ->once()
+            ->with($phone, Mockery::type('string'), ParentChatbotIntent::Stop, 'evt-non', 'klassci-parent-inbound-evt-non')
+            ->andReturn(ParentChatbotDispatchOutcome::accepted('out-non'));
+
+        $outcome = $this->respond($dispatcher, $phone, 'NON', 'evt-non');
+
+        $this->assertSame(ParentChatbotIntent::Stopped->value, $outcome);
+        $this->assertSame(ParentChatbotLink::STATUS_STOPPED, ParentChatbotLink::firstOrFail()->status);
     }
 
     public function test_retried_stop_keeps_preferences_unchanged(): void
