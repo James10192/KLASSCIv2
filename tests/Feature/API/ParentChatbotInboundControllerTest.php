@@ -319,7 +319,7 @@ class ParentChatbotInboundControllerTest extends TestCase
         ])->assertStatus(202)->assertJson(['accepted' => true]);
     }
 
-    public function test_it_prunes_only_processed_responses_outside_the_retention_horizon(): void
+    public function test_it_redacts_processed_responses_and_dead_letters_released_failures_outside_retention(): void
     {
         $expired = ParentChatbotInboundEvent::create([
             'source_event_id' => 'evt-expired-response',
@@ -327,10 +327,25 @@ class ParentChatbotInboundControllerTest extends TestCase
             'received_at' => now()->subDays(8),
             'processed_at' => now()->subDays(8),
         ]);
-        $pending = ParentChatbotInboundEvent::create([
+        $unreleased = ParentChatbotInboundEvent::create([
             'source_event_id' => 'evt-pending-response',
             'payload_hash' => hash('sha256', 'evt-pending-response'),
             'received_at' => now()->subDays(8),
+        ]);
+        $released = ParentChatbotInboundEvent::create([
+            'source_event_id' => 'evt-released-response',
+            'payload_hash' => hash('sha256', 'evt-released-response'),
+            'outcome' => ParentChatbotInboundEvent::OUTCOME_DISPATCH_PENDING,
+            'received_at' => now()->subDays(8),
+        ]);
+        $leased = ParentChatbotInboundEvent::create([
+            'source_event_id' => 'evt-leased-response',
+            'payload_hash' => hash('sha256', 'evt-leased-response'),
+            'outcome' => ParentChatbotInboundEvent::OUTCOME_DISPATCH_PENDING,
+            'received_at' => now()->subDays(8),
+            'processing_token' => 'active-lease',
+            'processing_started_at' => now()->subMinute(),
+            'processing_expires_at' => now()->addMinute(),
         ]);
         $response = Crypt::encryptString(json_encode([
             'phone' => '+2250102030405',
@@ -340,14 +355,54 @@ class ParentChatbotInboundControllerTest extends TestCase
             'idempotency_key' => 'klassci-parent-inbound-prune',
             'should_dispatch' => true,
         ], JSON_THROW_ON_ERROR));
-        DB::table('parent_chatbot_inbound_events')->whereIn('id', [$expired->id, $pending->id])->update([
+        DB::table('parent_chatbot_inbound_events')->whereIn('id', [
+            $expired->id,
+            $unreleased->id,
+            $released->id,
+            $leased->id,
+        ])->update([
             'response_ciphertext' => $response,
             'response_recorded_at' => now()->subDays(8),
         ]);
 
-        $this->assertSame(1, ParentChatbotInboundEvent::pruneRecordedResponsesBefore(now()->subDays(7), 10));
+        $this->assertSame(
+            ['redacted' => 1, 'dead_lettered' => 1],
+            ParentChatbotInboundEvent::pruneRecordedResponsesBefore(now()->subDays(7), 10),
+        );
         $this->assertNull($expired->fresh()->response_ciphertext);
-        $this->assertNotNull($pending->fresh()->response_ciphertext);
+        $this->assertNotNull($unreleased->fresh()->response_ciphertext);
+        $this->assertNull($released->fresh()->response_ciphertext);
+        $this->assertNull($released->fresh()->processed_at);
+        $this->assertSame(ParentChatbotInboundEvent::OUTCOME_DISPATCH_DEAD_LETTERED, $released->fresh()->outcome);
+        $this->assertNotNull($leased->fresh()->response_ciphertext);
+        $this->assertSame(ParentChatbotInboundEvent::OUTCOME_DISPATCH_PENDING, $leased->fresh()->outcome);
+    }
+
+    public function test_a_dead_lettered_event_is_terminal_without_being_acknowledged_as_processed(): void
+    {
+        $payload = [
+            'event_id' => 'evt-dead-lettered',
+            'sender' => ['phone' => '+2250102030405'],
+            'message' => ['text' => 'NOTES'],
+        ];
+        ParentChatbotInboundEvent::create([
+            'source_event_id' => $payload['event_id'],
+            'payload_hash' => hash('sha256', json_encode($payload, JSON_THROW_ON_ERROR)),
+            'outcome' => ParentChatbotInboundEvent::OUTCOME_DISPATCH_DEAD_LETTERED,
+            'received_at' => now()->subDays(8),
+        ]);
+        $responder = Mockery::mock(ParentChatbotResponder::class);
+        $responder->shouldNotReceive('prepareInboundResponse');
+        $responder->shouldNotReceive('dispatchRecordedResponse');
+        $this->app->instance(ParentChatbotResponder::class, $responder);
+
+        $this->signedInboundRequest($payload)
+            ->assertStatus(410)
+            ->assertJson(['accepted' => false, 'dead_lettered' => true]);
+
+        $event = ParentChatbotInboundEvent::query()->where('source_event_id', $payload['event_id'])->sole();
+        $this->assertNull($event->processed_at);
+        $this->assertNull($event->processing_token);
     }
 
     private function signedInboundRequest(array $payload)

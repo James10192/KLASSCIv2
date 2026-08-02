@@ -14,7 +14,7 @@ class ParentChatbotOnboardingBatch extends Model
 
     protected $fillable = [
         'actor_id', 'status', 'processing_slot', 'total_count', 'pending_count', 'accepted_count',
-        'failed_count', 'skipped_count', 'started_at', 'completed_at', 'cancelled_at',
+        'failed_count', 'manual_reconciliation_count', 'skipped_count', 'started_at', 'completed_at', 'cancelled_at',
     ];
 
     protected $casts = [

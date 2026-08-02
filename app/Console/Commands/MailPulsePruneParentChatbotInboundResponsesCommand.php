@@ -24,8 +24,12 @@ class MailPulsePruneParentChatbotInboundResponsesCommand extends Command
             return self::INVALID;
         }
 
-        $pruned = ParentChatbotInboundEvent::pruneRecordedResponsesBefore(now()->subHours($hours), $limit);
-        $this->info("Pruned {$pruned} parent chatbot inbound response(s).");
+        $result = ParentChatbotInboundEvent::pruneRecordedResponsesBefore(now()->subHours($hours), $limit);
+        $this->info(sprintf(
+            'Redacted %d processed response(s) and dead-lettered %d abandoned response(s).',
+            $result['redacted'],
+            $result['dead_lettered'],
+        ));
 
         return self::SUCCESS;
     }

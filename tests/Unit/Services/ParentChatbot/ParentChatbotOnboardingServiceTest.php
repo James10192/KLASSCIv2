@@ -246,14 +246,35 @@ class ParentChatbotOnboardingServiceTest extends TestCase
         $service = $this->service($delivery);
         $batch = $service->start(12);
 
-        $service->process(1);
+        $firstRun = $service->process(25);
         $item = $batch->items()->where('parent_id', $parent->id)->sole();
 
+        $this->assertSame(1, $firstRun['claimed']);
         $this->assertSame(ParentChatbotOnboardingItem::STATUS_PENDING, $item->status);
         $this->assertSame('activation_retry_pending', $item->error_code);
+        $this->assertTrue($item->next_attempt_at->isFuture());
         $this->assertNull($item->lease_token);
         $this->assertNull($item->lease_expires_at);
         $this->assertSame(1, $item->attempt_count);
+        $this->assertSame(0, $service->process(25)['claimed']);
+    }
+
+    public function test_unexpected_activation_errors_stop_at_the_attempt_ceiling(): void
+    {
+        $parent = $this->parentWithPupil('0700000001');
+        $delivery = Mockery::mock(ParentChatbotLinkCodeDeliveryService::class);
+        $delivery->shouldReceive('issueAndDeliver')->once()->andThrow(new RuntimeException('Temporary database failure'));
+        $service = $this->service($delivery);
+        $batch = $service->start(12);
+        $batch->items()->where('parent_id', $parent->id)->update(['attempt_count' => 4]);
+
+        $service->process(25);
+        $item = $batch->items()->where('parent_id', $parent->id)->sole();
+
+        $this->assertSame(ParentChatbotOnboardingItem::STATUS_FAILED, $item->status);
+        $this->assertSame('activation_retry_exhausted', $item->error_code);
+        $this->assertSame(5, $item->attempt_count);
+        $this->assertNull($item->next_attempt_at);
     }
 
     private function service(?ParentChatbotLinkCodeDeliveryService $delivery = null): ParentChatbotOnboardingService
@@ -332,6 +353,7 @@ class ParentChatbotOnboardingServiceTest extends TestCase
             $table->unsignedInteger('pending_count')->default(0);
             $table->unsignedInteger('accepted_count')->default(0);
             $table->unsignedInteger('failed_count')->default(0);
+            $table->unsignedInteger('manual_reconciliation_count')->default(0);
             $table->unsignedInteger('skipped_count')->default(0);
             $table->timestamp('started_at')->nullable();
             $table->timestamp('completed_at')->nullable();
@@ -347,6 +369,7 @@ class ParentChatbotOnboardingServiceTest extends TestCase
             $table->string('status', 24);
             $table->unsignedSmallInteger('attempt_count')->default(0);
             $table->timestamp('attempted_at')->nullable();
+            $table->timestamp('next_attempt_at')->nullable();
             $table->string('error_code', 64)->nullable();
             $table->string('lease_token', 64)->nullable();
             $table->timestamp('lease_expires_at')->nullable();

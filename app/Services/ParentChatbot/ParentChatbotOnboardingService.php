@@ -107,6 +107,7 @@ class ParentChatbotOnboardingService
         $limit = max(1, min(100, $limit));
         $affectedBatchIds = collect();
         $synced = $this->settleCancelledClaims($limit, $affectedBatchIds);
+        $synced += $this->settleExhaustedClaims($limit, $affectedBatchIds);
         $synced += $this->syncAwaitingItems($limit, $affectedBatchIds);
         $claimed = $this->processClaimedItems($limit, $affectedBatchIds);
         $synced += $this->syncAwaitingItems($limit, $affectedBatchIds);
@@ -181,6 +182,7 @@ class ParentChatbotOnboardingService
             'status' => ParentChatbotOnboardingItem::STATUS_PROCESSING,
             'attempt_count' => DB::raw('attempt_count + 1'),
             'attempted_at' => $now,
+            'next_attempt_at' => null,
             'lease_token' => $token,
             'lease_expires_at' => $now->copy()->addMinutes(self::CLAIM_LEASE_MINUTES),
             'updated_at' => $now,
@@ -198,8 +200,12 @@ class ParentChatbotOnboardingService
 
         return ParentChatbotOnboardingItem::query()
             ->whereHas('batch', fn (Builder $query) => $query->where('status', ParentChatbotOnboardingBatch::STATUS_PROCESSING))
+            ->where('attempt_count', '<', ParentChatbotOnboardingItem::MAX_ACTIVATION_ATTEMPTS)
             ->where(function (Builder $query) use ($now): void {
-                $query->where('status', ParentChatbotOnboardingItem::STATUS_PENDING)
+                $query->where(function (Builder $query) use ($now): void {
+                    $query->where('status', ParentChatbotOnboardingItem::STATUS_PENDING)
+                        ->where(fn (Builder $query) => $query->whereNull('next_attempt_at')->orWhere('next_attempt_at', '<=', $now));
+                })
                     ->orWhere(function (Builder $query) use ($now): void {
                         $query->whereIn('status', [
                             ParentChatbotOnboardingItem::STATUS_PROCESSING,
@@ -229,7 +235,7 @@ class ParentChatbotOnboardingService
             $issuance = ParentChatbotLinkCodeIssuance::query()->where('request_id', $item->request_id)->first();
 
             if ($issuance === null) {
-                $this->releaseClaimForRetry($item);
+                $item->releaseAfterActivationFailure();
 
                 return;
             }
@@ -284,6 +290,7 @@ class ParentChatbotOnboardingService
                 'issuance_id' => $issuanceId,
                 'status' => $status,
                 'error_code' => $errorCode,
+                'next_attempt_at' => null,
                 'lease_token' => null,
                 'lease_expires_at' => null,
                 'updated_at' => now(),
@@ -299,8 +306,36 @@ class ParentChatbotOnboardingService
             ParentChatbotLinkCodeIssuance::STATUS_PENDING_RECONCILIATION => [ParentChatbotOnboardingItem::STATUS_AWAITING, null],
             ParentChatbotLinkCodeIssuance::STATUS_BLOCKED => [ParentChatbotOnboardingItem::STATUS_SKIPPED, $issuance->error_code],
             ParentChatbotLinkCodeIssuance::STATUS_FAILED => [ParentChatbotOnboardingItem::STATUS_FAILED, $issuance->error_code],
+            ParentChatbotLinkCodeIssuance::STATUS_MANUAL_RECONCILIATION => [ParentChatbotOnboardingItem::STATUS_MANUAL_RECONCILIATION, 'manual_reconciliation_required'],
             default => [ParentChatbotOnboardingItem::STATUS_FAILED, 'delivery_unresolved'],
         };
+    }
+
+    /** @param Collection<int, int> $batchIds */
+    private function settleExhaustedClaims(int $limit, Collection $batchIds): int
+    {
+        $items = ParentChatbotOnboardingItem::query()
+            ->where('attempt_count', '>=', ParentChatbotOnboardingItem::MAX_ACTIVATION_ATTEMPTS)
+            ->where(function (Builder $query): void {
+                $query->where('status', ParentChatbotOnboardingItem::STATUS_PENDING)
+                    ->orWhere(fn (Builder $query) => $query
+                        ->whereIn('status', [ParentChatbotOnboardingItem::STATUS_PROCESSING, self::SUBMITTED_STATUS])
+                        ->where('lease_expires_at', '<=', now()));
+            })
+            ->limit($limit)
+            ->get();
+        foreach ($items as $item) {
+            $item->update([
+                'status' => ParentChatbotOnboardingItem::STATUS_FAILED,
+                'error_code' => 'activation_retry_exhausted',
+                'next_attempt_at' => null,
+                'lease_token' => null,
+                'lease_expires_at' => null,
+            ]);
+            $batchIds->push($item->batch_id);
+        }
+
+        return $items->count();
     }
 
     /** @param Collection<int, int> $batchIds */
@@ -392,6 +427,7 @@ class ParentChatbotOnboardingService
             'pending_count' => $pending,
             'accepted_count' => (clone $items)->where('status', ParentChatbotOnboardingItem::STATUS_ACCEPTED)->count(),
             'failed_count' => (clone $items)->where('status', ParentChatbotOnboardingItem::STATUS_FAILED)->count(),
+            'manual_reconciliation_count' => (clone $items)->where('status', ParentChatbotOnboardingItem::STATUS_MANUAL_RECONCILIATION)->count(),
             'skipped_count' => (clone $items)->where('status', ParentChatbotOnboardingItem::STATUS_SKIPPED)->count(),
         ];
 
@@ -436,33 +472,6 @@ class ParentChatbotOnboardingService
     private function requestId(int $batchId, int $parentId): string
     {
         return MailPulseTenantContext::scopedIdentifier("parent-onboarding-{$batchId}-{$parentId}");
-    }
-
-    private function releaseClaimForRetry(ParentChatbotOnboardingItem $item): void
-    {
-        DB::transaction(function () use ($item): void {
-            $batch = ParentChatbotOnboardingBatch::query()->whereKey($item->batch_id)->lockForUpdate()->first();
-            $claimed = ParentChatbotOnboardingItem::query()
-                ->whereKey($item->id)
-                ->where('lease_token', $item->lease_token)
-                ->where('status', self::SUBMITTED_STATUS)
-                ->lockForUpdate()
-                ->first();
-
-            if ($batch === null || $claimed === null) {
-                return;
-            }
-
-            $cancelled = ! $batch->isProcessing();
-            $claimed->update([
-                'status' => $cancelled
-                    ? ParentChatbotOnboardingItem::STATUS_SKIPPED
-                    : ParentChatbotOnboardingItem::STATUS_PENDING,
-                'error_code' => $cancelled ? 'batch_cancelled' : 'activation_retry_pending',
-                'lease_token' => null,
-                'lease_expires_at' => null,
-            ]);
-        }, 3);
     }
 
     private function assertStartIsConfigured(): void

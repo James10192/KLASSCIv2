@@ -17,16 +17,20 @@ class ParentChatbotLinkCodeIssuance extends Model
 
     public const STATUS_BLOCKED = 'blocked';
 
+    public const STATUS_MANUAL_RECONCILIATION = 'manual_reconciliation';
+
     protected $fillable = [
         'parent_id',
         'actor_id',
         'parent_chatbot_link_code_id',
         'request_id',
+        'provider_command_id',
         'status',
         'attempt_count',
         'attempted_at',
         'accepted_at',
         'failed_at',
+        'manual_reconciliation_at',
         'error_code',
         'delivery_payload',
         'delivery_payload_expires_at',
@@ -41,6 +45,7 @@ class ParentChatbotLinkCodeIssuance extends Model
         'attempted_at' => 'datetime',
         'accepted_at' => 'datetime',
         'failed_at' => 'datetime',
+        'manual_reconciliation_at' => 'datetime',
         'delivery_payload_expires_at' => 'datetime',
         'delivery_started_at' => 'datetime',
         'delivery_lease_expires_at' => 'datetime',

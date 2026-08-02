@@ -46,6 +46,10 @@ class ParentChatbotInboundController extends Controller
             return response()->json(['accepted' => true, 'duplicate' => true], 202);
         }
 
+        if ($claim->isDeadLettered()) {
+            return response()->json(['accepted' => false, 'dead_lettered' => true], 410);
+        }
+
         $event = $claim->event;
         $token = (string) $event->processing_token;
 

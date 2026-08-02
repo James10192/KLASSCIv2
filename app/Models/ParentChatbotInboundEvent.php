@@ -5,11 +5,16 @@ namespace App\Models;
 use App\Enums\ParentChatbotIntent;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class ParentChatbotInboundEvent extends Model
 {
+    public const OUTCOME_DISPATCH_PENDING = 'dispatch_pending';
+
+    public const OUTCOME_DISPATCH_DEAD_LETTERED = 'dispatch_dead_lettered';
+
     private const LEASE_SECONDS = 300;
 
     protected $fillable = [
@@ -61,6 +66,10 @@ class ParentChatbotInboundEvent extends Model
             return ParentChatbotInboundEventClaim::payloadConflict();
         }
 
+        if ($event->outcome === self::OUTCOME_DISPATCH_DEAD_LETTERED) {
+            return ParentChatbotInboundEventClaim::deadLettered();
+        }
+
         if ($event->processed_at !== null) {
             return ParentChatbotInboundEventClaim::processedDuplicate();
         }
@@ -79,6 +88,10 @@ class ParentChatbotInboundEvent extends Model
         $claimed = static::query()
             ->whereKey($event->getKey())
             ->whereNull('processed_at')
+            ->where(function ($query): void {
+                $query->whereNull('outcome')
+                    ->orWhere('outcome', '!=', self::OUTCOME_DISPATCH_DEAD_LETTERED);
+            })
             ->where(function ($query) use ($now): void {
                 $query->whereNull('processing_expires_at')
                     ->orWhere('processing_expires_at', '<=', $now);
@@ -123,7 +136,7 @@ class ParentChatbotInboundEvent extends Model
             ->where('processing_token', $token)
             ->whereNull('processed_at')
             ->update([
-                'outcome' => 'dispatch_pending',
+                'outcome' => self::OUTCOME_DISPATCH_PENDING,
                 'processing_token' => null,
                 'processing_started_at' => null,
                 'processing_expires_at' => null,
@@ -232,25 +245,65 @@ class ParentChatbotInboundEvent extends Model
             ]) === 1;
     }
 
-    public static function pruneRecordedResponsesBefore(\DateTimeInterface $before, int $limit): int
+    /** @return array{redacted: int, dead_lettered: int} */
+    public static function pruneRecordedResponsesBefore(\DateTimeInterface $before, int $limit): array
     {
         if ($limit < 1) {
-            return 0;
+            return ['redacted' => 0, 'dead_lettered' => 0];
         }
 
-        return static::query()
-            ->whereNotNull('response_ciphertext')
-            ->whereNotNull('response_recorded_at')
-            ->whereNotNull('processed_at')
-            ->where('response_recorded_at', '<=', $before)
-            ->where('processed_at', '<=', $before)
-            ->orderBy('id')
-            ->limit($limit)
-            ->update([
-                'response_ciphertext' => null,
-                'response_recorded_at' => null,
-                'updated_at' => now(),
-            ]);
+        return DB::transaction(function () use ($before, $limit): array {
+            $events = static::query()
+                ->select(['id', 'processed_at'])
+                ->whereNotNull('response_ciphertext')
+                ->whereNotNull('response_recorded_at')
+                ->where('response_recorded_at', '<=', $before)
+                ->where(function ($query) use ($before): void {
+                    $query->where(function ($processed) use ($before): void {
+                        $processed->whereNotNull('processed_at')
+                            ->where('processed_at', '<=', $before);
+                    })->orWhere(function ($released): void {
+                        $released->whereNull('processed_at')
+                            ->where('outcome', self::OUTCOME_DISPATCH_PENDING)
+                            ->whereNull('processing_token')
+                            ->whereNull('processing_started_at')
+                            ->whereNull('processing_expires_at');
+                    });
+                })
+                ->orderBy('response_recorded_at')
+                ->orderBy('id')
+                ->limit($limit)
+                ->lockForUpdate()
+                ->get();
+
+            $processedIds = $events->whereNotNull('processed_at')->modelKeys();
+            $releasedIds = $events->whereNull('processed_at')->modelKeys();
+            $now = now();
+
+            $redacted = $processedIds === [] ? 0 : static::query()
+                ->whereKey($processedIds)
+                ->whereNotNull('processed_at')
+                ->update([
+                    'response_ciphertext' => null,
+                    'response_recorded_at' => null,
+                    'updated_at' => $now,
+                ]);
+            $deadLettered = $releasedIds === [] ? 0 : static::query()
+                ->whereKey($releasedIds)
+                ->whereNull('processed_at')
+                ->where('outcome', self::OUTCOME_DISPATCH_PENDING)
+                ->whereNull('processing_token')
+                ->whereNull('processing_started_at')
+                ->whereNull('processing_expires_at')
+                ->update([
+                    'outcome' => self::OUTCOME_DISPATCH_DEAD_LETTERED,
+                    'response_ciphertext' => null,
+                    'response_recorded_at' => null,
+                    'updated_at' => $now,
+                ]);
+
+            return ['redacted' => $redacted, 'dead_lettered' => $deadLettered];
+        }, 3);
     }
 
     private static function findOrCreate(string $sourceEventId, string $payloadHash): self

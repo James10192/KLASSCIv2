@@ -79,11 +79,13 @@ class ParentChatbotLinkCodeDeliveryServiceTest extends TestCase
             $table->unsignedBigInteger('actor_id')->nullable();
             $table->unsignedBigInteger('parent_chatbot_link_code_id')->nullable();
             $table->string('request_id', 100)->unique();
+            $table->string('provider_command_id', 100)->nullable();
             $table->string('status', 32);
             $table->unsignedSmallInteger('attempt_count')->default(0);
             $table->timestamp('attempted_at')->nullable();
             $table->timestamp('accepted_at')->nullable();
             $table->timestamp('failed_at')->nullable();
+            $table->timestamp('manual_reconciliation_at')->nullable();
             $table->string('error_code', 64)->nullable();
             $table->text('delivery_payload')->nullable();
             $table->timestamp('delivery_payload_expires_at')->nullable();
@@ -222,6 +224,7 @@ class ParentChatbotLinkCodeDeliveryServiceTest extends TestCase
         $this->assertNull($issuance->accepted_at);
         $this->assertNull($issuance->failed_at);
         $this->assertSame('submission_unknown', $issuance->error_code);
+        $this->assertSame('out-unknown', $issuance->provider_command_id);
         $this->assertNotNull($issuance->delivery_payload);
     }
 
@@ -261,6 +264,36 @@ class ParentChatbotLinkCodeDeliveryServiceTest extends TestCase
         $this->assertSame(2, $retried->attempt_count);
         $this->assertNull($retried->delivery_payload);
         $this->assertNull($retried->error_code);
+        $this->assertSame('out-accepted', $retried->provider_command_id);
+    }
+
+    public function test_repeated_ambiguous_submissions_end_in_manual_reconciliation_without_false_failure(): void
+    {
+        $parent = $this->parentWithPupil();
+        $dispatcher = Mockery::mock(ParentChatbotDispatcher::class);
+        $sequence = 0;
+        $dispatcher->shouldReceive('dispatchTemplate')->times(5)->andReturnUsing(
+            function () use (&$sequence): ParentChatbotDispatchOutcome {
+                $sequence++;
+
+                return ParentChatbotDispatchOutcome::pendingReconciliation('out-unknown-'.$sequence);
+            }
+        );
+        $service = $this->service($dispatcher);
+        $issuance = $service->issueAndDeliver($parent, 42, 'req-link-manual');
+
+        for ($attempt = 2; $attempt <= 5; $attempt++) {
+            $issuance->update(['next_attempt_at' => now()->subSecond()]);
+            $service->reconcilePending();
+            $issuance = $issuance->fresh();
+        }
+
+        $this->assertSame(ParentChatbotLinkCodeIssuance::STATUS_MANUAL_RECONCILIATION, $issuance->status);
+        $this->assertSame('submission_unknown_retry_exhausted', $issuance->error_code);
+        $this->assertSame('out-unknown-5', $issuance->provider_command_id);
+        $this->assertNotNull($issuance->manual_reconciliation_at);
+        $this->assertNull($issuance->failed_at);
+        $this->assertNull($issuance->delivery_payload);
     }
 
     public function test_reconciler_cancels_a_pending_issuance_when_the_parent_stopped_the_chatbot(): void

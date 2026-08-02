@@ -19,7 +19,6 @@ class ParentChatbotLinkCodeDeliveryService
 {
     private const DELIVERY_LEASE_SECONDS = 300;
     private const MAX_DELIVERY_ATTEMPTS = 5;
-
     public function __construct(
         private ParentChatbotLinkService $links,
         private ParentChatbotPhoneNormalizer $phones,
@@ -73,7 +72,7 @@ class ParentChatbotLinkCodeDeliveryService
             ->limit($limit)
             ->get()
             ->each(function (ParentChatbotLinkCodeIssuance $issuance) use (&$processed): void {
-                if ($this->failIssuance($issuance, $this->retryFailureCode($issuance))) {
+                if ($this->settleExpiredOrExhaustedIssuance($issuance)) {
                     $processed++;
                 }
             });
@@ -220,23 +219,24 @@ class ParentChatbotLinkCodeDeliveryService
         }
 
         if ($outcome->isAccepted()) {
-            $this->completeDelivery($issuance, $this->terminalDeliveryAttributes(
+            $this->completeDelivery($issuance, ParentChatbotLinkCodeDeliveryState::terminal(
                 ParentChatbotLinkCodeIssuance::STATUS_ACCEPTED,
                 null,
+                $outcome->commandId,
             ));
         } elseif ($outcome->isPendingReconciliation()) {
-            $this->scheduleReconciliation($issuance);
+            $this->scheduleReconciliation($issuance, $outcome);
         } else {
-            $this->completeDelivery($issuance, $this->terminalDeliveryAttributes(
+            $this->completeDelivery($issuance, ParentChatbotLinkCodeDeliveryState::terminal(
                 ParentChatbotLinkCodeIssuance::STATUS_FAILED,
                 $errorCode ?? 'dispatch_failed',
+                $issuance->provider_command_id,
             ));
         }
 
         return $issuance->fresh() ?? $issuance;
     }
 
-    /** @return array{outcome: ParentChatbotDispatchOutcome, block: ?string} */
     private function dispatchTemplateIfAllowed(
         ParentChatbotLinkCodeIssuance $issuance,
         array $payload,
@@ -290,23 +290,28 @@ class ParentChatbotLinkCodeDeliveryService
         return $this->dispatchAndComplete($claimed);
     }
 
-    private function scheduleReconciliation(ParentChatbotLinkCodeIssuance $issuance): void
+    private function scheduleReconciliation(
+        ParentChatbotLinkCodeIssuance $issuance,
+        ParentChatbotDispatchOutcome $outcome,
+    ): void
     {
         $now = now();
         if ($issuance->delivery_payload_expires_at?->lessThanOrEqualTo($now)
             || $issuance->retry_expires_at?->lessThanOrEqualTo($now)) {
-            $this->completeDelivery($issuance, $this->terminalDeliveryAttributes(
-                ParentChatbotLinkCodeIssuance::STATUS_FAILED,
-                'link_code_expired',
+            $this->completeDelivery($issuance, ParentChatbotLinkCodeDeliveryState::manual(
+                $issuance,
+                'submission_unknown_expired',
+                $outcome->commandId,
             ));
 
             return;
         }
 
         if ($issuance->attempt_count >= self::MAX_DELIVERY_ATTEMPTS) {
-            $this->completeDelivery($issuance, $this->terminalDeliveryAttributes(
-                ParentChatbotLinkCodeIssuance::STATUS_FAILED,
-                'link_code_retry_exhausted',
+            $this->completeDelivery($issuance, ParentChatbotLinkCodeDeliveryState::manual(
+                $issuance,
+                'submission_unknown_retry_exhausted',
+                $outcome->commandId,
             ));
 
             return;
@@ -315,14 +320,14 @@ class ParentChatbotLinkCodeDeliveryService
         $this->completeDelivery($issuance, [
             'status' => ParentChatbotLinkCodeIssuance::STATUS_PENDING_RECONCILIATION,
             'error_code' => 'submission_unknown',
-            'next_attempt_at' => $now->copy()->addSeconds($this->backoffSeconds($issuance->attempt_count)),
+            'provider_command_id' => $outcome->commandId ?? $issuance->provider_command_id,
+            'next_attempt_at' => $now->copy()->addSeconds(ParentChatbotLinkCodeDeliveryState::backoffSeconds($issuance->attempt_count)),
             'delivery_token' => null,
             'delivery_started_at' => null,
             'delivery_lease_expires_at' => null,
         ]);
     }
 
-    /** @param array<string, mixed> $attributes */
     private function completeDelivery(ParentChatbotLinkCodeIssuance $issuance, array $attributes): bool
     {
         return ParentChatbotLinkCodeIssuance::query()
@@ -333,29 +338,6 @@ class ParentChatbotLinkCodeDeliveryService
                 ParentChatbotLinkCodeIssuance::STATUS_PENDING_RECONCILIATION,
             ])
             ->update($attributes + ['updated_at' => now()]) === 1;
-    }
-
-    /** @return array<string, mixed> */
-    private function terminalDeliveryAttributes(string $status, ?string $errorCode): array
-    {
-        return [
-            'status' => $status,
-            'accepted_at' => $status === ParentChatbotLinkCodeIssuance::STATUS_ACCEPTED ? now() : null,
-            'failed_at' => $status === ParentChatbotLinkCodeIssuance::STATUS_FAILED ? now() : null,
-            'error_code' => $errorCode,
-            'delivery_payload' => null,
-            'delivery_payload_expires_at' => null,
-            'delivery_token' => null,
-            'delivery_started_at' => null,
-            'delivery_lease_expires_at' => null,
-            'next_attempt_at' => null,
-            'retry_expires_at' => null,
-        ];
-    }
-
-    private function backoffSeconds(int $attemptCount): int
-    {
-        return min(300, 5 * (2 ** max(0, $attemptCount - 1)));
     }
 
     private function isReplayBlocked(ParentChatbotLinkCodeIssuance $issuance): bool
@@ -412,6 +394,7 @@ class ParentChatbotLinkCodeDeliveryService
                 ParentChatbotLinkCodeIssuance::STATUS_PENDING,
                 ParentChatbotLinkCodeIssuance::STATUS_PENDING_RECONCILIATION,
                 ParentChatbotLinkCodeIssuance::STATUS_ACCEPTED,
+                ParentChatbotLinkCodeIssuance::STATUS_MANUAL_RECONCILIATION,
             ])
             ->whereHas('linkCode', fn ($query) => $query->whereNull('consumed_at')->where('expires_at', '>', now()))
             ->latest('id')
@@ -419,7 +402,6 @@ class ParentChatbotLinkCodeDeliveryService
             ->first();
     }
 
-    /** @return array{issuance: ParentChatbotLinkCodeIssuance, block: string} */
     private function blockedIssuance(int $parentId, ?int $actorId, string $requestId, string $errorCode): array
     {
         return [
@@ -452,7 +434,6 @@ class ParentChatbotLinkCodeDeliveryService
         ], JSON_THROW_ON_ERROR));
     }
 
-    /** @return array{phone: string, code: string}|null */
     private function decryptDeliveryPayload(ParentChatbotLinkCodeIssuance $issuance): ?array
     {
         try {
@@ -470,9 +451,10 @@ class ParentChatbotLinkCodeDeliveryService
 
     private function failDelivery(ParentChatbotLinkCodeIssuance $issuance, string $errorCode): void
     {
-        $this->completeDelivery($issuance, $this->terminalDeliveryAttributes(
+        $this->completeDelivery($issuance, ParentChatbotLinkCodeDeliveryState::terminal(
             ParentChatbotLinkCodeIssuance::STATUS_FAILED,
             $errorCode,
+            $issuance->provider_command_id,
         ));
     }
 
@@ -490,19 +472,29 @@ class ParentChatbotLinkCodeDeliveryService
                 $query->whereNull('delivery_lease_expires_at')
                     ->orWhere('delivery_lease_expires_at', '<=', $now);
             })
-            ->update($this->terminalDeliveryAttributes(
+            ->update(ParentChatbotLinkCodeDeliveryState::terminal(
                 ParentChatbotLinkCodeIssuance::STATUS_FAILED,
                 $errorCode,
             ) + ['updated_at' => $now]) === 1;
     }
 
-    private function retryFailureCode(ParentChatbotLinkCodeIssuance $issuance): string
+    private function settleExpiredOrExhaustedIssuance(ParentChatbotLinkCodeIssuance $issuance): bool
     {
         $now = now();
+        $expired = $issuance->delivery_payload_expires_at?->lessThanOrEqualTo($now)
+            || $issuance->retry_expires_at?->lessThanOrEqualTo($now);
 
-        return $issuance->delivery_payload_expires_at?->lessThanOrEqualTo($now)
-            || $issuance->retry_expires_at?->lessThanOrEqualTo($now)
-            ? 'link_code_expired'
-            : 'link_code_retry_exhausted';
+        if ($issuance->status !== ParentChatbotLinkCodeIssuance::STATUS_PENDING_RECONCILIATION) {
+            return $this->failIssuance($issuance, $expired ? 'link_code_expired' : 'link_code_retry_exhausted');
+        }
+
+        return ParentChatbotLinkCodeIssuance::query()
+            ->whereKey($issuance->id)
+            ->where('status', ParentChatbotLinkCodeIssuance::STATUS_PENDING_RECONCILIATION)
+            ->where(fn ($query) => $query->whereNull('delivery_lease_expires_at')->orWhere('delivery_lease_expires_at', '<=', $now))
+            ->update(ParentChatbotLinkCodeDeliveryState::manual(
+                $issuance,
+                $expired ? 'submission_unknown_expired' : 'submission_unknown_retry_exhausted',
+            ) + ['updated_at' => $now]) === 1;
     }
 }

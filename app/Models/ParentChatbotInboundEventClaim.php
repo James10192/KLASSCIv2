@@ -29,6 +29,11 @@ final class ParentChatbotInboundEventClaim
         return new self(null, 'payload_conflict');
     }
 
+    public static function deadLettered(): self
+    {
+        return new self(null, 'dead_lettered');
+    }
+
     public function isClaimed(): bool
     {
         return $this->status === 'claimed';
@@ -47,6 +52,11 @@ final class ParentChatbotInboundEventClaim
     public function isBusy(): bool
     {
         return $this->status === 'busy';
+    }
+
+    public function isDeadLettered(): bool
+    {
+        return $this->status === 'dead_lettered';
     }
 
     public function retryAfterSeconds(): ?int
