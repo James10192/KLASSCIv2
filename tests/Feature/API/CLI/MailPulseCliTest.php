@@ -63,5 +63,40 @@ class MailPulseCliTest extends TestCase
         $this->assertSame('payment_received', $payload['event']);
         $this->assertTrue($payload['email']['attempted']);
         $this->assertFalse($payload['whatsapp']['attempted']);
+        $this->assertFalse($payload['sms']['attempted']);
+    }
+
+    /** @test */
+    public function controller_returns_sms_dry_run_payload_for_cli_admin(): void
+    {
+        config()->set('services.mailpulse.test_notification_email', '');
+        config()->set('services.mailpulse.test_notification_phone', '0707123456');
+
+        $user = new User();
+        $request = Request::create('/', 'POST', [
+            'event' => 'grade_published',
+            'channel' => 'sms',
+            'dryRun' => true,
+        ]);
+        $request->setUserResolver(fn () => new class($user) {
+            public function __construct(private User $user) {}
+            public function tokenCan(string $ability): bool { return $ability === 'cli:admin'; }
+            public function __get(string $name) { return $this->user->{$name}; }
+        });
+
+        $response = app(CLIMailPulseController::class)->testNotification(
+            $request,
+            app(\App\Services\MailPulse\MailPulseTestNotificationService::class)
+        );
+
+        $payload = $response->getData(true);
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertTrue($payload['ok']);
+        $this->assertSame('grade_published', $payload['event']);
+        $this->assertFalse($payload['email']['attempted']);
+        $this->assertFalse($payload['whatsapp']['attempted']);
+        $this->assertTrue($payload['sms']['attempted']);
+        $this->assertSame('dry_run', $payload['sms']['status']);
     }
 }
