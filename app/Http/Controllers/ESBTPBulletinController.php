@@ -1135,14 +1135,11 @@ class ESBTPBulletinController extends Controller
             return back()->with('error', "Trop de bulletins ($count) pour un export groupé. Affinez le filtre (classe et/ou période) — la limite est de $cap bulletins par export.");
         }
 
-        $query = $base->with([
-            'etudiant:id,matricule,nom,prenoms',
-            'classe:id,name,code',
-            'anneeUniversitaire:id,name,display_name',
-        ]);
-        $this->applyBulletinExportOrder($query, $request);
+        // Pas d'eager-load ici : buildBulletinPdf() recharge lui-même les relations
+        // nécessaires par bulletin (son ->load() écraserait tout with() posé ici).
+        $this->applyBulletinExportOrder($base, $request);
 
-        $bulletins = $query->get();
+        $bulletins = $base->get();
 
         try {
             // $persist=false : export en lecture seule, aucune écriture DB déclenchée par ce GET.
