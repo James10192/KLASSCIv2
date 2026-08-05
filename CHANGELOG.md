@@ -10,6 +10,14 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ---
 
+## Août 2026
+
+### Ajouts
+
+- **Export PDF groupé des bulletins** (`/esbtp/bulletins`) — un bouton « Exporter PDF groupé » réunit en un seul PDF tous les bulletins du filtre courant (année, classe, période, statut, recherche), dans l'**ordre choisi** (Classe, Nom, Matricule, Moyenne ou Rang) et le sens (croissant / décroissant). Chaque page est rendue à l'identique du téléchargement unitaire du bulletin puis les documents sont fusionnés via FPDI. Export **snapshot-only** (seuls les bulletins déjà générés sont inclus, aucun recalcul déclenché) et **borné** par un plafond configurable (`bulletins_bulk_export_cap`, défaut 150) pour protéger l'hébergement partagé ; au-delà, un message invite à affiner le filtre. Nouvelle permission `bulletins.export.bulk` (attribuée par défaut à secrétaire et coordinateur, superAdmin couvert).
+
+---
+
 ## Juin 2026
 
 ### Ajouts

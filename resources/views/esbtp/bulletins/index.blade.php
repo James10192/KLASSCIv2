@@ -214,6 +214,40 @@
 .bul-bulkbar-info strong { color: var(--bul-primary); font-weight: 700; }
 .bul-bulkbar-actions { display: flex; gap: .55rem; flex-wrap: wrap; }
 
+/* ── Export groupé ──────────────────────────────────── */
+.bul-export {
+    display: flex; align-items: flex-end; justify-content: space-between;
+    gap: 1rem 1.25rem; flex-wrap: wrap;
+    padding: 1rem 1.15rem;
+    margin-bottom: 1rem;
+    border-radius: 14px;
+    background: linear-gradient(135deg, rgba(4, 83, 203, .05), rgba(59, 125, 219, .07));
+    border: 1px solid rgba(4, 83, 203, .16);
+}
+.bul-export-lead { display: flex; align-items: center; gap: .85rem; min-width: 240px; flex: 1 1 260px; }
+.bul-export-icon {
+    width: 42px; height: 42px; flex-shrink: 0;
+    border-radius: 11px;
+    background: linear-gradient(135deg, var(--bul-primary), var(--bul-accent, #3b7ddb));
+    display: flex; align-items: center; justify-content: center;
+    color: #fff; font-size: 1rem;
+    box-shadow: 0 4px 14px rgba(4, 83, 203, .22);
+}
+.bul-export-title { font-size: .95rem; font-weight: 700; color: var(--bul-text); }
+.bul-export-sub { font-size: .78rem; color: var(--bul-muted); margin-top: .1rem; }
+.bul-export-sub strong { color: var(--bul-primary); font-weight: 600; }
+.bul-export-controls { display: flex; align-items: flex-end; gap: .7rem; flex-wrap: wrap; }
+.bul-export-field { display: flex; flex-direction: column; gap: .3rem; min-width: 150px; }
+.bul-export-field .au-select { display: flex; width: 100%; }
+.bul-export-field .au-select-trigger { width: 100%; }
+.bul-export-btn { align-self: flex-end; height: 40px; white-space: nowrap; }
+@media (max-width: 768px) {
+    .bul-export { align-items: stretch; }
+    .bul-export-controls { width: 100%; }
+    .bul-export-field { flex: 1 1 140px; }
+    .bul-export-btn { flex: 1 1 100%; justify-content: center; }
+}
+
 /* ── Legacy banner ──────────────────────────────────── */
 .bul-banner {
     display: flex; align-items: center; gap: .75rem;
@@ -602,6 +636,44 @@
         </form>
     </div>
 
+    {{-- ══ EXPORT GROUPÉ ══════════════════════════════════ --}}
+    @can('bulletins.export.bulk')
+    <div class="bul-export">
+        <div class="bul-export-lead">
+            <div class="bul-export-icon"><i class="fas fa-file-export"></i></div>
+            <div>
+                <div class="bul-export-title">Export groupé</div>
+                <div class="bul-export-sub">Tous les bulletins <strong>générés</strong> du filtre courant, réunis dans un seul PDF, dans l'ordre choisi.</div>
+            </div>
+        </div>
+        <div class="bul-export-controls">
+            <div class="bul-export-field">
+                <label class="bul-filter-label">Trier par</label>
+                <x-au-select
+                    name="order"
+                    :value="'classe'"
+                    icon="fa-arrow-down-a-z"
+                    :placeholder-is-first-option="false"
+                    :options="['classe' => 'Classe', 'nom' => 'Nom', 'matricule' => 'Matricule', 'moyenne' => 'Moyenne', 'rang' => 'Rang']" />
+            </div>
+            <div class="bul-export-field">
+                <label class="bul-filter-label">Sens</label>
+                <x-au-select
+                    name="dir"
+                    :value="''"
+                    placeholder="Auto"
+                    icon="fa-arrow-down-short-wide"
+                    :options="['asc' => 'Croissant', 'desc' => 'Décroissant']" />
+            </div>
+            <button type="button" class="bul-btn bul-btn--primary bul-export-btn"
+                    :disabled="exporting" @click="exportPdf()">
+                <span x-show="!exporting"><i class="fas fa-file-pdf"></i> Exporter PDF groupé</span>
+                <span x-show="exporting" x-cloak><i class="fas fa-spinner fa-spin"></i> Préparation…</span>
+            </button>
+        </div>
+    </div>
+    @endcan
+
     {{-- ══ BULK ACTIONS BAR ══════════════════════════════ --}}
     <div class="bul-bulkbar" x-cloak x-show="selected.length > 0">
         <div class="bul-bulkbar-info">
@@ -657,6 +729,7 @@ function bulIndex() {
     return {
         selected: [],
         busy: false,
+        exporting: false,
         loading: false,
         toasts: [],
         toastSeq: 0,
@@ -737,6 +810,24 @@ function bulIndex() {
             const search = form.querySelector('input[name="search"]');
             if (search) search.value = '';
             this.fetchPage(1);
+        },
+
+        // Export groupé : ouvre le PDF fusionné (téléchargement binaire = navigation
+        // GET directe, exception documentée à ajax-no-reload-premium). On reprend
+        // exactement les filtres courants + l'ordre choisi.
+        exportPdf() {
+            const form = document.getElementById('bul-filter-form');
+            const params = new URLSearchParams(new FormData(form));
+            params.delete('page');
+            const orderSel = document.querySelector('select[name="order"]');
+            const dirSel = document.querySelector('select[name="dir"]');
+            if (orderSel && orderSel.value) params.set('order', orderSel.value);
+            if (dirSel && dirSel.value) params.set('dir', dirSel.value);
+            const url = @json(route('esbtp.bulletins.export-pdf')) + '?' + params.toString();
+            this.exporting = true;
+            window.open(url, '_blank');
+            // Le download s'ouvre dans un nouvel onglet ; on relâche l'état après un court délai.
+            setTimeout(() => { this.exporting = false; }, 2500);
         },
 
         pushToast(detail) {

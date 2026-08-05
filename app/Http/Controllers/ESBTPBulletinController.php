@@ -21,6 +21,7 @@ use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
 use App\Models\ESBTPResultatMatiere;
+use App\Services\BulletinBulkPdfExporter;
 use App\Services\BulletinService;
 use App\Services\ESBTP\BulletinConsistencyService;
 use App\Services\ESBTP\ESBTPAbsenceService;
@@ -110,26 +111,8 @@ class ESBTPBulletinController extends Controller
 
         $query = ESBTPBulletin::with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name', 'anneeUniversitaire:id,name']);
 
-        if ($classe_id) {
-            $query->where('classe_id', $classe_id);
-        }
-        if ($annee_id) {
-            $query->where('annee_universitaire_id', $annee_id);
-        }
-        if ($periode_id) {
-            $query->where('periode', $periode_id);
-        }
-        if ($published !== null && $published !== '') {
-            $query->where('is_published', (int) $published);
-        }
-        if ($search !== '') {
-            $like = '%'.$search.'%';
-            $query->whereHas('etudiant', function ($q) use ($like) {
-                $q->where('matricule', 'like', $like)
-                    ->orWhere('nom', 'like', $like)
-                    ->orWhere('prenoms', 'like', $like);
-            });
-        }
+        // Filtres partagés avec l'export groupé (exportBulkPdf) → export ≡ vue.
+        $this->applyBulletinFilters($query, $request, $annee_id ? (int) $annee_id : null);
 
         $bulletins = $query->orderBy('created_at', 'desc')->paginate(20)->appends($request->query());
 
@@ -616,6 +599,37 @@ class ESBTPBulletinController extends Controller
         $this->authorize('download', $bulletin);
 
         try {
+            $pdf = $this->buildBulletinPdf($bulletin);
+
+            $filename = 'bulletin_'.
+                        ($bulletin->etudiant ? $bulletin->etudiant->matricule : 'unknown').'_'.
+                        ($bulletin->classe ? $bulletin->classe->code : 'unknown').'_'.
+                        $bulletin->periode.'_'.
+                        ($bulletin->anneeUniversitaire ? $bulletin->anneeUniversitaire->display_name : 'unknown').'.pdf';
+
+            // Stream inline (preview) ou télécharger selon le mode demandé
+            return $inline ? $pdf->stream($filename) : $pdf->download($filename);
+        } catch (\Throwable $e) {
+            Log::error('Erreur lors de la génération du PDF du bulletin #'.$bulletin->id.': '.$e->getMessage());
+            Log::error('Trace: '.$e->getTraceAsString());
+
+            return back()->with('error', 'Une erreur est survenue lors de la génération du PDF: '.$e->getMessage());
+        }
+    }
+
+    /**
+     * Construit le PDF DomPDF d'un bulletin SANS le streamer/télécharger.
+     * Extrait de genererPDF() afin d'être réutilisé à l'identique par l'export
+     * groupé (exportBulkPdf) : chaque page du PDF fusionné est byte-identique au
+     * téléchargement unitaire. Lève une exception en cas d'échec (le caller décide
+     * du fallback).
+     */
+    protected function buildBulletinPdf(ESBTPBulletin $bulletin, bool $persist = true): \Barryvdh\DomPDF\PDF
+    {
+        // $persist=false (export groupé) : on calcule et on met à jour l'objet en
+        // mémoire pour un rendu identique, MAIS on n'écrit rien en base — un GET
+        // d'export ne doit pas déclencher N écritures.
+        try {
             Log::info('Début de la génération du PDF pour le bulletin #'.$bulletin->id);
 
             // Charger toutes les relations nécessaires avec eager loading, y compris les relations imbriquées
@@ -845,8 +859,10 @@ class ESBTPBulletinController extends Controller
                 // Mettre à jour le bulletin avec les moyennes calculées
                 if (! $bulletin->moyenne_generale || $bulletin->moyenne_generale != $moyenneGlobale) {
                     $bulletin->moyenne_generale = $moyenneGlobale;
-                    $bulletin->save();
-                    Log::info('Moyenne générale mise à jour: '.$moyenneGlobale);
+                    if ($persist) {
+                        $bulletin->save();
+                        Log::info('Moyenne générale mise à jour: '.$moyenneGlobale);
+                    }
                 }
 
             } catch (\Exception $e) {
@@ -901,7 +917,10 @@ class ESBTPBulletinController extends Controller
             );
 
             if ((int) $bulletin->effectif_classe !== $effectifClasse) {
-                $bulletin->forceFill(['effectif_classe' => $effectifClasse])->save();
+                $bulletin->forceFill(['effectif_classe' => $effectifClasse]);
+                if ($persist) {
+                    $bulletin->save();
+                }
             }
 
             $data = [
@@ -966,67 +985,178 @@ class ESBTPBulletinController extends Controller
                 }
             }
 
-            try {
-                Log::info('Chargement de la vue PDF avec le template configurable pour le bulletin #'.$bulletin->id);
-                $pdf = PDF::loadView($this->bulletinService->getBulletinTemplateView(), $data);
+            Log::info('Chargement de la vue PDF avec le template configurable pour le bulletin #'.$bulletin->id);
+            $pdf = PDF::loadView($this->bulletinService->getBulletinTemplateView(), $data);
 
-                // Configuration PDF avec format A4 et options optimisées
-                $paperFormat = SettingsHelper::get('bulletin_paper_format', 'A4');
-                $orientation = SettingsHelper::get('bulletin_orientation', 'portrait');
-                $dpi = SettingsHelper::get('bulletin_dpi', '150');
+            // Configuration PDF avec format A4 et options optimisées
+            $paperFormat = SettingsHelper::get('bulletin_paper_format', 'A4');
+            $orientation = SettingsHelper::get('bulletin_orientation', 'portrait');
+            $dpi = SettingsHelper::get('bulletin_dpi', '150');
 
-                $pdf->setPaper(strtolower($paperFormat), $orientation);
-                $pdf->setOptions([
-                    'dpi' => intval($dpi),
-                    'defaultFont' => 'sans-serif',
-                    'isRemoteEnabled' => false, // Pour éviter les problèmes de sécurité
-                    'isHtml5ParserEnabled' => true,
-                    'isPhpEnabled' => false,
-                ]);
+            $pdf->setPaper(strtolower($paperFormat), $orientation);
+            $pdf->setOptions([
+                'dpi' => intval($dpi),
+                'defaultFont' => 'sans-serif',
+                'isRemoteEnabled' => false, // Pour éviter les problèmes de sécurité
+                'isHtml5ParserEnabled' => true,
+                'isPhpEnabled' => false,
+            ]);
 
-                // Nom du fichier PDF
-                $filename = 'bulletin_'.
-                            ($bulletin->etudiant ? $bulletin->etudiant->matricule : 'unknown').'_'.
-                            ($bulletin->classe ? $bulletin->classe->code : 'unknown').'_'.
-                            $bulletin->periode.'_'.
-                            ($bulletin->anneeUniversitaire ? $bulletin->anneeUniversitaire->display_name : 'unknown').'.pdf';
+            Log::info('PDF généré avec succès pour le bulletin #'.$bulletin->id);
 
-                Log::info('PDF généré avec succès pour le bulletin #'.$bulletin->id);
-
-                // Stream inline (preview) ou télécharger selon le mode demandé
-                return $inline ? $pdf->stream($filename) : $pdf->download($filename);
-            } catch (\Exception $e) {
-                Log::error('Erreur lors de la génération du PDF: '.$e->getMessage());
-                Log::error('Trace: '.$e->getTraceAsString());
-
-                // Enregistrer des informations supplémentaires pour le débogage
-                Log::error('Données du bulletin: '.json_encode([
-                    'id' => $bulletin->id,
-                    'etudiant_id' => $bulletin->etudiant_id,
-                    'classe_id' => $bulletin->classe_id,
-                    'annee_universitaire_id' => $bulletin->annee_universitaire_id,
-                    'periode' => $bulletin->periode,
-                ]));
-
-                return back()->with('error', 'Une erreur est survenue lors de la génération du PDF: '.$e->getMessage());
-            }
-        } catch (\Exception $e) {
-            Log::error('Erreur lors de la préparation des données pour le PDF: '.$e->getMessage());
+            return $pdf;
+        } catch (\Throwable $e) {
+            Log::error('Erreur buildBulletinPdf bulletin #'.$bulletin->id.': '.$e->getMessage());
             Log::error('Trace: '.$e->getTraceAsString());
 
-            // Enregistrer des informations supplémentaires pour le débogage
-            if (isset($bulletin)) {
-                Log::error('Données du bulletin: '.json_encode([
-                    'id' => $bulletin->id,
-                    'etudiant_id' => $bulletin->etudiant_id,
-                    'classe_id' => $bulletin->classe_id,
-                    'annee_universitaire_id' => $bulletin->annee_universitaire_id,
-                    'periode' => $bulletin->periode,
-                ]));
-            }
-
-            return back()->with('error', 'Une erreur est survenue lors de la génération du PDF: '.$e->getMessage());
+            throw $e;
         }
+    }
+
+    /**
+     * Résout l'année universitaire cible : celle du filtre, sinon l'année en
+     * cours, sinon l'année active. Partagé par index() et exportBulkPdf().
+     */
+    protected function resolveAnneeId(Request $request): ?int
+    {
+        $id = $request->input('annee_universitaire_id');
+        if ($id) {
+            return (int) $id;
+        }
+
+        return ESBTPAnneeUniversitaire::where('is_current', true)->value('id')
+            ?? ESBTPAnneeUniversitaire::where('is_active', true)->value('id');
+    }
+
+    /**
+     * Applique les filtres bulletins (classe, année, période, statut, recherche)
+     * à une requête. Source UNIQUE partagée entre la liste et l'export groupé
+     * afin que l'export reflète exactement la vue filtrée.
+     */
+    protected function applyBulletinFilters($query, Request $request, ?int $anneeId): void
+    {
+        if ($classeId = $request->input('classe_id')) {
+            $query->where('classe_id', $classeId);
+        }
+        if ($anneeId) {
+            $query->where('annee_universitaire_id', $anneeId);
+        }
+        if ($periodeId = $request->input('periode_id')) {
+            $query->where('periode', $periodeId);
+        }
+        $published = $request->input('published');
+        if ($published !== null && $published !== '') {
+            $query->where('is_published', (int) $published);
+        }
+        $search = trim((string) $request->input('search', ''));
+        if ($search !== '') {
+            $like = '%'.$search.'%';
+            $query->whereHas('etudiant', function ($q) use ($like) {
+                $q->where('matricule', 'like', $like)
+                    ->orWhere('nom', 'like', $like)
+                    ->orWhere('prenoms', 'like', $like);
+            });
+        }
+    }
+
+    /**
+     * Ordonne la requête d'export selon un critère WHITELISTÉ (anti-injection).
+     * Retourne le libellé lisible de l'ordre appliqué.
+     */
+    protected function applyBulletinExportOrder($query, Request $request): string
+    {
+        $order = (string) $request->input('order', 'classe');
+        $dirInput = strtolower((string) $request->input('dir', ''));
+        $dir = in_array($dirInput, ['asc', 'desc'], true) ? $dirInput : null;
+
+        switch ($order) {
+            case 'nom':
+                $query->join('esbtp_etudiants as e_ord', 'e_ord.id', '=', 'esbtp_bulletins.etudiant_id')
+                    ->orderBy('e_ord.nom', $dir ?? 'asc')
+                    ->orderBy('e_ord.prenoms', $dir ?? 'asc')
+                    ->select('esbtp_bulletins.*');
+
+                return 'Nom';
+
+            case 'matricule':
+                $query->join('esbtp_etudiants as e_ord', 'e_ord.id', '=', 'esbtp_bulletins.etudiant_id')
+                    ->orderBy('e_ord.matricule', $dir ?? 'asc')
+                    ->select('esbtp_bulletins.*');
+
+                return 'Matricule';
+
+            case 'moyenne':
+                // Défaut décroissant (ordre de mérite). whereNotNull('moyenne_generale') en amont.
+                $query->orderBy('moyenne_generale', $dir ?? 'desc');
+
+                return 'Moyenne';
+
+            case 'rang':
+                $query->orderByRaw('rang IS NULL, rang '.($dir ?? 'asc'));
+
+                return 'Rang';
+
+            case 'classe':
+            default:
+                $query->join('esbtp_classes as c_ord', 'c_ord.id', '=', 'esbtp_bulletins.classe_id')
+                    ->join('esbtp_etudiants as e_ord', 'e_ord.id', '=', 'esbtp_bulletins.etudiant_id')
+                    ->orderBy('c_ord.name', $dir ?? 'asc')
+                    ->orderBy('e_ord.nom', $dir ?? 'asc')
+                    ->select('esbtp_bulletins.*');
+
+                return 'Classe';
+        }
+    }
+
+    /**
+     * Exporte en UN seul PDF tous les bulletins du jeu filtré courant, dans
+     * l'ordre choisi. Snapshot-only (bulletins déjà générés uniquement) : aucun
+     * recalcul n'est déclenché depuis ce GET. Borné par un plafond configurable
+     * (bulletins_bulk_export_cap) pour protéger mémoire/temps d'exécution.
+     */
+    public function exportBulkPdf(Request $request, BulletinBulkPdfExporter $exporter)
+    {
+        $anneeId = $this->resolveAnneeId($request);
+
+        // Snapshot-only : uniquement les bulletins déjà générés (moyenne figée).
+        $base = ESBTPBulletin::query()->whereNotNull('moyenne_generale');
+        $this->applyBulletinFilters($base, $request, $anneeId);
+
+        $count = (clone $base)->count();
+        if ($count === 0) {
+            return back()->with('error', "Aucun bulletin généré ne correspond aux filtres. Générez d'abord les bulletins, puis réessayez.");
+        }
+
+        $cap = (int) SettingsHelper::get('bulletins_bulk_export_cap', 150);
+        if ($count > $cap) {
+            return back()->with('error', "Trop de bulletins ($count) pour un export groupé. Affinez le filtre (classe et/ou période) — la limite est de $cap bulletins par export.");
+        }
+
+        $query = $base->with([
+            'etudiant:id,matricule,nom,prenoms',
+            'classe:id,name,code',
+            'anneeUniversitaire:id,name,display_name',
+        ]);
+        $this->applyBulletinExportOrder($query, $request);
+
+        $bulletins = $query->get();
+
+        try {
+            // $persist=false : export en lecture seule, aucune écriture DB déclenchée par ce GET.
+            $result = $exporter->export($bulletins, fn (ESBTPBulletin $b) => $this->buildBulletinPdf($b, false));
+        } catch (\Throwable $e) {
+            Log::error('exportBulkPdf: échec export groupé — '.$e->getMessage());
+
+            return back()->with('error', "Échec de l'export groupé des bulletins : ".$e->getMessage());
+        }
+
+        if (! empty($result['failed'])) {
+            Log::warning('exportBulkPdf: '.count($result['failed']).' bulletin(s) non rendus', $result['failed']);
+        }
+
+        $filename = 'bulletins_'.now()->format('Ymd_His').'.pdf';
+
+        return response()->download($result['path'], $filename)->deleteFileAfterSend(true);
     }
 
     /**

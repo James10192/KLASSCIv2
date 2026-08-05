@@ -765,6 +765,11 @@ return [
             'group' => 'Bulletins',
             'icon' => 'fa-arrows-rotate',
         ],
+        'bulletins.export.bulk' => [
+            'label' => 'Exporter les bulletins filtrés en un seul PDF',
+            'group' => 'Bulletins',
+            'icon' => 'fa-file-export',
+        ],
 
         // ===== Présences =====
         'attendances.view' => [
@@ -1742,7 +1747,7 @@ return [
             'notes.view', 'notes.create', 'notes.edit', 'notes.import_excel',
             'evaluations.view', 'evaluations.create', 'evaluations.edit', 'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit', 'bulletins.delete', 'bulletins.configure',
-            'bulletins.publish.bulk', 'bulletins.regenerate.bulk',
+            'bulletins.publish.bulk', 'bulletins.regenerate.bulk', 'bulletins.export.bulk',
             'attendances.view', 'attendances.create', 'attendances.edit', 'attendances.delete',
             'attendances.generate_codes', 'attendances.justify_process',
             'session_reports.view',
@@ -1847,7 +1852,7 @@ return [
             'evaluations.view', 'evaluations.create', 'evaluations.edit',
             'exams.view',
             'bulletins.view', 'bulletins.generate', 'bulletins.edit',
-            'bulletins.publish.bulk', 'bulletins.regenerate.bulk',
+            'bulletins.publish.bulk', 'bulletins.regenerate.bulk', 'bulletins.export.bulk',
             'attendances.view', 'attendances.create', 'attendances.edit', 'attendances.delete',
             'attendances.generate_codes',
             'session_reports.view',
