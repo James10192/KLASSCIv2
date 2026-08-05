@@ -58,3 +58,7 @@ node_modules/
 # Claude Code worktrees (session-local, never commit)
 .claude/worktrees/
 .claude/scheduled_tasks.lock
+
+# E2E audit artifacts (captures/PDF jetables — local only, jamais versionnés)
+docs/audits/e2e/
+.codex-run/
