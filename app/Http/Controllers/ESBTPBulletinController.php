@@ -1035,18 +1035,21 @@ class ESBTPBulletinController extends Controller
      */
     protected function applyBulletinFilters($query, Request $request, ?int $anneeId): void
     {
+        // Colonnes qualifiées `esbtp_bulletins.` : l'export groupé joint esbtp_classes
+        // (qui porte aussi une colonne legacy annee_universitaire_id) → sans le préfixe,
+        // le WHERE devient ambigu (1052). Inoffensif pour index() (pas de join).
         if ($classeId = $request->input('classe_id')) {
-            $query->where('classe_id', $classeId);
+            $query->where('esbtp_bulletins.classe_id', $classeId);
         }
         if ($anneeId) {
-            $query->where('annee_universitaire_id', $anneeId);
+            $query->where('esbtp_bulletins.annee_universitaire_id', $anneeId);
         }
         if ($periodeId = $request->input('periode_id')) {
-            $query->where('periode', $periodeId);
+            $query->where('esbtp_bulletins.periode', $periodeId);
         }
         $published = $request->input('published');
         if ($published !== null && $published !== '') {
-            $query->where('is_published', (int) $published);
+            $query->where('esbtp_bulletins.is_published', (int) $published);
         }
         $search = trim((string) $request->input('search', ''));
         if ($search !== '') {
@@ -1086,13 +1089,13 @@ class ESBTPBulletinController extends Controller
                 return 'Matricule';
 
             case 'moyenne':
-                // Défaut décroissant (ordre de mérite). whereNotNull('moyenne_generale') en amont.
-                $query->orderBy('moyenne_generale', $dir ?? 'desc');
+                // Défaut décroissant (ordre de mérite). whereNotNull en amont.
+                $query->orderBy('esbtp_bulletins.moyenne_generale', $dir ?? 'desc');
 
                 return 'Moyenne';
 
             case 'rang':
-                $query->orderByRaw('rang IS NULL, rang '.($dir ?? 'asc'));
+                $query->orderByRaw('esbtp_bulletins.rang IS NULL, esbtp_bulletins.rang '.($dir ?? 'asc'));
 
                 return 'Rang';
 
@@ -1119,7 +1122,7 @@ class ESBTPBulletinController extends Controller
         $anneeId = $this->resolveAnneeId($request);
 
         // Snapshot-only : uniquement les bulletins déjà générés (moyenne figée).
-        $base = ESBTPBulletin::query()->whereNotNull('moyenne_generale');
+        $base = ESBTPBulletin::query()->whereNotNull('esbtp_bulletins.moyenne_generale');
         $this->applyBulletinFilters($base, $request, $anneeId);
 
         $count = (clone $base)->count();
