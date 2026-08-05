@@ -1766,6 +1766,9 @@ Route::get('/esbtp/bulletins/select', [ESBTPBulletinController::class, 'select']
     ->middleware(['auth', 'permission:admin.access']);
 
 // Export groupÃ© : tous les bulletins filtrÃ©s en un seul PDF, dans l'ordre choisi
+Route::get('/esbtp/bulletins/export-precheck', [ESBTPBulletinController::class, 'exportPrecheck'])
+    ->name('esbtp.bulletins.export-precheck')
+    ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:30,1']);
 Route::get('/esbtp/bulletins/export-pdf', [ESBTPBulletinController::class, 'exportBulkPdf'])
     ->name('esbtp.bulletins.export-pdf')
     ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:5,1']);

@@ -1117,33 +1117,78 @@ class ESBTPBulletinController extends Controller
      * recalcul n'est déclenché depuis ce GET. Borné par un plafond configurable
      * (bulletins_bulk_export_cap) pour protéger mémoire/temps d'exécution.
      */
+    /**
+     * Pré-vérification JSON de l'export groupé : renvoie les compteurs (total filtré,
+     * générés inclus, non générés absents, dépassement de plafond) pour permettre à
+     * l'UI d'avertir l'utilisateur AVANT le téléchargement.
+     */
+    public function exportPrecheck(Request $request)
+    {
+        $anneeId = $this->resolveAnneeId($request);
+
+        $filtered = ESBTPBulletin::query();
+        $this->applyBulletinFilters($filtered, $request, $anneeId);
+
+        $total = (clone $filtered)->count();
+        $generated = (clone $filtered)->whereNotNull('esbtp_bulletins.moyenne_generale')->count();
+        $cap = (int) SettingsHelper::get('bulletins_bulk_export_cap', 150);
+
+        return response()->json([
+            'total' => $total,
+            'generated' => $generated,
+            'ungenerated' => max(0, $total - $generated),
+            'cap' => $cap,
+            'over_cap' => $generated > $cap,
+        ]);
+    }
+
     public function exportBulkPdf(Request $request, BulletinBulkPdfExporter $exporter)
     {
         $anneeId = $this->resolveAnneeId($request);
 
-        // Snapshot-only : uniquement les bulletins déjà générés (moyenne figée).
-        $base = ESBTPBulletin::query()->whereNotNull('esbtp_bulletins.moyenne_generale');
-        $this->applyBulletinFilters($base, $request, $anneeId);
+        // Ensemble filtré COMPLET (généré ou non), pour distinguer les absents.
+        $filtered = ESBTPBulletin::query();
+        $this->applyBulletinFilters($filtered, $request, $anneeId);
 
-        $count = (clone $base)->count();
-        if ($count === 0) {
-            return back()->with('error', "Aucun bulletin généré ne correspond aux filtres. Générez d'abord les bulletins, puis réessayez.");
+        // Snapshot-only : seuls les bulletins déjà générés (moyenne figée) sont imprimés.
+        $generated = (clone $filtered)->whereNotNull('esbtp_bulletins.moyenne_generale');
+        $generatedCount = (clone $generated)->count();
+
+        if ($generatedCount === 0) {
+            $totalFiltered = (clone $filtered)->count();
+
+            return back()->with('error', "Aucun bulletin généré parmi les $totalFiltered filtrés. Générez d'abord les bulletins, puis réessayez.");
         }
 
         $cap = (int) SettingsHelper::get('bulletins_bulk_export_cap', 150);
-        if ($count > $cap) {
-            return back()->with('error', "Trop de bulletins ($count) pour un export groupé. Affinez le filtre (classe et/ou période) — la limite est de $cap bulletins par export.");
+        if ($generatedCount > $cap) {
+            return back()->with('error', "Trop de bulletins générés ($generatedCount) pour un export groupé. Affinez le filtre (classe et/ou période) — la limite est de $cap bulletins par export.");
         }
 
-        // Pas d'eager-load ici : buildBulletinPdf() recharge lui-même les relations
-        // nécessaires par bulletin (son ->load() écraserait tout with() posé ici).
-        $this->applyBulletinExportOrder($base, $request);
+        // Bulletins NON générés du même filtre → seront ABSENTS du PDF (avertissement).
+        $ungenerated = (clone $filtered)->whereNull('esbtp_bulletins.moyenne_generale')
+            ->with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name'])
+            ->get();
 
-        $bulletins = $base->get();
+        // Pas d'eager-load ici : buildBulletinPdf() recharge lui-même les relations.
+        $this->applyBulletinExportOrder($generated, $request);
+        $bulletins = $generated->get();
+
+        // La page de garde d'avertissement est bâtie après le rendu (pour inclure les échecs).
+        $coverBuilder = fn (array $failed): ?\Barryvdh\DomPDF\PDF => $this->buildExportCoverPdf(
+            $ungenerated,
+            $failed,
+            $request,
+            $bulletins->count()
+        );
 
         try {
             // $persist=false : export en lecture seule, aucune écriture DB déclenchée par ce GET.
-            $result = $exporter->export($bulletins, fn (ESBTPBulletin $b) => $this->buildBulletinPdf($b, false));
+            $result = $exporter->export(
+                $bulletins,
+                fn (ESBTPBulletin $b) => $this->buildBulletinPdf($b, false),
+                $coverBuilder
+            );
         } catch (\Throwable $e) {
             Log::error('exportBulkPdf: échec export groupé — '.$e->getMessage());
 
@@ -1157,6 +1202,50 @@ class ESBTPBulletinController extends Controller
         $filename = 'bulletins_'.now()->format('Ymd_His').'.pdf';
 
         return response()->download($result['path'], $filename)->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Page de garde d'avertissement : listée en tête du PDF groupé lorsqu'au moins
+     * un bulletin du filtre est ABSENT (non généré, ou échec de rendu). Retourne
+     * null si tout le filtre est inclus (aucun avertissement nécessaire).
+     *
+     * @param  \Illuminate\Support\Collection  $ungenerated  bulletins non générés (moyenne NULL)
+     * @param  array<int, array{id: int, message: string}>  $failed  bulletins générés mais non rendus
+     */
+    protected function buildExportCoverPdf(\Illuminate\Support\Collection $ungenerated, array $failed, Request $request, int $includedCount): ?\Barryvdh\DomPDF\PDF
+    {
+        $failedIds = collect($failed)->pluck('id')->filter();
+        $failedBulletins = $failedIds->isNotEmpty()
+            ? ESBTPBulletin::with(['etudiant:id,matricule,nom,prenoms', 'classe:id,name'])
+                ->whereIn('id', $failedIds)->get()
+            : collect();
+
+        // Rien d'absent → pas de page de garde.
+        if ($ungenerated->isEmpty() && $failedBulletins->isEmpty()) {
+            return null;
+        }
+
+        $annee = $request->input('annee_universitaire_id')
+            ? optional(ESBTPAnneeUniversitaire::find($request->input('annee_universitaire_id')))->name
+            : null;
+        $classe = $request->input('classe_id')
+            ? optional(ESBTPClasse::find($request->input('classe_id')))->name
+            : null;
+        $periodeLabels = ['semestre1' => 'Premier Semestre', 'semestre2' => 'Deuxième Semestre', 'annuel' => 'Annuel'];
+
+        $pdf = PDF::loadView('esbtp.bulletins.pdf-export-cover', [
+            'included' => $includedCount,
+            'ungenerated' => $ungenerated,
+            'failed' => $failedBulletins,
+            'annee' => $annee,
+            'classe' => $classe,
+            'periode' => $periodeLabels[$request->input('periode_id')] ?? null,
+            'config' => $this->bulletinService->getPDFConfig(),
+            'logoBase64' => $this->bulletinService->prepareLogoBase64($this->bulletinService->getPDFConfig()['school_logo'] ?? null),
+        ]);
+        $pdf->setPaper('a4', 'portrait');
+
+        return $pdf;
     }
 
     /**

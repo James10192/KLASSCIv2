@@ -812,10 +812,11 @@ function bulIndex() {
             this.fetchPage(1);
         },
 
-        // Export groupé : ouvre le PDF fusionné (téléchargement binaire = navigation
-        // GET directe, exception documentée à ajax-no-reload-premium). On reprend
-        // exactement les filtres courants + l'ordre choisi.
-        exportPdf() {
+        // Export groupé : pré-vérifie les compteurs et AVERTIT si des bulletins ne sont
+        // pas encore générés (ils seront absents du PDF), puis ouvre le PDF fusionné
+        // (téléchargement binaire = navigation GET directe, exception documentée à
+        // ajax-no-reload-premium). On reprend les filtres courants + l'ordre choisi.
+        async exportPdf() {
             const form = document.getElementById('bul-filter-form');
             const params = new URLSearchParams(new FormData(form));
             params.delete('page');
@@ -823,11 +824,35 @@ function bulIndex() {
             const dirSel = document.querySelector('select[name="dir"]');
             if (orderSel && orderSel.value) params.set('order', orderSel.value);
             if (dirSel && dirSel.value) params.set('dir', dirSel.value);
-            const url = @json(route('esbtp.bulletins.export-pdf')) + '?' + params.toString();
+
             this.exporting = true;
-            window.open(url, '_blank');
-            // Le download s'ouvre dans un nouvel onglet ; on relâche l'état après un court délai.
-            setTimeout(() => { this.exporting = false; }, 2500);
+            try {
+                // Pré-check : combien de bulletins générés (inclus) vs non générés (absents).
+                const pre = await fetch(@json(route('esbtp.bulletins.export-precheck')) + '?' + params.toString(), {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                }).then(r => r.ok ? r.json() : null).catch(() => null);
+
+                if (pre) {
+                    if (pre.generated === 0) {
+                        this.pushToast({ type: 'error', message: `Aucun bulletin généré parmi les ${pre.total} filtrés. Générez-les d'abord.` });
+                        return;
+                    }
+                    if (pre.over_cap) {
+                        this.pushToast({ type: 'error', message: `Trop de bulletins générés (${pre.generated}). Affinez le filtre (limite ${pre.cap}).` });
+                        return;
+                    }
+                    if (pre.ungenerated > 0) {
+                        const ok = confirm(`${pre.ungenerated} bulletin(s) ne sont pas encore générés et seront ABSENTS du PDF.\n\n${pre.generated} bulletin(s) sur ${pre.total} seront inclus (une page de récapitulatif listera les absents).\n\nContinuer ?`);
+                        if (!ok) return;
+                    }
+                }
+
+                const url = @json(route('esbtp.bulletins.export-pdf')) + '?' + params.toString();
+                window.open(url, '_blank');
+            } finally {
+                // Le download s'ouvre dans un nouvel onglet ; on relâche l'état après un court délai.
+                setTimeout(() => { this.exporting = false; }, 2500);
+            }
         },
 
         pushToast(detail) {

@@ -316,7 +316,7 @@ class BulletinService
                         'matiere' => $matiere,
                         'notes' => [],
                         'moyenne' => 0,
-                        'coefficient' => $this->getCoefficientForCombination(
+                        'coefficient' => $this->coefficientOrDefault(
                             $matiereId,
                             $classe->id,
                             $anneeUniversitaireId,
@@ -381,7 +381,7 @@ class BulletinService
                         'matiere' => $resultatManuel->matiere,
                         'notes' => [],
                         'moyenne' => $resultatManuel->moyenne,
-                        'coefficient' => $this->getCoefficientForCombination(
+                        'coefficient' => $this->coefficientOrDefault(
                             $matiereId,
                             $classe->id,
                             $anneeUniversitaireId,
@@ -401,7 +401,7 @@ class BulletinService
                     // Écraser avec les moyennes manuelles (elles l'emportent toujours)
                     $resultatsParMatiere[$matiereId]->moyenne = $resultatManuel->moyenne;
                     $resultatsParMatiere[$matiereId]->appreciation = $resultatManuel->appreciation ?: $this->getAppreciation($resultatManuel->moyenne);
-                    $resultatsParMatiere[$matiereId]->coefficient = $this->getCoefficientForCombination(
+                    $resultatsParMatiere[$matiereId]->coefficient = $this->coefficientOrDefault(
                         $matiereId,
                         $classe->id,
                         $anneeUniversitaireId,
@@ -2380,6 +2380,28 @@ class BulletinService
     }
 
 
+    /**
+     * Coefficient de la matière, avec fallback à 1 si aucun coefficient n'est
+     * configuré (au lieu de faire échouer tout le rendu du bulletin). Cohérent
+     * avec le fallback déjà appliqué dans ESBTPBulletinController::buildBulletinPdf.
+     * Un coefficient manquant ne doit jamais empêcher l'impression d'un bulletin.
+     */
+    public function coefficientOrDefault(int $matiereId, int $classeId, int $anneeUniversitaireId, ?string $periode = null, ?int $etudiantId = null): float
+    {
+        try {
+            return $this->getCoefficientForCombination($matiereId, $classeId, $anneeUniversitaireId, $periode, $etudiantId);
+        } catch (CoefficientMissingException $e) {
+            \Illuminate\Support\Facades\Log::warning('Coefficient manquant — fallback à 1', [
+                'matiere_id' => $matiereId,
+                'classe_id' => $classeId,
+                'annee_universitaire_id' => $anneeUniversitaireId,
+                'periode' => $periode,
+            ]);
+
+            return 1.0;
+        }
+    }
+
     public function getCoefficientForCombination(int $matiereId, int $classeId, int $anneeUniversitaireId, ?string $periode = null, ?int $etudiantId = null): float
     {
         // Sous-lot α : coefficients désormais par-périodes. Si $periode null, on prend
@@ -2439,7 +2461,9 @@ class BulletinService
         }
 
         if ($coefficient === null) {
-            throw new \RuntimeException('Coefficient manquant pour la matière sélectionnée.');
+            // Typé (sous-classe de RuntimeException → rétrocompat des catch existants)
+            // pour permettre à coefficientOrDefault() de le distinguer d'une "Classe invalide".
+            throw new CoefficientMissingException('Coefficient manquant pour la matière sélectionnée.');
         }
 
         $this->coefficientCache[$cacheKey] = (float) $coefficient;

@@ -24,9 +24,12 @@ class BulletinBulkPdfExporter
     /**
      * @param  Collection  $bulletins  Collection ORDONNÉE de bulletins à exporter.
      * @param  callable  $renderer  fn(ESBTPBulletin): \Barryvdh\DomPDF\PDF — rend un bulletin.
+     * @param  callable|null  $coverBuilder  fn(array $failed): ?\Barryvdh\DomPDF\PDF — page de
+     *         garde optionnelle (avertissement bulletins absents), reçue APRÈS rendu pour
+     *         connaître les échecs. Retourne null pour ne pas ajouter de page de garde.
      * @return array{path: string, rendered: int, failed: array<int, array{id: int, message: string}>}
      */
-    public function export(Collection $bulletins, callable $renderer): array
+    public function export(Collection $bulletins, callable $renderer, ?callable $coverBuilder = null): array
     {
         // Gardes mémoire/temps : un export groupé est plus lourd qu'un bulletin seul.
         // On n'ÉLÈVE la limite mémoire que si la valeur courante est plus basse
@@ -64,6 +67,22 @@ class BulletinBulkPdfExporter
 
         if (empty($tempFiles)) {
             throw new \RuntimeException("Aucun bulletin n'a pu être rendu.");
+        }
+
+        // Page de garde d'avertissement (bulletins absents = non générés + échecs de rendu),
+        // construite APRÈS le rendu pour inclure $failed, puis placée en TÊTE du PDF.
+        if ($coverBuilder !== null) {
+            try {
+                $coverPdf = $coverBuilder($failed);
+                if ($coverPdf !== null) {
+                    $coverPath = $tempDir.'/blt_cover_'.uniqid('', true).'.pdf';
+                    file_put_contents($coverPath, $coverPdf->output());
+                    array_unshift($tempFiles, $coverPath);
+                    unset($coverPdf);
+                }
+            } catch (\Throwable $e) {
+                Log::error('BulletinBulkPdfExporter: page de garde non générée — '.$e->getMessage());
+            }
         }
 
         try {
