@@ -14,7 +14,11 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 
 ### Ajouts
 
-- **Export PDF groupé des bulletins** (`/esbtp/bulletins`) — un bouton « Exporter PDF groupé » réunit en un seul PDF tous les bulletins du filtre courant (année, classe, période, statut, recherche), dans l'**ordre choisi** (Classe, Nom, Matricule, Moyenne ou Rang) et le sens (croissant / décroissant). Chaque page est rendue à l'identique du téléchargement unitaire du bulletin puis les documents sont fusionnés via FPDI. Export **snapshot-only** (seuls les bulletins déjà générés sont inclus, aucun recalcul déclenché) et **borné** par un plafond configurable (`bulletins_bulk_export_cap`, défaut 150) pour protéger l'hébergement partagé ; au-delà, un message invite à affiner le filtre. Nouvelle permission `bulletins.export.bulk` (attribuée par défaut à secrétaire et coordinateur, superAdmin couvert).
+- **Export PDF groupé des bulletins** (`/esbtp/bulletins`) — un bouton « Exporter PDF groupé » réunit en un seul PDF tous les bulletins du filtre courant (année, classe, période, statut, recherche), dans l'**ordre choisi** (Classe, Nom, Matricule, Moyenne ou Rang) et le sens (croissant / décroissant). Chaque page est rendue à l'identique du téléchargement unitaire du bulletin puis les documents sont fusionnés via FPDI. Export **snapshot-only** (seuls les bulletins déjà générés sont inclus, aucun recalcul déclenché) et **borné** par un plafond configurable (`bulletins_bulk_export_cap`, défaut 150). L'export **reste possible même si certains bulletins du filtre ne sont pas encore générés** : ceux-ci sont simplement absents, l'utilisateur en est **averti avant le téléchargement** (nombre inclus / absents), et une **page de récapitulatif** en tête du PDF liste les bulletins non inclus (non générés ou non imprimables). Nouvelle permission `bulletins.export.bulk` (attribuée par défaut à secrétaire et coordinateur, superAdmin couvert).
+
+### Corrections
+
+- **Impression de bulletin robuste aux coefficients manquants** — un coefficient de matière non configuré ne fait plus échouer la génération du PDF d'un bulletin (téléchargement unitaire comme export groupé) : le coefficient retombe automatiquement sur 1 avec une trace, au lieu d'interrompre tout le rendu. Corrige les bulletins qui restaient impossibles à imprimer lorsqu'une matière n'avait pas de coefficient défini.
 
 ---
 
