@@ -1233,10 +1233,15 @@ class ESBTPBulletinController extends Controller
             : null;
         $periodeLabels = ['semestre1' => 'Premier Semestre', 'semestre2' => 'Deuxième Semestre', 'annuel' => 'Annuel'];
 
+        // Liste plafonnée pour éviter une page de garde démesurée (ex: 600+ absents).
+        $coverListLimit = 60;
+
         $pdf = PDF::loadView('esbtp.bulletins.pdf-export-cover', [
             'included' => $includedCount,
-            'ungenerated' => $ungenerated,
-            'failed' => $failedBulletins,
+            'ungenerated' => $ungenerated->take($coverListLimit),
+            'ungeneratedTotal' => $ungenerated->count(),
+            'failed' => $failedBulletins->take($coverListLimit),
+            'failedTotal' => $failedBulletins->count(),
             'annee' => $annee,
             'classe' => $classe,
             'periode' => $periodeLabels[$request->input('periode_id')] ?? null,

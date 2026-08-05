@@ -56,7 +56,9 @@
     </table>
 
     @php
-        $totalAbsent = $ungenerated->count() + $failed->count();
+        $ungeneratedTotal = $ungeneratedTotal ?? $ungenerated->count();
+        $failedTotal = $failedTotal ?? $failed->count();
+        $totalAbsent = $ungeneratedTotal + $failedTotal;
     @endphp
 
     @if($totalAbsent > 0)
@@ -70,7 +72,7 @@
         </div>
 
         @if($ungenerated->isNotEmpty())
-            <div class="cov-sec">Bulletins non encore générés ({{ $ungenerated->count() }})</div>
+            <div class="cov-sec">Bulletins non encore générés ({{ $ungeneratedTotal }})</div>
             <table class="cov-tbl">
                 <thead>
                     <tr><th style="width:22%">Matricule</th><th>Étudiant</th><th style="width:26%">Classe</th><th style="width:18%">État</th></tr>
@@ -86,10 +88,13 @@
                     @endforeach
                 </tbody>
             </table>
+            @if($ungeneratedTotal > $ungenerated->count())
+                <div class="cov-sub" style="margin-top:5px;">… et {{ $ungeneratedTotal - $ungenerated->count() }} autre(s) bulletin(s) non généré(s) non listé(s) ici.</div>
+            @endif
         @endif
 
         @if($failed->isNotEmpty())
-            <div class="cov-sec">Bulletins non imprimables ({{ $failed->count() }})</div>
+            <div class="cov-sec">Bulletins non imprimables ({{ $failedTotal }})</div>
             <table class="cov-tbl">
                 <thead>
                     <tr><th style="width:22%">Matricule</th><th>Étudiant</th><th style="width:26%">Classe</th><th style="width:18%">État</th></tr>
