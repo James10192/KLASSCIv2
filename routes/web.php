@@ -1772,6 +1772,9 @@ Route::get('/esbtp/bulletins/export-precheck', [ESBTPBulletinController::class, 
 Route::get('/esbtp/bulletins/export-pdf', [ESBTPBulletinController::class, 'exportBulkPdf'])
     ->name('esbtp.bulletins.export-pdf')
     ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:5,1']);
+Route::get('/esbtp/bulletins/export-pdf/preview', [ESBTPBulletinController::class, 'exportBulkPdfPreview'])
+    ->name('esbtp.bulletins.export-pdf-preview')
+    ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:10,1']);
 
 // Route pour tÃ©lÃ©charger un bulletin au format PDF
 Route::get('/esbtp/bulletins/{bulletin}/download', [ESBTPBulletinController::class, 'genererPDF'])->name('esbtp.bulletins.download')->middleware(['auth', 'permission:admin.access']);

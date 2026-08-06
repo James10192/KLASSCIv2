@@ -22,6 +22,18 @@ use Illuminate\Support\Facades\Log;
 
 final class BtsBulkBulletinGenerationService
 {
+    /**
+     * Blocages qu'aucun motif de bulletin incomplet ne peut lever : la génération
+     * échouerait quand même (config/coefficients/professeurs manquants, bulletin
+     * verrouillé). Seul un blocage `soft` (aucune note exploitable) est overridable.
+     */
+    public const HARD_BLOCK_CODES = [
+        'missing_subject_configuration',
+        'professeurs_missing',
+        'coefficients_missing',
+        'bulletin_locked',
+    ];
+
     public function __construct(
         private readonly BulletinService $bulletinService,
         private readonly BulletinGenerationReadinessService $readiness,
@@ -39,6 +51,8 @@ final class BtsBulkBulletinGenerationService
         $skipped = [];
         $blockingErrors = [];
         $missingCoefficientBuckets = [];
+        $existingEmptyCount = 0;
+        $generatableCount = 0;
         $configurationUrl = $this->configurationUrl($classe->id, $academicYearId, $period);
         $hasSubjectConfiguration = $this->hasSubjectConfiguration($classe->id, $academicYearId, $period);
         $missingProfesseurs = $this->missingProfesseurRows($classe->id, $academicYearId, $period);
@@ -55,20 +69,28 @@ final class BtsBulkBulletinGenerationService
         foreach ($students as $student) {
             $existing = $this->findBulletin((int) $student->id, $classe->id, $academicYearId, $period);
 
+            // Bulletin déjà généré et pas de recalcul demandé : on ne réévalue pas
+            // la configuration (elle n'a aucun effet ici), on signale juste s'il est vide.
             if ($existing && ! $recalculate) {
+                $isEmpty = $existing->moyenne_generale === null;
+                $existingEmptyCount += $isEmpty ? 1 : 0;
                 $skipped[] = $this->studentPayload($student) + [
-                    'code' => 'bulletin_exists',
-                    'message' => 'Bulletin deja genere pour cette periode.',
+                    'code' => $isEmpty ? 'bulletin_exists_empty' : 'bulletin_exists',
+                    'message' => $isEmpty
+                        ? 'Bulletin existant sans moyenne : cochez « Recalculer » pour le regenerer.'
+                        : 'Bulletin deja genere pour cette periode.',
                     'bulletin_id' => $existing->id,
                 ];
+                continue;
             }
 
-            if ($existing && $recalculate && $this->isProtected($existing)) {
+            if ($existing && $this->isProtected($existing)) {
                 $blockingErrors[] = $this->studentPayload($student) + [
                     'code' => 'bulletin_locked',
                     'message' => 'Bulletin publie ou signe : le recalcul est bloque.',
                     'bulletin_id' => $existing->id,
                 ];
+                continue;
             }
 
             if (! $hasSubjectConfiguration) {
@@ -77,11 +99,13 @@ final class BtsBulkBulletinGenerationService
                     'message' => 'La configuration des matieres du bulletin est manquante.',
                     'configuration_url' => $configurationUrl,
                 ];
+                continue;
             }
 
             $preparation = $this->readiness->inspect('BTS', (int) $student->id, $classe->id, $academicYearId, $period);
+            $missingCoefficients = $this->missingCoefficientRows($preparation);
 
-            foreach ($this->missingCoefficientRows($preparation) as $missing) {
+            foreach ($missingCoefficients as $missing) {
                 $key = (string) $missing['matiere_id'];
                 $missingCoefficientBuckets[$key] ??= [
                     'matiere_id' => $missing['matiere_id'],
@@ -94,24 +118,38 @@ final class BtsBulkBulletinGenerationService
             }
 
             if (! $preparation->ready) {
+                // Le code encode la sévérité : `coefficients_missing` est hard (la
+                // génération lèverait une RuntimeException) et figure dans HARD_BLOCK_CODES ;
+                // `incomplete_academic_data` (aucune note) est soft, donc overridable par motif.
+                $isHard = $missingCoefficients !== [];
                 $blockingErrors[] = $this->studentPayload($student) + [
-                    'code' => 'incomplete_academic_data',
-                    'message' => 'Donnees academiques incompletes.',
+                    'code' => $isHard ? 'coefficients_missing' : 'incomplete_academic_data',
+                    'message' => $isHard
+                        ? 'Coefficients manquants : completez la configuration du bulletin.'
+                        : 'Aucune note exploitable pour cette periode.',
                     'preparation' => $preparation->toArray(),
-                    'missing_coefficients' => $this->missingCoefficientRows($preparation),
+                    'missing_coefficients' => $missingCoefficients,
                     'configuration_url' => $configurationUrl,
                 ];
+                continue;
             }
+
+            $generatableCount++;
         }
 
         $blockingErrors = $this->deduplicateStudentBlocks($blockingErrors);
         $canOverrideIncomplete = (bool) ($actor?->can('bulletins.generate_incomplete') ?? false);
+        $hasHardBlocks = collect($blockingErrors)->contains(fn ($b) => in_array($b['code'] ?? '', self::HARD_BLOCK_CODES, true));
+        $status = $this->resolveStatus($students->count(), $blockingErrors, $hasHardBlocks, $generatableCount, $canOverrideIncomplete);
 
         return [
-            'ok' => $blockingErrors === [],
-            'can_generate' => $blockingErrors === [],
+            'status' => $status,
+            'ok' => $status === 'ready',
+            'can_generate' => $status === 'ready',
             'can_generate_incomplete' => $canOverrideIncomplete,
-            'requires_incomplete_reason' => $blockingErrors !== [] && $canOverrideIncomplete,
+            'requires_incomplete_reason' => $status === 'needs_reason',
+            'has_hard_blocks' => $hasHardBlocks,
+            'nothing_to_generate' => $status === 'nothing_to_generate',
             'classe' => [
                 'id' => $classe->id,
                 'name' => $classe->name,
@@ -119,15 +157,45 @@ final class BtsBulkBulletinGenerationService
             'annee_universitaire_id' => $academicYearId,
             'periode' => $period,
             'students_count' => $students->count(),
-            'existing_count' => collect($skipped)->where('code', 'bulletin_exists')->count(),
+            'generatable_count' => $generatableCount,
+            'existing_count' => collect($skipped)->whereIn('code', ['bulletin_exists', 'bulletin_exists_empty'])->count(),
+            'existing_empty_count' => $existingEmptyCount,
             'recalculer' => $recalculate,
             'skipped' => $skipped,
             'blocking_errors' => $blockingErrors,
             'missing_coefficients' => array_values($missingCoefficientBuckets),
             'missing_professeurs' => $missingProfesseurs,
             'configuration_url' => $configurationUrl,
-            'message' => $this->preflightMessage($students->count(), $blockingErrors, $skipped, $canOverrideIncomplete, $classe),
+            'message' => $this->preflightMessage($status, $students->count(), $existingEmptyCount, $hasHardBlocks, $classe),
         ];
+    }
+
+    /**
+     * Statut unique et faisant autorité du pré-contrôle. L'UI et les messages
+     * dérivent de cette valeur plutôt que de recombiner plusieurs booléens.
+     */
+    private function resolveStatus(
+        int $studentsCount,
+        array $blockingErrors,
+        bool $hasHardBlocks,
+        int $generatableCount,
+        bool $canOverrideIncomplete,
+    ): string {
+        if ($studentsCount === 0) {
+            return 'no_students';
+        }
+
+        if ($blockingErrors !== []) {
+            // Blocages uniquement `soft` + droit d'override → un motif débloque.
+            // Sinon 'blocked' : soit des blocages hard, soit soft mais sans le droit d'override.
+            return (! $hasHardBlocks && $canOverrideIncomplete) ? 'needs_reason' : 'blocked';
+        }
+
+        if ($generatableCount === 0) {
+            return 'nothing_to_generate';
+        }
+
+        return 'ready';
     }
 
     public function generate(
@@ -303,20 +371,9 @@ final class BtsBulkBulletinGenerationService
         return ESBTPBulletin::where('etudiant_id', $studentId)
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $academicYearId)
-            ->whereIn('periode', $this->periodAliases($period))
+            ->whereIn('periode', $this->bulletinService->periodeAliases($period))
             ->latest('updated_at')
             ->first();
-    }
-
-    private function periodAliases(string $period): array
-    {
-        $period = $this->bulletinService->normalizePeriode($period);
-
-        return match ($period) {
-            'semestre1' => ['semestre1', '1'],
-            'semestre2' => ['semestre2', '2'],
-            default => [$period],
-        };
     }
 
     private function isProtected(ESBTPBulletin $bulletin): bool
@@ -408,7 +465,7 @@ final class BtsBulkBulletinGenerationService
 
         $template = ESBTPBulletin::where('classe_id', $classeId)
             ->where('annee_universitaire_id', $academicYearId)
-            ->whereIn('periode', $this->periodAliases($period))
+            ->whereIn('periode', $this->bulletinService->periodeAliases($period))
             ->whereNotNull('professeurs')
             ->where('professeurs', '!=', '')
             ->where('professeurs', '!=', '{}')
@@ -425,12 +482,10 @@ final class BtsBulkBulletinGenerationService
 
     private function missingProfesseurRows(int $classeId, int $academicYearId, string $period): array
     {
-        $subjectIds = ESBTPConfigMatiere::query()
-            ->where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $academicYearId)
-            ->whereIn('periode', $this->configPeriods($period))
-            ->get(['matiere_id'])
-            ->pluck('matiere_id')
+        // Seules les matières réellement retenues au bulletin (générales/techniques)
+        // exigent un professeur ; celles marquées « Ignorer » (type none) sont exclues.
+        $payload = $this->configMatieresPayload($classeId, $academicYearId, $period);
+        $subjectIds = collect(array_merge($payload['generales'], $payload['techniques']))
             ->map(fn ($id) => (int) $id)
             ->unique()
             ->values();
@@ -499,34 +554,33 @@ final class BtsBulkBulletinGenerationService
         return $deduped;
     }
 
-    private function preflightMessage(int $studentsCount, array $blockingErrors, array $skipped, bool $canOverrideIncomplete, ?ESBTPClasse $classe = null): string
+    private function preflightMessage(string $status, int $studentsCount, int $existingEmptyCount, bool $hasHardBlocks, ?ESBTPClasse $classe = null): string
     {
-        if ($studentsCount === 0) {
-            // Une classe de tronc commun vide n'est pas une anomalie : ses etudiants ont ete
-            // orientes en specialite. La generation annuelle (S1 TC + S2 specialite) se lance
-            // depuis la classe de specialite, ou le S1 du tronc commun est agrege automatiquement.
-            if ($classe?->filiere?->isTroncCommun()) {
-                return 'Aucun étudiant actif dans cette classe de tronc commun : ils ont été orientés en spécialité. '
-                    .'Générez les bulletins depuis chaque classe de spécialité (le semestre 1 du tronc commun y est agrégé automatiquement).';
-            }
+        return match ($status) {
+            'no_students' => $this->noStudentsMessage($classe),
+            'nothing_to_generate' => $existingEmptyCount > 0
+                ? "Tous les bulletins existent deja, dont {$existingEmptyCount} sans moyenne : cochez « Recalculer » pour les regenerer."
+                : 'Tous les bulletins existent deja pour cette periode : cochez « Recalculer » pour les mettre a jour.',
+            'needs_reason' => 'Donnees academiques incompletes : renseignez un motif (8 caracteres minimum) pour generer des bulletins incomplets.',
+            'blocked' => $hasHardBlocks
+                ? 'Pre-controle bloque : completez les matieres, coefficients et professeurs requis avant de generer.'
+                : 'Pre-controle bloque : donnees academiques incompletes et vous n\'avez pas le droit de generer un bulletin incomplet.',
+            'ready' => 'Pre-controle valide : la generation peut etre lancee.',
+            default => 'Pre-controle indisponible.',
+        };
+    }
 
-            return 'Aucun etudiant actif et valide dans cette classe pour cette annee.';
+    private function noStudentsMessage(?ESBTPClasse $classe): string
+    {
+        // Une classe de tronc commun vide n'est pas une anomalie : ses etudiants ont ete
+        // orientes en specialite. La generation annuelle (S1 TC + S2 specialite) se lance
+        // depuis la classe de specialite, ou le S1 du tronc commun est agrege automatiquement.
+        if ($classe?->filiere?->isTroncCommun()) {
+            return 'Aucun étudiant actif dans cette classe de tronc commun : ils ont été orientés en spécialité. '
+                .'Générez les bulletins depuis chaque classe de spécialité (le semestre 1 du tronc commun y est agrégé automatiquement).';
         }
 
-        if ($blockingErrors === []) {
-            return 'Pre-controle valide : la generation peut etre lancee.';
-        }
-
-        $hardConfigurationCodes = ['missing_subject_configuration', 'coefficients_missing', 'professeurs_missing', 'bulletin_locked'];
-        if (collect($blockingErrors)->contains(fn ($block) => in_array($block['code'] ?? null, $hardConfigurationCodes, true))) {
-            return 'Pre-controle bloque : completez les matieres, coefficients et professeurs requis avant de generer.';
-        }
-
-        if ($canOverrideIncomplete) {
-            return 'Pre-controle bloque : completez la configuration ou renseignez un motif pour generer un bulletin incomplet.';
-        }
-
-        return 'Pre-controle bloque : completez la configuration academique avant de generer.';
+        return 'Aucun etudiant actif et valide dans cette classe pour cette annee.';
     }
 
     private function configurationUrl(int $classeId, int $academicYearId, string $period): string

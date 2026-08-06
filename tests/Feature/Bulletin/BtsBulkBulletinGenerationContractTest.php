@@ -66,6 +66,122 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringContainsString('role="combobox"', $component);
     }
 
+    public function test_preflight_exposes_authoritative_status_and_hard_soft_classification(): void
+    {
+        $service = $this->bulkServiceSource();
+
+        // Statut unique faisant autorité, dont les booléens dérivent.
+        $this->assertStringContainsString('private function resolveStatus(', $service);
+        $this->assertStringContainsString("'status' => \$status,", $service);
+        $this->assertStringContainsString("'ok' => \$status === 'ready',", $service);
+        $this->assertStringContainsString("'requires_incomplete_reason' => \$status === 'needs_reason',", $service);
+        $this->assertStringContainsString("'nothing_to_generate' => \$status === 'nothing_to_generate',", $service);
+
+        // Le motif ne débloque QUE des blocages soft (sinon la génération échouerait).
+        // HARD_BLOCK_CODES est l'unique source de vérité : la sévérité dérive du code.
+        $this->assertStringContainsString('public const HARD_BLOCK_CODES', $service);
+        $this->assertStringContainsString("return (! \$hasHardBlocks && \$canOverrideIncomplete) ? 'needs_reason' : 'blocked';", $service);
+        $this->assertStringContainsString("in_array(\$b['code'] ?? '', self::HARD_BLOCK_CODES, true)", $service);
+        $this->assertStringNotContainsString("'severity' =>", $service);
+    }
+
+    public function test_preflight_zero_students_and_all_existing_are_not_treated_as_ready(): void
+    {
+        $service = $this->bulkServiceSource();
+
+        // Newline-agnostic (le repo est en CRLF sous Windows) : on vérifie les états, pas la mise en page.
+        $this->assertStringContainsString("return 'no_students';", $service);
+        $this->assertStringContainsString("return 'nothing_to_generate';", $service);
+        $this->assertStringContainsString('if ($studentsCount === 0)', $service);
+        $this->assertStringContainsString('if ($generatableCount === 0)', $service);
+        // Un bulletin existant sans moyenne est signalé, pas silencieusement ignoré.
+        $this->assertStringContainsString("'bulletin_exists_empty'", $service);
+        $this->assertStringContainsString("'existing_empty_count' => \$existingEmptyCount,", $service);
+    }
+
+    public function test_professeurs_requirement_ignores_unselected_matieres(): void
+    {
+        $service = $this->bulkServiceSource();
+
+        // La liste des professeurs manquants part des matières retenues (payload
+        // générales + techniques), donc exclut les matières « Ignorer » (type none).
+        $this->assertStringContainsString('$payload = $this->configMatieresPayload($classeId, $academicYearId, $period);', $service);
+        $this->assertStringContainsString("array_merge(\$payload['generales'], \$payload['techniques'])", $service);
+    }
+
+    public function test_snapshot_and_generation_share_period_aliases_and_exclude_cancelled(): void
+    {
+        $bulletinService = file_get_contents(app_path('Services/BulletinService.php'));
+        $snapshot = file_get_contents(app_path('Services/ESBTP/BtsCurrentResultSnapshotService.php'));
+
+        // Helper canonique unique d'aliases de période.
+        $this->assertStringContainsString('public function periodeAliases(string $periode): array', $bulletinService);
+        // Le snapshot de pré-contrôle et la génération réelle partagent le même filtre.
+        $this->assertStringContainsString("->where('status', '!=', 'cancelled')", $snapshot);
+        $this->assertStringContainsString('$this->bulletinService->periodeAliases($periode)', $snapshot);
+        $this->assertStringContainsString('$this->periodeAliases((string) $periode)', $bulletinService);
+        $this->assertStringContainsString('whereIn(\'periode\', $periodeAliases)', $bulletinService);
+    }
+
+    public function test_select_view_is_status_driven_with_motif_hint(): void
+    {
+        $view = $this->selectPageSource();
+
+        $this->assertStringContainsString('panelClass()', $view);
+        $this->assertStringContainsString('panelIcon()', $view);
+        // Le blocage du bouton dérive du statut serveur, avec fallback rétrocompat.
+        $this->assertStringContainsString("if (p.status === 'ready') return false;", $view);
+        $this->assertStringContainsString("if (p.status === 'needs_reason') return !this.hasIncompleteReason();", $view);
+        // Motif : hint minimum 8 caractères + compteur live.
+        $this->assertStringContainsString('Minimum 8 caracteres requis pour debloquer.', $view);
+        $this->assertStringContainsString("preflight?.existing_empty_count > 0 && !preflight?.recalculer", $view);
+    }
+
+    public function test_legacy_annuel_banner_filter_is_selectable_and_scoped(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
+        $indexView = file_get_contents(resource_path('views/esbtp/bulletins/index.blade.php'));
+
+        $this->assertStringContainsString("\$periodes->push((object) ['id' => 'annuel', 'nom' => 'Annuel (legacy)']);", $controller);
+        $this->assertStringContainsString("array_filter(['annee_universitaire_id' => \$annee_id, 'periode_id' => 'annuel'])", $indexView);
+    }
+
+    public function test_grouped_export_has_preview_alongside_download_and_shares_builder(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
+        $routes = file_get_contents(base_path('routes/web.php'));
+        $indexView = file_get_contents(resource_path('views/esbtp/bulletins/index.blade.php'));
+
+        // Aperçu inline + téléchargement partagent un unique constructeur (pas de duplication).
+        $this->assertStringContainsString('public function exportBulkPdfPreview(', $controller);
+        $this->assertStringContainsString('protected function prepareBulkExport(', $controller);
+        $this->assertStringContainsString("'Content-Disposition' => 'inline; filename=\"'.\$this->bulkExportFilename().'\"'", $controller);
+        $this->assertStringContainsString("name('esbtp.bulletins.export-pdf-preview')", $routes);
+
+        // UI : bouton Aperçu + précheck partagé avec le téléchargement.
+        $this->assertStringContainsString('previewPdf()', $indexView);
+        $this->assertStringContainsString('runExportPrecheck(params)', $indexView);
+        $this->assertStringContainsString("route('esbtp.bulletins.export-pdf-preview')", $indexView);
+    }
+
+    public function test_grouped_export_cover_uses_tenant_pdf_colors(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
+        $cover = file_get_contents(resource_path('views/esbtp/bulletins/pdf-export-cover.blade.php'));
+
+        // Le contrôleur passe les réglages PDF du tenant à la page de garde.
+        $this->assertStringContainsString("'pdfSettings' => SettingsHelper::getPdfSettings()", $controller);
+        // La page de garde applique les couleurs configurées (plus de bleu KLASSCI codé en dur).
+        $this->assertStringContainsString("\$pdfSettings['header_bg_color']", $cover);
+        $this->assertStringContainsString('{{ $covHeaderBg }}', $cover);
+        $this->assertStringNotContainsString('background: #0453cb;', $cover);
+    }
+
+    private function bulkServiceSource(): string
+    {
+        return file_get_contents(app_path('Domain/AcademicPilotage/Services/BtsBulkBulletinGenerationService.php'));
+    }
+
     private function selectPageSource(): string
     {
         return file_get_contents(resource_path('views/esbtp/bulletins/select.blade.php'))

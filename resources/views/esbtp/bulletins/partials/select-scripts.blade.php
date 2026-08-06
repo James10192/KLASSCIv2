@@ -214,21 +214,41 @@ window.busCard = function (cfg) {
             return (this.form.incomplete_reason || '').trim().length >= 8;
         },
 
+        // Le serveur fait autorite via `status`. On tolere une reponse legacy sans
+        // `status` (skew cache/deploy) en retombant sur les booleens historiques.
         isGenerationBlocked() {
-            if (this.kind !== 'generate' || !this.preflight || this.preflight.ok) return false;
+            if (this.kind !== 'generate' || !this.preflight) return false;
+            const p = this.preflight;
 
-            const hardBlockCodes = ['missing_subject_configuration', 'bulletin_locked', 'coefficients_missing', 'professeurs_missing'];
-            const blocks = this.preflight.blocking_errors || [];
-
-            if ((this.preflight.missing_coefficients || []).length > 0) return true;
-            if ((this.preflight.missing_professeurs || []).length > 0) return true;
-            if (blocks.some(block => hardBlockCodes.includes(block.code))) return true;
-
-            if (this.preflight.requires_incomplete_reason) {
-                return !this.hasIncompleteReason();
+            if (p.status) {
+                if (p.status === 'ready') return false;
+                if (p.status === 'needs_reason') return !this.hasIncompleteReason();
+                return true; // no_students, blocked, nothing_to_generate
             }
 
+            // Fallback retrocompatibilite
+            if (p.ok) return false;
+            if (p.requires_incomplete_reason) return !this.hasIncompleteReason();
             return true;
+        },
+
+        panelClass() {
+            const s = this.preflight?.status;
+            if (s) {
+                if (s === 'ready') return 'bus-inline-panel--ok';
+                if (s === 'nothing_to_generate') return 'bus-inline-panel--info';
+                if (s === 'needs_reason') return 'bus-inline-panel--warn';
+                return 'bus-inline-panel--danger';
+            }
+            return this.preflight?.ok ? 'bus-inline-panel--ok' : 'bus-inline-panel--danger';
+        },
+
+        panelIcon() {
+            const cls = this.panelClass();
+            if (cls === 'bus-inline-panel--ok') return 'fa-circle-check';
+            if (cls === 'bus-inline-panel--info') return 'fa-circle-info';
+            if (cls === 'bus-inline-panel--warn') return 'fa-triangle-exclamation';
+            return 'fa-circle-exclamation';
         },
 
         generationSummary() {

@@ -281,13 +281,16 @@ class BulletinService
             $this->syncConfiguredBulletinContext($bulletin, $configMatieres, $professeursConfigures);
         }
 
-        // Récupérer les notes avec évaluations pour la période spécifiée
+        // Récupérer les notes avec évaluations pour la période spécifiée.
+        // On tolère les alias legacy ('1'/'2') exactement comme le snapshot de
+        // pré-contrôle, pour que la génération réelle voie les mêmes notes.
+        $periodeAliases = $this->periodeAliases((string) $periode);
         $notesAvecEvaluations = ESBTPNote::where('etudiant_id', $etudiant->id)
             ->with(['evaluation.matiere'])
-            ->whereHas('evaluation', function ($q) use ($anneeUniversitaire, $periode) {
+            ->whereHas('evaluation', function ($q) use ($anneeUniversitaire, $periodeAliases) {
                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                     ->where('status', '!=', 'cancelled')
-                    ->where('periode', $periode);
+                    ->whereIn('periode', $periodeAliases);
             })
             ->get();
 
@@ -874,6 +877,22 @@ class BulletinService
         }
 
         return $periode ?: 'semestre1';
+    }
+
+    /**
+     * Aliases légaux d'une période, pour les requêtes qui doivent tolérer les
+     * données legacy stockées sous '1'/'2' en plus de 'semestre1'/'semestre2'.
+     * Source de vérité unique réutilisée par le snapshot et la génération.
+     *
+     * @return list<string>
+     */
+    public function periodeAliases(string $periode): array
+    {
+        return match ($this->normalizePeriode($periode)) {
+            'semestre1' => ['semestre1', '1'],
+            'semestre2' => ['semestre2', '2'],
+            default => [$this->normalizePeriode($periode)],
+        };
     }
 
     private function persistResultats(array $resultatsParMatiere, int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): void
