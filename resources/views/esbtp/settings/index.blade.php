@@ -902,6 +902,34 @@
         .settings-page-premium .settings-actions-bar { bottom: 8px; }
         .settings-page-premium .btn-save { width: 100%; }
     }
+
+    /* ── Éditeur barème d'assiduité (tranches configurables) ── */
+    .att-editor { display: flex; flex-direction: column; gap: 16px; }
+    .att-zero { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; }
+    .att-zero-label { font-weight: 700; color: #1e293b; font-size: .9rem; margin-bottom: 6px; }
+    .att-zero-input { max-width: 160px; }
+    .att-scale { border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px 14px; background: #fff; }
+    .att-scale-head { margin-bottom: 8px; }
+    .att-scale-title { font-weight: 800; color: #0453cb; font-size: .92rem; }
+    .att-scale-sub { color: #64748b; font-size: .76rem; margin-top: 2px; }
+    .att-table { width: 100%; border-collapse: collapse; }
+    .att-table th { text-align: left; font-size: .68rem; text-transform: uppercase; letter-spacing: .4px; color: #64748b; padding: 4px 8px; }
+    .att-table td { padding: 4px 8px; vertical-align: middle; }
+    .att-from { font-weight: 700; color: #1e293b; }
+    .att-inf { color: #64748b; font-style: italic; font-size: .82rem; }
+    .att-num { max-width: 120px; }
+    .att-del { border: 1px solid rgba(220,38,38,.25); background: rgba(220,38,38,.06); color: #dc2626; border-radius: 8px; width: 32px; height: 32px; cursor: pointer; }
+    .att-del:hover { background: #dc2626; color: #fff; }
+    .att-add { margin-top: 8px; border: 1px dashed rgba(4,83,203,.35); background: rgba(4,83,203,.04); color: #0453cb; border-radius: 8px; padding: 6px 12px; font-weight: 700; font-size: .8rem; cursor: pointer; }
+    .att-add:hover { background: rgba(4,83,203,.1); }
+    .att-sim { background: linear-gradient(135deg, rgba(4,83,203,.05), rgba(59,125,219,.06)); border: 1px solid rgba(4,83,203,.18); border-radius: 12px; padding: 12px 14px; }
+    .att-sim-title { font-weight: 800; color: #0453cb; font-size: .88rem; margin-bottom: 8px; }
+    .att-sim-row { display: flex; flex-wrap: wrap; gap: 14px; align-items: flex-end; }
+    .att-sim-row label { display: flex; flex-direction: column; gap: 4px; font-size: .78rem; color: #475569; font-weight: 600; }
+    .att-sim-out { font-size: .9rem; color: #1e293b; }
+    .att-sim-out strong { color: #0453cb; }
+    .att-warn { background: rgba(245,158,11,.08); border: 1px solid rgba(245,158,11,.28); border-radius: 10px; padding: 10px 12px; color: #92400e; font-size: .82rem; display: flex; gap: 8px; }
+    .att-warn ul { margin: 0; padding-left: 18px; }
 </style>
 @endpush
 
@@ -1792,66 +1820,80 @@
                     @endforeach
                 </div>
 
-                <div class="bc-grid bc-grid-2" style="margin-top: 16px;">
-                    <div class="bc-input-row">
-                        <div class="bc-icon"><i class="fas fa-user-check"></i></div>
-                        <div class="bc-body">
-                            <div class="bc-label">0 heure d’absence</div>
-                            <input type="number" class="form-control form-control-modern" name="setting_attendance_note_zero_unjustified"
-                                   value="{{ \App\Helpers\SettingsHelper::get('attendance_note_zero_unjustified', '0.13') }}"
-                                   step="0.01" min="-20" max="20" placeholder="0.13">
-                            <small class="text-muted">Bonus appliqué seulement si aucune heure d’absence n’est enregistrée.</small>
-                        </div>
+                @php
+                    $_attendanceRule = app(\App\Services\BulletinService::class)->getAttendanceNoteRule()->toArray();
+                @endphp
+                <div class="att-editor" x-data="attendanceBaremeEditor()" x-init="init(@js($_attendanceRule))" style="margin-top:16px;">
+                    <input type="hidden" name="setting_attendance_note_rules" :value="serialize()">
+
+                    <div class="att-zero">
+                        <div class="att-zero-label"><i class="fas fa-user-check"></i> Aucune absence (0h)</div>
+                        <input type="number" class="form-control form-control-modern att-zero-input"
+                               x-model.number="zeroBonus" step="0.01" min="-20" max="20">
+                        <small class="text-muted">Note appliquée uniquement s'il n'y a AUCUNE heure d'absence (justifiée + non justifiée). Mettez <strong>0</strong> pour ni bonus ni malus.</small>
                     </div>
-                    <div class="bc-input-row">
-                        <div class="bc-icon"><i class="fas fa-user-clock"></i></div>
-                        <div class="bc-body">
-                            <div class="bc-label">Jusqu’à 1 heure non justifiée</div>
-                            <input type="number" class="form-control form-control-modern" name="setting_attendance_note_one_unjustified"
-                                   value="{{ \App\Helpers\SettingsHelper::get('attendance_note_one_unjustified', '0.00') }}"
-                                   step="0.01" min="-20" max="20" placeholder="0.00">
-                            <small class="text-muted">Valeur appliquée lorsqu’il y a au plus 1 heure d’absence non justifiée.</small>
-                        </div>
-                    </div>
-                    <div class="bc-input-row">
-                        <div class="bc-icon"><i class="fas fa-user-times"></i></div>
-                        <div class="bc-body">
-                            <div class="bc-label">2 à moins de 3 heures non justifiées</div>
-                            <input type="number" class="form-control form-control-modern" name="setting_attendance_note_two_unjustified"
-                                   value="{{ \App\Helpers\SettingsHelper::get('attendance_note_two_unjustified', \App\Helpers\SettingsHelper::get('attendance_note_two_or_more_unjustified', '-0.13')) }}"
-                                   step="0.01" min="-20" max="20" placeholder="-0.13">
-                            <small class="text-muted">Malus appliqué de 2 heures incluses à moins de 3 heures.</small>
-                        </div>
-                    </div>
-                    <div class="bc-input-row">
-                        <div class="bc-icon"><i class="fas fa-exclamation-triangle"></i></div>
-                        <div class="bc-body">
-                            <div class="bc-label">3 à moins de 5 heures non justifiées</div>
-                            <input type="number" class="form-control form-control-modern" name="setting_attendance_note_three_to_four_unjustified"
-                                   value="{{ \App\Helpers\SettingsHelper::get('attendance_note_three_to_four_unjustified', '-0.39') }}"
-                                   step="0.01" min="-20" max="20" placeholder="-0.39">
-                            <small class="text-muted">Malus appliqué de 3 heures incluses à moins de 5 heures.</small>
-                        </div>
-                    </div>
-                    <div class="bc-input-row">
-                        <div class="bc-icon"><i class="fas fa-skull-crossbones"></i></div>
-                        <div class="bc-body">
-                            <div class="bc-label">5 heures non justifiées ou plus</div>
-                            <input type="number" class="form-control form-control-modern" name="setting_attendance_note_five_or_more_unjustified"
-                                   value="{{ \App\Helpers\SettingsHelper::get('attendance_note_five_or_more_unjustified', '-0.50') }}"
-                                   step="0.01" min="-20" max="20" placeholder="-0.50">
-                            <small class="text-muted">Malus maximum appliqué à partir de 5 heures d’absence non justifiées.</small>
-                        </div>
-                    </div>
-                    <div class="bc-input-row">
-                        <div class="bc-icon"><i class="fas fa-info-circle"></i></div>
-                        <div class="bc-body">
-                            <div class="bc-label">Règle globale d’assiduité horaire (5 paliers)</div>
-                            <div class="bc-desc">
-                                Le toggle <strong>Note d’assiduité</strong> reste le commutateur unique :
-                                actif, il applique ce barème à 5 paliers au calcul et à l’affichage ; inactif, la note vaut 0 partout et reste masquée.
+
+                    {{-- Deux barèmes : non justifiées puis justifiées --}}
+                    <template x-for="scale in scaleDefs" :key="scale.key">
+                        <div class="att-scale">
+                            <div class="att-scale-head">
+                                <div class="att-scale-title"><i class="fas" :class="scale.icon"></i> <span x-text="scale.title"></span></div>
+                                <div class="att-scale-sub" x-text="scale.sub"></div>
                             </div>
+                            <table class="att-table">
+                                <thead>
+                                    <tr><th>De (h)</th><th>À (h, exclu)</th><th>Note (/20)</th><th></th></tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(row, idx) in rows(scale.key)" :key="scale.key + '-' + idx">
+                                        <tr>
+                                            <td><span class="att-from" x-text="fromHour(scale.key, idx)"></span></td>
+                                            <td>
+                                                <template x-if="idx === rows(scale.key).length - 1">
+                                                    <span class="att-inf">∞ (et plus)</span>
+                                                </template>
+                                                <template x-if="idx !== rows(scale.key).length - 1">
+                                                    <input type="number" class="form-control form-control-modern att-num"
+                                                           x-model.number="row.max" :min="fromHour(scale.key, idx)" step="0.5" placeholder="ex. 10">
+                                                </template>
+                                            </td>
+                                            <td>
+                                                <input type="number" class="form-control form-control-modern att-num"
+                                                       x-model.number="row.note" step="0.01" min="-20" max="20" placeholder="0.00">
+                                            </td>
+                                            <td>
+                                                <button type="button" class="att-del" x-show="rows(scale.key).length > 1"
+                                                        @click="removeRow(scale.key, idx)" title="Supprimer la tranche">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                            <button type="button" class="att-add" @click="addRow(scale.key)">
+                                <i class="fas fa-plus"></i> Ajouter une tranche
+                            </button>
                         </div>
+                    </template>
+
+                    <div class="att-sim">
+                        <div class="att-sim-title"><i class="fas fa-calculator"></i> Simulateur</div>
+                        <div class="att-sim-row">
+                            <label>Heures justifiées <input type="number" class="form-control form-control-modern att-num" x-model.number="simJust" min="0" step="0.5"></label>
+                            <label>Heures non justifiées <input type="number" class="form-control form-control-modern att-num" x-model.number="simNonJust" min="0" step="0.5"></label>
+                            <div class="att-sim-out">→ Note d'assiduité : <strong x-text="formatNote(simulate())"></strong></div>
+                        </div>
+                    </div>
+
+                    <div class="att-warn" x-show="errorsList().length" x-cloak>
+                        <i class="fas fa-triangle-exclamation"></i>
+                        <ul><template x-for="e in errorsList()" :key="e"><li x-text="e"></li></template></ul>
+                    </div>
+
+                    <div class="bc-desc" style="margin-top:10px;">
+                        Le toggle <strong>Note d'assiduité</strong> reste le commutateur unique : actif, ce barème s'applique au calcul et à l'affichage ; inactif, la note vaut 0 partout et reste masquée.
+                        Les tranches sont contiguës depuis 0h ; la dernière va jusqu'à l'infini. Les contributions « non justifiées » et « justifiées » s'additionnent.
                     </div>
                 </div>
             </div>
@@ -4029,5 +4071,123 @@ window.watermarkSection = function () {
         rotation: parseInt('{{ \App\Helpers\SettingsHelper::get("pdf_watermark_rotation", "-30") }}') || -30,
     };
 };
+
+// Éditeur du barème d'assiduité à tranches configurables.
+if (typeof window.attendanceBaremeEditor !== 'function') {
+window.attendanceBaremeEditor = function () {
+    return {
+        zeroBonus: 0,
+        unjustified: [],
+        justified: [],
+        simJust: 0,
+        simNonJust: 0,
+        scaleDefs: [
+            { key: 'unjustified', title: 'Absences NON justifiées', icon: 'fa-user-times', sub: "Barème appliqué selon le total d'heures d'absence non justifiées." },
+            { key: 'justified', title: 'Absences justifiées', icon: 'fa-user-clock', sub: "Barème additionnel selon les heures justifiées (laisser une seule tranche à 0 pour aucun effet)." },
+        ],
+
+        init(rule) {
+            rule = rule || {};
+            this.zeroBonus = Number(rule.zero_bonus ?? 0);
+            this.unjustified = this.normalize(rule.unjustified);
+            this.justified = this.normalize(rule.justified);
+        },
+
+        normalize(list) {
+            if (!Array.isArray(list) || !list.length) {
+                return [{ max: null, note: 0 }];
+            }
+            return list.map((b, i) => ({
+                max: (i === list.length - 1) ? null : Number(b.max),
+                note: Number(b.note ?? 0),
+            }));
+        },
+
+        rows(scale) { return this[scale]; },
+
+        fromHour(scale, idx) {
+            if (idx === 0) return 0;
+            const prev = this[scale][idx - 1];
+            return (prev && prev.max != null) ? prev.max : 0;
+        },
+
+        addRow(scale) {
+            const arr = this[scale];
+            const last = arr[arr.length - 1];
+            // La dernière (ouverte) devient bornée, on ajoute une nouvelle dernière ouverte.
+            const base = this.fromHour(scale, arr.length - 1);
+            if (last.max == null) { last.max = base + 1; }
+            arr.push({ max: null, note: 0 });
+        },
+
+        removeRow(scale, idx) {
+            const arr = this[scale];
+            if (arr.length <= 1) return;
+            arr.splice(idx, 1);
+            // La nouvelle dernière tranche doit rester ouverte.
+            arr[arr.length - 1].max = null;
+        },
+
+        build() {
+            const scale = (arr) => {
+                let min = 0;
+                return arr.map((row, i) => {
+                    const isLast = i === arr.length - 1;
+                    const entry = { min: min, max: isLast ? null : Number(row.max), note: Number(row.note || 0) };
+                    min = isLast ? min : Number(row.max);
+                    return entry;
+                });
+            };
+            return {
+                zero_bonus: Number(this.zeroBonus || 0),
+                unjustified: scale(this.unjustified),
+                justified: scale(this.justified),
+            };
+        },
+
+        serialize() { return JSON.stringify(this.build()); },
+
+        noteFor(brackets, hours) {
+            for (const b of brackets) {
+                if (b.max == null || hours < b.max) return Number(b.note || 0);
+            }
+            return 0;
+        },
+
+        simulate() {
+            const j = Math.max(0, Number(this.simJust) || 0);
+            const nj = Math.max(0, Number(this.simNonJust) || 0);
+            if (j + nj === 0) return Number(this.zeroBonus || 0);
+            const rule = this.build();
+            return this.noteFor(rule.unjustified, nj) + this.noteFor(rule.justified, j);
+        },
+
+        formatNote(v) {
+            const n = Number(v || 0);
+            return (n >= 0 ? '+' : '') + n.toFixed(2);
+        },
+
+        // Validation miroir (contiguïté + dernière ouverte + bornes) pour un feedback live.
+        errorsList() {
+            const errs = [];
+            if (this.zeroBonus < -20 || this.zeroBonus > 20) errs.push('La note « aucune absence » doit être entre -20 et 20.');
+            for (const def of this.scaleDefs) {
+                const arr = this[def.key];
+                arr.forEach((row, i) => {
+                    const isLast = i === arr.length - 1;
+                    if (!isLast) {
+                        const from = this.fromHour(def.key, i);
+                        if (row.max == null || Number(row.max) <= from) {
+                            errs.push(`${def.title} : la tranche ${i + 1} doit finir après ${from}h.`);
+                        }
+                    }
+                    if (row.note < -20 || row.note > 20) errs.push(`${def.title} : note de la tranche ${i + 1} hors bornes.`);
+                });
+            }
+            return errs;
+        },
+    };
+};
+}
 </script>
 @endpush

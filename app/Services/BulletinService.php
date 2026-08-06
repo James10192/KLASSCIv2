@@ -17,6 +17,7 @@ use App\Models\ESBTPResultat;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
 use App\Services\ESBTP\ESBTPAbsenceService;
+use App\Support\Attendance\AttendanceNoteRule;
 use App\Support\InscriptionWorkflowAlertPresenter;
 use App\Models\ESBTPConfigMatiere;
 use App\Models\ESBTPEvaluation;
@@ -104,26 +105,41 @@ class BulletinService
             return 0.0;
         }
 
-        $bareme = $this->getAttendanceNoteSettings();
-        $heuresJustifiees = max(0.0, (float) $absencesJustifiees);
-        $heuresNonJustifiees = max(0.0, (float) $absencesNonJustifiees);
+        return $this->getAttendanceNoteRule()->resolve(
+            (float) $absencesJustifiees,
+            (float) $absencesNonJustifiees
+        );
+    }
 
-        // The bonus applies only when there are no absence hours at all.
-        if (($heuresJustifiees + $heuresNonJustifiees) === 0.0) {
-            return $bareme['zero_unjustified'];
-        }
-        // Fractions below 2 hours do not reach the next malus threshold.
-        if ($heuresNonJustifiees < 2.0) {
-            return $bareme['one_unjustified'];
-        }
-        if ($heuresNonJustifiees < 3.0) {
-            return $bareme['two_unjustified'];
-        }
-        if ($heuresNonJustifiees < 5.0) {
-            return $bareme['three_to_four_unjustified'];
+    /**
+     * Règle d'assiduité configurable du tenant : tranches d'heures dynamiques
+     * (justifié + non justifié). Lue depuis le setting JSON `attendance_note_rules`,
+     * avec fallback automatique sur les 5 clés legacy si absent/invalide — aucune
+     * fenêtre de régression au déploiement.
+     */
+    public function getAttendanceNoteRule(): AttendanceNoteRule
+    {
+        $raw = SettingsHelper::get('attendance_note_rules', null);
+
+        if (is_string($raw) && $raw !== '') {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded) && AttendanceNoteRule::validationErrors($decoded) === []) {
+                return AttendanceNoteRule::fromArray($decoded);
+            }
+        } elseif (is_array($raw) && AttendanceNoteRule::validationErrors($raw) === []) {
+            return AttendanceNoteRule::fromArray($raw);
         }
 
-        return $bareme['five_or_more_unjustified'];
+        // Fallback legacy : construit la règle depuis les 5 clés paliers du tenant.
+        $legacy = $this->getAttendanceNoteSettings();
+
+        return AttendanceNoteRule::fromLegacySettings([
+            'zero_unjustified' => $legacy['zero_unjustified'],
+            'one_unjustified' => $legacy['one_unjustified'],
+            'two_unjustified' => $legacy['two_unjustified'],
+            'three_to_four_unjustified' => $legacy['three_to_four_unjustified'],
+            'five_or_more_unjustified' => $legacy['five_or_more_unjustified'],
+        ]);
     }
 
     public function calculateEffectiveAttendanceNoteForStudent(

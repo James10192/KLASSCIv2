@@ -1283,6 +1283,7 @@ class ESBTPBulletinConfigController extends Controller
         );
 
         $attendanceNoteRules = $this->bulletinService->getAttendanceNoteSettings();
+        $attendanceRule = $this->bulletinService->getAttendanceNoteRule()->toArray();
         $attendanceNoteEnabled = $this->bulletinService->isAttendanceNoteEnabled();
 
         return view('esbtp.bulletins.edit-absences', [
@@ -1294,6 +1295,7 @@ class ESBTPBulletinConfigController extends Controller
             'absencesCalculees' => $absencesCalculees,
             'noteAssiduite' => $noteAssiduite,
             'attendanceNoteRules' => $attendanceNoteRules,
+            'attendanceRule' => $attendanceRule,
             'attendanceNoteEnabled' => $attendanceNoteEnabled,
             'source' => $source,
             // Passer les valeurs directement pour éviter les accesseurs

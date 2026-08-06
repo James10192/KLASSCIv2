@@ -154,6 +154,33 @@ class ESBTPSettingsController extends Controller
             $updatedSettings = [];
             $errors = [];
 
+            // Barème d'assiduité à tranches (JSON) : validation structurelle dédiée via
+            // le value object (contiguïté, dernière tranche ouverte, bornes) — la boucle
+            // générique setting_ ne sait pas valider ce shape. Traité + skippé ensuite.
+            if ($request->has('setting_attendance_note_rules')) {
+                $raw = $request->input('setting_attendance_note_rules');
+                $decoded = is_string($raw) ? json_decode($raw, true) : $raw;
+                $ruleErrors = \App\Support\Attendance\AttendanceNoteRule::validationErrors($decoded);
+
+                if ($ruleErrors !== []) {
+                    $errors['attendance_note_rules'] = 'Barème d\'assiduité invalide : '.implode(' ; ', $ruleErrors);
+                } else {
+                    // Ré-encodage canonique depuis le value object (normalise l'ordre/les floats).
+                    $canonical = json_encode(\App\Support\Attendance\AttendanceNoteRule::fromArray($decoded)->toArray());
+                    // Save via Eloquent (pas query-builder) pour que le hook `saved`
+                    // invalide le cache par-clé (setting_attendance_note_rules) — sinon
+                    // on dépend d'un clearCache() distant, source de barème périmé.
+                    $ruleSetting = Setting::where('key', 'attendance_note_rules')->first();
+                    if ($ruleSetting) {
+                        $ruleSetting->update([
+                            'value' => $canonical,
+                            'updated_by' => auth()->id(),
+                        ]);
+                        $updatedSettings[] = 'attendance_note_rules';
+                    }
+                }
+            }
+
             $appreciationScaleSettings->processForm($request, $updatedSettings, $errors);
 
             // D'abord, traiter toutes les checkboxes (défaut à '0' si décochées)
@@ -308,9 +335,14 @@ class ESBTPSettingsController extends Controller
             foreach ($request->all() as $key => $value) {
                 if (strpos($key, 'setting_') === 0) {
                     $settingKey = str_replace('setting_', '', $key);
-                    
+
                     // Skip les checkboxes déjà traitées
                     if (in_array($settingKey, $allCheckboxSettings->pluck('key')->toArray())) {
+                        continue;
+                    }
+
+                    // Barème assiduité JSON : déjà validé + sauvegardé plus haut.
+                    if ($settingKey === 'attendance_note_rules') {
                         continue;
                     }
 
@@ -1394,6 +1426,32 @@ class ESBTPSettingsController extends Controller
                     'sort_order' => $attrs['sort_order'],
                 ]
             );
+        }
+
+        // Règle d'assiduité à tranches d'heures configurables (JSON). Seedée depuis
+        // les valeurs legacy DE CE TENANT → parité de comportement au premier save
+        // (les 5 clés paliers ci-dessus restent la source du seed + le fallback).
+        if (! Setting::where('key', 'attendance_note_rules')->exists()) {
+            $seed = \App\Support\Attendance\AttendanceNoteRule::fromLegacySettings([
+                'zero_unjustified' => (float) \App\Helpers\SettingsHelper::get('attendance_note_zero_unjustified', '0.13'),
+                'one_unjustified' => (float) \App\Helpers\SettingsHelper::get('attendance_note_one_unjustified', '0.00'),
+                'two_unjustified' => (float) \App\Helpers\SettingsHelper::get('attendance_note_two_unjustified', \App\Helpers\SettingsHelper::get('attendance_note_two_or_more_unjustified', '-0.13')),
+                'three_to_four_unjustified' => (float) \App\Helpers\SettingsHelper::get('attendance_note_three_to_four_unjustified', '-0.39'),
+                'five_or_more_unjustified' => (float) \App\Helpers\SettingsHelper::get('attendance_note_five_or_more_unjustified', '-0.50'),
+            ])->toArray();
+
+            Setting::create([
+                'key' => 'attendance_note_rules',
+                'value' => json_encode($seed),
+                'type' => 'json',
+                'group' => 'bulletin',
+                'category' => 'bulletin',
+                'description' => "Barème d'assiduité configurable : tranches d'heures (justifiées / non justifiées) et note par tranche",
+                'is_required' => false,
+                'default_value' => json_encode($seed),
+                'validation_rules' => null,
+                'sort_order' => 127,
+            ]);
         }
     }
 

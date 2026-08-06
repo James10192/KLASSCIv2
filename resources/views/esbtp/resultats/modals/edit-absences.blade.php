@@ -16,7 +16,26 @@
                     <i class="fas fa-info-circle" style="color: #d97706; margin-top: 0.15rem; flex-shrink: 0;"></i>
                     <div>
                         <strong><span id="absencesStudentCount">0</span> étudiant(s) sélectionné(s)</strong><br>
-                        <span style="color: #92400e;">@if($attendanceNoteEnabled ?? true) Barème actif : 0 absence = {{ ((($attendanceNoteRules['zero_unjustified'] ?? 0) >= 0 ? '+' : '') . number_format((float) ($attendanceNoteRules['zero_unjustified'] ?? 0), 2)) }}, 1 absence = {{ ((($attendanceNoteRules['one_unjustified'] ?? 0) >= 0 ? '+' : '') . number_format((float) ($attendanceNoteRules['one_unjustified'] ?? 0), 2)) }}, 2+ absences = {{ ((($attendanceNoteRules['two_or_more_unjustified'] ?? 0) >= 0 ? '+' : '') . number_format((float) ($attendanceNoteRules['two_or_more_unjustified'] ?? 0), 2)) }}. @else Le toggle global d'assiduité est inactif : aucun bonus/malus ne sera appliqué. @endif</span>
+                        <span style="color: #92400e;">
+                            @if($attendanceNoteEnabled ?? true)
+                                @php
+                                    $_mRule = $attendanceRule ?? ['zero_bonus' => 0, 'unjustified' => []];
+                                    $_mFmt = function ($b) {
+                                        $from = rtrim(rtrim(number_format((float) $b['min'], 1, '.', ''), '0'), '.');
+                                        if ($b['max'] === null) { return $from.'h+'; }
+                                        $to = rtrim(rtrim(number_format((float) $b['max'], 1, '.', ''), '0'), '.');
+                                        return $from.'–'.$to.'h';
+                                    };
+                                    $_mParts = ['0h = '.(((float) $_mRule['zero_bonus'] >= 0 ? '+' : '').number_format((float) $_mRule['zero_bonus'], 2))];
+                                    foreach (($_mRule['unjustified'] ?? []) as $_mb) {
+                                        $_mParts[] = $_mFmt($_mb).' = '.(((float) $_mb['note'] >= 0 ? '+' : '').number_format((float) $_mb['note'], 2));
+                                    }
+                                @endphp
+                                Barème (non justifiées) : {{ implode(', ', $_mParts) }}.
+                            @else
+                                Le toggle global d'assiduité est inactif : aucun bonus/malus ne sera appliqué.
+                            @endif
+                        </span>
                     </div>
                 </div>
                 <div class="table-responsive">
