@@ -1874,6 +1874,10 @@ class ESBTPClasseController extends Controller
             "logo" => Setting::get("school_logo", ""),
         ];
 
+        // Charge parents/tuteurs (getTuteurAttribute) et user (accessor email_personnel)
+        // pour l'export, afin d'éviter le N+1 sur une classe de plusieurs centaines d'étudiants.
+        $etudiants->loadMissing(["parents", "user"]);
+
         $filename =
             "liste-complete-" .
             Str::slug($classe->name) .

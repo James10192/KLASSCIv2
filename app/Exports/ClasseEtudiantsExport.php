@@ -15,12 +15,29 @@ class ClasseEtudiantsExport implements FromCollection, WithHeadings, WithMapping
     protected $classe;
     protected $etudiants;
     protected $anneeCourante;
+    protected $etablissement;
 
-    public function __construct($classe, $etudiants, $anneeCourante)
+    public function __construct($classe, $etudiants, $anneeCourante, $etablissement = null)
     {
         $this->classe = $classe;
         $this->etudiants = $etudiants;
         $this->anneeCourante = $anneeCourante;
+        $this->etablissement = $etablissement;
+    }
+
+    /**
+     * Résout le parent/tuteur principal depuis la relation déjà chargée
+     * (évite un N+1 via l'accesseur getTuteurAttribute). Priorité au tuteur.
+     */
+    private function resolveParent($etudiant)
+    {
+        $parents = $etudiant->relationLoaded('parents') ? $etudiant->parents : collect();
+
+        if ($parents->isEmpty()) {
+            return null;
+        }
+
+        return $parents->first(fn ($p) => (bool) optional($p->pivot)->is_tuteur) ?? $parents->first();
     }
 
     /**
@@ -82,23 +99,25 @@ class ClasseEtudiantsExport implements FromCollection, WithHeadings, WithMapping
         static $index = 0;
         $index++;
 
+        $parent = $this->resolveParent($etudiant);
+
         $row = [
             $index,
             $etudiant->matricule ?? 'N/A',
             $etudiant->nom ?? '',
-            $etudiant->prenom ?? '',
+            $etudiant->prenoms ?? '',
             $etudiant->sexe ?? 'N/A',
             $etudiant->date_naissance ? \Carbon\Carbon::parse($etudiant->date_naissance)->format('d/m/Y') : 'N/A',
             $etudiant->lieu_naissance ?? 'N/A',
             $etudiant->telephone ?? 'N/A',
-            $etudiant->email ?? 'N/A',
+            $etudiant->email_personnel ?: 'N/A',
             $etudiant->adresse ?? 'N/A',
-            $etudiant->parent ? $etudiant->parent->nom : 'N/A',
-            $etudiant->parent ? $etudiant->parent->prenom : 'N/A',
-            $etudiant->parent ? $etudiant->parent->telephone : 'N/A',
-            $etudiant->parent ? $etudiant->parent->email : 'N/A',
-            $etudiant->parent ? $etudiant->parent->profession : 'N/A',
-            'Actif', // Statut inscription (tous sont actifs dans cette liste)
+            $parent ? ($parent->nom ?? 'N/A') : 'N/A',
+            $parent ? ($parent->prenoms ?? 'N/A') : 'N/A',
+            $parent ? ($parent->telephone ?? 'N/A') : 'N/A',
+            $parent ? ($parent->email ?? 'N/A') : 'N/A',
+            $parent ? ($parent->profession ?? 'N/A') : 'N/A',
+            'Actif', // Statut inscription (la requête ne remonte que les inscriptions actives)
             $etudiant->created_at ? $etudiant->created_at->format('d/m/Y') : 'N/A',
             $this->classe->name,
             $this->classe->filiere ? $this->classe->filiere->name : 'N/A',

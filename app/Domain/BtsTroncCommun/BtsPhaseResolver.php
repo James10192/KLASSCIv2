@@ -32,11 +32,21 @@ class BtsPhaseResolver
     {
         $journey = $this->buildJourney($inscription);
 
-        return collect($journey['timeline'])->first(function (array $phase) use ($semester) {
+        $matching = collect($journey['timeline'])->filter(function (array $phase) use ($semester) {
             $end = $phase['semestre_fin'] ?? $phase['semestre_debut'];
 
             return $semester >= $phase['semestre_debut'] && $semester <= $end;
         });
+
+        if ($matching->isEmpty()) {
+            return null;
+        }
+
+        // Plusieurs phases peuvent couvrir le même semestre après une ré-orientation
+        // (spé corrigée : l'ancienne phase spé est fermée mais reste dans la timeline).
+        // La phase active prime ; sinon on prend la plus récente (timeline triée ASC).
+        // Sans ce garde, first() renvoyait la phase périmée → notes/bulletin de la mauvaise classe.
+        return $matching->firstWhere('is_active', true) ?? $matching->last();
     }
 
     public function buildJourney(ESBTPInscription $inscription): array

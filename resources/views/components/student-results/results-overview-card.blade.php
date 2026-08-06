@@ -26,6 +26,11 @@
     $primarySemesterLabel = $detailUiState['primary_semester_label'] ?? null;
     $primaryAverage = $detailUiState['primary_average'] ?? null;
     $displayAvg = $detailUiState['display_average'] ?? ($moyenneAvecAssiduite ?? $moyenneGenerale ?? null);
+    // Aucune note pour la période (vue semestrielle) : ne pas afficher une moyenne fantôme à 0.00
+    // ni une décision AJOURNÉ. On force l'état "pas de données" pour retomber sur "—".
+    if (empty($notesByMatiere) && ! $annualIncomplete && ! $annualComplete && ! $annualUnresolved) {
+        $displayAvg = null;
+    }
     $showAssiduite = isset($afficherNoteAssiduite) && $afficherNoteAssiduite && isset($noteAssiduite) && ! $annualIncomplete && ! $annualUnresolved;
     $gaugePercent = $displayAvg !== null ? min($displayAvg * 5, 100) : 0;
     $gaugeClass = ($displayAvg ?? 0) >= 10 ? 'success' : 'danger';

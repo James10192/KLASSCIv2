@@ -76,7 +76,10 @@ class EtudiantDossierService
                 $rang    = null;
                 $mention = null;
 
-                if ($bulletin) {
+                // Un bulletin "coquille vide" (moyenne_generale NULL, généré avant que les
+                // résultats existent) ne doit pas masquer les notes réelles : on le traite
+                // comme absent et on retombe sur le calcul depuis les notes.
+                if ($bulletin && $bulletin->moyenne_generale !== null) {
                     $moyenne = $bulletin->moyenne_generale;
                     $rang    = $bulletin->rang;
                     $mention = $bulletin->mention;
