@@ -439,14 +439,139 @@
     color: #991b1b;
     background: rgba(220, 38, 38, .04);
 }
+.bus-config-modal__head-left {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    min-width: 0;
+}
+.bus-config-modal__head-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, .14);
+    border: 1px solid rgba(255, 255, 255, .2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #fff;
+    font-size: .95rem;
+    flex-shrink: 0;
+}
+.bus-config-toolbar {
+    display: flex;
+    align-items: center;
+    gap: .75rem;
+    flex-wrap: wrap;
+    margin-bottom: .8rem;
+}
+.bus-config-copy-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .45rem;
+    min-height: 38px;
+    padding: .45rem .85rem;
+    border: 1px dashed rgba(4, 83, 203, .4);
+    border-radius: 9px;
+    background: rgba(4, 83, 203, .05);
+    color: #0453cb;
+    font-size: .8rem;
+    font-weight: 800;
+    cursor: pointer;
+    transition: background .15s, border-color .15s;
+}
+.bus-config-copy-btn:hover:not(:disabled) { background: rgba(4, 83, 203, .1); border-color: #0453cb; }
+.bus-config-copy-btn:disabled { opacity: .6; cursor: wait; }
+.bus-config-toolbar__hint { color: var(--bus-muted); font-size: .74rem; flex: 1; min-width: 220px; }
+.bus-config-copy-panel {
+    border: 1px solid rgba(4, 83, 203, .22);
+    border-radius: 10px;
+    background: linear-gradient(135deg, rgba(4, 83, 203, .04), rgba(59, 125, 219, .06));
+    padding: .85rem .95rem;
+    margin-bottom: .9rem;
+}
+.bus-config-copy-panel__title {
+    display: flex;
+    align-items: center;
+    gap: .45rem;
+    color: var(--bus-text);
+    font-size: .82rem;
+    font-weight: 800;
+    margin-bottom: .65rem;
+}
+.bus-config-copy-panel__choices {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: .6rem;
+}
+.bus-config-copy-choice {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+    text-align: left;
+    border: 1px solid #dbe5f2;
+    border-radius: 9px;
+    background: #fff;
+    padding: .65rem .8rem;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+}
+.bus-config-copy-choice:hover { border-color: #0453cb; box-shadow: 0 2px 10px rgba(4, 83, 203, .12); }
+.bus-config-copy-choice__name { color: #0453cb; font-size: .82rem; font-weight: 800; }
+.bus-config-copy-choice__desc { color: var(--bus-muted); font-size: .73rem; line-height: 1.4; }
+.bus-config-copy-panel__cancel {
+    margin-top: .6rem;
+    border: 0;
+    background: transparent;
+    color: var(--bus-muted);
+    font-size: .74rem;
+    font-weight: 700;
+    cursor: pointer;
+    text-decoration: underline;
+}
+.bus-config-table-wrap { overflow: auto; max-height: 46vh; }
+.bus-config-table thead th { position: sticky; top: 0; z-index: 1; }
+.bus-config-table tbody tr:nth-child(even) td { background: #fbfdff; }
+.bus-config-cell--copied { animation: busCopiedFlash 2.2s ease-out; }
+@@keyframes busCopiedFlash {
+    0% { background: rgba(4, 83, 203, .18); }
+    70% { background: rgba(4, 83, 203, .10); }
+    100% { background: transparent; }
+}
+.bus-config-scope {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    flex-wrap: wrap;
+    margin-right: auto;
+}
+.bus-config-scope__label { color: var(--bus-muted); font-size: .74rem; font-weight: 800; }
+.bus-config-scope__opt {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    border: 1px solid #dbe5f2;
+    border-radius: 999px;
+    padding: .3rem .7rem;
+    font-size: .75rem;
+    font-weight: 700;
+    color: var(--bus-muted);
+    cursor: pointer;
+    transition: border-color .15s, color .15s, background .15s;
+}
+.bus-config-scope__opt input { position: absolute; opacity: 0; pointer-events: none; }
+.bus-config-scope__opt.is-active { border-color: #0453cb; color: #0453cb; background: rgba(4, 83, 203, .07); }
 .bus-config-modal__footer {
     display: flex;
+    align-items: center;
     justify-content: flex-end;
     gap: .6rem;
+    flex-wrap: wrap;
     padding: .9rem 1.2rem;
     border-top: 1px solid var(--bus-border);
     background: #fff;
 }
+.bus-config-modal__footer-actions { display: flex; gap: .6rem; }
 .bus-config-action {
     display: inline-flex;
     align-items: center;
@@ -791,113 +916,7 @@
         </div>
     </div>
 
-    <div class="bus-config-backdrop"
-         x-show="configModal.open"
-         x-transition.opacity
-         x-cloak
-         role="dialog"
-         aria-modal="true"
-         aria-labelledby="busConfigTitle"
-         @keydown.escape.window="closeConfigModal()">
-        <div class="bus-config-modal" @click.outside="closeConfigModal()">
-            <div class="bus-config-modal__head">
-                <div>
-                    <h2 class="bus-config-modal__title" id="busConfigTitle">Configuration requise du bulletin</h2>
-                    <p class="bus-config-modal__subtitle" x-text="configModal.subtitle"></p>
-                </div>
-                <button type="button" class="bus-config-modal__close" @click="closeConfigModal()" aria-label="Fermer">
-                    <i class="fas fa-xmark"></i>
-                </button>
-            </div>
-            <div class="bus-config-modal__body">
-                <div class="bus-config-empty" x-show="configModal.loading">
-                    <i class="fas fa-spinner fa-spin"></i>
-                    Chargement de la configuration...
-                </div>
-                <div class="bus-config-error" x-show="configModal.error" x-text="configModal.error"></div>
-
-                <template x-if="!configModal.loading && !configModal.error">
-                    <div>
-                        <div class="bus-config-summary">
-                            <div class="bus-config-summary__item">
-                                <span class="bus-config-summary__label">Types matieres</span>
-                                <span class="bus-config-summary__value" x-text="configModal.matieres.filter(m => m.selected_type && m.selected_type !== 'none').length + ' / ' + configModal.matieres.length"></span>
-                            </div>
-                            <div class="bus-config-summary__item">
-                                <span class="bus-config-summary__label">Coefficients</span>
-                                <span class="bus-config-summary__value" x-text="configModal.matieres.filter(m => m.coefficient !== null && String(m.coefficient).trim() !== '').length + ' / ' + configModal.matieres.length"></span>
-                            </div>
-                            <div class="bus-config-summary__item">
-                                <span class="bus-config-summary__label">Professeurs</span>
-                                <span class="bus-config-summary__value" x-text="configModal.matieres.filter(m => String(m.professeur || '').trim() !== '').length + ' / ' + configModal.matieres.length"></span>
-                            </div>
-                        </div>
-
-                        <div class="bus-config-empty" x-show="!configModal.matieres.length">
-                            Aucune matiere a configurer pour cette classe et cette periode.
-                        </div>
-
-                        <div style="overflow:auto;" x-show="configModal.matieres.length">
-                            <table class="bus-config-table">
-                                <thead>
-                                    <tr>
-                                        <th>Matiere</th>
-                                        <th>Source</th>
-                                        <th>Type</th>
-                                        <th>Coeff.</th>
-                                        <th>Professeur</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="matiere in configModal.matieres" :key="matiere.id">
-                                        <tr>
-                                            <td>
-                                                <strong x-text="matiere.name"></strong>
-                                                <div style="color:var(--bus-muted); font-size:.72rem;" x-show="matiere.code" x-text="matiere.code"></div>
-                                            </td>
-                                            <td><span class="bus-config-source" x-text="matiere.source === 'evaluations' ? 'notes' : 'classe'"></span></td>
-                                            <td>
-                                                <select x-model="matiere.selected_type" :aria-label="'Type de ' + matiere.name">
-                                                    <option value="general">Generale</option>
-                                                    <option value="technique">Technique</option>
-                                                    <option value="none">Ignorer</option>
-                                                </select>
-                                            </td>
-                                            <td>
-                                                <input type="number"
-                                                       min="0.1"
-                                                       step="0.1"
-                                                       x-model="matiere.coefficient"
-                                                       :aria-label="'Coefficient de ' + matiere.name"
-                                                       placeholder="Coeff.">
-                                            </td>
-                                            <td>
-                                                <input type="text"
-                                                       maxlength="255"
-                                                       x-model="matiere.professeur"
-                                                       :aria-label="'Professeur de ' + matiere.name"
-                                                       placeholder="Nom du professeur">
-                                            </td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </template>
-            </div>
-            <div class="bus-config-modal__footer">
-                <button type="button" class="bus-config-action" @click="closeConfigModal()" :disabled="configModal.saving">Annuler</button>
-                <button type="button"
-                        class="bus-config-action bus-config-action--primary"
-                        @click="saveConfigModal()"
-                        :disabled="configModal.loading || configModal.saving || configModal.error || !configModal.matieres.length">
-                    <i class="fas" :class="configModal.saving ? 'fa-spinner fa-spin' : 'fa-floppy-disk'"></i>
-                    <span x-text="configModal.saving ? 'Enregistrement...' : 'Enregistrer la configuration'"></span>
-                </button>
-            </div>
-        </div>
-    </div>
+    @include('esbtp.bulletins.partials.select-config-modal')
 
     {{-- Toast stack --}}
     <div class="bus-toast-stack" aria-live="polite">

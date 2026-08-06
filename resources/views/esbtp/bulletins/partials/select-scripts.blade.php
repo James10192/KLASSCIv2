@@ -16,6 +16,10 @@ function busSelect() {
             configured_coefficients_count: 0,
             configured_professeurs_count: 0,
         },
+        // Copie depuis l'autre semestre (préremplissage revu avant enregistrement).
+        copyState: { open: false, loading: false, source: null },
+        // Portée du save : 'selected' (semestre courant) ou 'both' (S1 + S2 via periode=annuel).
+        saveScope: 'selected',
         init() {
             window.addEventListener('toast', (ev) => this.pushToast(ev.detail));
             window.addEventListener('bus-open-config-modal', (ev) => this.openConfigModal(ev.detail || {}));
@@ -52,6 +56,8 @@ function busSelect() {
             this.configModal.context = context;
             this.configModal.matieres = [];
             this.configModal.subtitle = 'Chargement...';
+            this.copyState = { open: false, loading: false, source: null };
+            this.saveScope = 'selected';
 
             try {
                 const params = new URLSearchParams(context);
@@ -92,7 +98,9 @@ function busSelect() {
                 const fd = new FormData();
                 fd.append('classe_id', this.configModal.context.classe_id);
                 fd.append('annee_universitaire_id', this.configModal.context.annee_universitaire_id);
-                fd.append('periode', this.configModal.context.periode);
+                // Portée « les deux semestres » : le backend écrit S1 + S2 quand periode=annuel
+                // (BulletinInlineConfigurationService::periodsFor), aucun endpoint dédié requis.
+                fd.append('periode', this.saveScope === 'both' ? 'annuel' : this.configModal.context.periode);
 
                 this.configModal.matieres.forEach((matiere) => {
                     fd.append(`matiere_type[${matiere.id}]`, matiere.selected_type || 'none');
@@ -116,7 +124,10 @@ function busSelect() {
                 }
 
                 const detail = { ...this.configModal.context };
-                this.pushToast({ type: 'success', message: data.message || 'Configuration enregistree.' });
+                const scopeMsg = this.saveScope === 'both'
+                    ? 'Configuration enregistrée pour les deux semestres.'
+                    : (data.message || 'Configuration enregistree.');
+                this.pushToast({ type: 'success', message: scopeMsg });
                 this.configModal.open = false;
                 window.dispatchEvent(new CustomEvent('bus-config-saved', { detail }));
             } catch (err) {
@@ -125,6 +136,109 @@ function busSelect() {
                 this.configModal.saving = false;
             }
         },
+
+        // ── Copie depuis l'autre semestre ─────────────────────────────
+        periodeLabel(p) {
+            return p === 'semestre1' ? 'Semestre 1' : (p === 'semestre2' ? 'Semestre 2' : p);
+        },
+        otherPeriode() {
+            const p = this.configModal.context.periode;
+            return p === 'semestre1' ? 'semestre2' : (p === 'semestre2' ? 'semestre1' : null);
+        },
+        canCopyOtherSemestre() {
+            return this.otherPeriode() !== null && this.configModal.matieres.length > 0;
+        },
+        async fetchOtherSemester() {
+            if (this.copyState.loading) return;
+            if (this.copyState.source) { this.copyState.open = !this.copyState.open; return; }
+
+            this.copyState.loading = true;
+            try {
+                const params = new URLSearchParams({
+                    classe_id: this.configModal.context.classe_id,
+                    annee_universitaire_id: this.configModal.context.annee_universitaire_id,
+                    periode: this.otherPeriode(),
+                });
+                const res = await fetch(`{{ route('esbtp.bulletins.config-matieres.inline-data') }}?${params.toString()}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+                });
+                const data = await this.parseJsonResponse(res);
+                if (!res.ok || data.success === false) {
+                    throw new Error(data.message || `Erreur HTTP ${res.status}`);
+                }
+
+                // Ne retenir QUE les matières où la source a au moins une valeur —
+                // le compteur « ignorées » ne compte ainsi que des copies réelles perdues.
+                const source = new Map();
+                (data.matieres || []).forEach((m) => {
+                    const coeff = m.coefficient ?? null;
+                    const hasType = !!m.existing_type;
+                    const hasCoeff = coeff !== null && String(coeff).trim() !== '';
+                    const hasProf = String(m.professeur || '').trim() !== '';
+                    if (!hasType && !hasCoeff && !hasProf) return;
+                    source.set(m.id, { type: m.existing_type || null, coeff: hasCoeff ? coeff : null, prof: hasProf ? m.professeur : '' });
+                });
+
+                if (source.size === 0) {
+                    this.pushToast({ type: 'info', message: `Le ${this.periodeLabel(this.otherPeriode())} n'a aucune valeur à copier.` });
+                    return;
+                }
+
+                this.copyState.source = source;
+                this.copyState.open = true;
+            } catch (err) {
+                this.pushToast({ type: 'error', message: err.message || 'Impossible de charger l\'autre semestre.' });
+            } finally {
+                this.copyState.loading = false;
+            }
+        },
+        applyCopy(mode) {
+            const source = this.copyState.source;
+            if (!source) return;
+
+            let types = 0; let coeffs = 0; let profs = 0;
+            this.configModal.matieres.forEach((row) => {
+                const src = source.get(row.id);
+                if (!src) return;
+                const copied = { type: false, coeff: false, prof: false };
+
+                // Type : « vide » = pas configuré en base ET resté sur le défaut suggéré
+                // (une sélection non enregistrée de l'utilisateur est considérée saisie —
+                // « Compléter » ne l'écrase donc jamais).
+                const initType = row.existing_type || row.suggested_type || 'technique';
+                const typeEmpty = !row.existing_type && row.selected_type === initType;
+                if (src.type && (mode === 'overwrite' || typeEmpty)) {
+                    if (row.selected_type !== src.type) { row.selected_type = src.type; copied.type = true; types++; }
+                }
+                // Coefficient : écraser ne blanchit jamais (copie seulement si la source a une valeur).
+                const coeffEmpty = row.coefficient === null || String(row.coefficient).trim() === '';
+                if (src.coeff !== null && (mode === 'overwrite' || coeffEmpty)) {
+                    if (String(row.coefficient) !== String(src.coeff)) { row.coefficient = src.coeff; copied.coeff = true; coeffs++; }
+                }
+                // Professeur
+                const profEmpty = String(row.professeur || '').trim() === '';
+                if (src.prof !== '' && (mode === 'overwrite' || profEmpty)) {
+                    if (row.professeur !== src.prof) { row.professeur = src.prof; copied.prof = true; profs++; }
+                }
+
+                if (copied.type || copied.coeff || copied.prof) {
+                    // Redémarre proprement le flash si une copie précédente est encore active.
+                    if (row._copiedTimer) clearTimeout(row._copiedTimer);
+                    row._copied = null;
+                    this.$nextTick(() => { row._copied = copied; });
+                    row._copiedTimer = setTimeout(() => { row._copied = null; row._copiedTimer = null; }, 2400);
+                }
+            });
+
+            const ignored = [...source.keys()].filter((id) => !this.configModal.matieres.some((r) => r.id === id)).length;
+            this.copyState.open = false;
+
+            let msg = `${types} type(s), ${coeffs} coefficient(s), ${profs} professeur(s) copiés depuis le ${this.periodeLabel(this.otherPeriode())}.`;
+            if (ignored > 0) msg += ` ${ignored} matière(s) de l'autre semestre absentes ici ont été ignorées.`;
+            if (types + coeffs + profs === 0) msg = 'Rien à copier : les valeurs sont déjà identiques ou déjà remplies.';
+            this.pushToast({ type: types + coeffs + profs > 0 ? 'success' : 'info', message: msg });
+        },
+
         async parseJsonResponse(res) {
             const text = await res.text();
             if (!text) return {};
