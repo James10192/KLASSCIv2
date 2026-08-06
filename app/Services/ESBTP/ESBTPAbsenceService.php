@@ -38,99 +38,84 @@ class ESBTPAbsenceService
             $dateFin = Carbon::now()->format('Y-m-d');
         }
 
+        // Annuel : agréger les deux semestres (chacun avec sa règle d'écrasement),
+        // en ne comptant les séances réelles qu'UNE seule fois sur l'année.
+        if ($anneeUniversitaireId && $periode !== null
+            && $this->normalizePeriode((string) $periode) === 'annuel') {
+            return $this->aggregateAnnualAbsences((int) $etudiantId, (int) $anneeUniversitaireId, $dateDebut, $dateFin);
+        }
+
         $snapshot = $this->snapshot($etudiantId, $anneeUniversitaireId, $periode);
+
+        // PRIORITÉ 1 — Saisie GLOBALE par semestre : c'est le total autoritaire du
+        // semestre. Elle ÉCRASE les séances réelles ET la saisie manuelle par matière
+        // (on n'additionne pas — sinon le chiffre n'aurait aucun sens : le global EST
+        // le total des heures d'absence du semestre).
+        if ($snapshot->global !== null) {
+            return $this->buildGlobalResult($snapshot);
+        }
+
+        // PRIORITÉ 2 — Saisie manuelle PAR MATIÈRE : elle ÉCRASE les séances réelles de
+        // sa matière. Les autres matières restent comptées via les séances réelles.
+        return $this->buildSessionsWithPerMatiere((int) $etudiantId, $dateDebut, $dateFin, $snapshot);
+    }
+
+    /**
+     * Résultat lorsqu'une saisie globale par semestre est présente : elle écrase
+     * séances + manuel par matière et devient l'unique total du semestre.
+     */
+    private function buildGlobalResult(ManualHoursSnapshot $snapshot): array
+    {
+        $gJust = (float) $snapshot->global->heures_absence_justifiees;
+        $gNonJust = (float) $snapshot->global->heures_absence_non_justifiees;
+
+        $detailJust = [];
+        $detailNon = [];
+        $commentaire = $snapshot->global->notes ?? 'Saisie globale (sans matière)';
+        if ($gJust > 0) {
+            $detailJust[] = ['date' => null, 'duree' => $gJust, 'commentaire' => $commentaire, 'source' => 'manual_global', 'matiere_id' => null];
+        }
+        if ($gNonJust > 0) {
+            $detailNon[] = ['date' => null, 'duree' => $gNonJust, 'commentaire' => $commentaire, 'source' => 'manual_global', 'matiere_id' => null];
+        }
+
+        return [
+            'justifiees' => $gJust,
+            'non_justifiees' => $gNonJust,
+            'total' => $gJust + $gNonJust,
+            'detail' => ['justifiees' => $detailJust, 'non_justifiees' => $detailNon],
+            'manual_matieres' => $snapshot->matiereIdsWithManual(),
+            'has_global' => true,
+        ];
+    }
+
+    /**
+     * Résultat séances réelles + manuel par matière : le manuel par matière écrase
+     * les séances de SA matière (exclusion dans la requête), les autres matières
+     * restent comptées via les séances.
+     */
+    private function buildSessionsWithPerMatiere(int $etudiantId, $dateDebut, $dateFin, ManualHoursSnapshot $snapshot): array
+    {
         $manualByMatiere = $snapshot->perMatiere;
         $manualMatiereIds = $snapshot->matiereIdsWithManual();
 
-        $sessionsQuery = ESBTPAttendance::where('etudiant_id', $etudiantId)
-            ->whereBetween('date', [$dateDebut, $dateFin]);
+        [$sJust, $sNon, $sDetailJust, $sDetailNon] = $this->sumSessions($etudiantId, $dateDebut, $dateFin, $manualMatiereIds);
 
-        if (!empty($manualMatiereIds)) {
-            $sessionsQuery->where(function ($q) use ($manualMatiereIds) {
-                $q->whereNull('matiere_id')
-                    ->orWhereNotIn('matiere_id', $manualMatiereIds);
-            });
-        }
-
-        $absences = $sessionsQuery->get();
-
-        $absencesJustifiees = 0.0;
-        $absencesNonJustifiees = 0.0;
-        $detailJustifiees = [];
-        $detailNonJustifiees = [];
-
-        foreach ($absences as $absence) {
-            if (!$absence->heure_debut || !$absence->heure_fin) {
-                continue;
-            }
-
-            $heureDebut = Carbon::parse($absence->heure_debut);
-            $heureFin = Carbon::parse($absence->heure_fin);
-            $duree = $this->durationInHours($heureDebut, $heureFin);
-
-            $detail = [
-                'date' => $absence->date,
-                'duree' => $duree,
-                'commentaire' => $absence->commentaire ?? '',
-                'source' => 'sessions',
-            ];
-
-            if ($this->isApprovedOrExcused($absence)) {
-                $absencesJustifiees += $duree;
-                $detailJustifiees[] = $detail;
-            } elseif ($absence->statut === 'absent') {
-                $absencesNonJustifiees += $duree;
-                $detailNonJustifiees[] = $detail;
-            }
-        }
+        $absencesJustifiees = $sJust;
+        $absencesNonJustifiees = $sNon;
+        $detailJustifiees = $sDetailJust;
+        $detailNonJustifiees = $sDetailNon;
 
         foreach ($manualByMatiere as $row) {
             $absencesJustifiees += (float) $row->heures_absence_justifiees;
             $absencesNonJustifiees += (float) $row->heures_absence_non_justifiees;
 
+            $commentaire = $row->notes ?? 'Saisie manuelle ('.optional($row->matiere)->name.')';
             if ((float) $row->heures_absence_justifiees > 0) {
-                $detailJustifiees[] = [
-                    'date' => null,
-                    'duree' => (float) $row->heures_absence_justifiees,
-                    'commentaire' => $row->notes ?? 'Saisie manuelle ('.optional($row->matiere)->name.')',
-                    'source' => 'manual',
-                    'matiere_id' => $row->matiere_id,
-                ];
+                $detailJustifiees[] = ['date' => null, 'duree' => (float) $row->heures_absence_justifiees, 'commentaire' => $commentaire, 'source' => 'manual', 'matiere_id' => $row->matiere_id];
             }
             if ((float) $row->heures_absence_non_justifiees > 0) {
-                $detailNonJustifiees[] = [
-                    'date' => null,
-                    'duree' => (float) $row->heures_absence_non_justifiees,
-                    'commentaire' => $row->notes ?? 'Saisie manuelle ('.optional($row->matiere)->name.')',
-                    'source' => 'manual',
-                    'matiere_id' => $row->matiere_id,
-                ];
-            }
-        }
-
-        if ($snapshot->global !== null) {
-            $gJust = (float) $snapshot->global->heures_absence_justifiees;
-            $gNonJust = (float) $snapshot->global->heures_absence_non_justifiees;
-            $absencesJustifiees += $gJust;
-            $absencesNonJustifiees += $gNonJust;
-
-            if ($gJust > 0) {
-                $detailJustifiees[] = [
-                    'date' => null,
-                    'duree' => $gJust,
-                    'commentaire' => $snapshot->global->notes ?? 'Saisie globale (sans matière)',
-                    'source' => 'manual_global',
-                    'matiere_id' => null,
-                ];
-            }
-            if ($gNonJust > 0) {
-                $detailNonJustifiees[] = [
-                    'date' => null,
-                    'duree' => $gNonJust,
-                    'commentaire' => $snapshot->global->notes ?? 'Saisie globale (sans matière)',
-                    'source' => 'manual_global',
-                    'matiere_id' => null,
-                ];
+                $detailNonJustifiees[] = ['date' => null, 'duree' => (float) $row->heures_absence_non_justifiees, 'commentaire' => $commentaire, 'source' => 'manual', 'matiere_id' => $row->matiere_id];
             }
         }
 
@@ -138,12 +123,125 @@ class ESBTPAbsenceService
             'justifiees' => $absencesJustifiees,
             'non_justifiees' => $absencesNonJustifiees,
             'total' => $absencesJustifiees + $absencesNonJustifiees,
-            'detail' => [
-                'justifiees' => $detailJustifiees,
-                'non_justifiees' => $detailNonJustifiees,
-            ],
+            'detail' => ['justifiees' => $detailJustifiees, 'non_justifiees' => $detailNonJustifiees],
             'manual_matieres' => $manualMatiereIds,
-            'has_global' => $snapshot->global !== null,
+            'has_global' => false,
+        ];
+    }
+
+    /**
+     * Somme les séances réelles (esbtp_attendances) sur la fenêtre de dates, en
+     * excluant les matières couvertes par une saisie manuelle (celles-ci sont écrasées).
+     *
+     * @return array{0: float, 1: float, 2: array, 3: array} [justifiees, non_justifiees, detailJust, detailNon]
+     */
+    private function sumSessions(int $etudiantId, $dateDebut, $dateFin, array $excludeMatiereIds): array
+    {
+        $sessionsQuery = ESBTPAttendance::where('etudiant_id', $etudiantId)
+            ->whereBetween('date', [$dateDebut, $dateFin]);
+
+        if (!empty($excludeMatiereIds)) {
+            $sessionsQuery->where(function ($q) use ($excludeMatiereIds) {
+                $q->whereNull('matiere_id')
+                    ->orWhereNotIn('matiere_id', $excludeMatiereIds);
+            });
+        }
+
+        $justifiees = 0.0;
+        $nonJustifiees = 0.0;
+        $detailJust = [];
+        $detailNon = [];
+
+        foreach ($sessionsQuery->get() as $absence) {
+            if (!$absence->heure_debut || !$absence->heure_fin) {
+                continue;
+            }
+
+            $duree = $this->durationInHours(Carbon::parse($absence->heure_debut), Carbon::parse($absence->heure_fin));
+            $detail = ['date' => $absence->date, 'duree' => $duree, 'commentaire' => $absence->commentaire ?? '', 'source' => 'sessions'];
+
+            if ($this->isApprovedOrExcused($absence)) {
+                $justifiees += $duree;
+                $detailJust[] = $detail;
+            } elseif ($absence->statut === 'absent') {
+                $nonJustifiees += $duree;
+                $detailNon[] = $detail;
+            }
+        }
+
+        return [$justifiees, $nonJustifiees, $detailJust, $detailNon];
+    }
+
+    /**
+     * Total annuel = total semestre 1 + total semestre 2, chacun calculé avec la
+     * règle d'écrasement (global > par matière > séances). Les séances réelles sont
+     * comptées UNE SEULE fois sur l'année (elles ne sont pas datées par semestre ici).
+     *
+     * Règle sur les séances quand un global existe : une saisie globale est le total
+     * autoritaire de SON semestre → elle remplace les séances. Comme les séances ne
+     * sont pas ventilées par semestre, dès qu'un semestre a un global on ne rajoute
+     * pas les séances (le global couvre l'assiduité réelle).
+     */
+    private function aggregateAnnualAbsences(int $etudiantId, int $anneeId, $dateDebut, $dateFin): array
+    {
+        $s1 = $this->resolver->snapshot($etudiantId, $anneeId, 'semestre1');
+        $s2 = $this->resolver->snapshot($etudiantId, $anneeId, 'semestre2');
+
+        $justifiees = 0.0;
+        $nonJustifiees = 0.0;
+        $detailJust = [];
+        $detailNon = [];
+        $handledMatiereIds = array_values(array_unique(array_merge($s1->matiereIdsWithManual(), $s2->matiereIdsWithManual())));
+        $anyGlobal = ($s1->global !== null) || ($s2->global !== null);
+
+        foreach ([$s1, $s2] as $snap) {
+            if ($snap->global !== null) {
+                // Global : total autoritaire du semestre (écrase séances + par matière).
+                $gJust = (float) $snap->global->heures_absence_justifiees;
+                $gNon = (float) $snap->global->heures_absence_non_justifiees;
+                $justifiees += $gJust;
+                $nonJustifiees += $gNon;
+                $commentaire = $snap->global->notes ?? 'Saisie globale (sans matière)';
+                if ($gJust > 0) {
+                    $detailJust[] = ['date' => null, 'duree' => $gJust, 'commentaire' => $commentaire, 'source' => 'manual_global', 'matiere_id' => null];
+                }
+                if ($gNon > 0) {
+                    $detailNon[] = ['date' => null, 'duree' => $gNon, 'commentaire' => $commentaire, 'source' => 'manual_global', 'matiere_id' => null];
+                }
+                continue;
+            }
+
+            // Pas de global : contributions manuelles par matière du semestre.
+            foreach ($snap->perMatiere as $row) {
+                $justifiees += (float) $row->heures_absence_justifiees;
+                $nonJustifiees += (float) $row->heures_absence_non_justifiees;
+                $commentaire = $row->notes ?? 'Saisie manuelle ('.optional($row->matiere)->name.')';
+                if ((float) $row->heures_absence_justifiees > 0) {
+                    $detailJust[] = ['date' => null, 'duree' => (float) $row->heures_absence_justifiees, 'commentaire' => $commentaire, 'source' => 'manual', 'matiere_id' => $row->matiere_id];
+                }
+                if ((float) $row->heures_absence_non_justifiees > 0) {
+                    $detailNon[] = ['date' => null, 'duree' => (float) $row->heures_absence_non_justifiees, 'commentaire' => $commentaire, 'source' => 'manual', 'matiere_id' => $row->matiere_id];
+                }
+            }
+        }
+
+        // Séances réelles : une seule fois sur l'année, pour les matières sans saisie
+        // manuelle, et seulement si aucun semestre n'a de saisie globale.
+        if (!$anyGlobal) {
+            [$sJust, $sNon, $sDetailJust, $sDetailNon] = $this->sumSessions($etudiantId, $dateDebut, $dateFin, $handledMatiereIds);
+            $justifiees += $sJust;
+            $nonJustifiees += $sNon;
+            $detailJust = array_merge($detailJust, $sDetailJust);
+            $detailNon = array_merge($detailNon, $sDetailNon);
+        }
+
+        return [
+            'justifiees' => $justifiees,
+            'non_justifiees' => $nonJustifiees,
+            'total' => $justifiees + $nonJustifiees,
+            'detail' => ['justifiees' => $detailJust, 'non_justifiees' => $detailNon],
+            'manual_matieres' => $handledMatiereIds,
+            'has_global' => $anyGlobal,
         ];
     }
 
