@@ -33,6 +33,23 @@ class BtsPhaseResolverTest extends TestCase
     }
 
     /** @test */
+    public function it_prefers_the_active_specialisation_when_orientation_was_corrected(): void
+    {
+        // Reproduit le cas yakro (étudiants 1717/1675/2409) : TC → spé A (corrigée, fermée) → spé B (active).
+        // Les deux phases spé couvrent le semestre 2 ; l'ancienne doit être ignorée au profit de l'active.
+        [$inscription, $tcClasse, $oldSpecClasse, $activeSpecClasse] = $this->makeCorrectedOrientationInscription();
+
+        $resolver = app(BtsPhaseResolver::class);
+
+        $s1 = $resolver->resolveSemesterPhase($inscription->fresh(['phases.classe.filiere']), 1);
+        $s2 = $resolver->resolveSemesterPhase($inscription->fresh(['phases.classe.filiere']), 2);
+
+        $this->assertSame($tcClasse->id, $s1['classe_id']);
+        $this->assertSame($activeSpecClasse->id, $s2['classe_id'], 'Le semestre 2 doit pointer sur la spécialité active, pas sur la phase corrigée.');
+        $this->assertNotSame($oldSpecClasse->id, $s2['classe_id']);
+    }
+
+    /** @test */
     public function it_keeps_legacy_dual_inscription_compatible(): void
     {
         [$origine, $specialisation] = $this->makeLegacyJourney();
@@ -82,6 +99,56 @@ class BtsPhaseResolverTest extends TestCase
         ]);
 
         return [$inscription, $tcClasse, $specClasse];
+    }
+
+    private function makeCorrectedOrientationInscription(): array
+    {
+        $annee = ESBTPAnneeUniversitaire::factory()->create();
+        $niveau = ESBTPNiveauEtude::factory()->create(['year' => 1, 'type' => 'BTS']);
+        $tcFiliere = ESBTPFiliere::factory()->create(['is_tronc_commun' => true, 'semestres_tronc_commun' => 1]);
+        $oldSpecFiliere = ESBTPFiliere::factory()->create(['parent_id' => $tcFiliere->id]);
+        $activeSpecFiliere = ESBTPFiliere::factory()->create(['parent_id' => $tcFiliere->id]);
+        $tcClasse = ESBTPClasse::factory()->create(['filiere_id' => $tcFiliere->id, 'niveau_etude_id' => $niveau->id, 'annee_universitaire_id' => $annee->id]);
+        $oldSpecClasse = ESBTPClasse::factory()->create(['filiere_id' => $oldSpecFiliere->id, 'niveau_etude_id' => $niveau->id, 'annee_universitaire_id' => $annee->id]);
+        $activeSpecClasse = ESBTPClasse::factory()->create(['filiere_id' => $activeSpecFiliere->id, 'niveau_etude_id' => $niveau->id, 'annee_universitaire_id' => $annee->id]);
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $inscription = ESBTPInscription::factory()->create([
+            'etudiant_id' => $etudiant->id,
+            'filiere_id' => $activeSpecFiliere->id,
+            'niveau_id' => $niveau->id,
+            'classe_id' => $activeSpecClasse->id,
+            'annee_universitaire_id' => $annee->id,
+        ]);
+
+        ESBTPInscriptionPhase::create([
+            'inscription_id' => $inscription->id,
+            'type_phase' => 'tronc_commun',
+            'classe_id' => $tcClasse->id,
+            'filiere_id' => $tcFiliere->id,
+            'semestre_debut' => 1,
+            'semestre_fin' => 1,
+            'is_active' => false,
+        ]);
+        // Ancienne spécialité (orientation corrigée) : créée AVANT, donc id plus petit → sortie en premier par first().
+        ESBTPInscriptionPhase::create([
+            'inscription_id' => $inscription->id,
+            'type_phase' => 'specialisation',
+            'classe_id' => $oldSpecClasse->id,
+            'filiere_id' => $oldSpecFiliere->id,
+            'semestre_debut' => 2,
+            'is_active' => false,
+        ]);
+        // Spécialité active (après correction).
+        ESBTPInscriptionPhase::create([
+            'inscription_id' => $inscription->id,
+            'type_phase' => 'specialisation',
+            'classe_id' => $activeSpecClasse->id,
+            'filiere_id' => $activeSpecFiliere->id,
+            'semestre_debut' => 2,
+            'is_active' => true,
+        ]);
+
+        return [$inscription, $tcClasse, $oldSpecClasse, $activeSpecClasse];
     }
 
     private function makeLegacyJourney(): array

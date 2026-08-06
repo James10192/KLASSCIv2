@@ -126,7 +126,7 @@ final class BtsBulkBulletinGenerationService
             'missing_coefficients' => array_values($missingCoefficientBuckets),
             'missing_professeurs' => $missingProfesseurs,
             'configuration_url' => $configurationUrl,
-            'message' => $this->preflightMessage($students->count(), $blockingErrors, $skipped, $canOverrideIncomplete),
+            'message' => $this->preflightMessage($students->count(), $blockingErrors, $skipped, $canOverrideIncomplete, $classe),
         ];
     }
 
@@ -499,9 +499,17 @@ final class BtsBulkBulletinGenerationService
         return $deduped;
     }
 
-    private function preflightMessage(int $studentsCount, array $blockingErrors, array $skipped, bool $canOverrideIncomplete): string
+    private function preflightMessage(int $studentsCount, array $blockingErrors, array $skipped, bool $canOverrideIncomplete, ?ESBTPClasse $classe = null): string
     {
         if ($studentsCount === 0) {
+            // Une classe de tronc commun vide n'est pas une anomalie : ses etudiants ont ete
+            // orientes en specialite. La generation annuelle (S1 TC + S2 specialite) se lance
+            // depuis la classe de specialite, ou le S1 du tronc commun est agrege automatiquement.
+            if ($classe?->filiere?->isTroncCommun()) {
+                return 'Aucun étudiant actif dans cette classe de tronc commun : ils ont été orientés en spécialité. '
+                    .'Générez les bulletins depuis chaque classe de spécialité (le semestre 1 du tronc commun y est agrégé automatiquement).';
+            }
+
             return 'Aucun etudiant actif et valide dans cette classe pour cette annee.';
         }
 

@@ -98,9 +98,13 @@
                             </tr>
                             <tr>
                                 <th>Moyenne Générale</th>
-                                <td class="font-weight-bold {{ $moyenneGenerale >= 12 ? 'text-success' : ($moyenneGenerale >= 10 ? 'text-info' : 'text-danger') }}">
-                                    {{ number_format($moyenneGenerale, 2) }}/20
-                                </td>
+                                @if($moyenneGenerale === null)
+                                    <td class="font-weight-bold text-muted">En attente</td>
+                                @else
+                                    <td class="font-weight-bold {{ $moyenneGenerale >= 12 ? 'text-success' : ($moyenneGenerale >= 10 ? 'text-info' : 'text-danger') }}">
+                                        {{ number_format($moyenneGenerale, 2) }}/20
+                                    </td>
+                                @endif
                             </tr>
                             <tr>
                                 <th>Rang</th>
@@ -165,7 +169,7 @@
                                         <td class="text-center">{{ number_format($detail->moyenne_classe, 2) }}</td>
                                         <td class="text-center">{{ $detail->rang }}/{{ $detail->effectif }}</td>
                                         <td class="text-center">
-                                            @php($detailAppreciation = $studentAppreciations->classificationFor($detail->moyenne === null ? null : (float) $detail->moyenne, 'bts'))
+                                            @php $detailAppreciation = $studentAppreciations->classificationFor($detail->moyenne === null ? null : (float) $detail->moyenne, 'bts'); @endphp
                                             <span class="badge {{ $studentBadgeClass($detailAppreciation['slug']) }}">{{ $detailAppreciation['label'] }}</span>
                                         </td>
                                         <td class="text-center">
@@ -211,17 +215,25 @@
             <h5 class="mb-0">Décision du conseil</h5>
         </div>
         <div class="card-body">
-            <div class="alert {{ $moyenneGenerale >= 10 ? 'alert-success' : 'alert-danger' }}">
-                <h5>{{ $decisionConseil ?? ($moyenneGenerale >= 10 ? 'ADMIS' : 'AJOURNÉ') }}</h5>
-                <p>
-                    @if($moyenneGenerale >= 10)
-                        @php($generalAppreciation = $studentAppreciations->classificationFor((float) $moyenneGenerale, 'bts'))
-                        Vous avez validé cette période avec l'appréciation {{ $generalAppreciation['label'] }}.
-                    @else
-                        Vous n'avez pas validé cette période. Veuillez consulter la scolarité pour plus d'informations.
-                    @endif
-                </p>
-            </div>
+            @if($moyenneGenerale === null && $decisionConseil === null)
+                {{-- Bulletin pas encore finalisé : ne jamais afficher AJOURNÉ par défaut sur un calcul absent. --}}
+                <div class="alert alert-info">
+                    <h5>En attente de génération</h5>
+                    <p>Votre bulletin de cette période n'a pas encore été finalisé par la scolarité. Vos résultats seront disponibles ici une fois le bulletin généré.</p>
+                </div>
+            @else
+                <div class="alert {{ $moyenneGenerale >= 10 ? 'alert-success' : 'alert-danger' }}">
+                    <h5>{{ $decisionConseil ?? ($moyenneGenerale >= 10 ? 'ADMIS' : 'AJOURNÉ') }}</h5>
+                    <p>
+                        @if($moyenneGenerale >= 10)
+                            @php $generalAppreciation = $studentAppreciations->classificationFor((float) $moyenneGenerale, 'bts'); @endphp
+                            Vous avez validé cette période avec l'appréciation {{ $generalAppreciation['label'] }}.
+                        @else
+                            Vous n'avez pas validé cette période. Veuillez consulter la scolarité pour plus d'informations.
+                        @endif
+                    </p>
+                </div>
+            @endif
 
             @if($bulletin->observations)
                 <div class="mt-3">
