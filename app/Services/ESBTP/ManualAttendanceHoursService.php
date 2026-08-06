@@ -83,15 +83,22 @@ class ManualAttendanceHoursService
 
     private function upsertEntry(array $entry, array $context, int $userId, array &$contexts): bool
     {
+        // withTrashed() : l'index unique `manual_hours_unique_v2`
+        // (etudiant_id, matiere_key, annee, periode) ne tient PAS compte de `deleted_at`.
+        // Une ligne soft-deletée occupe donc toujours la clé unique. Sans withTrashed,
+        // une re-saisie après un effacement ne verrait pas la ligne soft-deletée et
+        // tenterait un create() qui collisionne → « 1062 Duplicate entry » (500).
+        // On récupère aussi les lignes soft-deletées pour les restaurer/mettre à jour.
         $existing = $this->matchQuery(
             (int) $entry['etudiant_id'],
             $context['matiere_id'] ?? null,
             (int) $context['annee_universitaire_id'],
             (string) $context['periode']
-        )->first();
+        )->withTrashed()->first();
 
         if (! $this->hasValue($entry)) {
-            if (! $existing) {
+            // Rien de vivant à effacer : aucune ligne, ou déjà soft-deletée.
+            if (! $existing || $existing->trashed()) {
                 return false;
             }
 
@@ -105,9 +112,16 @@ class ManualAttendanceHoursService
 
         $original = $existing?->getAttributes();
         $payload = $this->payload($entry, $context, $userId);
-        $existing
-            ? $existing->update($payload)
-            : ESBTPAttendanceManualHours::create($payload + ['created_by' => $userId]);
+
+        if ($existing) {
+            if ($existing->trashed()) {
+                // Ré-activer la ligne soft-deletée au lieu d'un INSERT qui collisionne.
+                $existing->restore();
+            }
+            $existing->update($payload);
+        } else {
+            ESBTPAttendanceManualHours::create($payload + ['created_by' => $userId]);
+        }
 
         if ($original !== null) {
             $contexts[] = $original;
