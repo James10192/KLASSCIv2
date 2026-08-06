@@ -368,8 +368,8 @@
                 <h6 class="bsh-card-title">Assiduité</h6>
             </div>
             <div class="bsh-card-body">
-                <div class="bsh-info-row"><span class="bsh-info-label">Absences justifiées</span><span class="bsh-info-value">{{ $bulletin->absences_justifiees ?? 0 }} h</span></div>
-                <div class="bsh-info-row"><span class="bsh-info-label">Absences non justifiées</span><span class="bsh-info-value">{{ $bulletin->absences_non_justifiees ?? 0 }} h</span></div>
+                <div class="bsh-info-row"><span class="bsh-info-label">Absences justifiées</span><span class="bsh-info-value">{{ $absencesJustifiees ?? $bulletin->absences_justifiees ?? 0 }} h</span></div>
+                <div class="bsh-info-row"><span class="bsh-info-label">Absences non justifiées</span><span class="bsh-info-value">{{ $absencesNonJustifiees ?? $bulletin->absences_non_justifiees ?? 0 }} h</span></div>
                 <div class="bsh-info-row"><span class="bsh-info-label">Retards</span><span class="bsh-info-value">{{ $bulletin->retards ?? 0 }}</span></div>
             </div>
         </div>

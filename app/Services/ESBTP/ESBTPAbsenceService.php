@@ -269,10 +269,21 @@ class ESBTPAbsenceService
             return ManualHoursSnapshot::empty();
         }
 
+        $normalized = $this->normalizePeriode((string) $periode);
+
+        // Un bulletin annuel doit agréger les saisies manuelles des deux semestres :
+        // sinon `periode = 'annuel'` seul rate les heures stockées en semestre1/semestre2.
+        if ($normalized === 'annuel') {
+            return $this->resolver->annualSnapshot(
+                (int) $etudiantId,
+                (int) $anneeUniversitaireId
+            );
+        }
+
         return $this->resolver->snapshot(
             (int) $etudiantId,
             (int) $anneeUniversitaireId,
-            $this->normalizePeriode((string) $periode)
+            $normalized
         );
     }
 

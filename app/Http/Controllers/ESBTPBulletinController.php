@@ -381,7 +381,16 @@ class ESBTPBulletinController extends Controller
 
         $bulletin->load(['etudiant', 'classe', 'anneeUniversitaire', 'resultats.matiere', 'user']);
 
-        return view('esbtp.bulletins.show', compact('bulletin'));
+        // Recalculer les absences EN LIVE (saisie manuelle par matière + globale incluse)
+        // via le MÊME wrapper que le PDF (calculerAbsencesDetailees) → cohérence garantie
+        // entre la fiche et le PDF. Les colonnes esbtp_bulletins.absences_* peuvent être
+        // figées à 0 tant qu'aucune (re)génération n'a tourné depuis la saisie manuelle.
+        // Le wrapper absorbe ses propres erreurs (retourne 0), d'où le fallback colonne.
+        $absences = $this->bulletinService->calculerAbsencesDetailees($bulletin);
+        $absencesJustifiees = $absences['justifiees'] ?? $bulletin->absences_justifiees ?? 0;
+        $absencesNonJustifiees = $absences['non_justifiees'] ?? $bulletin->absences_non_justifiees ?? 0;
+
+        return view('esbtp.bulletins.show', compact('bulletin', 'absencesJustifiees', 'absencesNonJustifiees'));
     }
 
     /**
@@ -616,6 +625,21 @@ class ESBTPBulletinController extends Controller
 
             // Stream inline (preview) ou télécharger selon le mode demandé
             return $inline ? $pdf->stream($filename) : $pdf->download($filename);
+        } catch (BulletinConfigurationException $e) {
+            // Bulletin non configuré : message clair + lien vers la configuration des
+            // matières, plutôt qu'un « Undefined variable $note_assiduite » (500 technique).
+            $context = $e->getContext();
+            $configUrl = $context['configuration_url'] ?? route('esbtp.bulletins.config-matieres', array_filter([
+                'classe_id' => $bulletin->classe_id,
+                'annee_universitaire_id' => $bulletin->annee_universitaire_id,
+                'periode' => $bulletin->periode,
+                'bulletin' => $bulletin->etudiant_id,
+                'etudiant_id' => $bulletin->etudiant_id,
+            ]));
+
+            return redirect($configUrl)->with('warning',
+                "Ce bulletin n'est pas encore configuré : configurez d'abord les matières "
+                .'(types, coefficients et professeurs) avant de générer le PDF.');
         } catch (\Throwable $e) {
             Log::error('Erreur lors de la génération du PDF du bulletin #'.$bulletin->id.': '.$e->getMessage());
             Log::error('Trace: '.$e->getTraceAsString());
@@ -637,7 +661,7 @@ class ESBTPBulletinController extends Controller
         // mémoire pour un rendu identique, MAIS on n'écrit rien en base — un GET
         // d'export ne doit pas déclencher N écritures.
         try {
-            Log::info('Début de la génération du PDF pour le bulletin #'.$bulletin->id);
+            Log::debug('Début de la génération du PDF pour le bulletin #'.$bulletin->id);
 
             // Charger toutes les relations nécessaires avec eager loading, y compris les relations imbriquées
             $bulletin->load([
@@ -718,7 +742,7 @@ class ESBTPBulletinController extends Controller
             // Si les absences sont toujours à zéro, essayer la méthode basée sur l'attendance
             if ($bulletin->absences_justifiees == 0 && $bulletin->absences_non_justifiees == 0) {
                 try {
-                    Log::info('Tentative de calcul des absences via le service pour le bulletin #'.$bulletin->id);
+                    Log::debug('Tentative de calcul des absences via le service pour le bulletin #'.$bulletin->id);
 
                     $absencesAttendance = $this->absenceService->calculerDetailAbsences(
                         $bulletin->etudiant_id,
@@ -732,7 +756,7 @@ class ESBTPBulletinController extends Controller
                     $bulletin->absences_justifiees = $absencesAttendance['justifiees'];
                     $bulletin->absences_non_justifiees = $absencesAttendance['non_justifiees'];
                     $bulletin->total_absences = $absencesAttendance['total'];
-                    Log::info('Calcul des absences via le service réussi: '.json_encode($absencesAttendance));
+                    Log::debug('Calcul des absences via le service réussi: '.json_encode($absencesAttendance));
                 } catch (\Exception $e) {
                     Log::error('Erreur lors du calcul des absences via le service: '.$e->getMessage());
                     Log::error('Trace: '.$e->getTraceAsString());
@@ -741,7 +765,7 @@ class ESBTPBulletinController extends Controller
 
             // Récupérer les vraies notes de l'étudiant depuis la table esbtp_notes
             try {
-                Log::info('Récupération des vraies notes pour l\'étudiant #'.$bulletin->etudiant_id);
+                Log::debug('Récupération des vraies notes pour l\'étudiant #'.$bulletin->etudiant_id);
 
                 // Récupérer les notes de l'étudiant pour la période du bulletin.
                 // BUG corrigé : avant aucun filtre periode → S1 et S2 mélangés sur le PDF S2.
@@ -758,7 +782,7 @@ class ESBTPBulletinController extends Controller
                     ->with(['matiere', 'evaluation'])
                     ->get();
 
-                Log::info('Notes trouvées: '.$notesEtudiant->count().' periode_attendue='.$bulletinPeriode);
+                Log::debug('Notes trouvées: '.$notesEtudiant->count().' periode_attendue='.$bulletinPeriode);
 
                 // Grouper les notes par matière et calculer les moyennes par matière
                 $notesByMatiere = $notesEtudiant->groupBy('matiere_id');
@@ -814,9 +838,9 @@ class ESBTPBulletinController extends Controller
                             Log::warning('Coefficient manquant pour matière #'.$matiere->id.' bulletin #'.$bulletin->id.' — fallback à 1');
                         }
 
-                        Log::info('Matière: '.$matiere->name.' - '.$notes->count().' notes');
-                        Log::info('Total pondéré: '.$totalPondere.', Total coefficients: '.$totalCoefficients);
-                        Log::info('Moyenne pondérée: '.round($moyenneMatiere, 2));
+                        Log::debug('Matière: '.$matiere->name.' - '.$notes->count().' notes');
+                        Log::debug('Total pondéré: '.$totalPondere.', Total coefficients: '.$totalCoefficients);
+                        Log::debug('Moyenne pondérée: '.round($moyenneMatiere, 2));
 
                         // Créer un objet résultat formaté pour le template
                         $resultatFormate = (object) [
@@ -861,14 +885,14 @@ class ESBTPBulletinController extends Controller
                 $moyenneGlobale = ($countGeneral + $countTechnique) > 0 ?
                     round(($totalGeneral + $totalTechnique) / ($countGeneral + $countTechnique), 2) : 0;
 
-                Log::info('Moyennes calculées - Général: '.$moyenneGenerale.', Technique: '.$moyenneTechnique.', Globale: '.$moyenneGlobale);
+                Log::debug('Moyennes calculées - Général: '.$moyenneGenerale.', Technique: '.$moyenneTechnique.', Globale: '.$moyenneGlobale);
 
                 // Mettre à jour le bulletin avec les moyennes calculées
                 if (! $bulletin->moyenne_generale || $bulletin->moyenne_generale != $moyenneGlobale) {
                     $bulletin->moyenne_generale = $moyenneGlobale;
                     if ($persist) {
                         $bulletin->save();
-                        Log::info('Moyenne générale mise à jour: '.$moyenneGlobale);
+                        Log::debug('Moyenne générale mise à jour: '.$moyenneGlobale);
                     }
                 }
 
@@ -962,7 +986,7 @@ class ESBTPBulletinController extends Controller
             $data += $this->getOfficialBulletinTemplateDefaults($bulletin);
 
             // Log des variables d'absences pour debugging
-            Log::info('Variables d\'absence pour le PDF dans genererPDF:', [
+            Log::debug('Variables d\'absence pour le PDF dans genererPDF:', [
                 'bulletin_absences_justifiees' => $bulletin->absences_justifiees ?? 'Non défini',
                 'bulletin_absences_non_justifiees' => $bulletin->absences_non_justifiees ?? 'Non défini',
                 'data_absencesJustifiees' => $data['absencesJustifiees'] ?? 'Non défini',
@@ -992,7 +1016,7 @@ class ESBTPBulletinController extends Controller
                 }
             }
 
-            Log::info('Chargement de la vue PDF avec le template configurable pour le bulletin #'.$bulletin->id);
+            Log::debug('Chargement de la vue PDF avec le template configurable pour le bulletin #'.$bulletin->id);
             $pdf = PDF::loadView($this->bulletinService->getBulletinTemplateView(), $data);
 
             // Configuration PDF avec format A4 et options optimisées
@@ -1012,6 +1036,10 @@ class ESBTPBulletinController extends Controller
             Log::info('PDF généré avec succès pour le bulletin #'.$bulletin->id);
 
             return $pdf;
+        } catch (BulletinConfigurationException $e) {
+            // Bulletin non configuré : ce n'est pas une erreur technique. On relaie
+            // sans bruit de log ; le caller (genererPDF) affichera un message clair.
+            throw $e;
         } catch (\Throwable $e) {
             Log::error('Erreur buildBulletinPdf bulletin #'.$bulletin->id.': '.$e->getMessage());
             Log::error('Trace: '.$e->getTraceAsString());
@@ -1653,8 +1681,11 @@ class ESBTPBulletinController extends Controller
             $configMatieres = [];
             $professeurs = [];
             if ($bulletin) {
-                $configMatieres = json_decode($bulletin->config_matieres, true) ?: [];
-                $professeurs = json_decode($bulletin->professeurs, true) ?: [];
+                // Décodage tolérant via l'unique helper canonical : config_matieres est
+                // casté `json` (array), professeurs est une chaîne brute — json_decode(array)
+                // lèverait un TypeError.
+                $configMatieres = $this->bulletinService->decodeJsonToArray($bulletin->config_matieres);
+                $professeurs = $this->bulletinService->decodeJsonToArray($bulletin->professeurs);
             }
 
             // Préparer le logo et configuration PDF
@@ -2377,6 +2408,12 @@ class ESBTPBulletinController extends Controller
                 $bulletin->annee_universitaire_id,
                 $bulletin->periode
             );
+        } catch (BulletinConfigurationException $e) {
+            // Bulletin non configuré : ne PAS avaler l'exception. Sans les ~25 variables
+            // du template (note_assiduite, pdfSettings...), le rendu planterait sur
+            // « Undefined variable $note_assiduite ». On la laisse remonter pour que le
+            // caller (genererPDF) affiche un message clair « configurez d'abord ce bulletin ».
+            throw $e;
         } catch (\Throwable $e) {
             Log::warning('Fallback defaults unavailable for official bulletin template', [
                 'bulletin_id' => $bulletin->id,

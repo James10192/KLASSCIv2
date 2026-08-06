@@ -769,7 +769,7 @@ class ESBTPBulletinConfigController extends Controller
                 // Récupérer le nom du professeur pour cette matière
                 $professeurNom = '';
                 if ($bulletin && $bulletin->professeurs) {
-                    $professeurs = json_decode($bulletin->professeurs, true);
+                    $professeurs = $this->bulletinService->decodeJsonToArray($bulletin->professeurs);
                     $professeurNom = $professeurs[$config->matiere_id] ?? '';
                 }
                 if ($professeurNom === '') {
@@ -806,11 +806,11 @@ class ESBTPBulletinConfigController extends Controller
 
         $matieresIds = collect($matieres)->pluck('id')->unique()->all();
         if ($notesMatieres->isNotEmpty()) {
-            $configMatieres = $bulletin && $bulletin->config_matieres
-                ? (json_decode($bulletin->config_matieres, true) ?: ['generales' => [], 'techniques' => []])
-                : ['generales' => [], 'techniques' => []];
+            // decodeJsonToArray gère null/vide → [] ; les accès downstream utilisent
+            // `['generales'] ?? []` (null-safe), pas besoin d'un default structuré.
+            $configMatieres = $this->bulletinService->decodeJsonToArray($bulletin?->config_matieres);
             $professeursExisting = $bulletin && $bulletin->professeurs
-                ? (json_decode($bulletin->professeurs, true) ?: [])
+                ? $this->bulletinService->decodeJsonToArray($bulletin->professeurs)
                 : $professeursTemplate;
 
             foreach ($notesMatieres as $matiere) {
@@ -872,7 +872,7 @@ class ESBTPBulletinConfigController extends Controller
         // Récupérer les professeurs du bulletin
         $professeurs = [];
         if ($bulletin && $bulletin->professeurs) {
-            $professeurs = json_decode($bulletin->professeurs, true) ?: [];
+            $professeurs = $this->bulletinService->decodeJsonToArray($bulletin->professeurs);
             \Log::info('📋 Professeurs from bulletin', [
                 'bulletin_id' => $bulletin->id,
                 'professeurs' => $professeurs,
