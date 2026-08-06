@@ -381,31 +381,14 @@ class ESBTPBulletinController extends Controller
 
         $bulletin->load(['etudiant', 'classe', 'anneeUniversitaire', 'resultats.matiere', 'user']);
 
-        // Recalculer les absences EN LIVE (saisie manuelle par matiere + globale incluse).
-        // Les colonnes esbtp_bulletins.absences_* peuvent etre figees a 0 si aucune
-        // (re)generation n'a tourne depuis la saisie manuelle : on affiche donc la valeur
-        // live plutot que la colonne cachee. Fallback sur la colonne si le calcul echoue.
-        $absencesJustifiees = $bulletin->absences_justifiees ?? 0;
-        $absencesNonJustifiees = $bulletin->absences_non_justifiees ?? 0;
-        if ($bulletin->anneeUniversitaire) {
-            try {
-                $absencesLive = $this->absenceService->calculerDetailAbsences(
-                    $bulletin->etudiant_id,
-                    $bulletin->classe_id,
-                    $bulletin->anneeUniversitaire->date_debut,
-                    $bulletin->anneeUniversitaire->date_fin,
-                    $bulletin->annee_universitaire_id,
-                    $bulletin->periode
-                );
-                $absencesJustifiees = $absencesLive['justifiees'] ?? $absencesJustifiees;
-                $absencesNonJustifiees = $absencesLive['non_justifiees'] ?? $absencesNonJustifiees;
-            } catch (\Throwable $e) {
-                Log::warning('bulletins.show: calcul live des absences indisponible, fallback colonnes', [
-                    'bulletin_id' => $bulletin->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
+        // Recalculer les absences EN LIVE (saisie manuelle par matière + globale incluse)
+        // via le MÊME wrapper que le PDF (calculerAbsencesDetailees) → cohérence garantie
+        // entre la fiche et le PDF. Les colonnes esbtp_bulletins.absences_* peuvent être
+        // figées à 0 tant qu'aucune (re)génération n'a tourné depuis la saisie manuelle.
+        // Le wrapper absorbe ses propres erreurs (retourne 0), d'où le fallback colonne.
+        $absences = $this->bulletinService->calculerAbsencesDetailees($bulletin);
+        $absencesJustifiees = $absences['justifiees'] ?? $bulletin->absences_justifiees ?? 0;
+        $absencesNonJustifiees = $absences['non_justifiees'] ?? $bulletin->absences_non_justifiees ?? 0;
 
         return view('esbtp.bulletins.show', compact('bulletin', 'absencesJustifiees', 'absencesNonJustifiees'));
     }
@@ -1698,14 +1681,11 @@ class ESBTPBulletinController extends Controller
             $configMatieres = [];
             $professeurs = [];
             if ($bulletin) {
-                // config_matieres est casté `json` sur le modèle → l'accesseur peut
-                // renvoyer un array. Passer un array à json_decode() lève un TypeError.
-                $configMatieres = is_array($bulletin->config_matieres)
-                    ? $bulletin->config_matieres
-                    : (json_decode((string) $bulletin->config_matieres, true) ?: []);
-                $professeurs = is_array($bulletin->professeurs)
-                    ? $bulletin->professeurs
-                    : (json_decode((string) $bulletin->professeurs, true) ?: []);
+                // Décodage tolérant via l'unique helper canonical : config_matieres est
+                // casté `json` (array), professeurs est une chaîne brute — json_decode(array)
+                // lèverait un TypeError.
+                $configMatieres = $this->bulletinService->decodeJsonToArray($bulletin->config_matieres);
+                $professeurs = $this->bulletinService->decodeJsonToArray($bulletin->professeurs);
             }
 
             // Préparer le logo et configuration PDF

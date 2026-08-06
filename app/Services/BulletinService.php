@@ -1913,7 +1913,12 @@ class BulletinService
         $bulletin->save();
     }
 
-    private function decodeJsonToArray($value): array
+    /**
+     * Décodage tolérant d'une valeur JSON : accepte un array déjà casté (colonnes
+     * castées `json` sur le modèle) OU une chaîne brute, et renvoie toujours un array.
+     * Source unique pour tous les consommateurs (controllers inclus).
+     */
+    public function decodeJsonToArray($value): array
     {
         if (is_array($value)) {
             return $value;
