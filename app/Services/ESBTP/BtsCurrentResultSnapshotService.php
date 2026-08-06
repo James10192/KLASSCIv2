@@ -48,9 +48,13 @@ class BtsCurrentResultSnapshotService
             ->where('etudiant_id', $etudiantId)
             ->with(['evaluation.matiere'])
             ->whereHas('evaluation', function ($query) use ($anneeUniversitaireId, $classeId, $periode) {
+                // Aligné sur la génération réelle (buildDonneesBulletin) : mêmes
+                // aliases de période ET exclusion des évaluations annulées, sinon
+                // le pré-contrôle voit des notes que la génération ignore.
                 $query->where('annee_universitaire_id', $anneeUniversitaireId)
                     ->where('classe_id', $classeId)
-                    ->whereIn('periode', $periode === 'semestre1' ? ['semestre1', '1'] : ['semestre2', '2']);
+                    ->where('status', '!=', 'cancelled')
+                    ->whereIn('periode', $this->bulletinService->periodeAliases($periode));
             })
             ->get();
 

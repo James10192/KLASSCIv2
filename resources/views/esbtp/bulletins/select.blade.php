@@ -205,6 +205,14 @@
     border-color: rgba(16, 185, 129, .28);
     background: rgba(16, 185, 129, .05);
 }
+.bus-inline-panel--warn {
+    border-color: rgba(245, 158, 11, .30);
+    background: rgba(245, 158, 11, .05);
+}
+.bus-inline-panel--info {
+    border-color: rgba(4, 83, 203, .22);
+    background: rgba(4, 83, 203, .05);
+}
 .bus-inline-panel__title {
     display: flex;
     align-items: center;
@@ -255,6 +263,16 @@
     border-color: #0453cb;
     box-shadow: 0 0 0 3px rgba(4, 83, 203, .1);
 }
+.bus-field-hint {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .5rem;
+    margin: .25rem 0 0;
+    font-size: .7rem;
+    color: var(--bus-muted);
+}
+.bus-field-hint--warn { color: #b45309; font-weight: 700; }
 .bus-submit--blocked {
     background: #64748b;
     box-shadow: none;
@@ -692,11 +710,11 @@
                     <p class="bus-inline-panel__body">Verification des inscriptions actives, coefficients et donnees academiques.</p>
                 </div>
                 <div class="bus-inline-panel"
-                     :class="preflight?.ok ? 'bus-inline-panel--ok' : 'bus-inline-panel--danger'"
+                     :class="panelClass()"
                      x-show="preflight && !preflightBusy"
                      x-cloak>
                     <div class="bus-inline-panel__title">
-                        <i class="fas" :class="preflight?.ok ? 'fa-circle-check' : 'fa-circle-exclamation'"></i>
+                        <i class="fas" :class="panelIcon()"></i>
                         <span>Pre-controle generation</span>
                     </div>
                     <p class="bus-inline-panel__body" x-text="preflight?.message"></p>
@@ -723,7 +741,13 @@
                     <template x-if="preflight?.blocking_errors?.length && !preflight?.missing_coefficients?.length && !preflight?.missing_professeurs?.length">
                         <p class="bus-inline-panel__body" x-text="preflight.blocking_errors.length + ' blocage(s) detecte(s).'"></p>
                     </template>
-                    <template x-if="preflight && !preflight.ok">
+                    <template x-if="preflight?.existing_empty_count > 0 && !preflight?.recalculer">
+                        <p class="bus-inline-panel__body">
+                            <span x-text="preflight.existing_empty_count"></span>
+                            bulletin(s) existant(s) sans moyenne — cochez « Recalculer » pour les regenerer.
+                        </p>
+                    </template>
+                    <template x-if="preflight?.has_hard_blocks">
                         <button type="button" class="bus-inline-panel__link bus-inline-panel__button" @click="openInlineConfig(preflight)">
                             <i class="fas fa-sliders"></i>
                             Completer matieres, coefficients et professeurs
@@ -734,8 +758,13 @@
                         <textarea id="bus-incomplete-reason"
                                   class="bus-textarea"
                                   x-model="form.incomplete_reason"
+                                  minlength="8"
                                   maxlength="1000"
-                                  placeholder="Expliquez pourquoi la generation incomplete est autorisee."></textarea>
+                                  placeholder="Expliquez pourquoi la generation incomplete est autorisee (8 caracteres minimum)."></textarea>
+                        <div class="bus-field-hint" :class="hasIncompleteReason() ? '' : 'bus-field-hint--warn'">
+                            <span x-text="hasIncompleteReason() ? 'Motif valide.' : 'Minimum 8 caracteres requis pour debloquer.'"></span>
+                            <span x-text="(form.incomplete_reason || '').trim().length + ' / 1000'"></span>
+                        </div>
                     </div>
                 </div>
                 <div class="bus-inline-panel"

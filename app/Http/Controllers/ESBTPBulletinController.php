@@ -137,6 +137,13 @@ class ESBTPBulletinController extends Controller
             ? (int) round($stats['published'] / $stats['total'] * 100)
             : 0;
 
+        // Le filtre 'annuel' n'est proposé que si des bulletins legacy existent, pour
+        // que le bandeau « Voir ces bulletins » reste sélectionnable (sinon le select
+        // premium sans option 'annuel' réinitialise le filtre et n'affiche rien).
+        if ($stats['legacy_annuel'] > 0) {
+            $periodes->push((object) ['id' => 'annuel', 'nom' => 'Annuel (legacy)']);
+        }
+
         // AJAX no-reload : si requête AJAX, renvoyer le partial table + stats en JSON.
         if ($request->ajax() || $request->wantsJson()) {
             return response()->json([
@@ -1144,6 +1151,61 @@ class ESBTPBulletinController extends Controller
 
     public function exportBulkPdf(Request $request, BulletinBulkPdfExporter $exporter)
     {
+        try {
+            $result = $this->prepareBulkExport($request, $exporter);
+        } catch (\RuntimeException $e) {
+            // Garde métier (aucun généré / plafond dépassé) : message actionnable.
+            return back()->with('error', $e->getMessage());
+        } catch (\Throwable $e) {
+            Log::error('exportBulkPdf: échec export groupé — '.$e->getMessage());
+
+            return back()->with('error', "Échec de l'export groupé des bulletins : ".$e->getMessage());
+        }
+
+        return response()->download($result['path'], $this->bulkExportFilename())->deleteFileAfterSend(true);
+    }
+
+    /**
+     * Aperçu inline du même PDF groupé (nouvel onglet), sans téléchargement.
+     * Réutilise EXACTEMENT le rendu de exportBulkPdf via prepareBulkExport().
+     */
+    public function exportBulkPdfPreview(Request $request, BulletinBulkPdfExporter $exporter)
+    {
+        try {
+            $result = $this->prepareBulkExport($request, $exporter);
+        } catch (\RuntimeException $e) {
+            return response($e->getMessage(), 422)->header('Content-Type', 'text/plain; charset=UTF-8');
+        } catch (\Throwable $e) {
+            Log::error('exportBulkPdfPreview: échec aperçu export groupé — '.$e->getMessage());
+
+            return response("Échec de l'aperçu de l'export groupé : ".$e->getMessage(), 500)
+                ->header('Content-Type', 'text/plain; charset=UTF-8');
+        }
+
+        // Streamé (pas de chargement mémoire du PDF fusionné) + nettoyage aligné sur le
+        // téléchargement (deleteFileAfterSend), au lieu d'un file_get_contents + unlink manuel.
+        return response()->file($result['path'], [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'inline; filename="'.$this->bulkExportFilename().'"',
+        ])->deleteFileAfterSend(true);
+    }
+
+    private function bulkExportFilename(): string
+    {
+        return 'bulletins_'.now()->format('Ymd_His').'.pdf';
+    }
+
+    /**
+     * Construit le PDF groupé (page de garde d'avertissement + bulletins générés,
+     * dans l'ordre demandé) et retourne le résultat de fusion. Source de vérité
+     * unique partagée par le téléchargement et l'aperçu.
+     *
+     * @return array{path: string, rendered: int, failed: array<int, array{id: int, message: string}>}
+     *
+     * @throws \RuntimeException si aucun bulletin généré ou plafond dépassé
+     */
+    protected function prepareBulkExport(Request $request, BulletinBulkPdfExporter $exporter): array
+    {
         $anneeId = $this->resolveAnneeId($request);
 
         // Ensemble filtré COMPLET (généré ou non), pour distinguer les absents.
@@ -1157,12 +1219,12 @@ class ESBTPBulletinController extends Controller
         if ($generatedCount === 0) {
             $totalFiltered = (clone $filtered)->count();
 
-            return back()->with('error', "Aucun bulletin généré parmi les $totalFiltered filtrés. Générez d'abord les bulletins, puis réessayez.");
+            throw new \RuntimeException("Aucun bulletin généré parmi les $totalFiltered filtrés. Générez d'abord les bulletins, puis réessayez.");
         }
 
         $cap = (int) SettingsHelper::get('bulletins_bulk_export_cap', 150);
         if ($generatedCount > $cap) {
-            return back()->with('error', "Trop de bulletins générés ($generatedCount) pour un export groupé. Affinez le filtre (classe et/ou période) — la limite est de $cap bulletins par export.");
+            throw new \RuntimeException("Trop de bulletins générés ($generatedCount) pour un export groupé. Affinez le filtre (classe et/ou période) — la limite est de $cap bulletins par export.");
         }
 
         // Bulletins NON générés du même filtre → seront ABSENTS du PDF (avertissement).
@@ -1182,26 +1244,18 @@ class ESBTPBulletinController extends Controller
             $bulletins->count()
         );
 
-        try {
-            // $persist=false : export en lecture seule, aucune écriture DB déclenchée par ce GET.
-            $result = $exporter->export(
-                $bulletins,
-                fn (ESBTPBulletin $b) => $this->buildBulletinPdf($b, false),
-                $coverBuilder
-            );
-        } catch (\Throwable $e) {
-            Log::error('exportBulkPdf: échec export groupé — '.$e->getMessage());
-
-            return back()->with('error', "Échec de l'export groupé des bulletins : ".$e->getMessage());
-        }
+        // $persist=false : export en lecture seule, aucune écriture DB déclenchée par ce GET.
+        $result = $exporter->export(
+            $bulletins,
+            fn (ESBTPBulletin $b) => $this->buildBulletinPdf($b, false),
+            $coverBuilder
+        );
 
         if (! empty($result['failed'])) {
             Log::warning('exportBulkPdf: '.count($result['failed']).' bulletin(s) non rendus', $result['failed']);
         }
 
-        $filename = 'bulletins_'.now()->format('Ymd_His').'.pdf';
-
-        return response()->download($result['path'], $filename)->deleteFileAfterSend(true);
+        return $result;
     }
 
     /**
@@ -1246,6 +1300,8 @@ class ESBTPBulletinController extends Controller
             'classe' => $classe,
             'periode' => $periodeLabels[$request->input('periode_id')] ?? null,
             'config' => $this->bulletinService->getPDFConfig(),
+            // Couleurs configurées par le tenant, comme les pages de bulletin elles-mêmes.
+            'pdfSettings' => SettingsHelper::getPdfSettings(),
             'logoBase64' => $this->bulletinService->prepareLogoBase64($this->bulletinService->getPDFConfig()['school_logo'] ?? null),
         ]);
         $pdf->setPaper('a4', 'portrait');

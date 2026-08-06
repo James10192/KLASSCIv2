@@ -1,3 +1,10 @@
+@php
+    // Couleurs configurées par le tenant (mêmes réglages que les pages de bulletin).
+    $pdfSettings = $pdfSettings ?? \App\Helpers\SettingsHelper::getPdfSettings();
+    $covHeaderBg = $pdfSettings['header_bg_color'] ?? '#0453cb';
+    $covHeaderText = $pdfSettings['header_text_color'] ?? '#ffffff';
+    $covPrimary = $pdfSettings['primary_color'] ?? $covHeaderBg;
+@endphp
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -6,16 +13,16 @@
         @@page { margin: 1.4cm 1.4cm; }
         * { box-sizing: border-box; }
         body { font-family: DejaVu Sans, sans-serif; color: #1e293b; font-size: 11px; margin: 0; }
-        .cov-head { border-bottom: 2px solid #0453cb; padding-bottom: 10px; margin-bottom: 14px; }
+        .cov-head { border-bottom: 2px solid {{ $covHeaderBg }}; padding-bottom: 10px; margin-bottom: 14px; }
         .cov-logo { height: 46px; }
         .cov-school { font-size: 15px; font-weight: bold; color: #0f172a; }
-        .cov-title { margin-top: 12px; font-size: 18px; font-weight: bold; color: #0453cb; }
+        .cov-title { margin-top: 12px; font-size: 18px; font-weight: bold; color: {{ $covPrimary }}; }
         .cov-sub { color: #64748b; font-size: 10.5px; margin-top: 2px; }
         .cov-meta { width: 100%; border-collapse: collapse; margin: 14px 0; }
         .cov-meta td { padding: 5px 8px; border: 1px solid #e2e8f0; font-size: 10.5px; }
         .cov-meta td.k { background: #f8fafc; color: #64748b; width: 32%; font-weight: bold; }
         .cov-note {
-            background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid #0453cb;
+            background: #eff6ff; border: 1px solid #bfdbfe; border-left: 4px solid {{ $covHeaderBg }};
             border-radius: 6px; padding: 9px 12px; color: #1e3a8a; font-size: 10.5px; margin: 12px 0;
         }
         .cov-warn {
@@ -24,8 +31,8 @@
         }
         .cov-tbl { width: 100%; border-collapse: collapse; margin-top: 6px; }
         .cov-tbl th {
-            background: #0453cb; color: #fff; font-size: 9.5px; text-align: left;
-            padding: 6px 8px; border: 1px solid #0453cb;
+            background: {{ $covHeaderBg }}; color: {{ $covHeaderText }}; font-size: 9.5px; text-align: left;
+            padding: 6px 8px; border: 1px solid {{ $covHeaderBg }};
         }
         .cov-tbl td { padding: 5px 8px; border: 1px solid #e2e8f0; font-size: 9.5px; }
         .cov-tbl tr:nth-child(even) td { background: #f8fafc; }

@@ -560,7 +560,9 @@
                 <strong>{{ $stats['legacy_annuel'] }} bulletin{{ $stats['legacy_annuel'] > 1 ? 's' : '' }} legacy "Annuel"</strong>
                 en base. Le bulletin annuel n'est pas une période standard — la moyenne annuelle est intégrée dans le bulletin S2.
             </span>
-            <a href="{{ route('esbtp.bulletins.index', array_merge(request()->query(), ['periode_id' => 'annuel'])) }}"
+            {{-- On repart des seuls filtres cohérents avec le comptage (année + période),
+                 sans hériter d'un classe_id / search actif qui masquerait les bulletins. --}}
+            <a href="{{ route('esbtp.bulletins.index', array_filter(['annee_universitaire_id' => $annee_id, 'periode_id' => 'annuel'])) }}"
                class="bul-btn bul-btn--sm bul-btn--ghost bul-banner-action">
                 Voir ces bulletins
             </a>
@@ -665,8 +667,13 @@
                     icon="fa-arrow-down-short-wide"
                     :options="['asc' => 'Croissant', 'desc' => 'Décroissant']" />
             </div>
+            <button type="button" class="bul-btn bul-btn--ghost bul-export-btn"
+                    :disabled="exporting || previewing" @click="previewPdf()">
+                <span x-show="!previewing"><i class="fas fa-eye"></i> Aperçu</span>
+                <span x-show="previewing" x-cloak><i class="fas fa-spinner fa-spin"></i> Aperçu…</span>
+            </button>
             <button type="button" class="bul-btn bul-btn--primary bul-export-btn"
-                    :disabled="exporting" @click="exportPdf()">
+                    :disabled="exporting || previewing" @click="exportPdf()">
                 <span x-show="!exporting"><i class="fas fa-file-pdf"></i> Exporter PDF groupé</span>
                 <span x-show="exporting" x-cloak><i class="fas fa-spinner fa-spin"></i> Préparation…</span>
             </button>
@@ -730,6 +737,7 @@ function bulIndex() {
         selected: [],
         busy: false,
         exporting: false,
+        previewing: false,
         loading: false,
         toasts: [],
         toastSeq: 0,
@@ -816,7 +824,8 @@ function bulIndex() {
         // pas encore générés (ils seront absents du PDF), puis ouvre le PDF fusionné
         // (téléchargement binaire = navigation GET directe, exception documentée à
         // ajax-no-reload-premium). On reprend les filtres courants + l'ordre choisi.
-        async exportPdf() {
+        // Paramètres d'export = filtres courants + tri/sens choisis.
+        buildExportParams() {
             const form = document.getElementById('bul-filter-form');
             const params = new URLSearchParams(new FormData(form));
             params.delete('page');
@@ -824,34 +833,49 @@ function bulIndex() {
             const dirSel = document.querySelector('select[name="dir"]');
             if (orderSel && orderSel.value) params.set('order', orderSel.value);
             if (dirSel && dirSel.value) params.set('dir', dirSel.value);
+            return params;
+        },
 
+        // Pré-check partagé (aperçu + téléchargement) : renvoie true si on peut poursuivre.
+        async runExportPrecheck(params) {
+            const pre = await fetch(@json(route('esbtp.bulletins.export-precheck')) + '?' + params.toString(), {
+                headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+            }).then(r => r.ok ? r.json() : null).catch(() => null);
+
+            if (!pre) return true; // pré-check indisponible → on laisse le backend trancher.
+            if (pre.generated === 0) {
+                this.pushToast({ type: 'error', message: `Aucun bulletin généré parmi les ${pre.total} filtrés. Générez-les d'abord.` });
+                return false;
+            }
+            if (pre.over_cap) {
+                this.pushToast({ type: 'error', message: `Trop de bulletins générés (${pre.generated}). Affinez le filtre (limite ${pre.cap}).` });
+                return false;
+            }
+            if (pre.ungenerated > 0) {
+                return confirm(`${pre.ungenerated} bulletin(s) ne sont pas encore générés et seront ABSENTS du PDF.\n\n${pre.generated} bulletin(s) sur ${pre.total} seront inclus (une page de récapitulatif listera les absents).\n\nContinuer ?`);
+            }
+            return true;
+        },
+
+        async exportPdf() {
+            const params = this.buildExportParams();
             this.exporting = true;
             try {
-                // Pré-check : combien de bulletins générés (inclus) vs non générés (absents).
-                const pre = await fetch(@json(route('esbtp.bulletins.export-precheck')) + '?' + params.toString(), {
-                    headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
-                }).then(r => r.ok ? r.json() : null).catch(() => null);
-
-                if (pre) {
-                    if (pre.generated === 0) {
-                        this.pushToast({ type: 'error', message: `Aucun bulletin généré parmi les ${pre.total} filtrés. Générez-les d'abord.` });
-                        return;
-                    }
-                    if (pre.over_cap) {
-                        this.pushToast({ type: 'error', message: `Trop de bulletins générés (${pre.generated}). Affinez le filtre (limite ${pre.cap}).` });
-                        return;
-                    }
-                    if (pre.ungenerated > 0) {
-                        const ok = confirm(`${pre.ungenerated} bulletin(s) ne sont pas encore générés et seront ABSENTS du PDF.\n\n${pre.generated} bulletin(s) sur ${pre.total} seront inclus (une page de récapitulatif listera les absents).\n\nContinuer ?`);
-                        if (!ok) return;
-                    }
-                }
-
-                const url = @json(route('esbtp.bulletins.export-pdf')) + '?' + params.toString();
-                window.open(url, '_blank');
+                if (!(await this.runExportPrecheck(params))) return;
+                window.open(@json(route('esbtp.bulletins.export-pdf')) + '?' + params.toString(), '_blank');
             } finally {
-                // Le download s'ouvre dans un nouvel onglet ; on relâche l'état après un court délai.
                 setTimeout(() => { this.exporting = false; }, 2500);
+            }
+        },
+
+        async previewPdf() {
+            const params = this.buildExportParams();
+            this.previewing = true;
+            try {
+                if (!(await this.runExportPrecheck(params))) return;
+                window.open(@json(route('esbtp.bulletins.export-pdf-preview')) + '?' + params.toString(), '_blank');
+            } finally {
+                setTimeout(() => { this.previewing = false; }, 2500);
             }
         },
 
