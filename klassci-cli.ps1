@@ -825,6 +825,21 @@ switch ($Command) {
         Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
         break
     }
+    "absences:diagnose" {
+        if ($ExtraArgs.Count -lt 1) {
+            throw "Usage: .\klassci-cli.ps1 absences:diagnose [tenant] <etudiant_id> [classe_id] [annee_universitaire_id] [periode]"
+        }
+
+        $cfg = Get-KlassciConfig -TenantCode $Tenant
+        $query = @{}
+        if ($ExtraArgs.Count -ge 2 -and $ExtraArgs[1]) { $query["classe_id"] = $ExtraArgs[1] }
+        if ($ExtraArgs.Count -ge 3 -and $ExtraArgs[2]) { $query["annee_universitaire_id"] = $ExtraArgs[2] }
+        $query["periode"] = if ($ExtraArgs.Count -ge 4 -and $ExtraArgs[3]) { $ExtraArgs[3] } else { "semestre1" }
+
+        $path = "/attendance/etudiant/{0}/absence-diagnose{1}" -f $ExtraArgs[0], (New-KlassciQueryString -Query $query)
+        Invoke-KlassciApi -Method "GET" -Path $path -Config $cfg | ConvertTo-Json -Depth 10
+        break
+    }
     "resultats:bts-annual-snapshot" {
         if ($ExtraArgs.Count -lt 3) {
             throw "Usage: .\klassci-cli.ps1 resultats:bts-annual-snapshot [tenant] <etudiant_id> <classe_id> <annee_universitaire_id> [include_all_statuses]"
@@ -1050,6 +1065,7 @@ switch ($Command) {
         Write-Host "  .\klassci-cli.ps1 personnel-scores [presentation] [period=month|quarter|year] [role=enseignant] [user_id=ID] [teacher_id=ID] [level=critical] [limit=50]"
         Write-Host "  .\klassci-cli.ps1 resultats:diagnose [presentation] <etudiant_id> [classe_id] [annee_universitaire_id] [periode] [include_all_statuses]"
         Write-Host "  .\klassci-cli.ps1 resultats:bulletin-consistency-diagnose [presentation] <etudiant_id> <classe_id> <annee_universitaire_id> <periode>"
+        Write-Host "  .\klassci-cli.ps1 absences:diagnose [presentation] <etudiant_id> [classe_id] [annee_universitaire_id] [periode]"
         Write-Host "  .\klassci-cli.ps1 resultats:bts-annual-snapshot [presentation] <etudiant_id> <classe_id> <annee_universitaire_id> [include_all_statuses]"
         Write-Host "  .\klassci-cli.ps1 bts-tc:diagnose [presentation] <inscription_id>"
         Write-Host "  .\klassci-cli.ps1 bts-tc:student-journey [presentation] <etudiant_id> [annee_universitaire_id]"
