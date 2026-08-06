@@ -139,6 +139,104 @@ class CLIAttendanceController extends BaseApiController
     }
 
     /**
+     * POST /api/cli/attendance/backfill-note-assiduite
+     *   ?apply=1&annee_universitaire_id=&classe_id=&periode=
+     *
+     * Resynchronise sur les bulletins EXISTANTS les colonnes figées liées à
+     * l'assiduité (absences_justifiees, absences_non_justifiees, total_absences,
+     * note_assiduite) avec le calcul LIVE (priorité d'écrasement appliquée). Ne
+     * touche PAS moyenne_generale ni rang. Dry-run par défaut (apply=1 pour écrire,
+     * requiert cli:write).
+     */
+    public function backfillNoteAssiduite(Request $request): JsonResponse
+    {
+        $apply = $request->boolean('apply');
+        $ability = $apply ? 'cli:write' : 'cli:read';
+        if (! $request->user()->tokenCan($ability)) {
+            return $this->errorResponse("Token missing {$ability} ability", [], 403);
+        }
+
+        $annee = $request->filled('annee_universitaire_id')
+            ? ESBTPAnneeUniversitaire::find((int) $request->input('annee_universitaire_id'))
+            : ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        if (! $annee) {
+            return $this->errorResponse('Année universitaire introuvable', [], 404);
+        }
+
+        $classeId = $request->filled('classe_id') ? (int) $request->input('classe_id') : null;
+        $periode = $request->filled('periode') ? (string) $request->input('periode') : null;
+
+        $scanned = 0;
+        $changed = 0;
+        $samples = [];
+
+        ESBTPBulletin::query()
+            ->where('annee_universitaire_id', $annee->id)
+            ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
+            ->when($periode, fn ($q) => $q->where('periode', $periode))
+            ->with('anneeUniversitaire:id,date_debut,date_fin')
+            ->chunkById(200, function ($bulletins) use (&$scanned, &$changed, &$samples, $apply) {
+                foreach ($bulletins as $b) {
+                    $scanned++;
+                    if (! $b->anneeUniversitaire) {
+                        continue;
+                    }
+
+                    $abs = $this->absenceService->calculerDetailAbsences(
+                        $b->etudiant_id, $b->classe_id,
+                        $b->anneeUniversitaire->date_debut, $b->anneeUniversitaire->date_fin,
+                        $b->annee_universitaire_id, $b->periode
+                    );
+                    $newJust = round((float) ($abs['justifiees'] ?? 0), 2);
+                    $newNon = round((float) ($abs['non_justifiees'] ?? 0), 2);
+                    $newTotal = round((float) ($abs['total'] ?? 0), 2);
+                    $newNote = round($this->bulletinService->resolveAttendanceNote($newJust, $newNon), 3);
+
+                    $oldJust = round((float) $b->absences_justifiees, 2);
+                    $oldNon = round((float) $b->absences_non_justifiees, 2);
+                    $oldNote = $b->note_assiduite === null ? null : round((float) $b->note_assiduite, 3);
+
+                    $diff = $oldJust !== $newJust || $oldNon !== $newNon || $oldNote !== $newNote;
+                    if (! $diff) {
+                        continue;
+                    }
+
+                    $changed++;
+                    if (count($samples) < 12) {
+                        $samples[] = [
+                            'bulletin_id' => $b->id,
+                            'etudiant_id' => $b->etudiant_id,
+                            'classe_id' => $b->classe_id,
+                            'periode' => $b->periode,
+                            'avant' => ['justifiees' => $oldJust, 'non_justifiees' => $oldNon, 'note_assiduite' => $oldNote],
+                            'apres' => ['justifiees' => $newJust, 'non_justifiees' => $newNon, 'note_assiduite' => $newNote],
+                        ];
+                    }
+
+                    if ($apply) {
+                        $b->forceFill([
+                            'absences_justifiees' => $newJust,
+                            'absences_non_justifiees' => $newNon,
+                            'total_absences' => $newTotal,
+                            'note_assiduite' => $newNote,
+                        ])->save();
+                    }
+                }
+            });
+
+        return $this->successResponse([
+            'mode' => $apply ? 'APPLIQUÉ' : 'DRY-RUN (aucune écriture)',
+            'annee_universitaire_id' => $annee->id,
+            'classe_id' => $classeId,
+            'periode' => $periode ?? '(toutes)',
+            'bulletins_scannes' => $scanned,
+            'bulletins_a_resynchroniser' => $changed,
+            'note' => 'Met à jour uniquement absences_* + note_assiduite (colonnes figées). moyenne_generale et rang inchangés.',
+            'echantillons' => $samples,
+        ], $apply ? 'Backfill note d\'assiduité appliqué' : 'Backfill note d\'assiduité (simulation)');
+    }
+
+    /**
      * Séances réelles (esbtp_attendances) regroupées par matière sur la fenêtre de dates.
      */
     private function rawSessionsByMatiere(int $etudiantId, $dateDebut, $dateFin): array
