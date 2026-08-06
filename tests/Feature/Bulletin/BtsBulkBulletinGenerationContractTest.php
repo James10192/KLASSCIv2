@@ -177,6 +177,40 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringNotContainsString('background: #0453cb;', $cover);
     }
 
+    public function test_config_modal_has_cross_semester_copy_and_save_scope(): void
+    {
+        $view = $this->selectPageSource();
+
+        // Bouton copie + panneau Écraser/Compléter.
+        $this->assertStringContainsString('fetchOtherSemester()', $view);
+        $this->assertStringContainsString("applyCopy('overwrite')", $view);
+        $this->assertStringContainsString("applyCopy('merge')", $view);
+        $this->assertStringContainsString('Copier depuis le ', $view);
+        // La copie relit inline-data avec l'autre semestre (pas de nouvel endpoint).
+        $this->assertStringContainsString('periode: this.otherPeriode()', $view);
+        // Écraser ne blanchit jamais : copie uniquement quand la source a une valeur.
+        $this->assertStringContainsString("src.coeff !== null && (mode === 'overwrite' || coeffEmpty)", $view);
+        $this->assertStringContainsString("src.prof !== '' && (mode === 'overwrite' || profEmpty)", $view);
+        // Portée du save : les deux semestres = periode 'annuel' (chemin backend existant).
+        $this->assertStringContainsString("this.saveScope === 'both' ? 'annuel' : this.configModal.context.periode", $view);
+        $this->assertStringContainsString('Les deux semestres', $view);
+        $this->assertStringContainsString('Enregistrer (S1 + S2)', $view);
+        // Flash visuel des cellules copiées.
+        $this->assertStringContainsString('bus-config-cell--copied', $view);
+    }
+
+    public function test_inline_save_service_writes_both_semesters_for_annuel(): void
+    {
+        // Le save « les deux semestres » dépend de ce contrat backend : periode=annuel
+        // boucle S1+S2 et écrit types + coefficients + template professeurs par semestre.
+        $service = file_get_contents(app_path('Services/BulletinInlineConfigurationService.php'));
+
+        $this->assertStringContainsString("return \$periode === 'annuel' ? ['semestre1', 'semestre2'] : [\$periode];", $service);
+        $this->assertStringContainsString('foreach ($this->periodsFor($periode) as $targetPeriode)', $service);
+        $this->assertStringContainsString('saveProfesseursTemplate(', $service);
+        $this->assertStringContainsString('ESBTPMatiereCoefficient::updateOrCreate($coefficientQuery', $service);
+    }
+
     private function bulkServiceSource(): string
     {
         return file_get_contents(app_path('Domain/AcademicPilotage/Services/BtsBulkBulletinGenerationService.php'));
@@ -185,6 +219,8 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
     private function selectPageSource(): string
     {
         return file_get_contents(resource_path('views/esbtp/bulletins/select.blade.php'))
+            ."\n"
+            .file_get_contents(resource_path('views/esbtp/bulletins/partials/select-config-modal.blade.php'))
             ."\n"
             .file_get_contents(resource_path('views/esbtp/bulletins/partials/select-scripts.blade.php'));
     }
