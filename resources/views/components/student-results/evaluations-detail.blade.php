@@ -4,8 +4,24 @@
         <div class="sr-evaluations-header-left">
             <i class="fas fa-list-check"></i>
             <h3>Détail des évaluations</h3>
+            {{-- Sur l'onglet annuel, les notes chargées restent celles du semestre primaire :
+                 on annonce la portée pour ne pas laisser croire qu'elles couvrent l'année. --}}
+            @php
+                $evalScopeLabel = ($detailUiState['state'] ?? null) === 'annual_complete'
+                    ? ($detailUiState['primary_semester_label'] ?? null)
+                    : null;
+                $evalCountLabel = $evalScopeLabel
+                    ? $notes->count().' notes · '.$evalScopeLabel
+                    : $notes->count().' notes';
+            @endphp
+            @if($evalScopeLabel)
+                <span class="sr-scope-chip">
+                    <i class="fas fa-layer-group"></i>
+                    {{ $evalScopeLabel }}
+                </span>
+            @endif
         </div>
-        <span class="sr-table-count">{{ $notes->count() }} notes</span>
+        <span class="sr-table-count">{{ $evalCountLabel }}</span>
     </div>
 
     @if(count($notesByMatiere) > 0)
