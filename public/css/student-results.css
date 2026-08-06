@@ -2485,3 +2485,28 @@
         grid-template-columns: 1fr 1fr;
     }
 }
+
+/* Puce de portée : indique le semestre couvert par un tableau de matières
+   quand l'onglet annuel affiche un bloc par semestre (S1 tronc commun + S2 spécialité). */
+/* Sélecteurs qualifiés : .sr-table-header-left span impose sinon sa couleur grise
+   et sa taille, ce qui ferait diverger le rendu entre les deux en-têtes. */
+.sr-scope-chip,
+.sr-table-header-left .sr-scope-chip,
+.sr-evaluations-header-left .sr-scope-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .2rem .6rem;
+    border-radius: 20px;
+    background: var(--sr-primary-glow);
+    border: 1px solid var(--sr-primary-glow);
+    color: var(--sr-primary);
+    font-size: .72rem;
+    font-weight: 700;
+    letter-spacing: .02em;
+    white-space: nowrap;
+}
+
+.sr-scope-chip i {
+    font-size: .68rem;
+}

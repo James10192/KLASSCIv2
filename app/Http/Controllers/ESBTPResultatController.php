@@ -1065,6 +1065,13 @@ class ESBTPResultatController extends Controller
             $detailUiState['display_average'] = null;
         }
 
+        // Onglet annuel : la moyenne affichee est annuelle alors que $notesByMatiere reste
+        // scope au semestre primaire. On expose donc le detail par semestre (S1 tronc commun
+        // + S2 specialite) pour que chaque tableau se reconcilie avec sa propre moyenne.
+        $annualSubjectBlocks = $periode === 'annuel'
+            ? $this->buildAnnualSubjectBlocks($annualSnapshot, $notes)
+            : [];
+
         return view('esbtp.resultats.etudiant', compact(
             'etudiant',
             'classe',
@@ -1072,6 +1079,7 @@ class ESBTPResultatController extends Controller
             'anneeUniversitaire',
             'notes',
             'notesByMatiere',
+            'annualSubjectBlocks',
             'moyenneGenerale',
             'moyenneAvecAssiduite',
             'noteAssiduite',
@@ -3135,6 +3143,82 @@ class ESBTPResultatController extends Controller
                 ? 'Annuel'
                 : ($periode === 'semestre2' ? 'Semestre 2' : 'Semestre 1'),
         ];
+    }
+
+    /**
+     * Construit le detail par semestre affiche sur l'onglet annuel.
+     *
+     * La moyenne annuelle est une moyenne des DEUX moyennes semestrielles, pas une moyenne
+     * ponderee de toutes les matieres de l'annee : il n'existe donc pas de liste de matieres
+     * annuelle (le service met d'ailleurs sa cle 'subjects' a vide en annual_complete).
+     * On rend un bloc par semestre, chacun avec ses matieres, sa moyenne et sa decision,
+     * pour que les chiffres affiches se reconcilient toujours avec les lignes affichees.
+     *
+     * Les donnees viennent du snapshot annuel deja charge : aucune requete supplementaire,
+     * hormis la resolution des noms de classes (S1 = tronc commun, S2 = specialite).
+     */
+    private function buildAnnualSubjectBlocks(?array $annualSnapshot, Collection $notes): array
+    {
+        $semesterSnapshots = $annualSnapshot['semester_snapshots'] ?? [];
+        if (empty($semesterSnapshots)) {
+            return [];
+        }
+
+        $classMap = $annualSnapshot['class_map'] ?? [];
+        $labels = ['semestre1' => 'Semestre 1', 'semestre2' => 'Semestre 2'];
+        $blocks = [];
+
+        foreach ($labels as $key => $label) {
+            $snapshot = $semesterSnapshots[$key] ?? null;
+            $subjects = $snapshot['subjects'] ?? [];
+
+            if (empty($subjects)) {
+                continue;
+            }
+
+            $mapped = $this->mapConsistencySubjectsToDetailNotes($subjects, $notes);
+
+            // Meme repli que la construction standard : un coefficient absent vaut 1,
+            // sinon la colonne Coeff. et le total afficheraient 0 pour une matiere non configuree.
+            foreach ($subjects as $subject) {
+                $matiereId = $subject['matiere_id'] ?? null;
+                if (! $matiereId || ! isset($mapped[$matiereId])) {
+                    continue;
+                }
+
+                $coefficient = $subject['coefficient'] ?? null;
+                $mapped[$matiereId]['matiere_coefficient'] = $coefficient ?: 1;
+                $mapped[$matiereId]['matiere_coefficient_missing'] = ! $coefficient;
+            }
+
+            $blocks[] = [
+                'key' => $key,
+                'label' => $label,
+                'classe_id' => $classMap[$key.'_classe_id'] ?? null,
+                'classe_name' => null,
+                'subjects' => $mapped,
+                'subjects_notes_count' => collect($subjects)->pluck('notes_count', 'matiere_id')->all(),
+                'average' => $snapshot['effective_total'] ?? $snapshot['raw_total'] ?? null,
+            ];
+        }
+
+        // Un seul semestre disponible : le tableau standard suffit, pas de decoupage en blocs.
+        if (count($blocks) < 2) {
+            return [];
+        }
+
+        // Noms de classes resolus seulement une fois le decoupage confirme (S1 = tronc commun,
+        // S2 = specialite) : pas de requete inutile quand on retombe sur le tableau standard.
+        $classeIds = array_values(array_filter(array_column($blocks, 'classe_id')));
+        $classeNames = $classeIds
+            ? ESBTPClasse::whereIn('id', $classeIds)->pluck('name', 'id')
+            : collect();
+
+        return array_map(function (array $block) use ($classeNames) {
+            $block['classe_name'] = $block['classe_id'] ? ($classeNames[$block['classe_id']] ?? null) : null;
+
+            return $block;
+        }, $blocks);
     }
 
     private function mapConsistencySubjectsToDetailNotes(array $subjects, Collection $notes): array

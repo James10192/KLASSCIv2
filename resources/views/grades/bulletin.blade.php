@@ -45,7 +45,7 @@
                 <div class="text-center mb-4">
                     <div class="row align-items-center">
                         <div class="col-md-3">
-                            @php($_grBulLogo = \App\Helpers\SettingsHelper::resolveLogoBase64())
+                            @php $_grBulLogo = \App\Helpers\SettingsHelper::resolveLogoBase64(); @endphp
                             @if($_grBulLogo)
                                 <img src="{{ $_grBulLogo['data_uri'] }}" alt="{{ \App\Helpers\SettingsHelper::get('school_acronym', config('app.name')) }} Logo" class="img-fluid" style="max-height: 120px;">
                             @endif
