@@ -52,6 +52,18 @@ class BulletinService
 
     private array $classeCache = [];
 
+    // Caches request-scoped d'invariants de classe : accélèrent l'export groupé (~40
+    // bulletins d'une même classe) en calculant une seule fois ce qui est identique pour
+    // tous les étudiants (config PDF, stats de classe, logo, effectif). Aucun impact sur
+    // le rendu : ces valeurs ne dépendent pas de l'étudiant et ne mutent pas pendant l'export.
+    private ?array $pdfConfigCache = null;
+
+    private array $classStatsCache = [];
+
+    private array $logoBase64Cache = [];
+
+    private array $effectifCache = [];
+
     public function __construct(ESBTPAbsenceService $absenceService, BtsAnnualClassMapResolver $classMapResolver, BtsBulletinCohortResolver $cohortResolver)
     {
         $this->absenceService = $absenceService;
@@ -483,6 +495,12 @@ class BulletinService
             $bulletin->moyenne_generale = $moyenneGlobale;
             $bulletin->note_assiduite = $noteAssiduite;
             $bulletin->effectif_classe = $effectif;
+            // Persister aussi les compteurs d'absences (live, saisie manuelle incluse) :
+            // sinon les colonnes restent figees a 0 et la page bulletins.show / le PDF
+            // affichent 0 h malgre des heures saisies (bug absences manuelles invisibles).
+            $bulletin->absences_justifiees = $absences['justifiees'] ?? 0;
+            $bulletin->absences_non_justifiees = $absences['non_justifiees'] ?? 0;
+            $bulletin->total_absences = $absences['total'] ?? (($absences['justifiees'] ?? 0) + ($absences['non_justifiees'] ?? 0));
             $bulletin->save();
 
             // Calculer le vrai rang (base sur tous les bulletins de la classe/periode).
@@ -491,8 +509,18 @@ class BulletinService
             $rang = $bulletin->rang ?? 1;
         }
 
-        // Calculer les vraies statistiques de classe
-        $statsClasse = $this->calculerStatistiquesClasse($classe->id, $anneeUniversitaire->id, $periode);
+        // Calculer les vraies statistiques de classe.
+        // On n'autorise le cache que hors génération officielle : en génération
+        // ($persistOfficial), persistResultats() vient d'écrire les esbtp_resultats et
+        // les stats (qui les lisent) peuvent évoluer d'un étudiant à l'autre — on préserve
+        // donc le calcul par étudiant. En export/preview (persist=false), les resultats
+        // ne bougent pas → cache sûr et gros gain sur l'export groupé.
+        $statsClasse = $this->calculerStatistiquesClasse(
+            $classe->id,
+            $anneeUniversitaire->id,
+            $periode,
+            ! $persistOfficial
+        );
 
         // Calculer les rangs par matière via ESBTPResultat (batch-fetch pour éviter N+1)
         $allMatiereIds = collect($resultatsParMatiere)->pluck('matiere_id')->filter()->unique()->values()->all();
@@ -1018,8 +1046,17 @@ class BulletinService
     /**
      * Calcule les statistiques de la classe
      */
-    private function calculerStatistiquesClasse($classeId, $anneeUniversitaireId, $periode = 'semestre1')
+    private function calculerStatistiquesClasse($classeId, $anneeUniversitaireId, $periode = 'semestre1', bool $useCache = false)
     {
+        // Memoize (uniquement si $useCache) : ces stats parcourent TOUS les étudiants de la
+        // classe et sont identiques pour chaque bulletin. Sur l'export groupé (persist=false)
+        // les esbtp_resultats ne mutent pas → cache sûr, l'export passe de O(N²) à O(N).
+        // En génération, $useCache=false pour préserver le calcul par étudiant (cf. call site).
+        $statsKey = $classeId.':'.$anneeUniversitaireId.':'.$periode;
+        if ($useCache && isset($this->classStatsCache[$statsKey])) {
+            return $this->classStatsCache[$statsKey];
+        }
+
         // Récupérer tous les étudiants de la classe
         $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classeId, $anneeUniversitaireId) {
             $q->where('classe_id', $classeId)
@@ -1027,11 +1064,11 @@ class BulletinService
         })->get();
 
         if ($etudiants->isEmpty()) {
-            return [
+            return $this->cacheClassStats($statsKey, [
                 'meilleure_moyenne' => 0,
                 'plus_faible_moyenne' => 0,
                 'moyenne_classe' => 0,
-            ];
+            ], $useCache);
         }
 
         $moyennes = [];
@@ -1069,18 +1106,31 @@ class BulletinService
         }
 
         if (empty($moyennes)) {
-            return [
+            return $this->cacheClassStats($statsKey, [
                 'meilleure_moyenne' => 0,
                 'plus_faible_moyenne' => 0,
                 'moyenne_classe' => 0,
-            ];
+            ], $useCache);
         }
 
-        return [
+        return $this->cacheClassStats($statsKey, [
             'meilleure_moyenne' => max($moyennes),
             'plus_faible_moyenne' => min($moyennes),
             'moyenne_classe' => array_sum($moyennes) / count($moyennes),
-        ];
+        ], $useCache);
+    }
+
+    /**
+     * Écrit les stats de classe dans le cache request-scoped uniquement si autorisé
+     * (export/preview), puis les renvoie. En génération, aucun cache n'est écrit ni lu.
+     */
+    private function cacheClassStats(string $statsKey, array $stats, bool $useCache): array
+    {
+        if ($useCache) {
+            $this->classStatsCache[$statsKey] = $stats;
+        }
+
+        return $stats;
     }
 
     /**
@@ -1238,7 +1288,13 @@ class BulletinService
      */
     public function getPDFConfig(): array
     {
-        return [
+        // Memoize : ~80 lectures de settings (chacune Cache::remember → I/O driver).
+        // Identique pour tous les bulletins d'un export → calculé une seule fois.
+        if ($this->pdfConfigCache !== null) {
+            return $this->pdfConfigCache;
+        }
+
+        return $this->pdfConfigCache = [
             // Informations de l'établissement
             'school_name' => \App\Helpers\SettingsHelper::get('school_name', config('app.name', 'KLASSCI')),
             'school_address' => \App\Helpers\SettingsHelper::get('school_address', ''),
@@ -1729,6 +1785,18 @@ class BulletinService
 
     public function prepareLogoBase64($logoPath)
     {
+        // Memoize par chemin : le logo (lecture fichier + base64) est identique pour tous
+        // les bulletins d'un export. Évite N lectures disque + N encodages base64.
+        $logoKey = (string) $logoPath;
+        if (array_key_exists($logoKey, $this->logoBase64Cache)) {
+            return $this->logoBase64Cache[$logoKey];
+        }
+
+        return $this->logoBase64Cache[$logoKey] = $this->resolveLogoBase64($logoPath);
+    }
+
+    private function resolveLogoBase64($logoPath)
+    {
         // Essayer d'abord le chemin depuis storage (logos uploadés)
         if ($logoPath) {
             $storagePath = storage_path('app/public/'.$logoPath);
@@ -1862,7 +1930,13 @@ class BulletinService
 
     public function getValidatedClassStudentCount(int $classeId, int $anneeUniversitaireId): int
     {
-        return ESBTPInscription::where('classe_id', $classeId)
+        // Memoize : effectif identique pour tous les bulletins d'une même classe/année.
+        $effectifKey = $classeId.':'.$anneeUniversitaireId;
+        if (isset($this->effectifCache[$effectifKey])) {
+            return $this->effectifCache[$effectifKey];
+        }
+
+        return $this->effectifCache[$effectifKey] = ESBTPInscription::where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
             ->where('status', 'active')
             ->where('workflow_step', 'etudiant_cree')

@@ -46,6 +46,33 @@ class ESBTPBulletinConfigController extends Controller
     }
 
     /**
+     * Décode de façon tolérante une valeur JSON provenant d'une colonne de bulletin.
+     *
+     * Certaines colonnes (ex: `config_matieres`) sont castées `json` par le modèle
+     * ESBTPBulletin → l'accesseur renvoie déjà un array. D'autres (ex: `professeurs`)
+     * ne sont pas castées → l'accesseur renvoie la chaîne brute. Passer un array à
+     * `json_decode()` lève un TypeError (bug 500 sur editProfesseurs S2). Ce helper
+     * accepte les deux formes et renvoie toujours un array.
+     *
+     * @param  mixed  $value
+     * @param  array  $default
+     */
+    private function decodeBulletinJson($value, array $default = []): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        if (is_string($value) && $value !== '') {
+            $decoded = json_decode($value, true);
+
+            return is_array($decoded) ? $decoded : $default;
+        }
+
+        return $default;
+    }
+
+    /**
      * Affiche le formulaire de configuration des types de matières
      *
      * @return \Illuminate\Http\Response
@@ -769,7 +796,7 @@ class ESBTPBulletinConfigController extends Controller
                 // Récupérer le nom du professeur pour cette matière
                 $professeurNom = '';
                 if ($bulletin && $bulletin->professeurs) {
-                    $professeurs = json_decode($bulletin->professeurs, true);
+                    $professeurs = $this->decodeBulletinJson($bulletin->professeurs);
                     $professeurNom = $professeurs[$config->matiere_id] ?? '';
                 }
                 if ($professeurNom === '') {
@@ -807,10 +834,10 @@ class ESBTPBulletinConfigController extends Controller
         $matieresIds = collect($matieres)->pluck('id')->unique()->all();
         if ($notesMatieres->isNotEmpty()) {
             $configMatieres = $bulletin && $bulletin->config_matieres
-                ? (json_decode($bulletin->config_matieres, true) ?: ['generales' => [], 'techniques' => []])
+                ? $this->decodeBulletinJson($bulletin->config_matieres, ['generales' => [], 'techniques' => []])
                 : ['generales' => [], 'techniques' => []];
             $professeursExisting = $bulletin && $bulletin->professeurs
-                ? (json_decode($bulletin->professeurs, true) ?: [])
+                ? $this->decodeBulletinJson($bulletin->professeurs)
                 : $professeursTemplate;
 
             foreach ($notesMatieres as $matiere) {
@@ -872,7 +899,7 @@ class ESBTPBulletinConfigController extends Controller
         // Récupérer les professeurs du bulletin
         $professeurs = [];
         if ($bulletin && $bulletin->professeurs) {
-            $professeurs = json_decode($bulletin->professeurs, true) ?: [];
+            $professeurs = $this->decodeBulletinJson($bulletin->professeurs);
             \Log::info('📋 Professeurs from bulletin', [
                 'bulletin_id' => $bulletin->id,
                 'professeurs' => $professeurs,
