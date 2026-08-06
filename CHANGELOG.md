@@ -19,6 +19,10 @@ Le format suit librement [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/
 ### Corrections
 
 - **Impression de bulletin robuste aux coefficients manquants** — un coefficient de matière non configuré ne fait plus échouer la génération du PDF d'un bulletin (téléchargement unitaire comme export groupé) : le coefficient retombe automatiquement sur 1 avec une trace, au lieu d'interrompre tout le rendu. Corrige les bulletins qui restaient impossibles à imprimer lorsqu'une matière n'avait pas de coefficient défini.
+- **Résultats corrects après un changement de classe de spécialité** — pour un étudiant réorienté (tronc commun, puis une spécialité, puis une correction vers une autre spécialité), la fiche de résultats et le bulletin pointent désormais sur la **classe de spécialité active** pour le semestre 2, au lieu de l'ancienne classe abandonnée. La moyenne annuelle s'agrège correctement (semestre 1 du tronc commun + semestre 2 de la spécialité) et l'étudiant n'affiche plus une moyenne à 0,00 ni un statut « Ajourné » erroné.
+- **Bulletins non finalisés affichés « En attente »** — un bulletin dont la moyenne n'a pas encore été générée n'écrase plus les notes réelles et n'affiche plus 0,00 ni « Ajourné » par défaut : la fiche retombe sur les notes saisies et le portail élève indique clairement « En attente de génération ».
+- **Finalisation annuelle des classes de tronc commun** — quand tous les étudiants d'une classe de tronc commun ont été orientés en spécialité, le pré-contrôle de génération des bulletins affiche un message explicite invitant à générer depuis les classes de spécialité (où le semestre 1 du tronc commun est agrégé automatiquement), au lieu du message trompeur « Aucun étudiant actif ».
+- **Export Excel de la liste d'une classe** — la colonne Prénoms est de nouveau renseignée et les colonnes parent/tuteur (nom, prénoms, téléphone, email, profession) affichent les informations réelles au lieu de « N/A », de même que l'email de l'étudiant.
 
 ---
 
