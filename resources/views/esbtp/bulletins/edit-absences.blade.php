@@ -3,14 +3,25 @@
 @section('title', 'Édition des absences - KLASSCI')
 
 @php
-// Préparer le barème 5 paliers depuis $attendanceNoteRules (passé par le controller)
-$_attendanceRules = [
-    'zero' => (float) (($attendanceNoteRules['zero_unjustified'] ?? null) ?? 0.13),
-    'one' => (float) (($attendanceNoteRules['one_unjustified'] ?? null) ?? 0.0),
-    'two' => (float) (($attendanceNoteRules['two_unjustified'] ?? $attendanceNoteRules['two_or_more_unjustified'] ?? null) ?? -0.13),
-    'three_to_four' => (float) (($attendanceNoteRules['three_to_four_unjustified'] ?? null) ?? -0.39),
-    'five_or_more' => (float) (($attendanceNoteRules['five_or_more_unjustified'] ?? null) ?? -0.50),
-];
+// Règle d'assiduité à tranches configurables. Le controller passe $attendanceRule
+// (AttendanceNoteRule::toArray) ; fallback legacy depuis $attendanceNoteRules si absent.
+$_attRule = $attendanceRule ?? \App\Support\Attendance\AttendanceNoteRule::fromLegacySettings([
+    'zero_unjustified' => (float) (($attendanceNoteRules['zero_unjustified'] ?? null) ?? 0.13),
+    'one_unjustified' => (float) (($attendanceNoteRules['one_unjustified'] ?? null) ?? 0.0),
+    'two_unjustified' => (float) (($attendanceNoteRules['two_unjustified'] ?? $attendanceNoteRules['two_or_more_unjustified'] ?? null) ?? -0.13),
+    'three_to_four_unjustified' => (float) (($attendanceNoteRules['three_to_four_unjustified'] ?? null) ?? -0.39),
+    'five_or_more_unjustified' => (float) (($attendanceNoteRules['five_or_more_unjustified'] ?? null) ?? -0.50),
+])->toArray();
+// Le barème justifié n'est affiché que s'il porte un effet (au moins une note non nulle).
+$_hasJustifiedMalus = collect($_attRule['justified'] ?? [])->contains(fn ($b) => (float) ($b['note'] ?? 0) !== 0.0);
+$_fmtBracket = function (array $b): string {
+    $from = rtrim(rtrim(number_format((float) $b['min'], 1, '.', ''), '0'), '.');
+    if ($b['max'] === null) {
+        return $from.'h et plus';
+    }
+    $to = rtrim(rtrim(number_format((float) $b['max'], 1, '.', ''), '0'), '.');
+    return $from.'–'.$to.'h';
+};
 $_periodeLabel = $periode === 'semestre1' ? 'Semestre 1' : ($periode === 'semestre2' ? 'Semestre 2' : 'Annuel');
 $_returnUrl = route('esbtp.resultats.etudiant', [
     'etudiant' => $etudiant->id,
@@ -552,29 +563,30 @@ $_returnUrl = route('esbtp.resultats.etudiant', [
                                 </div>
                             </div>
                             <div class="col-md-8">
-                                <div class="ea-bareme-title"><i class="fas fa-calculator"></i>Barème 5 paliers</div>
+                                <div class="ea-bareme-title"><i class="fas fa-calculator"></i>Barème d'assiduité (non justifiées)</div>
                                 <div class="ea-bareme-grid" id="ea-bareme-grid">
-                                    <div class="ea-bareme-item ea-bareme-item--success" data-palier="zero">
+                                    <div class="ea-bareme-item ea-bareme-item--success" data-bracket="zero">
                                         <i class="fas fa-check-circle"></i>
-                                        <span><strong>0</strong> absence = <strong class="b-val">{{ ($_attendanceRules['zero'] >= 0 ? '+' : '') . number_format($_attendanceRules['zero'], 2) }}</strong> pt</span>
+                                        <span><strong>0</strong> absence = <strong class="b-val">{{ ((float) $_attRule['zero_bonus'] >= 0 ? '+' : '') . number_format((float) $_attRule['zero_bonus'], 2) }}</strong> pt</span>
                                     </div>
-                                    <div class="ea-bareme-item ea-bareme-item--neutral" data-palier="one">
-                                        <i class="fas fa-minus-circle"></i>
-                                        <span><strong>1</strong> absence = <strong class="b-val">{{ ($_attendanceRules['one'] >= 0 ? '+' : '') . number_format($_attendanceRules['one'], 2) }}</strong> pt</span>
+                                    @foreach($_attRule['unjustified'] as $_i => $_b)
+                                    <div class="ea-bareme-item {{ (float) $_b['note'] > 0 ? 'ea-bareme-item--success' : ((float) $_b['note'] === 0.0 ? 'ea-bareme-item--neutral' : 'ea-bareme-item--danger') }}" data-bracket="{{ $_i }}">
+                                        <i class="fas fa-hourglass-half"></i>
+                                        <span><strong>{{ $_fmtBracket($_b) }}</strong> = <strong class="b-val">{{ ((float) $_b['note'] >= 0 ? '+' : '') . number_format((float) $_b['note'], 2) }}</strong> pt</span>
                                     </div>
-                                    <div class="ea-bareme-item ea-bareme-item--warning" data-palier="two">
-                                        <i class="fas fa-exclamation-circle"></i>
-                                        <span><strong>2</strong> absences = <strong class="b-val">{{ ($_attendanceRules['two'] >= 0 ? '+' : '') . number_format($_attendanceRules['two'], 2) }}</strong> pt</span>
-                                    </div>
-                                    <div class="ea-bareme-item ea-bareme-item--danger" data-palier="three_to_four">
-                                        <i class="fas fa-times-circle"></i>
-                                        <span><strong>3-4</strong> absences = <strong class="b-val">{{ ($_attendanceRules['three_to_four'] >= 0 ? '+' : '') . number_format($_attendanceRules['three_to_four'], 2) }}</strong> pt</span>
-                                    </div>
-                                    <div class="ea-bareme-item ea-bareme-item--critical" data-palier="five_or_more">
-                                        <i class="fas fa-ban"></i>
-                                        <span><strong>5+</strong> absences = <strong class="b-val">{{ ($_attendanceRules['five_or_more'] >= 0 ? '+' : '') . number_format($_attendanceRules['five_or_more'], 2) }}</strong> pt</span>
-                                    </div>
+                                    @endforeach
                                 </div>
+                                @if($_hasJustifiedMalus)
+                                <div class="ea-bareme-title" style="margin-top:10px;"><i class="fas fa-user-clock"></i>Barème additionnel (justifiées)</div>
+                                <div class="ea-bareme-grid">
+                                    @foreach($_attRule['justified'] as $_b)
+                                    <div class="ea-bareme-item {{ (float) $_b['note'] > 0 ? 'ea-bareme-item--success' : ((float) $_b['note'] === 0.0 ? 'ea-bareme-item--neutral' : 'ea-bareme-item--danger') }}">
+                                        <i class="fas fa-hourglass-half"></i>
+                                        <span><strong>{{ $_fmtBracket($_b) }}</strong> = <strong class="b-val">{{ ((float) $_b['note'] >= 0 ? '+' : '') . number_format((float) $_b['note'], 2) }}</strong> pt</span>
+                                    </div>
+                                    @endforeach
+                                </div>
+                                @endif
                                 <div class="ea-footnote">
                                     <i class="fas fa-info-circle"></i>
                                     <div>La note d'assiduité est <strong>ajoutée à la moyenne générale</strong> du bulletin. Le barème est configurable globalement dans <a href="{{ route('esbtp.settings.index') }}" style="color:#0453cb;font-weight:600;">settings</a>.</div>
@@ -617,23 +629,30 @@ $_returnUrl = route('esbtp.resultats.etudiant', [
 
 <script>
 const attendanceNoteEnabled = @json((bool) ($attendanceNoteEnabled ?? true));
-const attendanceNoteRules = @json($_attendanceRules);
+const attendanceRule = @json($_attRule);
 
-function resolveNote(nonJust) {
-    if (!attendanceNoteEnabled) return null;
-    if (nonJust <= 0) return Number(attendanceNoteRules.zero || 0);
-    if (nonJust < 2)  return Number(attendanceNoteRules.one || 0);
-    if (nonJust < 3)  return Number(attendanceNoteRules.two || 0);
-    if (nonJust < 5)  return Number(attendanceNoteRules.three_to_four || 0);
-    return Number(attendanceNoteRules.five_or_more || 0);
+function bracketNote(brackets, hours) {
+    for (const b of (brackets || [])) {
+        if (b.max === null || b.max === undefined || hours < Number(b.max)) return Number(b.note || 0);
+    }
+    return 0;
 }
 
-function resolvePalier(nonJust) {
+// Index de la tranche non justifiée active (pour le highlight), 'zero' si aucune absence.
+function activeUnjustifiedIndex(nonJust) {
     if (nonJust <= 0) return 'zero';
-    if (nonJust < 2)  return 'one';
-    if (nonJust < 3)  return 'two';
-    if (nonJust < 5)  return 'three_to_four';
-    return 'five_or_more';
+    const brackets = attendanceRule.unjustified || [];
+    for (let i = 0; i < brackets.length; i++) {
+        const b = brackets[i];
+        if (b.max === null || b.max === undefined || nonJust < Number(b.max)) return String(i);
+    }
+    return brackets.length ? String(brackets.length - 1) : 'zero';
+}
+
+function resolveNote(just, nonJust) {
+    if (!attendanceNoteEnabled) return null;
+    if ((just + nonJust) <= 0) return Number(attendanceRule.zero_bonus || 0);
+    return bracketNote(attendanceRule.unjustified, nonJust) + bracketNote(attendanceRule.justified, just);
 }
 
 function calculerTotalAbsences() {
@@ -644,7 +663,7 @@ function calculerTotalAbsences() {
     const noteEl = document.getElementById('note_assiduite_display');
     if (!noteEl) return;
 
-    const note = resolveNote(nonJustifiees);
+    const note = resolveNote(justifiees, nonJustifiees);
     if (note === null) {
         noteEl.textContent = 'Masquée';
         noteEl.classList.add('ea-note-value--disabled');
@@ -654,10 +673,10 @@ function calculerTotalAbsences() {
     noteEl.classList.toggle('ea-note-value--negative', note < 0);
     noteEl.classList.remove('ea-note-value--disabled');
 
-    // Highlight active palier
-    const activePalier = resolvePalier(nonJustifiees);
+    // Highlight de la tranche non justifiée active.
+    const active = (justifiees + nonJustifiees) <= 0 ? 'zero' : activeUnjustifiedIndex(nonJustifiees);
     document.querySelectorAll('#ea-bareme-grid .ea-bareme-item').forEach(item => {
-        item.classList.toggle('active', item.dataset.palier === activePalier);
+        item.classList.toggle('active', item.dataset.bracket === active);
     });
 }
 

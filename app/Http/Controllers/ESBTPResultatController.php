@@ -1641,6 +1641,7 @@ class ESBTPResultatController extends Controller
         }
 
         $attendanceNoteRules = $this->bulletinService->getAttendanceNoteSettings();
+        $attendanceRule = $this->bulletinService->getAttendanceNoteRule()->toArray();
         $attendanceNoteEnabled = $this->bulletinService->isAttendanceNoteEnabled();
 
         return view('esbtp.resultats.classe-edit', compact(
@@ -1662,6 +1663,7 @@ class ESBTPResultatController extends Controller
             'kpis',
             'moyennesCalculees',
             'attendanceNoteRules',
+            'attendanceRule',
             'attendanceNoteEnabled'
         ));
     }
