@@ -3176,20 +3176,11 @@ class ESBTPResultatController extends Controller
                 continue;
             }
 
+            // Pas de repli de coefficient ici : les onglets semestriels affichent deja le
+            // coefficient brut du snapshot (0 quand la matiere n'est pas configuree), et cette
+            // valeur correspond a la ponderation reellement utilisee pour la moyenne du semestre.
+            // Forcer 1 ferait diverger l'annuel de l'onglet semestriel pour la meme donnee.
             $mapped = $this->mapConsistencySubjectsToDetailNotes($subjects, $notes);
-
-            // Meme repli que la construction standard : un coefficient absent vaut 1,
-            // sinon la colonne Coeff. et le total afficheraient 0 pour une matiere non configuree.
-            foreach ($subjects as $subject) {
-                $matiereId = $subject['matiere_id'] ?? null;
-                if (! $matiereId || ! isset($mapped[$matiereId])) {
-                    continue;
-                }
-
-                $coefficient = $subject['coefficient'] ?? null;
-                $mapped[$matiereId]['matiere_coefficient'] = $coefficient ?: 1;
-                $mapped[$matiereId]['matiere_coefficient_missing'] = ! $coefficient;
-            }
 
             $blocks[] = [
                 'key' => $key,
