@@ -174,7 +174,7 @@ class CLIAttendanceController extends BaseApiController
             ->where('annee_universitaire_id', $annee->id)
             ->when($classeId, fn ($q) => $q->where('classe_id', $classeId))
             ->when($periode, fn ($q) => $q->where('periode', $periode))
-            ->with('anneeUniversitaire:id,date_debut,date_fin')
+            ->with('anneeUniversitaire')
             ->chunkById(200, function ($bulletins) use (&$scanned, &$changed, &$samples, $apply) {
                 foreach ($bulletins as $b) {
                     $scanned++;
