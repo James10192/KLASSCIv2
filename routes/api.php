@@ -257,6 +257,9 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         ->name('resultats.student.diagnose');
     Route::get('/resultats/etudiant/{id}/bulletin-consistency-diagnose', [App\Http\Controllers\API\CLI\CLIResultatController::class, 'bulletinConsistencyDiagnose'])
         ->name('resultats.student.bulletin-consistency-diagnose');
+    Route::get('/attendance/etudiant/{id}/absence-diagnose', [App\Http\Controllers\API\CLI\CLIAttendanceController::class, 'absenceDiagnose'])
+        ->whereNumber('id')
+        ->name('attendance.absence-diagnose');
     Route::get('/bts-tc/inscriptions/{id}/diagnose', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'diagnoseInscription'])
         ->name('bts-tc.inscriptions.diagnose');
     Route::get('/bts-tc/students/{id}/journey', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'studentJourney'])
