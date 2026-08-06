@@ -156,11 +156,11 @@
                         </td>
                         <td class="text-center">
                             @if($hasResolvedAverage && $resolvedAverage >= 10)
-                                <span class="sr-appreciation sr-appreciation--tres-bien">ADMIS</span>
+                                <span class="sr-appreciation sr-appreciation--tres-bien">{{ $decisionLabel }}</span>
                             @elseif(!$hasResolvedAverage)
-                                <span class="sr-appreciation" style="background: #fff7ed; color: #c2410c;">À recalculer</span>
+                                <span class="sr-appreciation" style="background: #fff7ed; color: #c2410c;">{{ $decisionLabel }}</span>
                             @else
-                                <span class="sr-appreciation sr-appreciation--insuffisant">AJOURNÉ</span>
+                                <span class="sr-appreciation sr-appreciation--insuffisant">{{ $decisionLabel }}</span>
                             @endif
                         </td>
                     </tr>
@@ -177,7 +177,7 @@
                         <td class="text-center">
                             <span class="sr-decision">
                                 <i class="fas {{ $hasResolvedAverage && $resolvedAverage >= 10 ? 'fa-check-circle' : ($hasResolvedAverage ? 'fa-times-circle' : 'fa-rotate-right') }}"></i>
-                                {{ $hasResolvedAverage ? ($resolvedAverage >= 10 ? 'ADMIS' : 'AJOURNÉ') : 'À recalculer' }}
+                                {{ $decisionLabel }}
                             </span>
                         </td>
                     </tr>
