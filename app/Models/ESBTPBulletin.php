@@ -344,35 +344,14 @@ class ESBTPBulletin extends Model implements Auditable
         $this->save();
     }
 
-    public function getAbsencesJustifieesAttribute()
-    {
-        if (!$this->etudiant || !$this->classe_id) {
-            return 0;
-        }
-        return $this->etudiant->absences()
-            ->where('justified', true)
-            ->whereHas('matiere', function ($query) {
-                $query->whereHas('classes', function ($q) {
-                    $q->where('classe_id', $this->classe_id);
-                });
-            })
-            ->sum('hours');
-    }
-
-    public function getAbsencesNonJustifieesAttribute()
-    {
-        if (!$this->etudiant || !$this->classe_id) {
-            return 0;
-        }
-        return $this->etudiant->absences()
-            ->where('justified', false)
-            ->whereHas('matiere', function ($query) {
-                $query->whereHas('classes', function ($q) {
-                    $q->where('classe_id', $this->classe_id);
-                });
-            })
-            ->sum('hours');
-    }
+    // NOTE : les accessors getAbsencesJustifieesAttribute / getAbsencesNonJustifieesAttribute
+    // ont été SUPPRIMÉS (août 2026). Ils masquaient les colonnes réelles
+    // esbtp_bulletins.absences_justifiees / absences_non_justifiees en recalculant à partir
+    // d'une ANCIENNE relation `etudiant->absences()` (table absences legacy, vide sur les
+    // tenants actuels) → renvoyaient toujours 0, écrasant à la lecture la valeur persistée
+    // par le calcul live (séances réelles + saisie manuelle globale/par matière). Les
+    // colonnes sont désormais la source de vérité (peuplées à la génération du bulletin et
+    // par le backfill note d'assiduité). Voir [[project_absence_priority_note_assiduite]].
 
     public function getMoyenneEnseignementGeneralAttribute()
     {
