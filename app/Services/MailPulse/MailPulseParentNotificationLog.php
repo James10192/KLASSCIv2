@@ -342,9 +342,13 @@ class MailPulseParentNotificationLog
         return match ($event) {
             'payment_received' => 'paiement_valide',
             'fee_reminder' => 'rappel_paiement',
-            'absence_reported' => 'absence',
+            'absence_reported', 'low_attendance' => 'absence',
             'grade_published' => 'note_publiee',
             'bulletin_published' => 'bulletin_publie',
+            'payment_rejected' => 'paiement_rejete',
+            'low_grades' => 'notes_faibles',
+            'enrollment_created' => 'inscription',
+            'reenrollment_created' => 'reinscription',
             default => $event,
         };
     }

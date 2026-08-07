@@ -2452,6 +2452,9 @@ class LMSDataController extends BaseApiController
         $created = 0;
         $updated = 0;
         $errors = [];
+        // Absences définitives créées par la synchro visio : notification parents
+        // après la boucle, pour ne pas bloquer la synchro sur une notification.
+        $absencesANotifier = [];
 
         foreach ($validatedData['attendances'] as $attendanceData) {
             try {
@@ -2493,7 +2496,7 @@ class LMSDataController extends BaseApiController
                     ]);
                 } else {
                     // Create: nouvelle attendance avec call_type='merged'
-                    \App\Models\ESBTPAttendance::create([
+                    $newAttendance = \App\Models\ESBTPAttendance::create([
                         'seance_cours_id' => $validatedData['seance_cours_id'],
                         'etudiant_id' => $attendanceData['etudiant_id'],
                         'annee_universitaire_id' => $annee->id,
@@ -2513,6 +2516,10 @@ class LMSDataController extends BaseApiController
                     ]);
                     $created++;
 
+                    if ($attendanceData['statut'] === 'absent') {
+                        $absencesANotifier[] = $newAttendance;
+                    }
+
                     \Log::info('✅ Created new attendance from video session', [
                         'etudiant_id' => $attendanceData['etudiant_id'],
                         'statut' => $attendanceData['statut']
@@ -2526,6 +2533,20 @@ class LMSDataController extends BaseApiController
 
                 \Log::error('❌ Error syncing video attendance', [
                     'etudiant_id' => $attendanceData['etudiant_id'],
+                    'error' => $e->getMessage()
+                ]);
+            }
+        }
+
+        if ($absencesANotifier !== []) {
+            try {
+                $notificationService = app(\App\Services\NotificationService::class);
+                foreach ($absencesANotifier as $absence) {
+                    $notificationService->notifyParentsAbsence($absence);
+                }
+            } catch (\Throwable $e) {
+                \Log::error('❌ Error notifying parents from video session absences', [
+                    'seance_cours_id' => $validatedData['seance_cours_id'],
                     'error' => $e->getMessage()
                 ]);
             }
