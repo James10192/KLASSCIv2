@@ -95,6 +95,12 @@ return [
         'parent_chatbot_inbound_response_retention_hours' => (int) env('MAILPULSE_PARENT_CHATBOT_INBOUND_RESPONSE_RETENTION_HOURS', 168),
         'parent_chatbot_link_template_name' => env('MAILPULSE_PARENT_CHATBOT_LINK_TEMPLATE_NAME'),
         'parent_chatbot_link_template_language' => env('MAILPULSE_PARENT_CHATBOT_LINK_TEMPLATE_LANGUAGE', 'fr'),
+        // Batch activation invitation (UTILITY category, no code inside).
+        // MailPulse resolves the real Meta template name from the
+        // parent_chatbot.invitation operation, so this value is only an
+        // operator confirmation that the approved template exists.
+        'parent_chatbot_invitation_template_name' => env('MAILPULSE_PARENT_CHATBOT_INVITATION_TEMPLATE_NAME'),
+        'parent_chatbot_invitation_template_language' => env('MAILPULSE_PARENT_CHATBOT_INVITATION_TEMPLATE_LANGUAGE', 'fr'),
         'sender_email' => env('MAILPULSE_SENDER_EMAIL'),
         'sender_name' => env('MAILPULSE_SENDER_NAME', 'KLASSCI'),
         'default_language' => env('MAILPULSE_DEFAULT_LANGUAGE', 'fr'),

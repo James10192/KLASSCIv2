@@ -18,6 +18,14 @@ class ParentChatbotDispatcher
 
     public const OPERATION_LINK_CODE = 'parent_chatbot.link_code';
 
+    /**
+     * Activation without a code. Meta only allows a one-time passcode inside an
+     * AUTHENTICATION template, whose body is fixed and cannot carry the reply
+     * instruction the flow needs, so activation invites the parent to answer
+     * instead of sending them a code.
+     */
+    public const OPERATION_INVITATION = 'parent_chatbot.invitation';
+
     public function __construct(private readonly MailPulseClient $mailPulseClient) {}
 
     public function dispatch(
@@ -48,6 +56,7 @@ class ParentChatbotDispatcher
         ParentChatbotIntent $intent,
         string $eventId,
         ?string $requestId = null,
+        string $operationKey = self::OPERATION_LINK_CODE,
     ): ParentChatbotDispatchOutcome {
         if ($templateName === '' || $languageCode === '') {
             Log::warning('Parent chatbot template dispatch is not configured', ['event_id' => $eventId, 'intent' => $intent->value]);
@@ -60,7 +69,7 @@ class ParentChatbotDispatcher
         // stays an operator go/no-go switch only.
         return $this->dispatchContent(
             $phone,
-            self::OPERATION_LINK_CODE,
+            $operationKey,
             [
                 'type' => 'template',
                 'locale' => $languageCode,

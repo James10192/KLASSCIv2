@@ -6,6 +6,7 @@ use App\Models\ESBTPParent;
 use App\Models\ParentChatbotInboundEvent;
 use App\Models\ParentChatbotLink;
 use App\Models\ParentChatbotLinkCode;
+use App\Models\ParentChatbotLinkCodeIssuance;
 use Closure;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -117,6 +118,97 @@ class ParentChatbotLinkService
         }, 3);
     }
 
+    /**
+     * Activation without a code: the parent answers the school's invitation
+     * from the number the school registered. The code-based flow already
+     * re-checked that the message came from that same number, so the number is
+     * what carried the proof of possession all along.
+     *
+     * @return array{link: ?ParentChatbotLink, reason: string}
+     */
+    public function linkByRegisteredPhone(string $phone): array
+    {
+        $normalizedPhone = $this->phones->normalize($phone);
+        if ($normalizedPhone === null) {
+            return ['link' => null, 'reason' => 'invalid_phone'];
+        }
+
+        return DB::transaction(fn (): array => $this->linkRegisteredPhoneWithinTransaction($normalizedPhone));
+    }
+
+    /** @return array{link: ?ParentChatbotLink, reason: string} */
+    private function linkRegisteredPhoneWithinTransaction(string $normalizedPhone): array
+    {
+        $parents = $this->parentsRegisteredWith($normalizedPhone);
+
+        // Two tutors sharing a number cannot be told apart from a bare "OUI".
+        if ($parents->count() !== 1) {
+            return ['link' => null, 'reason' => $parents->isEmpty() ? 'phone_not_registered_tuteur' : 'ambiguous_link'];
+        }
+
+        $parent = $parents->first();
+        if (! $parent->pupilles()->exists()) {
+            return ['link' => null, 'reason' => 'phone_not_registered_tuteur'];
+        }
+
+        // The school decides who joins: an invitation must have been issued.
+        if (! ParentChatbotLinkCodeIssuance::where('parent_id', $parent->id)->exists()) {
+            return ['link' => null, 'reason' => 'not_invited'];
+        }
+
+        return $this->activateLink($parent, $normalizedPhone);
+    }
+
+    /**
+     * Resolves candidates on the stored digits, then compares the normalized
+     * forms: the column keeps whatever the secretariat typed.
+     *
+     * @return \Illuminate\Support\Collection<int, ESBTPParent>
+     */
+    private function parentsRegisteredWith(string $normalizedPhone): \Illuminate\Support\Collection
+    {
+        $significantDigits = substr(preg_replace('/\D/', '', $normalizedPhone) ?? '', -8);
+        if ($significantDigits === '') {
+            return collect();
+        }
+
+        return ESBTPParent::query()
+            ->whereNotNull('telephone')
+            ->where('telephone', 'like', '%'.$significantDigits)
+            ->get()
+            ->filter(fn (ESBTPParent $parent): bool => hash_equals(
+                (string) $this->registeredPhone($parent),
+                $normalizedPhone,
+            ))
+            ->values();
+    }
+
+    /** @return array{link: ?ParentChatbotLink, reason: string} */
+    private function activateLink(ESBTPParent $parent, string $normalizedPhone): array
+    {
+        $phoneHash = $this->phones->hash($normalizedPhone);
+        $link = ParentChatbotLink::where('parent_id', $parent->id)
+            ->where('phone_hash', $phoneHash)
+            ->lockForUpdate()
+            ->first();
+
+        if ($link?->status === ParentChatbotLink::STATUS_REVOKED) {
+            return ['link' => null, 'reason' => 'revoked'];
+        }
+
+        $students = $parent->pupilles()->select('esbtp_etudiants.id')->get();
+        $link ??= new ParentChatbotLink(['parent_id' => $parent->id, 'phone_hash' => $phoneHash]);
+        $link->fill([
+            'status' => ParentChatbotLink::STATUS_ACTIVE,
+            'stopped_at' => null,
+            'last_inbound_at' => now(),
+            'selected_student_id' => $students->count() === 1 ? $students->first()->id : null,
+        ]);
+        $link->save();
+
+        return ['link' => $link, 'reason' => 'linked'];
+    }
+
     /** @return array{link: ?ParentChatbotLink, reason: string} */
     private function linkWithinTransaction(string $normalizedPhone, string $code): array
     {
@@ -133,29 +225,12 @@ class ParentChatbotLinkService
                 return ['link' => null, 'reason' => 'phone_not_registered_tuteur'];
             }
 
-            $phoneHash = $this->phones->hash($normalizedPhone);
-            $link = ParentChatbotLink::where('parent_id', $parent->id)
-                ->where('phone_hash', $phoneHash)
-                ->lockForUpdate()
-                ->first();
-
-            if ($link?->status === ParentChatbotLink::STATUS_REVOKED) {
-                return ['link' => null, 'reason' => 'revoked'];
+            $result = $this->activateLink($parent, $normalizedPhone);
+            if ($result['link'] !== null) {
+                $linkCode->update(['consumed_at' => now()]);
             }
 
-            $students = $parent->pupilles()->select('esbtp_etudiants.id')->get();
-            $link ??= new ParentChatbotLink(['parent_id' => $parent->id, 'phone_hash' => $phoneHash]);
-            $link->fill([
-                'status' => ParentChatbotLink::STATUS_ACTIVE,
-                'stopped_at' => null,
-                'last_inbound_at' => now(),
-                'selected_student_id' => $students->count() === 1 ? $students->first()->id : null,
-            ]);
-            $link->save();
-
-            $linkCode->update(['consumed_at' => now()]);
-
-            return ['link' => $link, 'reason' => 'linked'];
+            return $result;
     }
 
     public function stop(ParentChatbotLink $link): bool

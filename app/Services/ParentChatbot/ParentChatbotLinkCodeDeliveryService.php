@@ -10,7 +10,6 @@ use App\Services\MailPulse\MailPulseWorkflowPolicy;
 use App\Services\MailPulse\MailPulseTenantContext;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
 use RuntimeException;
@@ -24,15 +23,23 @@ class ParentChatbotLinkCodeDeliveryService
         private ParentChatbotPhoneNormalizer $phones,
         private ParentChatbotDispatcher $dispatcher,
         private MailPulseWorkflowPolicy $workflowPolicy,
+        private ParentChatbotInvitationVariables $invitationVariables,
     ) {}
 
+    /**
+     * @param  string  $operationKey  Activation rail to send. The batch invites the
+     *                                parent to answer OUI, while the unit issuance
+     *                                keeps delivering a LIER code for schools that
+     *                                distribute it outside WhatsApp.
+     */
     public function issueAndDeliver(
         ESBTPParent $parent,
         ?int $actorId = null,
         ?string $requestId = null,
+        string $operationKey = ParentChatbotDispatcher::OPERATION_LINK_CODE,
     ): ParentChatbotLinkCodeIssuance {
         $requestId ??= MailPulseTenantContext::scopedIdentifier('parent-link-'.(string) Str::uuid());
-        $plan = $this->prepareIssuance($parent, $actorId, $requestId);
+        $plan = $this->prepareIssuance($parent, $actorId, $requestId, $operationKey);
 
         if ($plan['block'] !== null) {
             throw $this->blockedIssuanceException($plan['block']);
@@ -105,9 +112,9 @@ class ParentChatbotLinkCodeDeliveryService
     /**
      * @return array{issuance: ParentChatbotLinkCodeIssuance, block: ?string}
      */
-    private function prepareIssuance(ESBTPParent $parent, ?int $actorId, string $requestId): array
+    private function prepareIssuance(ESBTPParent $parent, ?int $actorId, string $requestId, string $operationKey): array
     {
-        return DB::transaction(function () use ($parent, $actorId, $requestId): array {
+        return DB::transaction(function () use ($parent, $actorId, $requestId, $operationKey): array {
             $parent = ESBTPParent::query()->whereKey($parent->id)->lockForUpdate()->firstOrFail();
             $existing = $this->existingIssuance($parent, $requestId);
 
@@ -131,6 +138,9 @@ class ParentChatbotLinkCodeDeliveryService
                 return ['issuance' => $liveIssuance, 'block' => null];
             }
 
+            // The link code row is still issued for every rail: it carries the
+            // issuance expiry, the retry window and the live-issuance dedupe.
+            // An invitation simply never puts that code on the wire.
             $issued = $this->links->issueCodeWithRecord($parent);
             $issuance = ParentChatbotLinkCodeIssuance::create([
                 'parent_id' => $parent->id,
@@ -138,7 +148,11 @@ class ParentChatbotLinkCodeDeliveryService
                 'parent_chatbot_link_code_id' => $issued['linkCode']->id,
                 'request_id' => $requestId,
                 'status' => ParentChatbotLinkCodeIssuance::STATUS_PENDING,
-                'delivery_payload' => $this->encryptDeliveryPayload($phone, $issued['code']),
+                'delivery_payload' => ParentChatbotDeliveryPayload::encrypt(
+                    $phone,
+                    $operationKey,
+                    $this->templateParameters($parent, $operationKey, $issued['code']),
+                ),
                 'delivery_payload_expires_at' => $issued['linkCode']->expires_at,
                 'next_attempt_at' => now(),
                 'retry_expires_at' => $issued['linkCode']->expires_at,
@@ -189,21 +203,20 @@ class ParentChatbotLinkCodeDeliveryService
 
     private function dispatchAndComplete(ParentChatbotLinkCodeIssuance $issuance): ParentChatbotLinkCodeIssuance
     {
-        $payload = $this->decryptDeliveryPayload($issuance);
+        $payload = ParentChatbotDeliveryPayload::decrypt($issuance->delivery_payload);
         if ($payload === null) {
             $this->failDelivery($issuance, 'delivery_payload_unavailable');
             return $issuance->fresh() ?? $issuance;
         }
 
-        $templateName = (string) config('services.mailpulse.parent_chatbot_link_template_name', '');
-        $languageCode = (string) config('services.mailpulse.parent_chatbot_link_template_language', 'fr');
-        if ($templateName === '' || $languageCode === '') {
-            $this->failDelivery($issuance, 'link_template_not_configured');
+        $template = $this->templateConfiguration($payload->operationKey);
+        if ($template['name'] === '' || $template['language'] === '') {
+            $this->failDelivery($issuance, $template['error']);
             return $issuance->fresh() ?? $issuance;
         }
 
         try {
-            $delivery = $this->dispatchTemplateIfAllowed($issuance, $payload, $templateName, $languageCode);
+            $delivery = $this->dispatchTemplateIfAllowed($issuance, $payload, $template['name'], $template['language']);
             if ($delivery['block'] !== null) {
                 $this->failDelivery($issuance, $delivery['block']);
 
@@ -239,7 +252,7 @@ class ParentChatbotLinkCodeDeliveryService
 
     private function dispatchTemplateIfAllowed(
         ParentChatbotLinkCodeIssuance $issuance,
-        array $payload,
+        ParentChatbotDeliveryPayload $payload,
         string $templateName,
         string $languageCode,
     ): array {
@@ -263,13 +276,14 @@ class ParentChatbotLinkCodeDeliveryService
 
             return [
                 'outcome' => $this->dispatcher->dispatchTemplate(
-                    $payload['phone'],
+                    $payload->phone,
                     $templateName,
                     $languageCode,
-                    [$payload['code']],
+                    $payload->parameters,
                     ParentChatbotIntent::Link,
                     $issuance->request_id,
                     $issuance->request_id,
+                    $payload->operationKey,
                 ),
                 'block' => null,
             ];
@@ -426,27 +440,30 @@ class ParentChatbotLinkCodeDeliveryService
         };
     }
 
-    private function encryptDeliveryPayload(string $phone, string $code): string
+    /**
+     * The invitation carries no code: Meta only accepts a one-time passcode in
+     * an AUTHENTICATION template, whose fixed body cannot ask the parent to
+     * answer. It sends the parent, school and pupil names instead.
+     *
+     * @return array<int, string>
+     */
+    private function templateParameters(ESBTPParent $parent, string $operationKey, string $code): array
     {
-        return Crypt::encryptString(json_encode([
-            'phone' => $phone,
-            'code' => $code,
-        ], JSON_THROW_ON_ERROR));
+        return $operationKey === ParentChatbotDispatcher::OPERATION_INVITATION
+            ? $this->invitationVariables->forParent($parent)
+            : [$code];
     }
 
-    private function decryptDeliveryPayload(ParentChatbotLinkCodeIssuance $issuance): ?array
+    /** @return array{name: string, language: string, error: string} */
+    private function templateConfiguration(string $operationKey): array
     {
-        try {
-            $decoded = json_decode(Crypt::decryptString((string) $issuance->delivery_payload), true, 512, JSON_THROW_ON_ERROR);
-        } catch (\Throwable) {
-            return null;
-        }
+        $prefix = $operationKey === ParentChatbotDispatcher::OPERATION_INVITATION ? 'invitation' : 'link';
 
-        return is_array($decoded)
-            && is_string($decoded['phone'] ?? null)
-            && is_string($decoded['code'] ?? null)
-            ? ['phone' => $decoded['phone'], 'code' => $decoded['code']]
-            : null;
+        return [
+            'name' => trim((string) config("services.mailpulse.parent_chatbot_{$prefix}_template_name", '')),
+            'language' => trim((string) config("services.mailpulse.parent_chatbot_{$prefix}_template_language", 'fr')),
+            'error' => $prefix === 'invitation' ? 'invitation_template_not_configured' : 'link_template_not_configured',
+        ];
     }
 
     private function failDelivery(ParentChatbotLinkCodeIssuance $issuance, string $errorCode): void

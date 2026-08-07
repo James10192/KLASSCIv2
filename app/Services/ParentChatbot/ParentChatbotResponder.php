@@ -152,7 +152,9 @@ class ParentChatbotResponder
             ->where('phone_hash', $this->phones->hash($normalizedPhone))
             ->get();
         if ($links->isEmpty()) {
-            return $this->prepared($normalizedPhone, ParentChatbotIntent::Unlinked, 'unlinked', 'Pour lier ce numero, envoyez LIER suivi du code transmis par votre ecole.');
+            return $this->isStartCommand($command)
+                ? $this->activationResponse($normalizedPhone)
+                : $this->prepared($normalizedPhone, ParentChatbotIntent::Unlinked, 'unlinked', 'Repondez OUI pour activer le suivi WhatsApp de votre enfant. Si vous avez recu un code, envoyez LIER suivi de ce code.');
         }
 
         if ($this->isStopCommand($command)) {
@@ -223,6 +225,40 @@ class ParentChatbotResponder
             'disclosure' => $disclosure,
             'authorization_claim' => $authorizationClaim,
         ];
+    }
+
+    /**
+     * Activation by reply: the parent answers the school's invitation from the
+     * number the school registered, which is the number this message came from.
+     *
+     * @return array{phone: string, intent: string, outcome: string, reply: string, should_dispatch: bool, disclosure: ?array, authorization_claim: ?array}
+     */
+    private function activationResponse(string $normalizedPhone): array
+    {
+        $result = $this->links->linkByRegisteredPhone($normalizedPhone);
+        $link = $result['link'];
+
+        if ($link === null) {
+            // Every refusal answers the same way: a parent must not be able to
+            // probe which numbers the school has on file.
+            return $this->prepared(
+                $normalizedPhone,
+                ParentChatbotIntent::Unlinked,
+                $result['reason'],
+                'Ce numero ne peut pas etre active automatiquement. Contactez d\'abord l\'administration de votre ecole.',
+            );
+        }
+
+        return $this->prepared(
+            $normalizedPhone,
+            ParentChatbotIntent::Link,
+            'linked',
+            $link->selected_student_id
+                ? 'Votre numero est active. Vous pouvez demander NOTES, ABSENCES, ASSIDUITE ou BULLETIN.'
+                : $this->childSelectionReply($link),
+            null,
+            $this->links->dispatchAuthorizationClaim($link),
+        );
     }
 
     /** @param array{link: ?ParentChatbotLink, reason: string} $result

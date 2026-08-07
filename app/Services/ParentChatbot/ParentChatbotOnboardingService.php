@@ -230,7 +230,12 @@ class ParentChatbotOnboardingService
         }
 
         try {
-            $issuance = $this->delivery->issueAndDeliver($parent, $item->batch->actor_id, $item->request_id);
+            $issuance = $this->delivery->issueAndDeliver(
+                $parent,
+                $item->batch->actor_id,
+                $item->request_id,
+                ParentChatbotDispatcher::OPERATION_INVITATION,
+            );
         } catch (\Throwable) {
             $issuance = ParentChatbotLinkCodeIssuance::query()->where('request_id', $item->request_id)->first();
 
@@ -480,8 +485,10 @@ class ParentChatbotOnboardingService
             throw new RuntimeException('Les workflows parents MailPulse ne sont pas activés.');
         }
 
-        if (trim((string) config('services.mailpulse.parent_chatbot_link_template_name', '')) === '') {
-            throw new RuntimeException('Le modèle de liaison parent MailPulse est requis.');
+        // A batch only sends the UTILITY invitation, so the code template is no
+        // longer part of its go/no-go: the invitation template is.
+        if (trim((string) config('services.mailpulse.parent_chatbot_invitation_template_name', '')) === '') {
+            throw new RuntimeException("Le modèle d'invitation parent MailPulse est requis.");
         }
 
         $missing = collect([

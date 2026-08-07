@@ -36,7 +36,7 @@
 <main class="mailpulse-onboarding py-3 py-md-4"><div class="container-fluid mailpulse-onboarding__shell">
     <section class="mailpulse-onboarding__brand mb-4" aria-labelledby="mailpulse-onboarding-title"><div class="d-flex flex-column flex-sm-row align-items-sm-center gap-3">
         <div class="mailpulse-onboarding__mark" aria-hidden="true"><img src="{{ asset('images/mailpulse/mailpulse-mark-dark.png') }}" alt=""></div>
-        <div><div class="mailpulse-onboarding__eyebrow">MailPulse</div><h1 class="mailpulse-onboarding__title" id="mailpulse-onboarding-title">Activation des parents</h1><p class="mailpulse-onboarding__copy">Envoyez les codes de liaison aux tuteurs éligibles et suivez le traitement en temps réel.</p></div>
+        <div><div class="mailpulse-onboarding__eyebrow">MailPulse</div><h1 class="mailpulse-onboarding__title" id="mailpulse-onboarding-title">Activation des parents</h1><p class="mailpulse-onboarding__copy">Invitez les tuteurs éligibles sur WhatsApp et suivez le traitement en temps réel. Chaque parent active le suivi en répondant OUI.</p></div>
     </div></section>
 
     @if(session('success'))<div class="alert alert-success alert-dismissible fade show" role="alert"><i class="fas fa-check-circle me-2" aria-hidden="true"></i>{{ session('success') }}<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button></div>@endif
@@ -44,7 +44,7 @@
 
     @if(! $batch)
         <section class="mailpulse-onboarding__panel" aria-labelledby="mailpulse-empty-title"><div class="mailpulse-onboarding__panel-body py-4 py-md-5 text-center">
-            <i class="fas fa-envelope-open-text fa-2x text-muted mb-3" aria-hidden="true"></i><h2 class="h4 mb-2" id="mailpulse-empty-title">Aucun lot d’activation</h2><p class="text-muted mx-auto mb-4" style="max-width: 520px;">Lancez un lot pour préparer et transmettre les codes de liaison MailPulse aux parents éligibles.</p>
+            <i class="fas fa-envelope-open-text fa-2x text-muted mb-3" aria-hidden="true"></i><h2 class="h4 mb-2" id="mailpulse-empty-title">Aucun lot d’activation</h2><p class="text-muted mx-auto mb-4" style="max-width: 520px;">Lancez un lot pour envoyer l’invitation WhatsApp aux parents éligibles. Ils activent le suivi en répondant OUI.</p>
             <form method="POST" action="{{ route('esbtp.parent-chatbot-onboarding.start') }}">@csrf<button class="btn btn-mailpulse px-4" type="submit"><i class="fas fa-paper-plane me-2" aria-hidden="true"></i>Lancer l’activation</button></form>
         </div></section>
     @else

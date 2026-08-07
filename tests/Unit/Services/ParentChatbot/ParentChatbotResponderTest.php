@@ -101,6 +101,13 @@ class ParentChatbotResponderTest extends TestCase
             $table->timestamp('consumed_at')->nullable();
             $table->timestamps();
         });
+        Schema::create('parent_chatbot_link_code_issuances', function (Blueprint $table): void {
+            $table->id();
+            $table->unsignedBigInteger('parent_id');
+            $table->string('request_id', 100)->unique();
+            $table->string('status', 32);
+            $table->timestamps();
+        });
         Schema::create('parent_chatbot_inbound_events', function (Blueprint $table): void {
             $table->id();
             $table->string('source_event_id', 100)->unique();
@@ -793,6 +800,107 @@ class ParentChatbotResponderTest extends TestCase
     }
 
     /** @return array{ESBTPParent, int, string} */
+    public function test_oui_activates_an_invited_parent_answering_from_the_registered_number(): void
+    {
+        [$parent, $studentId, $phone] = $this->invitedParentWithoutLink();
+        $dispatcher = Mockery::mock(ParentChatbotDispatcher::class);
+        $dispatcher->shouldReceive('dispatch')->once()->andReturn(ParentChatbotDispatchOutcome::accepted('cmd-activate'));
+
+        $outcome = $this->respond($dispatcher, $phone, 'OUI', 'evt-activate');
+
+        $this->assertSame('linked', $outcome);
+        $link = ParentChatbotLink::where('parent_id', $parent->id)->sole();
+        $this->assertSame(ParentChatbotLink::STATUS_ACTIVE, $link->status);
+        $this->assertSame($studentId, $link->selected_student_id);
+    }
+
+    /**
+     * @dataProvider activationRefusals
+     */
+    public function test_oui_refuses_an_activation_it_cannot_attribute(string $expectedOutcome, string $scenario): void
+    {
+        [, , $registeredPhone] = $this->invitedParentWithoutLink(invited: $scenario !== 'not_invited');
+        if ($scenario === 'ambiguous') {
+            $this->invitedParentWithoutLink(phone: $registeredPhone, nom: 'KONE');
+        }
+        $phone = $scenario === 'stranger' ? '+2250700000000' : $registeredPhone;
+
+        $response = $this->prepare($phone, 'OUI');
+
+        $this->assertSame($expectedOutcome, $response['outcome']);
+        $this->assertNull($response['authorization_claim']);
+        $this->assertSame(0, ParentChatbotLink::count());
+        // Every refusal answers identically so a stranger cannot probe which
+        // numbers the school holds.
+        $this->assertStringContainsString("l'administration de votre ecole", $response['reply']);
+    }
+
+    public static function activationRefusals(): array
+    {
+        return [
+            'jamais invite' => ['not_invited', 'not_invited'],
+            'numero inconnu' => ['phone_not_registered_tuteur', 'stranger'],
+            'numero partage' => ['ambiguous_link', 'ambiguous'],
+        ];
+    }
+
+    public function test_an_unlinked_number_is_told_to_answer_oui(): void
+    {
+        [, , $phone] = $this->invitedParentWithoutLink();
+
+        $response = $this->prepare($phone, 'NOTES');
+
+        $this->assertSame('unlinked', $response['outcome']);
+        $this->assertStringContainsString('OUI', $response['reply']);
+    }
+
+    /** @return array<string, mixed> */
+    private function prepare(string $phone, string $message): array
+    {
+        $event = ParentChatbotInboundEvent::create([
+            'source_event_id' => 'evt-prepare-'.bin2hex(random_bytes(4)),
+            'payload_hash' => hash('sha256', $phone."\n".$message),
+            'received_at' => now(),
+            'processing_token' => 'test-token-prepare',
+            'processing_started_at' => now(),
+            'processing_expires_at' => now()->addMinute(),
+        ]);
+
+        return $this->responder(Mockery::mock(ParentChatbotDispatcher::class))
+            ->prepareInboundResponse($event, (string) $event->processing_token, $phone, $message);
+    }
+
+    /** @return array{ESBTPParent, int, string} */
+    private function invitedParentWithoutLink(bool $invited = true, string $phone = '+2250707123456', string $nom = 'DIALLO'): array
+    {
+        $parent = ESBTPParent::create(['nom' => $nom, 'prenoms' => 'Awa', 'telephone' => $phone]);
+        $studentId = DB::table('esbtp_etudiants')->insertGetId([
+            'nom' => $nom,
+            'prenoms' => 'Habib',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+        DB::table('esbtp_etudiant_parent')->insert([
+            'parent_id' => $parent->id,
+            'etudiant_id' => $studentId,
+            'is_tuteur' => true,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        if ($invited) {
+            DB::table('parent_chatbot_link_code_issuances')->insert([
+                'parent_id' => $parent->id,
+                'request_id' => 'invite-'.$parent->id,
+                'status' => 'accepted',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+
+        return [$parent, $studentId, $phone];
+    }
+
     private function parentWithActiveLink(): array
     {
         $phone = '+2250707123456';
