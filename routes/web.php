@@ -2176,12 +2176,9 @@ Route::middleware(['auth', 'permission:system.manage'])->group(function () {
     Route::get('/esbtp/settings/status', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.status');
     Route::post('/esbtp/settings/validate', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'checkStatus'])->name('esbtp.settings.validate');
     Route::post('/esbtp/settings/test-reminders', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'testReminders'])->name('esbtp.settings.test-reminders');
-    Route::match(['POST', 'PUT'], '/esbtp/settings/mailpulse/save', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'saveMailPulseSettings'])
-        ->middleware('throttle:30,1')
-        ->name('esbtp.settings.mailpulse.save');
-    Route::post('/esbtp/settings/mailpulse/test-notification', [App\Http\Controllers\ESBTP\ESBTPSettingsController::class, 'testMailPulseNotification'])
-        ->middleware('throttle:10,1')
-        ->name('esbtp.settings.mailpulse.test-notification');
+    // The MailPulse settings routes live in the esbtp admin group above, behind
+    // admin.access and paywall. A duplicate registration here only re-bound the
+    // route names to a weaker middleware stack.
 
     // ESBTP Logs Routes
     Route::get('/esbtp/logs', [ESBTPLogsController::class, 'index'])->name('esbtp.logs.index');

@@ -109,11 +109,20 @@ class ParentChatbotE2EHarness
         }
 
         $normalizedPhone = $this->authorizedTestPhone($phone);
-        try {
-            $secret = ParentChatbotSecurityConfig::webhookSecret();
-        } catch (\LogicException) {
+        $keyId = (string) config('services.mailpulse.external_callback_key_id', '');
+        $secret = (string) config('services.mailpulse.external_callback_secret', '');
+
+        // Signing with anything other than the real endpoint secret would make
+        // this harness pass while production callbacks are rejected in 401.
+        if ($secret === '') {
             throw ValidationException::withMessages([
-                'webhook_secret' => 'MAILPULSE_PARENT_CHATBOT_WEBHOOK_SECRET doit etre configure.',
+                'callback_secret' => 'MAILPULSE_EXTERNAL_CALLBACK_SECRET doit etre configure.',
+            ]);
+        }
+
+        if ($keyId === '') {
+            throw ValidationException::withMessages([
+                'callback_key_id' => 'MAILPULSE_EXTERNAL_CALLBACK_KEY_ID doit etre configure.',
             ]);
         }
 
@@ -124,15 +133,16 @@ class ParentChatbotE2EHarness
         ];
         $body = json_encode($payload, JSON_THROW_ON_ERROR);
         $timestamp = (string) time();
-        $signature = hash_hmac('sha256', $timestamp.'.'.$body, $secret);
+        $signature = 'v1:'.$keyId.'='.hash_hmac('sha256', $timestamp.'.'.$body, $secret);
 
         try {
             $response = Http::acceptJson()
                 ->timeout((int) config('services.mailpulse.timeout', 20))
                 ->withHeaders([
                     'Content-Type' => 'application/json',
-                    'X-MailPulse-Timestamp' => $timestamp,
-                    'X-MailPulse-Signature' => $signature,
+                    'x-external-event' => 'whatsapp.inbound_message',
+                    'x-external-timestamp' => $timestamp,
+                    'x-external-signature' => $signature,
                 ])
                 ->withBody($body, 'application/json')
                 ->post($this->inboundUrl($baseUrl));

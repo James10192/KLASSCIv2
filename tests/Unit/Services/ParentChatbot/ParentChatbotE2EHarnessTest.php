@@ -32,7 +32,8 @@ class ParentChatbotE2EHarnessTest extends TestCase
         $this->configureSecrets();
         $this->allowTestPhone('+2250700000000');
         $secret = str_repeat('w', 32);
-        config()->set('services.mailpulse.parent_chatbot_webhook_secret', $secret);
+        config()->set('services.mailpulse.external_callback_key_id', 'fk_test');
+        config()->set('services.mailpulse.external_callback_secret', $secret);
 
         Http::fake([
             url('/api/v1/integrations/mailpulse/parent-chatbot/inbound') => Http::response(['accepted' => true], 202),
@@ -48,13 +49,13 @@ class ParentChatbotE2EHarnessTest extends TestCase
         $this->assertTrue($result['ok']);
         $this->assertSame(202, $result['http_status']);
         Http::assertSent(function (Request $request) use ($secret): bool {
-            $timestamp = $request->header('X-MailPulse-Timestamp')[0] ?? null;
-            $signature = $request->header('X-MailPulse-Signature')[0] ?? null;
+            $timestamp = $request->header('x-external-timestamp')[0] ?? null;
+            $signature = $request->header('x-external-signature')[0] ?? null;
 
             return $request->url() === url('/api/v1/integrations/mailpulse/parent-chatbot/inbound')
                 && is_string($timestamp)
                 && is_string($signature)
-                && hash_equals(hash_hmac('sha256', $timestamp.'.'.$request->body(), $secret), $signature);
+                && hash_equals('v1:fk_test='.hash_hmac('sha256', $timestamp.'.'.$request->body(), $secret), $signature);
         });
     }
 

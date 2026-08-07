@@ -53,6 +53,129 @@ class MailPulseClient
         );
     }
 
+    /**
+     * Submit a conversational command on the MailPulse external-application rail.
+     *
+     * This rail is deliberately distinct from /api/v1/messages: it is the only
+     * one where MailPulse owns the WhatsApp 24h service window and relays the
+     * parent's replies back to KLASSCI. Notifications keep using the API key
+     * rail above.
+     *
+     * @param  array<string, mixed>  $command
+     */
+    public function sendExternalApplicationCommand(array $command, ?string $requestId = null): MailPulseResult
+    {
+        $requestId ??= 'klassci-'.(string) Str::uuid();
+
+        if (! $this->enabled()) {
+            return $this->failure('disabled', null, $requestId, 'MailPulse est desactive par MAILPULSE_ENABLED=false.', 'Activez MAILPULSE_ENABLED pour lancer un test reel.');
+        }
+
+        $applicationKey = $this->setting('mailpulse_external_application_key', 'external_application_key', '');
+        $organizationId = $this->setting('mailpulse_external_organization_id', 'external_organization_id', '');
+        $keyId = $this->setting('mailpulse_external_command_key_id', 'external_command_key_id', '');
+        $secret = $this->setting('mailpulse_external_command_secret', 'external_command_secret', '');
+
+        if ($applicationKey === '' || $organizationId === '' || $keyId === '' || $secret === '') {
+            return $this->failure(
+                'missing_external_application_credentials',
+                null,
+                $requestId,
+                "L'application externe MailPulse n'est pas configurée.",
+                'Renseignez MAILPULSE_EXTERNAL_APPLICATION_KEY, MAILPULSE_EXTERNAL_ORGANIZATION_ID, MAILPULSE_EXTERNAL_COMMAND_KEY_ID et MAILPULSE_EXTERNAL_COMMAND_SECRET.'
+            );
+        }
+
+        // The signature covers the exact bytes sent, so the body is serialized
+        // once here rather than left to the HTTP client.
+        $body = json_encode($command, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+        if ($body === false) {
+            return $this->failure('invalid_payload', null, $requestId, 'La commande MailPulse est inserialisable.', 'Vérifiez le contenu du message avant de relancer.');
+        }
+
+        $timestamp = (string) time();
+
+        try {
+            $response = Http::acceptJson()
+                ->timeout((int) $this->setting('mailpulse_timeout', 'timeout', '20'))
+                ->withHeaders([
+                    'x-external-organization-id' => $organizationId,
+                    'x-external-timestamp' => $timestamp,
+                    'x-external-signature' => 'v1:'.$keyId.'='.hash_hmac('sha256', $timestamp.'.'.$body, $secret),
+                    'X-KLASSCI-Request-Id' => $requestId,
+                ])
+                ->withBody($body, 'application/json')
+                ->post($this->url('/api/v1/external-applications/'.rawurlencode($applicationKey).'/commands'));
+        } catch (ConnectionException $e) {
+            Log::warning('MailPulse external command failed', [
+                'operation' => 'external_command',
+                'request_id' => $requestId,
+                'status' => 'connection_failed',
+                'error' => $e->getMessage(),
+            ]);
+
+            return $this->failure('connection_failed', null, $requestId, 'MailPulse est injoignable.', 'Vérifiez le réseau, MAILPULSE_BASE_URL et le statut Vercel.');
+        }
+
+        $result = $this->mapCommandResponse($response, $requestId);
+
+        Log::info('MailPulse external command completed', [
+            'operation' => 'external_command',
+            'request_id' => $requestId,
+            'http_status' => $response->status(),
+            'status' => $result->status,
+            'dispatch_state' => $result->dispatchState,
+        ]);
+
+        return $result;
+    }
+
+    private function mapCommandResponse(Response $response, string $requestId): MailPulseResult
+    {
+        $body = $response->json();
+        $body = is_array($body) ? $body : [];
+        $requestHeader = $response->header('x-request-id') ?: $response->header('x-vercel-id') ?: $requestId;
+        $state = is_string($body['dispatch_state'] ?? null) ? $body['dispatch_state'] : null;
+        $operationId = is_string($body['operation_id'] ?? null) ? $body['operation_id'] : null;
+
+        if ($response->status() === 202 && in_array($state, ['accepted', 'pending_reconciliation'], true)) {
+            return new MailPulseResult(true, $state, 202, $requestHeader, $operationId, null, null, null, $state, false);
+        }
+
+        if ($response->status() === 422 && $state === 'rejected') {
+            $code = is_string($body['rejection_code'] ?? null) ? $body['rejection_code'] : 'provider_rejected';
+
+            // Every 422 rejection is durable, so it must never be retried. A
+            // replayed rejection loses its original code, so the code cannot be
+            // what decides retryability.
+            return new MailPulseResult(
+                false,
+                'command_rejected',
+                422,
+                $requestHeader,
+                $operationId,
+                $code,
+                $code === 'whatsapp_service_window_closed'
+                    ? 'La fenêtre WhatsApp de 24h est fermée pour ce parent.'
+                    : 'MailPulse a rejeté la commande.',
+                $code === 'whatsapp_service_window_closed'
+                    ? 'La réponse est abandonnée : le parent doit réécrire pour rouvrir la conversation.'
+                    : 'Consultez les logs MailPulse avec le requestId retourné.',
+                'rejected',
+                false,
+            );
+        }
+
+        return match ($response->status()) {
+            400 => $this->failure('invalid_payload', 400, $requestHeader, 'MailPulse a refusé la structure de la commande.', 'Vérifiez le contrat de la route commands (longueur du texte, format du numéro).'),
+            401, 403 => $this->failure('auth_failed', $response->status(), $requestHeader, 'Signature MailPulse refusée.', "Vérifiez la clé de commande, l'horloge du serveur et l'organisation configurée."),
+            404 => $this->failure('endpoint_not_found', 404, $requestHeader, 'Application externe MailPulse introuvable.', 'Vérifiez MAILPULSE_EXTERNAL_APPLICATION_KEY.'),
+            409 => $this->failure('dispatch_conflict', 409, $requestHeader, 'MailPulse traite déjà cette commande ou a reçu un payload divergent.', "Relancez la réconciliation plutôt qu'un nouvel envoi."),
+            429 => $this->failure('rate_limited', 429, $requestHeader, 'MailPulse limite la requête.', 'Réessayez plus tard.'),
+            default => $this->failure('provider_unavailable', $response->status(), $requestHeader, 'MailPulse est temporairement indisponible.', 'Réessayez plus tard.'),
+        };
+    }
+
     private function post(string $endpoint, array $payload, string $operation, ?string $requestId = null): MailPulseResult
     {
         $requestId ??= 'klassci-' . (string) Str::uuid();

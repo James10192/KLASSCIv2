@@ -8,6 +8,7 @@ use App\Models\ESBTPNote;
 use App\Models\ESBTPEtudiant;
 use App\Models\ParentChatbotLink;
 use App\Models\ParentChatbotInboundEvent;
+use Illuminate\Support\Facades\Log;
 
 class ParentChatbotResponder
 {
@@ -16,6 +17,7 @@ class ParentChatbotResponder
         private ParentChatbotPhoneNormalizer $phones,
         private ParentChatbotDispatcher $dispatcher,
         private ParentChatbotPublicationPolicy $publicationPolicy,
+        private ParentChatbotReportCardAccess $reportCardAccess,
     ) {
     }
 
@@ -73,23 +75,39 @@ class ParentChatbotResponder
         }
 
         $intent = ParentChatbotIntent::from($response['intent']);
-        $authorizationGate = $this->links->submitIfStillDispatchAuthorized(
-            is_array($response['authorization_claim']) ? $response['authorization_claim'] : null,
-            $response['phone'],
-            $intent === ParentChatbotIntent::Stop,
-            fn (): array => $this->publicationPolicy->submitIfStillPublishable(
-                is_array($response['disclosure']) ? $response['disclosure'] : null,
-                function () use ($response, $event, $intent): void {
-                    $this->dispatch(
-                        $response['phone'],
-                        $response['reply'],
-                        $intent,
-                        $event->source_event_id,
-                        $response['idempotency_key'] ?? null,
-                    );
-                },
-            ),
-        );
+
+        try {
+            $authorizationGate = $this->links->submitIfStillDispatchAuthorized(
+                is_array($response['authorization_claim']) ? $response['authorization_claim'] : null,
+                $response['phone'],
+                $intent === ParentChatbotIntent::Stop,
+                fn (): array => $this->publicationPolicy->submitIfStillPublishable(
+                    is_array($response['disclosure']) ? $response['disclosure'] : null,
+                    function () use ($response, $event, $intent): void {
+                        $this->dispatch(
+                            $response['phone'],
+                            $response['reply'],
+                            $intent,
+                            $event->source_event_id,
+                            $response['idempotency_key'] ?? null,
+                        );
+                    },
+                ),
+            );
+        } catch (ParentChatbotWindowClosedException $exception) {
+            // Retrying cannot reopen the window, and the answer is already
+            // stale, so the event is closed instead of being replayed.
+            Log::info('Parent chatbot response dead-lettered on a closed WhatsApp window', [
+                'event_id' => $event->source_event_id,
+                'intent' => $intent->value,
+            ]);
+
+            if (! $event->discardRecordedResponse($token)) {
+                throw new \RuntimeException('The stale parent chatbot response could not be discarded.', previous: $exception);
+            }
+
+            return ParentChatbotInboundEvent::OUTCOME_DISPATCH_DEAD_LETTERED;
+        }
 
         if (! $authorizationGate['authorization_eligible']) {
             if (! $event->discardRecordedResponse($token)) {
@@ -256,7 +274,7 @@ class ParentChatbotResponder
             'NOTES' => [ParentChatbotIntent::PublishedGrades, ...$this->publishedGradesReply($student)],
             'ABSENCES' => [ParentChatbotIntent::Absences, ...$this->absencesReply($student)],
             'ASSIDUITE' => [ParentChatbotIntent::AttendanceRate, ...$this->attendanceReply($student)],
-            'BULLETIN' => [ParentChatbotIntent::PublishedReportCard, ...$this->reportCardReply($student)],
+            'BULLETIN' => [ParentChatbotIntent::PublishedReportCard, ...$this->reportCardReply($link, $student)],
             default => [ParentChatbotIntent::SchoolAdminFirst, 'Pour cette demande, contactez d\'abord l\'administration de votre école.', null],
         };
     }
@@ -354,7 +372,7 @@ class ParentChatbotResponder
     }
 
     /** @return array{string, ?array} */
-    private function reportCardReply(ESBTPEtudiant $student): array
+    private function reportCardReply(ParentChatbotLink $link, ESBTPEtudiant $student): array
     {
         $bulletin = $this->publicationPolicy->publishedReportCardsForStudent($student->id)
             ->latest('id')
@@ -373,11 +391,13 @@ class ParentChatbotResponder
         $decision = $bulletin->decision_conseil ?: 'non renseignee';
 
         return [sprintf(
-            "Bulletin publie de %s : moyenne %s, rang %s, decision %s. Le detail officiel reste disponible depuis le compte KLASSCI de l'enfant.",
+            "Bulletin publie de %s : moyenne %s, rang %s, decision %s.\nBulletin officiel en PDF, lien personnel valable %d heures : %s",
             $student->nom_complet,
             $average,
             $rank,
-            $decision
+            $decision,
+            $this->reportCardAccess->ttlHours(),
+            $this->reportCardAccess->signedUrlFor($link, $bulletin),
         ), ['type' => 'report_card', 'student_id' => $student->id, 'resource_ids' => [$bulletin->id]]];
     }
 
@@ -424,6 +444,9 @@ class ParentChatbotResponder
             $eventId,
             $idempotencyKey ?? 'klassci-parent-inbound-'.$eventId,
         );
+        if ($outcome->isDeadLettered()) {
+            throw new ParentChatbotWindowClosedException();
+        }
         if ($outcome->isPendingReconciliation()) {
             throw new \RuntimeException('Parent chatbot response requires MailPulse reconciliation.');
         }

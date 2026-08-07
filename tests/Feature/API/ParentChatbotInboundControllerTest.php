@@ -16,6 +16,8 @@ class ParentChatbotInboundControllerTest extends TestCase
 {
     private const WEBHOOK_SECRET = '12345678901234567890123456789012';
 
+    private const CALLBACK_KEY_ID = 'fk_test';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -28,6 +30,8 @@ class ParentChatbotInboundControllerTest extends TestCase
             'foreign_key_constraints' => false,
         ]);
         config()->set('services.mailpulse.parent_chatbot_webhook_secret', self::WEBHOOK_SECRET);
+        config()->set('services.mailpulse.external_callback_key_id', self::CALLBACK_KEY_ID);
+        config()->set('services.mailpulse.external_callback_secret', self::WEBHOOK_SECRET);
 
         DB::purge('sqlite');
         DB::setDefaultConnection('sqlite');
@@ -409,12 +413,13 @@ class ParentChatbotInboundControllerTest extends TestCase
     {
         $content = json_encode($payload, JSON_THROW_ON_ERROR);
         $timestamp = (string) time();
-        $signature = hash_hmac('sha256', $timestamp.'.'.$content, self::WEBHOOK_SECRET);
+        $signature = 'v1:'.self::CALLBACK_KEY_ID.'='.hash_hmac('sha256', $timestamp.'.'.$content, self::WEBHOOK_SECRET);
 
         return $this->call('POST', '/api/v1/integrations/mailpulse/parent-chatbot/inbound', [], [], [], [
             'CONTENT_TYPE' => 'application/json',
-            'HTTP_X_MAILPULSE_TIMESTAMP' => $timestamp,
-            'HTTP_X_MAILPULSE_SIGNATURE' => $signature,
+            'HTTP_X_EXTERNAL_EVENT' => 'whatsapp.inbound_message',
+            'HTTP_X_EXTERNAL_TIMESTAMP' => $timestamp,
+            'HTTP_X_EXTERNAL_SIGNATURE' => $signature,
         ], $content);
     }
 

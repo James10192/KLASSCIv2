@@ -12,6 +12,7 @@ use App\Services\ParentChatbot\ParentChatbotDispatchOutcome;
 use App\Services\ParentChatbot\ParentChatbotLinkService;
 use App\Services\ParentChatbot\ParentChatbotPhoneNormalizer;
 use App\Services\ParentChatbot\ParentChatbotPublicationPolicy;
+use App\Services\ParentChatbot\ParentChatbotReportCardAccess;
 use App\Services\ParentChatbot\ParentChatbotResponder;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
@@ -405,7 +406,7 @@ class ParentChatbotResponderTest extends TestCase
         $this->assertFalse($event->fresh()->hasRecordedResponse());
     }
 
-    public function test_bulletin_reply_uses_published_summary_without_signed_link(): void
+    public function test_bulletin_reply_pairs_the_published_summary_with_a_temporary_signed_link(): void
     {
         [$parent, $studentId, $phone] = $this->parentWithActiveLink();
         DB::table('esbtp_bulletins')->insert([
@@ -439,7 +440,9 @@ class ParentChatbotResponderTest extends TestCase
                 && $requestId === 'klassci-parent-inbound-evt-bulletin'
                 && str_contains($reply, 'moyenne 12,5/20')
                 && str_contains($reply, 'rang 3/25')
-                && ! str_contains($reply, 'http'))
+                && str_contains($reply, '/api/v1/parent-chatbot/report-cards/')
+                && str_contains($reply, 'signature=')
+                && str_contains($reply, 'expires='))
             ->andReturn(ParentChatbotDispatchOutcome::accepted('out-bulletin'));
 
         $this->assertSame(
@@ -692,12 +695,14 @@ class ParentChatbotResponderTest extends TestCase
     private function responder(ParentChatbotDispatcher $dispatcher): ParentChatbotResponder
     {
         $phones = new ParentChatbotPhoneNormalizer;
+        $publicationPolicy = new ParentChatbotPublicationPolicy;
 
         return new ParentChatbotResponder(
             new ParentChatbotLinkService($phones),
             $phones,
             $dispatcher,
-            new ParentChatbotPublicationPolicy,
+            $publicationPolicy,
+            new ParentChatbotReportCardAccess($publicationPolicy),
         );
     }
 
