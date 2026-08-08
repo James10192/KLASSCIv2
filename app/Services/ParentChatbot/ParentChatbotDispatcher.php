@@ -11,6 +11,21 @@ use Illuminate\Support\Str;
 
 class ParentChatbotDispatcher
 {
+    /** WhatsApp refuses text bodies beyond this length. */
+    private const MAX_TEXT_LENGTH = 4096;
+
+    public const OPERATION_REPLY = 'parent_chatbot.reply';
+
+    public const OPERATION_LINK_CODE = 'parent_chatbot.link_code';
+
+    /**
+     * Activation without a code. Meta only allows a one-time passcode inside an
+     * AUTHENTICATION template, whose body is fixed and cannot carry the reply
+     * instruction the flow needs, so activation invites the parent to answer
+     * instead of sending them a code.
+     */
+    public const OPERATION_INVITATION = 'parent_chatbot.invitation';
+
     public function __construct(private readonly MailPulseClient $mailPulseClient) {}
 
     public function dispatch(
@@ -22,7 +37,8 @@ class ParentChatbotDispatcher
     ): ParentChatbotDispatchOutcome {
         return $this->dispatchContent(
             $phone,
-            ['type' => 'text', 'text' => $message],
+            self::OPERATION_REPLY,
+            ['type' => 'text', 'text' => $this->boundedText($message)],
             $intent,
             $eventId,
             $requestId,
@@ -40,6 +56,7 @@ class ParentChatbotDispatcher
         ParentChatbotIntent $intent,
         string $eventId,
         ?string $requestId = null,
+        string $operationKey = self::OPERATION_LINK_CODE,
     ): ParentChatbotDispatchOutcome {
         if ($templateName === '' || $languageCode === '') {
             Log::warning('Parent chatbot template dispatch is not configured', ['event_id' => $eventId, 'intent' => $intent->value]);
@@ -47,13 +64,16 @@ class ParentChatbotDispatcher
             return ParentChatbotDispatchOutcome::failed();
         }
 
+        // The approved Meta template name lives in the MailPulse template
+        // configuration, keyed by operation and locale. The local template name
+        // stays an operator go/no-go switch only.
         return $this->dispatchContent(
             $phone,
+            $operationKey,
             [
                 'type' => 'template',
-                'template_key' => $templateName,
                 'locale' => $languageCode,
-                'variables' => $this->templateVariables($parameters),
+                'parameters' => array_values($parameters),
             ],
             $intent,
             $eventId,
@@ -66,6 +86,7 @@ class ParentChatbotDispatcher
      */
     private function dispatchContent(
         string $phone,
+        string $operationKey,
         array $content,
         ParentChatbotIntent $intent,
         string $eventId,
@@ -75,27 +96,40 @@ class ParentChatbotDispatcher
             $requestId ?? 'parent-chatbot-'.(string) Str::uuid()
         );
 
-        $payload = [
-            'channel' => 'whatsapp',
-            'recipient' => ['type' => 'phone', 'value' => $phone],
-            'content' => $content,
-            'metadata' => [
-                'source' => 'klassci_parent_chatbot',
-                'tenant_code' => MailPulseTenantContext::code(),
-                'intent' => $intent->value,
+        $recipient = $this->normalizedRecipient($phone);
+        if ($recipient === null) {
+            Log::warning('Parent chatbot dispatch skipped an unusable recipient', [
                 'event_id' => $eventId,
-            ],
-        ];
-        $result = $this->mailPulseClient->sendWhatsAppMessage($payload, $requestId);
+                'intent' => $intent->value,
+                'request_id' => $requestId,
+            ]);
+
+            return ParentChatbotDispatchOutcome::failed();
+        }
+
+        $result = $this->mailPulseClient->sendExternalApplicationCommand([
+            'operation_key' => $operationKey,
+            'channel' => 'whatsapp',
+            'recipient' => ['type' => 'phone', 'value' => $recipient],
+            'content' => $content,
+            'metadata' => ['idempotency_key' => $requestId],
+        ], $requestId);
 
         Log::info('Parent chatbot dispatch completed', [
             'event_id' => $eventId,
             'intent' => $intent->value,
+            'operation_key' => $operationKey,
             'request_id' => $requestId,
             'http_status' => $result->httpStatus,
             'status' => $result->status,
             'dispatch_state' => $result->dispatchState,
         ]);
+
+        // A durable rejection is never worth replaying: a conversational answer
+        // that arrives a day later is already stale.
+        if ($result->status === 'command_rejected') {
+            return ParentChatbotDispatchOutcome::deadLettered($result->id);
+        }
 
         if ($this->isAccepted($result)) {
             return ParentChatbotDispatchOutcome::accepted($result->id ?? $requestId);
@@ -106,6 +140,25 @@ class ParentChatbotDispatcher
         }
 
         return ParentChatbotDispatchOutcome::failed();
+    }
+
+    /**
+     * MailPulse only accepts E.164 recipients and rejects anything else with an
+     * opaque 400. A national number keeping its trunk prefix is rejected here
+     * rather than guessed into a wrong destination.
+     */
+    private function normalizedRecipient(string $phone): ?string
+    {
+        $candidate = '+'.(preg_replace('/\D/', '', $phone) ?? '');
+
+        return preg_match('/^\+[1-9]\d{6,14}$/', $candidate) === 1 ? $candidate : null;
+    }
+
+    private function boundedText(string $message): string
+    {
+        return mb_strlen($message) <= self::MAX_TEXT_LENGTH
+            ? $message
+            : mb_substr($message, 0, self::MAX_TEXT_LENGTH - 1).'…';
     }
 
     private function isAccepted(MailPulseResult $result): bool
@@ -125,17 +178,4 @@ class ParentChatbotDispatcher
             || ($result->httpStatus !== null && $result->httpStatus >= 500);
     }
 
-    /**
-     * @param array<int, string> $parameters
-     * @return array<string, string>
-     */
-    private function templateVariables(array $parameters): array
-    {
-        $variables = [];
-        foreach (array_values($parameters) as $index => $parameter) {
-            $variables[(string) ($index + 1)] = $parameter;
-        }
-
-        return $variables;
-    }
 }

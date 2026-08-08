@@ -11,6 +11,7 @@ use App\Models\Setting;
 use App\Services\MailPulse\MailPulseWorkflowPolicy;
 use App\Services\ParentChatbot\ParentChatbotDispatcher;
 use App\Services\ParentChatbot\ParentChatbotDispatchOutcome;
+use App\Services\ParentChatbot\ParentChatbotInvitationVariables;
 use App\Services\ParentChatbot\ParentChatbotLinkCodeDeliveryService;
 use App\Services\ParentChatbot\ParentChatbotLinkService;
 use App\Services\ParentChatbot\ParentChatbotPhoneNormalizer;
@@ -42,6 +43,8 @@ class ParentChatbotLinkCodeDeliveryServiceTest extends TestCase
         config()->set('services.mailpulse.parent_chatbot_link_code_ttl', 15);
         config()->set('services.mailpulse.parent_chatbot_link_template_name', 'klassci_parent_link_code');
         config()->set('services.mailpulse.parent_chatbot_link_template_language', 'fr');
+        config()->set('services.mailpulse.parent_chatbot_invitation_template_name', 'klassci_parent_invitation');
+        config()->set('services.mailpulse.parent_chatbot_invitation_template_language', 'fr');
 
         DB::purge('sqlite');
         DB::setDefaultConnection('sqlite');
@@ -49,12 +52,16 @@ class ParentChatbotLinkCodeDeliveryServiceTest extends TestCase
 
         Schema::create('esbtp_parents', function (Blueprint $table): void {
             $table->id();
+            $table->string('nom')->nullable();
+            $table->string('prenoms')->nullable();
             $table->string('telephone')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });
         Schema::create('esbtp_etudiants', function (Blueprint $table): void {
             $table->id();
+            $table->string('nom')->nullable();
+            $table->string('prenoms')->nullable();
             $table->softDeletes();
             $table->timestamps();
         });
@@ -136,7 +143,8 @@ class ParentChatbotLinkCodeDeliveryServiceTest extends TestCase
                 array $parameters,
                 ParentChatbotIntent $intent,
                 string $eventId,
-                string $requestId
+                string $requestId,
+                string $operationKey
             ): bool {
                 return $phone === '+2250707123456'
                     && $templateName === 'klassci_parent_link_code'
@@ -145,7 +153,8 @@ class ParentChatbotLinkCodeDeliveryServiceTest extends TestCase
                     && preg_match('/^[A-F0-9]{16}$/', $parameters[0]) === 1
                     && $intent === ParentChatbotIntent::Link
                     && $eventId === 'req-link-1'
-                    && $requestId === 'req-link-1';
+                    && $requestId === 'req-link-1'
+                    && $operationKey === ParentChatbotDispatcher::OPERATION_LINK_CODE;
             })
             ->andReturn(ParentChatbotDispatchOutcome::accepted('out-accepted'));
 
@@ -250,8 +259,11 @@ class ParentChatbotLinkCodeDeliveryServiceTest extends TestCase
                 array $parameters,
                 ParentChatbotIntent $intent,
                 string $eventId,
-                string $requestId
-            ): bool => $eventId === 'req-link-retry' && $requestId === 'req-link-retry')
+                string $requestId,
+                string $operationKey
+            ): bool => $eventId === 'req-link-retry'
+                && $requestId === 'req-link-retry'
+                && $operationKey === ParentChatbotDispatcher::OPERATION_LINK_CODE)
             ->andReturn(ParentChatbotDispatchOutcome::accepted('out-accepted'));
 
         $first->update(['next_attempt_at' => now()->subSecond()]);
@@ -468,6 +480,130 @@ class ParentChatbotLinkCodeDeliveryServiceTest extends TestCase
         $this->assertSame('workflows_disabled', $issuance->error_code);
     }
 
+    public function test_the_invitation_rail_sends_the_named_variables_instead_of_a_code(): void
+    {
+        $this->schoolNamed('ESBTP Abidjan');
+        $parent = $this->parentWithPupil(
+            ['nom' => 'KOUASSI', 'prenoms' => 'Jean'],
+            [['nom' => 'KOUASSI', 'prenoms' => 'Awa']],
+        );
+        $dispatcher = Mockery::mock(ParentChatbotDispatcher::class);
+        $dispatcher->shouldReceive('dispatchTemplate')
+            ->once()
+            ->withArgs(function (
+                string $phone,
+                string $templateName,
+                string $languageCode,
+                array $parameters,
+                ParentChatbotIntent $intent,
+                string $eventId,
+                string $requestId,
+                string $operationKey
+            ): bool {
+                return $phone === '+2250707123456'
+                    && $templateName === 'klassci_parent_invitation'
+                    && $languageCode === 'fr'
+                    && $parameters === ['Jean', 'ESBTP Abidjan', 'KOUASSI Awa']
+                    && $intent === ParentChatbotIntent::Link
+                    && $eventId === 'req-invitation-1'
+                    && $requestId === 'req-invitation-1'
+                    && $operationKey === ParentChatbotDispatcher::OPERATION_INVITATION;
+            })
+            ->andReturn(ParentChatbotDispatchOutcome::accepted('out-invitation'));
+
+        $issuance = $this->service($dispatcher)->issueAndDeliver(
+            $parent,
+            42,
+            'req-invitation-1',
+            ParentChatbotDispatcher::OPERATION_INVITATION,
+        );
+
+        $this->assertSame(ParentChatbotLinkCodeIssuance::STATUS_ACCEPTED, $issuance->status);
+        // The code row still carries the expiry and the dedupe of the issuance.
+        $this->assertNotNull($issuance->parent_chatbot_link_code_id);
+        $this->assertSame(1, ParentChatbotLinkCode::query()->count());
+    }
+
+    public function test_the_invitation_summarises_the_other_pupils_of_a_tutor(): void
+    {
+        $this->schoolNamed('ESBTP Abidjan');
+        $parent = $this->parentWithPupil(
+            ['prenoms' => 'Awa'],
+            [['nom' => 'TRAORE', 'prenoms' => 'Fatou'], ['nom' => 'TRAORE', 'prenoms' => 'Ali'], ['nom' => 'TRAORE', 'prenoms' => 'Sita']],
+        );
+        $captured = [];
+        $dispatcher = Mockery::mock(ParentChatbotDispatcher::class);
+        $dispatcher->shouldReceive('dispatchTemplate')
+            ->once()
+            ->andReturnUsing(function (...$arguments) use (&$captured): ParentChatbotDispatchOutcome {
+                $captured = $arguments[3];
+
+                return ParentChatbotDispatchOutcome::accepted('out-invitation');
+            });
+
+        $this->service($dispatcher)->issueAndDeliver($parent, 42, 'req-invitation-siblings', ParentChatbotDispatcher::OPERATION_INVITATION);
+
+        $this->assertSame(['Awa', 'ESBTP Abidjan', 'TRAORE Fatou et 2 autres enfants'], $captured);
+    }
+
+    public function test_it_fails_without_sending_when_the_invitation_template_is_not_configured(): void
+    {
+        config()->set('services.mailpulse.parent_chatbot_invitation_template_name', '');
+        $dispatcher = Mockery::mock(ParentChatbotDispatcher::class);
+        $dispatcher->shouldNotReceive('dispatchTemplate');
+
+        $issuance = $this->service($dispatcher)->issueAndDeliver(
+            $this->parentWithPupil(),
+            42,
+            'req-invitation-template-missing',
+            ParentChatbotDispatcher::OPERATION_INVITATION,
+        );
+
+        $this->assertSame(ParentChatbotLinkCodeIssuance::STATUS_FAILED, $issuance->status);
+        $this->assertSame('invitation_template_not_configured', $issuance->error_code);
+        $this->assertNull($issuance->delivery_payload);
+    }
+
+    public function test_a_reconciled_invitation_replays_the_invitation_operation(): void
+    {
+        $this->schoolNamed('ESBTP Abidjan');
+        $parent = $this->parentWithPupil(['prenoms' => 'Jean'], [['nom' => 'KOUASSI', 'prenoms' => 'Awa']]);
+        $dispatcher = Mockery::mock(ParentChatbotDispatcher::class);
+        $dispatcher->shouldReceive('dispatchTemplate')->once()->andReturn(ParentChatbotDispatchOutcome::pendingReconciliation('out-unknown'));
+        $first = $this->service($dispatcher)->issueAndDeliver($parent, 42, 'req-invitation-retry', ParentChatbotDispatcher::OPERATION_INVITATION);
+        $this->assertSame(ParentChatbotLinkCodeIssuance::STATUS_PENDING_RECONCILIATION, $first->status);
+
+        $dispatcher = Mockery::mock(ParentChatbotDispatcher::class);
+        $dispatcher->shouldReceive('dispatchTemplate')
+            ->once()
+            ->withArgs(fn (
+                string $phone,
+                string $templateName,
+                string $languageCode,
+                array $parameters,
+                ParentChatbotIntent $intent,
+                string $eventId,
+                string $requestId,
+                string $operationKey
+            ): bool => $templateName === 'klassci_parent_invitation'
+                && $parameters === ['Jean', 'ESBTP Abidjan', 'KOUASSI Awa']
+                && $requestId === 'req-invitation-retry'
+                && $operationKey === ParentChatbotDispatcher::OPERATION_INVITATION)
+            ->andReturn(ParentChatbotDispatchOutcome::accepted('out-accepted'));
+
+        $first->update(['next_attempt_at' => now()->subSecond()]);
+        $processed = $this->service($dispatcher)->reconcilePending();
+
+        $this->assertSame(1, $processed);
+        $this->assertSame(ParentChatbotLinkCodeIssuance::STATUS_ACCEPTED, $first->fresh()->status);
+    }
+
+    private function schoolNamed(string $name): void
+    {
+        Setting::create(['key' => 'school_name', 'value' => $name, 'type' => 'string', 'is_active' => true]);
+        Cache::forget('setting_school_name');
+    }
+
     private function service(ParentChatbotDispatcher $dispatcher): ParentChatbotLinkCodeDeliveryService
     {
         $phones = new ParentChatbotPhoneNormalizer;
@@ -477,23 +613,27 @@ class ParentChatbotLinkCodeDeliveryServiceTest extends TestCase
             $phones,
             $dispatcher,
             new MailPulseWorkflowPolicy(new \App\Services\ParentChatbot\ParentChatbotPublicationPolicy),
+            new ParentChatbotInvitationVariables,
         );
     }
 
-    private function parentWithPupil(): ESBTPParent
+    private function parentWithPupil(array $attributes = [], array $pupils = [[]]): ESBTPParent
     {
-        $parent = ESBTPParent::create(['telephone' => '07 07 12 34 56']);
-        $studentId = DB::table('esbtp_etudiants')->insertGetId([
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-        DB::table('esbtp_etudiant_parent')->insert([
-            'parent_id' => $parent->id,
-            'etudiant_id' => $studentId,
-            'is_tuteur' => true,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        $parent = ESBTPParent::create($attributes + ['telephone' => '07 07 12 34 56']);
+
+        foreach ($pupils === [] ? [[]] : $pupils as $pupil) {
+            $studentId = DB::table('esbtp_etudiants')->insertGetId($pupil + [
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+            DB::table('esbtp_etudiant_parent')->insert([
+                'parent_id' => $parent->id,
+                'etudiant_id' => $studentId,
+                'is_tuteur' => true,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
 
         return $parent;
     }

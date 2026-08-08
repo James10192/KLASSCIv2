@@ -195,7 +195,12 @@ class MailPulseWorkflowNotificationService
         );
     }
 
-    private function notifyTutor(string $event, ESBTPEtudiant $etudiant, array $message): void
+    /**
+     * Shared emission path: kill switch, parent preferences, per channel
+     * consent, outbox and MailPulse call. Public so the workflow events that
+     * live in MailPulseExtraWorkflowNotifications reuse the exact same gates.
+     */
+    public function notifyTutor(string $event, ESBTPEtudiant $etudiant, array $message): void
     {
         if (! $this->workflowPolicy->realWorkflowsEnabled()) {
             return;

@@ -277,6 +277,11 @@ class TeacherDashboardController extends Controller
                 ->with('error', 'Vous ne pouvez pas effectuer l\'appel de fin maintenant.');
         }
 
+        // Absences définitives (call_type=merged) à notifier aux parents après commit.
+        // L'appel de début n'est pas définitif : un étudiant absent au début peut
+        // arriver en retard, la fusion le requalifie. On ne notifie donc que la fusion.
+        $finalAbsences = [];
+
         try {
             DB::beginTransaction();
 
@@ -331,7 +336,7 @@ class TeacherDashboardController extends Controller
                             $finalStatus = 'present';
                         }
 
-                        ESBTPAttendance::create([
+                        $mergedAttendance = ESBTPAttendance::create([
                             'etudiant_id' => $startAtt->etudiant_id,
                             'seance_cours_id' => $seanceId,
                             'annee_universitaire_id' => $anneeUniversitaire->id,
@@ -346,6 +351,10 @@ class TeacherDashboardController extends Controller
                             'is_justified' => false,
                             'created_by' => $user->id,
                         ]);
+
+                        if ($finalStatus === 'absent') {
+                            $finalAbsences[] = $mergedAttendance;
+                        }
                     }
 
                     // Marquer workflow comme incomplet
@@ -391,7 +400,7 @@ class TeacherDashboardController extends Controller
 
                         \Log::info('  📊 Étudiant #'.$etudiantId.': '.$startStatus.' (début) + '.$endStatus.' (fin) → '.$finalStatus.' (FINAL)');
 
-                        ESBTPAttendance::create([
+                        $mergedAttendance = ESBTPAttendance::create([
                             'etudiant_id' => $etudiantId,
                             'seance_cours_id' => $seanceId,
                             'annee_universitaire_id' => $anneeUniversitaire->id,
@@ -406,6 +415,10 @@ class TeacherDashboardController extends Controller
                             'is_justified' => false,
                             'created_by' => $user->id,
                         ]);
+
+                        if ($finalStatus === 'absent') {
+                            $finalAbsences[] = $mergedAttendance;
+                        }
                     }
 
                     $workflow->markCallEndDone();
@@ -427,6 +440,19 @@ class TeacherDashboardController extends Controller
                     ->keys()
                     ->toArray();
 
+                // 3. Notifier les parents des absences définitives (appel de fin fusionné)
+                $notifiedByParentPath = [];
+                foreach ($finalAbsences as $finalAbsence) {
+                    $notificationService->notifyParentsAbsence($finalAbsence);
+                    // notifyParentsAbsence cree deja la notification in-app de
+                    // l'etudiant quand un tuteur existe : sans cette exclusion,
+                    // l'etudiant recevrait deux fois le meme message.
+                    if ($finalAbsence->etudiant?->tuteur !== null) {
+                        $notifiedByParentPath[] = $finalAbsence->etudiant_id;
+                    }
+                }
+
+                $absentStudentIds = array_values(array_diff($absentStudentIds, $notifiedByParentPath));
                 if (! empty($absentStudentIds)) {
                     $absentStudents = \App\Models\ESBTPEtudiant::whereIn('id', $absentStudentIds)->get();
                     $notificationService->notifyStudentsAbsence($absentStudents, $seance, $user);

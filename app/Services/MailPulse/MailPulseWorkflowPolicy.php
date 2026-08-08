@@ -109,10 +109,11 @@ class MailPulseWorkflowPolicy
     public function preferenceType(string $event): string
     {
         return match ($event) {
-            'payment_received', 'fee_reminder' => 'paiements',
-            'absence_reported' => 'absences',
-            'grade_published' => 'notes',
+            'payment_received', 'fee_reminder', 'payment_rejected' => 'paiements',
+            'absence_reported', 'low_attendance' => 'absences',
+            'grade_published', 'low_grades' => 'notes',
             'bulletin_published' => 'bulletins',
+            'enrollment_created', 'reenrollment_created' => 'inscriptions',
             default => 'annonces',
         };
     }

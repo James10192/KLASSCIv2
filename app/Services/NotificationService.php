@@ -14,7 +14,8 @@ use App\Models\ESBTPPaiement;
 use App\Models\ESBTPFacture;
 use App\Models\ESBTPBonSortie;
 use App\Models\ParentNotificationLog;
-use App\Services\MailPulse\MailPulseWorkflowNotificationService;
+use App\Services\MailPulse\MailPulseWorkflowIntent;
+use App\Services\MailPulse\MailPulseWorkflowQueue;
 use App\Services\ParentChatbot\ParentChatbotPublicationPolicy;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
@@ -944,7 +945,7 @@ class NotificationService
             $link = route('esbtp.mes-notes.index');
 
             $this->createNotification($etudiant->user, $title, $message, 'success', $link, $createdBy);
-            $this->notifyMailPulse(fn (MailPulseWorkflowNotificationService $mailPulse) => $mailPulse->notifyGradePublished($note));
+            $this->notifyMailPulse(MailPulseWorkflowIntent::gradePublished((int) $note->id));
         } catch (\Exception $e) {
             Log::error('Erreur notification note étudiant', ['error' => $e->getMessage()]);
         }
@@ -2187,7 +2188,7 @@ class NotificationService
                 'days_pending' => $daysPending,
                 'reminder_count' => $reminderCount
             ]);
-            $this->notifyMailPulse(fn (MailPulseWorkflowNotificationService $mailPulse) => $mailPulse->notifyFeeReminder($paiement, $daysPending, $reminderCount));
+            $this->notifyMailPulse(MailPulseWorkflowIntent::feeReminder((int) $paiement->id, (int) $daysPending, (int) $reminderCount));
 
         } catch (\Exception $e) {
             Log::error('Erreur envoi rappel paiement: ' . $e->getMessage());
@@ -2576,6 +2577,8 @@ class NotificationService
                 Mail::to($tuteur->email)->send(new \App\Mail\Parents\InscriptionConfirmationMail($data));
             }
 
+            $this->notifyMailPulse(MailPulseWorkflowIntent::enrollmentCreated((int) $inscription->id));
+
             $preferences->incrementNotificationCount();
 
             Log::info('Notification inscription envoyée aux parents', ['parent_id' => $tuteur->id, 'email' => $tuteur->email]);
@@ -2670,7 +2673,7 @@ class NotificationService
                 Mail::to($tuteur->email)->send(new \App\Mail\Parents\PaiementValideMail($data));
             }
 
-            $this->notifyMailPulse(fn (MailPulseWorkflowNotificationService $mailPulse) => $mailPulse->notifyPaymentReceived($paiement));
+            $this->notifyMailPulse(MailPulseWorkflowIntent::paymentReceived((int) $paiement->id));
 
             $preferences->incrementNotificationCount();
 
@@ -2728,6 +2731,8 @@ class NotificationService
             if ($preferences->hasChannel('email') && $tuteur->email) {
                 Mail::to($tuteur->email)->send(new \App\Mail\Parents\PaiementRejeteMail($data));
             }
+
+            $this->notifyMailPulse(MailPulseWorkflowIntent::paymentRejected((int) $paiement->id));
 
             $preferences->incrementNotificationCount();
 
@@ -2806,13 +2811,24 @@ class NotificationService
             }
 
             // Alerte si taux de présence faible
-            if ($tauxPresence < $preferences->attendance_rate_threshold) {
+            $lowAttendance = $tauxPresence < $preferences->attendance_rate_threshold;
+            if ($lowAttendance) {
                 if ($preferences->hasChannel('email') && $tuteur->email) {
                     Mail::to($tuteur->email)->send(new \App\Mail\Parents\LowAttendanceMail($data));
                 }
             }
 
-            $this->notifyMailPulse(fn (MailPulseWorkflowNotificationService $mailPulse) => $mailPulse->notifyAbsenceReported($attendance));
+            if ($attendance instanceof ESBTPAttendance) {
+                $this->notifyMailPulse(MailPulseWorkflowIntent::absenceReported($attendance));
+
+                if ($lowAttendance) {
+                    $this->notifyMailPulse(MailPulseWorkflowIntent::lowAttendance(
+                        $attendance,
+                        (float) $tauxPresence,
+                        (int) $preferences->attendance_rate_threshold
+                    ));
+                }
+            }
 
             $preferences->incrementNotificationCount();
 
@@ -2845,7 +2861,7 @@ class NotificationService
             ]);
 
             // Les canaux externes passent exclusivement par l'outbox MailPulse.
-            $this->notifyMailPulse(fn (MailPulseWorkflowNotificationService $mailPulse) => $mailPulse->notifyBulletinPublished($bulletin));
+            $this->notifyMailPulse(MailPulseWorkflowIntent::bulletinPublished((int) $bulletin->id));
 
         } catch (\Exception $e) {
             Log::error('Erreur notification bulletin publié parent: ' . $e->getMessage());
@@ -2922,6 +2938,8 @@ class NotificationService
                 if ($preferences->hasChannel('email') && $tuteur->email) {
                     Mail::to($tuteur->email)->send(new \App\Mail\Parents\LowGradesMail($data));
                 }
+
+                $this->notifyMailPulse(MailPulseWorkflowIntent::lowGrades((int) $bulletin->id));
 
                 $preferences->incrementNotificationCount();
             }
@@ -3010,6 +3028,12 @@ class NotificationService
                 Mail::to($tuteur->email)->send(new \App\Mail\Parents\ReinscriptionConfirmationMail($data));
             }
 
+            $this->notifyMailPulse(MailPulseWorkflowIntent::reEnrollmentCreated(
+                (int) $inscription->id,
+                (string) $decision,
+                (float) $reliquatMontant
+            ));
+
             $preferences->incrementNotificationCount();
 
             Log::info('Notification réinscription envoyée aux parents', ['parent_id' => $tuteur->id, 'email' => $tuteur->email]);
@@ -3019,14 +3043,16 @@ class NotificationService
         }
     }
 
-    private function notifyMailPulse(callable $callback): void
+    /**
+     * Hand a parent workflow notification over to the queue.
+     *
+     * The MailPulse HTTP call no longer runs inside the web request: only the
+     * intent is queued here. Delivery, consent re-check, outbox bookkeeping and
+     * retries happen worker side. Failures are swallowed by the queue service
+     * so the originating request can never break on a MailPulse issue.
+     */
+    private function notifyMailPulse(MailPulseWorkflowIntent $intent): void
     {
-        try {
-            $callback(app(MailPulseWorkflowNotificationService::class));
-        } catch (\Throwable $e) {
-            Log::warning('MailPulse workflow notification skipped', [
-                'error' => $e->getMessage(),
-            ]);
-        }
+        app(MailPulseWorkflowQueue::class)->push($intent);
     }
 }

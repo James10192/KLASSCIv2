@@ -655,7 +655,7 @@ class ESBTPBulletinController extends Controller
      * téléchargement unitaire. Lève une exception en cas d'échec (le caller décide
      * du fallback).
      */
-    protected function buildBulletinPdf(ESBTPBulletin $bulletin, bool $persist = true): \Barryvdh\DomPDF\PDF
+    public function buildBulletinPdf(ESBTPBulletin $bulletin, bool $persist = true): \Barryvdh\DomPDF\PDF
     {
         // $persist=false (export groupé) : on calcule et on met à jour l'objet en
         // mémoire pour un rendu identique, MAIS on n'écrit rien en base — un GET
@@ -689,8 +689,12 @@ class ESBTPBulletinController extends Controller
                 throw new \Exception("L'année universitaire associée à ce bulletin n'a pas été trouvée. Veuillez vérifier que l'année universitaire existe et est correctement associée au bulletin.");
             }
 
+            // Ces trois methodes du modele font un save() inconditionnel : elles
+            // ne peuvent donc tourner que sur le chemin persistant. Un bulletin
+            // publie a deja ces valeurs, et le rendu en lecture seule recalcule
+            // la moyenne en memoire plus bas.
             // Calculer la moyenne générale si pas déjà fait
-            if (! $bulletin->moyenne_generale) {
+            if ($persist && ! $bulletin->moyenne_generale) {
                 try {
                     $bulletin->calculerMoyenneGenerale();
                 } catch (\Exception $e) {
@@ -701,7 +705,7 @@ class ESBTPBulletinController extends Controller
             }
 
             // Calculer la mention si pas déjà fait
-            if (! $bulletin->mention) {
+            if ($persist && ! $bulletin->mention) {
                 try {
                     $bulletin->calculerMention();
                 } catch (\Exception $e) {
@@ -712,7 +716,7 @@ class ESBTPBulletinController extends Controller
             }
 
             // Calculer le rang si pas déjà fait
-            if (! $bulletin->rang) {
+            if ($persist && ! $bulletin->rang) {
                 try {
                     $bulletin->calculerRang();
                 } catch (\Exception $e) {

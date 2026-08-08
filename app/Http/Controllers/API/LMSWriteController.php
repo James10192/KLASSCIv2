@@ -285,6 +285,8 @@ class LMSWriteController extends BaseApiController
             \App\Models\ESBTPAttendance::where('seance_cours_id', $cours->id)->delete();
 
             $presencesSauvegardees = [];
+            // Absences saisies par l'enseignant : notification parents après commit.
+            $absencesANotifier = [];
 
             // Récupérer tous les étudiants de la classe
             $tousEtudiants = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($cours) {
@@ -324,6 +326,10 @@ class LMSWriteController extends BaseApiController
                         'statut' => $statut,
                         'presence_id' => $presence->id
                     ];
+
+                    if ($statut === 'absent') {
+                        $absencesANotifier[] = $presence;
+                    }
                 }
             }
 
@@ -357,6 +363,22 @@ class LMSWriteController extends BaseApiController
             ]);
 
             DB::commit();
+
+            // Notifier les parents des absences enregistrées pour ce cours en ligne.
+            // Hors transaction et sans faire échouer la réponse API en cas de souci.
+            if ($absencesANotifier !== []) {
+                try {
+                    $notificationService = app(\App\Services\NotificationService::class);
+                    foreach ($absencesANotifier as $absence) {
+                        $notificationService->notifyParentsAbsence($absence);
+                    }
+                } catch (\Throwable $e) {
+                    \Log::error('Erreur notification parents absences LMS', [
+                        'cours_id' => $cours->id,
+                        'error' => $e->getMessage()
+                    ]);
+                }
+            }
 
             return $this->successResponse([
                 'cours' => [

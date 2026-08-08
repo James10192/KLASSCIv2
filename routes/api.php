@@ -25,8 +25,10 @@ Route::post('/v1/integrations/mailpulse/parent-chatbot/inbound', App\Http\Contro
     ->middleware('throttle:30,1')
     ->name('api.mailpulse.parent-chatbot.inbound');
 
+// Throttled because the link is unauthenticated by design and each hit renders
+// a full PDF: a link forwarded into a group chat must not become a CPU sink.
 Route::get('/v1/parent-chatbot/report-cards/{bulletin}', App\Http\Controllers\ParentChatbotReportCardController::class)
-    ->middleware('signed')
+    ->middleware(['signed', 'throttle:20,1'])
     ->name('parent-chatbot.report-card');
 
 // Routes API pour ESBTP

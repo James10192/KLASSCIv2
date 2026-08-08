@@ -7,6 +7,7 @@ use App\Models\ParentChatbotLink;
 use App\Models\ParentChatbotLinkCodeIssuance;
 use App\Models\ParentChatbotOnboardingBatch;
 use App\Models\ParentChatbotOnboardingItem;
+use App\Services\ParentChatbot\ParentChatbotDispatcher;
 use App\Services\ParentChatbot\ParentChatbotLinkCodeDeliveryService;
 use App\Services\ParentChatbot\ParentChatbotOnboardingService;
 use App\Services\ParentChatbot\ParentChatbotPhoneNormalizer;
@@ -41,6 +42,7 @@ class ParentChatbotOnboardingServiceTest extends TestCase
         config()->set('services.mailpulse.enabled', true);
         config()->set('services.mailpulse.real_workflows_enabled', true);
         config()->set('services.mailpulse.parent_chatbot_link_template_name', 'klassci_parent_link_code');
+        config()->set('services.mailpulse.parent_chatbot_invitation_template_name', 'klassci_parent_invitation');
         config()->set('services.mailpulse.parent_chatbot_service_secret', str_repeat('s', 32));
         config()->set('services.mailpulse.parent_chatbot_code_pepper', str_repeat('p', 32));
         config()->set('services.mailpulse.parent_chatbot_phone_hash_key', str_repeat('h', 32));
@@ -106,7 +108,7 @@ class ParentChatbotOnboardingServiceTest extends TestCase
     {
         return [
             'workflows disabled' => ['real_workflows_enabled', false],
-            'missing link template' => ['parent_chatbot_link_template_name', ''],
+            'missing invitation template' => ['parent_chatbot_invitation_template_name', ''],
             'short service secret' => ['parent_chatbot_service_secret', str_repeat('s', 31)],
             'short code pepper' => ['parent_chatbot_code_pepper', str_repeat('p', 31)],
             'short phone hash key' => ['parent_chatbot_phone_hash_key', str_repeat('h', 31)],
@@ -275,6 +277,45 @@ class ParentChatbotOnboardingServiceTest extends TestCase
         $this->assertSame('activation_retry_exhausted', $item->error_code);
         $this->assertSame(5, $item->attempt_count);
         $this->assertNull($item->next_attempt_at);
+    }
+
+    public function test_it_delivers_the_invitation_operation_instead_of_a_link_code(): void
+    {
+        $parent = $this->parentWithPupil('0700000001');
+        $delivery = Mockery::mock(ParentChatbotLinkCodeDeliveryService::class);
+        $delivery->shouldReceive('issueAndDeliver')
+            ->once()
+            ->withArgs(fn (
+                ESBTPParent $claimed,
+                ?int $actorId,
+                string $requestId,
+                string $operationKey
+            ): bool => $claimed->id === $parent->id
+                && $actorId === 12
+                && $operationKey === ParentChatbotDispatcher::OPERATION_INVITATION)
+            ->andReturnUsing(fn (ESBTPParent $claimed, ?int $actorId, string $requestId) => ParentChatbotLinkCodeIssuance::create([
+                'parent_id' => $claimed->id,
+                'actor_id' => $actorId,
+                'request_id' => $requestId,
+                'status' => ParentChatbotLinkCodeIssuance::STATUS_ACCEPTED,
+            ]));
+        $service = $this->service($delivery);
+        $batch = $service->start(12);
+
+        $service->process(25);
+
+        $this->assertSame(ParentChatbotOnboardingItem::STATUS_ACCEPTED, $batch->items()->where('parent_id', $parent->id)->value('status'));
+    }
+
+    public function test_a_batch_starts_without_the_link_code_template_because_it_only_invites(): void
+    {
+        $this->parentWithPupil('0700000001');
+        config()->set('services.mailpulse.parent_chatbot_link_template_name', '');
+
+        $batch = $this->service()->start(12);
+
+        $this->assertSame(ParentChatbotOnboardingBatch::STATUS_PROCESSING, $batch->status);
+        $this->assertSame(1, $batch->total_count);
     }
 
     private function service(?ParentChatbotLinkCodeDeliveryService $delivery = null): ParentChatbotOnboardingService

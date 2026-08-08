@@ -2392,16 +2392,22 @@
 
                         <!-- System Settings -->
                         <div class="menu-accordion">
-                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.settings.*') || Request::routeIs('esbtp.logs.*') ? 'active' : '' }}">
+                            <button class="menu-accordion-btn {{ Request::routeIs('esbtp.settings.*') || Request::routeIs('esbtp.logs.*') || Request::routeIs('esbtp.parent-chatbot-onboarding.*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-cogs"></i></div>
                                 <div class="menu-text">Paramètres</div>
                                 <div class="menu-arrow"><i class="fas fa-chevron-down"></i></div>
                             </button>
-                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.settings.*') || Request::routeIs('esbtp.logs.*') ? 'show' : '' }}">
+                            <div class="menu-accordion-content {{ Request::routeIs('esbtp.settings.*') || Request::routeIs('esbtp.logs.*') || Request::routeIs('esbtp.parent-chatbot-onboarding.*') ? 'show' : '' }}">
                                 <a href="{{ route('esbtp.settings.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.settings.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Configuration</span>
                                 </a>
+                                @can('parent_chatbot.manage')
+                                <a href="{{ route('esbtp.parent-chatbot-onboarding.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.parent-chatbot-onboarding.*') ? 'active' : '' }}">
+                                    <span class="menu-dot"></span>
+                                    <span>Chatbot parents</span>
+                                </a>
+                                @endcan
                                 <!--<a href="{{ route('esbtp.logs.index') }}" class="menu-sublink {{ Request::routeIs('esbtp.logs.*') ? 'active' : '' }}">
                                     <span class="menu-dot"></span>
                                     <span>Journaux système</span>
