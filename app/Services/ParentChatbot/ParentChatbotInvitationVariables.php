@@ -88,7 +88,11 @@ class ParentChatbotInvitationVariables
 
     private function sanitize(string $value): string
     {
-        $collapsed = trim((string) preg_replace('/\s+/u', ' ', $value));
+        // Braces are the template marker syntax on the transport side, which
+        // refuses a rendered body still containing one. A tutor whose record
+        // holds a stray brace would otherwise never receive the invitation.
+        $withoutBraces = str_replace(['{', '}'], '', $value);
+        $collapsed = trim((string) preg_replace('/\s+/u', ' ', $withoutBraces));
 
         return mb_strlen($collapsed) <= self::MAX_PARAMETER_LENGTH
             ? $collapsed
