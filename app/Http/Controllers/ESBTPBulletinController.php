@@ -1616,15 +1616,14 @@ class ESBTPBulletinController extends Controller
             // union [filière classe, filière TC parente] + fallback pivot.
             $matieres = $this->subjectResolver->subjectsForClasse($classe);
 
-            // Grouper les matières par filière
-            $matieresByFiliere = $matieres->groupBy(function ($matiere) use ($classe) {
-                return $classe->filiere->name ?? 'Non défini';
-            });
+            // Période prévisualisée (evaluation.periode : semestre1 | semestre2 | annuel).
+            $periode = $this->bulletinService->normalizePeriode($request->periode ?? ($bulletin->periode ?? 'semestre1'));
 
-            // Récupérer les évaluations pour ces matières
+            // Récupérer les évaluations pour ces matières, SCOPÉES à la période.
             $evaluations = ESBTPEvaluation::whereIn('matiere_id', $matieres->pluck('id'))
                 ->where('annee_universitaire_id', $anneeUniversitaire->id)
                 ->where('status', '!=', 'cancelled')
+                ->when($periode !== 'annuel', fn ($q) => $q->where('periode', $periode))
                 ->orderBy('titre')
                 ->get();
 
@@ -1636,6 +1635,21 @@ class ESBTPBulletinController extends Controller
                 ->whereIn('evaluation_id', $evaluations->pluck('id'))
                 ->get()
                 ->keyBy('evaluation_id');
+
+            // FILTRE (aligné sur la génération) : une matière n'apparaît QUE si l'étudiant
+            // a au moins une note dans cette matière POUR LA PÉRIODE. Sans ce filtre, une
+            // matière de spécialité évaluée dans un autre semestre remontait sur le
+            // bulletin tronc commun (régression réintroduite après le split du contrôleur).
+            $matiereIdsAvecNotes = $evaluations
+                ->whereIn('id', $notes->keys())
+                ->pluck('matiere_id')
+                ->unique();
+            $matieres = $matieres->filter(fn ($m) => $matiereIdsAvecNotes->contains($m->id))->values();
+
+            // Grouper les matières (filtrées) par filière
+            $matieresByFiliere = $matieres->groupBy(function ($matiere) use ($classe) {
+                return $classe->filiere->name ?? 'Non défini';
+            });
 
             // Convertir en tableau simple pour la vue
             $notesParEvaluation = [];
