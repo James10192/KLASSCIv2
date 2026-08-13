@@ -299,6 +299,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/matieres/diagnose-liaisons', [App\Http\Controllers\API\CLI\CLIMatiereController::class, 'diagnoseLiaisons'])
         ->name('matieres.diagnose-liaisons');
 
+    // Inspecte les planifications académiques (matières d'une classe : filière+niveau+semestre)
+    Route::get('/matieres/planifications', [App\Http\Controllers\API\CLI\CLIMatiereController::class, 'planifications'])
+        ->name('matieres.planifications');
+
     // Read endpoints — Academic years
     Route::get('/annee', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'annee'])->name('annee');
 

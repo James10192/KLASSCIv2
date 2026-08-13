@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
+use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPPlanificationAcademique;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -12,6 +14,122 @@ class CLIMatiereController extends BaseApiController
     public function __construct()
     {
         parent::__construct();
+    }
+
+    /**
+     * GET /api/cli/matieres/planifications
+     *
+     * Inspecte les planifications académiques (esbtp_planifications_academiques),
+     * source canonique des matières d'une classe (filière + niveau + semestre).
+     *
+     * Sert à diagnostiquer les matières qui apparaissent à tort sur un bulletin :
+     * ex. une matière de spécialité planifiée par erreur sur la filière tronc commun.
+     *
+     * Filtres (tous optionnels, combinables) :
+     *  - classe_id        : résout filière + niveau de la classe et liste ses planifs
+     *  - filiere_id       : filtre par filière
+     *  - niveau_id        : filtre par niveau d'étude
+     *  - semestre         : 1 ou 2
+     *  - matiere_search   : recherche par nom/code de matière (révèle OÙ elle est planifiée)
+     *  - annee_universitaire_id : sinon année courante
+     */
+    public function planifications(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:read')) {
+            return $this->errorResponse('Token missing cli:read ability', [], 403);
+        }
+
+        $filiereId = $request->input('filiere_id');
+        $niveauId = $request->input('niveau_id');
+        $classeContext = null;
+
+        if ($classeId = $request->input('classe_id')) {
+            $classe = ESBTPClasse::with('filiere:id,name,code,is_tronc_commun', 'niveauEtude:id,name,code')
+                ->find((int) $classeId);
+            if (! $classe) {
+                return $this->errorResponse('Classe introuvable', ['classe_id' => $classeId], 404);
+            }
+            $filiereId = $classe->filiere_id;
+            $niveauId = $classe->niveau_etude_id;
+            $classeContext = [
+                'id' => $classe->id,
+                'name' => $classe->name,
+                'filiere' => $classe->filiere?->name,
+                'filiere_is_tronc_commun' => (bool) ($classe->filiere?->is_tronc_commun),
+                'niveau' => $classe->niveauEtude?->name,
+            ];
+        }
+
+        $query = ESBTPPlanificationAcademique::query()
+            ->with([
+                'matiere:id,name,code,unite_enseignement_id',
+                'matiere.filieres:id,name,code,is_tronc_commun',
+                'filiere:id,name,code,is_tronc_commun',
+                'niveauEtude:id,name,code',
+            ]);
+
+        if ($request->filled('annee_universitaire_id')) {
+            $query->where('annee_universitaire_id', (int) $request->input('annee_universitaire_id'));
+        }
+        if ($filiereId) {
+            $query->where('filiere_id', (int) $filiereId);
+        }
+        if ($niveauId) {
+            $query->where('niveau_etude_id', (int) $niveauId);
+        }
+        if ($request->filled('semestre')) {
+            $query->where('semestre', (int) $request->input('semestre'));
+        }
+        if ($search = $request->input('matiere_search')) {
+            $query->whereHas('matiere', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('code', 'like', "%{$search}%");
+            });
+        }
+
+        $planifications = $query->orderBy('semestre')->get();
+
+        $mismatchCount = 0;
+        $rows = $planifications->map(function (ESBTPPlanificationAcademique $planif) use (&$mismatchCount) {
+            // La planif scope la matière sur (filiere_id, niveau, semestre). Si la
+            // matière n'est PAS déclarée pour cette filière dans son pivot filieres,
+            // c'est une planification potentiellement mal scopée (matière de spé sur TC).
+            $matiereFiliereIds = $planif->matiere?->filieres->pluck('id')->all() ?? [];
+            $filiereMismatch = ! empty($matiereFiliereIds)
+                && ! in_array((int) $planif->filiere_id, $matiereFiliereIds, true);
+            if ($filiereMismatch) {
+                $mismatchCount++;
+            }
+
+            return [
+                'planif_id' => $planif->id,
+                'semestre' => $planif->semestre,
+                'filiere_id' => $planif->filiere_id,
+                'filiere' => $planif->filiere?->name,
+                'filiere_is_tronc_commun' => (bool) ($planif->filiere?->is_tronc_commun),
+                'niveau' => $planif->niveauEtude?->name,
+                'matiere_id' => $planif->matiere_id,
+                'matiere' => $planif->matiere?->name,
+                'matiere_code' => $planif->matiere?->code,
+                'matiere_is_lmd_ecue' => $planif->matiere?->unite_enseignement_id !== null,
+                'matiere_filieres' => $planif->matiere?->filieres->map(fn ($f) => [
+                    'name' => $f->name,
+                    'is_tronc_commun' => (bool) $f->is_tronc_commun,
+                ])->all(),
+                'filiere_mismatch' => $filiereMismatch,
+            ];
+        })->values()->all();
+
+        return $this->successResponse([
+            'classe_context' => $classeContext,
+            'total' => count($rows),
+            'filiere_mismatch_count' => $mismatchCount,
+            'planifications' => $rows,
+            'explanation' => [
+                'filiere_mismatch' => 'La matière est planifiée sur une filière qui ne figure pas dans son pivot filieres. Sur une filière tronc commun, cela signale une matière de spécialité rattachée par erreur au tronc commun (ex: Sécurité sur un bulletin TC).',
+                'fix' => 'Supprimer la ligne de planification erronée pour la filière tronc commun, ou corriger le rattachement filière de la matière.',
+            ],
+        ], 'Planifications académiques listées');
     }
 
     /**
