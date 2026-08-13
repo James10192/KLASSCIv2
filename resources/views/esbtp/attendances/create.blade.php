@@ -264,6 +264,9 @@
                                                             @endif
                                                         </span>
                                                         <span class="at-etu-name">{{ trim(mb_strtoupper($etudiant->nom ?? '', 'UTF-8').' '.($etudiant->prenoms ?? '')) }}</span>
+                                                        @if(($etudiant->attendance_phase_label ?? null) && $etudiant->attendance_phase_label !== \App\Services\Notes\NoteStudentCohortService::CURRENT_CLASS_LABEL)
+                                                            <span class="badge bg-light text-primary border">{{ $etudiant->attendance_phase_label }}</span>
+                                                        @endif
                                                     </div>
                                                 </td>
                                                 <td>

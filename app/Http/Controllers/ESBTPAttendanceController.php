@@ -30,23 +30,28 @@ use App\Enums\JustificationStatus;
 use App\Http\Requests\Attendance\JustifyAbsenceRequest;
 use App\Http\Requests\Attendance\ProcessJustificationRequest;
 use App\Services\AbsenceJustificationService;
+use App\Services\Attendance\AttendanceStudentCohortService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Validation\ValidationException;
 
 class ESBTPAttendanceController extends Controller
 {
     protected $matiereService;
     protected $notificationService;
     protected AbsenceJustificationService $justificationService;
+    protected AttendanceStudentCohortService $attendanceStudentCohortService;
 
     public function __construct(
         MatiereService $matiereService,
         NotificationService $notificationService,
-        AbsenceJustificationService $justificationService
+        AbsenceJustificationService $justificationService,
+        AttendanceStudentCohortService $attendanceStudentCohortService
     ) {
         $this->matiereService = $matiereService;
         $this->notificationService = $notificationService;
         $this->justificationService = $justificationService;
+        $this->attendanceStudentCohortService = $attendanceStudentCohortService;
     }
 
     /**
@@ -85,14 +90,9 @@ class ESBTPAttendanceController extends Controller
         ->finalOnly()
         // FILTRE GLOBAL OPTIMISÉ : filtrage direct par annee_universitaire_id
         // Plus besoin du whereHas indirect maintenant que la colonne existe
-        ->where('annee_universitaire_id', $anneeUniversitaire->id)
-        // ET vérifier que l'étudiant a une inscription active pour cette année
-        // ET que cette inscription correspond à la classe de l'attendance (via classe_id de l'attendance)
-        ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
-            $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-              ->where('status', 'active')
-              ->whereColumn('esbtp_inscriptions.classe_id', 'esbtp_attendances.classe_id'); // ← CRUCIAL
-        });
+        // Les faits de présence restent visibles après une orientation BTS tronc commun :
+        // ils ne dépendent pas de la classe d'inscription actuelle de l'étudiant.
+        ->where('annee_universitaire_id', $anneeUniversitaire->id);
 
         // Apply filters
         if ($request->filled('classe_id')) {
@@ -185,11 +185,6 @@ class ESBTPAttendanceController extends Controller
         $attendancesByDay = ESBTPAttendance::finalOnly()
             ->whereBetween('date', [$dateDebut, $dateFin])
             ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire) {
-                $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                  ->where('status', 'active')
-                  ->whereColumn('esbtp_inscriptions.classe_id', 'esbtp_attendances.classe_id');  // ← FILTRE CLASSE AJOUTÉ
-            })
             ->selectRaw('DATE(date) as jour, statut, COUNT(*) as total')
             ->groupBy('jour', 'statut')
             ->get();
@@ -238,16 +233,9 @@ class ESBTPAttendanceController extends Controller
         if ($classeId) {
             $classe = ESBTPClasse::find($classeId);
             if ($classe) {
-                $etudiants = ESBTPEtudiant::query()
-                    ->with('user')
-                    ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
-                        $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                          ->where('status', 'active')
-                          ->where('classe_id', $classe->id);
-                    })
-                    ->orderBy('nom')
-                    ->orderBy('prenoms')
-                    ->get();
+                $etudiants = $this->attendanceStudentCohortService
+                    ->studentsForClassPeriod($classe, $anneeUniversitaire, 'annuel')
+                    ->load('user');
             }
         } else {
             // Get students from attendances to avoid loading too many students
@@ -262,19 +250,13 @@ class ESBTPAttendanceController extends Controller
         $classesActive = ESBTPClasse::where('is_active', true)->get();
 
         foreach ($classesActive as $classe) {
-            // Compter les présences pour cette classe (uniquement étudiants année courante ET inscriptions actives)
+            // Compter les faits de présence de cette classe pour l'année courante.
             // IMPORTANT: Utiliser finalOnly() pour éviter les doublons (start + merged)
-            // IMPORTANT: Ajouter classe_id dans whereHas inscriptions pour ne compter que les attendances de cette classe
             $presentCount = ESBTPAttendance::finalOnly()
             ->whereHas('seanceCours.emploiTemps', function($q) use ($classe) {
                 $q->where('classe_id', $classe->id);
             })
             ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire, $classe) {
-                $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                  ->where('status', 'active')
-                  ->where('classe_id', $classe->id);  // ← FILTRE CLASSE AJOUTÉ
-            })
             ->where('statut', 'present')->count();
 
             $absentCount = ESBTPAttendance::finalOnly()
@@ -282,11 +264,6 @@ class ESBTPAttendanceController extends Controller
                 $q->where('classe_id', $classe->id);
             })
             ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire, $classe) {
-                $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                  ->where('status', 'active')
-                  ->where('classe_id', $classe->id);  // ← FILTRE CLASSE AJOUTÉ
-            })
             ->where('statut', 'absent')->count();
 
             $retardCount = ESBTPAttendance::finalOnly()
@@ -294,11 +271,6 @@ class ESBTPAttendanceController extends Controller
                 $q->where('classe_id', $classe->id);
             })
             ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire, $classe) {
-                $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                  ->where('status', 'active')
-                  ->where('classe_id', $classe->id);  // ← FILTRE CLASSE AJOUTÉ
-            })
             ->whereIn('statut', ['retard', 'late'])->count();
 
             $excuseCount = ESBTPAttendance::finalOnly()
@@ -306,29 +278,15 @@ class ESBTPAttendanceController extends Controller
                 $q->where('classe_id', $classe->id);
             })
             ->where('annee_universitaire_id', $anneeUniversitaire->id)
-            ->whereHas('etudiant.inscriptions', function($q) use ($anneeUniversitaire, $classe) {
-                $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                  ->where('status', 'active')
-                  ->where('classe_id', $classe->id);  // ← FILTRE CLASSE AJOUTÉ
-            })
             ->where('statut', 'excuse')->count();
 
             $totalAttendanceForClass = $presentCount + $absentCount + $retardCount + $excuseCount;
 
-            // Récupérer uniquement les étudiants inscrits pour l'année universitaire courante ET actifs
-            // IMPORTANT: Filtrer aussi par classe_id pour ne compter que les étudiants de CETTE classe
-            //
-            // FIX bug doublons (Marcel 2026-06-05) : avec $classe->etudiants() (hasManyThrough),
-            // le count comptait 1 ligne par INSCRIPTION et donc surévaluait les étudiants
-            // (et donc le ratio attendance_rate). On part d'ESBTPEtudiant pour avoir
-            // 1 ligne par étudiant.
-            $totalStudents = ESBTPEtudiant::query()
-                ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
-                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                      ->where('status', 'active')
-                      ->where('classe_id', $classe->id);
-                })
-                ->count();
+            // La cohorte annuelle inclut les phases BTS tronc commun orientées,
+            // tout en conservant le comportement des inscriptions directes et LMD.
+            // Count optimisé : pas de matérialisation des modèles pour un dénominateur.
+            $totalStudents = $this->attendanceStudentCohortService
+                ->countForClassPeriod($classe, $anneeUniversitaire, 'annuel');
             
             if ($totalAttendanceForClass > 0 || $totalStudents > 0) {
                 // IMPORTANT: Le taux de présence inclut les retards (présents + retards)
@@ -521,7 +479,7 @@ class ESBTPAttendanceController extends Controller
                     }
 
                     // Récupérer la séance avec ses relations
-                    $seance = ESBTPSeanceCours::with(['emploiTemps.classe', 'matiere'])->findOrFail($request->seance_id);
+                    $seance = ESBTPSeanceCours::with(['emploiTemps.classe', 'emploiTemps.annee', 'matiere'])->findOrFail($request->seance_id);
                     $debug['seance_trouvee'] = true;
                     $debug['seance_emploi_temps_existe'] = isset($seance->emploiTemps);
 
@@ -549,15 +507,7 @@ class ESBTPAttendanceController extends Controller
                         // archivées non soft-deleted), il apparaissait N fois.
                         // On part directement d'ESBTPEtudiant + whereHas pour ne charger qu'une
                         // ligne par étudiant.
-                        $etudiants = ESBTPEtudiant::query()
-                            ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
-                                $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                                  ->where('status', 'active')
-                                  ->where('classe_id', $classe->id);
-                            })
-                            ->orderBy('nom')
-                            ->orderBy('prenoms')
-                            ->get();
+                        $etudiants = $this->attendanceStudentCohortService->studentsForSession($seance);
                         $debug['nombre_etudiants'] = $etudiants->count();
                         $debug['etudiants_ids'] = $etudiants->pluck('id')->toArray();
 
@@ -592,18 +542,19 @@ class ESBTPAttendanceController extends Controller
                         // Mode hybride create/update : charger les présences existantes si elles existent
                         $existingAttendances = [];
                         if (!$etudiants->isEmpty() && $dateSeance && $request->filled('seance_id')) {
-                            foreach ($etudiants as $etudiant) {
-                                // Récupérer uniquement les attendances 'merged' (finales) ou sans call_type (saisie manuelle)
-                                $attendance = ESBTPAttendance::where([
-                                    'seance_cours_id' => $request->seance_id,
-                                    'etudiant_id' => $etudiant->id,
-                                    'date' => $dateSeance
-                                ])
+                            $attendances = ESBTPAttendance::where('seance_cours_id', $request->seance_id)
+                                ->whereIn('etudiant_id', $etudiants->pluck('id'))
+                                ->where('date', $dateSeance)
                                 ->where(function($query) {
                                     $query->where('call_type', 'merged')
-                                          ->orWhereNull('call_type');
+                                        ->orWhereNull('call_type');
                                 })
-                                ->first();
+                                ->get()
+                                ->keyBy('etudiant_id');
+
+                            foreach ($etudiants as $etudiant) {
+                                // Récupérer uniquement les attendances 'merged' (finales) ou sans call_type (saisie manuelle)
+                                $attendance = $attendances->get($etudiant->id);
 
                                 if ($attendance) {
                                     $existingAttendances[$etudiant->id] = $attendance;
@@ -631,15 +582,13 @@ class ESBTPAttendanceController extends Controller
                     // dans la branche seance_id ci-dessus. Même pattern : on évite le JOIN
                     // hasManyThrough qui duplique les étudiants ayant plusieurs inscriptions
                     // sur la même classe.
-                    $etudiants = ESBTPEtudiant::query()
-                        ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
-                            $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                              ->where('status', 'active')
-                              ->where('classe_id', $classe->id);
-                        })
-                        ->orderBy('nom')
-                        ->orderBy('prenoms')
-                        ->get();
+                    if ($anneeUniversitaire) {
+                        $etudiants = $this->attendanceStudentCohortService
+                            ->studentsForClassPeriod($classe, $anneeUniversitaire, 'annuel');
+                    } else {
+                        $messageErreur = 'Aucune année universitaire courante n\'est configurée.';
+                        $debug['erreur'] = 'annee_universitaire_manquante';
+                    }
                     $debug['nombre_etudiants_classe'] = $etudiants->count();
 
                     if ($etudiants->isEmpty()) {
@@ -649,7 +598,7 @@ class ESBTPAttendanceController extends Controller
                 }
             } catch (\Exception $e) {
                 \Log::error('Erreur lors de la récupération des données pour le marquage des présences: ' . $e->getMessage());
-                $messageErreur = 'Une erreur est survenue lors de la récupération des données: ' . $e->getMessage();
+                $messageErreur = 'Une erreur est survenue lors de la récupération des données.';
                 $debug['exception'] = $e->getMessage();
                 $debug['exception_trace'] = config('app.debug') ? $e->getTraceAsString() : null;
             }
@@ -801,29 +750,14 @@ class ESBTPAttendanceController extends Controller
      */
     public function loadStudents(Request $request)
     {
-        \Log::info('🔵 [AJAX] loadStudents appelé', [
-            'classe_id' => $request->classe_id,
-            'seance_id' => $request->seance_id,
-            'headers' => $request->headers->all(),
-            'is_ajax' => $request->ajax(),
-            'is_xhr' => $request->header('X-Requested-With') === 'XMLHttpRequest'
-        ]);
-
         try {
             $request->validate([
                 'classe_id' => 'required|exists:esbtp_classes,id',
                 'seance_id' => 'required|exists:esbtp_seance_cours,id',
             ]);
 
-            \Log::info('✅ [AJAX] Validation passée');
-
-            $classe = ESBTPClasse::findOrFail($request->classe_id);
-            $seance = ESBTPSeanceCours::with(['emploiTemps.classe', 'matiere'])->findOrFail($request->seance_id);
-
-            \Log::info('✅ [AJAX] Classe et séance trouvées', [
-                'classe_nom' => $classe->name,
-                'seance_matiere' => $seance->matiere->name ?? 'N/A'
-            ]);
+            $seance = ESBTPSeanceCours::with(['emploiTemps.classe', 'emploiTemps.annee', 'matiere'])
+                ->findOrFail($request->seance_id);
 
             // Vérifier que la séance appartient à la classe
             if (!$seance->emploiTemps || $seance->emploiTemps->classe_id != $request->classe_id) {
@@ -833,23 +767,8 @@ class ESBTPAttendanceController extends Controller
                 ], 400);
             }
 
-            // Récupérer l'année universitaire courante
-            $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
-
-            // Récupérer les étudiants
-            // FIX bug doublons (Marcel 2026-06-05) : on n'utilise PLUS $classe->etudiants()
-            // (hasManyThrough sur inscriptions) qui dupliquait les étudiants ayant plusieurs
-            // inscriptions sur la même classe (années différentes, anciennes archivées, etc.).
-            // On part d'ESBTPEtudiant + whereHas pour garantir 1 ligne par étudiant.
-            $etudiants = ESBTPEtudiant::query()
-                ->whereHas('inscriptions', function($q) use ($anneeUniversitaire, $classe) {
-                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                      ->where('status', 'active')
-                      ->where('classe_id', $classe->id);
-                })
-                ->orderBy('nom')
-                ->orderBy('prenoms')
-                ->get();
+            $etudiants = $this->attendanceStudentCohortService
+                ->studentsForSession($seance);
 
             if ($etudiants->isEmpty()) {
                 return response()->json([
@@ -861,7 +780,7 @@ class ESBTPAttendanceController extends Controller
             // Utiliser la date de la séance stockée en base (date_seance)
             // au lieu de calculer via getDateSeance() qui peut donner une date incorrecte
             if (!empty($seance->date_seance)) {
-                $dateSeance = \Carbon\Carbon::parse($seance->date_seance)->format('Y-m-d');
+                $dateSeance = Carbon::parse($seance->date_seance)->format('Y-m-d');
                 \Log::info('📅 [AJAX] Date from database', ['date_seance' => $dateSeance]);
             } else {
                 // Fallback: calculer si date_seance n'est pas définie
@@ -871,23 +790,16 @@ class ESBTPAttendanceController extends Controller
             }
 
             // Charger les présences existantes (uniquement 'merged' ou sans call_type)
-            $existingAttendances = [];
-            foreach ($etudiants as $etudiant) {
-                $attendance = ESBTPAttendance::where([
-                    'seance_cours_id' => $request->seance_id,
-                    'etudiant_id' => $etudiant->id,
-                    'date' => $dateSeance
-                ])
+            $existingAttendances = ESBTPAttendance::query()
+                ->where('seance_cours_id', $seance->id)
+                ->whereIn('etudiant_id', $etudiants->pluck('id'))
+                ->whereDate('date', $dateSeance)
                 ->where(function($query) {
                     $query->where('call_type', 'merged')
                           ->orWhereNull('call_type');
                 })
-                ->first();
-
-                if ($attendance) {
-                    $existingAttendances[$etudiant->id] = $attendance;
-                }
-            }
+                ->get()
+                ->keyBy('etudiant_id');
 
             // Générer le HTML pour la liste des étudiants
             $html = view('esbtp.attendances.partials.student-list', [
@@ -904,11 +816,14 @@ class ESBTPAttendanceController extends Controller
                 'mode' => count($existingAttendances) > 0 ? 'update' : 'create'
             ]);
 
-        } catch (\Exception $e) {
-            \Log::error('Erreur lors du chargement AJAX des étudiants: ' . $e->getMessage());
+        } catch (\Throwable $e) {
+            \Log::error('Erreur lors du chargement AJAX des étudiants.', [
+                'seance_id' => $request->input('seance_id'),
+                'exception' => $e,
+            ]);
             return response()->json([
                 'success' => false,
-                'message' => 'Une erreur est survenue: ' . $e->getMessage()
+                'message' => 'Une erreur est survenue lors du chargement des étudiants.'
             ], 500);
         }
     }
@@ -931,18 +846,40 @@ class ESBTPAttendanceController extends Controller
             'commentaires.*' => 'nullable|string'
         ]);
 
-        // Récupérer l'année universitaire courante
-        $anneeUniversitaire = ESBTPAnneeUniversitaire::where('is_current', true)->first();
+        $seance = ESBTPSeanceCours::with(['emploiTemps.classe', 'emploiTemps.annee'])
+            ->findOrFail($validatedData['seance_cours_id']);
+        $dateSeance = !empty($seance->date_seance)
+            ? Carbon::parse($seance->date_seance)->format('Y-m-d')
+            : $seance->getDateSeance()?->format('Y-m-d');
 
-        // Vérifier que la date correspond au jour de la séance
-        $seance = ESBTPSeanceCours::findOrFail($validatedData['seance_cours_id']);
-        $dateCalculee = $seance->getDateSeance() ? $seance->getDateSeance()->format('Y-m-d') : null;
-
-        if ($dateCalculee && $dateCalculee != $validatedData['date']) {
+        if ($dateSeance && $dateSeance != $validatedData['date']) {
             return back()->withInput()->withErrors([
                 'date' => 'La date sélectionnée ne correspond pas au jour de la séance dans l\'emploi du temps.'
             ]);
         }
+
+        try {
+            $sessionStudents = $this->attendanceStudentCohortService->studentsForSession($seance);
+        } catch (\LogicException $e) {
+            throw ValidationException::withMessages([
+                'seance_cours_id' => 'La séance sélectionnée ne permet pas de déterminer les étudiants concernés.',
+            ]);
+        }
+
+        $cohortStudentIds = $sessionStudents->pluck('id')->map(fn ($id) => (string) $id);
+        $invalidStudentIds = collect(array_keys($validatedData['statuts']))
+            ->map(fn ($id) => (string) $id)
+            ->diff($cohortStudentIds);
+
+        if ($invalidStudentIds->isNotEmpty()) {
+            throw ValidationException::withMessages(
+                $invalidStudentIds->mapWithKeys(fn ($id) => [
+                    'statuts.'.$id => 'Cet étudiant ne fait pas partie de la cohorte de cette séance.',
+                ])->all()
+            );
+        }
+
+        $emploiTemps = $seance->emploiTemps;
 
         try {
             DB::beginTransaction();
@@ -976,6 +913,10 @@ class ESBTPAttendanceController extends Controller
 
                     // Mettre à jour l'enregistrement existant avec call_type='merged' (saisie manuelle = finale)
                     $attendance->update([
+                        'classe_id' => $emploiTemps->classe_id,
+                        'matiere_id' => $seance->matiere_id,
+                        'teacher_id' => $seance->teacher_id,
+                        'annee_universitaire_id' => $emploiTemps->annee_universitaire_id,
                         'statut' => $statut,
                         'call_type' => 'merged', // Marquer comme version finale
                         'commentaire' => $commentaire,
@@ -998,7 +939,10 @@ class ESBTPAttendanceController extends Controller
                     ESBTPAttendance::create([
                         'seance_cours_id' => $validatedData['seance_cours_id'],
                         'etudiant_id' => $etudiantId,
-                        'annee_universitaire_id' => $anneeUniversitaire->id,
+                        'classe_id' => $emploiTemps->classe_id,
+                        'matiere_id' => $seance->matiere_id,
+                        'teacher_id' => $seance->teacher_id,
+                        'annee_universitaire_id' => $emploiTemps->annee_universitaire_id,
                         'date' => $validatedData['date'],
                         'heure_debut' => $heureDebut,
                         'heure_fin' => $heureFin,
@@ -1030,11 +974,16 @@ class ESBTPAttendanceController extends Controller
 
             return redirect()->route('esbtp.attendances.index')
                 ->with('success', $message);
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             DB::rollBack();
 
+            \Log::error('Erreur lors de l\'enregistrement des présences.', [
+                'seance_id' => $validatedData['seance_cours_id'],
+                'exception' => $e,
+            ]);
+
             return back()->withInput()
-                ->with('error', 'Une erreur est survenue lors de l\'enregistrement des présences: ' . $e->getMessage());
+                ->with('error', 'Une erreur est survenue lors de l\'enregistrement des présences.');
         }
     }
 
@@ -1888,7 +1837,7 @@ class ESBTPAttendanceController extends Controller
     {
         try {
             $classesWithHighAbsence = DB::table('esbtp_attendances')
-                ->select('classe_id', DB::raw('COUNT(*) as total'), DB::raw('SUM(CASE WHEN statut = "absent" THEN 1 ELSE 0 END) as absents'))
+                ->select('esbtp_emploi_temps.classe_id', DB::raw('COUNT(*) as total'), DB::raw('SUM(CASE WHEN statut = "absent" THEN 1 ELSE 0 END) as absents'))
                 ->join('esbtp_seance_cours', 'esbtp_attendances.seance_cours_id', '=', 'esbtp_seance_cours.id')
                 ->join('esbtp_emploi_temps', 'esbtp_seance_cours.emploi_temps_id', '=', 'esbtp_emploi_temps.id')
                 ->whereDate('esbtp_attendances.date', $date)
@@ -1974,19 +1923,8 @@ class ESBTPAttendanceController extends Controller
                 ? ESBTPAnneeUniversitaire::findOrFail($request->annee_universitaire_id)
                 : ESBTPAnneeUniversitaire::where('is_current', true)->firstOrFail();
 
-            // FIX bug doublons (Marcel 2026-06-05) : voir explication détaillée dans
-            // create() / loadStudents() (commit 338ee150). Le mode global manuel passe
-            // par loadManualTab() — la query DOIT partir d'ESBTPEtudiant pour ne pas
-            // dupliquer un étudiant qui a plusieurs inscriptions sur la même classe.
-            $etudiants = ESBTPEtudiant::query()
-                ->whereHas('inscriptions', function ($q) use ($anneeUniversitaire, $classe) {
-                    $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                        ->where('status', 'active')
-                        ->where('classe_id', $classe->id);
-                })
-                ->orderBy('nom')
-                ->orderBy('prenoms')
-                ->get();
+            $etudiants = $this->attendanceStudentCohortService
+                ->studentsForClassPeriod($classe, $anneeUniversitaire, $periode);
 
             $existing = $isGlobal
                 ? ESBTPAttendanceManualHours::forClasse($classe->id)
@@ -2057,16 +1995,8 @@ class ESBTPAttendanceController extends Controller
         $classe = ESBTPClasse::findOrFail($request->classe_id);
         $anneeUniversitaire = ESBTPAnneeUniversitaire::findOrFail($request->annee_universitaire_id);
 
-        // FIX bug doublons (Marcel 2026-06-05) : on part d'ESBTPEtudiant pour ne pas
-        // dupliquer les IDs si un étudiant a plusieurs inscriptions sur la classe.
-        // La déduplication n'aurait pas changé `in_array` ci-dessous mais on uniformise
-        // le pattern avec le reste du controller.
-        $validIds = ESBTPEtudiant::query()
-            ->whereHas('inscriptions', function ($q) use ($anneeUniversitaire, $classe) {
-                $q->where('annee_universitaire_id', $anneeUniversitaire->id)
-                    ->where('status', 'active')
-                    ->where('classe_id', $classe->id);
-            })
+        $validIds = $this->attendanceStudentCohortService
+            ->studentsForClassPeriod($classe, $anneeUniversitaire, $request->periode)
             ->pluck('id')
             ->all();
 

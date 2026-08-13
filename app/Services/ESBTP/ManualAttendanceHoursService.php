@@ -83,8 +83,8 @@ class ManualAttendanceHoursService
 
     private function upsertEntry(array $entry, array $context, int $userId, array &$contexts): bool
     {
-        // withTrashed() : l'index unique `manual_hours_unique_v2`
-        // (etudiant_id, matiere_key, annee, periode) ne tient PAS compte de `deleted_at`.
+        // withTrashed() : l'index unique `manual_hours_unique_v3`
+        // (etudiant_id, matiere_key, classe_id, annee, periode) ne tient PAS compte de `deleted_at`.
         // Une ligne soft-deletée occupe donc toujours la clé unique. Sans withTrashed,
         // une re-saisie après un effacement ne verrait pas la ligne soft-deletée et
         // tenterait un create() qui collisionne → « 1062 Duplicate entry » (500).
@@ -92,6 +92,7 @@ class ManualAttendanceHoursService
         $existing = $this->matchQuery(
             (int) $entry['etudiant_id'],
             $context['matiere_id'] ?? null,
+            (int) $context['classe_id'],
             (int) $context['annee_universitaire_id'],
             (string) $context['periode']
         )->withTrashed()->first();
@@ -155,10 +156,11 @@ class ManualAttendanceHoursService
         ];
     }
 
-    private function matchQuery(int $etudiantId, ?int $matiereId, int $anneeId, string $periode)
+    private function matchQuery(int $etudiantId, ?int $matiereId, int $classeId, int $anneeId, string $periode)
     {
         $q = ESBTPAttendanceManualHours::query()
             ->where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeId)
             ->where('periode', $periode);
 

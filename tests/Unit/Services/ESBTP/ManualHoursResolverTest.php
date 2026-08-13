@@ -27,8 +27,9 @@ class ManualHoursResolverTest extends TestCase
     {
         $etudiant = ESBTPEtudiant::factory()->create();
         $annee = ESBTPAnneeUniversitaire::factory()->create();
+        $classe = ESBTPClasse::factory()->create();
 
-        $snapshot = $this->resolver->snapshot($etudiant->id, $annee->id, 'semestre1');
+        $snapshot = $this->resolver->snapshot($etudiant->id, $classe->id, $annee->id, 'semestre1');
 
         $this->assertFalse($snapshot->hasAnything());
         $this->assertTrue($snapshot->perMatiere->isEmpty());
@@ -65,7 +66,7 @@ class ManualHoursResolverTest extends TestCase
             'notes' => 'Voyage officiel',
         ]);
 
-        $snapshot = $this->resolver->snapshot($etudiant->id, $annee->id, 'semestre1');
+        $snapshot = $this->resolver->snapshot($etudiant->id, $classe->id, $annee->id, 'semestre1');
 
         $this->assertTrue($snapshot->hasAnything());
         $this->assertCount(1, $snapshot->perMatiere);
@@ -92,7 +93,7 @@ class ManualHoursResolverTest extends TestCase
             'heures_absence_justifiees' => 10,
         ]);
 
-        $snapshot = $this->resolver->snapshot($etudiant->id, $annee->id, 'semestre1');
+        $snapshot = $this->resolver->snapshot($etudiant->id, $classe->id, $annee->id, 'semestre1');
 
         $this->assertNull($snapshot->forMatiere($matiere->id));
         $this->assertFalse($snapshot->hasMatiere($matiere->id));
