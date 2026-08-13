@@ -303,6 +303,10 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
     Route::get('/matieres/planifications', [App\Http\Controllers\API\CLI\CLIMatiereController::class, 'planifications'])
         ->name('matieres.planifications');
 
+    // Nettoie les matières de spécialité rattachées par erreur à une classe tronc commun (dry-run par défaut)
+    Route::post('/matieres/cleanup-tronc-commun', [App\Http\Controllers\API\CLI\CLIMatiereController::class, 'cleanupTroncCommun'])
+        ->name('matieres.cleanup-tronc-commun');
+
     // Read endpoints — Academic years
     Route::get('/annee', [App\Http\Controllers\API\CLI\CLIAcademicController::class, 'annee'])->name('annee');
 
