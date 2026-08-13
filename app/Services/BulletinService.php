@@ -1413,107 +1413,139 @@ class BulletinService
     }
 
     /**
-     * Calcule les rangs par matière pour une liste de résultats
+     * Moyennes par matière d'un étudiant, calculées EN LIVE depuis les notes
+     * (esbtp_notes) pour les périodes données. Repli du rang par matière quand la
+     * table agrégat esbtp_resultats n'est pas encore peuplée (bulletin en aperçu ou
+     * non généré officiellement). Réutilise l'algorithme de normalisation officiel :
+     * note/barème*20 pondérée par le coefficient d'évaluation (cf. calculerMoyenneDepuisNotes).
+     *
+     * @param  array<int, string>  $periodeOptions
+     * @return array<int, float> [matiere_id => moyenne]
      */
-    private function calculerRangsParMatiere($resultats, $classeId, $anneeUniversitaireId, $typeFormation)
+    private function moyennesParMatiereEtudiant(int $etudiantId, int $classeId, int $anneeUniversitaireId, array $periodeOptions): array
     {
-        if (! $resultats || $resultats->isEmpty()) {
-            return;
+        $notes = ESBTPNote::where('etudiant_id', $etudiantId)
+            ->with('evaluation')
+            ->byClasse($classeId)
+            ->byAnneeUniversitaire($anneeUniversitaireId)
+            ->where(function ($query) use ($periodeOptions) {
+                $query->whereIn('semestre', $periodeOptions)
+                    ->orWhereHas('evaluation', function ($subQuery) use ($periodeOptions) {
+                        $subQuery->whereIn('periode', $periodeOptions);
+                    });
+            })
+            ->get();
+
+        $acc = [];
+        foreach ($notes as $note) {
+            if (! $note->evaluation) {
+                continue;
+            }
+            $matiereId = $note->matiere_id ?: ($note->evaluation->matiere_id ?? null);
+            if (! $matiereId) {
+                continue;
+            }
+
+            $noteValue = $note->is_absent
+                ? 0
+                : (is_numeric($note->note) ? (float) $note->note : (is_numeric($note->valeur) ? (float) $note->valeur : 0));
+            $bareme = $note->evaluation->bareme > 0 ? (float) $note->evaluation->bareme : 20;
+            $normalized = $bareme > 0 ? ($noteValue / $bareme) * 20 : 0;
+            $evalCoeff = $note->evaluation->coefficient ? (float) $note->evaluation->coefficient : 1;
+
+            $acc[$matiereId] ??= ['points' => 0.0, 'coeffs' => 0.0];
+            $acc[$matiereId]['points'] += $normalized * $evalCoeff;
+            $acc[$matiereId]['coeffs'] += $evalCoeff;
         }
 
-        // Récupérer tous les étudiants de la classe avec leurs bulletins configurés
-        $etudiants = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classeId, $anneeUniversitaireId) {
+        $moyennes = [];
+        foreach ($acc as $matiereId => $data) {
+            if ($data['coeffs'] > 0) {
+                $moyennes[(int) $matiereId] = round($data['points'] / $data['coeffs'], 2);
+            }
+        }
+
+        return $moyennes;
+    }
+
+    /**
+     * Rang par matière calculé EN LIVE (repli quand esbtp_resultats est vide) :
+     * classe chaque étudiant de la classe sur sa moyenne matière issue des notes.
+     * Égalités : même rang (rang de la première occurrence).
+     *
+     * @param  array<int, int>  $matiereIds
+     * @return array<int, string> [matiere_id => rang|'-']
+     */
+    private function calculerRangsParMatiereLive(array $matiereIds, int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        if (empty($matiereIds)) {
+            return [];
+        }
+
+        $periodeOptions = array_unique($this->periodeOptionsForRang($periode));
+        $wanted = array_flip(array_map('intval', $matiereIds));
+
+        $etudiantIds = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classeId, $anneeUniversitaireId) {
             $q->where('classe_id', $classeId)
                 ->where('annee_universitaire_id', $anneeUniversitaireId);
-        })->get();
+        })->pluck('id');
 
-        // Pour chaque matière dans les résultats
-        foreach ($resultats as $resultat) {
-            $matiereId = $resultat->matiere_id;
-            $moyennesMatiere = [];
-
-            // Récupérer les moyennes de tous les étudiants pour cette matière
-            foreach ($etudiants as $etudiant) {
-                try {
-                    // Récupérer le bulletin de l'étudiant
-                    $bulletin = ESBTPBulletin::where('etudiant_id', $etudiant->id)
-                        ->where('classe_id', $classeId)
-                        ->where('periode', $periode)
-                        ->where('annee_universitaire_id', $anneeUniversitaireId)
-                        ->first();
-
-                    if (! $bulletin || ! $bulletin->config_matieres) {
-                        continue;
-                    }
-
-                    $configMatieres = $this->decodeJsonToArray($bulletin->config_matieres);
-                    $matiereConfig = null;
-
-                    // Chercher la matière dans la configuration
-                    foreach (['generales', 'techniques'] as $type) {
-                        if (isset($configMatieres[$type])) {
-                            foreach ($configMatieres[$type] as $config) {
-                                if ($config['matiere_id'] == $matiereId) {
-                                    $matiereConfig = $config;
-                                    break 2;
-                                }
-                            }
-                        }
-                    }
-
-                    if (! $matiereConfig) {
-                        continue;
-                    }
-
-                    // Calculer la moyenne pour cette matière
-                    $moyenneMatiere = $this->calculerMoyenneMatiere($etudiant->id, $matiereId, $matiereConfig);
-
-                    if ($moyenneMatiere > 0) {
-                        $moyennesMatiere[$etudiant->id] = $moyenneMatiere;
-                    }
-                } catch (\Exception $e) {
-                    // Ignorer les étudiants sans configuration
-                    continue;
+        // moyennes[matiereId][etudiantId] = moyenne
+        $moyennes = [];
+        foreach ($etudiantIds as $sid) {
+            $perMatiere = $this->moyennesParMatiereEtudiant((int) $sid, $classeId, $anneeUniversitaireId, $periodeOptions);
+            foreach ($perMatiere as $matiereId => $moyenne) {
+                if (isset($wanted[$matiereId]) && $moyenne > 0) {
+                    $moyennes[$matiereId][(int) $sid] = $moyenne;
                 }
-            }
-
-            // Trier les moyennes par ordre décroissant
-            arsort($moyennesMatiere);
-
-            // Attribuer les rangs
-            $rang = 1;
-            $previousMoyenne = null;
-            $previousRang = null;
-
-            foreach ($moyennesMatiere as $etudiantId => $moyenne) {
-                if ($previousMoyenne !== null && $moyenne == $previousMoyenne) {
-                    // Même moyenne, même rang
-                    $currentRang = $previousRang;
-                } else {
-                    // Moyenne différente, nouveau rang
-                    $currentRang = $rang;
-                    $previousRang = $currentRang;
-                }
-
-                // Debug temporaire
-                \Log::info("Comparaison rang : etudiant {$etudiantId} vs resultat etudiant {$resultat->etudiant_id}");
-
-                // Si c'est notre étudiant, assigner le rang
-                if ($etudiantId == $resultat->etudiant_id) {
-                    $resultat->rang = $currentRang;
-                    \Log::info("Rang assigné : {$currentRang} pour matière {$matiereId}");
-                    break;
-                }
-
-                $rang++;
-                $previousMoyenne = $moyenne;
-            }
-
-            // Si le rang n'a pas été trouvé, mettre un tiret
-            if (! isset($resultat->rang)) {
-                $resultat->rang = '-';
             }
         }
+
+        $rangs = [];
+        foreach ($matiereIds as $matiereId) {
+            $matiereId = (int) $matiereId;
+            $classement = $moyennes[$matiereId] ?? [];
+            if (empty($classement) || ! isset($classement[$etudiantId])) {
+                $rangs[$matiereId] = '-';
+                continue;
+            }
+
+            arsort($classement);
+            $position = 0;
+            $prevMoyenne = null;
+            $prevRang = 1;
+            $rang = '-';
+            foreach ($classement as $sid => $moyenne) {
+                $position++;
+                if ($prevMoyenne === null || $moyenne < $prevMoyenne) {
+                    $prevRang = $position;
+                }
+                if ($sid == $etudiantId) {
+                    $rang = (string) $prevRang;
+                    break;
+                }
+                $prevMoyenne = $moyenne;
+            }
+            $rangs[$matiereId] = $rang;
+        }
+
+        return $rangs;
+    }
+
+    /**
+     * Variantes de période acceptées (numérique + libellé) pour les requêtes de rang.
+     *
+     * @return array<int, string>
+     */
+    private function periodeOptionsForRang(string $periode): array
+    {
+        $options = [$periode];
+        $map = ['semestre1' => '1', 'semestre2' => '2', '1' => 'semestre1', '2' => 'semestre2'];
+        if (isset($map[$periode])) {
+            $options[] = $map[$periode];
+        }
+
+        return $options;
     }
 
     /**
@@ -1996,6 +2028,22 @@ class BulletinService
 
             if (! $found) {
                 $rangs[$matiereId] = '-';
+            }
+        }
+
+        // Repli : pour les matières sans ligne esbtp_resultats (bulletin en aperçu ou
+        // non généré officiellement), calculer le rang EN LIVE depuis les notes, afin
+        // que la colonne Rang ne reste pas à « - » alors que les moyennes s'affichent.
+        $manquantes = array_values(array_filter(
+            $matiereIds,
+            fn ($id) => ($rangs[(int) $id] ?? '-') === '-'
+        ));
+        if (! empty($manquantes)) {
+            $rangsLive = $this->calculerRangsParMatiereLive($manquantes, $etudiantId, $classeId, $anneeUniversitaireId, $periode);
+            foreach ($rangsLive as $matiereId => $rang) {
+                if ($rang !== '-') {
+                    $rangs[$matiereId] = $rang;
+                }
             }
         }
 

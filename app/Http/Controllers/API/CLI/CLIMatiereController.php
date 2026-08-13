@@ -5,9 +5,11 @@ namespace App\Http\Controllers\API\CLI;
 use App\Http\Controllers\API\BaseApiController;
 use App\Models\ESBTPClasse;
 use App\Models\ESBTPMatiere;
+use App\Models\ESBTPMatiereFilierNiveau;
 use App\Models\ESBTPPlanificationAcademique;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class CLIMatiereController extends BaseApiController
 {
@@ -176,6 +178,102 @@ class CLIMatiereController extends BaseApiController
                 'fix' => 'Detacher la matière de la classe tronc commun (pivot esbtp_classe_matiere) ou de la planification, ou corriger le rattachement filière de la matière.',
             ],
         ], 'Planifications académiques et matières de classe listées');
+    }
+
+    /**
+     * POST /api/cli/matieres/cleanup-tronc-commun
+     *
+     * Nettoie les matières de spécialité rattachées par erreur à une classe tronc
+     * commun (source du bug « Sécurité / Résistance des Matériaux sur bulletin TC »).
+     *
+     * Détache, pour la classe TC visée :
+     *  - du pivot legacy `esbtp_classe_matiere` (matières de la classe) ;
+     *  - du pivot canonique `esbtp_matiere_filiere_niveau` (lignes filière TC + niveau).
+     *
+     * Cibles = matières dont le pivot `filieres` N'INCLUT PAS la filière de la classe
+     * (mismatch évident : RDM, Géotechnique, Topographie…), PLUS toute matière listée
+     * explicitement dans `extra_matiere_codes` (ex: SECURITE, déclarée TC à tort — cas
+     * qui demande la décision de l'école, pas auto-détectable).
+     *
+     * SÛRETÉ : `dry_run=1` par DÉFAUT (ne fait qu'un rapport). Passer `dry_run=0` pour
+     * exécuter réellement. Ne régénère PAS les bulletins (étape ops séparée).
+     *
+     * Params : classe_id (requis), dry_run (défaut 1), extra_matiere_codes (CSV optionnel).
+     */
+    public function cleanupTroncCommun(Request $request): JsonResponse
+    {
+        if (! $request->user()->tokenCan('cli:admin')) {
+            return $this->errorResponse('Token missing cli:admin ability', [], 403);
+        }
+
+        $classe = ESBTPClasse::with('filiere:id,name,code,is_tronc_commun')
+            ->find((int) $request->input('classe_id'));
+        if (! $classe) {
+            return $this->errorResponse('Classe introuvable', ['classe_id' => $request->input('classe_id')], 404);
+        }
+        if (! $classe->filiere?->is_tronc_commun) {
+            return $this->errorResponse('La classe n\'est pas une classe tronc commun.', [
+                'classe' => $classe->name,
+                'filiere' => $classe->filiere?->name,
+            ], 422);
+        }
+
+        $dryRun = ! in_array((string) $request->input('dry_run', '1'), ['0', 'false', 'no'], true);
+        $extraCodes = collect(explode(',', (string) $request->input('extra_matiere_codes', '')))
+            ->map(fn ($c) => trim($c))
+            ->filter()
+            ->values();
+
+        // Matières rattachées à la classe (pivot legacy) + leurs filières déclarées.
+        $matieres = $classe->matieres()
+            ->with('filieres:id,is_tronc_commun')
+            ->get(['esbtp_matieres.id', 'esbtp_matieres.name', 'esbtp_matieres.code']);
+
+        $cibles = $matieres->filter(function ($m) use ($classe, $extraCodes) {
+            $filiereIds = $m->filieres->pluck('id')->all();
+            $mismatch = ! empty($filiereIds) && ! in_array((int) $classe->filiere_id, $filiereIds, true);
+
+            return $mismatch || $extraCodes->contains($m->code);
+        })->values();
+
+        $matiereIds = $cibles->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        // Lignes canoniques erronées : (matière cible, filière TC, niveau de la classe).
+        $canonRows = empty($matiereIds) ? collect() : ESBTPMatiereFilierNiveau::query()
+            ->whereIn('matiere_id', $matiereIds)
+            ->where('filiere_id', $classe->filiere_id)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->get();
+
+        $rapport = $cibles->map(fn ($m) => [
+            'matiere_id' => $m->id,
+            'matiere' => $m->name,
+            'code' => $m->code,
+            'raison' => $extraCodes->contains($m->code) ? 'code_explicite' : 'filiere_mismatch',
+        ])->all();
+
+        if (! $dryRun && ! empty($matiereIds)) {
+            DB::transaction(function () use ($classe, $matiereIds) {
+                $classe->matieres()->detach($matiereIds);
+                ESBTPMatiereFilierNiveau::query()
+                    ->whereIn('matiere_id', $matiereIds)
+                    ->where('filiere_id', $classe->filiere_id)
+                    ->where('niveau_etude_id', $classe->niveau_etude_id)
+                    ->delete();
+            });
+        }
+
+        return $this->successResponse([
+            'dry_run' => $dryRun,
+            'classe' => ['id' => $classe->id, 'name' => $classe->name, 'filiere' => $classe->filiere?->name],
+            'matieres_ciblees' => count($rapport),
+            'pivot_legacy_detachements' => count($matiereIds),
+            'pivot_canonique_lignes_supprimees' => $canonRows->count(),
+            'details' => $rapport,
+            'note' => $dryRun
+                ? 'DRY-RUN : aucune écriture. Repasser avec dry_run=0 pour exécuter (backup DB conseillé). Régénérer ensuite les bulletins TC affectés.'
+                : 'Exécuté. Régénérer les bulletins TC affectés pour rafraîchir config_matieres.',
+        ], $dryRun ? 'Nettoyage tronc commun (simulation)' : 'Nettoyage tronc commun exécuté');
     }
 
     /**
