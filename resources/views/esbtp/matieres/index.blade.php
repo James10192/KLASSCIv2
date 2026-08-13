@@ -37,6 +37,12 @@
                 </div>
             </div>
             <div class="mi-hero-actions">
+                @can('matieres.edit')
+                <a href="{{ route('esbtp.matieres.classification') }}" class="mi-btn--white">
+                    <i class="fas fa-layer-group" aria-hidden="true"></i>
+                    Tronc commun / Spécialité
+                </a>
+                @endcan
                 <a href="{{ route('esbtp.matieres.create') }}" class="mi-btn--white">
                     <i class="fas fa-plus" aria-hidden="true"></i>
                     Nouvelle matière

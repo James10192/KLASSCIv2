@@ -8,10 +8,14 @@ class ESBTPMatiereFilierNiveau extends Model
 {
     protected $table = 'esbtp_matiere_filiere_niveau';
 
+    public const TRONC_COMMUN = 'tronc_commun';
+    public const SPECIALITE = 'specialite';
+
     protected $fillable = [
         'matiere_id',
         'filiere_id',
         'niveau_etude_id',
+        'classification',
     ];
 
     public function filiere()
@@ -37,6 +41,47 @@ class ESBTPMatiereFilierNiveau extends Model
     public static function matiereIdsForCombo($filiereId, $niveauId)
     {
         return static::forCombo($filiereId, $niveauId)->pluck('matiere_id');
+    }
+
+    /**
+     * Matières de spécialité (classées `specialite`) : exclues des bulletins TC.
+     */
+    public function scopeSpecialite($query)
+    {
+        return $query->where('classification', self::SPECIALITE);
+    }
+
+    /**
+     * Matières remontant au bulletin de tronc commun : classées `tronc_commun`
+     * OU non classées (null = comportement historique, non-régressif).
+     */
+    public function scopeNotSpecialite($query)
+    {
+        return $query->where(function ($q) {
+            $q->whereNull('classification')->orWhere('classification', self::TRONC_COMMUN);
+        });
+    }
+
+    /**
+     * IDs des matières `specialite` d'un combo (filière, niveau).
+     *
+     * @return \Illuminate\Support\Collection<int, int>
+     */
+    public static function specialiteMatiereIdsForCombo($filiereId, $niveauId)
+    {
+        return static::forCombo($filiereId, $niveauId)->specialite()->pluck('matiere_id');
+    }
+
+    /**
+     * Carte matiere_id => classification (tronc_commun|specialite|null) pour un combo.
+     *
+     * @return array<int, string|null>
+     */
+    public static function classificationMapForCombo($filiereId, $niveauId): array
+    {
+        return static::forCombo($filiereId, $niveauId)
+            ->pluck('classification', 'matiere_id')
+            ->all();
     }
 
     public static function activeMatiereCountForCombo($filiereId, $niveauId)

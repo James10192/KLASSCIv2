@@ -595,6 +595,17 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                 ->middleware(['permission:classes.view']);
             // Routes pour les matiÃ¨res
             Route::name('matieres.')->prefix('matieres')->group(function () {
+                // Affectation Tronc Commun / Spécialité par (filière, niveau) — BTS.
+                // Déclarées AVANT les routes {matiere} pour éviter toute collision literal/param.
+                Route::get('/classification', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'index'])
+                    ->name('classification')
+                    ->middleware(['permission:matieres.edit']);
+                Route::get('/classification/combo', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'combo'])
+                    ->name('classification.combo')
+                    ->middleware(['permission:matieres.edit']);
+                Route::post('/classification/save', [\App\Http\Controllers\ESBTPMatiereClassificationController::class, 'save'])
+                    ->name('classification.save')
+                    ->middleware(['permission:matieres.edit']);
                 Route::get('/json', [ESBTPMatiereController::class, 'getMatieresJson'])
                     ->name('json')
                     ->middleware(['permission:matieres.view']);

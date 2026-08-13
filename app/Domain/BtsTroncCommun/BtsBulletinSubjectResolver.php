@@ -3,6 +3,7 @@
 namespace App\Domain\BtsTroncCommun;
 
 use App\Models\ESBTPClasse;
+use App\Models\ESBTPFiliere;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereFilierNiveau;
 use Illuminate\Support\Collection;
@@ -40,11 +41,26 @@ class BtsBulletinSubjectResolver
                 ? $classe->filiere->troncCommunUnionFiliereIds()
                 : [$classe->filiere_id];
 
+            // Statut TC de chaque filière de l'union (pour filtrer les matières
+            // classées « specialite » uniquement sur les combos de tronc commun).
+            $filieresById = ESBTPFiliere::whereIn('id', $unionFiliereIds)
+                ->get(['id', 'is_tronc_commun', 'parent_id'])
+                ->keyBy('id');
+
             $matiereIds = collect($unionFiliereIds)
-                ->flatMap(fn ($filiereId) => ESBTPMatiereFilierNiveau::matiereIdsForCombo(
-                    $filiereId,
-                    $classe->niveau_etude_id
-                ))
+                ->flatMap(function ($filiereId) use ($classe, $filieresById) {
+                    $query = ESBTPMatiereFilierNiveau::forCombo($filiereId, $classe->niveau_etude_id);
+
+                    // Sur un combo de tronc commun, une matière classée « specialite »
+                    // (rattachée par erreur au combo TC) ne doit pas remonter au bulletin.
+                    // Les matières non classées (null) restent incluses => non-régressif.
+                    // Sur un combo de spécialité, on garde tout (les matières de spé sont légitimes).
+                    if (optional($filieresById->get($filiereId))->isTroncCommun()) {
+                        $query->notSpecialite();
+                    }
+
+                    return $query->pluck('matiere_id');
+                })
                 ->unique()
                 ->values();
 
