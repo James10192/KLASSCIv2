@@ -508,7 +508,6 @@ class ESBTPMatiereController extends Controller
         $validatedData = $request->validate([
             'name' => 'required|string|max:255',
             'code' => 'required|string|max:50|unique:esbtp_matieres,code,'.$matiere->id,
-            'nom' => 'required|string|max:255',
             'description' => 'nullable|string',
             'coefficient' => 'required|numeric|min:0',
             'niveau_etude_id' => 'nullable|exists:esbtp_niveau_etudes,id',

@@ -19,7 +19,6 @@ class ESBTPMatiere extends Model implements Auditable
     protected $auditInclude = [
         'name',
         'code',
-        'nom',
         'description',
         'coefficient',
         'heures_cm',
@@ -64,7 +63,6 @@ class ESBTPMatiere extends Model implements Auditable
     protected $fillable = [
         'name',
         'code',
-        'nom',
         'description',
         'coefficient',
         'heures_cm',

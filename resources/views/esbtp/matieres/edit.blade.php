@@ -82,14 +82,6 @@
                                             @enderror
                                         </div>
 
-                                        <!-- Nom complet (nom) -->
-                                        <div class="mb-3">
-                                            <label for="nom" class="form-label">Nom complet <span class="text-danger">*</span></label>
-                                            <input type="text" class="form-control @error('nom') is-invalid @enderror" id="nom" name="nom" value="{{ old('nom', $matiere->nom) }}" required>
-                                            @error('nom')
-                                                <div class="invalid-feedback">{{ $message }}</div>
-                                            @enderror
-                                        </div>
                                     </div>
                                 </div>
                             </div>
