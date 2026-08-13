@@ -8,6 +8,7 @@ use App\Models\ESBTPEtudiant;
 use App\Models\ESBTPEvaluation;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
+use App\Models\ESBTPMatiereFilierNiveau;
 use App\Models\ESBTPNote;
 use App\Models\Setting;
 use App\Models\User;
@@ -324,6 +325,42 @@ class ESBTPEvaluationController extends Controller
     }
 
     /**
+     * Avertissement non bloquant : une matière classée « specialite » pour le combo
+     * (filière, niveau) saisie sur une classe de tronc commun est probablement une
+     * erreur (mauvaise classe / mauvais semestre). Basé sur la classe cible, PAS sur
+     * le numéro de semestre. BTS uniquement.
+     *
+     * @see \App\Domain\BtsTroncCommun\BtsBulletinSubjectResolver
+     */
+    private function troncCommunSpecialiteWarning(?ESBTPClasse $classe, ?ESBTPMatiere $matiere): ?string
+    {
+        if (! $classe || ! $matiere || ! $classe->filiere_id || ! $classe->niveau_etude_id) {
+            return null;
+        }
+
+        $classe->loadMissing('filiere');
+        if (! $classe->filiere || ! $classe->filiere->isTroncCommun()) {
+            return null;
+        }
+
+        $isSpecialite = ESBTPMatiereFilierNiveau::query()
+            ->where('filiere_id', $classe->filiere_id)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->where('matiere_id', $matiere->id)
+            ->where('classification', ESBTPMatiereFilierNiveau::SPECIALITE)
+            ->exists();
+
+        if (! $isSpecialite) {
+            return null;
+        }
+
+        $nom = $matiere->name ?? $matiere->nom ?? 'sélectionnée';
+
+        return 'La matière « '.$nom.' » est marquée Spécialité pour ce tronc commun. '
+            .'Vérifiez que cette évaluation est saisie sur la bonne classe (spécialité) et le bon semestre.';
+    }
+
+    /**
      * Enregistre une nouvelle évaluation.
      *
      * @return Response
@@ -499,10 +536,14 @@ class ESBTPEvaluationController extends Controller
                 $successMessage .= '<small class="text-muted">Copiez ce lien et envoyez-le à l\'enseignant externe. Le lien expire le '.$evaluation->token_expire_at->format('d/m/Y à H:i').'</small>';
             }
 
+            // Garde-fou non bloquant TC/Spécialité (basé sur la classe cible).
+            $tcWarning = $this->troncCommunSpecialiteWarning($classe, $matiere);
+
             if ($isEmbedRequest) {
                 return response()->json([
                     'success' => true,
                     'message' => $successMessagePlain,
+                    'warning' => $tcWarning,
                     'evaluation' => [
                         'id' => $evaluation->id,
                         'titre' => $evaluation->titre,
@@ -513,8 +554,13 @@ class ESBTPEvaluationController extends Controller
                 ]);
             }
 
-            return redirect()->route('esbtp.evaluations.index')
+            $redirect = redirect()->route('esbtp.evaluations.index')
                 ->with('success', $successMessage);
+            if ($tcWarning) {
+                $redirect->with('warning', $tcWarning);
+            }
+
+            return $redirect;
         } catch (\Exception $e) {
             \Log::error('Erreur lors de la création de l\'évaluation: '.$e->getMessage());
             \Log::error('Trace: '.$e->getTraceAsString());
@@ -735,8 +781,19 @@ class ESBTPEvaluationController extends Controller
                 ]);
             }
 
-            return redirect()->route('esbtp.evaluations.show', $evaluation)
+            // Garde-fou non bloquant TC/Spécialité (basé sur la classe cible).
+            $tcWarning = $this->troncCommunSpecialiteWarning(
+                ESBTPClasse::find($evaluation->classe_id),
+                ESBTPMatiere::find($evaluation->matiere_id)
+            );
+
+            $redirect = redirect()->route('esbtp.evaluations.show', $evaluation)
                 ->with('success', 'L\'évaluation a été mise à jour avec succès');
+            if ($tcWarning) {
+                $redirect->with('warning', $tcWarning);
+            }
+
+            return $redirect;
         } catch (\Exception $e) {
             return redirect()->back()
                 ->with('error', 'Une erreur est survenue lors de la mise à jour de l\'évaluation: '.$e->getMessage())
