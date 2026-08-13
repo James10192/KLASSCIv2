@@ -41,11 +41,19 @@ class CLIMatiereController extends BaseApiController
 
         $filiereId = $request->input('filiere_id');
         $niveauId = $request->input('niveau_id');
+        $search = $request->input('matiere_search');
         $classeContext = null;
 
+        $legacyPivotMatieres = null;
+        $legacyMismatchCount = 0;
+
         if ($classeId = $request->input('classe_id')) {
-            $classe = ESBTPClasse::with('filiere:id,name,code,is_tronc_commun', 'niveauEtude:id,name,code')
-                ->find((int) $classeId);
+            $classe = ESBTPClasse::with([
+                'filiere:id,name,code,is_tronc_commun',
+                'niveauEtude:id,name,code',
+                'matieres:id,name,code,unite_enseignement_id',
+                'matieres.filieres:id,name,code,is_tronc_commun',
+            ])->find((int) $classeId);
             if (! $classe) {
                 return $this->errorResponse('Classe introuvable', ['classe_id' => $classeId], 404);
             }
@@ -58,6 +66,37 @@ class CLIMatiereController extends BaseApiController
                 'filiere_is_tronc_commun' => (bool) ($classe->filiere?->is_tronc_commun),
                 'niveau' => $classe->niveauEtude?->name,
             ];
+
+            // Source legacy : pivot esbtp_classe_matiere (tenants BTS sans
+            // planifications académiques). Une matière dont le pivot filieres
+            // n'inclut PAS la filière de la classe = matière de spécialité
+            // rattachée par erreur (ex: Sécurité sur une classe tronc commun).
+            $legacyPivotMatieres = $classe->matieres
+                ->filter(fn ($m) => $search === null || $search === '' ? true
+                    : (stripos((string) $m->name, (string) $search) !== false
+                        || stripos((string) $m->code, (string) $search) !== false))
+                ->map(function ($m) use ($classe, &$legacyMismatchCount) {
+                    $matiereFiliereIds = $m->filieres->pluck('id')->all();
+                    $mismatch = ! empty($matiereFiliereIds)
+                        && ! in_array((int) $classe->filiere_id, $matiereFiliereIds, true);
+                    if ($mismatch) {
+                        $legacyMismatchCount++;
+                    }
+
+                    return [
+                        'matiere_id' => $m->id,
+                        'matiere' => $m->name,
+                        'matiere_code' => $m->code,
+                        'pivot_coefficient' => $m->pivot->coefficient ?? null,
+                        'pivot_is_active' => (bool) ($m->pivot->is_active ?? true),
+                        'matiere_is_lmd_ecue' => $m->unite_enseignement_id !== null,
+                        'matiere_filieres' => $m->filieres->map(fn ($f) => [
+                            'name' => $f->name,
+                            'is_tronc_commun' => (bool) $f->is_tronc_commun,
+                        ])->all(),
+                        'filiere_mismatch' => $mismatch,
+                    ];
+                })->values()->all();
         }
 
         $query = ESBTPPlanificationAcademique::query()
@@ -80,7 +119,7 @@ class CLIMatiereController extends BaseApiController
         if ($request->filled('semestre')) {
             $query->where('semestre', (int) $request->input('semestre'));
         }
-        if ($search = $request->input('matiere_search')) {
+        if ($search !== null && $search !== '') {
             $query->whereHas('matiere', function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('code', 'like', "%{$search}%");
@@ -125,11 +164,18 @@ class CLIMatiereController extends BaseApiController
             'total' => count($rows),
             'filiere_mismatch_count' => $mismatchCount,
             'planifications' => $rows,
-            'explanation' => [
-                'filiere_mismatch' => 'La matière est planifiée sur une filière qui ne figure pas dans son pivot filieres. Sur une filière tronc commun, cela signale une matière de spécialité rattachée par erreur au tronc commun (ex: Sécurité sur un bulletin TC).',
-                'fix' => 'Supprimer la ligne de planification erronée pour la filière tronc commun, ou corriger le rattachement filière de la matière.',
+            'legacy_pivot' => [
+                'source' => 'esbtp_classe_matiere',
+                'note' => 'Rempli uniquement pour un classe_id. Source des matières BTS legacy quand la classe n\'a pas de planification académique.',
+                'total' => $legacyPivotMatieres === null ? null : count($legacyPivotMatieres),
+                'filiere_mismatch_count' => $legacyMismatchCount,
+                'matieres' => $legacyPivotMatieres,
             ],
-        ], 'Planifications académiques listées');
+            'explanation' => [
+                'filiere_mismatch' => 'La matière est rattachée (planif OU pivot classe) à une filière absente de son pivot filieres. Sur une classe tronc commun, cela signale une matière de spécialité rattachée par erreur au tronc commun (ex: Sécurité sur un bulletin TC).',
+                'fix' => 'Detacher la matière de la classe tronc commun (pivot esbtp_classe_matiere) ou de la planification, ou corriger le rattachement filière de la matière.',
+            ],
+        ], 'Planifications académiques et matières de classe listées');
     }
 
     /**
