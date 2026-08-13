@@ -148,6 +148,40 @@ class GlobalManualHoursTest extends TestCase
         $this->assertTrue($result['has_global']);
     }
 
+    public function test_manual_hours_are_scoped_by_class_for_the_same_student_and_subject(): void
+    {
+        $user = $this->authUser();
+        $etudiant = ESBTPEtudiant::factory()->create();
+        $matiere = ESBTPMatiere::factory()->create();
+        $annee = ESBTPAnneeUniversitaire::factory()->create();
+        $classeTroncCommun = ESBTPClasse::factory()->create();
+        $classeSpecialite = ESBTPClasse::factory()->create();
+        $service = app(ManualAttendanceHoursService::class);
+
+        foreach ([$classeTroncCommun, $classeSpecialite] as $classe) {
+            $service->upsertBatch(
+                [[
+                    'etudiant_id' => $etudiant->id,
+                    'heures_absence_justifiees' => 2,
+                ]],
+                [
+                    'classe_id' => $classe->id,
+                    'matiere_id' => $matiere->id,
+                    'annee_universitaire_id' => $annee->id,
+                    'periode' => 'annuel',
+                ],
+                $user->id
+            );
+        }
+
+        $this->assertSame(2, ESBTPAttendanceManualHours::query()
+            ->where('etudiant_id', $etudiant->id)
+            ->where('matiere_id', $matiere->id)
+            ->where('annee_universitaire_id', $annee->id)
+            ->where('periode', 'annuel')
+            ->count());
+    }
+
     public function test_par_matiere_does_not_ventilate_global_across_matieres(): void
     {
         $this->enableGlobalFlag();

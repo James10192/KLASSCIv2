@@ -2,6 +2,7 @@
 
 namespace App\Services\ESBTP;
 
+use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Enums\JustificationStatus;
 use App\Models\ESBTPAttendance;
 use App\Support\Attendance\ManualHoursSnapshot;
@@ -11,6 +12,7 @@ class ESBTPAbsenceService
 {
     public function __construct(
         protected ManualHoursResolver $resolver,
+        protected BtsAnnualClassMapResolver $classMapResolver,
     ) {
     }
 
@@ -42,10 +44,16 @@ class ESBTPAbsenceService
         // en ne comptant les séances réelles qu'UNE seule fois sur l'année.
         if ($anneeUniversitaireId && $periode !== null
             && $this->normalizePeriode((string) $periode) === 'annuel') {
-            return $this->aggregateAnnualAbsences((int) $etudiantId, (int) $anneeUniversitaireId, $dateDebut, $dateFin);
+            return $this->aggregateAnnualAbsences(
+                (int) $etudiantId,
+                (int) $classeId,
+                (int) $anneeUniversitaireId,
+                $dateDebut,
+                $dateFin
+            );
         }
 
-        $snapshot = $this->snapshot($etudiantId, $anneeUniversitaireId, $periode);
+        $snapshot = $this->snapshot($etudiantId, $classeId, $anneeUniversitaireId, $periode);
 
         // PRIORITÉ 1 — Saisie GLOBALE par semestre : c'est le total autoritaire du
         // semestre. Elle ÉCRASE les séances réelles ET la saisie manuelle par matière
@@ -57,7 +65,7 @@ class ESBTPAbsenceService
 
         // PRIORITÉ 2 — Saisie manuelle PAR MATIÈRE : elle ÉCRASE les séances réelles de
         // sa matière. Les autres matières restent comptées via les séances réelles.
-        return $this->buildSessionsWithPerMatiere((int) $etudiantId, $dateDebut, $dateFin, $snapshot);
+        return $this->buildSessionsWithPerMatiere((int) $etudiantId, (int) $classeId, $dateDebut, $dateFin, $snapshot);
     }
 
     /**
@@ -94,12 +102,12 @@ class ESBTPAbsenceService
      * les séances de SA matière (exclusion dans la requête), les autres matières
      * restent comptées via les séances.
      */
-    private function buildSessionsWithPerMatiere(int $etudiantId, $dateDebut, $dateFin, ManualHoursSnapshot $snapshot): array
+    private function buildSessionsWithPerMatiere(int $etudiantId, int $classeId, $dateDebut, $dateFin, ManualHoursSnapshot $snapshot): array
     {
         $manualByMatiere = $snapshot->perMatiere;
         $manualMatiereIds = $snapshot->matiereIdsWithManual();
 
-        [$sJust, $sNon, $sDetailJust, $sDetailNon] = $this->sumSessions($etudiantId, $dateDebut, $dateFin, $manualMatiereIds);
+        [$sJust, $sNon, $sDetailJust, $sDetailNon] = $this->sumSessions($etudiantId, [$classeId], $dateDebut, $dateFin, $manualMatiereIds);
 
         $absencesJustifiees = $sJust;
         $absencesNonJustifiees = $sNon;
@@ -135,10 +143,21 @@ class ESBTPAbsenceService
      *
      * @return array{0: float, 1: float, 2: array, 3: array} [justifiees, non_justifiees, detailJust, detailNon]
      */
-    private function sumSessions(int $etudiantId, $dateDebut, $dateFin, array $excludeMatiereIds): array
+    /**
+     * @param array<int, int> $classeIds Classes à scoper (vide = toutes classes, comportement legacy)
+     */
+    private function sumSessions(int $etudiantId, array $classeIds, $dateDebut, $dateFin, array $excludeMatiereIds): array
     {
         $sessionsQuery = ESBTPAttendance::where('etudiant_id', $etudiantId)
             ->whereBetween('date', [$dateDebut, $dateFin]);
+
+        // Scope par classe seulement si au moins une classe est réellement connue.
+        // Un appelant legacy qui ne résout pas la classe (0/null) conserve le
+        // comptage historique « toutes classes » au lieu d'un 0 silencieux.
+        $classeIds = array_values(array_filter($classeIds, fn ($id) => (int) $id > 0));
+        if (!empty($classeIds)) {
+            $sessionsQuery->whereIn('classe_id', $classeIds);
+        }
 
         if (!empty($excludeMatiereIds)) {
             $sessionsQuery->where(function ($q) use ($excludeMatiereIds) {
@@ -182,10 +201,20 @@ class ESBTPAbsenceService
      * sont pas ventilées par semestre, dès qu'un semestre a un global on ne rajoute
      * pas les séances (le global couvre l'assiduité réelle).
      */
-    private function aggregateAnnualAbsences(int $etudiantId, int $anneeId, $dateDebut, $dateFin): array
+    private function aggregateAnnualAbsences(int $etudiantId, int $classeId, int $anneeId, $dateDebut, $dateFin): array
     {
-        $s1 = $this->resolver->snapshot($etudiantId, $anneeId, 'semestre1');
-        $s2 = $this->resolver->snapshot($etudiantId, $anneeId, 'semestre2');
+        // Un étudiant BTS orienté a suivi le S1 en classe tronc commun et le S2 en
+        // classe de spécialité. Ses absences (manuelles ET séances) sont donc
+        // scopées sur DEUX classes distinctes selon le semestre. On résout la
+        // classe porteuse de chaque semestre via le class-map (le même que les
+        // moyennes). Pour un étudiant non orienté / LMD, les deux valeurs sont
+        // identiques à $classeId → comportement inchangé.
+        $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeId);
+        $classeIdS1 = (int) ($classMap['semestre1_classe_id'] ?? $classeId);
+        $classeIdS2 = (int) ($classMap['semestre2_classe_id'] ?? $classeId);
+
+        $s1 = $this->resolver->snapshot($etudiantId, $classeIdS1, $anneeId, 'semestre1');
+        $s2 = $this->resolver->snapshot($etudiantId, $classeIdS2, $anneeId, 'semestre2');
 
         $justifiees = 0.0;
         $nonJustifiees = 0.0;
@@ -228,7 +257,9 @@ class ESBTPAbsenceService
         // Séances réelles : une seule fois sur l'année, pour les matières sans saisie
         // manuelle, et seulement si aucun semestre n'a de saisie globale.
         if (!$anyGlobal) {
-            [$sJust, $sNon, $sDetailJust, $sDetailNon] = $this->sumSessions($etudiantId, $dateDebut, $dateFin, $handledMatiereIds);
+            // Séances des deux classes du parcours (TC + spécialité si orienté).
+            $annualClasseIds = array_values(array_unique(array_filter([$classeIdS1, $classeIdS2], fn ($id) => $id > 0)));
+            [$sJust, $sNon, $sDetailJust, $sDetailNon] = $this->sumSessions($etudiantId, $annualClasseIds, $dateDebut, $dateFin, $handledMatiereIds);
             $justifiees += $sJust;
             $nonJustifiees += $sNon;
             $detailJust = array_merge($detailJust, $sDetailJust);
@@ -266,7 +297,7 @@ class ESBTPAbsenceService
             $dateFin = Carbon::now()->format('Y-m-d');
         }
 
-        $snapshot = $this->snapshot($etudiantId, $anneeUniversitaireId, $periode);
+        $snapshot = $this->snapshot($etudiantId, $classeId, $anneeUniversitaireId, $periode);
         $manualByMatiere = $snapshot->perMatiere;
         $manualMatiereIds = $snapshot->matiereIdsWithManual();
 
@@ -274,6 +305,12 @@ class ESBTPAbsenceService
             ->whereNotNull('matiere_id')
             ->whereIn('statut', ['absent', 'excuse', 'absent_excuse'])
             ->whereBetween('date', [$dateDebut, $dateFin]);
+
+        // Scope par classe seulement si connue (cf. sumSessions), sinon comptage
+        // legacy « toutes classes » plutôt qu'un 0 silencieux sur classe_id = 0.
+        if ($classeId > 0) {
+            $sessionsQuery->where('classe_id', $classeId);
+        }
 
         if (!empty($manualMatiereIds)) {
             $sessionsQuery->whereNotIn('matiere_id', $manualMatiereIds);
@@ -361,7 +398,7 @@ class ESBTPAbsenceService
      * 'semestre1'). Retourne un snapshot vide si aucun contexte de
      * période n'est fourni.
      */
-    private function snapshot($etudiantId, $anneeUniversitaireId, $periode): ManualHoursSnapshot
+    private function snapshot($etudiantId, $classeId, $anneeUniversitaireId, $periode): ManualHoursSnapshot
     {
         if (!$anneeUniversitaireId || !$periode) {
             return ManualHoursSnapshot::empty();
@@ -374,12 +411,14 @@ class ESBTPAbsenceService
         if ($normalized === 'annuel') {
             return $this->resolver->annualSnapshot(
                 (int) $etudiantId,
+                (int) $classeId,
                 (int) $anneeUniversitaireId
             );
         }
 
         return $this->resolver->snapshot(
             (int) $etudiantId,
+            (int) $classeId,
             (int) $anneeUniversitaireId,
             $normalized
         );

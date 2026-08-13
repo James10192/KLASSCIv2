@@ -13,8 +13,48 @@ use Illuminate\Support\Collection;
 
 class NoteStudentCohortService
 {
+    /**
+     * Libellé de phase par défaut quand l'étudiant est simplement inscrit dans la
+     * classe demandée (pas de parcours tronc commun → spécialité). Les vues
+     * masquent le badge de phase quand le label vaut cette constante.
+     */
+    public const CURRENT_CLASS_LABEL = 'Classe actuelle';
+
     public function __construct(private readonly BtsPhaseResolver $phaseResolver)
     {
+    }
+
+    /**
+     * Compte la cohorte éligible d'une classe pour les semestres donnés, sans
+     * matérialiser les modèles étudiants (ni eager-load d'accessibilité, ni tri).
+     * Utilisé par les boucles de statistiques par classe (assiduité) où seul le
+     * dénominateur importe.
+     */
+    public function countStudentsForClass(
+        ESBTPClasse $classe,
+        ESBTPAnneeUniversitaire $annee,
+        array $semesters = []
+    ): int {
+        $requestedSemesters = $this->normalizeSemesters($semesters);
+        $eligibleIds = [];
+
+        foreach ($this->candidateInscriptions($classe, $annee, forCounting: true) as $inscription) {
+            if (! $inscription->etudiant_id) {
+                continue;
+            }
+
+            $eligibility = $this->resolveEligibilityForClass(
+                $inscription,
+                (int) $classe->id,
+                $requestedSemesters
+            );
+
+            if (! empty($eligibility['semesters'])) {
+                $eligibleIds[(int) $inscription->etudiant_id] = true;
+            }
+        }
+
+        return count($eligibleIds);
     }
 
     public function studentsForClass(
@@ -97,10 +137,21 @@ class NoteStudentCohortService
         return $this->normalizeSemester($evaluation->periode ?? null) ?? 1;
     }
 
-    private function candidateInscriptions(ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee): Collection
+    private function candidateInscriptions(ESBTPClasse $classe, ESBTPAnneeUniversitaire $annee, bool $forCounting = false): Collection
     {
-        return ESBTPInscription::query()
-            ->with([
+        // Le comptage n'a besoin que des phases (résolution d'éligibilité) : on
+        // évite l'eager-load étudiant.accessibilityProfile, inutile pour un count.
+        $relations = $forCounting
+            ? [
+                'classe.filiere',
+                'filiere',
+                'phases.classe.filiere',
+                'inscriptionOrigine.classe.filiere',
+                'inscriptionOrigine.filiere',
+                'inscriptionOrigine.phases.classe.filiere',
+                'inscriptionSpecialisation.classe.filiere',
+            ]
+            : [
                 'etudiant.accessibilityProfile',
                 'classe.filiere',
                 'filiere',
@@ -109,7 +160,10 @@ class NoteStudentCohortService
                 'inscriptionOrigine.filiere',
                 'inscriptionOrigine.phases.classe.filiere',
                 'inscriptionSpecialisation.classe.filiere',
-            ])
+            ];
+
+        return ESBTPInscription::query()
+            ->with($relations)
             ->where('annee_universitaire_id', $annee->id)
             ->where('status', 'active')
             ->where('workflow_step', 'etudiant_cree')
@@ -136,7 +190,7 @@ class NoteStudentCohortService
         $journey = $this->phaseResolver->buildJourney($inscription);
         $semesters = [];
         $source = 'direct';
-        $label = 'Classe actuelle';
+        $label = self::CURRENT_CLASS_LABEL;
 
         foreach ($journey['timeline'] ?? [] as $phase) {
             if ((int) ($phase['classe_id'] ?? 0) !== $classeId) {

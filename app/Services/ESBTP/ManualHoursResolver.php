@@ -29,11 +29,11 @@ class ManualHoursResolver
      */
     private array $cache = [];
 
-    public function snapshot(int $etudiantId, int $anneeId, string $periode): ManualHoursSnapshot
+    public function snapshot(int $etudiantId, int $classeId, int $anneeId, string $periode): ManualHoursSnapshot
     {
-        $key = "{$etudiantId}:{$anneeId}:{$periode}";
+        $key = "{$etudiantId}:{$classeId}:{$anneeId}:{$periode}";
 
-        return $this->cache[$key] ??= $this->build($etudiantId, $anneeId, $periode);
+        return $this->cache[$key] ??= $this->build($etudiantId, $classeId, $anneeId, $periode);
     }
 
     /**
@@ -43,17 +43,18 @@ class ManualHoursResolver
      * n'interroge que `periode = 'annuel'` et rate les heures saisies par
      * semestre → 0 h affiché.
      */
-    public function annualSnapshot(int $etudiantId, int $anneeId): ManualHoursSnapshot
+    public function annualSnapshot(int $etudiantId, int $classeId, int $anneeId): ManualHoursSnapshot
     {
-        $key = "{$etudiantId}:{$anneeId}:annuel:agg";
+        $key = "{$etudiantId}:{$classeId}:{$anneeId}:annuel:agg";
 
-        return $this->cache[$key] ??= $this->buildAnnual($etudiantId, $anneeId);
+        return $this->cache[$key] ??= $this->buildAnnual($etudiantId, $classeId, $anneeId);
     }
 
-    private function build(int $etudiantId, int $anneeId, string $periode): ManualHoursSnapshot
+    private function build(int $etudiantId, int $classeId, int $anneeId, string $periode): ManualHoursSnapshot
     {
         $rows = ESBTPAttendanceManualHours::query()
             ->where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeId)
             ->where('periode', $periode)
             ->get();
@@ -66,10 +67,11 @@ class ManualHoursResolver
         return new ManualHoursSnapshot($perMatiere, $global);
     }
 
-    private function buildAnnual(int $etudiantId, int $anneeId): ManualHoursSnapshot
+    private function buildAnnual(int $etudiantId, int $classeId, int $anneeId): ManualHoursSnapshot
     {
         $rows = ESBTPAttendanceManualHours::query()
             ->where('etudiant_id', $etudiantId)
+            ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeId)
             ->whereIn('periode', ['semestre1', 'semestre2', 'annuel'])
             ->with('matiere')
@@ -78,12 +80,12 @@ class ManualHoursResolver
         $perMatiere = $rows
             ->filter(fn ($row) => $row->matiere_id !== null)
             ->groupBy('matiere_id')
-            ->map(fn ($group, $matiereId) => $this->mergeGroup($group, (int) $matiereId, $etudiantId, $anneeId));
+            ->map(fn ($group, $matiereId) => $this->mergeGroup($group, (int) $matiereId, $etudiantId, $classeId, $anneeId));
 
         $globalGroup = $rows->filter(fn ($row) => $row->matiere_id === null);
         $global = $globalGroup->isEmpty()
             ? null
-            : $this->mergeGroup($globalGroup, null, $etudiantId, $anneeId);
+            : $this->mergeGroup($globalGroup, null, $etudiantId, $classeId, $anneeId);
 
         return new ManualHoursSnapshot($perMatiere, $global);
     }
@@ -95,7 +97,7 @@ class ManualHoursResolver
      *
      * @param  \Illuminate\Support\Collection<int, ESBTPAttendanceManualHours>  $group
      */
-    private function mergeGroup(\Illuminate\Support\Collection $group, ?int $matiereId, int $etudiantId, int $anneeId): ESBTPAttendanceManualHours
+    private function mergeGroup(\Illuminate\Support\Collection $group, ?int $matiereId, int $etudiantId, int $classeId, int $anneeId): ESBTPAttendanceManualHours
     {
         if ($group->count() === 1) {
             return $group->first();
@@ -106,6 +108,7 @@ class ManualHoursResolver
         $aggregate = new ESBTPAttendanceManualHours([
             'etudiant_id' => $etudiantId,
             'matiere_id' => $matiereId,
+            'classe_id' => $classeId,
             'annee_universitaire_id' => $anneeId,
             'periode' => 'annuel',
             'heures_presence' => (float) $group->sum(fn ($row) => (float) $row->heures_presence),
