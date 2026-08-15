@@ -8,6 +8,7 @@ use App\Models\SettingsBackup;
 use App\Http\Middleware\CheckRequiredSettings;
 use App\Domain\Notifications\PhoneNormalizer;
 use App\Services\AppreciationScaleSettingsService;
+use App\Services\BtsBulletinPolicy;
 use App\Services\MailPulse\MailPulseTestNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -541,19 +542,7 @@ class ESBTPSettingsController extends Controller
 
     private function ensureBtsBulletinPolicySettings(): void
     {
-        $defaults = [
-            'bulletin_bts1_semester1_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 1 Semestre 1', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
-            'bulletin_bts1_semester2_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 1 Semestre 2', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
-            'bulletin_bts2_semester1_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 2 Semestre 1', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
-            'bulletin_bts2_semester2_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 2 Semestre 2', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
-            'bulletin_bts1_council_mode' => ['value' => 'manual', 'type' => 'string', 'description' => 'Mode de décision BTS 1', 'validation_rules' => ['nullable', 'in:manual,threshold']],
-            'bulletin_bts1_council_average_source' => ['value' => 'semestre2', 'type' => 'string', 'description' => 'Moyenne de décision BTS 1', 'validation_rules' => ['nullable', 'in:semestre2,annual']],
-            'bulletin_bts1_council_threshold' => ['value' => '10', 'type' => 'float', 'description' => 'Seuil de décision BTS 1', 'validation_rules' => ['nullable', 'numeric', 'between:0,20']],
-            'bulletin_bts1_council_below_text' => ['value' => 'Redouble la classe', 'type' => 'string', 'description' => 'Décision BTS 1 sous le seuil', 'validation_rules' => ['nullable', 'string', 'max:191']],
-            'bulletin_bts1_council_at_or_above_text' => ['value' => 'Admis(e) en 2e Année BTS', 'type' => 'string', 'description' => 'Décision BTS 1 au seuil ou au-dessus', 'validation_rules' => ['nullable', 'string', 'max:191']],
-            'bulletin_bts2_council_mode' => ['value' => 'manual', 'type' => 'string', 'description' => 'Mode de décision BTS 2', 'validation_rules' => ['nullable', 'in:manual,fixed']],
-            'bulletin_bts2_council_fixed_text' => ['value' => "Redouble en cas d'échec à l'examen du BTS", 'type' => 'string', 'description' => 'Décision fixe BTS 2', 'validation_rules' => ['nullable', 'string', 'max:191']],
-        ];
+        $defaults = BtsBulletinPolicy::settingDefinitions();
 
         foreach ($defaults as $key => $default) {
             $metadata = $default + [

@@ -22,6 +22,49 @@ class BtsBulletinPolicyTest extends TestCase
         self::assertSame(['semester1' => 1.0, 'semester2' => 2.0], $weights);
     }
 
+    public function test_setting_schema_exposes_defaults_validation_rules_and_reading(): void
+    {
+        $definitions = BtsBulletinPolicy::settingDefinitions();
+        $defaults = BtsBulletinPolicy::defaultSettings();
+        $rules = BtsBulletinPolicy::validationRules();
+
+        self::assertArrayHasKey('bulletin_bts1_council_mode', $definitions);
+        self::assertSame('manual', $defaults['bulletin_bts1_council_mode']);
+        self::assertSame('1', $defaults['bulletin_bts1_semester1_weight']);
+        self::assertContains('required_if:bulletin_bts1_council_mode,threshold', $rules['bulletin_bts1_council_below_text']);
+        self::assertContains('required_if:bulletin_bts2_council_mode,fixed', $rules['bulletin_bts2_council_fixed_text']);
+
+        $settings = BtsBulletinPolicy::readSettings(
+            fn (string $key, string $default) => $key === 'bulletin_bts1_semester2_weight' ? '2' : $default
+        );
+
+        self::assertSame('2', $settings['bulletin_bts1_semester2_weight']);
+        self::assertSame("Redouble en cas d'échec à l'examen du BTS", $settings['bulletin_bts2_council_fixed_text']);
+    }
+
+    public function test_effective_settings_merge_partial_input_with_existing_settings(): void
+    {
+        $stored = [
+            'bulletin_bts1_council_mode' => 'threshold',
+            'bulletin_bts1_council_below_text' => 'Redouble la classe',
+            'bulletin_bts1_semester1_weight' => '0',
+            'bulletin_bts1_semester2_weight' => '1',
+        ];
+
+        $settings = BtsBulletinPolicy::effectiveSettings(
+            [
+                'bulletin_bts1_council_below_text' => '',
+                'bulletin_bts1_semester2_weight' => '0',
+            ],
+            fn (string $key, string $default) => $stored[$key] ?? $default
+        );
+
+        self::assertSame('threshold', $settings['bulletin_bts1_council_mode']);
+        self::assertSame('', $settings['bulletin_bts1_council_below_text']);
+        self::assertSame('0', $settings['bulletin_bts1_semester1_weight']);
+        self::assertSame([1], BtsBulletinPolicy::invalidWeightPairYears($settings));
+    }
+
     public function test_non_bts_classes_keep_the_tenant_default_weights(): void
     {
         $fallback = ['semester1' => 2.0, 'semester2' => 1.0];

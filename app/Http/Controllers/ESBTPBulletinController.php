@@ -23,6 +23,7 @@ use App\Models\ESBTPResultat;
 use App\Models\ESBTPResultatMatiere;
 use App\Services\BulletinBulkPdfExporter;
 use App\Services\BulletinService;
+use App\Services\BtsBulletinPolicy;
 use App\Services\ESBTP\BulletinConsistencyService;
 use App\Services\ESBTP\ESBTPAbsenceService;
 use App\Services\NotificationService;
@@ -2193,6 +2194,22 @@ class ESBTPBulletinController extends Controller
      */
     public function saveConfiguration(Request $request)
     {
+        $effectiveBtsSettings = BtsBulletinPolicy::effectiveSettings(
+            $request->all(),
+            fn (string $key, string $default) => SettingsHelper::get($key, $default)
+        );
+        $validator = Validator::make($effectiveBtsSettings, BtsBulletinPolicy::validationRules());
+        $validator->after(function ($validator) use ($effectiveBtsSettings) {
+            foreach (BtsBulletinPolicy::invalidWeightPairYears($effectiveBtsSettings) as $year) {
+                $semester2Key = "bulletin_bts{$year}_semester2_weight";
+                $validator->errors()->add(
+                    $semester2Key,
+                    "La pondération BTS {$year} doit garder au moins un semestre actif."
+                );
+            }
+        });
+        $validator->validate();
+
         try {
             \Log::info('Début de sauvegarde configuration', ['data' => $request->all()]);
 
@@ -2254,6 +2271,17 @@ class ESBTPBulletinController extends Controller
                 'bulletin_cycle_text',
                 'bulletin_cycle_abbreviation',
                 'bulletin_table_border_style',
+                'bulletin_bts1_semester1_weight',
+                'bulletin_bts1_semester2_weight',
+                'bulletin_bts2_semester1_weight',
+                'bulletin_bts2_semester2_weight',
+                'bulletin_bts1_council_mode',
+                'bulletin_bts1_council_average_source',
+                'bulletin_bts1_council_threshold',
+                'bulletin_bts1_council_below_text',
+                'bulletin_bts1_council_at_or_above_text',
+                'bulletin_bts2_council_mode',
+                'bulletin_bts2_council_fixed_text',
                 // LMD text fields
                 'lmd_bulletin_republic_text',
                 'lmd_bulletin_union_text',
@@ -2315,16 +2343,6 @@ class ESBTPBulletinController extends Controller
         }
     }
 
-    /**
-     * Calculer les moyennes automatiques depuis les évaluations pour un étudiant
-     * Logique identique à previewMoyennes() mais pour un seul étudiant
-     *
-     * @param  int  $etudiantId
-     * @param  int  $classeId
-     * @param  string|null  $periode
-     * @param  int  $anneeUniversitaireId
-     * @param  Collection  $matieres
-     */
     private function buildCoefficientIssueContext(array $context, Request $request): array
     {
         $classeId = $context['classe']['id'] ?? $request->input('classe_id');

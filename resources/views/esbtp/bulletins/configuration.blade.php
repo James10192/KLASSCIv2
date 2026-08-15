@@ -237,7 +237,7 @@
             </div>
             <div class="cfg-kpi cfg-kpi--cyan">
                 <div class="cfg-kpi-icon"><i class="fas fa-file-alt"></i></div>
-                <div class="cfg-kpi-value">7</div>
+                <div class="cfg-kpi-value">8</div>
                 <div class="cfg-kpi-label">Sections</div>
             </div>
             <div class="cfg-kpi cfg-kpi--neutral">
@@ -471,7 +471,76 @@
                 </div>
             </div>
 
-            {{-- ══ 6. Signatures ══ --}}
+            {{-- ══ 6. Règles BTS tenant ══ --}}
+            <div class="cfg-card">
+                <div class="cfg-card-header">
+                    <div class="cfg-card-title"><i class="fas fa-gavel"></i>Règles BTS par établissement</div>
+                    <span class="cfg-card-badge">Pondération et conseil</span>
+                </div>
+                <div class="cfg-card-body">
+                    <div class="row g-3">
+                        @foreach([1 => 'BTS 1', 2 => 'BTS 2'] as $btsYear => $btsLabel)
+                            <div class="col-md-6">
+                                <label class="cfg-label">{{ $btsLabel }} · Coefficient semestre 1</label>
+                                <input type="number" class="cfg-input" name="bulletin_bts{{ $btsYear }}_semester1_weight"
+                                       value="{{ $settings['bulletin_bts'.$btsYear.'_semester1_weight'] ?? '1' }}" min="0" step="0.01">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="cfg-label">{{ $btsLabel }} · Coefficient semestre 2</label>
+                                <input type="number" class="cfg-input" name="bulletin_bts{{ $btsYear }}_semester2_weight"
+                                       value="{{ $settings['bulletin_bts'.$btsYear.'_semester2_weight'] ?? '1' }}" min="0" step="0.01">
+                            </div>
+                        @endforeach
+
+                        <div class="col-md-6">
+                            <label class="cfg-label">BTS 1 · Décision semestre 2</label>
+                            <select class="cfg-input" name="bulletin_bts1_council_mode">
+                                @foreach(['manual' => 'Manuel, zone vide', 'threshold' => 'Selon un seuil'] as $value => $label)
+                                    <option value="{{ $value }}" {{ ($settings['bulletin_bts1_council_mode'] ?? 'manual') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="cfg-label">BTS 1 · Moyenne de décision</label>
+                            <select class="cfg-input" name="bulletin_bts1_council_average_source">
+                                <option value="semestre2" {{ ($settings['bulletin_bts1_council_average_source'] ?? 'semestre2') === 'semestre2' ? 'selected' : '' }}>Moyenne du semestre 2 avec assiduité</option>
+                                <option value="annual" {{ ($settings['bulletin_bts1_council_average_source'] ?? 'semestre2') === 'annual' ? 'selected' : '' }}>Moyenne annuelle avec assiduité</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="cfg-label">BTS 1 · Seuil</label>
+                            <input type="number" class="cfg-input" name="bulletin_bts1_council_threshold"
+                                   value="{{ $settings['bulletin_bts1_council_threshold'] ?? '10' }}" min="0" max="20" step="0.01">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="cfg-label">BTS 1 · Sous le seuil</label>
+                            <input type="text" class="cfg-input" name="bulletin_bts1_council_below_text"
+                                   value="{{ $settings['bulletin_bts1_council_below_text'] ?? 'Redouble la classe' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="cfg-label">BTS 1 · Au seuil ou au-dessus</label>
+                            <input type="text" class="cfg-input" name="bulletin_bts1_council_at_or_above_text"
+                                   value="{{ $settings['bulletin_bts1_council_at_or_above_text'] ?? 'Admis(e) en 2e Année BTS' }}">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="cfg-label">BTS 2 · Décision semestre 2</label>
+                            <select class="cfg-input" name="bulletin_bts2_council_mode">
+                                @foreach(['manual' => 'Manuel, zone vide', 'fixed' => 'Texte fixe'] as $value => $label)
+                                    <option value="{{ $value }}" {{ ($settings['bulletin_bts2_council_mode'] ?? 'manual') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="cfg-label">BTS 2 · Texte fixe</label>
+                            <input type="text" class="cfg-input" name="bulletin_bts2_council_fixed_text"
+                                   value="{{ $settings['bulletin_bts2_council_fixed_text'] ?? "Redouble en cas d'échec à l'examen du BTS" }}">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {{-- ══ 7. Signatures ══ --}}
             <div class="cfg-card">
                 <div class="cfg-card-header">
                     <div class="cfg-card-title"><i class="fas fa-signature"></i>Signatures et validation</div>
@@ -490,7 +559,7 @@
                 </div>
             </div>
 
-            {{-- ══ 7. Apparence ══ --}}
+            {{-- ══ 8. Apparence ══ --}}
             <div class="cfg-card">
                 <div class="cfg-card-header">
                     <div class="cfg-card-title"><i class="fas fa-palette"></i>Apparence et style</div>

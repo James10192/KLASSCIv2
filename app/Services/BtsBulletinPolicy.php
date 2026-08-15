@@ -10,6 +10,81 @@ namespace App\Services;
  */
 final class BtsBulletinPolicy
 {
+    private const SETTING_DEFINITIONS = [
+        'bulletin_bts1_semester1_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 1 Semestre 1', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
+        'bulletin_bts1_semester2_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 1 Semestre 2', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
+        'bulletin_bts2_semester1_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 2 Semestre 1', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
+        'bulletin_bts2_semester2_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 2 Semestre 2', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
+        'bulletin_bts1_council_mode' => ['value' => 'manual', 'type' => 'string', 'description' => 'Mode de décision BTS 1', 'validation_rules' => ['nullable', 'in:manual,threshold']],
+        'bulletin_bts1_council_average_source' => ['value' => 'semestre2', 'type' => 'string', 'description' => 'Moyenne de décision BTS 1', 'validation_rules' => ['nullable', 'in:semestre2,annual']],
+        'bulletin_bts1_council_threshold' => ['value' => '10', 'type' => 'float', 'description' => 'Seuil de décision BTS 1', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'numeric', 'between:0,20']],
+        'bulletin_bts1_council_below_text' => ['value' => 'Redouble la classe', 'type' => 'string', 'description' => 'Décision BTS 1 sous le seuil', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'string', 'max:191']],
+        'bulletin_bts1_council_at_or_above_text' => ['value' => 'Admis(e) en 2e Année BTS', 'type' => 'string', 'description' => 'Décision BTS 1 au seuil ou au-dessus', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'string', 'max:191']],
+        'bulletin_bts2_council_mode' => ['value' => 'manual', 'type' => 'string', 'description' => 'Mode de décision BTS 2', 'validation_rules' => ['nullable', 'in:manual,fixed']],
+        'bulletin_bts2_council_fixed_text' => ['value' => "Redouble en cas d'échec à l'examen du BTS", 'type' => 'string', 'description' => 'Décision fixe BTS 2', 'validation_rules' => ['required_if:bulletin_bts2_council_mode,fixed', 'nullable', 'string', 'max:191']],
+    ];
+
+    public static function settingDefinitions(): array
+    {
+        return self::SETTING_DEFINITIONS;
+    }
+
+    public static function defaultSettings(): array
+    {
+        return array_map(
+            fn (array $definition) => $definition['value'],
+            self::SETTING_DEFINITIONS
+        );
+    }
+
+    public static function validationRules(): array
+    {
+        return array_map(
+            fn (array $definition) => $definition['validation_rules'],
+            self::SETTING_DEFINITIONS
+        );
+    }
+
+    public static function readSettings(callable $reader): array
+    {
+        $settings = [];
+        foreach (self::defaultSettings() as $key => $default) {
+            $settings[$key] = $reader($key, $default);
+        }
+
+        return $settings;
+    }
+
+    public static function effectiveSettings(array $input, callable $reader): array
+    {
+        $settings = [];
+        foreach (self::defaultSettings() as $key => $default) {
+            $settings[$key] = array_key_exists($key, $input)
+                ? $input[$key]
+                : $reader($key, $default);
+        }
+
+        return $settings;
+    }
+
+    public static function invalidWeightPairYears(array $settings): array
+    {
+        $invalidYears = [];
+        foreach ([1, 2] as $year) {
+            $semester1Key = "bulletin_bts{$year}_semester1_weight";
+            $semester2Key = "bulletin_bts{$year}_semester2_weight";
+            if (
+                trim((string) ($settings[$semester1Key] ?? '')) !== ''
+                && trim((string) ($settings[$semester2Key] ?? '')) !== ''
+                && ((float) $settings[$semester1Key] + (float) $settings[$semester2Key]) <= 0
+            ) {
+                $invalidYears[] = $year;
+            }
+        }
+
+        return $invalidYears;
+    }
+
     public static function annualWeights(
         bool $isBts,
         ?int $levelYear,

@@ -1579,6 +1579,11 @@ class BulletinService
             'bulletin_show_class_average' => \App\Helpers\SettingsHelper::get('bulletin_show_class_average', '1'),
             'bulletin_include_attendance_in_stats' => \App\Helpers\SettingsHelper::get('bulletin_include_attendance_in_stats', '1'),
 
+            // Regles BTS propres au tenant
+            ...BtsBulletinPolicy::readSettings(
+                fn (string $key, string $default) => \App\Helpers\SettingsHelper::get($key, $default)
+            ),
+
             // Note de conduite
             'bulletin_conduite_enabled' => \App\Helpers\SettingsHelper::get('bulletin_conduite_enabled', '0'),
             'conduite_note_defaut' => \App\Helpers\SettingsHelper::get('conduite_note_defaut', '16'),

@@ -200,6 +200,42 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringNotContainsString('decision_conseil = $automaticCouncilDecision', $bulletinService = file_get_contents(app_path('Services/BulletinService.php')));
     }
 
+    public function test_bulletin_configuration_page_can_edit_bts_tenant_policy(): void
+    {
+        $view = file_get_contents(resource_path('views/esbtp/bulletins/configuration.blade.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
+        $service = file_get_contents(app_path('Services/BulletinService.php'));
+        $settingsController = file_get_contents(app_path('Http/Controllers/ESBTP/ESBTPSettingsController.php'));
+        $policy = file_get_contents(app_path('Services/BtsBulletinPolicy.php'));
+
+        $this->assertStringContainsString("@foreach([1 => 'BTS 1', 2 => 'BTS 2'] as \$btsYear => \$btsLabel)", $view);
+        $this->assertStringContainsString('name="bulletin_bts{{ $btsYear }}_semester1_weight"', $view);
+        $this->assertStringContainsString('name="bulletin_bts{{ $btsYear }}_semester2_weight"', $view);
+        $this->assertStringContainsString('name="bulletin_bts1_council_mode"', $view);
+        $this->assertStringContainsString('name="bulletin_bts1_council_average_source"', $view);
+        $this->assertStringContainsString('name="bulletin_bts1_council_below_text"', $view);
+        $this->assertStringContainsString('name="bulletin_bts1_council_at_or_above_text"', $view);
+        $this->assertStringContainsString('name="bulletin_bts2_council_mode"', $view);
+        $this->assertStringContainsString('name="bulletin_bts2_council_fixed_text"', $view);
+
+        $this->assertStringContainsString("private const SETTING_DEFINITIONS", $policy);
+        $this->assertStringContainsString("'required_if:bulletin_bts1_council_mode,threshold'", $policy);
+        $this->assertStringContainsString("'required_if:bulletin_bts2_council_mode,fixed'", $policy);
+        $this->assertStringContainsString('BtsBulletinPolicy::validationRules()', $controller);
+        $this->assertStringContainsString('BtsBulletinPolicy::effectiveSettings(', $controller);
+        $this->assertStringContainsString('BtsBulletinPolicy::invalidWeightPairYears($effectiveBtsSettings)', $controller);
+        $this->assertStringContainsString('public static function effectiveSettings(array $input, callable $reader): array', $policy);
+        $this->assertStringContainsString('public static function invalidWeightPairYears(array $settings): array', $policy);
+        $this->assertStringContainsString('fn (string $key, string $default) => SettingsHelper::get($key, $default)', $controller);
+        $this->assertStringContainsString('La pondération BTS {$year} doit garder au moins un semestre actif.', $controller);
+        $this->assertStringContainsString("'bulletin_bts1_council_mode',", $controller);
+        $this->assertStringContainsString("'bulletin_bts2_council_fixed_text',", $controller);
+
+        $this->assertStringContainsString('...BtsBulletinPolicy::readSettings(', $service);
+        $this->assertStringContainsString('fn (string $key, string $default) => \\App\\Helpers\\SettingsHelper::get($key, $default)', $service);
+        $this->assertStringContainsString('BtsBulletinPolicy::settingDefinitions()', $settingsController);
+    }
+
     public function test_grouped_export_cover_uses_tenant_pdf_colors(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
