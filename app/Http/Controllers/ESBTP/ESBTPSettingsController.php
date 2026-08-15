@@ -556,13 +556,22 @@ class ESBTPSettingsController extends Controller
         ];
 
         foreach ($defaults as $key => $default) {
-            Setting::firstOrCreate(['key' => $key], $default + [
+            $metadata = $default + [
                 'group' => 'bulletin',
                 'category' => 'bulletin',
                 'is_required' => false,
                 'is_active' => true,
                 'default_value' => $default['value'],
-            ]);
+            ];
+
+            $setting = Setting::firstOrNew(['key' => $key]);
+
+            if ($setting->exists) {
+                unset($metadata['value']);
+            }
+
+            $setting->fill($metadata);
+            $setting->save();
         }
     }
 
