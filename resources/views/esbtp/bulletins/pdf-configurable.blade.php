@@ -643,7 +643,7 @@
                                 @if($showWeightedAverage)<td class="center">{{ number_format($resultat->moyenne * $resultat->coefficient, 2) }}</td>@endif
                                 @if($showRankPerSubject)<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
                                 @if($showAbsencesParMatiere)<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
-                                @if($showTeachers)<td>{{ $professeurs[$resultat->matiere_id] ?? 'M.' }}</td>@endif
+                                @if($showTeachers)<td>{{ trim((string) ($professeurs[$resultat->matiere_id] ?? '')) ?: 'Non attribué' }}</td>@endif
                                 @if($showAppreciations)
                                     <td class="center">
                                         @include('esbtp.bulletins.partials.appreciation', [
@@ -678,7 +678,7 @@
                             @if($showWeightedAverage)<td class="center">{{ number_format($resultat->moyenne * $resultat->coefficient, 2) }}</td>@endif
                             @if($showRankPerSubject)<td class="center">{{ $resultat->rang ?: '-' }}</td>@endif
                             @if($showAbsencesParMatiere)<td class="center">{{ isset($absencesParMatiere[$resultat->matiere_id]) ? $absencesParMatiere[$resultat->matiere_id]['total_heures'] : 0 }}</td>@endif
-                            @if($showTeachers)<td>{{ $professeurs[$resultat->matiere_id] ?? 'M.' }}</td>@endif
+                            @if($showTeachers)<td>{{ trim((string) ($professeurs[$resultat->matiere_id] ?? '')) ?: 'Non attribué' }}</td>@endif
                             @if($showAppreciations)
                                 <td class="center">
                                     @include('esbtp.bulletins.partials.appreciation', [

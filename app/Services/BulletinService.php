@@ -315,7 +315,7 @@ class BulletinService
         // pré-contrôle, pour que la génération réelle voie les mêmes notes.
         $periodeAliases = $this->periodeAliases((string) $periode);
         $notesAvecEvaluations = ESBTPNote::where('etudiant_id', $etudiant->id)
-            ->with(['evaluation.matiere'])
+            ->with(['evaluation.matiere', 'evaluation.enseignant'])
             ->whereHas('evaluation', function ($q) use ($anneeUniversitaire, $periodeAliases) {
                 $q->where('annee_universitaire_id', $anneeUniversitaire->id)
                     ->where('status', '!=', 'cancelled')
@@ -370,8 +370,29 @@ class BulletinService
                     'is_absent' => (bool) $note->is_absent,
                 ];
 
-                // Utiliser uniquement les professeurs configurés
-                $professeurs[$matiereId] = $professeursConfigures[$matiereId] ?? '';
+                // L'affectation du bulletin reste prioritaire. Sinon, tous les
+                // évaluateurs réels de la matière sont affichés dans un ordre
+                // stable, y compris les enseignants externes.
+                $professeurConfigure = trim((string) ($professeursConfigures[$matiereId] ?? ''));
+                $professeurEvaluation = trim((string) (
+                    $note->evaluation->enseignant?->name
+                    ?? $note->evaluation->enseignant_externe_nom
+                    ?? ''
+                ));
+
+                if ($professeurConfigure !== '') {
+                    $professeurs[$matiereId] = $professeurConfigure;
+                } elseif ($professeurEvaluation !== '') {
+                    $noms = array_filter(
+                        array_map('trim', explode(' / ', (string) ($professeurs[$matiereId] ?? '')))
+                    );
+                    $noms[] = $professeurEvaluation;
+                    $noms = array_values(array_unique($noms));
+                    sort($noms, SORT_NATURAL | SORT_FLAG_CASE);
+                    $professeurs[$matiereId] = implode(' / ', $noms);
+                } elseif (! isset($professeurs[$matiereId])) {
+                    $professeurs[$matiereId] = '';
+                }
             }
         }
 
