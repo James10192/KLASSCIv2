@@ -63,6 +63,43 @@ class BtsBulletinPolicyTest extends TestCase
         ]));
     }
 
+    public function test_bts_council_policy_applies_only_to_second_semester_bts_levels(): void
+    {
+        self::assertTrue(BtsBulletinPolicy::usesCouncilPolicy(true, 1, 'semestre2'));
+        self::assertTrue(BtsBulletinPolicy::usesCouncilPolicy(true, 2, 'semestre2'));
+        self::assertFalse(BtsBulletinPolicy::usesCouncilPolicy(true, 1, 'semestre1'));
+        self::assertFalse(BtsBulletinPolicy::usesCouncilPolicy(false, 1, 'semestre2'));
+        self::assertFalse(BtsBulletinPolicy::usesCouncilPolicy(true, 3, 'semestre2'));
+    }
+
+    public function test_manual_bts_second_semester_decision_does_not_fallback_to_stored_text(): void
+    {
+        self::assertSame(
+            '',
+            BtsBulletinPolicy::displayCouncilDecision(true, 1, 'semestre2', null, 'Ancienne decision')
+        );
+    }
+
+    public function test_configured_bts_second_semester_decision_has_priority_over_stored_text(): void
+    {
+        self::assertSame(
+            'Redouble la classe',
+            BtsBulletinPolicy::displayCouncilDecision(true, 1, 'semestre2', 'Redouble la classe', 'Ancienne decision')
+        );
+    }
+
+    public function test_non_bts_or_other_periods_keep_stored_decision_fallback(): void
+    {
+        self::assertSame(
+            'Decision saisie',
+            BtsBulletinPolicy::displayCouncilDecision(false, 1, 'semestre2', null, ' Decision saisie ')
+        );
+        self::assertSame(
+            'Decision saisie',
+            BtsBulletinPolicy::displayCouncilDecision(true, 1, 'semestre1', null, 'Decision saisie')
+        );
+    }
+
     public function test_tenant_can_choose_between_second_semester_and_annual_average_for_a_threshold(): void
     {
         self::assertSame(12.0, BtsBulletinPolicy::decisionAverage('semestre2', 12.0, 9.5));

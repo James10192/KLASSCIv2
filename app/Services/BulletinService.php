@@ -604,13 +604,21 @@ class BulletinService
             $noteAssiduite
         );
         $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+        $levelYear = $this->classeLevelYear($classe);
         $automaticCouncilDecision = $this->automaticCouncilDecision(
             $classe,
             $periode,
             $moyenneSemestre2,
-            $moyenneAnnuelle
+            $moyenneAnnuelle,
+            $levelYear
         );
-        $decisionConseil = $automaticCouncilDecision ?? $this->nonEmptyText($bulletin?->decision_conseil);
+        $decisionConseil = BtsBulletinPolicy::displayCouncilDecision(
+            $classe->isBTS(),
+            $levelYear,
+            $this->normalizePeriode($periode),
+            $automaticCouncilDecision,
+            $bulletin?->decision_conseil
+        );
 
         // Warning si le bulletin de l'autre semestre n'a pas été généré officiellement
         if (! $otherBulletinExists && ($periode === 'semestre2' && $moyenneSemestre1 !== null)) {
@@ -983,9 +991,7 @@ class BulletinService
             return $fallback;
         }
 
-        $levelYear = $classe->relationLoaded('niveau')
-            ? $classe->niveau?->year
-            : $classe->niveau()->value('year');
+        $levelYear = $this->classeLevelYear($classe);
         $settings = [];
         foreach ([1, 2] as $year) {
             foreach (['semester1_weight', 'semester2_weight'] as $key) {
@@ -1045,11 +1051,10 @@ class BulletinService
         string $periode,
         ?float $semester2Average,
         ?float $annualAverage,
+        ?int $levelYear = null,
     ): ?string
     {
-        $levelYear = $classe->relationLoaded('niveau')
-            ? $classe->niveau?->year
-            : $classe->niveau()->value('year');
+        $levelYear ??= $this->classeLevelYear($classe);
         $settings = [];
         foreach ([1, 2] as $year) {
             $prefix = "bulletin_bts{$year}_council_";
@@ -1070,11 +1075,11 @@ class BulletinService
         );
     }
 
-    private function nonEmptyText(mixed $value): ?string
+    private function classeLevelYear(ESBTPClasse $classe): ?int
     {
-        $value = trim((string) $value);
-
-        return $value === '' ? null : $value;
+        return $classe->relationLoaded('niveau')
+            ? $classe->niveau?->year
+            : $classe->niveau()->value('year');
     }
 
     public function calculateAnnualAverage(?float $semester1, ?float $semester2, array $weights): ?float

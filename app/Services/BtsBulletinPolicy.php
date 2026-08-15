@@ -38,7 +38,7 @@ final class BtsBulletinPolicy
         ?float $annualAverage,
         array $settings,
     ): ?string {
-        if (! $isBts || ! in_array($levelYear, [1, 2], true) || $period !== 'semestre2') {
+        if (! self::usesCouncilPolicy($isBts, $levelYear, $period)) {
             return null;
         }
 
@@ -57,6 +57,25 @@ final class BtsBulletinPolicy
         $key = $annualAverage >= $threshold ? 'at_or_above_text' : 'below_text';
 
         return self::textOrNull($settings[$prefix . $key] ?? null);
+    }
+
+    public static function usesCouncilPolicy(bool $isBts, ?int $levelYear, string $period): bool
+    {
+        return $isBts && in_array($levelYear, [1, 2], true) && $period === 'semestre2';
+    }
+
+    public static function displayCouncilDecision(
+        bool $isBts,
+        ?int $levelYear,
+        string $period,
+        ?string $configuredDecision,
+        mixed $storedDecision,
+    ): ?string {
+        if (self::usesCouncilPolicy($isBts, $levelYear, $period)) {
+            return $configuredDecision ?? '';
+        }
+
+        return $configuredDecision ?? self::textOrNull($storedDecision);
     }
 
     public static function decisionAverage(string $source, ?float $semester2Average, ?float $annualAverage): ?float
