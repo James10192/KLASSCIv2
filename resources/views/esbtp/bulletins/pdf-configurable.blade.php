@@ -897,7 +897,7 @@
         @if(($settings['bulletin_show_council_decision'] ?? '1') == '1')
         <div class="decision-container">
             <div class="decision-title">Décision du conseil de classe</div>
-            <div style="min-height: 36px; font-size: 11.5px;">{{ $appreciation }}</div>
+            <div style="min-height: 36px; font-size: 11.5px;">{{ $decisionConseil ?? $bulletin->decision_conseil ?? '' }}</div>
         </div>
         @endif
 

@@ -164,6 +164,42 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringContainsString("route('esbtp.bulletins.export-pdf-preview')", $indexView);
     }
 
+    public function test_official_pdf_gives_canonical_bulletin_data_priority_over_renderer_defaults(): void
+    {
+        $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
+
+        $this->assertStringContainsString(
+            '$data = array_replace($data, $this->getOfficialBulletinTemplateDefaults($bulletin, $persist));',
+            $controller
+        );
+        $this->assertStringContainsString('genererDonneesBulletinPreview(', $controller);
+        $this->assertStringNotContainsString('Fallback defaults unavailable for official bulletin template', $controller);
+    }
+
+    public function test_bulk_generation_recalculates_the_whole_class_rank_after_every_student_is_ready(): void
+    {
+        $bulkService = $this->bulkServiceSource();
+        $bulletinService = file_get_contents(app_path('Services/BulletinService.php'));
+
+        $this->assertStringContainsString(
+            '$this->bulletinService->recalculerRangsClasse($classe->id, $academicYearId, $period);',
+            $bulkService
+        );
+        $this->assertStringContainsString('public function recalculerRangsClasse(', $bulletinService);
+        $this->assertStringContainsString('resolveRankCohortClasseId($bulletin)', $bulletinService);
+        $this->assertStringContainsString("->pluck('moyenne_generale')", $bulletinService);
+    }
+
+    public function test_bts_council_decision_uses_the_configured_field_in_both_pdf_templates(): void
+    {
+        $yakro = file_get_contents(resource_path('views/esbtp/bulletins/pdf-configurable.blade.php'));
+        $abidjan = file_get_contents(resource_path('views/esbtp/bulletins/pdf-configurable-abidjan.blade.php'));
+
+        $this->assertStringContainsString("{{ \$decisionConseil ?? \$bulletin->decision_conseil ?? '' }}", $yakro);
+        $this->assertStringContainsString("{{ \$decisionConseil ?? \$bulletin->decision_conseil ?? '' }}", $abidjan);
+        $this->assertStringNotContainsString('decision_conseil = $automaticCouncilDecision', $bulletinService = file_get_contents(app_path('Services/BulletinService.php')));
+    }
+
     public function test_grouped_export_cover_uses_tenant_pdf_colors(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));

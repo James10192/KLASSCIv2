@@ -915,7 +915,7 @@ class ESBTPBulletinController extends Controller
 
             $settings = $config;
 
-            $semesterWeights = $this->bulletinService->getSemesterWeights();
+            $semesterWeights = $this->bulletinService->getSemesterWeights($bulletin->classe);
             $periodeCourante = $bulletin->periode;
             // Recompute note d'assiduité depuis les absences finales (était à 0 — initialisé ligne 499
             // mais jamais réassigné → moyenneAvecAssiduite = brute, le +0.13 du template venait de
@@ -987,7 +987,10 @@ class ESBTPBulletinController extends Controller
                 'settings' => $settings, // Ajouter tous les paramètres de configuration
             ];
 
-            $data += $this->getOfficialBulletinTemplateDefaults($bulletin);
+            // La projection canonique du service contient les rangs par matière et les
+            // professeurs résolus. Elle doit remplacer les valeurs transitoires du
+            // renderer, sinon le PDF groupé affiche des rangs figés à 1.
+            $data = array_replace($data, $this->getOfficialBulletinTemplateDefaults($bulletin, $persist));
 
             // Log des variables d'absences pour debugging
             Log::debug('Variables d\'absence pour le PDF dans genererPDF:', [
@@ -2417,15 +2420,22 @@ class ESBTPBulletinController extends Controller
         ];
     }
 
-    private function getOfficialBulletinTemplateDefaults(ESBTPBulletin $bulletin): array
+    private function getOfficialBulletinTemplateDefaults(ESBTPBulletin $bulletin, bool $persist): array
     {
         try {
-            return $this->bulletinService->genererDonneesBulletin(
-                $bulletin->etudiant_id,
-                $bulletin->classe_id,
-                $bulletin->annee_universitaire_id,
-                $bulletin->periode
-            );
+            return $persist
+                ? $this->bulletinService->genererDonneesBulletin(
+                    $bulletin->etudiant_id,
+                    $bulletin->classe_id,
+                    $bulletin->annee_universitaire_id,
+                    $bulletin->periode
+                )
+                : $this->bulletinService->genererDonneesBulletinPreview(
+                    $bulletin->etudiant_id,
+                    $bulletin->classe_id,
+                    $bulletin->annee_universitaire_id,
+                    $bulletin->periode
+                );
         } catch (BulletinConfigurationException $e) {
             // Bulletin non configuré : ne PAS avaler l'exception. Sans les ~25 variables
             // du template (note_assiduite, pdfSettings...), le rendu planterait sur
@@ -2433,12 +2443,7 @@ class ESBTPBulletinController extends Controller
             // caller (genererPDF) affiche un message clair « configurez d'abord ce bulletin ».
             throw $e;
         } catch (\Throwable $e) {
-            Log::warning('Fallback defaults unavailable for official bulletin template', [
-                'bulletin_id' => $bulletin->id,
-                'error' => $e->getMessage(),
-            ]);
-
-            return [];
+            throw $e;
         }
     }
 

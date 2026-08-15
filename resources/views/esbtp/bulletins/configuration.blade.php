@@ -213,6 +213,9 @@
                     </div>
                 </div>
                 <div class="cfg-header-actions">
+                    <a href="{{ route('esbtp.settings.index') }}#bts-bulletin-policy" class="cfg-header-btn">
+                        <i class="fas fa-gavel"></i>Règles BTS
+                    </a>
                     <a href="{{ route('esbtp.resultats.index') }}" class="cfg-header-btn">
                         <i class="fas fa-arrow-left"></i>Retour aux résultats
                     </a>

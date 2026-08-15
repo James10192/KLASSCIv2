@@ -13,6 +13,7 @@ use App\Models\ESBTPInscription;
 use App\Models\ESBTPMatiere;
 use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
+use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPResultat;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
@@ -538,7 +539,7 @@ class BulletinService
         // Préparer la configuration PDF
         $settings = $this->getPDFConfig();
 
-        $semesterWeights = $this->getSemesterWeights();
+        $semesterWeights = $this->getSemesterWeights($classe);
         $warnings = [];
 
         // Vérifier si le bulletin de l'autre semestre existe en base
@@ -582,6 +583,13 @@ class BulletinService
             $noteAssiduite
         );
         $moyenneAnnuelle = $this->calculateAnnualAverage($moyenneSemestre1, $moyenneSemestre2, $semesterWeights);
+        $automaticCouncilDecision = $this->automaticCouncilDecision(
+            $classe,
+            $periode,
+            $moyenneSemestre2,
+            $moyenneAnnuelle
+        );
+        $decisionConseil = $automaticCouncilDecision ?? $this->nonEmptyText($bulletin?->decision_conseil);
 
         // Warning si le bulletin de l'autre semestre n'a pas été généré officiellement
         if (! $otherBulletinExists && ($periode === 'semestre2' && $moyenneSemestre1 !== null)) {
@@ -641,6 +649,7 @@ class BulletinService
             'plus_faible_moyenne' => $statsClasse['plus_faible_moyenne'],
             'moyenne_classe' => $statsClasse['moyenne_classe'],
             'appreciation' => $appreciation,
+            'decisionConseil' => $decisionConseil,
             'absences' => $absences,
             'absencesJustifiees' => $absences['justifiees'] ?? 0,
             'absencesNonJustifiees' => $absences['non_justifiees'] ?? 0,
@@ -692,10 +701,13 @@ class BulletinService
             );
         }
 
-        $professeurs = $this->decodeJsonToArray($bulletin?->professeurs ?? null);
-        if ($professeurs === []) {
-            $professeurs = $this->professeursPayloadForBulletin($classeId, $anneeUniversitaireId, $periode);
-        }
+        $professeurs = array_replace(
+            $this->professeursPayloadForBulletin($classeId, $anneeUniversitaireId, $periode),
+            array_filter(
+                $this->decodeJsonToArray($bulletin?->professeurs ?? null),
+                fn ($value) => trim((string) $value) !== ''
+            )
+        );
 
         return [$configMatieres, $professeurs];
     }
@@ -765,17 +777,9 @@ class BulletinService
 
     private function professeursPayloadForBulletin(int $classeId, int $anneeUniversitaireId, string $periode): array
     {
-        foreach ($this->configPeriodsForBulletin($periode) as $targetPeriode) {
-            $raw = SettingsHelper::get($this->professeursTemplateKey($classeId, $anneeUniversitaireId, $targetPeriode), null);
-            $template = is_string($raw) ? $this->decodeJsonToArray($raw) : (array) $raw;
-            $template = array_filter($template, fn ($value) => trim((string) $value) !== '');
+        $professeurs = $this->professeursFromAcademicPlanning($classeId, $anneeUniversitaireId, $periode);
 
-            if ($template !== []) {
-                return $template;
-            }
-        }
-
-        $template = ESBTPBulletin::where('classe_id', $classeId)
+        $historique = ESBTPBulletin::where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
             ->whereIn('periode', $this->configPeriodsForBulletin($periode))
             ->whereNotNull('professeurs')
@@ -784,7 +788,65 @@ class BulletinService
             ->latest('updated_at')
             ->value('professeurs');
 
-        return $this->decodeJsonToArray($template);
+        $historique = array_filter(
+            $this->decodeJsonToArray($historique),
+            fn ($value) => trim((string) $value) !== ''
+        );
+        $professeurs = array_replace($professeurs, $historique);
+
+        foreach ($this->configPeriodsForBulletin($periode) as $targetPeriode) {
+            $raw = SettingsHelper::get($this->professeursTemplateKey($classeId, $anneeUniversitaireId, $targetPeriode), null);
+            $template = is_string($raw) ? $this->decodeJsonToArray($raw) : (array) $raw;
+            $template = array_filter($template, fn ($value) => trim((string) $value) !== '');
+
+            if ($template !== []) {
+                $professeurs = array_replace($professeurs, $template);
+            }
+        }
+
+        return $professeurs;
+    }
+
+    /**
+     * Retourne les enseignants principaux planifiés pour les matières de la classe.
+     * Les saisies manuelles du bulletin restent prioritaires dans le payload appelant.
+     *
+     * @return array<int, string>
+     */
+    private function professeursFromAcademicPlanning(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $classe = ESBTPClasse::with('filiere:id,parent_id')->find($classeId);
+        if (! $classe) {
+            return [];
+        }
+
+        $filiereIds = $classe->filiere?->troncCommunUnionFiliereIds() ?? [$classe->filiere_id];
+        $semestres = match ($this->normalizePeriode($periode)) {
+            'semestre1' => [1],
+            'semestre2' => [2],
+            default => [1, 2],
+        };
+
+        $planifications = ESBTPPlanificationAcademique::query()
+            ->with('enseignantPrincipal:id,name')
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('filiere_id', $filiereIds)
+            ->where('niveau_etude_id', $classe->niveau_etude_id)
+            ->whereIn('semestre', $semestres)
+            ->where('is_active', true)
+            ->whereNotNull('enseignant_principal_id')
+            ->orderByRaw('filiere_id = ? desc', [$classe->filiere_id])
+            ->get(['matiere_id', 'enseignant_principal_id']);
+
+        $professeurs = [];
+        foreach ($planifications as $planification) {
+            $nom = trim((string) ($planification->enseignantPrincipal?->name ?? ''));
+            if ($nom !== '' && ! isset($professeurs[$planification->matiere_id])) {
+                $professeurs[(int) $planification->matiere_id] = $nom;
+            }
+        }
+
+        return $professeurs;
     }
 
     private function professeursTemplateKey(int $classeId, int $anneeUniversitaireId, string $periode): string
@@ -874,7 +936,7 @@ class BulletinService
             : 'esbtp.bulletins.preview-configurable';
     }
 
-    public function getSemesterWeights(): array
+    public function getSemesterWeights(?ESBTPClasse $classe = null): array
     {
         $semester1 = floatval(SettingsHelper::get('bulletin_semester1_weight', '50'));
         $semester2 = floatval(SettingsHelper::get('bulletin_semester2_weight', '50'));
@@ -891,10 +953,107 @@ class BulletinService
             $semester2 = 50;
         }
 
-        return [
+        $fallback = [
             'semester1' => $semester1,
             'semester2' => $semester2,
         ];
+
+        if ($classe === null) {
+            return $fallback;
+        }
+
+        $levelYear = $classe->relationLoaded('niveau')
+            ? $classe->niveau?->year
+            : $classe->niveau()->value('year');
+        $settings = [];
+        foreach ([1, 2] as $year) {
+            foreach (['semester1_weight', 'semester2_weight'] as $key) {
+                $settingKey = "bulletin_bts{$year}_{$key}";
+                $settings[$settingKey] = SettingsHelper::get($settingKey);
+            }
+        }
+
+        return BtsBulletinPolicy::annualWeights($classe->isBTS(), $levelYear, $settings, $fallback);
+    }
+
+    public function recalculerRangsClasse(int $classeId, int $anneeUniversitaireId, string $periode): void
+    {
+        $period = $this->normalizePeriode($periode);
+        $bulletins = ESBTPBulletin::query()
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', $this->periodeAliases($period))
+            ->whereNotNull('moyenne_generale')
+            ->get();
+
+        $cohorts = $bulletins->groupBy(
+            fn (ESBTPBulletin $bulletin) => $this->cohortResolver->resolveRankCohortClasseId($bulletin)
+        );
+
+        foreach ($cohorts as $cohortClassId => $cohortBulletins) {
+            $activeStudentIds = ESBTPInscription::query()
+                ->where('classe_id', $cohortClassId)
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->where('status', 'active')
+                ->where('workflow_step', 'etudiant_cree')
+                ->pluck('etudiant_id');
+            $cohortAverages = ESBTPBulletin::query()
+                ->where('classe_id', $cohortClassId)
+                ->where('annee_universitaire_id', $anneeUniversitaireId)
+                ->whereIn('periode', $this->periodeAliases($period))
+                ->whereIn('etudiant_id', $activeStudentIds)
+                ->whereNotNull('moyenne_generale')
+                ->pluck('moyenne_generale');
+            $effectif = $this->getValidatedClassStudentCount((int) $cohortClassId, $anneeUniversitaireId);
+
+            foreach ($cohortBulletins as $bulletin) {
+                $rank = $cohortAverages->filter(
+                    fn ($average) => (float) $average > (float) $bulletin->moyenne_generale
+                )->count() + 1;
+
+                $bulletin->forceFill([
+                    'rang' => $rank,
+                    'effectif_classe' => $effectif,
+                ])->save();
+            }
+        }
+    }
+
+    private function automaticCouncilDecision(
+        ESBTPClasse $classe,
+        string $periode,
+        ?float $semester2Average,
+        ?float $annualAverage,
+    ): ?string
+    {
+        $levelYear = $classe->relationLoaded('niveau')
+            ? $classe->niveau?->year
+            : $classe->niveau()->value('year');
+        $settings = [];
+        foreach ([1, 2] as $year) {
+            $prefix = "bulletin_bts{$year}_council_";
+            foreach (['mode', 'threshold', 'below_text', 'at_or_above_text', 'fixed_text', 'average_source'] as $key) {
+                $settings[$prefix . $key] = SettingsHelper::get($prefix . $key);
+            }
+        }
+
+        $source = $settings["bulletin_bts{$levelYear}_council_average_source"] ?? 'semestre2';
+        $decisionAverage = BtsBulletinPolicy::decisionAverage($source, $semester2Average, $annualAverage);
+
+        return BtsBulletinPolicy::councilDecision(
+            $classe->isBTS(),
+            $levelYear,
+            $this->normalizePeriode($periode),
+            $decisionAverage,
+            $settings,
+        );
+    }
+
+    private function nonEmptyText(mixed $value): ?string
+    {
+        $value = trim((string) $value);
+
+        return $value === '' ? null : $value;
     }
 
     public function calculateAnnualAverage(?float $semester1, ?float $semester2, array $weights): ?float

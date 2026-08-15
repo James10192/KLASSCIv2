@@ -33,6 +33,7 @@ class ESBTPSettingsController extends Controller
     public function index()
     {
         $this->ensureAttendanceNoteSettings();
+        $this->ensureBtsBulletinPolicySettings();
         $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
         $appreciationScaleSettings->ensureDefaults();
         $this->ensureMailPulseSettings();
@@ -54,6 +55,7 @@ class ESBTPSettingsController extends Controller
         try {
             DB::beginTransaction();
             $this->ensureAttendanceNoteSettings();
+            $this->ensureBtsBulletinPolicySettings();
             $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
             $appreciationScaleSettings->ensureDefaults();
             $this->ensureMailPulseSettings();
@@ -534,6 +536,33 @@ class ESBTPSettingsController extends Controller
             return redirect()->back()
                 ->with('error', 'Erreur lors de la mise à jour des paramètres.')
                 ->withInput();
+        }
+    }
+
+    private function ensureBtsBulletinPolicySettings(): void
+    {
+        $defaults = [
+            'bulletin_bts1_semester1_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 1 Semestre 1', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
+            'bulletin_bts1_semester2_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 1 Semestre 2', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
+            'bulletin_bts2_semester1_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 2 Semestre 1', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
+            'bulletin_bts2_semester2_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 2 Semestre 2', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
+            'bulletin_bts1_council_mode' => ['value' => 'manual', 'type' => 'string', 'description' => 'Mode de décision BTS 1', 'validation_rules' => ['nullable', 'in:manual,threshold']],
+            'bulletin_bts1_council_average_source' => ['value' => 'semestre2', 'type' => 'string', 'description' => 'Moyenne de décision BTS 1', 'validation_rules' => ['nullable', 'in:semestre2,annual']],
+            'bulletin_bts1_council_threshold' => ['value' => '10', 'type' => 'float', 'description' => 'Seuil de décision BTS 1', 'validation_rules' => ['nullable', 'numeric', 'between:0,20']],
+            'bulletin_bts1_council_below_text' => ['value' => 'Redouble la classe', 'type' => 'string', 'description' => 'Décision BTS 1 sous le seuil', 'validation_rules' => ['nullable', 'string', 'max:191']],
+            'bulletin_bts1_council_at_or_above_text' => ['value' => 'Admis(e) en 2e Année BTS', 'type' => 'string', 'description' => 'Décision BTS 1 au seuil ou au-dessus', 'validation_rules' => ['nullable', 'string', 'max:191']],
+            'bulletin_bts2_council_mode' => ['value' => 'manual', 'type' => 'string', 'description' => 'Mode de décision BTS 2', 'validation_rules' => ['nullable', 'in:manual,fixed']],
+            'bulletin_bts2_council_fixed_text' => ['value' => "Redouble en cas d'échec à l'examen du BTS", 'type' => 'string', 'description' => 'Décision fixe BTS 2', 'validation_rules' => ['nullable', 'string', 'max:191']],
+        ];
+
+        foreach ($defaults as $key => $default) {
+            Setting::firstOrCreate(['key' => $key], $default + [
+                'group' => 'bulletin',
+                'category' => 'bulletin',
+                'is_required' => false,
+                'is_active' => true,
+                'default_value' => $default['value'],
+            ]);
         }
     }
 

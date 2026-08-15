@@ -5,6 +5,7 @@ namespace App\Services\ESBTP;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPResultat;
+use App\Models\ESBTPClasse;
 use App\Services\BulletinService;
 
 class BtsCurrentResultSnapshotService
@@ -235,7 +236,7 @@ class BtsCurrentResultSnapshotService
             $anneeUniversitaireId,
             'semestre2'
         );
-        $weights = $this->bulletinService->getSemesterWeights();
+        $weights = $this->bulletinService->getSemesterWeights(ESBTPClasse::find($classeId));
 
         $annualEffective = $this->bulletinService->calculateAnnualAverage(
             $semestre1['effective_total'],

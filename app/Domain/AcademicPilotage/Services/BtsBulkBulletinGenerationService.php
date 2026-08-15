@@ -337,6 +337,10 @@ final class BtsBulkBulletinGenerationService
             }
         }
 
+        // Les bulletins sont calculés un par un, mais le rang dépend de toute la
+        // cohorte. Ce second passage rend le résultat indépendant de l'ordre des noms.
+        $this->bulletinService->recalculerRangsClasse($classe->id, $academicYearId, $period);
+
         return new BulkBulletinGenerationResult(
             created: $created,
             regenerated: $regenerated,

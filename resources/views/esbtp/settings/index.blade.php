@@ -1993,7 +1993,7 @@
             </div>
 
             <!-- Section 5: Ponderation des semestres -->
-            <div class="settings-section">
+            <div class="settings-section" id="bts-bulletin-policy">
                 <div class="section-header">
                     <div class="section-icon ponderation"><i class="fas fa-balance-scale"></i></div>
                     <div>
@@ -2027,6 +2027,76 @@
                 <div class="bc-hint">
                     <i class="fas fa-info-circle"></i>
                     Exemple : S1 = 1, S2 = 2 -- (S1*1 + S2*2) / 3. La somme est normalisee automatiquement.
+                </div>
+
+                <div class="bc-grid bc-grid-2" style="margin-top: 20px;">
+                    @foreach([1, 2] as $btsYear)
+                    <div class="bc-input-row" style="align-items: flex-start;">
+                        <div class="bc-icon"><i class="fas fa-graduation-cap"></i></div>
+                        <div class="bc-body" style="width: 100%;">
+                            <div class="bc-label">Pondération spécifique BTS {{ $btsYear }}</div>
+                            <div class="bc-desc">Prioritaire sur la pondération générale pour cette année BTS.</div>
+                            <div style="display: flex; gap: 12px; margin-top: 10px;">
+                                <label>S1
+                                    <input type="number" class="form-control form-control-modern" style="max-width: 90px;"
+                                           name="setting_bulletin_bts{{ $btsYear }}_semester1_weight"
+                                           value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts'.$btsYear.'_semester1_weight', '1') }}"
+                                           min="0" step="0.1">
+                                </label>
+                                <label>S2
+                                    <input type="number" class="form-control form-control-modern" style="max-width: 90px;"
+                                           name="setting_bulletin_bts{{ $btsYear }}_semester2_weight"
+                                           value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts'.$btsYear.'_semester2_weight', '1') }}"
+                                           min="0" step="0.1">
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="section-header">
+                    <div class="section-icon ponderation"><i class="fas fa-gavel"></i></div>
+                    <div>
+                        <h3 class="section-title">Décision du conseil de classe BTS</h3>
+                        <p class="section-description">Règles propres à cet établissement. Le mode manuel laisse la zone vide pour la saisie du conseil.</p>
+                    </div>
+                </div>
+
+                <div class="bc-grid bc-grid-2">
+                    <div class="bc-input-row" style="align-items: flex-start;">
+                        <div class="bc-body" style="width: 100%;">
+                            <div class="bc-label">BTS 1, semestre 2</div>
+                            <select class="form-control form-control-modern" name="setting_bulletin_bts1_council_mode">
+                                @foreach(['manual' => 'Manuel', 'threshold' => 'Selon la moyenne annuelle'] as $value => $label)
+                                <option value="{{ $value }}" {{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_mode', 'manual') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <select class="form-control form-control-modern" style="margin-top: 10px;" name="setting_bulletin_bts1_council_average_source">
+                                <option value="semestre2" {{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_average_source', 'semestre2') === 'semestre2' ? 'selected' : '' }}>Moyenne du semestre 2 avec assiduité</option>
+                                <option value="annual" {{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_average_source', 'semestre2') === 'annual' ? 'selected' : '' }}>Moyenne annuelle avec assiduité</option>
+                            </select>
+                            <div style="display: grid; grid-template-columns: 80px 1fr; gap: 8px; margin-top: 10px;">
+                                <input type="number" class="form-control form-control-modern" name="setting_bulletin_bts1_council_threshold" value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_threshold', '10') }}" min="0" max="20" step="0.01">
+                                <input type="text" class="form-control form-control-modern" name="setting_bulletin_bts1_council_below_text" value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_below_text', 'Redouble la classe') }}" placeholder="Sous le seuil">
+                                <span></span>
+                                <input type="text" class="form-control form-control-modern" name="setting_bulletin_bts1_council_at_or_above_text" value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_at_or_above_text', 'Admis(e) en 2e Année BTS') }}" placeholder="Au seuil ou au-dessus">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bc-input-row" style="align-items: flex-start;">
+                        <div class="bc-body" style="width: 100%;">
+                            <div class="bc-label">BTS 2, semestre 2</div>
+                            <select class="form-control form-control-modern" name="setting_bulletin_bts2_council_mode">
+                                @foreach(['manual' => 'Manuel', 'fixed' => 'Texte fixe'] as $value => $label)
+                                <option value="{{ $value }}" {{ \App\Helpers\SettingsHelper::get('bulletin_bts2_council_mode', 'manual') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                            <input type="text" class="form-control form-control-modern" style="margin-top: 10px;" name="setting_bulletin_bts2_council_fixed_text" value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts2_council_fixed_text', "Redouble en cas d'échec à l'examen du BTS") }}" placeholder="Texte de décision">
+                        </div>
+                    </div>
                 </div>
             </div>
 
