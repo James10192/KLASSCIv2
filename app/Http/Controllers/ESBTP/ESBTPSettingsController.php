@@ -303,16 +303,44 @@ class ESBTPSettingsController extends Controller
                 'attendance_manual_hours_global_enabled',
             ], array_keys($troncCommunDefaults)))->get();
 
+            $treatMissingCheckboxesAsOff = $request->boolean('settings_save_display');
             foreach ($allCheckboxSettings as $setting) {
                 $formKey = $setting->key;  // Les champs n'ont pas le préfixe "setting_"
-                $value = $request->has($formKey) ? '1' : '0';
-                
+                if (! $treatMissingCheckboxesAsOff && ! $request->exists($formKey)) {
+                    continue;
+                }
+
+                $value = $request->boolean($formKey) ? '1' : '0';
+
                 $setting->update([
                     'value' => $value,
                     'updated_by' => auth()->id()
                 ]);
-                
+
                 $updatedSettings[] = $setting->key;
+            }
+
+            if ($request->exists('bulletin_show_signature') || $request->exists('bulletin_show_signatures')) {
+                $signatureOn = $request->boolean('bulletin_show_signature') || $request->boolean('bulletin_show_signatures');
+                foreach (['bulletin_show_signature', 'bulletin_show_signatures'] as $signatureKey) {
+                    $signatureSetting = Setting::firstOrCreate(
+                        ['key' => $signatureKey],
+                        [
+                            'value' => $signatureOn ? '1' : '0',
+                            'type' => 'boolean',
+                            'group' => 'bulletin',
+                            'category' => 'bulletin',
+                            'description' => 'Afficher les signatures du bulletin',
+                            'is_required' => false,
+                            'default_value' => '1',
+                        ]
+                    );
+                    $signatureSetting->update([
+                        'value' => $signatureOn ? '1' : '0',
+                        'updated_by' => auth()->id(),
+                    ]);
+                    $updatedSettings[] = $signatureKey;
+                }
             }
 
             // Traiter les paramètres de rappels (ESBTPSystemSetting)

@@ -273,6 +273,7 @@
 
         <form method="POST" action="{{ route('esbtp.bulletins.save-configuration') }}">
             @csrf
+            <input type="hidden" name="bulletin_save_display" value="1">
 
             <div class="tab-content">
             {{-- ══════════════════════════════════════════

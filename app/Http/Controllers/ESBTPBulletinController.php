@@ -2360,9 +2360,30 @@ class ESBTPBulletinController extends Controller
             // Récupérer tous les paramètres de bulletin avec gestion des checkboxes
             $bulletinSettings = $request->only($allBulletinFields);
 
-            // Gérer les checkboxes décochées (les définir à '0' si non présentes)
-            foreach ($checkboxFields as $field) {
-                $bulletinSettings[$field] = $request->has($field) ? '1' : '0';
+            // A partial POST (BTS weights/council only) must not treat missing
+            // display checkboxes as unchecked. Flip a toggle only when the
+            // submitted form actually carries that field or a sibling toggle.
+            $submittedCheckboxFields = array_values(array_filter(
+                $checkboxFields,
+                fn (string $field) => $request->exists($field)
+            ));
+            $treatMissingCheckboxesAsOff = $request->boolean('bulletin_save_display');
+
+            if ($treatMissingCheckboxesAsOff) {
+                foreach ($checkboxFields as $field) {
+                    $bulletinSettings[$field] = $request->boolean($field) ? '1' : '0';
+                }
+            } else {
+                foreach ($submittedCheckboxFields as $field) {
+                    $bulletinSettings[$field] = $request->boolean($field) ? '1' : '0';
+                }
+                foreach (array_diff($checkboxFields, $submittedCheckboxFields) as $field) {
+                    unset($bulletinSettings[$field]);
+                }
+            }
+
+            if (array_key_exists('bulletin_show_signatures', $bulletinSettings)) {
+                $bulletinSettings['bulletin_show_signature'] = $bulletinSettings['bulletin_show_signatures'];
             }
 
             \Log::info('Paramètres bulletin après traitement checkboxes', ['settings' => $bulletinSettings]);

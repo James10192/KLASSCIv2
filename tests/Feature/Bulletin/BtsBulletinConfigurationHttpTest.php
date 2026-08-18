@@ -75,4 +75,44 @@ class BtsBulletinConfigurationHttpTest extends TestCase
         $response->assertJsonValidationErrors(['bulletin_bts1_semester2_weight']);
         self::assertSame('1', SettingsHelper::get('bulletin_bts1_semester2_weight'));
     }
+
+    public function test_partial_post_cannot_turn_off_display_checkboxes_without_save_flag(): void
+    {
+        SettingsHelper::setOrCreate('bulletin_show_subjects_table', '1', 'bulletin');
+        SettingsHelper::setOrCreate('bulletin_show_header', '1', 'bulletin');
+        SettingsHelper::setOrCreate('bulletin_show_signatures', '1', 'bulletin');
+        SettingsHelper::setOrCreate('bulletin_bts1_semester1_weight', '1', 'bulletin');
+        SettingsHelper::setOrCreate('bulletin_bts1_semester2_weight', '2', 'bulletin');
+
+        $response = $this->from(route('esbtp.bulletins.configuration'))
+            ->post(route('esbtp.bulletins.save-configuration'), [
+                'bulletin_bts1_semester1_weight' => '1',
+                'bulletin_bts1_semester2_weight' => '2',
+            ]);
+
+        $response->assertRedirect();
+        self::assertSame('1', SettingsHelper::get('bulletin_show_subjects_table'));
+        self::assertSame('1', SettingsHelper::get('bulletin_show_header'));
+        self::assertSame('1', SettingsHelper::get('bulletin_show_signatures'));
+    }
+
+    public function test_full_display_save_can_still_uncheck_subjects_table(): void
+    {
+        SettingsHelper::setOrCreate('bulletin_show_subjects_table', '1', 'bulletin');
+        SettingsHelper::setOrCreate('bulletin_show_header', '1', 'bulletin');
+        SettingsHelper::setOrCreate('bulletin_bts1_semester1_weight', '1', 'bulletin');
+        SettingsHelper::setOrCreate('bulletin_bts1_semester2_weight', '2', 'bulletin');
+
+        $response = $this->from(route('esbtp.bulletins.configuration'))
+            ->post(route('esbtp.bulletins.save-configuration'), [
+                'bulletin_save_display' => '1',
+                'bulletin_show_header' => '1',
+                'bulletin_bts1_semester1_weight' => '1',
+                'bulletin_bts1_semester2_weight' => '2',
+            ]);
+
+        $response->assertRedirect();
+        self::assertSame('0', SettingsHelper::get('bulletin_show_subjects_table'));
+        self::assertSame('1', SettingsHelper::get('bulletin_show_header'));
+    }
 }

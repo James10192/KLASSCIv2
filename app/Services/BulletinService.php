@@ -15,6 +15,7 @@ use App\Models\ESBTPMatiereCoefficient;
 use App\Models\ESBTPNote;
 use App\Models\ESBTPPlanificationAcademique;
 use App\Models\ESBTPResultat;
+use App\Models\ESBTPResultatMatiere;
 use App\Domain\BtsTroncCommun\BtsAnnualClassMapResolver;
 use App\Domain\BtsTroncCommun\BtsBulletinCohortResolver;
 use App\Domain\BtsTroncCommun\BtsClassCohortCounter;
@@ -564,6 +565,10 @@ class BulletinService
         }
         foreach ($resultatsTechniques as $resultat) {
             $resultat->rang = $rangsParMatiere[$resultat->matiere_id] ?? '-';
+        }
+
+        if ($persistOfficial && $bulletin) {
+            $this->persistOfficialSubjectRows($bulletin, $resultatsParMatiere);
         }
 
         // Préparer la configuration PDF
@@ -1167,6 +1172,43 @@ class BulletinService
                 ]
             );
         }
+    }
+
+    private function persistOfficialSubjectRows(ESBTPBulletin $bulletin, array $resultatsParMatiere): void
+    {
+        $userId = Auth::id();
+        $keptMatiereIds = [];
+
+        foreach ($resultatsParMatiere as $resultat) {
+            if (! isset($resultat->matiere_id) || $resultat->moyenne === null) {
+                continue;
+            }
+
+            $matiereId = (int) $resultat->matiere_id;
+            $keptMatiereIds[] = $matiereId;
+            $rang = is_numeric($resultat->rang ?? null) ? (int) $resultat->rang : null;
+
+            ESBTPResultatMatiere::updateOrCreate(
+                [
+                    'bulletin_id' => $bulletin->id,
+                    'matiere_id' => $matiereId,
+                ],
+                [
+                    'moyenne' => $resultat->moyenne,
+                    'coefficient' => $resultat->coefficient ?? 1,
+                    'rang' => $rang,
+                    'appreciation' => $resultat->appreciation ?? $this->getAppreciation($resultat->moyenne),
+                    'updated_by' => $userId,
+                    'created_by' => $userId,
+                ]
+            );
+        }
+
+        $query = ESBTPResultatMatiere::where('bulletin_id', $bulletin->id);
+        if ($keptMatiereIds !== []) {
+            $query->whereNotIn('matiere_id', $keptMatiereIds);
+        }
+        $query->delete();
     }
 
     /**

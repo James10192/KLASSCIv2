@@ -164,6 +164,24 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringContainsString("route('esbtp.bulletins.export-pdf-preview')", $indexView);
     }
 
+    public function test_official_generation_persists_subject_rows_and_partial_config_cannot_hide_the_table(): void
+    {
+        $service = file_get_contents(app_path('Services/BulletinService.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));
+        $settingsController = file_get_contents(app_path('Http/Controllers/ESBTP/ESBTPSettingsController.php'));
+        $configurationView = file_get_contents(resource_path('views/esbtp/bulletins/configuration.blade.php'));
+        $settingsView = file_get_contents(resource_path('views/esbtp/settings/index.blade.php'));
+
+        $this->assertStringContainsString('private function persistOfficialSubjectRows(ESBTPBulletin $bulletin, array $resultatsParMatiere): void', $service);
+        $this->assertStringContainsString('ESBTPResultatMatiere::updateOrCreate(', $service);
+        $this->assertStringContainsString('$this->persistOfficialSubjectRows($bulletin, $resultatsParMatiere);', $service);
+        $this->assertStringContainsString("name=\"bulletin_save_display\"", $configurationView);
+        $this->assertStringContainsString("name=\"settings_save_display\"", $settingsView);
+        $this->assertStringContainsString("\$request->boolean('bulletin_save_display')", $controller);
+        $this->assertStringContainsString("\$request->boolean('settings_save_display')", $settingsController);
+        $this->assertStringContainsString('if (! $treatMissingCheckboxesAsOff && ! $request->exists($formKey))', $settingsController);
+    }
+
     public function test_official_pdf_gives_canonical_bulletin_data_priority_over_renderer_defaults(): void
     {
         $controller = file_get_contents(app_path('Http/Controllers/ESBTPBulletinController.php'));

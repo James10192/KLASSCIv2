@@ -1092,6 +1092,7 @@
         <form action="{{ route('esbtp.settings.update') }}" method="POST" enctype="multipart/form-data">
             @csrf
             @method('PUT')
+            <input type="hidden" name="settings_save_display" value="1">
 
             <div class="tab-content" id="settingsTabContent">
                 <!-- Tab 1: Général -->
