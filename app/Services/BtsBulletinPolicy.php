@@ -12,7 +12,7 @@ final class BtsBulletinPolicy
 {
     private const SETTING_DEFINITIONS = [
         'bulletin_bts1_semester1_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 1 Semestre 1', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
-        'bulletin_bts1_semester2_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 1 Semestre 2', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
+        'bulletin_bts1_semester2_weight' => ['value' => '2', 'type' => 'float', 'description' => 'Coefficient BTS 1 Semestre 2', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
         'bulletin_bts2_semester1_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 2 Semestre 1', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
         'bulletin_bts2_semester2_weight' => ['value' => '1', 'type' => 'float', 'description' => 'Coefficient BTS 2 Semestre 2', 'validation_rules' => ['nullable', 'numeric', 'min:0']],
         'bulletin_bts1_council_mode' => ['value' => 'manual', 'type' => 'string', 'description' => 'Mode de décision BTS 1', 'validation_rules' => ['nullable', 'in:manual,threshold']],

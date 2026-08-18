@@ -953,10 +953,19 @@ class CLIMaintenanceController extends BaseApiController
 
         $steps = [];
         $cwd = base_path();
+        $home = getenv('HOME') ?: (function_exists('posix_getpwuid') ? ((posix_getpwuid(posix_geteuid())['dir'] ?? null)) : null);
+        $gitEnv = [
+            'PATH' => getenv('PATH') ?: '/usr/local/bin:/usr/bin:/bin',
+            'GIT_TERMINAL_PROMPT' => '0',
+        ];
+        if (is_string($home) && $home !== '') {
+            $gitEnv['HOME'] = $home;
+        }
 
         try {
             $branchProcess = \Symfony\Component\Process\Process::fromShellCommandline('git rev-parse --abbrev-ref HEAD', $cwd);
             $branchProcess->setTimeout(15);
+            $branchProcess->setEnv($gitEnv);
             $branchProcess->run();
             $branch = trim($branchProcess->getOutput()) ?: 'HEAD';
             $steps[] = ['action' => 'detect branch', 'status' => 'done', 'branch' => $branch];
@@ -964,6 +973,7 @@ class CLIMaintenanceController extends BaseApiController
             // Stash local changes (cas presentation où on a parfois des fichiers modifiés)
             $stashProcess = \Symfony\Component\Process\Process::fromShellCommandline('git stash --include-untracked', $cwd);
             $stashProcess->setTimeout(30);
+            $stashProcess->setEnv($gitEnv);
             $stashProcess->run();
             $stashOutput = trim($stashProcess->getOutput() . $stashProcess->getErrorOutput());
             $stashed = !str_contains($stashOutput, 'No local changes to save');
@@ -972,6 +982,7 @@ class CLIMaintenanceController extends BaseApiController
             // Pull
             $pullProcess = \Symfony\Component\Process\Process::fromShellCommandline("git pull origin {$branch}", $cwd);
             $pullProcess->setTimeout(120);
+            $pullProcess->setEnv($gitEnv);
             $pullProcess->run();
             $pullOutput = trim($pullProcess->getOutput() . "\n" . $pullProcess->getErrorOutput());
             $pullExit = $pullProcess->getExitCode();
@@ -981,6 +992,7 @@ class CLIMaintenanceController extends BaseApiController
                 if ($stashed) {
                     $popProcess = \Symfony\Component\Process\Process::fromShellCommandline('git stash pop', $cwd);
                     $popProcess->setTimeout(15);
+                    $popProcess->setEnv($gitEnv);
                     $popProcess->run();
                     $steps[] = ['action' => 'git stash pop (after fail)', 'output' => trim($popProcess->getOutput() . $popProcess->getErrorOutput())];
                 }
@@ -991,6 +1003,7 @@ class CLIMaintenanceController extends BaseApiController
             if ($stashed) {
                 $dropProcess = \Symfony\Component\Process\Process::fromShellCommandline('git stash drop', $cwd);
                 $dropProcess->setTimeout(15);
+                $dropProcess->setEnv($gitEnv);
                 $dropProcess->run();
                 $steps[] = ['action' => 'git stash drop', 'status' => 'done'];
             }

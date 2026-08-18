@@ -154,6 +154,22 @@ class BulletinServiceCalculTest extends TestCase
      * Bonus : robustesse aux clés manquantes — `bareme` absent → défaut 20,
      * `is_absent` absent → défaut false, `coefficient` absent → défaut 1.
      */
+    public function test_it_computes_bts1_and_bts2_annual_averages_from_weights(): void
+    {
+        $this->assertSame(11.0, $this->service->calculateAnnualAverage(9.0, 12.0, [
+            'semester1' => 1.0,
+            'semester2' => 2.0,
+        ]));
+        $this->assertSame(10.5, $this->service->calculateAnnualAverage(9.0, 12.0, [
+            'semester1' => 1.0,
+            'semester2' => 1.0,
+        ]));
+        $this->assertNull($this->service->calculateAnnualAverage(9.0, null, [
+            'semester1' => 1.0,
+            'semester2' => 2.0,
+        ]));
+    }
+
     public function test_it_uses_default_values_when_keys_missing(): void
     {
         $notes = [

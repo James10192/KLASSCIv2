@@ -994,8 +994,8 @@ class BulletinService
 
     public function getSemesterWeights(?ESBTPClasse $classe = null): array
     {
-        $semester1 = floatval(SettingsHelper::get('bulletin_semester1_weight', '50'));
-        $semester2 = floatval(SettingsHelper::get('bulletin_semester2_weight', '50'));
+        $semester1 = floatval(SettingsHelper::get('bulletin_semester1_weight', '1'));
+        $semester2 = floatval(SettingsHelper::get('bulletin_semester2_weight', '1'));
 
         if ($semester1 < 0) {
             $semester1 = 0;
@@ -1005,8 +1005,8 @@ class BulletinService
         }
 
         if (($semester1 + $semester2) <= 0) {
-            $semester1 = 50;
-            $semester2 = 50;
+            $semester1 = 1;
+            $semester2 = 1;
         }
 
         $fallback = [
@@ -2254,7 +2254,7 @@ class BulletinService
 
         $averages = $this->collectAnnualAveragesForClasse($classeId, $anneeUniversitaireId);
         if ($averages === []) {
-            return 1;
+            return null;
         }
 
         return $this->rankAmongAverages($averages, $moyenneAnnuelle);

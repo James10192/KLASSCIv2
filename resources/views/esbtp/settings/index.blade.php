@@ -1718,6 +1718,33 @@
                 <!-- Tab 3: Configuration Bulletin -->
                 <div class="tab-pane fade" id="bulletin" role="tabpanel">
 
+            <div class="settings-section" id="bulletin-style">
+                <div class="section-header">
+                    <div class="section-icon bulletin"><i class="fas fa-layer-group"></i></div>
+                    <div>
+                        <h3 class="section-title">Modèle de bulletin</h3>
+                        <p class="section-description">Le gabarit et le titre du conseil viennent de ce réglage, jamais du nom du tenant.</p>
+                    </div>
+                </div>
+                <div class="bc-grid bc-grid-2">
+                    @php $currentBulletinStyle = \App\Helpers\SettingsHelper::get('bulletin_style', 'yakro'); @endphp
+                    <label class="bc-card" style="cursor:pointer; align-items:flex-start;">
+                        <input type="radio" name="setting_bulletin_style" value="yakro" {{ $currentBulletinStyle === 'yakro' ? 'checked' : '' }} style="margin-top:6px;">
+                        <div class="bc-body">
+                            <div class="bc-label">Modèle Yakro</div>
+                            <div class="bc-desc">Mise en page ESBTP Yamoussoukro. Les couleurs restent celles de l'onglet Documents.</div>
+                        </div>
+                    </label>
+                    <label class="bc-card" style="cursor:pointer; align-items:flex-start;">
+                        <input type="radio" name="setting_bulletin_style" value="abidjan" {{ $currentBulletinStyle === 'abidjan' ? 'checked' : '' }} style="margin-top:6px;">
+                        <div class="bc-body">
+                            <div class="bc-label">Modèle Abidjan / Plateau</div>
+                            <div class="bc-desc">Conseil au-dessus de la signature. En semestre 1 BTS 1, le titre devient Appréciation du Conseil de Classe.</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
             <!-- Section 1: En-tete du Bulletin -->
             <div class="settings-section">
                 <div class="section-header">
@@ -2064,7 +2091,7 @@
                                 <label>S2
                                     <input type="number" class="form-control form-control-modern" style="max-width: 90px;"
                                            name="setting_bulletin_bts{{ $btsYear }}_semester2_weight"
-                                           value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts'.$btsYear.'_semester2_weight', '1') }}"
+                                           value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts'.$btsYear.'_semester2_weight', $btsYear === 1 ? '2' : '1') }}"
                                            min="0" step="0.1">
                                 </label>
                             </div>

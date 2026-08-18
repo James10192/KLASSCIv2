@@ -35,6 +35,7 @@ class ESBTPSettingsController extends Controller
     {
         $this->ensureAttendanceNoteSettings();
         $this->ensureBtsBulletinPolicySettings();
+        $this->ensureBulletinStyleSetting();
         $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
         $appreciationScaleSettings->ensureDefaults();
         $this->ensureMailPulseSettings();
@@ -63,6 +64,7 @@ class ESBTPSettingsController extends Controller
             DB::beginTransaction();
             $this->ensureAttendanceNoteSettings();
             $this->ensureBtsBulletinPolicySettings();
+            $this->ensureBulletinStyleSetting();
             $appreciationScaleSettings = app(AppreciationScaleSettingsService::class);
             $appreciationScaleSettings->ensureDefaults();
             $this->ensureMailPulseSettings();
@@ -548,6 +550,24 @@ class ESBTPSettingsController extends Controller
         }
     }
 
+
+    private function ensureBulletinStyleSetting(): void
+    {
+        Setting::firstOrCreate(
+            ['key' => 'bulletin_style'],
+            [
+                'value' => 'yakro',
+                'type' => 'string',
+                'group' => 'bulletin',
+                'category' => 'bulletin',
+                'description' => 'Modele de bulletin (yakro ou abidjan)',
+                'is_required' => false,
+                'is_active' => true,
+                'default_value' => 'yakro',
+                'validation_rules' => ['nullable', 'in:yakro,abidjan'],
+            ]
+        );
+    }
     private function ensureBtsBulletinPolicySettings(): void
     {
         $defaults = BtsBulletinPolicy::settingDefinitions();
