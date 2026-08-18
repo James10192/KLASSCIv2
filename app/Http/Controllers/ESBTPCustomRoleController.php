@@ -44,6 +44,7 @@ class ESBTPCustomRoleController extends Controller
         'comptable',
         'caissier',
         'coordinateur',
+        'directeurEtudes',
         'enseignant',
         'etudiant',
     ];

@@ -150,6 +150,7 @@ class BaseApiController extends Controller
             'superAdmin' => 'admin.access',
             'secretaire' => 'identity.school_manager',
             'coordinateur' => 'identity.coordinate',
+            'directeurEtudes' => 'identity.direct_studies',
             'enseignant' => 'identity.teach',
             'teacher' => 'identity.teach',
             'etudiant' => 'identity.student',

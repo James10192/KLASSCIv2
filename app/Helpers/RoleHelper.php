@@ -33,7 +33,7 @@ class RoleHelper
     /**
      * Rôles autorisés pour l'accès LMS
      */
-    const LMS_ALLOWED_ROLES = ['enseignant', 'coordinateur', 'etudiant', 'superAdmin'];
+    const LMS_ALLOWED_ROLES = ['enseignant', 'coordinateur', 'directeurEtudes', 'etudiant', 'superAdmin'];
 
     /**
      * Vérifie si un rôle est équivalent au coordinateur
@@ -134,6 +134,8 @@ class RoleHelper
             case 'coordinateur':
             case 'superAdmin':
                 return 'Coordinateur/Administrateur';
+            case 'directeurEtudes':
+                return 'Directeur des études';
             case 'enseignant':
                 return 'Enseignant';
             case 'etudiant':

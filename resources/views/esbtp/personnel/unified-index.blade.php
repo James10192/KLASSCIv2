@@ -1474,13 +1474,14 @@
 @php
     // Tabs cachés selon le rôle de l'utilisateur connecté
     $hiddenTabs = [];
-    $visiblePersonnelTabs = $visiblePersonnelTabs ?? ['coordinateurs', 'enseignants', 'secretaires', 'comptables', 'caissiers'];
+    $visiblePersonnelTabs = $visiblePersonnelTabs ?? ['directeurs_etudes', 'coordinateurs', 'enseignants', 'secretaires', 'comptables', 'caissiers'];
     $personnelAccess = $personnelAccess ?? [];
     $ur = $userRole ?? '';
+    if ($ur === 'directeurEtudes') $hiddenTabs[] = 'directeurs_etudes';
     if ($ur === 'coordinateur') $hiddenTabs[] = 'coordinateurs';
     if ($ur === 'secretaire') $hiddenTabs[] = 'secretaires';
     // Premier tab visible = actif par défaut
-    $tabOrder = ['coordinateurs', 'enseignants', 'secretaires', 'comptables', 'caissiers'];
+    $tabOrder = ['directeurs_etudes', 'coordinateurs', 'enseignants', 'secretaires', 'comptables', 'caissiers'];
     $canAnyCreatePersonnel = collect($tabOrder)->contains(fn($t) => $personnelAccess[$t]['create'] ?? false);
     $firstVisibleTab = collect($tabOrder)->first(fn($t) => in_array($t, $visiblePersonnelTabs, true) && !in_array($t, $hiddenTabs));
 @endphp
@@ -1516,6 +1517,11 @@
                         </button>
                         <ul class="dropdown-menu dropdown-menu-end"
                             style="z-index:1100;">
+                            @if(($personnelAccess['directeurs_etudes']['create'] ?? false) && ($userRole ?? '') !== 'directeurEtudes')
+                            <li><a class="dropdown-item" href="{{ route('esbtp.directeurs-etudes.create') }}">
+                                <i class="fas fa-graduation-cap"></i>Directeur des études
+                            </a></li>
+                            @endif
                             @if(($personnelAccess['coordinateurs']['create'] ?? false) && ($userRole ?? '') !== 'coordinateur')
                             <li><a class="dropdown-item" href="{{ route('esbtp.coordinateurs.create') }}">
                                 <i class="fas fa-user-tie"></i>Coordinateur
@@ -1548,6 +1554,12 @@
                 @endif
             </div>
             <div class="pu-hero-kpis">
+                @if(in_array('directeurs_etudes', $visiblePersonnelTabs, true) && !in_array('directeurs_etudes', $hiddenTabs))
+                <div class="pu-hero-kpi">
+                    <div class="pu-hero-kpi-value">{{ $stats['directeurs_etudes'] ?? 0 }}</div>
+                    <div class="pu-hero-kpi-label">Directeurs des études</div>
+                </div>
+                @endif
                 @if(in_array('coordinateurs', $visiblePersonnelTabs, true) && !in_array('coordinateurs', $hiddenTabs))
                 <div class="pu-hero-kpi">
                     <div class="pu-hero-kpi-value">{{ $stats['coordinateurs'] ?? 0 }}</div>
@@ -1696,6 +1708,13 @@
         {{-- ═══ Tabs Card ═══ --}}
         <div class="pu-tabs-card pu-animate pu-delay-2">
             <div class="pu-tabs-bar">
+                @if(in_array('directeurs_etudes', $visiblePersonnelTabs, true) && !in_array('directeurs_etudes', $hiddenTabs))
+                <button class="pu-tab slider-tab {{ $firstVisibleTab === 'directeurs_etudes' ? 'active' : '' }}" data-tab="directeurs_etudes">
+                    <span class="pu-tab-icon"><i class="fas fa-graduation-cap"></i></span>
+                    <span class="pu-tab-label">Directeurs des études</span>
+                    <span class="pu-tab-count">{{ $stats['directeurs_etudes'] ?? 0 }} personnes</span>
+                </button>
+                @endif
                 @if(in_array('coordinateurs', $visiblePersonnelTabs, true) && !in_array('coordinateurs', $hiddenTabs))
                 <button class="pu-tab slider-tab {{ $firstVisibleTab === 'coordinateurs' ? 'active' : '' }}" data-tab="coordinateurs">
                     <span class="pu-tab-icon"><i class="fas fa-user-tie"></i></span>
@@ -1745,6 +1764,67 @@
             </div>
 
             <div class="pu-panel-content">
+
+                @if(in_array('directeurs_etudes', $visiblePersonnelTabs, true) && !in_array('directeurs_etudes', $hiddenTabs))
+                <div class="pu-panel slider-panel {{ $firstVisibleTab === 'directeurs_etudes' ? 'active' : '' }}" id="directeurs_etudes-panel">
+                    <div class="pu-panel-header">
+                        <div class="pu-search">
+                            <input type="text" placeholder="Rechercher un directeur des études..." id="search-directeurs_etudes">
+                        </div>
+                        @if($personnelAccess['directeurs_etudes']['create'] ?? false)
+                        <a href="{{ route('esbtp.directeurs-etudes.create') }}" class="pu-panel-btn pu-panel-btn-primary">
+                            <i class="fas fa-plus"></i>Nouveau directeur des études
+                        </a>
+                        @endif
+                    </div>
+                    <div id="directeurs_etudes-list">
+                        @if(isset($directeursEtudes) && $directeursEtudes->count() > 0)
+                            @foreach($directeursEtudes as $directeur)
+                            <div class="pu-card personnel-card">
+                                <div class="pu-avatar">{{ strtoupper(substr($directeur->name, 0, 2)) }}</div>
+                                <div class="pu-info">
+                                    <div class="pu-name">{{ $directeur->name }}</div>
+                                    <div class="pu-meta">
+                                        <span class="pu-meta-item"><i class="fas fa-envelope"></i>{{ $directeur->email }}</span>
+                                        @if($directeur->telephone)
+                                        <span class="pu-meta-item"><i class="fas fa-phone"></i>{{ $directeur->telephone }}</span>
+                                        @endif
+                                    </div>
+                                </div>
+                                <span class="pu-status {{ $directeur->is_active ? 'pu-status-active' : 'pu-status-inactive' }}">
+                                    {{ $directeur->is_active ? 'Actif' : 'Inactif' }}
+                                </span>
+                                <div class="pu-actions">
+                                    <a href="{{ route('esbtp.directeurs-etudes.show', $directeur) }}" class="pu-action-btn" title="Voir"><i class="fas fa-eye"></i></a>
+                                    @if($personnelAccess['directeurs_etudes']['edit'] ?? false)
+                                    <a href="{{ route('esbtp.directeurs-etudes.edit', $directeur) }}" class="pu-action-btn pu-act-edit" title="Modifier"><i class="fas fa-pen"></i></a>
+                                    @if($directeur->id !== auth()->id())
+                                    <form action="{{ route('esbtp.directeurs-etudes.toggle-status', $directeur) }}" method="POST" class="d-inline">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="pu-action-btn {{ $directeur->is_active ? 'pu-act-danger' : 'pu-act-success' }}" title="{{ $directeur->is_active ? 'Désactiver' : 'Activer' }}">
+                                            <i class="fas fa-{{ $directeur->is_active ? 'pause' : 'play' }}"></i>
+                                        </button>
+                                    </form>
+                                    @endif
+                                    @endif
+                                </div>
+                            </div>
+                            @endforeach
+                        @else
+                            <div class="pu-empty">
+                                <div class="pu-empty-icon"><i class="fas fa-graduation-cap"></i></div>
+                                <h3>Aucun directeur des études</h3>
+                                @if($personnelAccess['directeurs_etudes']['create'] ?? false)
+                                <a href="{{ route('esbtp.directeurs-etudes.create') }}" class="pu-empty-btn">
+                                    <i class="fas fa-plus"></i>Créer un directeur des études
+                                </a>
+                                @endif
+                            </div>
+                        @endif
+                    </div>
+                </div>
+                @endif
 
                 {{-- ═══ Panel Coordinateurs ═══ --}}
                 @if(in_array('coordinateurs', $visiblePersonnelTabs, true) && !in_array('coordinateurs', $hiddenTabs))

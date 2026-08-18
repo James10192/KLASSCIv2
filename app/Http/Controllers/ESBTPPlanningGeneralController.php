@@ -1814,7 +1814,8 @@ class ESBTPPlanningGeneralController extends Controller
             !Auth::user()->hasAnyPermission([
                 "admin.access",
                 "identity.coordinate",
-            ]) && !Auth::user()->hasRole("directeurEtudes")
+                "identity.direct_studies",
+            ])
         ) {
             abort(403, "Accès réservé aux administrateurs et coordinateurs.");
         }

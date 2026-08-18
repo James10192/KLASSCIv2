@@ -72,7 +72,8 @@ Catégories du rapport :
 
 ```php
 'role_management' => [
-    'superAdmin'   => ['secretaire', 'comptable', 'caissier', 'coordinateur', 'enseignant', 'etudiant'],
+    'superAdmin'   => ['secretaire', 'comptable', 'caissier', 'coordinateur', 'directeurEtudes', 'enseignant', 'etudiant'],
+    'directeurEtudes' => ['coordinateur', 'enseignant', 'etudiant'],
     'secretaire'   => ['enseignant', 'etudiant', 'caissier'],
     'caissier'     => ['etudiant'],          // pré-inscription
     'comptable'    => [],                     // ne gère personne
@@ -84,7 +85,7 @@ Lue par `App\Services\UserManagementService`. Configurable via UI admin.
 
 ## Rôles canoniques
 
-`config/permissions.php` clé `roles` : `superAdmin`, `secretaire`, `comptable`, `caissier`, `coordinateur`, `enseignant`, `etudiant` (visibles UI) + `serviceTechnique` (masqué). Le rôle `parent` a été supprimé (Lot 1).
+`config/permissions.php` clé `roles` : `superAdmin`, `secretaire`, `comptable`, `caissier`, `coordinateur`, `directeurEtudes`, `enseignant`, `etudiant` (visibles UI) + `serviceTechnique` (masqué). Le rôle `parent` a été supprimé (Lot 1).
 
 ## Règles absolues
 

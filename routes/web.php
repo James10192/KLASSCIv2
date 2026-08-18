@@ -191,6 +191,14 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     // Dashboard - Route principale qui redirige vers le tableau de bord appropriÃ© selon le rÃ´le
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::middleware(['permission:identity.direct_studies'])->group(function () {
+        Route::get('/dashboard/directeur-etudes', [\App\Http\Controllers\DirecteurEtudesDashboardController::class, 'index'])
+            ->name('dashboard.directeur-etudes');
+        Route::get('/dashboard/directeur-etudes/data', [\App\Http\Controllers\DirecteurEtudesDashboardController::class, 'data'])
+            ->name('dashboard.directeur-etudes.data')
+            ->middleware('throttle:120,1');
+    });
+
     // Lot 9 â€” Dashboard widget-based (universel, gated par permissions)
     // Premier consommateur : rÃ´les custom (Lot 8). Accessible Ã  tous via /dashboard/widgets.
     Route::prefix('dashboard/widgets')->name('dashboard.widgets.')->group(function () {
@@ -249,7 +257,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Routes pour la gestion du profil admin, enseignants et coordinateurs
-    Route::middleware(['permission:admin.access'])->group(function () {
+    Route::middleware(['permission:admin.access|identity.direct_studies'])->group(function () {
         Route::get('/admin/profile', [AdminProfileController::class, 'index'])->name('admin.profile');
         Route::put('/admin/profile/update', [AdminProfileController::class, 'update'])->name('admin.profile.update');
         Route::put('/admin/profile/update-professional', [AdminProfileController::class, 'updateProfessionalInfo'])->name('admin.profile.update.professional');
@@ -269,7 +277,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Tableau de bord des prÃ©sences â€” accessible coordinateur, secrÃ©taire, superAdmin
-    Route::middleware(['auth', 'role:coordinateur|secretaire|superAdmin', 'permission:module.presences.access'])->group(function () {
+    Route::middleware(['auth', 'role:coordinateur|secretaire|superAdmin|directeurEtudes', 'permission:module.presences.access'])->group(function () {
         Route::get('/coordinateur/attendance-dashboard', [App\Http\Controllers\CoordinateurDashboardController::class, 'attendanceDashboard'])->name('coordinateur.attendance-dashboard');
         Route::get('/coordinateur/attendance-dashboard/data', [App\Http\Controllers\CoordinateurDashboardController::class, 'attendanceDashboardData'])->name('coordinateur.attendance-dashboard.data')->middleware('throttle:120,1');
         Route::get('/coordinateur/recent-activities', [App\Http\Controllers\CoordinateurDashboardController::class, 'getRecentActivities'])->name('coordinateur.recent-activities');
@@ -563,7 +571,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Routes accessibles aux superAdmin, secrÃ©taires, coordinateurs et enseignants
-        Route::middleware(['auth', 'permission:admin.access', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies', 'paywall'])->group(function () {
             // Routes pour les classes ESBTP - index et show avec permission view_classes
             Route::get('classes', [ESBTPClasseController::class, 'index'])
                 ->name('classes.index')
@@ -1165,7 +1173,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Routes prÃ©-inscription caissier â€” gates par permission
-        Route::middleware(['auth', 'permission:admin.access', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies', 'paywall'])->group(function () {
             Route::middleware('permission:inscriptions.create')->group(function () {
                 Route::get('/inscriptions/pre-inscription', [ESBTPInscriptionController::class, 'createPreInscription'])->name('inscriptions.pre-inscription');
                 Route::post('/inscriptions/pre-inscription', [ESBTPInscriptionController::class, 'storePreInscription'])->name('inscriptions.store-pre-inscription');
@@ -1177,7 +1185,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Routes accessibles pour les secrÃ©taires, super-admins, coordinateurs et caissier (consultation)
-        Route::middleware(['auth', 'permission:admin.access', 'paywall'])->group(function () {
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies', 'paywall'])->group(function () {
             // Nouvelle route pour la vue fusionnÃ©e des Ã©tudiants et inscriptions
             Route::get('/etudiants-inscriptions', [ESBTPEtudiantController::class, 'indexFusionne'])
                 ->name('etudiants-inscriptions.index')
@@ -1474,7 +1482,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
         });
 
         // Specialties / Continuing education / Student restore
-        Route::middleware(['permission:admin.access'])->group(function () {
+        Route::middleware(['permission:admin.access|identity.direct_studies'])->group(function () {
             Route::resource('specialties', ESBTPSpecialtyController::class);
             Route::put('specialties/{id}/restore', [ESBTPSpecialtyController::class, 'restore'])->name('specialties.restore');
             Route::resource('continuing-education', ESBTPContinuingEducationController::class);
@@ -1506,7 +1514,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Student Progression Routes
-    Route::prefix('esbtp')->middleware(['auth', 'permission:admin.access', 'paywall'])->group(function () {
+    Route::prefix('esbtp')->middleware(['auth', 'permission:admin.access|identity.direct_studies', 'paywall'])->group(function () {
         Route::get('/progression', [StudentProgressionController::class, 'index'])->name('esbtp.progression.index');
         Route::get('/api/progression/recommendations/{classe}/{annee}', [StudentProgressionController::class, 'getRecommendations'])->name('esbtp.progression.recommendations');
         Route::post('/api/progression/process', [StudentProgressionController::class, 'processProgression'])->name('esbtp.progression.process');
@@ -1595,7 +1603,7 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
     });
 
     // Endpoints matricule utilisÃ©s par les inscriptions
-    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.access', 'paywall'])->group(function () {
+    Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.access|identity.direct_studies', 'paywall'])->group(function () {
         Route::get('/matricule-config/mode-info', [ESBTPMatriculeConfigController::class, 'getModeInfo'])->name('matricule-config.mode-info');
         Route::post('/matricule-config/generate', [ESBTPMatriculeConfigController::class, 'genererMatricule'])->name('matricule-config.generate');
         Route::post('/matricule-config/check', [ESBTPMatriculeConfigController::class, 'checkMatricule'])->name('matricule-config.check');
@@ -1684,7 +1692,7 @@ Route::prefix('api/esbtp')->name('api.esbtp.')->middleware(['auth'])->group(func
     Route::get('matieres/list', [ESBTPMatiereController::class, 'apiList'])->name('matieres.list');
 });
 
-Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:admin.access'])->group(function () {
+Route::prefix('esbtp/api')->name('esbtp.api.')->middleware(['auth', 'permission:admin.access|identity.direct_studies'])->group(function () {
     Route::get('classes/{id}', [ESBTPClasseController::class, 'getClasseById'])->name('classes.get');
     Route::get('classes/{id}/niveau-config', [ESBTPClasseController::class, 'getNiveauConfig'])->name('classes.niveau-config');
     Route::get('get-classes', [ESBTPInscriptionApiController::class, 'getClasses'])->name('get-classes');
@@ -1706,7 +1714,7 @@ Route::post('esbtp/emploi-temps/{id}/set-current', [App\Http\Controllers\ESBTPEm
     ->middleware(['auth', 'permission:timetables.edit']);
 
 // Routes pour les Ã©valuations
-Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth', 'permission:admin.access'])->group(function () {
+Route::prefix('esbtp/evaluations')->name('esbtp.evaluations.')->middleware(['auth', 'permission:admin.access|identity.direct_studies'])->group(function () {
     Route::get('/', [ESBTPEvaluationController::class, 'index'])->name('index');
     Route::get('/create', [ESBTPEvaluationController::class, 'create'])->name('create');
     Route::post('/', [ESBTPEvaluationController::class, 'store'])->name('store');
@@ -1769,12 +1777,12 @@ Route::get('/evaluations/{evaluation}/pdf', [ESBTPEvaluationController::class, '
     ->middleware(['auth']);
 
 // Route pour l'index des bulletins ESBTP
-Route::get('/esbtp/bulletins', [ESBTPBulletinController::class, 'index'])->name('esbtp.bulletins.index')->middleware(['auth', 'permission:admin.access']);
+Route::get('/esbtp/bulletins', [ESBTPBulletinController::class, 'index'])->name('esbtp.bulletins.index')->middleware(['auth', 'permission:admin.access|identity.direct_studies']);
 
 // Route spÃ©ciale pour la sÃ©lection des bulletins
 Route::get('/esbtp/bulletins/select', [ESBTPBulletinController::class, 'select'])
     ->name('esbtp.bulletins.select')
-    ->middleware(['auth', 'permission:admin.access']);
+    ->middleware(['auth', 'permission:admin.access|identity.direct_studies']);
 
 // Export groupÃ© : tous les bulletins filtrÃ©s en un seul PDF, dans l'ordre choisi
 Route::get('/esbtp/bulletins/export-precheck', [ESBTPBulletinController::class, 'exportPrecheck'])
@@ -1788,10 +1796,10 @@ Route::get('/esbtp/bulletins/export-pdf/preview', [ESBTPBulletinController::clas
     ->middleware(['auth', 'permission:bulletins.export.bulk', 'throttle:10,1']);
 
 // Route pour tÃ©lÃ©charger un bulletin au format PDF
-Route::get('/esbtp/bulletins/{bulletin}/download', [ESBTPBulletinController::class, 'genererPDF'])->name('esbtp.bulletins.download')->middleware(['auth', 'permission:admin.access']);
+Route::get('/esbtp/bulletins/{bulletin}/download', [ESBTPBulletinController::class, 'genererPDF'])->name('esbtp.bulletins.download')->middleware(['auth', 'permission:admin.access|identity.direct_studies']);
 Route::get('/esbtp/bulletins/{bulletin}/preview-pdf', [ESBTPBulletinController::class, 'previewPDF'])
     ->name('esbtp.bulletins.preview-pdf')
-    ->middleware(['auth', 'permission:admin.access', 'throttle:60,1']);
+    ->middleware(['auth', 'permission:admin.access|identity.direct_studies', 'throttle:60,1']);
 
 // Bulk actions sur la liste /esbtp/bulletins (AJAX)
 Route::middleware(['auth'])->group(function () {
@@ -1818,7 +1826,7 @@ Route::prefix('secretaires')->name('secretaires.')->middleware(['auth', 'permiss
 });
 
 // Routes pour la gestion des enseignants
-Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.access', 'permission:module.enseignants.access', 'throttle:60,1'])->group(function () {
+Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.access|identity.direct_studies', 'permission:module.enseignants.access', 'throttle:60,1'])->group(function () {
     Route::get('enseignants/duplicates', [ESBTPEnseignantController::class, 'duplicates'])->name('enseignants.duplicates');
     Route::post('enseignants/quick-create', [ESBTPEnseignantController::class, 'quickStore'])->name('enseignants.quick-create');
     Route::get('enseignants/bulk-availability', [ESBTPEnseignantController::class, 'bulkAvailability'])->name('enseignants.bulk-availability');
@@ -1838,7 +1846,7 @@ Route::prefix('esbtp')->name('esbtp.')->middleware(['auth', 'permission:admin.ac
 });
 
 // Routes pour l'espace enseignant et coordinateur
-Route::middleware(['auth', 'role:enseignant|coordinateur'])->group(function () {
+Route::middleware(['auth', 'role:enseignant|coordinateur|directeurEtudes'])->group(function () {
     // Notes routes already defined in main group (line 910-924) with role:superAdmin|secretaire|coordinateur|enseignant|teacher
 
     // Gestion des prÃ©sences
@@ -2154,7 +2162,7 @@ Route::prefix('esbtp/admin/attendance')->name('esbtp.admin.attendance.')->middle
 });
 
 // Manual Attendance Routes
-Route::prefix('esbtp/admin/attendance/manual')->name('esbtp.admin.attendance.manual.')->middleware(['auth', 'permission:admin.access'])->group(function () {
+Route::prefix('esbtp/admin/attendance/manual')->name('esbtp.admin.attendance.manual.')->middleware(['auth', 'permission:admin.access|identity.direct_studies'])->group(function () {
     Route::get('/', [App\Http\Controllers\ESBTP\Admin\ESBTPManualAttendanceController::class, 'index'])
         ->name('index');
     Route::post('/store', [App\Http\Controllers\ESBTP\Admin\ESBTPManualAttendanceController::class, 'store'])
@@ -2200,7 +2208,7 @@ Route::middleware(['auth', 'permission:system.manage'])->group(function () {
 });
 
 // Routes pour la gestion des Ã©tudiants
-Route::middleware(['auth', 'permission:admin.access', 'paywall'])->group(function () {
+Route::middleware(['auth', 'permission:admin.access|identity.direct_studies', 'paywall'])->group(function () {
     // AJAX pour charger toutes les inscriptions d'un Ã©tudiant
     Route::get('esbtp/etudiants/{etudiant}/all-inscriptions', [ESBTPStudentController::class, 'getAllInscriptions'])
         ->name('esbtp.etudiants.all-inscriptions')
@@ -2321,7 +2329,7 @@ if (app()->environment('local')) {
 }
 
 // Routes spÃ©ciales pour le workflow des bulletins â€” PROTÃ‰GÃ‰ES.
-Route::middleware(['auth', 'permission:admin.access'])->group(function () {
+Route::middleware(['auth', 'permission:admin.access|identity.direct_studies'])->group(function () {
     Route::get('/esbtp-special/bulletins-pdf', [ESBTPBulletinController::class, 'genererPDFParParamsUnified'])->name('esbtp.bulletins.pdf-params');
     Route::get('/esbtp-special/bulletins-pdf/preview', [ESBTPBulletinController::class, 'previewPDFParParamsUnified'])
         ->name('esbtp.bulletins.pdf-params-preview')
@@ -2555,7 +2563,7 @@ Route::middleware(['auth', 'permission:personnel.manage', 'paywall'])->prefix('e
 });
 
 // Routes pour la gestion du personnel avec sliders
-Route::middleware(['auth', 'permission:admin.access', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
+Route::middleware(['auth', 'permission:admin.access|identity.direct_studies', 'paywall'])->prefix('esbtp')->name('esbtp.')->group(function () {
     // Vue combinÃ©e du personnel avec sliders
     Route::get('/personnel', [\App\Http\Controllers\ESBTPPersonnelController::class, 'index'])->name('personnel.index');
     Route::get('/personnel/data', [\App\Http\Controllers\ESBTPPersonnelController::class, 'getData'])->name('personnel.data');
@@ -2570,10 +2578,14 @@ Route::middleware(['auth', 'permission:admin.access', 'paywall'])->prefix('esbtp
     Route::resource('coordinateurs', \App\Http\Controllers\ESBTPCoordinateurController::class);
     Route::patch('coordinateurs/{coordinateur}/toggle-status', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'toggleStatus'])->name('coordinateurs.toggle-status');
     Route::post('coordinateurs/{coordinateur}/reset-password', [\App\Http\Controllers\ESBTPCoordinateurController::class, 'resetPassword'])->name('coordinateurs.reset-password');
+    Route::resource('directeurs-etudes', \App\Http\Controllers\ESBTPDirecteurEtudesController::class)
+        ->parameters(['directeurs-etudes' => 'directeurEtude']);
+    Route::patch('directeurs-etudes/{directeurEtude}/toggle-status', [\App\Http\Controllers\ESBTPDirecteurEtudesController::class, 'toggleStatus'])
+        ->name('directeurs-etudes.toggle-status');
 });
 
 // Routes pour les coordinateurs et rÃ´les admin avec permissions spÃ©cifiques
-Route::middleware(['auth', 'permission:admin.access'])->prefix('esbtp')->name('esbtp.')->group(function () {
+Route::middleware(['auth', 'permission:admin.access|identity.direct_studies'])->prefix('esbtp')->name('esbtp.')->group(function () {
     // Routes pour les notes
     Route::prefix('notes')->name('notes.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ESBTPNoteController::class, 'index'])->name('index')
@@ -2665,7 +2677,7 @@ Route::middleware(['auth', 'permission:planning.manage'])->prefix('esbtp')->name
 });
 
 // Routes pour la gestion des liens externes
-Route::middleware(['auth', 'permission:admin.access'])->prefix('esbtp')->name('esbtp.')->group(function () {
+Route::middleware(['auth', 'permission:admin.access|identity.direct_studies'])->prefix('esbtp')->name('esbtp.')->group(function () {
     Route::post('/evaluations/{evaluation}/generate-external-link', [ESBTPEvaluationController::class, 'generateExternalLink'])->name('evaluations.generate-external-link');
     Route::delete('/evaluations/{evaluation}/revoke-external-link', [ESBTPEvaluationController::class, 'revokeExternalLink'])->name('evaluations.revoke-external-link');
     Route::get('/evaluations/active-external-links', [ESBTPEvaluationController::class, 'getActiveExternalLinks'])->name('evaluations.active-external-links');
@@ -2701,7 +2713,7 @@ Route::middleware(['auth', 'throttle:60,1'])->prefix('chatbot')->name('chatbot.'
 // ============================================================
 // Routes LMD (Licence-Master-Doctorat)
 // ============================================================
-Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:admin.access', 'permission:module.lmd.access', 'paywall'])->group(function () {
+Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:admin.access|identity.direct_studies', 'permission:module.lmd.access', 'paywall'])->group(function () {
 
     // --- Domaines / Mentions / Parcours ---
     Route::get('parcours-domain', [\App\Http\Controllers\ESBTPLMDParcoursDomainController::class, 'index'])->name('parcours-domain.index');
@@ -2796,7 +2808,7 @@ Route::prefix('esbtp/lmd')->name('esbtp.lmd.')->middleware(['auth', 'permission:
 // Routes Jury de dÃ©libÃ©ration LMD (PR12 â€” UI premium juy-*)
 // ============================================================
 Route::prefix('esbtp/lmd/jurys')->name('esbtp.lmd.jurys.')
-    ->middleware(['auth', 'permission:admin.access', 'permission:module.lmd.access', 'paywall'])
+    ->middleware(['auth', 'permission:admin.access|identity.direct_studies', 'permission:module.lmd.access', 'paywall'])
     ->group(function () {
         Route::get('/', [\App\Http\Controllers\ESBTPLMDJuryController::class, 'index'])
             ->middleware('permission:lmd.jury.view')
@@ -2857,7 +2869,7 @@ Route::prefix('esbtp/lmd/jurys')->name('esbtp.lmd.jurys.')
 Route::get('/esbtp/lmd/jurys/official-documents/{document}/stream', [\App\Domain\OfficialDocuments\Http\OfficialDocumentController::class, 'stream'])
     ->middleware([
         'auth',
-        'permission:admin.access',
+        'permission:admin.access|identity.direct_studies',
         'permission:module.lmd.access',
         'paywall',
         'permission:lmd.jury.view',
@@ -2878,7 +2890,7 @@ Route::post('/verifier-document-officiel', [\App\Domain\OfficialDocuments\Http\O
 // Routes Rattrapage LMD (PR10 â€” sessions 2e session UEMOA)
 // ============================================================
 Route::prefix('esbtp/lmd/rattrapage')->name('esbtp.lmd.rattrapage.')
-    ->middleware(['auth', 'permission:admin.access', 'permission:module.lmd.access', 'paywall'])
+    ->middleware(['auth', 'permission:admin.access|identity.direct_studies', 'permission:module.lmd.access', 'paywall'])
     ->group(function () {
         Route::get('/', [\App\Http\Controllers\ESBTPLMDSessionController::class, 'index'])
             ->middleware('permission:lmd.rattrapage.view')
@@ -2907,7 +2919,7 @@ Route::prefix('esbtp/lmd/rattrapage')->name('esbtp.lmd.rattrapage.')
 // Routes Examens planifiÃ©s (PR9 â€” workflow UEMOA scolaritÃ©)
 // ============================================================
 Route::prefix('esbtp/examens')->name('esbtp.examens.')
-    ->middleware(['auth', 'permission:admin.access', 'paywall'])
+    ->middleware(['auth', 'permission:admin.access|identity.direct_studies', 'paywall'])
     ->group(function () {
         // AperÃ§us / KPIs (lecture)
         Route::get('/kpis', [\App\Http\Controllers\ESBTPExamenPlanifieController::class, 'kpis'])

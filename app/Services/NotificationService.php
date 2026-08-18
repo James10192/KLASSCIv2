@@ -637,7 +637,7 @@ class NotificationService
     {
         try {
             // Récupérer les utilisateurs administratifs (sauf celui qui a créé l'annonce)
-            $admins = User::role(['superAdmin', 'secretaire', 'coordinateur'])->get();
+            $admins = User::role(['superAdmin', 'secretaire', 'coordinateur', 'directeurEtudes'])->get();
 
             // Déterminer le type de destinataires pour le message
             $destinataireText = '';
@@ -746,7 +746,7 @@ class NotificationService
     public function notifyNewInscription($inscription, ?User $createdBy = null): void
     {
         try {
-            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant'])->get();
+            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'directeurEtudes', 'enseignant'])->get();
 
             $title = "Nouvelle inscription";
             $message = "L'étudiant {$inscription->etudiant->nom} {$inscription->etudiant->prenoms} s'est inscrit en {$inscription->classe->name}";
@@ -768,7 +768,7 @@ class NotificationService
     public function notifyNewReinscription($inscription, ?User $createdBy = null): void
     {
         try {
-            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant'])->get();
+            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'directeurEtudes', 'enseignant'])->get();
 
             $title = "Nouvelle réinscription";
             $message = "L'étudiant {$inscription->etudiant->nom} {$inscription->etudiant->prenoms} s'est réinscrit en {$inscription->classe->name}";
@@ -790,7 +790,7 @@ class NotificationService
     public function notifyNewClasse($classe, ?User $createdBy = null): void
     {
         try {
-            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant'])->get();
+            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'directeurEtudes', 'enseignant'])->get();
 
             $title = "Nouvelle classe créée";
             $message = "La classe {$classe->name} a été créée pour la filière {$classe->filiere->name}";
@@ -812,7 +812,7 @@ class NotificationService
     public function notifyNewFiliere($filiere, ?User $createdBy = null): void
     {
         try {
-            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant'])->get();
+            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'directeurEtudes', 'enseignant'])->get();
 
             $title = "Nouvelle filière créée";
             $message = "La filière {$filiere->name} ({$filiere->code}) a été créée";
@@ -834,7 +834,7 @@ class NotificationService
     public function notifyNewNiveauEtude($niveau, ?User $createdBy = null): void
     {
         try {
-            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant'])->get();
+            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'directeurEtudes', 'enseignant'])->get();
 
             $title = "Nouveau niveau d'étude créé";
             $message = "Le niveau d'étude {$niveau->name} ({$niveau->code}) a été créé";
@@ -857,7 +857,7 @@ class NotificationService
     {
         try {
             // Notifier les non-étudiants
-            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'enseignant'])->get();
+            $nonStudentUsers = User::role(['superAdmin', 'admin', 'secretaire', 'coordinateur', 'directeurEtudes', 'enseignant'])->get();
 
             $title = "Nouvelle matière créée";
             $message = "La matière {$matiere->name} ({$matiere->code}) a été créée";
@@ -1636,7 +1636,7 @@ class NotificationService
     {
         try {
             // Récupérer tous les coordinateurs
-            $coordinateurs = User::role(['coordinateur'])->get();
+            $coordinateurs = User::role(['coordinateur', 'directeurEtudes'])->get();
             
             $matiere = $seanceCours->matiere->name ?? 'Matière inconnue';
             $classe = $seanceCours->emploiTemps->classe->name ?? $seanceCours->classe->name ?? 'Classe inconnue';
@@ -1679,7 +1679,7 @@ class NotificationService
     {
         try {
             // Récupérer tous les coordinateurs
-            $coordinateurs = User::role(['coordinateur'])->get();
+            $coordinateurs = User::role(['coordinateur', 'directeurEtudes'])->get();
             
             $matiere = $seanceCours->matiere->name ?? 'Matière inconnue';
             $classe = $seanceCours->emploiTemps->classe->name ?? $seanceCours->classe->name ?? 'Classe inconnue';
@@ -1725,7 +1725,7 @@ class NotificationService
     {
         try {
             // Récupérer tous les coordinateurs
-            $coordinateurs = User::role(['coordinateur'])->get();
+            $coordinateurs = User::role(['coordinateur', 'directeurEtudes'])->get();
             
             $matiere = $seanceCours->matiere->name ?? 'Matière inconnue';
             $classe = $seanceCours->emploiTemps->classe->name ?? $seanceCours->classe->name ?? 'Classe inconnue';
@@ -1772,7 +1772,7 @@ class NotificationService
     {
         try {
             // Récupérer tous les coordinateurs
-            $coordinateurs = User::role(['coordinateur'])->get();
+            $coordinateurs = User::role(['coordinateur', 'directeurEtudes'])->get();
             
             $matiere = $seanceCours->matiere->name ?? 'Matière inconnue';
             $classe = $seanceCours->emploiTemps->classe->name ?? $seanceCours->classe->name ?? 'Classe inconnue';
@@ -1860,7 +1860,7 @@ class NotificationService
     public function sendDailyAttendanceSummaryToCoordinators()
     {
         try {
-            $coordinateurs = User::role(['coordinateur'])->get();
+            $coordinateurs = User::role(['coordinateur', 'directeurEtudes'])->get();
             $today = now()->format('Y-m-d');
             
             // Récupérer les statistiques du jour
@@ -1937,7 +1937,7 @@ class NotificationService
     public function notifyInscriptionCreated($inscription, ?User $createdBy = null): void
     {
         try {
-            $users = User::role(['superAdmin', 'coordinateur', 'secretaire'])->get();
+            $users = User::role(['superAdmin', 'coordinateur', 'directeurEtudes', 'secretaire'])->get();
 
             $etudiant = $inscription->etudiant;
             $classe = $inscription->classe;
@@ -2210,7 +2210,7 @@ class NotificationService
             }
 
             // Récupérer les superAdmin et coordinateurs
-            $recipients = User::role(['superAdmin', 'coordinateur'])->get();
+            $recipients = User::role(['superAdmin', 'coordinateur', 'directeurEtudes'])->get();
 
             if ($recipients->isEmpty()) {
                 Log::warning('Aucun destinataire trouvé pour les alertes critiques');
