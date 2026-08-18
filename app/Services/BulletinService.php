@@ -2191,22 +2191,29 @@ class BulletinService
     public function calculerRangsPourClasse(int $classeId, int $anneeUniversitaireId, string $periode): void
     {
         $periode = $this->normalizePeriode($periode);
-        $cohortIds = [$classeId];
 
-        $classBulletins = ESBTPBulletin::query()
-            ->where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->whereIn('periode', $this->periodeAliases($periode))
-            ->whereNotNull('moyenne_generale')
-            ->get();
+        foreach ($this->rankCohortIdsForClasse($classeId, $anneeUniversitaireId, $periode) as $cohortId) {
+            $this->recalculateRanksForCohort($cohortId, $anneeUniversitaireId, $periode);
+        }
+    }
 
-        foreach ($classBulletins as $bulletin) {
-            $cohortIds[] = $this->cohortResolver->resolveRankCohortClasseId($bulletin);
+    /**
+     * Propose ranks for a class without writing persisted bulletin rows.
+     *
+     * @return array<int, array{id:int, moyenne:?float, rang_actuel:?int, rang_propose:?int}>
+     */
+    public function previewRanksForClasse(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $periode = $this->normalizePeriode($periode);
+        $proposals = [];
+
+        foreach ($this->rankCohortIdsForClasse($classeId, $anneeUniversitaireId, $periode) as $cohortId) {
+            foreach ($this->proposedRanksForCohort((int) $cohortId, $anneeUniversitaireId, $periode) as $proposal) {
+                $proposals[(int) $proposal['id']] = $proposal;
+            }
         }
 
-        foreach (array_values(array_unique($cohortIds)) as $cohortId) {
-            $this->recalculateRanksForCohort((int) $cohortId, $anneeUniversitaireId, $periode);
-        }
+        return array_values($proposals);
     }
 
     private function recalculateRanksForCohort(int $cohortClasseId, int $anneeUniversitaireId, string $periode): void
@@ -2232,6 +2239,57 @@ class BulletinService
             $bulletin->rang = $average === null ? null : $this->rankAmongAverages($averages, $average);
             $bulletin->save();
         }
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function rankCohortIdsForClasse(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $periode = $this->normalizePeriode($periode);
+        $cohortIds = [$classeId];
+
+        $classBulletins = ESBTPBulletin::query()
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', $this->periodeAliases($periode))
+            ->whereNotNull('moyenne_generale')
+            ->get();
+
+        foreach ($classBulletins as $bulletin) {
+            $cohortIds[] = $this->cohortResolver->resolveRankCohortClasseId($bulletin);
+        }
+
+        return array_values(array_unique(array_map('intval', $cohortIds)));
+    }
+
+    /**
+     * @return array<int, array{id:int, moyenne:?float, rang_actuel:?int, rang_propose:?int}>
+     */
+    private function proposedRanksForCohort(int $cohortClasseId, int $anneeUniversitaireId, string $periode): array
+    {
+        $bulletins = $this->bulletinsInRankCohort($cohortClasseId, $anneeUniversitaireId, $periode);
+        $averages = [];
+        foreach ($bulletins as $bulletin) {
+            $average = $this->getEffectiveBulletinAverage($bulletin);
+            if ($average === null) {
+                continue;
+            }
+            $averages[(int) $bulletin->id] = $average;
+        }
+
+        $proposals = [];
+        foreach ($bulletins as $bulletin) {
+            $average = $averages[(int) $bulletin->id] ?? null;
+            $proposals[(int) $bulletin->id] = [
+                'id' => (int) $bulletin->id,
+                'moyenne' => $average === null ? null : round((float) $average, 2),
+                'rang_actuel' => $bulletin->rang === null ? null : (int) $bulletin->rang,
+                'rang_propose' => $average === null ? null : $this->rankAmongAverages($averages, $average),
+            ];
+        }
+
+        return $proposals;
     }
 
     private function bulletinsInRankCohort(int $cohortClasseId, int $anneeUniversitaireId, string $periode)
