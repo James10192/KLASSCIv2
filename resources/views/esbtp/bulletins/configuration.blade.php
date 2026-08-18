@@ -488,7 +488,7 @@
                             <div class="col-md-6">
                                 <label class="cfg-label">{{ $btsLabel }} · Coefficient semestre 2</label>
                                 <input type="number" class="cfg-input" name="bulletin_bts{{ $btsYear }}_semester2_weight"
-                                       value="{{ $settings['bulletin_bts'.$btsYear.'_semester2_weight'] ?? '1' }}" min="0" step="0.01">
+                                       value="{{ $settings['bulletin_bts'.$btsYear.'_semester2_weight'] ?? ($btsYear === 1 ? '2' : '1') }}" min="0" step="0.01">
                             </div>
                         @endforeach
 

@@ -2074,27 +2074,30 @@
                     Fallback global. Les coefficients BTS 1 et BTS 2 ci-dessous priment : 1re année (S1 + 2 x S2) / 3, 2e année (S1 + S2) / 2.
                 </div>
 
-                <div class="bc-grid bc-grid-2" style="margin-top: 20px;">
+                <div class="mga-rows" style="margin-top: 20px;">
                     @foreach([1, 2] as $btsYear)
-                    <div class="bc-input-row" style="align-items: flex-start;">
-                        <div class="bc-icon"><i class="fas fa-graduation-cap"></i></div>
-                        <div class="bc-body" style="width: 100%;">
-                            <div class="bc-label">Pondération spécifique BTS {{ $btsYear }}</div>
-                            <div class="bc-desc">Prioritaire sur la pondération générale pour cette année BTS.</div>
-                            <div style="display: flex; gap: 12px; margin-top: 10px;">
-                                <label>S1
-                                    <input type="number" class="form-control form-control-modern" style="max-width: 90px;"
-                                           name="setting_bulletin_bts{{ $btsYear }}_semester1_weight"
-                                           value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts'.$btsYear.'_semester1_weight', '1') }}"
-                                           min="0" step="0.1">
-                                </label>
-                                <label>S2
-                                    <input type="number" class="form-control form-control-modern" style="max-width: 90px;"
-                                           name="setting_bulletin_bts{{ $btsYear }}_semester2_weight"
-                                           value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts'.$btsYear.'_semester2_weight', $btsYear === 1 ? '2' : '1') }}"
-                                           min="0" step="0.1">
-                                </label>
-                            </div>
+                    <div class="mga-row">
+                        <label>Niveau
+                            <input type="text" class="form-control form-control-modern" value="BTS {{ $btsYear }}" readonly>
+                        </label>
+                        <label>Coefficient S1
+                            <input type="number" class="form-control form-control-modern"
+                                   name="setting_bulletin_bts{{ $btsYear }}_semester1_weight"
+                                   value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts'.$btsYear.'_semester1_weight', '1') }}"
+                                   min="0" step="0.1">
+                        </label>
+                        <label>Coefficient S2
+                            <input type="number" class="form-control form-control-modern"
+                                   name="setting_bulletin_bts{{ $btsYear }}_semester2_weight"
+                                   value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts'.$btsYear.'_semester2_weight', $btsYear === 1 ? '2' : '1') }}"
+                                   min="0" step="0.1">
+                        </label>
+                        <div class="mga-preview">
+                            @if($btsYear === 1)
+                                Formule 1re année : (S1 + 2 x S2) / 3
+                            @else
+                                Formule 2e année : (S1 + S2) / 2
+                            @endif
                         </div>
                     </div>
                     @endforeach
@@ -2110,36 +2113,47 @@
                     </div>
                 </div>
 
-                <div class="bc-grid bc-grid-2">
-                    <div class="bc-input-row" style="align-items: flex-start;">
-                        <div class="bc-body" style="width: 100%;">
-                            <div class="bc-label">BTS 1, semestre 2</div>
-                            <select class="form-control form-control-modern" name="setting_bulletin_bts1_council_mode">
-                                @foreach(['manual' => 'Manuel', 'threshold' => 'Selon la moyenne annuelle'] as $value => $label)
-                                <option value="{{ $value }}" {{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_mode', 'manual') === $value ? 'selected' : '' }}>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                            <select class="form-control form-control-modern" style="margin-top: 10px;" name="setting_bulletin_bts1_council_average_source">
-                                <option value="semestre2" {{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_average_source', 'semestre2') === 'semestre2' ? 'selected' : '' }}>Moyenne du semestre 2 avec assiduité</option>
-                                <option value="annual" {{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_average_source', 'semestre2') === 'annual' ? 'selected' : '' }}>Moyenne annuelle avec assiduité</option>
-                            </select>
-                            <div style="display: grid; grid-template-columns: 80px 1fr; gap: 8px; margin-top: 10px;">
+                <div class="council-editor">
+                    <div class="council-card">
+                        <div class="bc-label">BTS 1, semestre 2</div>
+                        <div class="council-grid">
+                            <label>Mode
+                                <select class="form-control form-control-modern" name="setting_bulletin_bts1_council_mode">
+                                    @foreach(['manual' => 'Manuel', 'threshold' => 'Selon un seuil'] as $value => $label)
+                                    <option value="{{ $value }}" {{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_mode', 'manual') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label>Moyenne de décision
+                                <select class="form-control form-control-modern" name="setting_bulletin_bts1_council_average_source">
+                                    <option value="semestre2" {{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_average_source', 'semestre2') === 'semestre2' ? 'selected' : '' }}>Semestre 2 avec assiduité</option>
+                                    <option value="annual" {{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_average_source', 'semestre2') === 'annual' ? 'selected' : '' }}>Annuelle avec assiduité</option>
+                                </select>
+                            </label>
+                            <label>Seuil
                                 <input type="number" class="form-control form-control-modern" name="setting_bulletin_bts1_council_threshold" value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_threshold', '10') }}" min="0" max="20" step="0.01">
+                            </label>
+                            <label>Sous le seuil
                                 <input type="text" class="form-control form-control-modern" name="setting_bulletin_bts1_council_below_text" value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_below_text', 'Redouble la classe') }}" placeholder="Sous le seuil">
-                                <span></span>
+                            </label>
+                            <label>Au seuil ou au-dessus
                                 <input type="text" class="form-control form-control-modern" name="setting_bulletin_bts1_council_at_or_above_text" value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts1_council_at_or_above_text', 'Admis(e) en 2e Année BTS') }}" placeholder="Au seuil ou au-dessus">
-                            </div>
+                            </label>
                         </div>
                     </div>
-                    <div class="bc-input-row" style="align-items: flex-start;">
-                        <div class="bc-body" style="width: 100%;">
-                            <div class="bc-label">BTS 2, semestre 2</div>
-                            <select class="form-control form-control-modern" name="setting_bulletin_bts2_council_mode">
-                                @foreach(['manual' => 'Manuel', 'fixed' => 'Texte fixe'] as $value => $label)
-                                <option value="{{ $value }}" {{ \App\Helpers\SettingsHelper::get('bulletin_bts2_council_mode', 'manual') === $value ? 'selected' : '' }}>{{ $label }}</option>
-                                @endforeach
-                            </select>
-                            <input type="text" class="form-control form-control-modern" style="margin-top: 10px;" name="setting_bulletin_bts2_council_fixed_text" value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts2_council_fixed_text', "Redouble en cas d'échec à l'examen du BTS") }}" placeholder="Texte de décision">
+                    <div class="council-card">
+                        <div class="bc-label">BTS 2, semestre 2</div>
+                        <div class="council-grid">
+                            <label>Mode
+                                <select class="form-control form-control-modern" name="setting_bulletin_bts2_council_mode">
+                                    @foreach(['manual' => 'Manuel', 'fixed' => 'Texte fixe'] as $value => $label)
+                                    <option value="{{ $value }}" {{ \App\Helpers\SettingsHelper::get('bulletin_bts2_council_mode', 'manual') === $value ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
+                                </select>
+                            </label>
+                            <label>Texte fixe
+                                <input type="text" class="form-control form-control-modern" name="setting_bulletin_bts2_council_fixed_text" value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts2_council_fixed_text', "Redouble en cas d'échec à l'examen du BTS") }}" placeholder="Texte de décision">
+                            </label>
                         </div>
                     </div>
                 </div>

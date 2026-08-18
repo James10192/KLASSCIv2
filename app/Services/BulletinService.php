@@ -2266,21 +2266,21 @@ class BulletinService
     private function collectSemesterAveragesForClasse(int $classeId, int $anneeUniversitaireId, string $periode): array
     {
         $periode = $this->normalizePeriode($periode);
+        $etudiantIds = $this->classCohortCounter->etudiantIds($classeId, $anneeUniversitaireId, $periode);
+        $stored = $this->storedBulletinAveragesByEtudiant($etudiantIds, $classeId, $anneeUniversitaireId, $periode);
+
         $averages = [];
-
-        $bulletins = ESBTPBulletin::query()
-            ->where('classe_id', $classeId)
-            ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->whereIn('periode', $this->periodeAliases($periode))
-            ->whereNotNull('moyenne_generale')
-            ->get();
-
-        foreach ($bulletins as $bulletin) {
-            $average = $this->getEffectiveBulletinAverage($bulletin);
+        foreach ($etudiantIds as $etudiantId) {
+            $average = $stored[(int) $etudiantId] ?? $this->liveAverageForStudent(
+                (int) $etudiantId,
+                $classeId,
+                $anneeUniversitaireId,
+                $periode
+            );
             if ($average === null) {
                 continue;
             }
-            $averages[(int) $bulletin->etudiant_id] = $average;
+            $averages[(int) $etudiantId] = $average;
         }
 
         return $averages;
@@ -2296,17 +2296,57 @@ class BulletinService
         $averages = [];
 
         $etudiantIds = $this->classCohortCounter->etudiantIds($classeId, $anneeUniversitaireId, 'semestre2');
+        $s1Stored = [];
+        $s2Stored = [];
         foreach ($etudiantIds as $etudiantId) {
             $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
             $classeIdS1 = (int) ($classMap['semestre1_classe_id'] ?? $classeId);
             $classeIdS2 = (int) ($classMap['semestre2_classe_id'] ?? $classeId);
-            $s1 = $this->averageFromStoredBulletin($etudiantId, $classeIdS1, $anneeUniversitaireId, 'semestre1');
-            $s2 = $this->averageFromStoredBulletin($etudiantId, $classeIdS2, $anneeUniversitaireId, 'semestre2');
+            $s1Stored[$classeIdS1][] = (int) $etudiantId;
+            $s2Stored[$classeIdS2][] = (int) $etudiantId;
+        }
+
+        $s1Averages = [];
+        foreach ($s1Stored as $mappedClasseId => $mappedEtudiantIds) {
+            $s1Averages[$mappedClasseId] = $this->storedBulletinAveragesByEtudiant(
+                array_values(array_unique($mappedEtudiantIds)),
+                (int) $mappedClasseId,
+                $anneeUniversitaireId,
+                'semestre1'
+            );
+        }
+
+        $s2Averages = [];
+        foreach ($s2Stored as $mappedClasseId => $mappedEtudiantIds) {
+            $s2Averages[$mappedClasseId] = $this->storedBulletinAveragesByEtudiant(
+                array_values(array_unique($mappedEtudiantIds)),
+                (int) $mappedClasseId,
+                $anneeUniversitaireId,
+                'semestre2'
+            );
+        }
+
+        foreach ($etudiantIds as $etudiantId) {
+            $classMap = $this->classMapResolver->resolve($etudiantId, $classeId, $anneeUniversitaireId);
+            $classeIdS1 = (int) ($classMap['semestre1_classe_id'] ?? $classeId);
+            $classeIdS2 = (int) ($classMap['semestre2_classe_id'] ?? $classeId);
+            $s1 = $s1Averages[$classeIdS1][(int) $etudiantId] ?? $this->liveAverageForStudent(
+                (int) $etudiantId,
+                $classeIdS1,
+                $anneeUniversitaireId,
+                'semestre1'
+            );
+            $s2 = $s2Averages[$classeIdS2][(int) $etudiantId] ?? $this->liveAverageForStudent(
+                (int) $etudiantId,
+                $classeIdS2,
+                $anneeUniversitaireId,
+                'semestre2'
+            );
             $annual = $this->calculateAnnualAverage($s1, $s2, $weights);
             if ($annual === null) {
                 continue;
             }
-            $averages[$etudiantId] = $annual;
+            $averages[(int) $etudiantId] = $annual;
         }
 
         return $averages;
@@ -2314,17 +2354,51 @@ class BulletinService
 
     private function averageFromStoredBulletin(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): ?float
     {
-        $bulletin = ESBTPBulletin::query()
-            ->where('etudiant_id', $etudiantId)
+        $stored = $this->storedBulletinAveragesByEtudiant(
+            [$etudiantId],
+            $classeId,
+            $anneeUniversitaireId,
+            $periode
+        );
+
+        if (array_key_exists($etudiantId, $stored)) {
+            return $stored[$etudiantId];
+        }
+
+        return $this->liveAverageForStudent($etudiantId, $classeId, $anneeUniversitaireId, $periode);
+    }
+
+    /**
+     * @param list<int> $etudiantIds
+     * @return array<int, float>
+     */
+    private function storedBulletinAveragesByEtudiant(array $etudiantIds, int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        if ($etudiantIds === []) {
+            return [];
+        }
+
+        $bulletins = ESBTPBulletin::query()
+            ->whereIn('etudiant_id', $etudiantIds)
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
             ->whereIn('periode', $this->periodeAliases($periode))
-            ->first();
+            ->get();
 
-        if ($bulletin && $bulletin->moyenne_generale !== null && $bulletin->moyenne_generale > 0) {
-            return $this->getEffectiveBulletinAverage($bulletin);
+        $averages = [];
+        foreach ($bulletins as $bulletin) {
+            if ($bulletin->moyenne_generale === null || $bulletin->moyenne_generale <= 0) {
+                continue;
+            }
+
+            $averages[(int) $bulletin->etudiant_id] = $this->getEffectiveBulletinAverage($bulletin);
         }
 
+        return $averages;
+    }
+
+    private function liveAverageForStudent(int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): ?float
+    {
         $rawAvg = $this->calculateStudentAverageForPeriode($etudiantId, $classeId, $anneeUniversitaireId, $periode);
         if ($rawAvg === null) {
             return null;

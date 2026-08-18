@@ -777,7 +777,7 @@
                                         @endif
                                         @if(($settings['bulletin_show_student_rank'] ?? '1') == '1')
                                             <tr>
-                                                <td>{{ in_array($periode, ['semestre2', 'annuel'], true) ? 'Rang semestre' : 'Rang' }}</td>
+                                                <td>{{ in_array($periode, ['semestre2', 'annuel'], true) ? 'Rang semestre 2' : 'Rang' }}</td>
                                                 <td class="center"><span class="result-value-box">{{ $rang ?: '-' }}</span></td>
                                             </tr>
                                             @if(in_array($periode, ['semestre2', 'annuel'], true))
