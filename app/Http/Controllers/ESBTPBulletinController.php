@@ -995,13 +995,10 @@ class ESBTPBulletinController extends Controller
                 $bulletin->decision_conseil
             );
             $councilDecision = [
-                'title' => (\App\Helpers\SettingsHelper::get('bulletin_style', 'yakro') === 'abidjan'
-                    && $classe
-                    && $classe->isBTS()
-                    && $levelYear === 1
-                    && $this->bulletinService->normalizePeriode((string) $bulletin->periode) === 'semestre1')
-                    ? "Appréciation du Conseil de Classe"
-                    : 'Décision du conseil de classe',
+                'title' => $this->bulletinService->councilDecisionTitle(
+                    $classe,
+                    $this->bulletinService->normalizePeriode((string) $bulletin->periode)
+                ),
                 'text' => (string) ($decisionConseil ?? ''),
             ];
 
@@ -2342,6 +2339,8 @@ class ESBTPBulletinController extends Controller
                 'bulletin_bts1_council_at_or_above_text',
                 'bulletin_bts2_council_mode',
                 'bulletin_bts2_council_fixed_text',
+                'bulletin_bts1_s1_council_title',
+                'bulletin_style',
                 // LMD text fields
                 'lmd_bulletin_republic_text',
                 'lmd_bulletin_union_text',
@@ -2411,6 +2410,16 @@ class ESBTPBulletinController extends Controller
                 SettingsHelper::setOrCreate($key, $value ?? '', 'establishment');
             }
 
+            $this->bulletinService->forgetPDFConfigCache();
+            $savedSettings = $this->bulletinService->getPDFConfig();
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Configuration sauvegardée avec succès.',
+                    'settings' => $savedSettings,
+                ]);
+            }
+
             return redirect()->back()->with('success', 'Configuration sauvegardée avec succès.');
 
         } catch (\Exception $e) {
@@ -2419,6 +2428,13 @@ class ESBTPBulletinController extends Controller
                 'line' => $e->getLine(),
                 'trace' => config('app.debug') ? $e->getTraceAsString() : null,
             ]);
+
+            if ($request->expectsJson() || $request->wantsJson() || $request->ajax()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Erreur lors de la sauvegarde de la configuration: '.$e->getMessage(),
+                ], 500);
+            }
 
             return redirect()->back()->with('error', 'Erreur lors de la sauvegarde de la configuration: '.$e->getMessage());
         }

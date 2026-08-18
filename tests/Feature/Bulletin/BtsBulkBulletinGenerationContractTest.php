@@ -200,12 +200,13 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $bulletinService = file_get_contents(app_path('Services/BulletinService.php'));
 
         $this->assertStringContainsString(
-            '$this->bulletinService->recalculerRangsClasse($classe->id, $academicYearId, $period);',
+            '$this->bulletinService->calculerRangsPourClasse($classe->id, $academicYearId, $period);',
             $bulkService
         );
         $this->assertStringContainsString('public function recalculerRangsClasse(', $bulletinService);
         $this->assertStringContainsString('resolveRankCohortClasseId($bulletin)', $bulletinService);
-        $this->assertStringContainsString("->pluck('moyenne_generale')", $bulletinService);
+        $this->assertStringContainsString('private function recalculateRanksForCohort(', $bulletinService);
+        $this->assertStringContainsString('getEffectiveBulletinAverage($bulletin)', $bulletinService);
     }
 
     public function test_bts_council_decision_uses_the_configured_field_in_both_pdf_templates(): void
@@ -213,8 +214,8 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $yakro = file_get_contents(resource_path('views/esbtp/bulletins/pdf-configurable.blade.php'));
         $abidjan = file_get_contents(resource_path('views/esbtp/bulletins/pdf-configurable-abidjan.blade.php'));
 
-        $this->assertStringContainsString("{{ \$decisionConseil ?? \$bulletin->decision_conseil ?? '' }}", $yakro);
-        $this->assertStringContainsString("{{ \$decisionConseil ?? \$bulletin->decision_conseil ?? '' }}", $abidjan);
+        $this->assertStringContainsString("{{ \$decisionConseil ?? \$councilDecision['text'] ?? \$bulletin->decision_conseil ?? '' }}", $yakro);
+        $this->assertStringContainsString("{{ \$decisionConseil ?? \$councilDecision['text'] ?? \$bulletin->decision_conseil ?? '' }}", $abidjan);
         $this->assertStringNotContainsString('decision_conseil = $automaticCouncilDecision', $bulletinService = file_get_contents(app_path('Services/BulletinService.php')));
     }
 

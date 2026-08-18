@@ -10,6 +10,7 @@
         $pdfText       = $pdfSettings['text_color']        ?? '#1f2937';
         $anneeAffichee = ($bulletin ?? null)?->anneeUniversitaire ?? ($anneeUniversitaire ?? null);
         $anneeLabel = $anneeAffichee?->display_name ?? '';
+        $typeScale = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
     @endphp
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -19,7 +20,7 @@
         * { box-sizing: border-box; }
         body {
             font-family: DejaVu Sans, Arial, sans-serif;
-            font-size: {{ $settings['bulletin_font_size'] ?? '13' }}px;
+            font-size: {{ $typeScale['body'] }}px;
             margin: 0;
             padding: 0;
             background: #fff;
@@ -57,7 +58,7 @@
         }
         .header-left {
             width: 26%;
-            font-size: 11.5px;
+            font-size: {{ $typeScale['table_head'] }}px;
             line-height: 1.5;
             color: #374151;
             border-right: 1px solid #e5e7eb;
@@ -71,7 +72,7 @@
         }
         .header-right {
             width: 26%;
-            font-size: 12px;
+            font-size: {{ $typeScale['info'] }}px;
             line-height: 1.5;
             text-align: right;
             padding-left: 8px;
@@ -85,32 +86,32 @@
         }
         .school-name {
             font-weight: 700;
-            font-size: 16px;
+            font-size: {{ $typeScale['heading'] }}px;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
             letter-spacing: 0.04em;
             margin-bottom: 3px;
         }
         .school-address {
-            font-size: 10.5px;
+            font-size: {{ $typeScale['meta'] }}px;
             color: #6b7280;
         }
         .header-right .title {
             font-weight: 700;
-            font-size: 15px;
+            font-size: {{ $typeScale['title'] }}px;
             text-decoration: underline;
             color: {{ $pdfPrimary }};
             text-transform: uppercase;
             margin-bottom: 4px;
         }
         .header-right .period {
-            font-size: 12.5px;
+            font-size: {{ $typeScale['table'] }}px;
             font-weight: 600;
             color: #1f2937;
             margin-bottom: 2px;
         }
         .header-right .year {
-            font-size: 12px;
+            font-size: {{ $typeScale['info'] }}px;
             color: #374151;
         }
 
@@ -168,14 +169,14 @@
             display: table-cell;
             vertical-align: middle;
             text-align: center;
-            font-size: 22px;
+            font-size: {{ $typeScale['avatar'] }}px;
             color: {{ $pdfPrimary }};
             font-weight: 700;
         }
         .matricule-text {
             margin-top: 3px;
             font-weight: 700;
-            font-size: 10px;
+            font-size: {{ $typeScale['meta'] }}px;
             text-align: center;
             color: #374151;
         }
@@ -203,14 +204,14 @@
             white-space: nowrap;
             padding-right: 10px;
             color: #6b7280;
-            font-size: 9.5px;
+            font-size: {{ $typeScale['label'] }}px;
             text-transform: uppercase;
             letter-spacing: 0.06em;
             width: 1%; /* shrink to content */
         }
         .info-table td.info-value {
             color: {{ $pdfPrimary }};
-            font-size: 12.5px;
+            font-size: {{ $typeScale['table'] }}px;
             font-weight: 700;
             word-wrap: break-word;
         }
@@ -220,7 +221,7 @@
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 4px;
-            font-size: 12.5px;
+            font-size: {{ $typeScale['table'] }}px;
         }
         th, td {
             border: 1px solid #d1d5db;
@@ -231,7 +232,7 @@
             background: #f3f4f6;
             font-weight: 700;
             text-align: center;
-            font-size: 11.5px;
+            font-size: {{ $typeScale['table_head'] }}px;
             color: #111827;
         }
         .center { text-align: center; }
@@ -240,7 +241,7 @@
         .summary-row td {
             background-color: #e5e7eb !important;
             font-weight: 700;
-            font-size: 13px;
+            font-size: {{ $typeScale['body'] }}px;
         }
 
         /* DomPDF ne supporte pas background-color sur <tr>.
@@ -251,7 +252,7 @@
             font-weight: 700;
             text-align: center;
             padding: 3px 6px;
-            font-size: 12.5px;
+            font-size: {{ $typeScale['table'] }}px;
         }
         /* :nth-child n'est pas supporté par DomPDF — on utilise .subject-row-even
            posée via $loop->even dans le template Blade (voir tbody ci-dessous). */
@@ -278,14 +279,14 @@
         }
         .results-table, .stats-table {
             width: 100%;
-            font-size: 13px;
+            font-size: {{ $typeScale['body'] }}px;
             border-collapse: collapse;
         }
         .results-table th, .stats-table th {
             background: {{ $pdfPrimary }};
             color: {{ $pdfHeaderText }};
             padding: 3px 7px;
-            font-size: 12px;
+            font-size: {{ $typeScale['info'] }}px;
             border: none;
             text-align: left;
         }
@@ -308,13 +309,13 @@
             text-align: center;
             font-weight: 700;
             background: #f8fafb;
-            font-size: 13px;
+            font-size: {{ $typeScale['body'] }}px;
         }
         .appreciation-badge {
             display: inline-block;
             border-radius: 4px;
             padding: 2px 6px;
-            font-size: 11px;
+            font-size: {{ $typeScale['signature'] }}px;
             font-weight: 700;
             white-space: nowrap;
             border: 1px solid #d1d5db;
@@ -326,7 +327,7 @@
         .appreciation-badge--warning { background: #fffbeb; color: #b45309; border-color: #fde68a; }
         .appreciation-badge--danger { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
         .appreciation-badge--neutral { background: #f8fafc; color: #475569; border-color: #d1d5db; }
-        .absences-table { width: 100%; margin-bottom: 4px; font-size: 12.5px; }
+        .absences-table { width: 100%; margin-bottom: 4px; font-size: {{ $typeScale['table'] }}px; }
         .absences-table td { padding: 3px 5px; }
 
         /* ── Mentions — grid 2 colonnes (compaction) ──────────── */
@@ -342,7 +343,7 @@
             border-radius: 5px;
             padding: 0;
             background: #fff;
-            font-size: 12px;
+            font-size: {{ $typeScale['info'] }}px;
             vertical-align: middle;
         }
         .mentions-grid > tbody > tr > td.mention-cell--empty {
@@ -387,7 +388,7 @@
             font-weight: 700;
             margin-bottom: 3px;
             text-decoration: underline;
-            font-size: 12px;
+            font-size: {{ $typeScale['info'] }}px;
             text-transform: uppercase;
             color: {{ $pdfPrimary }};
         }
@@ -445,7 +446,7 @@
             border-radius: 4px;
             cursor: pointer;
             z-index: 1000;
-            font-size: 12px;
+            font-size: {{ $typeScale['info'] }}px;
         }
     </style>
 </head>
@@ -906,7 +907,7 @@
         @if(($settings['bulletin_show_council_decision'] ?? '1') == '1')
         <div class="decision-container">
             <div class="decision-title">{{ $councilDecision['title'] ?? 'Décision du conseil de classe' }}</div>
-            <div style="min-height: 36px; font-size: 11.5px;">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
+            <div style="min-height: 36px; font-size: {{ $typeScale['decision'] }}px;">{{ $decisionConseil ?? $councilDecision['text'] ?? $bulletin->decision_conseil ?? '' }}</div>
         </div>
         @endif
 
@@ -919,10 +920,10 @@
         <div class="signature-container">
             @if(($settings['bulletin_show_director_signature'] ?? '1') == '1')
             <div class="signature-box">
-                <div style="font-size: 11.5px;">{{ $directorTitle }}</div>
+                <div style="font-size: {{ $typeScale['signature'] }}px;">{{ $directorTitle }}</div>
                 <div class="signature-line"></div>
                 @if($directorName)
-                    <div style="margin-top: 4px; font-weight: 700; font-size: 11px;">{{ $directorName }}</div>
+                    <div style="margin-top: 4px; font-weight: 700; font-size: {{ $typeScale['signature'] }}px;">{{ $directorName }}</div>
                 @endif
             </div>
             @endif

@@ -370,6 +370,8 @@ class SettingsHelper
 
             // Bulletin
             'bulletin_style' => ['value' => 'yakro', 'group' => 'bulletin'],
+            'bulletin_font_size' => ['value' => '13', 'group' => 'bulletin'],
+            'bulletin_bts1_s1_council_title' => ['value' => 'Décision du conseil de classe', 'group' => 'bulletin'],
             'bulletin_semester1_weight' => ['value' => '1', 'group' => 'bulletin'],
             'bulletin_semester2_weight' => ['value' => '1', 'group' => 'bulletin'],
 

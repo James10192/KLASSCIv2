@@ -29,7 +29,9 @@ class BtsBulletinPolicyTest extends TestCase
         $rules = BtsBulletinPolicy::validationRules();
 
         self::assertArrayHasKey('bulletin_bts1_council_mode', $definitions);
+        self::assertArrayHasKey('bulletin_bts1_s1_council_title', $definitions);
         self::assertSame('manual', $defaults['bulletin_bts1_council_mode']);
+        self::assertSame('Décision du conseil de classe', $defaults['bulletin_bts1_s1_council_title']);
         self::assertSame('1', $defaults['bulletin_bts1_semester1_weight']);
         self::assertSame('2', $defaults['bulletin_bts1_semester2_weight']);
         self::assertContains('required_if:bulletin_bts1_council_mode,threshold', $rules['bulletin_bts1_council_below_text']);

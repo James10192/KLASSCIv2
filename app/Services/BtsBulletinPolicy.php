@@ -20,6 +20,7 @@ final class BtsBulletinPolicy
         'bulletin_bts1_council_threshold' => ['value' => '10', 'type' => 'float', 'description' => 'Seuil de décision BTS 1', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'numeric', 'between:0,20']],
         'bulletin_bts1_council_below_text' => ['value' => 'Redouble la classe', 'type' => 'string', 'description' => 'Décision BTS 1 sous le seuil', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'string', 'max:191']],
         'bulletin_bts1_council_at_or_above_text' => ['value' => 'Admis(e) en 2e Année BTS', 'type' => 'string', 'description' => 'Décision BTS 1 au seuil ou au-dessus', 'validation_rules' => ['required_if:bulletin_bts1_council_mode,threshold', 'nullable', 'string', 'max:191']],
+        'bulletin_bts1_s1_council_title' => ['value' => 'Décision du conseil de classe', 'type' => 'string', 'description' => 'Titre du conseil BTS 1 semestre 1', 'validation_rules' => ['nullable', 'string', 'max:191']],
         'bulletin_bts2_council_mode' => ['value' => 'manual', 'type' => 'string', 'description' => 'Mode de décision BTS 2', 'validation_rules' => ['nullable', 'in:manual,fixed']],
         'bulletin_bts2_council_fixed_text' => ['value' => "Redouble en cas d'échec à l'examen du BTS", 'type' => 'string', 'description' => 'Décision fixe BTS 2', 'validation_rules' => ['required_if:bulletin_bts2_council_mode,fixed', 'nullable', 'string', 'max:191']],
     ];

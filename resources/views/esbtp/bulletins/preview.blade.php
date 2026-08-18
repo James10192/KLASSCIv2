@@ -3,13 +3,16 @@
 @push('styles')
 <link rel="stylesheet" href="{{ asset('css/dashboard-moderne.css') }}">
 @include('pdf.partials.theme')
+@php
+    $typeScale = \App\Services\BulletinTypography::scale($settings['bulletin_font_size'] ?? 13);
+@endphp
 <style>
     /* Styles du bulletin basés sur Layout pdf/Bulletin */
     body {
         font-family: Arial, sans-serif;
         background-color: #f8f9fa;
         color: #000;
-        font-size: 12px;
+        font-size: {{ $typeScale['body'] }}px;
     }
 
     .bulletin-container {
@@ -29,30 +32,30 @@
 
     .republic-title {
         font-weight: bold;
-        font-size: 14px;
+        font-size: {{ $typeScale['title'] }}px;
     }
 
     .motto {
         font-style: italic;
-        font-size: 12px;
+        font-size: {{ $typeScale['info'] }}px;
     }
 
     .ministry-title {
-        font-size: 12px;
+        font-size: {{ $typeScale['info'] }}px;
     }
 
     .bulletin-title {
         font-weight: bold;
-        font-size: 14px;
+        font-size: {{ $typeScale['title'] }}px;
         text-transform: uppercase;
     }
 
     .edition-date, .cycle-info, .diploma-info, .diploma-code {
-        font-size: 12px;
+        font-size: {{ $typeScale['info'] }}px;
     }
 
     .academic-year {
-        font-size: 12px;
+        font-size: {{ $typeScale['info'] }}px;
         font-weight: bold;
         margin-top: 20px;
     }
@@ -84,19 +87,19 @@
     }
 
     .school-name {
-        font-size: 14px;
+        font-size: {{ $typeScale['title'] }}px;
         color: #0A6B31;
         font-weight: bold;
     }
 
     .school-contact {
-        font-size: 10px;
+        font-size: {{ $typeScale['meta'] }}px;
         color: #333;
     }
 
     /* Tableaux d'informations de l'étudiant */
     .student-table {
-        font-size: 12px;
+        font-size: {{ $typeScale['info'] }}px;
         margin-bottom: 10px;
         border: 1px solid #000;
     }
@@ -112,7 +115,7 @@
 
     /* Tableaux des notes */
     .table {
-        font-size: 12px;
+        font-size: {{ $typeScale['info'] }}px;
         border: 1px solid #000;
         margin-bottom: 10px;
     }
@@ -162,13 +165,13 @@
 
     .decision-title, .signature-title {
         font-weight: bold;
-        font-size: 12px;
+        font-size: {{ $typeScale['info'] }}px;
         margin-bottom: 30px;
     }
 
     .decision-result {
         font-weight: bold;
-        font-size: 16px;
+        font-size: {{ $typeScale['heading'] }}px;
         margin-top: 20px;
         font-style: italic;
     }
@@ -183,7 +186,7 @@
     /* Pied de page */
     .bulletin-footer {
         margin-top: 30px;
-        font-size: 10px;
+        font-size: {{ $typeScale['meta'] }}px;
         text-align: center;
         border-top: 1px solid #000;
         padding-top: 5px;

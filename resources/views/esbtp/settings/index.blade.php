@@ -1304,8 +1304,8 @@
                         </label>
                         <input type="number" class="form-control form-control-modern"
                                name="bulletin_font_size"
-                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_font_size', '11') }}"
-                               min="8" max="16" step="1">
+                               value="{{ \App\Helpers\SettingsHelper::get('bulletin_font_size', '13') }}"
+                               min="9" max="16" step="1">
                     </div>
                     <div class="form-group">
                         <label class="form-label-modern">
@@ -1724,7 +1724,7 @@
                     <div class="section-icon bulletin"><i class="fas fa-layer-group"></i></div>
                     <div>
                         <h3 class="section-title">Modèle de bulletin</h3>
-                        <p class="section-description">Le gabarit et le titre du conseil viennent de ce réglage, jamais du nom du tenant.</p>
+                        <p class="section-description">Le gabarit Yakro ou Abidjan vient de ce réglage, jamais du nom du tenant. Le titre 1 BTS semestre 1 se règle à part.</p>
                     </div>
                 </div>
                 <div class="bc-grid bc-grid-2">
@@ -1740,9 +1740,20 @@
                         <input type="radio" name="setting_bulletin_style" value="abidjan" {{ $currentBulletinStyle === 'abidjan' ? 'checked' : '' }} style="margin-top:6px;">
                         <div class="bc-body">
                             <div class="bc-label">Modèle Abidjan / Plateau</div>
-                            <div class="bc-desc">Conseil au-dessus de la signature. En semestre 1 BTS 1, le titre devient Appréciation du Conseil de Classe.</div>
+                            <div class="bc-desc">Conseil au-dessus de la signature. Les couleurs restent celles de l'onglet Documents. Le titre 1 BTS semestre 1 se règle séparément.</div>
                         </div>
                     </label>
+                </div>
+                <div class="form-group" style="margin-top:1.25rem;">
+                    <label class="form-label-modern">
+                        <i class="fas fa-gavel text-primary"></i>
+                        Titre du conseil 1 BTS semestre 1
+                    </label>
+                    <input type="text" class="form-control form-control-modern"
+                           name="setting_bulletin_bts1_s1_council_title"
+                           value="{{ \App\Helpers\SettingsHelper::get('bulletin_bts1_s1_council_title', 'Décision du conseil de classe') }}"
+                           maxlength="191">
+                    <small class="text-muted"><i class="fas fa-info-circle"></i> Indépendant du gabarit. Plateau : Appréciation du Conseil de Classe. Yakro : Décision du conseil de classe.</small>
                 </div>
             </div>
 

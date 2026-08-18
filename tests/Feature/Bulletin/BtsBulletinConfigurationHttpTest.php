@@ -115,4 +115,34 @@ class BtsBulletinConfigurationHttpTest extends TestCase
         self::assertSame('0', SettingsHelper::get('bulletin_show_subjects_table'));
         self::assertSame('1', SettingsHelper::get('bulletin_show_header'));
     }
+
+    public function test_ajax_save_returns_json_settings_without_redirect(): void
+    {
+        SettingsHelper::setOrCreate('bulletin_bts1_semester1_weight', '1', 'bulletin');
+        SettingsHelper::setOrCreate('bulletin_bts1_semester2_weight', '2', 'bulletin');
+
+        $response = $this->postJson(route('esbtp.bulletins.save-configuration'), [
+            'bulletin_style' => 'yakro',
+            'bulletin_font_size' => '14',
+            'bulletin_bts1_s1_council_title' => 'Appreciation du Conseil de Classe',
+            'bulletin_bts1_semester1_weight' => '1',
+            'bulletin_bts1_semester2_weight' => '2',
+        ]);
+
+        $response->assertOk();
+        $response->assertJsonPath('success', true);
+        $response->assertJsonPath('settings.bulletin_style', 'yakro');
+        $response->assertJsonPath('settings.bulletin_font_size', '14');
+        $response->assertJsonPath(
+            'settings.bulletin_bts1_s1_council_title',
+            'Appreciation du Conseil de Classe'
+        );
+        self::assertFalse($response->isRedirection());
+        self::assertSame('yakro', SettingsHelper::get('bulletin_style'));
+        self::assertSame('14', SettingsHelper::get('bulletin_font_size'));
+        self::assertSame(
+            'Appreciation du Conseil de Classe',
+            SettingsHelper::get('bulletin_bts1_s1_council_title')
+        );
+    }
 }

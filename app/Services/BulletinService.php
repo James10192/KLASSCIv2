@@ -81,6 +81,11 @@ class BulletinService
         $this->classCohortCounter = $classCohortCounter;
     }
 
+    public function forgetPDFConfigCache(): void
+    {
+        $this->pdfConfigCache = null;
+    }
+
     public function isAttendanceNoteEnabled(): bool
     {
         return SettingsHelper::get('bulletin_show_attendance_note', '1') === '1';
@@ -1073,16 +1078,19 @@ class BulletinService
     }
 
 
-    private function councilDecisionTitle(ESBTPClasse $classe, string $periode): string
+    public function councilDecisionTitle(?ESBTPClasse $classe, string $periode): string
     {
         $periode = $this->normalizePeriode($periode);
-        $levelYear = $this->classeLevelYear($classe);
-        $style = SettingsHelper::get('bulletin_style', 'yakro');
-        if ($style === 'abidjan' && $classe->isBTS() && $levelYear === 1 && $periode === 'semestre1') {
-            return "Appréciation du Conseil de Classe";
+        $levelYear = $classe ? $this->classeLevelYear($classe) : null;
+        $defaultTitle = 'Décision du conseil de classe';
+
+        if ($classe && $classe->isBTS() && $levelYear === 1 && $periode === 'semestre1') {
+            $title = trim((string) SettingsHelper::get('bulletin_bts1_s1_council_title', $defaultTitle));
+
+            return $title !== '' ? $title : $defaultTitle;
         }
 
-        return 'Décision du conseil de classe';
+        return $defaultTitle;
     }
 
     private function councilDecisionMode(?int $levelYear): string
@@ -1562,7 +1570,9 @@ class BulletinService
 
             // En-tête bulletin
             'bulletin_school_name_custom' => \App\Helpers\SettingsHelper::get('bulletin_school_name_custom', ''),
-            'bulletin_font_size' => \App\Helpers\SettingsHelper::get('bulletin_font_size', '11'),
+            'bulletin_font_size' => \App\Helpers\SettingsHelper::get('bulletin_font_size', '13'),
+            'bulletin_style' => \App\Helpers\SettingsHelper::get('bulletin_style', 'yakro'),
+            'bulletin_bts1_s1_council_title' => \App\Helpers\SettingsHelper::get('bulletin_bts1_s1_council_title', 'Décision du conseil de classe'),
             'bulletin_show_header' => \App\Helpers\SettingsHelper::get('bulletin_show_header', '1'),
             'bulletin_show_logo' => \App\Helpers\SettingsHelper::get('bulletin_show_logo', '1'),
             'bulletin_show_republic_info' => \App\Helpers\SettingsHelper::get('bulletin_show_republic_info', '1'),
