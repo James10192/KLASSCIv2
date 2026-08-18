@@ -15,21 +15,30 @@ class DirecteurEtudesHttpAccessTest extends TestCase
         $jurys = \Route::getRoutes()->getByName('esbtp.lmd.jurys.index');
         $evaluations = \Route::getRoutes()->getByName('esbtp.evaluations.index');
         $planning = \Route::getRoutes()->getByName('esbtp.planning-general.index');
+        $filieres = \Route::getRoutes()->getByName('esbtp.filieres.index');
+        $niveaux = \Route::getRoutes()->getByName('esbtp.niveaux-etudes.index');
+        $annees = \Route::getRoutes()->getByName('esbtp.annees-universitaires.index');
+        $reinscriptions = \Route::getRoutes()->getByName('esbtp.reinscription.index');
+        $rapports = \Route::getRoutes()->getByName('esbtp.rapports-cours.index');
+        $profile = \Route::getRoutes()->getByName('admin.profile');
         $settings = \Route::getRoutes()->getByName('esbtp.settings.index');
         $compta = \Route::getRoutes()->getByName('esbtp.comptabilite.dashboard');
         $frais = \Route::getRoutes()->getByName('esbtp.frais.index');
+        $secretaires = \Route::getRoutes()->getByName('esbtp.secretaires.index');
+        $cycles = \Route::getRoutes()->getByName('esbtp.cycles.index');
 
-        foreach ([$notes, $classes, $jurys, $evaluations, $planning] as $route) {
+        foreach ([$notes, $classes, $jurys, $evaluations, $planning, $filieres, $niveaux, $annees, $reinscriptions, $rapports, $profile] as $route) {
             $this->assertInstanceOf(Route::class, $route);
             $this->assertTrue(
                 collect($route->gatherMiddleware())->contains(
                     fn ($middleware) => str_contains((string) $middleware, 'identity.direct_studies')
+                        || str_contains((string) $middleware, 'directeurEtudes')
                 ),
                 $route->getName().' must accept identity.direct_studies'
             );
         }
 
-        foreach ([$settings, $compta, $frais] as $route) {
+        foreach ([$settings, $compta, $frais, $secretaires, $cycles] as $route) {
             $this->assertInstanceOf(Route::class, $route);
             $this->assertFalse(
                 collect($route->gatherMiddleware())->contains(

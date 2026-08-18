@@ -371,6 +371,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour les rÃ´les et permissions
             Route::resource('roles', \App\Http\Controllers\ESBTP\RoleController::class)->middleware(['role:superAdmin']);
+        });
+
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies', 'paywall'])->group(function () {
 
             // Routes pour les filiÃ¨res â€” gates per-mÃ©thode (avant: middleware OR'd cassÃ© qui laissait passer view â†’ write)
             // /!\ Les routes statiques (create) DOIVENT Ãªtre dÃ©clarÃ©es AVANT les routes paramÃ©trÃ©es ({filiere})
@@ -448,6 +451,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
                     ->name('debug-annees');
             }
 
+        });
+
+        Route::middleware(['auth', 'permission:admin.access', 'paywall'])->group(function () {
             // Routes pour les cycles de formation
             Route::resource('cycles', ESBTPCycleController::class);
             Route::post('cycles/{id}/restore', [ESBTPCycleController::class, 'restore'])->name('cycles.restore');
@@ -493,7 +499,9 @@ Route::middleware(['auth', 'installed', 'force.password.change'])->group(functio
 
             // Routes pour les partenariats
             Route::resource('partnerships', \App\Http\Controllers\ESBTP\PartnershipController::class);
+        });
 
+        Route::middleware(['auth', 'permission:admin.access|identity.direct_studies', 'paywall'])->group(function () {
             // Routes du module comptabilitÃ© - PROVISOIREMENT SUPPRIMÃ‰ POUR REDÃ‰FINITION
 
             // Routes pour le systÃ¨me de rÃ©inscription
