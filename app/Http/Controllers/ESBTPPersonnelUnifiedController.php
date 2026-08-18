@@ -22,6 +22,13 @@ use Spatie\Permission\Models\Role;
 class ESBTPPersonnelUnifiedController extends Controller
 {
     private const TAB_PERMISSIONS = [
+        'directeurs_etudes' => [
+            'role' => 'directeurEtudes',
+            'view' => 'directeurs_etudes.view',
+            'create' => 'directeurs_etudes.create',
+            'edit' => 'directeurs_etudes.edit',
+            'delete' => 'directeurs_etudes.delete',
+        ],
         'coordinateurs' => [
             'role' => 'coordinateur',
             'view' => 'coordinateurs.view',
@@ -63,6 +70,7 @@ class ESBTPPersonnelUnifiedController extends Controller
      * Champs searchables additionnels par rôle (au-delà de name/email/telephone).
      */
     private const ROLE_SEARCH_FIELDS = [
+        'directeurEtudes' => ['specialite'],
         'coordinateur' => ['specialite'],
         'comptable' => ['department'],
         'secretaire' => [],
@@ -90,11 +98,13 @@ class ESBTPPersonnelUnifiedController extends Controller
         $personnelAccess = $this->personnelAccessMatrix();
         $visiblePersonnelTabs = collect(array_keys(self::TAB_PERMISSIONS))
             ->filter(fn ($tab) => ($personnelAccess[$tab]['view'] ?? false)
+                && ! ($tab === 'directeurs_etudes' && $userRole === 'directeurEtudes')
                 && ! ($tab === 'coordinateurs' && $userRole === 'coordinateur')
                 && ! ($tab === 'secretaires' && $userRole === 'secretaire'))
             ->values()
             ->all();
 
+        $directeursEtudes = in_array('directeurs_etudes', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('directeurEtudes') : collect();
         $coordinateurs = in_array('coordinateurs', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('coordinateur') : collect();
         $secretaires = in_array('secretaires', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('secretaire') : collect();
         $comptables = in_array('comptables', $visiblePersonnelTabs, true) ? $this->loadActiveByRole('comptable') : collect();
@@ -108,12 +118,13 @@ class ESBTPPersonnelUnifiedController extends Controller
             : collect();
 
         $stats = [
+            'directeurs_etudes' => $directeursEtudes->count(),
             'coordinateurs' => $coordinateurs->count(),
             'enseignants' => $enseignants->count(),
             'secretaires' => $secretaires->count(),
             'comptables' => $comptables->count(),
             'caissiers' => $caissiers->count(),
-            'total' => $coordinateurs->count() + $enseignants->count() + $secretaires->count()
+            'total' => $directeursEtudes->count() + $coordinateurs->count() + $enseignants->count() + $secretaires->count()
                 + $comptables->count() + $caissiers->count(),
         ];
 
@@ -193,6 +204,7 @@ class ESBTPPersonnelUnifiedController extends Controller
             ->keyBy('user_id');
 
         return view('esbtp.personnel.unified-index', compact(
+            'directeursEtudes',
             'coordinateurs',
             'enseignants',
             'secretaires',
@@ -248,7 +260,15 @@ class ESBTPPersonnelUnifiedController extends Controller
         $user = auth()->user();
         $permission = self::TAB_PERMISSIONS[$tab]['view'] ?? null;
 
-        return $user && ($user->can('personnel.manage') || ($permission && $user->can($permission)));
+        if (! $user || ! $permission) {
+            return false;
+        }
+
+        if ($tab === 'directeurs_etudes') {
+            return $user->can($permission);
+        }
+
+        return $user->can('personnel.manage') || $user->can($permission);
     }
 
     private function canManagePersonnelTab(string $tab, string $action): bool
@@ -256,7 +276,15 @@ class ESBTPPersonnelUnifiedController extends Controller
         $user = auth()->user();
         $permission = self::TAB_PERMISSIONS[$tab][$action] ?? null;
 
-        return $user && ($user->can('personnel.manage') || ($permission && $user->can($permission)));
+        if (! $user || ! $permission) {
+            return false;
+        }
+
+        if ($tab === 'directeurs_etudes') {
+            return $user->can($permission);
+        }
+
+        return $user->can('personnel.manage') || $user->can($permission);
     }
 
     private function tabForPersonnelType(string $type): ?string
@@ -402,7 +430,7 @@ class ESBTPPersonnelUnifiedController extends Controller
             }
 
             $data = $query->orderBy('created_at', 'desc')->get();
-        } elseif (in_array($type, ['coordinateur', 'secretaire', 'comptable', 'caissier'], true)) {
+        } elseif (in_array($type, ['directeurEtudes', 'coordinateur', 'secretaire', 'comptable', 'caissier'], true)) {
             $data = $this->searchByRole($type, $search, $status);
         } else {
             $data = collect();
@@ -427,11 +455,11 @@ class ESBTPPersonnelUnifiedController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'telephone' => 'nullable|string|max:20',
-            'type' => 'required|in:coordinateur,enseignant,secretaire,comptable,caissier',
+            'type' => 'required|in:directeurEtudes,coordinateur,enseignant,secretaire,comptable,caissier',
         ];
 
         // Règles spécifiques selon le type
-        if ($type === 'coordinateur') {
+        if (in_array($type, ['directeurEtudes', 'coordinateur'], true)) {
             $rules['specialite'] = 'nullable|string|max:255';
         } elseif ($type === 'enseignant') {
             $rules['specialization'] = 'nullable|string|max:255';
@@ -526,7 +554,7 @@ class ESBTPPersonnelUnifiedController extends Controller
             'is_active' => 'required|boolean',
         ];
 
-        if ($type === 'coordinateur') {
+        if (in_array($type, ['directeurEtudes', 'coordinateur'], true)) {
             $rules['specialite'] = 'nullable|string|max:255';
         } elseif ($type === 'enseignant') {
             $rules['specialization'] = 'nullable|string|max:255';
@@ -547,7 +575,7 @@ class ESBTPPersonnelUnifiedController extends Controller
                 'is_active' => $validated['is_active'],
             ];
 
-            if ($type === 'coordinateur') {
+            if (in_array($type, ['directeurEtudes', 'coordinateur'], true)) {
                 $updateData['specialite'] = $validated['specialite'] ?? null;
             } elseif ($type === 'secretaire') {
                 $updateData['service'] = $validated['service'] ?? null;
@@ -677,6 +705,7 @@ class ESBTPPersonnelUnifiedController extends Controller
         $this->ensureCanViewPersonnel();
 
         $stats = [
+            'directeurs_etudes' => $this->roleStats('directeurEtudes'),
             'coordinateurs' => $this->roleStats('coordinateur'),
             'enseignants' => [
                 'total' => ESBTPTeacher::count(),

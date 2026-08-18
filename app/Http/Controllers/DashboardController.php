@@ -95,6 +95,12 @@ class DashboardController extends Controller
             return $this->comptableDashboard();
         }
 
+        // Directeur des études — before coordinateur because the role also
+        // carries identity.coordinate to reuse academic gates.
+        if ($user->can('identity.direct_studies')) {
+            return redirect()->route('dashboard.directeur-etudes');
+        }
+
         // Coordinateur
         if ($user->can('identity.coordinate')) {
             return $this->coordinateurDashboard();

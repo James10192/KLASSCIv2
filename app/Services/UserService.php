@@ -53,6 +53,11 @@ class UserService
         return $this->ensureUniqueUsername($baseUsername);
     }
 
+    public function generateDirecteurEtudesUsername(string $prenom, string $nom): string
+    {
+        return $this->ensureUniqueUsername($this->createBaseUsername('de', $prenom, $nom));
+    }
+
     /**
      * Génère le mot de passe générique de l'année courante
      */
@@ -85,6 +90,9 @@ class UserService
                 break;
             case 'caissier':
                 $username = $this->generateCaissierUsername($nameParts['prenom'], $nameParts['nom']);
+                break;
+            case 'directeurEtudes':
+                $username = $this->generateDirecteurEtudesUsername($nameParts['prenom'], $nameParts['nom']);
                 break;
             default:
                 throw new \InvalidArgumentException("Type de rôle non supporté: {$roleType}");

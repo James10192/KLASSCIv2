@@ -10,7 +10,9 @@ Cette rule s'active automatiquement quand tu envisages :
 ## Règle absolue
 
 **Tu n'inventes PAS de nouveau rôle.** Le set des rôles **canoniques** est figé :
-`superAdmin`, `secretaire`, `comptable`, `caissier`, `coordinateur`, `enseignant`, `etudiant`, `serviceTechnique` (masqué).
+`superAdmin`, `secretaire`, `comptable`, `caissier`, `coordinateur`, `directeurEtudes`, `enseignant`, `etudiant`, `serviceTechnique` (masqué).
+
+Exception assumée (août 2026, Marcel) : `directeurEtudes` est un poste standard des écoles supérieures ivoiriennes, pas un custom role ponctuel. Il est canonique, pédagogique uniquement, sans `*` ni finance/système.
 
 Tout besoin métier nouveau (« il faut un directeur financier qui voit l'audit mais ne valide pas », « il faut un auditeur externe qui consulte sans modifier ») se traite **EXCLUSIVEMENT** via :
 

@@ -99,6 +99,7 @@ class AcademicPilotagePermissionsTest extends TestCase
 
         $this->assertSame($expected, $this->pilotageDefaultsFor('secretaire'));
         $this->assertSame($expected, $this->pilotageDefaultsFor('coordinateur'));
+        $this->assertSame($expected, $this->pilotageDefaultsFor('directeurEtudes'));
     }
 
     public function test_teacher_receives_limited_pilotage_permissions(): void

@@ -1600,7 +1600,7 @@
                     <!-- Dashboard - Common for all roles -->
                         <div class="menu-category">Tableau de bord</div>
                         <div class="menu-item">
-                            <a href="{{ route('dashboard') }}" class="menu-link {{ Request::routeIs('dashboard') ? 'active' : '' }}">
+                            <a href="{{ route('dashboard') }}" class="menu-link {{ Request::routeIs('dashboard') || Request::routeIs('dashboard.directeur-etudes*') ? 'active' : '' }}">
                                 <div class="menu-icon"><i class="fas fa-home"></i></div>
                                 <div class="menu-text">Accueil</div>
                             </a>
@@ -1748,7 +1748,7 @@
 
                     <!-- Personnel (non-superAdmin — superAdmin has accordion in Administration) -->
                     @can('personnel.view')
-                        @if(!auth()->user()->can('admin.access'))
+                        @if(!auth()->user()->can('admin.access') && !auth()->user()->can('identity.direct_studies'))
                         <div class="menu-category">Personnel</div>
                         <div class="menu-item">
                             <a href="{{ route('esbtp.personnel.unified.index') }}" class="menu-link {{ Request::routeIs('esbtp.personnel.unified.*') ? 'active' : '' }}">
@@ -2492,6 +2492,8 @@
                             $profileRoute = 'admin.profile';
                             if (auth()->check() && auth()->user()->can('identity.teach')) {
                                 $profileRoute = 'teacher.profile';
+                            } elseif (auth()->check() && auth()->user()->can('identity.direct_studies')) {
+                                $profileRoute = 'admin.profile';
                             } elseif (auth()->check() && auth()->user()->can('identity.coordinate')) {
                                 $profileRoute = 'coordinateur.profile';
                             }

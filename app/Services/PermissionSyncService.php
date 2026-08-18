@@ -145,7 +145,7 @@ class PermissionSyncService
             $permissions[] = 'personnel.view';
         }
 
-        foreach (['teachers', 'coordinateurs', 'secretaires', 'comptables', 'caissiers'] as $scope) {
+        foreach (['teachers', 'coordinateurs', 'directeurs_etudes', 'secretaires', 'comptables', 'caissiers'] as $scope) {
             $view = $scope.'.view';
             foreach (['create', 'edit', 'delete'] as $action) {
                 if (in_array($scope.'.'.$action, $permissions, true) && ! in_array($view, $permissions, true)) {

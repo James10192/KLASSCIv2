@@ -22,7 +22,7 @@ class CoordinateurDashboardController extends Controller
      */
     public function __construct(NotificationService $notificationService)
     {
-        $this->middleware(['auth', 'role:coordinateur|secretaire|superAdmin']);
+        $this->middleware(['auth', 'role:coordinateur|secretaire|superAdmin|directeurEtudes']);
         $this->middleware('permission:module.presences.access')->only(['attendanceDashboard', 'attendanceDashboardData']);
         $this->notificationService = $notificationService;
     }

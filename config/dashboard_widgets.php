@@ -39,7 +39,7 @@ return [
         'partial' => 'dashboard.widgets.students-total',
         'group' => 'Étudiants',
         'size' => 'sm',
-        'default_for_roles' => ['superAdmin', 'secretaire', 'coordinateur'],
+        'default_for_roles' => ['superAdmin', 'secretaire', 'coordinateur', 'directeurEtudes'],
     ],
 
     'students.new_this_month' => [
@@ -64,7 +64,7 @@ return [
         'partial' => 'dashboard.widgets.inscriptions-pending-validation',
         'group' => 'Inscriptions',
         'size' => 'sm',
-        'default_for_roles' => ['superAdmin', 'secretaire', 'coordinateur'],
+        'default_for_roles' => ['superAdmin', 'secretaire', 'coordinateur', 'directeurEtudes'],
     ],
 
     'inscriptions.this_year' => [
@@ -76,7 +76,7 @@ return [
         'partial' => 'dashboard.widgets.inscriptions-this-year',
         'group' => 'Inscriptions',
         'size' => 'sm',
-        'default_for_roles' => ['superAdmin', 'secretaire', 'coordinateur', 'caissier'],
+        'default_for_roles' => ['superAdmin', 'secretaire', 'coordinateur', 'directeurEtudes', 'caissier'],
     ],
 
     // ===== Paiements =====
@@ -138,7 +138,7 @@ return [
         'partial' => 'dashboard.widgets.bulletins-generated-this-period',
         'group' => 'Notes & Bulletins',
         'size' => 'sm',
-        'default_for_roles' => ['superAdmin', 'secretaire', 'coordinateur'],
+        'default_for_roles' => ['superAdmin', 'secretaire', 'coordinateur', 'directeurEtudes'],
     ],
 
     'notes.recent' => [
@@ -150,7 +150,7 @@ return [
         'partial' => 'dashboard.widgets.notes-recent',
         'group' => 'Notes & Bulletins',
         'size' => 'sm',
-        'default_for_roles' => ['superAdmin', 'coordinateur'],
+        'default_for_roles' => ['superAdmin', 'coordinateur', 'directeurEtudes'],
     ],
 
     // ===== Pilotage académique =====
@@ -163,7 +163,7 @@ return [
         'partial' => 'dashboard.widgets.academic-pilotage-health',
         'group' => 'Pilotage académique',
         'size' => 'sm',
-        'default_for_roles' => ['superAdmin', 'coordinateur'],
+        'default_for_roles' => ['superAdmin', 'coordinateur', 'directeurEtudes'],
     ],
 
     'academic_pilotage.pending_sheets' => [
@@ -175,7 +175,7 @@ return [
         'partial' => 'dashboard.widgets.academic-pilotage-pending-sheets',
         'group' => 'Pilotage académique',
         'size' => 'sm',
-        'default_for_roles' => ['superAdmin', 'coordinateur'],
+        'default_for_roles' => ['superAdmin', 'coordinateur', 'directeurEtudes'],
     ],
 
     'academic_pilotage.open_alerts' => [
@@ -187,7 +187,7 @@ return [
         'partial' => 'dashboard.widgets.academic-pilotage-open-alerts',
         'group' => 'Pilotage académique',
         'size' => 'sm',
-        'default_for_roles' => ['superAdmin', 'coordinateur'],
+        'default_for_roles' => ['superAdmin', 'coordinateur', 'directeurEtudes'],
     ],
 
     // ===== Présences =====
@@ -200,7 +200,7 @@ return [
         'partial' => 'dashboard.widgets.attendances-today-rate',
         'group' => 'Présences',
         'size' => 'sm',
-        'default_for_roles' => ['superAdmin', 'coordinateur', 'secretaire'],
+        'default_for_roles' => ['superAdmin', 'coordinateur', 'directeurEtudes', 'secretaire'],
     ],
 
     // ===== Communication =====
@@ -213,7 +213,7 @@ return [
         'partial' => 'dashboard.widgets.annonces-recent',
         'group' => 'Communication',
         'size' => 'lg',
-        'default_for_roles' => ['superAdmin', 'secretaire', 'coordinateur', 'comptable', 'caissier', 'enseignant'],
+        'default_for_roles' => ['superAdmin', 'secretaire', 'coordinateur', 'directeurEtudes', 'comptable', 'caissier', 'enseignant'],
     ],
 
     // ===== Système =====
