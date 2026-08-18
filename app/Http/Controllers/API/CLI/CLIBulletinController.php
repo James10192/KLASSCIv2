@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\API\CLI;
 
 use App\Http\Controllers\API\BaseApiController;
+use App\Services\ESBTP\BulletinAverageBackfillService;
 use App\Services\ESBTP\BulletinBulkGenerationCliService;
 use App\Services\ESBTP\BulletinRankRecalculationService;
 use Illuminate\Http\JsonResponse;
@@ -13,6 +14,7 @@ class CLIBulletinController extends BaseApiController
     public function __construct(
         private BulletinRankRecalculationService $rankRecalculationService,
         private BulletinBulkGenerationCliService $bulkGenerationService,
+        private BulletinAverageBackfillService $averageBackfillService,
     ) {
         parent::__construct();
     }
@@ -96,6 +98,47 @@ class CLIBulletinController extends BaseApiController
         return $this->successResponse(
             $payload,
             $apply ? 'Generation officielle appliquee' : 'Generation officielle (simulation)'
+        );
+    }
+
+    /**
+     * POST /api/cli/bulletins/backfill-averages
+     *   ?apply=1&classe_id=&annee_universitaire_id=&periode=semestre2
+     *
+     * Remplit moyenne_generale / note_assiduite des bulletins vides depuis le
+     * snapshot live, puis recalcule les rangs. Dry-run par defaut.
+     */
+    public function backfillAverages(Request $request): JsonResponse
+    {
+        $apply = $request->boolean('apply');
+        $ability = $apply ? 'cli:write' : 'cli:read';
+        if (! $request->user()->tokenCan($ability)) {
+            return $this->errorResponse("Token missing {$ability} ability", [], 403);
+        }
+
+        if (! $request->filled('classe_id')) {
+            return $this->errorResponse('classe_id requis', [], 422);
+        }
+
+        $periode = $request->filled('periode') ? (string) $request->input('periode') : 'semestre2';
+        $anneeId = $request->filled('annee_universitaire_id')
+            ? (int) $request->input('annee_universitaire_id')
+            : null;
+
+        try {
+            $payload = $this->averageBackfillService->backfill(
+                $apply,
+                $anneeId,
+                (int) $request->input('classe_id'),
+                $periode
+            );
+        } catch (\InvalidArgumentException $exception) {
+            return $this->errorResponse($exception->getMessage(), [], 404);
+        }
+
+        return $this->successResponse(
+            $payload,
+            $apply ? 'Backfill moyennes applique' : 'Backfill moyennes (simulation)'
         );
     }
 }

@@ -148,7 +148,6 @@ class BulletinRankRecalculationService
                 $query->select('classe_id')
                     ->from('esbtp_bulletins')
                     ->where('annee_universitaire_id', $anneeUniversitaireId)
-                    ->whereNotNull('moyenne_generale')
                     ->whereNull('deleted_at')
                     ->whereNull('archived_at');
             })

@@ -6,6 +6,7 @@ use App\Http\Controllers\API\BaseApiController;
 use App\Http\Controllers\API\CLI\CLIBulletinController;
 use App\Models\ESBTPAnneeUniversitaire;
 use App\Models\User;
+use App\Services\ESBTP\BulletinAverageBackfillService;
 use App\Services\ESBTP\BulletinBulkGenerationCliService;
 use App\Services\ESBTP\BulletinRankRecalculationService;
 use Illuminate\Http\Request;
@@ -126,7 +127,8 @@ class BulletinRankRecalculationCliTest extends TestCase
     {
         $controller = new CLIBulletinController(
             $service ?? Mockery::mock(BulletinRankRecalculationService::class),
-            Mockery::mock(BulletinBulkGenerationCliService::class)
+            Mockery::mock(BulletinBulkGenerationCliService::class),
+            Mockery::mock(BulletinAverageBackfillService::class)
         );
         $annee = new ESBTPAnneeUniversitaire([
             'name' => '2025-2026',

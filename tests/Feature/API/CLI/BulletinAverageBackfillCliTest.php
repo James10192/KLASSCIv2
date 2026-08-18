@@ -14,7 +14,7 @@ use Mockery;
 use ReflectionProperty;
 use Tests\TestCase;
 
-class BulletinBulkGenerationCliTest extends TestCase
+class BulletinAverageBackfillCliTest extends TestCase
 {
     protected function tearDown(): void
     {
@@ -25,7 +25,7 @@ class BulletinBulkGenerationCliTest extends TestCase
     public function test_route_is_registered(): void
     {
         $routes = collect(Route::getRoutes()->getRoutes())
-            ->filter(fn ($route) => $route->uri() === 'api/cli/bulletins/generate-missing')
+            ->filter(fn ($route) => $route->uri() === 'api/cli/bulletins/backfill-averages')
             ->map(fn ($route) => $route->methods())
             ->first();
 
@@ -35,7 +35,7 @@ class BulletinBulkGenerationCliTest extends TestCase
 
     public function test_apply_requires_write_ability(): void
     {
-        $response = $this->controller()->generateMissing(
+        $response = $this->controller()->backfillAverages(
             $this->requestWithAbilities(['cli:read'], [
                 'apply' => 1,
                 'classe_id' => 86,
@@ -46,23 +46,22 @@ class BulletinBulkGenerationCliTest extends TestCase
         $this->assertSame(403, $response->getStatusCode());
     }
 
-    public function test_dry_run_does_not_generate(): void
+    public function test_dry_run_does_not_write(): void
     {
-        $service = Mockery::mock(BulletinBulkGenerationCliService::class);
-        $service->shouldReceive('generate')
+        $service = Mockery::mock(BulletinAverageBackfillService::class);
+        $service->shouldReceive('backfill')
             ->once()
-            ->with(false, 6, 86, 'semestre2', false, null, Mockery::any())
+            ->with(false, 6, 86, 'semestre2')
             ->andReturn([
                 'mode' => 'DRY-RUN (aucune ecriture)',
                 'classe_id' => 86,
-                'students_count' => 46,
-                'generatable_count' => 45,
-                'existing_count' => 1,
-                'created' => 0,
-                'regenerated' => 0,
+                'bulletins_lus' => 46,
+                'vides' => 45,
+                'remplissables' => 45,
+                'deja_remplis' => 1,
             ]);
 
-        $response = $this->controller($service)->generateMissing(
+        $response = $this->controller($service)->backfillAverages(
             $this->requestWithAbilities(['cli:read'], [
                 'annee_universitaire_id' => 6,
                 'classe_id' => 86,
@@ -73,16 +72,15 @@ class BulletinBulkGenerationCliTest extends TestCase
         $this->assertSame(200, $response->getStatusCode());
         $payload = $response->getData(true)['data'];
         $this->assertSame('DRY-RUN (aucune ecriture)', $payload['mode']);
-        $this->assertSame(0, $payload['created']);
-        $this->assertSame(45, $payload['generatable_count']);
+        $this->assertSame(45, $payload['remplissables']);
     }
 
-    private function controller(?BulletinBulkGenerationCliService $service = null): CLIBulletinController
+    private function controller(?BulletinAverageBackfillService $service = null): CLIBulletinController
     {
         $controller = new CLIBulletinController(
             Mockery::mock(BulletinRankRecalculationService::class),
-            $service ?? Mockery::mock(BulletinBulkGenerationCliService::class),
-            Mockery::mock(BulletinAverageBackfillService::class)
+            Mockery::mock(BulletinBulkGenerationCliService::class),
+            $service ?? Mockery::mock(BulletinAverageBackfillService::class)
         );
         $annee = new ESBTPAnneeUniversitaire([
             'name' => '2025-2026',
@@ -98,10 +96,8 @@ class BulletinBulkGenerationCliTest extends TestCase
 
     private function requestWithAbilities(array $abilities, array $payload): Request
     {
-        $request = Request::create('/api/cli/bulletins/generate-missing', 'POST', $payload);
+        $request = Request::create('/api/cli/bulletins/backfill-averages', 'POST', $payload);
         $request->setUserResolver(fn () => new class($abilities) {
-            public int $id = 1;
-
             public function __construct(private array $abilities)
             {
             }
