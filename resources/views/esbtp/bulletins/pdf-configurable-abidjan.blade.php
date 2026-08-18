@@ -217,17 +217,17 @@
             text-align: left;
         }
         th {
-            background: #f3f4f6;
+            background: {{ $pdfPrimary }};
             font-weight: 700;
             text-align: center;
             font-size: 9px;
-            color: #111827;
+            color: #ffffff;
         }
         .center { text-align: center; }
 
         .section-header {
             background: {{ $pdfPrimary }};
-            color: {{ $pdfHeaderText }};
+            color: #ffffff;
             font-weight: 700;
             text-align: center;
             padding: 5px 8px;
@@ -267,7 +267,7 @@
         }
         .results-table th, .stats-table th {
             background: {{ $pdfPrimary }};
-            color: {{ $pdfHeaderText }};
+            color: #ffffff;
             padding: 5px 8px;
             font-size: 9px;
             border: none;
@@ -554,7 +554,7 @@
             </table>
         </div>
 
-        {{-- Tableau des matiÃ¨res --}}
+        {{-- Tableau des matieres --}}
         @if(($settings['bulletin_show_subjects_table'] ?? '1') == '1')
             @php
                 $showSubjectAverage = ($settings['bulletin_show_subject_average'] ?? '1') == '1';
@@ -577,7 +577,7 @@
             <table>
                 <thead>
                     <tr>
-                        <th>MatiÃ¨re</th>
+                        <th>Mati&egrave;re</th>
                         @if($showSubjectAverage)<th>Moyenne M</th>@endif
                         @if($showCoefficient)<th>Coef C</th>@endif
                         @if($showWeightedAverage)<th>Moy Pond&eacute;r&eacute;e M&times;C</th>@endif

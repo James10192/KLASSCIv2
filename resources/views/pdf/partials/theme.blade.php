@@ -37,7 +37,7 @@
     .table-header th,
     .header-table th {
         background: {{ $pdfPrimary }} !important;
-        color: {{ $pdfHeaderText }} !important;
+        color: #ffffff !important;
     }
 
     .table-header,

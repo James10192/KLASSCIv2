@@ -1384,8 +1384,8 @@
                                       style="background:{{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}"></span>
                             </div>
                             <div class="pdf-picker-meta">
-                                <div class="pdf-picker-label">Couleur d'accent — titres & soulignements</div>
-                                <div class="pdf-picker-desc">Titre du document (ex: « CERTIFICAT DE SCOLARITÉ »), en-têtes de tableaux, séparateurs colorés</div>
+                                <div class="pdf-picker-label">Couleur d'accent, titres et en-tetes de tableaux</div>
+                                <div class="pdf-picker-desc">Titres, separateurs et fond des en-tetes de tableaux. Le texte de ces en-tetes reste blanc pour rester lisible.</div>
                                 <div class="pdf-contrast-badge" id="contrastAccent"></div>
                             </div>
                         </div>
@@ -1437,7 +1437,7 @@
                         </div>
                         <!-- Tableau -->
                         <div class="prev-table">
-                            <div class="prev-table-head" style="background:{{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}; color:{{ \App\Helpers\SettingsHelper::get('pdf_header_text_color', '#ffffff') }}">
+                            <div class="prev-table-head" style="background:{{ \App\Helpers\SettingsHelper::get('pdf_primary_color', '#0453cb') }}; color:#ffffff">
                                 <span>Année</span><span>Classe</span><span>Filière</span>
                             </div>
                             <div class="prev-table-row" style="color:{{ \App\Helpers\SettingsHelper::get('pdf_text_color', '#1f2937') }}">
@@ -3750,7 +3750,7 @@ function updatePreview() {
     if (divider)   divider.style.background = acc;
     if (docTitle)  { docTitle.style.color = acc; docTitle.style.borderBottomColor = acc; }
     if (prevBody)  prevBody.style.color = body;
-    if (tableHead) { tableHead.style.background = acc; tableHead.style.color = txt; }
+    if (tableHead) { tableHead.style.background = acc; tableHead.style.color = '#ffffff'; }
     if (tableRow)  tableRow.style.color = body;
     if (hlBlock) {
         hlBlock.style.borderLeftColor = acc;

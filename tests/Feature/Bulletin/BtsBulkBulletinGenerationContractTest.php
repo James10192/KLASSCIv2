@@ -267,6 +267,18 @@ class BtsBulkBulletinGenerationContractTest extends TestCase
         $this->assertStringNotContainsString('background: #0453cb;', $cover);
     }
 
+    public function test_abidjan_subject_table_headers_use_plain_french_and_white_text(): void
+    {
+        $abidjan = file_get_contents(resource_path('views/esbtp/bulletins/pdf-configurable-abidjan.blade.php'));
+        $theme = file_get_contents(resource_path('views/pdf/partials/theme.blade.php'));
+
+        $this->assertStringContainsString('<th>Mati&egrave;re</th>', $abidjan);
+        $this->assertStringNotContainsString('MatiÃ', $abidjan);
+        $this->assertStringContainsString('color: #ffffff;', $abidjan);
+        $this->assertStringContainsString('background: {{ $pdfPrimary }};', $abidjan);
+        $this->assertStringContainsString('color: #ffffff !important;', $theme);
+    }
+
     public function test_config_modal_has_cross_semester_copy_and_save_scope(): void
     {
         $view = $this->selectPageSource();
