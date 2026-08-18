@@ -101,4 +101,30 @@ class RangParMatiereLiveTest extends TestCase
         $this->assertSame('1', $this->rangLive($matiere, $etu['B'], $classe, $annee));
         $this->assertSame('3', $this->rangLive($matiere, $etu['C'], $classe, $annee));
     }
+
+    public function test_une_seule_ligne_esbtp_resultats_ne_force_plus_tout_le_monde_a_1(): void
+    {
+        [$etu, $matiere, $classe, $annee] = $this->seedClasseAvecNotes(['A' => 18.0, 'B' => 12.0, 'C' => 15.0]);
+        \App\Models\ESBTPResultat::create([
+            'etudiant_id' => $etu['C']->id,
+            'classe_id' => $classe->id,
+            'matiere_id' => $matiere->id,
+            'periode' => 'semestre1',
+            'annee_universitaire_id' => $annee->id,
+            'moyenne' => 15.0,
+            'coefficient' => 1,
+            'rang' => 1,
+        ]);
+
+        $service = app(\App\Services\BulletinService::class);
+        $ranks = $service->calculerRangsParMatierePourEtudiant(
+            [$matiere->id],
+            $etu['C']->id,
+            $classe->id,
+            $annee->id,
+            'semestre1'
+        );
+
+        $this->assertSame('2', $ranks[$matiere->id]);
+    }
 }

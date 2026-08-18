@@ -564,7 +564,13 @@ class BulletinService
 
         // Calculer les rangs par matière via ESBTPResultat (batch-fetch pour éviter N+1)
         $allMatiereIds = collect($resultatsParMatiere)->pluck('matiere_id')->filter()->unique()->values()->all();
-        $rangsParMatiere = $this->calculerRangsParMatiereBatch($allMatiereIds, $etudiantId, $classeId, $anneeUniversitaireId, $periodeNormalized);
+        $rangsParMatiere = $this->calculerRangsParMatierePourEtudiant(
+            $allMatiereIds,
+            $etudiantId,
+            $classeId,
+            $anneeUniversitaireId,
+            $periodeNormalized
+        );
         foreach ($resultatsGeneraux as $resultat) {
             $resultat->rang = $rangsParMatiere[$resultat->matiere_id] ?? '-';
         }
@@ -1740,17 +1746,22 @@ class BulletinService
         $periodeOptions = array_unique($this->periodeOptionsForRang($periode));
         $wanted = array_flip(array_map('intval', $matiereIds));
 
-        $etudiantIds = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classeId, $anneeUniversitaireId) {
-            $q->where('classe_id', $classeId)
-                ->where('annee_universitaire_id', $anneeUniversitaireId);
-        })->pluck('id');
+        $etudiantIds = $this->classCohortCounter->etudiantIds($classeId, $anneeUniversitaireId, $periode);
+        if ($etudiantIds === []) {
+            $etudiantIds = ESBTPEtudiant::whereHas('inscriptions', function ($q) use ($classeId, $anneeUniversitaireId) {
+                $q->where('classe_id', $classeId)
+                    ->where('annee_universitaire_id', $anneeUniversitaireId)
+                    ->where('status', 'active')
+                    ->where('workflow_step', 'etudiant_cree');
+            })->pluck('id')->map(fn ($id) => (int) $id)->all();
+        }
 
         // moyennes[matiereId][etudiantId] = moyenne
         $moyennes = [];
         foreach ($etudiantIds as $sid) {
             $perMatiere = $this->moyennesParMatiereEtudiant((int) $sid, $classeId, $anneeUniversitaireId, $periodeOptions);
             foreach ($perMatiere as $matiereId => $moyenne) {
-                if (isset($wanted[$matiereId]) && $moyenne > 0) {
+                if (isset($wanted[$matiereId])) {
                     $moyennes[$matiereId][(int) $sid] = $moyenne;
                 }
             }
@@ -2541,16 +2552,19 @@ class BulletinService
      * Calcule les rangs d'un étudiant pour plusieurs matières en une seule requête.
      * Retourne un tableau [matiere_id => rang_string].
      */
-    private function calculerRangsParMatiereBatch(array $matiereIds, int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
+    public function calculerRangsParMatierePourEtudiant(array $matiereIds, int $etudiantId, int $classeId, int $anneeUniversitaireId, string $periode): array
     {
         if (empty($matiereIds)) {
             return [];
         }
 
-        $resultats = ESBTPResultat::whereIn('matiere_id', $matiereIds)
+        $periode = $this->normalizePeriode($periode);
+        $liveRanks = $this->calculerRangsParMatiereLive($matiereIds, $etudiantId, $classeId, $anneeUniversitaireId, $periode);
+        $resultats = ESBTPResultat::query()
+            ->whereIn('matiere_id', $matiereIds)
             ->where('classe_id', $classeId)
             ->where('annee_universitaire_id', $anneeUniversitaireId)
-            ->where('periode', $periode)
+            ->whereIn('periode', $this->periodeOptionsForRang($periode))
             ->whereNotNull('moyenne')
             ->orderByDesc('moyenne')
             ->get()
@@ -2558,54 +2572,121 @@ class BulletinService
 
         $rangs = [];
         foreach ($matiereIds as $matiereId) {
-            $matiereResultats = $resultats->get($matiereId);
-            if (! $matiereResultats || $matiereResultats->isEmpty()) {
-                $rangs[$matiereId] = '-';
-                continue;
-            }
-
-            $rang = 1;
-            $prevMoyenne = null;
-            $prevRang = 1;
-            $found = false;
-
-            foreach ($matiereResultats->sortByDesc('moyenne')->values() as $r) {
-                if ($prevMoyenne !== null && $r->moyenne < $prevMoyenne) {
-                    $prevRang = $rang;
-                }
-                if ($r->etudiant_id == $etudiantId) {
-                    $rangs[$matiereId] = (string) $prevRang;
-                    $found = true;
-                    break;
-                }
-                $prevMoyenne = $r->moyenne;
-                $rang++;
-            }
-
-            if (! $found) {
-                $rangs[$matiereId] = '-';
-            }
-        }
-
-        // Repli : pour les matières sans ligne esbtp_resultats (bulletin en aperçu ou
-        // non généré officiellement), calculer le rang EN LIVE depuis les notes, afin
-        // que la colonne Rang ne reste pas à « - » alors que les moyennes s'affichent.
-        $manquantes = array_values(array_filter(
-            $matiereIds,
-            fn ($id) => ($rangs[(int) $id] ?? '-') === '-'
-        ));
-        if (! empty($manquantes)) {
-            $rangsLive = $this->calculerRangsParMatiereLive($manquantes, $etudiantId, $classeId, $anneeUniversitaireId, $periode);
-            foreach ($rangsLive as $matiereId => $rang) {
-                if ($rang !== '-') {
-                    $rangs[$matiereId] = $rang;
-                }
-            }
+            $storedRank = $this->rankFromStoredSubjectResults($resultats->get($matiereId), $etudiantId);
+            $liveRank = $liveRanks[(int) $matiereId] ?? '-';
+            $rangs[(int) $matiereId] = $this->preferRicherSubjectRank($liveRank, $storedRank);
         }
 
         return $rangs;
     }
 
+    public function recalculerRangsParMatierePourClasse(int $classeId, int $anneeUniversitaireId, string $periode): array
+    {
+        $periode = $this->normalizePeriode($periode);
+        $bulletins = ESBTPBulletin::query()
+            ->where('classe_id', $classeId)
+            ->where('annee_universitaire_id', $anneeUniversitaireId)
+            ->whereIn('periode', $this->periodeAliases($periode))
+            ->get();
+
+        $changed = 0;
+        $unchanged = 0;
+        $samples = [];
+
+        foreach ($bulletins as $bulletin) {
+            $rows = ESBTPResultatMatiere::query()
+                ->where('bulletin_id', $bulletin->id)
+                ->get();
+            if ($rows->isEmpty()) {
+                $unchanged++;
+                continue;
+            }
+
+            $ranks = $this->calculerRangsParMatierePourEtudiant(
+                $rows->pluck('matiere_id')->map(fn ($id) => (int) $id)->all(),
+                (int) $bulletin->etudiant_id,
+                $classeId,
+                $anneeUniversitaireId,
+                $periode
+            );
+
+            $bulletinChanged = false;
+            foreach ($rows as $row) {
+                $proposed = $ranks[(int) $row->matiere_id] ?? '-';
+                $proposedInt = is_numeric($proposed) ? (int) $proposed : null;
+                $current = $row->rang === null ? null : (int) $row->rang;
+                if ($current === $proposedInt) {
+                    continue;
+                }
+
+                $row->rang = $proposedInt;
+                $row->save();
+                $bulletinChanged = true;
+                if (count($samples) < 24) {
+                    $samples[] = [
+                        'bulletin_id' => (int) $bulletin->id,
+                        'etudiant_id' => (int) $bulletin->etudiant_id,
+                        'matiere_id' => (int) $row->matiere_id,
+                        'rang_actuel' => $current,
+                        'rang_propose' => $proposedInt,
+                    ];
+                }
+            }
+
+            if ($bulletinChanged) {
+                $changed++;
+            } else {
+                $unchanged++;
+            }
+        }
+
+        return [
+            'classe_id' => $classeId,
+            'periode' => $periode,
+            'bulletins_lus' => $bulletins->count(),
+            'bulletins_changes' => $changed,
+            'bulletins_inchanges' => $unchanged,
+            'echantillons' => $samples,
+        ];
+    }
+
+    private function rankFromStoredSubjectResults($matiereResultats, int $etudiantId): string
+    {
+        if (! $matiereResultats || $matiereResultats->isEmpty()) {
+            return '-';
+        }
+
+        $rang = 1;
+        $prevMoyenne = null;
+        $prevRang = 1;
+        foreach ($matiereResultats->sortByDesc('moyenne')->values() as $resultat) {
+            if ($prevMoyenne !== null && $resultat->moyenne < $prevMoyenne) {
+                $prevRang = $rang;
+            }
+            if ((int) $resultat->etudiant_id === $etudiantId) {
+                return (string) $prevRang;
+            }
+            $prevMoyenne = $resultat->moyenne;
+            $rang++;
+        }
+
+        return '-';
+    }
+
+    private function preferRicherSubjectRank(string $liveRank, string $storedRank): string
+    {
+        $live = is_numeric($liveRank) ? (int) $liveRank : null;
+        $stored = is_numeric($storedRank) ? (int) $storedRank : null;
+
+        if ($live === null) {
+            return $storedRank;
+        }
+        if ($stored === null) {
+            return $liveRank;
+        }
+
+        return (string) max($live, $stored);
+    }
 
     public function calculerAbsencesDetailees($bulletin)
     {

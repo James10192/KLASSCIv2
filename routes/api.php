@@ -270,6 +270,8 @@ Route::middleware(['auth:sanctum', 'throttle:60,1'])->prefix('cli')->name('api.c
         ->name('bulletins.generate-missing');
     Route::post('/bulletins/backfill-averages', [App\Http\Controllers\API\CLI\CLIBulletinController::class, 'backfillAverages'])
         ->name('bulletins.backfill-averages');
+    Route::post('/bulletins/backfill-subject-ranks', [App\Http\Controllers\API\CLI\CLIBulletinController::class, 'backfillSubjectRanks'])
+        ->name('bulletins.backfill-subject-ranks');
     Route::get('/bts-tc/inscriptions/{id}/diagnose', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'diagnoseInscription'])
         ->name('bts-tc.inscriptions.diagnose');
     Route::get('/bts-tc/students/{id}/journey', [App\Http\Controllers\API\CLI\CLIBtsTroncCommunController::class, 'studentJourney'])

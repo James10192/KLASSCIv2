@@ -8,13 +8,14 @@ use App\Models\ESBTPAnneeUniversitaire;
 use App\Services\ESBTP\BulletinAverageBackfillService;
 use App\Services\ESBTP\BulletinBulkGenerationCliService;
 use App\Services\ESBTP\BulletinRankRecalculationService;
+use App\Services\ESBTP\BulletinSubjectRankBackfillService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Mockery;
 use ReflectionProperty;
 use Tests\TestCase;
 
-class BulletinAverageBackfillCliTest extends TestCase
+class BulletinSubjectRankBackfillCliTest extends TestCase
 {
     protected function tearDown(): void
     {
@@ -25,7 +26,7 @@ class BulletinAverageBackfillCliTest extends TestCase
     public function test_route_is_registered(): void
     {
         $routes = collect(Route::getRoutes()->getRoutes())
-            ->filter(fn ($route) => $route->uri() === 'api/cli/bulletins/backfill-averages')
+            ->filter(fn ($route) => $route->uri() === 'api/cli/bulletins/backfill-subject-ranks')
             ->map(fn ($route) => $route->methods())
             ->first();
 
@@ -35,10 +36,10 @@ class BulletinAverageBackfillCliTest extends TestCase
 
     public function test_apply_requires_write_ability(): void
     {
-        $response = $this->controller()->backfillAverages(
+        $response = $this->controller()->backfillSubjectRanks(
             $this->requestWithAbilities(['cli:read'], [
                 'apply' => 1,
-                'classe_id' => 86,
+                'classe_id' => 37,
                 'periode' => 'semestre2',
             ])
         );
@@ -48,23 +49,23 @@ class BulletinAverageBackfillCliTest extends TestCase
 
     public function test_dry_run_does_not_write(): void
     {
-        $service = Mockery::mock(BulletinAverageBackfillService::class);
+        $service = Mockery::mock(BulletinSubjectRankBackfillService::class);
         $service->shouldReceive('backfill')
             ->once()
-            ->with(false, 6, 86, 'semestre2')
+            ->with(false, 6, 37, 'semestre2')
             ->andReturn([
                 'mode' => 'DRY-RUN (aucune ecriture)',
-                'classe_id' => 86,
-                'bulletins_lus' => 46,
-                'vides' => 45,
-                'remplissables' => 45,
-                'deja_remplis' => 1,
+                'classe_id' => 37,
+                'lignes_lues' => 12,
+                'rangs_changes' => 11,
+                'rang_1_avant' => 12,
+                'rang_1_apres' => 1,
             ]);
 
-        $response = $this->controller($service)->backfillAverages(
+        $response = $this->controller($service)->backfillSubjectRanks(
             $this->requestWithAbilities(['cli:read'], [
                 'annee_universitaire_id' => 6,
-                'classe_id' => 86,
+                'classe_id' => 37,
                 'periode' => 'semestre2',
             ])
         );
@@ -72,16 +73,16 @@ class BulletinAverageBackfillCliTest extends TestCase
         $this->assertSame(200, $response->getStatusCode());
         $payload = $response->getData(true)['data'];
         $this->assertSame('DRY-RUN (aucune ecriture)', $payload['mode']);
-        $this->assertSame(45, $payload['remplissables']);
+        $this->assertSame(11, $payload['rangs_changes']);
     }
 
-    private function controller(?BulletinAverageBackfillService $service = null): CLIBulletinController
+    private function controller(?BulletinSubjectRankBackfillService $service = null): CLIBulletinController
     {
         $controller = new CLIBulletinController(
             Mockery::mock(BulletinRankRecalculationService::class),
             Mockery::mock(BulletinBulkGenerationCliService::class),
-            $service ?? Mockery::mock(BulletinAverageBackfillService::class),
-            Mockery::mock(\App\Services\ESBTP\BulletinSubjectRankBackfillService::class)
+            Mockery::mock(BulletinAverageBackfillService::class),
+            $service ?? Mockery::mock(BulletinSubjectRankBackfillService::class)
         );
         $annee = new ESBTPAnneeUniversitaire([
             'name' => '2025-2026',
@@ -97,7 +98,7 @@ class BulletinAverageBackfillCliTest extends TestCase
 
     private function requestWithAbilities(array $abilities, array $payload): Request
     {
-        $request = Request::create('/api/cli/bulletins/backfill-averages', 'POST', $payload);
+        $request = Request::create('/api/cli/bulletins/backfill-subject-ranks', 'POST', $payload);
         $request->setUserResolver(fn () => new class($abilities) {
             public function __construct(private array $abilities)
             {

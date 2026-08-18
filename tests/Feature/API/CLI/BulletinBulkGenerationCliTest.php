@@ -82,7 +82,8 @@ class BulletinBulkGenerationCliTest extends TestCase
         $controller = new CLIBulletinController(
             Mockery::mock(BulletinRankRecalculationService::class),
             $service ?? Mockery::mock(BulletinBulkGenerationCliService::class),
-            Mockery::mock(BulletinAverageBackfillService::class)
+            Mockery::mock(BulletinAverageBackfillService::class),
+            Mockery::mock(\App\Services\ESBTP\BulletinSubjectRankBackfillService::class)
         );
         $annee = new ESBTPAnneeUniversitaire([
             'name' => '2025-2026',

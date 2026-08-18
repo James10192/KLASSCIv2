@@ -6,6 +6,7 @@ use App\Http\Controllers\API\BaseApiController;
 use App\Services\ESBTP\BulletinAverageBackfillService;
 use App\Services\ESBTP\BulletinBulkGenerationCliService;
 use App\Services\ESBTP\BulletinRankRecalculationService;
+use App\Services\ESBTP\BulletinSubjectRankBackfillService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -15,6 +16,7 @@ class CLIBulletinController extends BaseApiController
         private BulletinRankRecalculationService $rankRecalculationService,
         private BulletinBulkGenerationCliService $bulkGenerationService,
         private BulletinAverageBackfillService $averageBackfillService,
+        private BulletinSubjectRankBackfillService $subjectRankBackfillService,
     ) {
         parent::__construct();
     }
@@ -139,6 +141,47 @@ class CLIBulletinController extends BaseApiController
         return $this->successResponse(
             $payload,
             $apply ? 'Backfill moyennes applique' : 'Backfill moyennes (simulation)'
+        );
+    }
+
+    /**
+     * POST /api/cli/bulletins/backfill-subject-ranks
+     *   ?apply=1&classe_id=&annee_universitaire_id=&periode=semestre2
+     *
+     * Recalcule les rangs par matiere des bulletins officiels existants.
+     * Dry-run par defaut. apply=1 ecrit esbtp_resultats_matieres.rang, jamais le PDF.
+     */
+    public function backfillSubjectRanks(Request $request): JsonResponse
+    {
+        $apply = $request->boolean('apply');
+        $ability = $apply ? 'cli:write' : 'cli:read';
+        if (! $request->user()->tokenCan($ability)) {
+            return $this->errorResponse("Token missing {$ability} ability", [], 403);
+        }
+
+        if (! $request->filled('classe_id')) {
+            return $this->errorResponse('classe_id requis', [], 422);
+        }
+
+        $periode = $request->filled('periode') ? (string) $request->input('periode') : 'semestre2';
+        $anneeId = $request->filled('annee_universitaire_id')
+            ? (int) $request->input('annee_universitaire_id')
+            : null;
+
+        try {
+            $payload = $this->subjectRankBackfillService->backfill(
+                $apply,
+                $anneeId,
+                (int) $request->input('classe_id'),
+                $periode
+            );
+        } catch (\InvalidArgumentException $exception) {
+            return $this->errorResponse($exception->getMessage(), [], 404);
+        }
+
+        return $this->successResponse(
+            $payload,
+            $apply ? 'Backfill rangs matieres applique' : 'Backfill rangs matieres (simulation)'
         );
     }
 }
